@@ -12,14 +12,16 @@ import {
   isOpenGolfCoachConfigured,
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
-import { scoreClub } from './lib/scoring'
+import { summarizeReviewClub } from './lib/scoring'
+import { loadSavedSessions, saveSessionHistory } from './lib/sessions'
 import {
   clubs,
   type Club,
-  type ClubSummary,
   type IncomingNovaShot,
   type OpenGolfCoachDerivedValues,
   type OpenGolfCoachInput,
+  type ReviewClubSummary,
+  type SavedSession,
   type Shot,
 } from './types'
 
@@ -44,11 +46,6 @@ const formatDebugPayload = (
     | null,
 ) =>
   payload ? JSON.stringify(payload, null, 2) : '-'
-
-const buildSummaries = (shots: Shot[]) =>
-  clubs
-    .map((club) => scoreClub(club, shots))
-    .filter((summary) => summary.totalShots > 0)
 
 const buildShot = (
   incomingShot: IncomingNovaShot,
@@ -106,7 +103,10 @@ function App() {
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedClub, setSelectedClub] = useState<Club>('7 Iron')
   const [shots, setShots] = useState<Shot[]>([])
-  const [hasRunScoring, setHasRunScoring] = useState(false)
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
+    loadSavedSessions(),
+  )
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<NovaConnectionStatus>('disconnected')
@@ -240,14 +240,18 @@ function App() {
     [shots],
   )
 
-  const summaries: ClubSummary[] = useMemo(
-    () => (hasRunScoring ? buildSummaries(shots) : []),
-    [hasRunScoring, shots],
+  const reviewSummaries: ReviewClubSummary[] = useMemo(
+    () =>
+      clubs
+        .map((club) =>
+          summarizeReviewClub(club, shots, savedSessions, activeSessionId),
+        )
+        .filter((summary): summary is ReviewClubSummary => summary !== null),
+    [activeSessionId, savedSessions, shots],
   )
 
   const startSession = () => {
     setShots([])
-    setHasRunScoring(false)
     setFeedMode(null)
     setConnectionStatus('connecting')
     setHelperReachable(null)
@@ -262,6 +266,20 @@ function App() {
   }
 
   const endSession = () => {
+    const endedAt = new Date().toISOString()
+    const savedSession: SavedSession = {
+      id: crypto.randomUUID(),
+      startedAt: sessionStartedAt ?? endedAt,
+      endedAt,
+      shots,
+    }
+
+    setSavedSessions((currentSessions) => {
+      const nextSessions = [savedSession, ...currentSessions]
+      saveSessionHistory(nextSessions)
+      return nextSessions
+    })
+    setActiveSessionId(savedSession.id)
     setSessionState('review')
   }
 
@@ -285,14 +303,10 @@ function App() {
     )
   }
 
-  const runScoring = () => {
-    setHasRunScoring(true)
-  }
-
   const startOver = () => {
     setSessionState('setup')
     setShots([])
-    setHasRunScoring(false)
+    setActiveSessionId(null)
     setFeedMode(null)
     setConnectionStatus('disconnected')
     setHelperReachable(null)
@@ -315,6 +329,17 @@ function App() {
         shot.id === shotId ? { ...shot, club } : shot,
       ),
     )
+  }
+
+  const openSavedSession = (sessionId: string) => {
+    const session = savedSessions.find((savedSession) => savedSession.id === sessionId)
+    if (!session) {
+      return
+    }
+
+    setShots(session.shots)
+    setActiveSessionId(session.id)
+    setSessionState('review')
   }
 
   return (
@@ -385,6 +410,43 @@ function App() {
             </tr>
           </tbody>
         </table>
+      </section>
+
+      <section className="panel">
+        <div className="toolbar">
+          <div>
+            <h2>Session History</h2>
+            <p>{savedSessions.length} saved sessions.</p>
+          </div>
+        </div>
+        {savedSessions.length === 0 ? (
+          <p>No saved sessions yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Ended</th>
+                <th>Shots</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {savedSessions.map((session) => (
+                <tr key={session.id}>
+                  <td>{new Date(session.startedAt).toLocaleString()}</td>
+                  <td>{new Date(session.endedAt).toLocaleString()}</td>
+                  <td>{session.shots.length}</td>
+                  <td>
+                    <button onClick={() => openSavedSession(session.id)}>
+                      {activeSessionId === session.id ? 'Open' : 'Open Session'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       {sessionState === 'setup' && (
@@ -499,13 +561,12 @@ function App() {
           <div className="toolbar">
             <div>
               <h2>Review Session</h2>
-              <p>{shots.length} shots captured.</p>
+              <p>{shots.length} shots in session.</p>
             </div>
             <div className="button-row">
               <button disabled={shots.length === 0} onClick={undoLastShot}>
                 Undo Last Shot
               </button>
-              <button onClick={runScoring}>Run Club Scoring</button>
               <button onClick={startOver}>Start Over</button>
             </div>
           </div>
@@ -525,31 +586,63 @@ function App() {
             ))
           )}
 
-          {summaries.length > 0 && (
+          {reviewSummaries.length > 0 && (
             <div className="club-group">
               <h3>Club Summary</h3>
               <table>
                 <thead>
                   <tr>
                     <th>Club</th>
-                    <th>Total shots</th>
+                    <th>Caddie Score</th>
+                    <th>Caddie Call</th>
+                    <th>Distance</th>
+                    <th>Direction</th>
+                    <th>Flight</th>
+                    <th>Pattern</th>
+                    <th>Data</th>
                     <th>Included</th>
-                    <th>Avg carry</th>
-                    <th>Confidence</th>
+                    <th>Carry avg</th>
+                    <th>Carry std dev</th>
+                    <th>Offline avg</th>
+                    <th>Offline std dev</th>
+                    <th>Shot rank summary</th>
+                    <th>Explanation</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {summaries.map((summary) => (
+                  {reviewSummaries.map((summary) => (
                     <tr key={summary.club}>
                       <td>{summary.club}</td>
-                      <td>{summary.totalShots}</td>
+                      <td>{summary.caddieScore}</td>
+                      <td>{summary.caddieCall}</td>
+                      <td>{summary.componentScores.distanceWindow}</td>
+                      <td>{summary.componentScores.directionWindow}</td>
+                      <td>{summary.componentScores.flightQuality}</td>
+                      <td>{summary.componentScores.patternStability}</td>
+                      <td>{summary.componentScores.dataConfidence}</td>
                       <td>{summary.includedShots}</td>
                       <td>
-                        {summary.averageCarryYards === null
+                        {summary.carryAverageYards === null
                           ? '-'
-                          : `${summary.averageCarryYards} yd`}
+                          : `${summary.carryAverageYards} yd`}
                       </td>
-                      <td>{summary.confidence}</td>
+                      <td>
+                        {summary.carryStdDevYards === null
+                          ? '-'
+                          : `${summary.carryStdDevYards} yd`}
+                      </td>
+                      <td>
+                        {summary.offlineAverageYards === null
+                          ? '-'
+                          : `${summary.offlineAverageYards} yd`}
+                      </td>
+                      <td>
+                        {summary.offlineStdDevYards === null
+                          ? '-'
+                          : `${summary.offlineStdDevYards} yd`}
+                      </td>
+                      <td>{summary.shotRankSummary}</td>
+                      <td>{summary.explanation}</td>
                     </tr>
                   ))}
                 </tbody>

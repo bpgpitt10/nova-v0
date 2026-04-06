@@ -80,12 +80,39 @@ export type OpenGolfCoachDerivedValues = {
   shot_rank?: number | string
 }
 
+export type SavedSession = {
+  id: string
+  startedAt: string
+  endedAt: string
+  shots: Shot[]
+}
+
 export type ClubSummary = {
   club: Club
   totalShots: number
   includedShots: number
   averageCarryYards: number | null
   confidence: 'No data' | 'Low' | 'Medium' | 'High'
+}
+
+export type ReviewClubSummary = {
+  club: Club
+  includedShots: number
+  carryAverageYards: number | null
+  carryStdDevYards: number | null
+  offlineAverageYards: number | null
+  offlineStdDevYards: number | null
+  shotRankSummary: string
+  caddieScore: number
+  caddieCall: 'Attack' | 'Play' | 'Manage' | 'Careful' | 'Liability' | 'Insufficient Data'
+  componentScores: {
+    distanceWindow: number
+    directionWindow: number
+    flightQuality: number
+    patternStability: number
+    dataConfidence: number
+  }
+  explanation: string
 }
 
 export const clubs: Club[] = [
