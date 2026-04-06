@@ -13,7 +13,15 @@ import {
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
 import { scoreClub } from './lib/scoring'
-import { clubs, type Club, type ClubSummary, type IncomingNovaShot, type Shot } from './types'
+import {
+  clubs,
+  type Club,
+  type ClubSummary,
+  type IncomingNovaShot,
+  type OpenGolfCoachDerivedValues,
+  type OpenGolfCoachInput,
+  type Shot,
+} from './types'
 
 type SessionState = 'setup' | 'live' | 'review'
 
@@ -27,7 +35,13 @@ const formatValue = (value: number | undefined, unit = '') => {
   return `${value}${unit}`
 }
 
-const formatDebugPayload = (payload: IncomingNovaShot | null) =>
+const formatDebugPayload = (
+  payload:
+    | IncomingNovaShot
+    | OpenGolfCoachInput
+    | OpenGolfCoachDerivedValues
+    | null,
+) =>
   payload ? JSON.stringify(payload, null, 2) : '-'
 
 const buildSummaries = (shots: Shot[]) =>
@@ -100,8 +114,12 @@ function App() {
     'idle' | 'success' | 'failure'
   >('idle')
   const [lastRawMessage, setLastRawMessage] = useState<string>('-')
-  const [lastNormalizedShot, setLastNormalizedShot] =
+  const [lastParsedShot, setLastParsedShot] =
     useState<IncomingNovaShot | null>(null)
+  const [lastOpenGolfCoachInput, setLastOpenGolfCoachInput] =
+    useState<OpenGolfCoachInput | null>(null)
+  const [lastOpenGolfCoachResponse, setLastOpenGolfCoachResponse] =
+    useState<OpenGolfCoachDerivedValues | null>(null)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
@@ -134,7 +152,13 @@ function App() {
         setShots((currentShots) => [shot, ...currentShots])
 
         const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
+        console.info('[OpenGolfCoach] built input:', openGolfCoachInput)
+        setLastOpenGolfCoachInput(openGolfCoachInput)
         if (!hasOpenGolfCoachInput(openGolfCoachInput)) {
+          console.info(
+            '[OpenGolfCoach] enrichment skipped: required input fields missing',
+            openGolfCoachInput,
+          )
           return
         }
 
@@ -146,6 +170,7 @@ function App() {
           if (result.status === 'failure') {
             setHelperReachable(false)
             setLastEnrichmentStatus('failure')
+            setLastOpenGolfCoachResponse(null)
             setShots((currentShots) =>
               currentShots.map((currentShot) =>
                 currentShot.id === shot.id
@@ -159,6 +184,7 @@ function App() {
           if (result.status === 'success') {
             setHelperReachable(true)
             setLastEnrichmentStatus('success')
+            setLastOpenGolfCoachResponse(result.derivedValues)
           }
 
           const hasDerivedValues = Object.values(result.derivedValues).some(
@@ -180,7 +206,7 @@ function App() {
       setConnectionStatus,
       (event) => {
         setLastRawMessage(event.rawMessage)
-        setLastNormalizedShot(event.normalizedShot)
+        setLastParsedShot(event.normalizedShot)
       },
     )
 
@@ -219,7 +245,9 @@ function App() {
     setHelperReachable(null)
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
-    setLastNormalizedShot(null)
+    setLastParsedShot(null)
+    setLastOpenGolfCoachInput(null)
+    setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(new Date().toISOString())
     setSessionState('live')
   }
@@ -261,7 +289,9 @@ function App() {
     setHelperReachable(null)
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
-    setLastNormalizedShot(null)
+    setLastParsedShot(null)
+    setLastOpenGolfCoachInput(null)
+    setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(null)
   }
 
@@ -306,16 +336,32 @@ function App() {
               </td>
             </tr>
             <tr>
-              <th>Last raw message</th>
+              <th>Raw Nova message</th>
               <td>
                 <pre className="debug-value">{lastRawMessage}</pre>
               </td>
             </tr>
             <tr>
-              <th>Last normalized shot</th>
+              <th>Parsed shot</th>
               <td>
                 <pre className="debug-value">
-                  {formatDebugPayload(lastNormalizedShot)}
+                  {formatDebugPayload(lastParsedShot)}
+                </pre>
+              </td>
+            </tr>
+            <tr>
+              <th>OpenGolfCoach input</th>
+              <td>
+                <pre className="debug-value">
+                  {formatDebugPayload(lastOpenGolfCoachInput)}
+                </pre>
+              </td>
+            </tr>
+            <tr>
+              <th>OpenGolfCoach response</th>
+              <td>
+                <pre className="debug-value">
+                  {formatDebugPayload(lastOpenGolfCoachResponse)}
                 </pre>
               </td>
             </tr>

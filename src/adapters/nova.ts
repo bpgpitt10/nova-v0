@@ -1,6 +1,7 @@
 import type { IncomingNovaShot } from '../types'
 import { mockNovaAdapter } from './mockNova'
 import { novaWebSocketAdapter } from './novaWebSocket'
+import type { OpenGolfCoachDerivedValues, OpenGolfCoachInput } from '../types'
 
 const NOVA_WEBSOCKET_MDNS_SERVICE = '_openlaunch-ws._tcp.local.'
 const NOVA_TCP_MDNS_SERVICE = '_openapi-nova._tcp.local.'
@@ -9,6 +10,8 @@ export type NovaShotHandler = (shot: IncomingNovaShot) => void
 export type NovaDebugEvent = {
   rawMessage: string
   normalizedShot: IncomingNovaShot | null
+  openGolfCoachInput?: OpenGolfCoachInput | null
+  openGolfCoachResponse?: OpenGolfCoachDerivedValues | null
 }
 export type NovaFeedMode = 'real' | 'mock'
 export type NovaConnectionStatus =

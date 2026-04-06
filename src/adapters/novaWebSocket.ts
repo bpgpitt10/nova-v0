@@ -8,13 +8,13 @@ import type {
 import type { IncomingNovaShot } from '../types'
 
 const KNOWN_NOVA_SHOT_FIELDS = new Set([
+  'type',
   'timestamp',
-  'carry',
-  'total',
-  'offline',
-  'spin',
-  'vla',
-  'shotRanking',
+  'ball_speed_meters_per_second',
+  'vertical_launch_angle_degrees',
+  'horizontal_launch_angle_degrees',
+  'total_spin_rpm',
+  'spin_axis_degrees',
 ])
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -43,29 +43,24 @@ const logUnknownFields = (record: Record<string, unknown>) => {
   }
 }
 
-const findShotRecord = (parsed: unknown): Record<string, unknown> | null => {
+const findShotEnvelope = (parsed: unknown): Record<string, unknown> | null => {
   if (!isRecord(parsed)) {
     return null
   }
 
-  const candidates = [
-    parsed,
-    parsed.shot,
-    parsed.data,
-    parsed.payload,
-  ].filter(isRecord)
+  if (optionalString(parsed.type) === 'shot') {
+    return parsed
+  }
 
-  return (
-    candidates.find((candidate) =>
-      [...KNOWN_NOVA_SHOT_FIELDS].some((field) => field in candidate),
-    ) ?? null
-  )
+  const candidates = [parsed.data, parsed.payload, parsed.shot].filter(isRecord)
+
+  return candidates.find((candidate) => optionalString(candidate.type) === 'shot') ?? null
 }
 
 const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
   try {
     const parsed: unknown = JSON.parse(raw.data)
-    const shotRecord = findShotRecord(parsed)
+    const shotRecord = findShotEnvelope(parsed)
 
     if (!shotRecord) {
       return null
@@ -75,11 +70,17 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
 
     return {
       timestamp: optionalString(shotRecord.timestamp),
-      carry: optionalNumber(shotRecord.carry),
-      total: optionalNumber(shotRecord.total),
-      offline: optionalNumber(shotRecord.offline),
-      spin: optionalNumber(shotRecord.spin),
-      vla: optionalNumber(shotRecord.vla),
+      ball_speed_meters_per_second: optionalNumber(
+        shotRecord.ball_speed_meters_per_second,
+      ),
+      vertical_launch_angle_degrees: optionalNumber(
+        shotRecord.vertical_launch_angle_degrees,
+      ),
+      horizontal_launch_angle_degrees: optionalNumber(
+        shotRecord.horizontal_launch_angle_degrees,
+      ),
+      total_spin_rpm: optionalNumber(shotRecord.total_spin_rpm),
+      spin_axis_degrees: optionalNumber(shotRecord.spin_axis_degrees),
       shotRanking: optionalStringOrNumber(shotRecord.shotRanking),
     }
   } catch {
@@ -92,9 +93,10 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
 //    or manually provide the local WebSocket URL through VITE_NOVA_WS_URL.
 // 2. Open a receive-only WebSocket connection to that URL.
 // 3. Receive JSON messages from Nova.
-// 4. Parse messages conservatively because the exact envelope is still unknown.
-// 5. Map only known shot fields: timestamp, carry, total, offline, spin, vla,
-//    and shotRanking.
+// 4. Handle Nova example messages with type = "shot" or type = "status".
+// 5. For shot messages, map only raw launch/spin inputs needed downstream:
+//    ball_speed_meters_per_second, vertical_launch_angle_degrees,
+//    horizontal_launch_angle_degrees, total_spin_rpm, spin_axis_degrees.
 // 6. Emit normalized shot data to the app through the NovaAdapter boundary.
 export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
   connectToShots(

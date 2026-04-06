@@ -27,12 +27,18 @@ export const isOpenGolfCoachConfigured = Boolean(openGolfCoachUrl)
 // derived values like carry, total, offline, shot name, and shot rank.
 export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
+    console.info('[OpenGolfCoach] enrichShot called')
+
     if (!openGolfCoachUrl) {
+      console.info('[OpenGolfCoach] enrichment skipped: helper URL missing')
       return {
         derivedValues: {},
         status: 'not_configured',
       }
     }
+
+    console.info('[OpenGolfCoach] helper URL:', openGolfCoachUrl)
+    console.info('[OpenGolfCoach] request input:', input)
 
     try {
       const response = await fetch(`${openGolfCoachUrl}/derive`, {
@@ -43,7 +49,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         body: JSON.stringify(input),
       })
 
+      console.info('[OpenGolfCoach] response status:', response.status)
+
       if (!response.ok) {
+        console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
         return {
           derivedValues: {},
           status: 'failure',
@@ -51,7 +60,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       const derivedValues: unknown = await response.json()
+      console.info('[OpenGolfCoach] parsed response:', derivedValues)
+
       if (!derivedValues || typeof derivedValues !== 'object') {
+        console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
         return {
           derivedValues: {},
           status: 'failure',
@@ -62,7 +74,9 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         derivedValues: derivedValues as OpenGolfCoachDerivedValues,
         status: 'success',
       }
-    } catch {
+    } catch (error) {
+      console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
+      console.info('[OpenGolfCoach] fetch error:', error)
       return {
         derivedValues: {},
         status: 'failure',
