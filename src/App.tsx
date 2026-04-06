@@ -38,6 +38,7 @@ const formatValue = (value: number | undefined, unit = '') => {
 const formatDebugPayload = (
   payload:
     | IncomingNovaShot
+    | Shot
     | OpenGolfCoachInput
     | OpenGolfCoachDerivedValues
     | null,
@@ -116,6 +117,7 @@ function App() {
   const [lastRawMessage, setLastRawMessage] = useState<string>('-')
   const [lastParsedShot, setLastParsedShot] =
     useState<IncomingNovaShot | null>(null)
+  const [lastStoredShot, setLastStoredShot] = useState<Shot | null>(null)
   const [lastOpenGolfCoachInput, setLastOpenGolfCoachInput] =
     useState<OpenGolfCoachInput | null>(null)
   const [lastOpenGolfCoachResponse, setLastOpenGolfCoachResponse] =
@@ -150,6 +152,7 @@ function App() {
 
         const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
         setShots((currentShots) => [shot, ...currentShots])
+        setLastStoredShot(shot)
 
         const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
         console.info('[OpenGolfCoach] built input:', openGolfCoachInput)
@@ -201,6 +204,11 @@ function App() {
                 : currentShot,
             ),
           )
+          setLastStoredShot((currentShot) =>
+            currentShot && currentShot.id === shot.id
+              ? mergeDerivedValues(currentShot, result.derivedValues)
+              : currentShot,
+          )
         })
       },
       setConnectionStatus,
@@ -246,6 +254,7 @@ function App() {
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastParsedShot(null)
+    setLastStoredShot(null)
     setLastOpenGolfCoachInput(null)
     setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(new Date().toISOString())
@@ -290,6 +299,7 @@ function App() {
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastParsedShot(null)
+    setLastStoredShot(null)
     setLastOpenGolfCoachInput(null)
     setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(null)
@@ -346,6 +356,14 @@ function App() {
               <td>
                 <pre className="debug-value">
                   {formatDebugPayload(lastParsedShot)}
+                </pre>
+              </td>
+            </tr>
+            <tr>
+              <th>Stored shot</th>
+              <td>
+                <pre className="debug-value">
+                  {formatDebugPayload(lastStoredShot)}
                 </pre>
               </td>
             </tr>
@@ -565,8 +583,10 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
           <th>Total</th>
           <th>Offline</th>
           <th>Ball speed</th>
-          <th>Launch</th>
-          <th>Spin</th>
+          <th>VLA</th>
+          <th>HLA</th>
+          <th>Total spin</th>
+          <th>Spin axis</th>
           <th>Shot rank</th>
           <th>Enrichment</th>
           <th>Status</th>
@@ -598,9 +618,11 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
             <td>{formatValue(shot.carryYards, ' yd')}</td>
             <td>{formatValue(shot.totalYards, ' yd')}</td>
             <td>{formatValue(shot.offlineYards, ' yd')}</td>
-            <td>{formatValue(shot.ballSpeedMph, ' mph')}</td>
-            <td>{formatValue(shot.launchAngleDeg, ' deg')}</td>
-            <td>{formatValue(shot.spinRpm, ' rpm')}</td>
+            <td>{formatValue(shot.ballSpeedMetersPerSecond, ' m/s')}</td>
+            <td>{formatValue(shot.verticalLaunchAngleDegrees, ' deg')}</td>
+            <td>{formatValue(shot.horizontalLaunchAngleDegrees, ' deg')}</td>
+            <td>{formatValue(shot.totalSpinRpm, ' rpm')}</td>
+            <td>{formatValue(shot.spinAxisDegrees, ' deg')}</td>
             <td>
               {typeof shot.shotRanking === 'undefined' ? '-' : `${shot.shotRanking}`}
             </td>
