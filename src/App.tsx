@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  novaAdapter,
   type NovaConnection,
   type NovaConnectionStatus,
   type NovaFeedMode,
 } from './adapters/nova'
+import { mockNovaAdapter } from './adapters/mockNova'
+import { novaWebSocketAdapter } from './adapters/novaWebSocket'
 import './App.css'
 import {
   buildOpenGolfCoachInput,
@@ -26,15 +27,54 @@ import {
 } from './types'
 
 type SessionState = 'setup' | 'live' | 'review'
+type SessionFeedMode = 'mock' | 'real'
 
 const novaWebSocketUrl = import.meta.env.VITE_NOVA_WS_URL as string | undefined
 
-const formatValue = (value: number | undefined, unit = '') => {
+const formatDecimal = (value: number | undefined, unit = '') => {
   if (typeof value !== 'number') {
     return '-'
   }
 
-  return `${value}${unit}`
+  return `${value.toFixed(1)}${unit}`
+}
+
+const formatWhole = (value: number | undefined, unit = '') => {
+  if (typeof value !== 'number') {
+    return '-'
+  }
+
+  return `${Math.round(value)}${unit}`
+}
+
+const formatScore = (value: number | undefined) => {
+  if (typeof value !== 'number') {
+    return '-'
+  }
+
+  return `${Math.round(value)}`
+}
+
+const formatRank = (value: number | string | undefined) => {
+  if (typeof value === 'undefined') {
+    return '-'
+  }
+
+  return `${value}`
+}
+
+const formatDebugValue = (key: string, value: number) => {
+  const lowerKey = key.toLowerCase()
+
+  if (lowerKey.includes('score')) {
+    return Number(Math.round(value))
+  }
+
+  if (lowerKey.includes('spin') && !lowerKey.includes('axis')) {
+    return Number(Math.round(value))
+  }
+
+  return Number(value.toFixed(1))
 }
 
 const formatDebugPayload = (
@@ -45,7 +85,20 @@ const formatDebugPayload = (
     | OpenGolfCoachDerivedValues
     | null,
 ) =>
-  payload ? JSON.stringify(payload, null, 2) : '-'
+  payload
+    ? JSON.stringify(
+        payload,
+        (key, value) =>
+          typeof value === 'number' ? formatDebugValue(key, value) : value,
+        2,
+      )
+    : '-'
+
+const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
+  `caddie-call-pill caddie-call-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
+
+const caddieToneClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
+  `caddie-tone-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
 
 const buildShot = (
   incomingShot: IncomingNovaShot,
@@ -101,6 +154,7 @@ const mergeDerivedValues = (
 
 function App() {
   const [sessionState, setSessionState] = useState<SessionState>('setup')
+  const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
   const [selectedClub, setSelectedClub] = useState<Club>('7 Iron')
   const [shots, setShots] = useState<Shot[]>([])
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
@@ -125,13 +179,14 @@ function App() {
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
-  const configuredMode: NovaFeedMode = novaWebSocketUrl ? 'real' : 'mock'
+  const configuredMode: NovaFeedMode = selectedFeedMode
   const connectionResult =
     connectionStatus === 'connected'
       ? 'success'
       : connectionStatus === 'error'
         ? 'failure'
         : connectionStatus
+  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
@@ -144,7 +199,11 @@ function App() {
 
     let isActive = true
     let activeSource: Shot['source'] = 'mock'
-    const connection: NovaConnection = novaAdapter.connectToShots(
+    const adapter =
+      selectedFeedMode === 'real' && novaWebSocketUrl
+        ? novaWebSocketAdapter(novaWebSocketUrl)
+        : mockNovaAdapter
+    const connection: NovaConnection = adapter.connectToShots(
       (incomingShot) => {
         if (!isActive) {
           return
@@ -227,7 +286,7 @@ function App() {
       connection.disconnect()
       connectionRef.current = null
     }
-  }, [sessionState])
+  }, [selectedFeedMode, sessionState])
 
   const groupedShots = useMemo(
     () =>
@@ -249,6 +308,25 @@ function App() {
         .filter((summary): summary is ReviewClubSummary => summary !== null),
     [activeSessionId, savedSessions, shots],
   )
+
+  const activeSavedSession = useMemo(
+    () => savedSessions.find((savedSession) => savedSession.id === activeSessionId) ?? null,
+    [activeSessionId, savedSessions],
+  )
+
+  const reviewSummaryLead = reviewSummaries[0] ?? null
+  const reviewInsights = useMemo(() => {
+    if (!reviewSummaryLead) {
+      return []
+    }
+
+    const insights = [
+      `${reviewSummaryLead.club} is the current ${reviewSummaryLead.caddieCall.toLowerCase()} club at ${reviewSummaryLead.caddieScore}.`,
+      ...reviewSummaryLead.insights,
+    ]
+
+    return insights.slice(0, 3)
+  }, [reviewSummaryLead])
 
   const startSession = () => {
     setShots([])
@@ -346,7 +424,8 @@ function App() {
     <main className="app-shell">
       <h1>Nova Stock Range Validation</h1>
 
-      <section className="panel tester-panel">
+      {sessionState !== 'review' && (
+        <section className="panel tester-panel">
         <h2>Nova Connection Tester</h2>
         <table>
           <tbody>
@@ -410,9 +489,11 @@ function App() {
             </tr>
           </tbody>
         </table>
-      </section>
+        </section>
+      )}
 
-      <section className="panel">
+      {sessionState !== 'review' && (
+        <section className="panel">
         <div className="toolbar">
           <div>
             <h2>Session History</h2>
@@ -447,12 +528,30 @@ function App() {
             </tbody>
           </table>
         )}
-      </section>
+        </section>
+      )}
 
       {sessionState === 'setup' && (
         <section className="panel">
           <h2>Start Session</h2>
           <p>Start a Stock Range Session, choose the first club, and listen for Nova shots.</p>
+
+          <label>
+            Feed mode
+            <select
+              value={selectedFeedMode}
+              onChange={(event) => setSelectedFeedMode(event.target.value as SessionFeedMode)}
+            >
+              <option value="mock">Mock</option>
+              <option value="real">Live Nova</option>
+            </select>
+          </label>
+
+          {liveNovaUnavailable && (
+            <p className="warning-text">
+              Live Nova selected, but `VITE_NOVA_WS_URL` is not configured.
+            </p>
+          )}
 
           <label>
             Club
@@ -468,7 +567,9 @@ function App() {
             </select>
           </label>
 
-          <button onClick={startSession}>Start Stock Range Session</button>
+          <button disabled={liveNovaUnavailable} onClick={startSession}>
+            Start Stock Range Session
+          </button>
         </section>
       )}
 
@@ -557,13 +658,19 @@ function App() {
       )}
 
       {sessionState === 'review' && (
-        <section className="panel">
-          <div className="toolbar">
+        <section className="review-screen">
+          <div className="review-header">
             <div>
-              <h2>Review Session</h2>
-              <p>{shots.length} shots in session.</p>
+              <h2 className="review-title">
+                Session Review
+              </h2>
+              <p className="review-meta">
+                {activeSavedSession
+                  ? `${new Date(activeSavedSession.endedAt).toLocaleString()} • ${shots.length} shots`
+                  : `${shots.length} shots`}
+              </p>
             </div>
-            <div className="button-row">
+            <div className="review-actions">
               <button disabled={shots.length === 0} onClick={undoLastShot}>
                 Undo Last Shot
               </button>
@@ -571,84 +678,216 @@ function App() {
             </div>
           </div>
 
-          {groupedShots.length === 0 ? (
-            <p>No shots captured.</p>
-          ) : (
-            groupedShots.map((group) => (
-              <div className="club-group" key={group.club}>
-                <h3>{group.club}</h3>
-                <ShotTable
-                  shots={group.shots}
-                  onChangeClub={updateShotClub}
-                  onToggleShot={toggleShot}
-                />
-              </div>
-            ))
-          )}
+          {reviewSummaryLead ? (
+            <>
+              <section className="review-card caddie-summary-card">
+                <div
+                  className={`caddie-summary-primary ${caddieToneClassName(
+                    reviewSummaryLead.caddieCall,
+                  )}`}
+                >
+                  <div className="section-kicker">Caddie Score</div>
+                  <div className="caddie-score-value">
+                    {formatScore(reviewSummaryLead.caddieScore)}
+                  </div>
+                  <div className={caddieCallClassName(reviewSummaryLead.caddieCall)}>
+                    {reviewSummaryLead.caddieCall}
+                  </div>
+                  <div className="summary-support-text">
+                    {reviewSummaryLead.club} • {reviewSummaryLead.includedShots} included shots
+                  </div>
+                </div>
+                <div className="caddie-summary-explanation">
+                  <p>{reviewSummaryLead.explanation}</p>
+                </div>
+                <div className="caddie-summary-components">
+                  <div className="component-row">
+                    <span>Distance Window</span>
+                    <span>{formatScore(reviewSummaryLead.componentScores.distanceWindow)}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Direction Window</span>
+                    <span>{formatScore(reviewSummaryLead.componentScores.directionWindow)}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Flight Quality</span>
+                    <span>{formatScore(reviewSummaryLead.componentScores.flightQuality)}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Pattern Stability</span>
+                    <span>{formatScore(reviewSummaryLead.componentScores.patternStability)}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Data Confidence</span>
+                    <span>{formatScore(reviewSummaryLead.componentScores.dataConfidence)}</span>
+                  </div>
+                </div>
+              </section>
 
-          {reviewSummaries.length > 0 && (
-            <div className="club-group">
-              <h3>Club Summary</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Club</th>
-                    <th>Caddie Score</th>
-                    <th>Caddie Call</th>
-                    <th>Distance</th>
-                    <th>Direction</th>
-                    <th>Flight</th>
-                    <th>Pattern</th>
-                    <th>Data</th>
-                    <th>Included</th>
-                    <th>Carry avg</th>
-                    <th>Carry std dev</th>
-                    <th>Offline avg</th>
-                    <th>Offline std dev</th>
-                    <th>Shot rank summary</th>
-                    <th>Explanation</th>
-                    <th>Insights</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reviewSummaries.map((summary) => (
-                    <tr key={summary.club}>
-                      <td>{summary.club}</td>
-                      <td>{summary.caddieScore}</td>
-                      <td>{summary.caddieCall}</td>
-                      <td>{summary.componentScores.distanceWindow}</td>
-                      <td>{summary.componentScores.directionWindow}</td>
-                      <td>{summary.componentScores.flightQuality}</td>
-                      <td>{summary.componentScores.patternStability}</td>
-                      <td>{summary.componentScores.dataConfidence}</td>
-                      <td>{summary.includedShots}</td>
-                      <td>
-                        {summary.carryAverageYards === null
-                          ? '-'
-                          : `${summary.carryAverageYards} yd`}
-                      </td>
-                      <td>
-                        {summary.carryStdDevYards === null
-                          ? '-'
-                          : `${summary.carryStdDevYards} yd`}
-                      </td>
-                      <td>
-                        {summary.offlineAverageYards === null
-                          ? '-'
-                          : `${summary.offlineAverageYards} yd`}
-                      </td>
-                      <td>
-                        {summary.offlineStdDevYards === null
-                          ? '-'
-                          : `${summary.offlineStdDevYards} yd`}
-                      </td>
-                      <td>{summary.shotRankSummary}</td>
-                      <td>{summary.explanation}</td>
-                      <td>{summary.insights.join(' ')}</td>
-                    </tr>
+              <section className="review-card">
+                <div className="section-kicker">Key Insights</div>
+                <div className="insight-list">
+                  {reviewInsights.map((insight) => (
+                    <div
+                      className={`insight-row ${caddieToneClassName(
+                        reviewSummaryLead.caddieCall,
+                      )}`}
+                      key={insight}
+                    >
+                      {insight}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </section>
+
+              <section className="review-card">
+                <div className="section-kicker">Club Review</div>
+                <div className="review-table-wrap">
+                  <table className="review-table">
+                    <thead>
+                      <tr>
+                        <th>Club</th>
+                        <th>Caddie Score</th>
+                        <th>Caddie Call</th>
+                        <th>Insights</th>
+                        <th>Included Shots</th>
+                        <th>Carry Avg / Std Dev</th>
+                        <th>Offline Avg / Std Dev</th>
+                        <th>Shot Rank Summary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reviewSummaries.map((summary) => (
+                        <tr key={summary.club}>
+                          <td>{summary.club}</td>
+                          <td className="review-score-cell">
+                            {formatScore(summary.caddieScore)}
+                          </td>
+                          <td>
+                            <span className={caddieCallClassName(summary.caddieCall)}>
+                              {summary.caddieCall}
+                            </span>
+                          </td>
+                          <td className="review-insight-cell">{summary.insights.join(' ')}</td>
+                          <td className="review-center-cell">
+                            {formatWhole(summary.includedShots)}
+                          </td>
+                          <td>
+                            <div>
+                              {summary.carryAverageYards === null
+                                ? '-'
+                                : formatDecimal(summary.carryAverageYards, ' yd')}
+                            </div>
+                            <div className="metric-subline">
+                              {summary.carryStdDevYards === null
+                                ? '-'
+                                : `Std dev ${formatDecimal(summary.carryStdDevYards, ' yd')}`}
+                            </div>
+                          </td>
+                          <td>
+                            <div>
+                              {summary.offlineAverageYards === null
+                                ? '-'
+                                : formatDecimal(summary.offlineAverageYards, ' yd')}
+                            </div>
+                            <div className="metric-subline">
+                              {summary.offlineStdDevYards === null
+                                ? '-'
+                                : `Std dev ${formatDecimal(summary.offlineStdDevYards, ' yd')}`}
+                            </div>
+                          </td>
+                          <td>{summary.shotRankSummary}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="review-card">
+                <div className="section-kicker">Supporting Metrics</div>
+                <div className="supporting-grid">
+                  <div className="supporting-block">
+                    <div className="supporting-title">Component Breakdown</div>
+                    {reviewSummaries.map((summary) => (
+                      <div className="supporting-metric-group" key={summary.club}>
+                        <div className="supporting-club-row">
+                          <span>{summary.club}</span>
+                          <span>{formatScore(summary.caddieScore)}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Distance Window</span>
+                          <span>{formatScore(summary.componentScores.distanceWindow)}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Direction Window</span>
+                          <span>{formatScore(summary.componentScores.directionWindow)}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Flight Quality</span>
+                          <span>{formatScore(summary.componentScores.flightQuality)}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Pattern Stability</span>
+                          <span>{formatScore(summary.componentScores.patternStability)}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Data Confidence</span>
+                          <span>{formatScore(summary.componentScores.dataConfidence)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="supporting-block">
+                    <div className="supporting-title">Debug / Breakdown</div>
+                    <details className="supporting-details">
+                      <summary>Show debug details</summary>
+                      <div className="supporting-debug">
+                        <div className="supporting-debug-label">Raw Nova message</div>
+                        <pre className="debug-value">{lastRawMessage}</pre>
+                      </div>
+                      <div className="supporting-debug">
+                        <div className="supporting-debug-label">Parsed shot</div>
+                        <pre className="debug-value">{formatDebugPayload(lastParsedShot)}</pre>
+                      </div>
+                      <div className="supporting-debug">
+                        <div className="supporting-debug-label">Stored shot</div>
+                        <pre className="debug-value">{formatDebugPayload(lastStoredShot)}</pre>
+                      </div>
+                      <div className="supporting-debug">
+                        <div className="supporting-debug-label">OpenGolfCoach input</div>
+                        <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachInput)}</pre>
+                      </div>
+                      <div className="supporting-debug">
+                        <div className="supporting-debug-label">OpenGolfCoach response</div>
+                        <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachResponse)}</pre>
+                      </div>
+                    </details>
+                  </div>
+                  {groupedShots.length > 0 && (
+                    <div className="supporting-block supporting-block-full">
+                      <div className="supporting-title">Shot Review</div>
+                      <details className="supporting-details">
+                        <summary>Show shot review</summary>
+                        {groupedShots.map((group) => (
+                          <div className="club-group" key={group.club}>
+                            <h3>{group.club}</h3>
+                            <ShotTable
+                              shots={group.shots}
+                              onChangeClub={updateShotClub}
+                              onToggleShot={toggleShot}
+                            />
+                          </div>
+                        ))}
+                      </details>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </>
+          ) : (
+            <div className="review-card">
+              <p>No shots captured.</p>
             </div>
           )}
         </section>
@@ -710,16 +949,16 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
                 shot.club
               )}
             </td>
-            <td>{formatValue(shot.carryYards, ' yd')}</td>
-            <td>{formatValue(shot.totalYards, ' yd')}</td>
-            <td>{formatValue(shot.offlineYards, ' yd')}</td>
-            <td>{formatValue(shot.ballSpeedMetersPerSecond, ' m/s')}</td>
-            <td>{formatValue(shot.verticalLaunchAngleDegrees, ' deg')}</td>
-            <td>{formatValue(shot.horizontalLaunchAngleDegrees, ' deg')}</td>
-            <td>{formatValue(shot.totalSpinRpm, ' rpm')}</td>
-            <td>{formatValue(shot.spinAxisDegrees, ' deg')}</td>
+            <td>{formatDecimal(shot.carryYards, ' yd')}</td>
+            <td>{formatDecimal(shot.totalYards, ' yd')}</td>
+            <td>{formatDecimal(shot.offlineYards, ' yd')}</td>
+            <td>{formatDecimal(shot.ballSpeedMetersPerSecond, ' m/s')}</td>
+            <td>{formatDecimal(shot.verticalLaunchAngleDegrees, ' deg')}</td>
+            <td>{formatDecimal(shot.horizontalLaunchAngleDegrees, ' deg')}</td>
+            <td>{formatWhole(shot.totalSpinRpm, ' rpm')}</td>
+            <td>{formatDecimal(shot.spinAxisDegrees, ' deg')}</td>
             <td>
-              {typeof shot.shotRanking === 'undefined' ? '-' : `${shot.shotRanking}`}
+              {formatRank(shot.shotRanking)}
             </td>
             <td>
               {shot.enrichmentStatus === 'raw_only'

@@ -21,8 +21,8 @@ const standardDeviation = (values: number[]) => {
   return Math.sqrt(variance)
 }
 
-const roundNumber = (value: number | null) =>
-  value === null ? null : Math.round(value)
+const oneDecimal = (value: number | null) =>
+  value === null ? null : Number(value.toFixed(1))
 
 const includedClubShots = (club: Club, shots: Shot[]) =>
   shots.filter((shot) => shot.club === club && shot.included)
@@ -117,8 +117,8 @@ const buildDirectionScore = (club: Club, shots: Shot[]) => {
     score: clamp(zeroFloorScore - twoWayPenalty),
     note:
       twoWayPenalty > 0
-        ? `Avg abs offline ${Math.round(averageAbsoluteOffline)} yd with two-way miss`
-        : `Avg abs offline ${Math.round(averageAbsoluteOffline)} yd`,
+        ? `Avg abs offline ${oneDecimal(averageAbsoluteOffline)} yd with two-way miss`
+        : `Avg abs offline ${oneDecimal(averageAbsoluteOffline)} yd`,
   }
 }
 
@@ -150,7 +150,7 @@ const buildDistanceScore = (shots: Shot[]) => {
     note:
       carryAnchor === null
         ? 'No carry anchor'
-        : `Anchor ${Math.round(carryAnchor)} yd, std dev ${Math.round(carryStdDev)} yd`,
+        : `Anchor ${oneDecimal(carryAnchor)} yd, std dev ${oneDecimal(carryStdDev)} yd`,
   }
 }
 
@@ -277,7 +277,7 @@ const buildPatternStabilityScore = (
 
   return {
     score: clamp(Math.round(base + supportBonus)),
-    note: `Drift ${Math.round(Math.max(carryDrift, directionDrift))} yd, support ${supportSessions.length} sessions`,
+    note: `Drift ${oneDecimal(Math.max(carryDrift, directionDrift))} yd, support ${supportSessions.length} sessions`,
   }
 }
 
@@ -462,10 +462,10 @@ export const summarizeReviewClub = (
   return {
     club,
     includedShots: includedShots.length,
-    carryAverageYards: roundNumber(average(carryValues)),
-    carryStdDevYards: roundNumber(standardDeviation(carryValues)),
-    offlineAverageYards: roundNumber(average(offlineValues)),
-    offlineStdDevYards: roundNumber(standardDeviation(offlineValues)),
+    carryAverageYards: oneDecimal(average(carryValues)),
+    carryStdDevYards: oneDecimal(standardDeviation(carryValues)),
+    offlineAverageYards: oneDecimal(average(offlineValues)),
+    offlineStdDevYards: oneDecimal(standardDeviation(offlineValues)),
     shotRankSummary,
     caddieScore,
     caddieCall,
