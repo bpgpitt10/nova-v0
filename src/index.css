@@ -1,7 +1,7 @@
 :root {
   font: 16px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: #e6edf3;
-  background: #0b0f14;
+  color: #ffffff;
+  background: #0e1710;
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -12,8 +12,8 @@
 html,
 body {
   margin: 0;
-  background: #0b0f14;
-  color: #e6edf3;
+  background: #0e1710;
+  color: #ffffff;
 }
 
 html,
@@ -25,19 +25,19 @@ body,
 h1 {
   margin: 0;
   font-size: 28px;
-  color: #e6edf3;
+  color: #ffffff;
 }
 
 h2 {
   margin: 0 0 8px;
   font-size: 22px;
-  color: #e6edf3;
+  color: #ffffff;
 }
 
 h3 {
   margin: 0 0 8px;
   font-size: 18px;
-  color: #e6edf3;
+  color: #ffffff;
 }
 
 p {

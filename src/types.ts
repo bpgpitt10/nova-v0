@@ -1,17 +1,4 @@
-export type Club =
-  | 'Driver'
-  | '3 Wood'
-  | '5 Wood'
-  | '4 Iron'
-  | '5 Iron'
-  | '6 Iron'
-  | '7 Iron'
-  | '8 Iron'
-  | '9 Iron'
-  | 'PW'
-  | 'GW'
-  | 'SW'
-  | 'LW'
+import type { Club } from './lib/bagConfig'
 
 export type Shot = {
   id: string
@@ -116,18 +103,4 @@ export type ReviewClubSummary = {
   insights: string[]
 }
 
-export const clubs: Club[] = [
-  'Driver',
-  '3 Wood',
-  '5 Wood',
-  '4 Iron',
-  '5 Iron',
-  '6 Iron',
-  '7 Iron',
-  '8 Iron',
-  '9 Iron',
-  'PW',
-  'GW',
-  'SW',
-  'LW',
-]
+export type { Club }

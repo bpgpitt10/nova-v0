@@ -425,11 +425,14 @@ export const summarizeReviewClub = (
           .join(', ')
       : '-'
 
-  const supportingSessions = savedSessions.filter((session) => session.id !== activeSessionId)
+  const supportingSessions =
+    activeSessionId === null
+      ? savedSessions
+      : savedSessions.filter((session) => session.id !== activeSessionId)
   const sessionCount =
     supportingSessions.filter((session) =>
       session.shots.some((shot) => shot.club === club && shot.included),
-    ).length + 1
+    ).length + (activeSessionId === null ? 0 : 1)
 
   const distanceWindow = buildDistanceScore(includedShots)
   const directionWindow = buildDirectionScore(club, includedShots)

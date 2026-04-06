@@ -8,6 +8,12 @@ import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
 import './App.css'
 import {
+  activeBagClubIds,
+  getClubConfig,
+  getClubLabel,
+  type Club,
+} from './lib/bagConfig'
+import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
   isOpenGolfCoachConfigured,
@@ -16,8 +22,6 @@ import {
 import { summarizeReviewClub } from './lib/scoring'
 import { loadSavedSessions, saveSessionHistory } from './lib/sessions'
 import {
-  clubs,
-  type Club,
   type IncomingNovaShot,
   type OpenGolfCoachDerivedValues,
   type OpenGolfCoachInput,
@@ -100,6 +104,73 @@ const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
 const caddieToneClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
   `caddie-tone-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
 
+const dashboardDescriptor = (caddieCall: ReviewClubSummary['caddieCall']) => {
+  switch (caddieCall) {
+    case 'Attack':
+      return 'Green light club'
+    case 'Play':
+      return 'Go-to option'
+    case 'Manage':
+      return 'Needs a plan'
+    case 'Careful':
+      return 'Caution required'
+    case 'Liability':
+      return 'Emergency use only'
+    case 'Insufficient Data':
+      return 'Need more swings'
+  }
+}
+
+const componentLabel = (component: keyof ReviewClubSummary['componentScores']) => {
+  switch (component) {
+    case 'distanceWindow':
+      return 'Distance Window'
+    case 'directionWindow':
+      return 'Direction Window'
+    case 'flightQuality':
+      return 'Flight Quality'
+    case 'patternStability':
+      return 'Pattern Stability'
+    case 'dataConfidence':
+      return 'Data Confidence'
+  }
+}
+
+const strongestComponentLabel = (
+  componentScores: ReviewClubSummary['componentScores'],
+  direction: 'high' | 'low',
+) => {
+  const rankedComponents = Object.entries(componentScores).sort((left, right) =>
+    direction === 'high' ? right[1] - left[1] : left[1] - right[1],
+  ) as Array<[keyof ReviewClubSummary['componentScores'], number]>
+
+  return componentLabel(rankedComponents[0][0])
+}
+
+const clubGroupLabel = (club: Club) => {
+  const category = getClubConfig(club)?.category
+
+  if (category === 'wood') {
+    return 'Woods'
+  }
+
+  if (category === 'hybrid') {
+    return 'Hybrids'
+  }
+
+  if (club === '5i' || club === '6i') {
+    return 'Long Irons'
+  }
+
+  if (club === '7i' || club === '8i' || club === '9i' || club === 'PW') {
+    return 'Scoring Irons'
+  }
+
+  return 'Wedges'
+}
+
+const clubAnchorId = (club: Club) => `club-${club.toLowerCase().replace(/\s+/g, '-')}`
+
 const buildShot = (
   incomingShot: IncomingNovaShot,
   club: Club,
@@ -155,7 +226,7 @@ const mergeDerivedValues = (
 function App() {
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
-  const [selectedClub, setSelectedClub] = useState<Club>('7 Iron')
+  const [selectedClub, setSelectedClub] = useState<Club>('7i')
   const [shots, setShots] = useState<Shot[]>([])
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
@@ -290,7 +361,7 @@ function App() {
 
   const groupedShots = useMemo(
     () =>
-      clubs
+      activeBagClubIds
         .map((club) => ({
           club,
           shots: shots.filter((shot) => shot.club === club),
@@ -299,9 +370,19 @@ function App() {
     [shots],
   )
 
+  const dashboardShots = useMemo(
+    () => savedSessions.flatMap((savedSession) => savedSession.shots),
+    [savedSessions],
+  )
+
+  const dashboardIncludedShots = useMemo(
+    () => dashboardShots.filter((shot) => shot.included),
+    [dashboardShots],
+  )
+
   const reviewSummaries: ReviewClubSummary[] = useMemo(
     () =>
-      clubs
+      activeBagClubIds
         .map((club) =>
           summarizeReviewClub(club, shots, savedSessions, activeSessionId),
         )
@@ -309,24 +390,273 @@ function App() {
     [activeSessionId, savedSessions, shots],
   )
 
-  const activeSavedSession = useMemo(
-    () => savedSessions.find((savedSession) => savedSession.id === activeSessionId) ?? null,
-    [activeSessionId, savedSessions],
+  const dashboardSummaries: ReviewClubSummary[] = useMemo(
+    () =>
+      activeBagClubIds
+        .map((club) => summarizeReviewClub(club, dashboardShots, savedSessions, null))
+        .filter((summary): summary is ReviewClubSummary => summary !== null),
+    [dashboardShots, savedSessions],
   )
 
-  const reviewSummaryLead = reviewSummaries[0] ?? null
+  const rankedReviewSummaries = useMemo(
+    () => [...reviewSummaries].sort((left, right) => right.caddieScore - left.caddieScore),
+    [reviewSummaries],
+  )
+
+  const rankedDashboardSummaries = useMemo(
+    () =>
+      [...dashboardSummaries].sort((left, right) => right.caddieScore - left.caddieScore),
+    [dashboardSummaries],
+  )
+
+  const dashboardSummaryLead = rankedDashboardSummaries[0] ?? null
+
+  const reviewSummaryLead = rankedReviewSummaries[0] ?? null
   const reviewInsights = useMemo(() => {
     if (!reviewSummaryLead) {
       return []
     }
 
     const insights = [
-      `${reviewSummaryLead.club} is the current ${reviewSummaryLead.caddieCall.toLowerCase()} club at ${reviewSummaryLead.caddieScore}.`,
+      `${getClubLabel(reviewSummaryLead.club)} is the current ${reviewSummaryLead.caddieCall.toLowerCase()} club at ${reviewSummaryLead.caddieScore}.`,
       ...reviewSummaryLead.insights,
     ]
 
     return insights.slice(0, 3)
   }, [reviewSummaryLead])
+
+  const dashboardSummariesByClub = useMemo(
+    () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
+    [dashboardSummaries],
+  )
+
+  const dashboardIncludedShotCount = useMemo(
+    () => dashboardIncludedShots.length,
+    [dashboardIncludedShots],
+  )
+
+  const dashboardMatchedClubs = useMemo(
+    () =>
+      activeBagClubIds.filter((club) =>
+        dashboardIncludedShots.some((shot) => String(shot.club) === club),
+      ),
+    [dashboardIncludedShots],
+  )
+
+  const dashboardUnmatchedClubLabels = useMemo(() => {
+    const unmatchedLabels = new Set<string>()
+
+    dashboardIncludedShots.forEach((shot) => {
+      const clubLabel = String(shot.club)
+
+      if (!activeBagClubIds.includes(clubLabel as Club)) {
+        unmatchedLabels.add(clubLabel)
+      }
+    })
+
+    return [...unmatchedLabels].sort((left, right) => left.localeCompare(right))
+  }, [dashboardIncludedShots])
+
+  const dashboardHeaderDebugLines = useMemo(
+    () => [
+      `Total saved sessions found: ${savedSessions.length}`,
+      `Total included shots found: ${dashboardIncludedShotCount}`,
+      `Total clubs matched to current bag: ${dashboardMatchedClubs.length}`,
+      `Unmatched club labels found: ${
+        dashboardUnmatchedClubLabels.length > 0
+          ? dashboardUnmatchedClubLabels.join(', ')
+          : 'none'
+      }`,
+    ],
+    [dashboardIncludedShotCount, dashboardMatchedClubs.length, dashboardUnmatchedClubLabels, savedSessions.length],
+  )
+
+  const latestSessionSummariesByClub = useMemo(() => {
+    const summaries = new Map<Club, ReviewClubSummary>()
+    const latestSession = savedSessions[0]
+
+    if (!latestSession) {
+      return summaries
+    }
+
+    activeBagClubIds.forEach((club) => {
+      const summary = summarizeReviewClub(
+        club,
+        latestSession.shots,
+        savedSessions.filter((session) => session.id !== latestSession.id),
+        latestSession.id,
+      )
+
+      if (summary) {
+        summaries.set(club, summary)
+      }
+    })
+
+    return summaries
+  }, [savedSessions])
+
+  const previousSummariesByClub = useMemo(() => {
+    const summaries = new Map<Club, ReviewClubSummary>()
+    const previousSession = savedSessions[1]
+
+    if (!previousSession) {
+      return summaries
+    }
+
+    activeBagClubIds.forEach((club) => {
+      const summary = summarizeReviewClub(
+        club,
+        previousSession.shots,
+        savedSessions.filter((session) => session.id !== previousSession.id),
+        previousSession.id,
+      )
+
+      if (summary) {
+        summaries.set(club, summary)
+      }
+    })
+
+    return summaries
+  }, [savedSessions])
+
+  const dashboardClubCards = useMemo(
+    () =>
+      activeBagClubIds.map((club) => {
+        const summary = dashboardSummariesByClub.get(club) ?? null
+        const latestSummary = latestSessionSummariesByClub.get(club) ?? null
+        const previousSummary = previousSummariesByClub.get(club) ?? null
+        const delta =
+          latestSummary && previousSummary
+            ? latestSummary.caddieScore - previousSummary.caddieScore
+            : null
+
+        return {
+          club,
+          summary,
+          delta,
+          descriptor: summary ? dashboardDescriptor(summary.caddieCall) : 'Need more swings',
+        }
+      }),
+    [dashboardSummariesByClub, latestSessionSummariesByClub, previousSummariesByClub],
+  )
+
+  const featuredDriverCard = useMemo(
+    () =>
+      activeBagClubIds.includes('Driver')
+        ? dashboardClubCards.find((card) => card.club === 'Driver') ?? null
+        : null,
+    [dashboardClubCards],
+  )
+
+  const dashboardGridCards = useMemo(
+    () =>
+      featuredDriverCard
+        ? dashboardClubCards.filter((card) => card.club !== 'Driver')
+        : dashboardClubCards,
+    [dashboardClubCards, featuredDriverCard],
+  )
+
+  const featuredDriverSummary = featuredDriverCard?.summary ?? null
+
+  const bestClubSummary = dashboardSummaryLead
+  const weakestClubSummary =
+    rankedDashboardSummaries.length > 0
+      ? rankedDashboardSummaries[rankedDashboardSummaries.length - 1]
+      : null
+
+  const biggestMover = useMemo(() => {
+    const cardsWithDelta = dashboardClubCards.flatMap((card) =>
+      card.summary !== null && typeof card.delta === 'number'
+        ? [{ ...card, summary: card.summary, delta: card.delta }]
+        : [],
+    )
+
+    return cardsWithDelta.sort(
+      (left, right) => Math.abs(right.delta) - Math.abs(left.delta),
+    )[0] ?? null
+  }, [dashboardClubCards])
+
+  const dashboardHeadline = bestClubSummary
+    ? `${getClubLabel(bestClubSummary.club)} is your most trusted club right now.`
+    : 'Build a reliable bag read from completed sessions.'
+
+  const dashboardSupport = bestClubSummary && weakestClubSummary
+    ? `${dashboardSummaries.filter((summary) => ['Attack', 'Play'].includes(summary.caddieCall)).length} clubs are playable or better. ${getClubLabel(weakestClubSummary.club)} is the current pressure point.`
+    : 'Complete a session to turn live capture into a clear decision surface.'
+
+  const spotlightCards = useMemo(() => {
+    if (!bestClubSummary) {
+      return []
+    }
+
+    const strongestDriver = strongestComponentLabel(
+      bestClubSummary.componentScores,
+      'high',
+    )
+    const weakestDriver = weakestClubSummary
+      ? strongestComponentLabel(weakestClubSummary.componentScores, 'low')
+      : null
+
+    return [
+      {
+        key: 'spotlight-on-your-game',
+        title: 'Spotlight on Your Game',
+        accent: bestClubSummary.caddieCall,
+        summary: `${getClubLabel(bestClubSummary.club)} is the clearest go-to club in the bag right now.`,
+        bullets: [
+          `${bestClubSummary.caddieCall} at ${formatScore(bestClubSummary.caddieScore)} with ${bestClubSummary.includedShots} included shots.`,
+          `${strongestDriver} is carrying the read.`,
+        ],
+      },
+      {
+        key: 'trend-to-watch',
+        title: 'Trend to Watch',
+        accent:
+          biggestMover?.summary.caddieCall ??
+          weakestClubSummary?.caddieCall ??
+          'Insufficient Data',
+        summary: biggestMover
+          ? `${getClubLabel(biggestMover.club)} is the club moving the fastest against the prior session.`
+          : weakestClubSummary
+            ? `${getClubLabel(weakestClubSummary.club)} is still the area that needs the most attention.`
+            : 'Keep building the read.',
+        bullets: [
+          biggestMover
+            ? `${getClubLabel(biggestMover.club)} is ${biggestMover.delta >= 0 ? 'moving up' : 'slipping'} ${Math.abs(Math.round(biggestMover.delta))} points versus the prior session.`
+            : 'No prior-session comparison yet.',
+          weakestClubSummary
+            ? `${getClubLabel(weakestClubSummary.club)} is ${weakestClubSummary.caddieCall.toLowerCase()} right now. Biggest drag is ${weakestDriver}.`
+            : 'More sessions will sharpen the bag shape.',
+        ],
+      },
+    ]
+  }, [bestClubSummary, biggestMover, weakestClubSummary])
+
+  const groupInsights = useMemo(() => {
+    const scoresByGroup = new Map<string, number[]>()
+
+    dashboardSummaries.forEach((summary) => {
+      const group = clubGroupLabel(summary.club)
+      scoresByGroup.set(group, [...(scoresByGroup.get(group) ?? []), summary.caddieScore])
+    })
+
+    const rankedGroups = [...scoresByGroup.entries()]
+      .map(([group, scores]) => ({
+        group,
+        averageScore: scores.reduce((sum, score) => sum + score, 0) / scores.length,
+      }))
+      .sort((left, right) => right.averageScore - left.averageScore)
+
+    return {
+      strongest: rankedGroups[0] ?? null,
+      weakest: rankedGroups[rankedGroups.length - 1] ?? null,
+    }
+  }, [dashboardSummaries])
+
+  const scoreSpread =
+    bestClubSummary && weakestClubSummary
+      ? bestClubSummary.caddieScore - weakestClubSummary.caddieScore
+      : null
 
   const startSession = () => {
     setShots([])
@@ -421,8 +751,8 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <h1>Nova Stock Range Validation</h1>
+    <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
+      {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
 
       {sessionState !== 'review' && (
         <section className="panel tester-panel">
@@ -559,9 +889,9 @@ function App() {
               value={selectedClub}
               onChange={(event) => setSelectedClub(event.target.value as Club)}
             >
-              {clubs.map((club) => (
+              {activeBagClubIds.map((club) => (
                 <option key={club} value={club}>
-                  {club}
+                  {getClubLabel(club)}
                 </option>
               ))}
             </select>
@@ -645,9 +975,9 @@ function App() {
               value={selectedClub}
               onChange={(event) => setSelectedClub(event.target.value as Club)}
             >
-              {clubs.map((club) => (
+              {activeBagClubIds.map((club) => (
                 <option key={club} value={club}>
-                  {club}
+                  {getClubLabel(club)}
                 </option>
               ))}
             </select>
@@ -658,238 +988,457 @@ function App() {
       )}
 
       {sessionState === 'review' && (
-        <section className="review-screen">
-          <div className="review-header">
-            <div>
-              <h2 className="review-title">
-                Session Review
-              </h2>
-              <p className="review-meta">
-                {activeSavedSession
-                  ? `${new Date(activeSavedSession.endedAt).toLocaleString()} • ${shots.length} shots`
-                  : `${shots.length} shots`}
-              </p>
+        <section className="dashboard-layout">
+          <aside className="dashboard-rail">
+            <div className="dashboard-rail-brand">
+              <div className="dashboard-rail-mark">Nova</div>
+              <div>
+                <div className="dashboard-rail-title">Caddie Dashboard</div>
+                <div className="dashboard-rail-subtitle">Current game status</div>
+              </div>
             </div>
-            <div className="review-actions">
-              <button disabled={shots.length === 0} onClick={undoLastShot}>
-                Undo Last Shot
-              </button>
-              <button onClick={startOver}>Start Over</button>
+
+            <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
+              <a href="#dashboard-overview">Overview</a>
+              <a href="#dashboard-spotlights">Spotlights</a>
+              <a href="#dashboard-bag">Bag</a>
+              <a href="#dashboard-trends">Trends</a>
+              <a href="#dashboard-review">Detailed Review</a>
+            </nav>
+
+            <div className="dashboard-rail-clubs">
+              <div className="dashboard-rail-label">Club List</div>
+              <div className="dashboard-rail-club-list">
+                {dashboardClubCards.map((card) => (
+                  <a href={`#${clubAnchorId(card.club)}`} key={card.club}>
+                    <span>{getClubLabel(card.club)}</span>
+                    <span>{card.summary ? formatScore(card.summary.caddieScore) : '-'}</span>
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {reviewSummaryLead ? (
-            <>
-              <section className="review-card caddie-summary-card">
-                <div
-                  className={`caddie-summary-primary ${caddieToneClassName(
-                    reviewSummaryLead.caddieCall,
-                  )}`}
-                >
-                  <div className="section-kicker">Caddie Score</div>
-                  <div className="caddie-score-value">
-                    {formatScore(reviewSummaryLead.caddieScore)}
-                  </div>
-                  <div className={caddieCallClassName(reviewSummaryLead.caddieCall)}>
-                    {reviewSummaryLead.caddieCall}
-                  </div>
-                  <div className="summary-support-text">
-                    {reviewSummaryLead.club} • {reviewSummaryLead.includedShots} included shots
-                  </div>
-                </div>
-                <div className="caddie-summary-explanation">
-                  <p>{reviewSummaryLead.explanation}</p>
-                </div>
-                <div className="caddie-summary-components">
-                  <div className="component-row">
-                    <span>Distance Window</span>
-                    <span>{formatScore(reviewSummaryLead.componentScores.distanceWindow)}</span>
-                  </div>
-                  <div className="component-row">
-                    <span>Direction Window</span>
-                    <span>{formatScore(reviewSummaryLead.componentScores.directionWindow)}</span>
-                  </div>
-                  <div className="component-row">
-                    <span>Flight Quality</span>
-                    <span>{formatScore(reviewSummaryLead.componentScores.flightQuality)}</span>
-                  </div>
-                  <div className="component-row">
-                    <span>Pattern Stability</span>
-                    <span>{formatScore(reviewSummaryLead.componentScores.patternStability)}</span>
-                  </div>
-                  <div className="component-row">
-                    <span>Data Confidence</span>
-                    <span>{formatScore(reviewSummaryLead.componentScores.dataConfidence)}</span>
-                  </div>
-                </div>
-              </section>
+            <div className="dashboard-rail-utility">
+              <button onClick={startOver}>Start New Session</button>
+            </div>
+          </aside>
 
-              <section className="review-card">
-                <div className="section-kicker">Key Insights</div>
-                <div className="insight-list">
-                  {reviewInsights.map((insight) => (
-                    <div
-                      className={`insight-row ${caddieToneClassName(
-                        reviewSummaryLead.caddieCall,
-                      )}`}
-                      key={insight}
-                    >
-                      {insight}
-                    </div>
+          <div className="dashboard-screen">
+            <div className="dashboard-header" id="dashboard-overview">
+              <div>
+                <h2 className="dashboard-title">Dashboard</h2>
+                <p className="dashboard-subtitle">
+                  Your current game view. Trust the strong clubs, spot the weak links, and act with a plan.
+                </p>
+                <p className="dashboard-data-note">
+                  Using all saved sessions by default.
+                </p>
+                <p className="review-meta">
+                  {savedSessions.length > 0
+                    ? `${savedSessions.length} saved sessions • ${dashboardIncludedShotCount} included shots`
+                    : 'No saved sessions yet'}
+                </p>
+                <div className="dashboard-header-debug">
+                  {dashboardHeaderDebugLines.map((line) => (
+                    <div key={line}>{line}</div>
                   ))}
                 </div>
-              </section>
+              </div>
+              <div className="review-actions">
+                <button disabled={shots.length === 0} onClick={undoLastShot}>
+                  Undo Last Shot
+                </button>
+                <button>Export</button>
+              </div>
+            </div>
 
-              <section className="review-card">
-                <div className="section-kicker">Club Review</div>
-                <div className="review-table-wrap">
-                  <table className="review-table">
-                    <thead>
-                      <tr>
-                        <th>Club</th>
-                        <th>Caddie Score</th>
-                        <th>Caddie Call</th>
-                        <th>Insights</th>
-                        <th>Included Shots</th>
-                        <th>Carry Avg / Std Dev</th>
-                        <th>Offline Avg / Std Dev</th>
-                        <th>Shot Rank Summary</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reviewSummaries.map((summary) => (
-                        <tr key={summary.club}>
-                          <td>{summary.club}</td>
-                          <td className="review-score-cell">
-                            {formatScore(summary.caddieScore)}
-                          </td>
-                          <td>
-                            <span className={caddieCallClassName(summary.caddieCall)}>
-                              {summary.caddieCall}
-                            </span>
-                          </td>
-                          <td className="review-insight-cell">{summary.insights.join(' ')}</td>
-                          <td className="review-center-cell">
-                            {formatWhole(summary.includedShots)}
-                          </td>
-                          <td>
-                            <div>
-                              {summary.carryAverageYards === null
-                                ? '-'
-                                : formatDecimal(summary.carryAverageYards, ' yd')}
-                            </div>
-                            <div className="metric-subline">
-                              {summary.carryStdDevYards === null
-                                ? '-'
-                                : `Std dev ${formatDecimal(summary.carryStdDevYards, ' yd')}`}
-                            </div>
-                          </td>
-                          <td>
-                            <div>
-                              {summary.offlineAverageYards === null
-                                ? '-'
-                                : formatDecimal(summary.offlineAverageYards, ' yd')}
-                            </div>
-                            <div className="metric-subline">
-                              {summary.offlineStdDevYards === null
-                                ? '-'
-                                : `Std dev ${formatDecimal(summary.offlineStdDevYards, ' yd')}`}
-                            </div>
-                          </td>
-                          <td>{summary.shotRankSummary}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+            {dashboardSummaryLead ? (
+              <>
+                <section className="dashboard-hero-card">
+                  <div className="section-kicker">Game Status</div>
+                  <div className="dashboard-hero-headline">{dashboardHeadline}</div>
+                  <p className="dashboard-hero-support">{dashboardSupport}</p>
+                  <div className="dashboard-hero-callouts">
+                    <div className="dashboard-hero-chip">
+                      Best club: {bestClubSummary ? getClubLabel(bestClubSummary.club) : '-'}
+                    </div>
+                    {biggestMover && (
+                      <div className="dashboard-hero-chip">
+                        Biggest mover: {getClubLabel(biggestMover.club)}{' '}
+                        {biggestMover.delta >= 0 ? '+' : ''}
+                        {formatScore(biggestMover.delta)}
+                      </div>
+                    )}
+                  </div>
+                </section>
 
-              <section className="review-card">
-                <div className="section-kicker">Supporting Metrics</div>
-                <div className="supporting-grid">
-                  <div className="supporting-block">
-                    <div className="supporting-title">Component Breakdown</div>
-                    {reviewSummaries.map((summary) => (
-                      <div className="supporting-metric-group" key={summary.club}>
-                        <div className="supporting-club-row">
-                          <span>{summary.club}</span>
-                          <span>{formatScore(summary.caddieScore)}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Distance Window</span>
-                          <span>{formatScore(summary.componentScores.distanceWindow)}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Direction Window</span>
-                          <span>{formatScore(summary.componentScores.directionWindow)}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Flight Quality</span>
-                          <span>{formatScore(summary.componentScores.flightQuality)}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Pattern Stability</span>
-                          <span>{formatScore(summary.componentScores.patternStability)}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Data Confidence</span>
-                          <span>{formatScore(summary.componentScores.dataConfidence)}</span>
-                        </div>
+                <section className="dashboard-spotlights" id="dashboard-spotlights">
+                  {spotlightCards.map((card) => (
+                    <article className="dashboard-card spotlight-card" key={card.key}>
+                      <div className="spotlight-accent-row">
+                        <span className={`spotlight-accent ${caddieToneClassName(card.accent)}`} />
+                        <span className={caddieCallClassName(card.accent)}>{card.accent}</span>
                       </div>
-                    ))}
-                  </div>
-                  <div className="supporting-block">
-                    <div className="supporting-title">Debug / Breakdown</div>
-                    <details className="supporting-details">
-                      <summary>Show debug details</summary>
-                      <div className="supporting-debug">
-                        <div className="supporting-debug-label">Raw Nova message</div>
-                        <pre className="debug-value">{lastRawMessage}</pre>
+                      <h3 className="spotlight-title">{card.title}</h3>
+                      <p className="spotlight-summary">{card.summary}</p>
+                      <div className="spotlight-list">
+                        {card.bullets.map((bullet) => (
+                          <p key={bullet}>{bullet}</p>
+                        ))}
                       </div>
-                      <div className="supporting-debug">
-                        <div className="supporting-debug-label">Parsed shot</div>
-                        <pre className="debug-value">{formatDebugPayload(lastParsedShot)}</pre>
+                    </article>
+                  ))}
+                </section>
+
+                {featuredDriverCard && featuredDriverSummary && (
+                  <section className="driver-feature-card" id={clubAnchorId(featuredDriverCard.club)}>
+                    <div className="driver-feature-header">
+                      <div>
+                        <div className="section-kicker">Featured Club</div>
+                        <h3 className="driver-feature-title">{getClubLabel(featuredDriverCard.club)}</h3>
+                        <p className="driver-feature-copy">
+                          {featuredDriverSummary.explanation}
+                        </p>
                       </div>
-                      <div className="supporting-debug">
-                        <div className="supporting-debug-label">Stored shot</div>
-                        <pre className="debug-value">{formatDebugPayload(lastStoredShot)}</pre>
+                      <div className="driver-feature-score-block">
+                        <div className="driver-feature-score">
+                          {formatScore(featuredDriverSummary.caddieScore)}
+                        </div>
+                        <span className={caddieCallClassName(featuredDriverSummary.caddieCall)}>
+                          {featuredDriverSummary.caddieCall}
+                        </span>
                       </div>
-                      <div className="supporting-debug">
-                        <div className="supporting-debug-label">OpenGolfCoach input</div>
-                        <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachInput)}</pre>
-                      </div>
-                      <div className="supporting-debug">
-                        <div className="supporting-debug-label">OpenGolfCoach response</div>
-                        <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachResponse)}</pre>
-                      </div>
-                    </details>
-                  </div>
-                  {groupedShots.length > 0 && (
-                    <div className="supporting-block supporting-block-full">
-                      <div className="supporting-title">Shot Review</div>
-                      <details className="supporting-details">
-                        <summary>Show shot review</summary>
-                        {groupedShots.map((group) => (
-                          <div className="club-group" key={group.club}>
-                            <h3>{group.club}</h3>
-                            <ShotTable
-                              shots={group.shots}
-                              onChangeClub={updateShotClub}
-                              onToggleShot={toggleShot}
-                            />
+                    </div>
+                    <div className="driver-feature-body">
+                      <div className="driver-feature-insights">
+                        {featuredDriverSummary.insights.slice(0, 2).map((insight) => (
+                          <div
+                            className={`insight-row ${caddieToneClassName(
+                              featuredDriverSummary.caddieCall,
+                            )}`}
+                            key={insight}
+                          >
+                            {insight}
                           </div>
                         ))}
-                      </details>
+                      </div>
+                      <div className="driver-feature-meta">
+                        <div className="driver-feature-meta-row">
+                          <span>Included shots</span>
+                          <span>{formatWhole(featuredDriverSummary.includedShots)}</span>
+                        </div>
+                        <div className="driver-feature-meta-row">
+                          <span>Carry avg</span>
+                          <span>
+                            {featuredDriverSummary.carryAverageYards === null
+                              ? '-'
+                              : formatDecimal(featuredDriverSummary.carryAverageYards, ' yd')}
+                          </span>
+                        </div>
+                        <div className="driver-feature-meta-row">
+                          <span>Offline avg</span>
+                          <span>
+                            {featuredDriverSummary.offlineAverageYards === null
+                              ? '-'
+                              : formatDecimal(featuredDriverSummary.offlineAverageYards, ' yd')}
+                          </span>
+                        </div>
+                        <div className="driver-feature-meta-row">
+                          <span>Trend</span>
+                          <span>
+                            {typeof featuredDriverCard.delta === 'number'
+                              ? `${featuredDriverCard.delta >= 0 ? '+' : ''}${formatScore(featuredDriverCard.delta)} vs prior`
+                              : 'No prior-session read'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </section>
-            </>
-          ) : (
-            <div className="review-card">
-              <p>No shots captured.</p>
-            </div>
-          )}
+                  </section>
+                )}
+
+                <section className="dashboard-grid-section" id="dashboard-bag">
+                  <div className="section-kicker">Bag Overview</div>
+                  <div className="club-card-grid">
+                    {dashboardGridCards.map((card) => (
+                      <article
+                        className={`dashboard-card club-card ${
+                          card.summary ? caddieToneClassName(card.summary.caddieCall) : ''
+                        }`}
+                        id={clubAnchorId(card.club)}
+                        key={card.club}
+                      >
+                        <div className="club-card-header">
+                          <span className="club-card-name">{getClubLabel(card.club)}</span>
+                          {card.summary ? (
+                            <span className={caddieCallClassName(card.summary.caddieCall)}>
+                              {card.summary.caddieCall}
+                            </span>
+                          ) : (
+                            <span className={caddieCallClassName('Insufficient Data')}>
+                              Insufficient Data
+                            </span>
+                          )}
+                        </div>
+                        <div className="club-card-score">
+                          {card.summary ? formatScore(card.summary.caddieScore) : '-'}
+                        </div>
+                        <div className="club-card-descriptor">{card.descriptor}</div>
+                        <div className="club-card-trend">
+                          {card.summary
+                            ? `Swings Included ${formatWhole(card.summary.includedShots)}`
+                            : 'No current saved data'}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="dashboard-support-grid" id="dashboard-trends">
+                  <article className="dashboard-card support-card">
+                    <div className="section-kicker">Bag Shape</div>
+                    <h3 className="support-card-title">
+                      {groupInsights.strongest
+                        ? `${groupInsights.strongest.group} are leading the bag`
+                        : 'Bag shape needs more data'}
+                    </h3>
+                    <p className="support-card-copy">
+                      {groupInsights.strongest && groupInsights.weakest
+                        ? `${groupInsights.strongest.group} are averaging ${formatScore(groupInsights.strongest.averageScore)}. ${groupInsights.weakest.group} are trailing at ${formatScore(groupInsights.weakest.averageScore)}.`
+                        : 'Complete another session to separate the stable groups from the volatile ones.'}
+                    </p>
+                  </article>
+                  <article className="dashboard-card support-card">
+                    <div className="section-kicker">Trend Watch</div>
+                    <h3 className="support-card-title">
+                      {scoreSpread !== null
+                        ? `${formatScore(scoreSpread)} points separate your best and worst clubs`
+                        : 'Trend watch is still building'}
+                    </h3>
+                    <p className="support-card-copy">
+                      {biggestMover
+                        ? `${getClubLabel(biggestMover.club)} is the biggest mover against the prior session. ${biggestMover.delta >= 0 ? 'That club is earning more trust.' : 'That club is losing trust and needs attention.'}`
+                        : 'Once you have prior-session support, trend movement will show up here.'}
+                    </p>
+                  </article>
+                </section>
+
+                <section className="review-details-card" id="dashboard-review">
+                <div className="section-kicker">Session Review</div>
+                <details className="supporting-details">
+                  <summary>Open detailed review</summary>
+                  <section className="review-card caddie-summary-card">
+                    <div
+                      className={`caddie-summary-primary ${caddieToneClassName(
+                        reviewSummaryLead.caddieCall,
+                      )}`}
+                    >
+                      <div className="section-kicker">Caddie Score</div>
+                      <div className="caddie-score-value">
+                        {formatScore(reviewSummaryLead.caddieScore)}
+                      </div>
+                      <div className={caddieCallClassName(reviewSummaryLead.caddieCall)}>
+                        {reviewSummaryLead.caddieCall}
+                      </div>
+                      <div className="summary-support-text">
+                        {getClubLabel(reviewSummaryLead.club)} • {reviewSummaryLead.includedShots} included shots
+                      </div>
+                    </div>
+                    <div className="caddie-summary-explanation">
+                      <p>{reviewSummaryLead.explanation}</p>
+                    </div>
+                    <div className="caddie-summary-components">
+                      <div className="component-row">
+                        <span>Distance Window</span>
+                        <span>{formatScore(reviewSummaryLead.componentScores.distanceWindow)}</span>
+                      </div>
+                      <div className="component-row">
+                        <span>Direction Window</span>
+                        <span>{formatScore(reviewSummaryLead.componentScores.directionWindow)}</span>
+                      </div>
+                      <div className="component-row">
+                        <span>Flight Quality</span>
+                        <span>{formatScore(reviewSummaryLead.componentScores.flightQuality)}</span>
+                      </div>
+                      <div className="component-row">
+                        <span>Pattern Stability</span>
+                        <span>{formatScore(reviewSummaryLead.componentScores.patternStability)}</span>
+                      </div>
+                      <div className="component-row">
+                        <span>Data Confidence</span>
+                        <span>{formatScore(reviewSummaryLead.componentScores.dataConfidence)}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="review-card">
+                    <div className="section-kicker">Key Insights</div>
+                    <div className="insight-list">
+                      {reviewInsights.map((insight) => (
+                        <div
+                          className={`insight-row ${caddieToneClassName(
+                            reviewSummaryLead.caddieCall,
+                          )}`}
+                          key={insight}
+                        >
+                          {insight}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="review-card">
+                    <div className="section-kicker">Club Review</div>
+                    <div className="review-table-wrap">
+                      <table className="review-table">
+                        <thead>
+                          <tr>
+                            <th>Club</th>
+                            <th>Caddie Score</th>
+                            <th>Caddie Call</th>
+                            <th>Insights</th>
+                            <th>Included Shots</th>
+                            <th>Carry Avg / Std Dev</th>
+                            <th>Offline Avg / Std Dev</th>
+                            <th>Shot Rank Summary</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reviewSummaries.map((summary) => (
+                            <tr key={summary.club}>
+                              <td>{getClubLabel(summary.club)}</td>
+                              <td className="review-score-cell">
+                                {formatScore(summary.caddieScore)}
+                              </td>
+                              <td>
+                                <span className={caddieCallClassName(summary.caddieCall)}>
+                                  {summary.caddieCall}
+                                </span>
+                              </td>
+                              <td className="review-insight-cell">{summary.insights.join(' ')}</td>
+                              <td className="review-center-cell">
+                                {formatWhole(summary.includedShots)}
+                              </td>
+                              <td>
+                                <div>
+                                  {summary.carryAverageYards === null
+                                    ? '-'
+                                    : formatDecimal(summary.carryAverageYards, ' yd')}
+                                </div>
+                                <div className="metric-subline">
+                                  {summary.carryStdDevYards === null
+                                    ? '-'
+                                    : `Std dev ${formatDecimal(summary.carryStdDevYards, ' yd')}`}
+                                </div>
+                              </td>
+                              <td>
+                                <div>
+                                  {summary.offlineAverageYards === null
+                                    ? '-'
+                                    : formatDecimal(summary.offlineAverageYards, ' yd')}
+                                </div>
+                                <div className="metric-subline">
+                                  {summary.offlineStdDevYards === null
+                                    ? '-'
+                                    : `Std dev ${formatDecimal(summary.offlineStdDevYards, ' yd')}`}
+                                </div>
+                              </td>
+                              <td>{summary.shotRankSummary}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section className="review-card">
+                    <div className="section-kicker">Supporting Metrics</div>
+                    <div className="supporting-grid">
+                      <div className="supporting-block">
+                        <div className="supporting-title">Component Breakdown</div>
+                        {reviewSummaries.map((summary) => (
+                          <div className="supporting-metric-group" key={summary.club}>
+                            <div className="supporting-club-row">
+                              <span>{getClubLabel(summary.club)}</span>
+                              <span>{formatScore(summary.caddieScore)}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Distance Window</span>
+                              <span>{formatScore(summary.componentScores.distanceWindow)}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Direction Window</span>
+                              <span>{formatScore(summary.componentScores.directionWindow)}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Flight Quality</span>
+                              <span>{formatScore(summary.componentScores.flightQuality)}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Pattern Stability</span>
+                              <span>{formatScore(summary.componentScores.patternStability)}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Data Confidence</span>
+                              <span>{formatScore(summary.componentScores.dataConfidence)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="supporting-block">
+                        <div className="supporting-title">Debug / Breakdown</div>
+                        <details className="supporting-details">
+                          <summary>Show debug details</summary>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">Raw Nova message</div>
+                            <pre className="debug-value">{lastRawMessage}</pre>
+                          </div>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">Parsed shot</div>
+                            <pre className="debug-value">{formatDebugPayload(lastParsedShot)}</pre>
+                          </div>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">Stored shot</div>
+                            <pre className="debug-value">{formatDebugPayload(lastStoredShot)}</pre>
+                          </div>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">OpenGolfCoach input</div>
+                            <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachInput)}</pre>
+                          </div>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">OpenGolfCoach response</div>
+                            <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachResponse)}</pre>
+                          </div>
+                        </details>
+                      </div>
+                      {groupedShots.length > 0 && (
+                        <div className="supporting-block supporting-block-full">
+                          <div className="supporting-title">Shot Review</div>
+                          <details className="supporting-details">
+                            <summary>Show shot review</summary>
+                            {groupedShots.map((group) => (
+                              <div className="club-group" key={group.club}>
+                                <h3>{getClubLabel(group.club)}</h3>
+                                <ShotTable
+                                  shots={group.shots}
+                                  onChangeClub={updateShotClub}
+                                  onToggleShot={toggleShot}
+                                />
+                              </div>
+                            ))}
+                          </details>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </details>
+                </section>
+              </>
+            ) : (
+              <div className="dashboard-card">
+                <p>No shots captured.</p>
+              </div>
+            )}
+          </div>
         </section>
       )}
     </main>
@@ -939,14 +1488,14 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
                     onChangeClub(shot.id, event.target.value as Club)
                   }
                 >
-                  {clubs.map((club) => (
+                  {activeBagClubIds.map((club) => (
                     <option key={`${shot.id}-${club}`} value={club}>
-                      {club}
+                      {getClubLabel(club)}
                     </option>
                   ))}
                 </select>
               ) : (
-                shot.club
+                getClubLabel(shot.club)
               )}
             </td>
             <td>{formatDecimal(shot.carryYards, ' yd')}</td>

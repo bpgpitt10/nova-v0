@@ -1,4 +1,4 @@
-import type { Club } from '../types'
+import type { Club } from './bagConfig'
 
 export type ConfidenceConfig = {
   componentWeights: {
@@ -59,14 +59,13 @@ export const confidenceConfig: ConfidenceConfig = {
   directionWindow: {
     targetWidthByClub: {
       Driver: 32,
-      '3 Wood': 28,
-      '5 Wood': 26,
-      '4 Iron': 22,
-      '5 Iron': 21,
-      '6 Iron': 20,
-      '7 Iron': 18,
-      '8 Iron': 17,
-      '9 Iron': 16,
+      '3W': 28,
+      '3H': 24,
+      '5i': 21,
+      '6i': 20,
+      '7i': 18,
+      '8i': 17,
+      '9i': 16,
       PW: 14,
       GW: 13,
       SW: 12,
