@@ -339,6 +339,61 @@ const explanationPrefix = (caddieCall: ReviewClubSummary['caddieCall']) => {
   }
 }
 
+const componentDisplayName = (
+  component: keyof ReviewClubSummary['componentScores'],
+) => {
+  switch (component) {
+    case 'distanceWindow':
+      return 'distance control'
+    case 'directionWindow':
+      return 'start line'
+    case 'flightQuality':
+      return 'flight profile'
+    case 'patternStability':
+      return 'pattern stability'
+    case 'dataConfidence':
+      return 'sample strength'
+  }
+}
+
+const buildInsights = (
+  caddieCall: ReviewClubSummary['caddieCall'],
+  includedShots: number,
+  componentScores: ReviewClubSummary['componentScores'],
+) => {
+  const rankedComponents = Object.entries(componentScores).sort((left, right) => right[1] - left[1]) as Array<
+    [keyof ReviewClubSummary['componentScores'], number]
+  >
+  const strongestPositive = rankedComponents[0]
+  const strongestNegative = rankedComponents[rankedComponents.length - 1]
+
+  const firstInsight = (() => {
+    switch (caddieCall) {
+      case 'Attack':
+        return `Lean on this one. ${componentDisplayName(strongestPositive[0])} is leading the way.`
+      case 'Play':
+        return `This is a go-to club. ${componentDisplayName(strongestPositive[0])} keeps it dependable.`
+      case 'Manage':
+        return `This club is playable, but pick your spot. ${componentDisplayName(strongestPositive[0])} gives you something to work with.`
+      case 'Careful':
+        return `Handle this with care. The miss pattern can still bring penalty strokes into play.`
+      case 'Liability':
+        return `This club is asking for trouble right now. Only pull it if this really has to be the play.`
+      case 'Insufficient Data':
+        return `Need a few more swings before the caddie has a real read.`
+    }
+  })()
+
+  const secondInsight =
+    caddieCall === 'Insufficient Data'
+      ? `${includedShots} included shots is not enough to trust the read yet.`
+      : `${includedShots} included shots so far. Biggest drag is ${componentDisplayName(
+          strongestNegative[0],
+        )}.`
+
+  return [firstInsight, secondInsight]
+}
+
 export const summarizeReviewClub = (
   club: Club,
   shots: Shot[],
@@ -422,5 +477,12 @@ export const summarizeReviewClub = (
       dataConfidence: dataConfidence.score,
     },
     explanation,
+    insights: buildInsights(caddieCall, includedShots.length, {
+      distanceWindow: distanceWindow.score,
+      directionWindow: directionWindow.score,
+      flightQuality: flightQuality.score,
+      patternStability: patternStability.score,
+      dataConfidence: dataConfidence.score,
+    }),
   }
 }

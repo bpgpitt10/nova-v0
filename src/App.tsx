@@ -607,6 +607,7 @@ function App() {
                     <th>Offline std dev</th>
                     <th>Shot rank summary</th>
                     <th>Explanation</th>
+                    <th>Insights</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -643,6 +644,7 @@ function App() {
                       </td>
                       <td>{summary.shotRankSummary}</td>
                       <td>{summary.explanation}</td>
+                      <td>{summary.insights.join(' ')}</td>
                     </tr>
                   ))}
                 </tbody>

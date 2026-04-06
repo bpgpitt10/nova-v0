@@ -113,6 +113,7 @@ export type ReviewClubSummary = {
     dataConfidence: number
   }
   explanation: string
+  insights: string[]
 }
 
 export const clubs: Club[] = [
