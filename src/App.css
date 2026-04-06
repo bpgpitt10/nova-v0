@@ -117,6 +117,8 @@
 }
 
 .dashboard-rail-utility {
+  display: grid;
+  gap: 8px;
   margin-top: auto;
 }
 
@@ -140,8 +142,7 @@
   margin-bottom: 20px;
 }
 
-.button-row,
-.review-actions {
+.button-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -296,44 +297,6 @@ td {
   margin-top: 24px;
 }
 
-.dashboard-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  color: #ffffff;
-}
-
-.dashboard-title {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.dashboard-subtitle {
-  margin-bottom: 8px;
-  color: #cfd8cd;
-  font-size: 13px;
-}
-
-.dashboard-data-note {
-  margin-bottom: 8px;
-  color: #9fb09f;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-
-.dashboard-header-debug {
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-  color: #8fa18f;
-  font-size: 11px;
-  line-height: 1.35;
-}
-
 .dashboard-hero-card,
 .dashboard-card,
 .review-card {
@@ -365,19 +328,20 @@ td {
   background-size: auto, auto, cover;
 }
 
-.dashboard-hero-headline {
-  margin-bottom: 8px;
+.dashboard-hero-title {
+  margin: 0 0 12px;
   color: #ffffff;
-  font-size: 32px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
-.dashboard-hero-support {
+.dashboard-hero-narrative {
+  margin: 0;
   max-width: 760px;
-  color: #cfd8cd;
+  color: #ffffff;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
 .dashboard-hero-callouts {
@@ -1072,13 +1036,12 @@ td {
 }
 
 @media (max-width: 760px) {
-  .toolbar,
-  .dashboard-header {
+  .toolbar {
     display: block;
   }
 
   .button-row,
-  .review-actions {
+  .dashboard-rail-utility {
     justify-content: flex-start;
     margin-top: 12px;
   }

@@ -375,11 +375,6 @@ function App() {
     [savedSessions],
   )
 
-  const dashboardIncludedShots = useMemo(
-    () => dashboardShots.filter((shot) => shot.included),
-    [dashboardShots],
-  )
-
   const reviewSummaries: ReviewClubSummary[] = useMemo(
     () =>
       activeBagClubIds
@@ -428,47 +423,6 @@ function App() {
   const dashboardSummariesByClub = useMemo(
     () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
     [dashboardSummaries],
-  )
-
-  const dashboardIncludedShotCount = useMemo(
-    () => dashboardIncludedShots.length,
-    [dashboardIncludedShots],
-  )
-
-  const dashboardMatchedClubs = useMemo(
-    () =>
-      activeBagClubIds.filter((club) =>
-        dashboardIncludedShots.some((shot) => String(shot.club) === club),
-      ),
-    [dashboardIncludedShots],
-  )
-
-  const dashboardUnmatchedClubLabels = useMemo(() => {
-    const unmatchedLabels = new Set<string>()
-
-    dashboardIncludedShots.forEach((shot) => {
-      const clubLabel = String(shot.club)
-
-      if (!activeBagClubIds.includes(clubLabel as Club)) {
-        unmatchedLabels.add(clubLabel)
-      }
-    })
-
-    return [...unmatchedLabels].sort((left, right) => left.localeCompare(right))
-  }, [dashboardIncludedShots])
-
-  const dashboardHeaderDebugLines = useMemo(
-    () => [
-      `Total saved sessions found: ${savedSessions.length}`,
-      `Total included shots found: ${dashboardIncludedShotCount}`,
-      `Total clubs matched to current bag: ${dashboardMatchedClubs.length}`,
-      `Unmatched club labels found: ${
-        dashboardUnmatchedClubLabels.length > 0
-          ? dashboardUnmatchedClubLabels.join(', ')
-          : 'none'
-      }`,
-    ],
-    [dashboardIncludedShotCount, dashboardMatchedClubs.length, dashboardUnmatchedClubLabels, savedSessions.length],
   )
 
   const latestSessionSummariesByClub = useMemo(() => {
@@ -576,13 +530,40 @@ function App() {
     )[0] ?? null
   }, [dashboardClubCards])
 
-  const dashboardHeadline = bestClubSummary
-    ? `${getClubLabel(bestClubSummary.club)} is your most trusted club right now.`
-    : 'Build a reliable bag read from completed sessions.'
+  const dashboardGameStatusNarrative = useMemo(() => {
+    if (!bestClubSummary || !weakestClubSummary) {
+      return 'There is enough here to start a read, but not enough to give the bag the full treatment yet.'
+    }
 
-  const dashboardSupport = bestClubSummary && weakestClubSummary
-    ? `${dashboardSummaries.filter((summary) => ['Attack', 'Play'].includes(summary.caddieCall)).length} clubs are playable or better. ${getClubLabel(weakestClubSummary.club)} is the current pressure point.`
-    : 'Complete a session to turn live capture into a clear decision surface.'
+    const strongClubCount = dashboardSummaries.filter((summary) =>
+      ['Attack', 'Play'].includes(summary.caddieCall),
+    ).length
+    const strongestClubLabel = getClubLabel(bestClubSummary.club)
+    const weakestClubLabel = getClubLabel(weakestClubSummary.club)
+
+    const leadSentence =
+      bestClubSummary.caddieCall === 'Attack'
+        ? `${strongestClubLabel} is carrying the bag right now, and you do not need much convincing to hit it.`
+        : `${strongestClubLabel} is the cleanest option in the bag right now, the one you can lean on when the hole asks for a committed swing.`
+
+    const depthSentence =
+      strongClubCount >= 4
+        ? `There is a real top tier forming, with ${strongClubCount} clubs grading out as go-to options or better.`
+        : strongClubCount >= 2
+          ? `You have a couple of clubs you can trust, but the rest of the bag still wants a little supervision.`
+          : 'Right now this bag is living off a small handful of trustworthy answers, and the drop-off behind them is pretty obvious.'
+
+    const weakSentence =
+      weakestClubSummary.caddieCall === 'Liability'
+        ? `${weakestClubLabel} is the one making you pay for bad decisions, so that club needs the conservative line until it earns its way back in.`
+        : `${weakestClubLabel} is still the club asking the hardest questions, so keep that one on a shorter leash.`
+
+    const moverSentence = biggestMover
+      ? `${getClubLabel(biggestMover.club)} is ${biggestMover.delta >= 0 ? 'moving the right way' : 'slipping a bit'}, and that trend is worth watching before it becomes the whole conversation.`
+      : 'The bag shape is settling in, even if the trend line is still young.'
+
+    return `${leadSentence} ${depthSentence} ${weakSentence} ${moverSentence}`
+  }, [bestClubSummary, biggestMover, dashboardSummaries, weakestClubSummary])
 
   const spotlightCards = useMemo(() => {
     if (!bestClubSummary) {
@@ -1020,48 +1001,34 @@ function App() {
 
             <div className="dashboard-rail-utility">
               <button onClick={startOver}>Start New Session</button>
+              <button disabled={shots.length === 0} onClick={undoLastShot}>
+                Undo Last Shot
+              </button>
+              <button>Export</button>
             </div>
           </aside>
 
           <div className="dashboard-screen">
-            <div className="dashboard-header" id="dashboard-overview">
-              <div>
-                <h2 className="dashboard-title">Dashboard</h2>
-                <p className="dashboard-subtitle">
-                  Your current game view. Trust the strong clubs, spot the weak links, and act with a plan.
-                </p>
-                <p className="dashboard-data-note">
-                  Using all saved sessions by default.
-                </p>
-                <p className="review-meta">
-                  {savedSessions.length > 0
-                    ? `${savedSessions.length} saved sessions • ${dashboardIncludedShotCount} included shots`
-                    : 'No saved sessions yet'}
-                </p>
-                <div className="dashboard-header-debug">
-                  {dashboardHeaderDebugLines.map((line) => (
-                    <div key={line}>{line}</div>
-                  ))}
-                </div>
-              </div>
-              <div className="review-actions">
-                <button disabled={shots.length === 0} onClick={undoLastShot}>
-                  Undo Last Shot
-                </button>
-                <button>Export</button>
-              </div>
-            </div>
-
             {dashboardSummaryLead ? (
               <>
-                <section className="dashboard-hero-card">
-                  <div className="section-kicker">Game Status</div>
-                  <div className="dashboard-hero-headline">{dashboardHeadline}</div>
-                  <p className="dashboard-hero-support">{dashboardSupport}</p>
+                <section
+                  aria-labelledby="dashboard-game-status-title"
+                  className="dashboard-hero-card"
+                  id="dashboard-overview"
+                >
+                  <h3 className="dashboard-hero-title" id="dashboard-game-status-title">
+                    Game Status
+                  </h3>
+                  <p className="dashboard-hero-narrative">{dashboardGameStatusNarrative}</p>
                   <div className="dashboard-hero-callouts">
                     <div className="dashboard-hero-chip">
                       Best club: {bestClubSummary ? getClubLabel(bestClubSummary.club) : '-'}
                     </div>
+                    {weakestClubSummary && (
+                      <div className="dashboard-hero-chip">
+                        Pressure point: {getClubLabel(weakestClubSummary.club)}
+                      </div>
+                    )}
                     {biggestMover && (
                       <div className="dashboard-hero-chip">
                         Biggest mover: {getClubLabel(biggestMover.club)}{' '}
