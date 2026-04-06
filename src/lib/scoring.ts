@@ -27,7 +27,7 @@ export const scoreClub = (club: Club, shots: Shot[]): ClubSummary => {
 
   return {
     club,
-    totalShots: clubShots.length,
+    totalShots: includedShots.length,
     includedShots: includedShots.length,
     averageCarryYards,
     confidence,

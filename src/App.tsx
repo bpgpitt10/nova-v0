@@ -24,6 +24,11 @@ const formatValue = (value: number | undefined, unit = '') => {
 const formatDebugPayload = (payload: IncomingNovaShot | null) =>
   payload ? JSON.stringify(payload, null, 2) : '-'
 
+const buildSummaries = (shots: Shot[]) =>
+  clubs
+    .map((club) => scoreClub(club, shots))
+    .filter((summary) => summary.totalShots > 0)
+
 const buildShot = (
   incomingShot: IncomingNovaShot,
   club: Club,
@@ -49,7 +54,7 @@ function App() {
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedClub, setSelectedClub] = useState<Club>('7 Iron')
   const [shots, setShots] = useState<Shot[]>([])
-  const [summaries, setSummaries] = useState<ClubSummary[]>([])
+  const [hasRunScoring, setHasRunScoring] = useState(false)
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<NovaConnectionStatus>('disconnected')
@@ -76,9 +81,14 @@ function App() {
       return undefined
     }
 
+    let isActive = true
     let activeSource: Shot['source'] = 'mock'
     const connection: NovaConnection = novaAdapter.connectToShots(
       (incomingShot) => {
+        if (!isActive) {
+          return
+        }
+
         setShots((currentShots) => [
           buildShot(incomingShot, selectedClubRef.current, activeSource),
           ...currentShots,
@@ -96,6 +106,7 @@ function App() {
     setFeedMode(connection.mode)
 
     return () => {
+      isActive = false
       connection.disconnect()
       connectionRef.current = null
     }
@@ -112,9 +123,14 @@ function App() {
     [shots],
   )
 
+  const summaries: ClubSummary[] = useMemo(
+    () => (hasRunScoring ? buildSummaries(shots) : []),
+    [hasRunScoring, shots],
+  )
+
   const startSession = () => {
     setShots([])
-    setSummaries([])
+    setHasRunScoring(false)
     setFeedMode(null)
     setConnectionStatus('connecting')
     setLastRawMessage('-')
@@ -148,22 +164,30 @@ function App() {
   }
 
   const runScoring = () => {
-    setSummaries(
-      clubs
-        .map((club) => scoreClub(club, shots))
-        .filter((summary) => summary.totalShots > 0),
-    )
+    setHasRunScoring(true)
   }
 
   const startOver = () => {
     setSessionState('setup')
     setShots([])
-    setSummaries([])
+    setHasRunScoring(false)
     setFeedMode(null)
     setConnectionStatus('disconnected')
     setLastRawMessage('-')
     setLastNormalizedShot(null)
     setSessionStartedAt(null)
+  }
+
+  const undoLastShot = () => {
+    setShots((currentShots) => currentShots.slice(1))
+  }
+
+  const updateShotClub = (shotId: string, club: Club) => {
+    setShots((currentShots) =>
+      currentShots.map((shot) =>
+        shot.id === shotId ? { ...shot, club } : shot,
+      ),
+    )
   }
 
   return (
@@ -248,6 +272,9 @@ function App() {
               </p>
             </div>
             <div className="button-row">
+              <button disabled={shots.length === 0} onClick={undoLastShot}>
+                Undo Last Shot
+              </button>
               {feedMode === 'mock' && (
                 <button onClick={toggleMockFeed}>
                   {connectionStatus === 'paused'
@@ -312,6 +339,9 @@ function App() {
               <p>{shots.length} shots captured.</p>
             </div>
             <div className="button-row">
+              <button disabled={shots.length === 0} onClick={undoLastShot}>
+                Undo Last Shot
+              </button>
               <button onClick={runScoring}>Run Club Scoring</button>
               <button onClick={startOver}>Start Over</button>
             </div>
@@ -323,7 +353,11 @@ function App() {
             groupedShots.map((group) => (
               <div className="club-group" key={group.club}>
                 <h3>{group.club}</h3>
-                <ShotTable shots={group.shots} onToggleShot={toggleShot} />
+                <ShotTable
+                  shots={group.shots}
+                  onChangeClub={updateShotClub}
+                  onToggleShot={toggleShot}
+                />
               </div>
             ))
           )}
@@ -367,10 +401,11 @@ function App() {
 
 type ShotTableProps = {
   shots: Shot[]
+  onChangeClub?: (shotId: string, club: Club) => void
   onToggleShot: (shotId: string) => void
 }
 
-function ShotTable({ shots, onToggleShot }: ShotTableProps) {
+function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
   if (shots.length === 0) {
     return <p>No shots yet.</p>
   }
@@ -393,7 +428,24 @@ function ShotTable({ shots, onToggleShot }: ShotTableProps) {
         {shots.map((shot) => (
           <tr key={shot.id}>
             <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>
-            <td>{shot.club}</td>
+            <td>
+              {onChangeClub ? (
+                <select
+                  value={shot.club}
+                  onChange={(event) =>
+                    onChangeClub(shot.id, event.target.value as Club)
+                  }
+                >
+                  {clubs.map((club) => (
+                    <option key={`${shot.id}-${club}`} value={club}>
+                      {club}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                shot.club
+              )}
+            </td>
             <td>{formatValue(shot.carryYards, ' yd')}</td>
             <td>{formatValue(shot.ballSpeedMph, ' mph')}</td>
             <td>{formatValue(shot.launchAngleDeg, ' deg')}</td>
