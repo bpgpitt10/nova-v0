@@ -35,6 +35,8 @@ export type NovaAdapter = {
 
 // Nova developer guide notes:
 // - Nova exposes local receive-only shot APIs over WebSocket JSON and TCP JSON.
+// - Nova is the raw live shot source in this app.
+// - OpenGolfCoach is planned as a downstream enrichment step, not a data source.
 // - Services are advertised over mDNS:
 //   - WebSocket JSON: _openlaunch-ws._tcp.local.
 //   - TCP JSON: _openapi-nova._tcp.local.
@@ -43,6 +45,9 @@ export type NovaAdapter = {
 //   cannot open arbitrary TCP sockets directly.
 //
 // TODO before replacing mock mode:
+// - Confirm which raw Nova fields are available for OpenGolfCoach input:
+//   ball_speed_meters_per_second, vertical_launch_angle_degrees,
+//   horizontal_launch_angle_degrees, total_spin_rpm, spin_axis_degrees.
 // - Confirm the exact shot payload schema beyond timestamp, carry, total,
 //   offline, spin, vla, and shotRanking.
 // - Confirm the exact WebSocket/TCP message envelope.

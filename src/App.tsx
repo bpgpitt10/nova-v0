@@ -6,6 +6,11 @@ import {
   type NovaFeedMode,
 } from './adapters/nova'
 import './App.css'
+import {
+  buildOpenGolfCoachInput,
+  hasOpenGolfCoachInput,
+  openGolfCoachEnricher,
+} from './lib/openGolfCoach'
 import { scoreClub } from './lib/scoring'
 import { clubs, type Club, type ClubSummary, type IncomingNovaShot, type Shot } from './types'
 
@@ -34,20 +39,49 @@ const buildShot = (
   club: Club,
   source: Shot['source'],
 ): Shot => ({
+  // Current state:
+  // - Nova/mock provides the live shot event.
+  // - OpenGolfCoach is planned as the derived-values enrichment step.
+  // For now we preserve the current fields and also capture the normalized raw
+  // inputs that OpenGolfCoach will eventually consume.
   id:
     incomingShot.id ??
     `${source}-${incomingShot.timestamp ?? Date.now()}-${crypto.randomUUID()}`,
   club,
   included: true,
   capturedAt: incomingShot.timestamp ?? new Date().toISOString(),
+  ballSpeedMetersPerSecond:
+    incomingShot.ballSpeedMetersPerSecond ??
+    incomingShot.ball_speed_meters_per_second,
+  verticalLaunchAngleDegrees:
+    incomingShot.verticalLaunchAngleDegrees ??
+    incomingShot.vertical_launch_angle_degrees,
+  horizontalLaunchAngleDegrees:
+    incomingShot.horizontalLaunchAngleDegrees ??
+    incomingShot.horizontal_launch_angle_degrees,
+  totalSpinRpm: incomingShot.totalSpinRpm ?? incomingShot.total_spin_rpm,
+  spinAxisDegrees: incomingShot.spinAxisDegrees ?? incomingShot.spin_axis_degrees,
   ballSpeedMph: incomingShot.ballSpeedMph,
   carryYards: incomingShot.carryYards ?? incomingShot.carry,
   totalYards: incomingShot.totalYards ?? incomingShot.total,
   offlineYards: incomingShot.offlineYards ?? incomingShot.offline,
   launchAngleDeg: incomingShot.launchAngleDeg ?? incomingShot.vla,
   spinRpm: incomingShot.spinRpm ?? incomingShot.spin,
+  shotName: incomingShot.shotName ?? incomingShot.shot_name,
   shotRanking: incomingShot.shotRanking,
   source,
+})
+
+const mergeDerivedValues = (
+  shot: Shot,
+  derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>,
+): Shot => ({
+  ...shot,
+  carryYards: derivedValues.carry_distance_yards ?? shot.carryYards,
+  totalYards: derivedValues.total_distance_yards ?? shot.totalYards,
+  offlineYards: derivedValues.offline_distance_yards ?? shot.offlineYards,
+  shotName: derivedValues.shot_name ?? shot.shotName,
+  shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
 })
 
 function App() {
@@ -89,10 +123,34 @@ function App() {
           return
         }
 
-        setShots((currentShots) => [
-          buildShot(incomingShot, selectedClubRef.current, activeSource),
-          ...currentShots,
-        ])
+        const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+        setShots((currentShots) => [shot, ...currentShots])
+
+        const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
+        if (!hasOpenGolfCoachInput(openGolfCoachInput)) {
+          return
+        }
+
+        void openGolfCoachEnricher.enrichShot(openGolfCoachInput).then((derivedValues) => {
+          if (!isActive) {
+            return
+          }
+
+          const hasDerivedValues = Object.values(derivedValues).some(
+            (value) => value !== undefined,
+          )
+          if (!hasDerivedValues) {
+            return
+          }
+
+          setShots((currentShots) =>
+            currentShots.map((currentShot) =>
+              currentShot.id === shot.id
+                ? mergeDerivedValues(currentShot, derivedValues)
+                : currentShot,
+            ),
+          )
+        })
       },
       setConnectionStatus,
       (event) => {
