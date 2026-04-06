@@ -18,6 +18,7 @@ export type Shot = {
   club: Club
   included: boolean
   capturedAt: string
+  enrichmentStatus: 'raw_only' | 'enriched' | 'enrichment_failed'
   ballSpeedMetersPerSecond?: number
   verticalLaunchAngleDegrees?: number
   horizontalLaunchAngleDegrees?: number

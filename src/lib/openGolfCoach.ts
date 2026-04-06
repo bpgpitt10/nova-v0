@@ -4,15 +4,22 @@ import type {
   OpenGolfCoachInput,
 } from '../types'
 
+export type OpenGolfCoachEnrichmentResult = {
+  derivedValues: OpenGolfCoachDerivedValues
+  status: 'not_configured' | 'success' | 'failure'
+}
+
 export type OpenGolfCoachEnricher = {
   enrichShot: (
     input: OpenGolfCoachInput,
-  ) => Promise<OpenGolfCoachDerivedValues>
+  ) => Promise<OpenGolfCoachEnrichmentResult>
 }
 
 const openGolfCoachUrl = import.meta.env.VITE_OPEN_GOLF_COACH_URL as
   | string
   | undefined
+
+export const isOpenGolfCoachConfigured = Boolean(openGolfCoachUrl)
 
 // Placeholder enrichment boundary.
 // Nova remains the raw live-shot source.
@@ -21,7 +28,10 @@ const openGolfCoachUrl = import.meta.env.VITE_OPEN_GOLF_COACH_URL as
 export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
     if (!openGolfCoachUrl) {
-      return {}
+      return {
+        derivedValues: {},
+        status: 'not_configured',
+      }
     }
 
     try {
@@ -34,17 +44,29 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       })
 
       if (!response.ok) {
-        return {}
+        return {
+          derivedValues: {},
+          status: 'failure',
+        }
       }
 
       const derivedValues: unknown = await response.json()
       if (!derivedValues || typeof derivedValues !== 'object') {
-        return {}
+        return {
+          derivedValues: {},
+          status: 'failure',
+        }
       }
 
-      return derivedValues as OpenGolfCoachDerivedValues
+      return {
+        derivedValues: derivedValues as OpenGolfCoachDerivedValues,
+        status: 'success',
+      }
     } catch {
-      return {}
+      return {
+        derivedValues: {},
+        status: 'failure',
+      }
     }
   },
 }

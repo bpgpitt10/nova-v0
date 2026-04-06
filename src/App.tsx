@@ -9,6 +9,7 @@ import './App.css'
 import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
+  isOpenGolfCoachConfigured,
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
 import { scoreClub } from './lib/scoring'
@@ -50,6 +51,7 @@ const buildShot = (
   club,
   included: true,
   capturedAt: incomingShot.timestamp ?? new Date().toISOString(),
+  enrichmentStatus: 'raw_only',
   ballSpeedMetersPerSecond:
     incomingShot.ballSpeedMetersPerSecond ??
     incomingShot.ball_speed_meters_per_second,
@@ -74,9 +76,10 @@ const buildShot = (
 
 const mergeDerivedValues = (
   shot: Shot,
-  derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>,
+  derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>['derivedValues'],
 ): Shot => ({
   ...shot,
+  enrichmentStatus: 'enriched',
   carryYards: derivedValues.carry_distance_yards ?? shot.carryYards,
   totalYards: derivedValues.total_distance_yards ?? shot.totalYards,
   offlineYards: derivedValues.offline_distance_yards ?? shot.offlineYards,
@@ -92,6 +95,10 @@ function App() {
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<NovaConnectionStatus>('disconnected')
+  const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
+  const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
+    'idle' | 'success' | 'failure'
+  >('idle')
   const [lastRawMessage, setLastRawMessage] = useState<string>('-')
   const [lastNormalizedShot, setLastNormalizedShot] =
     useState<IncomingNovaShot | null>(null)
@@ -131,12 +138,30 @@ function App() {
           return
         }
 
-        void openGolfCoachEnricher.enrichShot(openGolfCoachInput).then((derivedValues) => {
+        void openGolfCoachEnricher.enrichShot(openGolfCoachInput).then((result) => {
           if (!isActive) {
             return
           }
 
-          const hasDerivedValues = Object.values(derivedValues).some(
+          if (result.status === 'failure') {
+            setHelperReachable(false)
+            setLastEnrichmentStatus('failure')
+            setShots((currentShots) =>
+              currentShots.map((currentShot) =>
+                currentShot.id === shot.id
+                  ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                  : currentShot,
+              ),
+            )
+            return
+          }
+
+          if (result.status === 'success') {
+            setHelperReachable(true)
+            setLastEnrichmentStatus('success')
+          }
+
+          const hasDerivedValues = Object.values(result.derivedValues).some(
             (value) => value !== undefined,
           )
           if (!hasDerivedValues) {
@@ -146,7 +171,7 @@ function App() {
           setShots((currentShots) =>
             currentShots.map((currentShot) =>
               currentShot.id === shot.id
-                ? mergeDerivedValues(currentShot, derivedValues)
+                ? mergeDerivedValues(currentShot, result.derivedValues)
                 : currentShot,
             ),
           )
@@ -191,6 +216,8 @@ function App() {
     setHasRunScoring(false)
     setFeedMode(null)
     setConnectionStatus('connecting')
+    setHelperReachable(null)
+    setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastNormalizedShot(null)
     setSessionStartedAt(new Date().toISOString())
@@ -231,6 +258,8 @@ function App() {
     setHasRunScoring(false)
     setFeedMode(null)
     setConnectionStatus('disconnected')
+    setHelperReachable(null)
+    setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastNormalizedShot(null)
     setSessionStartedAt(null)
@@ -369,6 +398,18 @@ function App() {
               <strong>Shots received</strong>
               <span>{shots.length}</span>
             </div>
+            <div>
+              <strong>Helper configured</strong>
+              <span>{isOpenGolfCoachConfigured ? 'yes' : 'no'}</span>
+            </div>
+            <div>
+              <strong>Helper reachable</strong>
+              <span>{helperReachable === null ? 'unknown' : helperReachable ? 'yes' : 'no'}</span>
+            </div>
+            <div>
+              <strong>Last enrichment</strong>
+              <span>{lastEnrichmentStatus}</span>
+            </div>
           </div>
 
           <label>
@@ -475,9 +516,13 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
           <th>Time</th>
           <th>Club</th>
           <th>Carry</th>
+          <th>Total</th>
+          <th>Offline</th>
           <th>Ball speed</th>
           <th>Launch</th>
           <th>Spin</th>
+          <th>Shot rank</th>
+          <th>Enrichment</th>
           <th>Status</th>
           <th>Action</th>
         </tr>
@@ -505,9 +550,21 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
               )}
             </td>
             <td>{formatValue(shot.carryYards, ' yd')}</td>
+            <td>{formatValue(shot.totalYards, ' yd')}</td>
+            <td>{formatValue(shot.offlineYards, ' yd')}</td>
             <td>{formatValue(shot.ballSpeedMph, ' mph')}</td>
             <td>{formatValue(shot.launchAngleDeg, ' deg')}</td>
             <td>{formatValue(shot.spinRpm, ' rpm')}</td>
+            <td>
+              {typeof shot.shotRanking === 'undefined' ? '-' : `${shot.shotRanking}`}
+            </td>
+            <td>
+              {shot.enrichmentStatus === 'raw_only'
+                ? 'Raw only'
+                : shot.enrichmentStatus === 'enriched'
+                  ? 'Enriched'
+                  : 'Enrichment failed'}
+            </td>
             <td>{shot.included ? 'Included' : 'Excluded'}</td>
             <td>
               <button onClick={() => onToggleShot(shot.id)}>
