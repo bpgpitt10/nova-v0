@@ -14,16 +14,9 @@ PORT = int(os.environ.get("OPEN_GOLF_COACH_PORT", "8787"))
 def derive_values(payload: dict) -> dict:
     result_json = opengolfcoach.calculate_derived_values(json.dumps(payload))
     result = json.loads(result_json)
-    coach = result.get("open_golf_coach", {})
-    customary = coach.get("us_customary_units", {})
-
-    return {
-        "carry_distance_yards": customary.get("carry_distance_yards"),
-        "total_distance_yards": customary.get("total_distance_yards"),
-        "offline_distance_yards": customary.get("offline_distance_yards"),
-        "shot_name": coach.get("shot_name"),
-        "shot_rank": coach.get("shot_rank"),
-    }
+    if not isinstance(result, dict):
+        raise ValueError("OpenGolfCoach result must be a JSON object")
+    return result
 
 
 class OpenGolfCoachHandler(BaseHTTPRequestHandler):

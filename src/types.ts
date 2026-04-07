@@ -6,6 +6,7 @@ export type Shot = {
   included: boolean
   capturedAt: string
   enrichmentStatus: 'raw_only' | 'enriched' | 'enrichment_failed'
+  openGolfCoach?: OpenGolfCoachPayload
   ballSpeedMetersPerSecond?: number
   verticalLaunchAngleDegrees?: number
   horizontalLaunchAngleDegrees?: number
@@ -59,6 +60,8 @@ export type OpenGolfCoachInput = {
   spin_axis_degrees?: number
 }
 
+export type OpenGolfCoachPayload = Record<string, unknown>
+
 export type OpenGolfCoachDerivedValues = {
   carry_distance_yards?: number
   total_distance_yards?: number
@@ -67,11 +70,25 @@ export type OpenGolfCoachDerivedValues = {
   shot_rank?: number | string
 }
 
+export type SessionMetadata = {
+  app: 'nova-validation'
+  schemaVersion: number
+  feedMode?: 'mock' | 'real'
+}
+
 export type SavedSession = {
   id: string
   startedAt: string
   endedAt: string
   shots: Shot[]
+  metadata?: SessionMetadata
+}
+
+export type ActiveSessionDraft = {
+  id: string
+  startedAt: string
+  shots: Shot[]
+  metadata: SessionMetadata
 }
 
 export type ClubSummary = {

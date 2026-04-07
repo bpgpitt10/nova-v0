@@ -20,11 +20,18 @@ import {
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
 import { summarizeReviewClub } from './lib/scoring'
-import { loadSavedSessions, saveSessionHistory } from './lib/sessions'
 import {
+  clearActiveSessionDraft,
+  loadActiveSessionDraft,
+  loadSavedSessions,
+  saveActiveSessionDraft,
+  saveSessionHistory,
+} from './lib/sessions'
+import {
+  type ActiveSessionDraft,
   type IncomingNovaShot,
-  type OpenGolfCoachDerivedValues,
   type OpenGolfCoachInput,
+  type OpenGolfCoachPayload,
   type ReviewClubSummary,
   type SavedSession,
   type Shot,
@@ -81,22 +88,26 @@ const formatDebugValue = (key: string, value: number) => {
   return Number(value.toFixed(1))
 }
 
-const formatDebugPayload = (
-  payload:
-    | IncomingNovaShot
-    | Shot
-    | OpenGolfCoachInput
-    | OpenGolfCoachDerivedValues
-    | null,
-) =>
-  payload
-    ? JSON.stringify(
-        payload,
-        (key, value) =>
-          typeof value === 'number' ? formatDebugValue(key, value) : value,
-        2,
-      )
-    : '-'
+const formatDebugPayload = (payload: unknown) => {
+  if (payload === null || typeof payload === 'undefined') {
+    return '-'
+  }
+
+  return JSON.stringify(
+    payload,
+    (key, value) =>
+      typeof value === 'number' ? formatDebugValue(key, value) : value,
+    2,
+  )
+}
+
+const formatRawJson = (payload: unknown) => {
+  if (payload === null || typeof payload === 'undefined') {
+    return '-'
+  }
+
+  return JSON.stringify(payload, null, 2)
+}
 
 const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
   `caddie-call-pill caddie-call-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
@@ -210,12 +221,20 @@ const buildShot = (
   source,
 })
 
+const currentSessionMetadata = (feedMode: SessionFeedMode) => ({
+  app: 'nova-validation' as const,
+  schemaVersion: 2,
+  feedMode,
+})
+
 const mergeDerivedValues = (
   shot: Shot,
+  payload: OpenGolfCoachPayload | null,
   derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>['derivedValues'],
 ): Shot => ({
   ...shot,
   enrichmentStatus: 'enriched',
+  openGolfCoach: payload ?? shot.openGolfCoach,
   carryYards: derivedValues.carry_distance_yards ?? shot.carryYards,
   totalYards: derivedValues.total_distance_yards ?? shot.totalYards,
   offlineYards: derivedValues.offline_distance_yards ?? shot.offlineYards,
@@ -246,8 +265,10 @@ function App() {
   const [lastOpenGolfCoachInput, setLastOpenGolfCoachInput] =
     useState<OpenGolfCoachInput | null>(null)
   const [lastOpenGolfCoachResponse, setLastOpenGolfCoachResponse] =
-    useState<OpenGolfCoachDerivedValues | null>(null)
+    useState<OpenGolfCoachPayload | null>(null)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null)
+  const [showShotData, setShowShotData] = useState(false)
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
   const configuredMode: NovaFeedMode = selectedFeedMode
@@ -258,10 +279,81 @@ function App() {
         ? 'failure'
         : connectionStatus
   const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
+  const mostRecentShotData = useMemo(() => {
+    const mostRecentShot = shots[0]
+
+    if (!mostRecentShot) {
+      return null
+    }
+
+    return {
+      rawNova:
+        lastStoredShot && lastStoredShot.id === mostRecentShot.id ? lastParsedShot : null,
+      shot: mostRecentShot,
+      openGolfCoach: mostRecentShot.openGolfCoach ?? null,
+      enrichmentStatus: mostRecentShot.enrichmentStatus,
+    }
+  }, [lastParsedShot, lastStoredShot, shots])
+  const latestShotOpenGolfCoachKeys = useMemo(() => {
+    const payload = shots[0]?.openGolfCoach
+
+    if (!payload) {
+      return []
+    }
+
+    return Object.keys(payload).sort((left, right) => left.localeCompare(right))
+  }, [shots])
+  const helperResponseTopLevelKeys = useMemo(() => {
+    if (!lastOpenGolfCoachResponse) {
+      return []
+    }
+
+    return Object.keys(lastOpenGolfCoachResponse).sort((left, right) =>
+      left.localeCompare(right),
+    )
+  }, [lastOpenGolfCoachResponse])
+  const latestReloadedOpenGolfCoachKeys = useMemo(() => {
+    const reloadTraceToken = `${sessionState}:${savedSessions.length}:${shots.length}`
+    void reloadTraceToken
+
+    const activeDraftShot = loadActiveSessionDraft()?.shots[0]
+    if (activeDraftShot?.openGolfCoach) {
+      return Object.keys(activeDraftShot.openGolfCoach).sort((left, right) =>
+        left.localeCompare(right),
+      )
+    }
+
+    const reloadedSavedShot = loadSavedSessions()[0]?.shots[0]
+    if (reloadedSavedShot?.openGolfCoach) {
+      return Object.keys(reloadedSavedShot.openGolfCoach).sort((left, right) =>
+        left.localeCompare(right),
+      )
+    }
+
+    return []
+  }, [savedSessions.length, sessionState, shots.length])
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
   }, [selectedClub])
+
+  useEffect(() => {
+    if (sessionState !== 'live' || !sessionStartedAt || !liveSessionId) {
+      clearActiveSessionDraft()
+      return undefined
+    }
+
+    const draft: ActiveSessionDraft = {
+      id: liveSessionId,
+      startedAt: sessionStartedAt,
+      shots,
+      metadata: currentSessionMetadata(selectedFeedMode),
+    }
+
+    saveActiveSessionDraft(draft)
+
+    return undefined
+  }, [liveSessionId, selectedFeedMode, sessionStartedAt, sessionState, shots])
 
   useEffect(() => {
     if (sessionState !== 'live') {
@@ -317,26 +409,23 @@ function App() {
           if (result.status === 'success') {
             setHelperReachable(true)
             setLastEnrichmentStatus('success')
-            setLastOpenGolfCoachResponse(result.derivedValues)
+            setLastOpenGolfCoachResponse(result.payload)
           }
 
-          const hasDerivedValues = Object.values(result.derivedValues).some(
-            (value) => value !== undefined,
-          )
-          if (!hasDerivedValues) {
+          if (!result.payload) {
             return
           }
 
           setShots((currentShots) =>
             currentShots.map((currentShot) =>
               currentShot.id === shot.id
-                ? mergeDerivedValues(currentShot, result.derivedValues)
+                ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
                 : currentShot,
             ),
           )
           setLastStoredShot((currentShot) =>
             currentShot && currentShot.id === shot.id
-              ? mergeDerivedValues(currentShot, result.derivedValues)
+              ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
               : currentShot,
           )
         })
@@ -641,6 +730,7 @@ function App() {
 
   const startSession = () => {
     setShots([])
+    setLiveSessionId(crypto.randomUUID())
     setFeedMode(null)
     setConnectionStatus('connecting')
     setHelperReachable(null)
@@ -657,10 +747,11 @@ function App() {
   const endSession = () => {
     const endedAt = new Date().toISOString()
     const savedSession: SavedSession = {
-      id: crypto.randomUUID(),
+      id: liveSessionId ?? crypto.randomUUID(),
       startedAt: sessionStartedAt ?? endedAt,
       endedAt,
       shots,
+      metadata: currentSessionMetadata(selectedFeedMode),
     }
 
     setSavedSessions((currentSessions) => {
@@ -668,7 +759,9 @@ function App() {
       saveSessionHistory(nextSessions)
       return nextSessions
     })
+    clearActiveSessionDraft()
     setActiveSessionId(savedSession.id)
+    setLiveSessionId(null)
     setSessionState('review')
   }
 
@@ -696,6 +789,7 @@ function App() {
     setSessionState('setup')
     setShots([])
     setActiveSessionId(null)
+    setLiveSessionId(null)
     setFeedMode(null)
     setConnectionStatus('disconnected')
     setHelperReachable(null)
@@ -706,6 +800,7 @@ function App() {
     setLastOpenGolfCoachInput(null)
     setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(null)
+    clearActiveSessionDraft()
   }
 
   const undoLastShot = () => {
@@ -731,9 +826,84 @@ function App() {
     setSessionState('review')
   }
 
+  const ogcValidationSection = (
+    <section className="panel ogc-validation-panel">
+      <h2>FULL OGC VALIDATION</h2>
+      <p>
+        Helper response keys:{' '}
+        {helperResponseTopLevelKeys.length > 0
+          ? helperResponseTopLevelKeys.join(', ')
+          : '-'}
+      </p>
+      <p>
+        openGolfCoach keys before save:{' '}
+        {latestShotOpenGolfCoachKeys.length > 0
+          ? latestShotOpenGolfCoachKeys.join(', ')
+          : '-'}
+      </p>
+      <p>
+        openGolfCoach keys after reload:{' '}
+        {latestReloadedOpenGolfCoachKeys.length > 0
+          ? latestReloadedOpenGolfCoachKeys.join(', ')
+          : '-'}
+      </p>
+      <pre className="debug-value debug-value-full">
+        {formatRawJson(shots[0]?.openGolfCoach ?? null)}
+      </pre>
+    </section>
+  )
+
   return (
     <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
       {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
+
+      {sessionState !== 'review' && ogcValidationSection}
+
+      {sessionState !== 'review' && (
+        <section className="panel">
+          <div className="button-row">
+            <button onClick={() => setShowShotData((current) => !current)}>
+              {showShotData ? 'Hide Shot Data' : 'Show Shot Data'}
+            </button>
+          </div>
+          {showShotData && (
+            <>
+              <p>
+                Full OpenGolfCoach payload on latest shot:{' '}
+                {shots[0]?.openGolfCoach ? 'yes' : 'no'}
+              </p>
+              <p>
+                Top-level OpenGolfCoach keys:{' '}
+                {latestShotOpenGolfCoachKeys.length > 0
+                  ? latestShotOpenGolfCoachKeys.join(', ')
+                  : '-'}
+              </p>
+              <p>
+                Helper response top-level keys:{' '}
+                {helperResponseTopLevelKeys.length > 0
+                  ? helperResponseTopLevelKeys.join(', ')
+                  : '-'}
+              </p>
+              <p>
+                shot.openGolfCoach top-level keys before persistence:{' '}
+                {latestShotOpenGolfCoachKeys.length > 0
+                  ? latestShotOpenGolfCoachKeys.join(', ')
+                  : '-'}
+              </p>
+              <p>
+                shot.openGolfCoach top-level keys after reload from localStorage:{' '}
+                {latestReloadedOpenGolfCoachKeys.length > 0
+                  ? latestReloadedOpenGolfCoachKeys.join(', ')
+                  : '-'}
+              </p>
+              <p>Stored shot view mostly shows convenience fields plus nested openGolfCoach.</p>
+              <pre className="debug-value debug-value-full">
+                {formatRawJson(mostRecentShotData)}
+              </pre>
+            </>
+          )}
+        </section>
+      )}
 
       {sessionState !== 'review' && (
         <section className="panel tester-panel">
@@ -777,8 +947,16 @@ function App() {
             <tr>
               <th>Stored shot</th>
               <td>
-                <pre className="debug-value">
-                  {formatDebugPayload(lastStoredShot)}
+                <pre className="debug-value debug-value-full">
+                  {formatRawJson(lastStoredShot)}
+                </pre>
+              </td>
+            </tr>
+            <tr>
+              <th>Stored shot OpenGolfCoach</th>
+              <td>
+                <pre className="debug-value debug-value-full">
+                  {formatRawJson(lastStoredShot?.openGolfCoach ?? null)}
                 </pre>
               </td>
             </tr>
@@ -1005,10 +1183,15 @@ function App() {
                 Undo Last Shot
               </button>
               <button>Export</button>
+              <button onClick={() => setShowShotData((current) => !current)}>
+                {showShotData ? 'Hide Shot Data' : 'Show Shot Data'}
+              </button>
             </div>
           </aside>
 
           <div className="dashboard-screen">
+            {ogcValidationSection}
+
             {dashboardSummaryLead ? (
               <>
                 <section
@@ -1317,9 +1500,48 @@ function App() {
                     </div>
                   </section>
 
-                  <section className="review-card">
-                    <div className="section-kicker">Supporting Metrics</div>
-                    <div className="supporting-grid">
+                <section className="review-card">
+                  <div className="section-kicker">Supporting Metrics</div>
+                  {showShotData && (
+                    <>
+                      <p>
+                        Full OpenGolfCoach payload on latest shot:{' '}
+                        {shots[0]?.openGolfCoach ? 'yes' : 'no'}
+                      </p>
+                      <p>
+                        Top-level OpenGolfCoach keys:{' '}
+                          {latestShotOpenGolfCoachKeys.length > 0
+                            ? latestShotOpenGolfCoachKeys.join(', ')
+                            : '-'}
+                      </p>
+                      <p>
+                        Helper response top-level keys:{' '}
+                        {helperResponseTopLevelKeys.length > 0
+                          ? helperResponseTopLevelKeys.join(', ')
+                          : '-'}
+                      </p>
+                      <p>
+                        shot.openGolfCoach top-level keys before persistence:{' '}
+                        {latestShotOpenGolfCoachKeys.length > 0
+                          ? latestShotOpenGolfCoachKeys.join(', ')
+                          : '-'}
+                      </p>
+                      <p>
+                        shot.openGolfCoach top-level keys after reload from localStorage:{' '}
+                        {latestReloadedOpenGolfCoachKeys.length > 0
+                          ? latestReloadedOpenGolfCoachKeys.join(', ')
+                          : '-'}
+                      </p>
+                      <p>
+                        Stored shot view mostly shows convenience fields plus nested
+                        openGolfCoach.
+                      </p>
+                      <pre className="debug-value debug-value-full">
+                        {formatRawJson(mostRecentShotData)}
+                      </pre>
+                    </>
+                  )}
+                  <div className="supporting-grid">
                       <div className="supporting-block">
                         <div className="supporting-title">Component Breakdown</div>
                         {reviewSummaries.map((summary) => (
@@ -1365,7 +1587,17 @@ function App() {
                           </div>
                           <div className="supporting-debug">
                             <div className="supporting-debug-label">Stored shot</div>
-                            <pre className="debug-value">{formatDebugPayload(lastStoredShot)}</pre>
+                            <pre className="debug-value debug-value-full">
+                              {formatRawJson(lastStoredShot)}
+                            </pre>
+                          </div>
+                          <div className="supporting-debug">
+                            <div className="supporting-debug-label">
+                              Stored shot OpenGolfCoach
+                            </div>
+                            <pre className="debug-value debug-value-full">
+                              {formatRawJson(lastStoredShot?.openGolfCoach ?? null)}
+                            </pre>
                           </div>
                           <div className="supporting-debug">
                             <div className="supporting-debug-label">OpenGolfCoach input</div>
