@@ -7,19 +7,26 @@ It must feel more editorial and atmospheric than the club grid below.
 
 This section is the first meaningful content on the Dashboard.
 
+This file is the single source of truth for the full Dashboard hero area, including:
+- The Looper's Read
+- Spotlight on Your Game
+- Trend to Watch
+
+Other design files may reference this hero area, but should not redefine its structure, tone, or content rules.
+
 ---
 
 ## Structure
 
 The hero area contains:
 
-1. A primary `Game Status` block
+1. A primary `The Looper's Read` block
 2. A secondary two-card row beneath it:
    - `Spotlight on Your Game`
    - `Trend to Watch`
 
 ### Layout
-- `Game Status` spans the full hero width
+- `The Looper's Read` spans the full hero width
 - Below it sits a two-card row on desktop
 - The two supporting cards appear side-by-side
 - The whole hero area should feel like one unified editorial section
@@ -31,10 +38,10 @@ The hero area contains:
 
 ---
 
-## Primary Block: Game Status
+## Primary Block: The Looper's Read
 
 ### Required content
-- eyebrow: `Game Status`
+- eyebrow: `The Looper's Read`
 - main narrative paragraph (2–5 sentences)
 - optional short supporting line or stat strip
 - subtle course / flag / green texture atmosphere
@@ -155,7 +162,7 @@ Rules:
 
 The user should land on the Dashboard and immediately get:
 
-1. the big-picture state of the game from `Game Status`
+1. the big-picture state of the game from `The Looper's Read`
 2. one strong supporting takeaway from `Spotlight on Your Game`
 3. one key movement from `Trend to Watch`
 

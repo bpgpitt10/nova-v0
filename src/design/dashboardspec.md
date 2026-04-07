@@ -61,8 +61,7 @@ Not:
 ### Structure
 Main content order:
 1. Page header
-2. Hero summary / headline block
-3. Spotlight cards
+2. Hero area (as defined in `dashboardHeroSpec.md`)
 4. Club card grid
 5. Insights / supporting trend cards
 
@@ -108,52 +107,22 @@ Rules:
 
 ---
 
-## 5. Hero Summary Block
+## 5. Hero Area Ownership (Placement Only)
 
-This is the top decision block.
+Hero structure, naming, content, and interpretation are owned by:
+- `dashboardHeroSpec.md`
 
-### Purpose
-Give immediate context on where the game stands right now.
+This file only defines where the hero area sits in page order.
 
-### Layout
-Wide card across top.
-
-### Content
-- headline summary
-- short supporting sentence
-- optional highlighted best club / biggest mover
-
-### Example content types
-- "Your scoring clubs are separating from the rest"
-- "8i is now your most trusted club"
-- "Long clubs are becoming the weak link"
+For the hero, do not redefine here:
+- primary block semantics (including `The Looper's Read`)
+- `Spotlight on Your Game` content/behavior
+- `Trend to Watch` content/behavior
 
 Rules:
-- conclusion first
-- 1–2 lines max
-- no metric overload here
-
----
-
-## 6. Spotlight Cards
-
-### Purpose
-Surface the 1–2 most important takeaways from the current state.
-
-### Layout
-2 cards side-by-side on desktop
-
-### Card content
-Each spotlight card should contain:
-- icon / visual accent
-- short headline
-- 1–2 supporting bullets
-- optional subtle visual background treatment
-
-Rules:
-- these are premium insight cards, not debug cards
-- use green/gold accenting carefully
-- cards should feel high-value and editorial
+- hero remains directly below the page header
+- no additional hero variants elsewhere on this page
+- no duplicated hero interpretation in this file
 
 ---
 

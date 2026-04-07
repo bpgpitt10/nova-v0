@@ -1,58 +1,63 @@
-import looperRef from "../assets/looper-landing-ref.png";
+import looperRef from '../assets/looper-landing-ref.png'
 
 export default function LooperLandingPage() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#0E1710] text-white">
-      {/* Background image */}
+    <div
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#08120d',
+        padding: '2vh 2vw',
+        boxSizing: 'border-box',
+      }}
+    >
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${looperRef})` }}
-      />
+        style={{
+          position: 'relative',
+          width: 'min(1200px, 96vw)',
+        }}
+      >
+        <img
+          src={looperRef}
+          alt=""
+          aria-hidden="true"
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: '96vh',
+            margin: '0 auto',
+            objectFit: 'contain',
+          }}
+        />
 
-      {/* Slight dark overlay */}
-      <div className="absolute inset-0 bg-black/10" />
+        <button
+          type="button"
+          aria-label="Choose Club"
+          title="Choose Club"
+          style={{ position: 'absolute', left: '12.2%', top: '73.4%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
+          onClick={() => console.log('Choose Club clicked')}
+        />
 
-      {/* Bottom panels */}
-      <div className="relative z-10 flex min-h-screen items-end justify-center pb-10 px-6">
-        <div className="grid w-full max-w-[1200px] grid-cols-2 gap-6">
+        <button
+          type="button"
+          aria-label="Start"
+          title="Start"
+          style={{ position: 'absolute', left: '12.2%', top: '81.1%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
+          onClick={() => console.log('Start clicked')}
+        />
 
-          {/* LEFT: New Session */}
-          <div className="rounded-xl border border-[#314233] bg-[#142118]/70 p-6">
-            <h2 className="text-lg font-semibold text-[#F2E7C7]">
-              New Session
-            </h2>
-
-            <div className="mt-4 space-y-4">
-              {/* Choose Club */}
-              <button className="w-full h-[60px] rounded-lg border border-[#314233] bg-[#172419] flex items-center justify-between px-4">
-                <span>Choose Club</span>
-                <span className="text-[#D4B15A]">›</span>
-              </button>
-
-              {/* Start (gold emphasis) */}
-              <button className="w-full h-[60px] rounded-lg border border-[#D4B15A] bg-[#D4B15A] text-black flex items-center justify-between px-4">
-                <span className="font-semibold">Start</span>
-                <span>›</span>
-              </button>
-            </div>
-          </div>
-
-          {/* RIGHT: Manage Data */}
-          <div className="rounded-xl border border-[#314233] bg-[#142118]/70 p-6">
-            <h2 className="text-lg font-semibold text-[#F2E7C7]">
-              Manage Data
-            </h2>
-
-            <div className="mt-4">
-              <button className="w-full h-[60px] rounded-lg border border-[#314233] bg-[#172419] flex items-center justify-between px-4">
-                <span>Open Data</span>
-                <span className="text-[#D4B15A]">›</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
+        <button
+          type="button"
+          aria-label="Open Data"
+          title="Open Data"
+          style={{ position: 'absolute', left: '56.8%', top: '77.2%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
+          onClick={() => console.log('Open Data clicked')}
+        />
       </div>
     </div>
-  );
+  )
 }

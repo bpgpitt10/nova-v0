@@ -17,8 +17,8 @@ Rules:
 - Output should feel like a caddie, not an analyst
 
 Hierarchy:
-1. Decision (Caddie Call)
-2. Trust (Caddie Score)
+1. Decision (Call)
+2. Trust (Score)
 3. Explanation (Insights)
 4. Supporting data
 

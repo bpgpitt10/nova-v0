@@ -134,14 +134,6 @@
   background: #142118;
 }
 
-.ogc-validation-panel {
-  margin-top: 0;
-}
-
-.ogc-validation-panel h2 {
-  margin: 0 0 12px;
-}
-
 .toolbar {
   display: flex;
   align-items: flex-start;
@@ -214,27 +206,6 @@
 .status-error,
 .status-disconnected {
   color: #cf222e;
-}
-
-.tester-panel table {
-  table-layout: fixed;
-}
-
-.tester-panel th {
-  width: 220px;
-}
-
-.debug-value {
-  max-height: 160px;
-  overflow: auto;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font: 13px/1.4 ui-monospace, Consolas, monospace;
-}
-
-.debug-value-full {
-  max-height: 60vh;
 }
 
 .club-group {
@@ -990,24 +961,6 @@ td {
   gap: 12px;
   color: #ffffff;
   font-size: 13px;
-}
-
-.supporting-debug {
-  display: grid;
-  gap: 8px;
-}
-
-.supporting-debug-label {
-  color: #9fb09f;
-  font-size: 12px;
-}
-
-.review-card .debug-value {
-  color: #cfd8cd;
-  background: #172419;
-  border: 1px solid #314233;
-  border-radius: 10px;
-  padding: 12px;
 }
 
 .review-details-card {

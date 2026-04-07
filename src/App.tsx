@@ -22,7 +22,6 @@ import {
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
-  loadActiveSessionDraft,
   loadSavedSessions,
   saveActiveSessionDraft,
   saveSessionHistory,
@@ -30,7 +29,6 @@ import {
 import {
   type ActiveSessionDraft,
   type IncomingNovaShot,
-  type OpenGolfCoachInput,
   type OpenGolfCoachPayload,
   type ReviewClubSummary,
   type SavedSession,
@@ -72,41 +70,6 @@ const formatRank = (value: number | string | undefined) => {
   }
 
   return `${value}`
-}
-
-const formatDebugValue = (key: string, value: number) => {
-  const lowerKey = key.toLowerCase()
-
-  if (lowerKey.includes('score')) {
-    return Number(Math.round(value))
-  }
-
-  if (lowerKey.includes('spin') && !lowerKey.includes('axis')) {
-    return Number(Math.round(value))
-  }
-
-  return Number(value.toFixed(1))
-}
-
-const formatDebugPayload = (payload: unknown) => {
-  if (payload === null || typeof payload === 'undefined') {
-    return '-'
-  }
-
-  return JSON.stringify(
-    payload,
-    (key, value) =>
-      typeof value === 'number' ? formatDebugValue(key, value) : value,
-    2,
-  )
-}
-
-const formatRawJson = (payload: unknown) => {
-  if (payload === null || typeof payload === 'undefined') {
-    return '-'
-  }
-
-  return JSON.stringify(payload, null, 2)
 }
 
 const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
@@ -258,81 +221,11 @@ function App() {
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
-  const [lastRawMessage, setLastRawMessage] = useState<string>('-')
-  const [lastParsedShot, setLastParsedShot] =
-    useState<IncomingNovaShot | null>(null)
-  const [lastStoredShot, setLastStoredShot] = useState<Shot | null>(null)
-  const [lastOpenGolfCoachInput, setLastOpenGolfCoachInput] =
-    useState<OpenGolfCoachInput | null>(null)
-  const [lastOpenGolfCoachResponse, setLastOpenGolfCoachResponse] =
-    useState<OpenGolfCoachPayload | null>(null)
   const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
   const [liveSessionId, setLiveSessionId] = useState<string | null>(null)
-  const [showShotData, setShowShotData] = useState(false)
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
-  const configuredMode: NovaFeedMode = selectedFeedMode
-  const connectionResult =
-    connectionStatus === 'connected'
-      ? 'success'
-      : connectionStatus === 'error'
-        ? 'failure'
-        : connectionStatus
   const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
-  const mostRecentShotData = useMemo(() => {
-    const mostRecentShot = shots[0]
-
-    if (!mostRecentShot) {
-      return null
-    }
-
-    return {
-      rawNova:
-        lastStoredShot && lastStoredShot.id === mostRecentShot.id ? lastParsedShot : null,
-      shot: mostRecentShot,
-      openGolfCoach: mostRecentShot.openGolfCoach ?? null,
-      enrichmentStatus: mostRecentShot.enrichmentStatus,
-    }
-  }, [lastParsedShot, lastStoredShot, shots])
-  const latestShotOpenGolfCoachKeys = useMemo(() => {
-    const payload = shots[0]?.openGolfCoach
-
-    if (!payload) {
-      return []
-    }
-
-    return Object.keys(payload).sort((left, right) => left.localeCompare(right))
-  }, [shots])
-  const helperResponseTopLevelKeys = useMemo(() => {
-    if (!lastOpenGolfCoachResponse) {
-      return []
-    }
-
-    return Object.keys(lastOpenGolfCoachResponse).sort((left, right) =>
-      left.localeCompare(right),
-    )
-  }, [lastOpenGolfCoachResponse])
-  const latestReloadedOpenGolfCoachKeys = useMemo(() => {
-    const reloadTraceToken = `${sessionState}:${savedSessions.length}:${shots.length}`
-    void reloadTraceToken
-
-    const activeDraftShot = loadActiveSessionDraft()?.shots[0]
-    if (activeDraftShot?.openGolfCoach) {
-      return Object.keys(activeDraftShot.openGolfCoach).sort((left, right) =>
-        left.localeCompare(right),
-      )
-    }
-
-    const reloadedSavedShot = loadSavedSessions()[0]?.shots[0]
-    if (reloadedSavedShot?.openGolfCoach) {
-      return Object.keys(reloadedSavedShot.openGolfCoach).sort((left, right) =>
-        left.localeCompare(right),
-      )
-    }
-
-    return []
-  }, [savedSessions.length, sessionState, shots.length])
-
   useEffect(() => {
     selectedClubRef.current = selectedClub
   }, [selectedClub])
@@ -374,11 +267,9 @@ function App() {
 
         const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
         setShots((currentShots) => [shot, ...currentShots])
-        setLastStoredShot(shot)
 
         const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
         console.info('[OpenGolfCoach] built input:', openGolfCoachInput)
-        setLastOpenGolfCoachInput(openGolfCoachInput)
         if (!hasOpenGolfCoachInput(openGolfCoachInput)) {
           console.info(
             '[OpenGolfCoach] enrichment skipped: required input fields missing',
@@ -395,7 +286,6 @@ function App() {
           if (result.status === 'failure') {
             setHelperReachable(false)
             setLastEnrichmentStatus('failure')
-            setLastOpenGolfCoachResponse(null)
             setShots((currentShots) =>
               currentShots.map((currentShot) =>
                 currentShot.id === shot.id
@@ -409,7 +299,6 @@ function App() {
           if (result.status === 'success') {
             setHelperReachable(true)
             setLastEnrichmentStatus('success')
-            setLastOpenGolfCoachResponse(result.payload)
           }
 
           if (!result.payload) {
@@ -423,18 +312,10 @@ function App() {
                 : currentShot,
             ),
           )
-          setLastStoredShot((currentShot) =>
-            currentShot && currentShot.id === shot.id
-              ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
-              : currentShot,
-          )
         })
       },
       setConnectionStatus,
-      (event) => {
-        setLastRawMessage(event.rawMessage)
-        setLastParsedShot(event.normalizedShot)
-      },
+      () => undefined,
     )
 
     activeSource = connection.mode === 'mock' ? 'mock' : 'nova'
@@ -735,11 +616,6 @@ function App() {
     setConnectionStatus('connecting')
     setHelperReachable(null)
     setLastEnrichmentStatus('idle')
-    setLastRawMessage('-')
-    setLastParsedShot(null)
-    setLastStoredShot(null)
-    setLastOpenGolfCoachInput(null)
-    setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(new Date().toISOString())
     setSessionState('live')
   }
@@ -794,11 +670,6 @@ function App() {
     setConnectionStatus('disconnected')
     setHelperReachable(null)
     setLastEnrichmentStatus('idle')
-    setLastRawMessage('-')
-    setLastParsedShot(null)
-    setLastStoredShot(null)
-    setLastOpenGolfCoachInput(null)
-    setLastOpenGolfCoachResponse(null)
     setSessionStartedAt(null)
     clearActiveSessionDraft()
   }
@@ -826,160 +697,12 @@ function App() {
     setSessionState('review')
   }
 
-  const ogcValidationSection = (
-    <section className="panel ogc-validation-panel">
-      <h2>FULL OGC VALIDATION</h2>
-      <p>
-        Helper response keys:{' '}
-        {helperResponseTopLevelKeys.length > 0
-          ? helperResponseTopLevelKeys.join(', ')
-          : '-'}
-      </p>
-      <p>
-        openGolfCoach keys before save:{' '}
-        {latestShotOpenGolfCoachKeys.length > 0
-          ? latestShotOpenGolfCoachKeys.join(', ')
-          : '-'}
-      </p>
-      <p>
-        openGolfCoach keys after reload:{' '}
-        {latestReloadedOpenGolfCoachKeys.length > 0
-          ? latestReloadedOpenGolfCoachKeys.join(', ')
-          : '-'}
-      </p>
-      <pre className="debug-value debug-value-full">
-        {formatRawJson(shots[0]?.openGolfCoach ?? null)}
-      </pre>
-    </section>
-  )
-
   return (
     <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
+      {import.meta.env.DEV && <p><a href="/looper">Open Looper Landing (/looper)</a></p>}
+
       {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
-
-      {sessionState !== 'review' && ogcValidationSection}
-
-      {sessionState !== 'review' && (
-        <section className="panel">
-          <div className="button-row">
-            <button onClick={() => setShowShotData((current) => !current)}>
-              {showShotData ? 'Hide Shot Data' : 'Show Shot Data'}
-            </button>
-          </div>
-          {showShotData && (
-            <>
-              <p>
-                Full OpenGolfCoach payload on latest shot:{' '}
-                {shots[0]?.openGolfCoach ? 'yes' : 'no'}
-              </p>
-              <p>
-                Top-level OpenGolfCoach keys:{' '}
-                {latestShotOpenGolfCoachKeys.length > 0
-                  ? latestShotOpenGolfCoachKeys.join(', ')
-                  : '-'}
-              </p>
-              <p>
-                Helper response top-level keys:{' '}
-                {helperResponseTopLevelKeys.length > 0
-                  ? helperResponseTopLevelKeys.join(', ')
-                  : '-'}
-              </p>
-              <p>
-                shot.openGolfCoach top-level keys before persistence:{' '}
-                {latestShotOpenGolfCoachKeys.length > 0
-                  ? latestShotOpenGolfCoachKeys.join(', ')
-                  : '-'}
-              </p>
-              <p>
-                shot.openGolfCoach top-level keys after reload from localStorage:{' '}
-                {latestReloadedOpenGolfCoachKeys.length > 0
-                  ? latestReloadedOpenGolfCoachKeys.join(', ')
-                  : '-'}
-              </p>
-              <p>Stored shot view mostly shows convenience fields plus nested openGolfCoach.</p>
-              <pre className="debug-value debug-value-full">
-                {formatRawJson(mostRecentShotData)}
-              </pre>
-            </>
-          )}
-        </section>
-      )}
-
-      {sessionState !== 'review' && (
-        <section className="panel tester-panel">
-        <h2>Nova Connection Tester</h2>
-        <table>
-          <tbody>
-            <tr>
-              <th>VITE_NOVA_WS_URL</th>
-              <td>{novaWebSocketUrl ?? 'not set'}</td>
-            </tr>
-            <tr>
-              <th>Attempting mode</th>
-              <td>{configuredMode}</td>
-            </tr>
-            <tr>
-              <th>Active mode</th>
-              <td>{feedMode ?? 'not connected'}</td>
-            </tr>
-            <tr>
-              <th>Connection result</th>
-              <td>
-                <span className={`status-indicator status-${connectionStatus}`}>
-                  {connectionResult}
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <th>Raw Nova message</th>
-              <td>
-                <pre className="debug-value">{lastRawMessage}</pre>
-              </td>
-            </tr>
-            <tr>
-              <th>Parsed shot</th>
-              <td>
-                <pre className="debug-value">
-                  {formatDebugPayload(lastParsedShot)}
-                </pre>
-              </td>
-            </tr>
-            <tr>
-              <th>Stored shot</th>
-              <td>
-                <pre className="debug-value debug-value-full">
-                  {formatRawJson(lastStoredShot)}
-                </pre>
-              </td>
-            </tr>
-            <tr>
-              <th>Stored shot OpenGolfCoach</th>
-              <td>
-                <pre className="debug-value debug-value-full">
-                  {formatRawJson(lastStoredShot?.openGolfCoach ?? null)}
-                </pre>
-              </td>
-            </tr>
-            <tr>
-              <th>OpenGolfCoach input</th>
-              <td>
-                <pre className="debug-value">
-                  {formatDebugPayload(lastOpenGolfCoachInput)}
-                </pre>
-              </td>
-            </tr>
-            <tr>
-              <th>OpenGolfCoach response</th>
-              <td>
-                <pre className="debug-value">
-                  {formatDebugPayload(lastOpenGolfCoachResponse)}
-                </pre>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        </section>
-      )}
+      {/* Validation/debug UI removed; OpenGolfCoach enrichment + persistence remain active. */}
 
       {sessionState !== 'review' && (
         <section className="panel">
@@ -1183,15 +906,10 @@ function App() {
                 Undo Last Shot
               </button>
               <button>Export</button>
-              <button onClick={() => setShowShotData((current) => !current)}>
-                {showShotData ? 'Hide Shot Data' : 'Show Shot Data'}
-              </button>
             </div>
           </aside>
 
           <div className="dashboard-screen">
-            {ogcValidationSection}
-
             {dashboardSummaryLead ? (
               <>
                 <section
@@ -1200,7 +918,7 @@ function App() {
                   id="dashboard-overview"
                 >
                   <h3 className="dashboard-hero-title" id="dashboard-game-status-title">
-                    Game Status
+                    The Looper's Read
                   </h3>
                   <p className="dashboard-hero-narrative">{dashboardGameStatusNarrative}</p>
                   <div className="dashboard-hero-callouts">
@@ -1502,45 +1220,6 @@ function App() {
 
                 <section className="review-card">
                   <div className="section-kicker">Supporting Metrics</div>
-                  {showShotData && (
-                    <>
-                      <p>
-                        Full OpenGolfCoach payload on latest shot:{' '}
-                        {shots[0]?.openGolfCoach ? 'yes' : 'no'}
-                      </p>
-                      <p>
-                        Top-level OpenGolfCoach keys:{' '}
-                          {latestShotOpenGolfCoachKeys.length > 0
-                            ? latestShotOpenGolfCoachKeys.join(', ')
-                            : '-'}
-                      </p>
-                      <p>
-                        Helper response top-level keys:{' '}
-                        {helperResponseTopLevelKeys.length > 0
-                          ? helperResponseTopLevelKeys.join(', ')
-                          : '-'}
-                      </p>
-                      <p>
-                        shot.openGolfCoach top-level keys before persistence:{' '}
-                        {latestShotOpenGolfCoachKeys.length > 0
-                          ? latestShotOpenGolfCoachKeys.join(', ')
-                          : '-'}
-                      </p>
-                      <p>
-                        shot.openGolfCoach top-level keys after reload from localStorage:{' '}
-                        {latestReloadedOpenGolfCoachKeys.length > 0
-                          ? latestReloadedOpenGolfCoachKeys.join(', ')
-                          : '-'}
-                      </p>
-                      <p>
-                        Stored shot view mostly shows convenience fields plus nested
-                        openGolfCoach.
-                      </p>
-                      <pre className="debug-value debug-value-full">
-                        {formatRawJson(mostRecentShotData)}
-                      </pre>
-                    </>
-                  )}
                   <div className="supporting-grid">
                       <div className="supporting-block">
                         <div className="supporting-title">Component Breakdown</div>
@@ -1572,42 +1251,6 @@ function App() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                      <div className="supporting-block">
-                        <div className="supporting-title">Debug / Breakdown</div>
-                        <details className="supporting-details">
-                          <summary>Show debug details</summary>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">Raw Nova message</div>
-                            <pre className="debug-value">{lastRawMessage}</pre>
-                          </div>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">Parsed shot</div>
-                            <pre className="debug-value">{formatDebugPayload(lastParsedShot)}</pre>
-                          </div>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">Stored shot</div>
-                            <pre className="debug-value debug-value-full">
-                              {formatRawJson(lastStoredShot)}
-                            </pre>
-                          </div>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">
-                              Stored shot OpenGolfCoach
-                            </div>
-                            <pre className="debug-value debug-value-full">
-                              {formatRawJson(lastStoredShot?.openGolfCoach ?? null)}
-                            </pre>
-                          </div>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">OpenGolfCoach input</div>
-                            <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachInput)}</pre>
-                          </div>
-                          <div className="supporting-debug">
-                            <div className="supporting-debug-label">OpenGolfCoach response</div>
-                            <pre className="debug-value">{formatDebugPayload(lastOpenGolfCoachResponse)}</pre>
-                          </div>
-                        </details>
                       </div>
                       {groupedShots.length > 0 && (
                         <div className="supporting-block supporting-block-full">
