@@ -61,7 +61,8 @@ Not:
 ### Structure
 Main content order:
 1. Page header
-2. Hero area (as defined in `dashboardHeroSpec.md`)
+2. Hero summary / headline block
+3. Spotlight cards
 4. Club card grid
 5. Insights / supporting trend cards
 
@@ -107,22 +108,33 @@ Rules:
 
 ---
 
-## 5. Hero Area Ownership (Placement Only)
+## 5. Hero Summary Block
 
-Hero structure, naming, content, and interpretation are owned by:
-- `dashboardHeroSpec.md`
+Defined in:
+- src/design/dashboardHeroSpec.md
 
-This file only defines where the hero area sits in page order.
+Summary:
+- Primary full-width `The Looper's Read` block
+- Secondary supporting row:
+  - `Spotlight on Your Game`
+  - `Trend to Watch`
 
-For the hero, do not redefine here:
-- primary block semantics (including `The Looper's Read`)
-- `Spotlight on Your Game` content/behavior
-- `Trend to Watch` content/behavior
+This is the primary visual and editorial anchor of the Dashboard.
 
-Rules:
-- hero remains directly below the page header
-- no additional hero variants elsewhere on this page
-- no duplicated hero interpretation in this file
+Do not define hero behavior, structure, tone, or content rules here.
+Use `dashboardHeroSpec.md` as the single source of truth for the full hero area.
+
+---
+
+## 6. Spotlight Cards
+
+Defined in:
+- src/design/dashboardHeroSpec.md
+
+This supporting spotlight row is part of the Dashboard hero area.
+
+Do not define spotlight structure or content here.
+Use `dashboardHeroSpec.md` as the single source of truth.
 
 ---
 
@@ -142,15 +154,15 @@ Responsive card grid
 ### Club card required content
 Each club card shows:
 - Club name
-- Caddie Score
-- Caddie Call pill
+- Score
+- Call pill
 - 1 short supporting descriptor or trend line
 - small delta/trend signal
 - optional subtle visual/background treatment
 
 ### Rules
 - numeric score must be visually dominant
-- Caddie Call pill carries semantic color
+- Call pill carries semantic color
 - card itself may carry subtle tonal tint, but not overpower the score
 - do not use giant paragraphs inside cards
 - cards should feel premium, not boxy/plain
@@ -190,8 +202,8 @@ Rules:
 Keep the current scoring math unchanged.
 
 Display rules:
-- Caddie Score = large white numeric value
-- Caddie Call = semantic pill
+- Score = large white numeric value
+- Call = semantic pill
 - Never tint the score number by label
 - Use label color for pill, accent lines, subtle highlights
 
