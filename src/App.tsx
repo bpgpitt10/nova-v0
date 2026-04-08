@@ -37,6 +37,9 @@ import {
 
 type SessionState = 'setup' | 'live' | 'review'
 type SessionFeedMode = 'mock' | 'real'
+type ReviewView = 'dashboard' | 'clubDetail'
+type ComparisonDirection = 'up' | 'down'
+type ComparisonTone = 'up' | 'down' | 'neutral'
 
 const novaWebSocketUrl = import.meta.env.VITE_NOVA_WS_URL as string | undefined
 
@@ -70,6 +73,130 @@ const formatRank = (value: number | string | undefined) => {
   }
 
   return `${value}`
+}
+
+const averageNumbers = (values: Array<number | undefined>) => {
+  const definedValues = values.filter((value): value is number => typeof value === 'number')
+  if (definedValues.length === 0) {
+    return undefined
+  }
+
+  return definedValues.reduce((sum, value) => sum + value, 0) / definedValues.length
+}
+
+const standardDeviation = (values: Array<number | undefined>) => {
+  const definedValues = values.filter((value): value is number => typeof value === 'number')
+  if (definedValues.length === 0) {
+    return undefined
+  }
+
+  const mean =
+    definedValues.reduce((sum, value) => sum + value, 0) / definedValues.length
+  const variance =
+    definedValues.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    definedValues.length
+
+  return Math.sqrt(variance)
+}
+
+const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
+  if (!payload) {
+    return undefined
+  }
+
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (!Number.isNaN(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return undefined
+}
+
+const carryValue = (shot: Shot) =>
+  typeof shot.carryYards === 'number'
+    ? shot.carryYards
+    : payloadNumber(shot.openGolfCoach, [
+        'carry_distance_yards',
+        'carryDistanceYards',
+        'carry',
+      ])
+
+const totalValue = (shot: Shot) =>
+  typeof shot.totalYards === 'number'
+    ? shot.totalYards
+    : payloadNumber(shot.openGolfCoach, [
+        'total_distance_yards',
+        'totalDistanceYards',
+        'total',
+      ])
+
+const offlineValue = (shot: Shot) =>
+  typeof shot.offlineYards === 'number'
+    ? shot.offlineYards
+    : payloadNumber(shot.openGolfCoach, [
+        'offline_distance_yards',
+        'offlineDistanceYards',
+        'offline',
+      ])
+
+const launchValue = (shot: Shot) =>
+  typeof shot.verticalLaunchAngleDegrees === 'number'
+    ? shot.verticalLaunchAngleDegrees
+    : typeof shot.launchAngleDeg === 'number'
+      ? shot.launchAngleDeg
+      : payloadNumber(shot.openGolfCoach, [
+          'vertical_launch_angle_degrees',
+          'verticalLaunchAngleDegrees',
+          'launch_angle_degrees',
+          'launchAngleDeg',
+        ])
+
+const spinValue = (shot: Shot) =>
+  typeof shot.totalSpinRpm === 'number'
+    ? shot.totalSpinRpm
+    : typeof shot.spinRpm === 'number'
+      ? shot.spinRpm
+      : payloadNumber(shot.openGolfCoach, ['total_spin_rpm', 'totalSpinRpm', 'spin_rpm'])
+
+const descentValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, [
+    'descent_angle_degrees',
+    'descent_angle_deg',
+    'descent_angle',
+    'descentAngleDegrees',
+    'descentAngleDeg',
+    'descentAngle',
+  ])
+
+const comparisonTolerance = {
+  score: 3,
+  component: 4,
+}
+
+const comparisonDirection = (delta: number | undefined): ComparisonDirection =>
+  typeof delta === 'number' && delta < 0 ? 'down' : 'up'
+
+const comparisonTone = (
+  delta: number | undefined,
+  tolerance: number,
+): ComparisonTone => {
+  if (typeof delta !== 'number') {
+    return 'neutral'
+  }
+
+  if (Math.abs(delta) <= tolerance) {
+    return 'neutral'
+  }
+
+  return delta > 0 ? 'up' : 'down'
 }
 
 const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
@@ -209,6 +336,8 @@ function App() {
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
+  const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
+  const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
   const [shots, setShots] = useState<Shot[]>([])
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
@@ -329,30 +458,9 @@ function App() {
     }
   }, [selectedFeedMode, sessionState])
 
-  const groupedShots = useMemo(
-    () =>
-      activeBagClubIds
-        .map((club) => ({
-          club,
-          shots: shots.filter((shot) => shot.club === club),
-        }))
-        .filter((group) => group.shots.length > 0),
-    [shots],
-  )
-
   const dashboardShots = useMemo(
     () => savedSessions.flatMap((savedSession) => savedSession.shots),
     [savedSessions],
-  )
-
-  const reviewSummaries: ReviewClubSummary[] = useMemo(
-    () =>
-      activeBagClubIds
-        .map((club) =>
-          summarizeReviewClub(club, shots, savedSessions, activeSessionId),
-        )
-        .filter((summary): summary is ReviewClubSummary => summary !== null),
-    [activeSessionId, savedSessions, shots],
   )
 
   const dashboardSummaries: ReviewClubSummary[] = useMemo(
@@ -363,11 +471,6 @@ function App() {
     [dashboardShots, savedSessions],
   )
 
-  const rankedReviewSummaries = useMemo(
-    () => [...reviewSummaries].sort((left, right) => right.caddieScore - left.caddieScore),
-    [reviewSummaries],
-  )
-
   const rankedDashboardSummaries = useMemo(
     () =>
       [...dashboardSummaries].sort((left, right) => right.caddieScore - left.caddieScore),
@@ -375,20 +478,6 @@ function App() {
   )
 
   const dashboardSummaryLead = rankedDashboardSummaries[0] ?? null
-
-  const reviewSummaryLead = rankedReviewSummaries[0] ?? null
-  const reviewInsights = useMemo(() => {
-    if (!reviewSummaryLead) {
-      return []
-    }
-
-    const insights = [
-      `${getClubLabel(reviewSummaryLead.club)} is the current ${reviewSummaryLead.caddieCall.toLowerCase()} club at ${reviewSummaryLead.caddieScore}.`,
-      ...reviewSummaryLead.insights,
-    ]
-
-    return insights.slice(0, 3)
-  }, [reviewSummaryLead])
 
   const dashboardSummariesByClub = useMemo(
     () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
@@ -442,6 +531,212 @@ function App() {
 
     return summaries
   }, [savedSessions])
+
+  const historicalAveragesByClub = useMemo(() => {
+    const map = new Map<
+      Club,
+      {
+        score?: number
+        distanceWindow?: number
+        directionWindow?: number
+        flightQuality?: number
+        patternStability?: number
+        dataConfidence?: number
+      }
+    >()
+
+    const historicalSessions = savedSessions.slice(1)
+
+    activeBagClubIds.forEach((club) => {
+      const summaries = historicalSessions
+        .map((session) =>
+          summarizeReviewClub(
+            club,
+            session.shots,
+            savedSessions.filter((savedSession) => savedSession.id !== session.id),
+            session.id,
+          ),
+        )
+        .filter((summary): summary is ReviewClubSummary => summary !== null)
+
+      map.set(club, {
+        score: averageNumbers(summaries.map((summary) => summary.caddieScore)),
+        distanceWindow: averageNumbers(
+          summaries.map((summary) => summary.componentScores.distanceWindow),
+        ),
+        directionWindow: averageNumbers(
+          summaries.map((summary) => summary.componentScores.directionWindow),
+        ),
+        flightQuality: averageNumbers(
+          summaries.map((summary) => summary.componentScores.flightQuality),
+        ),
+        patternStability: averageNumbers(
+          summaries.map((summary) => summary.componentScores.patternStability),
+        ),
+        dataConfidence: averageNumbers(
+          summaries.map((summary) => summary.componentScores.dataConfidence),
+        ),
+      })
+    })
+
+    return map
+  }, [savedSessions])
+
+  const lastSessionComparisonRows = useMemo(() => {
+    const latestSession = savedSessions[0]
+    if (!latestSession) {
+      return []
+    }
+
+    return activeBagClubIds
+      .map((club) => {
+        const sessionShots = latestSession.shots.filter(
+          (shot) => shot.club === club && shot.included,
+        )
+        if (sessionShots.length === 0) {
+          return null
+        }
+
+        const summary = latestSessionSummariesByClub.get(club)
+        if (!summary) {
+          return null
+        }
+
+        const history = historicalAveragesByClub.get(club)
+
+        const scoreDelta =
+          typeof history?.score === 'number'
+            ? summary.caddieScore - history.score
+            : undefined
+        const distanceDelta =
+          typeof history?.distanceWindow === 'number'
+            ? summary.componentScores.distanceWindow - history.distanceWindow
+            : undefined
+        const directionDelta =
+          typeof history?.directionWindow === 'number'
+            ? summary.componentScores.directionWindow - history.directionWindow
+            : undefined
+        const flightDelta =
+          typeof history?.flightQuality === 'number'
+            ? summary.componentScores.flightQuality - history.flightQuality
+            : undefined
+        const patternDelta =
+          typeof history?.patternStability === 'number'
+            ? summary.componentScores.patternStability - history.patternStability
+            : undefined
+        const confidenceDelta =
+          typeof history?.dataConfidence === 'number'
+            ? summary.componentScores.dataConfidence - history.dataConfidence
+            : undefined
+
+        return {
+          club,
+          summary,
+          shots: sessionShots.length,
+          historicalScore: history?.score,
+          scoreDelta,
+          scoreDirection: comparisonDirection(scoreDelta),
+          scoreTone: comparisonTone(scoreDelta, comparisonTolerance.score),
+          componentComparisons: [
+            {
+              key: 'distanceWindow',
+              label: 'Distance Window',
+              value: summary.componentScores.distanceWindow,
+              historical: history?.distanceWindow,
+              delta: distanceDelta,
+              direction: comparisonDirection(distanceDelta),
+              tone: comparisonTone(distanceDelta, comparisonTolerance.component),
+            },
+            {
+              key: 'directionWindow',
+              label: 'Direction Window',
+              value: summary.componentScores.directionWindow,
+              historical: history?.directionWindow,
+              delta: directionDelta,
+              direction: comparisonDirection(directionDelta),
+              tone: comparisonTone(directionDelta, comparisonTolerance.component),
+            },
+            {
+              key: 'flightQuality',
+              label: 'Flight Quality',
+              value: summary.componentScores.flightQuality,
+              historical: history?.flightQuality,
+              delta: flightDelta,
+              direction: comparisonDirection(flightDelta),
+              tone: comparisonTone(flightDelta, comparisonTolerance.component),
+            },
+            {
+              key: 'patternStability',
+              label: 'Pattern Stability',
+              value: summary.componentScores.patternStability,
+              historical: history?.patternStability,
+              delta: patternDelta,
+              direction: comparisonDirection(patternDelta),
+              tone: comparisonTone(patternDelta, comparisonTolerance.component),
+            },
+            {
+              key: 'dataConfidence',
+              label: 'Data Confidence',
+              value: summary.componentScores.dataConfidence,
+              historical: history?.dataConfidence,
+              delta: confidenceDelta,
+              direction: comparisonDirection(confidenceDelta),
+              tone: comparisonTone(confidenceDelta, comparisonTolerance.component),
+            },
+          ] as const,
+        }
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+  }, [historicalAveragesByClub, latestSessionSummariesByClub, savedSessions])
+
+  const lastSessionInsights = useMemo(() => {
+    if (lastSessionComparisonRows.length === 0) {
+      return 'Last session does not yet have enough included club shots to compare against history.'
+    }
+
+    const definedMetrics = lastSessionComparisonRows.flatMap((row) =>
+      row.componentComparisons.flatMap((component) =>
+        typeof component.delta === 'number'
+          ? [
+              {
+                club: row.club,
+                metric: component.label,
+                delta: component.delta,
+              },
+            ]
+          : [],
+      ),
+    )
+    const scoreMoves = lastSessionComparisonRows
+      .map((row) => ({
+        club: row.club,
+        delta: row.scoreDelta,
+      }))
+      .filter((row): row is { club: Club; delta: number } => typeof row.delta === 'number')
+
+    const bestMetric = [...definedMetrics].sort((left, right) => right.delta - left.delta)[0]
+    const worstMetric = [...definedMetrics].sort((left, right) => left.delta - right.delta)[0]
+    const bestScoreMove = [...scoreMoves].sort((left, right) => right.delta - left.delta)[0]
+    const worstScoreMove = [...scoreMoves].sort((left, right) => left.delta - right.delta)[0]
+    const stableClubs = lastSessionComparisonRows.filter(
+      (row) => row.scoreTone === 'neutral',
+    ).length
+
+    const lead = bestScoreMove
+      ? `${getClubLabel(bestScoreMove.club)} outperformed its normal score profile by ${formatScore(Math.abs(bestScoreMove.delta))} points.`
+      : 'This session sat close to the established score profile across the bag.'
+
+    const slip = worstScoreMove && worstScoreMove.delta < 0
+      ? `${getClubLabel(worstScoreMove.club)} slipped ${formatScore(Math.abs(worstScoreMove.delta))} points versus its historical baseline.`
+      : 'No major score drop-offs appeared versus normal.'
+
+    const standout =
+      bestMetric && worstMetric
+        ? `Largest component swing was ${getClubLabel(bestMetric.club)} on ${bestMetric.metric} (+${formatScore(Math.abs(bestMetric.delta))}), while ${getClubLabel(worstMetric.club)} gave back the most on ${worstMetric.metric} (${worstMetric.delta <= 0 ? '-' : '+'}${formatScore(Math.abs(worstMetric.delta))}).`
+        : 'Component variation is still building as more historical sessions accumulate.'
+
+    return `${lead} ${slip} ${standout} ${stableClubs} clubs finished inside the neutral tolerance band.`
+  }, [lastSessionComparisonRows])
 
   const dashboardClubCards = useMemo(
     () =>
@@ -609,6 +904,358 @@ function App() {
       ? bestClubSummary.caddieScore - weakestClubSummary.caddieScore
       : null
 
+  useEffect(() => {
+    if (sessionState !== 'review') {
+      return
+    }
+
+    const hasSelection = dashboardClubCards.some((card) => card.club === selectedDetailClub)
+    if (hasSelection) {
+      return
+    }
+
+    const fallbackClub =
+      dashboardClubCards.find((card) => card.summary !== null)?.club ?? activeBagClubIds[0]
+    setSelectedDetailClub(fallbackClub)
+  }, [dashboardClubCards, selectedDetailClub, sessionState])
+
+  const selectedClubSummary = dashboardSummariesByClub.get(selectedDetailClub) ?? null
+  const selectedClubHistoricalShots = useMemo(
+    () =>
+      savedSessions.flatMap((session) =>
+        session.shots.filter((shot) => shot.club === selectedDetailClub),
+      ),
+    [savedSessions, selectedDetailClub],
+  )
+
+  const selectedClubOpenGolfCoachKeys = useMemo(() => {
+    const keys = new Set<string>()
+
+    selectedClubHistoricalShots.forEach((shot) => {
+      if (!shot.openGolfCoach) {
+        return
+      }
+
+      Object.keys(shot.openGolfCoach).forEach((key) => keys.add(key))
+    })
+
+    return [...keys].sort((left, right) => left.localeCompare(right))
+  }, [selectedClubHistoricalShots])
+
+  const selectedClubMetrics = useMemo(() => {
+    const carryAverage = averageNumbers(selectedClubHistoricalShots.map(carryValue))
+    const totalAverage = averageNumbers(selectedClubHistoricalShots.map(totalValue))
+    const offlineAverage = averageNumbers(selectedClubHistoricalShots.map(offlineValue))
+    const offlineStdDeviation = standardDeviation(
+      selectedClubHistoricalShots.map(offlineValue),
+    )
+    const vlaAverage = averageNumbers(selectedClubHistoricalShots.map(launchValue))
+    const spinAverage = averageNumbers(selectedClubHistoricalShots.map(spinValue))
+    const descentAverage = averageNumbers(selectedClubHistoricalShots.map(descentValue))
+    const includedShotCount = selectedClubHistoricalShots.filter((shot) => shot.included).length
+    const enrichedShotCount = selectedClubHistoricalShots.filter(
+      (shot) => shot.enrichmentStatus === 'enriched' && shot.openGolfCoach,
+    ).length
+    const shotRankSummary =
+      selectedClubSummary?.shotRankSummary ??
+      (() => {
+        const rankCounts = new Map<string, number>()
+        selectedClubHistoricalShots.forEach((shot) => {
+          if (typeof shot.shotRanking === 'undefined') {
+            return
+          }
+          const rank = `${shot.shotRanking}`
+          rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
+        })
+        if (rankCounts.size === 0) {
+          return 'No rank data yet'
+        }
+        return [...rankCounts.entries()]
+          .sort((left, right) => right[1] - left[1])
+          .slice(0, 3)
+          .map(([rank, count]) => `${rank} (${count})`)
+          .join(', ')
+      })()
+
+    return {
+      carryAverage,
+      totalAverage,
+      offlineAverage,
+      offlineStdDeviation,
+      vlaAverage,
+      spinAverage,
+      descentAverage,
+      includedShotCount,
+      enrichedShotCount,
+      shotRankSummary,
+    }
+  }, [selectedClubHistoricalShots, selectedClubSummary])
+
+  const selectedClubSessionSeries = useMemo(
+    () =>
+      [...savedSessions]
+        .reverse()
+        .map((session) => {
+          const clubShots = session.shots.filter((shot) => shot.club === selectedDetailClub)
+          if (clubShots.length === 0) {
+            return null
+          }
+
+          const summary = summarizeReviewClub(
+            selectedDetailClub,
+            session.shots,
+            savedSessions.filter((savedSession) => savedSession.id !== session.id),
+            session.id,
+          )
+
+          const carryAverage = averageNumbers(clubShots.map(carryValue))
+          const offlineAverage = averageNumbers(clubShots.map(offlineValue))
+          const dispersion = standardDeviation(clubShots.map(offlineValue))
+          const bias = averageNumbers(clubShots.map(offlineValue))
+          const vlaAverage = averageNumbers(clubShots.map(launchValue))
+          const spinAverage = averageNumbers(clubShots.map(spinValue))
+          const descentAverage = averageNumbers(clubShots.map(descentValue))
+
+          return {
+            id: session.id,
+            endedAt: session.endedAt,
+            shotCount: clubShots.length,
+            score: summary?.caddieScore,
+            confidence: summary?.componentScores.dataConfidence,
+            carryAverage,
+            offlineAverage,
+            dispersion,
+            bias,
+            vlaAverage,
+            spinAverage,
+            descentAverage,
+          }
+        })
+        .filter((point): point is NonNullable<typeof point> => point !== null),
+    [savedSessions, selectedDetailClub],
+  )
+
+  const baselineComparison = useMemo(() => {
+    if (selectedClubSessionSeries.length === 0) {
+      return null
+    }
+
+    const latest = selectedClubSessionSeries[selectedClubSessionSeries.length - 1]
+    const prior =
+      selectedClubSessionSeries.length > 1
+        ? selectedClubSessionSeries[selectedClubSessionSeries.length - 2]
+        : null
+
+    return {
+      latest,
+      prior,
+      scoreDelta:
+        prior && typeof latest.score === 'number' && typeof prior.score === 'number'
+          ? latest.score - prior.score
+          : undefined,
+      carryDelta:
+        prior &&
+        typeof latest.carryAverage === 'number' &&
+        typeof prior.carryAverage === 'number'
+          ? latest.carryAverage - prior.carryAverage
+          : undefined,
+      offlineDelta:
+        prior &&
+        typeof latest.dispersion === 'number' &&
+        typeof prior.dispersion === 'number'
+          ? latest.dispersion - prior.dispersion
+          : undefined,
+    }
+  }, [selectedClubSessionSeries])
+
+  const latestAndPrior = (values: Array<number | undefined>) => {
+    const defined = values.filter((value): value is number => typeof value === 'number')
+    if (defined.length === 0) {
+      return null
+    }
+
+    return {
+      latest: defined[defined.length - 1],
+      prior: defined.length > 1 ? defined[defined.length - 2] : undefined,
+    }
+  }
+
+  const trendCards = useMemo(() => {
+    const formatDelta = (latest: number, prior: number | undefined, unit: string) => {
+      if (typeof prior !== 'number') {
+        return 'No prior-session baseline'
+      }
+
+      const delta = latest - prior
+      const rounded = Math.abs(delta).toFixed(1)
+      return `${delta >= 0 ? '+' : '-'}${rounded}${unit} vs prior session`
+    }
+
+    const carryTrend = latestAndPrior(
+      selectedClubSessionSeries.map((point) => point.carryAverage),
+    )
+    const offlineTrend = latestAndPrior(
+      selectedClubSessionSeries.map((point) => point.dispersion),
+    )
+    const biasTrend = latestAndPrior(selectedClubSessionSeries.map((point) => point.bias))
+    const vlaTrend = latestAndPrior(
+      selectedClubSessionSeries.map((point) => point.vlaAverage),
+    )
+    const spinTrend = latestAndPrior(
+      selectedClubSessionSeries.map((point) => point.spinAverage),
+    )
+    const descentTrend = latestAndPrior(
+      selectedClubSessionSeries.map((point) => point.descentAverage),
+    )
+
+    const cards = [
+      {
+        key: 'carry',
+        label: 'Carry',
+        value:
+          carryTrend && typeof carryTrend.latest === 'number'
+            ? `${formatDecimal(carryTrend.latest, ' yd')}`
+            : '-',
+        detail:
+          carryTrend && typeof carryTrend.latest === 'number'
+            ? formatDelta(carryTrend.latest, carryTrend.prior, ' yd')
+            : 'No carry trend yet',
+      },
+      {
+        key: 'offline-dispersion',
+        label: 'Offline / Dispersion',
+        value:
+          offlineTrend && typeof offlineTrend.latest === 'number'
+            ? `${formatDecimal(offlineTrend.latest, ' yd')}`
+            : '-',
+        detail:
+          offlineTrend && typeof offlineTrend.latest === 'number'
+            ? formatDelta(offlineTrend.latest, offlineTrend.prior, ' yd')
+            : 'No dispersion trend yet',
+      },
+      {
+        key: 'bias',
+        label: 'Bias',
+        value:
+          biasTrend && typeof biasTrend.latest === 'number'
+            ? `${biasTrend.latest >= 0 ? 'Right' : 'Left'} ${formatDecimal(Math.abs(biasTrend.latest), ' yd')}`
+            : '-',
+        detail:
+          biasTrend && typeof biasTrend.latest === 'number'
+            ? formatDelta(Math.abs(biasTrend.latest), biasTrend.prior ? Math.abs(biasTrend.prior) : undefined, ' yd')
+            : 'No bias trend yet',
+      },
+      {
+        key: 'vla',
+        label: 'VLA',
+        value:
+          vlaTrend && typeof vlaTrend.latest === 'number'
+            ? `${formatDecimal(vlaTrend.latest, ' deg')}`
+            : '-',
+        detail:
+          vlaTrend && typeof vlaTrend.latest === 'number'
+            ? formatDelta(vlaTrend.latest, vlaTrend.prior, ' deg')
+            : 'No launch trend yet',
+      },
+      {
+        key: 'spin',
+        label: 'Spin',
+        value:
+          spinTrend && typeof spinTrend.latest === 'number'
+            ? `${formatWhole(spinTrend.latest, ' rpm')}`
+            : '-',
+        detail:
+          spinTrend && typeof spinTrend.latest === 'number'
+            ? formatDelta(spinTrend.latest, spinTrend.prior, ' rpm')
+            : 'No spin trend yet',
+      },
+    ]
+
+    if (descentTrend && typeof descentTrend.latest === 'number') {
+      cards.push({
+        key: 'descent',
+        label: 'Descent',
+        value: `${formatDecimal(descentTrend.latest, ' deg')}`,
+        detail: formatDelta(descentTrend.latest, descentTrend.prior, ' deg'),
+      })
+    }
+
+    return cards
+  }, [selectedClubSessionSeries])
+
+  const selectedClubInsights = useMemo(() => {
+    if (!selectedClubSummary) {
+      return [
+        'Build more sessions for this club so the read can separate stable outcomes from noise.',
+      ]
+    }
+
+    const biasAverage = selectedClubMetrics.offlineAverage
+    const biasLine =
+      typeof biasAverage === 'number'
+        ? `Ball flight is averaging ${biasAverage >= 0 ? 'right' : 'left'} by ${formatDecimal(Math.abs(biasAverage), ' yd')}.`
+        : 'Directional bias is still forming.'
+
+    const dispersionLine =
+      typeof selectedClubMetrics.offlineStdDeviation === 'number'
+        ? `Dispersion is ${formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')} wide, so start line discipline is the biggest lever.`
+        : 'Dispersion needs more shots before the pattern locks in.'
+
+    const enrichmentLine =
+      selectedClubMetrics.enrichedShotCount > 0
+        ? `${formatWhole(selectedClubMetrics.enrichedShotCount)} shots are OpenGolfCoach-enriched, giving this read full modeled support.`
+        : 'OpenGolfCoach enrichment has not landed for this club yet.'
+
+    return [selectedClubSummary.explanation, biasLine, dispersionLine, enrichmentLine].slice(
+      0,
+      3,
+    )
+  }, [selectedClubMetrics, selectedClubSummary])
+
+  const selectedClubNarrative = useMemo(() => {
+    if (!selectedClubSummary) {
+      return `There is not enough included data on ${getClubLabel(selectedDetailClub)} yet to give a confident read.`
+    }
+
+    const carryLine =
+      typeof selectedClubMetrics.carryAverage === 'number'
+        ? `Carry is averaging ${formatDecimal(selectedClubMetrics.carryAverage, ' yd')}`
+        : 'Carry still needs more confirmed shots'
+    const dispersionLine =
+      typeof selectedClubMetrics.offlineStdDeviation === 'number'
+        ? `with ${formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')} of offline dispersion`
+        : 'with dispersion still forming'
+
+    return `${getClubLabel(selectedDetailClub)} is currently a ${selectedClubSummary.caddieCall.toLowerCase()} club at ${formatScore(selectedClubSummary.caddieScore)}. ${carryLine} ${dispersionLine}, and ${selectedClubSummary.insights[0] ?? 'the pattern is becoming clearer session over session.'}`
+  }, [selectedClubMetrics.carryAverage, selectedClubMetrics.offlineStdDeviation, selectedClubSummary, selectedDetailClub])
+
+  const selectedClubDispersionPoints = useMemo(
+    () =>
+      selectedClubHistoricalShots.flatMap((shot) => {
+        const carry = carryValue(shot)
+        const offline = offlineValue(shot)
+        if (typeof carry !== 'number' || typeof offline !== 'number') {
+          return []
+        }
+
+        return [{ id: shot.id, carry, offline, included: shot.included }]
+      }),
+    [selectedClubHistoricalShots],
+  )
+
+  const comparisonClassName = (tone: ComparisonTone) =>
+    tone === 'up'
+      ? 'comparison-indicator comparison-up'
+      : tone === 'down'
+        ? 'comparison-indicator comparison-down'
+        : 'comparison-indicator comparison-neutral'
+
+  const comparisonSymbol = (direction: ComparisonDirection) =>
+    direction === 'up' ? '↑' : '↓'
+
+  const comparisonMagnitude = (delta: number | undefined) =>
+    formatScore(Math.abs(delta ?? 0))
+
   const startSession = () => {
     setShots([])
     setLiveSessionId(crypto.randomUUID())
@@ -638,6 +1285,7 @@ function App() {
     clearActiveSessionDraft()
     setActiveSessionId(savedSession.id)
     setLiveSessionId(null)
+    setReviewView('dashboard')
     setSessionState('review')
   }
 
@@ -678,14 +1326,6 @@ function App() {
     setShots((currentShots) => currentShots.slice(1))
   }
 
-  const updateShotClub = (shotId: string, club: Club) => {
-    setShots((currentShots) =>
-      currentShots.map((shot) =>
-        shot.id === shotId ? { ...shot, club } : shot,
-      ),
-    )
-  }
-
   const openSavedSession = (sessionId: string) => {
     const session = savedSessions.find((savedSession) => savedSession.id === sessionId)
     if (!session) {
@@ -694,6 +1334,7 @@ function App() {
 
     setShots(session.shots)
     setActiveSessionId(session.id)
+    setReviewView('dashboard')
     setSessionState('review')
   }
 
@@ -881,18 +1522,42 @@ function App() {
             </div>
 
             <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
-              <a href="#dashboard-overview">Overview</a>
-              <a href="#dashboard-spotlights">Spotlights</a>
-              <a href="#dashboard-bag">Bag</a>
-              <a href="#dashboard-trends">Trends</a>
-              <a href="#dashboard-review">Detailed Review</a>
+              <button
+                className={reviewView === 'dashboard' ? 'is-active' : undefined}
+                onClick={() => setReviewView('dashboard')}
+              >
+                Dashboard
+              </button>
+              <button
+                className={reviewView === 'clubDetail' ? 'is-active' : undefined}
+                onClick={() => setReviewView('clubDetail')}
+              >
+                Club Detail
+              </button>
+              {reviewView === 'dashboard' && (
+                <>
+                  <a href="#dashboard-overview">Overview</a>
+                  <a href="#dashboard-spotlights">Spotlights</a>
+                  <a href="#dashboard-bag">Bag</a>
+                  <a href="#dashboard-trends">Trends</a>
+                  <a href="#dashboard-review">Detailed Review</a>
+                </>
+              )}
             </nav>
 
             <div className="dashboard-rail-clubs">
               <div className="dashboard-rail-label">Club List</div>
               <div className="dashboard-rail-club-list">
                 {dashboardClubCards.map((card) => (
-                  <a href={`#${clubAnchorId(card.club)}`} key={card.club}>
+                  <a
+                    className={card.club === selectedDetailClub ? 'is-selected' : undefined}
+                    href={reviewView === 'clubDetail' ? '#club-detail-overview' : '#'}
+                    key={card.club}
+                    onClick={() => {
+                      setSelectedDetailClub(card.club)
+                      setReviewView('clubDetail')
+                    }}
+                  >
                     <span>{getClubLabel(card.club)}</span>
                     <span>{card.summary ? formatScore(card.summary.caddieScore) : '-'}</span>
                   </a>
@@ -912,6 +1577,8 @@ function App() {
           <div className="dashboard-screen">
             {dashboardSummaryLead ? (
               <>
+                {reviewView === 'dashboard' && (
+                  <>
                 <section
                   aria-labelledby="dashboard-game-status-title"
                   className="dashboard-hero-card"
@@ -1034,6 +1701,10 @@ function App() {
                         }`}
                         id={clubAnchorId(card.club)}
                         key={card.club}
+                        onClick={() => {
+                          setSelectedDetailClub(card.club)
+                          setReviewView('clubDetail')
+                        }}
                       >
                         <div className="club-card-header">
                           <span className="club-card-name">{getClubLabel(card.club)}</span>
@@ -1089,62 +1760,201 @@ function App() {
                     </p>
                   </article>
                 </section>
+                  </>
+                )}
 
-                <section className="review-details-card" id="dashboard-review">
-                <div className="section-kicker">Session Review</div>
-                <details className="supporting-details">
-                  <summary>Open detailed review</summary>
-                  <section className="review-card caddie-summary-card">
-                    <div
-                      className={`caddie-summary-primary ${caddieToneClassName(
-                        reviewSummaryLead.caddieCall,
-                      )}`}
-                    >
-                      <div className="section-kicker">Caddie Score</div>
-                      <div className="caddie-score-value">
-                        {formatScore(reviewSummaryLead.caddieScore)}
+                {reviewView === 'clubDetail' && (
+                  <section className="club-detail-overview" id="club-detail-overview">
+                  <article className="dashboard-card club-detail-page-header">
+                    <div>
+                      <div className="section-kicker">Club Detail</div>
+                      <h3 className="spotlight-title">{getClubLabel(selectedDetailClub)} Overview</h3>
+                    </div>
+                    <label className="club-detail-control">
+                      Club
+                      <select
+                        value={selectedDetailClub}
+                        onChange={(event) => setSelectedDetailClub(event.target.value as Club)}
+                      >
+                        {activeBagClubIds.map((club) => (
+                          <option key={`detail-${club}`} value={club}>
+                            {getClubLabel(club)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </article>
+
+                  <article className="dashboard-card club-detail-header">
+                    <div>
+                      <div className="section-kicker">Club Detail Overview</div>
+                      <h3 className="driver-feature-title">{getClubLabel(selectedDetailClub)}</h3>
+                      <p className="driver-feature-copy">{selectedClubNarrative}</p>
+                    </div>
+                    <div className="club-detail-score">
+                      <div className="club-detail-score-label">Score</div>
+                      <div className="club-detail-score-value">
+                        {selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
                       </div>
-                      <div className={caddieCallClassName(reviewSummaryLead.caddieCall)}>
-                        {reviewSummaryLead.caddieCall}
-                      </div>
-                      <div className="summary-support-text">
-                        {getClubLabel(reviewSummaryLead.club)} • {reviewSummaryLead.includedShots} included shots
+                      <div
+                        className={caddieCallClassName(
+                          selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+                        )}
+                      >
+                        {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
                       </div>
                     </div>
-                    <div className="caddie-summary-explanation">
-                      <p>{reviewSummaryLead.explanation}</p>
-                    </div>
-                    <div className="caddie-summary-components">
-                      <div className="component-row">
-                        <span>Distance Window</span>
-                        <span>{formatScore(reviewSummaryLead.componentScores.distanceWindow)}</span>
+                  </article>
+
+                  <div className="club-detail-core">
+                    <article className="dashboard-card club-detail-plot-card">
+                      <div className="section-kicker">Carry vs Offline Dispersion</div>
+                      {selectedClubDispersionPoints.length === 0 ? (
+                        <p className="support-card-copy">
+                          No carry/offline shot pairs are available yet for this club.
+                        </p>
+                      ) : (
+                        <ClubDispersionPlot points={selectedClubDispersionPoints} />
+                      )}
+                    </article>
+
+                    <article className="dashboard-card club-detail-side-card">
+                      <div className="section-kicker">Score + Confidence Over Time</div>
+                      {selectedClubSessionSeries.length === 0 ? (
+                        <p className="support-card-copy">No session trend data yet.</p>
+                      ) : (
+                        <div className="club-detail-timeline">
+                          {selectedClubSessionSeries.map((point) => (
+                            <div className="club-detail-timeline-row" key={point.id}>
+                              <div className="club-detail-timeline-date">
+                                {new Date(point.endedAt).toLocaleDateString()}
+                              </div>
+                              <div className="club-detail-timeline-bars">
+                                <div
+                                  className="club-detail-bar club-detail-bar-score"
+                                  style={{ width: `${Math.max(point.score ?? 0, 4)}%` }}
+                                />
+                                <div
+                                  className="club-detail-bar club-detail-bar-confidence"
+                                  style={{ width: `${Math.max(point.confidence ?? 0, 4)}%` }}
+                                />
+                              </div>
+                              <div className="club-detail-timeline-values">
+                                <span>S {formatScore(point.score)}</span>
+                                <span>C {formatScore(point.confidence)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="section-kicker">Key Numbers</div>
+                      <div className="club-detail-key-metrics">
+                        <div className="component-row">
+                          <span>Carry avg</span>
+                          <span>{formatDecimal(selectedClubMetrics.carryAverage, ' yd')}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Total avg</span>
+                          <span>{formatDecimal(selectedClubMetrics.totalAverage, ' yd')}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Offline avg</span>
+                          <span>{formatDecimal(selectedClubMetrics.offlineAverage, ' yd')}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Offline dispersion</span>
+                          <span>{formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>VLA avg</span>
+                          <span>{formatDecimal(selectedClubMetrics.vlaAverage, ' deg')}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Total spin avg</span>
+                          <span>{formatWhole(selectedClubMetrics.spinAverage, ' rpm')}</span>
+                        </div>
+                        {typeof selectedClubMetrics.descentAverage === 'number' && (
+                          <div className="component-row">
+                            <span>Descent avg</span>
+                            <span>{formatDecimal(selectedClubMetrics.descentAverage, ' deg')}</span>
+                          </div>
+                        )}
+                        <div className="component-row">
+                          <span>Shot rank summary</span>
+                          <span>{selectedClubMetrics.shotRankSummary}</span>
+                        </div>
+                        <div className="component-row">
+                          <span>Included shots</span>
+                          <span>
+                            {formatWhole(selectedClubMetrics.includedShotCount)} /{' '}
+                            {formatWhole(selectedClubHistoricalShots.length)}
+                          </span>
+                        </div>
+                        <div className="component-row">
+                          <span>OpenGolfCoach coverage</span>
+                          <span>
+                            {formatWhole(selectedClubMetrics.enrichedShotCount)} enriched •{' '}
+                            {formatWhole(selectedClubOpenGolfCoachKeys.length)} keys
+                          </span>
+                        </div>
                       </div>
-                      <div className="component-row">
-                        <span>Direction Window</span>
-                        <span>{formatScore(reviewSummaryLead.componentScores.directionWindow)}</span>
+
+                      <div className="section-kicker">Baseline Comparison</div>
+                      <div className="club-detail-key-metrics">
+                        <div className="component-row">
+                          <span>Latest session</span>
+                          <span>
+                            {baselineComparison
+                              ? new Date(baselineComparison.latest.endedAt).toLocaleDateString()
+                              : '-'}
+                          </span>
+                        </div>
+                        <div className="component-row">
+                          <span>Score vs prior</span>
+                          <span>
+                            {typeof baselineComparison?.scoreDelta === 'number'
+                              ? `${baselineComparison.scoreDelta >= 0 ? '+' : ''}${formatScore(baselineComparison.scoreDelta)}`
+                              : 'No prior baseline'}
+                          </span>
+                        </div>
+                        <div className="component-row">
+                          <span>Carry vs prior</span>
+                          <span>
+                            {typeof baselineComparison?.carryDelta === 'number'
+                              ? `${baselineComparison.carryDelta >= 0 ? '+' : ''}${formatDecimal(baselineComparison.carryDelta, ' yd')}`
+                              : 'No prior baseline'}
+                          </span>
+                        </div>
+                        <div className="component-row">
+                          <span>Dispersion vs prior</span>
+                          <span>
+                            {typeof baselineComparison?.offlineDelta === 'number'
+                              ? `${baselineComparison.offlineDelta >= 0 ? '+' : ''}${formatDecimal(baselineComparison.offlineDelta, ' yd')}`
+                              : 'No prior baseline'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="component-row">
-                        <span>Flight Quality</span>
-                        <span>{formatScore(reviewSummaryLead.componentScores.flightQuality)}</span>
-                      </div>
-                      <div className="component-row">
-                        <span>Pattern Stability</span>
-                        <span>{formatScore(reviewSummaryLead.componentScores.patternStability)}</span>
-                      </div>
-                      <div className="component-row">
-                        <span>Data Confidence</span>
-                        <span>{formatScore(reviewSummaryLead.componentScores.dataConfidence)}</span>
-                      </div>
-                    </div>
+                    </article>
+                  </div>
+
+                  <section className="club-detail-trends">
+                    {trendCards.map((card) => (
+                      <article className="dashboard-card support-card club-detail-trend-card" key={card.key}>
+                        <div className="section-kicker">{card.label}</div>
+                        <h3 className="support-card-title">{card.value}</h3>
+                        <p className="support-card-copy">{card.detail}</p>
+                      </article>
+                    ))}
                   </section>
 
-                  <section className="review-card">
-                    <div className="section-kicker">Key Insights</div>
+                  <article className="dashboard-card club-detail-insights">
+                    <div className="section-kicker">Looper Insights</div>
                     <div className="insight-list">
-                      {reviewInsights.map((insight) => (
+                      {selectedClubInsights.map((insight) => (
                         <div
                           className={`insight-row ${caddieToneClassName(
-                            reviewSummaryLead.caddieCall,
+                            selectedClubSummary?.caddieCall ?? 'Insufficient Data',
                           )}`}
                           key={insight}
                         >
@@ -1152,128 +1962,88 @@ function App() {
                         </div>
                       ))}
                     </div>
+                  </article>
                   </section>
+                )}
 
-                  <section className="review-card">
-                    <div className="section-kicker">Club Review</div>
-                    <div className="review-table-wrap">
-                      <table className="review-table">
-                        <thead>
-                          <tr>
-                            <th>Club</th>
-                            <th>Caddie Score</th>
-                            <th>Caddie Call</th>
-                            <th>Insights</th>
-                            <th>Included Shots</th>
-                            <th>Carry Avg / Std Dev</th>
-                            <th>Offline Avg / Std Dev</th>
-                            <th>Shot Rank Summary</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reviewSummaries.map((summary) => (
-                            <tr key={summary.club}>
-                              <td>{getClubLabel(summary.club)}</td>
-                              <td className="review-score-cell">
-                                {formatScore(summary.caddieScore)}
-                              </td>
-                              <td>
-                                <span className={caddieCallClassName(summary.caddieCall)}>
-                                  {summary.caddieCall}
-                                </span>
-                              </td>
-                              <td className="review-insight-cell">{summary.insights.join(' ')}</td>
-                              <td className="review-center-cell">
-                                {formatWhole(summary.includedShots)}
-                              </td>
-                              <td>
-                                <div>
-                                  {summary.carryAverageYards === null
-                                    ? '-'
-                                    : formatDecimal(summary.carryAverageYards, ' yd')}
-                                </div>
-                                <div className="metric-subline">
-                                  {summary.carryStdDevYards === null
-                                    ? '-'
-                                    : `Std dev ${formatDecimal(summary.carryStdDevYards, ' yd')}`}
-                                </div>
-                              </td>
-                              <td>
-                                <div>
-                                  {summary.offlineAverageYards === null
-                                    ? '-'
-                                    : formatDecimal(summary.offlineAverageYards, ' yd')}
-                                </div>
-                                <div className="metric-subline">
-                                  {summary.offlineStdDevYards === null
-                                    ? '-'
-                                    : `Std dev ${formatDecimal(summary.offlineStdDevYards, ' yd')}`}
-                                </div>
-                              </td>
-                              <td>{summary.shotRankSummary}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
+                {reviewView === 'dashboard' && (
+                  <section className="review-details-card" id="dashboard-review">
+                    <div className="section-kicker">Last Session Review</div>
+                    <details className="supporting-details last-session-review">
+                      <summary>Click to Open Detailed Comparison</summary>
 
-                <section className="review-card">
-                  <div className="section-kicker">Supporting Metrics</div>
-                  <div className="supporting-grid">
-                      <div className="supporting-block">
-                        <div className="supporting-title">Component Breakdown</div>
-                        {reviewSummaries.map((summary) => (
-                          <div className="supporting-metric-group" key={summary.club}>
-                            <div className="supporting-club-row">
-                              <span>{getClubLabel(summary.club)}</span>
-                              <span>{formatScore(summary.caddieScore)}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Distance Window</span>
-                              <span>{formatScore(summary.componentScores.distanceWindow)}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Direction Window</span>
-                              <span>{formatScore(summary.componentScores.directionWindow)}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Flight Quality</span>
-                              <span>{formatScore(summary.componentScores.flightQuality)}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Pattern Stability</span>
-                              <span>{formatScore(summary.componentScores.patternStability)}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Data Confidence</span>
-                              <span>{formatScore(summary.componentScores.dataConfidence)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {groupedShots.length > 0 && (
-                        <div className="supporting-block supporting-block-full">
-                          <div className="supporting-title">Shot Review</div>
-                          <details className="supporting-details">
-                            <summary>Show shot review</summary>
-                            {groupedShots.map((group) => (
-                              <div className="club-group" key={group.club}>
-                                <h3>{getClubLabel(group.club)}</h3>
-                                <ShotTable
-                                  shots={group.shots}
-                                  onChangeClub={updateShotClub}
-                                  onToggleShot={toggleShot}
-                                />
-                              </div>
-                            ))}
-                          </details>
+                      <section className="review-card last-session-insights">
+                        <div className="section-kicker">Looper's Insights</div>
+                        <p>{lastSessionInsights}</p>
+                      </section>
+
+                      <section className="review-card last-session-table-block">
+                        <div className="section-kicker">Session vs History by Club</div>
+                        <div className="review-table-wrap">
+                          <table className="review-table last-session-table">
+                            <thead>
+                              <tr>
+                                <th>Club</th>
+                                <th>Shots</th>
+                                <th>Score</th>
+                                <th>Distance Window</th>
+                                <th>Direction Window</th>
+                                <th>Flight Quality</th>
+                                <th>Pattern Stability</th>
+                                <th>Data Confidence</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lastSessionComparisonRows.map((row) => {
+                                const distance = row.componentComparisons[0]
+                                const direction = row.componentComparisons[1]
+                                const flight = row.componentComparisons[2]
+                                const pattern = row.componentComparisons[3]
+                                const confidence = row.componentComparisons[4]
+
+                                return (
+                                  <tr key={row.club}>
+                                    <td>{getClubLabel(row.club)}</td>
+                                    <td className="review-center-cell">{formatWhole(row.shots)}</td>
+                                    <td className="review-score-cell">
+                                      <div className="comparison-cell">
+                                        <span className="comparison-value">
+                                          {formatScore(row.summary.caddieScore)}
+                                        </span>
+                                        <span className={comparisonClassName(row.scoreTone)}>
+                                          <span>{comparisonSymbol(row.scoreDirection)}</span>
+                                          <span>{comparisonMagnitude(row.scoreDelta)}</span>
+                                        </span>
+                                      </div>
+                                      <div className={caddieCallClassName(row.summary.caddieCall)}>
+                                        {row.summary.caddieCall}
+                                      </div>
+                                    </td>
+                                    {[distance, direction, flight, pattern, confidence].map(
+                                      (component) => (
+                                        <td key={component.key}>
+                                          <div className="comparison-cell">
+                                            <span className="comparison-value">
+                                              {formatScore(component.value)}
+                                            </span>
+                                            <span className={comparisonClassName(component.tone)}>
+                                              <span>{comparisonSymbol(component.direction)}</span>
+                                              <span>{comparisonMagnitude(component.delta)}</span>
+                                            </span>
+                                          </div>
+                                        </td>
+                                      ),
+                                    )}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      )}
-                    </div>
+                      </section>
+                    </details>
                   </section>
-                </details>
-                </section>
+                )}
               </>
             ) : (
               <div className="dashboard-card">
@@ -1284,6 +2054,185 @@ function App() {
         </section>
       )}
     </main>
+  )
+}
+
+type DispersionPoint = {
+  id: string
+  carry: number
+  offline: number
+  included: boolean
+}
+
+type ClubDispersionPlotProps = {
+  points: DispersionPoint[]
+}
+
+function ClubDispersionPlot({ points }: ClubDispersionPlotProps) {
+  const width = 820
+  const height = 420
+  const padding = { top: 24, right: 36, bottom: 56, left: 64 }
+
+  const offlineMax = Math.max(...points.map((point) => Math.abs(point.offline)), 5)
+  const carryMin = Math.min(...points.map((point) => point.carry))
+  const carryMax = Math.max(...points.map((point) => point.carry))
+  const carryRange = Math.max(carryMax - carryMin, 1)
+  const carryPadding = carryRange * 0.1
+  const carryDomainMin = Math.floor((carryMin - carryPadding) / 5) * 5
+  const carryDomainMax = Math.ceil((carryMax + carryPadding) / 5) * 5
+  const yRange = Math.max(carryDomainMax - carryDomainMin, 1)
+  const offlineDomainMax = Math.max(10, Math.ceil(offlineMax / 5) * 5)
+  const chartWidth = width - padding.left - padding.right
+  const chartHeight = height - padding.top - padding.bottom
+
+  const pickTickStep = (span: number) => {
+    const roughStep = span / 6
+    const steps = [2, 5, 10, 15, 20, 25, 50]
+    return steps.find((step) => roughStep <= step) ?? 50
+  }
+
+  const xTickStep = pickTickStep(offlineDomainMax * 2)
+  const yTickStep = pickTickStep(yRange)
+  const xTicks = Array.from(
+    {
+      length: Math.floor((offlineDomainMax * 2) / xTickStep) + 1,
+    },
+    (_, index) => -offlineDomainMax + index * xTickStep,
+  )
+  const yTicks = Array.from(
+    {
+      length: Math.floor(yRange / yTickStep) + 1,
+    },
+    (_, index) => carryDomainMin + index * yTickStep,
+  )
+
+  const xScale = (offline: number) =>
+    padding.left +
+    ((offline + offlineDomainMax) / (offlineDomainMax * 2)) * chartWidth
+  const yScale = (carry: number) =>
+    padding.top + ((carryDomainMax - carry) / yRange) * chartHeight
+
+  const targetLineX = xScale(0)
+
+  return (
+    <svg
+      aria-label="Carry versus offline dispersion plot"
+      className="club-detail-plot"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+    >
+      <defs>
+        {points.map((point) => (
+          <radialGradient id={`heat-${point.id}`} key={`gradient-${point.id}`}>
+            <stop offset="0%" stopColor="rgba(255,215,0,0.34)" />
+            <stop offset="42%" stopColor="rgba(255,215,0,0.14)" />
+            <stop offset="100%" stopColor="rgba(255,215,0,0)" />
+          </radialGradient>
+        ))}
+      </defs>
+      <rect
+        className="club-detail-plot-surface"
+        height={chartHeight}
+        rx="10"
+        width={chartWidth}
+        x={padding.left}
+        y={padding.top}
+      />
+      {xTicks.map((tick) => (
+        <g key={`x-${tick}`}>
+          <line
+            className={tick === 0 ? 'club-detail-grid-line-center' : 'club-detail-grid-line'}
+            x1={xScale(tick)}
+            x2={xScale(tick)}
+            y1={padding.top}
+            y2={height - padding.bottom}
+          />
+          <text className="club-detail-tick-label" x={xScale(tick)} y={height - padding.bottom + 16}>
+            {tick}
+          </text>
+        </g>
+      ))}
+      {yTicks.map((tick) => (
+        <g key={`y-${tick}`}>
+          <line
+            className="club-detail-grid-line"
+            x1={padding.left}
+            x2={width - padding.right}
+            y1={yScale(tick)}
+            y2={yScale(tick)}
+          />
+          <text className="club-detail-tick-label y-tick" x={padding.left - 8} y={yScale(tick)}>
+            {tick}
+          </text>
+        </g>
+      ))}
+
+      <line
+        className="club-detail-axis-domain"
+        x1={padding.left}
+        x2={width - padding.right}
+        y1={height - padding.bottom}
+        y2={height - padding.bottom}
+      />
+      <line
+        className="club-detail-axis-domain"
+        x1={padding.left}
+        x2={padding.left}
+        y1={padding.top}
+        y2={height - padding.bottom}
+      />
+
+      <line
+        className="club-detail-target-line"
+        x1={targetLineX}
+        x2={targetLineX}
+        y1={padding.top}
+        y2={height - padding.bottom}
+      />
+
+      <g style={{ mixBlendMode: 'screen' }}>
+        {points.map((point) => (
+          <circle
+            cx={xScale(point.offline)}
+            cy={yScale(point.carry)}
+            fill={`url(#heat-${point.id})`}
+            key={`heat-${point.id}`}
+            r={point.included ? 48 : 36}
+          />
+        ))}
+      </g>
+
+      {points.map((point) => (
+        <circle
+          cx={xScale(point.offline)}
+          cy={yScale(point.carry)}
+          fill={point.included ? '#eab308' : '#c1b06d'}
+          fillOpacity={point.included ? 0.88 : 0.4}
+          key={point.id}
+          r={point.included ? 4 : 3}
+          stroke="#0e1710"
+          strokeWidth="1"
+        />
+      ))}
+      <text className="club-detail-axis-label" x={padding.left + 8} y={height - 14}>
+        Left miss (yd)
+      </text>
+      <text className="club-detail-axis-label" x={width - padding.right - 62} y={height - 14}>
+        Right miss (yd)
+      </text>
+      <text className="club-detail-axis-title" x={width / 2} y={height - 8}>
+        Offline distance (yd)
+      </text>
+      <text
+        className="club-detail-axis-title"
+        transform={`translate(16 ${height / 2}) rotate(-90)`}
+      >
+        Carry distance (yd)
+      </text>
+      <text className="club-detail-axis-label" x={targetLineX + 6} y={padding.top + 12}>
+        Target line (0)
+      </text>
+    </svg>
   )
 }
 

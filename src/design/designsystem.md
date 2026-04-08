@@ -50,20 +50,97 @@ Rules:
 
 ## 5. Typography
 
-Font stack:
+### Font Stack
+
+Primary (UI):
+- Inter
 - -apple-system
 - BlinkMacSystemFont
 - "Segoe UI"
 - sans-serif
 
-Sizes:
+Accent (select usage only):
+- Fraunces
+
+Logo:
+- Custom script (The Looper mark)
+- Never used as a font in UI
+
+---
+
+### Sizing (LOCKED)
+
+These sizes are working well and should remain consistent across the product.
+
 - Page title: 20px / 600
-- Caddie Score label: 12px uppercase
-- Caddie Score number: 40px / 600
-- Caddie Call pill text: 12px / 600
+- Score label: 12px uppercase
+- Score number: 40px / 600
+- Call pill text: 12px / 600
 - Section header: 12px uppercase
 - Body text: 13px
 - Explanation / insight text: 14px
+
+---
+
+### Font Usage Rules
+
+#### Primary UI (Inter)
+Used for:
+- Buttons (Choose Club, Start, Open Data)
+- Navigation
+- Score + Call system
+- Tables / shot data
+- All functional UI
+
+Weights:
+- 400 → body
+- 500 → labels
+- 600 → buttons / key UI
+- 700 → emphasis (sparingly)
+
+---
+
+#### Accent / Voice (Fraunces)
+Used sparingly for:
+- Tagline: “Every club holds a truth.”
+- Select headers or callouts
+- Marketing / landing surfaces
+
+Rules:
+- Never used in dense UI
+- Never used for data
+- Use with restraint
+
+---
+
+#### Logo (Script)
+- The Looper logo is a custom script style
+- Inspired by vintage sign painting (e.g., Lobster, Sign Painter)
+- Always treated as a graphic, not a font
+
+---
+
+### Typography Principles
+
+- Prioritize clarity over style
+- Keep UI clean and highly readable
+- Let the data stand out
+- Use accent typography only where it adds meaning
+
+Tone should feel:
+- Calm
+- Confident
+- Experienced
+- Understated
+
+---
+
+### What NOT to do
+
+- Do not use script fonts in UI
+- Do not introduce additional font families
+- Do not overuse Fraunces
+- Do not restyle UI text to mimic the logo
 
 ## 6. Spacing
 
