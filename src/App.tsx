@@ -28,6 +28,7 @@ import {
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
+  loadActiveSessionDraft,
   loadSavedSessions,
   saveActiveSessionDraft,
   saveSessionHistory,
@@ -473,23 +474,46 @@ const mergeDerivedValues = (
 
 type AppProps = {
   forceDashboardRoute?: boolean
+  forceSessionIntelligenceRoute?: boolean
 }
 
-function App({ forceDashboardRoute = false }: AppProps) {
+function App({
+  forceDashboardRoute = false,
+  forceSessionIntelligenceRoute = false,
+}: AppProps) {
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   type ClubDriverKey = keyof ReviewClubSummary['componentScores']
+  const sessionIntelligenceSearch = forceSessionIntelligenceRoute
+    ? new URLSearchParams(window.location.search)
+    : null
+  const routeFeedMode =
+    sessionIntelligenceSearch?.get('feed') === 'real' ? 'real' : 'mock'
+  const routeClubParam = sessionIntelligenceSearch?.get('club')
+  const routeClub = activeBagClubIds.includes(routeClubParam as Club)
+    ? (routeClubParam as Club)
+    : '7i'
+  const resumedDraft = forceSessionIntelligenceRoute ? loadActiveSessionDraft() : null
+  const startedAtFallback = new Date().toISOString()
   const [sessionState, setSessionState] = useState<SessionState>(() =>
-    forceDashboardRoute ? 'review' : 'setup',
+    forceSessionIntelligenceRoute ? 'live' : forceDashboardRoute ? 'review' : 'setup',
   )
-  const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
-  const [selectedClub, setSelectedClub] = useState<Club>('7i')
+  const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>(() =>
+    forceSessionIntelligenceRoute
+      ? resumedDraft?.metadata.feedMode ?? routeFeedMode
+      : 'mock',
+  )
+  const [selectedClub, setSelectedClub] = useState<Club>(() =>
+    forceSessionIntelligenceRoute ? routeClub : '7i',
+  )
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
     useState<DashboardNavTarget>('dashboard')
   const [isLastSessionOpen, setIsLastSessionOpen] = useState(false)
-  const [shots, setShots] = useState<Shot[]>([])
+  const [shots, setShots] = useState<Shot[]>(() =>
+    forceSessionIntelligenceRoute ? resumedDraft?.shots ?? [] : [],
+  )
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
   )
@@ -501,8 +525,12 @@ function App({ forceDashboardRoute = false }: AppProps) {
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
-  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null)
-  const [liveSessionId, setLiveSessionId] = useState<string | null>(null)
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(() =>
+    forceSessionIntelligenceRoute ? resumedDraft?.startedAt ?? startedAtFallback : null,
+  )
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(() =>
+    forceSessionIntelligenceRoute ? resumedDraft?.id ?? crypto.randomUUID() : null,
+  )
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
   const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
@@ -2179,14 +2207,20 @@ function App({ forceDashboardRoute = false }: AppProps) {
     formatScore(Math.abs(delta ?? 0))
 
   const startSession = () => {
-    setShots([])
-    setLiveSessionId(crypto.randomUUID())
-    setFeedMode(null)
-    setConnectionStatus('connecting')
-    setHelperReachable(null)
-    setLastEnrichmentStatus('idle')
-    setSessionStartedAt(new Date().toISOString())
-    setSessionState('live')
+    const startedAt = new Date().toISOString()
+    const nextLiveSessionId = crypto.randomUUID()
+    const draft: ActiveSessionDraft = {
+      id: nextLiveSessionId,
+      startedAt,
+      shots: [],
+      metadata: currentSessionMetadata(selectedFeedMode),
+    }
+    saveActiveSessionDraft(draft)
+    const params = new URLSearchParams({
+      feed: selectedFeedMode,
+      club: selectedClub,
+    })
+    window.location.assign(`/session-intelligence?${params.toString()}`)
   }
 
   const endSession = () => {
@@ -2253,6 +2287,418 @@ function App({ forceDashboardRoute = false }: AppProps) {
     setActiveSessionId(session.id)
     setReviewView('dashboard')
     setSessionState('review')
+  }
+
+  const latestShot = shots[0] ?? null
+  const latestShotShape = latestShot?.shotName ? String(latestShot.shotName).toUpperCase() : 'WAITING FOR SHOT'
+  const latestShotScoreTag = (() => {
+    const rank = latestShot?.shotRanking
+    if (typeof rank === 'number') {
+      if (rank <= 2) return { label: 'GOOD', tone: 'good' as const }
+      if (rank <= 3) return { label: 'NEUTRAL', tone: 'neutral' as const }
+      return { label: 'POOR', tone: 'poor' as const }
+    }
+    const normalized = typeof rank === 'string' ? rank.toUpperCase() : ''
+    if (normalized === 'A' || normalized === 'B') {
+      return { label: 'GOOD', tone: 'good' as const }
+    }
+    if (normalized === 'C' || normalized === '3') {
+      return { label: 'NEUTRAL', tone: 'neutral' as const }
+    }
+    if (normalized === 'D' || normalized === '4' || normalized === '5') {
+      return { label: 'POOR', tone: 'poor' as const }
+    }
+    return { label: 'NEUTRAL', tone: 'neutral' as const }
+  })()
+
+  const latestShotReaction = (() => {
+    if (!latestShot) {
+      return "Take a swing and I'll give you the read."
+    }
+    const offline = offlineValue(latestShot)
+    const carry = carryValue(latestShot)
+    if (typeof offline === 'number' && Math.abs(offline) >= 12) {
+      return offline > 0
+        ? 'Started right and stayed out there.'
+        : 'Pulled left and never held the line.'
+    }
+    if (typeof offline === 'number' && Math.abs(offline) <= 4) {
+      return 'Start line held up well on that one.'
+    }
+    if (typeof carry === 'number' && carry < 110) {
+      return 'Came out fine, just a touch short of full number.'
+    }
+    return 'Playable strike, but still wants a little management.'
+  })()
+
+  const latestShotWhy = (() => {
+    if (!latestShot) {
+      return null
+    }
+    const faceToPath = faceToPathValue(latestShot)
+    const faceToTarget = faceToTargetValue(latestShot)
+    const path = clubPathValue(latestShot)
+    const formatSigned = (value: number) =>
+      `${value > 0 ? '+' : ''}${value.toFixed(1)}°`
+
+    if (typeof faceToPath === 'number' && Math.abs(faceToPath) > 2) {
+      return `Face to path ${formatSigned(faceToPath)}`
+    }
+    if (typeof faceToTarget === 'number' && Math.abs(faceToTarget) > 2) {
+      return `Face to target ${formatSigned(faceToTarget)}`
+    }
+    if (typeof path === 'number' && Math.abs(path) > 2) {
+      return `Club path ${formatSigned(path)}`
+    }
+    return null
+  })()
+
+  const formatOfflineValue = (value: number | undefined) => {
+    if (typeof value !== 'number') {
+      return '-'
+    }
+    if (value === 0) {
+      return '0.0'
+    }
+    return `${value > 0 ? '+' : '-'}${Math.abs(value).toFixed(1)}`
+  }
+
+  const offlineLabel = (value: number | undefined) => {
+    if (typeof value !== 'number' || value === 0) {
+      return 'Offline (yd L / yd R)'
+    }
+    return value > 0 ? 'Offline (yd R)' : 'Offline (yd L)'
+  }
+
+  const sessionIntelligencePoints = useMemo(
+    () =>
+      shots
+        .filter((shot) => shot.club === selectedClub && shot.included)
+        .flatMap((shot) => {
+          const carry = carryValue(shot)
+          const offline = offlineValue(shot)
+          if (typeof carry !== 'number' || typeof offline !== 'number') {
+            return []
+          }
+          return [{ id: shot.id, carry, offline, included: shot.included }]
+        }),
+    [selectedClub, shots],
+  )
+
+  const selectedClubLiveSummary = useMemo(
+    () =>
+      summarizeReviewClub(
+        selectedClub,
+        shots,
+        savedSessions,
+        liveSessionId,
+      ),
+    [liveSessionId, savedSessions, selectedClub, shots],
+  )
+
+  const selectedClubIncludedShotCount = useMemo(
+    () => shots.filter((shot) => shot.club === selectedClub && shot.included).length,
+    [selectedClub, shots],
+  )
+
+  const selectedClubMidSignal = useMemo(() => {
+    const clubShots = shots.filter((shot) => shot.club === selectedClub && shot.included)
+    if (clubShots.length < 4) {
+      return 'Getting a read on this club...'
+    }
+    const firstHalf = clubShots.slice(Math.floor(clubShots.length / 2))
+    const secondHalf = clubShots.slice(0, Math.floor(clubShots.length / 2))
+    const firstBias = averageNumbers(firstHalf.map(offlineValue))
+    const secondBias = averageNumbers(secondHalf.map(offlineValue))
+    if (typeof firstBias === 'number' && typeof secondBias === 'number') {
+      const delta = secondBias - firstBias
+      if (delta > 2.5) {
+        return 'Direction is starting to drift right.'
+      }
+      if (delta < -2.5) {
+        return 'Direction is starting to drift left.'
+      }
+    }
+    return 'Pattern is starting to settle, but keep feeding it swings.'
+  }, [selectedClub, shots])
+
+  const sessionShotGroups = useMemo(() => {
+    const byClub = new Map<Club, Shot[]>()
+    shots.forEach((shot) => {
+      byClub.set(shot.club, [...(byClub.get(shot.club) ?? []), shot])
+    })
+
+    return activeBagClubIds
+      .filter((club) => byClub.has(club))
+      .map((club) => {
+        const clubShots = byClub.get(club) ?? []
+        const included = clubShots.filter((shot) => shot.included)
+        return {
+          club,
+          shots: clubShots,
+          averages: {
+            carry: averageNumbers(included.map(carryValue)),
+            total: averageNumbers(included.map(totalValue)),
+            offline: averageNumbers(included.map(offlineValue)),
+            spin: averageNumbers(included.map(spinValue)),
+            launch: averageNumbers(included.map(launchValue)),
+            smash: averageNumbers(included.map(smashFactorValue)),
+            path: averageNumbers(included.map(clubPathValue)),
+            facePath: averageNumbers(included.map(faceToPathValue)),
+            faceTarget: averageNumbers(included.map(faceToTargetValue)),
+            clubSpeed: averageNumbers(included.map(clubSpeedValue)),
+            ballSpeed: averageNumbers(included.map(ballSpeedMphValue)),
+            peak: averageNumbers(included.map(peakHeightValue)),
+            descent: averageNumbers(included.map(descentValue)),
+          },
+        }
+      })
+  }, [shots])
+
+  const excludeLastShot = () => {
+    setShots((currentShots) => currentShots.slice(1))
+  }
+
+  if (forceSessionIntelligenceRoute) {
+    return (
+      <main className="session-intelligence-shell">
+        <header className="session-intelligence-topbar">
+          <div className="session-intelligence-brand">Every Club Holds a Truth</div>
+          <div className="session-intelligence-actions">
+            <button className="session-intelligence-end" onClick={endSession} type="button">
+              End Session
+            </button>
+            <button
+              className="session-intelligence-pause"
+              onClick={feedMode === 'mock' ? toggleMockFeed : undefined}
+              type="button"
+            >
+              {feedMode === 'mock' && connectionStatus === 'paused'
+                ? 'Resume Session'
+                : 'Pause Session'}
+            </button>
+          </div>
+        </header>
+
+        <section className="session-intelligence-looper" aria-label="Looper reaction">
+          <div className="session-intelligence-tags">
+            <span className="session-tag">{latestShotShape}</span>
+            <span className={`session-tag score-${latestShotScoreTag.tone}`}>
+              {latestShotScoreTag.label}
+            </span>
+          </div>
+          <p className="session-intelligence-reaction">{latestShotReaction}</p>
+          {latestShotWhy && <p className="session-intelligence-why">{latestShotWhy}</p>}
+        </section>
+
+        <section className="session-last-shot-strip" aria-label="Most recent shot">
+          <button
+            className="session-strip-exclude"
+            disabled={!latestShot}
+            onClick={excludeLastShot}
+            type="button"
+          >
+            ✖ Exclude
+          </button>
+          <div className="session-shot-hero-metrics">
+            <div className="session-shot-hero-metric">
+              <div className="session-shot-hero-club-control">
+                <select
+                  className="session-shot-hero-club-select session-shot-hero-value"
+                  onChange={(event) => setSelectedClub(event.target.value as Club)}
+                  value={selectedClub}
+                >
+                  {activeBagClubIds.map((club) => (
+                    <option key={`session-intelligence-club-${club}`} value={club}>
+                      {getClubLabel(club)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="session-shot-hero-label">Club</span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">{formatDecimal(latestShot ? carryValue(latestShot) : undefined)}</span>
+              <span className="session-shot-hero-label">Carry (yd)</span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">{formatOfflineValue(latestShot ? offlineValue(latestShot) : undefined)}</span>
+              <span className="session-shot-hero-label">{offlineLabel(latestShot ? offlineValue(latestShot) : undefined)}</span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">{formatWhole(latestShot ? spinValue(latestShot) : undefined)}</span>
+              <span className="session-shot-hero-label">Spin (rpm)</span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">{formatDecimal(latestShot ? launchValue(latestShot) : undefined, '°')}</span>
+              <span className="session-shot-hero-label">Launch (°)</span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">
+                {typeof (latestShot ? smashFactorValue(latestShot) : undefined) === 'number'
+                  ? (latestShot ? smashFactorValue(latestShot) : undefined)!.toFixed(2)
+                  : '-'}
+              </span>
+              <span className="session-shot-hero-label">Smash</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="session-intelligence-heatmap" aria-label="Active club heatmap">
+          <div className="session-intelligence-section-title">
+            {getClubLabel(selectedClub)} dispersion
+          </div>
+          {sessionIntelligencePoints.length === 0 ? (
+            <p className="support-card-copy">No included shots for this club yet.</p>
+          ) : (
+            <ClubDispersionPlot lastShotId={latestShot?.id} points={sessionIntelligencePoints} />
+          )}
+        </section>
+
+        <section className="session-intelligence-signal" aria-label="Session signal">
+          {selectedClubIncludedShotCount < 4 ? (
+            <p>Getting a read on this club...</p>
+          ) : selectedClubIncludedShotCount < 8 ? (
+            <div className="session-component-scores">
+              <p>{selectedClubMidSignal}</p>
+              {selectedClubLiveSummary && (
+                <p className="support-card-copy" style={{ margin: 0 }}>
+                  Early signal: {strongestComponentLabel(selectedClubLiveSummary.componentScores, 'high')} is holding best so far.
+                </p>
+              )}
+            </div>
+          ) : selectedClubLiveSummary ? (
+            <div className="session-component-scores">
+              <div className="component-row">
+                <span>Score</span>
+                <span>{formatScore(selectedClubLiveSummary.caddieScore)}</span>
+              </div>
+              <div className="component-row">
+                <span>Call</span>
+                <span>{selectedClubLiveSummary.caddieCall}</span>
+              </div>
+              <div className="component-row">
+                <span>{componentLabel('distanceWindow')}</span>
+                <span>{formatScore(selectedClubLiveSummary.componentScores.distanceWindow)}</span>
+              </div>
+              <div className="component-row">
+                <span>{componentLabel('directionWindow')}</span>
+                <span>{formatScore(selectedClubLiveSummary.componentScores.directionWindow)}</span>
+              </div>
+              <div className="component-row">
+                <span>{componentLabel('flightQuality')}</span>
+                <span>{formatScore(selectedClubLiveSummary.componentScores.flightQuality)}</span>
+              </div>
+              <div className="component-row">
+                <span>{componentLabel('patternStability')}</span>
+                <span>{formatScore(selectedClubLiveSummary.componentScores.patternStability)}</span>
+              </div>
+              <div className="component-row">
+                <span>{componentLabel('dataConfidence')}</span>
+                <span>{formatScore(selectedClubLiveSummary.componentScores.dataConfidence)}</span>
+              </div>
+            </div>
+          ) : (
+            <p>Getting a read on this club...</p>
+          )}
+        </section>
+
+        <details className="session-shot-data">
+          <summary>View Shot Data</summary>
+          <div className="session-shot-data-table-wrap">
+            <table className="session-shot-data-table">
+              <thead>
+                <tr>
+                  <th>Exclude</th>
+                  <th>In</th>
+                  <th>Time</th>
+                  <th>Club</th>
+                  <th>Carry</th>
+                  <th>Total</th>
+                  <th>Offline</th>
+                  <th>Spin</th>
+                  <th>Launch</th>
+                  <th>Smash</th>
+                  <th>Path</th>
+                  <th>Face/Path</th>
+                  <th>Face/Target</th>
+                  <th>Club Speed</th>
+                  <th>Ball Speed</th>
+                  <th>Peak</th>
+                  <th>Descent</th>
+                  <th>Shot Shape</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessionShotGroups.flatMap((group) => [
+                  <tr className="session-table-club-header" key={`header-${group.club}`}>
+                    <td colSpan={18}>{getClubLabel(group.club)}</td>
+                  </tr>,
+                  <tr className="session-table-club-average" key={`avg-${group.club}`}>
+                    <td />
+                    <td>AVG</td>
+                    <td>Included</td>
+                    <td>{getClubLabel(group.club)}</td>
+                    <td>{formatDecimal(group.averages.carry, ' yd')}</td>
+                    <td>{formatDecimal(group.averages.total, ' yd')}</td>
+                    <td>{formatDecimal(group.averages.offline, ' yd')}</td>
+                    <td>{formatWhole(group.averages.spin, ' rpm')}</td>
+                    <td>{formatDecimal(group.averages.launch, '°')}</td>
+                    <td>
+                      {typeof group.averages.smash === 'number'
+                        ? group.averages.smash.toFixed(2)
+                        : '-'}
+                    </td>
+                    <td>{formatDecimal(group.averages.path, '°')}</td>
+                    <td>{formatDecimal(group.averages.facePath, '°')}</td>
+                    <td>{formatDecimal(group.averages.faceTarget, '°')}</td>
+                    <td>{formatDecimal(group.averages.clubSpeed, ' mph')}</td>
+                    <td>{formatDecimal(group.averages.ballSpeed, ' mph')}</td>
+                    <td>{formatDecimal(group.averages.peak, ' yd')}</td>
+                    <td>{formatDecimal(group.averages.descent, '°')}</td>
+                    <td>-</td>
+                  </tr>,
+                  ...group.shots.map((shot) => (
+                    <tr key={shot.id}>
+                      <td>
+                        <button
+                          className="session-table-exclude"
+                          onClick={() => toggleShot(shot.id)}
+                          type="button"
+                        >
+                          {shot.included ? 'Exclude' : 'Include'}
+                        </button>
+                      </td>
+                      <td>{shot.included ? 'Y' : 'N'}</td>
+                      <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>
+                      <td>{getClubLabel(shot.club)}</td>
+                      <td>{formatDecimal(carryValue(shot), ' yd')}</td>
+                      <td>{formatDecimal(totalValue(shot), ' yd')}</td>
+                      <td>{formatDecimal(offlineValue(shot), ' yd')}</td>
+                      <td>{formatWhole(spinValue(shot), ' rpm')}</td>
+                      <td>{formatDecimal(launchValue(shot), '°')}</td>
+                      <td>
+                        {typeof smashFactorValue(shot) === 'number'
+                          ? smashFactorValue(shot)!.toFixed(2)
+                          : '-'}
+                      </td>
+                      <td>{formatDecimal(clubPathValue(shot), '°')}</td>
+                      <td>{formatDecimal(faceToPathValue(shot), '°')}</td>
+                      <td>{formatDecimal(faceToTargetValue(shot), '°')}</td>
+                      <td>{formatDecimal(clubSpeedValue(shot), ' mph')}</td>
+                      <td>{formatDecimal(ballSpeedMphValue(shot), ' mph')}</td>
+                      <td>{formatDecimal(peakHeightValue(shot), ' yd')}</td>
+                      <td>{formatDecimal(descentValue(shot), '°')}</td>
+                      <td>{shot.shotName ?? '-'}</td>
+                    </tr>
+                  )),
+                ])}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </main>
+    )
   }
 
   return (
@@ -3046,9 +3492,10 @@ type DispersionPoint = {
 
 type ClubDispersionPlotProps = {
   points: DispersionPoint[]
+  lastShotId?: string
 }
 
-function ClubDispersionPlot({ points }: ClubDispersionPlotProps) {
+function ClubDispersionPlot({ points, lastShotId }: ClubDispersionPlotProps) {
   const width = 820
   const height = 330
   const padding = { top: 22, right: 32, bottom: 48, left: 62 }
@@ -3187,11 +3634,11 @@ function ClubDispersionPlot({ points }: ClubDispersionPlotProps) {
           cx={xScale(point.offline)}
           cy={yScale(point.carry)}
           fill={point.included ? '#eab308' : '#c1b06d'}
-          fillOpacity={point.included ? 0.88 : 0.4}
+          fillOpacity={point.id === lastShotId ? 1 : point.included ? 0.88 : 0.4}
           key={point.id}
-          r={point.included ? 4 : 3}
+          r={point.id === lastShotId ? 5 : point.included ? 4 : 3}
           stroke="#0e1710"
-          strokeWidth="1"
+          strokeWidth={point.id === lastShotId ? '1.4' : '1'}
         />
       ))}
       <text className="club-detail-axis-label" x={padding.left + 8} y={height - 14}>

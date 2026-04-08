@@ -1,0 +1,144 @@
+.session-intelligence-brand {
+  color: #eab308;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.session-intelligence-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.session-intelligence-pause {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #314233;
+  background: rgba(23, 36, 25, 0.58);
+  color: #cfd8cd;
+  font-size: 12px;
+}
+
+.session-last-shot-strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.session-strip-exclude {
+  align-self: center;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.session-shot-hero-metrics {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.session-shot-hero-metric {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.session-shot-hero-value {
+  color: #ffffff;
+  font-size: clamp(28px, 3.1vw, 44px);
+  line-height: 0.98;
+  font-weight: 600;
+}
+
+.session-shot-hero-club-select {
+  color: #eab308;
+  background: transparent;
+  border: 0;
+  outline: none;
+  text-align: center;
+  text-align-last: center;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 12px 0 0;
+  cursor: pointer;
+}
+
+.session-shot-hero-club-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.session-shot-hero-club-control::after {
+  content: '▾';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-46%);
+  color: rgba(234, 179, 8, 0.8);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.session-shot-hero-club-select option {
+  color: #ffffff;
+  background: #16241a;
+}
+
+.session-shot-hero-label {
+  color: #9fb09f;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+
+.session-table-exclude {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(93, 28, 28, 0.34);
+  color: #f5caca;
+  border-radius: 999px;
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.session-table-club-header td {
+  background: rgba(234, 179, 8, 0.08);
+  color: #eab308;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  border-top: 1px solid #314233;
+}
+
+.session-table-club-average td {
+  background: rgba(23, 36, 25, 0.84);
+  color: #dce5d8;
+  font-weight: 500;
+}
+
+@media (max-width: 980px) {
+  .session-last-shot-strip {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .session-shot-hero-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .session-shot-hero-value {
+    font-size: clamp(24px, 5vw, 34px);
+  }
+}
