@@ -370,10 +370,16 @@ const mergeDerivedValues = (
   shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
 })
 
-function App() {
+type AppProps = {
+  forceDashboardRoute?: boolean
+}
+
+function App({ forceDashboardRoute = false }: AppProps) {
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   type ClubDriverKey = keyof ReviewClubSummary['componentScores']
-  const [sessionState, setSessionState] = useState<SessionState>('setup')
+  const [sessionState, setSessionState] = useState<SessionState>(() =>
+    forceDashboardRoute ? 'review' : 'setup',
+  )
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
@@ -1976,16 +1982,11 @@ function App() {
       metadata: currentSessionMetadata(selectedFeedMode),
     }
 
-    setSavedSessions((currentSessions) => {
-      const nextSessions = [savedSession, ...currentSessions]
-      saveSessionHistory(nextSessions)
-      return nextSessions
-    })
+    const nextSessions = [savedSession, ...savedSessions]
+    setSavedSessions(nextSessions)
+    saveSessionHistory(nextSessions)
     clearActiveSessionDraft()
-    setActiveSessionId(savedSession.id)
-    setLiveSessionId(null)
-    setReviewView('dashboard')
-    setSessionState('review')
+    window.location.assign('/session-summary')
   }
 
   const toggleMockFeed = () => {
