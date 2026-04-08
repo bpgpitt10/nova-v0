@@ -1266,6 +1266,16 @@ function App() {
     [selectedClubHistoricalShots],
   )
 
+  // Temporary Club Detail skeleton mode: richer sections are intentionally
+  // not rendered yet, but these values stay wired for the next layer.
+  void selectedClubOpenGolfCoachKeys
+  void baselineComparison
+  void trendCards
+  void selectedClubInsights
+  void selectedClubNarrative
+  void selectedClubDispersionPoints
+  void ClubDispersionPlot
+
   const comparisonClassName = (tone: ComparisonTone) =>
     tone === 'up'
       ? 'comparison-indicator comparison-up'
@@ -1788,204 +1798,26 @@ function App() {
 
                 {reviewView === 'clubDetail' && (
                   <section className="club-detail-overview" id="club-detail-overview">
-                  <article className="dashboard-card club-detail-page-header">
-                    <div>
-                      <div className="section-kicker">Club Detail</div>
-                      <h3 className="spotlight-title">{getClubLabel(selectedDetailClub)} Overview</h3>
-                    </div>
-                    <label className="club-detail-control">
-                      Club
-                      <select
-                        value={selectedDetailClub}
-                        onChange={(event) => setSelectedDetailClub(event.target.value as Club)}
-                      >
-                        {activeBagClubIds.map((club) => (
-                          <option key={`detail-${club}`} value={club}>
-                            {getClubLabel(club)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </article>
-
-                  <article className="dashboard-card club-detail-header">
-                    <div>
-                      <div className="section-kicker">Club Detail Overview</div>
-                      <h3 className="driver-feature-title">{getClubLabel(selectedDetailClub)}</h3>
-                      <p className="driver-feature-copy">{selectedClubNarrative}</p>
-                    </div>
-                    <div className="club-detail-score">
-                      <div className="club-detail-score-label">Score</div>
-                      <div className="club-detail-score-value">
-                        {selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
+                    <article className="dashboard-card club-detail-header">
+                      <div>
+                        <div className="section-kicker">Club Detail</div>
+                        <h3 className="driver-feature-title">{getClubLabel(selectedDetailClub)}</h3>
+                        <p className="driver-feature-copy">Club Detail skeleton</p>
                       </div>
-                      <div
-                        className={caddieCallClassName(
-                          selectedClubSummary?.caddieCall ?? 'Insufficient Data',
-                        )}
-                      >
-                        {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
-                      </div>
-                    </div>
-                  </article>
-
-                  <div className="club-detail-core">
-                    <article className="dashboard-card club-detail-plot-card">
-                      <div className="section-kicker">Carry vs Offline Dispersion</div>
-                      {selectedClubDispersionPoints.length === 0 ? (
-                        <p className="support-card-copy">
-                          No carry/offline shot pairs are available yet for this club.
-                        </p>
-                      ) : (
-                        <ClubDispersionPlot points={selectedClubDispersionPoints} />
-                      )}
-                    </article>
-
-                    <article className="dashboard-card club-detail-side-card">
-                      <div className="section-kicker">Score + Confidence Over Time</div>
-                      {selectedClubSessionSeries.length === 0 ? (
-                        <p className="support-card-copy">No session trend data yet.</p>
-                      ) : (
-                        <div className="club-detail-timeline">
-                          {selectedClubSessionSeries.map((point) => (
-                            <div className="club-detail-timeline-row" key={point.id}>
-                              <div className="club-detail-timeline-date">
-                                {new Date(point.endedAt).toLocaleDateString()}
-                              </div>
-                              <div className="club-detail-timeline-bars">
-                                <div
-                                  className="club-detail-bar club-detail-bar-score"
-                                  style={{ width: `${Math.max(point.score ?? 0, 4)}%` }}
-                                />
-                                <div
-                                  className="club-detail-bar club-detail-bar-confidence"
-                                  style={{ width: `${Math.max(point.confidence ?? 0, 4)}%` }}
-                                />
-                              </div>
-                              <div className="club-detail-timeline-values">
-                                <span>S {formatScore(point.score)}</span>
-                                <span>C {formatScore(point.confidence)}</span>
-                              </div>
-                            </div>
-                          ))}
+                      <div className="club-detail-score">
+                        <div className="club-detail-score-label">Score</div>
+                        <div className="club-detail-score-value">
+                          {selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
                         </div>
-                      )}
-
-                      <div className="section-kicker">Key Numbers</div>
-                      <div className="club-detail-key-metrics">
-                        <div className="component-row">
-                          <span>Carry avg</span>
-                          <span>{formatDecimal(selectedClubMetrics.carryAverage, ' yd')}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Total avg</span>
-                          <span>{formatDecimal(selectedClubMetrics.totalAverage, ' yd')}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Offline avg</span>
-                          <span>{formatDecimal(selectedClubMetrics.offlineAverage, ' yd')}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Offline dispersion</span>
-                          <span>{formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>VLA avg</span>
-                          <span>{formatDecimal(selectedClubMetrics.vlaAverage, ' deg')}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Total spin avg</span>
-                          <span>{formatWhole(selectedClubMetrics.spinAverage, ' rpm')}</span>
-                        </div>
-                        {typeof selectedClubMetrics.descentAverage === 'number' && (
-                          <div className="component-row">
-                            <span>Descent avg</span>
-                            <span>{formatDecimal(selectedClubMetrics.descentAverage, ' deg')}</span>
-                          </div>
-                        )}
-                        <div className="component-row">
-                          <span>Shot rank summary</span>
-                          <span>{selectedClubMetrics.shotRankSummary}</span>
-                        </div>
-                        <div className="component-row">
-                          <span>Included shots</span>
-                          <span>
-                            {formatWhole(selectedClubMetrics.includedShotCount)} /{' '}
-                            {formatWhole(selectedClubHistoricalShots.length)}
-                          </span>
-                        </div>
-                        <div className="component-row">
-                          <span>OpenGolfCoach coverage</span>
-                          <span>
-                            {formatWhole(selectedClubMetrics.enrichedShotCount)} enriched •{' '}
-                            {formatWhole(selectedClubOpenGolfCoachKeys.length)} keys
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="section-kicker">Baseline Comparison</div>
-                      <div className="club-detail-key-metrics">
-                        <div className="component-row">
-                          <span>Latest session</span>
-                          <span>
-                            {baselineComparison
-                              ? new Date(baselineComparison.latest.endedAt).toLocaleDateString()
-                              : '-'}
-                          </span>
-                        </div>
-                        <div className="component-row">
-                          <span>Score vs prior</span>
-                          <span>
-                            {typeof baselineComparison?.scoreDelta === 'number'
-                              ? `${baselineComparison.scoreDelta >= 0 ? '+' : ''}${formatScore(baselineComparison.scoreDelta)}`
-                              : 'No prior baseline'}
-                          </span>
-                        </div>
-                        <div className="component-row">
-                          <span>Carry vs prior</span>
-                          <span>
-                            {typeof baselineComparison?.carryDelta === 'number'
-                              ? `${baselineComparison.carryDelta >= 0 ? '+' : ''}${formatDecimal(baselineComparison.carryDelta, ' yd')}`
-                              : 'No prior baseline'}
-                          </span>
-                        </div>
-                        <div className="component-row">
-                          <span>Dispersion vs prior</span>
-                          <span>
-                            {typeof baselineComparison?.offlineDelta === 'number'
-                              ? `${baselineComparison.offlineDelta >= 0 ? '+' : ''}${formatDecimal(baselineComparison.offlineDelta, ' yd')}`
-                              : 'No prior baseline'}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  </div>
-
-                  <section className="club-detail-trends">
-                    {trendCards.map((card) => (
-                      <article className="dashboard-card support-card club-detail-trend-card" key={card.key}>
-                        <div className="section-kicker">{card.label}</div>
-                        <h3 className="support-card-title">{card.value}</h3>
-                        <p className="support-card-copy">{card.detail}</p>
-                      </article>
-                    ))}
-                  </section>
-
-                  <article className="dashboard-card club-detail-insights">
-                    <div className="section-kicker">Looper Insights</div>
-                    <div className="insight-list">
-                      {selectedClubInsights.map((insight) => (
                         <div
-                          className={`insight-row ${caddieToneClassName(
+                          className={caddieCallClassName(
                             selectedClubSummary?.caddieCall ?? 'Insufficient Data',
-                          )}`}
-                          key={insight}
+                          )}
                         >
-                          {insight}
+                          {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
                         </div>
-                      ))}
-                    </div>
-                  </article>
+                      </div>
+                    </article>
                   </section>
                 )}
 
