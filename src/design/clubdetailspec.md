@@ -1,17 +1,21 @@
-# Club Detail Spec (Overview Only)
+# Club Detail Spec (Incremental Build)
 
-This section must follow `src/design/looperVoice.md` for all Looper messaging and tone.
-Do not redefine tone rules here.
+This file defines the Club Detail page and the order it should be built.
 
-This page explains why a club is strong or weak.
+Club Detail is a separate page/view from Dashboard.
 
-It is more data-heavy than Dashboard, but it is still a product surface, not a raw debug page.
+Its role is to explain why a club is strong or weak.
 
-This page should answer:
-1. Why is this club scoring the way it is?
-2. What is the miss pattern?
-3. How are carry, direction, launch, and spin behaving?
-4. What is changing over time?
+This page must follow the voice and tone rules defined in:
+- src/design/looperVoice.md
+
+Use that file as the single source of truth for Looper messaging.
+
+Club Detail applies that voice in a single-club diagnostic context:
+- more diagnostic than Dashboard
+- still plainspoken
+- slightly cheeky when appropriate
+- focused on what this club is actually doing
 
 ---
 
@@ -20,13 +24,19 @@ This page should answer:
 Dashboard = broad trust view  
 Club Detail = single-club explanation view
 
+This page should answer:
+1. Why is this club scoring the way it is?
+2. What is the miss pattern?
+3. What is changing over time?
+4. What should I do with this club?
+
 This page should feel:
 - focused
 - premium
 - dark green golf-native
 - explanation-first
-- visual
-- richer in metrics than Dashboard
+- more data-rich than Dashboard
+- stable and safe to build incrementally
 
 ---
 
@@ -46,136 +56,184 @@ Do not invent a different shell for Club Detail.
 
 ---
 
-## Layout Order
+## Build Order (IMPORTANT)
 
-1. Page header / controls row
-2. Club summary + main visual row
-3. Key numbers / comparison side panel
-4. Trends row
-5. Insights row
+Club Detail must be implemented in phases.
 
----
+Do not attempt to build the full page in one pass.
 
-## 1. Page Header / Controls Row
-
-Required:
-- club name in headline form
-- lightweight top controls if needed
-- keep this cleaner than the main content
-
-Allowed examples later:
-- compare to baseline
-- shot range selector
-
-Do not overbuild controls in v1.
-
----
-
-## 2. Club Summary + Main Visual Row
-
-This is the dominant section of the page.
-
-### Left summary block
-Required:
+### Phase 1
+- separate page/view boundary
+- shared shell
 - club name
 - Score
 - Call
-- short narrative summary
-- supporting delta line if useful
+- simple placeholder text
+
+### Phase 2
+- Dispersion (main visual)
+
+### Phase 3
+- Looper’s Read
+
+### Phase 4
+- What’s Driving This
+  - Performance Drivers
+  - Ball Flight vs Ideal
+
+### Phase 5
+- Trends
+
+Only build one phase at a time unless explicitly requested.
+
+---
+
+## Current Target Phase
+
+For now, the active implementation target is:
+
+## Phase 2 — Dispersion
+
+This means the current Club Detail implementation should include:
+- page shell
+- club name
+- Score
+- Call
+- a simple dispersion section
+
+Do not implement later phases until explicitly requested.
+
+---
+
+## Current Layout Order
+
+For the current phase, the page should render in this order:
+
+1. Page header / club identity row
+2. Score + Call
+3. Dispersion (main visual)
+
+That is all for now.
+
+---
+
+## 1. Page Header / Club Identity Row
+
+Required:
+- club name in headline form
+
+Optional later:
+- lightweight controls
+
+Do not overbuild controls now.
+
+---
+
+## 2. Score + Call
+
+Required:
+- Score
+- Call
 
 Rules:
-- Score remains white and visually dominant
+- Score remains visually dominant
 - Call uses semantic pill styling
-- narrative should follow `src/design/looperVoice.md`, not a stats report
+- keep this simple for now
 
-### Center main visual
+Do not add narrative or extra insight here yet.
+That comes later in Looper’s Read.
+
+---
+
+## 3. Dispersion (Main Visual)
+
+This is the current implementation target.
+
 Primary visual:
-- dispersion plot / heatmap style view
+- shot dispersion chart
 
 Axes:
-- x = offline distance
-- y = carry distance
+- x = offline distance (yards)
+- y = carry distance (yards)
 
 Purpose:
-- show miss shape and carry window together
-- this is the dominant visual on the page
+- show miss pattern visually
+- provide the first meaningful club-specific explanation surface
 
 Rules:
-- make it large and integrated
-- do not make it a tiny support widget
+- use all historical saved-session shots for the selected club
+- plot individual shots as dots
+- show a visible center line at 0 offline
+- make the visual reasonably large and central
+- keep it contained within the main content column
+- no horizontal overflow
+- no runtime crashes on empty/missing data
 
-### Right side panel
-Required:
-- Score over time / confidence over time chart
-- key numbers block
-- baseline comparison block if practical
+Empty state:
+- if no valid shots exist, show:
+  - "No shot data available for this club yet"
 
-This right side is a dense supporting analysis zone.
-
----
-
-## 3. Key Numbers / Comparison Panel
-
-This page should be more data-heavy than Dashboard.
-
-Required key metrics:
-- carry average
-- total distance average
-- offline average
-- offline standard deviation / dispersion
-- vertical launch angle average
-- total spin average
-- descent angle average if available
-- shot rank summary
-
-If available from persisted OpenGolfCoach or raw shot data, also support:
-- launch / VLA trend context
-- spin trend context
-- bias / direction context
-
-Use the fullest available stored data.
-
-Formatting:
-- no long decimals
-- use existing formatting rules
+Do not add heatmap gradients yet unless explicitly requested.
+Do not add trends yet.
+Do not add component drivers yet.
 
 ---
 
-## 4. Trends Row
+## Future Phases (Do Not Implement Yet)
 
-This page should include more trend detail than Dashboard.
-
-Minimum required trends:
-- carry trend over time
-- offline / dispersion trend over time
-- bias trend over time
-- vertical launch angle trend over time
-- total spin trend over time
-
-Optional if supported cleanly:
-- descent angle trend
-- score trend over time
-
-Rules:
-- simple, readable trend cards
-- do not overbuild chart controls yet
-- trends should support diagnosis, not overwhelm the page
+The following sections belong to future phases and should not be built now unless explicitly requested.
 
 ---
 
-## 5. Insights Row
+## Future Phase 3 — Looper’s Read
 
-Show 2–3 concise club-specific insights.
+This will become the primary intelligence block.
 
-Tone:
-Follow `src/design/looperVoice.md`.
+It will combine:
+- Score
+- Call
+- narrative
+- key drivers
 
-Good insights should connect:
-- score / call
-- dispersion
-- carry
-- launch / spin behavior
-- trend movement
+It will summarize what the club is doing and what it means.
+
+Do not implement in the current phase.
+
+---
+
+## Future Phase 4 — What’s Driving This
+
+This will explain WHY the Looper’s Read is true.
+
+### Left column:
+Performance Drivers
+- Pattern Stability
+- Direction Window
+- Distance Window
+- Flight Quality
+- Data Confidence
+
+### Right column:
+Ball Flight vs Ideal
+- Launch (VLA)
+- Spin
+- Descent Angle
+- Carry
+
+Do not implement in the current phase.
+
+---
+
+## Future Phase 5 — Trends
+
+Future trends may include:
+- carry trend
+- dispersion / offline trend
+- bias trend
+- VLA trend
+- spin trend
+
+Do not implement in the current phase.
 
 ---
 
@@ -183,30 +241,36 @@ Good insights should connect:
 
 Use:
 - all historical saved-session shots for the selected club
-- full shot.openGolfCoach payload
+- full shot.openGolfCoach payload where needed
 - existing Score/Call engine unchanged
-- raw persisted Nova fields where useful
+- persisted raw fields where useful
 
-Handle older sessions gracefully if some fields are missing.
+Handle missing data gracefully.
 
-This page should use the fullest available persisted data, not only the currently mirrored convenience fields.
+The page must never hard-crash because of incomplete data.
 
 ---
 
-## Not Allowed
+## Not Allowed (Current Phase)
 
-- tabs in v1
-- shot list in v1
-- compare mode in v1
-- export tools in v1
+- Looper’s Read block
+- component drivers
+- Ball Flight vs Ideal
+- trends
+- tabs
+- shot list
+- compare mode
+- export tools
 - debug UI
-- a totally different shell from Dashboard
+- alternate shell
 
 ---
 
 ## Goal
 
-This page should make the user feel:
-“I understand this club now.”
+For the current phase, this page should make the user feel:
 
-It should feel more analytical than Dashboard, but still premium and opinionated.
+"I can see this club’s shot pattern clearly."
+
+Later phases will expand that into:
+"I understand this club — and I know how to use it."

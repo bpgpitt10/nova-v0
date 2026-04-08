@@ -199,6 +199,9 @@ const comparisonTone = (
   return delta > 0 ? 'up' : 'down'
 }
 
+const capitalizeFirst = (value: string) =>
+  value.length > 0 ? value[0].toUpperCase() + value.slice(1) : value
+
 const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
   `caddie-call-pill caddie-call-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
 
@@ -1266,6 +1269,132 @@ function App() {
     [selectedClubHistoricalShots],
   )
 
+  const looperRead = useMemo(() => {
+    if (!selectedClubSummary) {
+      return {
+        primary: `${getClubLabel(selectedDetailClub)} is still finding its shape.`,
+        explanation: 'The pattern is not settled yet, so this one is still a cautious play.',
+        implication: 'Take the bigger side of the target and keep the miss simple.',
+      }
+    }
+
+    const components: Array<
+      [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
+    > = [
+      ['patternStability', selectedClubSummary.componentScores.patternStability],
+      ['directionWindow', selectedClubSummary.componentScores.directionWindow],
+      ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
+      ['flightQuality', selectedClubSummary.componentScores.flightQuality],
+    ]
+
+    const ranked = [...components].sort((left, right) => right[1] - left[1])
+    const strongest = ranked[0][0]
+    const weakest = ranked[ranked.length - 1][0]
+
+    const plainLabel = (
+      key: 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability',
+    ) => {
+      switch (key) {
+        case 'patternStability':
+          return 'repeatability'
+        case 'directionWindow':
+          return 'start-line control'
+        case 'distanceWindow':
+          return 'carry control'
+        case 'flightQuality':
+          return 'flight shape'
+      }
+    }
+
+    switch (selectedClubSummary.caddieCall) {
+      case 'Attack':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is giving you a proper green light right now.`,
+          explanation: `${capitalizeFirst(plainLabel(strongest))} is holding, and ${plainLabel(weakest)} is only a touch loose.`,
+          implication: 'Trust the stock swing and go right at it.',
+        }
+      case 'Play':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
+          explanation: "Flight's holding, but carry still drifts a touch.",
+          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
+        }
+      case 'Manage':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
+          explanation: "Flight's holding, but carry still drifts a touch.",
+          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
+        }
+      case 'Careful':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is in careful territory at the minute.`,
+          explanation: `${capitalizeFirst(plainLabel(weakest))} is loose enough to bring trouble in quickly.`,
+          implication: 'Use a conservative target and keep risk out of the miss.',
+        }
+      case 'Liability':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is behaving like a troublemaker right now.`,
+          explanation: `${capitalizeFirst(plainLabel(weakest))} is leaking, and the overall pattern is not steady enough.`,
+          implication: 'Step to a safer club unless the hole leaves you no choice.',
+        }
+      case 'Insufficient Data':
+        return {
+          primary: `${getClubLabel(selectedDetailClub)} is still writing its story.`,
+          explanation: 'There is not enough clean evidence yet to call this one stable or loose.',
+          implication: 'Keep the target simple while this read builds.',
+        }
+    }
+  }, [selectedClubSummary, selectedDetailClub])
+
+  const looperReadDrivers = useMemo(() => {
+    if (!selectedClubSummary) {
+      return [
+        {
+          label: 'Pattern Stability',
+          detail: 'still gathering a repeatable shape',
+        },
+        {
+          label: 'Direction Window',
+          detail: 'start lines are still settling',
+        },
+      ]
+    }
+
+    if (selectedClubSummary.caddieCall === 'Play' || selectedClubSummary.caddieCall === 'Manage') {
+      return [
+        { label: 'Flight Quality', detail: 'holding steady' },
+        { label: 'Pattern Stability', detail: 'not quite locked in' },
+        { label: 'Direction Window', detail: 'still a bit loose' },
+      ]
+    }
+
+    const components: Array<
+      [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
+    > = [
+      ['patternStability', selectedClubSummary.componentScores.patternStability],
+      ['directionWindow', selectedClubSummary.componentScores.directionWindow],
+      ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
+      ['flightQuality', selectedClubSummary.componentScores.flightQuality],
+    ]
+
+    return [...components]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3)
+      .map(([key, score]) => {
+        const detail =
+          score >= 70
+            ? 'holding steady'
+            : score >= 50
+              ? 'not quite locked in'
+              : 'still a bit loose'
+
+        return {
+          label: componentLabel(key),
+          detail,
+        }
+      })
+  }, [selectedClubSummary])
+
   // Temporary Club Detail skeleton mode: richer sections are intentionally
   // not rendered yet, but these values stay wired for the next layer.
   void selectedClubOpenGolfCoachKeys
@@ -1273,8 +1402,6 @@ function App() {
   void trendCards
   void selectedClubInsights
   void selectedClubNarrative
-  void selectedClubDispersionPoints
-  void ClubDispersionPlot
 
   const comparisonClassName = (tone: ComparisonTone) =>
     tone === 'up'
@@ -1798,25 +1925,53 @@ function App() {
 
                 {reviewView === 'clubDetail' && (
                   <section className="club-detail-overview" id="club-detail-overview">
-                    <article className="dashboard-card club-detail-header">
-                      <div>
-                        <div className="section-kicker">Club Detail</div>
-                        <h3 className="driver-feature-title">{getClubLabel(selectedDetailClub)}</h3>
-                        <p className="driver-feature-copy">Club Detail skeleton</p>
-                      </div>
-                      <div className="club-detail-score">
-                        <div className="club-detail-score-label">Score</div>
-                        <div className="club-detail-score-value">
-                          {selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
-                        </div>
-                        <div
-                          className={caddieCallClassName(
-                            selectedClubSummary?.caddieCall ?? 'Insufficient Data',
-                          )}
-                        >
-                          {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
+                    <article className="dashboard-card club-detail-looper-read">
+                      <div className="club-detail-score-col">
+                        <div className="club-detail-score-anchor">
+                          <span className="club-detail-score-label">Score</span>
+                          <span className="club-detail-score-value looper-read-score">
+                            {selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
+                          </span>
+                          <div
+                            className={caddieCallClassName(
+                              selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+                            )}
+                          >
+                            {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
+                          </div>
                         </div>
                       </div>
+
+                      <div className="club-detail-read-col">
+                        <h3 className="club-detail-read-title">
+                          {getClubLabel(selectedDetailClub)} · THE LOOPER&apos;S READ
+                        </h3>
+                        <p className="club-detail-read-line">{looperRead.primary}</p>
+                        <p className="club-detail-read-line secondary">{looperRead.explanation}</p>
+                        <p className="club-detail-read-line secondary">{looperRead.implication}</p>
+                      </div>
+
+                      <div className="club-detail-drivers-col">
+                        <div className="supporting-title">DRIVING THIS</div>
+                        <ul className="club-detail-read-driver-list">
+                          {looperReadDrivers.map((driver) => (
+                            <li className="club-detail-read-driver" key={driver.label}>
+                              <span className="club-detail-read-driver-label">{driver.label}</span>
+                              <span className="club-detail-read-driver-dash"> — </span>
+                              <span className="club-detail-read-driver-detail">{driver.detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </article>
+
+                    <article className="dashboard-card club-detail-plot-card">
+                      <div className="section-kicker">Dispersion</div>
+                      {selectedClubDispersionPoints.length === 0 ? (
+                        <p className="support-card-copy">No shot data available for this club yet</p>
+                      ) : (
+                        <ClubDispersionPlot points={selectedClubDispersionPoints} />
+                      )}
                     </article>
                   </section>
                 )}

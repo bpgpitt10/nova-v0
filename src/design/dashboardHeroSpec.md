@@ -15,7 +15,6 @@ This file is the single source of truth for the full Dashboard hero area, includ
 - Spotlight on Your Game
 - Trend to Watch
 
-Other design files may reference this hero area, but should not redefine its structure or content rules.
 
 ---
 

@@ -112,6 +112,8 @@ Rules:
 
 Defined in:
 - src/design/dashboardHeroSpec.md
+All Looper narrative content in this page should follow:
+- src/design/looperVoice.md
 
 Summary:
 - Primary full-width `The Looper's Read` block

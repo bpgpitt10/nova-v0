@@ -546,6 +546,101 @@ td {
   padding: 16px;
 }
 
+.club-detail-looper-read {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 156px minmax(320px, 520px) minmax(200px, 260px);
+  justify-content: start;
+  gap: 14px;
+  align-items: start;
+}
+
+.club-detail-score-col {
+  display: grid;
+  padding-top: 2px;
+}
+
+.club-detail-score-anchor {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.club-detail-read-col {
+  display: grid;
+  gap: 4px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(49, 66, 51, 0.6);
+}
+
+.club-detail-read-title {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.club-detail-read-line {
+  margin: 0;
+  color: #e5ece1;
+  font-size: 14px;
+  line-height: 1.36;
+}
+
+.club-detail-read-line + .club-detail-read-line {
+  margin-top: 1px;
+}
+
+.club-detail-read-line.secondary {
+  color: #cfd8cd;
+}
+
+.club-detail-drivers-col {
+  display: grid;
+  gap: 5px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(49, 66, 51, 0.6);
+  align-content: start;
+}
+
+.looper-read-score {
+  font-size: 44px;
+  line-height: 0.95;
+}
+
+.club-detail-drivers-col .supporting-title {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #9fb09f;
+}
+
+.club-detail-read-driver-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.club-detail-read-driver {
+  font-size: 12px;
+  color: #cfd8cd;
+}
+
+.club-detail-read-driver-label {
+  font-weight: 600;
+  color: #dce5d8;
+}
+
+.club-detail-read-driver-dash {
+  color: #9fb09f;
+}
+
+.club-detail-read-driver-detail {
+  color: #b8c5b6;
+}
+
 .club-detail-plot {
   width: 100%;
   height: auto;
@@ -1388,6 +1483,25 @@ td {
 
   .club-detail-score {
     justify-items: start;
+  }
+
+  .club-detail-looper-read {
+    grid-template-columns: 156px minmax(0, 1fr);
+    gap: 12px;
+    justify-content: stretch;
+  }
+
+  .club-detail-read-col {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .club-detail-drivers-col {
+    grid-column: 1 / -1;
+    border-left: none;
+    border-top: 1px solid rgba(49, 66, 51, 0.6);
+    padding-left: 0;
+    padding-top: 10px;
   }
 
   .club-detail-trends {
