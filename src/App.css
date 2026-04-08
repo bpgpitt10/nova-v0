@@ -1,12 +1,23 @@
 .app-shell {
-  width: min(1440px, calc(100vw - 48px));
+  width: min(1280px, calc(100vw - 40px));
   margin: 0 auto;
   padding: 24px 0;
   color: #ffffff;
   background: transparent;
+  box-sizing: border-box;
 }
 
 .dashboard-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.dashboard-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at top left, rgba(132, 204, 22, 0.08), transparent 28%),
     radial-gradient(circle at 85% 12%, rgba(234, 179, 8, 0.08), transparent 18%),
@@ -16,10 +27,12 @@
 
 .dashboard-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
   position: relative;
+  width: 100%;
+  max-width: 100%;
 }
 
 .dashboard-layout::before {
@@ -43,6 +56,8 @@
 .dashboard-rail {
   position: sticky;
   top: 24px;
+  width: 248px;
+  max-width: 248px;
   display: grid;
   gap: 24px;
   padding: 20px 16px;
@@ -52,6 +67,8 @@
   border-radius: 18px;
   min-height: calc(100vh - 48px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .dashboard-rail-brand {
@@ -111,6 +128,22 @@
   text-decoration: none;
   font-size: 13px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-rail-club-list a span {
+  min-width: 0;
+}
+
+.dashboard-rail-club-list a span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-rail-club-list a span:last-child {
+  flex-shrink: 0;
 }
 
 .dashboard-rail-nav a:hover,
@@ -295,6 +328,9 @@ td {
   display: grid;
   gap: 24px;
   margin-top: 24px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-hero-card,
@@ -305,6 +341,9 @@ td {
   border: 1px solid #314233;
   border-radius: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-hero-card {
@@ -678,7 +717,7 @@ td {
 .driver-feature-header,
 .driver-feature-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   gap: 16px;
   align-items: start;
 }
@@ -722,6 +761,7 @@ td {
   border: 1px solid #314233;
   border-radius: 10px;
   background: rgba(23, 36, 25, 0.82);
+  min-width: 0;
 }
 
 .driver-feature-meta-row {
@@ -920,6 +960,7 @@ td {
 
 .review-table-wrap {
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .review-table {
@@ -1177,17 +1218,41 @@ td {
 .last-session-review {
   border-color: rgba(132, 204, 22, 0.28);
   background: rgba(30, 49, 35, 0.72);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .last-session-review[open] {
   background:
     linear-gradient(180deg, rgba(46, 70, 50, 0.9) 0%, rgba(33, 53, 38, 0.94) 100%);
   border-color: rgba(159, 176, 159, 0.38);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.last-session-review > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.last-session-review .review-card,
+.last-session-review .review-table-wrap,
+.last-session-table-block {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .last-session-insights {
   padding: 16px;
   background: rgba(42, 67, 48, 0.72);
+  overflow-wrap: anywhere;
 }
 
 .last-session-insights p {
@@ -1199,7 +1264,36 @@ td {
 
 .last-session-table-block {
   margin-top: 8px;
-  padding-left: 12px;
+  padding-left: 8px;
+  padding-right: 0;
+  overflow: hidden;
+}
+
+.last-session-table {
+  width: 100%;
+  min-width: 940px;
+  table-layout: fixed;
+}
+
+.last-session-table th,
+.last-session-table td {
+  padding: 6px 6px;
+  font-size: 12px;
+}
+
+.last-session-table th {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.last-session-table th:first-child,
+.last-session-table td:first-child {
+  width: 96px;
+}
+
+.last-session-table th:nth-child(2),
+.last-session-table td:nth-child(2) {
+  width: 54px;
 }
 
 .last-session-table .review-score-cell .caddie-call-pill {
@@ -1224,6 +1318,7 @@ td {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .comparison-value {
@@ -1253,7 +1348,7 @@ td {
 
 @media (max-width: 1100px) {
   .app-shell {
-    width: min(1440px, calc(100vw - 32px));
+    width: min(1280px, calc(100vw - 32px));
   }
 
   .dashboard-layout {
@@ -1263,6 +1358,8 @@ td {
   .dashboard-rail {
     position: static;
     min-height: auto;
+    width: auto;
+    max-width: none;
   }
 
   .club-card-grid {
