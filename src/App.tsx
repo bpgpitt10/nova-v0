@@ -164,9 +164,15 @@ const spinValue = (shot: Shot) =>
     ? shot.totalSpinRpm
     : typeof shot.spinRpm === 'number'
       ? shot.spinRpm
-      : payloadNumber(shot.openGolfCoach, ['total_spin_rpm', 'totalSpinRpm', 'spin_rpm'])
+      : payloadNumber(shot.openGolfCoach, [
+          'backspin_rpm',
+          'total_spin_rpm',
+          'totalSpinRpm',
+          'spin_rpm',
+        ])
 
 const descentValue = (shot: Shot) =>
+  // Primary descent field from confirmed OpenGolfCoach payload.
   payloadNumber(shot.openGolfCoach, [
     'descent_angle_degrees',
     'descent_angle_deg',
@@ -175,6 +181,35 @@ const descentValue = (shot: Shot) =>
     'descentAngleDeg',
     'descentAngle',
   ])
+
+const clubPathValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, ['club_path_degrees', 'clubPathDegrees'])
+
+const faceToPathValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, [
+    'club_face_to_path_degrees',
+    'clubFaceToPathDegrees',
+  ])
+
+const faceToTargetValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, [
+    'club_face_to_target_degrees',
+    'clubFaceToTargetDegrees',
+  ])
+
+const smashFactorValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor'])
+
+const peakHeightValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, ['peak_height_yards', 'peakHeightYards'])
+
+const clubSpeedValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph'])
+
+const ballSpeedMphValue = (shot: Shot) =>
+  typeof shot.ballSpeedMph === 'number'
+    ? shot.ballSpeedMph
+    : payloadNumber(shot.openGolfCoach, ['ball_speed_mph', 'ballSpeedMph'])
 
 const comparisonTolerance = {
   score: 3,
@@ -337,11 +372,13 @@ const mergeDerivedValues = (
 
 function App() {
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
+  type ClubDriverKey = keyof ReviewClubSummary['componentScores']
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
+  const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
     useState<DashboardNavTarget>('dashboard')
   const [isLastSessionOpen, setIsLastSessionOpen] = useState(false)
@@ -1130,14 +1167,14 @@ function App() {
     const spinTrend = latestAndPrior(
       selectedClubSessionSeries.map((point) => point.spinAverage),
     )
-    const descentTrend = latestAndPrior(
-      selectedClubSessionSeries.map((point) => point.descentAverage),
-    )
 
     const cards = [
       {
         key: 'carry',
         label: 'Carry',
+        series: selectedClubSessionSeries
+          .map((point) => point.carryAverage)
+          .filter((value): value is number => typeof value === 'number'),
         value:
           carryTrend && typeof carryTrend.latest === 'number'
             ? `${formatDecimal(carryTrend.latest, ' yd')}`
@@ -1150,6 +1187,9 @@ function App() {
       {
         key: 'offline-dispersion',
         label: 'Offline / Dispersion',
+        series: selectedClubSessionSeries
+          .map((point) => point.dispersion)
+          .filter((value): value is number => typeof value === 'number'),
         value:
           offlineTrend && typeof offlineTrend.latest === 'number'
             ? `${formatDecimal(offlineTrend.latest, ' yd')}`
@@ -1162,6 +1202,9 @@ function App() {
       {
         key: 'bias',
         label: 'Bias',
+        series: selectedClubSessionSeries
+          .map((point) => point.bias)
+          .filter((value): value is number => typeof value === 'number'),
         value:
           biasTrend && typeof biasTrend.latest === 'number'
             ? `${biasTrend.latest >= 0 ? 'Right' : 'Left'} ${formatDecimal(Math.abs(biasTrend.latest), ' yd')}`
@@ -1174,6 +1217,9 @@ function App() {
       {
         key: 'vla',
         label: 'VLA',
+        series: selectedClubSessionSeries
+          .map((point) => point.vlaAverage)
+          .filter((value): value is number => typeof value === 'number'),
         value:
           vlaTrend && typeof vlaTrend.latest === 'number'
             ? `${formatDecimal(vlaTrend.latest, ' deg')}`
@@ -1186,6 +1232,9 @@ function App() {
       {
         key: 'spin',
         label: 'Spin',
+        series: selectedClubSessionSeries
+          .map((point) => point.spinAverage)
+          .filter((value): value is number => typeof value === 'number'),
         value:
           spinTrend && typeof spinTrend.latest === 'number'
             ? `${formatWhole(spinTrend.latest, ' rpm')}`
@@ -1195,16 +1244,7 @@ function App() {
             ? formatDelta(spinTrend.latest, spinTrend.prior, ' rpm')
             : 'No spin trend yet',
       },
-    ]
-
-    if (descentTrend && typeof descentTrend.latest === 'number') {
-      cards.push({
-        key: 'descent',
-        label: 'Descent',
-        value: `${formatDecimal(descentTrend.latest, ' deg')}`,
-        detail: formatDelta(descentTrend.latest, descentTrend.prior, ' deg'),
-      })
-    }
+    ] as const
 
     return cards
   }, [selectedClubSessionSeries])
@@ -1395,11 +1435,510 @@ function App() {
       })
   }, [selectedClubSummary])
 
+  const selectedClubPerformanceDrivers = useMemo(() => {
+    const history = historicalAveragesByClub.get(selectedDetailClub)
+    const scores = selectedClubSummary?.componentScores
+
+    const buildDriverCopy = (key: ClubDriverKey, score?: number) => {
+      const stable = typeof score === 'number' && score >= 70
+      const playable = typeof score === 'number' && score >= 50 && score < 70
+
+      switch (key) {
+        case 'patternStability':
+          return {
+            why: stable
+              ? 'You are seeing a repeatable shot shape more often than not.'
+              : playable
+                ? 'The pattern shows up, but it still comes and goes.'
+                : 'This shape is still too streaky from swing to swing.',
+            meaning: stable
+              ? 'You can trust this club for a committed stock swing.'
+              : playable
+                ? 'Pick safer targets and avoid forcing shape.'
+                : 'Treat this as a conservative option until the shape settles.',
+          }
+        case 'directionWindow':
+          return {
+            why: stable
+              ? 'Start lines are holding the target corridor.'
+              : playable
+                ? 'Start lines are close, with the odd leak.'
+                : 'The left-right window is still wandering too much.',
+            meaning: stable
+              ? 'You can aim tighter when the shot calls for it.'
+              : playable
+                ? 'Favor the fat side and keep the miss in play.'
+                : 'Build in extra room and avoid short-side misses.',
+          }
+        case 'distanceWindow':
+          return {
+            why: stable
+              ? 'Carry is landing in a reliable window.'
+              : playable
+                ? 'Carry is mostly there, with a little jump now and then.'
+                : 'Carry is still jumpy for precise targets.',
+            meaning: stable
+              ? 'This club can be used with confident yardage intent.'
+              : playable
+                ? 'Club up or down based on safe coverage, not perfect number hunting.'
+                : 'Use this club where a little distance drift is acceptable.',
+          }
+        case 'flightQuality':
+          return {
+            why: stable
+              ? 'Flight is behaving in a playable, repeatable window.'
+              : playable
+                ? 'Flight is usable, but not fully settled yet.'
+                : 'Flight shape is still loose under pressure swings.',
+            meaning: stable
+              ? 'You can lean on this shape when you need a predictable flight.'
+              : playable
+                ? 'Keep the shot simple and avoid over-shaping.'
+                : 'Play for control first while flight cleans up.',
+          }
+        case 'dataConfidence':
+          return {
+            why: stable
+              ? 'You have enough clean shots for a trustworthy read.'
+              : playable
+                ? 'The read is useful, but still building support.'
+                : 'There is not enough clean evidence to be fully sure yet.',
+            meaning: stable
+              ? 'You can make decisions off this profile with confidence.'
+              : playable
+                ? 'Use the read as guidance, not gospel.'
+                : 'Default to safer decisions until more shots confirm the pattern.',
+          }
+      }
+    }
+
+    const rows: Array<{
+      key: ClubDriverKey
+      label: string
+      value?: number
+      delta?: number
+      direction: ComparisonDirection
+      tone: ComparisonTone
+      why: string
+      meaning: string
+    }> = [
+      {
+        key: 'patternStability',
+        label: 'Pattern Stability',
+        value: scores?.patternStability,
+        delta:
+          typeof scores?.patternStability === 'number' &&
+          typeof history?.patternStability === 'number'
+            ? scores.patternStability - history.patternStability
+            : undefined,
+        direction: comparisonDirection(
+          typeof scores?.patternStability === 'number' &&
+            typeof history?.patternStability === 'number'
+            ? scores.patternStability - history.patternStability
+            : undefined,
+        ),
+        tone: comparisonTone(
+          typeof scores?.patternStability === 'number' &&
+            typeof history?.patternStability === 'number'
+            ? scores.patternStability - history.patternStability
+            : undefined,
+          comparisonTolerance.component,
+        ),
+        ...buildDriverCopy('patternStability', scores?.patternStability),
+      },
+      {
+        key: 'directionWindow',
+        label: 'Direction Window',
+        value: scores?.directionWindow,
+        delta:
+          typeof scores?.directionWindow === 'number' &&
+          typeof history?.directionWindow === 'number'
+            ? scores.directionWindow - history.directionWindow
+            : undefined,
+        direction: comparisonDirection(
+          typeof scores?.directionWindow === 'number' &&
+            typeof history?.directionWindow === 'number'
+            ? scores.directionWindow - history.directionWindow
+            : undefined,
+        ),
+        tone: comparisonTone(
+          typeof scores?.directionWindow === 'number' &&
+            typeof history?.directionWindow === 'number'
+            ? scores.directionWindow - history.directionWindow
+            : undefined,
+          comparisonTolerance.component,
+        ),
+        ...buildDriverCopy('directionWindow', scores?.directionWindow),
+      },
+      {
+        key: 'distanceWindow',
+        label: 'Distance Window',
+        value: scores?.distanceWindow,
+        delta:
+          typeof scores?.distanceWindow === 'number' &&
+          typeof history?.distanceWindow === 'number'
+            ? scores.distanceWindow - history.distanceWindow
+            : undefined,
+        direction: comparisonDirection(
+          typeof scores?.distanceWindow === 'number' &&
+            typeof history?.distanceWindow === 'number'
+            ? scores.distanceWindow - history.distanceWindow
+            : undefined,
+        ),
+        tone: comparisonTone(
+          typeof scores?.distanceWindow === 'number' &&
+            typeof history?.distanceWindow === 'number'
+            ? scores.distanceWindow - history.distanceWindow
+            : undefined,
+          comparisonTolerance.component,
+        ),
+        ...buildDriverCopy('distanceWindow', scores?.distanceWindow),
+      },
+      {
+        key: 'flightQuality',
+        label: 'Flight Quality',
+        value: scores?.flightQuality,
+        delta:
+          typeof scores?.flightQuality === 'number' &&
+          typeof history?.flightQuality === 'number'
+            ? scores.flightQuality - history.flightQuality
+            : undefined,
+        direction: comparisonDirection(
+          typeof scores?.flightQuality === 'number' &&
+            typeof history?.flightQuality === 'number'
+            ? scores.flightQuality - history.flightQuality
+            : undefined,
+        ),
+        tone: comparisonTone(
+          typeof scores?.flightQuality === 'number' &&
+            typeof history?.flightQuality === 'number'
+            ? scores.flightQuality - history.flightQuality
+            : undefined,
+          comparisonTolerance.component,
+        ),
+        ...buildDriverCopy('flightQuality', scores?.flightQuality),
+      },
+      {
+        key: 'dataConfidence',
+        label: 'Data Confidence',
+        value: scores?.dataConfidence,
+        delta:
+          typeof scores?.dataConfidence === 'number' &&
+          typeof history?.dataConfidence === 'number'
+            ? scores.dataConfidence - history.dataConfidence
+            : undefined,
+        direction: comparisonDirection(
+          typeof scores?.dataConfidence === 'number' &&
+            typeof history?.dataConfidence === 'number'
+            ? scores.dataConfidence - history.dataConfidence
+            : undefined,
+        ),
+        tone: comparisonTone(
+          typeof scores?.dataConfidence === 'number' &&
+            typeof history?.dataConfidence === 'number'
+            ? scores.dataConfidence - history.dataConfidence
+            : undefined,
+          comparisonTolerance.component,
+        ),
+        ...buildDriverCopy('dataConfidence', scores?.dataConfidence),
+      },
+    ]
+
+    return rows
+  }, [historicalAveragesByClub, selectedDetailClub, selectedClubSummary])
+
+  const selectedClubBallFlightRows = useMemo(() => {
+    const pickLaunchRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Not enough launch data yet.'
+      }
+      if (value < 11) {
+        return 'Launch is low.'
+      }
+      if (value > 18) {
+        return 'Launch is slightly high.'
+      }
+      return 'Launch is in range.'
+    }
+
+    const pickSpinRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Spin data is still building.'
+      }
+      if (value < 3800) {
+        return 'Spin is on the low side.'
+      }
+      if (value > 7200) {
+        return 'Spin is running high.'
+      }
+      return 'Spin is in range.'
+    }
+
+    const pickDescentRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Descent data is not available yet.'
+      }
+      if (value < 35) {
+        return 'Descent is a little flat.'
+      }
+      if (value > 52) {
+        return 'Descent is landing on the steep side.'
+      }
+      return 'Descent angle looks playable.'
+    }
+
+    const pickCarryRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Carry window needs more shots.'
+      }
+      const spread = selectedClubMetrics.offlineStdDeviation
+      if (typeof spread === 'number' && spread <= 8) {
+        return 'Carry is stable.'
+      }
+      if (typeof spread === 'number' && spread > 14) {
+        return 'Carry is a touch loose.'
+      }
+      return 'Carry is in a workable window.'
+    }
+
+    return [
+      {
+        key: 'launch',
+        label: 'Launch (VLA)',
+        value:
+          typeof selectedClubMetrics.vlaAverage === 'number'
+            ? formatDecimal(selectedClubMetrics.vlaAverage, ' deg')
+            : '-',
+        interpretation: pickLaunchRead(selectedClubMetrics.vlaAverage),
+      },
+      {
+        key: 'spin',
+        label: 'Spin',
+        value:
+          typeof selectedClubMetrics.spinAverage === 'number'
+            ? formatWhole(selectedClubMetrics.spinAverage, ' rpm')
+            : '-',
+        interpretation: pickSpinRead(selectedClubMetrics.spinAverage),
+      },
+      {
+        key: 'descent',
+        label: 'Descent Angle',
+        value:
+          typeof selectedClubMetrics.descentAverage === 'number'
+            ? formatDecimal(selectedClubMetrics.descentAverage, ' deg')
+            : '-',
+        interpretation: pickDescentRead(selectedClubMetrics.descentAverage),
+      },
+      {
+        key: 'carry',
+        label: 'Carry',
+        value:
+          typeof selectedClubMetrics.carryAverage === 'number'
+            ? formatDecimal(selectedClubMetrics.carryAverage, ' yd')
+            : '-',
+        interpretation: pickCarryRead(selectedClubMetrics.carryAverage),
+      },
+    ] as const
+  }, [
+    selectedClubMetrics.carryAverage,
+    selectedClubMetrics.descentAverage,
+    selectedClubMetrics.offlineStdDeviation,
+    selectedClubMetrics.spinAverage,
+    selectedClubMetrics.vlaAverage,
+  ])
+
+  const selectedClubDeliveryRows = useMemo(() => {
+    const clubPathAvg = averageNumbers(selectedClubHistoricalShots.map(clubPathValue))
+    const faceToPathAvg = averageNumbers(selectedClubHistoricalShots.map(faceToPathValue))
+    const faceToTargetAvg = averageNumbers(selectedClubHistoricalShots.map(faceToTargetValue))
+    const smashAvg = averageNumbers(selectedClubHistoricalShots.map(smashFactorValue))
+    const clubSpeedAvg = averageNumbers(selectedClubHistoricalShots.map(clubSpeedValue))
+    const ballSpeedAvg = averageNumbers(selectedClubHistoricalShots.map(ballSpeedMphValue))
+    const peakHeightAvg = averageNumbers(selectedClubHistoricalShots.map(peakHeightValue))
+
+    const faceRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Still building.'
+      }
+      if (Math.abs(value) <= 1) {
+        return 'Holding near neutral.'
+      }
+      return value > 0 ? 'Tending open.' : 'Tending closed.'
+    }
+
+    const pathRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Still building.'
+      }
+      if (Math.abs(value) <= 1.5) {
+        return 'Path is fairly neutral.'
+      }
+      return value > 0 ? 'Path is moving out-to-in.' : 'Path is moving in-to-out.'
+    }
+
+    const smashRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'No clean strike read yet.'
+      }
+      if (value >= 1.42) {
+        return 'Contact efficiency looks strong.'
+      }
+      if (value >= 1.3) {
+        return 'Contact is playable.'
+      }
+      return 'Contact is leaving speed on the table.'
+    }
+
+    const speedRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Not enough speed data yet.'
+      }
+      return 'Speed is stable.'
+    }
+
+    const peakRead = (value: number | undefined) => {
+      if (typeof value !== 'number') {
+        return 'Peak height is still building.'
+      }
+      if (value < 25) {
+        return 'Flight is coming out flat.'
+      }
+      if (value > 40) {
+        return 'Flight is climbing high.'
+      }
+      return 'Peak height is in a playable window.'
+    }
+
+    return [
+      {
+        key: 'club-path',
+        label: 'Club Path',
+        value: typeof clubPathAvg === 'number' ? formatDecimal(clubPathAvg, ' deg') : '-',
+        interpretation: pathRead(clubPathAvg),
+      },
+      {
+        key: 'face-to-path',
+        label: 'Face to Path',
+        value:
+          typeof faceToPathAvg === 'number' ? formatDecimal(faceToPathAvg, ' deg') : '-',
+        interpretation: faceRead(faceToPathAvg),
+      },
+      {
+        key: 'face-to-target',
+        label: 'Face to Target',
+        value:
+          typeof faceToTargetAvg === 'number' ? formatDecimal(faceToTargetAvg, ' deg') : '-',
+        interpretation: faceRead(faceToTargetAvg),
+      },
+      {
+        key: 'smash',
+        label: 'Smash Factor',
+        value: typeof smashAvg === 'number' ? formatDecimal(smashAvg) : '-',
+        interpretation: smashRead(smashAvg),
+      },
+      {
+        key: 'club-speed',
+        label: 'Club Speed',
+        value: typeof clubSpeedAvg === 'number' ? formatDecimal(clubSpeedAvg, ' mph') : '-',
+        interpretation: speedRead(clubSpeedAvg),
+      },
+      {
+        key: 'ball-speed',
+        label: 'Ball Speed',
+        value: typeof ballSpeedAvg === 'number' ? formatDecimal(ballSpeedAvg, ' mph') : '-',
+        interpretation: speedRead(ballSpeedAvg),
+      },
+      {
+        key: 'peak-height',
+        label: 'Peak Height',
+        value: typeof peakHeightAvg === 'number' ? formatDecimal(peakHeightAvg, ' yd') : '-',
+        interpretation: peakRead(peakHeightAvg),
+      },
+    ] as const
+  }, [selectedClubHistoricalShots])
+
+  const selectedClubDispersionPanel = useMemo(() => {
+    const peakHeightAverage = averageNumbers(selectedClubHistoricalShots.map(peakHeightValue))
+    const faceToPathAverage = averageNumbers(selectedClubHistoricalShots.map(faceToPathValue))
+
+    const biasSummary =
+      typeof selectedClubMetrics.offlineAverage !== 'number'
+        ? 'Still building'
+        : Math.abs(selectedClubMetrics.offlineAverage) <= 2
+          ? 'Neutral'
+          : selectedClubMetrics.offlineAverage > 0
+            ? 'Right tendency'
+            : 'Left tendency'
+
+    const shapeSummary =
+      typeof faceToPathAverage !== 'number'
+        ? 'Still building'
+        : Math.abs(faceToPathAverage) <= 1
+          ? 'Neutral shape'
+          : faceToPathAverage > 0
+            ? 'Fade tendency'
+            : 'Draw tendency'
+
+    const latestCarry = selectedClubSessionSeries[selectedClubSessionSeries.length - 1]?.carryAverage
+    const priorCarry =
+      selectedClubSessionSeries.length > 1
+        ? selectedClubSessionSeries[selectedClubSessionSeries.length - 2]?.carryAverage
+        : undefined
+
+    const missSummary =
+      typeof latestCarry === 'number' && typeof priorCarry === 'number'
+        ? latestCarry - priorCarry > 4
+          ? 'Long cluster'
+          : latestCarry - priorCarry < -4
+            ? 'Short cluster'
+            : typeof selectedClubMetrics.offlineAverage === 'number'
+              ? Math.abs(selectedClubMetrics.offlineAverage) > 4
+                ? selectedClubMetrics.offlineAverage > 0
+                  ? 'Right cluster'
+                  : 'Left cluster'
+                : 'Centered cluster'
+              : 'Mixed cluster'
+        : typeof selectedClubMetrics.offlineAverage === 'number'
+          ? Math.abs(selectedClubMetrics.offlineAverage) > 4
+            ? selectedClubMetrics.offlineAverage > 0
+              ? 'Right cluster'
+              : 'Left cluster'
+            : 'Centered cluster'
+          : 'Mixed cluster'
+
+    return {
+      peakHeightAverage,
+      biasSummary,
+      shapeSummary,
+      missSummary,
+    }
+  }, [
+    selectedClubHistoricalShots,
+    selectedClubMetrics.offlineAverage,
+    selectedClubSessionSeries,
+  ])
+
+  const selectedClubOpenGolfCoachShots = useMemo(
+    () =>
+      selectedClubHistoricalShots.filter(
+        (shot): shot is Shot & { openGolfCoach: OpenGolfCoachPayload } =>
+          typeof shot.openGolfCoach === 'object' && shot.openGolfCoach !== null,
+      ),
+    [selectedClubHistoricalShots],
+  )
+
+  const stringifyDebugJson = (value: unknown) => {
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return 'Unable to stringify payload.'
+    }
+  }
+
   // Temporary Club Detail skeleton mode: richer sections are intentionally
   // not rendered yet, but these values stay wired for the next layer.
   void selectedClubOpenGolfCoachKeys
   void baselineComparison
-  void trendCards
   void selectedClubInsights
   void selectedClubNarrative
 
@@ -1965,14 +2504,194 @@ function App() {
                       </div>
                     </article>
 
-                    <article className="dashboard-card club-detail-plot-card">
-                      <div className="section-kicker">Dispersion</div>
-                      {selectedClubDispersionPoints.length === 0 ? (
-                        <p className="support-card-copy">No shot data available for this club yet</p>
-                      ) : (
-                        <ClubDispersionPlot points={selectedClubDispersionPoints} />
-                      )}
-                    </article>
+                    <section className="club-detail-dispersion-grid" aria-label="Dispersion and Shot Profile">
+                      <article className="dashboard-card club-detail-plot-card">
+                        <div aria-hidden="true" className="club-detail-plot-spacer" />
+                        {selectedClubDispersionPoints.length === 0 ? (
+                          <p className="support-card-copy">No shot data available for this club yet</p>
+                        ) : (
+                          <ClubDispersionPlot points={selectedClubDispersionPoints} />
+                        )}
+                      </article>
+
+                      <article className="dashboard-card club-detail-shot-profile">
+                        <div className="section-kicker">Shot Profile</div>
+                        <div className="club-detail-shot-list">
+                          <div className="component-row">
+                            <span>Carry average</span>
+                            <span>{formatDecimal(selectedClubMetrics.carryAverage, ' yd')}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Offline average</span>
+                            <span>{formatDecimal(selectedClubMetrics.offlineAverage, ' yd')}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Dispersion</span>
+                            <span>{formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Peak height</span>
+                            <span>{formatDecimal(selectedClubDispersionPanel.peakHeightAverage, ' yd')}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Descent angle</span>
+                            <span>{formatDecimal(selectedClubMetrics.descentAverage, ' deg')}</span>
+                          </div>
+                        </div>
+
+                        <div className="section-kicker">Pattern</div>
+                        <div className="club-detail-shot-list">
+                          <div className="component-row">
+                            <span>Bias</span>
+                            <span>{selectedClubDispersionPanel.biasSummary}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Shape tendency</span>
+                            <span>{selectedClubDispersionPanel.shapeSummary}</span>
+                          </div>
+                          <div className="component-row">
+                            <span>Miss tendency</span>
+                            <span>{selectedClubDispersionPanel.missSummary}</span>
+                          </div>
+                        </div>
+                      </article>
+                    </section>
+
+                    <section className="club-detail-why-section" aria-label="What’s Driving This">
+                      <div className="section-kicker">What&apos;s Driving This</div>
+                      <div className="club-detail-why-grid">
+                        <article className="dashboard-card club-detail-drivers-card">
+                          <h3 className="support-card-title">Performance Drivers</h3>
+                          <div className="club-driver-list">
+                            {selectedClubPerformanceDrivers.map((driver) => (
+                              <button
+                                className={`club-driver-row ${
+                                  openClubDriver === driver.key ? 'is-open' : ''
+                                }`}
+                                key={driver.key}
+                                onClick={() =>
+                                  setOpenClubDriver((current) =>
+                                    current === driver.key ? null : driver.key,
+                                  )
+                                }
+                                type="button"
+                              >
+                                <div className="club-driver-row-head">
+                                  <span>{driver.label}</span>
+                                  <span className="comparison-cell">
+                                    <span className="comparison-value">
+                                      {typeof driver.value === 'number' ? formatScore(driver.value) : '-'}
+                                    </span>
+                                    {typeof driver.delta === 'number' ? (
+                                      <span className={comparisonClassName(driver.tone)}>
+                                        <span>{comparisonSymbol(driver.direction)}</span>
+                                        <span>{comparisonMagnitude(driver.delta)}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="comparison-indicator comparison-neutral">-</span>
+                                    )}
+                                  </span>
+                                </div>
+                                {openClubDriver === driver.key && (
+                                  <div className="club-driver-row-body">
+                                    <div className="club-driver-detail-title">Why</div>
+                                    <p>{driver.why}</p>
+                                    <div className="club-driver-detail-title">What it means</div>
+                                    <p>{driver.meaning}</p>
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </article>
+
+                        <article className="dashboard-card club-detail-flight-card">
+                          <h3 className="support-card-title">Ball Flight vs Ideal</h3>
+                          <div className="club-flight-list">
+                            {selectedClubBallFlightRows.map((row) => (
+                              <div className="club-flight-row" key={row.key}>
+                                <div className="club-flight-main">
+                                  <span>{row.label}</span>
+                                  <span>{row.value}</span>
+                                </div>
+                                <p>{row.interpretation}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </article>
+                      </div>
+                    </section>
+
+                    <section className="club-detail-delivery-section" aria-label="Delivery Patterns">
+                      <div className="section-kicker">Delivery Patterns</div>
+                      <article className="dashboard-card club-detail-delivery-card">
+                        <div className="club-delivery-grid">
+                          {selectedClubDeliveryRows.map((row) => (
+                            <div className="club-delivery-row" key={row.key}>
+                              <div className="club-delivery-main">
+                                <span>{row.label}</span>
+                                <span>{row.value}</span>
+                              </div>
+                              <p>{row.interpretation}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    </section>
+
+                    <section className="club-detail-trends-section" aria-label="Trends">
+                      <div className="section-kicker">Trends</div>
+                      <div className="club-detail-trends">
+                        {trendCards.map((card) => (
+                          <article className="dashboard-card support-card club-detail-trend-card" key={card.key}>
+                            <div className="section-kicker">{card.label}</div>
+                            <h3 className="support-card-title">{card.value}</h3>
+                            {card.series.length > 1 ? (
+                              <TrendSparkline values={card.series} />
+                            ) : (
+                              <div className="trend-sparkline-empty">Not enough trend points yet.</div>
+                            )}
+                            <p className="support-card-copy">{card.detail}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="club-detail-debug-section" aria-label="FULL OGC DEBUG">
+                      <article className="dashboard-card">
+                        <div className="section-kicker">FULL OGC DEBUG</div>
+                        <p className="support-card-copy">
+                          Selected club: <strong>{getClubLabel(selectedDetailClub)}</strong>
+                        </p>
+                        <p className="support-card-copy">
+                          Historical shots found: <strong>{formatWhole(selectedClubHistoricalShots.length)}</strong>
+                        </p>
+                        {selectedClubOpenGolfCoachShots.length === 0 ? (
+                          <p className="support-card-copy">
+                            No stored openGolfCoach payload exists yet for this club.
+                          </p>
+                        ) : (
+                          <>
+                            <div className="section-kicker">Representative Shot Payload</div>
+                            <pre style={{ margin: '8px 0 14px', overflowX: 'auto' }}>
+                              {stringifyDebugJson(selectedClubOpenGolfCoachShots[0].openGolfCoach)}
+                            </pre>
+
+                            <div className="section-kicker">First 3 Shot Payloads</div>
+                            {selectedClubOpenGolfCoachShots.slice(0, 3).map((shot, index) => (
+                              <div key={shot.id} style={{ marginTop: 8 }}>
+                                <p className="support-card-copy" style={{ marginBottom: 6 }}>
+                                  Shot {index + 1} ({shot.id})
+                                </p>
+                                <pre style={{ margin: 0, overflowX: 'auto' }}>
+                                  {stringifyDebugJson(shot.openGolfCoach)}
+                                </pre>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </article>
+                    </section>
                   </section>
                 )}
 
@@ -2086,8 +2805,8 @@ type ClubDispersionPlotProps = {
 
 function ClubDispersionPlot({ points }: ClubDispersionPlotProps) {
   const width = 820
-  const height = 420
-  const padding = { top: 24, right: 36, bottom: 56, left: 64 }
+  const height = 330
+  const padding = { top: 22, right: 32, bottom: 48, left: 62 }
 
   const offlineMax = Math.max(...points.map((point) => Math.abs(point.offline)), 5)
   const carryMin = Math.min(...points.map((point) => point.carry))
@@ -2248,6 +2967,50 @@ function ClubDispersionPlot({ points }: ClubDispersionPlotProps) {
       <text className="club-detail-axis-label" x={targetLineX + 6} y={padding.top + 12}>
         Target line (0)
       </text>
+    </svg>
+  )
+}
+
+type TrendSparklineProps = {
+  values: number[]
+}
+
+function TrendSparkline({ values }: TrendSparklineProps) {
+  if (values.length < 2) {
+    return null
+  }
+
+  const width = 220
+  const height = 56
+  const padding = 4
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = Math.max(max - min, 1)
+  const step = values.length > 1 ? (width - padding * 2) / (values.length - 1) : 0
+
+  const points = values
+    .map((value, index) => {
+      const x = padding + index * step
+      const y = height - padding - ((value - min) / range) * (height - padding * 2)
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  const first = values[0]
+  const last = values[values.length - 1]
+  const trendTone =
+    Math.abs(last - first) <= 0.01 ? 'neutral' : last > first ? 'up' : 'down'
+
+  return (
+    <svg
+      aria-label="Trend sparkline"
+      className={`trend-sparkline trend-sparkline-${trendTone}`}
+      role="img"
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      <polyline className="trend-sparkline-line" fill="none" points={points} />
+      <circle className="trend-sparkline-point start" cx={padding} cy={height - padding - ((first - min) / range) * (height - padding * 2)} r="2.6" />
+      <circle className="trend-sparkline-point end" cx={padding + (values.length - 1) * step} cy={height - padding - ((last - min) / range) * (height - padding * 2)} r="3" />
     </svg>
   )
 }

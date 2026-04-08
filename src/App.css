@@ -651,6 +651,179 @@ td {
   fill: rgba(23, 36, 25, 0.86);
 }
 
+.club-detail-plot-spacer {
+  height: 14px;
+}
+
+.club-detail-dispersion-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.club-detail-shot-profile {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.club-detail-shot-list {
+  display: grid;
+  gap: 4px;
+}
+
+.club-detail-shot-list .component-row + .component-row {
+  border-top: 1px solid #314233;
+}
+
+.club-detail-why-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.club-detail-why-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.club-detail-drivers-card,
+.club-detail-flight-card {
+  padding: 16px;
+  min-width: 0;
+}
+
+.club-driver-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.club-driver-row {
+  width: 100%;
+  border: 1px solid #314233;
+  border-radius: 10px;
+  background: rgba(23, 36, 25, 0.6);
+  color: #cfd8cd;
+  text-align: left;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.club-driver-row.is-open {
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(27, 43, 30, 0.72);
+}
+
+.club-driver-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.club-driver-row-body {
+  border-top: 1px solid #314233;
+  padding-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.club-driver-row-body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #c5d1c3;
+}
+
+.club-driver-detail-title {
+  color: #9fb09f;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.club-flight-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.club-flight-row {
+  border: 1px solid #314233;
+  border-radius: 10px;
+  background: rgba(23, 36, 25, 0.6);
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.club-flight-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.club-flight-row p {
+  margin: 0;
+  color: #c5d1c3;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.club-detail-delivery-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.club-detail-delivery-card {
+  padding: 14px;
+}
+
+.club-delivery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.club-delivery-row {
+  border: 1px solid #314233;
+  border-radius: 10px;
+  background: rgba(23, 36, 25, 0.54);
+  padding: 9px 11px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.club-delivery-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #dce5d8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.club-delivery-row p {
+  margin: 0;
+  color: #b8c5b6;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .club-detail-grid-line {
   stroke: rgba(159, 176, 159, 0.18);
   stroke-width: 1;
@@ -758,12 +931,66 @@ td {
 
 .club-detail-trends {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
+  min-width: 0;
+}
+
+.club-detail-trends-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
 }
 
 .club-detail-trend-card {
-  min-height: 148px;
+  min-height: 168px;
+  padding: 14px;
+}
+
+.trend-sparkline {
+  width: 100%;
+  height: 56px;
+  margin: 6px 0;
+  display: block;
+}
+
+.trend-sparkline-line {
+  stroke: #cfd8cd;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-sparkline-up .trend-sparkline-line {
+  stroke: #84cc16;
+}
+
+.trend-sparkline-down .trend-sparkline-line {
+  stroke: #eab308;
+}
+
+.trend-sparkline-neutral .trend-sparkline-line {
+  stroke: #9fb09f;
+}
+
+.trend-sparkline-point {
+  fill: #cfd8cd;
+}
+
+.trend-sparkline-up .trend-sparkline-point.end {
+  fill: #84cc16;
+}
+
+.trend-sparkline-down .trend-sparkline-point.end {
+  fill: #eab308;
+}
+
+.trend-sparkline-empty {
+  min-height: 56px;
+  display: grid;
+  align-items: center;
+  color: #9fb09f;
+  font-size: 12px;
 }
 
 .club-card-grid {
@@ -1502,6 +1729,18 @@ td {
     border-top: 1px solid rgba(49, 66, 51, 0.6);
     padding-left: 0;
     padding-top: 10px;
+  }
+
+  .club-detail-why-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .club-detail-dispersion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .club-delivery-grid {
+    grid-template-columns: 1fr;
   }
 
   .club-detail-trends {
