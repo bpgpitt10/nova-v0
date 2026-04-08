@@ -2,6 +2,9 @@
 
 This file defines the top hero area of the Dashboard.
 
+This section must follow `src/design/looperVoice.md` for all Looper messaging and tone.
+Do not redefine tone rules here.
+
 This is the most premium section of the page.
 It must feel more editorial and atmospheric than the club grid below.
 
@@ -12,7 +15,7 @@ This file is the single source of truth for the full Dashboard hero area, includ
 - Spotlight on Your Game
 - Trend to Watch
 
-Other design files may reference this hero area, but should not redefine its structure, tone, or content rules.
+Other design files may reference this hero area, but should not redefine its structure or content rules.
 
 ---
 
@@ -57,14 +60,9 @@ It should:
 - feel like a caddie giving the big-picture truth
 
 ### Tone
-- direct
-- confident
-- cheeky when appropriate
-- conversational
-- not robotic
-- not bullet-driven
+Follow `src/design/looperVoice.md`.
 
-### Examples of tone
+### Examples of tone (voice reference only)
 - “Your scoring clubs are carrying the bag right now, and the long end knows it.”
 - “There’s a clear top tier forming, but a few clubs are still making you work too hard.”
 - “You’ve got more trust at the bottom of the bag than the top, and the gap is getting obvious.”
@@ -90,10 +88,7 @@ It should:
 This card isolates the strongest current takeaway from the overall status.
 
 ### Tone
-- concise
-- confident
-- caddie-like
-- more focused than Game Status
+Follow `src/design/looperVoice.md`.
 
 ---
 
@@ -110,10 +105,7 @@ This card isolates the strongest current takeaway from the overall status.
 This card isolates the most important movement or trend across the bag.
 
 ### Tone
-- observational
-- directional
-- concise
-- still caddie-like
+Follow `src/design/looperVoice.md`.
 
 ---
 

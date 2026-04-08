@@ -2,6 +2,9 @@
 
 These rules override all other instructions.
 
+This section must follow `src/design/looperVoice.md` for all Looper messaging and tone.
+Do not redefine tone rules here.
+
 1. Do NOT invent new layout
 2. Do NOT rearrange sections
 3. Do NOT redesign UI

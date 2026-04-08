@@ -1,5 +1,8 @@
 # Club Detail Spec (Overview Only)
 
+This section must follow `src/design/looperVoice.md` for all Looper messaging and tone.
+Do not redefine tone rules here.
+
 This page explains why a club is strong or weak.
 
 It is more data-heavy than Dashboard, but it is still a product surface, not a raw debug page.
@@ -83,7 +86,7 @@ Required:
 Rules:
 - Score remains white and visually dominant
 - Call uses semantic pill styling
-- narrative should sound like The Looper, not a stats report
+- narrative should follow `src/design/looperVoice.md`, not a stats report
 
 ### Center main visual
 Primary visual:
@@ -165,10 +168,7 @@ Rules:
 Show 2–3 concise club-specific insights.
 
 Tone:
-- direct
-- useful
-- slightly cheeky if appropriate
-- not robotic
+Follow `src/design/looperVoice.md`.
 
 Good insights should connect:
 - score / call
