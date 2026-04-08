@@ -8,6 +8,12 @@ export type ConfidenceConfig = {
     patternStability: number
     dataConfidence: number
   }
+  recency: {
+    // Session-based exponential decay where index 0 is newest.
+    sessionDecayStrength: number
+    // Weight floor keeps historical signal from dropping to zero.
+    minSessionWeightFloor: number
+  }
   directionWindow: {
     targetWidthByClub: Record<Club, number>
     maxOfflineMultiplier: number
@@ -55,6 +61,10 @@ export const confidenceConfig: ConfidenceConfig = {
     flightQuality: 0.16,
     patternStability: 0.18,
     dataConfidence: 0.14,
+  },
+  recency: {
+    sessionDecayStrength: 0.34,
+    minSessionWeightFloor: 0.25,
   },
   directionWindow: {
     targetWidthByClub: {

@@ -546,6 +546,10 @@ td {
   padding: 16px;
 }
 
+.club-detail-plot-card {
+  padding-top: 10px;
+}
+
 .club-detail-looper-read {
   padding: 16px;
   display: grid;
@@ -615,30 +619,23 @@ td {
   color: #9fb09f;
 }
 
-.club-detail-read-driver-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.club-detail-component-strip {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
-.club-detail-read-driver {
+.club-detail-component-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 12px;
   color: #cfd8cd;
+  padding-top: 5px;
 }
 
-.club-detail-read-driver-label {
-  font-weight: 600;
-  color: #dce5d8;
-}
-
-.club-detail-read-driver-dash {
-  color: #9fb09f;
-}
-
-.club-detail-read-driver-detail {
-  color: #b8c5b6;
+.club-detail-component-row + .club-detail-component-row {
+  border-top: 1px solid #314233;
 }
 
 .club-detail-plot {
@@ -652,7 +649,7 @@ td {
 }
 
 .club-detail-plot-spacer {
-  height: 14px;
+  height: 6px;
 }
 
 .club-detail-dispersion-grid {
@@ -666,7 +663,27 @@ td {
 .club-detail-shot-profile {
   padding: 14px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
+}
+
+.club-detail-shot-profile-block {
+  display: grid;
+  gap: 6px;
+}
+
+.club-detail-shot-profile-title {
+  color: #cfd8cd;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.club-detail-shot-gap {
+  margin: 0;
+  color: #b8c5b6;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .club-detail-shot-list {

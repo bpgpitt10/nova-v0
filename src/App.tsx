@@ -13,12 +13,18 @@ import {
   getClubLabel,
   type Club,
 } from './lib/bagConfig'
+import { confidenceConfig } from './lib/confidenceConfig'
 import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
   isOpenGolfCoachConfigured,
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
+import {
+  buildSessionRecencyWeights,
+  weightedAverage,
+  weightedStandardDeviation,
+} from './lib/recency'
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
@@ -99,13 +105,28 @@ const standardDeviation = (values: Array<number | undefined>) => {
   return Math.sqrt(variance)
 }
 
+const weightedAverageNumbers = (
+  values: Array<number | undefined>,
+  weights: Array<number | undefined>,
+) => {
+  const average = weightedAverage(values, weights)
+  return typeof average === 'number' ? average : undefined
+}
+
+const weightedStandardDeviationNumbers = (
+  values: Array<number | undefined>,
+  weights: Array<number | undefined>,
+) => {
+  const deviation = weightedStandardDeviation(values, weights)
+  return typeof deviation === 'number' ? deviation : undefined
+}
+
 const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
   if (!payload) {
     return undefined
   }
 
-  for (const key of keys) {
-    const value = payload[key]
+  const parseNumberLike = (value: unknown) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
       return value
     }
@@ -115,6 +136,64 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
         return parsed
       }
     }
+    return undefined
+  }
+
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null
+
+  const root = asRecord(payload)
+  if (!root) {
+    return undefined
+  }
+
+  const scopedObjects: Record<string, unknown>[] = [root]
+  const coach = asRecord(root.open_golf_coach)
+  if (coach) {
+    scopedObjects.push(coach)
+    const usCustomaryUnits = asRecord(coach.us_customary_units)
+    if (usCustomaryUnits) {
+      scopedObjects.push(usCustomaryUnits)
+    }
+    const siUnits = asRecord(coach.si_units)
+    if (siUnits) {
+      scopedObjects.push(siUnits)
+    }
+  }
+
+  for (const source of scopedObjects) {
+    for (const key of keys) {
+      const parsed = parseNumberLike(source[key])
+      if (typeof parsed === 'number') {
+        return parsed
+      }
+    }
+  }
+
+  const visited = new Set<Record<string, unknown>>()
+  const stack: Record<string, unknown>[] = [root]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current || visited.has(current)) {
+      continue
+    }
+    visited.add(current)
+
+    for (const key of keys) {
+      const parsed = parseNumberLike(current[key])
+      if (typeof parsed === 'number') {
+        return parsed
+      }
+    }
+
+    Object.values(current).forEach((value) => {
+      const nested = asRecord(value)
+      if (nested && !visited.has(nested)) {
+        stack.push(nested)
+      }
+    })
   }
 
   return undefined
@@ -183,37 +262,59 @@ const descentValue = (shot: Shot) =>
   ])
 
 const clubPathValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, ['club_path_degrees', 'clubPathDegrees'])
+  payloadNumber(shot.openGolfCoach, ['club_path_degrees', 'clubPathDegrees', 'club_path'])
 
 const faceToPathValue = (shot: Shot) =>
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_path_degrees',
     'clubFaceToPathDegrees',
+    'club_face_to_path',
   ])
 
 const faceToTargetValue = (shot: Shot) =>
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_target_degrees',
     'clubFaceToTargetDegrees',
+    'club_face_to_target',
   ])
 
 const smashFactorValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor'])
+  payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor', 'smash'])
 
 const peakHeightValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, ['peak_height_yards', 'peakHeightYards'])
+  payloadNumber(shot.openGolfCoach, [
+    'peak_height_yards',
+    'peakHeightYards',
+    'peak_height',
+    'peakHeight',
+  ])
 
 const clubSpeedValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph'])
+  payloadNumber(shot.openGolfCoach, [
+    'club_speed_mph',
+    'clubSpeedMph',
+    'club_speed_miles_per_hour',
+    'clubSpeedMilesPerHour',
+  ])
 
 const ballSpeedMphValue = (shot: Shot) =>
   typeof shot.ballSpeedMph === 'number'
     ? shot.ballSpeedMph
-    : payloadNumber(shot.openGolfCoach, ['ball_speed_mph', 'ballSpeedMph'])
+    : payloadNumber(shot.openGolfCoach, [
+        'ball_speed_mph',
+        'ballSpeedMph',
+        'ball_speed_miles_per_hour',
+        'ballSpeedMilesPerHour',
+      ])
 
 const comparisonTolerance = {
   score: 3,
   component: 4,
+}
+
+const rankWeightForShot = (shot: Shot) => {
+  const key = typeof shot.shotRanking === 'undefined' ? '' : String(shot.shotRanking)
+  return confidenceConfig.distanceWindow.rankWeights[key] ?? 1
 }
 
 const comparisonDirection = (delta: number | undefined): ComparisonDirection =>
@@ -532,6 +633,16 @@ function App({ forceDashboardRoute = false }: AppProps) {
     [savedSessions],
   )
 
+  const sessionRecencyWeights = useMemo(
+    () =>
+      buildSessionRecencyWeights(
+        savedSessions,
+        confidenceConfig.recency.sessionDecayStrength,
+        confidenceConfig.recency.minSessionWeightFloor,
+      ),
+    [savedSessions],
+  )
+
   const dashboardSummaries: ReviewClubSummary[] = useMemo(
     () =>
       activeBagClubIds
@@ -617,39 +728,53 @@ function App({ forceDashboardRoute = false }: AppProps) {
     const historicalSessions = savedSessions.slice(1)
 
     activeBagClubIds.forEach((club) => {
-      const summaries = historicalSessions
+      const summaryPoints = historicalSessions
         .map((session) =>
-          summarizeReviewClub(
-            club,
-            session.shots,
-            savedSessions.filter((savedSession) => savedSession.id !== session.id),
-            session.id,
-          ),
+          ({
+            summary: summarizeReviewClub(
+              club,
+              session.shots,
+              savedSessions.filter((savedSession) => savedSession.id !== session.id),
+              session.id,
+            ),
+            weight: sessionRecencyWeights.get(session.id) ?? 1,
+          }),
         )
-        .filter((summary): summary is ReviewClubSummary => summary !== null)
+        .filter(
+          (point): point is { summary: ReviewClubSummary; weight: number } =>
+            point.summary !== null,
+        )
 
       map.set(club, {
-        score: averageNumbers(summaries.map((summary) => summary.caddieScore)),
-        distanceWindow: averageNumbers(
-          summaries.map((summary) => summary.componentScores.distanceWindow),
+        score: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.caddieScore),
+          summaryPoints.map((point) => point.weight),
         ),
-        directionWindow: averageNumbers(
-          summaries.map((summary) => summary.componentScores.directionWindow),
+        distanceWindow: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.componentScores.distanceWindow),
+          summaryPoints.map((point) => point.weight),
         ),
-        flightQuality: averageNumbers(
-          summaries.map((summary) => summary.componentScores.flightQuality),
+        directionWindow: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.componentScores.directionWindow),
+          summaryPoints.map((point) => point.weight),
         ),
-        patternStability: averageNumbers(
-          summaries.map((summary) => summary.componentScores.patternStability),
+        flightQuality: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.componentScores.flightQuality),
+          summaryPoints.map((point) => point.weight),
         ),
-        dataConfidence: averageNumbers(
-          summaries.map((summary) => summary.componentScores.dataConfidence),
+        patternStability: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.componentScores.patternStability),
+          summaryPoints.map((point) => point.weight),
+        ),
+        dataConfidence: weightedAverageNumbers(
+          summaryPoints.map((point) => point.summary.componentScores.dataConfidence),
+          summaryPoints.map((point) => point.weight),
         ),
       })
     })
 
     return map
-  }, [savedSessions])
+  }, [savedSessions, sessionRecencyWeights])
 
   const lastSessionComparisonRows = useMemo(() => {
     const latestSession = savedSessions[0]
@@ -997,6 +1122,19 @@ function App({ forceDashboardRoute = false }: AppProps) {
     [savedSessions, selectedDetailClub],
   )
 
+  const selectedClubHistoricalShotWeights = useMemo(() => {
+    const map = new Map<string, number>()
+    savedSessions.forEach((session) => {
+      const sessionWeight = sessionRecencyWeights.get(session.id) ?? 1
+      session.shots.forEach((shot) => {
+        if (shot.club === selectedDetailClub && !map.has(shot.id)) {
+          map.set(shot.id, sessionWeight)
+        }
+      })
+    })
+    return map
+  }, [savedSessions, selectedDetailClub, sessionRecencyWeights])
+
   const selectedClubOpenGolfCoachKeys = useMemo(() => {
     const keys = new Set<string>()
 
@@ -1012,15 +1150,37 @@ function App({ forceDashboardRoute = false }: AppProps) {
   }, [selectedClubHistoricalShots])
 
   const selectedClubMetrics = useMemo(() => {
-    const carryAverage = averageNumbers(selectedClubHistoricalShots.map(carryValue))
-    const totalAverage = averageNumbers(selectedClubHistoricalShots.map(totalValue))
-    const offlineAverage = averageNumbers(selectedClubHistoricalShots.map(offlineValue))
-    const offlineStdDeviation = standardDeviation(
-      selectedClubHistoricalShots.map(offlineValue),
+    const shotWeights = selectedClubHistoricalShots.map(
+      (shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1,
     )
-    const vlaAverage = averageNumbers(selectedClubHistoricalShots.map(launchValue))
-    const spinAverage = averageNumbers(selectedClubHistoricalShots.map(spinValue))
-    const descentAverage = averageNumbers(selectedClubHistoricalShots.map(descentValue))
+    const carryAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(carryValue),
+      shotWeights,
+    )
+    const totalAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(totalValue),
+      shotWeights,
+    )
+    const offlineAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(offlineValue),
+      shotWeights,
+    )
+    const offlineStdDeviation = weightedStandardDeviationNumbers(
+      selectedClubHistoricalShots.map(offlineValue),
+      shotWeights,
+    )
+    const vlaAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(launchValue),
+      shotWeights,
+    )
+    const spinAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(spinValue),
+      shotWeights,
+    )
+    const descentAverage = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(descentValue),
+      shotWeights,
+    )
     const includedShotCount = selectedClubHistoricalShots.filter((shot) => shot.included).length
     const enrichedShotCount = selectedClubHistoricalShots.filter(
       (shot) => shot.enrichmentStatus === 'enriched' && shot.openGolfCoach,
@@ -1058,7 +1218,11 @@ function App({ forceDashboardRoute = false }: AppProps) {
       enrichedShotCount,
       shotRankSummary,
     }
-  }, [selectedClubHistoricalShots, selectedClubSummary])
+  }, [
+    selectedClubHistoricalShots,
+    selectedClubHistoricalShotWeights,
+    selectedClubSummary,
+  ])
 
   const selectedClubSessionSeries = useMemo(
     () =>
@@ -1392,54 +1556,35 @@ function App({ forceDashboardRoute = false }: AppProps) {
     }
   }, [selectedClubSummary, selectedDetailClub])
 
-  const looperReadDrivers = useMemo(() => {
-    if (!selectedClubSummary) {
-      return [
-        {
-          label: 'Pattern Stability',
-          detail: 'still gathering a repeatable shape',
-        },
-        {
-          label: 'Direction Window',
-          detail: 'start lines are still settling',
-        },
-      ]
-    }
-
-    if (selectedClubSummary.caddieCall === 'Play' || selectedClubSummary.caddieCall === 'Manage') {
-      return [
-        { label: 'Flight Quality', detail: 'holding steady' },
-        { label: 'Pattern Stability', detail: 'not quite locked in' },
-        { label: 'Direction Window', detail: 'still a bit loose' },
-      ]
-    }
-
-    const components: Array<
-      [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
-    > = [
-      ['patternStability', selectedClubSummary.componentScores.patternStability],
-      ['directionWindow', selectedClubSummary.componentScores.directionWindow],
-      ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
-      ['flightQuality', selectedClubSummary.componentScores.flightQuality],
+  const selectedClubComponentBreakdown = useMemo(() => {
+    const history = historicalAveragesByClub.get(selectedDetailClub)
+    const scores = selectedClubSummary?.componentScores
+    const orderedKeys: Array<keyof ReviewClubSummary['componentScores']> = [
+      'flightQuality',
+      'patternStability',
+      'directionWindow',
+      'distanceWindow',
+      'dataConfidence',
     ]
 
-    return [...components]
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, 3)
-      .map(([key, score]) => {
-        const detail =
-          score >= 70
-            ? 'holding steady'
-            : score >= 50
-              ? 'not quite locked in'
-              : 'still a bit loose'
-
-        return {
-          label: componentLabel(key),
-          detail,
-        }
-      })
-  }, [selectedClubSummary])
+    return orderedKeys.map((key) => {
+      const value = scores?.[key]
+      const historical =
+        typeof history?.[key] === 'number' ? (history[key] as number) : undefined
+      const delta =
+        typeof value === 'number' && typeof historical === 'number'
+          ? value - historical
+          : undefined
+      return {
+        key,
+        label: componentLabel(key),
+        value,
+        delta,
+        direction: comparisonDirection(delta),
+        tone: comparisonTone(delta, comparisonTolerance.component),
+      }
+    })
+  }, [historicalAveragesByClub, selectedClubSummary, selectedDetailClub])
 
   const selectedClubPerformanceDrivers = useMemo(() => {
     const history = historicalAveragesByClub.get(selectedDetailClub)
@@ -1754,13 +1899,37 @@ function App({ forceDashboardRoute = false }: AppProps) {
   ])
 
   const selectedClubDeliveryRows = useMemo(() => {
-    const clubPathAvg = averageNumbers(selectedClubHistoricalShots.map(clubPathValue))
-    const faceToPathAvg = averageNumbers(selectedClubHistoricalShots.map(faceToPathValue))
-    const faceToTargetAvg = averageNumbers(selectedClubHistoricalShots.map(faceToTargetValue))
-    const smashAvg = averageNumbers(selectedClubHistoricalShots.map(smashFactorValue))
-    const clubSpeedAvg = averageNumbers(selectedClubHistoricalShots.map(clubSpeedValue))
-    const ballSpeedAvg = averageNumbers(selectedClubHistoricalShots.map(ballSpeedMphValue))
-    const peakHeightAvg = averageNumbers(selectedClubHistoricalShots.map(peakHeightValue))
+    const shotWeights = selectedClubHistoricalShots.map(
+      (shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1,
+    )
+    const clubPathAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(clubPathValue),
+      shotWeights,
+    )
+    const faceToPathAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(faceToPathValue),
+      shotWeights,
+    )
+    const faceToTargetAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(faceToTargetValue),
+      shotWeights,
+    )
+    const smashAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(smashFactorValue),
+      shotWeights,
+    )
+    const clubSpeedAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(clubSpeedValue),
+      shotWeights,
+    )
+    const ballSpeedAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(ballSpeedMphValue),
+      shotWeights,
+    )
+    const peakHeightAvg = weightedAverageNumbers(
+      selectedClubHistoricalShots.map(peakHeightValue),
+      shotWeights,
+    )
 
     const faceRead = (value: number | undefined) => {
       if (typeof value !== 'number') {
@@ -1861,68 +2030,116 @@ function App({ forceDashboardRoute = false }: AppProps) {
         interpretation: peakRead(peakHeightAvg),
       },
     ] as const
-  }, [selectedClubHistoricalShots])
+  }, [selectedClubHistoricalShots, selectedClubHistoricalShotWeights])
 
-  const selectedClubDispersionPanel = useMemo(() => {
-    const peakHeightAverage = averageNumbers(selectedClubHistoricalShots.map(peakHeightValue))
-    const faceToPathAverage = averageNumbers(selectedClubHistoricalShots.map(faceToPathValue))
+  const selectedClubShotProfiles = useMemo(() => {
+    const includedShots = selectedClubHistoricalShots.filter((shot) => shot.included)
+    if (includedShots.length === 0) {
+      return {
+        bestAvailable: null,
+        mostLikely: null,
+        deltaSummary: 'Not enough included shots to profile this club yet.',
+      }
+    }
 
-    const biasSummary =
-      typeof selectedClubMetrics.offlineAverage !== 'number'
-        ? 'Still building'
-        : Math.abs(selectedClubMetrics.offlineAverage) <= 2
-          ? 'Neutral'
-          : selectedClubMetrics.offlineAverage > 0
-            ? 'Right tendency'
-            : 'Left tendency'
+    const recencyWeight = (shot: Shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1
+    const anchorTolerance = confidenceConfig.distanceWindow.anchorToleranceYards
+    const targetWidth = confidenceConfig.directionWindow.targetWidthByClub[selectedDetailClub]
 
-    const shapeSummary =
-      typeof faceToPathAverage !== 'number'
-        ? 'Still building'
-        : Math.abs(faceToPathAverage) <= 1
-          ? 'Neutral shape'
-          : faceToPathAverage > 0
-            ? 'Fade tendency'
-            : 'Draw tendency'
+    const carryAnchor = weightedAverageNumbers(
+      includedShots.map(carryValue),
+      includedShots.map((shot) => recencyWeight(shot) * rankWeightForShot(shot)),
+    )
 
-    const latestCarry = selectedClubSessionSeries[selectedClubSessionSeries.length - 1]?.carryAverage
-    const priorCarry =
-      selectedClubSessionSeries.length > 1
-        ? selectedClubSessionSeries[selectedClubSessionSeries.length - 2]?.carryAverage
-        : undefined
+    const candidates = includedShots.flatMap((shot) => {
+      const carry = carryValue(shot)
+      const offline = offlineValue(shot)
+      if (typeof carry !== 'number' || typeof offline !== 'number' || typeof carryAnchor !== 'number') {
+        return []
+      }
 
-    const missSummary =
-      typeof latestCarry === 'number' && typeof priorCarry === 'number'
-        ? latestCarry - priorCarry > 4
-          ? 'Long cluster'
-          : latestCarry - priorCarry < -4
-            ? 'Short cluster'
-            : typeof selectedClubMetrics.offlineAverage === 'number'
-              ? Math.abs(selectedClubMetrics.offlineAverage) > 4
-                ? selectedClubMetrics.offlineAverage > 0
-                  ? 'Right cluster'
-                  : 'Left cluster'
-                : 'Centered cluster'
-              : 'Mixed cluster'
-        : typeof selectedClubMetrics.offlineAverage === 'number'
-          ? Math.abs(selectedClubMetrics.offlineAverage) > 4
-            ? selectedClubMetrics.offlineAverage > 0
-              ? 'Right cluster'
-              : 'Left cluster'
-            : 'Centered cluster'
-          : 'Mixed cluster'
+      const carryError = Math.abs(carry - carryAnchor)
+      const normalizedCarryError = carryError / Math.max(anchorTolerance, 1)
+      const normalizedOffline = Math.abs(offline) / Math.max(targetWidth, 1)
+      const rankWeight = rankWeightForShot(shot)
+      const recent = recencyWeight(shot)
+      const qualityScore =
+        (1 / (1 + normalizedCarryError + normalizedOffline)) * rankWeight * recent
+
+      return [
+        {
+          shot,
+          qualityScore,
+          effectiveWeight: rankWeight * recent,
+        },
+      ]
+    })
+
+    const bestSubset = (() => {
+      if (candidates.length === 0) {
+        return []
+      }
+      const ranked = [...candidates].sort((left, right) => right.qualityScore - left.qualityScore)
+      const subsetSize = Math.min(Math.max(Math.round(ranked.length * 0.4), 3), 8)
+      return ranked.slice(0, subsetSize)
+    })()
+
+    const buildProfile = (
+      rows: Array<{ shot: Shot; effectiveWeight: number }>,
+      key: 'best' | 'likely',
+    ) => {
+      if (rows.length === 0) {
+        return null
+      }
+      const shots = rows.map((row) => row.shot)
+      const weights = rows.map((row) => row.effectiveWeight)
+      const offline = shots.map(offlineValue)
+      const absOffline = offline.map((value) =>
+        typeof value === 'number' ? Math.abs(value) : undefined,
+      )
+
+      return {
+        key,
+        carry: weightedAverageNumbers(shots.map(carryValue), weights),
+        total: weightedAverageNumbers(shots.map(totalValue), weights),
+        dispersion: weightedAverageNumbers(absOffline, weights),
+        dispersionVariability: weightedStandardDeviationNumbers(offline, weights),
+        spin: weightedAverageNumbers(shots.map(spinValue), weights),
+      }
+    }
+
+    const bestAvailable = buildProfile(bestSubset, 'best')
+    const mostLikely = buildProfile(
+      includedShots.map((shot) => ({
+        shot,
+        effectiveWeight: recencyWeight(shot),
+      })),
+      'likely',
+    )
+
+    const deltaSummary = (() => {
+      if (
+        !bestAvailable ||
+        !mostLikely ||
+        typeof bestAvailable.carry !== 'number' ||
+        typeof mostLikely.carry !== 'number' ||
+        typeof bestAvailable.dispersion !== 'number' ||
+        typeof mostLikely.dispersion !== 'number'
+      ) {
+        return 'Gap: building as more clean swings come in.'
+      }
+
+      const carryGap = bestAvailable.carry - mostLikely.carry
+      const dispersionGap = bestAvailable.dispersion - mostLikely.dispersion
+      return `Gap: ${carryGap >= 0 ? '+' : '-'}${Math.abs(carryGap).toFixed(1)} yd carry, ${dispersionGap >= 0 ? '+' : '-'}${Math.abs(dispersionGap).toFixed(1)} yd dispersion when executed well.`
+    })()
 
     return {
-      peakHeightAverage,
-      biasSummary,
-      shapeSummary,
-      missSummary,
+      bestAvailable,
+      mostLikely,
+      deltaSummary,
     }
-  }, [
-    selectedClubHistoricalShots,
-    selectedClubMetrics.offlineAverage,
-    selectedClubSessionSeries,
-  ])
+  }, [selectedClubHistoricalShotWeights, selectedClubHistoricalShots, selectedDetailClub])
 
   const selectedClubOpenGolfCoachShots = useMemo(
     () =>
@@ -2492,16 +2709,27 @@ function App({ forceDashboardRoute = false }: AppProps) {
                       </div>
 
                       <div className="club-detail-drivers-col">
-                        <div className="supporting-title">DRIVING THIS</div>
-                        <ul className="club-detail-read-driver-list">
-                          {looperReadDrivers.map((driver) => (
-                            <li className="club-detail-read-driver" key={driver.label}>
-                              <span className="club-detail-read-driver-label">{driver.label}</span>
-                              <span className="club-detail-read-driver-dash"> — </span>
-                              <span className="club-detail-read-driver-detail">{driver.detail}</span>
-                            </li>
+                        <div className="supporting-title">COMPONENT BREAKDOWN</div>
+                        <div className="club-detail-component-strip">
+                          {selectedClubComponentBreakdown.map((component) => (
+                            <div className="club-detail-component-row" key={component.key}>
+                              <span>{component.label}</span>
+                              <span className="comparison-cell">
+                                <span className="comparison-value">
+                                  {typeof component.value === 'number' ? formatScore(component.value) : '-'}
+                                </span>
+                                {typeof component.delta === 'number' ? (
+                                  <span className={comparisonClassName(component.tone)}>
+                                    <span>{comparisonSymbol(component.direction)}</span>
+                                    <span>{comparisonMagnitude(component.delta)}</span>
+                                  </span>
+                                ) : (
+                                  <span className="comparison-indicator comparison-neutral">-</span>
+                                )}
+                              </span>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     </article>
 
@@ -2516,45 +2744,61 @@ function App({ forceDashboardRoute = false }: AppProps) {
                       </article>
 
                       <article className="dashboard-card club-detail-shot-profile">
-                        <div className="section-kicker">Shot Profile</div>
-                        <div className="club-detail-shot-list">
-                          <div className="component-row">
-                            <span>Carry average</span>
-                            <span>{formatDecimal(selectedClubMetrics.carryAverage, ' yd')}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Offline average</span>
-                            <span>{formatDecimal(selectedClubMetrics.offlineAverage, ' yd')}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Dispersion</span>
-                            <span>{formatDecimal(selectedClubMetrics.offlineStdDeviation, ' yd')}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Peak height</span>
-                            <span>{formatDecimal(selectedClubDispersionPanel.peakHeightAverage, ' yd')}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Descent angle</span>
-                            <span>{formatDecimal(selectedClubMetrics.descentAverage, ' deg')}</span>
+                        <div className="section-kicker">SHOT PROFILE</div>
+
+                        <div className="club-detail-shot-profile-block">
+                          <div className="club-detail-shot-profile-title">Best Available Shot</div>
+                          <div className="club-detail-shot-list">
+                            <div className="component-row">
+                              <span>Carry</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.carry, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Total distance</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.total, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Dispersion</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersion, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Dispersion variability</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersionVariability, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Spin</span>
+                              <span>{formatWhole(selectedClubShotProfiles.bestAvailable?.spin, ' rpm')}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="section-kicker">Pattern</div>
-                        <div className="club-detail-shot-list">
-                          <div className="component-row">
-                            <span>Bias</span>
-                            <span>{selectedClubDispersionPanel.biasSummary}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Shape tendency</span>
-                            <span>{selectedClubDispersionPanel.shapeSummary}</span>
-                          </div>
-                          <div className="component-row">
-                            <span>Miss tendency</span>
-                            <span>{selectedClubDispersionPanel.missSummary}</span>
+                        <div className="club-detail-shot-profile-block">
+                          <div className="club-detail-shot-profile-title">Most Likely Outcome</div>
+                          <div className="club-detail-shot-list">
+                            <div className="component-row">
+                              <span>Carry</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.carry, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Total distance</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.total, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Dispersion</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.dispersion, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Dispersion variability</span>
+                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.dispersionVariability, ' yd')}</span>
+                            </div>
+                            <div className="component-row">
+                              <span>Spin</span>
+                              <span>{formatWhole(selectedClubShotProfiles.mostLikely?.spin, ' rpm')}</span>
+                            </div>
                           </div>
                         </div>
+
+                        <p className="club-detail-shot-gap">{selectedClubShotProfiles.deltaSummary}</p>
                       </article>
                     </section>
 
