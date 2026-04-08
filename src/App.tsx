@@ -333,11 +333,15 @@ const mergeDerivedValues = (
 })
 
 function App() {
+  type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   const [sessionState, setSessionState] = useState<SessionState>('setup')
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>('mock')
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
+  const [dashboardNavTarget, setDashboardNavTarget] =
+    useState<DashboardNavTarget>('dashboard')
+  const [isLastSessionOpen, setIsLastSessionOpen] = useState(false)
   const [shots, setShots] = useState<Shot[]>([])
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
@@ -355,6 +359,25 @@ function App() {
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
   const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
+
+  const navigateDashboardSection = (
+    sectionId: 'dashboard-overview' | 'dashboard-bag' | 'dashboard-review',
+    navTarget: DashboardNavTarget,
+    expandLastSession = false,
+  ) => {
+    setDashboardNavTarget(navTarget)
+    setReviewView('dashboard')
+    if (expandLastSession) {
+      setIsLastSessionOpen(true)
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+  }
+
   useEffect(() => {
     selectedClubRef.current = selectedClub
   }, [selectedClub])
@@ -1514,35 +1537,35 @@ function App() {
         <section className="dashboard-layout">
           <aside className="dashboard-rail">
             <div className="dashboard-rail-brand">
-              <div className="dashboard-rail-mark">Nova</div>
+              <div className="dashboard-rail-mark">The Looper</div>
               <div>
-                <div className="dashboard-rail-title">Caddie Dashboard</div>
-                <div className="dashboard-rail-subtitle">Current game status</div>
+                <div className="dashboard-rail-title">The Looper</div>
               </div>
             </div>
 
             <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
               <button
-                className={reviewView === 'dashboard' ? 'is-active' : undefined}
-                onClick={() => setReviewView('dashboard')}
+                className={dashboardNavTarget === 'dashboard' ? 'is-active' : undefined}
+                onClick={() =>
+                  navigateDashboardSection('dashboard-overview', 'dashboard')
+                }
               >
                 Dashboard
               </button>
               <button
-                className={reviewView === 'clubDetail' ? 'is-active' : undefined}
-                onClick={() => setReviewView('clubDetail')}
+                className={dashboardNavTarget === 'bag' ? 'is-active' : undefined}
+                onClick={() => navigateDashboardSection('dashboard-bag', 'bag')}
               >
-                Club Detail
+                Bag
               </button>
-              {reviewView === 'dashboard' && (
-                <>
-                  <a href="#dashboard-overview">Overview</a>
-                  <a href="#dashboard-spotlights">Spotlights</a>
-                  <a href="#dashboard-bag">Bag</a>
-                  <a href="#dashboard-trends">Trends</a>
-                  <a href="#dashboard-review">Detailed Review</a>
-                </>
-              )}
+              <button
+                className={dashboardNavTarget === 'lastSession' ? 'is-active' : undefined}
+                onClick={() =>
+                  navigateDashboardSection('dashboard-review', 'lastSession', true)
+                }
+              >
+                Last Session
+              </button>
             </nav>
 
             <div className="dashboard-rail-clubs">
@@ -1969,7 +1992,13 @@ function App() {
                 {reviewView === 'dashboard' && (
                   <section className="review-details-card" id="dashboard-review">
                     <div className="section-kicker">Last Session Review</div>
-                    <details className="supporting-details last-session-review">
+                    <details
+                      className="supporting-details last-session-review"
+                      onToggle={(event) =>
+                        setIsLastSessionOpen((event.currentTarget as HTMLDetailsElement).open)
+                      }
+                      open={isLastSessionOpen}
+                    >
                       <summary>Click to Open Detailed Comparison</summary>
 
                       <section className="review-card last-session-insights">
