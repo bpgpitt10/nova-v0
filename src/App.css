@@ -121,31 +121,16 @@
 }
 
 .dashboard-rail-brand {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 12px;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
 }
 
-.dashboard-rail-mark {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(234, 179, 8, 0.35), transparent 45%),
-    linear-gradient(180deg, #2a4330 0%, #172419 100%);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.dashboard-rail-title {
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
+.dashboard-rail-logo {
+  width: 156px;
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 .dashboard-rail-subtitle,
@@ -1077,8 +1062,14 @@ td {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  grid-template-columns: minmax(0, 1fr) 118px minmax(170px, 220px);
+  grid-template-areas:
+    'kicker . meta'
+    'intro score meta'
+    'insights . meta';
+  column-gap: 16px;
+  row-gap: 6px;
+  padding: 18px;
   background:
     linear-gradient(135deg, rgba(42, 67, 48, 0.92) 0%, rgba(20, 33, 24, 0.98) 58%),
     linear-gradient(180deg, rgba(234, 179, 8, 0.08), transparent 28%);
@@ -1111,14 +1102,21 @@ td {
 
 .driver-feature-header,
 .driver-feature-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 16px;
-  align-items: start;
+  display: contents;
+}
+
+.driver-feature-kicker {
+  grid-area: kicker;
+  margin-bottom: 0;
+  align-self: end;
+}
+
+.driver-feature-intro {
+  grid-area: intro;
 }
 
 .driver-feature-title {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: #ffffff;
   font-size: 24px;
   font-weight: 600;
@@ -1132,9 +1130,16 @@ td {
 }
 
 .driver-feature-score-block {
+  grid-area: score;
   display: grid;
-  justify-items: end;
-  gap: 8px;
+  justify-items: start;
+  align-content: start;
+  gap: 6px;
+  justify-self: start;
+  align-self: start;
+  width: 100%;
+  padding-right: 0;
+  margin-top: -2px;
 }
 
 .driver-feature-score {
@@ -1145,18 +1150,24 @@ td {
 }
 
 .driver-feature-insights {
+  grid-area: insights;
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  align-self: start;
+  max-width: 100%;
 }
 
 .driver-feature-meta {
+  grid-area: meta;
   display: grid;
   gap: 4px;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid #314233;
   border-radius: 10px;
   background: rgba(23, 36, 25, 0.82);
   min-width: 0;
+  align-self: start;
+  margin-top: 0;
 }
 
 .driver-feature-meta-row {
@@ -1172,6 +1183,10 @@ td {
 .driver-feature-meta-row span:first-child {
   color: #9fb09f;
   font-size: 12px;
+}
+
+.driver-feature-meta-value-nowrap {
+  white-space: nowrap;
 }
 
 .club-card {
@@ -1932,9 +1947,19 @@ td {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .driver-feature-header,
-  .driver-feature-body {
+  .driver-feature-card {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'intro'
+      'score'
+      'insights'
+      'meta';
+    row-gap: 10px;
+  }
+
+  .driver-feature-score-block {
+    justify-self: start;
+    width: auto;
   }
 
   .club-detail-header,

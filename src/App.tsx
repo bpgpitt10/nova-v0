@@ -6,6 +6,7 @@ import {
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
+import looperLogoWhite from './assets/LooperLogoWhite.png'
 import './App.css'
 import {
   activeBagClubIds,
@@ -375,6 +376,21 @@ const componentLabel = (component: keyof ReviewClubSummary['componentScores']) =
       return 'Pattern Stability'
     case 'dataConfidence':
       return 'Data Confidence'
+  }
+}
+
+const componentGolfLabel = (component: keyof ReviewClubSummary['componentScores']) => {
+  switch (component) {
+    case 'distanceWindow':
+      return 'Carry control'
+    case 'directionWindow':
+      return 'Start line'
+    case 'flightQuality':
+      return 'Contact'
+    case 'patternStability':
+      return 'Pattern'
+    case 'dataConfidence':
+      return 'Read confidence'
   }
 }
 
@@ -1004,6 +1020,150 @@ function App({
   )
 
   const featuredDriverSummary = featuredDriverCard?.summary ?? null
+  const featuredDriverIncludedShots = useMemo(
+    () =>
+      featuredDriverCard
+        ? analysisSessions
+            .flatMap((session) => session.shots)
+            .filter((shot) => shot.club === featuredDriverCard.club && shot.included)
+        : [],
+    [analysisSessions, featuredDriverCard],
+  )
+  const featuredDriverRead = useMemo(() => {
+    if (!featuredDriverCard || !featuredDriverSummary) {
+      return null
+    }
+
+    const componentEntries = Object.entries(
+      featuredDriverSummary.componentScores,
+    ) as Array<[keyof ReviewClubSummary['componentScores'], number]>
+    const strongest = [...componentEntries].sort((left, right) => right[1] - left[1])[0][0]
+    const weakest = [...componentEntries].sort((left, right) => left[1] - right[1])[0][0]
+    const strongestLabel = componentGolfLabel(strongest)
+    const weakestLabel = componentGolfLabel(weakest)
+
+    const offlineAverage = featuredDriverSummary.offlineAverageYards
+    const offlineDispersion = featuredDriverSummary.offlineStdDevYards
+    const oneSidedMissExposure =
+      typeof offlineAverage === 'number' && typeof offlineDispersion === 'number'
+        ? Math.abs(offlineAverage) + offlineDispersion
+        : null
+    // Approximate total left-to-right dispersion width from one-sided exposure.
+    const effectiveTotalDispersion =
+      typeof oneSidedMissExposure === 'number' ? oneSidedMissExposure * 2 : null
+    const bias =
+      typeof offlineAverage !== 'number' || Math.abs(offlineAverage) < 4
+        ? 'neutral'
+        : offlineAverage > 0
+          ? 'right'
+          : 'left'
+
+    const missOutcome = (() => {
+      if (effectiveTotalDispersion === null) {
+        return {
+          label: 'Miss outcome',
+          detail: 'Miss profile is still building.',
+          tier: 'unknown' as const,
+        }
+      }
+
+      // Work backward from penalty-risk threshold:
+      // penalty language only starts once effective total dispersion > ~48 yd.
+      if (effectiveTotalDispersion <= 24) {
+        return {
+          label: 'Miss stays in play',
+          detail: bias === 'neutral' ? 'Fairway should hold.' : `${capitalizeFirst(bias)} miss stays in play.`,
+          tier: 'tight' as const,
+        }
+      }
+      if (effectiveTotalDispersion <= 34) {
+        return {
+          label: 'Rough is in play',
+          detail:
+            bias === 'neutral'
+              ? 'Miss can leak into the rough.'
+              : `${capitalizeFirst(bias)} miss can leak into the rough.`,
+          tier: 'moderate' as const,
+        }
+      }
+      if (effectiveTotalDispersion <= 42) {
+        return {
+          label: 'Miss likely finds rough',
+          detail:
+            bias === 'neutral'
+              ? 'Miss likely finds rough.'
+              : `${capitalizeFirst(bias)} miss likely finds rough.`,
+          tier: 'wide' as const,
+        }
+      }
+      if (effectiveTotalDispersion <= 48) {
+        return {
+          label: 'Trouble comes into play',
+          detail:
+            bias === 'neutral'
+              ? 'Trouble comes into play when the hole narrows.'
+              : `${capitalizeFirst(bias)} miss can bring hazards into play.`,
+          tier: 'dangerous' as const,
+        }
+      }
+      return {
+        label: effectiveTotalDispersion > 56 ? 'High penalty risk' : 'Penalty risk',
+        detail:
+          bias === 'neutral'
+            ? 'Big numbers come into play if the miss is not controlled.'
+            : `${capitalizeFirst(bias)} miss is a high penalty-risk pattern.`,
+        tier: 'chaotic' as const,
+      }
+    })()
+
+    const smashAverage = averageNumbers(featuredDriverIncludedShots.map(smashFactorValue))
+    const smashNote =
+      featuredDriverCard.club === 'Driver' && typeof smashAverage === 'number'
+        ? smashAverage >= 1.46
+          ? 'Smash is holding up.'
+          : smashAverage >= 1.41
+            ? 'Smash is playable.'
+            : 'Smash contact is costing you.'
+        : null
+
+    const mainLead = (() => {
+      switch (featuredDriverSummary.caddieCall) {
+        case 'Attack':
+          return `${getClubLabel(featuredDriverCard.club)} is a green-light option right now.`
+        case 'Play':
+          return `${getClubLabel(featuredDriverCard.club)} is playable, with ${strongestLabel.toLowerCase()} holding up.`
+        case 'Manage':
+          return `${getClubLabel(featuredDriverCard.club)} is playable, but it needs management.`
+        case 'Careful':
+          return `${getClubLabel(featuredDriverCard.club)} needs a conservative line right now.`
+        case 'Liability':
+          return `${getClubLabel(featuredDriverCard.club)} is a high-risk pull right now.`
+        case 'Insufficient Data':
+          return `${getClubLabel(featuredDriverCard.club)} still needs more clean shots before this is a firm read.`
+      }
+    })()
+
+    const practicalLine =
+      missOutcome.tier === 'tight' || missOutcome.tier === 'moderate'
+        ? 'You can use it, but keep the start line disciplined.'
+        : missOutcome.tier === 'wide'
+          ? 'Use it when the hole gives you room for the miss.'
+          : 'If the hole punishes the miss, back off.'
+
+    return {
+      mainRead: `${mainLead} ${missOutcome.detail}`,
+      insightRows: [
+        `${strongestLabel} is holding. ${weakestLabel} is still the cost.`,
+        `${practicalLine}${smashNote ? ` ${smashNote}` : ''}`,
+      ],
+      meta: {
+        missOutcome: missOutcome.label,
+        biggestDrag: weakestLabel,
+        smashAverage:
+          featuredDriverCard.club === 'Driver' ? smashAverage : undefined,
+      },
+    }
+  }, [analysisSessions, featuredDriverCard, featuredDriverIncludedShots, featuredDriverSummary])
 
   const bestClubSummary = dashboardSummaryLead
   const weakestClubSummary =
@@ -2966,10 +3126,7 @@ function App({
         <section className="dashboard-layout">
           <aside className="dashboard-rail">
             <div className="dashboard-rail-brand">
-              <div className="dashboard-rail-mark">The Looper</div>
-              <div>
-                <div className="dashboard-rail-title">The Looper</div>
-              </div>
+              <img alt="The Looper" className="dashboard-rail-logo" src={looperLogoWhite} />
             </div>
 
             <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
@@ -3059,32 +3216,14 @@ function App({
                   </div>
                 </section>
 
-                <section className="dashboard-spotlights" id="dashboard-spotlights">
-                  {spotlightCards.map((card) => (
-                    <article className="dashboard-card spotlight-card" key={card.key}>
-                      <div className="spotlight-accent-row">
-                        <span className={`spotlight-accent ${caddieToneClassName(card.accent)}`} />
-                        <span className={caddieCallClassName(card.accent)}>{card.accent}</span>
-                      </div>
-                      <h3 className="spotlight-title">{card.title}</h3>
-                      <p className="spotlight-summary">{card.summary}</p>
-                      <div className="spotlight-list">
-                        {card.bullets.map((bullet) => (
-                          <p key={bullet}>{bullet}</p>
-                        ))}
-                      </div>
-                    </article>
-                  ))}
-                </section>
-
-                {featuredDriverCard && featuredDriverSummary && (
+                {featuredDriverCard && featuredDriverSummary && featuredDriverRead && (
                   <section className="driver-feature-card" id={clubAnchorId(featuredDriverCard.club)}>
                     <div className="driver-feature-header">
-                      <div>
-                        <div className="section-kicker">Featured Club</div>
+                      <div className="section-kicker driver-feature-kicker">Featured Club</div>
+                      <div className="driver-feature-intro">
                         <h3 className="driver-feature-title">{getClubLabel(featuredDriverCard.club)}</h3>
                         <p className="driver-feature-copy">
-                          {featuredDriverSummary.explanation}
+                          {featuredDriverRead.mainRead}
                         </p>
                       </div>
                       <div className="driver-feature-score-block">
@@ -3098,7 +3237,7 @@ function App({
                     </div>
                     <div className="driver-feature-body">
                       <div className="driver-feature-insights">
-                        {featuredDriverSummary.insights.slice(0, 2).map((insight) => (
+                        {featuredDriverRead.insightRows.map((insight) => (
                           <div
                             className={`insight-row ${caddieToneClassName(
                               featuredDriverSummary.caddieCall,
@@ -3131,13 +3270,25 @@ function App({
                           </span>
                         </div>
                         <div className="driver-feature-meta-row">
-                          <span>Trend</span>
-                          <span>
-                            {typeof featuredDriverCard.delta === 'number'
-                              ? `${featuredDriverCard.delta >= 0 ? '+' : ''}${formatScore(featuredDriverCard.delta)} vs prior`
-                              : 'No prior-session read'}
+                          <span>Miss outcome</span>
+                          <span className="driver-feature-meta-value-nowrap">
+                            {featuredDriverRead.meta.missOutcome}
                           </span>
                         </div>
+                        <div className="driver-feature-meta-row">
+                          <span>Biggest drag</span>
+                          <span>{featuredDriverRead.meta.biggestDrag}</span>
+                        </div>
+                        {featuredDriverCard.club === 'Driver' && (
+                          <div className="driver-feature-meta-row">
+                            <span>Smash avg</span>
+                            <span>
+                              {typeof featuredDriverRead.meta.smashAverage === 'number'
+                                ? featuredDriverRead.meta.smashAverage.toFixed(2)
+                                : '-'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </section>
@@ -3182,6 +3333,24 @@ function App({
                       </article>
                     ))}
                   </div>
+                </section>
+
+                <section className="dashboard-spotlights" id="dashboard-spotlights">
+                  {spotlightCards.map((card) => (
+                    <article className="dashboard-card spotlight-card" key={card.key}>
+                      <div className="spotlight-accent-row">
+                        <span className={`spotlight-accent ${caddieToneClassName(card.accent)}`} />
+                        <span className={caddieCallClassName(card.accent)}>{card.accent}</span>
+                      </div>
+                      <h3 className="spotlight-title">{card.title}</h3>
+                      <p className="spotlight-summary">{card.summary}</p>
+                      <div className="spotlight-list">
+                        {card.bullets.map((bullet) => (
+                          <p key={bullet}>{bullet}</p>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
                 </section>
 
                 <section className="dashboard-support-grid" id="dashboard-trends">
