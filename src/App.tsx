@@ -2386,42 +2386,112 @@ function App({
     [selectedClub, shots],
   )
 
-  const selectedClubLiveSummary = useMemo(
-    () =>
-      summarizeReviewClub(
-        selectedClub,
-        shots,
-        savedSessions,
-        liveSessionId,
-      ),
-    [liveSessionId, savedSessions, selectedClub, shots],
-  )
-
-  const selectedClubIncludedShotCount = useMemo(
-    () => shots.filter((shot) => shot.club === selectedClub && shot.included).length,
+  const selectedClubIncludedShots = useMemo(
+    () => shots.filter((shot) => shot.club === selectedClub && shot.included),
     [selectedClub, shots],
   )
 
-  const selectedClubMidSignal = useMemo(() => {
-    const clubShots = shots.filter((shot) => shot.club === selectedClub && shot.included)
-    if (clubShots.length < 4) {
-      return 'Getting a read on this club...'
-    }
-    const firstHalf = clubShots.slice(Math.floor(clubShots.length / 2))
-    const secondHalf = clubShots.slice(0, Math.floor(clubShots.length / 2))
-    const firstBias = averageNumbers(firstHalf.map(offlineValue))
-    const secondBias = averageNumbers(secondHalf.map(offlineValue))
-    if (typeof firstBias === 'number' && typeof secondBias === 'number') {
-      const delta = secondBias - firstBias
-      if (delta > 2.5) {
-        return 'Direction is starting to drift right.'
+  const sessionShotWindow = useMemo(() => {
+    const carry = selectedClubIncludedShots
+      .map(carryValue)
+      .filter((value): value is number => typeof value === 'number')
+    const offline = selectedClubIncludedShots
+      .map(offlineValue)
+      .filter((value): value is number => typeof value === 'number')
+
+    const carryRange =
+      carry.length >= 2
+        ? `${Math.min(...carry).toFixed(1)} to ${Math.max(...carry).toFixed(1)} yd`
+        : carry.length === 1
+          ? `${carry[0].toFixed(1)} yd`
+          : 'Building...'
+
+    const offlineRange = (() => {
+      if (offline.length < 2) {
+        return offline.length === 1 ? `${formatOfflineValue(offline[0])} yd` : 'Building...'
       }
-      if (delta < -2.5) {
-        return 'Direction is starting to drift left.'
-      }
+      const min = Math.min(...offline)
+      const max = Math.max(...offline)
+      const left = `${Math.abs(min).toFixed(1)}L`
+      const right = `${Math.abs(max).toFixed(1)}R`
+      return `${left} to ${right}`
+    })()
+
+    const rightCount = offline.filter((value) => value > 1).length
+    const leftCount = offline.filter((value) => value < -1).length
+    const considered = rightCount + leftCount
+    const bias =
+      considered < 4
+        ? 'Neutral'
+        : rightCount >= leftCount + 2
+          ? 'Right'
+          : leftCount >= rightCount + 2
+            ? 'Left'
+            : 'Neutral'
+
+    return {
+      carryRange,
+      offlineRange,
+      bias,
+      sampleReady: selectedClubIncludedShots.length >= 4,
     }
-    return 'Pattern is starting to settle, but keep feeding it swings.'
-  }, [selectedClub, shots])
+  }, [selectedClubIncludedShots])
+
+  const sessionMissPattern = useMemo(() => {
+    const recent = selectedClubIncludedShots.slice(0, Math.min(9, selectedClubIncludedShots.length))
+    const offline = recent
+      .map(offlineValue)
+      .filter((value): value is number => typeof value === 'number')
+
+    const rightCount = offline.filter((value) => value > 1).length
+    const leftCount = offline.filter((value) => value < -1).length
+    const considered = rightCount + leftCount
+    const dominantSide = rightCount >= leftCount ? 'right' : 'left'
+    const dominantCount = dominantSide === 'right' ? rightCount : leftCount
+    const dominanceRatio = considered > 0 ? dominantCount / considered : 0
+    const strongPattern = considered >= 6 && dominanceRatio >= 0.67
+
+    const countLine =
+      considered >= 4
+        ? `${dominantCount} of last ${considered} ${dominantSide} of target`
+        : 'Not enough miss signal yet'
+
+    const repeatLine =
+      considered < 4
+        ? 'Need more included shots.'
+        : strongPattern
+          ? 'Repeating miss pattern.'
+          : 'Miss is more mixed than repeating.'
+
+    const causeLine = (() => {
+      if (!strongPattern) {
+        return null
+      }
+
+      const recentFaceTarget = averageNumbers(recent.map(faceToTargetValue))
+      const recentHla = averageNumbers(
+        recent.map((shot) => shot.horizontalLaunchAngleDegrees),
+      )
+      const recentFacePath = averageNumbers(recent.map(faceToPathValue))
+
+      if (
+        (typeof recentFaceTarget === 'number' && Math.abs(recentFaceTarget) >= 2) ||
+        (typeof recentHla === 'number' && Math.abs(recentHla) >= 2)
+      ) {
+        return 'Start line driving it.'
+      }
+      if (typeof recentFacePath === 'number' && Math.abs(recentFacePath) >= 2) {
+        return 'Face-to-path tilt is contributing.'
+      }
+      return null
+    })()
+
+    return {
+      countLine,
+      repeatLine,
+      causeLine,
+    }
+  }, [selectedClubIncludedShots])
 
   const sessionShotGroups = useMemo(() => {
     const byClub = new Map<Club, Shot[]>()
@@ -2562,9 +2632,6 @@ function App({
         </section>
 
         <section className="session-intelligence-heatmap" aria-label="Active club heatmap">
-          <div className="session-intelligence-section-title">
-            {getClubLabel(selectedClub)} dispersion
-          </div>
           {sessionIntelligencePoints.length === 0 ? (
             <p className="support-card-copy">No included shots for this club yet.</p>
           ) : (
@@ -2573,51 +2640,38 @@ function App({
         </section>
 
         <section className="session-intelligence-signal" aria-label="Session signal">
-          {selectedClubIncludedShotCount < 4 ? (
-            <p>Getting a read on this club...</p>
-          ) : selectedClubIncludedShotCount < 8 ? (
-            <div className="session-component-scores">
-              <p>{selectedClubMidSignal}</p>
-              {selectedClubLiveSummary && (
-                <p className="support-card-copy" style={{ margin: 0 }}>
-                  Early signal: {strongestComponentLabel(selectedClubLiveSummary.componentScores, 'high')} is holding best so far.
-                </p>
+          <div className="session-intelligence-intel-grid">
+            <article className="session-intelligence-intel-col">
+              <h3>Shot Window</h3>
+              {sessionShotWindow.sampleReady ? (
+                <div className="session-intelligence-intel-list">
+                  <div className="component-row">
+                    <span>Carry range</span>
+                    <span>{sessionShotWindow.carryRange}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Offline range</span>
+                    <span>{sessionShotWindow.offlineRange}</span>
+                  </div>
+                  <div className="component-row">
+                    <span>Miss bias</span>
+                    <span>{sessionShotWindow.bias}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="support-card-copy">Getting a read on this club...</p>
               )}
-            </div>
-          ) : selectedClubLiveSummary ? (
-            <div className="session-component-scores">
-              <div className="component-row">
-                <span>Score</span>
-                <span>{formatScore(selectedClubLiveSummary.caddieScore)}</span>
+            </article>
+
+            <article className="session-intelligence-intel-col">
+              <h3>Miss Pattern</h3>
+              <div className="session-intelligence-intel-list">
+                <p>{sessionMissPattern.countLine}</p>
+                <p>{sessionMissPattern.repeatLine}</p>
+                {sessionMissPattern.causeLine && <p>{sessionMissPattern.causeLine}</p>}
               </div>
-              <div className="component-row">
-                <span>Call</span>
-                <span>{selectedClubLiveSummary.caddieCall}</span>
-              </div>
-              <div className="component-row">
-                <span>{componentLabel('distanceWindow')}</span>
-                <span>{formatScore(selectedClubLiveSummary.componentScores.distanceWindow)}</span>
-              </div>
-              <div className="component-row">
-                <span>{componentLabel('directionWindow')}</span>
-                <span>{formatScore(selectedClubLiveSummary.componentScores.directionWindow)}</span>
-              </div>
-              <div className="component-row">
-                <span>{componentLabel('flightQuality')}</span>
-                <span>{formatScore(selectedClubLiveSummary.componentScores.flightQuality)}</span>
-              </div>
-              <div className="component-row">
-                <span>{componentLabel('patternStability')}</span>
-                <span>{formatScore(selectedClubLiveSummary.componentScores.patternStability)}</span>
-              </div>
-              <div className="component-row">
-                <span>{componentLabel('dataConfidence')}</span>
-                <span>{formatScore(selectedClubLiveSummary.componentScores.dataConfidence)}</span>
-              </div>
-            </div>
-          ) : (
-            <p>Getting a read on this club...</p>
-          )}
+            </article>
+          </div>
         </section>
 
         <details className="session-shot-data">
