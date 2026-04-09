@@ -1,16 +1,124 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
 
+type NovaConnectionState =
+  | 'not_configured'
+  | 'connecting'
+  | 'connected'
+  | 'error'
+  | 'disconnected'
+
+const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
+const LOCALHOST_FALLBACK_PORT = 8765
+
+const safeReadLocalStorage = (key: string) => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const resolveNovaWebSocketUrl = () => {
+  const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+  if (envUrl) {
+    return envUrl
+  }
+
+  const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
+  if (savedUrl) {
+    return savedUrl
+  }
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      return `ws://${host}:${LOCALHOST_FALLBACK_PORT}`
+    }
+  }
+
+  return undefined
+}
+
 export default function LooperLandingPage() {
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
-  const [selectedFeedMode, setSelectedFeedMode] = useState<'mock' | 'real'>('mock')
+  const [novaState, setNovaState] = useState<NovaConnectionState>('not_configured')
+  const [novaDetail, setNovaDetail] = useState<string | null>(null)
+  const novaWebSocketUrl = useMemo(() => resolveNovaWebSocketUrl(), [])
+
+  useEffect(() => {
+    if (!novaWebSocketUrl) {
+      setNovaState('not_configured')
+      setNovaDetail('Nova not configured for this device.')
+      return
+    }
+
+    let isMounted = true
+    let closedByApp = false
+    const socket = new WebSocket(novaWebSocketUrl)
+
+    setNovaState('connecting')
+    setNovaDetail(`Connecting to Nova...`)
+
+    socket.onopen = () => {
+      if (!isMounted) {
+        return
+      }
+      setNovaState('connected')
+      setNovaDetail(null)
+    }
+
+    socket.onerror = () => {
+      if (!isMounted) {
+        return
+      }
+      setNovaState('error')
+      setNovaDetail('Nova connection failed')
+    }
+
+    socket.onclose = () => {
+      if (!isMounted) {
+        return
+      }
+      if (closedByApp) {
+        setNovaState('disconnected')
+        return
+      }
+      setNovaState('error')
+      setNovaDetail('No Nova found on this network')
+    }
+
+    return () => {
+      isMounted = false
+      closedByApp = true
+      socket.close()
+    }
+  }, [novaWebSocketUrl])
+
+  const novaStatusText = (() => {
+    switch (novaState) {
+      case 'not_configured':
+        return 'Nova not configured'
+      case 'connecting':
+        return 'Connecting to Nova...'
+      case 'connected':
+        return 'Connected to Nova'
+      case 'error':
+        return 'Nova connection failed'
+      case 'disconnected':
+        return 'Nova disconnected'
+    }
+  })()
 
   const startSession = () => {
     const params = new URLSearchParams({
-      feed: selectedFeedMode,
+      feed: 'real',
       club: selectedClub,
     })
     window.location.assign(`/session-intelligence?${params.toString()}`)
@@ -31,18 +139,9 @@ export default function LooperLandingPage() {
               <label className="looper-landing-label" htmlFor="landing-club-select">
                 New Session
               </label>
-              <div className="looper-landing-session-field">
-                <span className="looper-landing-field-label">Data Source</span>
-                <div className="looper-landing-select-wrap">
-                  <select
-                    id="landing-feed-select"
-                    onChange={(event) => setSelectedFeedMode(event.target.value as 'mock' | 'real')}
-                    value={selectedFeedMode}
-                  >
-                    <option value="mock">Mock</option>
-                    <option value="real">Live Nova</option>
-                  </select>
-                </div>
+              <div className="looper-landing-session-status">
+                <p className="looper-landing-status-tag">{novaStatusText}</p>
+                {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
               </div>
               <div className="looper-landing-session-row">
                 <div className="looper-landing-select-wrap">
