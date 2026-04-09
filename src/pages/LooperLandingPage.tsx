@@ -6,10 +6,11 @@ import looperLogoWhite from '../assets/looperlogowhite.png'
 
 export default function LooperLandingPage() {
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
+  const [selectedFeedMode, setSelectedFeedMode] = useState<'mock' | 'real'>('mock')
 
   const startSession = () => {
     const params = new URLSearchParams({
-      feed: 'mock',
+      feed: selectedFeedMode,
       club: selectedClub,
     })
     window.location.assign(`/session-intelligence?${params.toString()}`)
@@ -30,6 +31,19 @@ export default function LooperLandingPage() {
               <label className="looper-landing-label" htmlFor="landing-club-select">
                 New Session
               </label>
+              <div className="looper-landing-session-field">
+                <span className="looper-landing-field-label">Data Source</span>
+                <div className="looper-landing-select-wrap">
+                  <select
+                    id="landing-feed-select"
+                    onChange={(event) => setSelectedFeedMode(event.target.value as 'mock' | 'real')}
+                    value={selectedFeedMode}
+                  >
+                    <option value="mock">Mock</option>
+                    <option value="real">Live Nova</option>
+                  </select>
+                </div>
+              </div>
               <div className="looper-landing-session-row">
                 <div className="looper-landing-select-wrap">
                   <select

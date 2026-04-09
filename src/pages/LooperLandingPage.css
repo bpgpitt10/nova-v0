@@ -111,6 +111,17 @@
   gap: 8px;
 }
 
+.looper-landing-session-field {
+  display: grid;
+  gap: 6px;
+}
+
+.looper-landing-field-label {
+  color: #9fb09f;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
 .looper-landing-label {
   margin: 0;
   color: #9fb09f;

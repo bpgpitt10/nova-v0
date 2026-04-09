@@ -2983,8 +2983,6 @@ function App({
 
   const appMain = (
     <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
-      {import.meta.env.DEV && <p><a href="/looper">Open Looper Landing (/looper)</a></p>}
-
       {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
       {/* Validation/debug UI removed; OpenGolfCoach enrichment + persistence remain active. */}
 
@@ -3160,7 +3158,9 @@ function App({
         <section className="dashboard-layout">
           <aside className="dashboard-rail">
             <div className="dashboard-rail-brand">
-              <img alt="The Looper" className="dashboard-rail-logo" src={looperLogoWhite} />
+              <a aria-label="Go to Looper Landing" href="/looper">
+                <img alt="The Looper" className="dashboard-rail-logo" src={looperLogoWhite} />
+              </a>
             </div>
 
             <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
