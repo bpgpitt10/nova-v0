@@ -1,0 +1,16 @@
+[package]
+name = "nova-v0-desktop"
+version = "0.0.0"
+description = "Tauri shell for Nova V0"
+authors = ["you"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

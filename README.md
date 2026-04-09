@@ -9,6 +9,31 @@ npm install
 npm run dev
 ```
 
+## Desktop (Tauri)
+
+This project is configured to run in a Tauri desktop shell without changing app UI/logic.
+
+### Run desktop app in development
+
+```sh
+npm install
+npm run tauri:dev
+```
+
+Notes:
+- Tauri dev uses the existing Vite dev server at `http://localhost:1420`.
+- The desktop window loads that dev server URL.
+
+### Build desktop app
+
+```sh
+npm run tauri:build
+```
+
+Notes:
+- Tauri build runs the existing Vite build first (`npm run build`) and then bundles from `dist`.
+- Desktop build artifacts are written under `src-tauri/target/release/bundle/` (for Windows, installers/bundles are placed there by target format).
+
 ## OpenGolfCoach helper
 
 The smallest local OpenGolfCoach integration in this repo is a tiny Python helper:
