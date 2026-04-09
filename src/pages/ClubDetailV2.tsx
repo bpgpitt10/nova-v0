@@ -84,6 +84,7 @@ type ClubDetailV2Props = {
   clubLabel: string
   score: string
   call: string
+  swingsIncludedCount: number
   callClassName?: string
   looperRead: {
     primary: string
@@ -174,6 +175,7 @@ export default function ClubDetailV2({
   clubLabel,
   score,
   call,
+  swingsIncludedCount,
   callClassName,
   looperRead,
   componentBreakdown,
@@ -517,6 +519,9 @@ export default function ClubDetailV2({
               <span className="club-v2-score-club">{clubLabel}</span>
             </span>
             <span className={callClassName ?? 'club-v2-call-pill'}>{call}</span>
+          </div>
+          <div className="club-v2-swings-included club-card-trend">
+            {swingsIncludedCount} Swings Included
           </div>
         </div>
 

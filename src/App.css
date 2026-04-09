@@ -407,11 +407,49 @@ td {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
   background:
     radial-gradient(circle at top right, rgba(234, 179, 8, 0.12), transparent 20%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.022), transparent 36%);
   background-size: auto, auto;
+}
+
+.dashboard-hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.looper-read-visual {
+  position: absolute;
+  right: -70px;
+  bottom: -20px;
+  height: 110%;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+  user-select: none;
+  filter: grayscale(30%) blur(0.6px);
+  mask-image: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 1) 20%,
+    rgba(0, 0, 0, 0.6) 45%,
+    rgba(0, 0, 0, 0.2) 65%,
+    rgba(0, 0, 0, 0) 85%
+  );
+  -webkit-mask-image: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 1) 20%,
+    rgba(0, 0, 0, 0.6) 45%,
+    rgba(0, 0, 0, 0.2) 65%,
+    rgba(0, 0, 0, 0) 85%
+  );
+}
+
+.looper-read-visual img {
+  height: 100%;
+  width: auto;
+  display: block;
 }
 
 .dashboard-hero-title {
@@ -435,6 +473,14 @@ td {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .looper-read-visual {
+    right: -56px;
+    height: 82%;
+    opacity: 0.06;
+  }
 }
 
 .dashboard-hero-chip {

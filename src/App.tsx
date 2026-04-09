@@ -7,6 +7,7 @@ import {
 import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
+import looperman from './assets/looperman.png'
 import './App.css'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
@@ -2443,6 +2444,26 @@ function App({
     [selectedClubHistoricalShots],
   )
 
+  const selectedClubLatestSessionIncludedShotCount = useMemo(() => {
+    const orderedSessions = [...analysisSessions].sort(
+      (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+    )
+    const latestClubSession = orderedSessions.find((session) =>
+      session.shots.some((shot) => shot.club === selectedDetailClub && shot.included),
+    )
+    if (!latestClubSession) {
+      return 0
+    }
+    return latestClubSession.shots.filter(
+      (shot) => shot.club === selectedDetailClub && shot.included,
+    ).length
+  }, [analysisSessions, selectedDetailClub])
+
+  const clubDetailSwingsIncludedCount =
+    dashboardNavTarget === 'lastSession'
+      ? selectedClubLatestSessionIncludedShotCount
+      : selectedDetailIncludedShots.length
+
   const selectedClubMetricModels = useMemo<ClubDetailMetricModel[]>(() => {
     // TODO(v2): Promote metric-specific interpretation rules into a dedicated
     // diagnosis module once we finalize Club Detail language tuning.
@@ -3994,26 +4015,31 @@ function App({
                   className="dashboard-hero-card"
                   id="dashboard-overview"
                 >
-                  <h3 className="dashboard-hero-title" id="dashboard-game-status-title">
-                    The Looper's Read
-                  </h3>
-                  <p className="dashboard-hero-narrative">{dashboardGameStatusNarrative}</p>
-                  <div className="dashboard-hero-callouts">
-                    <div className="dashboard-hero-chip">
-                      Best club: {bestClubSummary ? getClubLabel(bestClubSummary.club) : '-'}
+                  <div className="looper-read-visual" aria-hidden="true">
+                    <img alt="" src={looperman} />
+                  </div>
+                  <div className="dashboard-hero-content">
+                    <h3 className="dashboard-hero-title" id="dashboard-game-status-title">
+                      The Looper's Read
+                    </h3>
+                    <p className="dashboard-hero-narrative">{dashboardGameStatusNarrative}</p>
+                    <div className="dashboard-hero-callouts">
+                      <div className="dashboard-hero-chip">
+                        Best club: {bestClubSummary ? getClubLabel(bestClubSummary.club) : '-'}
+                      </div>
+                      {weakestClubSummary && (
+                        <div className="dashboard-hero-chip">
+                          Pressure point: {getClubLabel(weakestClubSummary.club)}
+                        </div>
+                      )}
+                      {biggestMover && (
+                        <div className="dashboard-hero-chip">
+                          Biggest mover: {getClubLabel(biggestMover.club)}{' '}
+                          {biggestMover.delta >= 0 ? '+' : ''}
+                          {formatScore(biggestMover.delta)}
+                        </div>
+                      )}
                     </div>
-                    {weakestClubSummary && (
-                      <div className="dashboard-hero-chip">
-                        Pressure point: {getClubLabel(weakestClubSummary.club)}
-                      </div>
-                    )}
-                    {biggestMover && (
-                      <div className="dashboard-hero-chip">
-                        Biggest mover: {getClubLabel(biggestMover.club)}{' '}
-                        {biggestMover.delta >= 0 ? '+' : ''}
-                        {formatScore(biggestMover.delta)}
-                      </div>
-                    )}
                   </div>
                 </section>
 
@@ -4194,6 +4220,7 @@ function App({
                     clubLabel={getClubLabel(selectedDetailClub)}
                     componentBreakdown={selectedClubComponentBreakdown}
                     defaultMetric={clubDetailDefaultMetricV2}
+                    swingsIncludedCount={clubDetailSwingsIncludedCount}
                     dispersionChart={
                       selectedClubDispersionPoints.length === 0 ? (
                         <p className="support-card-copy">No shot data available for this club yet</p>

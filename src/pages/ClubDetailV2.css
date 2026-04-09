@@ -103,6 +103,18 @@
   white-space: nowrap;
 }
 
+.club-detail-v2 .club-detail-score-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.club-v2-swings-included {
+  align-self: center;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
 .club-v2-tone-up {
   color: rgba(124, 229, 160, 0.96);
 }
