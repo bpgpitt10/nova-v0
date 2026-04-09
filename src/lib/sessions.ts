@@ -1,4 +1,5 @@
 import type { ActiveSessionDraft, SavedSession } from '../types'
+import { isSystemOldExcludedSession } from './historicalModel'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
@@ -45,3 +46,13 @@ export const clearActiveSessionDraft = () => {
 
 export const isSessionIncludedInAnalysis = (session: SavedSession) =>
   session.metadata?.includeInAnalysis !== false
+
+export const isSessionOldExcludedBySystem = (
+  session: SavedSession,
+  nowMs = Date.now(),
+) => isSystemOldExcludedSession(session, nowMs)
+
+export const isSessionEligibleForAnalysis = (
+  session: SavedSession,
+  nowMs = Date.now(),
+) => isSessionIncludedInAnalysis(session) && !isSessionOldExcludedBySystem(session, nowMs)

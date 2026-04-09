@@ -1,9 +1,13 @@
 import { confidenceConfig } from './confidenceConfig'
 import {
-  buildSessionRecencyWeights,
   weightedAverage,
   weightedStandardDeviation,
 } from './recency'
+import {
+  includedClubShotsForSession,
+  isSystemOldExcludedSession,
+  sessionHistoricalWeightForClub,
+} from './historicalModel'
 import type { Club, ReviewClubSummary, SavedSession, Shot } from '../types'
 
 const clamp = (value: number, min = 0, max = 100) =>
@@ -481,14 +485,10 @@ export const summarizeReviewClub = (
   savedSessions: SavedSession[],
   activeSessionId: string | null,
 ): ReviewClubSummary | null => {
-  const includedShots = includedClubShots(club, shots)
-  if (includedShots.length === 0) {
-    return null
-  }
-
+  const includedClubShotsRaw = includedClubShots(club, shots)
   const activeSessionEndedAt =
-    includedShots.length > 0
-      ? includedShots
+    includedClubShotsRaw.length > 0
+      ? includedClubShotsRaw
           .map((shot) => new Date(shot.capturedAt).getTime())
           .filter((value) => Number.isFinite(value))
           .sort((left, right) => right - left)[0]
@@ -505,15 +505,13 @@ export const summarizeReviewClub = (
           },
           ...savedSessions.filter((session) => session.id !== activeSessionId),
         ]
-
-  const sessionRecencyWeights = buildSessionRecencyWeights(
-    recencySessions,
-    confidenceConfig.recency.sessionDecayStrength,
-    confidenceConfig.recency.minSessionWeightFloor,
+  const nowMs = Date.now()
+  const eligibleSessions = recencySessions.filter(
+    (session) => !isSystemOldExcludedSession(session, nowMs),
   )
 
   const shotSessionById = new Map<string, string>()
-  recencySessions.forEach((session) => {
+  eligibleSessions.forEach((session) => {
     session.shots.forEach((shot) => {
       if (!shotSessionById.has(shot.id)) {
         shotSessionById.set(shot.id, session.id)
@@ -521,9 +519,40 @@ export const summarizeReviewClub = (
     })
   })
 
+  const sessionWeightById = new Map(
+    eligibleSessions.map((session) => [
+      session.id,
+      sessionHistoricalWeightForClub(session, club, nowMs),
+    ]),
+  )
+  const includedCountBySessionId = new Map(
+    eligibleSessions.map((session) => [
+      session.id,
+      includedClubShotsForSession(session, club).length,
+    ]),
+  )
+  const includedShots = includedClubShotsRaw.filter((shot) => {
+    const sessionId = shotSessionById.get(shot.id)
+    if (!sessionId) {
+      return false
+    }
+    return (sessionWeightById.get(sessionId) ?? 0) > 0
+  })
+  if (includedShots.length === 0) {
+    return null
+  }
+
   const recencyWeightForShot = (shot: Shot) => {
     const sessionId = shotSessionById.get(shot.id)
-    return sessionId ? (sessionRecencyWeights.get(sessionId) ?? 1) : 1
+    if (!sessionId) {
+      return 0
+    }
+    const sessionWeight = sessionWeightById.get(sessionId) ?? 0
+    const includedCount = includedCountBySessionId.get(sessionId) ?? 0
+    if (sessionWeight <= 0 || includedCount <= 0) {
+      return 0
+    }
+    return sessionWeight / includedCount
   }
 
   const shotRanks = includedShots.flatMap((shot) =>
@@ -542,14 +571,10 @@ export const summarizeReviewClub = (
 
   const supportingSessions =
     activeSessionId === null
-      ? savedSessions
-      : savedSessions.filter((session) => session.id !== activeSessionId)
+      ? eligibleSessions
+      : eligibleSessions.filter((session) => session.id !== activeSessionId)
   const sessionCount = (() => {
-    const activeWeight =
-      activeSessionId === null
-        ? 0
-        : sessionRecencyWeights.get(activeSessionId) ??
-          confidenceConfig.recency.minSessionWeightFloor
+    const activeWeight = activeSessionId === null ? 0 : sessionWeightById.get(activeSessionId) ?? 0
     const supportWeight = supportingSessions.reduce((sum, session) => {
       const hasClubShots = session.shots.some(
         (shot) => shot.club === club && shot.included,
@@ -557,7 +582,7 @@ export const summarizeReviewClub = (
       if (!hasClubShots) {
         return sum
       }
-      return sum + (sessionRecencyWeights.get(session.id) ?? 1)
+      return sum + (sessionWeightById.get(session.id) ?? 0)
     }, 0)
     return supportWeight + activeWeight
   })()

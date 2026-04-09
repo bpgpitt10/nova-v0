@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import {
   clearActiveSessionDraft,
+  isSessionEligibleForAnalysis,
   isSessionIncludedInAnalysis,
+  isSessionOldExcludedBySystem,
   loadActiveSessionDraft,
   loadSavedSessions,
   saveSessionHistory,
@@ -236,6 +238,7 @@ const isMockSession = (session: SavedSession) =>
 function DataManagementPage() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(() => new Set())
+  const [allExpanded, setAllExpanded] = useState(false)
 
   const sortedSessions = useMemo(
     () =>
@@ -245,13 +248,34 @@ function DataManagementPage() {
       ),
     [savedSessions],
   )
+  const nowMs = Date.now()
   const allSessionsIncluded =
-    sortedSessions.length > 0 && sortedSessions.every(isSessionIncludedInAnalysis)
+    sortedSessions.filter((session) => !isSessionOldExcludedBySystem(session, nowMs)).length > 0 &&
+    sortedSessions
+      .filter((session) => !isSessionOldExcludedBySystem(session, nowMs))
+      .every(isSessionIncludedInAnalysis)
 
   const persistSessions = (sessions: SavedSession[]) => {
     setSavedSessions(sessions)
     saveSessionHistory(sessions)
   }
+
+  useEffect(() => {
+    if (sortedSessions.length === 0) {
+      if (allExpanded) {
+        setAllExpanded(false)
+      }
+      return
+    }
+
+    const expandedCount = sortedSessions.filter((session) =>
+      expandedSessionIds.has(session.id),
+    ).length
+    const nextAllExpanded = expandedCount === sortedSessions.length
+    if (nextAllExpanded !== allExpanded) {
+      setAllExpanded(nextAllExpanded)
+    }
+  }, [allExpanded, expandedSessionIds, sortedSessions])
 
   const setAllSessionsIncluded = (included: boolean) => {
     persistSessions(
@@ -262,7 +286,9 @@ function DataManagementPage() {
             app: 'nova-validation',
             schemaVersion: 2,
           }),
-          includeInAnalysis: included,
+          includeInAnalysis: isSessionOldExcludedBySystem(session, nowMs)
+            ? false
+            : included,
         },
       })),
     )
@@ -280,20 +306,37 @@ function DataManagementPage() {
     })
   }
 
+  const toggleAllExpanded = () => {
+    if (sortedSessions.length === 0) {
+      return
+    }
+
+    if (allExpanded) {
+      setExpandedSessionIds(new Set())
+      setAllExpanded(false)
+      return
+    }
+
+    setExpandedSessionIds(new Set(sortedSessions.map((session) => session.id)))
+    setAllExpanded(true)
+  }
+
   const toggleSessionIncluded = (sessionId: string, included: boolean) => {
     persistSessions(
       savedSessions.map((session) =>
         session.id === sessionId
-          ? {
-              ...session,
-              metadata: {
-                ...(session.metadata ?? {
-                  app: 'nova-validation',
-                  schemaVersion: 2,
-                }),
-                includeInAnalysis: included,
-              },
-            }
+          ? isSessionOldExcludedBySystem(session, nowMs)
+            ? session
+            : {
+                ...session,
+                metadata: {
+                  ...(session.metadata ?? {
+                    app: 'nova-validation',
+                    schemaVersion: 2,
+                  }),
+                  includeInAnalysis: included,
+                },
+              }
           : session,
       ),
     )
@@ -303,7 +346,14 @@ function DataManagementPage() {
     persistSessions(
       savedSessions.map((session) =>
         session.id === sessionId
+          ? isSessionOldExcludedBySystem(session, nowMs)
           ? {
+              ...session,
+              shots: session.shots.map((shot) =>
+                shot.id === shotId ? { ...shot, included: false } : shot,
+              ),
+            }
+          : {
               ...session,
               shots: session.shots.map((shot) =>
                 shot.id === shotId ? { ...shot, included: !shot.included } : shot,
@@ -394,6 +444,14 @@ function DataManagementPage() {
               />
               <span>Include all sessions</span>
             </label>
+            <button
+              className="dm-action dm-expand-all"
+              disabled={sortedSessions.length === 0}
+              onClick={toggleAllExpanded}
+              type="button"
+            >
+              {allExpanded ? 'Collapse All' : 'Expand All'}
+            </button>
             <a className="dm-action dm-return" href="/dashboard">
               Return to Dashboard
             </a>
@@ -429,7 +487,8 @@ function DataManagementPage() {
                 <tbody>
                   {sortedSessions.flatMap((session) => {
                     const expanded = expandedSessionIds.has(session.id)
-                    const included = isSessionIncludedInAnalysis(session)
+                    const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
+                    const included = isSessionEligibleForAnalysis(session, nowMs)
                     const groups = expanded ? sessionShotGroups(session) : []
                     const clubsText = sessionClubSummary(session) || '-'
                     const endedDate = new Date(session.endedAt)
@@ -437,7 +496,9 @@ function DataManagementPage() {
 
                     return [
                       <tr
-                        className={`data-session-row ${included ? '' : 'is-excluded'}`}
+                        className={`data-session-row ${included ? '' : 'is-excluded'} ${
+                          systemOldExcluded ? 'is-system-old' : ''
+                        }`}
                         key={`session-${session.id}`}
                       >
                         <td>
@@ -453,11 +514,15 @@ function DataManagementPage() {
                           <input
                             aria-label={`Include session ${session.id}`}
                             checked={included}
+                            disabled={systemOldExcluded}
                             onChange={(event) =>
                               toggleSessionIncluded(session.id, event.target.checked)
                             }
                             type="checkbox"
                           />
+                          {systemOldExcluded ? (
+                            <span className="dm-system-old-label">Old / Excluded</span>
+                          ) : null}
                         </td>
                         <td>
                           <button
@@ -518,7 +583,7 @@ function DataManagementPage() {
                                         key={`${session.id}-avg-${group.club}`}
                                       >
                                         <td>AVG</td>
-                                        <td>Included</td>
+                                        <td>{systemOldExcluded ? 'Old / Excluded' : 'Included'}</td>
                                         <td>-</td>
                                         <td>{getClubLabel(group.club)}</td>
                                         <td>{formatDecimal(group.averages.carry, ' yd')}</td>
@@ -548,7 +613,8 @@ function DataManagementPage() {
                                           <td>
                                             <input
                                               aria-label={`Include shot ${shot.id}`}
-                                              checked={shot.included}
+                                              checked={systemOldExcluded ? false : shot.included}
+                                              disabled={systemOldExcluded}
                                               onChange={() => toggleShotIncluded(session.id, shot.id)}
                                               type="checkbox"
                                             />

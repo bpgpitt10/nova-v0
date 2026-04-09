@@ -62,7 +62,7 @@
   margin-top: 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -72,6 +72,19 @@
   gap: 8px;
   color: #dce5d8;
   font-size: 12px;
+}
+
+.dm-system-old-label {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.14);
+  color: #f8e8bf;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .data-management-surface {
@@ -132,6 +145,10 @@
 
 .data-session-row.is-excluded {
   background: rgba(47, 36, 22, 0.52);
+}
+
+.data-session-row.is-system-old {
+  background: rgba(58, 46, 26, 0.6);
 }
 
 .data-session-expanded-row td {
@@ -237,6 +254,12 @@
   border-color: rgba(234, 179, 8, 0.55);
   background: rgba(234, 179, 8, 0.14);
   color: #f8edc9;
+}
+
+.dm-expand-all {
+  border-color: rgba(205, 218, 207, 0.42);
+  background: rgba(23, 36, 25, 0.6);
+  color: #dce5d8;
 }
 
 .dm-delete-all {

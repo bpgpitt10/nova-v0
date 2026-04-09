@@ -26,19 +26,23 @@ import {
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
 import {
-  buildSessionRecencyWeights,
   weightedAverage,
   weightedStandardDeviation,
 } from './lib/recency'
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
-  isSessionIncludedInAnalysis,
+  isSessionEligibleForAnalysis,
   loadActiveSessionDraft,
   loadSavedSessions,
   saveActiveSessionDraft,
   saveSessionHistory,
 } from './lib/sessions'
+import {
+  includedClubShotsForSession,
+  sessionHistoricalWeightForClub,
+  weightedSessionMetricAverage,
+} from './lib/historicalModel'
 import {
   type ActiveSessionDraft,
   type IncomingNovaShot,
@@ -564,9 +568,16 @@ function App({
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
   )
+  const historicalModelNowMs = Date.now()
   const analysisSessions = useMemo(
-    () => savedSessions.filter(isSessionIncludedInAnalysis),
-    [savedSessions],
+    () =>
+      [...savedSessions]
+        .filter((session) => isSessionEligibleForAnalysis(session, historicalModelNowMs))
+        .sort(
+          (left, right) =>
+            new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+        ),
+    [historicalModelNowMs, savedSessions],
   )
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
@@ -576,10 +587,10 @@ function App({
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
-  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(() =>
+  const [sessionStartedAt] = useState<string | null>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.startedAt ?? startedAtFallback : null,
   )
-  const [liveSessionId, setLiveSessionId] = useState<string | null>(() =>
+  const [liveSessionId] = useState<string | null>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.id ?? crypto.randomUUID() : null,
   )
   const selectedClubRef = useRef(selectedClub)
@@ -712,16 +723,6 @@ function App({
     [analysisSessions],
   )
 
-  const sessionRecencyWeights = useMemo(
-    () =>
-      buildSessionRecencyWeights(
-        analysisSessions,
-        confidenceConfig.recency.sessionDecayStrength,
-        confidenceConfig.recency.minSessionWeightFloor,
-      ),
-    [analysisSessions],
-  )
-
   const dashboardSummaries: ReviewClubSummary[] = useMemo(
     () =>
       activeBagClubIds
@@ -816,12 +817,16 @@ function App({
               analysisSessions.filter((savedSession) => savedSession.id !== session.id),
               session.id,
             ),
-            weight: sessionRecencyWeights.get(session.id) ?? 1,
+            weight: sessionHistoricalWeightForClub(
+              session,
+              club,
+              historicalModelNowMs,
+            ),
           }),
         )
         .filter(
           (point): point is { summary: ReviewClubSummary; weight: number } =>
-            point.summary !== null,
+            point.summary !== null && point.weight > 0,
         )
 
       map.set(club, {
@@ -853,7 +858,7 @@ function App({
     })
 
     return map
-  }, [analysisSessions, sessionRecencyWeights])
+  }, [analysisSessions, historicalModelNowMs])
 
   const lastSessionComparisonRows = useMemo(() => {
     const latestSession = analysisSessions[0]
@@ -1348,15 +1353,22 @@ function App({
   const selectedClubHistoricalShotWeights = useMemo(() => {
     const map = new Map<string, number>()
     analysisSessions.forEach((session) => {
-      const sessionWeight = sessionRecencyWeights.get(session.id) ?? 1
+      const clubIncludedCount = includedClubShotsForSession(session, selectedDetailClub).length
+      const sessionWeight = sessionHistoricalWeightForClub(
+        session,
+        selectedDetailClub,
+        historicalModelNowMs,
+      )
+      const normalizedShotWeight =
+        clubIncludedCount > 0 ? sessionWeight / clubIncludedCount : 0
       session.shots.forEach((shot) => {
         if (shot.club === selectedDetailClub && !map.has(shot.id)) {
-          map.set(shot.id, sessionWeight)
+          map.set(shot.id, normalizedShotWeight)
         }
       })
     })
     return map
-  }, [analysisSessions, selectedDetailClub, sessionRecencyWeights])
+  }, [analysisSessions, historicalModelNowMs, selectedDetailClub])
 
   const selectedClubMetrics = useMemo(() => {
     const shotWeights = selectedClubHistoricalShots.map(
@@ -2434,22 +2446,85 @@ function App({
   const selectedClubMetricModels = useMemo<ClubDetailMetricModel[]>(() => {
     // TODO(v2): Promote metric-specific interpretation rules into a dedicated
     // diagnosis module once we finalize Club Detail language tuning.
-    const weightForShot = (shot: Shot) =>
-      (selectedClubHistoricalShotWeights.get(shot.id) ?? 1) * rankWeightForShot(shot)
-
-    const weightedMean = (values: Array<number | undefined>) =>
-      weightedAverageNumbers(values, selectedDetailIncludedShots.map((shot) => weightForShot(shot)))
+    const sessionWeightedMetric = (
+      extractor: (shot: Shot) => number | undefined,
+      rankWeightedWithinSession = true,
+    ) =>
+      weightedAverageNumbers(
+        analysisSessions.map((session) =>
+          weightedSessionMetricAverage(
+            session,
+            selectedDetailClub,
+            extractor,
+            rankWeightedWithinSession ? (shot) => rankWeightForShot(shot) : undefined,
+          ),
+        ),
+        analysisSessions.map((session) =>
+          sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
+        ),
+      )
 
     const seriesFromExtractor = (extractor: (shot: Shot) => number | undefined) =>
       selectedDetailIncludedShots
         .map(extractor)
         .filter((value): value is number => typeof value === 'number')
 
-    const deltaFromSeries = (series: number[]) => {
-      if (series.length < 2) {
+    const sessionAverageForMetric = (
+      session: SavedSession,
+      extractor: (shot: Shot) => number | undefined,
+    ) =>
+      averageNumbers(
+        session.shots
+          .filter(
+            (shot) =>
+              shot.club === selectedDetailClub &&
+              shot.included &&
+              typeof extractor(shot) === 'number',
+          )
+          .map((shot) => extractor(shot)),
+      )
+
+    const sessionDeltaForMetric = (extractor: (shot: Shot) => number | undefined) => {
+      const orderedSessions = [...analysisSessions].sort(
+        (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+      )
+      const latestClubSession = orderedSessions.find((session) => {
+        const value = sessionAverageForMetric(session, extractor)
+        return typeof value === 'number' && Number.isFinite(value)
+      })
+      if (!latestClubSession) {
         return undefined
       }
-      return series[series.length - 1] - series[series.length - 2]
+
+      const latestSessionAverage = sessionAverageForMetric(latestClubSession, extractor)
+      const priorSessionAverages = orderedSessions
+        .filter((session) => session.id !== latestClubSession.id)
+        .map((session) => ({
+          value: sessionAverageForMetric(session, extractor),
+          weight: sessionHistoricalWeightForClub(
+            session,
+            selectedDetailClub,
+            historicalModelNowMs,
+          ),
+        }))
+        .filter(
+          (entry): entry is { value: number; weight: number } =>
+            typeof entry.value === 'number' && Number.isFinite(entry.value) && entry.weight > 0,
+        )
+
+      const historicalBaselineExcludingLatest = weightedAverageNumbers(
+        priorSessionAverages.map((entry) => entry.value),
+        priorSessionAverages.map((entry) => entry.weight),
+      )
+
+      if (
+        typeof latestSessionAverage !== 'number' ||
+        typeof historicalBaselineExcludingLatest !== 'number'
+      ) {
+        return undefined
+      }
+
+      return latestSessionAverage - historicalBaselineExcludingLatest
     }
 
     const deltaText = (delta: number | undefined, unit: string, precision = 1) => {
@@ -2524,7 +2599,7 @@ function App({
     const smashSeries = seriesFromExtractor(smashFactorValue)
     const offlineSeries = seriesFromExtractor(offlineValue)
     const dispersionSeries = offlineSeries.map((value) => Math.abs(value))
-    const carryAnchor = weightedMean(selectedDetailIncludedShots.map(carryValue))
+    const carryAnchor = sessionWeightedMetric(carryValue)
     const distanceWindowSeries = selectedDetailIncludedShots
       .map((shot) => {
         const carry = carryValue(shot)
@@ -2552,42 +2627,74 @@ function App({
       selectedClubComponentBreakdown.map((row) => [row.key, row] as const),
     )
 
-    const hlaCurrent = weightedMean(selectedDetailIncludedShots.map(hlaValue))
+    const hlaCurrent = sessionWeightedMetric(hlaValue)
     const hlaRead = directionRead('Start line', hlaCurrent, 1.5, {
       positive: 'Drifting Right',
       negative: 'Drifting Left',
       neutral: 'Centered',
     })
-    const spinAxisCurrent = weightedMean(selectedDetailIncludedShots.map(spinAxisValue))
+    const spinAxisCurrent = sessionWeightedMetric(spinAxisValue)
     const spinAxisRead = directionRead('Spin axis', spinAxisCurrent, 3, {
       positive: 'Fade Tilt',
       negative: 'Draw Tilt',
       neutral: 'Neutral Tilt',
     })
-    const pathCurrent = weightedMean(selectedDetailIncludedShots.map(clubPathValue))
+    const pathCurrent = sessionWeightedMetric(clubPathValue)
     const pathRead = directionRead('Club path', pathCurrent, 1.8, {
       positive: 'Out-to-In',
       negative: 'In-to-Out',
       neutral: 'Neutral Path',
     })
-    const facePathCurrent = weightedMean(selectedDetailIncludedShots.map(faceToPathValue))
+    const facePathCurrent = sessionWeightedMetric(faceToPathValue)
     const facePathRead = directionRead('Face to path', facePathCurrent, 1.5, {
       positive: 'Open Face',
       negative: 'Closed Face',
       neutral: 'Face Match',
     })
 
-    const carryCurrent = weightedMean(selectedDetailIncludedShots.map(carryValue))
-    const totalCurrent = weightedMean(selectedDetailIncludedShots.map(totalValue))
-    const ballSpeedCurrent = weightedMean(selectedDetailIncludedShots.map(ballSpeedMphValue))
-    const smashCurrent = weightedMean(selectedDetailIncludedShots.map(smashFactorValue))
-    const launchCurrent = weightedMean(selectedDetailIncludedShots.map(launchValue))
-    const spinCurrent = weightedMean(selectedDetailIncludedShots.map(spinValue))
-    const peakCurrent = weightedMean(selectedDetailIncludedShots.map(peakHeightValue))
-    const descentCurrent = weightedMean(selectedDetailIncludedShots.map(descentValue))
-    const dispersionCurrent = weightedMean(dispersionSeries)
+    const carryCurrent = sessionWeightedMetric(carryValue)
+    const totalCurrent = sessionWeightedMetric(totalValue)
+    const ballSpeedCurrent = sessionWeightedMetric(ballSpeedMphValue)
+    const smashCurrent = sessionWeightedMetric(smashFactorValue)
+    const launchCurrent = sessionWeightedMetric(launchValue)
+    const spinCurrent = sessionWeightedMetric(spinValue)
+    const peakCurrent = sessionWeightedMetric(peakHeightValue)
+    const descentCurrent = sessionWeightedMetric(descentValue)
+    const dispersionCurrent = weightedAverageNumbers(
+      analysisSessions.map((session) =>
+        weightedSessionMetricAverage(
+          session,
+          selectedDetailClub,
+          (shot) => {
+            const offline = offlineValue(shot)
+            return typeof offline === 'number' ? Math.abs(offline) : undefined
+          },
+          (shot) => rankWeightForShot(shot),
+        ),
+      ),
+      analysisSessions.map((session) =>
+        sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
+      ),
+    )
     const patternScore = selectedClubSummary?.componentScores.patternStability
     const distanceScore = selectedClubSummary?.componentScores.distanceWindow
+
+    const hlaDelta = sessionDeltaForMetric(hlaValue)
+    const spinAxisDelta = sessionDeltaForMetric(spinAxisValue)
+    const clubPathDelta = sessionDeltaForMetric(clubPathValue)
+    const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
+    const carryDelta = sessionDeltaForMetric(carryValue)
+    const totalDistanceDelta = sessionDeltaForMetric(totalValue)
+    const ballSpeedDelta = sessionDeltaForMetric(ballSpeedMphValue)
+    const smashDelta = sessionDeltaForMetric(smashFactorValue)
+    const launchDelta = sessionDeltaForMetric(launchValue)
+    const spinDelta = sessionDeltaForMetric(spinValue)
+    const peakHeightDelta = sessionDeltaForMetric(peakHeightValue)
+    const descentDelta = sessionDeltaForMetric(descentValue)
+    const dispersionDelta = sessionDeltaForMetric((shot) => {
+      const offline = offlineValue(shot)
+      return typeof offline === 'number' ? Math.abs(offline) : undefined
+    })
 
     const trendToneForDelta = (delta: number | undefined, tolerance: number) =>
       comparisonTone(delta, tolerance)
@@ -2598,8 +2705,8 @@ function App({
         group: 'direction',
         label: 'HLA',
         valueText: valueText(hlaCurrent, '°', 1, true),
-        deltaText: deltaText(deltaFromSeries(hlaSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(hlaSeries), 0.7),
+        deltaText: deltaText(hlaDelta, '°', 1),
+        trendTone: trendToneForDelta(hlaDelta, 0.7),
         status: hlaRead.status,
         read: hlaRead.read,
         trendRead: hlaRead.trendRead,
@@ -2611,8 +2718,8 @@ function App({
         group: 'direction',
         label: 'Spin Axis',
         valueText: valueText(spinAxisCurrent, '°', 1, true),
-        deltaText: deltaText(deltaFromSeries(spinAxisSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(spinAxisSeries), 1),
+        deltaText: deltaText(spinAxisDelta, '°', 1),
+        trendTone: trendToneForDelta(spinAxisDelta, 1),
         status: spinAxisRead.status,
         read: spinAxisRead.read,
         trendRead: spinAxisRead.trendRead,
@@ -2624,8 +2731,8 @@ function App({
         group: 'direction',
         label: 'Club Path',
         valueText: valueText(pathCurrent, '°', 1, true),
-        deltaText: deltaText(deltaFromSeries(clubPathSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(clubPathSeries), 0.8),
+        deltaText: deltaText(clubPathDelta, '°', 1),
+        trendTone: trendToneForDelta(clubPathDelta, 0.8),
         status: pathRead.status,
         read: pathRead.read,
         trendRead: pathRead.trendRead,
@@ -2637,8 +2744,8 @@ function App({
         group: 'direction',
         label: 'Face to Path',
         valueText: valueText(facePathCurrent, '°', 1, true),
-        deltaText: deltaText(deltaFromSeries(faceToPathSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(faceToPathSeries), 0.8),
+        deltaText: deltaText(faceToPathDelta, '°', 1),
+        trendTone: trendToneForDelta(faceToPathDelta, 0.8),
         status: facePathRead.status,
         read: facePathRead.read,
         trendRead: facePathRead.trendRead,
@@ -2650,8 +2757,8 @@ function App({
         group: 'distance',
         label: 'Carry',
         valueText: valueText(carryCurrent, ' yd', 1),
-        deltaText: deltaText(deltaFromSeries(carrySeries), ' yd', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(carrySeries), 1.5),
+        deltaText: deltaText(carryDelta, ' yd', 1),
+        trendTone: trendToneForDelta(carryDelta, 1.5),
         status: typeof carryCurrent === 'number' ? 'Core Yardage' : 'Building',
         read:
           typeof carryCurrent === 'number'
@@ -2669,8 +2776,8 @@ function App({
         group: 'distance',
         label: 'Total Distance',
         valueText: valueText(totalCurrent, ' yd', 1),
-        deltaText: deltaText(deltaFromSeries(totalSeries), ' yd', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(totalSeries), 2),
+        deltaText: deltaText(totalDistanceDelta, ' yd', 1),
+        trendTone: trendToneForDelta(totalDistanceDelta, 2),
         status: typeof totalCurrent === 'number' ? 'Total Window' : 'Building',
         read:
           typeof totalCurrent === 'number'
@@ -2688,8 +2795,8 @@ function App({
         group: 'distance',
         label: 'Ball Speed',
         valueText: valueText(ballSpeedCurrent, ' mph', 1),
-        deltaText: deltaText(deltaFromSeries(ballSpeedSeries), ' mph', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(ballSpeedSeries), 1),
+        deltaText: deltaText(ballSpeedDelta, ' mph', 1),
+        trendTone: trendToneForDelta(ballSpeedDelta, 1),
         status: typeof ballSpeedCurrent === 'number' ? 'Speed Base' : 'Building',
         read:
           typeof ballSpeedCurrent === 'number'
@@ -2707,8 +2814,8 @@ function App({
         group: 'distance',
         label: 'Smash Factor',
         valueText: valueText(smashCurrent, '', 2),
-        deltaText: deltaText(deltaFromSeries(smashSeries), '', 2),
-        trendTone: trendToneForDelta(deltaFromSeries(smashSeries), 0.03),
+        deltaText: deltaText(smashDelta, '', 2),
+        trendTone: trendToneForDelta(smashDelta, 0.03),
         status: typeof smashCurrent === 'number' ? 'Contact Quality' : 'Building',
         read:
           typeof smashCurrent === 'number'
@@ -2726,8 +2833,8 @@ function App({
         group: 'flight',
         label: 'Launch (VLA)',
         valueText: valueText(launchCurrent, '°', 1),
-        deltaText: deltaText(deltaFromSeries(launchSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(launchSeries), 0.8),
+        deltaText: deltaText(launchDelta, '°', 1),
+        trendTone: trendToneForDelta(launchDelta, 0.8),
         status:
           typeof launchCurrent === 'number'
             ? launchCurrent < 11
@@ -2752,8 +2859,8 @@ function App({
         group: 'flight',
         label: 'Spin',
         valueText: valueText(spinCurrent, ' rpm', 0),
-        deltaText: deltaText(deltaFromSeries(spinSeries), ' rpm', 0),
-        trendTone: trendToneForDelta(deltaFromSeries(spinSeries), 120),
+        deltaText: deltaText(spinDelta, ' rpm', 0),
+        trendTone: trendToneForDelta(spinDelta, 120),
         status: typeof spinCurrent === 'number' ? 'Spin Window' : 'Building',
         read:
           typeof spinCurrent === 'number'
@@ -2771,8 +2878,8 @@ function App({
         group: 'flight',
         label: 'Peak Height',
         valueText: valueText(peakCurrent, ' yd', 1),
-        deltaText: deltaText(deltaFromSeries(peakSeries), ' yd', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(peakSeries), 1.2),
+        deltaText: deltaText(peakHeightDelta, ' yd', 1),
+        trendTone: trendToneForDelta(peakHeightDelta, 1.2),
         status: typeof peakCurrent === 'number' ? 'Height Window' : 'Building',
         read:
           typeof peakCurrent === 'number'
@@ -2790,8 +2897,8 @@ function App({
         group: 'flight',
         label: 'Descent Angle',
         valueText: valueText(descentCurrent, '°', 1),
-        deltaText: deltaText(deltaFromSeries(descentSeries), '°', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(descentSeries), 0.8),
+        deltaText: deltaText(descentDelta, '°', 1),
+        trendTone: trendToneForDelta(descentDelta, 0.8),
         status: typeof descentCurrent === 'number' ? 'Landing Window' : 'Building',
         read:
           typeof descentCurrent === 'number'
@@ -2809,8 +2916,8 @@ function App({
         group: 'consistency',
         label: 'Dispersion',
         valueText: valueText(dispersionCurrent, ' yd', 1),
-        deltaText: deltaText(deltaFromSeries(dispersionSeries), ' yd', 1),
-        trendTone: trendToneForDelta(deltaFromSeries(dispersionSeries), 1),
+        deltaText: deltaText(dispersionDelta, ' yd', 1),
+        trendTone: trendToneForDelta(dispersionDelta, 1),
         status:
           typeof dispersionCurrent === 'number'
             ? dispersionCurrent <= 8
@@ -2892,9 +2999,11 @@ function App({
       },
     ]
   }, [
+    analysisSessions,
+    historicalModelNowMs,
     selectedClubComponentBreakdown,
-    selectedClubHistoricalShotWeights,
     selectedClubSummary,
+    selectedDetailClub,
     selectedDetailIncludedShots,
   ])
 
@@ -3136,19 +3245,6 @@ function App({
         shot.id === shotId ? { ...shot, included: !shot.included } : shot,
       ),
     )
-  }
-
-  const startOver = () => {
-    setSessionState('setup')
-    setShots([])
-    setActiveSessionId(null)
-    setLiveSessionId(null)
-    setFeedMode(null)
-    setConnectionStatus('disconnected')
-    setHelperReachable(null)
-    setLastEnrichmentStatus('idle')
-    setSessionStartedAt(null)
-    clearActiveSessionDraft()
   }
 
   const undoLastShot = () => {
@@ -3886,13 +3982,6 @@ function App({
               </div>
             </div>
 
-            <div className="dashboard-rail-utility">
-              <button onClick={startOver}>Start New Session</button>
-              <button disabled={shots.length === 0} onClick={undoLastShot}>
-                Undo Last Shot
-              </button>
-              <button>Export</button>
-            </div>
           </aside>
 
           <div className="dashboard-screen">

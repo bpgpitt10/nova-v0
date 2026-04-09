@@ -1,6 +1,9 @@
 import type { Club } from './bagConfig'
 
 export type ConfidenceConfig = {
+  historicalWindowDays: number
+  historicalTimeDecayLambda: number
+  historicalSessionTargetShotCount: number
   componentWeights: {
     distanceWindow: number
     directionWindow: number
@@ -55,6 +58,9 @@ export type ConfidenceConfig = {
 }
 
 export const confidenceConfig: ConfidenceConfig = {
+  historicalWindowDays: 180,
+  historicalTimeDecayLambda: 0.02,
+  historicalSessionTargetShotCount: 12,
   componentWeights: {
     distanceWindow: 0.28,
     directionWindow: 0.24,
