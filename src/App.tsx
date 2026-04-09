@@ -1329,20 +1329,6 @@ function App({
     return map
   }, [analysisSessions, selectedDetailClub, sessionRecencyWeights])
 
-  const selectedClubOpenGolfCoachKeys = useMemo(() => {
-    const keys = new Set<string>()
-
-    selectedClubHistoricalShots.forEach((shot) => {
-      if (!shot.openGolfCoach) {
-        return
-      }
-
-      Object.keys(shot.openGolfCoach).forEach((key) => keys.add(key))
-    })
-
-    return [...keys].sort((left, right) => left.localeCompare(right))
-  }, [selectedClubHistoricalShots])
-
   const selectedClubMetrics = useMemo(() => {
     const shotWeights = selectedClubHistoricalShots.map(
       (shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1,
@@ -2232,7 +2218,8 @@ function App({
       return {
         bestAvailable: null,
         mostLikely: null,
-        deltaSummary: 'Not enough included shots to profile this club yet.',
+        executionGapRows: [] as Array<{ label: string; value: string }>,
+        takeaway: 'Not enough included shots to profile this club yet.',
       }
     }
 
@@ -2311,50 +2298,97 @@ function App({
       'likely',
     )
 
-    const deltaSummary = (() => {
-      if (
-        !bestAvailable ||
-        !mostLikely ||
-        typeof bestAvailable.carry !== 'number' ||
-        typeof mostLikely.carry !== 'number' ||
-        typeof bestAvailable.dispersion !== 'number' ||
-        typeof mostLikely.dispersion !== 'number'
-      ) {
-        return 'Gap: building as more clean swings come in.'
+    const numberGap = (best: number | undefined, likely: number | undefined) =>
+      typeof best === 'number' && typeof likely === 'number' ? best - likely : undefined
+
+    const carryGap = numberGap(bestAvailable?.carry, mostLikely?.carry)
+    const dispersionGap = numberGap(bestAvailable?.dispersion, mostLikely?.dispersion)
+    const variabilityGap = numberGap(
+      bestAvailable?.dispersionVariability,
+      mostLikely?.dispersionVariability,
+    )
+    const spinGap = numberGap(bestAvailable?.spin, mostLikely?.spin)
+
+    const executionGapRows = [
+      typeof carryGap === 'number'
+        ? {
+            label: 'Carry',
+            value: `${carryGap >= 0 ? '+' : '-'}${Math.abs(carryGap).toFixed(1)} yd`,
+          }
+        : null,
+      typeof dispersionGap === 'number'
+        ? {
+            label: 'Dispersion',
+            value: `${dispersionGap >= 0 ? '+' : '-'}${Math.abs(dispersionGap).toFixed(1)} yd`,
+          }
+        : null,
+      typeof variabilityGap === 'number'
+        ? {
+            label: 'Variability',
+            value: `${variabilityGap >= 0 ? '+' : '-'}${Math.abs(variabilityGap).toFixed(1)} yd`,
+          }
+        : null,
+      typeof spinGap === 'number'
+        ? {
+            label: 'Spin',
+            value:
+              Math.abs(spinGap) < 120
+                ? 'Nearly unchanged'
+                : `${spinGap >= 0 ? '+' : '-'}${Math.abs(Math.round(spinGap))} rpm`,
+          }
+        : null,
+    ].filter((row): row is { label: string; value: string } => row !== null)
+
+    const takeaway = (() => {
+      if (executionGapRows.length === 0) {
+        return 'Execution gap will sharpen as more clean swings come in.'
       }
 
-      const carryGap = bestAvailable.carry - mostLikely.carry
-      const dispersionGap = bestAvailable.dispersion - mostLikely.dispersion
-      return `Gap: ${carryGap >= 0 ? '+' : '-'}${Math.abs(carryGap).toFixed(1)} yd carry, ${dispersionGap >= 0 ? '+' : '-'}${Math.abs(dispersionGap).toFixed(1)} yd dispersion when executed well.`
+      if (
+        typeof dispersionGap === 'number' &&
+        typeof variabilityGap === 'number' &&
+        typeof carryGap === 'number' &&
+        dispersionGap <= -2 &&
+        variabilityGap <= -2 &&
+        Math.abs(carryGap) <= 1.5
+      ) {
+        return 'Execution mainly tightens the miss, not the distance.'
+      }
+
+      if (
+        typeof carryGap === 'number' &&
+        carryGap >= 2 &&
+        (typeof dispersionGap !== 'number' || dispersionGap > -1.5)
+      ) {
+        return 'Best swings add distance more than they tighten the miss.'
+      }
+
+      if (typeof dispersionGap === 'number' && dispersionGap <= -2) {
+        return 'The gain comes mostly from reducing spread.'
+      }
+
+      if (
+        typeof carryGap === 'number' &&
+        typeof dispersionGap === 'number' &&
+        Math.abs(carryGap) < 1 &&
+        Math.abs(dispersionGap) < 1
+      ) {
+        return 'Most likely and best-executed outcomes are close right now.'
+      }
+
+      return 'Execution changes this club, but not in one single dimension.'
     })()
 
     return {
       bestAvailable,
       mostLikely,
-      deltaSummary,
+      executionGapRows,
+      takeaway,
     }
   }, [selectedClubHistoricalShotWeights, selectedClubHistoricalShots, selectedDetailClub])
 
-  const selectedClubOpenGolfCoachShots = useMemo(
-    () =>
-      selectedClubHistoricalShots.filter(
-        (shot): shot is Shot & { openGolfCoach: OpenGolfCoachPayload } =>
-          typeof shot.openGolfCoach === 'object' && shot.openGolfCoach !== null,
-      ),
-    [selectedClubHistoricalShots],
-  )
-
-  const stringifyDebugJson = (value: unknown) => {
-    try {
-      return JSON.stringify(value, null, 2)
-    } catch {
-      return 'Unable to stringify payload.'
-    }
-  }
-
   // Temporary Club Detail skeleton mode: richer sections are intentionally
   // not rendered yet, but these values stay wired for the next layer.
-  void selectedClubOpenGolfCoachKeys
   void baselineComparison
   void selectedClubInsights
   void selectedClubNarrative
@@ -3413,7 +3447,6 @@ function App({
                       </div>
 
                       <div className="club-detail-drivers-col">
-                        <div className="supporting-title">COMPONENT BREAKDOWN</div>
                         <div className="club-detail-component-strip">
                           {selectedClubComponentBreakdown.map((component) => (
                             <div className="club-detail-component-row" key={component.key}>
@@ -3451,58 +3484,68 @@ function App({
                         <div className="section-kicker">SHOT PROFILE</div>
 
                         <div className="club-detail-shot-profile-block">
-                          <div className="club-detail-shot-profile-title">Best Available Shot</div>
-                          <div className="club-detail-shot-list">
-                            <div className="component-row">
-                              <span>Carry</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.carry, ' yd')}</span>
+                          <div className="club-detail-shot-profile-title">Shot Profile Summary</div>
+                          <div className="club-detail-shot-profile-compact-grid">
+                            <div className="club-detail-shot-profile-compact">
+                              <div className="club-detail-shot-profile-compact-label">Most Likely Shot</div>
+                              <div className="club-detail-shot-profile-compact-main">
+                                <div className="component-row">
+                                  <span>Carry</span>
+                                  <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.carry, ' yd')}</span>
+                                </div>
+                                <div className="component-row">
+                                  <span>Dispersion</span>
+                                  <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.dispersion, ' yd')}</span>
+                                </div>
+                              </div>
+                              <div className="club-detail-shot-profile-compact-sub">
+                                <span>Total {formatDecimal(selectedClubShotProfiles.mostLikely?.total, ' yd')}</span>
+                                <span>Var {formatDecimal(selectedClubShotProfiles.mostLikely?.dispersionVariability, ' yd')}</span>
+                                <span>Spin {formatWhole(selectedClubShotProfiles.mostLikely?.spin, ' rpm')}</span>
+                              </div>
                             </div>
-                            <div className="component-row">
-                              <span>Total distance</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.total, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Dispersion</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersion, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Dispersion variability</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersionVariability, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Spin</span>
-                              <span>{formatWhole(selectedClubShotProfiles.bestAvailable?.spin, ' rpm')}</span>
+
+                            <div className="club-detail-shot-profile-compact">
+                              <div className="club-detail-shot-profile-compact-label">Best Available Shot</div>
+                              <div className="club-detail-shot-profile-compact-main">
+                                <div className="component-row">
+                                  <span>Carry</span>
+                                  <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.carry, ' yd')}</span>
+                                </div>
+                                <div className="component-row">
+                                  <span>Dispersion</span>
+                                  <span>{formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersion, ' yd')}</span>
+                                </div>
+                              </div>
+                              <div className="club-detail-shot-profile-compact-sub">
+                                <span>Total {formatDecimal(selectedClubShotProfiles.bestAvailable?.total, ' yd')}</span>
+                                <span>Var {formatDecimal(selectedClubShotProfiles.bestAvailable?.dispersionVariability, ' yd')}</span>
+                                <span>Spin {formatWhole(selectedClubShotProfiles.bestAvailable?.spin, ' rpm')}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
 
                         <div className="club-detail-shot-profile-block">
-                          <div className="club-detail-shot-profile-title">Most Likely Outcome</div>
+                          <div className="club-detail-shot-profile-title">Execution Gap</div>
                           <div className="club-detail-shot-list">
-                            <div className="component-row">
-                              <span>Carry</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.carry, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Total distance</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.total, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Dispersion</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.dispersion, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Dispersion variability</span>
-                              <span>{formatDecimal(selectedClubShotProfiles.mostLikely?.dispersionVariability, ' yd')}</span>
-                            </div>
-                            <div className="component-row">
-                              <span>Spin</span>
-                              <span>{formatWhole(selectedClubShotProfiles.mostLikely?.spin, ' rpm')}</span>
-                            </div>
+                            {selectedClubShotProfiles.executionGapRows.length === 0 ? (
+                              <p className="club-detail-shot-gap">Execution gap is still building.</p>
+                            ) : (
+                              selectedClubShotProfiles.executionGapRows.map((row) => (
+                                <div className="component-row" key={row.label}>
+                                  <span>{row.label}</span>
+                                  <span>{row.value}</span>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
 
-                        <p className="club-detail-shot-gap">{selectedClubShotProfiles.deltaSummary}</p>
+                        <div className="club-detail-shot-profile-block">
+                          <div className="club-detail-shot-profile-title">Takeaway</div>
+                          <p className="club-detail-shot-gap">{selectedClubShotProfiles.takeaway}</p>
+                        </div>
                       </article>
                     </section>
 
@@ -3606,41 +3649,6 @@ function App({
                       </div>
                     </section>
 
-                    <section className="club-detail-debug-section" aria-label="FULL OGC DEBUG">
-                      <article className="dashboard-card">
-                        <div className="section-kicker">FULL OGC DEBUG</div>
-                        <p className="support-card-copy">
-                          Selected club: <strong>{getClubLabel(selectedDetailClub)}</strong>
-                        </p>
-                        <p className="support-card-copy">
-                          Historical shots found: <strong>{formatWhole(selectedClubHistoricalShots.length)}</strong>
-                        </p>
-                        {selectedClubOpenGolfCoachShots.length === 0 ? (
-                          <p className="support-card-copy">
-                            No stored openGolfCoach payload exists yet for this club.
-                          </p>
-                        ) : (
-                          <>
-                            <div className="section-kicker">Representative Shot Payload</div>
-                            <pre style={{ margin: '8px 0 14px', overflowX: 'auto' }}>
-                              {stringifyDebugJson(selectedClubOpenGolfCoachShots[0].openGolfCoach)}
-                            </pre>
-
-                            <div className="section-kicker">First 3 Shot Payloads</div>
-                            {selectedClubOpenGolfCoachShots.slice(0, 3).map((shot, index) => (
-                              <div key={shot.id} style={{ marginTop: 8 }}>
-                                <p className="support-card-copy" style={{ marginBottom: 6 }}>
-                                  Shot {index + 1} ({shot.id})
-                                </p>
-                                <pre style={{ margin: 0, overflowX: 'auto' }}>
-                                  {stringifyDebugJson(shot.openGolfCoach)}
-                                </pre>
-                              </div>
-                            ))}
-                          </>
-                        )}
-                      </article>
-                    </section>
                   </section>
                 )}
 

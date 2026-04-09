@@ -148,6 +148,14 @@ const capitalizeBulletStart = (line: string) => {
   return `${line.slice(0, index)}${line[index].toUpperCase()}${line.slice(index + 1)}`
 }
 
+const capitalizeSentence = (text: string) => {
+  if (!text) {
+    return text
+  }
+  const trimmed = text.trimStart()
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+}
+
 const toConfidence = (score: number): FindingConfidence => {
   if (score >= 88) {
     return 'high'
@@ -503,12 +511,12 @@ function SessionSummaryPage() {
         </header>
 
         <section className="session-summary-content" aria-label="Looper summary">
-          <p className="session-summary-label">{summary.eyebrow}</p>
-          <h1 className="session-summary-title">{summary.headline}</h1>
+          <p className="session-summary-label">{capitalizeSentence(summary.eyebrow)}</p>
+          <h1 className="session-summary-title">{capitalizeSentence(summary.headline)}</h1>
           {summary.bullets.length > 0 && (
             <ul className="session-summary-bullets">
               {summary.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
+                <li key={bullet}>{capitalizeSentence(bullet)}</li>
               ))}
             </ul>
           )}
