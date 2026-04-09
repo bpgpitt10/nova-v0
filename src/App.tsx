@@ -2310,6 +2310,7 @@ function App({
     }
     return { label: 'NEUTRAL', tone: 'neutral' as const }
   })()
+  const latestShotRankPill = formatRank(latestShot?.shotRanking)
 
   const latestShotReaction = (() => {
     if (!latestShot) {
@@ -2433,15 +2434,30 @@ function App({
       .map((club) => {
         const clubShots = byClub.get(club) ?? []
         const included = clubShots.filter((shot) => shot.included)
+        const rankCounts = new Map<string, number>()
+        included.forEach((shot) => {
+          if (typeof shot.shotRanking === 'undefined') {
+            return
+          }
+          const rank = String(shot.shotRanking)
+          rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
+        })
+        const includedRankSummary =
+          rankCounts.size > 0
+            ? [...rankCounts.entries()].sort((left, right) => right[1] - left[1])[0][0]
+            : '-'
         return {
           club,
           shots: clubShots,
+          includedRankSummary,
           averages: {
             carry: averageNumbers(included.map(carryValue)),
             total: averageNumbers(included.map(totalValue)),
             offline: averageNumbers(included.map(offlineValue)),
             spin: averageNumbers(included.map(spinValue)),
             launch: averageNumbers(included.map(launchValue)),
+            hla: averageNumbers(included.map((shot) => shot.horizontalLaunchAngleDegrees)),
+            spinAxis: averageNumbers(included.map((shot) => shot.spinAxisDegrees)),
             smash: averageNumbers(included.map(smashFactorValue)),
             path: averageNumbers(included.map(clubPathValue)),
             facePath: averageNumbers(included.map(faceToPathValue)),
@@ -2486,6 +2502,7 @@ function App({
             <span className={`session-tag score-${latestShotScoreTag.tone}`}>
               {latestShotScoreTag.label}
             </span>
+            <span className="session-tag session-tag-rank">{latestShotRankPill}</span>
           </div>
           <p className="session-intelligence-reaction">{latestShotReaction}</p>
           {latestShotWhy && <p className="session-intelligence-why">{latestShotWhy}</p>}
@@ -2618,7 +2635,10 @@ function App({
                   <th>Offline</th>
                   <th>Spin</th>
                   <th>Launch</th>
+                  <th>HLA</th>
+                  <th>Spin Axis</th>
                   <th>Smash</th>
+                  <th>Rank</th>
                   <th>Path</th>
                   <th>Face/Path</th>
                   <th>Face/Target</th>
@@ -2632,7 +2652,7 @@ function App({
               <tbody>
                 {sessionShotGroups.flatMap((group) => [
                   <tr className="session-table-club-header" key={`header-${group.club}`}>
-                    <td colSpan={18}>{getClubLabel(group.club)}</td>
+                    <td colSpan={21}>{getClubLabel(group.club)}</td>
                   </tr>,
                   <tr className="session-table-club-average" key={`avg-${group.club}`}>
                     <td />
@@ -2642,13 +2662,16 @@ function App({
                     <td>{formatDecimal(group.averages.carry, ' yd')}</td>
                     <td>{formatDecimal(group.averages.total, ' yd')}</td>
                     <td>{formatDecimal(group.averages.offline, ' yd')}</td>
-                    <td>{formatWhole(group.averages.spin, ' rpm')}</td>
+                    <td>{formatWhole(group.averages.spin)}</td>
                     <td>{formatDecimal(group.averages.launch, '°')}</td>
+                    <td>{formatDecimal(group.averages.hla, '°')}</td>
+                    <td>{formatDecimal(group.averages.spinAxis, '°')}</td>
                     <td>
                       {typeof group.averages.smash === 'number'
                         ? group.averages.smash.toFixed(2)
                         : '-'}
                     </td>
+                    <td>{group.includedRankSummary}</td>
                     <td>{formatDecimal(group.averages.path, '°')}</td>
                     <td>{formatDecimal(group.averages.facePath, '°')}</td>
                     <td>{formatDecimal(group.averages.faceTarget, '°')}</td>
@@ -2675,13 +2698,16 @@ function App({
                       <td>{formatDecimal(carryValue(shot), ' yd')}</td>
                       <td>{formatDecimal(totalValue(shot), ' yd')}</td>
                       <td>{formatDecimal(offlineValue(shot), ' yd')}</td>
-                      <td>{formatWhole(spinValue(shot), ' rpm')}</td>
+                      <td>{formatWhole(spinValue(shot))}</td>
                       <td>{formatDecimal(launchValue(shot), '°')}</td>
+                      <td>{formatDecimal(shot.horizontalLaunchAngleDegrees, '°')}</td>
+                      <td>{formatDecimal(shot.spinAxisDegrees, '°')}</td>
                       <td>
                         {typeof smashFactorValue(shot) === 'number'
                           ? smashFactorValue(shot)!.toFixed(2)
                           : '-'}
                       </td>
+                      <td>{formatRank(shot.shotRanking)}</td>
                       <td>{formatDecimal(clubPathValue(shot), '°')}</td>
                       <td>{formatDecimal(faceToPathValue(shot), '°')}</td>
                       <td>{formatDecimal(faceToTargetValue(shot), '°')}</td>
