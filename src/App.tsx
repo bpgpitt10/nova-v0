@@ -8,6 +8,10 @@ import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import './App.css'
+import ClubDetailV2, {
+  type MetricKey as ClubDetailMetricKey,
+  type MetricModel as ClubDetailMetricModel,
+} from './pages/ClubDetailV2'
 import {
   activeBagClubIds,
   getClubConfig,
@@ -241,6 +245,15 @@ const launchValue = (shot: Shot) =>
           'launchAngleDeg',
         ])
 
+const hlaValue = (shot: Shot) =>
+  typeof shot.horizontalLaunchAngleDegrees === 'number'
+    ? shot.horizontalLaunchAngleDegrees
+    : payloadNumber(shot.openGolfCoach, [
+        'horizontal_launch_angle_degrees',
+        'horizontalLaunchAngleDegrees',
+        'horizontal_launch_angle',
+      ])
+
 const spinValue = (shot: Shot) =>
   typeof shot.totalSpinRpm === 'number'
     ? shot.totalSpinRpm
@@ -252,6 +265,15 @@ const spinValue = (shot: Shot) =>
           'totalSpinRpm',
           'spin_rpm',
         ])
+
+const spinAxisValue = (shot: Shot) =>
+  typeof shot.spinAxisDegrees === 'number'
+    ? shot.spinAxisDegrees
+    : payloadNumber(shot.openGolfCoach, [
+        'spin_axis_degrees',
+        'spinAxisDegrees',
+        'spin_axis',
+      ])
 
 const descentValue = (shot: Shot) =>
   // Primary descent field from confirmed OpenGolfCoach payload.
@@ -501,6 +523,13 @@ function App({
 }: AppProps) {
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   type ClubDriverKey = keyof ReviewClubSummary['componentScores']
+  const useClubDetailV2 = (() => {
+    if (typeof window === 'undefined') {
+      return true
+    }
+    const param = new URLSearchParams(window.location.search).get('clubDetail')
+    return param !== 'v1'
+  })()
   const sessionIntelligenceSearch = forceSessionIntelligenceRoute
     ? new URLSearchParams(window.location.search)
     : null
@@ -1594,7 +1623,7 @@ function App({
             ? formatDelta(spinTrend.latest, spinTrend.prior, ' rpm')
             : 'No spin trend yet',
       },
-    ] as const
+    ]
 
     return cards
   }, [selectedClubSessionSeries])
@@ -2069,7 +2098,7 @@ function App({
             : '-',
         interpretation: pickCarryRead(selectedClubMetrics.carryAverage),
       },
-    ] as const
+    ]
   }, [
     selectedClubMetrics.carryAverage,
     selectedClubMetrics.descentAverage,
@@ -2209,7 +2238,7 @@ function App({
         value: typeof peakHeightAvg === 'number' ? formatDecimal(peakHeightAvg, ' yd') : '-',
         interpretation: peakRead(peakHeightAvg),
       },
-    ] as const
+    ]
   }, [selectedClubHistoricalShots, selectedClubHistoricalShotWeights])
 
   const selectedClubShotProfiles = useMemo(() => {
@@ -2278,13 +2307,16 @@ function App({
       const absOffline = offline.map((value) =>
         typeof value === 'number' ? Math.abs(value) : undefined,
       )
+      const carry = shots.map(carryValue)
 
       return {
         key,
-        carry: weightedAverageNumbers(shots.map(carryValue), weights),
+        carry: weightedAverageNumbers(carry, weights),
         total: weightedAverageNumbers(shots.map(totalValue), weights),
+        offlineMean: weightedAverageNumbers(offline, weights),
         dispersion: weightedAverageNumbers(absOffline, weights),
         dispersionVariability: weightedStandardDeviationNumbers(offline, weights),
+        carryVariability: weightedStandardDeviationNumbers(carry, weights),
         spin: weightedAverageNumbers(shots.map(spinValue), weights),
       }
     }
@@ -2386,6 +2418,586 @@ function App({
       takeaway,
     }
   }, [selectedClubHistoricalShotWeights, selectedClubHistoricalShots, selectedDetailClub])
+
+  const selectedDetailIncludedShots = useMemo(
+    () =>
+      selectedClubHistoricalShots
+        .filter((shot) => shot.included)
+        .sort((left, right) => {
+          const leftTime = new Date(left.capturedAt).getTime()
+          const rightTime = new Date(right.capturedAt).getTime()
+          return leftTime - rightTime
+        }),
+    [selectedClubHistoricalShots],
+  )
+
+  const selectedClubMetricModels = useMemo<ClubDetailMetricModel[]>(() => {
+    // TODO(v2): Promote metric-specific interpretation rules into a dedicated
+    // diagnosis module once we finalize Club Detail language tuning.
+    const weightForShot = (shot: Shot) =>
+      (selectedClubHistoricalShotWeights.get(shot.id) ?? 1) * rankWeightForShot(shot)
+
+    const weightedMean = (values: Array<number | undefined>) =>
+      weightedAverageNumbers(values, selectedDetailIncludedShots.map((shot) => weightForShot(shot)))
+
+    const seriesFromExtractor = (extractor: (shot: Shot) => number | undefined) =>
+      selectedDetailIncludedShots
+        .map(extractor)
+        .filter((value): value is number => typeof value === 'number')
+
+    const deltaFromSeries = (series: number[]) => {
+      if (series.length < 2) {
+        return undefined
+      }
+      return series[series.length - 1] - series[series.length - 2]
+    }
+
+    const deltaText = (delta: number | undefined, unit: string, precision = 1) => {
+      if (typeof delta !== 'number') {
+        return '—'
+      }
+      return `${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta).toFixed(precision)}${unit}`
+    }
+
+    const valueText = (
+      value: number | undefined,
+      unit: string,
+      precision = 1,
+      signed = false,
+    ) => {
+      if (typeof value !== 'number') {
+        return '-'
+      }
+      const core = value.toFixed(precision)
+      if (signed) {
+        return `${value >= 0 ? '+' : '-'}${Math.abs(value).toFixed(precision)}${unit}`
+      }
+      return `${core}${unit}`
+    }
+
+    const directionRead = (
+      label: string,
+      value: number | undefined,
+      threshold: number,
+      directionHint: { positive: string; negative: string; neutral: string },
+    ) => {
+      if (typeof value !== 'number') {
+        return {
+          status: 'Building',
+          read: `${label} still needs more tracked shots before the read settles.`,
+          trendRead: 'Trend is still forming.',
+        }
+      }
+
+      if (value >= threshold) {
+        return {
+          status: directionHint.positive,
+          read: `${label} is leaning positive and pushing pattern shape that direction.`,
+          trendRead: 'Trend is moving farther from center.',
+        }
+      }
+      if (value <= -threshold) {
+        return {
+          status: directionHint.negative,
+          read: `${label} is leaning negative and shifting misses that way.`,
+          trendRead: 'Trend is moving farther from center.',
+        }
+      }
+      return {
+        status: directionHint.neutral,
+        read: `${label} is living close enough to center to stay workable.`,
+        trendRead: 'Trend is hovering near neutral.',
+      }
+    }
+
+    const carrySeries = seriesFromExtractor(carryValue)
+    const totalSeries = seriesFromExtractor(totalValue)
+    const hlaSeries = seriesFromExtractor(hlaValue)
+    const spinAxisSeries = seriesFromExtractor(spinAxisValue)
+    const clubPathSeries = seriesFromExtractor(clubPathValue)
+    const faceToPathSeries = seriesFromExtractor(faceToPathValue)
+    const launchSeries = seriesFromExtractor(launchValue)
+    const spinSeries = seriesFromExtractor(spinValue)
+    const peakSeries = seriesFromExtractor(peakHeightValue)
+    const descentSeries = seriesFromExtractor(descentValue)
+    const ballSpeedSeries = seriesFromExtractor(ballSpeedMphValue)
+    const smashSeries = seriesFromExtractor(smashFactorValue)
+    const offlineSeries = seriesFromExtractor(offlineValue)
+    const dispersionSeries = offlineSeries.map((value) => Math.abs(value))
+    const carryAnchor = weightedMean(selectedDetailIncludedShots.map(carryValue))
+    const distanceWindowSeries = selectedDetailIncludedShots
+      .map((shot) => {
+        const carry = carryValue(shot)
+        if (typeof carry !== 'number' || typeof carryAnchor !== 'number') {
+          return undefined
+        }
+        return Math.abs(carry - carryAnchor)
+      })
+      .filter((value): value is number => typeof value === 'number')
+    const patternStabilitySeries = selectedDetailIncludedShots
+      .map((shot, index, rows) => {
+        if (index === 0) {
+          return undefined
+        }
+        const current = offlineValue(shot)
+        const previous = offlineValue(rows[index - 1])
+        if (typeof current !== 'number' || typeof previous !== 'number') {
+          return undefined
+        }
+        return Math.abs(current - previous)
+      })
+      .filter((value): value is number => typeof value === 'number')
+
+    const componentByKey = new Map(
+      selectedClubComponentBreakdown.map((row) => [row.key, row] as const),
+    )
+
+    const hlaCurrent = weightedMean(selectedDetailIncludedShots.map(hlaValue))
+    const hlaRead = directionRead('Start line', hlaCurrent, 1.5, {
+      positive: 'Drifting Right',
+      negative: 'Drifting Left',
+      neutral: 'Centered',
+    })
+    const spinAxisCurrent = weightedMean(selectedDetailIncludedShots.map(spinAxisValue))
+    const spinAxisRead = directionRead('Spin axis', spinAxisCurrent, 3, {
+      positive: 'Fade Tilt',
+      negative: 'Draw Tilt',
+      neutral: 'Neutral Tilt',
+    })
+    const pathCurrent = weightedMean(selectedDetailIncludedShots.map(clubPathValue))
+    const pathRead = directionRead('Club path', pathCurrent, 1.8, {
+      positive: 'Out-to-In',
+      negative: 'In-to-Out',
+      neutral: 'Neutral Path',
+    })
+    const facePathCurrent = weightedMean(selectedDetailIncludedShots.map(faceToPathValue))
+    const facePathRead = directionRead('Face to path', facePathCurrent, 1.5, {
+      positive: 'Open Face',
+      negative: 'Closed Face',
+      neutral: 'Face Match',
+    })
+
+    const carryCurrent = weightedMean(selectedDetailIncludedShots.map(carryValue))
+    const totalCurrent = weightedMean(selectedDetailIncludedShots.map(totalValue))
+    const ballSpeedCurrent = weightedMean(selectedDetailIncludedShots.map(ballSpeedMphValue))
+    const smashCurrent = weightedMean(selectedDetailIncludedShots.map(smashFactorValue))
+    const launchCurrent = weightedMean(selectedDetailIncludedShots.map(launchValue))
+    const spinCurrent = weightedMean(selectedDetailIncludedShots.map(spinValue))
+    const peakCurrent = weightedMean(selectedDetailIncludedShots.map(peakHeightValue))
+    const descentCurrent = weightedMean(selectedDetailIncludedShots.map(descentValue))
+    const dispersionCurrent = weightedMean(dispersionSeries)
+    const patternScore = selectedClubSummary?.componentScores.patternStability
+    const distanceScore = selectedClubSummary?.componentScores.distanceWindow
+
+    const trendToneForDelta = (delta: number | undefined, tolerance: number) =>
+      comparisonTone(delta, tolerance)
+
+    return [
+      {
+        key: 'hla',
+        group: 'direction',
+        label: 'HLA',
+        valueText: valueText(hlaCurrent, '°', 1, true),
+        deltaText: deltaText(deltaFromSeries(hlaSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(hlaSeries), 0.7),
+        status: hlaRead.status,
+        read: hlaRead.read,
+        trendRead: hlaRead.trendRead,
+        chartType: 'trend',
+        series: hlaSeries,
+      },
+      {
+        key: 'spinAxis',
+        group: 'direction',
+        label: 'Spin Axis',
+        valueText: valueText(spinAxisCurrent, '°', 1, true),
+        deltaText: deltaText(deltaFromSeries(spinAxisSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(spinAxisSeries), 1),
+        status: spinAxisRead.status,
+        read: spinAxisRead.read,
+        trendRead: spinAxisRead.trendRead,
+        chartType: 'trend',
+        series: spinAxisSeries,
+      },
+      {
+        key: 'clubPath',
+        group: 'direction',
+        label: 'Club Path',
+        valueText: valueText(pathCurrent, '°', 1, true),
+        deltaText: deltaText(deltaFromSeries(clubPathSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(clubPathSeries), 0.8),
+        status: pathRead.status,
+        read: pathRead.read,
+        trendRead: pathRead.trendRead,
+        chartType: 'trend',
+        series: clubPathSeries,
+      },
+      {
+        key: 'faceToPath',
+        group: 'direction',
+        label: 'Face to Path',
+        valueText: valueText(facePathCurrent, '°', 1, true),
+        deltaText: deltaText(deltaFromSeries(faceToPathSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(faceToPathSeries), 0.8),
+        status: facePathRead.status,
+        read: facePathRead.read,
+        trendRead: facePathRead.trendRead,
+        chartType: 'trend',
+        series: faceToPathSeries,
+      },
+      {
+        key: 'carry',
+        group: 'distance',
+        label: 'Carry',
+        valueText: valueText(carryCurrent, ' yd', 1),
+        deltaText: deltaText(deltaFromSeries(carrySeries), ' yd', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(carrySeries), 1.5),
+        status: typeof carryCurrent === 'number' ? 'Core Yardage' : 'Building',
+        read:
+          typeof carryCurrent === 'number'
+            ? 'Carry is the main distance signal for this club right now.'
+            : 'Carry read needs more swings.',
+        trendRead:
+          carrySeries.length > 2
+            ? 'Recent carry trend is active and worth tracking.'
+            : 'Trend will sharpen as the sample grows.',
+        chartType: 'trend',
+        series: carrySeries,
+      },
+      {
+        key: 'totalDistance',
+        group: 'distance',
+        label: 'Total Distance',
+        valueText: valueText(totalCurrent, ' yd', 1),
+        deltaText: deltaText(deltaFromSeries(totalSeries), ' yd', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(totalSeries), 2),
+        status: typeof totalCurrent === 'number' ? 'Total Window' : 'Building',
+        read:
+          typeof totalCurrent === 'number'
+            ? 'Total distance is playable but should be read with rollout in mind.'
+            : 'Not enough total-distance points yet.',
+        trendRead:
+          totalSeries.length > 2
+            ? 'Total-distance trend is moving with current strike quality.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: totalSeries,
+      },
+      {
+        key: 'ballSpeed',
+        group: 'distance',
+        label: 'Ball Speed',
+        valueText: valueText(ballSpeedCurrent, ' mph', 1),
+        deltaText: deltaText(deltaFromSeries(ballSpeedSeries), ' mph', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(ballSpeedSeries), 1),
+        status: typeof ballSpeedCurrent === 'number' ? 'Speed Base' : 'Building',
+        read:
+          typeof ballSpeedCurrent === 'number'
+            ? 'Ball speed is showing what this club can produce when contact lands.'
+            : 'Ball-speed support is still light.',
+        trendRead:
+          ballSpeedSeries.length > 2
+            ? 'Speed trend is tracking strike quality shifts.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: ballSpeedSeries,
+      },
+      {
+        key: 'smashFactor',
+        group: 'distance',
+        label: 'Smash Factor',
+        valueText: valueText(smashCurrent, '', 2),
+        deltaText: deltaText(deltaFromSeries(smashSeries), '', 2),
+        trendTone: trendToneForDelta(deltaFromSeries(smashSeries), 0.03),
+        status: typeof smashCurrent === 'number' ? 'Contact Quality' : 'Building',
+        read:
+          typeof smashCurrent === 'number'
+            ? 'Smash is your clean contact signal and supports distance trust.'
+            : 'Smash read still needs more tracked strikes.',
+        trendRead:
+          smashSeries.length > 2
+            ? 'Smash trend reflects how often centered contact is showing up.'
+            : 'Trend is still forming.',
+        chartType: 'trend',
+        series: smashSeries,
+      },
+      {
+        key: 'launch',
+        group: 'flight',
+        label: 'Launch (VLA)',
+        valueText: valueText(launchCurrent, '°', 1),
+        deltaText: deltaText(deltaFromSeries(launchSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(launchSeries), 0.8),
+        status:
+          typeof launchCurrent === 'number'
+            ? launchCurrent < 11
+              ? 'Launching Low'
+              : launchCurrent > 18
+                ? 'Launching High'
+                : 'Launch in Range'
+            : 'Building',
+        read:
+          typeof launchCurrent === 'number'
+            ? 'Launch is defining flight window and carry shape right now.'
+            : 'Launch read still needs more shots.',
+        trendRead:
+          launchSeries.length > 2
+            ? 'Launch trend is moving with pattern changes.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: launchSeries,
+      },
+      {
+        key: 'spin',
+        group: 'flight',
+        label: 'Spin',
+        valueText: valueText(spinCurrent, ' rpm', 0),
+        deltaText: deltaText(deltaFromSeries(spinSeries), ' rpm', 0),
+        trendTone: trendToneForDelta(deltaFromSeries(spinSeries), 120),
+        status: typeof spinCurrent === 'number' ? 'Spin Window' : 'Building',
+        read:
+          typeof spinCurrent === 'number'
+            ? 'Spin is shaping flight hold and green-side behavior.'
+            : 'Spin support is still limited.',
+        trendRead:
+          spinSeries.length > 2
+            ? 'Spin trend is showing a real directional move.'
+            : 'Trend is still forming.',
+        chartType: 'trend',
+        series: spinSeries,
+      },
+      {
+        key: 'peakHeight',
+        group: 'flight',
+        label: 'Peak Height',
+        valueText: valueText(peakCurrent, ' yd', 1),
+        deltaText: deltaText(deltaFromSeries(peakSeries), ' yd', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(peakSeries), 1.2),
+        status: typeof peakCurrent === 'number' ? 'Height Window' : 'Building',
+        read:
+          typeof peakCurrent === 'number'
+            ? 'Peak height supports how this ball flight carries and lands.'
+            : 'Peak-height read is still light.',
+        trendRead:
+          peakSeries.length > 2
+            ? 'Height trend is tracking current strike shape.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: peakSeries,
+      },
+      {
+        key: 'descent',
+        group: 'flight',
+        label: 'Descent Angle',
+        valueText: valueText(descentCurrent, '°', 1),
+        deltaText: deltaText(deltaFromSeries(descentSeries), '°', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(descentSeries), 0.8),
+        status: typeof descentCurrent === 'number' ? 'Landing Window' : 'Building',
+        read:
+          typeof descentCurrent === 'number'
+            ? 'Descent angle frames how softly this club can land.'
+            : 'Descent read needs more support.',
+        trendRead:
+          descentSeries.length > 2
+            ? 'Descent trend is moving with launch and spin changes.'
+            : 'Trend is still forming.',
+        chartType: 'trend',
+        series: descentSeries,
+      },
+      {
+        key: 'dispersion',
+        group: 'consistency',
+        label: 'Dispersion',
+        valueText: valueText(dispersionCurrent, ' yd', 1),
+        deltaText: deltaText(deltaFromSeries(dispersionSeries), ' yd', 1),
+        trendTone: trendToneForDelta(deltaFromSeries(dispersionSeries), 1),
+        status:
+          typeof dispersionCurrent === 'number'
+            ? dispersionCurrent <= 8
+              ? 'Tight Window'
+              : dispersionCurrent <= 13
+                ? 'Playable Window'
+                : 'Wide Window'
+            : 'Building',
+        read:
+          typeof dispersionCurrent === 'number'
+            ? 'Dispersion is the clearest view of playable miss width.'
+            : 'Dispersion read still needs more included shots.',
+        trendRead:
+          dispersionSeries.length > 2
+            ? 'Distribution is showing where misses are consolidating.'
+            : 'Trend is still building.',
+        chartType: 'distribution',
+        series: dispersionSeries,
+      },
+      {
+        key: 'patternStability',
+        group: 'consistency',
+        label: 'Pattern Stability',
+        valueText:
+          typeof patternScore === 'number' ? `${formatScore(patternScore)}` : '-',
+        deltaText:
+          typeof componentByKey.get('patternStability')?.delta === 'number'
+            ? `${componentByKey.get('patternStability')?.direction === 'up' ? '↑' : '↓'} ${Math.abs(componentByKey.get('patternStability')?.delta ?? 0).toFixed(0)}`
+            : '—',
+        trendTone: componentByKey.get('patternStability')?.tone ?? 'neutral',
+        status:
+          typeof patternScore === 'number'
+            ? patternScore >= 70
+              ? 'Settled Pattern'
+              : patternScore >= 50
+                ? 'Playable Pattern'
+                : 'Unsettled Pattern'
+            : 'Building',
+        read:
+          typeof patternScore === 'number'
+            ? 'Pattern stability shows how repeatable your stock shot currently is.'
+            : 'Pattern-stability score needs more evidence.',
+        trendRead:
+          patternStabilitySeries.length > 1
+            ? 'Distribution shows whether misses are repeating or mixed.'
+            : 'Trend is still building.',
+        chartType: 'distribution',
+        series: patternStabilitySeries,
+      },
+      {
+        key: 'distanceWindow',
+        group: 'consistency',
+        label: 'Distance Window',
+        valueText:
+          typeof distanceScore === 'number' ? `${formatScore(distanceScore)}` : '-',
+        deltaText:
+          typeof componentByKey.get('distanceWindow')?.delta === 'number'
+            ? `${componentByKey.get('distanceWindow')?.direction === 'up' ? '↑' : '↓'} ${Math.abs(componentByKey.get('distanceWindow')?.delta ?? 0).toFixed(0)}`
+            : '—',
+        trendTone: componentByKey.get('distanceWindow')?.tone ?? 'neutral',
+        status:
+          typeof distanceScore === 'number'
+            ? distanceScore >= 70
+              ? 'Tight Carry Window'
+              : distanceScore >= 50
+                ? 'Playable Carry Window'
+                : 'Loose Carry Window'
+            : 'Building',
+        read:
+          typeof distanceScore === 'number'
+            ? 'Distance window reflects how tight carry outcomes are around your anchor.'
+            : 'Distance-window score needs more shots.',
+        trendRead:
+          distanceWindowSeries.length > 1
+            ? 'Distribution shows carry spread from the anchor.'
+            : 'Trend is still building.',
+        chartType: 'distribution',
+        series: distanceWindowSeries,
+      },
+    ]
+  }, [
+    selectedClubComponentBreakdown,
+    selectedClubHistoricalShotWeights,
+    selectedClubSummary,
+    selectedDetailIncludedShots,
+  ])
+
+  const clubDetailHeatmapMetricsV2 = useMemo(() => {
+    const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
+    const pick = (key: ClubDetailMetricKey) => byKey.get(key)
+    const rows = [
+      { key: 'carry', label: 'Carry', source: pick('carry') },
+      { key: 'total', label: 'Total Distance', source: pick('totalDistance') },
+      { key: 'dispersion', label: 'Dispersion', source: pick('dispersion') },
+      { key: 'bias', label: 'Bias', source: pick('spinAxis') ?? pick('hla') },
+      { key: 'hla', label: 'HLA', source: pick('hla') },
+      { key: 'vla', label: 'VLA', source: pick('launch') },
+      { key: 'spin', label: 'Spin', source: pick('spin') },
+    ]
+
+    return rows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      value: row.source?.valueText ?? '-',
+      trend: row.source?.deltaText ?? '—',
+      tone: row.source?.trendTone ?? 'neutral',
+    }))
+  }, [selectedClubMetricModels])
+
+  const clubDetailPatternInsightV2 = useMemo(() => {
+    const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
+    const hla = byKey.get('hla')
+    const spinAxis = byKey.get('spinAxis')
+    const dispersion = byKey.get('dispersion')
+    const directionWindow = byKey.get('distanceWindow')
+
+    const biasLine = (() => {
+      const source = spinAxis ?? hla
+      const value = source?.valueText ?? ''
+      if (value.startsWith('+')) {
+        return 'Miss bias is favoring the right side.'
+      }
+      if (value.startsWith('-')) {
+        return 'Miss bias is favoring the left side.'
+      }
+      return 'Pattern is sitting close to center.'
+    })()
+
+    const widthLine = (() => {
+      const status = dispersion?.status ?? ''
+      if (status.includes('Tight')) {
+        return 'Window is compact and generally playable.'
+      }
+      if (status.includes('Wide')) {
+        return 'Window is wide enough to demand target discipline.'
+      }
+      return 'Window is playable, but it still moves around.'
+    })()
+
+    const riskLine = (() => {
+      const biasStatus = spinAxis?.status ?? hla?.status ?? ''
+      const distanceStatus = directionWindow?.status ?? ''
+      if (biasStatus.includes('Drifting') && !distanceStatus.includes('Tight')) {
+        return 'Primary risk is the miss leaking one-way under pressure.'
+      }
+      return 'Primary risk is a mixed miss pattern when timing slips.'
+    })()
+
+    return {
+      title: 'Miss Pattern',
+      lines: [biasLine, widthLine, riskLine],
+    }
+  }, [selectedClubMetricModels])
+
+  const clubDetailDefaultMetricV2 = useMemo<ClubDetailMetricKey>(() => {
+    const preferredDriver = [...selectedClubPerformanceDrivers]
+      .sort((left, right) => {
+        const leftValue = typeof left.value === 'number' ? left.value : 101
+        const rightValue = typeof right.value === 'number' ? right.value : 101
+        return leftValue - rightValue
+      })
+      .find((driver) => typeof driver.value === 'number')
+
+    const map: Record<ClubDriverKey, ClubDetailMetricKey> = {
+      distanceWindow: 'distanceWindow',
+      directionWindow: 'hla',
+      flightQuality: 'launch',
+      patternStability: 'dispersion',
+      dataConfidence: 'carry',
+    }
+
+    const mapped = preferredDriver ? map[preferredDriver.key] : null
+    const available = new Set<ClubDetailMetricKey>(
+      selectedClubMetricModels.map((model) => model.key),
+    )
+
+    if (mapped && available.has(mapped)) {
+      return mapped
+    }
+    if (available.has('hla')) {
+      return 'hla'
+    }
+    if (available.has('carry')) {
+      return 'carry'
+    }
+    return selectedClubMetricModels[0]?.key ?? 'carry'
+  }, [selectedClubMetricModels, selectedClubPerformanceDrivers])
 
   // Temporary Club Detail skeleton mode: richer sections are intentionally
   // not rendered yet, but these values stay wired for the next layer.
@@ -3418,7 +4030,33 @@ function App({
                   </>
                 )}
 
-                {reviewView === 'clubDetail' && (
+                {reviewView === 'clubDetail' && useClubDetailV2 && (
+                  <ClubDetailV2
+                    call={selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
+                    callClassName={caddieCallClassName(
+                      selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+                    )}
+                    clubLabel={getClubLabel(selectedDetailClub)}
+                    componentBreakdown={selectedClubComponentBreakdown}
+                    defaultMetric={clubDetailDefaultMetricV2}
+                    dispersionChart={
+                      selectedClubDispersionPoints.length === 0 ? (
+                        <p className="support-card-copy">No shot data available for this club yet</p>
+                      ) : (
+                        <ClubDispersionPlot fillContainer points={selectedClubDispersionPoints} />
+                      )
+                    }
+                    heatmapMetrics={clubDetailHeatmapMetricsV2}
+                    patternInsight={clubDetailPatternInsightV2}
+                    looperRead={looperRead}
+                    metricModels={selectedClubMetricModels}
+                    performanceDrivers={selectedClubPerformanceDrivers}
+                    score={selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
+                    shotProfiles={selectedClubShotProfiles}
+                  />
+                )}
+
+                {reviewView === 'clubDetail' && !useClubDetailV2 && (
                   <section className="club-detail-overview" id="club-detail-overview">
                     <article className="dashboard-card club-detail-looper-read">
                       <div className="club-detail-score-col">
@@ -3767,11 +4405,11 @@ type DispersionPoint = {
 type ClubDispersionPlotProps = {
   points: DispersionPoint[]
   lastShotId?: string
+  fillContainer?: boolean
 }
 
-function ClubDispersionPlot({ points, lastShotId }: ClubDispersionPlotProps) {
+function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubDispersionPlotProps) {
   const width = 820
-  const height = 330
   const padding = { top: 22, right: 32, bottom: 48, left: 62 }
 
   const offlineMax = Math.max(...points.map((point) => Math.abs(point.offline)), 5)
@@ -3783,8 +4421,16 @@ function ClubDispersionPlot({ points, lastShotId }: ClubDispersionPlotProps) {
   const carryDomainMax = Math.ceil((carryMax + carryPadding) / 5) * 5
   const yRange = Math.max(carryDomainMax - carryDomainMin, 1)
   const offlineDomainMax = Math.max(10, Math.ceil(offlineMax / 5) * 5)
+  const xRange = offlineDomainMax * 2
   const chartWidth = width - padding.left - padding.right
-  const chartHeight = height - padding.top - padding.bottom
+
+  // Keep unit-based scaling proportional so X/Y distances render honestly.
+  // Allow mild horizontal bias for layout fit, but never vertical stretch.
+  const unitPixelsFromX = chartWidth / Math.max(xRange, 1)
+  const idealChartHeight = yRange * unitPixelsFromX
+  const maxChartHeight = chartWidth / 1.3
+  const chartHeight = Math.min(idealChartHeight, maxChartHeight)
+  const height = padding.top + chartHeight + padding.bottom
 
   const pickTickStep = (span: number) => {
     const roughStep = span / 6
@@ -3819,6 +4465,7 @@ function ClubDispersionPlot({ points, lastShotId }: ClubDispersionPlotProps) {
     <svg
       aria-label="Carry versus offline dispersion plot"
       className="club-detail-plot"
+      preserveAspectRatio={fillContainer ? 'xMidYMid meet' : undefined}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
     >
