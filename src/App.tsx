@@ -2781,7 +2781,7 @@ function App({
     )
   }
 
-  return (
+  const appMain = (
     <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
       {import.meta.env.DEV && <p><a href="/looper">Open Looper Landing (/looper)</a></p>}
 
@@ -3560,6 +3560,14 @@ function App({
         </section>
       )}
     </main>
+  )
+
+  return sessionState === 'review' ? (
+    <div className={`dashboard-page ${reviewView === 'clubDetail' ? 'club-detail-page' : ''}`}>
+      {appMain}
+    </div>
+  ) : (
+    appMain
   )
 }
 

@@ -7,22 +7,71 @@
   box-sizing: border-box;
 }
 
+.dashboard-page {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.dashboard-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('./assets/Backgrounds/golfscenedashboard.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.34;
+}
+
+.dashboard-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(9, 15, 12, 0.78) 0%,
+      rgba(12, 21, 16, 0.62) 42%,
+      rgba(12, 20, 16, 0.36) 72%,
+      rgba(10, 17, 14, 0.24) 100%
+    ),
+    linear-gradient(180deg, rgba(15, 22, 18, 0.16) 0%, rgba(8, 13, 10, 0.42) 100%);
+}
+
+.dashboard-page.club-detail-page::before {
+  background-image: url('./assets/Backgrounds/golfscenedetail.png');
+  opacity: 0.32;
+}
+
+.dashboard-page.club-detail-page::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7, 12, 10, 0.84) 0%,
+      rgba(10, 18, 14, 0.72) 44%,
+      rgba(11, 18, 15, 0.52) 74%,
+      rgba(10, 16, 13, 0.38) 100%
+    ),
+    linear-gradient(180deg, rgba(14, 21, 17, 0.24) 0%, rgba(7, 12, 10, 0.5) 100%);
+}
+
+.dashboard-page > .app-shell.dashboard-shell {
+  position: relative;
+  z-index: 1;
+}
+
 .dashboard-shell {
   position: relative;
   isolation: isolate;
 }
 
 .dashboard-shell::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at top left, rgba(132, 204, 22, 0.08), transparent 28%),
-    radial-gradient(circle at 85% 12%, rgba(234, 179, 8, 0.08), transparent 18%),
-    radial-gradient(circle at 40% 100%, rgba(34, 197, 94, 0.06), transparent 22%),
-    linear-gradient(180deg, #18271b 0%, #0e1710 46%, #132016 100%);
+  content: none;
 }
 
 .dashboard-layout {
@@ -337,7 +386,7 @@ td {
 .dashboard-card,
 .review-card {
   background:
-    linear-gradient(180deg, rgba(30, 49, 35, 0.92) 0%, rgba(20, 33, 24, 0.96) 100%);
+    linear-gradient(180deg, rgba(23, 36, 25, 0.62) 0%, rgba(19, 30, 22, 0.68) 100%);
   border: 1px solid #314233;
   border-radius: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -351,8 +400,8 @@ td {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(135deg, rgba(42, 67, 48, 0.98) 0%, rgba(20, 33, 24, 0.98) 58%),
-    linear-gradient(180deg, rgba(234, 179, 8, 0.08), transparent 30%);
+    linear-gradient(135deg, rgba(42, 67, 48, 0.72) 0%, rgba(20, 33, 24, 0.76) 58%),
+    linear-gradient(180deg, rgba(234, 179, 8, 0.06), transparent 32%);
 }
 
 .dashboard-hero-card::before {
@@ -362,9 +411,8 @@ td {
   pointer-events: none;
   background:
     radial-gradient(circle at top right, rgba(234, 179, 8, 0.12), transparent 20%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent 36%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='260' viewBox='0 0 900 260'%3E%3Cg fill='none' stroke='%23cfd8cd' stroke-opacity='0.045' stroke-width='1'%3E%3Cpath d='M-20 140c100-30 180-30 280 0s180 30 280 0 180-30 280 0'/%3E%3Cpath d='M-20 190c100-30 180-30 280 0s180 30 280 0 180-30 280 0'/%3E%3C/g%3E%3Cg fill='none' stroke='%23eab308' stroke-opacity='0.08' stroke-width='1.2'%3E%3Cpath d='M748 70v76'/%3E%3Cpath d='M748 70c18 2 27 9 33 16-6 8-16 14-33 16'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: auto, auto, cover;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.022), transparent 36%);
+  background-size: auto, auto;
 }
 
 .dashboard-hero-title {
@@ -428,15 +476,14 @@ td {
 
 .spotlight-card {
   background:
-    linear-gradient(180deg, rgba(30, 49, 35, 0.96) 0%, rgba(20, 33, 24, 0.98) 100%);
+    linear-gradient(180deg, rgba(23, 36, 25, 0.66) 0%, rgba(19, 30, 22, 0.72) 100%);
 }
 
 .spotlight-card::before {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent 30%),
-    radial-gradient(circle at 85% 15%, rgba(234, 179, 8, 0.1), transparent 18%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='280' viewBox='0 0 640 280'%3E%3Cg fill='none' stroke='%239fb09f' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M-20 210c70-24 135-24 210 0s145 24 220 0 145-24 220 0'/%3E%3Cpath d='M-20 238c70-24 135-24 210 0s145 24 220 0 145-24 220 0'/%3E%3C/g%3E%3Cg fill='none' stroke='%23eab308' stroke-opacity='0.08' stroke-width='1'%3E%3Cpath d='M512 78v58'/%3E%3Cpath d='M512 78c14 2 22 7 27 12-5 6-13 10-27 12'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: auto, auto, cover;
+    radial-gradient(circle at 85% 15%, rgba(234, 179, 8, 0.1), transparent 18%);
+  background-size: auto, auto;
 }
 
 .spotlight-accent-row {
@@ -1203,6 +1250,25 @@ td {
   color: #9fb09f;
   font-size: 11px;
   line-height: 1.35;
+}
+
+/* Dashboard-only glass surfaces: remove internal card gradients and rely on page background texture */
+.dashboard-page:not(.club-detail-page) .dashboard-hero-card,
+.dashboard-page:not(.club-detail-page) .dashboard-card,
+.dashboard-page:not(.club-detail-page) .review-card,
+.dashboard-page:not(.club-detail-page) .spotlight-card,
+.dashboard-page:not(.club-detail-page) .support-card,
+.dashboard-page:not(.club-detail-page) .driver-feature-card,
+.dashboard-page:not(.club-detail-page) .club-card {
+  background: rgba(19, 30, 22, 0.62);
+}
+
+.dashboard-page:not(.club-detail-page) .dashboard-hero-card::before,
+.dashboard-page:not(.club-detail-page) .spotlight-card::before,
+.dashboard-page:not(.club-detail-page) .support-card::before,
+.dashboard-page:not(.club-detail-page) .driver-feature-card::before,
+.dashboard-page:not(.club-detail-page) .club-card::before {
+  content: none;
 }
 
 .review-meta {
