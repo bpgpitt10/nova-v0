@@ -9,6 +9,7 @@ import { novaWebSocketAdapter } from './adapters/novaWebSocket'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
+import LooperLandingPage from './pages/LooperLandingPage'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
   type MetricModel as ClubDetailMetricModel,
@@ -526,6 +527,14 @@ function App({
   forceDashboardRoute = false,
   forceSessionIntelligenceRoute = false,
 }: AppProps) {
+  const normalizedPath =
+    typeof window !== 'undefined'
+      ? window.location.pathname.replace(/\/+$/, '') || '/'
+      : '/'
+  if (!forceDashboardRoute && !forceSessionIntelligenceRoute && normalizedPath === '/') {
+    return <LooperLandingPage />
+  }
+
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   type ClubDriverKey = keyof ReviewClubSummary['componentScores']
   const useClubDetailV2 = (() => {
