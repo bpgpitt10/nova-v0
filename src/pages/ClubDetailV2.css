@@ -82,6 +82,27 @@
   font-weight: 600;
 }
 
+.club-v2-score-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 0.7rem;
+  width: 100%;
+}
+
+.club-v2-score-line .club-detail-score-value {
+  justify-self: start;
+}
+
+.club-v2-score-club {
+  justify-self: end;
+  color: rgba(244, 206, 96, 0.96);
+  font-size: 44px;
+  font-weight: 200;
+  line-height: 0.95;
+  white-space: nowrap;
+}
+
 .club-v2-tone-up {
   color: rgba(124, 229, 160, 0.96);
 }
@@ -476,14 +497,15 @@
 
 .club-v2-analysis-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.6fr);
-  gap: 0.78rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.72rem;
 }
 
 .club-v2-metric-rail {
   display: grid;
   gap: 0.62rem;
   align-content: start;
+  width: 100%;
 }
 
 .club-v2-metric-group {
@@ -500,7 +522,8 @@
 
 .club-v2-metric-rows {
   display: grid;
-  gap: 0.28rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.32rem;
 }
 
 .club-v2-metric-row {
@@ -528,48 +551,124 @@
 
 .club-v2-chart-panel {
   display: grid;
-  gap: 0.52rem;
+  gap: 0.42rem;
   align-content: start;
-  border-left: 1px solid rgba(205, 218, 207, 0.14);
-  padding-left: 0.82rem;
+  border-top: 1px solid rgba(205, 218, 207, 0.14);
+  padding-top: 0.62rem;
+  width: 100%;
+}
+
+.club-v2-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.club-v2-chart-title {
+  color: rgba(214, 226, 216, 0.9);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.club-v2-chart-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(207, 219, 209, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(10, 18, 13, 0.34);
+}
+
+.club-v2-chart-toggle button {
+  border: 0;
+  background: transparent;
+  color: rgba(190, 204, 193, 0.86);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+
+.club-v2-chart-toggle button.is-active {
+  background: rgba(244, 206, 96, 0.2);
+  color: rgba(248, 252, 248, 0.96);
 }
 
 .club-v2-trend-svg {
   width: 100%;
-  height: 212px;
+  height: 292px;
+  display: block;
 }
 
-.club-v2-trend-path {
+.club-v2-trend-raw-path {
   fill: none;
-  stroke: rgba(247, 210, 98, 0.95);
-  stroke-width: 2.6;
+  stroke: rgba(247, 210, 98, 0.45);
+  stroke-width: 1.15;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.club-v2-distribution {
-  height: 212px;
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  align-items: end;
-  gap: 0.4rem;
-  padding: 0.35rem 0.15rem 0.2rem;
+.club-v2-trend-point {
+  fill: rgba(247, 210, 98, 0.72);
+  stroke: rgba(16, 24, 18, 0.95);
+  stroke-width: 0.8;
 }
 
-.club-v2-bar {
-  height: 100%;
-  display: flex;
-  align-items: end;
+.club-v2-trend-gridline {
+  stroke: rgba(214, 224, 216, 0.16);
+  stroke-width: 1;
 }
 
-.club-v2-bar span {
-  width: 100%;
-  border-radius: 999px 999px 4px 4px;
-  background: linear-gradient(
-    180deg,
-    rgba(248, 214, 112, 0.92) 0%,
-    rgba(236, 192, 88, 0.52) 100%
-  );
+.club-v2-trend-axis {
+  stroke: rgba(216, 226, 218, 0.34);
+  stroke-width: 1;
+}
+
+.club-v2-trend-average {
+  stroke: rgba(178, 194, 182, 0.46);
+  stroke-width: 1.1;
+  stroke-dasharray: 4 3;
+}
+
+.club-v2-trend-average-label {
+  fill: rgba(198, 210, 199, 0.9);
+  font-size: 9.5px;
+  text-anchor: end;
+}
+
+.club-v2-trend-trendline {
+  fill: none;
+  stroke: rgba(247, 210, 98, 0.94);
+  stroke-width: 2.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.club-v2-trend-x-label,
+.club-v2-trend-y-label {
+  fill: rgba(182, 196, 185, 0.8);
+  font-size: 9.5px;
+}
+
+.club-v2-trend-x-label {
+  text-anchor: middle;
+}
+
+.club-v2-trend-y-label {
+  text-anchor: end;
+  dominant-baseline: middle;
+}
+
+.club-v2-trend-tick {
+  stroke: rgba(201, 214, 204, 0.35);
+  stroke-width: 1;
+}
+
+.club-v2-trend-axis-title {
+  fill: rgba(197, 210, 200, 0.85);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  text-anchor: middle;
 }
 
 .club-v2-empty {
@@ -598,6 +697,10 @@
   }
 
   .club-v2-analysis-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .club-v2-metric-rows {
     grid-template-columns: minmax(0, 1fr);
   }
 }

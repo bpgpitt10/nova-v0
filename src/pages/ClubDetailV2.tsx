@@ -100,41 +100,22 @@ type ClubDetailV2Props = {
   }
   performanceDrivers: DriverRow[]
   metricModels: MetricModel[]
+  metricSessionSeries: Partial<Record<MetricKey, Array<{ label: string; value: number }>>>
   defaultMetric: MetricKey
 }
 
-const sparklinePath = (values: number[], width: number, height: number) => {
-  if (values.length <= 1) {
-    return ''
-  }
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = Math.max(max - min, 1)
-  return values
+const linePath = (
+  values: number[],
+  xScale: (index: number) => number,
+  yScale: (value: number) => number,
+) =>
+  values
     .map((value, index) => {
-      const x = (index / (values.length - 1)) * width
-      const y = height - ((value - min) / range) * height
+      const x = xScale(index)
+      const y = yScale(value)
       return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
     })
     .join(' ')
-}
-
-const distributionBars = (values: number[], bins = 10) => {
-  if (values.length === 0) {
-    return []
-  }
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = Math.max(max - min, 1)
-  const counts = new Array(bins).fill(0)
-  values.forEach((value) => {
-    const normalized = (value - min) / range
-    const index = Math.min(bins - 1, Math.floor(normalized * bins))
-    counts[index] += 1
-  })
-  const peak = Math.max(...counts, 1)
-  return counts.map((count) => ({ count, ratio: count / peak }))
-}
 
 const toneClass = (tone: ComparisonTone) =>
   tone === 'up'
@@ -163,6 +144,32 @@ const groupLabel = (group: MetricModel['group']) => {
   }
 }
 
+const metricUnitLabel = (key: MetricKey) => {
+  switch (key) {
+    case 'carry':
+    case 'totalDistance':
+    case 'peakHeight':
+    case 'dispersion':
+      return 'Yards'
+    case 'spin':
+      return 'RPM'
+    case 'ballSpeed':
+      return 'MPH'
+    case 'smashFactor':
+      return 'Ratio'
+    case 'patternStability':
+    case 'distanceWindow':
+      return 'Score'
+    case 'hla':
+    case 'spinAxis':
+    case 'clubPath':
+    case 'faceToPath':
+    case 'launch':
+    case 'descent':
+      return 'Degrees'
+  }
+}
+
 export default function ClubDetailV2({
   clubLabel,
   score,
@@ -176,9 +183,11 @@ export default function ClubDetailV2({
   patternInsight,
   performanceDrivers,
   metricModels,
+  metricSessionSeries,
   defaultMetric,
 }: ClubDetailV2Props) {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(defaultMetric)
+  const [chartMode, setChartMode] = useState<'shots' | 'sessions'>('shots')
   const [openDriverKey, setOpenDriverKey] = useState<string | null>(null)
   const analysisRef = useRef<HTMLElement | null>(null)
   const initializedDriverRef = useRef(false)
@@ -225,6 +234,190 @@ export default function ClubDetailV2({
       analysisRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }
+
+  const selectedSeries = selectedModel?.series ?? []
+  const chartSvg = useMemo(() => {
+    if (!selectedModel) {
+      return <div className="club-v2-empty">Not enough points yet.</div>
+    }
+
+    const sessionPoints = metricSessionSeries[selectedModel.key] ?? []
+    const points =
+      chartMode === 'sessions'
+        ? sessionPoints.map((point) => ({ xLabel: point.label, value: point.value }))
+        : selectedSeries.map((value, index) => ({ xLabel: `${index + 1}`, value }))
+
+    if (points.length === 0) {
+      return <div className="club-v2-empty">Not enough points yet.</div>
+    }
+
+    const width = 920
+    const height = 304
+    const padding = { top: 18, right: 10, bottom: 44, left: 42 }
+    const chartWidth = width - padding.left - padding.right
+    const chartHeight = height - padding.top - padding.bottom
+
+    const values = points.map((point) => point.value)
+    const rawMin = Math.min(...values)
+    const rawMax = Math.max(...values)
+    const range = Math.max(rawMax - rawMin, 1)
+    const yMin = rawMin - range * 0.12
+    const yMax = rawMax + range * 0.12
+    const yRange = Math.max(yMax - yMin, 1)
+
+    const xScale = (index: number) =>
+      padding.left +
+      (points.length === 1 ? chartWidth / 2 : (index / (points.length - 1)) * chartWidth)
+    const yScale = (value: number) =>
+      padding.top + ((yMax - value) / yRange) * chartHeight
+
+    const yTicks = Array.from({ length: 5 }, (_, idx) => {
+      const value = yMin + (idx / 4) * yRange
+      return { value, y: yScale(value) }
+    })
+    const xTicks = Array.from({ length: Math.min(5, points.length) }, (_, idx) => {
+      if (points.length === 1) {
+        return { index: 0, label: '1' }
+      }
+      const index = Math.round((idx / (Math.min(5, points.length) - 1)) * (points.length - 1))
+      return { index, label: points[index].xLabel }
+    }).filter((tick, idx, arr) => arr.findIndex((t) => t.index === tick.index) === idx)
+
+    const average =
+      values.reduce((sum, value) => sum + value, 0) / values.length
+
+    const smoothingWindow = (() => {
+      if (chartMode === 'sessions') {
+        return Math.min(3, points.length)
+      }
+      if (points.length >= 11) {
+        return 11
+      }
+      if (points.length >= 7) {
+        return 7
+      }
+      return Math.min(points.length, 5)
+    })()
+
+    const trendValues = points.map((_, index, rows) => {
+      const start = Math.max(0, index - smoothingWindow + 1)
+      const window = rows.slice(start, index + 1).map((row) => row.value)
+      return window.reduce((sum, value) => sum + value, 0) / window.length
+    })
+
+    const unit = metricUnitLabel(selectedModel.key)
+    const averageLabel = (() => {
+      if (unit === 'RPM' || unit === 'Score') {
+        return `${Math.round(average)}`
+      }
+      if (unit === 'Ratio') {
+        return average.toFixed(2)
+      }
+      return average.toFixed(1)
+    })()
+
+    const averageSuffix =
+      unit === 'Yards'
+        ? ' yd'
+        : unit === 'RPM'
+          ? ' rpm'
+          : unit === 'Degrees'
+            ? '°'
+            : unit === 'MPH'
+              ? ' mph'
+              : ''
+
+    return (
+      <svg className="club-v2-trend-svg" viewBox={`0 0 ${width} ${height}`}>
+        {yTicks.map((tick, index) => (
+          <g key={`y-grid-${index}`}>
+            <line
+              className="club-v2-trend-gridline"
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={tick.y}
+              y2={tick.y}
+            />
+            <text className="club-v2-trend-y-label" x={padding.left - 8} y={tick.y}>
+              {tick.value.toFixed(1)}
+            </text>
+          </g>
+        ))}
+        {xTicks.map((tick) => {
+          const x = xScale(tick.index)
+          return (
+            <g key={`x-${tick.index}`}>
+              <line
+                className="club-v2-trend-tick"
+                x1={x}
+                x2={x}
+                y1={height - padding.bottom}
+                y2={height - padding.bottom + 6}
+              />
+              <text className="club-v2-trend-x-label" x={x} y={height - padding.bottom + 18}>
+                {tick.label}
+              </text>
+            </g>
+          )
+        })}
+        <line
+          className="club-v2-trend-axis"
+          x1={padding.left}
+          x2={padding.left}
+          y1={padding.top}
+          y2={height - padding.bottom}
+        />
+        <line
+          className="club-v2-trend-axis"
+          x1={padding.left}
+          x2={width - padding.right}
+          y1={height - padding.bottom}
+          y2={height - padding.bottom}
+        />
+        <path
+          className="club-v2-trend-raw-path"
+          d={linePath(values, xScale, yScale)}
+        />
+        {values.map((value, index) => (
+          <circle
+            className="club-v2-trend-point"
+            cx={xScale(index)}
+            cy={yScale(value)}
+            key={`p-${index}`}
+            r="2.8"
+          />
+        ))}
+        <path
+          className="club-v2-trend-trendline"
+          d={linePath(trendValues, xScale, yScale)}
+        />
+        <line
+          className="club-v2-trend-average"
+          x1={padding.left}
+          x2={width - padding.right}
+          y1={yScale(average)}
+          y2={yScale(average)}
+        />
+        <text
+          className="club-v2-trend-average-label"
+          x={width - padding.right}
+          y={yScale(average) - 6}
+        >
+          Average: {averageLabel}
+          {averageSuffix}
+        </text>
+        <text className="club-v2-trend-axis-title" x={width / 2} y={height - 8}>
+          {chartMode === 'sessions' ? 'Session' : 'Shot #'}
+        </text>
+        <text
+          className="club-v2-trend-axis-title"
+          transform={`translate(14 ${height / 2}) rotate(-90)`}
+        >
+          {metricUnitLabel(selectedModel.key)}
+        </text>
+      </svg>
+    )
+  }, [chartMode, metricSessionSeries, selectedModel, selectedSeries])
 
   const dnaOverlayModel = useMemo(() => {
     const roundUpToFive = (value: number) => Math.max(5, Math.ceil(value / 5) * 5)
@@ -319,14 +512,17 @@ export default function ClubDetailV2({
         <div className="club-detail-score-col">
           <div className="club-detail-score-anchor">
             <span className="club-detail-score-label">Score</span>
-            <span className="club-detail-score-value looper-read-score">{score}</span>
+            <span className="club-v2-score-line">
+              <span className="club-detail-score-value looper-read-score">{score}</span>
+              <span className="club-v2-score-club">{clubLabel}</span>
+            </span>
             <span className={callClassName ?? 'club-v2-call-pill'}>{call}</span>
           </div>
         </div>
 
         <div className="club-detail-read-col">
           <div className="section-kicker">The Looper&apos;s Read</div>
-          <h3 className="club-detail-read-title">{clubLabel} · THE LOOPER&apos;S READ</h3>
+          <h3 className="club-detail-read-title">THE LOOPER&apos;S READ</h3>
           <p className="club-detail-read-line">{looperRead.primary}</p>
           <p className="club-detail-read-line secondary">{looperRead.explanation}</p>
           <p className="club-detail-read-line secondary">{looperRead.implication}</p>
@@ -582,29 +778,26 @@ export default function ClubDetailV2({
             </div>
 
             <div className="club-v2-chart-panel">
-              {selectedModel ? (
-                selectedModel.chartType === 'distribution' ? (
-                  <div className="club-v2-distribution">
-                    {distributionBars(selectedModel.series).map((bar, index) => (
-                      <div className="club-v2-bar" key={`${selectedModel.key}-bar-${index}`}>
-                        <span style={{ height: `${Math.max(8, bar.ratio * 100)}%` }} />
-                      </div>
-                    ))}
-                  </div>
-                ) : selectedModel.series.length > 1 ? (
-                  <svg className="club-v2-trend-svg" viewBox="0 0 520 210">
-                    <path
-                      className="club-v2-trend-path"
-                      d={sparklinePath(selectedModel.series, 480, 160)}
-                      transform="translate(20,20)"
-                    />
-                  </svg>
-                ) : (
-                  <div className="club-v2-empty">Not enough points yet.</div>
-                )
-              ) : (
-                <div className="club-v2-empty">No selected metric.</div>
-              )}
+              <div className="club-v2-chart-header">
+                <div className="club-v2-chart-title">Metric Trend</div>
+                <div className="club-v2-chart-toggle" role="tablist" aria-label="Trend mode">
+                  <button
+                    className={chartMode === 'shots' ? 'is-active' : undefined}
+                    onClick={() => setChartMode('shots')}
+                    type="button"
+                  >
+                    Shots
+                  </button>
+                  <button
+                    className={chartMode === 'sessions' ? 'is-active' : undefined}
+                    onClick={() => setChartMode('sessions')}
+                    type="button"
+                  >
+                    Sessions
+                  </button>
+                </div>
+              </div>
+              {selectedModel ? chartSvg : <div className="club-v2-empty">No selected metric.</div>}
             </div>
           </div>
         </article>

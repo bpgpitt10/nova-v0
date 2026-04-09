@@ -2920,6 +2920,72 @@ function App({
     }))
   }, [selectedClubMetricModels])
 
+  const clubDetailMetricSessionSeriesV2 = useMemo(() => {
+    const orderedSessions = [...analysisSessions].sort(
+      (left, right) =>
+        new Date(left.endedAt).getTime() - new Date(right.endedAt).getTime(),
+    )
+    const series: Partial<Record<ClubDetailMetricKey, Array<{ label: string; value: number }>>> =
+      {}
+
+    const pushPoint = (key: ClubDetailMetricKey, label: string, value: number | undefined) => {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return
+      }
+      series[key] = [...(series[key] ?? []), { label, value }]
+    }
+
+    orderedSessions.forEach((session) => {
+      const label = new Date(session.endedAt).toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+      })
+      const clubShots = session.shots.filter(
+        (shot) => shot.club === selectedDetailClub && shot.included,
+      )
+      if (clubShots.length === 0) {
+        return
+      }
+
+      const averageFor = (extractor: (shot: Shot) => number | undefined) =>
+        averageNumbers(clubShots.map(extractor))
+
+      const summary = summarizeReviewClub(
+        selectedDetailClub,
+        session.shots,
+        analysisSessions.filter((savedSession) => savedSession.id !== session.id),
+        session.id,
+      )
+
+      pushPoint('hla', label, averageFor(hlaValue))
+      pushPoint('spinAxis', label, averageFor(spinAxisValue))
+      pushPoint('clubPath', label, averageFor(clubPathValue))
+      pushPoint('faceToPath', label, averageFor(faceToPathValue))
+      pushPoint('carry', label, averageFor(carryValue))
+      pushPoint('totalDistance', label, averageFor(totalValue))
+      pushPoint('ballSpeed', label, averageFor(ballSpeedMphValue))
+      pushPoint('smashFactor', label, averageFor(smashFactorValue))
+      pushPoint('launch', label, averageFor(launchValue))
+      pushPoint('spin', label, averageFor(spinValue))
+      pushPoint('peakHeight', label, averageFor(peakHeightValue))
+      pushPoint('descent', label, averageFor(descentValue))
+      pushPoint(
+        'dispersion',
+        label,
+        averageNumbers(
+          clubShots.map((shot) => {
+            const offline = offlineValue(shot)
+            return typeof offline === 'number' ? Math.abs(offline) : undefined
+          }),
+        ),
+      )
+      pushPoint('patternStability', label, summary?.componentScores.patternStability)
+      pushPoint('distanceWindow', label, summary?.componentScores.distanceWindow)
+    })
+
+    return series
+  }, [analysisSessions, selectedDetailClub])
+
   const clubDetailPatternInsightV2 = useMemo(() => {
     const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
     const hla = byKey.get('hla')
@@ -4050,6 +4116,7 @@ function App({
                     patternInsight={clubDetailPatternInsightV2}
                     looperRead={looperRead}
                     metricModels={selectedClubMetricModels}
+                    metricSessionSeries={clubDetailMetricSessionSeriesV2}
                     performanceDrivers={selectedClubPerformanceDrivers}
                     score={selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
                     shotProfiles={selectedClubShotProfiles}
