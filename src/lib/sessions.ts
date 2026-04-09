@@ -42,3 +42,6 @@ export const loadActiveSessionDraft = (): ActiveSessionDraft | null => {
 export const clearActiveSessionDraft = () => {
   window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY)
 }
+
+export const isSessionIncludedInAnalysis = (session: SavedSession) =>
+  session.metadata?.includeInAnalysis !== false

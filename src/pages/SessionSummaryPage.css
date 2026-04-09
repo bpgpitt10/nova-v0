@@ -25,9 +25,9 @@
   width: min(1320px, calc(100vw - 72px));
   margin: 0 auto;
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: 14px;
-  padding: 3px 0 54px;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  padding: 8px 0 54px;
 }
 
 .session-summary-top {
@@ -35,20 +35,21 @@
   align-items: center;
   width: 100%;
   justify-content: center;
+  margin-top: 10px;
 }
 
 .session-summary-logo {
-  width: clamp(260px, 28vw, 420px);
+  width: clamp(134px, 14.6vw, 218px);
   height: auto;
   object-fit: contain;
   display: block;
 }
 
 .session-summary-content {
-  align-self: start;
+  align-self: center;
   width: min(670px, 100%);
   display: grid;
-  gap: 16px;
+  gap: 14px;
   justify-items: start;
   margin-top: 0;
 }
@@ -106,7 +107,9 @@
 .session-summary-looperman {
   position: absolute;
   right: clamp(-152px, -9vw, -64px);
-  bottom: -24px;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
   height: min(82vh, 858px);
   width: auto;
   opacity: 0.74;
@@ -119,17 +122,17 @@
 @media (max-width: 960px) {
   .session-summary-shell {
     width: min(1320px, calc(100vw - 44px));
-    gap: 12px;
-    padding-top: 2px;
+    gap: 8px;
+    padding-top: 8px;
   }
 
   .session-summary-logo {
-    width: clamp(220px, 42vw, 320px);
+    width: clamp(123px, 23.5vw, 179px);
   }
 
   .session-summary-content {
     width: min(590px, 100%);
-    gap: 14px;
+    gap: 12px;
     margin-top: 0;
   }
 

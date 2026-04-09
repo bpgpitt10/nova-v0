@@ -74,6 +74,7 @@ export type SessionMetadata = {
   app: 'nova-validation'
   schemaVersion: number
   feedMode?: 'mock' | 'real'
+  includeInAnalysis?: boolean
 }
 
 export type SavedSession = {

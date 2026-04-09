@@ -28,6 +28,7 @@ import {
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
+  isSessionIncludedInAnalysis,
   loadActiveSessionDraft,
   loadSavedSessions,
   saveActiveSessionDraft,
@@ -455,6 +456,7 @@ const currentSessionMetadata = (feedMode: SessionFeedMode) => ({
   app: 'nova-validation' as const,
   schemaVersion: 2,
   feedMode,
+  includeInAnalysis: true,
 })
 
 const mergeDerivedValues = (
@@ -516,6 +518,10 @@ function App({
   )
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() =>
     loadSavedSessions(),
+  )
+  const analysisSessions = useMemo(
+    () => savedSessions.filter(isSessionIncludedInAnalysis),
+    [savedSessions],
   )
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
@@ -657,26 +663,26 @@ function App({
   }, [selectedFeedMode, sessionState])
 
   const dashboardShots = useMemo(
-    () => savedSessions.flatMap((savedSession) => savedSession.shots),
-    [savedSessions],
+    () => analysisSessions.flatMap((savedSession) => savedSession.shots),
+    [analysisSessions],
   )
 
   const sessionRecencyWeights = useMemo(
     () =>
       buildSessionRecencyWeights(
-        savedSessions,
+        analysisSessions,
         confidenceConfig.recency.sessionDecayStrength,
         confidenceConfig.recency.minSessionWeightFloor,
       ),
-    [savedSessions],
+    [analysisSessions],
   )
 
   const dashboardSummaries: ReviewClubSummary[] = useMemo(
     () =>
       activeBagClubIds
-        .map((club) => summarizeReviewClub(club, dashboardShots, savedSessions, null))
+        .map((club) => summarizeReviewClub(club, dashboardShots, analysisSessions, null))
         .filter((summary): summary is ReviewClubSummary => summary !== null),
-    [dashboardShots, savedSessions],
+    [analysisSessions, dashboardShots],
   )
 
   const rankedDashboardSummaries = useMemo(
@@ -694,7 +700,7 @@ function App({
 
   const latestSessionSummariesByClub = useMemo(() => {
     const summaries = new Map<Club, ReviewClubSummary>()
-    const latestSession = savedSessions[0]
+    const latestSession = analysisSessions[0]
 
     if (!latestSession) {
       return summaries
@@ -704,7 +710,7 @@ function App({
       const summary = summarizeReviewClub(
         club,
         latestSession.shots,
-        savedSessions.filter((session) => session.id !== latestSession.id),
+        analysisSessions.filter((session) => session.id !== latestSession.id),
         latestSession.id,
       )
 
@@ -714,11 +720,11 @@ function App({
     })
 
     return summaries
-  }, [savedSessions])
+  }, [analysisSessions])
 
   const previousSummariesByClub = useMemo(() => {
     const summaries = new Map<Club, ReviewClubSummary>()
-    const previousSession = savedSessions[1]
+    const previousSession = analysisSessions[1]
 
     if (!previousSession) {
       return summaries
@@ -728,7 +734,7 @@ function App({
       const summary = summarizeReviewClub(
         club,
         previousSession.shots,
-        savedSessions.filter((session) => session.id !== previousSession.id),
+        analysisSessions.filter((session) => session.id !== previousSession.id),
         previousSession.id,
       )
 
@@ -738,7 +744,7 @@ function App({
     })
 
     return summaries
-  }, [savedSessions])
+  }, [analysisSessions])
 
   const historicalAveragesByClub = useMemo(() => {
     const map = new Map<
@@ -753,7 +759,7 @@ function App({
       }
     >()
 
-    const historicalSessions = savedSessions.slice(1)
+    const historicalSessions = analysisSessions.slice(1)
 
     activeBagClubIds.forEach((club) => {
       const summaryPoints = historicalSessions
@@ -762,7 +768,7 @@ function App({
             summary: summarizeReviewClub(
               club,
               session.shots,
-              savedSessions.filter((savedSession) => savedSession.id !== session.id),
+              analysisSessions.filter((savedSession) => savedSession.id !== session.id),
               session.id,
             ),
             weight: sessionRecencyWeights.get(session.id) ?? 1,
@@ -802,10 +808,10 @@ function App({
     })
 
     return map
-  }, [savedSessions, sessionRecencyWeights])
+  }, [analysisSessions, sessionRecencyWeights])
 
   const lastSessionComparisonRows = useMemo(() => {
-    const latestSession = savedSessions[0]
+    const latestSession = analysisSessions[0]
     if (!latestSession) {
       return []
     }
@@ -909,7 +915,7 @@ function App({
         }
       })
       .filter((row): row is NonNullable<typeof row> => row !== null)
-  }, [historicalAveragesByClub, latestSessionSummariesByClub, savedSessions])
+  }, [analysisSessions, historicalAveragesByClub, latestSessionSummariesByClub])
 
   const lastSessionInsights = useMemo(() => {
     if (lastSessionComparisonRows.length === 0) {
@@ -1144,15 +1150,15 @@ function App({
   const selectedClubSummary = dashboardSummariesByClub.get(selectedDetailClub) ?? null
   const selectedClubHistoricalShots = useMemo(
     () =>
-      savedSessions.flatMap((session) =>
+      analysisSessions.flatMap((session) =>
         session.shots.filter((shot) => shot.club === selectedDetailClub),
       ),
-    [savedSessions, selectedDetailClub],
+    [analysisSessions, selectedDetailClub],
   )
 
   const selectedClubHistoricalShotWeights = useMemo(() => {
     const map = new Map<string, number>()
-    savedSessions.forEach((session) => {
+    analysisSessions.forEach((session) => {
       const sessionWeight = sessionRecencyWeights.get(session.id) ?? 1
       session.shots.forEach((shot) => {
         if (shot.club === selectedDetailClub && !map.has(shot.id)) {
@@ -1161,7 +1167,7 @@ function App({
       })
     })
     return map
-  }, [savedSessions, selectedDetailClub, sessionRecencyWeights])
+  }, [analysisSessions, selectedDetailClub, sessionRecencyWeights])
 
   const selectedClubOpenGolfCoachKeys = useMemo(() => {
     const keys = new Set<string>()
@@ -1254,7 +1260,7 @@ function App({
 
   const selectedClubSessionSeries = useMemo(
     () =>
-      [...savedSessions]
+      [...analysisSessions]
         .reverse()
         .map((session) => {
           const clubShots = session.shots.filter((shot) => shot.club === selectedDetailClub)
@@ -1265,7 +1271,7 @@ function App({
           const summary = summarizeReviewClub(
             selectedDetailClub,
             session.shots,
-            savedSessions.filter((savedSession) => savedSession.id !== session.id),
+            analysisSessions.filter((savedSession) => savedSession.id !== session.id),
             session.id,
           )
 
@@ -1293,7 +1299,7 @@ function App({
           }
         })
         .filter((point): point is NonNullable<typeof point> => point !== null),
-    [savedSessions, selectedDetailClub],
+    [analysisSessions, selectedDetailClub],
   )
 
   const baselineComparison = useMemo(() => {
@@ -2829,6 +2835,9 @@ function App({
 
       {sessionState === 'setup' && (
         <section className="panel">
+          <p className="data-management-entry-link">
+            <a href="/data-management">Open Data Management</a>
+          </p>
           <h2>Start Session</h2>
           <p>Start a Stock Range Session, choose the first club, and listen for Nova shots.</p>
 
