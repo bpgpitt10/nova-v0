@@ -1,63 +1,65 @@
-import looperRef from '../assets/looper-landing-ref.png'
+import { useState } from 'react'
+import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
+import './LooperLandingPage.css'
+
+import looperLogoWhite from '../assets/looperlogowhite.png'
 
 export default function LooperLandingPage() {
+  const [selectedClub, setSelectedClub] = useState<Club>('7i')
+
+  const startSession = () => {
+    const params = new URLSearchParams({
+      feed: 'mock',
+      club: selectedClub,
+    })
+    window.location.assign(`/session-intelligence?${params.toString()}`)
+  }
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#08120d',
-        padding: '2vh 2vw',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div
-        style={{
-          position: 'relative',
-          width: 'min(1200px, 96vw)',
-        }}
-      >
-        <img
-          src={looperRef}
-          alt=""
-          aria-hidden="true"
-          style={{
-            display: 'block',
-            width: '100%',
-            height: 'auto',
-            maxHeight: '96vh',
-            margin: '0 auto',
-            objectFit: 'contain',
-          }}
-        />
+    <main className="looper-landing-page">
+      <div className="looper-landing-shell">
+        <section className="looper-landing-panel" aria-label="Looper entry">
+          <img alt="The Looper" className="looper-landing-logo" src={looperLogoWhite} />
 
-        <button
-          type="button"
-          aria-label="Choose Club"
-          title="Choose Club"
-          style={{ position: 'absolute', left: '12.2%', top: '73.4%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
-          onClick={() => console.log('Choose Club clicked')}
-        />
+          <div className="looper-landing-actions">
+            <a className="looper-landing-action looper-landing-action-primary" href="/dashboard">
+              Go to Dashboard
+            </a>
 
-        <button
-          type="button"
-          aria-label="Start"
-          title="Start"
-          style={{ position: 'absolute', left: '12.2%', top: '81.1%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
-          onClick={() => console.log('Start clicked')}
-        />
+            <div className="looper-landing-session">
+              <label className="looper-landing-label" htmlFor="landing-club-select">
+                New Session
+              </label>
+              <div className="looper-landing-session-row">
+                <div className="looper-landing-select-wrap">
+                  <select
+                    id="landing-club-select"
+                    onChange={(event) => setSelectedClub(event.target.value as Club)}
+                    value={selectedClub}
+                  >
+                    {activeBagClubIds.map((club) => (
+                      <option key={club} value={club}>
+                        {getClubLabel(club)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="looper-landing-action looper-landing-action-secondary"
+                  onClick={startSession}
+                  type="button"
+                >
+                  Start
+                </button>
+              </div>
+            </div>
 
-        <button
-          type="button"
-          aria-label="Open Data"
-          title="Open Data"
-          style={{ position: 'absolute', left: '56.8%', top: '77.2%', width: '30.8%', height: '6.9%', background: 'transparent', border: 'none', padding: 0, opacity: 0.01, cursor: 'pointer' }}
-          onClick={() => console.log('Open Data clicked')}
-        />
+            <a className="looper-landing-action looper-landing-action-secondary" href="/data-management">
+              Manage Data
+            </a>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }

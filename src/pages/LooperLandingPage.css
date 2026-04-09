@@ -1,0 +1,167 @@
+.looper-landing-page {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.looper-landing-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url('../assets/Backgrounds/golfscene2.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.36;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.looper-landing-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(9, 15, 12, 0.68) 0%,
+      rgba(12, 21, 16, 0.54) 40%,
+      rgba(12, 20, 16, 0.4) 72%,
+      rgba(10, 17, 14, 0.24) 100%
+    ),
+    linear-gradient(180deg, rgba(15, 22, 18, 0.16) 0%, rgba(8, 13, 10, 0.42) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.looper-landing-shell {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 32px clamp(18px, 2.8vw, 36px);
+  display: grid;
+  align-items: center;
+  justify-items: end;
+}
+
+.looper-landing-panel {
+  width: min(470px, 100%);
+  border: 1px solid #314233;
+  border-radius: 14px;
+  background: rgba(19, 30, 22, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 22px;
+  display: grid;
+  gap: 14px;
+}
+
+.looper-landing-logo {
+  width: min(380px, 100%);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.looper-landing-subline {
+  margin: 0;
+  color: #cfd8cd;
+  font-size: 13px;
+}
+
+.looper-landing-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.looper-landing-action {
+  min-height: 40px;
+  border: 1px solid #314233;
+  border-radius: 999px;
+  background: rgba(23, 36, 25, 0.78);
+  color: #dce5d8;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+}
+
+.looper-landing-action-primary {
+  border-color: rgba(234, 179, 8, 0.55);
+  background: rgba(234, 179, 8, 0.14);
+  color: #f8edc9;
+  font-weight: 600;
+}
+
+.looper-landing-action-secondary {
+  justify-self: start;
+}
+
+.looper-landing-session {
+  border: 1px solid #314233;
+  border-radius: 12px;
+  background: rgba(28, 44, 30, 0.56);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.looper-landing-label {
+  margin: 0;
+  color: #9fb09f;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.looper-landing-session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.looper-landing-select-wrap {
+  border: 1px solid #314233;
+  border-radius: 10px;
+  background: rgba(15, 24, 17, 0.72);
+  overflow: hidden;
+}
+
+.looper-landing-select-wrap select {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  padding: 0 10px;
+  font-size: 13px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.looper-landing-select-wrap select option {
+  background: #16241a;
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .looper-landing-shell {
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+
+  .looper-landing-panel {
+    padding: 18px;
+  }
+
+  .looper-landing-logo {
+    width: min(300px, 100%);
+  }
+}

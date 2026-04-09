@@ -8,7 +8,7 @@ import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 
 const pathname = window.location.pathname.replace(/\/+$/, '') || '/'
-const showLooperLanding = import.meta.env.DEV && pathname === '/looper'
+const showLooperLanding = pathname === '/looper'
 const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
 const showSessionIntelligence = pathname === '/session-intelligence'
 const showDashboardRoute = pathname === '/dashboard'
