@@ -58,7 +58,7 @@ export default function LooperLandingPage() {
     setNovaState('connecting')
     setNovaDetail(`Connecting to Nova...`)
 
-    socket.onopen = () => {
+    const handleOpen = () => {
       if (!isMounted) {
         return
       }
@@ -66,7 +66,7 @@ export default function LooperLandingPage() {
       setNovaDetail(null)
     }
 
-    socket.onerror = () => {
+    const handleError = () => {
       if (!isMounted) {
         return
       }
@@ -74,7 +74,7 @@ export default function LooperLandingPage() {
       setNovaDetail('Nova connection failed')
     }
 
-    socket.onclose = () => {
+    const handleClose = () => {
       if (!isMounted) {
         return
       }
@@ -86,9 +86,32 @@ export default function LooperLandingPage() {
       setNovaDetail('No Nova found on this network')
     }
 
+    const handleMessage = () => {
+      if (!isMounted) {
+        return
+      }
+      // Defensive guard: if messages are flowing, the socket is effectively connected
+      // even if an 'open' transition was missed.
+      setNovaState((current) => (current === 'connected' ? current : 'connected'))
+      setNovaDetail(null)
+    }
+
+    socket.addEventListener('open', handleOpen)
+    socket.addEventListener('error', handleError)
+    socket.addEventListener('close', handleClose)
+    socket.addEventListener('message', handleMessage)
+
+    if (socket.readyState === WebSocket.OPEN) {
+      handleOpen()
+    }
+
     return () => {
       isMounted = false
       closedByApp = true
+      socket.removeEventListener('open', handleOpen)
+      socket.removeEventListener('error', handleError)
+      socket.removeEventListener('close', handleClose)
+      socket.removeEventListener('message', handleMessage)
       socket.close()
     }
   }, [novaWebSocketUrl])

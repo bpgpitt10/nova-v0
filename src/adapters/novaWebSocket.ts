@@ -104,6 +104,7 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     onStatusChange,
     onDebugEvent?: (event: NovaDebugEvent) => void,
   ): NovaConnection {
+    onStatusChange?.('connecting')
     const socket = new WebSocket(url)
 
     socket.addEventListener('open', () => onStatusChange?.('connected'))
@@ -129,6 +130,12 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
         onShot(shot)
       }
     })
+
+    // Defensive guard for rare timing cases where the socket is already OPEN
+    // before listeners begin observing state transitions.
+    if (socket.readyState === WebSocket.OPEN) {
+      onStatusChange?.('connected')
+    }
 
     return {
       mode: 'real',
