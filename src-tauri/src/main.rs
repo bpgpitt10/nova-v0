@@ -209,9 +209,6 @@ fn main() {
             let app_handle = app.handle().clone();
             let sidecar_state = app_handle.state::<SidecarState>();
             ensure_open_golf_coach_helper(&app_handle, sidecar_state.inner());
-            for window in app.webview_windows().values() {
-                window.open_devtools();
-            }
             Ok(())
         })
         .run(tauri::generate_context!())
