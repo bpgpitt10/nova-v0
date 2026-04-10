@@ -67,7 +67,7 @@ export const novaAdapter: NovaAdapter = {
       typeof window !== 'undefined'
         ? window.localStorage.getItem('nova-ws-url')?.trim()
         : undefined
-    const websocketUrl = envUrl || savedUrl || 'ws://127.0.0.1:8765'
+    const websocketUrl = envUrl || savedUrl
 
     if (!websocketUrl) {
       onStatusChange?.('error')

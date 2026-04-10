@@ -87,7 +87,34 @@ Set this environment variable when connecting to a discovered local Nova WebSock
 VITE_NOVA_WS_URL=ws://nova-local-host:port/path
 ```
 
-If neither value is present, the adapter uses the Mock Nova Feed so the local session model can still be validated.
+If no real endpoint is configured, real mode now reports an error state instead of silently falling back to mock.
+
+### Minimal mDNS discovery script (recommended)
+
+Use this helper to discover Nova WebSocket dynamically and write `.env.local`:
+
+```sh
+python -m pip install zeroconf
+python helpers/discover_nova_ws.py --timeout 3 --json
+```
+
+Then run the app:
+
+```sh
+npm run dev
+```
+
+For Tauri desktop dev:
+
+```sh
+npm run tauri:dev
+```
+
+The script searches `_openlaunch-ws._tcp.local.` and writes:
+
+```sh
+VITE_NOVA_WS_URL=ws://<discovered-host>:<discovered-port>
+```
 
 Current adapter paths:
 

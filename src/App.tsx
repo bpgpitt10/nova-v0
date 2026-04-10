@@ -61,8 +61,6 @@ type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
 
 const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
-const NOVA_LOCAL_DEV_FALLBACK_URL = 'ws://127.0.0.1:8765'
-
 const safeReadLocalStorage = (key: string) => {
   if (typeof window === 'undefined') {
     return null
@@ -85,7 +83,7 @@ const resolveNovaWebSocketUrl = () => {
     return savedUrl
   }
 
-  return NOVA_LOCAL_DEV_FALLBACK_URL
+  return undefined
 }
 
 const novaWebSocketUrl = resolveNovaWebSocketUrl()
@@ -680,16 +678,17 @@ function App({
       return undefined
     }
 
+    const resolvedWsUrl = novaWebSocketUrl
     let isActive = true
     let activeSource: Shot['source'] = 'mock'
-    if (selectedFeedMode === 'real' && !novaWebSocketUrl) {
+    if (selectedFeedMode === 'real' && !resolvedWsUrl) {
       setFeedMode('real')
       setConnectionStatus('error')
       return undefined
     }
 
     const adapter = selectedFeedMode === 'real'
-      ? novaWebSocketAdapter(novaWebSocketUrl)
+      ? novaWebSocketAdapter(resolvedWsUrl as string)
       : mockNovaAdapter
     const connection: NovaConnection = adapter.connectToShots(
       (incomingShot) => {

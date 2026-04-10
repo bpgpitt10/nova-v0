@@ -12,7 +12,6 @@ type NovaConnectionState =
   | 'disconnected'
 
 const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
-const NOVA_LOCAL_DEV_FALLBACK_URL = 'ws://127.0.0.1:8765'
 
 const safeReadLocalStorage = (key: string) => {
   if (typeof window === 'undefined') {
@@ -36,7 +35,7 @@ const resolveNovaWebSocketUrl = () => {
     return savedUrl
   }
 
-  return NOVA_LOCAL_DEV_FALLBACK_URL
+  return undefined
 }
 
 export default function LooperLandingPage() {
