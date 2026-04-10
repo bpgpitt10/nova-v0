@@ -61,6 +61,10 @@ Health response shape:
 
 Build the helper executable and place it in `src-tauri/binaries`:
 
+These scripts create/reuse a dedicated build virtual environment and install
+`pyinstaller` + `opengolfcoach` before building, so developers do not need to
+preinstall `opengolfcoach` globally.
+
 macOS:
 
 ```sh

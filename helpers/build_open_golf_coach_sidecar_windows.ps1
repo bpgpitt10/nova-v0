@@ -6,6 +6,7 @@ $binDir = Join-Path $root "src-tauri\binaries"
 $distDir = Join-Path $root "helpers\dist"
 $buildDir = Join-Path $root "helpers\build"
 $specDir = Join-Path $root "helpers"
+$venvDir = Join-Path $root "helpers\.venv-open-golf-coach-sidecar-win"
 
 $arch = $env:PROCESSOR_ARCHITECTURE
 if ($arch -eq "ARM64") {
@@ -17,8 +18,18 @@ if ($arch -eq "ARM64") {
 $outName = "open-golf-coach-helper-$targetTriple"
 $outExe = "$outName.exe"
 
-python -m pip install --upgrade pyinstaller
-python -m PyInstaller --noconfirm --onefile --name $outName $helperScript `
+if (!(Test-Path $venvDir)) {
+  python -m venv $venvDir
+}
+
+$venvPython = Join-Path $venvDir "Scripts\python.exe"
+if (!(Test-Path $venvPython)) {
+  throw "Failed to locate virtualenv python at $venvPython"
+}
+
+& $venvPython -m pip install --upgrade pip
+& $venvPython -m pip install --upgrade pyinstaller opengolfcoach
+& $venvPython -m PyInstaller --noconfirm --onefile --name $outName $helperScript `
   --distpath $distDir `
   --workpath $buildDir `
   --specpath $specDir
