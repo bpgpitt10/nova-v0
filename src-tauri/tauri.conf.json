@@ -25,6 +25,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/open-golf-coach-helper"
+    ],
     "windows": {
       "wix": {
         "language": "en-US"

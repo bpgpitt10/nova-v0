@@ -27,20 +27,60 @@ Notes:
 ### Build desktop app
 
 ```sh
+npm run helper:build:mac
 npm run tauri:build
 ```
 
 Notes:
 - Tauri build runs the existing Vite build first (`npm run build`) and then bundles from `dist`.
 - Desktop build artifacts are written under `src-tauri/target/release/bundle/` (for Windows, installers/bundles are placed there by target format).
+- Build the OpenGolfCoach sidecar first so Tauri can bundle `src-tauri/binaries/open-golf-coach-helper-<target-triple>`.
 
 ## OpenGolfCoach helper
 
 The smallest local OpenGolfCoach integration in this repo is a tiny Python helper:
 
 - file: `helpers/open_golf_coach_helper.py`
-- endpoint: `POST /derive`
+- endpoints:
+  - `GET /health`
+  - `POST /derive`
 - default address: `http://127.0.0.1:8787`
+
+Health response shape:
+
+```json
+{
+  "service": "open-golf-coach-helper",
+  "status": "ok",
+  "version": "1",
+  "derive_endpoint": "/derive"
+}
+```
+
+### Sidecar packaging (recommended for desktop pilot)
+
+Build the helper executable and place it in `src-tauri/binaries`:
+
+macOS:
+
+```sh
+npm run helper:build:mac
+```
+
+Windows (PowerShell):
+
+```powershell
+npm run helper:build:windows
+```
+
+The app bundles this binary through Tauri `externalBin` and applies this startup strategy:
+
+1. Probe `127.0.0.1:8787` for `/health`.
+2. If response is compatible (`service=open-golf-coach-helper`, `status=ok`), reuse existing process.
+3. If port is occupied by incompatible service, do not launch sidecar and log a clear error.
+4. If port is free, launch bundled sidecar once for this app process.
+
+This avoids interfering with users who already run OpenGolfCoach separately.
 
 Install and start it locally:
 

@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "helper:build:mac": "bash helpers/build_open_golf_coach_sidecar_macos.sh",
+    "helper:build:windows": "powershell -ExecutionPolicy Bypass -File helpers/build_open_golf_coach_sidecar_windows.ps1"
   },
   "dependencies": {
     "react": "^19.2.4",

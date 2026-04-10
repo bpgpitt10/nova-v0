@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+helpers/dist
+helpers/build
+helpers/*.spec
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
 
 # Editor directories and files
 .vscode/*

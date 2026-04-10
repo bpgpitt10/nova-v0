@@ -9,6 +9,8 @@ import opengolfcoach
 
 HOST = os.environ.get("OPEN_GOLF_COACH_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OPEN_GOLF_COACH_PORT", "8787"))
+HELPER_SERVICE_NAME = "open-golf-coach-helper"
+HELPER_HEALTH_VERSION = "1"
 
 
 def derive_values(payload: dict) -> dict:
@@ -33,6 +35,21 @@ class OpenGolfCoachHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:
         self._write_json(204, {})
+
+    def do_GET(self) -> None:
+        if self.path != "/health":
+            self._write_json(404, {"error": "not found"})
+            return
+
+        self._write_json(
+            200,
+            {
+                "service": HELPER_SERVICE_NAME,
+                "status": "ok",
+                "version": HELPER_HEALTH_VERSION,
+                "derive_endpoint": "/derive",
+            },
+        )
 
     def do_POST(self) -> None:
         if self.path != "/derive":
