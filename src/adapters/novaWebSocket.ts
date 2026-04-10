@@ -10,11 +10,14 @@ import type { IncomingNovaShot } from '../types'
 const KNOWN_NOVA_SHOT_FIELDS = new Set([
   'type',
   'timestamp',
+  'shot_number',
   'ball_speed_meters_per_second',
   'vertical_launch_angle_degrees',
   'horizontal_launch_angle_degrees',
   'total_spin_rpm',
   'spin_axis_degrees',
+  'back_spin_rpm',
+  'side_spin_rpm',
 ])
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

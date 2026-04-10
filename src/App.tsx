@@ -3,6 +3,8 @@ import {
   type NovaConnection,
   type NovaConnectionStatus,
   type NovaFeedMode,
+  isProxyAutoConnect,
+  novaProxyUrl,
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
@@ -186,7 +188,7 @@ function App() {
       : connectionStatus === 'error'
         ? 'failure'
         : connectionStatus
-  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
+  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl && !isProxyAutoConnect
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
@@ -434,6 +436,10 @@ function App() {
               <td>{novaWebSocketUrl ?? 'not set'}</td>
             </tr>
             <tr>
+              <th>Discovery proxy</th>
+              <td>{isProxyAutoConnect ? `auto (${novaProxyUrl})` : 'not used'}</td>
+            </tr>
+            <tr>
               <th>Attempting mode</th>
               <td>{configuredMode}</td>
             </tr>
@@ -549,7 +555,8 @@ function App() {
 
           {liveNovaUnavailable && (
             <p className="warning-text">
-              Live Nova selected, but `VITE_NOVA_WS_URL` is not configured.
+              Live Nova selected, but `VITE_NOVA_WS_URL` is not configured and the discovery proxy is not detected.
+              Run `npm run nova-proxy` to auto-discover Nova on your network.
             </p>
           )}
 
