@@ -60,7 +60,35 @@ type ReviewView = 'dashboard' | 'clubDetail'
 type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
 
-const novaWebSocketUrl = import.meta.env.VITE_NOVA_WS_URL as string | undefined
+const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
+const NOVA_LOCAL_DEV_FALLBACK_URL = 'ws://127.0.0.1:8765'
+
+const safeReadLocalStorage = (key: string) => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const resolveNovaWebSocketUrl = () => {
+  const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+  if (envUrl) {
+    return envUrl
+  }
+
+  const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
+  if (savedUrl) {
+    return savedUrl
+  }
+
+  return NOVA_LOCAL_DEV_FALLBACK_URL
+}
+
+const novaWebSocketUrl = resolveNovaWebSocketUrl()
 
 const formatDecimal = (value: number | undefined, unit = '') => {
   if (typeof value !== 'number') {
@@ -654,10 +682,15 @@ function App({
 
     let isActive = true
     let activeSource: Shot['source'] = 'mock'
-    const adapter =
-      selectedFeedMode === 'real' && novaWebSocketUrl
-        ? novaWebSocketAdapter(novaWebSocketUrl)
-        : mockNovaAdapter
+    if (selectedFeedMode === 'real' && !novaWebSocketUrl) {
+      setFeedMode('real')
+      setConnectionStatus('error')
+      return undefined
+    }
+
+    const adapter = selectedFeedMode === 'real'
+      ? novaWebSocketAdapter(novaWebSocketUrl)
+      : mockNovaAdapter
     const connection: NovaConnection = adapter.connectToShots(
       (incomingShot) => {
         if (!isActive) {

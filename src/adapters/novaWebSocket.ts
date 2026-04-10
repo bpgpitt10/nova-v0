@@ -107,7 +107,13 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     const socket = new WebSocket(url)
 
     socket.addEventListener('open', () => onStatusChange?.('connected'))
-    socket.addEventListener('close', () => onStatusChange?.('disconnected'))
+    socket.addEventListener('close', (event) => {
+      if (event.code === 1000) {
+        onStatusChange?.('disconnected')
+      } else {
+        onStatusChange?.('error')
+      }
+    })
     socket.addEventListener('error', () =>
       onStatusChange?.('error' satisfies NovaConnectionStatus),
     )

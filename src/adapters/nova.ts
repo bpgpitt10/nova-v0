@@ -1,5 +1,4 @@
 import type { IncomingNovaShot } from '../types'
-import { mockNovaAdapter } from './mockNova'
 import { novaWebSocketAdapter } from './novaWebSocket'
 import type { OpenGolfCoachDerivedValues, OpenGolfCoachInput } from '../types'
 
@@ -63,16 +62,25 @@ export const novaServiceDiscoveryTargets = {
 
 export const novaAdapter: NovaAdapter = {
   connectToShots(onShot, onStatusChange, onDebugEvent) {
-    const websocketUrl = import.meta.env.VITE_NOVA_WS_URL
+    const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+    const savedUrl =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('nova-ws-url')?.trim()
+        : undefined
+    const websocketUrl = envUrl || savedUrl || 'ws://127.0.0.1:8765'
 
-    if (websocketUrl) {
-      return novaWebSocketAdapter(websocketUrl).connectToShots(
-        onShot,
-        onStatusChange,
-        onDebugEvent,
-      )
+    if (!websocketUrl) {
+      onStatusChange?.('error')
+      return {
+        mode: 'real',
+        disconnect: () => undefined,
+      }
     }
 
-    return mockNovaAdapter.connectToShots(onShot, onStatusChange, onDebugEvent)
+    return novaWebSocketAdapter(websocketUrl).connectToShots(
+      onShot,
+      onStatusChange,
+      onDebugEvent,
+    )
   },
 }
