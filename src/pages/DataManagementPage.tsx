@@ -239,6 +239,9 @@ function DataManagementPage() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(() => new Set())
   const [allExpanded, setAllExpanded] = useState(false)
+  const showDevMockControls =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('devMock') === '1'
 
   const sortedSessions = useMemo(
     () =>
@@ -455,14 +458,16 @@ function DataManagementPage() {
             <a className="dm-action dm-return" href="/dashboard">
               Return to Dashboard
             </a>
-            <button
-              className="dm-action dm-delete dm-delete-all"
-              disabled={!savedSessions.some(isMockSession)}
-              onClick={deleteAllMockData}
-              type="button"
-            >
-              Delete All Mock
-            </button>
+            {showDevMockControls ? (
+              <button
+                className="dm-action dm-delete dm-delete-all"
+                disabled={!savedSessions.some(isMockSession)}
+                onClick={deleteAllMockData}
+                type="button"
+              >
+                Delete All Mock
+              </button>
+            ) : null}
           </div>
         </header>
 

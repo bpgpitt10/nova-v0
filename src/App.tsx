@@ -665,24 +665,78 @@ function App({
         }
 
         const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+        console.info('[Shot Pipeline] live shot received', {
+          shotId: shot.id,
+          source: activeSource,
+          capturedAt: shot.capturedAt,
+          ranking: shot.shotRanking,
+        })
         setShots((currentShots) => [shot, ...currentShots])
+        console.info('[Shot Pipeline] raw shot persisted in active session state', {
+          shotId: shot.id,
+          included: shot.included,
+        })
 
         const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
-        console.info('[OpenGolfCoach] built input:', openGolfCoachInput)
-        if (!hasOpenGolfCoachInput(openGolfCoachInput)) {
-          console.info(
-            '[OpenGolfCoach] enrichment skipped: required input fields missing',
-            openGolfCoachInput,
-          )
-          return
+        const hasInput = hasOpenGolfCoachInput(openGolfCoachInput)
+        console.info('[Shot Pipeline] enrichment request started', {
+          shotId: shot.id,
+          hasInput,
+          payload: openGolfCoachInput,
+        })
+        if (!hasInput) {
+          console.warn('[Shot Pipeline] enrichment input sparse, attempting anyway', {
+            shotId: shot.id,
+          })
         }
 
-        void openGolfCoachEnricher.enrichShot(openGolfCoachInput).then((result) => {
-          if (!isActive) {
-            return
-          }
+        void openGolfCoachEnricher
+          .enrichShot(openGolfCoachInput)
+          .then((result) => {
+            if (!isActive) {
+              return
+            }
 
-          if (result.status === 'failure') {
+            if (result.status === 'failure') {
+              console.error('[Shot Pipeline] enrichment failed', { shotId: shot.id })
+              setHelperReachable(false)
+              setLastEnrichmentStatus('failure')
+              setShots((currentShots) =>
+                currentShots.map((currentShot) =>
+                  currentShot.id === shot.id
+                    ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                    : currentShot,
+                ),
+              )
+              return
+            }
+
+            if (result.status === 'success') {
+              console.info('[Shot Pipeline] enrichment succeeded', { shotId: shot.id })
+              setHelperReachable(true)
+              setLastEnrichmentStatus('success')
+            }
+
+            if (!result.payload) {
+              return
+            }
+
+            setShots((currentShots) =>
+              currentShots.map((currentShot) =>
+                currentShot.id === shot.id
+                  ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
+                  : currentShot,
+              ),
+            )
+          })
+          .catch((error) => {
+            if (!isActive) {
+              return
+            }
+            console.error('[Shot Pipeline] enrichment failed with error', {
+              shotId: shot.id,
+              error,
+            })
             setHelperReachable(false)
             setLastEnrichmentStatus('failure')
             setShots((currentShots) =>
@@ -692,26 +746,7 @@ function App({
                   : currentShot,
               ),
             )
-            return
-          }
-
-          if (result.status === 'success') {
-            setHelperReachable(true)
-            setLastEnrichmentStatus('success')
-          }
-
-          if (!result.payload) {
-            return
-          }
-
-          setShots((currentShots) =>
-            currentShots.map((currentShot) =>
-              currentShot.id === shot.id
-                ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
-                : currentShot,
-            ),
-          )
-        })
+          })
       },
       setConnectionStatus,
       () => undefined,
