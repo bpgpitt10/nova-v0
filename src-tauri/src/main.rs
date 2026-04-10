@@ -2,6 +2,8 @@
 
 use reqwest::blocking::Client;
 use serde_json::Value;
+use std::fs::{OpenOptions, create_dir_all};
+use std::io::Write;
 use std::net::{SocketAddr, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -200,11 +202,34 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
     }
 }
 
+#[tauri::command]
+fn append_enrichment_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("failed to resolve app data dir: {error}"))?;
+    let logs_dir = app_data_dir.join("logs");
+    create_dir_all(&logs_dir).map_err(|error| format!("failed to create logs dir: {error}"))?;
+
+    let log_file = logs_dir.join("enrichment-pipeline.log");
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_file)
+        .map_err(|error| format!("failed to open log file {}: {error}", log_file.display()))?;
+
+    writeln!(file, "{line}")
+        .map_err(|error| format!("failed to write enrichment log line: {error}"))?;
+
+    Ok(())
+}
+
 fn main() {
     let sidecar_state = SidecarState::default();
 
     tauri::Builder::default()
         .manage(sidecar_state)
+        .invoke_handler(tauri::generate_handler![append_enrichment_log])
         .setup(|app| {
             let app_handle = app.handle().clone();
             let sidecar_state = app_handle.state::<SidecarState>();

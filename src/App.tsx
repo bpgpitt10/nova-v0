@@ -25,6 +25,7 @@ import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
   isOpenGolfCoachConfigured,
+  logOpenGolfCoachPipeline,
   openGolfCoachEnricher,
 } from './lib/openGolfCoach'
 import {
@@ -711,6 +712,11 @@ function App({
 
         const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
         const hasInput = hasOpenGolfCoachInput(openGolfCoachInput)
+        logOpenGolfCoachPipeline('shot_received_for_enrichment', {
+          shotId: shot.id,
+          hasInput,
+          input: openGolfCoachInput,
+        })
         console.info('[Shot Pipeline] enrichment request started', {
           shotId: shot.id,
           hasInput,
@@ -730,6 +736,10 @@ function App({
             }
 
             if (result.status === 'failure') {
+              logOpenGolfCoachPipeline('enrichment_result_failure', {
+                shotId: shot.id,
+                status: result.status,
+              })
               console.error('[Shot Pipeline] enrichment failed', { shotId: shot.id })
               setHelperReachable(false)
               setLastEnrichmentStatus('failure')
@@ -744,12 +754,21 @@ function App({
             }
 
             if (result.status === 'success') {
+              logOpenGolfCoachPipeline('enrichment_result_success', {
+                shotId: shot.id,
+                status: result.status,
+                hasPayload: Boolean(result.payload),
+              })
               console.info('[Shot Pipeline] enrichment succeeded', { shotId: shot.id })
               setHelperReachable(true)
               setLastEnrichmentStatus('success')
             }
 
             if (!result.payload) {
+              logOpenGolfCoachPipeline('enrichment_result_no_payload', {
+                shotId: shot.id,
+                status: result.status,
+              })
               console.warn('[Shot Pipeline] enrichment returned no payload to merge', {
                 shotId: shot.id,
                 status: result.status,
@@ -766,6 +785,11 @@ function App({
                   ? Object.keys(result.payload)
                   : [],
             })
+            logOpenGolfCoachPipeline('enrichment_merge_applied', {
+              shotId: shot.id,
+              status: result.status,
+              derivedValues: result.derivedValues,
+            })
             setShots((currentShots) =>
               currentShots.map((currentShot) =>
                 currentShot.id === shot.id
@@ -778,6 +802,10 @@ function App({
             if (!isActive) {
               return
             }
+            logOpenGolfCoachPipeline('enrichment_result_exception', {
+              shotId: shot.id,
+              error: error instanceof Error ? error.message : String(error),
+            })
             console.error('[Shot Pipeline] enrichment failed with error', {
               shotId: shot.id,
               error,
