@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nova V0",
+  "productName": "The Looper",
   "version": "0.0.0",
   "identifier": "com.nova.v0",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Nova V0",
+        "title": "The Looper",
         "width": 1440,
         "height": 900,
         "resizable": true
