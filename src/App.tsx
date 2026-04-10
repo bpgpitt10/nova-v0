@@ -750,9 +750,22 @@ function App({
             }
 
             if (!result.payload) {
+              console.warn('[Shot Pipeline] enrichment returned no payload to merge', {
+                shotId: shot.id,
+                status: result.status,
+              })
               return
             }
 
+            console.info('[Shot Pipeline] applying enrichment merge to shot state', {
+              shotId: shot.id,
+              status: result.status,
+              derivedValues: result.derivedValues,
+              payloadKeys:
+                result.payload && typeof result.payload === 'object'
+                  ? Object.keys(result.payload)
+                  : [],
+            })
             setShots((currentShots) =>
               currentShots.map((currentShot) =>
                 currentShot.id === shot.id
@@ -781,7 +794,14 @@ function App({
           })
       },
       setConnectionStatus,
-      () => undefined,
+      (event) => {
+        if (import.meta.env.DEV) {
+          console.info('[Nova WS] message debug', {
+            normalized: Boolean(event.normalizedShot),
+            rawPreview: event.rawMessage?.slice(0, 220),
+          })
+        }
+      },
     )
 
     activeSource = connection.mode === 'mock' ? 'mock' : 'nova'

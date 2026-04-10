@@ -20,14 +20,36 @@ const KNOWN_NOVA_SHOT_FIELDS = new Set([
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
-const optionalNumber = (value: unknown): number | undefined =>
-  typeof value === 'number' && Number.isFinite(value) ? value : undefined
+const optionalNumberish = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
+}
 
 const optionalString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined
 
 const optionalStringOrNumber = (value: unknown): string | number | undefined =>
   typeof value === 'string' || typeof value === 'number' ? value : undefined
+
+const hasShotMetricFields = (record: Record<string, unknown>) =>
+  typeof optionalNumberish(record.ball_speed_meters_per_second) === 'number' ||
+  typeof optionalNumberish(record.ballSpeedMetersPerSecond) === 'number' ||
+  typeof optionalNumberish(record.vertical_launch_angle_degrees) === 'number' ||
+  typeof optionalNumberish(record.verticalLaunchAngleDegrees) === 'number' ||
+  typeof optionalNumberish(record.horizontal_launch_angle_degrees) === 'number' ||
+  typeof optionalNumberish(record.horizontalLaunchAngleDegrees) === 'number' ||
+  typeof optionalNumberish(record.total_spin_rpm) === 'number' ||
+  typeof optionalNumberish(record.totalSpinRpm) === 'number' ||
+  typeof optionalNumberish(record.spin_axis_degrees) === 'number' ||
+  typeof optionalNumberish(record.spinAxisDegrees) === 'number'
 
 const logUnknownFields = (record: Record<string, unknown>) => {
   if (!import.meta.env.DEV) {
@@ -48,13 +70,18 @@ const findShotEnvelope = (parsed: unknown): Record<string, unknown> | null => {
     return null
   }
 
-  if (optionalString(parsed.type) === 'shot') {
+  if (optionalString(parsed.type) === 'shot' || hasShotMetricFields(parsed)) {
     return parsed
   }
 
   const candidates = [parsed.data, parsed.payload, parsed.shot].filter(isRecord)
 
-  return candidates.find((candidate) => optionalString(candidate.type) === 'shot') ?? null
+  return (
+    candidates.find(
+      (candidate) =>
+        optionalString(candidate.type) === 'shot' || hasShotMetricFields(candidate),
+    ) ?? null
+  )
 }
 
 const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
@@ -63,6 +90,12 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
     const shotRecord = findShotEnvelope(parsed)
 
     if (!shotRecord) {
+      if (import.meta.env.DEV && isRecord(parsed)) {
+        console.info('[Nova WS] Dropped non-shot message', {
+          type: optionalString(parsed.type),
+          keys: Object.keys(parsed),
+        })
+      }
       return null
     }
 
@@ -70,18 +103,23 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
 
     return {
       timestamp: optionalString(shotRecord.timestamp),
-      ball_speed_meters_per_second: optionalNumber(
-        shotRecord.ball_speed_meters_per_second,
+      ball_speed_meters_per_second: optionalNumberish(
+        shotRecord.ball_speed_meters_per_second ?? shotRecord.ballSpeedMetersPerSecond,
       ),
-      vertical_launch_angle_degrees: optionalNumber(
-        shotRecord.vertical_launch_angle_degrees,
+      vertical_launch_angle_degrees: optionalNumberish(
+        shotRecord.vertical_launch_angle_degrees ?? shotRecord.verticalLaunchAngleDegrees,
       ),
-      horizontal_launch_angle_degrees: optionalNumber(
-        shotRecord.horizontal_launch_angle_degrees,
+      horizontal_launch_angle_degrees: optionalNumberish(
+        shotRecord.horizontal_launch_angle_degrees ??
+          shotRecord.horizontalLaunchAngleDegrees,
       ),
-      total_spin_rpm: optionalNumber(shotRecord.total_spin_rpm),
-      spin_axis_degrees: optionalNumber(shotRecord.spin_axis_degrees),
-      shotRanking: optionalStringOrNumber(shotRecord.shotRanking),
+      total_spin_rpm: optionalNumberish(shotRecord.total_spin_rpm ?? shotRecord.totalSpinRpm),
+      spin_axis_degrees: optionalNumberish(
+        shotRecord.spin_axis_degrees ?? shotRecord.spinAxisDegrees,
+      ),
+      shotRanking: optionalStringOrNumber(
+        shotRecord.shotRanking ?? shotRecord.shot_rank ?? shotRecord.shotRank,
+      ),
     }
   } catch {
     return null

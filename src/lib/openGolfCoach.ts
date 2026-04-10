@@ -106,7 +106,23 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         }
       }
 
-      const payload: unknown = await response.json()
+      const rawResponseText = await response.text()
+      console.info('[OpenGolfCoach] enrichment raw response body', rawResponseText)
+
+      let payload: unknown = null
+      try {
+        payload = rawResponseText ? JSON.parse(rawResponseText) : {}
+      } catch (parseError) {
+        console.error('[OpenGolfCoach] enrichment failed: response JSON parse error', {
+          parseError,
+          rawResponseText,
+        })
+        return {
+          derivedValues: {},
+          payload: null,
+          status: 'failure',
+        }
+      }
       console.info('[OpenGolfCoach] enrichment success payload received')
 
       if (!payload || typeof payload !== 'object') {
