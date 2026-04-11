@@ -12,6 +12,9 @@ type NovaConnectionState =
   | 'disconnected'
 
 const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
+const CONNECT_TIMEOUT_MS = 7000
+const VALIDATION_TIMEOUT_MS = 2500
+const DISCOVERY_TIMEOUT_MS = 5000
 
 const safeReadLocalStorage = (key: string) => {
   if (typeof window === 'undefined') {
@@ -24,97 +27,323 @@ const safeReadLocalStorage = (key: string) => {
   }
 }
 
-const resolveNovaWebSocketUrl = () => {
-  const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
-  if (envUrl) {
-    return envUrl
+const safeWriteLocalStorage = (key: string, value: string) => {
+  if (typeof window === 'undefined') {
+    return
   }
-
-  const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
-  if (savedUrl) {
-    return savedUrl
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // ignore
   }
+}
 
-  return undefined
+const safeRemoveLocalStorage = (key: string) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // ignore
+  }
+}
+
+const isTauriRuntime = () =>
+  typeof window !== 'undefined' && Boolean((window as { __TAURI__?: unknown }).__TAURI__)
+
+const tauriInvoke = async (command: string, args: Record<string, unknown> = {}) => {
+  const invoke = (window as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__
+    ?.invoke
+  if (typeof invoke !== 'function') {
+    return undefined
+  }
+  return invoke(command, args)
+}
+
+const appendNovaLog = async (line: string) => {
+  const stamped = `${new Date().toISOString()} ${line}`
+  console.info(stamped)
+  if (!isTauriRuntime()) {
+    return
+  }
+  try {
+    await tauriInvoke('append_nova_log', { line: stamped })
+  } catch {
+    // logging fallback stays in console
+  }
+}
+
+type DiscoverResult = {
+  service: string
+  host: string
+  port: number
+  ws_url: string
+}
+
+const discoverNovaEndpoint = async () => {
+  if (!isTauriRuntime()) {
+    return null
+  }
+  try {
+    const result = (await tauriInvoke('discover_nova_ws_endpoint', {
+      timeoutMs: DISCOVERY_TIMEOUT_MS,
+    })) as DiscoverResult | null
+    return result
+  } catch (error) {
+    await appendNovaLog(
+      `[landing.discovery] command failed error=${error instanceof Error ? error.message : String(error)}`,
+    )
+    return null
+  }
+}
+
+const connectWithTimeout = async (
+  url: string,
+  timeoutMs: number,
+  context: string,
+) =>
+  new Promise<boolean>((resolve) => {
+    let settled = false
+    const socket = new WebSocket(url)
+    const timer = window.setTimeout(() => {
+      if (settled) {
+        return
+      }
+      settled = true
+      appendNovaLog(`[landing.connect] timeout context=${context} url=${url}`)
+      try {
+        socket.close()
+      } catch {
+        // ignore
+      }
+      resolve(false)
+    }, timeoutMs)
+
+    socket.addEventListener('open', () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      window.clearTimeout(timer)
+      appendNovaLog(`[landing.connect] open context=${context} url=${url}`)
+      try {
+        socket.close()
+      } catch {
+        // ignore
+      }
+      resolve(true)
+    })
+
+    socket.addEventListener('error', () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      window.clearTimeout(timer)
+      appendNovaLog(`[landing.connect] error context=${context} url=${url}`)
+      resolve(false)
+    })
+
+    socket.addEventListener('close', (event) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      window.clearTimeout(timer)
+      appendNovaLog(
+        `[landing.connect] close context=${context} url=${url} code=${event.code} reason=${event.reason || 'none'}`,
+      )
+      resolve(false)
+    })
+  })
+
+const resolveDevOverrideUrl = () => {
+  if (!import.meta.env.DEV) {
+    return undefined
+  }
+  return (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
 }
 
 export default function LooperLandingPage() {
   const [selectedClub, setSelectedClub] = useState<Club>('7i')
-  const [novaState, setNovaState] = useState<NovaConnectionState>('not_configured')
+  const [novaState, setNovaState] = useState<NovaConnectionState>('connecting')
   const [novaDetail, setNovaDetail] = useState<string | null>(null)
-  const novaWebSocketUrl = useMemo(() => resolveNovaWebSocketUrl(), [])
+  const [manualUrlInput, setManualUrlInput] = useState('')
+  const [manualOverrideUrl, setManualOverrideUrl] = useState<string | null>(null)
+  const [connectedUrl, setConnectedUrl] = useState<string | null>(null)
+  const devOverrideUrl = useMemo(() => resolveDevOverrideUrl(), [])
 
   useEffect(() => {
-    if (!novaWebSocketUrl) {
-      setNovaState('not_configured')
-      setNovaDetail('Nova not configured for this device.')
-      return
-    }
-
     let isMounted = true
-    let closedByApp = false
-    const socket = new WebSocket(novaWebSocketUrl)
 
-    setNovaState('connecting')
-    setNovaDetail(`Connecting to Nova...`)
+    const bootstrap = async () => {
+      setNovaState('connecting')
+      setNovaDetail('Connecting to Nova...')
 
-    const handleOpen = () => {
+      const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
+      const candidateUrls: Array<{ source: string; url: string; timeout: number }> = []
+
+      if (manualOverrideUrl) {
+        candidateUrls.push({
+          source: 'manual_override',
+          url: manualOverrideUrl,
+          timeout: CONNECT_TIMEOUT_MS,
+        })
+      }
+
+      if (devOverrideUrl && devOverrideUrl !== manualOverrideUrl) {
+        candidateUrls.push({
+          source: 'dev_env_override',
+          url: devOverrideUrl,
+          timeout: CONNECT_TIMEOUT_MS,
+        })
+      }
+
+      if (
+        savedUrl &&
+        savedUrl !== manualOverrideUrl &&
+        savedUrl !== devOverrideUrl
+      ) {
+        candidateUrls.push({
+          source: 'saved_known_good',
+          url: savedUrl,
+          timeout: VALIDATION_TIMEOUT_MS,
+        })
+      }
+
+      for (const candidate of candidateUrls) {
+        await appendNovaLog(
+          `[landing.bootstrap] validating source=${candidate.source} url=${candidate.url}`,
+        )
+        const success = await connectWithTimeout(
+          candidate.url,
+          candidate.timeout,
+          candidate.source,
+        )
+        if (!isMounted) {
+          return
+        }
+        if (success) {
+          if (candidate.source !== 'dev_env_override') {
+            safeWriteLocalStorage(LOCAL_NOVA_WS_URL_KEY, candidate.url)
+            await appendNovaLog(
+              `[landing.bootstrap] persisted_connected source=${candidate.source} url=${candidate.url}`,
+            )
+          }
+          setConnectedUrl(candidate.url)
+          setNovaState('connected')
+          setNovaDetail(null)
+          await appendNovaLog(
+            `[landing.bootstrap] selected_connected source=${candidate.source} url=${candidate.url}`,
+          )
+          return
+        }
+
+        if (candidate.source === 'saved_known_good') {
+          safeRemoveLocalStorage(LOCAL_NOVA_WS_URL_KEY)
+          await appendNovaLog(
+            `[landing.bootstrap] removed_stale_saved_endpoint url=${candidate.url}`,
+          )
+        }
+      }
+
+      setNovaDetail('Discovering Nova...')
+      await appendNovaLog('[landing.bootstrap] starting_runtime_discovery')
+      const discovered = await discoverNovaEndpoint()
       if (!isMounted) {
         return
       }
-      setNovaState('connected')
-      setNovaDetail(null)
-    }
+      if (!discovered?.ws_url) {
+        setConnectedUrl(null)
+        setNovaState('error')
+        setNovaDetail('No Nova found on this network')
+        await appendNovaLog('[landing.bootstrap] discovery_result none')
+        return
+      }
 
-    const handleError = () => {
+      await appendNovaLog(
+        `[landing.bootstrap] discovery_result service=${discovered.service} host=${discovered.host} port=${discovered.port} ws=${discovered.ws_url}`,
+      )
+      const discoveredConnected = await connectWithTimeout(
+        discovered.ws_url,
+        CONNECT_TIMEOUT_MS,
+        'discovered_endpoint',
+      )
       if (!isMounted) {
         return
       }
+      if (discoveredConnected) {
+        safeWriteLocalStorage(LOCAL_NOVA_WS_URL_KEY, discovered.ws_url)
+        setConnectedUrl(discovered.ws_url)
+        setNovaState('connected')
+        setNovaDetail(null)
+        await appendNovaLog(
+          `[landing.bootstrap] selected_connected source=discovery url=${discovered.ws_url}`,
+        )
+        return
+      }
+
+      setConnectedUrl(null)
       setNovaState('error')
       setNovaDetail('Nova connection failed')
     }
 
-    const handleClose = () => {
-      if (!isMounted) {
-        return
+    void bootstrap()
+
+    return () => {
+      isMounted = false
+    }
+  }, [devOverrideUrl, manualOverrideUrl])
+
+  useEffect(() => {
+    if (!connectedUrl) {
+      return
+    }
+    let closedByApp = false
+    const socket = new WebSocket(connectedUrl)
+    const timer = window.setTimeout(() => {
+      appendNovaLog(`[landing.monitor] timeout url=${connectedUrl}`)
+      setNovaState('error')
+      setNovaDetail('Connection timed out')
+      try {
+        socket.close()
+      } catch {
+        // ignore
       }
+    }, CONNECT_TIMEOUT_MS)
+
+    socket.addEventListener('open', () => {
+      window.clearTimeout(timer)
+      appendNovaLog(`[landing.monitor] open url=${connectedUrl}`)
+      setNovaState('connected')
+      setNovaDetail(null)
+    })
+    socket.addEventListener('error', () => {
+      window.clearTimeout(timer)
+      appendNovaLog(`[landing.monitor] error url=${connectedUrl}`)
+      setNovaState('error')
+      setNovaDetail('Nova connection failed')
+    })
+    socket.addEventListener('close', (event) => {
+      window.clearTimeout(timer)
+      appendNovaLog(
+        `[landing.monitor] close url=${connectedUrl} code=${event.code} reason=${event.reason || 'none'}`,
+      )
       if (closedByApp) {
         setNovaState('disconnected')
         return
       }
       setNovaState('error')
-      setNovaDetail('No Nova found on this network')
-    }
-
-    const handleMessage = () => {
-      if (!isMounted) {
-        return
-      }
-      // Defensive guard: if messages are flowing, the socket is effectively connected
-      // even if an 'open' transition was missed.
-      setNovaState((current) => (current === 'connected' ? current : 'connected'))
-      setNovaDetail(null)
-    }
-
-    socket.addEventListener('open', handleOpen)
-    socket.addEventListener('error', handleError)
-    socket.addEventListener('close', handleClose)
-    socket.addEventListener('message', handleMessage)
-
-    if (socket.readyState === WebSocket.OPEN) {
-      handleOpen()
-    }
+      setNovaDetail('Nova connection failed')
+    })
 
     return () => {
-      isMounted = false
       closedByApp = true
-      socket.removeEventListener('open', handleOpen)
-      socket.removeEventListener('error', handleError)
-      socket.removeEventListener('close', handleClose)
-      socket.removeEventListener('message', handleMessage)
+      window.clearTimeout(timer)
       socket.close()
     }
-  }, [novaWebSocketUrl])
+  }, [connectedUrl])
 
   const novaStatusText = (() => {
     switch (novaState) {
@@ -139,6 +368,15 @@ export default function LooperLandingPage() {
     window.location.assign(`/session-intelligence?${params.toString()}`)
   }
 
+  const applyManualUrl = () => {
+    const trimmed = manualUrlInput.trim()
+    if (!trimmed) {
+      return
+    }
+    void appendNovaLog(`[landing.manual] submitted url=${trimmed}`)
+    setManualOverrideUrl(trimmed)
+  }
+
   return (
     <main className="looper-landing-page">
       <div className="looper-landing-shell">
@@ -157,6 +395,24 @@ export default function LooperLandingPage() {
               <div className="looper-landing-session-status">
                 <p className="looper-landing-status-tag">{novaStatusText}</p>
                 {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
+              </div>
+              <div className="looper-landing-session-row">
+                <div className="looper-landing-select-wrap">
+                  <input
+                    aria-label="Manual Nova WebSocket URL"
+                    onChange={(event) => setManualUrlInput(event.target.value)}
+                    placeholder="ws://nova-host:port"
+                    type="text"
+                    value={manualUrlInput}
+                  />
+                </div>
+                <button
+                  className="looper-landing-action looper-landing-action-secondary"
+                  onClick={applyManualUrl}
+                  type="button"
+                >
+                  Use URL
+                </button>
               </div>
               <div className="looper-landing-session-row">
                 <div className="looper-landing-select-wrap">

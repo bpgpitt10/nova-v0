@@ -16,6 +16,7 @@ const KNOWN_NOVA_SHOT_FIELDS = new Set([
   'total_spin_rpm',
   'spin_axis_degrees',
 ])
+const CONNECT_TIMEOUT_MS = 7000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -143,19 +144,44 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     onDebugEvent?: (event: NovaDebugEvent) => void,
   ): NovaConnection {
     onStatusChange?.('connecting')
+    console.info(`[Nova WS] connecting url=${url}`)
     const socket = new WebSocket(url)
+    let hasOpened = false
+    const connectTimer = window.setTimeout(() => {
+      if (hasOpened) {
+        return
+      }
+      console.warn(`[Nova WS] connect timeout url=${url}`)
+      onStatusChange?.('error')
+      try {
+        socket.close()
+      } catch {
+        // ignore
+      }
+    }, CONNECT_TIMEOUT_MS)
 
-    socket.addEventListener('open', () => onStatusChange?.('connected'))
+    socket.addEventListener('open', () => {
+      hasOpened = true
+      window.clearTimeout(connectTimer)
+      console.info(`[Nova WS] open url=${url}`)
+      onStatusChange?.('connected')
+    })
     socket.addEventListener('close', (event) => {
+      window.clearTimeout(connectTimer)
+      console.info(
+        `[Nova WS] close url=${url} code=${event.code} reason=${event.reason || 'none'}`,
+      )
       if (event.code === 1000) {
         onStatusChange?.('disconnected')
       } else {
         onStatusChange?.('error')
       }
     })
-    socket.addEventListener('error', () =>
-      onStatusChange?.('error' satisfies NovaConnectionStatus),
-    )
+    socket.addEventListener('error', () => {
+      window.clearTimeout(connectTimer)
+      console.error(`[Nova WS] error url=${url}`)
+      onStatusChange?.('error' satisfies NovaConnectionStatus)
+    })
 
     socket.addEventListener('message', (event: MessageEvent<string>) => {
       const shot = parseShot(event)
@@ -172,12 +198,17 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     // Defensive guard for rare timing cases where the socket is already OPEN
     // before listeners begin observing state transitions.
     if (socket.readyState === WebSocket.OPEN) {
+      hasOpened = true
+      window.clearTimeout(connectTimer)
       onStatusChange?.('connected')
     }
 
     return {
       mode: 'real',
-      disconnect: () => socket.close(),
+      disconnect: () => {
+        window.clearTimeout(connectTimer)
+        socket.close()
+      },
     }
   },
 })
