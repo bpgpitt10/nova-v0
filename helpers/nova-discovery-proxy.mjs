@@ -1,103 +1,15 @@
 #!/usr/bin/env node
 
-import { createSocket as createDgramSocket } from 'dgram'
 import * as net from 'net'
 import { WebSocketServer } from 'ws'
 import Bonjour from 'bonjour-service'
 
 const PROXY_PORT = parseInt(process.env.NOVA_PROXY_PORT || '3100', 10)
-const SSDP_MULTICAST_ADDR = '239.255.255.250'
-const SSDP_PORT = 1900
-const SSDP_URN_OPENAPI = 'urn:openlaunch:service:openapi:1'
-const SSDP_URN_WEBSOCKET = 'urn:openlaunch:service:websocket:1'
 const MDNS_TYPE_OPENAPI = 'openapi-nova'
 const MDNS_TYPE_WEBSOCKET = 'openlaunch-ws'
 const DISCOVERY_TIMEOUT_MS = 5000
 
 const MPH_TO_MS = 0.44704
-
-function discoverNovaSSDP() {
-  return new Promise((resolve, reject) => {
-    console.log('[SSDP] Searching for Nova via SSDP...')
-
-    const socket = createDgramSocket({ type: 'udp4', reuseAddr: true })
-    let settled = false
-
-    const finish = (result) => {
-      if (settled) return
-      settled = true
-      try { socket.close() } catch {}
-      if (result) {
-        resolve(result)
-      } else {
-        reject(new Error('SSDP discovery failed'))
-      }
-    }
-
-    socket.on('message', (msg, rinfo) => {
-      const response = msg.toString('utf-8')
-
-      if (response.includes(SSDP_URN_OPENAPI) || response.includes(SSDP_URN_WEBSOCKET)) {
-        console.log(`[SSDP] Response from ${rinfo.address}`)
-
-        const headers = {}
-        response.split('\r\n').forEach((line) => {
-          if (line.includes(':')) {
-            const idx = line.indexOf(':')
-            const key = line.substring(0, idx).trim().toUpperCase()
-            const value = line.substring(idx + 1).trim()
-            headers[key] = value
-          }
-        })
-
-        const location = headers['LOCATION'] || ''
-        const cleaned = location
-          .replace('http://', '')
-          .replace('ws://', '')
-          .replace(/\/$/, '')
-
-        if (cleaned.includes(':')) {
-          const colonIdx = cleaned.lastIndexOf(':')
-          const host = cleaned.substring(0, colonIdx)
-          const port = parseInt(cleaned.substring(colonIdx + 1), 10)
-
-          const isWebSocket = response.includes(SSDP_URN_WEBSOCKET)
-          console.log(`[SSDP] Found Nova ${isWebSocket ? 'WebSocket' : 'OpenAPI'} at ${host}:${port}`)
-          finish({ host, port, protocol: isWebSocket ? 'websocket' : 'openapi' })
-        }
-      }
-    })
-
-    socket.on('error', (err) => {
-      console.error('[SSDP] Socket error:', err.message)
-      finish(null)
-    })
-
-    socket.bind(() => {
-      const search =
-        'M-SEARCH * HTTP/1.1\r\n' +
-        `HOST: ${SSDP_MULTICAST_ADDR}:${SSDP_PORT}\r\n` +
-        'MAN: "ssdp:discover"\r\n' +
-        'MX: 3\r\n' +
-        `ST: ${SSDP_URN_OPENAPI}\r\n` +
-        '\r\n'
-
-      socket.send(Buffer.from(search), SSDP_PORT, SSDP_MULTICAST_ADDR, (err) => {
-        if (err) {
-          console.error('[SSDP] Failed to send M-SEARCH:', err.message)
-          finish(null)
-        } else {
-          console.log('[SSDP] Sent M-SEARCH')
-        }
-      })
-
-      setTimeout(() => {
-        console.log('[SSDP] Timeout')
-        finish(null)
-      }, DISCOVERY_TIMEOUT_MS)
-    })
-  })
-}
 
 function discoverNovaMDNS() {
   return new Promise((resolve, reject) => {
@@ -128,7 +40,7 @@ function discoverNovaMDNS() {
     })
 
     setTimeout(() => {
-      console.log('[mDNS] Timeout, trying WebSocket service type...')
+      console.log('[mDNS] OpenAPI timeout, trying WebSocket service type...')
 
       if (settled) return
       try { browser.stop() } catch {}
@@ -158,15 +70,9 @@ function discoverNovaMDNS() {
 
 async function discoverNova() {
   try {
-    return await discoverNovaSSDP()
-  } catch {
-    console.log('[Discovery] SSDP failed, falling back to mDNS...')
-  }
-
-  try {
     return await discoverNovaMDNS()
   } catch {
-    throw new Error('Nova not found via SSDP or mDNS')
+    throw new Error('Nova not found via mDNS')
   }
 }
 
