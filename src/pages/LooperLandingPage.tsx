@@ -49,8 +49,10 @@ const safeRemoveLocalStorage = (key: string) => {
   }
 }
 
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' && Boolean((window as { __TAURI__?: unknown }).__TAURI__)
+const hasTauriInvoke = () =>
+  typeof window !== 'undefined' &&
+  typeof (window as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__
+    ?.invoke === 'function'
 
 const tauriInvoke = async (command: string, args: Record<string, unknown> = {}) => {
   const invoke = (window as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__
@@ -64,7 +66,7 @@ const tauriInvoke = async (command: string, args: Record<string, unknown> = {}) 
 const appendNovaLog = async (line: string) => {
   const stamped = `${new Date().toISOString()} ${line}`
   console.info(stamped)
-  if (!isTauriRuntime()) {
+  if (!hasTauriInvoke()) {
     return
   }
   try {
@@ -82,7 +84,7 @@ type DiscoverResult = {
 }
 
 const discoverNovaEndpoint = async () => {
-  if (!isTauriRuntime()) {
+  if (!hasTauriInvoke()) {
     return null
   }
   try {
@@ -163,6 +165,11 @@ const resolveDevOverrideUrl = () => {
     return undefined
   }
   return (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+}
+
+const navigateWithinApp = (path: string) => {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 export default function LooperLandingPage() {
@@ -365,7 +372,7 @@ export default function LooperLandingPage() {
       feed: 'real',
       club: selectedClub,
     })
-    window.location.assign(`/session-intelligence?${params.toString()}`)
+    navigateWithinApp(`/session-intelligence?${params.toString()}`)
   }
 
   const applyManualUrl = () => {

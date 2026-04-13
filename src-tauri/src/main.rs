@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use mdns_sd::{ServiceDaemon, ServiceEvent};
+use mdns_sd::{HostnameResolutionEvent, ServiceDaemon, ServiceEvent};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager};
 
@@ -259,12 +259,20 @@ fn discover_nova_ws_endpoint(
     let receiver = mdns
         .browse(NOVA_WS_SERVICE_NAME)
         .map_err(|error| format!("mdns browse failed: {error}"))?;
+    append_log_line(
+        &app,
+        "nova-connection.log",
+        &format!("[discovery] browse_started ok service={}", NOVA_WS_SERVICE_NAME),
+    )?;
     let deadline = Instant::now() + timeout;
     let mut discovered: Option<NovaDiscoveredEndpoint> = None;
+    let mut found_count: u32 = 0;
+    let mut resolved_count: u32 = 0;
 
     while Instant::now() < deadline {
         match receiver.recv_timeout(Duration::from_millis(250)) {
             Ok(ServiceEvent::ServiceFound(service_type, fullname)) => {
+                found_count += 1;
                 append_log_line(
                     &app,
                     "nova-connection.log",
@@ -277,7 +285,7 @@ fn discover_nova_ws_endpoint(
                     &app,
                     "nova-connection.log",
                     &format!(
-                        "[discovery] resolve_attempt fullname={} via_browse_auto_resolve=true",
+                        "[discovery] explicit_resolve_fetch_attempt fullname={}",
                         fullname
                     ),
                 )?;
@@ -298,6 +306,7 @@ fn discover_nova_ws_endpoint(
                 }
             }
             Ok(ServiceEvent::ServiceResolved(info)) => {
+                resolved_count += 1;
                 append_log_line(
                     &app,
                     "nova-connection.log",
@@ -308,19 +317,77 @@ fn discover_nova_ws_endpoint(
                         info.get_port()
                     ),
                 )?;
-                let host = info
+                let mut host = info
                     .get_addresses()
                     .iter()
                     .next()
-                    .map(|ip| ip.to_string())
-                    .or_else(|| {
-                        let hostname = info.get_hostname().trim_end_matches('.');
-                        if hostname.is_empty() {
-                            None
-                        } else {
-                            Some(hostname.to_string())
+                    .map(|ip| ip.to_string());
+
+                if host.is_none() {
+                    let hostname = info.get_hostname();
+                    append_log_line(
+                        &app,
+                        "nova-connection.log",
+                        &format!("[discovery] explicit_hostname_resolve_attempt hostname={}", hostname),
+                    )?;
+                    match mdns.resolve_hostname(hostname, Some(1500)) {
+                        Ok(host_receiver) => {
+                            let resolve_deadline = Instant::now() + Duration::from_millis(1750);
+                            while Instant::now() < resolve_deadline {
+                                match host_receiver.recv_timeout(Duration::from_millis(250)) {
+                                    Ok(HostnameResolutionEvent::AddressesFound(_, addresses)) => {
+                                        if let Some(address) = addresses.iter().next() {
+                                            host = Some(address.to_string());
+                                            append_log_line(
+                                                &app,
+                                                "nova-connection.log",
+                                                &format!(
+                                                    "[discovery] explicit_hostname_resolve_success hostname={} ip={}",
+                                                    hostname, address
+                                                ),
+                                            )?;
+                                            break;
+                                        }
+                                    }
+                                    Ok(HostnameResolutionEvent::SearchTimeout(_))
+                                    | Ok(HostnameResolutionEvent::SearchStopped(_)) => {
+                                        break;
+                                    }
+                                    Ok(_) => {}
+                                    Err(RecvTimeoutError::Timeout) => {}
+                                    Err(error) => {
+                                        append_log_line(
+                                            &app,
+                                            "nova-connection.log",
+                                            &format!(
+                                                "[discovery] explicit_hostname_resolve_error hostname={} error={}",
+                                                hostname, error
+                                            ),
+                                        )?;
+                                        break;
+                                    }
+                                }
+                            }
                         }
-                    });
+                        Err(error) => {
+                            append_log_line(
+                                &app,
+                                "nova-connection.log",
+                                &format!(
+                                    "[discovery] explicit_hostname_resolve_failed hostname={} error={}",
+                                    hostname, error
+                                ),
+                            )?;
+                        }
+                    }
+                }
+
+                if host.is_none() {
+                    let hostname = info.get_hostname().trim_end_matches('.');
+                    if !hostname.is_empty() {
+                        host = Some(hostname.to_string());
+                    }
+                }
                 let Some(host) = host else {
                     continue;
                 };
@@ -353,11 +420,13 @@ fn discover_nova_ws_endpoint(
         &app,
         "nova-connection.log",
         &format!(
-            "[discovery] result={}",
+            "[discovery] result={} found_count={} resolved_count={}",
             discovered
                 .as_ref()
                 .map(|value| value.ws_url.clone())
-                .unwrap_or_else(|| "none".to_string())
+                .unwrap_or_else(|| "none".to_string()),
+            found_count,
+            resolved_count
         ),
     )?;
     Ok(discovered)

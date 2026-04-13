@@ -16,6 +16,7 @@
         "width": 1440,
         "height": 900,
         "resizable": true,
+        "backgroundColor": "#0e1710",
         "devtools": true
       }
     ],

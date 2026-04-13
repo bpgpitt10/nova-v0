@@ -73,6 +73,11 @@ const safeReadLocalStorage = (key: string) => {
   }
 }
 
+const navigateWithinApp = (path: string) => {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 const resolveNovaWebSocketUrl = () => {
   const envUrl = import.meta.env.DEV
     ? (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
@@ -3354,7 +3359,7 @@ function App({
       feed: selectedFeedMode,
       club: selectedClub,
     })
-    window.location.assign(`/session-intelligence?${params.toString()}`)
+    navigateWithinApp(`/session-intelligence?${params.toString()}`)
   }
 
   const endSession = () => {
@@ -3371,7 +3376,7 @@ function App({
     setSavedSessions(nextSessions)
     saveSessionHistory(nextSessions)
     clearActiveSessionDraft()
-    window.location.assign('/session-summary')
+    navigateWithinApp('/session-summary')
   }
 
   const toggleMockFeed = () => {
