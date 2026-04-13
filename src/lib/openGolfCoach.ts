@@ -1,8 +1,8 @@
 import type {
-  IncomingNovaShot,
   OpenGolfCoachDerivedValues,
   OpenGolfCoachInput,
 } from '../types'
+import initWasm, { calculate_derived_values } from './opengolfcoach-wasm/opengolfcoach'
 
 export type OpenGolfCoachEnrichmentResult = {
   derivedValues: OpenGolfCoachDerivedValues
@@ -15,68 +15,48 @@ export type OpenGolfCoachEnricher = {
   ) => Promise<OpenGolfCoachEnrichmentResult>
 }
 
-const openGolfCoachUrl = import.meta.env.VITE_OPEN_GOLF_COACH_URL as
-  | string
-  | undefined
+let wasmReady: Promise<void> | null = null
 
-export const isOpenGolfCoachConfigured = Boolean(openGolfCoachUrl)
+function ensureWasm(): Promise<void> {
+  if (!wasmReady) {
+    wasmReady = initWasm().then(() => {
+      console.info('[OpenGolfCoach] WASM initialized')
+    }).catch((err) => {
+      console.error('[OpenGolfCoach] WASM init failed:', err)
+      wasmReady = null
+      throw err
+    })
+  }
+  return wasmReady
+}
 
-// Placeholder enrichment boundary.
-// Nova remains the raw live-shot source.
-// OpenGolfCoach is intended to consume normalized launch/spin inputs and return
-// derived values like carry, total, offline, shot name, and shot rank.
+export const isOpenGolfCoachConfigured = true
+
 export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
-    console.info('[OpenGolfCoach] enrichShot called')
-
-    if (!openGolfCoachUrl) {
-      console.info('[OpenGolfCoach] enrichment skipped: helper URL missing')
-      return {
-        derivedValues: {},
-        status: 'not_configured',
-      }
-    }
-
-    console.info('[OpenGolfCoach] helper URL:', openGolfCoachUrl)
-    console.info('[OpenGolfCoach] request input:', input)
-
     try {
-      const response = await fetch(`${openGolfCoachUrl}/derive`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(input),
-      })
+      await ensureWasm()
 
-      console.info('[OpenGolfCoach] response status:', response.status)
+      const jsonOutput = calculate_derived_values(JSON.stringify(input))
+      const result = JSON.parse(jsonOutput)
 
-      if (!response.ok) {
-        console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
-        return {
-          derivedValues: {},
-          status: 'failure',
-        }
-      }
+      const coach = result.open_golf_coach || result
+      const customary = coach.us_customary_units || {}
 
-      const derivedValues: unknown = await response.json()
-      console.info('[OpenGolfCoach] parsed response:', derivedValues)
-
-      if (!derivedValues || typeof derivedValues !== 'object') {
-        console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
-        return {
-          derivedValues: {},
-          status: 'failure',
-        }
+      const derivedValues: OpenGolfCoachDerivedValues = {
+        carry_distance_yards: customary.carry_distance_yards,
+        total_distance_yards: customary.total_distance_yards,
+        offline_distance_yards: customary.offline_distance_yards,
+        shot_name: coach.shot_name,
+        shot_rank: coach.shot_rank,
       }
 
       return {
-        derivedValues: derivedValues as OpenGolfCoachDerivedValues,
+        derivedValues,
         status: 'success',
       }
     } catch (error) {
-      console.info('[OpenGolfCoach] enrichment skipped: helper request failed')
-      console.info('[OpenGolfCoach] fetch error:', error)
+      console.error('[OpenGolfCoach] enrichment failed:', error)
       return {
         derivedValues: {},
         status: 'failure',
@@ -86,7 +66,7 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
 }
 
 export const buildOpenGolfCoachInput = (
-  shot: IncomingNovaShot,
+  shot: import('../types').IncomingNovaShot,
 ): OpenGolfCoachInput => ({
   ball_speed_meters_per_second:
     shot.ball_speed_meters_per_second ?? shot.ballSpeedMetersPerSecond,

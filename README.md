@@ -9,33 +9,84 @@ npm install
 npm run dev
 ```
 
-## OpenGolfCoach helper
+## Connecting to a Real Nova Device
 
-The smallest local OpenGolfCoach integration in this repo is a tiny Python helper:
+Nova is discovered on the local network via mDNS, then exposed to the browser through a local WebSocket proxy. This is necessary because browsers cannot perform mDNS discovery or open raw TCP sockets.
 
-- file: `helpers/open_golf_coach_helper.py`
-- endpoint: `POST /derive`
-- default address: `http://127.0.0.1:8787`
-
-Install and start it locally:
+### Option 1: All-in-one (recommended)
 
 ```sh
-python3 -m pip install opengolfcoach
-python3 helpers/open_golf_coach_helper.py
+npm run dev:with-nova
 ```
 
-Point the browser app at it with:
+This starts the discovery proxy in the background, waits for it to find Nova, then launches the dev server connected to it.
+
+### Option 2: Separate terminals
+
+Terminal 1 — start the discovery proxy:
 
 ```sh
-VITE_OPEN_GOLF_COACH_URL=http://127.0.0.1:8787 npm run dev
+npm run nova-proxy
 ```
 
-How the browser app finds it:
+Terminal 2 — start the browser app pointed at the proxy:
 
-- the app reads `VITE_OPEN_GOLF_COACH_URL`
-- if that env var is missing, the `openGolfCoachEnricher` returns empty derived values
-- if it is set, the app posts normalized OpenGolfCoach input JSON to `/derive`
-- if the helper fails, shot capture continues without enrichment
+```sh
+VITE_NOVA_WS_URL=ws://localhost:3100 npm run dev
+```
+
+### Option 3: Manual WebSocket URL
+
+If you already know your Nova's WebSocket address (e.g. from your router's device list):
+
+```sh
+VITE_NOVA_WS_URL=ws://192.168.1.100:2920 npm run dev
+```
+
+### How discovery works
+
+The proxy (`helpers/nova-discovery-proxy.mjs`) discovers Nova on the local network:
+
+1. **mDNS**: Browses for `_openapi-nova._tcp` via `bonjour-service`, then falls back to `_openlaunch-ws._tcp`
+2. **Connection**: Connects to Nova via TCP (OpenAPI) or WebSocket depending on what was discovered
+3. **Bridge**: Forwards all shot data as WebSocket messages on `ws://localhost:3100`
+
+Nova mDNS service types:
+
+| Service | mDNS Type |
+|---------|-----------|
+| OpenAPI (TCP) | `_openapi-nova._tcp.local.` |
+| WebSocket | `_openlaunch-ws._tcp.local.` |
+
+### Data format mapping
+
+When the proxy connects to Nova's OpenAPI (TCP) endpoint, it converts from the TCP JSON format to the WebSocket JSON format:
+
+| OpenAPI/TCP field | WebSocket field | Conversion |
+|---|---|---|
+| `BallData.Speed` (mph) | `ball_speed_meters_per_second` | `* 0.44704` |
+| `BallData.VLA` | `vertical_launch_angle_degrees` | direct |
+| `BallData.HLA` | `horizontal_launch_angle_degrees` | direct |
+| `BallData.TotalSpin` | `total_spin_rpm` | direct |
+| `BallData.SpinAxis` | `spin_axis_degrees` | direct |
+| `BallData.BackSpin` | `back_spin_rpm` | direct |
+| `BallData.SideSpin` | `side_spin_rpm` | direct |
+
+If the proxy discovers the WebSocket service directly, messages pass through unchanged.
+
+## OpenGolfCoach enrichment
+
+Shot enrichment runs directly in the browser via WebAssembly — no Python helper needed. The OpenGolfCoach WASM module is bundled in `src/lib/opengolfcoach-wasm/` and loads on first shot.
+
+Every shot gets these derived values from raw launch monitor data:
+
+- carry distance (yards)
+- total distance (yards)
+- offline distance (yards)
+- shot name (e.g. "Straight", "Push Fade")
+- shot rank (S+, S, A, B, C, D, E)
+
+The Python helper (`helpers/open_golf_coach_helper.py`) is still available as an alternative if you prefer a local HTTP service, but it is no longer required.
 
 ## Nova API adapter
 
@@ -47,45 +98,15 @@ Architecture direction:
 - OpenGolfCoach is planned as the derived-values engine, not as a data source.
 - Mock mode remains available for local validation when Nova is not connected.
 
-Known Nova integration details from the developer guide:
-
-- Nova exposes two local receive-only JSON APIs for shot data.
-- Primary real-mode target for this browser app: local WebSocket JSON.
-- Secondary/future target: local OpenAPI-over-TCP JSON, likely through a helper/proxy because browsers cannot open arbitrary TCP sockets directly.
-- Nova advertises local services over mDNS:
-  - WebSocket JSON: `_openlaunch-ws._tcp.local.`
-  - TCP JSON: `_openapi-nova._tcp.local.`
-
-Set this environment variable when connecting to a discovered local Nova WebSocket endpoint:
-
-```sh
-VITE_NOVA_WS_URL=ws://nova-local-host:port/path
-```
-
-If neither value is present, the adapter uses the Mock Nova Feed so the local session model can still be validated.
-
 Current adapter paths:
 
-- `src/adapters/nova.ts` selects real WebSocket mode when `VITE_NOVA_WS_URL` is set, otherwise mock mode.
-- `src/adapters/novaWebSocket.ts` owns the real local WebSocket JSON path.
-- `src/adapters/mockNova.ts` owns the mock shot feed.
-- `src/lib/openGolfCoach.ts` defines the placeholder OpenGolfCoach enrichment boundary.
+- `src/adapters/nova.ts` — selects real WebSocket mode when `VITE_NOVA_WS_URL` is set or auto-connects to the local proxy at `ws://localhost:3100`, otherwise mock mode.
+- `src/adapters/novaWebSocket.ts` — owns the real WebSocket JSON path.
+- `src/adapters/mockNova.ts` — owns the mock shot feed.
+- `helpers/nova-discovery-proxy.mjs` — discovers Nova via mDNS and bridges to WebSocket for the browser.
+- `src/lib/openGolfCoach.ts` — runs OpenGolfCoach WASM in-browser for shot enrichment.
 
-Expected real WebSocket flow:
-
-1. Discover Nova's `_openlaunch-ws._tcp.local.` service outside the browser app, or manually provide the local WebSocket URL as `VITE_NOVA_WS_URL`.
-2. Start the app.
-3. Start a Stock Range Session.
-4. The app opens a receive-only WebSocket connection to the configured URL.
-5. Nova sends JSON messages.
-6. The adapter parses JSON conservatively and maps only known fields: `timestamp`, `carry`, `total`, `offline`, `spin`, `vla`, and `shotRanking`.
-7. Unknown fields are logged in development only.
-
-## OpenGolfCoach enrichment plan
-
-OpenGolfCoach should be treated as a downstream enrichment step over normalized raw shot inputs.
-
-Normalized input shape:
+## OpenGolfCoach input
 
 ```ts
 type OpenGolfCoachInput = {
@@ -97,34 +118,10 @@ type OpenGolfCoachInput = {
 }
 ```
 
-Target derived values:
+Derived output:
 
-- carry distance
-- total distance
-- offline distance
+- carry distance (yards)
+- total distance (yards)
+- offline distance (yards)
 - shot name
 - shot rank
-
-Current placeholder module:
-
-- `src/lib/openGolfCoach.ts`
-
-Easiest integration path:
-
-1. Browser-side wasm/js binding:
-   best if OpenGolfCoach already ships a browser-safe JS or WASM API and can run directly in Vite without native dependencies.
-2. Tiny local helper/service:
-   best if OpenGolfCoach needs native bindings, local files, or process isolation; the browser app would send normalized inputs to the helper and receive derived values back.
-
-The browser-side binding is the easiest path if it exists and runs cleanly in the browser. A tiny local helper is the safer fallback if OpenGolfCoach is not browser-native.
-
-Still unknown before replacing mock mode:
-
-- Exact mapping from Nova raw payload fields into `OpenGolfCoachInput`
-- Exact units and sign conventions for horizontal launch angle and spin axis
-- Whether OpenGolfCoach is available as a browser-safe JS/WASM package
-- Whether a tiny local helper/service is needed for OpenGolfCoach execution
-- Exact shot payload schema beyond `timestamp`, `carry`, `total`, `offline`, `spin`, `vla`, and `shotRanking`
-- Exact message envelope for the WebSocket and TCP APIs
-- Whether browser-side mDNS discovery is realistic
-- Whether a small local helper/proxy is needed to handle mDNS discovery and/or TCP JSON

@@ -3,6 +3,8 @@ import {
   type NovaConnection,
   type NovaConnectionStatus,
   type NovaFeedMode,
+  isProxyAutoConnect,
+  novaProxyUrl,
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
 import { novaWebSocketAdapter } from './adapters/novaWebSocket'
@@ -164,7 +166,6 @@ function App() {
   const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<NovaConnectionStatus>('disconnected')
-  const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
@@ -186,7 +187,7 @@ function App() {
       : connectionStatus === 'error'
         ? 'failure'
         : connectionStatus
-  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
+  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl && !isProxyAutoConnect
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
@@ -230,7 +231,6 @@ function App() {
           }
 
           if (result.status === 'failure') {
-            setHelperReachable(false)
             setLastEnrichmentStatus('failure')
             setLastOpenGolfCoachResponse(null)
             setShots((currentShots) =>
@@ -244,7 +244,6 @@ function App() {
           }
 
           if (result.status === 'success') {
-            setHelperReachable(true)
             setLastEnrichmentStatus('success')
             setLastOpenGolfCoachResponse(result.derivedValues)
           }
@@ -332,7 +331,6 @@ function App() {
     setShots([])
     setFeedMode(null)
     setConnectionStatus('connecting')
-    setHelperReachable(null)
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastParsedShot(null)
@@ -387,7 +385,6 @@ function App() {
     setActiveSessionId(null)
     setFeedMode(null)
     setConnectionStatus('disconnected')
-    setHelperReachable(null)
     setLastEnrichmentStatus('idle')
     setLastRawMessage('-')
     setLastParsedShot(null)
@@ -432,6 +429,10 @@ function App() {
             <tr>
               <th>VITE_NOVA_WS_URL</th>
               <td>{novaWebSocketUrl ?? 'not set'}</td>
+            </tr>
+            <tr>
+              <th>Discovery proxy</th>
+              <td>{isProxyAutoConnect ? `auto (${novaProxyUrl})` : 'not used'}</td>
             </tr>
             <tr>
               <th>Attempting mode</th>
@@ -549,7 +550,8 @@ function App() {
 
           {liveNovaUnavailable && (
             <p className="warning-text">
-              Live Nova selected, but `VITE_NOVA_WS_URL` is not configured.
+              Live Nova selected, but `VITE_NOVA_WS_URL` is not configured and the discovery proxy is not detected.
+              Run `npm run nova-proxy` to auto-discover Nova on your network.
             </p>
           )}
 
@@ -626,12 +628,8 @@ function App() {
               <span>{shots.length}</span>
             </div>
             <div>
-              <strong>Helper configured</strong>
-              <span>{isOpenGolfCoachConfigured ? 'yes' : 'no'}</span>
-            </div>
-            <div>
-              <strong>Helper reachable</strong>
-              <span>{helperReachable === null ? 'unknown' : helperReachable ? 'yes' : 'no'}</span>
+              <strong>OGC WASM</strong>
+              <span>{isOpenGolfCoachConfigured ? 'loaded' : 'not loaded'}</span>
             </div>
             <div>
               <strong>Last enrichment</strong>
