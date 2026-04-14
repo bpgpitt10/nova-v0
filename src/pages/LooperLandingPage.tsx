@@ -403,12 +403,6 @@ export default function LooperLandingPage() {
             <a className="looper-landing-action looper-landing-action-primary" href="/dashboard">
               Go to Dashboard
             </a>
-            <a
-              className="looper-landing-action looper-landing-action-secondary"
-              href="/bag-setup?returnTo=%2Flooper"
-            >
-              Edit Bag
-            </a>
 
             <div className="looper-landing-session">
               <label className="looper-landing-label" htmlFor="landing-club-select">
@@ -417,24 +411,6 @@ export default function LooperLandingPage() {
               <div className="looper-landing-session-status">
                 <p className="looper-landing-status-tag">{novaStatusText}</p>
                 {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
-              </div>
-              <div className="looper-landing-session-row">
-                <div className="looper-landing-select-wrap">
-                  <input
-                    aria-label="Manual Nova WebSocket URL"
-                    onChange={(event) => setManualUrlInput(event.target.value)}
-                    placeholder="ws://nova-host:port"
-                    type="text"
-                    value={manualUrlInput}
-                  />
-                </div>
-                <button
-                  className="looper-landing-action looper-landing-action-secondary"
-                  onClick={applyManualUrl}
-                  type="button"
-                >
-                  Use URL
-                </button>
               </div>
               <div className="looper-landing-session-row">
                 <div className="looper-landing-select-wrap">
@@ -458,11 +434,43 @@ export default function LooperLandingPage() {
                   Start
                 </button>
               </div>
+              <details className="looper-landing-manual">
+                <summary>Manual Nova Connection</summary>
+                <div className="looper-landing-session-row">
+                  <div className="looper-landing-select-wrap">
+                    <input
+                      aria-label="Manual Nova WebSocket URL"
+                      onChange={(event) => setManualUrlInput(event.target.value)}
+                      placeholder="ws://nova-host:port"
+                      type="text"
+                      value={manualUrlInput}
+                    />
+                  </div>
+                  <button
+                    className="looper-landing-action looper-landing-action-secondary"
+                    onClick={applyManualUrl}
+                    type="button"
+                  >
+                    Use URL
+                  </button>
+                </div>
+              </details>
             </div>
 
-            <a className="looper-landing-action looper-landing-action-secondary" href="/data-management">
-              Manage Data
-            </a>
+            <div className="looper-landing-utility-actions">
+              <a
+                className="looper-landing-action looper-landing-action-secondary"
+                href="/bag-setup?returnTo=%2Flooper"
+              >
+                Edit Bag
+              </a>
+              <a
+                className="looper-landing-action looper-landing-action-secondary"
+                href="/data-management"
+              >
+                Manage Data
+              </a>
+            </div>
           </div>
         </section>
       </div>
