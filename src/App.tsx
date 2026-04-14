@@ -4093,7 +4093,11 @@ function App({
 
             <nav className="dashboard-rail-nav" aria-label="Dashboard navigation">
               <button
-                className={dashboardNavTarget === 'dashboard' ? 'is-active' : undefined}
+                className={
+                  reviewView === 'dashboard' && dashboardNavTarget === 'dashboard'
+                    ? 'is-active'
+                    : undefined
+                }
                 onClick={() =>
                   navigateDashboardSection('dashboard-overview', 'dashboard')
                 }
@@ -4101,13 +4105,21 @@ function App({
                 Dashboard
               </button>
               <button
-                className={dashboardNavTarget === 'bag' ? 'is-active' : undefined}
+                className={
+                  reviewView === 'dashboard' && dashboardNavTarget === 'bag'
+                    ? 'is-active'
+                    : undefined
+                }
                 onClick={() => navigateDashboardSection('dashboard-bag', 'bag')}
               >
                 Bag
               </button>
               <button
-                className={dashboardNavTarget === 'lastSession' ? 'is-active' : undefined}
+                className={
+                  reviewView === 'dashboard' && dashboardNavTarget === 'lastSession'
+                    ? 'is-active'
+                    : undefined
+                }
                 onClick={() =>
                   navigateDashboardSection('dashboard-review', 'lastSession', true)
                 }
@@ -4121,7 +4133,11 @@ function App({
               <div className="dashboard-rail-club-list">
                 {dashboardClubCards.map((card) => (
                   <a
-                    className={card.club === selectedDetailClub ? 'is-selected' : undefined}
+                    className={
+                      reviewView === 'clubDetail' && card.club === selectedDetailClub
+                        ? 'is-selected'
+                        : undefined
+                    }
                     href={reviewView === 'clubDetail' ? '#club-detail-overview' : '#'}
                     key={card.club}
                     onClick={() => {
