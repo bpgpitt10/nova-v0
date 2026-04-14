@@ -445,7 +445,7 @@ function DataManagementPage() {
                 onChange={(event) => setAllSessionsIncluded(event.target.checked)}
                 type="checkbox"
               />
-              <span>Include all sessions</span>
+              <span>Select All</span>
             </label>
             <button
               className="dm-action dm-expand-all"
@@ -457,6 +457,9 @@ function DataManagementPage() {
             </button>
             <a className="dm-action dm-return" href="/dashboard">
               Return to Dashboard
+            </a>
+            <a className="dm-action dm-return" href="/looper">
+              Start New Session
             </a>
             {showDevMockControls ? (
               <button
