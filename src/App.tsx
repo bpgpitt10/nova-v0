@@ -2463,6 +2463,11 @@ function App({
         dispersion: weightedAverageNumbers(absOffline, weights),
         dispersionVariability: weightedStandardDeviationNumbers(offline, weights),
         carryVariability: weightedStandardDeviationNumbers(carry, weights),
+        launch: weightedAverageNumbers(shots.map(launchValue), weights),
+        hla: weightedAverageNumbers(
+          shots.map((shot) => shot.horizontalLaunchAngleDegrees),
+          weights,
+        ),
         spin: weightedAverageNumbers(shots.map(spinValue), weights),
       }
     }

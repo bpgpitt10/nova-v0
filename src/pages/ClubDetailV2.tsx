@@ -20,6 +20,8 @@ type ShotProfileSnapshot = {
   dispersion?: number
   dispersionVariability?: number
   carryVariability?: number
+  launch?: number
+  hla?: number
   spin?: number
 } | null
 
@@ -78,6 +80,13 @@ type HeatmapMetric = {
   value: string
   trend: string
   tone: ComparisonTone
+}
+
+type StockPureMetricRow = {
+  key: string
+  label: string
+  stock: string
+  pure: string
 }
 
 type ClubDetailV2Props = {
@@ -171,6 +180,39 @@ const metricUnitLabel = (key: MetricKey) => {
   }
 }
 
+const comparisonValue = (
+  value: number | undefined,
+  unit: 'yd' | 'rpm' | 'deg',
+  digits = 1,
+) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+  if (unit === 'rpm') {
+    return `${Math.round(value)} rpm`
+  }
+  if (unit === 'deg') {
+    return `${value.toFixed(digits)}°`
+  }
+  return `${value.toFixed(digits)} yd`
+}
+
+const directionalComparisonValue = (
+  value: number | undefined,
+  unit: 'yd' | 'deg',
+  digits = 1,
+) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+
+  const abs = Math.abs(value)
+  const suffix = abs < 0.05 ? '' : value < 0 ? ' L' : ' R'
+  const formatted =
+    unit === 'deg' ? `${abs.toFixed(digits)}°` : `${abs.toFixed(digits)} yd`
+  return `${formatted}${suffix}`
+}
+
 export default function ClubDetailV2({
   clubLabel,
   score,
@@ -181,7 +223,7 @@ export default function ClubDetailV2({
   componentBreakdown,
   dispersionChart,
   shotProfiles,
-  heatmapMetrics,
+  heatmapMetrics: _heatmapMetrics,
   patternInsight,
   performanceDrivers,
   metricModels,
@@ -508,6 +550,48 @@ export default function ClubDetailV2({
     }
   }, [shotProfiles.bestAvailable, shotProfiles.mostLikely])
 
+  const stockPureRows = useMemo<StockPureMetricRow[]>(
+    () => [
+      {
+        key: 'carry',
+        label: 'Carry',
+        stock: comparisonValue(shotProfiles.mostLikely?.carry, 'yd', 1),
+        pure: comparisonValue(shotProfiles.bestAvailable?.carry, 'yd', 1),
+      },
+      {
+        key: 'total-distance',
+        label: 'Total Distance',
+        stock: comparisonValue(shotProfiles.mostLikely?.total, 'yd', 1),
+        pure: comparisonValue(shotProfiles.bestAvailable?.total, 'yd', 1),
+      },
+      {
+        key: 'offline',
+        label: 'Offline',
+        stock: directionalComparisonValue(shotProfiles.mostLikely?.offlineMean, 'yd', 1),
+        pure: directionalComparisonValue(shotProfiles.bestAvailable?.offlineMean, 'yd', 1),
+      },
+      {
+        key: 'launch-vla',
+        label: 'Launch (VLA)',
+        stock: comparisonValue(shotProfiles.mostLikely?.launch, 'deg', 1),
+        pure: comparisonValue(shotProfiles.bestAvailable?.launch, 'deg', 1),
+      },
+      {
+        key: 'start-line-hla',
+        label: 'Start Line (HLA)',
+        stock: directionalComparisonValue(shotProfiles.mostLikely?.hla, 'deg', 1),
+        pure: directionalComparisonValue(shotProfiles.bestAvailable?.hla, 'deg', 1),
+      },
+      {
+        key: 'spin',
+        label: 'Spin',
+        stock: comparisonValue(shotProfiles.mostLikely?.spin, 'rpm'),
+        pure: comparisonValue(shotProfiles.bestAvailable?.spin, 'rpm'),
+      },
+    ],
+    [shotProfiles.bestAvailable, shotProfiles.mostLikely],
+  )
+
   const heatmapOverlayModel = useMemo(() => {
     const stockProfile = shotProfiles.mostLikely
     const pureProfile = shotProfiles.bestAvailable
@@ -665,23 +749,30 @@ export default function ClubDetailV2({
         </article>
         <article className="dashboard-card club-v2-heatmap-metrics">
           <div className="club-v2-pattern-insight">
-            <div className="club-v2-pattern-title">{patternInsight.title}</div>
+            <div className="club-v2-pattern-title">Miss Pattern</div>
             <div className="club-v2-pattern-lines">
               {patternInsight.lines.map((line) => (
                 <p key={line}>{line}</p>
               ))}
             </div>
           </div>
-          <div className="club-v2-heatmap-metric-grid">
-            {heatmapMetrics.map((metric) => (
-              <div className="club-v2-heatmap-metric-card" key={metric.key}>
-                <span className="club-v2-heatmap-metric-label">{metric.label}</span>
-                <span className="club-v2-heatmap-metric-value">{metric.value}</span>
-                <span className={`club-v2-heatmap-metric-trend ${toneClass(metric.tone)}`}>
-                  {metric.trend}
-                </span>
-              </div>
-            ))}
+          <div className="club-v2-stock-pure-panel">
+            <div className="club-v2-stock-pure-header">
+              <span>Stock</span>
+              <span>Pure</span>
+            </div>
+            <div className="club-v2-stock-pure-divider" />
+            <div className="club-v2-stock-pure-rows">
+              {stockPureRows.map((row) => (
+                <div className="club-v2-stock-pure-row" key={row.key}>
+                  <div className="club-v2-stock-pure-label">{row.label}</div>
+                  <div className="club-v2-stock-pure-values">
+                    <span className="club-v2-stock-pure-value stock">{row.stock}</span>
+                    <span className="club-v2-stock-pure-value pure">{row.pure}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </article>
       </section>

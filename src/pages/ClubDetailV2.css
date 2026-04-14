@@ -188,7 +188,7 @@
 
 .club-v2-pattern-insight {
   padding-bottom: 0.62rem;
-  border-bottom: 1px solid rgba(205, 218, 207, 0.16);
+  border-bottom: 1px solid rgba(205, 218, 207, 0.1);
   display: grid;
   gap: 0.36rem;
 }
@@ -244,6 +244,88 @@
 .club-v2-heatmap-metric-trend {
   font-size: 0.72rem;
   color: rgba(201, 211, 203, 0.83);
+}
+
+.club-v2-stock-pure-panel {
+  display: grid;
+  gap: 0.44rem;
+}
+
+.club-v2-stock-pure-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.2rem;
+  color: rgba(212, 222, 215, 0.82);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.club-v2-stock-pure-header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.22rem 0.58rem;
+  border-radius: 999px;
+  border: 1px solid rgba(205, 218, 207, 0.24);
+  background: rgba(16, 27, 19, 0.56);
+  width: fit-content;
+}
+
+.club-v2-stock-pure-header span:first-child {
+  color: rgba(248, 252, 248, 0.98);
+  justify-self: start;
+}
+
+.club-v2-stock-pure-header span:last-child {
+  color: rgba(167, 228, 186, 0.86);
+  border-color: rgba(167, 228, 186, 0.32);
+  background: rgba(19, 42, 27, 0.44);
+  justify-self: end;
+}
+
+.club-v2-stock-pure-divider {
+  display: none;
+}
+
+.club-v2-stock-pure-rows {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.club-v2-stock-pure-row {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.club-v2-stock-pure-label {
+  color: rgba(182, 197, 185, 0.78);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  justify-self: start;
+}
+
+.club-v2-stock-pure-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: baseline;
+}
+
+.club-v2-stock-pure-value {
+  color: rgba(247, 251, 247, 0.97);
+  font-size: 1.02rem;
+  font-weight: 610;
+  line-height: 1.08;
+}
+
+.club-v2-stock-pure-value.pure {
+  color: rgba(167, 228, 186, 0.92);
+  font-weight: 470;
+  text-align: right;
 }
 
 .club-v2-profile-card {
