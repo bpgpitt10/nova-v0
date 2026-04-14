@@ -80,6 +80,17 @@ export type MetricModel = {
   series: number[]
 }
 type MetricGroup = MetricModel['group']
+const DRIVER_DISPLAY_ORDER: MetricKey[] = [
+  'distanceWindow',
+  'directionWindow',
+  'flightQuality',
+  'patternStability',
+  'dataConfidence',
+]
+const driverOrderIndex = (key: string) => {
+  const index = DRIVER_DISPLAY_ORDER.indexOf(key as MetricKey)
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index
+}
 
 type HeatmapMetric = {
   key: string
@@ -276,7 +287,16 @@ export default function ClubDetailV2({
   const groupedMetrics = useMemo(() => {
     return metricGroupOrder.map((group) => ({
       group,
-      rows: metricModels.filter((metric) => metric.group === group),
+      rows:
+        group === 'performanceDrivers'
+          ? metricModels
+              .filter((metric) => metric.group === group)
+              .sort(
+                (left, right) =>
+                  DRIVER_DISPLAY_ORDER.indexOf(left.key) -
+                  DRIVER_DISPLAY_ORDER.indexOf(right.key),
+              )
+          : metricModels.filter((metric) => metric.group === group),
     }))
   }, [metricGroupOrder, metricModels])
 
@@ -302,13 +322,11 @@ export default function ClubDetailV2({
     )
   }
 
-  const rankedDrivers = useMemo(
+  const orderedDrivers = useMemo(
     () =>
-      [...performanceDrivers].sort((left, right) => {
-        const leftScore = typeof left.value === 'number' ? left.value : 101
-        const rightScore = typeof right.value === 'number' ? right.value : 101
-        return leftScore - rightScore
-      }),
+      [...performanceDrivers].sort(
+        (left, right) => driverOrderIndex(left.key) - driverOrderIndex(right.key),
+      ),
     [performanceDrivers],
   )
 
@@ -316,15 +334,17 @@ export default function ClubDetailV2({
     if (initializedDriverRef.current) {
       return
     }
-    if (rankedDrivers.length === 0) {
+    if (orderedDrivers.length === 0) {
       return
     }
-    setActiveDriverKey(rankedDrivers[0].key)
+    setActiveDriverKey(orderedDrivers[0].key)
     initializedDriverRef.current = true
-  }, [rankedDrivers])
+  }, [orderedDrivers])
 
   const activeDriver =
-    rankedDrivers.find((driver) => driver.key === activeDriverKey) ?? rankedDrivers[0] ?? null
+    orderedDrivers.find((driver) => driver.key === activeDriverKey) ??
+    orderedDrivers[0] ??
+    null
 
   const onSelectMetric = (metric: MetricKey, scroll = false) => {
     setSelectedMetric(metric)
@@ -756,7 +776,7 @@ export default function ClubDetailV2({
       >
         <div className="club-v2-drivers-strip-header">Performance Drivers</div>
         <div className="club-v2-driver-selector">
-          {rankedDrivers.map((driver) => (
+          {orderedDrivers.map((driver) => (
             <button
               className={`club-v2-driver-selector-tile ${
                 activeDriver?.key === driver.key ? 'is-active' : ''

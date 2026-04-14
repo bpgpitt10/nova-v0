@@ -427,16 +427,24 @@ const dashboardDescriptor = (caddieCall: ReviewClubSummary['caddieCall']) => {
   }
 }
 
+const componentDisplayOrder: Array<keyof ReviewClubSummary['componentScores']> = [
+  'distanceWindow',
+  'directionWindow',
+  'flightQuality',
+  'patternStability',
+  'dataConfidence',
+]
+
 const componentLabel = (component: keyof ReviewClubSummary['componentScores']) => {
   switch (component) {
     case 'distanceWindow':
-      return 'Distance Window'
+      return 'Carry Expectation'
     case 'directionWindow':
-      return 'Direction Window'
+      return 'Direction Control'
     case 'flightQuality':
-      return 'Flight Quality'
+      return 'Shot Behavior'
     case 'patternStability':
-      return 'Pattern Stability'
+      return 'Pattern Trend'
     case 'dataConfidence':
       return 'Data Confidence'
   }
@@ -445,15 +453,15 @@ const componentLabel = (component: keyof ReviewClubSummary['componentScores']) =
 const componentGolfLabel = (component: keyof ReviewClubSummary['componentScores']) => {
   switch (component) {
     case 'distanceWindow':
-      return 'Carry control'
+      return 'Carry expectation'
     case 'directionWindow':
-      return 'Start line'
+      return 'Direction control'
     case 'flightQuality':
-      return 'Contact'
+      return 'Shot behavior'
     case 'patternStability':
-      return 'Pattern'
+      return 'Pattern trend'
     case 'dataConfidence':
-      return 'Read confidence'
+      return 'Data confidence'
   }
 }
 
@@ -1066,7 +1074,7 @@ function App({
           componentComparisons: [
             {
               key: 'distanceWindow',
-              label: 'Distance Window',
+              label: componentLabel('distanceWindow'),
               value: summary.componentScores.distanceWindow,
               historical: history?.distanceWindow,
               delta: distanceDelta,
@@ -1075,7 +1083,7 @@ function App({
             },
             {
               key: 'directionWindow',
-              label: 'Direction Window',
+              label: componentLabel('directionWindow'),
               value: summary.componentScores.directionWindow,
               historical: history?.directionWindow,
               delta: directionDelta,
@@ -1084,7 +1092,7 @@ function App({
             },
             {
               key: 'flightQuality',
-              label: 'Flight Quality',
+              label: componentLabel('flightQuality'),
               value:
                 typeof summary.componentScores.flightQuality === 'number'
                   ? summary.componentScores.flightQuality
@@ -1096,7 +1104,7 @@ function App({
             },
             {
               key: 'patternStability',
-              label: 'Pattern Stability',
+              label: componentLabel('patternStability'),
               value:
                 typeof summary.componentScores.patternStability === 'number'
                   ? summary.componentScores.patternStability
@@ -1108,7 +1116,7 @@ function App({
             },
             {
               key: 'dataConfidence',
-              label: 'Data Confidence',
+              label: componentLabel('dataConfidence'),
               value: summary.componentScores.dataConfidence,
               historical: history?.dataConfidence,
               delta: confidenceDelta,
@@ -2013,13 +2021,13 @@ function App({
     ) => {
       switch (key) {
         case 'patternStability':
-          return 'repeatability'
+          return 'pattern trend'
         case 'directionWindow':
-          return 'start-line control'
+          return 'direction control'
         case 'distanceWindow':
-          return 'carry control'
+          return 'carry expectation'
         case 'flightQuality':
-          return 'flight shape'
+          return 'shot behavior'
       }
     }
 
@@ -2066,13 +2074,7 @@ function App({
   const selectedClubComponentBreakdown = useMemo(() => {
     const history = historicalAveragesByClub.get(selectedDetailClub)
     const scores = selectedClubSummary?.componentScores
-    const orderedKeys: Array<keyof ReviewClubSummary['componentScores']> = [
-      'flightQuality',
-      'patternStability',
-      'directionWindow',
-      'distanceWindow',
-      'dataConfidence',
-    ]
+    const orderedKeys = componentDisplayOrder
 
     return orderedKeys.map((key) => {
       const rawValue = scores?.[key]
@@ -2183,7 +2185,7 @@ function App({
     }> = [
       {
         key: 'patternStability',
-        label: 'Pattern Stability',
+        label: componentLabel('patternStability'),
         value:
           typeof scores?.patternStability === 'number'
             ? scores.patternStability
@@ -2215,7 +2217,7 @@ function App({
       },
       {
         key: 'directionWindow',
-        label: 'Direction Window',
+        label: componentLabel('directionWindow'),
         value: scores?.directionWindow,
         delta:
           typeof scores?.directionWindow === 'number' &&
@@ -2239,7 +2241,7 @@ function App({
       },
       {
         key: 'distanceWindow',
-        label: 'Distance Window',
+        label: componentLabel('distanceWindow'),
         value: scores?.distanceWindow,
         delta:
           typeof scores?.distanceWindow === 'number' &&
@@ -2263,7 +2265,7 @@ function App({
       },
       {
         key: 'flightQuality',
-        label: 'Flight Quality',
+        label: componentLabel('flightQuality'),
         value:
           typeof scores?.flightQuality === 'number' ? scores.flightQuality : undefined,
         delta:
@@ -2291,7 +2293,7 @@ function App({
       },
       {
         key: 'dataConfidence',
-        label: 'Data Confidence',
+        label: componentLabel('dataConfidence'),
         value: scores?.dataConfidence,
         delta:
           typeof scores?.dataConfidence === 'number' &&
@@ -2315,7 +2317,11 @@ function App({
       },
     ]
 
-    return rows
+    return [...rows].sort(
+      (left, right) =>
+        componentDisplayOrder.indexOf(left.key) -
+        componentDisplayOrder.indexOf(right.key),
+    )
   }, [historicalAveragesByClub, selectedDetailClub, selectedClubSummary])
 
   const selectedClubBallFlightRows = useMemo(() => {
@@ -3347,7 +3353,7 @@ function App({
       {
         key: 'patternStability',
         group: 'performanceDrivers',
-        label: 'Pattern Stability',
+        label: componentLabel('patternStability'),
         valueText:
           typeof patternScore === 'number' ? `${formatScore(patternScore)}` : '-',
         deltaText:
@@ -3363,10 +3369,7 @@ function App({
                 ? 'Playable Pattern'
                 : 'Unsettled Pattern'
             : 'Building',
-        read:
-          typeof patternScore === 'number'
-            ? 'Pattern stability shows how repeatable your stock shot currently is.'
-            : 'Pattern-stability score needs more evidence.',
+        read: 'Whether your shot pattern is staying consistent or starting to shift.',
         trendRead:
           patternStabilitySeries.length > 1
             ? 'Distribution shows whether misses are repeating or mixed.'
@@ -3377,7 +3380,7 @@ function App({
       {
         key: 'distanceWindow',
         group: 'performanceDrivers',
-        label: 'Distance Window',
+        label: componentLabel('distanceWindow'),
         valueText:
           typeof distanceScore === 'number' ? `${formatScore(distanceScore)}` : '-',
         deltaText:
@@ -3393,10 +3396,7 @@ function App({
                 ? 'Playable Carry Window'
                 : 'Loose Carry Window'
             : 'Building',
-        read:
-          typeof distanceScore === 'number'
-            ? 'Distance window reflects how tight carry outcomes are around your anchor.'
-            : 'Distance-window score needs more shots.',
+        read: 'How predictable your distance is from shot to shot.',
         trendRead:
           distanceWindowSeries.length > 1
             ? 'Distribution shows carry spread from the anchor.'
@@ -3407,7 +3407,7 @@ function App({
       {
         key: 'directionWindow',
         group: 'performanceDrivers',
-        label: 'Direction Window',
+        label: componentLabel('directionWindow'),
         valueText:
           typeof componentByKey.get('directionWindow')?.value === 'number'
             ? `${formatScore(componentByKey.get('directionWindow')?.value)}`
@@ -3425,10 +3425,7 @@ function App({
                 ? 'Playable Line'
                 : 'Off Line'
             : 'Building',
-        read:
-          typeof componentByKey.get('directionWindow')?.value === 'number'
-            ? 'Direction window reflects how often start line stays in a playable corridor.'
-            : 'Direction-window score needs more evidence.',
+        read: 'How reliably you keep the ball on your intended line.',
         trendRead:
           hlaSeries.length > 2
             ? 'Direction trend is tracking line control changes.'
@@ -3439,7 +3436,7 @@ function App({
       {
         key: 'flightQuality',
         group: 'performanceDrivers',
-        label: 'Flight Quality',
+        label: componentLabel('flightQuality'),
         valueText:
           typeof componentByKey.get('flightQuality')?.value === 'number'
             ? `${formatScore(componentByKey.get('flightQuality')?.value)}`
@@ -3457,10 +3454,7 @@ function App({
                 ? 'Playable Flight'
                 : 'Erratic Flight'
             : 'Building',
-        read:
-          typeof componentByKey.get('flightQuality')?.value === 'number'
-            ? 'Flight quality reflects how often launch and spin combine into usable windows.'
-            : 'Flight-quality score needs more evidence.',
+        read: 'How consistently the ball flies and reacts when it lands.',
         trendRead:
           launchSeries.length > 2
             ? 'Flight trend is moving with launch and spin shifts.'
@@ -3471,7 +3465,7 @@ function App({
       {
         key: 'dataConfidence',
         group: 'performanceDrivers',
-        label: 'Data Confidence',
+        label: componentLabel('dataConfidence'),
         valueText:
           typeof componentByKey.get('dataConfidence')?.value === 'number'
             ? `${formatScore(componentByKey.get('dataConfidence')?.value)}`
@@ -3489,10 +3483,7 @@ function App({
                 ? 'Developing'
                 : 'Low Confidence'
             : 'Building',
-        read:
-          typeof componentByKey.get('dataConfidence')?.value === 'number'
-            ? 'Data confidence reflects how complete and trustworthy the sample currently is.'
-            : 'Data-confidence score needs more evidence.',
+        read: 'How much recent data is backing this score.',
         trendRead:
           carrySeries.length > 2
             ? 'Confidence trend rises as evidence quality improves.'
@@ -5006,11 +4997,11 @@ function App({
                                 <th>Club</th>
                                 <th>Shots</th>
                                 <th>Score</th>
-                                <th>Distance Window</th>
-                                <th>Direction Window</th>
-                                <th>Flight Quality</th>
-                                <th>Pattern Stability</th>
-                                <th>Data Confidence</th>
+                                <th>{componentLabel('distanceWindow')}</th>
+                                <th>{componentLabel('directionWindow')}</th>
+                                <th>{componentLabel('flightQuality')}</th>
+                                <th>{componentLabel('patternStability')}</th>
+                                <th>{componentLabel('dataConfidence')}</th>
                               </tr>
                             </thead>
                             <tbody>

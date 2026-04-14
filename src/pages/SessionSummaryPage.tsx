@@ -109,15 +109,15 @@ const offlineValue = (shot: Shot) =>
 const componentLabel = (component: keyof ReviewClubSummary['componentScores']) => {
   switch (component) {
     case 'directionWindow':
-      return 'start line'
+      return 'Direction Control'
     case 'distanceWindow':
-      return 'carry control'
+      return 'Carry Expectation'
     case 'flightQuality':
-      return 'flight window'
+      return 'Shot Behavior'
     case 'patternStability':
-      return 'shot shape'
+      return 'Pattern Trend'
     case 'dataConfidence':
-      return 'data confidence'
+      return 'Data Confidence'
   }
 }
 

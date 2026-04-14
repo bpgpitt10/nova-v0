@@ -495,15 +495,15 @@ const componentDisplayName = (
 ) => {
   switch (component) {
     case 'distanceWindow':
-      return 'distance control'
+      return 'carry expectation'
     case 'directionWindow':
-      return 'start line'
+      return 'direction control'
     case 'flightQuality':
-      return 'flight profile'
+      return 'shot behavior'
     case 'patternStability':
-      return 'pattern stability'
+      return 'pattern trend'
     case 'dataConfidence':
-      return 'sample strength'
+      return 'data confidence'
   }
 }
 
