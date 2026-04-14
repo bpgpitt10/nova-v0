@@ -1657,62 +1657,110 @@ function App({
     [analysisSessions, selectedDetailClub],
   )
 
-  const baselineComparison = useMemo(() => {
-    const weightedRecentBaselineForSessionMetric = (
-      sessionMetric: (session: SavedSession) => number | undefined,
-    ) => {
-      const latestClubSession = analysisSessions.find((session) =>
-        typeof sessionMetric(session) === 'number',
-      )
-      if (!latestClubSession) {
-        return null
-      }
+  const sessionWeightedAverageForSelectedClub = (
+    session: SavedSession,
+    extractor: (shot: Shot) => number | undefined,
+    rankWeightedWithinSession = false,
+  ) =>
+    weightedSessionMetricAverage(
+      session,
+      selectedDetailClub,
+      extractor,
+      rankWeightedWithinSession ? (shot) => rankWeightForShot(shot) : undefined,
+    )
 
-      const weightedRecentValue = sessionMetric(latestClubSession)
-      const baselinePoints = analysisSessions
-        .filter((session) => session.id !== latestClubSession.id)
-        .map((session) => ({
-          value: sessionMetric(session),
-          weight: sessionHistoricalWeightForClub(
-            session,
-            selectedDetailClub,
-            historicalModelNowMs,
-          ),
-        }))
-        .filter(
-          (point): point is { value: number; weight: number } =>
-            typeof point.value === 'number' && point.weight > 0,
-        )
+  const sessionWeightedCarryForSelectedClub = (
+    session: SavedSession,
+    rankWeightedWithinSession = false,
+  ) => {
+    const carryShots = session.shots.filter(
+      (shot) =>
+        shot.club === selectedDetailClub &&
+        shot.included &&
+        typeof carryValue(shot) === 'number',
+    )
+    if (carryShots.length === 0) {
+      return undefined
+    }
+    return guardedWeightedCarryMean(
+      carryShots.map(carryValue),
+      carryShots.map((shot) => (rankWeightedWithinSession ? rankWeightForShot(shot) : 1)),
+      confidenceConfig.displayCarryOutlierThresholdPct,
+      confidenceConfig.displayCarryOutlierThresholdFloorYards,
+    )
+  }
 
-      const weightedBaselineValue = weightedAverageNumbers(
-        baselinePoints.map((point) => point.value),
-        baselinePoints.map((point) => point.weight),
-      )
+  const sessionWeightedStdDevForSelectedClub = (
+    session: SavedSession,
+    extractor: (shot: Shot) => number | undefined,
+    rankWeightedWithinSession = false,
+  ) => {
+    const clubShots = session.shots.filter(
+      (shot) =>
+        shot.club === selectedDetailClub &&
+        shot.included &&
+        typeof extractor(shot) === 'number',
+    )
+    if (clubShots.length === 0) {
+      return undefined
+    }
+    return weightedStandardDeviationNumbers(
+      clubShots.map(extractor),
+      clubShots.map((shot) => (rankWeightedWithinSession ? rankWeightForShot(shot) : 1)),
+    )
+  }
 
-      if (
-        typeof weightedRecentValue !== 'number' ||
-        typeof weightedBaselineValue !== 'number'
-      ) {
-        return null
-      }
-
-      return {
-        weightedRecentValue,
-        weightedBaselineValue,
-        delta: weightedRecentValue - weightedBaselineValue,
-      }
+  const weightedRecentBaselineForSelectedClubMetric = (
+    sessionMetric: (session: SavedSession) => number | undefined,
+  ) => {
+    const orderedSessions = [...analysisSessions].sort(
+      (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+    )
+    const latestClubSession = orderedSessions.find((session) =>
+      typeof sessionMetric(session) === 'number',
+    )
+    if (!latestClubSession) {
+      return null
     }
 
-    const averageForSession = (
-      session: SavedSession,
-      extractor: (shot: Shot) => number | undefined,
-    ) =>
-      averageNumbers(
-        session.shots
-          .filter((shot) => shot.club === selectedDetailClub && shot.included)
-          .map(extractor),
+    const weightedRecentValue = sessionMetric(latestClubSession)
+    const baselinePoints = orderedSessions
+      .filter((session) => session.id !== latestClubSession.id)
+      .map((session) => ({
+        value: sessionMetric(session),
+        weight: sessionHistoricalWeightForClub(
+          session,
+          selectedDetailClub,
+          historicalModelNowMs,
+        ),
+      }))
+      .filter(
+        (point): point is { value: number; weight: number } =>
+          typeof point.value === 'number' && Number.isFinite(point.value) && point.weight > 0,
       )
 
+    const weightedBaselineValue = weightedAverageNumbers(
+      baselinePoints.map((point) => point.value),
+      baselinePoints.map((point) => point.weight),
+    )
+
+    if (
+      typeof weightedRecentValue !== 'number' ||
+      !Number.isFinite(weightedRecentValue) ||
+      typeof weightedBaselineValue !== 'number' ||
+      !Number.isFinite(weightedBaselineValue)
+    ) {
+      return null
+    }
+
+    return {
+      weightedRecentValue,
+      weightedBaselineValue,
+      delta: weightedRecentValue - weightedBaselineValue,
+    }
+  }
+
+  const baselineComparison = useMemo(() => {
     if (selectedClubSessionSeries.length === 0) {
       return null
     }
@@ -1732,15 +1780,11 @@ function App({
       return latestSummary.caddieScore - baseline
     })()
 
-    const carryComparison = weightedRecentBaselineForSessionMetric((session) =>
-      averageForSession(session, carryValue),
+    const carryComparison = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedCarryForSelectedClub(session, false),
     )
-    const dispersionComparison = weightedRecentBaselineForSessionMetric((session) =>
-      standardDeviation(
-        session.shots
-          .filter((shot) => shot.club === selectedDetailClub && shot.included)
-          .map(offlineValue),
-      ),
+    const dispersionComparison = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedStdDevForSelectedClub(session, offlineValue, false),
     )
 
     return {
@@ -1753,58 +1797,15 @@ function App({
   }, [
     analysisSessions,
     historicalAveragesByClub,
-    historicalModelNowMs,
     latestSessionSummariesByClub,
     selectedClubSessionSeries,
     selectedDetailClub,
+    sessionWeightedCarryForSelectedClub,
+    sessionWeightedStdDevForSelectedClub,
+    weightedRecentBaselineForSelectedClubMetric,
   ])
 
   const trendCards = useMemo(() => {
-    const weightedRecentBaselineForSessionMetric = (
-      sessionMetric: (session: SavedSession) => number | undefined,
-    ) => {
-      const latestClubSession = analysisSessions.find((session) =>
-        typeof sessionMetric(session) === 'number',
-      )
-      if (!latestClubSession) {
-        return null
-      }
-
-      const weightedRecentValue = sessionMetric(latestClubSession)
-      const baselinePoints = analysisSessions
-        .filter((session) => session.id !== latestClubSession.id)
-        .map((session) => ({
-          value: sessionMetric(session),
-          weight: sessionHistoricalWeightForClub(
-            session,
-            selectedDetailClub,
-            historicalModelNowMs,
-          ),
-        }))
-        .filter(
-          (point): point is { value: number; weight: number } =>
-            typeof point.value === 'number' && point.weight > 0,
-        )
-
-      const weightedBaselineValue = weightedAverageNumbers(
-        baselinePoints.map((point) => point.value),
-        baselinePoints.map((point) => point.weight),
-      )
-
-      if (
-        typeof weightedRecentValue !== 'number' ||
-        typeof weightedBaselineValue !== 'number'
-      ) {
-        return null
-      }
-
-      return {
-        weightedRecentValue,
-        weightedBaselineValue,
-        delta: weightedRecentValue - weightedBaselineValue,
-      }
-    }
-
     const formatDelta = (delta: number | undefined, unit: string) => {
       if (typeof delta !== 'number') {
         return 'No weighted baseline'
@@ -1813,34 +1814,20 @@ function App({
       return `${delta >= 0 ? '+' : '-'}${rounded}${unit} vs weighted baseline`
     }
 
-    const averageForSession = (
-      session: SavedSession,
-      extractor: (shot: Shot) => number | undefined,
-    ) =>
-      averageNumbers(
-        session.shots
-          .filter((shot) => shot.club === selectedDetailClub && shot.included)
-          .map(extractor),
-      )
-
-    const carryTrend = weightedRecentBaselineForSessionMetric((session) =>
-      averageForSession(session, carryValue),
+    const carryTrend = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedCarryForSelectedClub(session, false),
     )
-    const offlineTrend = weightedRecentBaselineForSessionMetric((session) =>
-      standardDeviation(
-        session.shots
-          .filter((shot) => shot.club === selectedDetailClub && shot.included)
-          .map(offlineValue),
-      ),
+    const offlineTrend = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedStdDevForSelectedClub(session, offlineValue, false),
     )
-    const biasTrend = weightedRecentBaselineForSessionMetric((session) =>
-      averageForSession(session, offlineValue),
+    const biasTrend = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedAverageForSelectedClub(session, offlineValue, false),
     )
-    const vlaTrend = weightedRecentBaselineForSessionMetric((session) =>
-      averageForSession(session, launchValue),
+    const vlaTrend = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedAverageForSelectedClub(session, launchValue, false),
     )
-    const spinTrend = weightedRecentBaselineForSessionMetric((session) =>
-      averageForSession(session, spinValue),
+    const spinTrend = weightedRecentBaselineForSelectedClubMetric((session) =>
+      sessionWeightedAverageForSelectedClub(session, spinValue, false),
     )
 
     const cards = [
@@ -1922,7 +1909,13 @@ function App({
     ]
 
     return cards
-  }, [analysisSessions, historicalModelNowMs, selectedClubSessionSeries, selectedDetailClub])
+  }, [
+    selectedClubSessionSeries,
+    sessionWeightedAverageForSelectedClub,
+    sessionWeightedCarryForSelectedClub,
+    sessionWeightedStdDevForSelectedClub,
+    weightedRecentBaselineForSelectedClubMetric,
+  ])
 
   const selectedClubInsights = useMemo(() => {
     if (!selectedClubSummary) {
@@ -2832,22 +2825,18 @@ function App({
         .map(extractor)
         .filter((value): value is number => typeof value === 'number')
 
-    const sessionAverageForMetric = (
+    const sessionWeightedAverageForMetric = (
       session: SavedSession,
       extractor: (shot: Shot) => number | undefined,
     ) =>
-      averageNumbers(
-        session.shots
-          .filter(
-            (shot) =>
-              shot.club === selectedDetailClub &&
-              shot.included &&
-              typeof extractor(shot) === 'number',
-          )
-          .map((shot) => extractor(shot)),
+      weightedSessionMetricAverage(
+        session,
+        selectedDetailClub,
+        extractor,
+        (shot) => rankWeightForShot(shot),
       )
 
-    const sessionAverageForCarry = (session: SavedSession) => {
+    const sessionWeightedCarryForMetric = (session: SavedSession) => {
       const carryShots = session.shots.filter(
         (shot) =>
           shot.club === selectedDetailClub &&
@@ -2872,7 +2861,7 @@ function App({
       const sessionAverage = (session: SavedSession) =>
         sessionAverageOverride
           ? sessionAverageOverride(session)
-          : sessionAverageForMetric(session, extractor)
+          : sessionWeightedAverageForMetric(session, extractor)
 
       const orderedSessions = [...analysisSessions].sort(
         (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
@@ -3067,7 +3056,7 @@ function App({
     const clubPathDelta = sessionDeltaForMetric(clubPathValue)
     const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
     const faceToTargetDelta = sessionDeltaForMetric(faceToTargetValue)
-    const carryDelta = sessionDeltaForMetric(carryValue, sessionAverageForCarry)
+    const carryDelta = sessionDeltaForMetric(carryValue, sessionWeightedCarryForMetric)
     const totalDistanceDelta = sessionDeltaForMetric(totalValue)
     const ballSpeedDelta = sessionDeltaForMetric(ballSpeedMphValue)
     const clubSpeedDelta = sessionDeltaForMetric(clubSpeedValue)
