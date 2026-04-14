@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import {
   clearActiveSessionDraft,
-  isSessionEligibleForAnalysis,
   isSessionIncludedInAnalysis,
   isSessionOldExcludedBySystem,
   loadActiveSessionDraft,
@@ -252,11 +251,30 @@ function DataManagementPage() {
     [savedSessions],
   )
   const nowMs = Date.now()
+  const isSessionSelected = (session: SavedSession) =>
+    !isSessionOldExcludedBySystem(session, nowMs) &&
+    isSessionIncludedInAnalysis(session) &&
+    (session.shots.length === 0 || session.shots.every((shot) => shot.included))
   const allSessionsIncluded =
     sortedSessions.filter((session) => !isSessionOldExcludedBySystem(session, nowMs)).length > 0 &&
     sortedSessions
       .filter((session) => !isSessionOldExcludedBySystem(session, nowMs))
-      .every(isSessionIncludedInAnalysis)
+      .every(isSessionSelected)
+  const selectedSessionIds = useMemo(
+    () => sortedSessions.filter(isSessionSelected).map((session) => session.id),
+    [sortedSessions],
+  )
+  const selectedShotCount = useMemo(
+    () =>
+      sortedSessions.reduce((count, session) => {
+        if (isSessionOldExcludedBySystem(session, nowMs)) {
+          return count
+        }
+        return count + session.shots.filter((shot) => shot.included).length
+      }, 0),
+    [nowMs, sortedSessions],
+  )
+  const hasAnySelectedItems = selectedSessionIds.length > 0 || selectedShotCount > 0
 
   const persistSessions = (sessions: SavedSession[]) => {
     setSavedSessions(sessions)
@@ -284,6 +302,10 @@ function DataManagementPage() {
     persistSessions(
       savedSessions.map((session) => ({
         ...session,
+        shots: session.shots.map((shot) => ({
+          ...shot,
+          included: isSessionOldExcludedBySystem(session, nowMs) ? false : included,
+        })),
         metadata: {
           ...(session.metadata ?? {
             app: 'nova-validation',
@@ -332,6 +354,7 @@ function DataManagementPage() {
             ? session
             : {
                 ...session,
+                shots: session.shots.map((shot) => ({ ...shot, included })),
                 metadata: {
                   ...(session.metadata ?? {
                     app: 'nova-validation',
@@ -350,18 +373,36 @@ function DataManagementPage() {
       savedSessions.map((session) =>
         session.id === sessionId
           ? isSessionOldExcludedBySystem(session, nowMs)
-          ? {
-              ...session,
-              shots: session.shots.map((shot) =>
-                shot.id === shotId ? { ...shot, included: false } : shot,
-              ),
-            }
-          : {
-              ...session,
-              shots: session.shots.map((shot) =>
-                shot.id === shotId ? { ...shot, included: !shot.included } : shot,
-              ),
-            }
+            ? {
+                ...session,
+                shots: session.shots.map((shot) =>
+                  shot.id === shotId ? { ...shot, included: false } : shot,
+                ),
+                metadata: {
+                  ...(session.metadata ?? {
+                    app: 'nova-validation',
+                    schemaVersion: 2,
+                  }),
+                  includeInAnalysis: false,
+                },
+              }
+            : (() => {
+                const nextShots = session.shots.map((shot) =>
+                  shot.id === shotId ? { ...shot, included: !shot.included } : shot,
+                )
+                return {
+                  ...session,
+                  shots: nextShots,
+                  metadata: {
+                    ...(session.metadata ?? {
+                      app: 'nova-validation',
+                      schemaVersion: 2,
+                    }),
+                    includeInAnalysis:
+                      nextShots.length > 0 && nextShots.every((shot) => shot.included),
+                  },
+                }
+              })()
           : session,
       ),
     )
@@ -395,6 +436,48 @@ function DataManagementPage() {
     setExpandedSessionIds((current) => {
       const next = new Set(current)
       next.delete(sessionId)
+      return next
+    })
+  }
+
+  const deleteSelectedSessions = () => {
+    const selectedSessionIdSet = new Set(selectedSessionIds)
+    if (!hasAnySelectedItems) {
+      return
+    }
+
+    const persistedSessions = loadSavedSessions()
+    const nextSessions = persistedSessions
+      .filter((session) => !selectedSessionIdSet.has(session.id))
+      .map((session) => {
+        if (isSessionOldExcludedBySystem(session, nowMs)) {
+          return session
+        }
+        const remainingShots = session.shots.filter((shot) => !shot.included)
+        if (remainingShots.length === 0) {
+          return null
+        }
+        return {
+          ...session,
+          shots: remainingShots,
+          metadata: {
+            ...(session.metadata ?? {
+              app: 'nova-validation',
+              schemaVersion: 2,
+            }),
+            includeInAnalysis: false,
+          },
+        }
+      })
+      .filter((session): session is SavedSession => Boolean(session))
+
+    persistSessions(nextSessions)
+
+    setExpandedSessionIds((current) => {
+      const next = new Set(current)
+      selectedSessionIds.forEach((sessionId) => {
+        next.delete(sessionId)
+      })
       return next
     })
   }
@@ -448,6 +531,14 @@ function DataManagementPage() {
               <span>Select All</span>
             </label>
             <button
+              className="dm-action dm-delete dm-delete-selected"
+              disabled={!hasAnySelectedItems}
+              onClick={deleteSelectedSessions}
+              type="button"
+            >
+              Delete Selected
+            </button>
+            <button
               className="dm-action dm-expand-all"
               disabled={sortedSessions.length === 0}
               onClick={toggleAllExpanded}
@@ -496,7 +587,7 @@ function DataManagementPage() {
                   {sortedSessions.flatMap((session) => {
                     const expanded = expandedSessionIds.has(session.id)
                     const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
-                    const included = isSessionEligibleForAnalysis(session, nowMs)
+                    const included = isSessionSelected(session)
                     const groups = expanded ? sessionShotGroups(session) : []
                     const clubsText = sessionClubSummary(session) || '-'
                     const endedDate = new Date(session.endedAt)

@@ -222,6 +222,11 @@
   line-height: 1;
 }
 
+.dm-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .dm-expand {
   min-width: 52px;
   padding: 0;
