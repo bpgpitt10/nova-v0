@@ -159,6 +159,7 @@ export const saveBagConfig = (selectedClubs: Club[]) => {
     selectedClubs: sortClubIds(selectedClubs),
   }
   window.localStorage.setItem(BAG_CONFIG_STORAGE_KEY, JSON.stringify(payload))
+  refreshBagConfigState()
   window.dispatchEvent(new Event(BAG_CONFIG_UPDATED_EVENT))
 }
 
@@ -167,34 +168,47 @@ export const hasSavedBagConfig = () => loadBagConfig() !== null
 export const getActiveBagClubIds = (): Club[] =>
   loadBagConfig()?.selectedClubs ?? LEGACY_DEFAULT_BAG
 
-const activeClubIdSet = new Set<Club>(getActiveBagClubIds())
+const buildCurrentBagConfig = (selectedClubs: Club[]): BagClubConfig[] => {
+  const activeClubIdSet = new Set<Club>(selectedClubs)
 
-export const currentBagConfig: BagClubConfig[] = CLUB_ORDER.map((club, index) => ({
-  id: club,
-  label: club,
-  category:
-    club === 'Driver' || club === 'Mini Driver'
-      ? 'wood'
-      : ['2W', '3W', '4W', '5W', '7W', '9W'].includes(club)
+  return CLUB_ORDER.map((club, index) => ({
+    id: club,
+    label: club,
+    category:
+      club === 'Driver' || club === 'Mini Driver'
         ? 'wood'
-        : ['2H', '3H', '4H', '5H', '6H', '7H'].includes(club)
-          ? 'hybrid'
-          : ['1i', '2i'].includes(club)
-            ? 'iron'
-            : ['AW', 'GW', 'SW', 'LW'].includes(club)
-              ? 'wedge'
-              : 'iron',
-  active: activeClubIdSet.has(club),
-  sortOrder: (index + 1) * 10,
-}))
+        : ['2W', '3W', '4W', '5W', '7W', '9W'].includes(club)
+          ? 'wood'
+          : ['2H', '3H', '4H', '5H', '6H', '7H'].includes(club)
+            ? 'hybrid'
+            : ['1i', '2i'].includes(club)
+              ? 'iron'
+              : ['AW', 'GW', 'SW', 'LW'].includes(club)
+                ? 'wedge'
+                : 'iron',
+    active: activeClubIdSet.has(club),
+    sortOrder: (index + 1) * 10,
+  }))
+}
 
-export const activeBagConfig = currentBagConfig
-  .filter((club) => club.active)
-  .sort((left, right) => left.sortOrder - right.sortOrder)
+const buildActiveBagConfig = (bagConfig: BagClubConfig[]) =>
+  bagConfig
+    .filter((club) => club.active)
+    .sort((left, right) => left.sortOrder - right.sortOrder)
 
-export const activeBagClubIds: Club[] = activeBagConfig.map((club) => club.id)
+export let currentBagConfig: BagClubConfig[] = []
+export let activeBagConfig: BagClubConfig[] = []
+export let activeBagClubIds: Club[] = []
+let bagConfigById = new Map<Club, BagClubConfig>()
 
-const bagConfigById = new Map(currentBagConfig.map((club) => [club.id, club]))
+export const refreshBagConfigState = () => {
+  currentBagConfig = buildCurrentBagConfig(getActiveBagClubIds())
+  activeBagConfig = buildActiveBagConfig(currentBagConfig)
+  activeBagClubIds = activeBagConfig.map((club) => club.id)
+  bagConfigById = new Map(currentBagConfig.map((club) => [club.id, club]))
+}
+
+refreshBagConfigState()
 
 export const getClubConfig = (club: Club) => bagConfigById.get(club)
 

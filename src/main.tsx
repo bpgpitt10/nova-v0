@@ -7,13 +7,18 @@ import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
-import { BAG_CONFIG_UPDATED_EVENT, hasSavedBagConfig } from './lib/bagConfig.ts'
+import {
+  BAG_CONFIG_UPDATED_EVENT,
+  hasSavedBagConfig,
+  refreshBagConfigState,
+} from './lib/bagConfig.ts'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
 
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
+  const [bagConfigRevision, setBagConfigRevision] = useState(0)
 
   useEffect(() => {
     const onPopState = () => {
@@ -64,15 +69,19 @@ function RootRouter() {
 
     window.addEventListener('popstate', onPopState)
     document.addEventListener('click', onDocumentClick)
-    const refreshBagConfigState = () => setHasBagConfig(hasSavedBagConfig())
-    window.addEventListener(BAG_CONFIG_UPDATED_EVENT, refreshBagConfigState)
-    window.addEventListener('storage', refreshBagConfigState)
+    const onBagConfigUpdated = () => {
+      refreshBagConfigState()
+      setHasBagConfig(hasSavedBagConfig())
+      setBagConfigRevision((current) => current + 1)
+    }
+    window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
+    window.addEventListener('storage', onBagConfigUpdated)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
       document.removeEventListener('click', onDocumentClick)
-      window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, refreshBagConfigState)
-      window.removeEventListener('storage', refreshBagConfigState)
+      window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
+      window.removeEventListener('storage', onBagConfigUpdated)
     }
   }, [])
 
@@ -82,7 +91,7 @@ function RootRouter() {
     }
     window.history.replaceState({}, '', '/bag-setup')
     setPathname('/bag-setup')
-  }, [hasBagConfig, pathname])
+  }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
     const showBagSetup = pathname === '/bag-setup'
