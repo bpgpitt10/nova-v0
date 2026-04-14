@@ -298,7 +298,13 @@ const buildSessionSummary = (
     ? {
         directionWindow: average(clubSummaries.map((summary) => summary.componentScores.directionWindow)),
         distanceWindow: average(clubSummaries.map((summary) => summary.componentScores.distanceWindow)),
-        flightQuality: average(clubSummaries.map((summary) => summary.componentScores.flightQuality)),
+        flightQuality: average(
+          clubSummaries.map((summary) =>
+            typeof summary.componentScores.flightQuality === 'number'
+              ? summary.componentScores.flightQuality
+              : undefined,
+          ),
+        ),
         patternStability: average(
           clubSummaries.map((summary) =>
             typeof summary.componentScores.patternStability === 'number'

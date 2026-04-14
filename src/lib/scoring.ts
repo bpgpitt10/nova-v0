@@ -37,37 +37,44 @@ const weightedStdDevFromShots = (
 const oneDecimal = (value: number | null) =>
   value === null ? null : Number(value.toFixed(1))
 
+const payloadNumber = (
+  payload: Shot['openGolfCoach'],
+  keys: string[],
+) => {
+  if (!payload) {
+    return undefined
+  }
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (!Number.isNaN(parsed)) {
+        return parsed
+      }
+    }
+  }
+  return undefined
+}
+
+const descentAngleValue = (shot: Shot) =>
+  payloadNumber(shot.openGolfCoach, [
+    'descent_angle_degrees',
+    'descent_angle_deg',
+    'descent_angle',
+    'descentAngleDegrees',
+    'descentAngleDeg',
+    'descentAngle',
+  ])
+
 const includedClubShots = (club: Club, shots: Shot[]) =>
   shots.filter((shot) => shot.club === club && shot.included)
 
 const getRankWeight = (shot: Shot) => {
   const key = typeof shot.shotRanking === 'undefined' ? '' : String(shot.shotRanking)
   return confidenceConfig.distanceWindow.rankWeights[key] ?? 1
-}
-
-const scoreFromRange = (
-  value: number | undefined,
-  [min, max]: [number, number],
-): number | null => {
-  if (typeof value !== 'number') {
-    return null
-  }
-
-  if (value >= min && value <= max) {
-    return 100
-  }
-
-  const miss = value < min ? min - value : value - max
-  const span = Math.max(max - min, 1)
-  return clamp(100 - (miss / span) * 100)
-}
-
-const scoreAbsolute = (value: number | undefined, maxAbs: number): number | null => {
-  if (typeof value !== 'number') {
-    return null
-  }
-
-  return clamp(100 - (Math.abs(value) / maxAbs) * 100)
 }
 
 const buildDirectionScore = (
@@ -220,58 +227,121 @@ const buildFlightQualityScore = (
   shots: Shot[],
   recencyWeightForShot: (shot: Shot) => number,
 ) => {
-  let scoreTotal = 0
-  let scoreCount = 0
-  let missingFieldCount = 0
-
-  shots.forEach((shot) => {
-    const recencyWeight = recencyWeightForShot(shot)
-    const shotScores = [
-      scoreFromRange(
-        shot.ballSpeedMetersPerSecond,
-        confidenceConfig.flightQuality.ballSpeedRange,
-      ),
-      scoreFromRange(
-        shot.verticalLaunchAngleDegrees,
-        confidenceConfig.flightQuality.verticalLaunchRange,
-      ),
-      scoreAbsolute(
-        shot.horizontalLaunchAngleDegrees,
-        confidenceConfig.flightQuality.horizontalLaunchAbsMax,
-      ),
-      scoreFromRange(shot.totalSpinRpm, confidenceConfig.flightQuality.totalSpinRange),
-      scoreAbsolute(shot.spinAxisDegrees, confidenceConfig.flightQuality.spinAxisAbsMax),
-    ]
-
-    shotScores.forEach((value) => {
-      if (value === null) {
-        missingFieldCount += recencyWeight
-      } else {
-        scoreTotal += value * recencyWeight
-        scoreCount += recencyWeight
-      }
-    })
-
-    if (typeof shot.shotRanking !== 'undefined') {
-      scoreTotal += clamp(getRankWeight(shot) * 90) * recencyWeight
-      scoreCount += recencyWeight
-    }
-  })
-
-  if (scoreCount === 0) {
-    return { score: 0, note: 'Missing raw flight fields' }
+  type FlightField = {
+    key: 'launch' | 'spin' | 'descent' | 'spinAxis'
+    label: string
+    baseWeight: number
+    valueAccessor: (shot: Shot) => number | undefined
   }
 
-  const averageScore = scoreTotal / scoreCount
-  const penalty =
-    missingFieldCount * confidenceConfig.flightQuality.missingFieldPenaltyPerField
+  const fields: FlightField[] = [
+    {
+      key: 'descent',
+      label: 'descent',
+      baseWeight: 0.35,
+      valueAccessor: (shot) => descentAngleValue(shot),
+    },
+    {
+      key: 'spin',
+      label: 'spin',
+      baseWeight: 0.3,
+      valueAccessor: (shot) => shot.totalSpinRpm,
+    },
+    {
+      key: 'spinAxis',
+      label: 'spin axis',
+      baseWeight: 0.2,
+      valueAccessor: (shot) => shot.spinAxisDegrees,
+    },
+    {
+      key: 'launch',
+      label: 'launch',
+      baseWeight: 0.15,
+      valueAccessor: (shot) => shot.verticalLaunchAngleDegrees,
+    },
+  ]
+
+  const qualifiedFlightShotCount = shots.filter((shot) =>
+    fields.some((field) => typeof field.valueAccessor(shot) === 'number'),
+  ).length
+
+  const fieldScores = fields.flatMap((field) => {
+    const fieldShots = shots.filter(
+      (shot): shot is Shot =>
+        typeof field.valueAccessor(shot) === 'number',
+    )
+    if (fieldShots.length === 0) {
+      return []
+    }
+
+    const values = fieldShots.map((shot) => field.valueAccessor(shot) as number)
+    const weights = fieldShots.map((shot) => recencyWeightForShot(shot))
+    const center = weightedMedianValue(values, weights)
+    if (typeof center !== 'number') {
+      return []
+    }
+
+    const deviation =
+      weightedAverage(
+        values.map((value) => Math.abs(value - center)),
+        weights,
+      ) ?? null
+    if (deviation === null) {
+      return []
+    }
+
+    const denominator = (() => {
+      switch (field.key) {
+        case 'launch':
+          return Math.max(Math.abs(center), 1)
+        case 'spin':
+          return Math.max(Math.abs(center), 500)
+        case 'descent':
+          return Math.max(Math.abs(center), 1)
+        case 'spinAxis': {
+          const absMedian = weightedMedianValue(
+            values.map((value) => Math.abs(value)),
+            weights,
+          )
+          return Math.max(absMedian ?? 0, 3)
+        }
+      }
+    })()
+
+    const relativeDeviation = deviation / denominator
+    const score = clamp(100 - 100 * relativeDeviation)
+    return [{ ...field, score }]
+  })
+
+  const coreFieldsPresent = fieldScores.length
+  if (qualifiedFlightShotCount < 8 || coreFieldsPresent < 2) {
+    return { score: null, note: 'Insufficient flight-profile data' }
+  }
+
+  const activeWeightTotal = fieldScores.reduce(
+    (sum, field) => sum + field.baseWeight,
+    0,
+  )
+  const flightQualityBase =
+    activeWeightTotal > 0
+      ? fieldScores.reduce(
+          (sum, field) => sum + field.score * (field.baseWeight / activeWeightTotal),
+          0,
+        )
+      : 0
+
+  const availabilityAdjustment =
+    coreFieldsPresent === 4 ? 0 : coreFieldsPresent === 3 ? -4 : -10
+  const flightQuality = clamp(Math.round(flightQualityBase + availabilityAdjustment))
+  const provisionalPrefix =
+    qualifiedFlightShotCount >= 8 && qualifiedFlightShotCount <= 14
+      ? 'Provisional '
+      : ''
+  const fieldSummary = fieldScores.map((field) => field.label).join(', ')
 
   return {
-    score: clamp(Math.round(averageScore - penalty)),
-    note:
-      missingFieldCount > 0
-        ? `Missing ${missingFieldCount} raw field values`
-        : 'Raw flight fields available',
+    score: flightQuality,
+    note: `${provisionalPrefix}${qualifiedFlightShotCount} qualified shots across ${coreFieldsPresent} fields (${fieldSummary})`,
   }
 }
 
@@ -618,14 +688,29 @@ export const summarizeReviewClub = (
     recencyWeightForShot,
   )
 
-  const weighted =
-    distanceWindow.score * confidenceConfig.componentWeights.distanceWindow +
-    directionWindow.score * confidenceConfig.componentWeights.directionWindow +
-    flightQuality.score * confidenceConfig.componentWeights.flightQuality +
-    (patternStability.score ?? 0) * confidenceConfig.componentWeights.patternStability +
-    dataConfidence.score * confidenceConfig.componentWeights.dataConfidence
-
-  const caddieScore = Math.round(weighted)
+  const componentWeights = confidenceConfig.componentWeights
+  const weightedComponents = [
+    { score: distanceWindow.score, weight: componentWeights.distanceWindow },
+    { score: directionWindow.score, weight: componentWeights.directionWindow },
+    { score: flightQuality.score, weight: componentWeights.flightQuality },
+    { score: patternStability.score, weight: componentWeights.patternStability },
+    { score: dataConfidence.score, weight: componentWeights.dataConfidence },
+  ]
+  const activeWeightTotal = weightedComponents.reduce(
+    (sum, component) =>
+      typeof component.score === 'number' ? sum + component.weight : sum,
+    0,
+  )
+  const weightedScoreTotal = weightedComponents.reduce(
+    (sum, component) =>
+      typeof component.score === 'number'
+        ? sum + component.score * component.weight
+        : sum,
+    0,
+  )
+  const caddieScore = Math.round(
+    activeWeightTotal > 0 ? weightedScoreTotal / activeWeightTotal : 0,
+  )
   const caddieCall = caddieCallForScore(caddieScore, includedShots.length)
   const explanation = [
     explanationPrefix(caddieCall),
@@ -682,7 +767,7 @@ export const summarizeReviewClub = (
     insights: buildInsights(caddieCall, includedShots.length, {
       distanceWindow: distanceWindow.score,
       directionWindow: directionWindow.score,
-      flightQuality: flightQuality.score,
+      flightQuality: flightQuality.score ?? 0,
       patternStability: patternStability.score ?? 0,
       dataConfidence: dataConfidence.score,
     }),

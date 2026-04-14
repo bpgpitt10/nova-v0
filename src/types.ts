@@ -113,7 +113,7 @@ export type ReviewClubSummary = {
   componentScores: {
     distanceWindow: number
     directionWindow: number
-    flightQuality: number
+    flightQuality: number | null
     patternStability: number | null
     dataConfidence: number
   }

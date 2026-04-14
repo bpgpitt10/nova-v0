@@ -985,7 +985,9 @@ function App({
           summaryPoints.map((point) => point.weight),
         ),
         flightQuality: weightedAverageNumbers(
-          summaryPoints.map((point) => point.summary.componentScores.flightQuality),
+          summaryPoints.map(
+            (point) => point.summary.componentScores.flightQuality ?? undefined,
+          ),
           summaryPoints.map((point) => point.weight),
         ),
         patternStability: weightedAverageNumbers(
@@ -1039,6 +1041,7 @@ function App({
             ? summary.componentScores.directionWindow - history.directionWindow
             : undefined
         const flightDelta =
+          typeof summary.componentScores.flightQuality === 'number' &&
           typeof history?.flightQuality === 'number'
             ? summary.componentScores.flightQuality - history.flightQuality
             : undefined
@@ -1082,7 +1085,10 @@ function App({
             {
               key: 'flightQuality',
               label: 'Flight Quality',
-              value: summary.componentScores.flightQuality,
+              value:
+                typeof summary.componentScores.flightQuality === 'number'
+                  ? summary.componentScores.flightQuality
+                  : undefined,
               historical: history?.flightQuality,
               delta: flightDelta,
               direction: comparisonDirection(flightDelta),
@@ -1990,7 +1996,12 @@ function App({
       ],
       ['directionWindow', selectedClubSummary.componentScores.directionWindow],
       ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
-      ['flightQuality', selectedClubSummary.componentScores.flightQuality],
+      [
+        'flightQuality',
+        typeof selectedClubSummary.componentScores.flightQuality === 'number'
+          ? selectedClubSummary.componentScores.flightQuality
+          : 0,
+      ],
     ]
 
     const ranked = [...components].sort((left, right) => right[1] - left[1])
@@ -2253,7 +2264,8 @@ function App({
       {
         key: 'flightQuality',
         label: 'Flight Quality',
-        value: scores?.flightQuality,
+        value:
+          typeof scores?.flightQuality === 'number' ? scores.flightQuality : undefined,
         delta:
           typeof scores?.flightQuality === 'number' &&
           typeof history?.flightQuality === 'number'
@@ -2272,7 +2284,10 @@ function App({
             : undefined,
           comparisonTolerance.component,
         ),
-        ...buildDriverCopy('flightQuality', scores?.flightQuality),
+        ...buildDriverCopy(
+          'flightQuality',
+          typeof scores?.flightQuality === 'number' ? scores.flightQuality : undefined,
+        ),
       },
       {
         key: 'dataConfidence',
@@ -3574,7 +3589,13 @@ function App({
         label,
         summary?.componentScores.directionWindow,
       )
-      pushPoint('flightQuality', label, summary?.componentScores.flightQuality)
+      pushPoint(
+        'flightQuality',
+        label,
+        typeof summary?.componentScores.flightQuality === 'number'
+          ? summary.componentScores.flightQuality
+          : undefined,
+      )
       pushPoint(
         'patternStability',
         label,
