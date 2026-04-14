@@ -29,7 +29,7 @@ if (!(Test-Path $venvPython)) {
 
 & $venvPython -m pip install --upgrade pip
 & $venvPython -m pip install --upgrade pyinstaller opengolfcoach
-& $venvPython -m PyInstaller --noconfirm --onefile --name $outName $helperScript `
+& $venvPython -m PyInstaller --noconfirm --onefile --noconsole --name $outName $helperScript `
   --distpath $distDir `
   --workpath $buildDir `
   --specpath $specDir
