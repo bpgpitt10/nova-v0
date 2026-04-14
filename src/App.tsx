@@ -4749,7 +4749,7 @@ function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubD
   const carryDomainMin = Math.floor((carryMin - carryPadding) / 5) * 5
   const carryDomainMax = Math.ceil((carryMax + carryPadding) / 5) * 5
   const yRange = Math.max(carryDomainMax - carryDomainMin, 1)
-  const offlineDomainMax = Math.max(10, Math.ceil(offlineMax / 5) * 5)
+  const offlineDomainMax = Math.max(5, Math.ceil(offlineMax / 5) * 5)
   const xRange = offlineDomainMax * 2
   const chartWidth = width - padding.left - padding.right
 
@@ -4891,11 +4891,11 @@ function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubD
           strokeWidth={point.id === lastShotId ? '1.4' : '1'}
         />
       ))}
-      <text className="club-detail-axis-label" x={padding.left + 8} y={height - 14}>
-        Left miss (yd)
+      <text className="club-detail-axis-label" x={padding.left + 8} y={height - 10}>
+        Left miss
       </text>
-      <text className="club-detail-axis-label" x={width - padding.right - 62} y={height - 14}>
-        Right miss (yd)
+      <text className="club-detail-axis-label" x={width - padding.right - 62} y={height - 10}>
+        Right miss
       </text>
       <text className="club-detail-axis-title" x={width / 2} y={height - 8}>
         Offline distance (yd)
@@ -4907,7 +4907,7 @@ function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubD
         Carry distance (yd)
       </text>
       <text className="club-detail-axis-label" x={targetLineX + 6} y={padding.top + 12}>
-        Target line (0)
+        Target line
       </text>
     </svg>
   )

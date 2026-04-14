@@ -974,14 +974,14 @@ td {
 }
 
 .club-detail-grid-line {
-  stroke: rgba(159, 176, 159, 0.18);
-  stroke-width: 1;
+  stroke: rgba(159, 176, 159, 0.11);
+  stroke-width: 0.5;
 }
 
 .club-detail-grid-line-center {
-  stroke: rgba(234, 179, 8, 0.38);
-  stroke-width: 1.2;
-  stroke-dasharray: 4 5;
+  stroke: rgba(234, 179, 8, 0.24);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 6;
 }
 
 .club-detail-target-line {
@@ -1009,12 +1009,12 @@ td {
 
 .club-detail-axis-label {
   fill: #9fb09f;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .club-detail-axis-title {
   fill: #cfd8cd;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-anchor: middle;
