@@ -79,6 +79,7 @@ export type MetricModel = {
   chartType: 'trend' | 'distribution'
   series: number[]
 }
+type MetricGroup = MetricModel['group']
 
 type HeatmapMetric = {
   key: string
@@ -250,27 +251,56 @@ export default function ClubDetailV2({
   metricSessionSeries,
   defaultMetric,
 }: ClubDetailV2Props) {
+  const metricGroupOrder: MetricGroup[] = [
+    'distance',
+    'direction',
+    'flight',
+    'path',
+    'performanceDrivers',
+  ]
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(defaultMetric)
   const [chartMode, setChartMode] = useState<'shots' | 'sessions'>('shots')
   const [activeDriverKey, setActiveDriverKey] = useState<string | null>(null)
+  const [openMetricGroups, setOpenMetricGroups] = useState<Record<MetricGroup, boolean>>({
+    distance: true,
+    direction: false,
+    flight: false,
+    path: false,
+    performanceDrivers: false,
+  })
   const analysisRef = useRef<HTMLElement | null>(null)
   const initializedDriverRef = useRef(false)
   const selectedModel =
     metricModels.find((metric) => metric.key === selectedMetric) ?? metricModels[0] ?? null
 
   const groupedMetrics = useMemo(() => {
-    const groups: Array<MetricModel['group']> = [
-      'distance',
-      'direction',
-      'flight',
-      'path',
-      'performanceDrivers',
-    ]
-    return groups.map((group) => ({
+    return metricGroupOrder.map((group) => ({
       group,
       rows: metricModels.filter((metric) => metric.group === group),
     }))
-  }, [metricModels])
+  }, [metricGroupOrder, metricModels])
+
+  const allMetricGroupsExpanded = metricGroupOrder.every((group) => openMetricGroups[group])
+
+  const toggleMetricGroup = (group: MetricGroup) => {
+    setOpenMetricGroups((current) => ({
+      ...current,
+      [group]: !current[group],
+    }))
+  }
+
+  const toggleAllMetricGroups = () => {
+    const nextOpenState = !allMetricGroupsExpanded
+    setOpenMetricGroups(
+      metricGroupOrder.reduce(
+        (accumulator, group) => {
+          accumulator[group] = nextOpenState
+          return accumulator
+        },
+        {} as Record<MetricGroup, boolean>,
+      ),
+    )
+  }
 
   const rankedDrivers = useMemo(
     () =>
@@ -771,27 +801,51 @@ export default function ClubDetailV2({
 
       <section className="club-v2-analysis" aria-label="What's Driving This" ref={analysisRef}>
         <article className="dashboard-card club-v2-analysis-card">
-          <div className="section-kicker">What&apos;s Driving This</div>
+          <div className="club-v2-analysis-head">
+            <div className="section-kicker">What&apos;s Driving This</div>
+            <div className="club-v2-metric-controls">
+              <button className="club-v2-metric-toggle-all" onClick={toggleAllMetricGroups} type="button">
+                {allMetricGroupsExpanded ? 'Collapse All' : 'Expand All'}
+              </button>
+            </div>
+          </div>
           <div className="club-v2-metric-rail">
             {groupedMetrics.map((group) => (
               <div className="club-v2-metric-group" key={group.group}>
-                <div className="club-v2-metric-group-title">{groupLabel(group.group)}</div>
-                <div className="club-v2-metric-rows">
-                  {group.rows.map((row) => (
-                    <button
-                      className={`club-v2-metric-row ${
-                        selectedModel?.key === row.key ? 'is-active' : ''
-                      }`}
-                      key={row.key}
-                      onClick={() => onSelectMetric(row.key)}
-                      type="button"
-                    >
-                      <span>{row.label}</span>
-                      <span>{row.valueText}</span>
-                      <span className={toneClass(row.trendTone)}>{row.deltaText}</span>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  className="club-v2-metric-group-title club-v2-metric-group-toggle"
+                  type="button"
+                  onClick={() => toggleMetricGroup(group.group)}
+                  aria-expanded={openMetricGroups[group.group]}
+                >
+                  <span>{groupLabel(group.group)}</span>
+                  <span
+                    className={`club-v2-metric-group-caret ${
+                      openMetricGroups[group.group] ? 'is-open' : ''
+                    }`}
+                    aria-hidden="true"
+                  >
+                    ▾
+                  </span>
+                </button>
+                {openMetricGroups[group.group] ? (
+                  <div className="club-v2-metric-rows">
+                    {group.rows.map((row) => (
+                      <button
+                        className={`club-v2-metric-row ${
+                          selectedModel?.key === row.key ? 'is-active' : ''
+                        }`}
+                        key={row.key}
+                        onClick={() => onSelectMetric(row.key)}
+                        type="button"
+                      >
+                        <span>{row.label}</span>
+                        <span>{row.valueText}</span>
+                        <span className={toneClass(row.trendTone)}>{row.deltaText}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
