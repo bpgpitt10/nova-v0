@@ -49,21 +49,26 @@ export type MetricKey =
   | 'spinAxis'
   | 'clubPath'
   | 'faceToPath'
+  | 'faceToTarget'
+  | 'offline'
   | 'carry'
   | 'totalDistance'
   | 'ballSpeed'
+  | 'clubSpeed'
   | 'smashFactor'
   | 'launch'
   | 'spin'
   | 'peakHeight'
   | 'descent'
-  | 'dispersion'
+  | 'directionWindow'
+  | 'flightQuality'
   | 'patternStability'
   | 'distanceWindow'
+  | 'dataConfidence'
 
 export type MetricModel = {
   key: MetricKey
-  group: 'direction' | 'distance' | 'flight' | 'consistency'
+  group: 'distance' | 'direction' | 'flight' | 'path' | 'performanceDrivers'
   label: string
   valueText: string
   deltaText: string
@@ -144,14 +149,16 @@ const deltaLabel = (delta: number | undefined, direction: ComparisonDirection) =
 
 const groupLabel = (group: MetricModel['group']) => {
   switch (group) {
-    case 'direction':
-      return 'Direction'
     case 'distance':
       return 'Distance'
+    case 'direction':
+      return 'Direction'
     case 'flight':
       return 'Flight'
-    case 'consistency':
-      return 'Consistency'
+    case 'path':
+      return 'Path'
+    case 'performanceDrivers':
+      return 'Performance Drivers'
   }
 }
 
@@ -160,21 +167,26 @@ const metricUnitLabel = (key: MetricKey) => {
     case 'carry':
     case 'totalDistance':
     case 'peakHeight':
-    case 'dispersion':
+    case 'offline':
       return 'Yards'
     case 'spin':
       return 'RPM'
     case 'ballSpeed':
+    case 'clubSpeed':
       return 'MPH'
     case 'smashFactor':
       return 'Ratio'
     case 'patternStability':
     case 'distanceWindow':
+    case 'directionWindow':
+    case 'flightQuality':
+    case 'dataConfidence':
       return 'Score'
     case 'hla':
     case 'spinAxis':
     case 'clubPath':
     case 'faceToPath':
+    case 'faceToTarget':
     case 'launch':
     case 'descent':
       return 'Degrees'
@@ -248,10 +260,11 @@ export default function ClubDetailV2({
 
   const groupedMetrics = useMemo(() => {
     const groups: Array<MetricModel['group']> = [
-      'direction',
       'distance',
+      'direction',
       'flight',
-      'consistency',
+      'path',
+      'performanceDrivers',
     ]
     return groups.map((group) => ({
       group,
@@ -759,6 +772,32 @@ export default function ClubDetailV2({
       <section className="club-v2-analysis" aria-label="What's Driving This" ref={analysisRef}>
         <article className="dashboard-card club-v2-analysis-card">
           <div className="section-kicker">What&apos;s Driving This</div>
+          <div className="club-v2-metric-rail">
+            {groupedMetrics.map((group) => (
+              <div className="club-v2-metric-group" key={group.group}>
+                <div className="club-v2-metric-group-title">{groupLabel(group.group)}</div>
+                <div className="club-v2-metric-rows">
+                  {group.rows.map((row) => (
+                    <button
+                      className={`club-v2-metric-row ${
+                        selectedModel?.key === row.key ? 'is-active' : ''
+                      }`}
+                      key={row.key}
+                      onClick={() => onSelectMetric(row.key)}
+                      type="button"
+                    >
+                      <span>{row.label}</span>
+                      <span>{row.valueText}</span>
+                      <span className={toneClass(row.trendTone)}>{row.deltaText}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="club-v2-analysis-divider" />
+
           {selectedModel ? (
             <>
               <div className="club-v2-read-band-head">
@@ -778,53 +817,27 @@ export default function ClubDetailV2({
 
           <div className="club-v2-analysis-divider" />
 
-          <div className="club-v2-analysis-grid">
-            <div className="club-v2-metric-rail">
-              {groupedMetrics.map((group) => (
-                <div className="club-v2-metric-group" key={group.group}>
-                  <div className="club-v2-metric-group-title">{groupLabel(group.group)}</div>
-                  <div className="club-v2-metric-rows">
-                    {group.rows.map((row) => (
-                      <button
-                        className={`club-v2-metric-row ${
-                          selectedModel?.key === row.key ? 'is-active' : ''
-                        }`}
-                        key={row.key}
-                        onClick={() => onSelectMetric(row.key)}
-                        type="button"
-                      >
-                        <span>{row.label}</span>
-                        <span>{row.valueText}</span>
-                        <span className={toneClass(row.trendTone)}>{row.deltaText}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="club-v2-chart-panel">
-              <div className="club-v2-chart-header">
-                <div className="club-v2-chart-title">Metric Trend</div>
-                <div className="club-v2-chart-toggle" role="tablist" aria-label="Trend mode">
-                  <button
-                    className={chartMode === 'shots' ? 'is-active' : undefined}
-                    onClick={() => setChartMode('shots')}
-                    type="button"
-                  >
-                    Shots
-                  </button>
-                  <button
-                    className={chartMode === 'sessions' ? 'is-active' : undefined}
-                    onClick={() => setChartMode('sessions')}
-                    type="button"
-                  >
-                    Sessions
-                  </button>
-                </div>
+          <div className="club-v2-chart-panel">
+            <div className="club-v2-chart-header">
+              <div className="club-v2-chart-title">Metric Trend</div>
+              <div className="club-v2-chart-toggle" role="tablist" aria-label="Trend mode">
+                <button
+                  className={chartMode === 'shots' ? 'is-active' : undefined}
+                  onClick={() => setChartMode('shots')}
+                  type="button"
+                >
+                  Shots
+                </button>
+                <button
+                  className={chartMode === 'sessions' ? 'is-active' : undefined}
+                  onClick={() => setChartMode('sessions')}
+                  type="button"
+                >
+                  Sessions
+                </button>
               </div>
-              {selectedModel ? chartSvg : <div className="club-v2-empty">No selected metric.</div>}
             </div>
+            {selectedModel ? chartSvg : <div className="club-v2-empty">No selected metric.</div>}
           </div>
         </article>
       </section>

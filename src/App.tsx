@@ -2751,14 +2751,16 @@ function App({
     const spinAxisSeries = seriesFromExtractor(spinAxisValue)
     const clubPathSeries = seriesFromExtractor(clubPathValue)
     const faceToPathSeries = seriesFromExtractor(faceToPathValue)
+    const faceToTargetSeries = seriesFromExtractor(faceToTargetValue)
     const launchSeries = seriesFromExtractor(launchValue)
     const spinSeries = seriesFromExtractor(spinValue)
     const peakSeries = seriesFromExtractor(peakHeightValue)
     const descentSeries = seriesFromExtractor(descentValue)
     const ballSpeedSeries = seriesFromExtractor(ballSpeedMphValue)
+    const clubSpeedSeries = seriesFromExtractor(clubSpeedValue)
     const smashSeries = seriesFromExtractor(smashFactorValue)
     const offlineSeries = seriesFromExtractor(offlineValue)
-    const dispersionSeries = offlineSeries.map((value) => Math.abs(value))
+    const offlineAbsSeries = offlineSeries.map((value) => Math.abs(value))
     const carryAnchor = sessionWeightedMetric(carryValue)
     const distanceWindowSeries = selectedDetailIncludedShots
       .map((shot) => {
@@ -2811,31 +2813,23 @@ function App({
       negative: 'Closed Face',
       neutral: 'Face Match',
     })
+    const faceToTargetCurrent = sessionWeightedMetric(faceToTargetValue)
+    const faceToTargetRead = directionRead('Face to target', faceToTargetCurrent, 1.5, {
+      positive: 'Open to Target',
+      negative: 'Closed to Target',
+      neutral: 'Target Match',
+    })
 
     const carryCurrent = sessionWeightedMetric(carryValue)
     const totalCurrent = sessionWeightedMetric(totalValue)
     const ballSpeedCurrent = sessionWeightedMetric(ballSpeedMphValue)
+    const clubSpeedCurrent = sessionWeightedMetric(clubSpeedValue)
     const smashCurrent = sessionWeightedMetric(smashFactorValue)
     const launchCurrent = sessionWeightedMetric(launchValue)
     const spinCurrent = sessionWeightedMetric(spinValue)
     const peakCurrent = sessionWeightedMetric(peakHeightValue)
     const descentCurrent = sessionWeightedMetric(descentValue)
-    const dispersionCurrent = weightedAverageNumbers(
-      analysisSessions.map((session) =>
-        weightedSessionMetricAverage(
-          session,
-          selectedDetailClub,
-          (shot) => {
-            const offline = offlineValue(shot)
-            return typeof offline === 'number' ? Math.abs(offline) : undefined
-          },
-          (shot) => rankWeightForShot(shot),
-        ),
-      ),
-      analysisSessions.map((session) =>
-        sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
-      ),
-    )
+    const offlineCurrent = sessionWeightedMetric(offlineValue)
     const patternScore = selectedClubSummary?.componentScores.patternStability
     const distanceScore = selectedClubSummary?.componentScores.distanceWindow
 
@@ -2843,18 +2837,17 @@ function App({
     const spinAxisDelta = sessionDeltaForMetric(spinAxisValue)
     const clubPathDelta = sessionDeltaForMetric(clubPathValue)
     const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
+    const faceToTargetDelta = sessionDeltaForMetric(faceToTargetValue)
     const carryDelta = sessionDeltaForMetric(carryValue)
     const totalDistanceDelta = sessionDeltaForMetric(totalValue)
     const ballSpeedDelta = sessionDeltaForMetric(ballSpeedMphValue)
+    const clubSpeedDelta = sessionDeltaForMetric(clubSpeedValue)
     const smashDelta = sessionDeltaForMetric(smashFactorValue)
     const launchDelta = sessionDeltaForMetric(launchValue)
     const spinDelta = sessionDeltaForMetric(spinValue)
     const peakHeightDelta = sessionDeltaForMetric(peakHeightValue)
     const descentDelta = sessionDeltaForMetric(descentValue)
-    const dispersionDelta = sessionDeltaForMetric((shot) => {
-      const offline = offlineValue(shot)
-      return typeof offline === 'number' ? Math.abs(offline) : undefined
-    })
+    const offlineDelta = sessionDeltaForMetric(offlineValue)
 
     const trendToneForDelta = (delta: number | undefined, tolerance: number) =>
       comparisonTone(delta, tolerance)
@@ -2885,32 +2878,6 @@ function App({
         trendRead: spinAxisRead.trendRead,
         chartType: 'trend',
         series: spinAxisSeries,
-      },
-      {
-        key: 'clubPath',
-        group: 'direction',
-        label: 'Club Path',
-        valueText: valueText(pathCurrent, '°', 1, true),
-        deltaText: deltaText(clubPathDelta, '°', 1),
-        trendTone: trendToneForDelta(clubPathDelta, 0.8),
-        status: pathRead.status,
-        read: pathRead.read,
-        trendRead: pathRead.trendRead,
-        chartType: 'trend',
-        series: clubPathSeries,
-      },
-      {
-        key: 'faceToPath',
-        group: 'direction',
-        label: 'Face to Path',
-        valueText: valueText(facePathCurrent, '°', 1, true),
-        deltaText: deltaText(faceToPathDelta, '°', 1),
-        trendTone: trendToneForDelta(faceToPathDelta, 0.8),
-        status: facePathRead.status,
-        read: facePathRead.read,
-        trendRead: facePathRead.trendRead,
-        chartType: 'trend',
-        series: faceToPathSeries,
       },
       {
         key: 'carry',
@@ -2970,6 +2937,25 @@ function App({
         series: ballSpeedSeries,
       },
       {
+        key: 'clubSpeed',
+        group: 'distance',
+        label: 'Club Speed',
+        valueText: valueText(clubSpeedCurrent, ' mph', 1),
+        deltaText: deltaText(clubSpeedDelta, ' mph', 1),
+        trendTone: trendToneForDelta(clubSpeedDelta, 0.8),
+        status: typeof clubSpeedCurrent === 'number' ? 'Speed Tempo' : 'Building',
+        read:
+          typeof clubSpeedCurrent === 'number'
+            ? 'Club speed tracks the engine driving current distance output.'
+            : 'Club-speed support is still light.',
+        trendRead:
+          clubSpeedSeries.length > 2
+            ? 'Club-speed trend is showing pace changes session to session.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: clubSpeedSeries,
+      },
+      {
         key: 'smashFactor',
         group: 'distance',
         label: 'Smash Factor',
@@ -2987,6 +2973,31 @@ function App({
             : 'Trend is still forming.',
         chartType: 'trend',
         series: smashSeries,
+      },
+      {
+        key: 'offline',
+        group: 'direction',
+        label: 'Offline',
+        valueText: valueText(offlineCurrent, ' yd', 1, true),
+        deltaText: deltaText(offlineDelta, ' yd', 1),
+        trendTone: trendToneForDelta(offlineDelta, 1.2),
+        status: directionRead('Offline miss', offlineCurrent, 2, {
+          positive: 'Right Bias',
+          negative: 'Left Bias',
+          neutral: 'Centered',
+        }).status,
+        read: directionRead('Offline miss', offlineCurrent, 2, {
+          positive: 'Right Bias',
+          negative: 'Left Bias',
+          neutral: 'Centered',
+        }).read,
+        trendRead: directionRead('Offline miss', offlineCurrent, 2, {
+          positive: 'Right Bias',
+          negative: 'Left Bias',
+          neutral: 'Centered',
+        }).trendRead,
+        chartType: 'distribution',
+        series: offlineAbsSeries,
       },
       {
         key: 'launch',
@@ -3072,34 +3083,47 @@ function App({
         series: descentSeries,
       },
       {
-        key: 'dispersion',
-        group: 'consistency',
-        label: 'Dispersion',
-        valueText: valueText(dispersionCurrent, ' yd', 1),
-        deltaText: deltaText(dispersionDelta, ' yd', 1),
-        trendTone: trendToneForDelta(dispersionDelta, 1),
-        status:
-          typeof dispersionCurrent === 'number'
-            ? dispersionCurrent <= 8
-              ? 'Tight Window'
-              : dispersionCurrent <= 13
-                ? 'Playable Window'
-                : 'Wide Window'
-            : 'Building',
-        read:
-          typeof dispersionCurrent === 'number'
-            ? 'Dispersion is the clearest view of playable miss width.'
-            : 'Dispersion read still needs more included shots.',
-        trendRead:
-          dispersionSeries.length > 2
-            ? 'Distribution is showing where misses are consolidating.'
-            : 'Trend is still building.',
-        chartType: 'distribution',
-        series: dispersionSeries,
+        key: 'clubPath',
+        group: 'path',
+        label: 'Club Path',
+        valueText: valueText(pathCurrent, '°', 1, true),
+        deltaText: deltaText(clubPathDelta, '°', 1),
+        trendTone: trendToneForDelta(clubPathDelta, 0.8),
+        status: pathRead.status,
+        read: pathRead.read,
+        trendRead: pathRead.trendRead,
+        chartType: 'trend',
+        series: clubPathSeries,
+      },
+      {
+        key: 'faceToPath',
+        group: 'path',
+        label: 'Face to Path',
+        valueText: valueText(facePathCurrent, '°', 1, true),
+        deltaText: deltaText(faceToPathDelta, '°', 1),
+        trendTone: trendToneForDelta(faceToPathDelta, 0.8),
+        status: facePathRead.status,
+        read: facePathRead.read,
+        trendRead: facePathRead.trendRead,
+        chartType: 'trend',
+        series: faceToPathSeries,
+      },
+      {
+        key: 'faceToTarget',
+        group: 'path',
+        label: 'Face to Target',
+        valueText: valueText(faceToTargetCurrent, '°', 1, true),
+        deltaText: deltaText(faceToTargetDelta, '°', 1),
+        trendTone: trendToneForDelta(faceToTargetDelta, 0.8),
+        status: faceToTargetRead.status,
+        read: faceToTargetRead.read,
+        trendRead: faceToTargetRead.trendRead,
+        chartType: 'trend',
+        series: faceToTargetSeries,
       },
       {
         key: 'patternStability',
-        group: 'consistency',
+        group: 'performanceDrivers',
         label: 'Pattern Stability',
         valueText:
           typeof patternScore === 'number' ? `${formatScore(patternScore)}` : '-',
@@ -3129,7 +3153,7 @@ function App({
       },
       {
         key: 'distanceWindow',
-        group: 'consistency',
+        group: 'performanceDrivers',
         label: 'Distance Window',
         valueText:
           typeof distanceScore === 'number' ? `${formatScore(distanceScore)}` : '-',
@@ -3157,6 +3181,102 @@ function App({
         chartType: 'distribution',
         series: distanceWindowSeries,
       },
+      {
+        key: 'directionWindow',
+        group: 'performanceDrivers',
+        label: 'Direction Window',
+        valueText:
+          typeof componentByKey.get('directionWindow')?.value === 'number'
+            ? `${formatScore(componentByKey.get('directionWindow')?.value)}`
+            : '-',
+        deltaText:
+          typeof componentByKey.get('directionWindow')?.delta === 'number'
+            ? `${componentByKey.get('directionWindow')?.direction === 'up' ? '↑' : '↓'} ${Math.abs(componentByKey.get('directionWindow')?.delta ?? 0).toFixed(0)}`
+            : '—',
+        trendTone: componentByKey.get('directionWindow')?.tone ?? 'neutral',
+        status:
+          typeof componentByKey.get('directionWindow')?.value === 'number'
+            ? componentByKey.get('directionWindow')!.value! >= 70
+              ? 'On Line'
+              : componentByKey.get('directionWindow')!.value! >= 50
+                ? 'Playable Line'
+                : 'Off Line'
+            : 'Building',
+        read:
+          typeof componentByKey.get('directionWindow')?.value === 'number'
+            ? 'Direction window reflects how often start line stays in a playable corridor.'
+            : 'Direction-window score needs more evidence.',
+        trendRead:
+          hlaSeries.length > 2
+            ? 'Direction trend is tracking line control changes.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: hlaSeries,
+      },
+      {
+        key: 'flightQuality',
+        group: 'performanceDrivers',
+        label: 'Flight Quality',
+        valueText:
+          typeof componentByKey.get('flightQuality')?.value === 'number'
+            ? `${formatScore(componentByKey.get('flightQuality')?.value)}`
+            : '-',
+        deltaText:
+          typeof componentByKey.get('flightQuality')?.delta === 'number'
+            ? `${componentByKey.get('flightQuality')?.direction === 'up' ? '↑' : '↓'} ${Math.abs(componentByKey.get('flightQuality')?.delta ?? 0).toFixed(0)}`
+            : '—',
+        trendTone: componentByKey.get('flightQuality')?.tone ?? 'neutral',
+        status:
+          typeof componentByKey.get('flightQuality')?.value === 'number'
+            ? componentByKey.get('flightQuality')!.value! >= 70
+              ? 'Clean Flight'
+              : componentByKey.get('flightQuality')!.value! >= 50
+                ? 'Playable Flight'
+                : 'Erratic Flight'
+            : 'Building',
+        read:
+          typeof componentByKey.get('flightQuality')?.value === 'number'
+            ? 'Flight quality reflects how often launch and spin combine into usable windows.'
+            : 'Flight-quality score needs more evidence.',
+        trendRead:
+          launchSeries.length > 2
+            ? 'Flight trend is moving with launch and spin shifts.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: launchSeries,
+      },
+      {
+        key: 'dataConfidence',
+        group: 'performanceDrivers',
+        label: 'Data Confidence',
+        valueText:
+          typeof componentByKey.get('dataConfidence')?.value === 'number'
+            ? `${formatScore(componentByKey.get('dataConfidence')?.value)}`
+            : '-',
+        deltaText:
+          typeof componentByKey.get('dataConfidence')?.delta === 'number'
+            ? `${componentByKey.get('dataConfidence')?.direction === 'up' ? '↑' : '↓'} ${Math.abs(componentByKey.get('dataConfidence')?.delta ?? 0).toFixed(0)}`
+            : '—',
+        trendTone: componentByKey.get('dataConfidence')?.tone ?? 'neutral',
+        status:
+          typeof componentByKey.get('dataConfidence')?.value === 'number'
+            ? componentByKey.get('dataConfidence')!.value! >= 70
+              ? 'High Confidence'
+              : componentByKey.get('dataConfidence')!.value! >= 50
+                ? 'Developing'
+                : 'Low Confidence'
+            : 'Building',
+        read:
+          typeof componentByKey.get('dataConfidence')?.value === 'number'
+            ? 'Data confidence reflects how complete and trustworthy the sample currently is.'
+            : 'Data-confidence score needs more evidence.',
+        trendRead:
+          carrySeries.length > 2
+            ? 'Confidence trend rises as evidence quality improves.'
+            : 'Trend is still building.',
+        chartType: 'trend',
+        series: carrySeries,
+      },
     ]
   }, [
     analysisSessions,
@@ -3173,7 +3293,7 @@ function App({
     const rows = [
       { key: 'carry', label: 'Carry', source: pick('carry') },
       { key: 'total', label: 'Total Distance', source: pick('totalDistance') },
-      { key: 'dispersion', label: 'Dispersion', source: pick('dispersion') },
+      { key: 'offline', label: 'Offline', source: pick('offline') },
       { key: 'bias', label: 'Bias', source: pick('spinAxis') ?? pick('hla') },
       { key: 'hla', label: 'HLA', source: pick('hla') },
       { key: 'vla', label: 'VLA', source: pick('launch') },
@@ -3230,26 +3350,26 @@ function App({
       pushPoint('spinAxis', label, averageFor(spinAxisValue))
       pushPoint('clubPath', label, averageFor(clubPathValue))
       pushPoint('faceToPath', label, averageFor(faceToPathValue))
+      pushPoint('faceToTarget', label, averageFor(faceToTargetValue))
       pushPoint('carry', label, averageFor(carryValue))
       pushPoint('totalDistance', label, averageFor(totalValue))
       pushPoint('ballSpeed', label, averageFor(ballSpeedMphValue))
+      pushPoint('clubSpeed', label, averageFor(clubSpeedValue))
       pushPoint('smashFactor', label, averageFor(smashFactorValue))
       pushPoint('launch', label, averageFor(launchValue))
       pushPoint('spin', label, averageFor(spinValue))
       pushPoint('peakHeight', label, averageFor(peakHeightValue))
       pushPoint('descent', label, averageFor(descentValue))
+      pushPoint('offline', label, averageFor(offlineValue))
       pushPoint(
-        'dispersion',
+        'directionWindow',
         label,
-        averageNumbers(
-          clubShots.map((shot) => {
-            const offline = offlineValue(shot)
-            return typeof offline === 'number' ? Math.abs(offline) : undefined
-          }),
-        ),
+        summary?.componentScores.directionWindow,
       )
+      pushPoint('flightQuality', label, summary?.componentScores.flightQuality)
       pushPoint('patternStability', label, summary?.componentScores.patternStability)
       pushPoint('distanceWindow', label, summary?.componentScores.distanceWindow)
+      pushPoint('dataConfidence', label, summary?.componentScores.dataConfidence)
     })
 
     return series
@@ -3259,8 +3379,8 @@ function App({
     const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
     const hla = byKey.get('hla')
     const spinAxis = byKey.get('spinAxis')
-    const dispersion = byKey.get('dispersion')
-    const directionWindow = byKey.get('distanceWindow')
+    const offline = byKey.get('offline')
+    const directionWindow = byKey.get('directionWindow')
 
     const biasLine = (() => {
       const source = spinAxis ?? hla
@@ -3275,7 +3395,7 @@ function App({
     })()
 
     const widthLine = (() => {
-      const status = dispersion?.status ?? ''
+      const status = offline?.status ?? ''
       if (status.includes('Tight')) {
         return 'Window is compact and generally playable.'
       }
@@ -3311,9 +3431,9 @@ function App({
 
     const map: Record<ClubDriverKey, ClubDetailMetricKey> = {
       distanceWindow: 'distanceWindow',
-      directionWindow: 'hla',
-      flightQuality: 'launch',
-      patternStability: 'dispersion',
+      directionWindow: 'directionWindow',
+      flightQuality: 'flightQuality',
+      patternStability: 'patternStability',
       dataConfidence: 'carry',
     }
 
