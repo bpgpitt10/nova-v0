@@ -439,7 +439,7 @@ const buildPatternStabilityScore = (
 
 const buildDataConfidenceScore = (
   shots: Shot[],
-  sessionCount: number,
+  distinctSessionCount: number,
   recencyWeightForShot: (shot: Shot) => number,
 ) => {
   const weightedShotCount = shots.reduce(
@@ -450,26 +450,12 @@ const buildDataConfidenceScore = (
     (weightedShotCount / confidenceConfig.dataConfidence.targetIncludedShots) * 100,
   )
   const sessionScore = clamp(
-    (sessionCount / confidenceConfig.dataConfidence.targetSessions) * 100,
+    (distinctSessionCount / confidenceConfig.dataConfidence.targetSessions) * 100,
   )
-  const missingRequiredFields = shots.reduce((sum, shot) => {
-    const hasMissingField =
-      typeof shot.ballSpeedMetersPerSecond !== 'number' ||
-      typeof shot.verticalLaunchAngleDegrees !== 'number' ||
-      typeof shot.horizontalLaunchAngleDegrees !== 'number' ||
-      typeof shot.totalSpinRpm !== 'number' ||
-      typeof shot.spinAxisDegrees !== 'number'
-    return sum + (hasMissingField ? recencyWeightForShot(shot) : 0)
-  }, 0)
-  const missingPenalty =
-    weightedShotCount > 0
-      ? (missingRequiredFields / weightedShotCount) *
-        confidenceConfig.dataConfidence.missingRequiredFieldPenalty
-      : confidenceConfig.dataConfidence.missingRequiredFieldPenalty
 
   return {
-    score: clamp(Math.round(includedShotScore * 0.7 + sessionScore * 0.3 - missingPenalty)),
-    note: `${shots.length} shots across ${sessionCount} sessions`,
+    score: clamp(Math.round(includedShotScore * 0.7 + sessionScore * 0.3)),
+    note: `${oneDecimal(weightedShotCount)} weighted shots across ${distinctSessionCount} sessions`,
   }
 }
 
@@ -659,19 +645,11 @@ export const summarizeReviewClub = (
     activeSessionId === null
       ? eligibleSessions
       : eligibleSessions.filter((session) => session.id !== activeSessionId)
-  const sessionCount = (() => {
-    const activeWeight = activeSessionId === null ? 0 : sessionWeightById.get(activeSessionId) ?? 0
-    const supportWeight = supportingSessions.reduce((sum, session) => {
-      const hasClubShots = session.shots.some(
-        (shot) => shot.club === club && shot.included,
-      )
-      if (!hasClubShots) {
-        return sum
-      }
-      return sum + (sessionWeightById.get(session.id) ?? 0)
-    }, 0)
-    return supportWeight + activeWeight
-  })()
+  const distinctSessionCount = new Set(
+    includedShots
+      .map((shot) => shotSessionById.get(shot.id))
+      .filter((sessionId): sessionId is string => typeof sessionId === 'string'),
+  ).size
 
   const distanceWindow = buildDistanceScore(includedShots, recencyWeightForShot)
   const directionWindow = buildDirectionScore(includedShots, recencyWeightForShot)
@@ -684,7 +662,7 @@ export const summarizeReviewClub = (
   )
   const dataConfidence = buildDataConfidenceScore(
     includedShots,
-    sessionCount,
+    distinctSessionCount,
     recencyWeightForShot,
   )
 
