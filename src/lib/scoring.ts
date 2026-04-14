@@ -1,4 +1,5 @@
 import { confidenceConfig } from './confidenceConfig'
+import { guardedWeightedCarryMean, weightedMedianValue } from './carryOutlierGuard'
 import {
   weightedAverage,
   weightedStandardDeviation,
@@ -44,43 +45,6 @@ const getRankWeight = (shot: Shot) => {
   return confidenceConfig.distanceWindow.rankWeights[key] ?? 1
 }
 
-const weightedAverageCarry = (
-  shots: Shot[],
-  recencyWeightForShot: (shot: Shot) => number,
-) => {
-  const carryShots = shots.filter(
-    (shot): shot is Shot & { carryYards: number } =>
-      typeof shot.carryYards === 'number',
-  )
-  if (carryShots.length === 0) {
-    return null
-  }
-
-  const weighted = carryShots.reduce(
-    (accumulator, shot) => {
-      const weight = getRankWeight(shot) * recencyWeightForShot(shot)
-      if (weight <= 0) {
-        return accumulator
-      }
-      return {
-        total: accumulator.total + shot.carryYards * weight,
-        weight: accumulator.weight + weight,
-      }
-    },
-    { total: 0, weight: 0 },
-  )
-
-  return weighted.weight > 0 ? weighted.total / weighted.weight : null
-}
-
-const scoreFromTarget = (value: number | null, target: number) => {
-  if (value === null) {
-    return 0
-  }
-
-  return clamp(100 - (value / target) * 100)
-}
-
 const scoreFromRange = (
   value: number | undefined,
   [min, max]: [number, number],
@@ -107,7 +71,6 @@ const scoreAbsolute = (value: number | undefined, maxAbs: number): number | null
 }
 
 const buildDirectionScore = (
-  club: Club,
   shots: Shot[],
   recencyWeightForShot: (shot: Shot) => number,
 ) => {
@@ -121,51 +84,80 @@ const buildDirectionScore = (
     return { score: 0, note: 'No offline data' }
   }
 
-  const targetWidth = confidenceConfig.directionWindow.targetWidthByClub[club] ?? 18
-  const maxOffline = targetWidth * confidenceConfig.directionWindow.maxOfflineMultiplier
+  const carryValues = offlineShots.map((shot) => shot.carryYards)
+  const typicalCarry = weightedMedianValue(carryValues, offlineWeights)
+  if (typeof typicalCarry !== 'number') {
+    return { score: 0, note: 'No carry reference' }
+  }
+
+  const targetWidth = confidenceConfig.directionWindow.targetWidthPct * typicalCarry
+  if (!(targetWidth > 0)) {
+    return { score: 0, note: 'Invalid target width' }
+  }
+
+  const planningMissThreshold =
+    confidenceConfig.directionWindow.planningMissThresholdPctOfTargetWidth * targetWidth
+  const inWindowThreshold = 0.5 * targetWidth
+  const zeroScoreThreshold = 1.5 * targetWidth
+  const shotDirectionScores = offlineValues.map((offline) => {
+    const offlineAbs = Math.abs(offline)
+    if (offlineAbs <= inWindowThreshold) {
+      return 100
+    }
+    if (offlineAbs >= zeroScoreThreshold) {
+      return 0
+    }
+    return (
+      100 *
+      (1 -
+        (offlineAbs - inWindowThreshold) /
+          (zeroScoreThreshold - inWindowThreshold))
+    )
+  })
+  const baseScore = weightedAverage(shotDirectionScores, offlineWeights) ?? 0
   const averageAbsoluteOffline =
     weightedAverage(
       offlineValues.map((value) => Math.abs(value)),
       offlineWeights,
     ) ?? 0
-  const baseScore = clamp(100 - (averageAbsoluteOffline / targetWidth) * 100)
 
-  const totalWeight = offlineWeights.reduce((sum, weight) => sum + weight, 0)
-  const extremeMissWeight = offlineShots.reduce(
+  const meaningfulLeftWeight = offlineShots.reduce(
     (sum, shot) =>
       sum +
-      (Math.abs(shot.offlineYards) >= maxOffline ? recencyWeightForShot(shot) : 0),
-    0,
-  )
-  const extremePenalty =
-    totalWeight > 0 ? clamp((extremeMissWeight / totalWeight) * 100, 0, 40) : 0
-
-  const missesLeftWeight = offlineShots.reduce(
-    (sum, shot) =>
-      sum +
-      (shot.offlineYards < -confidenceConfig.directionWindow.sideSwitchThresholdYards
+      (shot.offlineYards <= -planningMissThreshold
         ? recencyWeightForShot(shot)
         : 0),
     0,
   )
-  const missesRightWeight = offlineShots.reduce(
+  const meaningfulRightWeight = offlineShots.reduce(
     (sum, shot) =>
       sum +
-      (shot.offlineYards > confidenceConfig.directionWindow.sideSwitchThresholdYards
+      (shot.offlineYards >= planningMissThreshold
         ? recencyWeightForShot(shot)
         : 0),
     0,
   )
-  const missesLeft = totalWeight > 0 && missesLeftWeight / totalWeight >= 0.1
-  const missesRight = totalWeight > 0 && missesRightWeight / totalWeight >= 0.1
+  const totalMeaningfulMissWeight = meaningfulLeftWeight + meaningfulRightWeight
+
   const twoWayPenalty =
-    missesLeft && missesRight ? confidenceConfig.directionWindow.twoWayMissPenalty : 0
+    totalMeaningfulMissWeight > 0
+      ? (() => {
+          const leftShare = meaningfulLeftWeight / totalMeaningfulMissWeight
+          const rightShare = meaningfulRightWeight / totalMeaningfulMissWeight
+          const minorShare = Math.min(leftShare, rightShare)
+          return clamp(
+            confidenceConfig.directionWindow.twoWayPenaltyMultiplier * minorShare,
+            0,
+            confidenceConfig.directionWindow.twoWayPenaltyCap,
+          )
+        })()
+      : 0
 
   return {
-    score: clamp(baseScore - extremePenalty - twoWayPenalty),
+    score: clamp(baseScore - twoWayPenalty),
     note:
       twoWayPenalty > 0
-        ? `Avg abs offline ${oneDecimal(averageAbsoluteOffline)} yd with two-way miss`
+        ? `Avg abs offline ${oneDecimal(averageAbsoluteOffline)} yd, two-way balance penalty ${oneDecimal(twoWayPenalty)}`
         : `Avg abs offline ${oneDecimal(averageAbsoluteOffline)} yd`,
   }
 }
@@ -183,34 +175,44 @@ const buildDistanceScore = (
     return { score: 0, note: 'No carry data' }
   }
 
-  const carryAnchor = weightedAverageCarry(shots, recencyWeightForShot)
   const carryWeights = carryShots.map(
     (shot) => recencyWeightForShot(shot) * getRankWeight(shot),
   )
-  const carryStdDev = weightedStandardDeviation(carryValues, carryWeights) ?? 0
-  const averageDeviation = oneDecimal(
-    carryAnchor === null
-      ? null
-      : weightedAverage(
-          carryValues.map((value) => Math.abs(value - carryAnchor)),
-          carryWeights,
-        ),
+  const typicalCarry =
+    weightedMedianValue(carryValues, carryWeights) ?? null
+  if (typicalCarry === null) {
+    return { score: 0, note: 'No carry anchor' }
+  }
+
+  const inWindowThreshold = Math.max(
+    confidenceConfig.distanceWindow.inWindowThresholdFloorYards,
+    confidenceConfig.distanceWindow.inWindowThresholdPct * typicalCarry,
   )
-  const anchorScore = scoreFromTarget(
-    averageDeviation,
-    confidenceConfig.distanceWindow.anchorToleranceYards,
-  )
-  const consistencyScore = scoreFromTarget(
-    carryStdDev,
-    confidenceConfig.distanceWindow.consistencyTargetStdDevYards,
+  const zeroScoreThreshold = Math.max(
+    confidenceConfig.distanceWindow.zeroScoreThresholdFloorYards,
+    confidenceConfig.distanceWindow.zeroScoreThresholdPct * typicalCarry,
   )
 
+  const shotDistanceScores = carryValues.map((carry) => {
+    const carryGap = Math.abs(carry - typicalCarry)
+    if (carryGap <= inWindowThreshold) {
+      return 100
+    }
+    if (carryGap >= zeroScoreThreshold) {
+      return 0
+    }
+    return (
+      100 *
+      (1 -
+        (carryGap - inWindowThreshold) /
+          (zeroScoreThreshold - inWindowThreshold))
+    )
+  })
+  const distanceWindow = weightedAverage(shotDistanceScores, carryWeights) ?? 0
+
   return {
-    score: Math.round(anchorScore * 0.55 + consistencyScore * 0.45),
-    note:
-      carryAnchor === null
-        ? 'No carry anchor'
-        : `Anchor ${oneDecimal(carryAnchor)} yd, std dev ${oneDecimal(carryStdDev)} yd`,
+    score: clamp(Math.round(distanceWindow)),
+    note: `Anchor ${oneDecimal(typicalCarry)} yd`,
   }
 }
 
@@ -274,86 +276,94 @@ const buildFlightQualityScore = (
 }
 
 const buildPatternStabilityScore = (
-  shots: Shot[],
+  includedShots: Shot[],
   supportingSessions: SavedSession[],
   club: Club,
   recencyWeightForShot: (shot: Shot) => number,
 ) => {
-  const carryStdDev = weightedStdDevFromShots(
-    shots,
+  const carryValues = includedShots.map((shot) => shot.carryYards)
+  const carryWeights = includedShots.map((shot) => recencyWeightForShot(shot))
+  const typicalCarry = weightedMedianValue(carryValues, carryWeights)
+  if (typeof typicalCarry !== 'number') {
+    return { score: null, note: 'No carry reference' }
+  }
+
+  const targetWidth = confidenceConfig.directionWindow.targetWidthPct * typicalCarry
+  if (!(targetWidth > 0)) {
+    return { score: null, note: 'Invalid target width' }
+  }
+
+  const carryDriftTolerance = Math.max(
+    confidenceConfig.patternStability.carryDriftToleranceFloorYards,
+    confidenceConfig.patternStability.carryDriftTolerancePct * typicalCarry,
+  )
+  const offlineDriftTolerance = 0.5 * targetWidth
+
+  const clubSessionsByRecency = [...supportingSessions]
+    .sort(
+      (left, right) =>
+        new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+    )
+    .map((session) =>
+      session.shots.filter(
+        (shot) =>
+          shot.club === club && shot.included && recencyWeightForShot(shot) > 0,
+      ),
+    )
+    .filter((shots) => shots.length > 0)
+
+  const distinctSessionCount = clubSessionsByRecency.length
+  if (distinctSessionCount < 2) {
+    return { score: null, note: 'Insufficient supporting sessions' }
+  }
+
+  const recentGroup = clubSessionsByRecency[0]
+  const priorGroup = clubSessionsByRecency.slice(1).flat()
+  const recentGroupShotCount = recentGroup.length
+  const priorGroupShotCount = priorGroup.length
+  if (recentGroupShotCount < 5 || priorGroupShotCount < 5) {
+    return { score: null, note: 'Insufficient shots for drift comparison' }
+  }
+
+  const recentCarryCenter = weightedAverageFromShots(
+    recentGroup,
     (shot) => shot.carryYards,
     recencyWeightForShot,
   )
-  const offlineStdDev = weightedStdDevFromShots(
-    shots,
+  const recentOfflineCenter = weightedAverageFromShots(
+    recentGroup,
     (shot) => shot.offlineYards,
     recencyWeightForShot,
   )
-  const carryStability = scoreFromTarget(
-    carryStdDev,
-    confidenceConfig.patternStability.carryStdDevTarget,
+  const priorCarryCenter = weightedAverageFromShots(
+    priorGroup,
+    (shot) => shot.carryYards,
+    recencyWeightForShot,
   )
-  const offlineStability = scoreFromTarget(
-    offlineStdDev,
-    confidenceConfig.patternStability.offlineStdDevTarget,
-  )
-
-  const firstHalf = shots.slice(0, Math.ceil(shots.length / 2))
-  const secondHalf = shots.slice(Math.ceil(shots.length / 2))
-  const carryDrift = Math.abs(
-    (weightedAverageFromShots(firstHalf, (shot) => shot.carryYards, recencyWeightForShot) ??
-      0) -
-      (weightedAverageFromShots(secondHalf, (shot) => shot.carryYards, recencyWeightForShot) ??
-        0),
-  )
-  const directionDrift = Math.abs(
-    (weightedAverageFromShots(
-      firstHalf,
-      (shot) => shot.offlineYards,
-      recencyWeightForShot,
-    ) ?? 0) -
-      (weightedAverageFromShots(
-        secondHalf,
-        (shot) => shot.offlineYards,
-        recencyWeightForShot,
-      ) ?? 0),
-  )
-  const driftScore = scoreFromTarget(
-    Math.max(carryDrift, directionDrift),
-    confidenceConfig.patternStability.driftTargetYards,
+  const priorOfflineCenter = weightedAverageFromShots(
+    priorGroup,
+    (shot) => shot.offlineYards,
+    recencyWeightForShot,
   )
 
-  const signedOffline = shots.flatMap((shot) =>
-    typeof shot.offlineYards === 'number' &&
-    Math.abs(shot.offlineYards) >= confidenceConfig.directionWindow.sideSwitchThresholdYards
-      ? [{ sign: Math.sign(shot.offlineYards), weight: recencyWeightForShot(shot) }]
-      : [],
-  )
-  const weightedSwitches = signedOffline.reduce(
-    (sum, value, index) =>
-      index > 0 && value.sign !== signedOffline[index - 1].sign
-        ? sum + (value.weight + signedOffline[index - 1].weight) / 2
-        : sum,
-    0,
-  )
-  const possibleSwitchWeight = signedOffline.slice(1).reduce((sum, value) => sum + value.weight, 0)
-  const sideSwitchPenalty =
-    possibleSwitchWeight > 0 ? (weightedSwitches / possibleSwitchWeight) * 25 : 0
+  if (
+    typeof recentCarryCenter !== 'number' ||
+    typeof recentOfflineCenter !== 'number' ||
+    typeof priorCarryCenter !== 'number' ||
+    typeof priorOfflineCenter !== 'number'
+  ) {
+    return { score: null, note: 'Insufficient drift centers' }
+  }
 
-  const supportSessions = supportingSessions.filter((session) =>
-    session.shots.some((shot) => shot.club === club && shot.included),
-  )
-  const supportBonus = Math.min(
-    supportSessions.length * confidenceConfig.patternStability.sessionSupportBonusPerSession,
-    confidenceConfig.patternStability.maxSessionSupportBonus,
-  )
-
-  const base =
-    (carryStability * 0.35 + offlineStability * 0.25 + driftScore * 0.4) - sideSwitchPenalty
+  const carryDrift = Math.abs(recentCarryCenter - priorCarryCenter)
+  const offlineDrift = Math.abs(recentOfflineCenter - priorOfflineCenter)
+  const carryDriftScore = clamp(100 - (100 * carryDrift) / carryDriftTolerance)
+  const offlineDriftScore = clamp(100 - (100 * offlineDrift) / offlineDriftTolerance)
+  const patternStability = clamp(Math.round(0.5 * carryDriftScore + 0.5 * offlineDriftScore))
 
   return {
-    score: clamp(Math.round(base + supportBonus)),
-    note: `Drift ${oneDecimal(Math.max(carryDrift, directionDrift))} yd, support ${supportSessions.length} sessions`,
+    score: patternStability,
+    note: `Carry drift ${oneDecimal(carryDrift)} yd, offline drift ${oneDecimal(offlineDrift)} yd`,
   }
 }
 
@@ -446,9 +456,15 @@ const buildInsights = (
   includedShots: number,
   componentScores: ReviewClubSummary['componentScores'],
 ) => {
-  const rankedComponents = Object.entries(componentScores).sort((left, right) => right[1] - left[1]) as Array<
-    [keyof ReviewClubSummary['componentScores'], number]
-  >
+  const rankedComponents = Object.entries(componentScores)
+    .map(
+      ([key, value]) =>
+        [key, typeof value === 'number' ? value : 0] as [
+          keyof ReviewClubSummary['componentScores'],
+          number,
+        ],
+    )
+    .sort((left, right) => right[1] - left[1])
   const strongestPositive = rankedComponents[0]
   const strongestNegative = rankedComponents[rankedComponents.length - 1]
 
@@ -588,7 +604,7 @@ export const summarizeReviewClub = (
   })()
 
   const distanceWindow = buildDistanceScore(includedShots, recencyWeightForShot)
-  const directionWindow = buildDirectionScore(club, includedShots, recencyWeightForShot)
+  const directionWindow = buildDirectionScore(includedShots, recencyWeightForShot)
   const flightQuality = buildFlightQualityScore(includedShots, recencyWeightForShot)
   const patternStability = buildPatternStabilityScore(
     includedShots,
@@ -606,7 +622,7 @@ export const summarizeReviewClub = (
     distanceWindow.score * confidenceConfig.componentWeights.distanceWindow +
     directionWindow.score * confidenceConfig.componentWeights.directionWindow +
     flightQuality.score * confidenceConfig.componentWeights.flightQuality +
-    patternStability.score * confidenceConfig.componentWeights.patternStability +
+    (patternStability.score ?? 0) * confidenceConfig.componentWeights.patternStability +
     dataConfidence.score * confidenceConfig.componentWeights.dataConfidence
 
   const caddieScore = Math.round(weighted)
@@ -624,11 +640,12 @@ export const summarizeReviewClub = (
     club,
     includedShots: includedShots.length,
     carryAverageYards: oneDecimal(
-      weightedAverageFromShots(
-        includedShots,
-        (shot) => shot.carryYards,
-        recencyWeightForShot,
-      ),
+      guardedWeightedCarryMean(
+        includedShots.map((shot) => shot.carryYards),
+        includedShots.map((shot) => recencyWeightForShot(shot)),
+        confidenceConfig.displayCarryOutlierThresholdPct,
+        confidenceConfig.displayCarryOutlierThresholdFloorYards,
+      ) ?? null,
     ),
     carryStdDevYards: oneDecimal(
       weightedStdDevFromShots(
@@ -666,7 +683,7 @@ export const summarizeReviewClub = (
       distanceWindow: distanceWindow.score,
       directionWindow: directionWindow.score,
       flightQuality: flightQuality.score,
-      patternStability: patternStability.score,
+      patternStability: patternStability.score ?? 0,
       dataConfidence: dataConfidence.score,
     }),
   }

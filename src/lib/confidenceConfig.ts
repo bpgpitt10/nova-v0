@@ -4,6 +4,8 @@ export type ConfidenceConfig = {
   historicalWindowDays: number
   historicalTimeDecayLambda: number
   historicalSessionTargetShotCount: number
+  displayCarryOutlierThresholdPct: number
+  displayCarryOutlierThresholdFloorYards: number
   componentWeights: {
     distanceWindow: number
     directionWindow: number
@@ -18,12 +20,24 @@ export type ConfidenceConfig = {
     minSessionWeightFloor: number
   }
   directionWindow: {
+    targetWidthPct: number
+    planningMissThresholdPctOfTargetWidth: number
+    twoWayPenaltyMultiplier: number
+    twoWayPenaltyCap: number
     targetWidthByClub: Partial<Record<Club, number>>
     maxOfflineMultiplier: number
     twoWayMissPenalty: number
     sideSwitchThresholdYards: number
   }
   distanceWindow: {
+    inWindowThresholdPct: number
+    inWindowThresholdFloorYards: number
+    zeroScoreThresholdPct: number
+    zeroScoreThresholdFloorYards: number
+    anchorTolerancePct: number
+    anchorToleranceFloorYards: number
+    stdDevTargetPct: number
+    stdDevTargetFloorYards: number
     anchorToleranceYards: number
     consistencyTargetStdDevYards: number
     rankWeights: Record<string, number>
@@ -37,6 +51,8 @@ export type ConfidenceConfig = {
     missingFieldPenaltyPerField: number
   }
   patternStability: {
+    carryDriftTolerancePct: number
+    carryDriftToleranceFloorYards: number
     carryStdDevTarget: number
     offlineStdDevTarget: number
     driftTargetYards: number
@@ -61,6 +77,8 @@ export const confidenceConfig: ConfidenceConfig = {
   historicalWindowDays: 180,
   historicalTimeDecayLambda: 0.02,
   historicalSessionTargetShotCount: 12,
+  displayCarryOutlierThresholdPct: 0.12,
+  displayCarryOutlierThresholdFloorYards: 18,
   componentWeights: {
     distanceWindow: 0.28,
     directionWindow: 0.24,
@@ -73,6 +91,10 @@ export const confidenceConfig: ConfidenceConfig = {
     minSessionWeightFloor: 0.25,
   },
   directionWindow: {
+    targetWidthPct: 0.15,
+    planningMissThresholdPctOfTargetWidth: 0.5,
+    twoWayPenaltyMultiplier: 40,
+    twoWayPenaltyCap: 16,
     targetWidthByClub: {
       Driver: 32,
       '3W': 28,
@@ -92,6 +114,14 @@ export const confidenceConfig: ConfidenceConfig = {
     sideSwitchThresholdYards: 5,
   },
   distanceWindow: {
+    inWindowThresholdPct: 0.08,
+    inWindowThresholdFloorYards: 8,
+    zeroScoreThresholdPct: 0.16,
+    zeroScoreThresholdFloorYards: 16,
+    anchorTolerancePct: 0.08,
+    anchorToleranceFloorYards: 8,
+    stdDevTargetPct: 0.05,
+    stdDevTargetFloorYards: 5,
     anchorToleranceYards: 12,
     consistencyTargetStdDevYards: 8,
     rankWeights: {
@@ -115,6 +145,8 @@ export const confidenceConfig: ConfidenceConfig = {
     missingFieldPenaltyPerField: 6,
   },
   patternStability: {
+    carryDriftTolerancePct: 0.08,
+    carryDriftToleranceFloorYards: 8,
     carryStdDevTarget: 10,
     offlineStdDevTarget: 12,
     driftTargetYards: 10,

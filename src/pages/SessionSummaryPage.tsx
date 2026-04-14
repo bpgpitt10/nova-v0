@@ -299,7 +299,13 @@ const buildSessionSummary = (
         directionWindow: average(clubSummaries.map((summary) => summary.componentScores.directionWindow)),
         distanceWindow: average(clubSummaries.map((summary) => summary.componentScores.distanceWindow)),
         flightQuality: average(clubSummaries.map((summary) => summary.componentScores.flightQuality)),
-        patternStability: average(clubSummaries.map((summary) => summary.componentScores.patternStability)),
+        patternStability: average(
+          clubSummaries.map((summary) =>
+            typeof summary.componentScores.patternStability === 'number'
+              ? summary.componentScores.patternStability
+              : undefined,
+          ),
+        ),
       }
     : null
 

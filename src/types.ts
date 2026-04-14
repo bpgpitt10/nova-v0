@@ -114,7 +114,7 @@ export type ReviewClubSummary = {
     distanceWindow: number
     directionWindow: number
     flightQuality: number
-    patternStability: number
+    patternStability: number | null
     dataConfidence: number
   }
   explanation: string

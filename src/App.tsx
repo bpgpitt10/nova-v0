@@ -21,6 +21,7 @@ import {
   type Club,
 } from './lib/bagConfig'
 import { confidenceConfig } from './lib/confidenceConfig'
+import { guardedWeightedCarryMean } from './lib/carryOutlierGuard'
 import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
@@ -460,9 +461,17 @@ const strongestComponentLabel = (
   componentScores: ReviewClubSummary['componentScores'],
   direction: 'high' | 'low',
 ) => {
-  const rankedComponents = Object.entries(componentScores).sort((left, right) =>
-    direction === 'high' ? right[1] - left[1] : left[1] - right[1],
-  ) as Array<[keyof ReviewClubSummary['componentScores'], number]>
+  const rankedComponents = Object.entries(componentScores)
+    .map(
+      ([key, value]) =>
+        [key, typeof value === 'number' ? value : 0] as [
+          keyof ReviewClubSummary['componentScores'],
+          number,
+        ],
+    )
+    .sort((left, right) =>
+      direction === 'high' ? right[1] - left[1] : left[1] - right[1],
+    )
 
   return componentLabel(rankedComponents[0][0])
 }
@@ -980,7 +989,9 @@ function App({
           summaryPoints.map((point) => point.weight),
         ),
         patternStability: weightedAverageNumbers(
-          summaryPoints.map((point) => point.summary.componentScores.patternStability),
+          summaryPoints.map(
+            (point) => point.summary.componentScores.patternStability ?? undefined,
+          ),
           summaryPoints.map((point) => point.weight),
         ),
         dataConfidence: weightedAverageNumbers(
@@ -1032,6 +1043,7 @@ function App({
             ? summary.componentScores.flightQuality - history.flightQuality
             : undefined
         const patternDelta =
+          typeof summary.componentScores.patternStability === 'number' &&
           typeof history?.patternStability === 'number'
             ? summary.componentScores.patternStability - history.patternStability
             : undefined
@@ -1079,7 +1091,10 @@ function App({
             {
               key: 'patternStability',
               label: 'Pattern Stability',
-              value: summary.componentScores.patternStability,
+              value:
+                typeof summary.componentScores.patternStability === 'number'
+                  ? summary.componentScores.patternStability
+                  : undefined,
               historical: history?.patternStability,
               delta: patternDelta,
               direction: comparisonDirection(patternDelta),
@@ -1201,9 +1216,13 @@ function App({
       return null
     }
 
-    const componentEntries = Object.entries(
-      featuredDriverSummary.componentScores,
-    ) as Array<[keyof ReviewClubSummary['componentScores'], number]>
+    const componentEntries = Object.entries(featuredDriverSummary.componentScores).map(
+      ([key, value]) =>
+        [key, typeof value === 'number' ? value : 0] as [
+          keyof ReviewClubSummary['componentScores'],
+          number,
+        ],
+    )
     const strongest = [...componentEntries].sort((left, right) => right[1] - left[1])[0][0]
     const weakest = [...componentEntries].sort((left, right) => left[1] - right[1])[0][0]
     const strongestLabel = componentGolfLabel(strongest)
@@ -1507,9 +1526,11 @@ function App({
     const shotWeights = selectedClubHistoricalShots.map(
       (shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1,
     )
-    const carryAverage = weightedAverageNumbers(
+    const carryAverage = guardedWeightedCarryMean(
       selectedClubHistoricalShots.map(carryValue),
       shotWeights,
+      confidenceConfig.displayCarryOutlierThresholdPct,
+      confidenceConfig.displayCarryOutlierThresholdFloorYards,
     )
     const totalAverage = weightedAverageNumbers(
       selectedClubHistoricalShots.map(totalValue),
@@ -1623,6 +1644,61 @@ function App({
   )
 
   const baselineComparison = useMemo(() => {
+    const weightedRecentBaselineForSessionMetric = (
+      sessionMetric: (session: SavedSession) => number | undefined,
+    ) => {
+      const latestClubSession = analysisSessions.find((session) =>
+        typeof sessionMetric(session) === 'number',
+      )
+      if (!latestClubSession) {
+        return null
+      }
+
+      const weightedRecentValue = sessionMetric(latestClubSession)
+      const baselinePoints = analysisSessions
+        .filter((session) => session.id !== latestClubSession.id)
+        .map((session) => ({
+          value: sessionMetric(session),
+          weight: sessionHistoricalWeightForClub(
+            session,
+            selectedDetailClub,
+            historicalModelNowMs,
+          ),
+        }))
+        .filter(
+          (point): point is { value: number; weight: number } =>
+            typeof point.value === 'number' && point.weight > 0,
+        )
+
+      const weightedBaselineValue = weightedAverageNumbers(
+        baselinePoints.map((point) => point.value),
+        baselinePoints.map((point) => point.weight),
+      )
+
+      if (
+        typeof weightedRecentValue !== 'number' ||
+        typeof weightedBaselineValue !== 'number'
+      ) {
+        return null
+      }
+
+      return {
+        weightedRecentValue,
+        weightedBaselineValue,
+        delta: weightedRecentValue - weightedBaselineValue,
+      }
+    }
+
+    const averageForSession = (
+      session: SavedSession,
+      extractor: (shot: Shot) => number | undefined,
+    ) =>
+      averageNumbers(
+        session.shots
+          .filter((shot) => shot.club === selectedDetailClub && shot.included)
+          .map(extractor),
+      )
+
     if (selectedClubSessionSeries.length === 0) {
       return null
     }
@@ -1633,63 +1709,124 @@ function App({
         ? selectedClubSessionSeries[selectedClubSessionSeries.length - 2]
         : null
 
+    const scoreComparison = (() => {
+      const latestSummary = latestSessionSummariesByClub.get(selectedDetailClub)
+      const baseline = historicalAveragesByClub.get(selectedDetailClub)?.score
+      if (typeof latestSummary?.caddieScore !== 'number' || typeof baseline !== 'number') {
+        return undefined
+      }
+      return latestSummary.caddieScore - baseline
+    })()
+
+    const carryComparison = weightedRecentBaselineForSessionMetric((session) =>
+      averageForSession(session, carryValue),
+    )
+    const dispersionComparison = weightedRecentBaselineForSessionMetric((session) =>
+      standardDeviation(
+        session.shots
+          .filter((shot) => shot.club === selectedDetailClub && shot.included)
+          .map(offlineValue),
+      ),
+    )
+
     return {
       latest,
       prior,
-      scoreDelta:
-        prior && typeof latest.score === 'number' && typeof prior.score === 'number'
-          ? latest.score - prior.score
-          : undefined,
-      carryDelta:
-        prior &&
-        typeof latest.carryAverage === 'number' &&
-        typeof prior.carryAverage === 'number'
-          ? latest.carryAverage - prior.carryAverage
-          : undefined,
-      offlineDelta:
-        prior &&
-        typeof latest.dispersion === 'number' &&
-        typeof prior.dispersion === 'number'
-          ? latest.dispersion - prior.dispersion
-          : undefined,
+      scoreDelta: scoreComparison,
+      carryDelta: carryComparison?.delta,
+      offlineDelta: dispersionComparison?.delta,
     }
-  }, [selectedClubSessionSeries])
-
-  const latestAndPrior = (values: Array<number | undefined>) => {
-    const defined = values.filter((value): value is number => typeof value === 'number')
-    if (defined.length === 0) {
-      return null
-    }
-
-    return {
-      latest: defined[defined.length - 1],
-      prior: defined.length > 1 ? defined[defined.length - 2] : undefined,
-    }
-  }
+  }, [
+    analysisSessions,
+    historicalAveragesByClub,
+    historicalModelNowMs,
+    latestSessionSummariesByClub,
+    selectedClubSessionSeries,
+    selectedDetailClub,
+  ])
 
   const trendCards = useMemo(() => {
-    const formatDelta = (latest: number, prior: number | undefined, unit: string) => {
-      if (typeof prior !== 'number') {
-        return 'No prior-session baseline'
+    const weightedRecentBaselineForSessionMetric = (
+      sessionMetric: (session: SavedSession) => number | undefined,
+    ) => {
+      const latestClubSession = analysisSessions.find((session) =>
+        typeof sessionMetric(session) === 'number',
+      )
+      if (!latestClubSession) {
+        return null
       }
 
-      const delta = latest - prior
-      const rounded = Math.abs(delta).toFixed(1)
-      return `${delta >= 0 ? '+' : '-'}${rounded}${unit} vs prior session`
+      const weightedRecentValue = sessionMetric(latestClubSession)
+      const baselinePoints = analysisSessions
+        .filter((session) => session.id !== latestClubSession.id)
+        .map((session) => ({
+          value: sessionMetric(session),
+          weight: sessionHistoricalWeightForClub(
+            session,
+            selectedDetailClub,
+            historicalModelNowMs,
+          ),
+        }))
+        .filter(
+          (point): point is { value: number; weight: number } =>
+            typeof point.value === 'number' && point.weight > 0,
+        )
+
+      const weightedBaselineValue = weightedAverageNumbers(
+        baselinePoints.map((point) => point.value),
+        baselinePoints.map((point) => point.weight),
+      )
+
+      if (
+        typeof weightedRecentValue !== 'number' ||
+        typeof weightedBaselineValue !== 'number'
+      ) {
+        return null
+      }
+
+      return {
+        weightedRecentValue,
+        weightedBaselineValue,
+        delta: weightedRecentValue - weightedBaselineValue,
+      }
     }
 
-    const carryTrend = latestAndPrior(
-      selectedClubSessionSeries.map((point) => point.carryAverage),
+    const formatDelta = (delta: number | undefined, unit: string) => {
+      if (typeof delta !== 'number') {
+        return 'No weighted baseline'
+      }
+      const rounded = Math.abs(delta).toFixed(1)
+      return `${delta >= 0 ? '+' : '-'}${rounded}${unit} vs weighted baseline`
+    }
+
+    const averageForSession = (
+      session: SavedSession,
+      extractor: (shot: Shot) => number | undefined,
+    ) =>
+      averageNumbers(
+        session.shots
+          .filter((shot) => shot.club === selectedDetailClub && shot.included)
+          .map(extractor),
+      )
+
+    const carryTrend = weightedRecentBaselineForSessionMetric((session) =>
+      averageForSession(session, carryValue),
     )
-    const offlineTrend = latestAndPrior(
-      selectedClubSessionSeries.map((point) => point.dispersion),
+    const offlineTrend = weightedRecentBaselineForSessionMetric((session) =>
+      standardDeviation(
+        session.shots
+          .filter((shot) => shot.club === selectedDetailClub && shot.included)
+          .map(offlineValue),
+      ),
     )
-    const biasTrend = latestAndPrior(selectedClubSessionSeries.map((point) => point.bias))
-    const vlaTrend = latestAndPrior(
-      selectedClubSessionSeries.map((point) => point.vlaAverage),
+    const biasTrend = weightedRecentBaselineForSessionMetric((session) =>
+      averageForSession(session, offlineValue),
     )
-    const spinTrend = latestAndPrior(
-      selectedClubSessionSeries.map((point) => point.spinAverage),
+    const vlaTrend = weightedRecentBaselineForSessionMetric((session) =>
+      averageForSession(session, launchValue),
+    )
+    const spinTrend = weightedRecentBaselineForSessionMetric((session) =>
+      averageForSession(session, spinValue),
     )
 
     const cards = [
@@ -1700,12 +1837,12 @@ function App({
           .map((point) => point.carryAverage)
           .filter((value): value is number => typeof value === 'number'),
         value:
-          carryTrend && typeof carryTrend.latest === 'number'
-            ? `${formatDecimal(carryTrend.latest, ' yd')}`
+          carryTrend && typeof carryTrend.weightedRecentValue === 'number'
+            ? `${formatDecimal(carryTrend.weightedRecentValue, ' yd')}`
             : '-',
         detail:
-          carryTrend && typeof carryTrend.latest === 'number'
-            ? formatDelta(carryTrend.latest, carryTrend.prior, ' yd')
+          carryTrend && typeof carryTrend.weightedRecentValue === 'number'
+            ? formatDelta(carryTrend.delta, ' yd')
             : 'No carry trend yet',
       },
       {
@@ -1715,12 +1852,12 @@ function App({
           .map((point) => point.dispersion)
           .filter((value): value is number => typeof value === 'number'),
         value:
-          offlineTrend && typeof offlineTrend.latest === 'number'
-            ? `${formatDecimal(offlineTrend.latest, ' yd')}`
+          offlineTrend && typeof offlineTrend.weightedRecentValue === 'number'
+            ? `${formatDecimal(offlineTrend.weightedRecentValue, ' yd')}`
             : '-',
         detail:
-          offlineTrend && typeof offlineTrend.latest === 'number'
-            ? formatDelta(offlineTrend.latest, offlineTrend.prior, ' yd')
+          offlineTrend && typeof offlineTrend.weightedRecentValue === 'number'
+            ? formatDelta(offlineTrend.delta, ' yd')
             : 'No dispersion trend yet',
       },
       {
@@ -1730,12 +1867,12 @@ function App({
           .map((point) => point.bias)
           .filter((value): value is number => typeof value === 'number'),
         value:
-          biasTrend && typeof biasTrend.latest === 'number'
-            ? `${biasTrend.latest >= 0 ? 'Right' : 'Left'} ${formatDecimal(Math.abs(biasTrend.latest), ' yd')}`
+          biasTrend && typeof biasTrend.weightedRecentValue === 'number'
+            ? `${biasTrend.weightedRecentValue >= 0 ? 'Right' : 'Left'} ${formatDecimal(Math.abs(biasTrend.weightedRecentValue), ' yd')}`
             : '-',
         detail:
-          biasTrend && typeof biasTrend.latest === 'number'
-            ? formatDelta(Math.abs(biasTrend.latest), biasTrend.prior ? Math.abs(biasTrend.prior) : undefined, ' yd')
+          biasTrend && typeof biasTrend.weightedRecentValue === 'number'
+            ? formatDelta(biasTrend.delta, ' yd')
             : 'No bias trend yet',
       },
       {
@@ -1745,12 +1882,12 @@ function App({
           .map((point) => point.vlaAverage)
           .filter((value): value is number => typeof value === 'number'),
         value:
-          vlaTrend && typeof vlaTrend.latest === 'number'
-            ? `${formatDecimal(vlaTrend.latest, ' deg')}`
+          vlaTrend && typeof vlaTrend.weightedRecentValue === 'number'
+            ? `${formatDecimal(vlaTrend.weightedRecentValue, ' deg')}`
             : '-',
         detail:
-          vlaTrend && typeof vlaTrend.latest === 'number'
-            ? formatDelta(vlaTrend.latest, vlaTrend.prior, ' deg')
+          vlaTrend && typeof vlaTrend.weightedRecentValue === 'number'
+            ? formatDelta(vlaTrend.delta, ' deg')
             : 'No launch trend yet',
       },
       {
@@ -1760,18 +1897,18 @@ function App({
           .map((point) => point.spinAverage)
           .filter((value): value is number => typeof value === 'number'),
         value:
-          spinTrend && typeof spinTrend.latest === 'number'
-            ? `${formatWhole(spinTrend.latest, ' rpm')}`
+          spinTrend && typeof spinTrend.weightedRecentValue === 'number'
+            ? `${formatWhole(spinTrend.weightedRecentValue, ' rpm')}`
             : '-',
         detail:
-          spinTrend && typeof spinTrend.latest === 'number'
-            ? formatDelta(spinTrend.latest, spinTrend.prior, ' rpm')
+          spinTrend && typeof spinTrend.weightedRecentValue === 'number'
+            ? formatDelta(spinTrend.delta, ' rpm')
             : 'No spin trend yet',
       },
     ]
 
     return cards
-  }, [selectedClubSessionSeries])
+  }, [analysisSessions, historicalModelNowMs, selectedClubSessionSeries, selectedDetailClub])
 
   const selectedClubInsights = useMemo(() => {
     if (!selectedClubSummary) {
@@ -1845,7 +1982,12 @@ function App({
     const components: Array<
       [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
     > = [
-      ['patternStability', selectedClubSummary.componentScores.patternStability],
+      [
+        'patternStability',
+        typeof selectedClubSummary.componentScores.patternStability === 'number'
+          ? selectedClubSummary.componentScores.patternStability
+          : 0,
+      ],
       ['directionWindow', selectedClubSummary.componentScores.directionWindow],
       ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
       ['flightQuality', selectedClubSummary.componentScores.flightQuality],
@@ -1922,7 +2064,8 @@ function App({
     ]
 
     return orderedKeys.map((key) => {
-      const value = scores?.[key]
+      const rawValue = scores?.[key]
+      const value = typeof rawValue === 'number' ? rawValue : undefined
       const historical =
         typeof history?.[key] === 'number' ? (history[key] as number) : undefined
       const delta =
@@ -2030,7 +2173,10 @@ function App({
       {
         key: 'patternStability',
         label: 'Pattern Stability',
-        value: scores?.patternStability,
+        value:
+          typeof scores?.patternStability === 'number'
+            ? scores.patternStability
+            : undefined,
         delta:
           typeof scores?.patternStability === 'number' &&
           typeof history?.patternStability === 'number'
@@ -2049,7 +2195,12 @@ function App({
             : undefined,
           comparisonTolerance.component,
         ),
-        ...buildDriverCopy('patternStability', scores?.patternStability),
+        ...buildDriverCopy(
+          'patternStability',
+          typeof scores?.patternStability === 'number'
+            ? scores.patternStability
+            : undefined,
+        ),
       },
       {
         key: 'directionWindow',
@@ -2457,7 +2608,12 @@ function App({
 
       return {
         key,
-        carry: weightedAverageNumbers(carry, weights),
+        carry: guardedWeightedCarryMean(
+          carry,
+          weights,
+          confidenceConfig.displayCarryOutlierThresholdPct,
+          confidenceConfig.displayCarryOutlierThresholdFloorYards,
+        ),
         total: weightedAverageNumbers(shots.map(totalValue), weights),
         offlineMean: weightedAverageNumbers(offline, weights),
         dispersion: weightedAverageNumbers(absOffline, weights),
@@ -2624,6 +2780,32 @@ function App({
         ),
       )
 
+    const sessionWeightedCarryMetric = () =>
+      weightedAverageNumbers(
+        analysisSessions.map((session) => {
+          const includedShots = session.shots.filter(
+            (shot) =>
+              shot.club === selectedDetailClub &&
+              shot.included &&
+              typeof carryValue(shot) === 'number',
+          )
+          if (includedShots.length === 0) {
+            return undefined
+          }
+          const carryValues = includedShots.map(carryValue)
+          const carryWeights = includedShots.map((shot) => rankWeightForShot(shot))
+          return guardedWeightedCarryMean(
+            carryValues,
+            carryWeights,
+            confidenceConfig.displayCarryOutlierThresholdPct,
+            confidenceConfig.displayCarryOutlierThresholdFloorYards,
+          )
+        }),
+        analysisSessions.map((session) =>
+          sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
+        ),
+      )
+
     const seriesFromExtractor = (extractor: (shot: Shot) => number | undefined) =>
       selectedDetailIncludedShots
         .map(extractor)
@@ -2644,23 +2826,49 @@ function App({
           .map((shot) => extractor(shot)),
       )
 
-    const sessionDeltaForMetric = (extractor: (shot: Shot) => number | undefined) => {
+    const sessionAverageForCarry = (session: SavedSession) => {
+      const carryShots = session.shots.filter(
+        (shot) =>
+          shot.club === selectedDetailClub &&
+          shot.included &&
+          typeof carryValue(shot) === 'number',
+      )
+      if (carryShots.length === 0) {
+        return undefined
+      }
+      return guardedWeightedCarryMean(
+        carryShots.map(carryValue),
+        carryShots.map((shot) => rankWeightForShot(shot)),
+        confidenceConfig.displayCarryOutlierThresholdPct,
+        confidenceConfig.displayCarryOutlierThresholdFloorYards,
+      )
+    }
+
+    const sessionDeltaForMetric = (
+      extractor: (shot: Shot) => number | undefined,
+      sessionAverageOverride?: (session: SavedSession) => number | undefined,
+    ) => {
+      const sessionAverage = (session: SavedSession) =>
+        sessionAverageOverride
+          ? sessionAverageOverride(session)
+          : sessionAverageForMetric(session, extractor)
+
       const orderedSessions = [...analysisSessions].sort(
         (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
       )
       const latestClubSession = orderedSessions.find((session) => {
-        const value = sessionAverageForMetric(session, extractor)
+        const value = sessionAverage(session)
         return typeof value === 'number' && Number.isFinite(value)
       })
       if (!latestClubSession) {
         return undefined
       }
 
-      const latestSessionAverage = sessionAverageForMetric(latestClubSession, extractor)
+      const latestSessionAverage = sessionAverage(latestClubSession)
       const priorSessionAverages = orderedSessions
         .filter((session) => session.id !== latestClubSession.id)
         .map((session) => ({
-          value: sessionAverageForMetric(session, extractor),
+          value: sessionAverage(session),
           weight: sessionHistoricalWeightForClub(
             session,
             selectedDetailClub,
@@ -2820,7 +3028,7 @@ function App({
       neutral: 'Target Match',
     })
 
-    const carryCurrent = sessionWeightedMetric(carryValue)
+    const carryCurrent = sessionWeightedCarryMetric()
     const totalCurrent = sessionWeightedMetric(totalValue)
     const ballSpeedCurrent = sessionWeightedMetric(ballSpeedMphValue)
     const clubSpeedCurrent = sessionWeightedMetric(clubSpeedValue)
@@ -2838,7 +3046,7 @@ function App({
     const clubPathDelta = sessionDeltaForMetric(clubPathValue)
     const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
     const faceToTargetDelta = sessionDeltaForMetric(faceToTargetValue)
-    const carryDelta = sessionDeltaForMetric(carryValue)
+    const carryDelta = sessionDeltaForMetric(carryValue, sessionAverageForCarry)
     const totalDistanceDelta = sessionDeltaForMetric(totalValue)
     const ballSpeedDelta = sessionDeltaForMetric(ballSpeedMphValue)
     const clubSpeedDelta = sessionDeltaForMetric(clubSpeedValue)
@@ -3367,7 +3575,13 @@ function App({
         summary?.componentScores.directionWindow,
       )
       pushPoint('flightQuality', label, summary?.componentScores.flightQuality)
-      pushPoint('patternStability', label, summary?.componentScores.patternStability)
+      pushPoint(
+        'patternStability',
+        label,
+        typeof summary?.componentScores.patternStability === 'number'
+          ? summary.componentScores.patternStability
+          : undefined,
+      )
       pushPoint('distanceWindow', label, summary?.componentScores.distanceWindow)
       pushPoint('dataConfidence', label, summary?.componentScores.dataConfidence)
     })
