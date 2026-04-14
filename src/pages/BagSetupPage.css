@@ -1,6 +1,9 @@
 .bag-setup-page {
   min-height: 100vh;
-  background: radial-gradient(circle at 18% 12%, #2a4330 0%, #142118 55%);
+  background-color: #142118;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   color: #cfd8cd;
   display: grid;
   place-items: center;
@@ -8,13 +11,27 @@
 }
 
 .bag-setup-shell {
+  position: relative;
   width: min(1040px, 100%);
-  background: rgba(20, 33, 24, 0.92);
+  background: linear-gradient(180deg, rgba(23, 36, 25, 0.62) 0%, rgba(19, 30, 22, 0.68) 100%);
   border: 1px solid #314233;
   border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(4px);
   padding: 24px;
   display: grid;
   gap: 18px;
+}
+
+.bag-setup-header {
+  padding-right: 250px;
+}
+
+.bag-setup-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
 .bag-setup-header h1 {
@@ -32,6 +49,17 @@
 
 .bag-setup-nudge {
   color: #cfd8cd;
+}
+
+.bag-setup-logo {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 210px;
+  max-width: 30%;
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
 }
 
 .bag-setup-sections {
@@ -84,11 +112,6 @@
   margin: 0;
 }
 
-.bag-setup-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .bag-setup-save {
   border: 1px solid #3f5e3a;
   border-radius: 999px;
@@ -103,4 +126,31 @@
 .bag-setup-save:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .bag-setup-header {
+    padding-right: 180px;
+  }
+
+  .bag-setup-logo {
+    width: 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bag-setup-header {
+    padding-right: 0;
+  }
+
+  .bag-setup-logo {
+    position: static;
+    width: 140px;
+    max-width: 50%;
+    margin: 8px 0 2px;
+  }
+
+  .bag-setup-header-top {
+    flex-wrap: wrap;
+  }
 }

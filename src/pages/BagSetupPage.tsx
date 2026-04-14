@@ -7,6 +7,8 @@ import {
   sortClubIds,
   type Club,
 } from '../lib/bagConfig'
+import golfSceneDetailBackground from '../assets/Backgrounds/golfscenedetail.png'
+import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import './BagSetupPage.css'
 
 const DEFAULT_RETURN_PATH = '/looper'
@@ -18,6 +20,11 @@ const resolveReturnPath = () => {
   const query = new URLSearchParams(window.location.search)
   const raw = query.get('returnTo')?.trim()
   return raw && raw.startsWith('/') ? raw : DEFAULT_RETURN_PATH
+}
+
+const navigateWithinApp = (path: string) => {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 export default function BagSetupPage() {
@@ -46,14 +53,30 @@ export default function BagSetupPage() {
       return
     }
     saveBagConfig(sortClubIds(Array.from(selected)))
-    window.location.assign(returnPath)
+    navigateWithinApp(returnPath)
   }
 
   return (
-    <main className="bag-setup-page">
+    <main
+      className="bag-setup-page"
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(9, 16, 11, 0.72), rgba(9, 16, 11, 0.92)), url(${golfSceneDetailBackground})`,
+      }}
+    >
       <section className="bag-setup-shell" aria-label="Bag setup">
         <header className="bag-setup-header">
-          <h1>Choose Your Bag</h1>
+          <div className="bag-setup-header-top">
+            <h1>Choose Your Bag</h1>
+            <button
+              className="bag-setup-save"
+              disabled={selectedCount === 0}
+              onClick={saveBag}
+              type="button"
+            >
+              Save Bag
+            </button>
+          </div>
+          <img alt="The Looper" className="bag-setup-logo" src={looperLogoWhite} />
           <p>{selectedCount} clubs selected</p>
           <p className="bag-setup-nudge">Most players carry 14 clubs.</p>
         </header>
@@ -80,17 +103,6 @@ export default function BagSetupPage() {
             </article>
           ))}
         </div>
-
-        <footer className="bag-setup-actions">
-          <button
-            className="bag-setup-save"
-            disabled={selectedCount === 0}
-            onClick={saveBag}
-            type="button"
-          >
-            Save Bag
-          </button>
-        </footer>
       </section>
     </main>
   )
