@@ -6,11 +6,14 @@ import LooperLandingPage from './pages/LooperLandingPage.tsx'
 import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
+import BagSetupPage from './pages/BagSetupPage.tsx'
+import { BAG_CONFIG_UPDATED_EVENT, hasSavedBagConfig } from './lib/bagConfig.ts'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
 
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
+  const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
 
   useEffect(() => {
     const onPopState = () => {
@@ -61,20 +64,37 @@ function RootRouter() {
 
     window.addEventListener('popstate', onPopState)
     document.addEventListener('click', onDocumentClick)
+    const refreshBagConfigState = () => setHasBagConfig(hasSavedBagConfig())
+    window.addEventListener(BAG_CONFIG_UPDATED_EVENT, refreshBagConfigState)
+    window.addEventListener('storage', refreshBagConfigState)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
       document.removeEventListener('click', onDocumentClick)
+      window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, refreshBagConfigState)
+      window.removeEventListener('storage', refreshBagConfigState)
     }
   }, [])
 
+  useEffect(() => {
+    if (hasBagConfig || pathname === '/bag-setup') {
+      return
+    }
+    window.history.replaceState({}, '', '/bag-setup')
+    setPathname('/bag-setup')
+  }, [hasBagConfig, pathname])
+
   const view = useMemo(() => {
+    const showBagSetup = pathname === '/bag-setup'
     const showLooperLanding = pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
     const showDashboardRoute = pathname === '/dashboard'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
 
+    if (showBagSetup || !hasBagConfig) {
+      return <BagSetupPage />
+    }
     if (showSessionSummary) {
       return <SessionSummaryPage />
     }
@@ -88,7 +108,7 @@ function RootRouter() {
       return <LooperLandingPage />
     }
     return <App forceDashboardRoute={showDashboardRoute} />
-  }, [pathname])
+  }, [hasBagConfig, pathname])
 
   return view
 }

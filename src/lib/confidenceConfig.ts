@@ -18,7 +18,7 @@ export type ConfidenceConfig = {
     minSessionWeightFloor: number
   }
   directionWindow: {
-    targetWidthByClub: Record<Club, number>
+    targetWidthByClub: Partial<Record<Club, number>>
     maxOfflineMultiplier: number
     twoWayMissPenalty: number
     sideSwitchThresholdYards: number

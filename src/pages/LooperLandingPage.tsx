@@ -173,13 +173,22 @@ const navigateWithinApp = (path: string) => {
 }
 
 export default function LooperLandingPage() {
-  const [selectedClub, setSelectedClub] = useState<Club>('7i')
+  const [selectedClub, setSelectedClub] = useState<Club>(() => activeBagClubIds[0] ?? '7i')
   const [novaState, setNovaState] = useState<NovaConnectionState>('connecting')
   const [novaDetail, setNovaDetail] = useState<string | null>(null)
   const [manualUrlInput, setManualUrlInput] = useState('')
   const [manualOverrideUrl, setManualOverrideUrl] = useState<string | null>(null)
   const [connectedUrl, setConnectedUrl] = useState<string | null>(null)
   const devOverrideUrl = useMemo(() => resolveDevOverrideUrl(), [])
+
+  useEffect(() => {
+    if (activeBagClubIds.length === 0) {
+      return
+    }
+    if (!activeBagClubIds.includes(selectedClub)) {
+      setSelectedClub(activeBagClubIds[0])
+    }
+  }, [selectedClub])
 
   useEffect(() => {
     let isMounted = true
@@ -393,6 +402,12 @@ export default function LooperLandingPage() {
           <div className="looper-landing-actions">
             <a className="looper-landing-action looper-landing-action-primary" href="/dashboard">
               Go to Dashboard
+            </a>
+            <a
+              className="looper-landing-action looper-landing-action-secondary"
+              href="/bag-setup?returnTo=%2Flooper"
+            >
+              Edit Bag
             </a>
 
             <div className="looper-landing-session">

@@ -121,7 +121,7 @@ const buildDirectionScore = (
     return { score: 0, note: 'No offline data' }
   }
 
-  const targetWidth = confidenceConfig.directionWindow.targetWidthByClub[club]
+  const targetWidth = confidenceConfig.directionWindow.targetWidthByClub[club] ?? 18
   const maxOffline = targetWidth * confidenceConfig.directionWindow.maxOfflineMultiplier
   const averageAbsoluteOffline =
     weightedAverage(

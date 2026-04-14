@@ -583,10 +583,11 @@ function App({
     : null
   const routeFeedMode =
     sessionIntelligenceSearch?.get('feed') === 'real' ? 'real' : 'mock'
+  const fallbackClub = activeBagClubIds[0] ?? '7i'
   const routeClubParam = sessionIntelligenceSearch?.get('club')
   const routeClub = activeBagClubIds.includes(routeClubParam as Club)
     ? (routeClubParam as Club)
-    : '7i'
+    : fallbackClub
   const resumedDraft = forceSessionIntelligenceRoute ? loadActiveSessionDraft() : null
   const startedAtFallback = new Date().toISOString()
   const [sessionState, setSessionState] = useState<SessionState>(() =>
@@ -598,9 +599,9 @@ function App({
       : 'mock',
   )
   const [selectedClub, setSelectedClub] = useState<Club>(() =>
-    forceSessionIntelligenceRoute ? routeClub : '7i',
+    forceSessionIntelligenceRoute ? routeClub : fallbackClub,
   )
-  const [selectedDetailClub, setSelectedDetailClub] = useState<Club>('7i')
+  const [selectedDetailClub, setSelectedDetailClub] = useState<Club>(fallbackClub)
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
@@ -2398,7 +2399,8 @@ function App({
 
     const recencyWeight = (shot: Shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1
     const anchorTolerance = confidenceConfig.distanceWindow.anchorToleranceYards
-    const targetWidth = confidenceConfig.directionWindow.targetWidthByClub[selectedDetailClub]
+    const targetWidth =
+      confidenceConfig.directionWindow.targetWidthByClub[selectedDetailClub] ?? 18
 
     const carryAnchor = weightedAverageNumbers(
       includedShots.map(carryValue),
