@@ -4282,11 +4282,8 @@ function App({
                         <div className="club-card-score">
                           {card.summary ? formatScore(card.summary.caddieScore) : '-'}
                         </div>
-                        <div className="club-card-descriptor">{card.descriptor}</div>
                         <div className="club-card-trend">
-                          {card.summary
-                            ? `Swings Included ${formatWhole(card.summary.includedShots)}`
-                            : 'No current saved data'}
+                          {card.summary ? `${formatWhole(card.summary.includedShots)} swings` : '0 swings'}
                         </div>
                       </article>
                     ))}
