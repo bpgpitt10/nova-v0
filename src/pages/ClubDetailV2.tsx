@@ -23,6 +23,7 @@ type ShotProfileSnapshot = {
   launch?: number
   hla?: number
   spin?: number
+  smashFactor?: number
 } | null
 
 export type ShotProfiles = {
@@ -195,6 +196,13 @@ const comparisonValue = (
     return `${value.toFixed(digits)}°`
   }
   return `${value.toFixed(digits)} yd`
+}
+
+const comparisonRatioValue = (value: number | undefined) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—'
+  }
+  return value.toFixed(2)
 }
 
 const directionalComparisonValue = (
@@ -587,6 +595,12 @@ export default function ClubDetailV2({
         label: 'Spin',
         stock: comparisonValue(shotProfiles.mostLikely?.spin, 'rpm'),
         pure: comparisonValue(shotProfiles.bestAvailable?.spin, 'rpm'),
+      },
+      {
+        key: 'smash-factor',
+        label: 'Smash Factor',
+        stock: comparisonRatioValue(shotProfiles.mostLikely?.smashFactor),
+        pure: comparisonRatioValue(shotProfiles.bestAvailable?.smashFactor),
       },
     ],
     [shotProfiles.bestAvailable, shotProfiles.mostLikely],

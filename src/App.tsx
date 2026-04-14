@@ -2469,6 +2469,7 @@ function App({
           weights,
         ),
         spin: weightedAverageNumbers(shots.map(spinValue), weights),
+        smashFactor: weightedAverageNumbers(shots.map(smashFactorValue), weights),
       }
     }
 

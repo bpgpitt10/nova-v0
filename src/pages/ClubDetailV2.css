@@ -182,7 +182,7 @@
 .club-v2-heatmap-metrics {
   padding: 0.72rem 0.78rem;
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.68rem;
 }
 
@@ -248,7 +248,8 @@
 
 .club-v2-stock-pure-panel {
   display: grid;
-  gap: 0.44rem;
+  align-content: start;
+  gap: 0.5rem;
 }
 
 .club-v2-stock-pure-header {
@@ -291,7 +292,7 @@
 
 .club-v2-stock-pure-rows {
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
 .club-v2-stock-pure-row {
