@@ -240,7 +240,7 @@ export default function ClubDetailV2({
 }: ClubDetailV2Props) {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(defaultMetric)
   const [chartMode, setChartMode] = useState<'shots' | 'sessions'>('shots')
-  const [openDriverKey, setOpenDriverKey] = useState<string | null>(null)
+  const [activeDriverKey, setActiveDriverKey] = useState<string | null>(null)
   const analysisRef = useRef<HTMLElement | null>(null)
   const initializedDriverRef = useRef(false)
   const selectedModel =
@@ -276,9 +276,12 @@ export default function ClubDetailV2({
     if (rankedDrivers.length === 0) {
       return
     }
-    setOpenDriverKey(rankedDrivers[0].key)
+    setActiveDriverKey(rankedDrivers[0].key)
     initializedDriverRef.current = true
   }, [rankedDrivers])
+
+  const activeDriver =
+    rankedDrivers.find((driver) => driver.key === activeDriverKey) ?? rankedDrivers[0] ?? null
 
   const onSelectMetric = (metric: MetricKey, scroll = false) => {
     setSelectedMetric(metric)
@@ -470,93 +473,6 @@ export default function ClubDetailV2({
       </svg>
     )
   }, [chartMode, metricSessionSeries, selectedModel, selectedSeries])
-
-  const dnaOverlayModel = useMemo(() => {
-    const roundUpToFive = (value: number) => Math.max(5, Math.ceil(value / 5) * 5)
-    const likely = shotProfiles.mostLikely
-    const best = shotProfiles.bestAvailable
-    const profiles = [likely, best].filter(
-      (profile): profile is NonNullable<typeof profile> => Boolean(profile),
-    )
-    const plot = { x: 14, y: 14, width: 412, height: 182 }
-    const centerY = plot.y + plot.height / 2
-
-    const xEnvelope = Math.max(
-      ...profiles.map(
-        (profile) => Math.abs(profile.offlineMean ?? 0) + Math.max(profile.dispersion ?? 0, 2),
-      ),
-      8,
-    )
-    const xExtent = roundUpToFive(xEnvelope * 1.5)
-    const xScale = (yd: number) => plot.x + ((yd + xExtent) / (xExtent * 2)) * plot.width
-    const xPixelsPerYard = plot.width / Math.max(xExtent * 2, 1)
-
-    const referenceCarry = likely?.carry ?? best?.carry ?? 0
-    const yMinRaw = Math.min(
-      ...profiles.map(
-        (profile) => (profile.carry ?? referenceCarry) - Math.max(profile.carryVariability ?? 0, 2),
-      ),
-      referenceCarry - 8,
-    )
-    const yMaxRaw = Math.max(
-      ...profiles.map(
-        (profile) => (profile.carry ?? referenceCarry) + Math.max(profile.carryVariability ?? 0, 2),
-      ),
-      referenceCarry + 8,
-    )
-    const yPadding = Math.max((yMaxRaw - yMinRaw) * 0.2, 4)
-    const yMin = yMinRaw - yPadding
-    const yMax = yMaxRaw + yPadding
-    const yRange = Math.max(yMax - yMin, 1)
-    const yScale = (carry: number) => plot.y + ((yMax - carry) / yRange) * plot.height
-    const yVarEnvelope = Math.max(
-      ...profiles.map((profile) => Math.max(profile.carryVariability ?? profile.dispersionVariability ?? 0, 2)),
-      2,
-    )
-    const yAxisRange = roundUpToFive(Math.max(2, yVarEnvelope * 1.5))
-
-    const buildProfile = (profile: ShotProfileSnapshot | null) => {
-      if (!profile) {
-        return null
-      }
-      const cx = xScale(profile.offlineMean ?? 0)
-      const cy = yScale(profile.carry ?? referenceCarry)
-      const rx = Math.max(8, (profile.dispersion ?? 2) * xPixelsPerYard)
-      const ry = Math.max(
-        8,
-        (profile.carryVariability ?? profile.dispersionVariability ?? 2) *
-          (plot.height / Math.max(yRange, 1)),
-      )
-      return { cx, cy, rx, ry }
-    }
-
-    const halfStep = roundUpToFive(xExtent / 2)
-    const xTicks = Array.from(new Set([-xExtent, -halfStep, 0, halfStep, xExtent])).sort(
-      (left, right) => left - right,
-    )
-
-    return {
-      centerY,
-      likelyShape: buildProfile(likely),
-      bestShape: buildProfile(best),
-      xScale,
-      xTicks,
-      yTicks: [
-        {
-          y: yScale(referenceCarry + yAxisRange),
-          label: `+${yAxisRange.toFixed(1)} yd`,
-        },
-        {
-          y: yScale(referenceCarry),
-          label: '0',
-        },
-        {
-          y: yScale(referenceCarry - yAxisRange),
-          label: `-${yAxisRange.toFixed(1)} yd`,
-        },
-      ],
-    }
-  }, [shotProfiles.bestAvailable, shotProfiles.mostLikely])
 
   const stockPureRows = useMemo<StockPureMetricRow[]>(
     () => [
@@ -791,168 +707,53 @@ export default function ClubDetailV2({
         </article>
       </section>
 
-      <section className="club-v2-dna-drivers" aria-label="Shot DNA and Performance Drivers">
-        <article className="dashboard-card club-v2-profile-card">
-          <div className="club-v2-dna-header">Shot DNA: Most Likely vs Best Available</div>
-          <div className="club-v2-profile-overlay-visual">
-            <svg viewBox="0 0 440 220" aria-label="Most likely versus best available overlay">
-              <rect
-                x="14"
-                y="14"
-                width="412"
-                height="182"
-                rx="12"
-                fill="rgba(9,16,12,0.45)"
-                stroke="rgba(205,218,207,0.16)"
-              />
-              <line
-                x1="14"
-                x2="426"
-                y1={dnaOverlayModel.centerY}
-                y2={dnaOverlayModel.centerY}
-                className="club-v2-overlay-gridline"
-              />
-              <line
-                x1={dnaOverlayModel.xScale(0)}
-                x2={dnaOverlayModel.xScale(0)}
-                y1="20"
-                y2="190"
-                className="club-v2-overlay-gridline"
-              />
-              {dnaOverlayModel.likelyShape && (
-                <>
-                  <ellipse
-                    cx={dnaOverlayModel.likelyShape.cx}
-                    cy={dnaOverlayModel.likelyShape.cy}
-                    rx={dnaOverlayModel.likelyShape.rx}
-                    ry={dnaOverlayModel.likelyShape.ry}
-                    fill="rgba(244, 201, 90, 0.3)"
-                    stroke="rgba(244, 201, 90, 0.74)"
-                  />
-                  <text
-                    className="club-v2-overlay-ellipse-label likely"
-                    x={dnaOverlayModel.likelyShape.cx - dnaOverlayModel.likelyShape.rx + 4}
-                    y={dnaOverlayModel.likelyShape.cy - dnaOverlayModel.likelyShape.ry - 6}
-                  >
-                    Most Likely
-                  </text>
-                </>
-              )}
-              {dnaOverlayModel.bestShape && (
-                <>
-                  <ellipse
-                    cx={dnaOverlayModel.bestShape.cx}
-                    cy={dnaOverlayModel.bestShape.cy}
-                    rx={dnaOverlayModel.bestShape.rx}
-                    ry={dnaOverlayModel.bestShape.ry}
-                    fill="rgba(126, 234, 162, 0.36)"
-                    stroke="rgba(126, 234, 162, 0.86)"
-                  />
-                  <text
-                    className="club-v2-overlay-ellipse-label best"
-                    x={dnaOverlayModel.bestShape.cx - dnaOverlayModel.bestShape.rx + 4}
-                    y={dnaOverlayModel.bestShape.cy - dnaOverlayModel.bestShape.ry - 6}
-                  >
-                    Best Available
-                  </text>
-                </>
-              )}
-              <g className="club-v2-overlay-axis">
-                {dnaOverlayModel.xTicks.map((tick, index) => (
-                  <text key={`tick-${tick}`} x={dnaOverlayModel.xScale(tick)} y="212">
-                    {tick > 0 ? `+${tick}` : tick}
-                    {index === 0 || index === dnaOverlayModel.xTicks.length - 1 ? ' yd' : ''}
-                  </text>
+      <section
+        className="dashboard-card club-v2-drivers-strip"
+        aria-label="Performance Drivers"
+      >
+        <div className="club-v2-drivers-strip-header">Performance Drivers</div>
+        <div className="club-v2-driver-selector">
+          {rankedDrivers.map((driver) => (
+            <button
+              className={`club-v2-driver-selector-tile ${
+                activeDriver?.key === driver.key ? 'is-active' : ''
+              }`}
+              key={driver.key}
+              onClick={() => setActiveDriverKey(driver.key)}
+              type="button"
+            >
+              <div className="club-v2-driver-selector-name">
+                {driver.label.split(' ').map((word) => (
+                  <span key={`${driver.key}-${word}`}>{word}</span>
                 ))}
-                {dnaOverlayModel.yTicks.map((tick) => (
-                  <text
-                    className="club-v2-overlay-axis-vertical"
-                    key={`y-${tick.label}`}
-                    x="20"
-                    y={tick.y}
-                  >
-                    {tick.label}
-                  </text>
-                ))}
-              </g>
-            </svg>
-          </div>
-          <div className="club-v2-overlay-insight">
-            <div className="club-v2-compare-grid club-v2-compare-labels">
-              <span>Most Likely</span>
-              <span>Best Available</span>
-            </div>
-            <div className="club-v2-compare-grid club-v2-compare-values">
-              <span>
-                {shotProfiles.mostLikely?.carry?.toFixed(1) ?? '-'} yd ±{' '}
-                {shotProfiles.mostLikely?.dispersion?.toFixed(1) ?? '-'} yd
-              </span>
-              <span>
-                {shotProfiles.bestAvailable?.carry?.toFixed(1) ?? '-'} yd ±{' '}
-                {shotProfiles.bestAvailable?.dispersion?.toFixed(1) ?? '-'} yd
-              </span>
-            </div>
-            <p className="club-v2-gap-takeaway">
-              Tightening execution reduces dispersion more than distance.
-            </p>
-            {(() => {
-              const support =
-                shotProfiles.executionGapRows.find((row) => row.label === 'Dispersion') ??
-                shotProfiles.executionGapRows.find((row) => row.label === 'Variability')
-              if (!support) {
-                return null
-              }
-              const numeric = Number.parseFloat(support.value.replace(/[^0-9.]/g, ''))
-              const amount = Number.isFinite(numeric) ? `${numeric.toFixed(1)} yd` : support.value
-              return <p className="club-v2-gap-support">~{amount} tighter pattern.</p>
-            })()}
-          </div>
-        </article>
-
-        <section className="dashboard-card club-v2-drivers" aria-label="Performance Drivers">
-          <div className="club-v2-drivers-header">Performance Drivers</div>
-          <div className="club-v2-driver-list">
-            {rankedDrivers.map((driver) => (
-              <button
-                className={`dashboard-card club-v2-driver-card ${openDriverKey === driver.key ? 'is-open' : ''}`}
-                key={driver.key}
-                onClick={() =>
-                  setOpenDriverKey((current) => (current === driver.key ? null : driver.key))
-                }
-                type="button"
-              >
-                <div className="club-v2-driver-head">
-                  <span>{driver.label}</span>
-                  <span className="club-v2-driver-value-block">
-                    <span className="club-v2-driver-value">
-                      {typeof driver.value === 'number' ? Math.round(driver.value) : '-'}
-                    </span>
-                    {typeof driver.delta === 'number' ? (
-                      <span className={toneClass(driver.tone)}>
-                        {driver.direction === 'up' ? '↑' : '↓'} {Math.round(Math.abs(driver.delta))}
-                      </span>
-                    ) : (
-                      <span className="club-v2-tone-neutral">—</span>
-                    )}
-                    <span className="club-v2-driver-expand-indicator" aria-hidden="true">
-                      {openDriverKey === driver.key ? '−' : '+'}
-                    </span>
+              </div>
+              <div className="club-v2-driver-selector-score">
+                <span className="club-v2-driver-selector-score-value">
+                  {typeof driver.value === 'number' ? Math.round(driver.value) : '-'}
+                </span>
+                {typeof driver.delta === 'number' ? (
+                  <span className={toneClass(driver.tone)}>
+                    {driver.direction === 'up' ? '↑' : '↓'} {Math.round(Math.abs(driver.delta))}
                   </span>
-                </div>
-                {openDriverKey === driver.key && (
-                  <>
-                    <p className="club-v2-driver-insight">
-                      <strong>Why:</strong> {driver.why}
-                    </p>
-                    <p className="club-v2-driver-trend">
-                      <strong>Trend:</strong> {driver.meaning}
-                    </p>
-                  </>
+                ) : (
+                  <span className="club-v2-tone-neutral">—</span>
                 )}
-              </button>
-            ))}
+              </div>
+            </button>
+          ))}
+        </div>
+        {activeDriver && (
+          <div className="club-v2-driver-insight-panel">
+            <div className="club-v2-driver-insight-col">
+              <div className="club-v2-driver-insight-title">Why</div>
+              <p>{activeDriver.why}</p>
+            </div>
+            <div className="club-v2-driver-insight-col">
+              <div className="club-v2-driver-insight-title">Trend</div>
+              <p>{activeDriver.meaning}</p>
+            </div>
           </div>
-        </section>
+        )}
       </section>
 
       <section className="club-v2-analysis" aria-label="What's Driving This" ref={analysisRef}>
