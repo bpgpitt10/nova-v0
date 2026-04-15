@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
+import { activeBagClubIds, getClubDisplayName, type Club } from '../lib/bagConfig'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
@@ -421,7 +421,7 @@ export default function LooperLandingPage() {
                   >
                     {activeBagClubIds.map((club) => (
                       <option key={club} value={club}>
-                        {getClubLabel(club)}
+                        {getClubDisplayName(club)}
                       </option>
                     ))}
                   </select>

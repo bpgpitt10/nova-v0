@@ -33,6 +33,7 @@ export type ClubCategory = 'wood' | 'hybrid' | 'iron' | 'wedge'
 export type BagClubConfig = {
   id: Club
   label: string
+  displayName: string
   category: ClubCategory
   active: boolean
   sortOrder: number
@@ -98,6 +99,11 @@ const LEGACY_DEFAULT_BAG: Club[] = [
   'SW',
   'LW',
 ]
+
+const CLUB_DISPLAY_NAMES: Partial<Record<Club, string>> = {
+  Driver: 'Dr',
+  'Mini Driver': 'Mini',
+}
 
 export const bagSetupSections: BagSetupSection[] = [
   { title: 'Driver', clubs: ['Driver', 'Mini Driver'] },
@@ -174,6 +180,7 @@ const buildCurrentBagConfig = (selectedClubs: Club[]): BagClubConfig[] => {
   return CLUB_ORDER.map((club, index) => ({
     id: club,
     label: club,
+    displayName: CLUB_DISPLAY_NAMES[club] ?? club,
     category:
       club === 'Driver' || club === 'Mini Driver'
         ? 'wood'
@@ -213,3 +220,6 @@ refreshBagConfigState()
 export const getClubConfig = (club: Club) => bagConfigById.get(club)
 
 export const getClubLabel = (club: Club) => getClubConfig(club)?.label ?? club
+
+export const getClubDisplayName = (club: Club) =>
+  getClubConfig(club)?.displayName ?? getClubLabel(club)

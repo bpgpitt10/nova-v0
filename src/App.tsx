@@ -17,6 +17,7 @@ import ClubDetailV2, {
 import {
   activeBagClubIds,
   getClubConfig,
+  getClubDisplayName,
   getClubLabel,
   type Club,
 } from './lib/bagConfig'
@@ -4447,7 +4448,7 @@ function App({
                 >
                   {activeBagClubIds.map((club) => (
                     <option key={`session-intelligence-club-${club}`} value={club}>
-                      {getClubLabel(club)}
+                      {getClubDisplayName(club)}
                     </option>
                   ))}
                 </select>
@@ -4828,7 +4829,7 @@ function App({
             >
               {activeBagClubIds.map((club) => (
                 <option key={club} value={club}>
-                  {getClubLabel(club)}
+                  {getClubDisplayName(club)}
                 </option>
               ))}
             </select>
@@ -4914,7 +4915,7 @@ function App({
             >
               {activeBagClubIds.map((club) => (
                 <option key={club} value={club}>
-                  {getClubLabel(club)}
+                  {getClubDisplayName(club)}
                 </option>
               ))}
             </select>
@@ -5205,7 +5206,7 @@ function App({
                     callClassName={caddieCallClassName(
                       selectedClubSummary?.caddieCall ?? 'Insufficient Data',
                     )}
-                    clubLabel={getClubLabel(selectedDetailClub)}
+                    clubLabel={getClubDisplayName(selectedDetailClub)}
                     componentBreakdown={selectedClubComponentBreakdown}
                     defaultMetric={clubDetailDefaultMetricV2}
                     swingsIncludedCount={clubDetailSwingsIncludedCount}
@@ -5248,7 +5249,7 @@ function App({
 
                       <div className="club-detail-read-col">
                         <h3 className="club-detail-read-title">
-                          {getClubLabel(selectedDetailClub)} · THE LOOPER&apos;S READ
+                          {getClubDisplayName(selectedDetailClub)} · THE LOOPER&apos;S READ
                         </h3>
                         <p className="club-detail-read-line">{looperRead.primary}</p>
                         <p className="club-detail-read-line secondary">{looperRead.explanation}</p>
