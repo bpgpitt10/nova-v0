@@ -4171,12 +4171,17 @@ function App({
           </div>
         </section>
 
-        <section className="session-intelligence-heatmap" aria-label="Active club heatmap">
-          {sessionIntelligencePoints.length === 0 ? (
-            <p className="support-card-copy">No included shots for this club yet.</p>
-          ) : (
-            <ClubDispersionPlot lastShotId={latestShot?.id} points={sessionIntelligencePoints} />
-          )}
+        <section className="session-intelligence-heatmap-row" aria-label="Heatmap and comparison">
+          <article className="session-intelligence-heatmap" aria-label="Active club heatmap">
+            {sessionIntelligencePoints.length === 0 ? (
+              <p className="support-card-copy">No included shots for this club yet.</p>
+            ) : (
+              <ClubDispersionPlot lastShotId={latestShot?.id} points={sessionIntelligencePoints} />
+            )}
+          </article>
+          <article className="session-intelligence-comparison" aria-label="Shot DNA comparison">
+            <h3 className="session-intelligence-section-title">Shot DNA Comparison</h3>
+          </article>
         </section>
 
         <section className="session-intelligence-signal" aria-label="Session signal">
