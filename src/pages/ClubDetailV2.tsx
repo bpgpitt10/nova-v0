@@ -665,7 +665,7 @@ export default function ClubDetailV2({
         </div>
 
         <div className="club-detail-read-col">
-          <div className="section-kicker">The Looper&apos;s Read</div>
+          <div className="section-kicker">Every Club Holds a Truth</div>
           <h3 className="club-detail-read-title">THE LOOPER&apos;S READ</h3>
           <p className="club-detail-read-line">{looperRead.primary}</p>
           <p className="club-detail-read-line secondary">{looperRead.explanation}</p>
