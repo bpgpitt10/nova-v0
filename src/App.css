@@ -2000,7 +2000,7 @@ td {
 
 .session-intelligence-heatmap-row {
   display: grid;
-  grid-template-columns: minmax(0, 72%) minmax(0, 28%);
+  grid-template-columns: minmax(0, 63%) minmax(0, 37%);
   gap: 32px;
   align-items: stretch;
 }
@@ -2029,28 +2029,32 @@ td {
 
 .session-intelligence-comparison-table {
   display: grid;
-  gap: 4px;
+  gap: 8px;
 }
 
 .session-intelligence-comparison-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 76px 64px 34px;
-  gap: 8px;
+  gap: 12px;
   align-items: baseline;
 }
 
 .session-intelligence-comparison-head {
   color: rgba(165, 180, 167, 0.84);
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.session-intelligence-comparison-head span:first-child {
+  text-align: left;
 }
 
 .session-intelligence-comparison-row span {
   text-align: right;
   color: rgba(237, 242, 237, 0.94);
-  font-size: 12px;
-  line-height: 1.25;
+  font-size: 15px;
+  line-height: 1.35;
 }
 
 .session-intelligence-comparison-metric {
