@@ -33,6 +33,12 @@ import {
   weightedAverage,
   weightedStandardDeviation,
 } from './lib/recency'
+import {
+  formatShotRank,
+  normalizeShotRank,
+  shotRankScoreTone,
+  shotRankWeight,
+} from './lib/shotRank'
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
@@ -121,13 +127,7 @@ const formatScore = (value: number | undefined) => {
   return `${Math.round(value)}`
 }
 
-const formatRank = (value: number | string | undefined) => {
-  if (typeof value === 'undefined') {
-    return '-'
-  }
-
-  return `${value}`
-}
+const formatRank = (value: number | string | undefined) => formatShotRank(value)
 
 const averageNumbers = (values: Array<number | undefined>) => {
   const definedValues = values.filter((value): value is number => typeof value === 'number')
@@ -378,10 +378,7 @@ const comparisonTolerance = {
   component: 4,
 }
 
-const rankWeightForShot = (shot: Shot) => {
-  const key = typeof shot.shotRanking === 'undefined' ? '' : String(shot.shotRanking)
-  return confidenceConfig.distanceWindow.rankWeights[key] ?? 1
-}
+const rankWeightForShot = (shot: Shot) => shotRankWeight(shot.shotRanking)
 
 const comparisonDirection = (delta: number | undefined): ComparisonDirection =>
   typeof delta === 'number' && delta < 0 ? 'down' : 'up'
@@ -1582,7 +1579,7 @@ function App({
           if (typeof shot.shotRanking === 'undefined') {
             return
           }
-          const rank = `${shot.shotRanking}`
+          const rank = normalizeShotRank(shot.shotRanking) ?? `${shot.shotRanking}`
           rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
         })
         if (rankCounts.size === 0) {
@@ -3760,25 +3757,7 @@ function App({
 
   const latestShot = shots[0] ?? null
   const latestShotShape = latestShot?.shotName ? String(latestShot.shotName).toUpperCase() : 'WAITING FOR SHOT'
-  const latestShotScoreTag = (() => {
-    const rank = latestShot?.shotRanking
-    if (typeof rank === 'number') {
-      if (rank <= 2) return { label: 'GOOD', tone: 'good' as const }
-      if (rank <= 3) return { label: 'NEUTRAL', tone: 'neutral' as const }
-      return { label: 'POOR', tone: 'poor' as const }
-    }
-    const normalized = typeof rank === 'string' ? rank.toUpperCase() : ''
-    if (normalized === 'A' || normalized === 'B') {
-      return { label: 'GOOD', tone: 'good' as const }
-    }
-    if (normalized === 'C' || normalized === '3') {
-      return { label: 'NEUTRAL', tone: 'neutral' as const }
-    }
-    if (normalized === 'D' || normalized === '4' || normalized === '5') {
-      return { label: 'POOR', tone: 'poor' as const }
-    }
-    return { label: 'NEUTRAL', tone: 'neutral' as const }
-  })()
+  const latestShotScoreTag = shotRankScoreTone(latestShot?.shotRanking)
   const latestShotRankPill = formatRank(latestShot?.shotRanking)
 
   const latestShotReaction = (() => {
@@ -4022,7 +4001,7 @@ function App({
           if (typeof shot.shotRanking === 'undefined') {
             return
           }
-          const rank = String(shot.shotRanking)
+          const rank = normalizeShotRank(shot.shotRanking) ?? String(shot.shotRanking)
           rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
         })
         const includedRankSummary =

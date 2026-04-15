@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
+import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import {
   clearActiveSessionDraft,
   isSessionIncludedInAnalysis,
@@ -25,8 +26,7 @@ const formatWhole = (value: number | undefined, unit = '') => {
   return `${Math.round(value)}${unit}`
 }
 
-const formatRank = (value: number | string | undefined) =>
-  typeof value === 'undefined' ? '-' : `${value}`
+const formatRank = (value: number | string | undefined) => formatShotRank(value)
 
 const averageNumbers = (values: Array<number | undefined>) => {
   const defined = values.filter((value): value is number => typeof value === 'number')
@@ -194,7 +194,7 @@ const sessionShotGroups = (session: SavedSession) => {
         if (typeof shot.shotRanking === 'undefined') {
           return
         }
-        const rank = String(shot.shotRanking)
+        const rank = normalizeShotRank(shot.shotRanking) ?? String(shot.shotRanking)
         rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
       })
 

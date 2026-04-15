@@ -4,6 +4,7 @@ import {
   weightedAverage,
   weightedStandardDeviation,
 } from './recency'
+import { normalizeShotRank, shotRankWeight } from './shotRank'
 import {
   includedClubShotsForSession,
   isSystemOldExcludedSession,
@@ -72,10 +73,7 @@ const descentAngleValue = (shot: Shot) =>
 const includedClubShots = (club: Club, shots: Shot[]) =>
   shots.filter((shot) => shot.club === club && shot.included)
 
-const getRankWeight = (shot: Shot) => {
-  const key = typeof shot.shotRanking === 'undefined' ? '' : String(shot.shotRanking)
-  return confidenceConfig.distanceWindow.rankWeights[key] ?? 1
-}
+const getRankWeight = (shot: Shot) => shotRankWeight(shot.shotRanking)
 
 const buildDirectionScore = (
   shots: Shot[],
@@ -628,7 +626,9 @@ export const summarizeReviewClub = (
   }
 
   const shotRanks = includedShots.flatMap((shot) =>
-    typeof shot.shotRanking !== 'undefined' ? [String(shot.shotRanking)] : [],
+    typeof shot.shotRanking !== 'undefined'
+      ? [normalizeShotRank(shot.shotRanking) ?? String(shot.shotRanking)]
+      : [],
   )
   const rankCounts = new Map<string, number>()
   shotRanks.forEach((rank) => {
