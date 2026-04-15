@@ -4023,15 +4023,6 @@ function App({
             <button className="session-intelligence-end" onClick={endSession} type="button">
               End Session
             </button>
-            <button
-              className="session-intelligence-pause"
-              onClick={feedMode === 'mock' ? toggleMockFeed : undefined}
-              type="button"
-            >
-              {feedMode === 'mock' && connectionStatus === 'paused'
-                ? 'Resume Session'
-                : 'Pause Session'}
-            </button>
           </div>
         </header>
 
@@ -4044,7 +4035,6 @@ function App({
             <span className="session-tag session-tag-rank">{latestShotRankPill}</span>
           </div>
           <p className="session-intelligence-reaction">{latestShotReaction}</p>
-          {latestShotWhy && <p className="session-intelligence-why">{latestShotWhy}</p>}
         </section>
 
         <section className="session-last-shot-strip" aria-label="Most recent shot">
@@ -4074,20 +4064,88 @@ function App({
               <span className="session-shot-hero-label">Club</span>
             </div>
             <div className="session-shot-hero-metric">
-              <span className="session-shot-hero-value">{formatDecimal(latestShot ? carryValue(latestShot) : undefined)}</span>
-              <span className="session-shot-hero-label">Carry (yd)</span>
+              <span className="session-shot-hero-value">
+                {formatDecimal(latestShot ? carryValue(latestShot) : undefined)}
+              </span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Carry (yd)
+              </span>
             </div>
             <div className="session-shot-hero-metric">
-              <span className="session-shot-hero-value">{formatOfflineValue(latestShot ? offlineValue(latestShot) : undefined)}</span>
-              <span className="session-shot-hero-label">{offlineLabel(latestShot ? offlineValue(latestShot) : undefined)}</span>
+              <span className="session-shot-hero-value">
+                {(() => {
+                  const value = latestShot ? offlineValue(latestShot) : undefined
+                  if (typeof value !== 'number') {
+                    return '-'
+                  }
+                  const direction = value > 0 ? 'R' : value < 0 ? 'L' : ''
+                  const amount = value.toFixed(1)
+                  return direction ? `${amount} ${direction}` : amount
+                })()}
+              </span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Offline (yd)
+              </span>
             </div>
             <div className="session-shot-hero-metric">
-              <span className="session-shot-hero-value">{formatWhole(latestShot ? spinValue(latestShot) : undefined)}</span>
-              <span className="session-shot-hero-label">Spin (rpm)</span>
+              <span className="session-shot-hero-value">
+                {formatWhole(latestShot ? spinValue(latestShot) : undefined)}
+              </span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Spin (rpm)
+              </span>
             </div>
             <div className="session-shot-hero-metric">
-              <span className="session-shot-hero-value">{formatDecimal(latestShot ? launchValue(latestShot) : undefined, '°')}</span>
-              <span className="session-shot-hero-label">Launch (°)</span>
+              <span className="session-shot-hero-value">
+                {formatDecimal(latestShot ? launchValue(latestShot) : undefined)}
+              </span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Launch
+              </span>
             </div>
             <div className="session-shot-hero-metric">
               <span className="session-shot-hero-value">
@@ -4095,7 +4153,20 @@ function App({
                   ? (latestShot ? smashFactorValue(latestShot) : undefined)!.toFixed(2)
                   : '-'}
               </span>
-              <span className="session-shot-hero-label">Smash</span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Smash
+              </span>
             </div>
           </div>
         </section>
