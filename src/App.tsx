@@ -2560,48 +2560,6 @@ function App({
     }
 
     const recencyWeight = (shot: Shot) => selectedClubHistoricalShotWeights.get(shot.id) ?? 1
-    const anchorTolerance = confidenceConfig.distanceWindow.anchorToleranceYards
-    const targetWidth =
-      confidenceConfig.directionWindow.targetWidthByClub[selectedDetailClub] ?? 18
-
-    const carryAnchor = weightedAverageNumbers(
-      includedShots.map(carryValue),
-      includedShots.map((shot) => recencyWeight(shot) * rankWeightForShot(shot)),
-    )
-
-    const candidates = includedShots.flatMap((shot) => {
-      const carry = carryValue(shot)
-      const offline = offlineValue(shot)
-      if (typeof carry !== 'number' || typeof offline !== 'number' || typeof carryAnchor !== 'number') {
-        return []
-      }
-
-      const carryError = Math.abs(carry - carryAnchor)
-      const normalizedCarryError = carryError / Math.max(anchorTolerance, 1)
-      const normalizedOffline = Math.abs(offline) / Math.max(targetWidth, 1)
-      const rankWeight = rankWeightForShot(shot)
-      const recent = recencyWeight(shot)
-      const qualityScore =
-        (1 / (1 + normalizedCarryError + normalizedOffline)) * rankWeight * recent
-
-      return [
-        {
-          shot,
-          qualityScore,
-          effectiveWeight: rankWeight * recent,
-        },
-      ]
-    })
-
-    const bestSubset = (() => {
-      if (candidates.length === 0) {
-        return []
-      }
-      const ranked = [...candidates].sort((left, right) => right.qualityScore - left.qualityScore)
-      const subsetSize = Math.min(Math.max(Math.round(ranked.length * 0.4), 3), 8)
-      return ranked.slice(0, subsetSize)
-    })()
-
     const buildProfile = (
       rows: Array<{ shot: Shot; effectiveWeight: number }>,
       key: 'best' | 'likely',
@@ -2640,7 +2598,6 @@ function App({
       }
     }
 
-    const bestAvailable = buildProfile(bestSubset, 'best')
     const mostLikely = buildProfile(
       includedShots.map((shot) => ({
         shot,
@@ -2648,6 +2605,219 @@ function App({
       })),
       'likely',
     )
+
+    const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+    const weightedAvailableScore = (
+      rows: Array<{ score: number | undefined; weight: number }>,
+    ) => {
+      const available = rows.filter(
+        (row): row is { score: number; weight: number } =>
+          typeof row.score === 'number' && Number.isFinite(row.score) && row.weight > 0,
+      )
+      if (available.length === 0) {
+        return undefined
+      }
+      const weightTotal = available.reduce((sum, row) => sum + row.weight, 0)
+      if (weightTotal <= 0) {
+        return undefined
+      }
+      return available.reduce((sum, row) => sum + row.score * row.weight, 0) / weightTotal
+    }
+
+    const stockCarry = mostLikely?.carry
+    const stockOfflineAbs = mostLikely?.dispersion
+    const stockHlaAbs =
+      typeof mostLikely?.hla === 'number' ? Math.abs(mostLikely.hla) : undefined
+    const carryImprovementCap = 12
+    const carryDownsideCap = 10
+    const offlineImprovementCap = 10
+    const offlineDownsideCap = 12
+    const hlaBonusCap = 2
+    const sparseSupportAllowed = includedShots.length < 4
+
+    // Conservative tuning defaults by broad club bucket, not universal golf ideals.
+    const flightFloorByClub = (() => {
+      const normalizedClub = selectedDetailClub.trim().toUpperCase()
+      const isDriverBucket =
+        normalizedClub === 'DRIVER' || normalizedClub === 'MINI DRIVER'
+      const isFairwayHybridUtilityBucket =
+        /^\d+W$/.test(normalizedClub) ||
+        /^\d+H$/.test(normalizedClub) ||
+        normalizedClub.includes('UTILITY') ||
+        normalizedClub.includes('DRIVING IRON') ||
+        normalizedClub.includes('UDI')
+      const isShortIronWedgeBucket =
+        normalizedClub === '8I' ||
+        normalizedClub === '9I' ||
+        ['PW', 'GW', 'SW', 'LW'].includes(normalizedClub)
+      const isLongMidIronBucket = /^[3-7]I$/.test(normalizedClub)
+
+      if (isDriverBucket) {
+        return { launch: 2.4, spin: 550 }
+      }
+      if (isFairwayHybridUtilityBucket) {
+        return { launch: 2.1, spin: 500 }
+      }
+      if (isShortIronWedgeBucket) {
+        return { launch: 1.3, spin: 300 }
+      }
+      if (isLongMidIronBucket) {
+        return { launch: 1.8, spin: 425 }
+      }
+      return { launch: 1.8, spin: 425 }
+    })()
+
+    const launchCenter = weightedAverageNumbers(
+      includedShots.map(launchValue),
+      includedShots.map((shot) => recencyWeight(shot)),
+    )
+    const launchSpread = weightedStandardDeviationNumbers(
+      includedShots.map(launchValue),
+      includedShots.map((shot) => recencyWeight(shot)),
+    )
+    const spinCenter = weightedAverageNumbers(
+      includedShots.map(spinValue),
+      includedShots.map((shot) => recencyWeight(shot)),
+    )
+    const spinSpread = weightedStandardDeviationNumbers(
+      includedShots.map(spinValue),
+      includedShots.map((shot) => recencyWeight(shot)),
+    )
+
+    const coherenceScore = (
+      value: number | undefined,
+      center: number | undefined,
+      spread: number | undefined,
+      floor: number,
+    ) => {
+      if (typeof value !== 'number' || typeof center !== 'number') {
+        return undefined
+      }
+      const effectiveSpread = Math.max(spread ?? 0, floor)
+      const deviation = Math.abs(value - center)
+      if (deviation <= effectiveSpread) {
+        return 1
+      }
+      if (deviation >= effectiveSpread * 2.5) {
+        return 0
+      }
+      return clamp01(1 - (deviation - effectiveSpread) / (effectiveSpread * 1.5))
+    }
+
+    const candidates = includedShots.flatMap((shot) => {
+      const carry = carryValue(shot)
+      const offline = offlineValue(shot)
+      if (
+        typeof carry !== 'number' ||
+        typeof offline !== 'number' ||
+        typeof stockCarry !== 'number' ||
+        typeof stockOfflineAbs !== 'number'
+      ) {
+        return []
+      }
+
+      const carryDelta = carry - stockCarry
+      const carryOutcome =
+        carryDelta >= 0
+          ? clamp01(carryDelta / carryImprovementCap)
+          : -clamp01(Math.abs(carryDelta) / carryDownsideCap) * 0.45
+      const offlineDelta = stockOfflineAbs - Math.abs(offline)
+      const offlineOutcome =
+        offlineDelta >= 0
+          ? clamp01(offlineDelta / offlineImprovementCap)
+          : -clamp01(Math.abs(offlineDelta) / offlineDownsideCap) * 0.45
+      const shotHla = hlaValue(shot)
+      const hlaBonus =
+        typeof shotHla === 'number' && typeof stockHlaAbs === 'number'
+          ? clamp01((stockHlaAbs - Math.abs(shotHla)) / hlaBonusCap)
+          : undefined
+      const outcomeScore =
+        weightedAvailableScore([
+          { score: carryOutcome, weight: 0.55 },
+          { score: offlineOutcome, weight: 0.35 },
+          { score: hlaBonus, weight: 0.1 },
+        ]) ?? 0
+
+      const flightScore = weightedAvailableScore([
+        {
+          score: coherenceScore(
+            launchValue(shot),
+            launchCenter,
+            launchSpread,
+            flightFloorByClub.launch,
+          ),
+          weight: 0.5,
+        },
+        {
+          score: coherenceScore(
+            spinValue(shot),
+            spinCenter,
+            spinSpread,
+            flightFloorByClub.spin,
+          ),
+          weight: 0.5,
+        },
+      ])
+
+      const normalizedRank = normalizeShotRank(shot.shotRanking)
+      const baseStrikeScore =
+        typeof normalizedRank === 'undefined'
+          ? 0.5
+          : clamp01(0.5 + (shotRankWeight(shot.shotRanking) - 1) * 1.2)
+      const measuredOutcomeStrong =
+        carryOutcome >= 0.45 && Math.abs(offline) <= Math.max(stockOfflineAbs, 6)
+      const strikeScore =
+        normalizedRank === 'B' && measuredOutcomeStrong
+          ? Math.max(baseStrikeScore, 0.58)
+          : baseStrikeScore
+
+      const neighborCount = includedShots.reduce((count, candidate) => {
+        if (candidate.id === shot.id) {
+          return count
+        }
+        const candidateCarry = carryValue(candidate)
+        const candidateOffline = offlineValue(candidate)
+        if (typeof candidateCarry !== 'number' || typeof candidateOffline !== 'number') {
+          return count
+        }
+        return Math.abs(candidateCarry - carry) <= 12 && Math.abs(candidateOffline - offline) <= 15
+          ? count + 1
+          : count
+      }, 0)
+      const supportScore =
+        neighborCount <= 0 ? 0 : neighborCount === 1 ? 0.4 : neighborCount === 2 ? 0.7 : 1
+
+      if (!sparseSupportAllowed && supportScore <= 0) {
+        return []
+      }
+
+      const pureScore =
+        weightedAvailableScore([
+          { score: outcomeScore, weight: 0.4 },
+          { score: flightScore, weight: 0.2 },
+          { score: strikeScore, weight: 0.1 },
+          { score: supportScore, weight: 0.3 },
+        ]) ?? 0
+
+      return [
+        {
+          shot,
+          pureScore,
+          effectiveWeight: recencyWeight(shot) * (0.7 + pureScore * 0.6),
+        },
+      ]
+    })
+
+    const bestSubset = (() => {
+      if (candidates.length === 0) {
+        return []
+      }
+      const ranked = [...candidates].sort((left, right) => right.pureScore - left.pureScore)
+      const subsetSize = Math.min(Math.max(Math.round(ranked.length * 0.4), 3), 8)
+      return ranked.slice(0, subsetSize)
+    })()
+
+    const bestAvailable = buildProfile(bestSubset, 'best')
 
     const numberGap = (best: number | undefined, likely: number | undefined) =>
       typeof best === 'number' && typeof likely === 'number' ? best - likely : undefined
