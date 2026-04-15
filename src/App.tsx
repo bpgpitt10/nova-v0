@@ -3909,6 +3909,30 @@ function App({
     )
   }
 
+  const toggleFeltPerfect = (shotId: string) => {
+    setShots((currentShots) =>
+      currentShots.map((shot) => {
+        if (shot.id !== shotId) {
+          return shot
+        }
+        if (shot.feltPerfect) {
+          return {
+            ...shot,
+            feltPerfect: undefined,
+            feltPerfectTaggedAt: undefined,
+            feltPerfectSource: undefined,
+          }
+        }
+        return {
+          ...shot,
+          feltPerfect: true,
+          feltPerfectTaggedAt: new Date().toISOString(),
+          feltPerfectSource: 'session_intelligence',
+        }
+      }),
+    )
+  }
+
   const undoLastShot = () => {
     setShots((currentShots) => currentShots.slice(1))
   }
@@ -4227,7 +4251,20 @@ function App({
             </span>
             <span className="session-tag session-tag-rank">{latestShotRankPill}</span>
           </div>
-          <p className="session-intelligence-reaction">{latestShotReaction}</p>
+          <div className="session-intelligence-reaction-row">
+            <p className="session-intelligence-reaction">{latestShotReaction}</p>
+            <button
+              aria-pressed={latestShot?.feltPerfect === true}
+              className={`session-felt-perfect-toggle ${
+                latestShot?.feltPerfect ? 'is-selected' : ''
+              }`}
+              disabled={!latestShot}
+              onClick={() => latestShot && toggleFeltPerfect(latestShot.id)}
+              type="button"
+            >
+              {latestShot?.feltPerfect ? '✓ Felt Perfect' : 'Felt Perfect'}
+            </button>
+          </div>
         </section>
 
         <section className="session-last-shot-strip" aria-label="Most recent shot">
@@ -4439,6 +4476,7 @@ function App({
               <thead>
                 <tr>
                   <th>Exclude</th>
+                  <th>Felt</th>
                   <th>In</th>
                   <th>Time</th>
                   <th>Club</th>
@@ -4464,9 +4502,10 @@ function App({
               <tbody>
                 {sessionShotGroups.flatMap((group) => [
                   <tr className="session-table-club-header" key={`header-${group.club}`}>
-                    <td colSpan={21}>{getClubLabel(group.club)}</td>
+                    <td colSpan={22}>{getClubLabel(group.club)}</td>
                   </tr>,
                   <tr className="session-table-club-average" key={`avg-${group.club}`}>
+                    <td />
                     <td />
                     <td>AVG</td>
                     <td>Included</td>
@@ -4502,6 +4541,18 @@ function App({
                           type="button"
                         >
                           {shot.included ? 'Exclude' : 'Include'}
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          aria-pressed={shot.feltPerfect === true}
+                          className={`session-felt-perfect-toggle session-felt-perfect-toggle-table ${
+                            shot.feltPerfect ? 'is-selected' : ''
+                          }`}
+                          onClick={() => toggleFeltPerfect(shot.id)}
+                          type="button"
+                        >
+                          {shot.feltPerfect ? '✓ Felt Perfect' : 'Felt Perfect'}
                         </button>
                       </td>
                       <td>{shot.included ? 'Y' : 'N'}</td>
