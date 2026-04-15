@@ -5,7 +5,11 @@ import {
   type NovaFeedMode,
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
-import { novaWebSocketAdapter } from './adapters/novaWebSocket'
+import {
+  prepareSharedNovaConnection,
+  subscribeSharedNovaConnection,
+  disconnectSharedNovaConnection,
+} from './adapters/novaWebSocket'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
@@ -717,149 +721,288 @@ function App({
       return undefined
     }
 
-    const adapter = selectedFeedMode === 'real'
-      ? novaWebSocketAdapter(resolvedWsUrl as string)
-      : mockNovaAdapter
-    const connection: NovaConnection = adapter.connectToShots(
-      (incomingShot) => {
-        if (!isActive) {
-          return
-        }
-
-        const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
-        console.info('[Shot Pipeline] live shot received', {
-          shotId: shot.id,
-          source: activeSource,
-          capturedAt: shot.capturedAt,
-          ranking: shot.shotRanking,
-        })
-        setShots((currentShots) => [shot, ...currentShots])
-        console.info('[Shot Pipeline] raw shot persisted in active session state', {
-          shotId: shot.id,
-          included: shot.included,
-        })
-
-        const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
-        const hasInput = hasOpenGolfCoachInput(openGolfCoachInput)
-        logOpenGolfCoachPipeline('shot_received_for_enrichment', {
-          shotId: shot.id,
-          hasInput,
-          input: openGolfCoachInput,
-        })
-        console.info('[Shot Pipeline] enrichment request started', {
-          shotId: shot.id,
-          hasInput,
-          payload: openGolfCoachInput,
-        })
-        if (!hasInput) {
-          console.warn('[Shot Pipeline] enrichment input sparse, attempting anyway', {
-            shotId: shot.id,
-          })
-        }
-
-        void openGolfCoachEnricher
-          .enrichShot(openGolfCoachInput)
-          .then((result) => {
+    const connection: NovaConnection = selectedFeedMode === 'real'
+      ? subscribeSharedNovaConnection(
+          resolvedWsUrl as string,
+          (incomingShot) => {
             if (!isActive) {
               return
             }
 
-            if (result.status === 'failure') {
-              logOpenGolfCoachPipeline('enrichment_result_failure', {
-                shotId: shot.id,
-                status: result.status,
-              })
-              console.error('[Shot Pipeline] enrichment failed', { shotId: shot.id })
-              setHelperReachable(false)
-              setLastEnrichmentStatus('failure')
-              setShots((currentShots) =>
-                currentShots.map((currentShot) =>
-                  currentShot.id === shot.id
-                    ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
-                    : currentShot,
-                ),
-              )
-              return
-            }
-
-            if (result.status === 'success') {
-              logOpenGolfCoachPipeline('enrichment_result_success', {
-                shotId: shot.id,
-                status: result.status,
-                hasPayload: Boolean(result.payload),
-              })
-              console.info('[Shot Pipeline] enrichment succeeded', { shotId: shot.id })
-              setHelperReachable(true)
-              setLastEnrichmentStatus('success')
-            }
-
-            if (!result.payload) {
-              logOpenGolfCoachPipeline('enrichment_result_no_payload', {
-                shotId: shot.id,
-                status: result.status,
-              })
-              console.warn('[Shot Pipeline] enrichment returned no payload to merge', {
-                shotId: shot.id,
-                status: result.status,
-              })
-              return
-            }
-
-            console.info('[Shot Pipeline] applying enrichment merge to shot state', {
+            const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+            console.info('[Shot Pipeline] live shot received', {
               shotId: shot.id,
-              status: result.status,
-              derivedValues: result.derivedValues,
-              payloadKeys:
-                result.payload && typeof result.payload === 'object'
-                  ? Object.keys(result.payload)
-                  : [],
+              source: activeSource,
+              capturedAt: shot.capturedAt,
+              ranking: shot.shotRanking,
             })
-            logOpenGolfCoachPipeline('enrichment_merge_applied', {
+            setShots((currentShots) => [shot, ...currentShots])
+            console.info('[Shot Pipeline] raw shot persisted in active session state', {
               shotId: shot.id,
-              status: result.status,
-              derivedValues: result.derivedValues,
+              included: shot.included,
             })
-            setShots((currentShots) =>
-              currentShots.map((currentShot) =>
-                currentShot.id === shot.id
-                  ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
-                  : currentShot,
-              ),
-            )
-          })
-          .catch((error) => {
+
+            const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
+            const hasInput = hasOpenGolfCoachInput(openGolfCoachInput)
+            logOpenGolfCoachPipeline('shot_received_for_enrichment', {
+              shotId: shot.id,
+              hasInput,
+              input: openGolfCoachInput,
+            })
+            console.info('[Shot Pipeline] enrichment request started', {
+              shotId: shot.id,
+              hasInput,
+              payload: openGolfCoachInput,
+            })
+            if (!hasInput) {
+              console.warn('[Shot Pipeline] enrichment input sparse, attempting anyway', {
+                shotId: shot.id,
+              })
+            }
+
+            void openGolfCoachEnricher
+              .enrichShot(openGolfCoachInput)
+              .then((result) => {
+                if (!isActive) {
+                  return
+                }
+
+                if (result.status === 'failure') {
+                  logOpenGolfCoachPipeline('enrichment_result_failure', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  console.error('[Shot Pipeline] enrichment failed', { shotId: shot.id })
+                  setHelperReachable(false)
+                  setLastEnrichmentStatus('failure')
+                  setShots((currentShots) =>
+                    currentShots.map((currentShot) =>
+                      currentShot.id === shot.id
+                        ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                        : currentShot,
+                    ),
+                  )
+                  return
+                }
+
+                if (result.status === 'success') {
+                  logOpenGolfCoachPipeline('enrichment_result_success', {
+                    shotId: shot.id,
+                    status: result.status,
+                    hasPayload: Boolean(result.payload),
+                  })
+                  console.info('[Shot Pipeline] enrichment succeeded', { shotId: shot.id })
+                  setHelperReachable(true)
+                  setLastEnrichmentStatus('success')
+                }
+
+                if (!result.payload) {
+                  logOpenGolfCoachPipeline('enrichment_result_no_payload', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  console.warn('[Shot Pipeline] enrichment returned no payload to merge', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  return
+                }
+
+                console.info('[Shot Pipeline] applying enrichment merge to shot state', {
+                  shotId: shot.id,
+                  status: result.status,
+                  derivedValues: result.derivedValues,
+                  payloadKeys:
+                    result.payload && typeof result.payload === 'object'
+                      ? Object.keys(result.payload)
+                      : [],
+                })
+                logOpenGolfCoachPipeline('enrichment_merge_applied', {
+                  shotId: shot.id,
+                  status: result.status,
+                  derivedValues: result.derivedValues,
+                })
+                setShots((currentShots) =>
+                  currentShots.map((currentShot) =>
+                    currentShot.id === shot.id
+                      ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
+                      : currentShot,
+                  ),
+                )
+              })
+              .catch((error) => {
+                if (!isActive) {
+                  return
+                }
+                logOpenGolfCoachPipeline('enrichment_result_exception', {
+                  shotId: shot.id,
+                  error: error instanceof Error ? error.message : String(error),
+                })
+                console.error('[Shot Pipeline] enrichment failed with error', {
+                  shotId: shot.id,
+                  error,
+                })
+                setHelperReachable(false)
+                setLastEnrichmentStatus('failure')
+                setShots((currentShots) =>
+                  currentShots.map((currentShot) =>
+                    currentShot.id === shot.id
+                      ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                      : currentShot,
+                  ),
+                )
+              })
+          },
+          setConnectionStatus,
+          (event) => {
+            if (import.meta.env.DEV) {
+              console.info('[Nova WS] message debug', {
+                normalized: Boolean(event.normalizedShot),
+                rawPreview: event.rawMessage?.slice(0, 220),
+              })
+            }
+          },
+        )
+      : mockNovaAdapter.connectToShots(
+          (incomingShot) => {
             if (!isActive) {
               return
             }
-            logOpenGolfCoachPipeline('enrichment_result_exception', {
+
+            const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+            console.info('[Shot Pipeline] live shot received', {
               shotId: shot.id,
-              error: error instanceof Error ? error.message : String(error),
+              source: activeSource,
+              capturedAt: shot.capturedAt,
+              ranking: shot.shotRanking,
             })
-            console.error('[Shot Pipeline] enrichment failed with error', {
+            setShots((currentShots) => [shot, ...currentShots])
+            console.info('[Shot Pipeline] raw shot persisted in active session state', {
               shotId: shot.id,
-              error,
+              included: shot.included,
             })
-            setHelperReachable(false)
-            setLastEnrichmentStatus('failure')
-            setShots((currentShots) =>
-              currentShots.map((currentShot) =>
-                currentShot.id === shot.id
-                  ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
-                  : currentShot,
-              ),
-            )
-          })
-      },
-      setConnectionStatus,
-      (event) => {
-        if (import.meta.env.DEV) {
-          console.info('[Nova WS] message debug', {
-            normalized: Boolean(event.normalizedShot),
-            rawPreview: event.rawMessage?.slice(0, 220),
-          })
-        }
-      },
-    )
+
+            const openGolfCoachInput = buildOpenGolfCoachInput(incomingShot)
+            const hasInput = hasOpenGolfCoachInput(openGolfCoachInput)
+            logOpenGolfCoachPipeline('shot_received_for_enrichment', {
+              shotId: shot.id,
+              hasInput,
+              input: openGolfCoachInput,
+            })
+            console.info('[Shot Pipeline] enrichment request started', {
+              shotId: shot.id,
+              hasInput,
+              payload: openGolfCoachInput,
+            })
+            if (!hasInput) {
+              console.warn('[Shot Pipeline] enrichment input sparse, attempting anyway', {
+                shotId: shot.id,
+              })
+            }
+
+            void openGolfCoachEnricher
+              .enrichShot(openGolfCoachInput)
+              .then((result) => {
+                if (!isActive) {
+                  return
+                }
+
+                if (result.status === 'failure') {
+                  logOpenGolfCoachPipeline('enrichment_result_failure', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  console.error('[Shot Pipeline] enrichment failed', { shotId: shot.id })
+                  setHelperReachable(false)
+                  setLastEnrichmentStatus('failure')
+                  setShots((currentShots) =>
+                    currentShots.map((currentShot) =>
+                      currentShot.id === shot.id
+                        ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                        : currentShot,
+                    ),
+                  )
+                  return
+                }
+
+                if (result.status === 'success') {
+                  logOpenGolfCoachPipeline('enrichment_result_success', {
+                    shotId: shot.id,
+                    status: result.status,
+                    hasPayload: Boolean(result.payload),
+                  })
+                  console.info('[Shot Pipeline] enrichment succeeded', { shotId: shot.id })
+                  setHelperReachable(true)
+                  setLastEnrichmentStatus('success')
+                }
+
+                if (!result.payload) {
+                  logOpenGolfCoachPipeline('enrichment_result_no_payload', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  console.warn('[Shot Pipeline] enrichment returned no payload to merge', {
+                    shotId: shot.id,
+                    status: result.status,
+                  })
+                  return
+                }
+
+                console.info('[Shot Pipeline] applying enrichment merge to shot state', {
+                  shotId: shot.id,
+                  status: result.status,
+                  derivedValues: result.derivedValues,
+                  payloadKeys:
+                    result.payload && typeof result.payload === 'object'
+                      ? Object.keys(result.payload)
+                      : [],
+                })
+                logOpenGolfCoachPipeline('enrichment_merge_applied', {
+                  shotId: shot.id,
+                  status: result.status,
+                  derivedValues: result.derivedValues,
+                })
+                setShots((currentShots) =>
+                  currentShots.map((currentShot) =>
+                    currentShot.id === shot.id
+                      ? mergeDerivedValues(currentShot, result.payload, result.derivedValues)
+                      : currentShot,
+                  ),
+                )
+              })
+              .catch((error) => {
+                if (!isActive) {
+                  return
+                }
+                logOpenGolfCoachPipeline('enrichment_result_exception', {
+                  shotId: shot.id,
+                  error: error instanceof Error ? error.message : String(error),
+                })
+                console.error('[Shot Pipeline] enrichment failed with error', {
+                  shotId: shot.id,
+                  error,
+                })
+                setHelperReachable(false)
+                setLastEnrichmentStatus('failure')
+                setShots((currentShots) =>
+                  currentShots.map((currentShot) =>
+                    currentShot.id === shot.id
+                      ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                      : currentShot,
+                  ),
+                )
+              })
+          },
+          setConnectionStatus,
+          (event) => {
+            if (import.meta.env.DEV) {
+              console.info('[Nova WS] message debug', {
+                normalized: Boolean(event.normalizedShot),
+                rawPreview: event.rawMessage?.slice(0, 220),
+              })
+            }
+          },
+        )
 
     activeSource = connection.mode === 'mock' ? 'mock' : 'nova'
     connectionRef.current = connection
@@ -3882,6 +4025,11 @@ function App({
       metadata: currentSessionMetadata(selectedFeedMode),
     }
     saveActiveSessionDraft(draft)
+
+    if (selectedFeedMode === 'real' && novaWebSocketUrl) {
+      prepareSharedNovaConnection(novaWebSocketUrl)
+    }
+
     const params = new URLSearchParams({
       feed: selectedFeedMode,
       club: selectedClub,
@@ -3902,6 +4050,9 @@ function App({
     const nextSessions = [savedSession, ...savedSessions]
     setSavedSessions(nextSessions)
     saveSessionHistory(nextSessions)
+    if (feedMode === 'real') {
+      disconnectSharedNovaConnection()
+    }
     clearActiveSessionDraft()
     navigateWithinApp('/session-summary')
   }
@@ -3973,28 +4124,6 @@ function App({
       return 'Came out fine, just a touch short of full number.'
     }
     return 'Playable strike, but still wants a little management.'
-  })()
-
-  const latestShotWhy = (() => {
-    if (!latestShot) {
-      return null
-    }
-    const faceToPath = faceToPathValue(latestShot)
-    const faceToTarget = faceToTargetValue(latestShot)
-    const path = clubPathValue(latestShot)
-    const formatSigned = (value: number) =>
-      `${value > 0 ? '+' : ''}${value.toFixed(1)}°`
-
-    if (typeof faceToPath === 'number' && Math.abs(faceToPath) > 2) {
-      return `Face to path ${formatSigned(faceToPath)}`
-    }
-    if (typeof faceToTarget === 'number' && Math.abs(faceToTarget) > 2) {
-      return `Face to target ${formatSigned(faceToTarget)}`
-    }
-    if (typeof path === 'number' && Math.abs(path) > 2) {
-      return `Club path ${formatSigned(path)}`
-    }
-    return null
   })()
 
   const formatYards = (value: number | undefined) =>
@@ -4213,13 +4342,6 @@ function App({
       return '0.0'
     }
     return `${value > 0 ? '+' : '-'}${Math.abs(value).toFixed(1)}`
-  }
-
-  const offlineLabel = (value: number | undefined) => {
-    if (typeof value !== 'number' || value === 0) {
-      return 'Offline (yd L / yd R)'
-    }
-    return value > 0 ? 'Offline (yd R)' : 'Offline (yd L)'
   }
 
   const sessionIntelligencePoints = useMemo(

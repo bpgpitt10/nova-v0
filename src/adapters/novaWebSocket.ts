@@ -127,6 +127,130 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
   }
 }
 
+type SharedNovaSubscriber = {
+  onShot: NovaShotHandler
+  onStatusChange?: (status: NovaConnectionStatus) => void
+  onDebugEvent?: (event: NovaDebugEvent) => void
+}
+
+type SharedNovaConnectionState = {
+  url: string
+  connection: NovaConnection
+  subscribers: Set<SharedNovaSubscriber>
+  pendingShots: IncomingNovaShot[]
+  currentStatus: NovaConnectionStatus
+}
+
+let sharedNovaConnection: SharedNovaConnectionState | null = null
+
+const dispatchSharedStatus = (status: NovaConnectionStatus) => {
+  if (!sharedNovaConnection) {
+    return
+  }
+
+  sharedNovaConnection.currentStatus = status
+  for (const subscriber of sharedNovaConnection.subscribers) {
+    subscriber.onStatusChange?.(status)
+  }
+}
+
+const dispatchSharedDebug = (event: NovaDebugEvent) => {
+  if (!sharedNovaConnection) {
+    return
+  }
+
+  for (const subscriber of sharedNovaConnection.subscribers) {
+    subscriber.onDebugEvent?.(event)
+  }
+}
+
+const dispatchSharedShot = (shot: IncomingNovaShot) => {
+  if (!sharedNovaConnection) {
+    return
+  }
+
+  if (sharedNovaConnection.subscribers.size === 0) {
+    sharedNovaConnection.pendingShots.push(shot)
+    return
+  }
+
+  for (const subscriber of sharedNovaConnection.subscribers) {
+    subscriber.onShot(shot)
+  }
+}
+
+export const prepareSharedNovaConnection = (url: string) => {
+  if (sharedNovaConnection?.url === url) {
+    return
+  }
+
+  if (sharedNovaConnection) {
+    sharedNovaConnection.connection.disconnect()
+    sharedNovaConnection = null
+  }
+
+  const connection = novaWebSocketAdapter(url).connectToShots(
+    dispatchSharedShot,
+    dispatchSharedStatus,
+    dispatchSharedDebug,
+  )
+
+  sharedNovaConnection = {
+    url,
+    connection,
+    subscribers: new Set(),
+    pendingShots: [],
+    currentStatus: 'connecting',
+  }
+
+  dispatchSharedStatus('connecting')
+}
+
+export const subscribeSharedNovaConnection = (
+  url: string,
+  onShot: NovaShotHandler,
+  onStatusChange?: (status: NovaConnectionStatus) => void,
+  onDebugEvent?: (event: NovaDebugEvent) => void,
+): NovaConnection => {
+  if (!sharedNovaConnection || sharedNovaConnection.url !== url) {
+    prepareSharedNovaConnection(url)
+  }
+
+  if (!sharedNovaConnection) {
+    return {
+      mode: 'real',
+      disconnect: () => undefined,
+    }
+  }
+
+  const subscriber: SharedNovaSubscriber = {
+    onShot,
+    onStatusChange,
+    onDebugEvent,
+  }
+
+  sharedNovaConnection.subscribers.add(subscriber)
+  onStatusChange?.(sharedNovaConnection.currentStatus)
+
+  if (sharedNovaConnection.pendingShots.length > 0) {
+    const queuedShots = sharedNovaConnection.pendingShots
+    sharedNovaConnection.pendingShots = []
+    queuedShots.forEach(onShot)
+  }
+
+  return {
+    mode: 'real',
+    disconnect: () => {
+      sharedNovaConnection?.subscribers.delete(subscriber)
+    },
+  }
+}
+
+export const disconnectSharedNovaConnection = () => {
+  sharedNovaConnection?.connection.disconnect()
+  sharedNovaConnection = null
+}
+
 // Expected real Nova WebSocket connection flow:
 // 1. Discover Nova's _openlaunch-ws._tcp.local. service outside this browser app,
 //    or manually provide the local WebSocket URL through VITE_NOVA_WS_URL.

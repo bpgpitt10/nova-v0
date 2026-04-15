@@ -9,6 +9,8 @@ use std::io::Write;
 use std::net::{SocketAddr, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use mdns_sd::{HostnameResolutionEvent, ServiceDaemon, ServiceEvent};
@@ -21,6 +23,8 @@ const HELPER_SERVICE_NAME: &str = "open-golf-coach-helper";
 const HELPER_HEALTH_URL: &str = "http://127.0.0.1:8787/health";
 const SIDECAR_BASE_NAME: &str = "open-golf-coach-helper";
 const NOVA_WS_SERVICE_NAME: &str = "_openlaunch-ws._tcp.local.";
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Default)]
 struct SidecarState {
@@ -150,7 +154,14 @@ fn launch_sidecar(app_handle: &AppHandle) -> Result<Child, String> {
         sidecar_path.display()
     );
 
-    Command::new(sidecar_path)
+    let mut command = Command::new(sidecar_path);
+
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    command
         .env("OPEN_GOLF_COACH_HOST", HELPER_HOST)
         .env("OPEN_GOLF_COACH_PORT", HELPER_PORT.to_string())
         .stdin(Stdio::null())
