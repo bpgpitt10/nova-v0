@@ -39,6 +39,7 @@ import {
   shotRankScoreTone,
   shotRankWeight,
 } from './lib/shotRank'
+import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
 import {
   clearActiveSessionDraft,
@@ -3911,25 +3912,9 @@ function App({
 
   const toggleFeltPerfect = (shotId: string) => {
     setShots((currentShots) =>
-      currentShots.map((shot) => {
-        if (shot.id !== shotId) {
-          return shot
-        }
-        if (shot.feltPerfect) {
-          return {
-            ...shot,
-            feltPerfect: undefined,
-            feltPerfectTaggedAt: undefined,
-            feltPerfectSource: undefined,
-          }
-        }
-        return {
-          ...shot,
-          feltPerfect: true,
-          feltPerfectTaggedAt: new Date().toISOString(),
-          feltPerfectSource: 'session_intelligence',
-        }
-      }),
+      currentShots.map((shot) =>
+        shot.id === shotId ? toggleFeltPerfectShot(shot, 'session_intelligence') : shot,
+      ),
     )
   }
 

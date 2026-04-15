@@ -22,7 +22,7 @@ export type Shot = {
   shotRanking?: number | string
   feltPerfect?: boolean
   feltPerfectTaggedAt?: string
-  feltPerfectSource?: 'session_intelligence'
+  feltPerfectSource?: 'session_intelligence' | 'data_management'
   source: 'nova' | 'mock'
 }
 
