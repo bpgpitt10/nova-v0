@@ -33,6 +33,7 @@ import {
   weightedAverage,
   weightedStandardDeviation,
 } from './lib/recency'
+import { weightedTrimmedMean, weightedWinsorizedStdDev } from './lib/robustStats'
 import {
   formatShotRank,
   normalizeShotRank,
@@ -617,6 +618,7 @@ function App({
     forceSessionIntelligenceRoute ? routeClub : fallbackClub,
   )
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>(fallbackClub)
+  const sharedProfileClub = forceSessionIntelligenceRoute ? selectedClub : selectedDetailClub
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
@@ -1509,30 +1511,30 @@ function App({
   const selectedClubHistoricalShots = useMemo(
     () =>
       analysisSessions.flatMap((session) =>
-        session.shots.filter((shot) => shot.club === selectedDetailClub),
+        session.shots.filter((shot) => shot.club === sharedProfileClub),
       ),
-    [analysisSessions, selectedDetailClub],
+    [analysisSessions, sharedProfileClub],
   )
 
   const selectedClubHistoricalShotWeights = useMemo(() => {
     const map = new Map<string, number>()
     analysisSessions.forEach((session) => {
-      const clubIncludedCount = includedClubShotsForSession(session, selectedDetailClub).length
+      const clubIncludedCount = includedClubShotsForSession(session, sharedProfileClub).length
       const sessionWeight = sessionHistoricalWeightForClub(
         session,
-        selectedDetailClub,
+        sharedProfileClub,
         historicalModelNowMs,
       )
       const normalizedShotWeight =
         clubIncludedCount > 0 ? sessionWeight / clubIncludedCount : 0
       session.shots.forEach((shot) => {
-        if (shot.club === selectedDetailClub && !map.has(shot.id)) {
+        if (shot.club === sharedProfileClub && !map.has(shot.id)) {
           map.set(shot.id, normalizedShotWeight)
         }
       })
     })
     return map
-  }, [analysisSessions, historicalModelNowMs, selectedDetailClub])
+  }, [analysisSessions, historicalModelNowMs, sharedProfileClub])
 
   const selectedClubMetrics = useMemo(() => {
     const shotWeights = selectedClubHistoricalShots.map(
@@ -2586,8 +2588,8 @@ function App({
         ),
         total: weightedAverageNumbers(shots.map(totalValue), weights),
         offlineMean: weightedAverageNumbers(offline, weights),
-        dispersion: weightedAverageNumbers(absOffline, weights),
-        dispersionVariability: weightedStandardDeviationNumbers(offline, weights),
+        dispersion: weightedTrimmedMean(absOffline, weights, 0.1),
+        dispersionVariability: weightedWinsorizedStdDev(offline, weights, 0.1),
         carryVariability: weightedStandardDeviationNumbers(carry, weights),
         launch: weightedAverageNumbers(shots.map(launchValue), weights),
         hla: weightedAverageNumbers(
@@ -2638,7 +2640,7 @@ function App({
 
     // Conservative tuning defaults by broad club bucket, not universal golf ideals.
     const flightFloorByClub = (() => {
-      const normalizedClub = selectedDetailClub.trim().toUpperCase()
+      const normalizedClub = sharedProfileClub.trim().toUpperCase()
       const isDriverBucket =
         normalizedClub === 'DRIVER' || normalizedClub === 'MINI DRIVER'
       const isFairwayHybridUtilityBucket =
@@ -2907,7 +2909,7 @@ function App({
       executionGapRows,
       takeaway,
     }
-  }, [selectedClubHistoricalShotWeights, selectedClubHistoricalShots, selectedDetailClub])
+  }, [selectedClubHistoricalShotWeights, selectedClubHistoricalShots, sharedProfileClub])
 
   const selectedDetailIncludedShots = useMemo(
     () =>
@@ -4001,28 +4003,155 @@ function App({
     return `${Math.abs(value).toFixed(1)} yd ${value < 0 ? 'L' : 'R'}`
   }
 
+  const formatDeltaValue = (
+    last: number | undefined,
+    pure: number | undefined,
+    unit: 'yd' | 'rpm' | 'deg' | 'ratio',
+    digits = 1,
+  ) => {
+    if (typeof last !== 'number' || typeof pure !== 'number') {
+      return '-'
+    }
+    const delta = pure - last
+    const sign = delta > 0 ? '+' : delta < 0 ? '-' : ''
+    const abs = Math.abs(delta)
+    if (unit === 'rpm') {
+      return `${sign}${Math.round(abs)} rpm`
+    }
+    if (unit === 'deg') {
+      return `${sign}${abs.toFixed(digits)}°`
+    }
+    if (unit === 'ratio') {
+      return `${sign}${abs.toFixed(2)}`
+    }
+    return `${sign}${abs.toFixed(digits)} yd`
+  }
+
   const shotDnaComparisonRows = [
-    { metric: 'Carry', last: formatYards(latestShot ? carryValue(latestShot) : undefined) },
-    { metric: 'Total Distance', last: formatYards(latestShot ? totalValue(latestShot) : undefined) },
-    { metric: 'Offline', last: formatOffline(latestShot ? offlineValue(latestShot) : undefined) },
-    { metric: 'Launch (VLA)', last: formatDegrees(latestShot ? launchValue(latestShot) : undefined) },
+    {
+      metric: 'Carry',
+      last: formatYards(latestShot ? carryValue(latestShot) : undefined),
+      pure: formatYards(selectedClubShotProfiles.bestAvailable?.carry),
+      delta: formatDeltaValue(
+        latestShot ? carryValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.carry,
+        'yd',
+      ),
+    },
+    {
+      metric: 'Total Distance',
+      last: formatYards(latestShot ? totalValue(latestShot) : undefined),
+      pure: formatYards(selectedClubShotProfiles.bestAvailable?.total),
+      delta: formatDeltaValue(
+        latestShot ? totalValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.total,
+        'yd',
+      ),
+    },
+    {
+      metric: 'Offline',
+      last: formatOffline(latestShot ? offlineValue(latestShot) : undefined),
+      pure: formatOffline(selectedClubShotProfiles.bestAvailable?.offlineMean),
+      delta: formatDeltaValue(
+        latestShot ? offlineValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.offlineMean,
+        'yd',
+      ),
+    },
+    {
+      metric: 'Launch (VLA)',
+      last: formatDegrees(latestShot ? launchValue(latestShot) : undefined),
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.launch),
+      delta: formatDeltaValue(
+        latestShot ? launchValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.launch,
+        'deg',
+      ),
+    },
     {
       metric: 'Start Line (HLA)',
       last:
         typeof latestShot?.horizontalLaunchAngleDegrees === 'number'
           ? `${latestShot.horizontalLaunchAngleDegrees.toFixed(1)}°`
           : '-',
+      pure:
+        typeof selectedClubShotProfiles.bestAvailable?.hla === 'number'
+          ? `${selectedClubShotProfiles.bestAvailable.hla.toFixed(1)}°`
+          : '-',
+      delta: formatDeltaValue(
+        latestShot?.horizontalLaunchAngleDegrees,
+        selectedClubShotProfiles.bestAvailable?.hla,
+        'deg',
+      ),
     },
-    { metric: 'Spin', last: formatSpin(latestShot ? spinValue(latestShot) : undefined) },
-    { metric: 'Spin Axis', last: formatDegrees(latestShot ? spinAxisValue(latestShot) : undefined) },
-    { metric: 'Smash Factor', last: formatSmash(latestShot ? smashFactorValue(latestShot) : undefined) },
-    { metric: 'Ball Speed', last: formatSpeed(latestShot ? ballSpeedMphValue(latestShot) : undefined) },
-    { metric: 'Club Speed', last: formatSpeed(latestShot ? clubSpeedValue(latestShot) : undefined) },
-    { metric: 'Peak Height', last: formatYards(latestShot ? peakHeightValue(latestShot) : undefined) },
-    { metric: 'Descent Angle', last: formatDegrees(latestShot ? descentValue(latestShot) : undefined) },
-    { metric: 'Club Path', last: formatDegrees(latestShot ? clubPathValue(latestShot) : undefined) },
-    { metric: 'Face to Path', last: formatDegrees(latestShot ? faceToPathValue(latestShot) : undefined) },
-    { metric: 'Face to Target', last: formatDegrees(latestShot ? faceToTargetValue(latestShot) : undefined) },
+    {
+      metric: 'Spin',
+      last: formatSpin(latestShot ? spinValue(latestShot) : undefined),
+      pure: formatSpin(selectedClubShotProfiles.bestAvailable?.spin),
+      delta: formatDeltaValue(
+        latestShot ? spinValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.spin,
+        'rpm',
+      ),
+    },
+    {
+      metric: 'Spin Axis',
+      last: formatDegrees(latestShot ? spinAxisValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Smash Factor',
+      last: formatSmash(latestShot ? smashFactorValue(latestShot) : undefined),
+      pure: formatSmash(selectedClubShotProfiles.bestAvailable?.smashFactor),
+      delta: formatDeltaValue(
+        latestShot ? smashFactorValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.smashFactor,
+        'ratio',
+      ),
+    },
+    {
+      metric: 'Ball Speed',
+      last: formatSpeed(latestShot ? ballSpeedMphValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Club Speed',
+      last: formatSpeed(latestShot ? clubSpeedValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Peak Height',
+      last: formatYards(latestShot ? peakHeightValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Descent Angle',
+      last: formatDegrees(latestShot ? descentValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Club Path',
+      last: formatDegrees(latestShot ? clubPathValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Face to Path',
+      last: formatDegrees(latestShot ? faceToPathValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
+    {
+      metric: 'Face to Target',
+      last: formatDegrees(latestShot ? faceToTargetValue(latestShot) : undefined),
+      pure: '-',
+      delta: '-',
+    },
   ]
 
   const formatOfflineValue = (value: number | undefined) => {
@@ -4409,9 +4538,9 @@ function App({
                     {row.metric}
                   </span>
                   <span role="cell">{row.last}</span>
-                  <span role="cell">-</span>
+                  <span role="cell">{row.pure}</span>
                   <span className="session-intelligence-comparison-delta" role="cell">
-                    -
+                    {row.delta}
                   </span>
                 </div>
               ))}
