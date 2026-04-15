@@ -78,7 +78,7 @@ export default function BagSetupPage() {
           </div>
           <img alt="The Looper" className="bag-setup-logo" src={looperLogoWhite} />
           <p>{selectedCount} clubs selected</p>
-          <p className="bag-setup-nudge">Most players carry 14 clubs.</p>
+          <p className="bag-setup-nudge">Most players carry 13 clubs (+ putter to make 14)</p>
         </header>
 
         <div className="bag-setup-sections">
