@@ -2056,19 +2056,27 @@ td {
   border-radius: 12px;
   background: rgba(19, 30, 22, 0.62);
   padding: 12px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
+  overflow-x: auto;
 }
 
 .session-intelligence-comparison-table {
   display: grid;
   gap: 8px;
+  flex: 1;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+  min-width: max-content;
 }
 
 .session-intelligence-comparison-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px 64px 34px;
-  gap: 12px;
+  grid-template-columns: minmax(156px, 1fr) minmax(88px, max-content) minmax(88px, max-content)
+    minmax(64px, max-content);
+  column-gap: 16px;
   align-items: baseline;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -2093,11 +2101,25 @@ td {
   text-align: left;
 }
 
+.session-intelligence-comparison-head span:nth-child(3) {
+  color: rgba(167, 228, 186, 0.78);
+}
+
 .session-intelligence-comparison-row span {
   text-align: right;
   color: rgba(240, 245, 240, 0.88);
   font-size: 15px;
   line-height: 1.35;
+  white-space: nowrap;
+}
+
+.session-intelligence-comparison-row span:nth-child(2) {
+  color: rgba(236, 242, 236, 0.88);
+}
+
+.session-intelligence-comparison-row span:nth-child(3) {
+  color: rgba(118, 170, 136, 0.88);
+  font-weight: 500;
 }
 
 .session-intelligence-comparison-metric {

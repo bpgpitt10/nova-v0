@@ -169,7 +169,7 @@
 }
 
 .club-v2-heatmap-overlay-label.pure {
-  fill: rgba(126, 234, 162, 0.78);
+  fill: rgba(118, 170, 136, 0.88);
 }
 
 .club-v2-heatmap-section {
@@ -194,7 +194,7 @@
 }
 
 .club-v2-pattern-title {
-  color: rgba(246, 251, 246, 0.96);
+  color: rgba(118, 170, 136, 0.88);
   font-size: 0.86rem;
   font-weight: 610;
   letter-spacing: 0.02em;
@@ -280,8 +280,8 @@
 }
 
 .club-v2-stock-pure-header span:last-child {
-  color: rgba(167, 228, 186, 0.86);
-  border-color: rgba(167, 228, 186, 0.32);
+  color: rgba(118, 170, 136, 0.88);
+  border-color: rgba(118, 170, 136, 0.32);
   background: rgba(19, 42, 27, 0.44);
   justify-self: end;
 }
@@ -324,7 +324,7 @@
 }
 
 .club-v2-stock-pure-value.pure {
-  color: rgba(167, 228, 186, 0.92);
+  color: rgba(118, 170, 136, 0.88);
   font-weight: 470;
   text-align: right;
 }

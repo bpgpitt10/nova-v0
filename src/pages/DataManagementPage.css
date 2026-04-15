@@ -252,6 +252,20 @@
   padding: 0 8px;
 }
 
+.dm-pure-toggle {
+  min-height: 24px;
+  padding: 0 8px;
+  border-color: rgba(114, 154, 122, 0.34);
+  background: rgba(39, 61, 43, 0.4);
+  color: rgba(191, 214, 194, 0.88);
+}
+
+.dm-pure-toggle.is-selected {
+  border-color: rgba(124, 186, 136, 0.52);
+  background: rgba(49, 92, 60, 0.58);
+  color: rgba(224, 239, 226, 0.96);
+}
+
 .dm-return {
   text-decoration: none;
   display: inline-flex;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
+import { toggleFeltPerfectShot } from '../lib/feltPerfect'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import {
   clearActiveSessionDraft,
@@ -408,6 +409,21 @@ function DataManagementPage() {
     )
   }
 
+  const toggleShotPure = (sessionId: string, shotId: string) => {
+    persistSessions(
+      savedSessions.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              shots: session.shots.map((shot) =>
+                shot.id === shotId ? toggleFeltPerfectShot(shot, 'data_management') : shot,
+              ),
+            }
+          : session,
+      ),
+    )
+  }
+
   const deleteShot = (sessionId: string, shotId: string) => {
     const confirmed = window.confirm('Delete this shot permanently?')
     if (!confirmed) {
@@ -648,6 +664,7 @@ function DataManagementPage() {
                                     <tr>
                                       <th>In</th>
                                       <th>Delete</th>
+                                      <th>Pure</th>
                                       <th>Time</th>
                                       <th>Club</th>
                                       <th>Carry</th>
@@ -675,7 +692,7 @@ function DataManagementPage() {
                                         className="data-shot-club-header"
                                         key={`${session.id}-header-${group.club}`}
                                       >
-                                        <td colSpan={21}>{getClubLabel(group.club)}</td>
+                                        <td colSpan={22}>{getClubLabel(group.club)}</td>
                                       </tr>,
                                       <tr
                                         className="data-shot-club-average"
@@ -683,6 +700,7 @@ function DataManagementPage() {
                                       >
                                         <td>AVG</td>
                                         <td>{systemOldExcluded ? 'Old / Excluded' : 'Included'}</td>
+                                        <td>-</td>
                                         <td>-</td>
                                         <td>{getClubLabel(group.club)}</td>
                                         <td>{formatDecimal(group.averages.carry, ' yd')}</td>
@@ -725,6 +743,18 @@ function DataManagementPage() {
                                               type="button"
                                             >
                                               Delete
+                                            </button>
+                                          </td>
+                                          <td>
+                                            <button
+                                              aria-pressed={shot.feltPerfect === true}
+                                              className={`dm-action dm-pure-toggle ${
+                                                shot.feltPerfect ? 'is-selected' : ''
+                                              }`}
+                                              onClick={() => toggleShotPure(session.id, shot.id)}
+                                              type="button"
+                                            >
+                                              {shot.feltPerfect ? '✓ Pure' : 'Pure'}
                                             </button>
                                           </td>
                                           <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>

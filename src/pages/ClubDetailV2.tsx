@@ -728,10 +728,10 @@ export default function ClubDetailV2({
                       <ellipse
                         cx={heatmapOverlayModel.pureEllipse.cx}
                         cy={heatmapOverlayModel.pureEllipse.cy}
-                        fill="rgba(126, 234, 162, 0.07)"
+                        fill="rgba(118, 170, 136, 0.08)"
                         rx={heatmapOverlayModel.pureEllipse.rx}
                         ry={heatmapOverlayModel.pureEllipse.ry}
-                        stroke="rgba(126, 234, 162, 0.54)"
+                        stroke="rgba(118, 170, 136, 0.54)"
                         strokeWidth="0.25"
                       />
                       <text
