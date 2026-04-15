@@ -3823,6 +3823,50 @@ function App({
     return null
   })()
 
+  const formatYards = (value: number | undefined) =>
+    typeof value === 'number' ? `${value.toFixed(1)} yd` : '-'
+  const formatDegrees = (value: number | undefined) =>
+    typeof value === 'number' ? `${value.toFixed(1)}°` : '-'
+  const formatSpin = (value: number | undefined) =>
+    typeof value === 'number' ? `${Math.round(value)} rpm` : '-'
+  const formatSpeed = (value: number | undefined) =>
+    typeof value === 'number' ? value.toFixed(1) : '-'
+  const formatSmash = (value: number | undefined) =>
+    typeof value === 'number' ? value.toFixed(2) : '-'
+  const formatOffline = (value: number | undefined) => {
+    if (typeof value !== 'number') {
+      return '-'
+    }
+    if (value === 0) {
+      return '0.0 yd'
+    }
+    return `${Math.abs(value).toFixed(1)} yd ${value < 0 ? 'L' : 'R'}`
+  }
+
+  const shotDnaComparisonRows = [
+    { metric: 'Carry', last: formatYards(latestShot ? carryValue(latestShot) : undefined) },
+    { metric: 'Total Distance', last: formatYards(latestShot ? totalValue(latestShot) : undefined) },
+    { metric: 'Offline', last: formatOffline(latestShot ? offlineValue(latestShot) : undefined) },
+    { metric: 'Launch (VLA)', last: formatDegrees(latestShot ? launchValue(latestShot) : undefined) },
+    {
+      metric: 'Start Line (HLA)',
+      last:
+        typeof latestShot?.horizontalLaunchAngleDegrees === 'number'
+          ? `${latestShot.horizontalLaunchAngleDegrees.toFixed(1)}°`
+          : '-',
+    },
+    { metric: 'Spin', last: formatSpin(latestShot ? spinValue(latestShot) : undefined) },
+    { metric: 'Spin Axis', last: formatDegrees(latestShot ? spinAxisValue(latestShot) : undefined) },
+    { metric: 'Smash Factor', last: formatSmash(latestShot ? smashFactorValue(latestShot) : undefined) },
+    { metric: 'Ball Speed', last: formatSpeed(latestShot ? ballSpeedMphValue(latestShot) : undefined) },
+    { metric: 'Club Speed', last: formatSpeed(latestShot ? clubSpeedValue(latestShot) : undefined) },
+    { metric: 'Peak Height', last: formatYards(latestShot ? peakHeightValue(latestShot) : undefined) },
+    { metric: 'Descent Angle', last: formatDegrees(latestShot ? descentValue(latestShot) : undefined) },
+    { metric: 'Club Path', last: formatDegrees(latestShot ? clubPathValue(latestShot) : undefined) },
+    { metric: 'Face to Path', last: formatDegrees(latestShot ? faceToPathValue(latestShot) : undefined) },
+    { metric: 'Face to Target', last: formatDegrees(latestShot ? faceToTargetValue(latestShot) : undefined) },
+  ]
+
   const formatOfflineValue = (value: number | undefined) => {
     if (typeof value !== 'number') {
       return '-'
@@ -4181,6 +4225,26 @@ function App({
           </article>
           <article className="session-intelligence-comparison" aria-label="Shot DNA comparison">
             <h3 className="session-intelligence-section-title">Shot DNA Comparison</h3>
+            <div className="session-intelligence-comparison-table" role="table">
+              <div className="session-intelligence-comparison-row session-intelligence-comparison-head" role="row">
+                <span role="columnheader">Metric</span>
+                <span role="columnheader">Last</span>
+                <span role="columnheader">Pure</span>
+                <span role="columnheader">Δ</span>
+              </div>
+              {shotDnaComparisonRows.map((row) => (
+                <div className="session-intelligence-comparison-row" key={row.metric} role="row">
+                  <span className="session-intelligence-comparison-metric" role="cell">
+                    {row.metric}
+                  </span>
+                  <span role="cell">{row.last}</span>
+                  <span role="cell">-</span>
+                  <span className="session-intelligence-comparison-delta" role="cell">
+                    -
+                  </span>
+                </div>
+              ))}
+            </div>
           </article>
         </section>
 
