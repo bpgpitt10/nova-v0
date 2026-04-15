@@ -410,6 +410,9 @@ const caddieCallClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
 const caddieToneClassName = (caddieCall: ReviewClubSummary['caddieCall']) =>
   `caddie-tone-${caddieCall.toLowerCase().replace(/\s+/g, '-')}`
 
+const caddieCallDisplayLabel = (caddieCall: ReviewClubSummary['caddieCall']) =>
+  caddieCall === 'Insufficient Data' ? 'Needs Data' : caddieCall
+
 const dashboardDescriptor = (caddieCall: ReviewClubSummary['caddieCall']) => {
   switch (caddieCall) {
     case 'Attack':
@@ -5050,7 +5053,7 @@ function App({
                           {formatScore(featuredDriverSummary.caddieScore)}
                         </div>
                         <span className={caddieCallClassName(featuredDriverSummary.caddieCall)}>
-                          {featuredDriverSummary.caddieCall}
+                          {caddieCallDisplayLabel(featuredDriverSummary.caddieCall)}
                         </span>
                       </div>
                     </div>
@@ -5132,11 +5135,11 @@ function App({
                           <span className="club-card-name">{getClubLabel(card.club)}</span>
                           {card.summary ? (
                             <span className={caddieCallClassName(card.summary.caddieCall)}>
-                              {card.summary.caddieCall}
+                              {caddieCallDisplayLabel(card.summary.caddieCall)}
                             </span>
                           ) : (
                             <span className={caddieCallClassName('Insufficient Data')}>
-                              Insufficient Data
+                              {caddieCallDisplayLabel('Insufficient Data')}
                             </span>
                           )}
                         </div>
@@ -5156,7 +5159,9 @@ function App({
                     <article className="dashboard-card spotlight-card" key={card.key}>
                       <div className="spotlight-accent-row">
                         <span className={`spotlight-accent ${caddieToneClassName(card.accent)}`} />
-                        <span className={caddieCallClassName(card.accent)}>{card.accent}</span>
+                        <span className={caddieCallClassName(card.accent)}>
+                          {caddieCallDisplayLabel(card.accent)}
+                        </span>
                       </div>
                       <h3 className="spotlight-title">{card.title}</h3>
                       <p className="spotlight-summary">{card.summary}</p>
@@ -5202,7 +5207,9 @@ function App({
 
                 {reviewView === 'clubDetail' && useClubDetailV2 && (
                   <ClubDetailV2
-                    call={selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
+                    call={caddieCallDisplayLabel(
+                      selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+                    )}
                     callClassName={caddieCallClassName(
                       selectedClubSummary?.caddieCall ?? 'Insufficient Data',
                     )}
@@ -5242,7 +5249,9 @@ function App({
                               selectedClubSummary?.caddieCall ?? 'Insufficient Data',
                             )}
                           >
-                            {selectedClubSummary?.caddieCall ?? 'Insufficient Data'}
+                            {caddieCallDisplayLabel(
+                              selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+                            )}
                           </div>
                         </div>
                       </div>
@@ -5518,7 +5527,7 @@ function App({
                                         </span>
                                       </div>
                                       <div className={caddieCallClassName(row.summary.caddieCall)}>
-                                        {row.summary.caddieCall}
+                                        {caddieCallDisplayLabel(row.summary.caddieCall)}
                                       </div>
                                     </td>
                                     {[distance, direction, flight, pattern, confidence].map(
