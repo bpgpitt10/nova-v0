@@ -377,6 +377,10 @@ export default function LooperLandingPage() {
   })()
 
   const startSession = () => {
+    if (novaState !== 'connected' || !connectedUrl) {
+      return
+    }
+
     const params = new URLSearchParams({
       feed: 'real',
       club: selectedClub,
@@ -428,6 +432,7 @@ export default function LooperLandingPage() {
                 </div>
                 <button
                   className="looper-landing-action looper-landing-action-secondary"
+                  disabled={novaState !== 'connected' || !connectedUrl}
                   onClick={startSession}
                   type="button"
                 >
