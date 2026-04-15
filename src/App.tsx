@@ -108,8 +108,6 @@ const resolveNovaWebSocketUrl = () => {
   return undefined
 }
 
-const novaWebSocketUrl = resolveNovaWebSocketUrl()
-
 const formatDecimal = (value: number | undefined, unit = '') => {
   if (typeof value !== 'number') {
     return '-'
@@ -665,7 +663,7 @@ function App({
   )
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
-  const liveNovaUnavailable = selectedFeedMode === 'real' && !novaWebSocketUrl
+  const liveNovaUnavailable = selectedFeedMode === 'real' && !resolveNovaWebSocketUrl()
 
   const navigateDashboardSection = (
     sectionId: 'dashboard-overview' | 'dashboard-bag' | 'dashboard-review',
@@ -712,7 +710,7 @@ function App({
       return undefined
     }
 
-    const resolvedWsUrl = novaWebSocketUrl
+    const resolvedWsUrl = resolveNovaWebSocketUrl()
     let isActive = true
     let activeSource: Shot['source'] = 'mock'
     if (selectedFeedMode === 'real' && !resolvedWsUrl) {
@@ -4026,8 +4024,9 @@ function App({
     }
     saveActiveSessionDraft(draft)
 
-    if (selectedFeedMode === 'real' && novaWebSocketUrl) {
-      prepareSharedNovaConnection(novaWebSocketUrl)
+    const resolvedWsUrl = resolveNovaWebSocketUrl()
+    if (selectedFeedMode === 'real' && resolvedWsUrl) {
+      prepareSharedNovaConnection(resolvedWsUrl)
     }
 
     const params = new URLSearchParams({
