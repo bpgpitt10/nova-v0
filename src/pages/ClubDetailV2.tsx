@@ -23,7 +23,15 @@ type ShotProfileSnapshot = {
   launch?: number
   hla?: number
   spin?: number
+  spinAxis?: number
   smashFactor?: number
+  ballSpeed?: number
+  clubSpeed?: number
+  peakHeight?: number
+  descentAngle?: number
+  clubPath?: number
+  faceToPath?: number
+  faceToTarget?: number
 } | null
 
 export type ShotProfiles = {

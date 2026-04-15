@@ -2593,11 +2593,19 @@ function App({
         carryVariability: weightedStandardDeviationNumbers(carry, weights),
         launch: weightedAverageNumbers(shots.map(launchValue), weights),
         hla: weightedAverageNumbers(
-          shots.map((shot) => shot.horizontalLaunchAngleDegrees),
+          shots.map(hlaValue),
           weights,
         ),
         spin: weightedAverageNumbers(shots.map(spinValue), weights),
+        spinAxis: weightedAverageNumbers(shots.map(spinAxisValue), weights),
         smashFactor: weightedAverageNumbers(shots.map(smashFactorValue), weights),
+        ballSpeed: weightedAverageNumbers(shots.map(ballSpeedMphValue), weights),
+        clubSpeed: weightedAverageNumbers(shots.map(clubSpeedValue), weights),
+        peakHeight: weightedAverageNumbers(shots.map(peakHeightValue), weights),
+        descentAngle: weightedAverageNumbers(shots.map(descentValue), weights),
+        clubPath: weightedAverageNumbers(shots.map(clubPathValue), weights),
+        faceToPath: weightedAverageNumbers(shots.map(faceToPathValue), weights),
+        faceToTarget: weightedAverageNumbers(shots.map(faceToTargetValue), weights),
       }
     }
 
@@ -4006,7 +4014,7 @@ function App({
   const formatDeltaValue = (
     last: number | undefined,
     pure: number | undefined,
-    unit: 'yd' | 'rpm' | 'deg' | 'ratio',
+    unit: 'yd' | 'rpm' | 'deg' | 'ratio' | 'mph',
     digits = 1,
   ) => {
     if (typeof last !== 'number' || typeof pure !== 'number') {
@@ -4020,6 +4028,9 @@ function App({
     }
     if (unit === 'deg') {
       return `${sign}${abs.toFixed(digits)}°`
+    }
+    if (unit === 'mph') {
+      return `${sign}${abs.toFixed(digits)} mph`
     }
     if (unit === 'ratio') {
       return `${sign}${abs.toFixed(2)}`
@@ -4097,8 +4108,12 @@ function App({
     {
       metric: 'Spin Axis',
       last: formatDegrees(latestShot ? spinAxisValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.spinAxis),
+      delta: formatDeltaValue(
+        latestShot ? spinAxisValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.spinAxis,
+        'deg',
+      ),
     },
     {
       metric: 'Smash Factor',
@@ -4113,44 +4128,74 @@ function App({
     {
       metric: 'Ball Speed',
       last: formatSpeed(latestShot ? ballSpeedMphValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatSpeed(selectedClubShotProfiles.bestAvailable?.ballSpeed),
+      delta: formatDeltaValue(
+        latestShot ? ballSpeedMphValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.ballSpeed,
+        'mph',
+        1,
+      ),
     },
     {
       metric: 'Club Speed',
       last: formatSpeed(latestShot ? clubSpeedValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatSpeed(selectedClubShotProfiles.bestAvailable?.clubSpeed),
+      delta: formatDeltaValue(
+        latestShot ? clubSpeedValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.clubSpeed,
+        'mph',
+        1,
+      ),
     },
     {
       metric: 'Peak Height',
       last: formatYards(latestShot ? peakHeightValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatYards(selectedClubShotProfiles.bestAvailable?.peakHeight),
+      delta: formatDeltaValue(
+        latestShot ? peakHeightValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.peakHeight,
+        'yd',
+      ),
     },
     {
       metric: 'Descent Angle',
       last: formatDegrees(latestShot ? descentValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.descentAngle),
+      delta: formatDeltaValue(
+        latestShot ? descentValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.descentAngle,
+        'deg',
+      ),
     },
     {
       metric: 'Club Path',
       last: formatDegrees(latestShot ? clubPathValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.clubPath),
+      delta: formatDeltaValue(
+        latestShot ? clubPathValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.clubPath,
+        'deg',
+      ),
     },
     {
       metric: 'Face to Path',
       last: formatDegrees(latestShot ? faceToPathValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.faceToPath),
+      delta: formatDeltaValue(
+        latestShot ? faceToPathValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.faceToPath,
+        'deg',
+      ),
     },
     {
       metric: 'Face to Target',
       last: formatDegrees(latestShot ? faceToTargetValue(latestShot) : undefined),
-      pure: '-',
-      delta: '-',
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.faceToTarget),
+      delta: formatDeltaValue(
+        latestShot ? faceToTargetValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.faceToTarget,
+        'deg',
+      ),
     },
   ]
 
