@@ -4227,7 +4227,7 @@ function App({
             <h3 className="session-intelligence-section-title">Shot DNA Comparison</h3>
             <div className="session-intelligence-comparison-table" role="table">
               <div className="session-intelligence-comparison-row session-intelligence-comparison-head" role="row">
-                <span role="columnheader">Metric</span>
+                <span role="columnheader" aria-hidden="true"></span>
                 <span role="columnheader">Last</span>
                 <span role="columnheader">Pure</span>
                 <span role="columnheader">Δ</span>
