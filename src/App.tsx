@@ -2644,6 +2644,7 @@ function App({
     const offlineImprovementCap = 10
     const offlineDownsideCap = 12
     const hlaBonusCap = 2
+    const feltPerfectBonusValue = 0.08
     const sparseSupportAllowed = includedShots.length < 4
 
     // Conservative tuning defaults by broad club bucket, not universal golf ideals.
@@ -2809,12 +2810,13 @@ function App({
           { score: strikeScore, weight: 0.1 },
           { score: supportScore, weight: 0.3 },
         ]) ?? 0
+      const feltPerfectBonus = shot.feltPerfect ? feltPerfectBonusValue : 0
 
       return [
         {
           shot,
-          pureScore,
-          effectiveWeight: recencyWeight(shot) * (0.7 + pureScore * 0.6),
+          pureScore: pureScore + feltPerfectBonus,
+          effectiveWeight: recencyWeight(shot) * (0.7 + (pureScore + feltPerfectBonus) * 0.6),
         },
       ]
     })
