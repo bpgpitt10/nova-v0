@@ -121,7 +121,13 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
     }
 
     try {
-      const response = await fetch(`${openGolfCoachUrl}/derive`, {
+      const deriveUrl = `${openGolfCoachUrl}/derive`
+      void appendEnrichmentLog('derive_request_send', {
+        url: deriveUrl,
+        input,
+      })
+
+      const response = await fetch(deriveUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,6 +136,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       })
 
       console.info('[OpenGolfCoach] enrichment response status', response.status)
+      void appendEnrichmentLog('derive_response_status', {
+        status: response.status,
+        ok: response.ok,
+      })
       void appendEnrichmentLog('enrichment_response_status', {
         status: response.status,
         ok: response.ok,
@@ -161,6 +171,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       try {
         payload = rawResponseText ? JSON.parse(rawResponseText) : {}
       } catch (parseError) {
+        void appendEnrichmentLog('derive_response_parse_failure', {
+          rawResponseText,
+          parseError: parseError instanceof Error ? parseError.message : String(parseError),
+        })
         void appendEnrichmentLog('enrichment_failure_parse', {
           rawResponseText,
           parseError: parseError instanceof Error ? parseError.message : String(parseError),
@@ -176,6 +190,12 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         }
       }
       console.info('[OpenGolfCoach] enrichment success payload received')
+      void appendEnrichmentLog('derive_response_parse_success', {
+        payloadKeys:
+          payload && typeof payload === 'object' && !Array.isArray(payload)
+            ? Object.keys(payload as Record<string, unknown>)
+            : [],
+      })
 
       if (!payload || typeof payload !== 'object') {
         void appendEnrichmentLog('enrichment_failure_payload_shape', {
@@ -198,6 +218,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         status: 'success',
       }
     } catch (error) {
+      void appendEnrichmentLog('derive_fetch_failure', {
+        helperUrl: openGolfCoachUrl,
+        error: error instanceof Error ? error.message : String(error),
+      })
       void appendEnrichmentLog('enrichment_failure_fetch', {
         error: error instanceof Error ? error.message : String(error),
       })
