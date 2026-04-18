@@ -35,6 +35,7 @@ if (!(Test-Path $venvPython)) {
   --specpath $specDir
 
 New-Item -ItemType Directory -Path $binDir -Force | Out-Null
-Copy-Item -Path (Join-Path $distDir $outExe) -Destination (Join-Path $binDir $outExe) -Force
+$outPath = Join-Path $binDir $outExe
+Copy-Item -Path (Join-Path $distDir $outExe) -Destination $outPath -Force
 
-Write-Host "Built OpenGolfCoach sidecar:" (Join-Path $binDir $outExe)
+Write-Host "Built OpenGolfCoach sidecar:" $outPath
