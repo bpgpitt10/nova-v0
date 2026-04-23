@@ -76,6 +76,16 @@ export default function BagSetupPage() {
               Save Bag
             </button>
           </div>
+          {import.meta.env.DEV && (
+            <>
+              {/* DEV ONLY — opens Session Intelligence without Nova for SimRead testing. Safe to remove. */}
+              <div style={{ marginBottom: 12 }}>
+                <button onClick={() => navigateWithinApp('/session-intelligence?feed=mock')} type="button">
+                  DEV: Open SimRead Test Session
+                </button>
+              </div>
+            </>
+          )}
           <img alt="The Looper" className="bag-setup-logo" src={looperLogoWhite} />
           <p>{selectedCount} clubs selected</p>
           <p className="bag-setup-nudge">Most players carry 13 clubs (+ putter to make 14)</p>

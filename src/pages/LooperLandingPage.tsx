@@ -412,6 +412,20 @@ export default function LooperLandingPage() {
               <label className="looper-landing-label" htmlFor="landing-club-select">
                 New Session
               </label>
+              {import.meta.env.DEV && (
+                <>
+                  {/* DEV ONLY — opens Session Intelligence without Nova for SimRead testing. Safe to remove. */}
+                  <div style={{ marginBottom: 12 }}>
+                    <button
+                      className="looper-landing-action looper-landing-action-secondary"
+                      onClick={() => navigateWithinApp('/session-intelligence?feed=mock')}
+                      type="button"
+                    >
+                      DEV: Open SimRead Test Session
+                    </button>
+                  </div>
+                </>
+              )}
               <div className="looper-landing-session-status">
                 <p className="looper-landing-status-tag">{novaStatusText}</p>
                 {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
