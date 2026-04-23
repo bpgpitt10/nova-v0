@@ -5012,15 +5012,6 @@ function App({
       {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
       {/* Validation/debug UI removed; OpenGolfCoach enrichment + persistence remain active. */}
 
-      {import.meta.env.DEV && (
-        <div style={{ marginBottom: 16 }}>
-          {/* DEV ONLY — bypasses session setup to access live view. Safe to remove. */}
-          <button onClick={() => setSessionState('live')} type="button">
-            DEV: Force Live Session
-          </button>
-        </div>
-      )}
-
       {sessionState !== 'review' && (
         <section className="panel">
         <div className="toolbar">
@@ -5067,6 +5058,15 @@ function App({
           </p>
           <h2>Start Session</h2>
           <p>Start a Stock Range Session, choose the first club, and listen for Nova shots.</p>
+
+          {import.meta.env.DEV && (
+            <div style={{ marginBottom: 16 }}>
+              {/* DEV ONLY — bypasses session setup to access live view. Safe to remove. */}
+              <button onClick={() => setSessionState('live')} type="button">
+                DEV: Force Live Session
+              </button>
+            </div>
+          )}
 
           <label>
             Feed mode
