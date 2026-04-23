@@ -10,6 +10,10 @@ import {
   subscribeSharedNovaConnection,
   disconnectSharedNovaConnection,
 } from './adapters/novaWebSocket'
+import {
+  mapGsproExtractedFrameToShot,
+  type ExtractedFrame,
+} from './adapters/gsproExtractor'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
@@ -664,6 +668,25 @@ function App({
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
   const liveNovaUnavailable = selectedFeedMode === 'real' && !resolveNovaWebSocketUrl()
+
+  const injectSimReadFrame = (frame: ExtractedFrame, club: Club) => {
+    const result = mapGsproExtractedFrameToShot(frame, { club })
+
+    if (!result.shot) {
+      console.warn('[SimRead] no usable shot', result.enrichment)
+      return
+    }
+
+    setShots((currentShots) => [result.shot, ...currentShots])
+    console.log('[SimRead] injected shot', result.shot, result.enrichment)
+
+    if (result.enrichment.status === 'recommended') {
+      console.log('[SimRead] OGC interpretation available', result.enrichment)
+    } else if (result.enrichment.status === 'blocked') {
+      console.warn('[SimRead] enrichment blocked', result.enrichment)
+    }
+  }
+  void injectSimReadFrame
 
   const navigateDashboardSection = (
     sectionId: 'dashboard-overview' | 'dashboard-bag' | 'dashboard-review',
