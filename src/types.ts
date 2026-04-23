@@ -23,7 +23,7 @@ export type Shot = {
   feltPerfect?: boolean
   feltPerfectTaggedAt?: string
   feltPerfectSource?: 'session_intelligence' | 'data_management'
-  source: 'nova' | 'mock'
+  source: 'nova' | 'mock' | 'simread'
 }
 
 export type IncomingNovaShot = {
