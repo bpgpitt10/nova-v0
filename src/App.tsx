@@ -578,6 +578,16 @@ const mergeDerivedValues = (
   shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
 })
 
+const mergeSimReadInterpretationValues = (
+  shot: Shot,
+  derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>['derivedValues'],
+): Shot => ({
+  ...shot,
+  enrichmentStatus: 'enriched',
+  shotName: derivedValues.shot_name ?? shot.shotName,
+  shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
+})
+
 type AppProps = {
   forceDashboardRoute?: boolean
   forceSessionIntelligenceRoute?: boolean
@@ -681,9 +691,82 @@ function App({
     console.log('[SimRead] injected shot', result.shot, result.enrichment)
 
     if (result.enrichment.status === 'recommended') {
-      console.log('[SimRead] OGC interpretation available', result.enrichment)
+      console.log('[SimRead] OGC interpretation starting', {
+        shotId: result.shot.id,
+        enrichment: result.enrichment,
+      })
+
+      void openGolfCoachEnricher
+        .enrichShot(result.enrichment.ogcPayload)
+        .then((ogcResult) => {
+          if (ogcResult.status === 'failure') {
+            console.error('[SimRead] OGC interpretation failed', {
+              shotId: result.shot?.id,
+              status: ogcResult.status,
+            })
+            setHelperReachable(false)
+            setLastEnrichmentStatus('failure')
+            setShots((currentShots) =>
+              currentShots.map((currentShot) =>
+                currentShot.id === result.shot?.id
+                  ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                  : currentShot,
+              ),
+            )
+            return
+          }
+
+          if (ogcResult.status === 'success') {
+            setHelperReachable(true)
+            setLastEnrichmentStatus('success')
+          }
+
+          const hasInterpretation =
+            typeof ogcResult.derivedValues.shot_name === 'string' ||
+            typeof ogcResult.derivedValues.shot_rank === 'string' ||
+            typeof ogcResult.derivedValues.shot_rank === 'number'
+
+          if (!hasInterpretation) {
+            console.log('[SimRead] OGC interpretation returned no shot metadata', {
+              shotId: result.shot?.id,
+              status: ogcResult.status,
+              derivedValues: ogcResult.derivedValues,
+            })
+            return
+          }
+
+          console.log('[SimRead] OGC interpretation succeeded', {
+            shotId: result.shot?.id,
+            derivedValues: ogcResult.derivedValues,
+          })
+          setShots((currentShots) =>
+            currentShots.map((currentShot) =>
+              currentShot.id === result.shot?.id
+                ? mergeSimReadInterpretationValues(currentShot, ogcResult.derivedValues)
+                : currentShot,
+            ),
+          )
+        })
+        .catch((error) => {
+          console.error('[SimRead] OGC interpretation failed', {
+            shotId: result.shot?.id,
+            error,
+          })
+          setHelperReachable(false)
+          setLastEnrichmentStatus('failure')
+          setShots((currentShots) =>
+            currentShots.map((currentShot) =>
+              currentShot.id === result.shot?.id
+                ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                : currentShot,
+            ),
+          )
+        })
     } else if (result.enrichment.status === 'blocked') {
       console.warn('[SimRead] enrichment blocked', result.enrichment)
+      console.log('[SimRead] OGC interpretation skipped', result.enrichment)
+    } else if (result.enrichment.status === 'not_needed') {
+      console.log('[SimRead] OGC interpretation skipped', result.enrichment)
     }
   }
   void injectSimReadFrame
