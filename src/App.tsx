@@ -771,6 +771,31 @@ function App({
   }
   void injectSimReadFrame
 
+  const handleDevSimReadInjection = async () => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    try {
+      const { simreadMockFrames } = await import('./dev/simreadMockFrames')
+      const frame = simreadMockFrames[0]
+
+      if (!frame) {
+        console.warn('[SimRead][DEV] no mock frame available for manual injection')
+        return
+      }
+
+      console.log('[SimRead][DEV] manual injection requested', {
+        club: selectedClubRef.current,
+        frame,
+      })
+      injectSimReadFrame(frame, selectedClubRef.current)
+    } catch (error) {
+      console.error('[SimRead][DEV] manual injection failed to load mock frame', error)
+    }
+  }
+  void handleDevSimReadInjection
+
   const navigateDashboardSection = (
     sectionId: 'dashboard-overview' | 'dashboard-bag' | 'dashboard-review',
     navTarget: DashboardNavTarget,
@@ -5087,6 +5112,14 @@ function App({
               <button disabled={shots.length === 0} onClick={undoLastShot}>
                 Undo Last Shot
               </button>
+              {import.meta.env.DEV && (
+                <>
+                  {/* DEV ONLY — SimRead manual injection test. Safe to remove before release. */}
+                  <button onClick={() => void handleDevSimReadInjection()} type="button">
+                    DEV: Inject SimRead Shot
+                  </button>
+                </>
+              )}
               {feedMode === 'mock' && (
                 <button onClick={toggleMockFeed}>
                   {connectionStatus === 'paused'
