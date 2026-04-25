@@ -275,7 +275,7 @@
 }
 
 .club-v2-stock-pure-header span:first-child {
-  color: rgba(248, 252, 248, 0.98);
+  color: rgba(244, 201, 90, 0.78);
   justify-self: start;
 }
 
@@ -321,12 +321,30 @@
   font-size: 1.02rem;
   font-weight: 610;
   line-height: 1.08;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.34rem;
+  white-space: nowrap;
 }
 
 .club-v2-stock-pure-value.pure {
-  color: rgba(118, 170, 136, 0.88);
-  font-weight: 470;
+  color: rgba(247, 251, 247, 0.97);
+  font-weight: 610;
+  justify-content: flex-end;
   text-align: right;
+}
+
+.club-v2-stock-pure-variability {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.club-v2-stock-pure-value.stock .club-v2-stock-pure-variability {
+  color: rgba(244, 201, 90, 0.78);
+}
+
+.club-v2-stock-pure-value.pure .club-v2-stock-pure-variability {
+  color: rgba(118, 170, 136, 0.88);
 }
 
 .club-v2-profile-card {

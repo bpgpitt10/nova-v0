@@ -2840,6 +2840,11 @@ function App({
         typeof value === 'number' ? Math.abs(value) : undefined,
       )
       const carry = shots.map(carryValue)
+      const total = shots.map(totalValue)
+      const launch = shots.map(launchValue)
+      const hla = shots.map(hlaValue)
+      const spin = shots.map(spinValue)
+      const smashFactor = shots.map(smashFactorValue)
 
       return {
         key,
@@ -2849,19 +2854,21 @@ function App({
           confidenceConfig.displayCarryOutlierThresholdPct,
           confidenceConfig.displayCarryOutlierThresholdFloorYards,
         ),
-        total: weightedAverageNumbers(shots.map(totalValue), weights),
+        carryVariability: weightedStandardDeviationNumbers(carry, weights),
+        total: weightedAverageNumbers(total, weights),
+        totalVariability: weightedStandardDeviationNumbers(total, weights),
         offlineMean: weightedAverageNumbers(offline, weights),
         dispersion: weightedTrimmedMean(absOffline, weights, 0.1),
         dispersionVariability: weightedWinsorizedStdDev(offline, weights, 0.1),
-        carryVariability: weightedStandardDeviationNumbers(carry, weights),
-        launch: weightedAverageNumbers(shots.map(launchValue), weights),
-        hla: weightedAverageNumbers(
-          shots.map(hlaValue),
-          weights,
-        ),
-        spin: weightedAverageNumbers(shots.map(spinValue), weights),
+        launch: weightedAverageNumbers(launch, weights),
+        launchVariability: weightedStandardDeviationNumbers(launch, weights),
+        hla: weightedAverageNumbers(hla, weights),
+        hlaVariability: weightedStandardDeviationNumbers(hla, weights),
+        spin: weightedAverageNumbers(spin, weights),
+        spinVariability: weightedStandardDeviationNumbers(spin, weights),
         spinAxis: weightedAverageNumbers(shots.map(spinAxisValue), weights),
-        smashFactor: weightedAverageNumbers(shots.map(smashFactorValue), weights),
+        smashFactor: weightedAverageNumbers(smashFactor, weights),
+        smashFactorVariability: weightedStandardDeviationNumbers(smashFactor, weights),
         ballSpeed: weightedAverageNumbers(shots.map(ballSpeedMphValue), weights),
         clubSpeed: weightedAverageNumbers(shots.map(clubSpeedValue), weights),
         peakHeight: weightedAverageNumbers(shots.map(peakHeightValue), weights),

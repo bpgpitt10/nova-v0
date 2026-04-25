@@ -15,16 +15,21 @@ export type ComponentBreakdownRow = {
 
 type ShotProfileSnapshot = {
   carry?: number
+  carryVariability?: number
   total?: number
+  totalVariability?: number
   offlineMean?: number
   dispersion?: number
   dispersionVariability?: number
-  carryVariability?: number
   launch?: number
+  launchVariability?: number
   hla?: number
+  hlaVariability?: number
   spin?: number
+  spinVariability?: number
   spinAxis?: number
   smashFactor?: number
+  smashFactorVariability?: number
   ballSpeed?: number
   clubSpeed?: number
   peakHeight?: number
@@ -111,8 +116,13 @@ type HeatmapMetric = {
 type StockPureMetricRow = {
   key: string
   label: string
-  stock: string
-  pure: string
+  stock: StockPureMetricValue
+  pure: StockPureMetricValue
+}
+
+type StockPureMetricValue = {
+  primary: string
+  variability?: string
 }
 
 type ClubDetailV2Props = {
@@ -235,6 +245,16 @@ const comparisonRatioValue = (value: number | undefined) => {
     return '—'
   }
   return value.toFixed(2)
+}
+
+const variabilityValue = (
+  value: number | undefined,
+  digits = 0,
+) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined
+  }
+  return `±${value.toFixed(digits)}`
 }
 
 const directionalComparisonValue = (
@@ -550,44 +570,86 @@ export default function ClubDetailV2({
       {
         key: 'carry',
         label: 'Carry',
-        stock: comparisonValue(shotProfiles.mostLikely?.carry, 'yd', 1),
-        pure: comparisonValue(shotProfiles.bestAvailable?.carry, 'yd', 1),
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.carry, 'yd', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.carryVariability),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.carry, 'yd', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.carryVariability),
+        },
       },
       {
         key: 'total-distance',
         label: 'Total Distance',
-        stock: comparisonValue(shotProfiles.mostLikely?.total, 'yd', 1),
-        pure: comparisonValue(shotProfiles.bestAvailable?.total, 'yd', 1),
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.total, 'yd', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.totalVariability),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.total, 'yd', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.totalVariability),
+        },
       },
       {
         key: 'offline',
         label: 'Offline',
-        stock: directionalComparisonValue(shotProfiles.mostLikely?.offlineMean, 'yd', 1),
-        pure: directionalComparisonValue(shotProfiles.bestAvailable?.offlineMean, 'yd', 1),
+        stock: {
+          primary: directionalComparisonValue(shotProfiles.mostLikely?.offlineMean, 'yd', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.dispersionVariability),
+        },
+        pure: {
+          primary: directionalComparisonValue(shotProfiles.bestAvailable?.offlineMean, 'yd', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.dispersionVariability),
+        },
       },
       {
         key: 'launch-vla',
         label: 'Launch (VLA)',
-        stock: comparisonValue(shotProfiles.mostLikely?.launch, 'deg', 1),
-        pure: comparisonValue(shotProfiles.bestAvailable?.launch, 'deg', 1),
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.launch, 'deg', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.launchVariability, 1),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.launch, 'deg', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.launchVariability, 1),
+        },
       },
       {
         key: 'start-line-hla',
         label: 'Start Line (HLA)',
-        stock: directionalComparisonValue(shotProfiles.mostLikely?.hla, 'deg', 1),
-        pure: directionalComparisonValue(shotProfiles.bestAvailable?.hla, 'deg', 1),
+        stock: {
+          primary: directionalComparisonValue(shotProfiles.mostLikely?.hla, 'deg', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.hlaVariability, 1),
+        },
+        pure: {
+          primary: directionalComparisonValue(shotProfiles.bestAvailable?.hla, 'deg', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.hlaVariability, 1),
+        },
       },
       {
         key: 'spin',
         label: 'Spin',
-        stock: comparisonValue(shotProfiles.mostLikely?.spin, 'rpm'),
-        pure: comparisonValue(shotProfiles.bestAvailable?.spin, 'rpm'),
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.spin, 'rpm'),
+          variability: variabilityValue(shotProfiles.mostLikely?.spinVariability),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.spin, 'rpm'),
+          variability: variabilityValue(shotProfiles.bestAvailable?.spinVariability),
+        },
       },
       {
         key: 'smash-factor',
         label: 'Smash Factor',
-        stock: comparisonRatioValue(shotProfiles.mostLikely?.smashFactor),
-        pure: comparisonRatioValue(shotProfiles.bestAvailable?.smashFactor),
+        stock: {
+          primary: comparisonRatioValue(shotProfiles.mostLikely?.smashFactor),
+          variability: variabilityValue(shotProfiles.mostLikely?.smashFactorVariability, 2),
+        },
+        pure: {
+          primary: comparisonRatioValue(shotProfiles.bestAvailable?.smashFactor),
+          variability: variabilityValue(shotProfiles.bestAvailable?.smashFactorVariability, 2),
+        },
       },
     ],
     [shotProfiles.bestAvailable, shotProfiles.mostLikely],
@@ -717,7 +779,7 @@ export default function ClubDetailV2({
                       <text
                         className="club-v2-heatmap-overlay-label stock"
                         x={heatmapOverlayModel.stockEllipse.cx}
-                        y={heatmapOverlayModel.stockEllipse.cy - heatmapOverlayModel.stockEllipse.ry - 1.6}
+                        y={heatmapOverlayModel.stockEllipse.cy + heatmapOverlayModel.stockEllipse.ry + 4}
                       >
                         Stock
                       </text>
@@ -768,8 +830,22 @@ export default function ClubDetailV2({
                 <div className="club-v2-stock-pure-row" key={row.key}>
                   <div className="club-v2-stock-pure-label">{row.label}</div>
                   <div className="club-v2-stock-pure-values">
-                    <span className="club-v2-stock-pure-value stock">{row.stock}</span>
-                    <span className="club-v2-stock-pure-value pure">{row.pure}</span>
+                    <span className="club-v2-stock-pure-value stock">
+                      <span>{row.stock.primary}</span>
+                      {row.stock.variability ? (
+                        <span className="club-v2-stock-pure-variability">
+                          {row.stock.variability}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="club-v2-stock-pure-value pure">
+                      <span>{row.pure.primary}</span>
+                      {row.pure.variability ? (
+                        <span className="club-v2-stock-pure-variability">
+                          {row.pure.variability}
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                 </div>
               ))}
