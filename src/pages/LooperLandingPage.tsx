@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  DEFAULT_NOVA_WS_URL,
+  LOCAL_NOVA_WS_URL_KEY,
+  resolveNovaWebSocketEndpoint,
+} from '../adapters/nova'
 import { activeBagClubIds, getClubDisplayName, type Club } from '../lib/bagConfig'
 import './LooperLandingPage.css'
 
@@ -11,7 +16,6 @@ type NovaConnectionState =
   | 'error'
   | 'disconnected'
 
-const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
 const CONNECT_TIMEOUT_MS = 7000
 const VALIDATION_TIMEOUT_MS = 2500
 const DISCOVERY_TIMEOUT_MS = 5000
@@ -161,10 +165,8 @@ const connectWithTimeout = async (
   })
 
 const resolveDevOverrideUrl = () => {
-  if (!import.meta.env.DEV) {
-    return undefined
-  }
-  return (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+  const endpoint = resolveNovaWebSocketEndpoint()
+  return endpoint.source === 'env' ? endpoint.url : undefined
 }
 
 const navigateWithinApp = (path: string) => {
@@ -199,6 +201,11 @@ export default function LooperLandingPage() {
 
       const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
       const candidateUrls: Array<{ source: string; url: string; timeout: number }> = []
+      const configuredEndpoint = resolveNovaWebSocketEndpoint()
+
+      await appendNovaLog(
+        `[landing.config] selected_source=${configuredEndpoint.source} selected_url=${configuredEndpoint.url} mock_active=false`,
+      )
 
       if (manualOverrideUrl) {
         candidateUrls.push({
@@ -208,23 +215,38 @@ export default function LooperLandingPage() {
         })
       }
 
-      if (devOverrideUrl && devOverrideUrl !== manualOverrideUrl) {
+      if (
+        savedUrl &&
+        savedUrl !== manualOverrideUrl
+      ) {
         candidateUrls.push({
-          source: 'dev_env_override',
+          source: 'saved_known_good',
+          url: savedUrl,
+          timeout: VALIDATION_TIMEOUT_MS,
+        })
+      }
+
+      if (
+        devOverrideUrl &&
+        devOverrideUrl !== manualOverrideUrl &&
+        devOverrideUrl !== savedUrl
+      ) {
+        candidateUrls.push({
+          source: 'env_fallback',
           url: devOverrideUrl,
           timeout: CONNECT_TIMEOUT_MS,
         })
       }
 
       if (
-        savedUrl &&
-        savedUrl !== manualOverrideUrl &&
-        savedUrl !== devOverrideUrl
+        !manualOverrideUrl &&
+        !savedUrl &&
+        configuredEndpoint.source === 'default'
       ) {
         candidateUrls.push({
-          source: 'saved_known_good',
-          url: savedUrl,
-          timeout: VALIDATION_TIMEOUT_MS,
+          source: 'default',
+          url: DEFAULT_NOVA_WS_URL,
+          timeout: CONNECT_TIMEOUT_MS,
         })
       }
 
@@ -241,7 +263,7 @@ export default function LooperLandingPage() {
           return
         }
         if (success) {
-          if (candidate.source !== 'dev_env_override') {
+          if (candidate.source !== 'env_fallback' && candidate.source !== 'default') {
             safeWriteLocalStorage(LOCAL_NOVA_WS_URL_KEY, candidate.url)
             await appendNovaLog(
               `[landing.bootstrap] persisted_connected source=${candidate.source} url=${candidate.url}`,

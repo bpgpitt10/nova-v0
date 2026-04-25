@@ -181,14 +181,20 @@ const dispatchSharedShot = (shot: IncomingNovaShot) => {
 
 export const prepareSharedNovaConnection = (url: string) => {
   if (sharedNovaConnection?.url === url) {
+    console.info('[Nova WS] shared connection already prepared', { url })
     return
   }
 
   if (sharedNovaConnection) {
+    console.info('[Nova WS] replacing shared connection', {
+      previousUrl: sharedNovaConnection.url,
+      nextUrl: url,
+    })
     sharedNovaConnection.connection.disconnect()
     sharedNovaConnection = null
   }
 
+  console.info('[Nova WS] preparing shared connection', { url })
   const connection = novaWebSocketAdapter(url).connectToShots(
     dispatchSharedShot,
     dispatchSharedStatus,
@@ -230,6 +236,11 @@ export const subscribeSharedNovaConnection = (
   }
 
   sharedNovaConnection.subscribers.add(subscriber)
+  console.info('[Nova WS] subscriber attached', {
+    url: sharedNovaConnection.url,
+    subscribers: sharedNovaConnection.subscribers.size,
+    currentStatus: sharedNovaConnection.currentStatus,
+  })
   onStatusChange?.(sharedNovaConnection.currentStatus)
 
   if (sharedNovaConnection.pendingShots.length > 0) {
@@ -242,11 +253,21 @@ export const subscribeSharedNovaConnection = (
     mode: 'real',
     disconnect: () => {
       sharedNovaConnection?.subscribers.delete(subscriber)
+      console.info('[Nova WS] subscriber detached', {
+        url,
+        subscribers: sharedNovaConnection?.subscribers.size ?? 0,
+      })
     },
   }
 }
 
 export const disconnectSharedNovaConnection = () => {
+  if (sharedNovaConnection) {
+    console.info('[Nova WS] disconnecting shared connection', {
+      url: sharedNovaConnection.url,
+      subscribers: sharedNovaConnection.subscribers.size,
+    })
+  }
   sharedNovaConnection?.connection.disconnect()
   sharedNovaConnection = null
 }
@@ -268,14 +289,16 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     onDebugEvent?: (event: NovaDebugEvent) => void,
   ): NovaConnection {
     onStatusChange?.('connecting')
-    console.info(`[Nova WS] connecting url=${url}`)
+    console.info('[Nova WS] connect', { url })
     const socket = new WebSocket(url)
     let hasOpened = false
+    let closedAfterError = false
     const connectTimer = window.setTimeout(() => {
       if (hasOpened) {
         return
       }
-      console.warn(`[Nova WS] connect timeout url=${url}`)
+      closedAfterError = true
+      console.warn('[Nova WS] timeout', { url })
       onStatusChange?.('error')
       try {
         socket.close()
@@ -287,15 +310,19 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     socket.addEventListener('open', () => {
       hasOpened = true
       window.clearTimeout(connectTimer)
-      console.info(`[Nova WS] open url=${url}`)
+      console.info('[Nova WS] open', { url })
       onStatusChange?.('connected')
     })
     socket.addEventListener('close', (event) => {
       window.clearTimeout(connectTimer)
-      console.info(
-        `[Nova WS] close url=${url} code=${event.code} reason=${event.reason || 'none'}`,
-      )
-      if (event.code === 1000) {
+      console.info('[Nova WS] close', {
+        url,
+        code: event.code,
+        reason: event.reason || 'none',
+      })
+      if (closedAfterError) {
+        onStatusChange?.('error')
+      } else if (event.code === 1000) {
         onStatusChange?.('disconnected')
       } else {
         onStatusChange?.('error')
@@ -303,7 +330,8 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
     })
     socket.addEventListener('error', () => {
       window.clearTimeout(connectTimer)
-      console.error(`[Nova WS] error url=${url}`)
+      closedAfterError = true
+      console.error('[Nova WS] error', { url })
       onStatusChange?.('error' satisfies NovaConnectionStatus)
     })
 
@@ -331,6 +359,7 @@ export const novaWebSocketAdapter = (url: string): NovaAdapter => ({
       mode: 'real',
       disconnect: () => {
         window.clearTimeout(connectTimer)
+        console.info('[Nova WS] disconnect requested', { url })
         socket.close()
       },
     }

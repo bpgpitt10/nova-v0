@@ -4,6 +4,8 @@ import type { OpenGolfCoachDerivedValues, OpenGolfCoachInput } from '../types'
 
 const NOVA_WEBSOCKET_MDNS_SERVICE = '_openlaunch-ws._tcp.local.'
 const NOVA_TCP_MDNS_SERVICE = '_openapi-nova._tcp.local.'
+export const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
+export const DEFAULT_NOVA_WS_URL = 'ws://127.0.0.1:8765'
 
 export type NovaShotHandler = (shot: IncomingNovaShot) => void
 export type NovaDebugEvent = {
@@ -60,24 +62,46 @@ export const novaServiceDiscoveryTargets = {
   tcpJson: NOVA_TCP_MDNS_SERVICE,
 } as const
 
+export type NovaWebSocketEndpointSource = 'localStorage' | 'env' | 'default'
+
+export type NovaWebSocketEndpoint = {
+  url: string
+  source: NovaWebSocketEndpointSource
+}
+
+export const resolveNovaWebSocketEndpoint = (): NovaWebSocketEndpoint => {
+  const savedUrl = (() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+    try {
+      return window.localStorage.getItem(LOCAL_NOVA_WS_URL_KEY)?.trim()
+    } catch {
+      return undefined
+    }
+  })()
+  if (savedUrl) {
+    return { url: savedUrl, source: 'localStorage' }
+  }
+
+  const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
+  if (envUrl) {
+    return { url: envUrl, source: 'env' }
+  }
+
+  return { url: DEFAULT_NOVA_WS_URL, source: 'default' }
+}
+
 export const novaAdapter: NovaAdapter = {
   connectToShots(onShot, onStatusChange, onDebugEvent) {
-    const envUrl = (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
-    const savedUrl =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem('nova-ws-url')?.trim()
-        : undefined
-    const websocketUrl = envUrl || savedUrl
+    const endpoint = resolveNovaWebSocketEndpoint()
+    console.info('[Nova Config] selected WebSocket endpoint', {
+      source: endpoint.source,
+      url: endpoint.url,
+      mockModeActive: false,
+    })
 
-    if (!websocketUrl) {
-      onStatusChange?.('error')
-      return {
-        mode: 'real',
-        disconnect: () => undefined,
-      }
-    }
-
-    return novaWebSocketAdapter(websocketUrl).connectToShots(
+    return novaWebSocketAdapter(endpoint.url).connectToShots(
       onShot,
       onStatusChange,
       onDebugEvent,

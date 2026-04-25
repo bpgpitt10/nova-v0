@@ -3,6 +3,7 @@ import {
   type NovaConnection,
   type NovaConnectionStatus,
   type NovaFeedMode,
+  resolveNovaWebSocketEndpoint,
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
 import {
@@ -79,37 +80,9 @@ type ReviewView = 'dashboard' | 'clubDetail'
 type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
 
-const LOCAL_NOVA_WS_URL_KEY = 'nova-ws-url'
-const safeReadLocalStorage = (key: string) => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-  try {
-    return window.localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
 const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
-}
-
-const resolveNovaWebSocketUrl = () => {
-  const envUrl = import.meta.env.DEV
-    ? (import.meta.env.VITE_NOVA_WS_URL as string | undefined)?.trim()
-    : undefined
-  if (envUrl) {
-    return envUrl
-  }
-
-  const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
-  if (savedUrl) {
-    return savedUrl
-  }
-
-  return undefined
 }
 
 const formatDecimal = (value: number | undefined, unit = '') => {
@@ -618,7 +591,7 @@ function App({
     ? new URLSearchParams(window.location.search)
     : null
   const routeFeedMode =
-    sessionIntelligenceSearch?.get('feed') === 'real' ? 'real' : 'mock'
+    sessionIntelligenceSearch?.get('feed') === 'mock' ? 'mock' : 'real'
   const fallbackClub = activeBagClubIds[0] ?? '7i'
   const routeClubParam = sessionIntelligenceSearch?.get('club')
   const routeClub = activeBagClubIds.includes(routeClubParam as Club)
@@ -632,7 +605,7 @@ function App({
   const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>(() =>
     forceSessionIntelligenceRoute
       ? resumedDraft?.metadata.feedMode ?? routeFeedMode
-      : 'mock',
+      : 'real',
   )
   const [selectedClub, setSelectedClub] = useState<Club>(() =>
     forceSessionIntelligenceRoute ? routeClub : fallbackClub,
@@ -677,7 +650,7 @@ function App({
   )
   const selectedClubRef = useRef(selectedClub)
   const connectionRef = useRef<NovaConnection | null>(null)
-  const liveNovaUnavailable = selectedFeedMode === 'real' && !resolveNovaWebSocketUrl()
+  const liveNovaUnavailable = false
 
   const injectSimReadFrame = (frame: ExtractedFrame, club: Club) => {
     const result = mapGsproExtractedFrameToShot(frame, { club })
@@ -841,18 +814,30 @@ function App({
       return undefined
     }
 
-    const resolvedWsUrl = resolveNovaWebSocketUrl()
+    const novaEndpoint = resolveNovaWebSocketEndpoint()
+    const resolvedWsUrl = novaEndpoint.url
     let isActive = true
-    let activeSource: Shot['source'] = 'mock'
-    if (selectedFeedMode === 'real' && !resolvedWsUrl) {
-      setFeedMode('real')
-      setConnectionStatus('error')
-      return undefined
+    const activeSource: Shot['source'] = selectedFeedMode === 'real' ? 'nova' : 'mock'
+    const handleConnectionStatus = (status: NovaConnectionStatus) => {
+      console.info('[Nova Connection] status changed', {
+        status,
+        selectedFeedMode,
+        mockModeActive: selectedFeedMode === 'mock',
+        webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
+        webSocketUrl: selectedFeedMode === 'real' ? resolvedWsUrl : null,
+      })
+      setConnectionStatus(status)
     }
+    console.info('[Nova Config] live session feed selected', {
+      selectedFeedMode,
+      mockModeActive: selectedFeedMode === 'mock',
+      webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
+      webSocketUrl: selectedFeedMode === 'real' ? resolvedWsUrl : null,
+    })
 
     const connection: NovaConnection = selectedFeedMode === 'real'
       ? subscribeSharedNovaConnection(
-          resolvedWsUrl as string,
+          resolvedWsUrl,
           (incomingShot) => {
             if (!isActive) {
               return
@@ -982,7 +967,7 @@ function App({
                 )
               })
           },
-          setConnectionStatus,
+          handleConnectionStatus,
           (event) => {
             if (import.meta.env.DEV) {
               console.info('[Nova WS] message debug', {
@@ -1122,7 +1107,7 @@ function App({
                 )
               })
           },
-          setConnectionStatus,
+          handleConnectionStatus,
           (event) => {
             if (import.meta.env.DEV) {
               console.info('[Nova WS] message debug', {
@@ -1133,9 +1118,15 @@ function App({
           },
         )
 
-    activeSource = connection.mode === 'mock' ? 'mock' : 'nova'
     connectionRef.current = connection
     setFeedMode(connection.mode)
+    console.info('[Nova Config] active connection established', {
+      requestedFeedMode: selectedFeedMode,
+      connectionMode: connection.mode,
+      mockModeActive: connection.mode === 'mock',
+      webSocketSource: connection.mode === 'real' ? novaEndpoint.source : null,
+      webSocketUrl: connection.mode === 'real' ? resolvedWsUrl : null,
+    })
 
     return () => {
       isActive = false
@@ -4148,9 +4139,15 @@ function App({
     }
     saveActiveSessionDraft(draft)
 
-    const resolvedWsUrl = resolveNovaWebSocketUrl()
-    if (selectedFeedMode === 'real' && resolvedWsUrl) {
-      prepareSharedNovaConnection(resolvedWsUrl)
+    const novaEndpoint = resolveNovaWebSocketEndpoint()
+    console.info('[Nova Config] starting session', {
+      selectedFeedMode,
+      mockModeActive: selectedFeedMode === 'mock',
+      webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
+      webSocketUrl: selectedFeedMode === 'real' ? novaEndpoint.url : null,
+    })
+    if (selectedFeedMode === 'real') {
+      prepareSharedNovaConnection(novaEndpoint.url)
     }
 
     const params = new URLSearchParams({

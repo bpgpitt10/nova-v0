@@ -2,6 +2,7 @@ import type { NovaAdapter, NovaConnection } from './nova'
 
 export const mockNovaAdapter: NovaAdapter = {
   connectToShots(onShot, onStatusChange, onDebugEvent): NovaConnection {
+    console.info('[Mock Nova] mock mode active')
     let shotNumber = 1
     let timer: number | null = null
 
@@ -54,16 +55,19 @@ export const mockNovaAdapter: NovaAdapter = {
     return {
       mode: 'mock',
       pause: () => {
+        console.info('[Mock Nova] paused')
         stopTimer()
         onStatusChange?.('paused')
       },
       resume: () => {
+        console.info('[Mock Nova] resumed')
         if (timer === null) {
           startTimer()
         }
         onStatusChange?.('connected')
       },
       disconnect: () => {
+        console.info('[Mock Nova] disconnected')
         stopTimer()
         onStatusChange?.('disconnected')
       },
