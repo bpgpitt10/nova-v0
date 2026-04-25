@@ -1298,9 +1298,7 @@ function App({
 
     return activeBagClubIds
       .map((club) => {
-        const sessionShots = latestSession.shots.filter(
-          (shot) => shot.club === club && shot.included,
-        )
+        const sessionShots = latestSession.shots.filter((shot) => shot.club === club)
         if (sessionShots.length === 0) {
           return null
         }
@@ -1497,7 +1495,7 @@ function App({
       featuredDriverCard
         ? analysisSessions
             .flatMap((session) => session.shots)
-            .filter((shot) => shot.club === featuredDriverCard.club && shot.included)
+            .filter((shot) => shot.club === featuredDriverCard.club)
         : [],
     [analysisSessions, featuredDriverCard],
   )
@@ -1846,7 +1844,7 @@ function App({
       selectedClubHistoricalShots.map(descentValue),
       shotWeights,
     )
-    const includedShotCount = selectedClubHistoricalShots.filter((shot) => shot.included).length
+    const includedShotCount = selectedClubHistoricalShots.length
     const enrichedShotCount = selectedClubHistoricalShots.filter(
       (shot) => shot.enrichmentStatus === 'enriched' && shot.openGolfCoach,
     ).length
@@ -1952,7 +1950,6 @@ function App({
     const carryShots = session.shots.filter(
       (shot) =>
         shot.club === selectedDetailClub &&
-        shot.included &&
         typeof carryValue(shot) === 'number',
     )
     if (carryShots.length === 0) {
@@ -1974,7 +1971,6 @@ function App({
     const clubShots = session.shots.filter(
       (shot) =>
         shot.club === selectedDetailClub &&
-        shot.included &&
         typeof extractor(shot) === 'number',
     )
     if (clubShots.length === 0) {
@@ -2828,13 +2824,13 @@ function App({
   }, [selectedClubHistoricalShots, selectedClubHistoricalShotWeights])
 
   const selectedClubShotProfiles = useMemo(() => {
-    const includedShots = selectedClubHistoricalShots.filter((shot) => shot.included)
+    const includedShots = selectedClubHistoricalShots
     if (includedShots.length === 0) {
       return {
         bestAvailable: null,
         mostLikely: null,
         executionGapRows: [] as Array<{ label: string; value: string }>,
-        takeaway: 'Not enough included shots to profile this club yet.',
+        takeaway: 'Not enough shots to profile this club yet.',
       }
     }
 
@@ -3200,7 +3196,6 @@ function App({
   const selectedDetailIncludedShots = useMemo(
     () =>
       selectedClubHistoricalShots
-        .filter((shot) => shot.included)
         .sort((left, right) => {
           const leftTime = new Date(left.capturedAt).getTime()
           const rightTime = new Date(right.capturedAt).getTime()
@@ -3214,13 +3209,13 @@ function App({
       (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
     )
     const latestClubSession = orderedSessions.find((session) =>
-      session.shots.some((shot) => shot.club === selectedDetailClub && shot.included),
+      session.shots.some((shot) => shot.club === selectedDetailClub),
     )
     if (!latestClubSession) {
       return 0
     }
     return latestClubSession.shots.filter(
-      (shot) => shot.club === selectedDetailClub && shot.included,
+      (shot) => shot.club === selectedDetailClub,
     ).length
   }, [analysisSessions, selectedDetailClub])
 
@@ -3256,7 +3251,6 @@ function App({
           const includedShots = session.shots.filter(
             (shot) =>
               shot.club === selectedDetailClub &&
-              shot.included &&
               typeof carryValue(shot) === 'number',
           )
           if (includedShots.length === 0) {
@@ -3296,7 +3290,6 @@ function App({
       const carryShots = session.shots.filter(
         (shot) =>
           shot.club === selectedDetailClub &&
-          shot.included &&
           typeof carryValue(shot) === 'number',
       )
       if (carryShots.length === 0) {
@@ -3989,7 +3982,7 @@ function App({
         day: 'numeric',
       })
       const clubShots = session.shots.filter(
-        (shot) => shot.club === selectedDetailClub && shot.included,
+        (shot) => shot.club === selectedDetailClub,
       )
       if (clubShots.length === 0) {
         return
@@ -4477,7 +4470,7 @@ function App({
   const sessionIntelligencePoints = useMemo(
     () =>
       shots
-        .filter((shot) => shot.club === selectedClub && shot.included)
+        .filter((shot) => shot.club === selectedClub)
         .flatMap((shot) => {
           const carry = carryValue(shot)
           const offline = offlineValue(shot)
@@ -4490,7 +4483,7 @@ function App({
   )
 
   const selectedClubIncludedShots = useMemo(
-    () => shots.filter((shot) => shot.club === selectedClub && shot.included),
+    () => shots.filter((shot) => shot.club === selectedClub),
     [selectedClub, shots],
   )
 
@@ -4606,7 +4599,7 @@ function App({
       .filter((club) => byClub.has(club))
       .map((club) => {
         const clubShots = byClub.get(club) ?? []
-        const included = clubShots.filter((shot) => shot.included)
+        const included = clubShots
         const rankCounts = new Map<string, number>()
         included.forEach((shot) => {
           if (typeof shot.shotRanking === 'undefined') {

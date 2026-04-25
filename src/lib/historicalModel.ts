@@ -36,7 +36,7 @@ export const sizeWeightForShotCount = (
 export const includedClubShotsForSession = (
   session: SavedSession,
   club: Club,
-) => session.shots.filter((shot) => shot.club === club && shot.included)
+) => session.shots.filter((shot) => shot.club === club)
 
 export const sessionHistoricalWeightForClub = (
   session: SavedSession,
@@ -105,4 +105,3 @@ export const weightedSessionMetricAverage = (
     includedShots.map(shotWeightAccessor),
   )
 }
-

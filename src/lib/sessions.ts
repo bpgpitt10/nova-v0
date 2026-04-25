@@ -55,4 +55,4 @@ export const isSessionOldExcludedBySystem = (
 export const isSessionEligibleForAnalysis = (
   session: SavedSession,
   nowMs = Date.now(),
-) => isSessionIncludedInAnalysis(session) && !isSessionOldExcludedBySystem(session, nowMs)
+) => !isSessionOldExcludedBySystem(session, nowMs)

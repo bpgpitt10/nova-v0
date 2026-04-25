@@ -5,7 +5,7 @@ import {
   type Club,
 } from '../lib/bagConfig'
 import { summarizeReviewClub } from '../lib/scoring'
-import { isSessionIncludedInAnalysis, loadSavedSessions } from '../lib/sessions'
+import { loadSavedSessions } from '../lib/sessions'
 import type { ReviewClubSummary, SavedSession, Shot } from '../types'
 import './SessionSummaryPage.css'
 import golfScene from '../assets/Backgrounds/golfscene2.png'
@@ -212,7 +212,7 @@ const buildSessionSummary = (
     clubShotMinimum: 4,
   }
 
-  const includedShots = latestSession.shots.filter((shot) => shot.included)
+  const includedShots = latestSession.shots
   const totalShots = includedShots.length
 
   const clubCounts = new Map<Club, number>()
@@ -502,7 +502,11 @@ const buildSessionSummary = (
 
 function SessionSummaryPage() {
   const savedSessions = useMemo(
-    () => loadSavedSessions().filter(isSessionIncludedInAnalysis),
+    () =>
+      loadSavedSessions().sort(
+        (left, right) =>
+          new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
+      ),
     [],
   )
   const latestSession = savedSessions[0] ?? null

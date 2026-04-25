@@ -71,7 +71,7 @@ const descentAngleValue = (shot: Shot) =>
   ])
 
 const includedClubShots = (club: Club, shots: Shot[]) =>
-  shots.filter((shot) => shot.club === club && shot.included)
+  shots.filter((shot) => shot.club === club)
 
 const getRankWeight = (shot: Shot) => shotRankWeight(shot.shotRanking)
 
@@ -375,7 +375,7 @@ const buildPatternStabilityScore = (
     .map((session) =>
       session.shots.filter(
         (shot) =>
-          shot.club === club && shot.included && recencyWeightForShot(shot) > 0,
+          shot.club === club && recencyWeightForShot(shot) > 0,
       ),
     )
     .filter((shots) => shots.length > 0)

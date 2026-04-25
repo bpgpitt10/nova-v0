@@ -214,7 +214,7 @@ const sessionShotGroups = (session: SavedSession) => {
     .filter((club) => byClub.has(club))
     .map((club) => {
       const clubShots = byClub.get(club) ?? []
-      const included = clubShots.filter((shot) => shot.included)
+      const included = clubShots
       const rankCounts = new Map<string, number>()
       included.forEach((shot) => {
         if (typeof shot.shotRanking === 'undefined') {
