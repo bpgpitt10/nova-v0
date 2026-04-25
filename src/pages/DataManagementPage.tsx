@@ -29,6 +29,31 @@ const formatWhole = (value: number | undefined, unit = '') => {
 
 const formatRank = (value: number | string | undefined) => formatShotRank(value)
 
+const shotTableColumns = [
+  'In',
+  'Delete',
+  'Pure',
+  'Time',
+  'Club',
+  'Carry',
+  'Total',
+  'Offline',
+  'Spin',
+  'Launch',
+  'HLA',
+  'Spin Axis',
+  'Smash',
+  'Rank',
+  'Path',
+  'Face/Path',
+  'Face/Target',
+  'Club Speed',
+  'Ball Speed',
+  'Peak',
+  'Descent',
+  'Shot Shape',
+]
+
 const averageNumbers = (values: Array<number | undefined>) => {
   const defined = values.filter((value): value is number => typeof value === 'number')
   if (defined.length === 0) {
@@ -235,6 +260,50 @@ const isMockSession = (session: SavedSession) =>
     session.shots.length > 0 &&
     session.shots.every((shot) => shot.source === 'mock'))
 
+const shotTableRowValues = (shot: Shot, systemOldExcluded: boolean) => [
+  systemOldExcluded || !shot.included ? '' : 'Checked',
+  'Delete',
+  shot.feltPerfect ? '✓ Pure' : 'Pure',
+  new Date(shot.capturedAt).toLocaleTimeString(),
+  getClubLabel(shot.club),
+  formatDecimal(carryValue(shot), ' yd'),
+  formatDecimal(totalValue(shot), ' yd'),
+  formatDecimal(offlineValue(shot), ' yd'),
+  formatWhole(spinValue(shot)),
+  formatDecimal(launchValue(shot), '°'),
+  formatDecimal(shot.horizontalLaunchAngleDegrees, '°'),
+  formatDecimal(shot.spinAxisDegrees, '°'),
+  typeof smashFactorValue(shot) === 'number' ? smashFactorValue(shot)!.toFixed(2) : '-',
+  formatRank(shot.shotRanking),
+  formatDecimal(clubPathValue(shot), '°'),
+  formatDecimal(faceToPathValue(shot), '°'),
+  formatDecimal(faceToTargetValue(shot), '°'),
+  formatDecimal(clubSpeedValue(shot), ' mph'),
+  formatDecimal(ballSpeedMphValue(shot), ' mph'),
+  formatDecimal(peakHeightValue(shot), ' yd'),
+  formatDecimal(descentValue(shot), '°'),
+  shot.shotName ?? '-',
+]
+
+const escapeCsvField = (value: string | null | undefined) => {
+  if (value == null) {
+    return ''
+  }
+
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+
+  return value
+}
+
+const csvDateStamp = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function DataManagementPage() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(() => new Set())
@@ -276,6 +345,10 @@ function DataManagementPage() {
     [nowMs, sortedSessions],
   )
   const hasAnySelectedItems = selectedSessionIds.length > 0 || selectedShotCount > 0
+  const exportShotCount = useMemo(
+    () => sortedSessions.reduce((count, session) => count + session.shots.length, 0),
+    [sortedSessions],
+  )
 
   const persistSessions = (sessions: SavedSession[]) => {
     setSavedSessions(sessions)
@@ -530,6 +603,32 @@ function DataManagementPage() {
     })
   }
 
+  const exportShotsCsv = () => {
+    if (exportShotCount === 0) {
+      return
+    }
+
+    const rows = sortedSessions.flatMap((session) => {
+      const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
+      return sessionShotGroups(session).flatMap((group) =>
+        group.shots.map((shot) => shotTableRowValues(shot, systemOldExcluded)),
+      )
+    })
+    const csv = [shotTableColumns, ...rows]
+      .map((row) => row.map((value) => escapeCsvField(value)).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <main className="data-management-page">
       <div className="data-management-shell">
@@ -578,6 +677,14 @@ function DataManagementPage() {
                 Delete All Mock
               </button>
             ) : null}
+            <button
+              className="dm-action dm-export"
+              disabled={exportShotCount === 0}
+              onClick={exportShotsCsv}
+              type="button"
+            >
+              Export CSV
+            </button>
           </div>
         </header>
 
@@ -662,28 +769,9 @@ function DataManagementPage() {
                                 <table className="data-shot-table">
                                   <thead>
                                     <tr>
-                                      <th>In</th>
-                                      <th>Delete</th>
-                                      <th>Pure</th>
-                                      <th>Time</th>
-                                      <th>Club</th>
-                                      <th>Carry</th>
-                                      <th>Total</th>
-                                      <th>Offline</th>
-                                      <th>Spin</th>
-                                      <th>Launch</th>
-                                      <th>HLA</th>
-                                      <th>Spin Axis</th>
-                                      <th>Smash</th>
-                                      <th>Rank</th>
-                                      <th>Path</th>
-                                      <th>Face/Path</th>
-                                      <th>Face/Target</th>
-                                      <th>Club Speed</th>
-                                      <th>Ball Speed</th>
-                                      <th>Peak</th>
-                                      <th>Descent</th>
-                                      <th>Shot Shape</th>
+                                      {shotTableColumns.map((column) => (
+                                        <th key={column}>{column}</th>
+                                      ))}
                                     </tr>
                                   </thead>
                                   <tbody>
