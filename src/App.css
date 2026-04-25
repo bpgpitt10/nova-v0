@@ -1022,6 +1022,24 @@ td {
   text-anchor: middle;
 }
 
+.club-detail-latest-shot-ring {
+  stroke: rgba(248, 237, 201, 0.78);
+  stroke-width: 1.5;
+}
+
+.club-detail-latest-shot-legend circle {
+  fill: #f8edc9;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+}
+
+.club-detail-latest-shot-legend text {
+  fill: #f8edc9;
+  font-size: 12px;
+  dominant-baseline: middle;
+  letter-spacing: 0.02em;
+}
+
 .club-detail-side-card {
   display: grid;
   gap: 12px;

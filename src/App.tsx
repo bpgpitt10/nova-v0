@@ -4813,7 +4813,7 @@ function App({
             {sessionIntelligencePoints.length === 0 ? (
               <p className="support-card-copy">No included shots for this club yet.</p>
             ) : (
-              <ClubDispersionPlot lastShotId={latestShot?.id} points={sessionIntelligencePoints} />
+              <ClubDispersionPlot highlightLatestShot points={sessionIntelligencePoints} />
             )}
           </article>
           <article className="session-intelligence-comparison" aria-label="Shot DNA comparison">
@@ -5846,11 +5846,21 @@ type ClubDispersionPlotProps = {
   points: DispersionPoint[]
   lastShotId?: string
   fillContainer?: boolean
+  highlightLatestShot?: boolean
 }
 
-function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubDispersionPlotProps) {
+function ClubDispersionPlot({
+  points,
+  lastShotId,
+  fillContainer = false,
+  highlightLatestShot = false,
+}: ClubDispersionPlotProps) {
   const width = 820
   const padding = { top: 22, right: 32, bottom: 48, left: 62 }
+  const latestIncludedShotId = highlightLatestShot
+    ? points.find((point) => point.included)?.id
+    : undefined
+  const activeLastShotId = latestIncludedShotId ?? lastShotId
 
   const offlineMax = Math.max(...points.map((point) => Math.abs(point.offline)), 5)
   const carryMin = Math.min(...points.map((point) => point.carry))
@@ -5990,18 +6000,55 @@ function ClubDispersionPlot({ points, lastShotId, fillContainer = false }: ClubD
         ))}
       </g>
 
+      {highlightLatestShot && activeLastShotId
+        ? points
+            .filter((point) => point.id === activeLastShotId)
+            .map((point) => (
+              <circle
+                className="club-detail-latest-shot-ring"
+                cx={xScale(point.offline)}
+                cy={yScale(point.carry)}
+                fill="none"
+                key={`latest-ring-${point.id}`}
+                r="9"
+              />
+            ))
+        : null}
+
       {points.map((point) => (
         <circle
           cx={xScale(point.offline)}
           cy={yScale(point.carry)}
-          fill={point.included ? '#eab308' : '#c1b06d'}
-          fillOpacity={point.id === lastShotId ? 1 : point.included ? 0.88 : 0.4}
+          fill={
+            point.id === activeLastShotId && highlightLatestShot
+              ? '#f8edc9'
+              : point.included
+                ? '#eab308'
+                : '#c1b06d'
+          }
+          fillOpacity={point.id === activeLastShotId ? 1 : point.included ? 0.88 : 0.4}
           key={point.id}
-          r={point.id === lastShotId ? 5 : point.included ? 4 : 3}
-          stroke="#0e1710"
-          strokeWidth={point.id === lastShotId ? '1.4' : '1'}
+          r={
+            point.id === activeLastShotId && highlightLatestShot
+              ? 6
+              : point.id === activeLastShotId
+                ? 5
+                : point.included
+                  ? 4
+                  : 3
+          }
+          stroke={point.id === activeLastShotId && highlightLatestShot ? '#ffffff' : '#0e1710'}
+          strokeWidth={point.id === activeLastShotId ? '1.5' : '1'}
         />
       ))}
+      {highlightLatestShot && activeLastShotId ? (
+        <g aria-hidden="true" className="club-detail-latest-shot-legend">
+          <circle cx={width - padding.right - 88} cy={padding.top + 13} r="5" />
+          <text x={width - padding.right - 76} y={padding.top + 13}>
+            Latest shot
+          </text>
+        </g>
+      ) : null}
       <text className="club-detail-axis-label" x={padding.left + 8} y={height - 10}>
         Left miss
       </text>
