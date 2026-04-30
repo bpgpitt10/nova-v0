@@ -5,6 +5,11 @@ import {
   resolveNovaWebSocketEndpoint,
 } from '../adapters/nova'
 import { activeBagClubIds, getClubDisplayName, type Club } from '../lib/bagConfig'
+import {
+  getShotVariantsForClub,
+  resolveShotVariantId,
+  STOCK_SHOT_VARIANT_ID,
+} from '../lib/shotVariants'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
@@ -174,14 +179,21 @@ const navigateWithinApp = (path: string) => {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+const formatShotVariantName = (name: string) =>
+  name.length > 24 ? `${name.slice(0, 21)}...` : name
+
 export default function LooperLandingPage() {
   const [selectedClub, setSelectedClub] = useState<Club>(() => activeBagClubIds[0] ?? '7i')
+  const [selectedShotVariantId, setSelectedShotVariantId] = useState<string>(
+    STOCK_SHOT_VARIANT_ID,
+  )
   const [novaState, setNovaState] = useState<NovaConnectionState>('connecting')
   const [novaDetail, setNovaDetail] = useState<string | null>(null)
   const [manualUrlInput, setManualUrlInput] = useState('')
   const [manualOverrideUrl, setManualOverrideUrl] = useState<string | null>(null)
   const [connectedUrl, setConnectedUrl] = useState<string | null>(null)
   const devOverrideUrl = useMemo(() => resolveDevOverrideUrl(), [])
+  const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
 
   useEffect(() => {
     if (activeBagClubIds.length === 0) {
@@ -191,6 +203,12 @@ export default function LooperLandingPage() {
       setSelectedClub(activeBagClubIds[0])
     }
   }, [selectedClub])
+
+  useEffect(() => {
+    if (!shotVariants.some((variant) => variant.id === selectedShotVariantId)) {
+      setSelectedShotVariantId(STOCK_SHOT_VARIANT_ID)
+    }
+  }, [selectedShotVariantId, shotVariants])
 
   useEffect(() => {
     let isMounted = true
@@ -406,6 +424,7 @@ export default function LooperLandingPage() {
     const params = new URLSearchParams({
       feed: 'real',
       club: selectedClub,
+      variant: resolveShotVariantId(selectedShotVariantId),
     })
     navigateWithinApp(`/session-intelligence?${params.toString()}`)
   }
@@ -440,7 +459,11 @@ export default function LooperLandingPage() {
                   <div style={{ marginBottom: 12 }}>
                     <button
                       className="looper-landing-action looper-landing-action-secondary"
-                      onClick={() => navigateWithinApp('/session-intelligence?feed=mock')}
+                      onClick={() =>
+                        navigateWithinApp(
+                          `/session-intelligence?feed=mock&variant=${encodeURIComponent(resolveShotVariantId(selectedShotVariantId))}`,
+                        )
+                      }
                       type="button"
                     >
                       DEV: Open SimRead Test Session
@@ -475,6 +498,27 @@ export default function LooperLandingPage() {
                   Start
                 </button>
               </div>
+              {shotVariants.length > 1 ? (
+                <div className="looper-landing-session-row looper-landing-variant-row">
+                  <div className="looper-landing-select-wrap">
+                    <select
+                      aria-label="Shot variant"
+                      onChange={(event) => setSelectedShotVariantId(event.target.value)}
+                      title={
+                        shotVariants.find((variant) => variant.id === selectedShotVariantId)
+                          ?.name
+                      }
+                      value={selectedShotVariantId}
+                    >
+                      {shotVariants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {formatShotVariantName(variant.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : null}
               <details className="looper-landing-manual">
                 <summary>Manual Nova Connection</summary>
                 <div className="looper-landing-session-row">

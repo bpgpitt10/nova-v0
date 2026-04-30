@@ -50,6 +50,11 @@ import {
   shotRankScoreTone,
   shotRankWeight,
 } from './lib/shotRank'
+import {
+  getShotVariantsForClub,
+  resolveShotVariantId,
+  STOCK_SHOT_VARIANT_ID,
+} from './lib/shotVariants'
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
 import {
@@ -490,9 +495,13 @@ const clubGroupLabel = (club: Club) => {
 
 const clubAnchorId = (club: Club) => `club-${club.toLowerCase().replace(/\s+/g, '-')}`
 
+const formatShotVariantName = (name: string) =>
+  name.length > 24 ? `${name.slice(0, 21)}...` : name
+
 const buildShot = (
   incomingShot: IncomingNovaShot,
   club: Club,
+  shotVariantId: string,
   source: Shot['source'],
 ): Shot => ({
   // Current state:
@@ -526,6 +535,7 @@ const buildShot = (
   spinRpm: incomingShot.spinRpm ?? incomingShot.spin,
   shotName: incomingShot.shotName ?? incomingShot.shot_name,
   shotRanking: incomingShot.shotRanking,
+  shotVariantId,
   source,
 })
 
@@ -597,6 +607,9 @@ function App({
   const routeClub = activeBagClubIds.includes(routeClubParam as Club)
     ? (routeClubParam as Club)
     : fallbackClub
+  const routeShotVariantId = resolveShotVariantId(
+    sessionIntelligenceSearch?.get('variant') ?? undefined,
+  )
   const resumedDraft = forceSessionIntelligenceRoute ? loadActiveSessionDraft() : null
   const startedAtFallback = new Date().toISOString()
   const [sessionState, setSessionState] = useState<SessionState>(() =>
@@ -609,6 +622,9 @@ function App({
   )
   const [selectedClub, setSelectedClub] = useState<Club>(() =>
     forceSessionIntelligenceRoute ? routeClub : fallbackClub,
+  )
+  const [selectedShotVariantId, setSelectedShotVariantId] = useState<string>(() =>
+    forceSessionIntelligenceRoute ? routeShotVariantId : STOCK_SHOT_VARIANT_ID,
   )
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>(fallbackClub)
   const sharedProfileClub = forceSessionIntelligenceRoute ? selectedClub : selectedDetailClub
@@ -649,8 +665,10 @@ function App({
     forceSessionIntelligenceRoute ? resumedDraft?.id ?? crypto.randomUUID() : null,
   )
   const selectedClubRef = useRef(selectedClub)
+  const selectedShotVariantIdRef = useRef(selectedShotVariantId)
   const connectionRef = useRef<NovaConnection | null>(null)
   const liveNovaUnavailable = false
+  const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
 
   const injectSimReadFrame = (frame: ExtractedFrame, club: Club) => {
     const result = mapGsproExtractedFrameToShot(frame, { club })
@@ -792,6 +810,16 @@ function App({
   }, [selectedClub])
 
   useEffect(() => {
+    selectedShotVariantIdRef.current = selectedShotVariantId
+  }, [selectedShotVariantId])
+
+  useEffect(() => {
+    if (!shotVariants.some((variant) => variant.id === selectedShotVariantId)) {
+      setSelectedShotVariantId(STOCK_SHOT_VARIANT_ID)
+    }
+  }, [selectedShotVariantId, shotVariants])
+
+  useEffect(() => {
     if (sessionState !== 'live' || !sessionStartedAt || !liveSessionId) {
       clearActiveSessionDraft()
       return undefined
@@ -843,7 +871,12 @@ function App({
               return
             }
 
-            const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+            const shot = buildShot(
+              incomingShot,
+              selectedClubRef.current,
+              selectedShotVariantIdRef.current,
+              activeSource,
+            )
             console.info('[Shot Pipeline] live shot received', {
               shotId: shot.id,
               source: activeSource,
@@ -983,7 +1016,12 @@ function App({
               return
             }
 
-            const shot = buildShot(incomingShot, selectedClubRef.current, activeSource)
+            const shot = buildShot(
+              incomingShot,
+              selectedClubRef.current,
+              selectedShotVariantIdRef.current,
+              activeSource,
+            )
             console.info('[Shot Pipeline] live shot received', {
               shotId: shot.id,
               source: activeSource,
@@ -4160,6 +4198,7 @@ function App({
     const params = new URLSearchParams({
       feed: selectedFeedMode,
       club: selectedClub,
+      variant: resolveShotVariantId(selectedShotVariantId),
     })
     navigateWithinApp(`/session-intelligence?${params.toString()}`)
   }
@@ -4649,7 +4688,39 @@ function App({
     return (
       <main className="session-intelligence-shell">
         <header className="session-intelligence-topbar">
-          <div className="session-intelligence-brand">Every Club Holds a Truth</div>
+          <div className="session-intelligence-live-controls">
+            <div className="session-intelligence-control session-intelligence-club-control">
+              <select
+                className="session-intelligence-control-select session-intelligence-club-select"
+                onChange={(event) => setSelectedClub(event.target.value as Club)}
+                value={selectedClub}
+              >
+                {activeBagClubIds.map((club) => (
+                  <option key={`session-intelligence-club-${club}`} value={club}>
+                    {getClubDisplayName(club)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {shotVariants.length > 1 ? (
+              <div className="session-intelligence-control session-intelligence-variant-control">
+                <select
+                  className="session-intelligence-control-select"
+                  onChange={(event) => setSelectedShotVariantId(event.target.value)}
+                  title={
+                    shotVariants.find((variant) => variant.id === selectedShotVariantId)?.name
+                  }
+                  value={selectedShotVariantId}
+                >
+                  {shotVariants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {formatShotVariantName(variant.name)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </div>
           <div className="session-intelligence-actions">
             <button className="session-intelligence-end" onClick={endSession} type="button">
               End Session
@@ -4667,46 +4738,24 @@ function App({
           </div>
           <div className="session-intelligence-reaction-row">
             <p className="session-intelligence-reaction">{latestShotReaction}</p>
-            <button
-              aria-pressed={latestShot?.feltPerfect === true}
-              className={`session-felt-perfect-toggle ${
-                latestShot?.feltPerfect ? 'is-selected' : ''
-              }`}
-              disabled={!latestShot}
-              onClick={() => latestShot && toggleFeltPerfect(latestShot.id)}
-              type="button"
-            >
-              {latestShot?.feltPerfect ? '✓ Felt Perfect' : 'Felt Perfect'}
-            </button>
+            <div className="session-intelligence-reaction-actions">
+              <button
+                aria-pressed={latestShot?.feltPerfect === true}
+                className={`session-felt-perfect-toggle ${
+                  latestShot?.feltPerfect ? 'is-selected' : ''
+                }`}
+                disabled={!latestShot}
+                onClick={() => latestShot && toggleFeltPerfect(latestShot.id)}
+                type="button"
+              >
+                {latestShot?.feltPerfect ? '✓ Felt Perfect' : 'Felt Perfect'}
+              </button>
+            </div>
           </div>
         </section>
 
         <section className="session-last-shot-strip" aria-label="Most recent shot">
-          <button
-            className="session-strip-exclude"
-            disabled={!latestShot}
-            onClick={excludeLastShot}
-            type="button"
-          >
-            ✖ Exclude
-          </button>
           <div className="session-shot-hero-metrics">
-            <div className="session-shot-hero-metric">
-              <div className="session-shot-hero-club-control">
-                <select
-                  className="session-shot-hero-club-select session-shot-hero-value"
-                  onChange={(event) => setSelectedClub(event.target.value as Club)}
-                  value={selectedClub}
-                >
-                  {activeBagClubIds.map((club) => (
-                    <option key={`session-intelligence-club-${club}`} value={club}>
-                      {getClubDisplayName(club)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <span className="session-shot-hero-label">Club</span>
-            </div>
             <div className="session-shot-hero-metric">
               <span className="session-shot-hero-value">
                 {formatDecimal(latestShot ? carryValue(latestShot) : undefined)}
@@ -4724,6 +4773,25 @@ function App({
                 }}
               >
                 Carry (yd)
+              </span>
+            </div>
+            <div className="session-shot-hero-metric">
+              <span className="session-shot-hero-value">
+                {formatDecimal(latestShot ? totalValue(latestShot) : undefined)}
+              </span>
+              <span
+                className="session-shot-hero-label"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#8fa08f',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                  opacity: 0.72,
+                }}
+              >
+                Total (yd)
               </span>
             </div>
             <div className="session-shot-hero-metric">
@@ -4813,6 +4881,14 @@ function App({
               </span>
             </div>
           </div>
+          <button
+            className="session-strip-exclude"
+            disabled={!latestShot}
+            onClick={excludeLastShot}
+            type="button"
+          >
+            ✖ Exclude
+          </button>
         </section>
 
         <section className="session-intelligence-heatmap-row" aria-label="Heatmap and comparison">

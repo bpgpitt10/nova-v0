@@ -20,6 +20,7 @@ export type Shot = {
   spinRpm?: number
   shotName?: string
   shotRanking?: number | string
+  shotVariantId?: string
   feltPerfect?: boolean
   feltPerfectTaggedAt?: string
   feltPerfectSource?: 'session_intelligence' | 'data_management'
