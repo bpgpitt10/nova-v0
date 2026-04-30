@@ -725,7 +725,9 @@ export default function ClubDetailV2({
             <span className="club-detail-score-label">Score</span>
             <span className="club-v2-score-line">
               <span className="club-detail-score-value looper-read-score">{score}</span>
-              <span className="club-v2-score-club">{clubLabel}</span>
+              <span className="club-v2-club-identity">
+                <span className="club-v2-score-club">{clubLabel}</span>
+              </span>
             </span>
             <span className={callClassName ?? 'club-v2-call-pill'}>{call}</span>
           </div>

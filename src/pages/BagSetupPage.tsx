@@ -75,6 +75,9 @@ export default function BagSetupPage() {
             >
               Save Bag
             </button>
+            <a className="bag-setup-secondary-action" href="/edit-bag/variants">
+              Manage Shot Variants
+            </a>
           </div>
           {import.meta.env.DEV && (
             <>

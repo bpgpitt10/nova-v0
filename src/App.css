@@ -645,7 +645,7 @@ td {
 .club-detail-looper-read {
   padding: 16px;
   display: grid;
-  grid-template-columns: 156px minmax(320px, 520px) minmax(200px, 260px);
+  grid-template-columns: 156px minmax(320px, 520px) minmax(180px, 225px);
   justify-content: start;
   gap: 14px;
   align-items: start;
@@ -665,6 +665,7 @@ td {
 .club-detail-read-col {
   display: grid;
   gap: 4px;
+  margin-left: 10px;
   padding-left: 14px;
   border-left: 1px solid rgba(49, 66, 51, 0.6);
 }

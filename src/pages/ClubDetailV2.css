@@ -103,6 +103,22 @@
   white-space: nowrap;
 }
 
+.club-v2-club-identity {
+  display: grid;
+  justify-items: end;
+  min-width: 0;
+}
+
+.club-v2-shot-variant-label {
+  max-width: 180px;
+  color: rgba(207, 216, 205, 0.72);
+  font-size: 13px;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .club-detail-v2 .club-detail-score-col {
   display: flex;
   flex-direction: column;

@@ -128,6 +128,17 @@
   cursor: not-allowed;
 }
 
+.bag-setup-secondary-action {
+  border: 1px solid #314233;
+  border-radius: 999px;
+  background: rgba(23, 36, 25, 0.72);
+  color: #dce5d8;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 16px;
+  text-decoration: none;
+}
+
 @media (max-width: 900px) {
   .bag-setup-header {
     padding-right: 180px;

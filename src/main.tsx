@@ -7,6 +7,7 @@ import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
+import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -95,6 +96,7 @@ function RootRouter() {
 
   const view = useMemo(() => {
     const showBagSetup = pathname === '/bag-setup'
+    const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
@@ -103,6 +105,9 @@ function RootRouter() {
 
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
+    }
+    if (showShotVariants) {
+      return <ShotVariantsPage />
     }
     if (showSessionSummary) {
       return <SessionSummaryPage />
