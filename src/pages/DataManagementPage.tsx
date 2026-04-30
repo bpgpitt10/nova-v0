@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
+import { getShotVariantLabel } from '../lib/shotVariants'
 import {
   clearActiveSessionDraft,
   isSessionIncludedInAnalysis,
@@ -35,6 +36,7 @@ const shotTableColumns = [
   'Pure',
   'Time',
   'Club',
+  'Variant',
   'Carry',
   'Total',
   'Offline',
@@ -266,6 +268,7 @@ const shotTableRowValues = (shot: Shot, systemOldExcluded: boolean) => [
   shot.feltPerfect ? '✓ Pure' : 'Pure',
   new Date(shot.capturedAt).toLocaleTimeString(),
   getClubLabel(shot.club),
+  getShotVariantLabel(shot.club, shot.shotVariantId),
   formatDecimal(carryValue(shot), ' yd'),
   formatDecimal(totalValue(shot), ' yd'),
   formatDecimal(offlineValue(shot), ' yd'),
@@ -780,7 +783,7 @@ function DataManagementPage() {
                                         className="data-shot-club-header"
                                         key={`${session.id}-header-${group.club}`}
                                       >
-                                        <td colSpan={22}>{getClubLabel(group.club)}</td>
+                                        <td colSpan={23}>{getClubLabel(group.club)}</td>
                                       </tr>,
                                       <tr
                                         className="data-shot-club-average"
@@ -791,6 +794,7 @@ function DataManagementPage() {
                                         <td>-</td>
                                         <td>-</td>
                                         <td>{getClubLabel(group.club)}</td>
+                                        <td>-</td>
                                         <td>{formatDecimal(group.averages.carry, ' yd')}</td>
                                         <td>{formatDecimal(group.averages.total, ' yd')}</td>
                                         <td>{formatDecimal(group.averages.offline, ' yd')}</td>
@@ -847,6 +851,7 @@ function DataManagementPage() {
                                           </td>
                                           <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>
                                           <td>{getClubLabel(shot.club)}</td>
+                                          <td>{getShotVariantLabel(shot.club, shot.shotVariantId)}</td>
                                           <td>{formatDecimal(carryValue(shot), ' yd')}</td>
                                           <td>{formatDecimal(totalValue(shot), ' yd')}</td>
                                           <td>{formatDecimal(offlineValue(shot), ' yd')}</td>

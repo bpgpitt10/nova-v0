@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { ShotVariant } from '../lib/shotVariants'
 import './ClubDetailV2.css'
 
 type ComparisonDirection = 'up' | 'down'
@@ -148,6 +149,10 @@ type ClubDetailV2Props = {
   metricModels: MetricModel[]
   metricSessionSeries: Partial<Record<MetricKey, Array<{ label: string; value: number }>>>
   defaultMetric: MetricKey
+  selectedVariantId: string
+  variantLabel: string
+  variants: ShotVariant[]
+  onVariantChange: (variantId: string) => void
 }
 
 const linePath = (
@@ -289,6 +294,10 @@ export default function ClubDetailV2({
   metricModels,
   metricSessionSeries,
   defaultMetric,
+  selectedVariantId,
+  variantLabel,
+  variants,
+  onVariantChange,
 }: ClubDetailV2Props) {
   const metricGroupOrder: MetricGroup[] = [
     'distance',
@@ -300,6 +309,7 @@ export default function ClubDetailV2({
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(defaultMetric)
   const [chartMode, setChartMode] = useState<'shots' | 'sessions'>('shots')
   const [activeDriverKey, setActiveDriverKey] = useState<string | null>(null)
+  const [isVariantMenuOpen, setIsVariantMenuOpen] = useState(false)
   const [openMetricGroups, setOpenMetricGroups] = useState<Record<MetricGroup, boolean>>({
     distance: true,
     direction: false,
@@ -308,6 +318,7 @@ export default function ClubDetailV2({
     performanceDrivers: false,
   })
   const analysisRef = useRef<HTMLElement | null>(null)
+  const variantMenuEnabled = variants.length > 1
   const initializedDriverRef = useRef(false)
   const selectedModel =
     metricModels.find((metric) => metric.key === selectedMetric) ?? metricModels[0] ?? null
@@ -726,10 +737,44 @@ export default function ClubDetailV2({
             <span className="club-v2-score-line">
               <span className="club-detail-score-value looper-read-score">{score}</span>
               <span className="club-v2-club-identity">
-                <span className="club-v2-score-club">{clubLabel}</span>
+                <button
+                  className="club-v2-club-identity-trigger"
+                  disabled={!variantMenuEnabled}
+                  onClick={() => setIsVariantMenuOpen((open) => !open)}
+                  type="button"
+                >
+                  <span className="club-v2-score-club">{clubLabel}</span>
+                  <span className="club-v2-shot-variant-label">
+                    <span className="club-v2-shot-variant-text">{variantLabel}</span>
+                    {variantMenuEnabled ? <span className="club-v2-variant-chevron" /> : null}
+                  </span>
+                </button>
+                {variantMenuEnabled && isVariantMenuOpen ? (
+                  <div className="club-v2-variant-menu">
+                    {variants.map((variant) => (
+                      <button
+                        className={
+                          variant.id === selectedVariantId
+                            ? 'club-v2-variant-option is-selected'
+                            : 'club-v2-variant-option'
+                        }
+                        key={variant.id}
+                        onClick={() => {
+                          onVariantChange(variant.id)
+                          setIsVariantMenuOpen(false)
+                        }}
+                        type="button"
+                      >
+                        {variant.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </span>
             </span>
-            <span className={callClassName ?? 'club-v2-call-pill'}>{call}</span>
+            <span className="club-v2-score-context-line">
+              <span className={callClassName ?? 'club-v2-call-pill'}>{call}</span>
+            </span>
           </div>
           <div className="club-v2-swings-included club-card-trend">
             {swingsIncludedCount} Swings Included

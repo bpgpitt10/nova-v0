@@ -51,8 +51,11 @@ import {
   shotRankWeight,
 } from './lib/shotRank'
 import {
+  getShotVariantLabel,
   getShotVariantsForClub,
   resolveShotVariantId,
+  shotMatchesIdentity,
+  shotsForClubVariant,
   STOCK_SHOT_VARIANT_ID,
 } from './lib/shotVariants'
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
@@ -66,7 +69,6 @@ import {
   saveSessionHistory,
 } from './lib/sessions'
 import {
-  includedClubShotsForSession,
   sessionHistoricalWeightForClub,
   weightedSessionMetricAverage,
 } from './lib/historicalModel'
@@ -627,6 +629,8 @@ function App({
     forceSessionIntelligenceRoute ? routeShotVariantId : STOCK_SHOT_VARIANT_ID,
   )
   const [selectedDetailClub, setSelectedDetailClub] = useState<Club>(fallbackClub)
+  const [selectedDetailShotVariantId, setSelectedDetailShotVariantId] =
+    useState<string>(STOCK_SHOT_VARIANT_ID)
   const sharedProfileClub = forceSessionIntelligenceRoute ? selectedClub : selectedDetailClub
   const [reviewView, setReviewView] = useState<ReviewView>('dashboard')
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
@@ -669,6 +673,10 @@ function App({
   const connectionRef = useRef<NovaConnection | null>(null)
   const liveNovaUnavailable = false
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
+  const selectedDetailShotVariants = useMemo(
+    () => getShotVariantsForClub(selectedDetailClub),
+    [selectedDetailClub],
+  )
 
   const injectSimReadFrame = (frame: ExtractedFrame, club: Club) => {
     const result = mapGsproExtractedFrameToShot(frame, { club })
@@ -818,6 +826,12 @@ function App({
       setSelectedShotVariantId(STOCK_SHOT_VARIANT_ID)
     }
   }, [selectedShotVariantId, shotVariants])
+
+  useEffect(() => {
+    if (!selectedDetailShotVariants.some((variant) => variant.id === selectedDetailShotVariantId)) {
+      setSelectedDetailShotVariantId(STOCK_SHOT_VARIANT_ID)
+    }
+  }, [selectedDetailShotVariantId, selectedDetailShotVariants])
 
   useEffect(() => {
     if (sessionState !== 'live' || !sessionStartedAt || !liveSessionId) {
@@ -1810,19 +1824,50 @@ function App({
     setSelectedDetailClub(fallbackClub)
   }, [dashboardClubCards, selectedDetailClub, sessionState])
 
-  const selectedClubSummary = dashboardSummariesByClub.get(selectedDetailClub) ?? null
+  const selectedDetailVariantSessions = useMemo(
+    () =>
+      analysisSessions.map((session) => ({
+        ...session,
+        shots: shotsForClubVariant(session.shots, selectedDetailClub, selectedDetailShotVariantId),
+      })),
+    [analysisSessions, selectedDetailClub, selectedDetailShotVariantId],
+  )
+  const selectedDetailVariantShots = useMemo(
+    () => selectedDetailVariantSessions.flatMap((session) => session.shots),
+    [selectedDetailVariantSessions],
+  )
+  const selectedClubSummary =
+    reviewView === 'clubDetail'
+      ? summarizeReviewClub(
+          selectedDetailClub,
+          selectedDetailVariantShots,
+          selectedDetailVariantSessions,
+          null,
+        )
+      : dashboardSummariesByClub.get(selectedDetailClub) ?? null
   const selectedClubHistoricalShots = useMemo(
     () =>
       analysisSessions.flatMap((session) =>
-        session.shots.filter((shot) => shot.club === sharedProfileClub),
+        forceSessionIntelligenceRoute
+          ? shotsForClubVariant(session.shots, sharedProfileClub, selectedShotVariantId)
+          : shotsForClubVariant(session.shots, sharedProfileClub, selectedDetailShotVariantId),
       ),
-    [analysisSessions, sharedProfileClub],
+    [
+      analysisSessions,
+      forceSessionIntelligenceRoute,
+      selectedDetailShotVariantId,
+      selectedShotVariantId,
+      sharedProfileClub,
+    ],
   )
 
   const selectedClubHistoricalShotWeights = useMemo(() => {
     const map = new Map<string, number>()
     analysisSessions.forEach((session) => {
-      const clubIncludedCount = includedClubShotsForSession(session, sharedProfileClub).length
+      const identityShots = forceSessionIntelligenceRoute
+        ? shotsForClubVariant(session.shots, sharedProfileClub, selectedShotVariantId)
+        : shotsForClubVariant(session.shots, sharedProfileClub, selectedDetailShotVariantId)
+      const clubIncludedCount = identityShots.filter((shot) => shot.included).length
       const sessionWeight = sessionHistoricalWeightForClub(
         session,
         sharedProfileClub,
@@ -1830,14 +1875,21 @@ function App({
       )
       const normalizedShotWeight =
         clubIncludedCount > 0 ? sessionWeight / clubIncludedCount : 0
-      session.shots.forEach((shot) => {
-        if (shot.club === sharedProfileClub && !map.has(shot.id)) {
+      identityShots.forEach((shot) => {
+        if (!map.has(shot.id)) {
           map.set(shot.id, normalizedShotWeight)
         }
       })
     })
     return map
-  }, [analysisSessions, historicalModelNowMs, sharedProfileClub])
+  }, [
+    analysisSessions,
+    forceSessionIntelligenceRoute,
+    historicalModelNowMs,
+    selectedDetailShotVariantId,
+    selectedShotVariantId,
+    sharedProfileClub,
+  ])
 
   const selectedClubMetrics = useMemo(() => {
     const shotWeights = selectedClubHistoricalShots.map(
@@ -1918,18 +1970,22 @@ function App({
 
   const selectedClubSessionSeries = useMemo(
     () =>
-      [...analysisSessions]
+      [...selectedDetailVariantSessions]
         .reverse()
         .map((session) => {
-          const clubShots = session.shots.filter((shot) => shot.club === selectedDetailClub)
+          const clubShots = shotsForClubVariant(
+            session.shots,
+            selectedDetailClub,
+            selectedDetailShotVariantId,
+          )
           if (clubShots.length === 0) {
             return null
           }
 
           const summary = summarizeReviewClub(
             selectedDetailClub,
-            session.shots,
-            analysisSessions.filter((savedSession) => savedSession.id !== session.id),
+            clubShots,
+            selectedDetailVariantSessions.filter((savedSession) => savedSession.id !== session.id),
             session.id,
           )
 
@@ -1957,7 +2013,7 @@ function App({
           }
         })
         .filter((point): point is NonNullable<typeof point> => point !== null),
-    [analysisSessions, selectedDetailClub],
+    [selectedDetailClub, selectedDetailShotVariantId, selectedDetailVariantSessions],
   )
 
   const sessionWeightedAverageForSelectedClub = (
@@ -1978,7 +2034,7 @@ function App({
   ) => {
     const carryShots = session.shots.filter(
       (shot) =>
-        shot.club === selectedDetailClub &&
+        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
         typeof carryValue(shot) === 'number',
     )
     if (carryShots.length === 0) {
@@ -1999,7 +2055,7 @@ function App({
   ) => {
     const clubShots = session.shots.filter(
       (shot) =>
-        shot.club === selectedDetailClub &&
+        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
         typeof extractor(shot) === 'number',
     )
     if (clubShots.length === 0) {
@@ -3245,15 +3301,17 @@ function App({
       (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
     )
     const latestClubSession = orderedSessions.find((session) =>
-      session.shots.some((shot) => shot.club === selectedDetailClub),
+      session.shots.some((shot) =>
+        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId),
+      ),
     )
     if (!latestClubSession) {
       return 0
     }
     return latestClubSession.shots.filter(
-      (shot) => shot.club === selectedDetailClub,
+      (shot) => shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId),
     ).length
-  }, [analysisSessions, selectedDetailClub])
+  }, [analysisSessions, selectedDetailClub, selectedDetailShotVariantId])
 
   const clubDetailSwingsIncludedCount =
     dashboardNavTarget === 'lastSession'
@@ -3268,7 +3326,7 @@ function App({
       rankWeightedWithinSession = true,
     ) =>
       weightedAverageNumbers(
-        analysisSessions.map((session) =>
+        selectedDetailVariantSessions.map((session) =>
           weightedSessionMetricAverage(
             session,
             selectedDetailClub,
@@ -3276,14 +3334,14 @@ function App({
             rankWeightedWithinSession ? (shot) => rankWeightForShot(shot) : undefined,
           ),
         ),
-        analysisSessions.map((session) =>
+        selectedDetailVariantSessions.map((session) =>
           sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
         ),
       )
 
     const sessionWeightedCarryMetric = () =>
       weightedAverageNumbers(
-        analysisSessions.map((session) => {
+        selectedDetailVariantSessions.map((session) => {
           const includedShots = session.shots.filter(
             (shot) =>
               shot.club === selectedDetailClub &&
@@ -3301,7 +3359,7 @@ function App({
             confidenceConfig.displayCarryOutlierThresholdFloorYards,
           )
         }),
-        analysisSessions.map((session) =>
+        selectedDetailVariantSessions.map((session) =>
           sessionHistoricalWeightForClub(session, selectedDetailClub, historicalModelNowMs),
         ),
       )
@@ -3348,7 +3406,7 @@ function App({
           ? sessionAverageOverride(session)
           : sessionWeightedAverageForMetric(session, extractor)
 
-      const orderedSessions = [...analysisSessions].sort(
+      const orderedSessions = [...selectedDetailVariantSessions].sort(
         (left, right) => new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
       )
       const latestClubSession = orderedSessions.find((session) => {
@@ -3967,11 +4025,11 @@ function App({
       },
     ]
   }, [
-    analysisSessions,
     historicalModelNowMs,
     selectedClubComponentBreakdown,
     selectedClubSummary,
     selectedDetailClub,
+    selectedDetailVariantSessions,
     selectedDetailIncludedShots,
   ])
 
@@ -3998,7 +4056,7 @@ function App({
   }, [selectedClubMetricModels])
 
   const clubDetailMetricSessionSeriesV2 = useMemo(() => {
-    const orderedSessions = [...analysisSessions].sort(
+    const orderedSessions = [...selectedDetailVariantSessions].sort(
       (left, right) =>
         new Date(left.endedAt).getTime() - new Date(right.endedAt).getTime(),
     )
@@ -4017,9 +4075,7 @@ function App({
         month: 'numeric',
         day: 'numeric',
       })
-      const clubShots = session.shots.filter(
-        (shot) => shot.club === selectedDetailClub,
-      )
+      const clubShots = session.shots.filter((shot) => shot.club === selectedDetailClub)
       if (clubShots.length === 0) {
         return
       }
@@ -4030,7 +4086,7 @@ function App({
       const summary = summarizeReviewClub(
         selectedDetailClub,
         session.shots,
-        analysisSessions.filter((savedSession) => savedSession.id !== session.id),
+        selectedDetailVariantSessions.filter((savedSession) => savedSession.id !== session.id),
         session.id,
       )
 
@@ -4073,7 +4129,7 @@ function App({
     })
 
     return series
-  }, [analysisSessions, selectedDetailClub])
+  }, [selectedDetailClub, selectedDetailVariantSessions])
 
   const clubDetailPatternInsightV2 = useMemo(() => {
     const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
@@ -4267,7 +4323,11 @@ function App({
     setSessionState('review')
   }
 
-  const latestShot = shots[0] ?? null
+  const selectedClubVariantShots = useMemo(
+    () => shotsForClubVariant(shots, selectedClub, selectedShotVariantId),
+    [selectedClub, selectedShotVariantId, shots],
+  )
+  const latestShot = selectedClubVariantShots[0] ?? null
   const latestShotShape = latestShot?.shotName ? String(latestShot.shotName).toUpperCase() : 'WAITING FOR SHOT'
   const latestShotScoreTag = shotRankScoreTone(latestShot?.shotRanking)
   const latestShotRankPill = formatRank(latestShot?.shotRanking)
@@ -4512,22 +4572,20 @@ function App({
 
   const sessionIntelligencePoints = useMemo(
     () =>
-      shots
-        .filter((shot) => shot.club === selectedClub)
-        .flatMap((shot) => {
-          const carry = carryValue(shot)
-          const offline = offlineValue(shot)
-          if (typeof carry !== 'number' || typeof offline !== 'number') {
-            return []
-          }
-          return [{ id: shot.id, carry, offline, included: shot.included }]
-        }),
-    [selectedClub, shots],
+      selectedClubVariantShots.flatMap((shot) => {
+        const carry = carryValue(shot)
+        const offline = offlineValue(shot)
+        if (typeof carry !== 'number' || typeof offline !== 'number') {
+          return []
+        }
+        return [{ id: shot.id, carry, offline, included: shot.included }]
+      }),
+    [selectedClubVariantShots],
   )
 
   const selectedClubIncludedShots = useMemo(
-    () => shots.filter((shot) => shot.club === selectedClub),
-    [selectedClub, shots],
+    () => selectedClubVariantShots,
+    [selectedClubVariantShots],
   )
 
   const sessionShotWindow = useMemo(() => {
@@ -4681,7 +4739,15 @@ function App({
   }, [shots])
 
   const excludeLastShot = () => {
-    setShots((currentShots) => currentShots.slice(1))
+    setShots((currentShots) => {
+      const shotIndex = currentShots.findIndex((shot) =>
+        shotMatchesIdentity(shot, selectedClub, selectedShotVariantId),
+      )
+      if (shotIndex < 0) {
+        return currentShots
+      }
+      return currentShots.filter((_, index) => index !== shotIndex)
+    })
   }
 
   if (forceSessionIntelligenceRoute) {
@@ -5558,7 +5624,14 @@ function App({
                     clubLabel={getClubDisplayName(selectedDetailClub)}
                     componentBreakdown={selectedClubComponentBreakdown}
                     defaultMetric={clubDetailDefaultMetricV2}
+                    selectedVariantId={selectedDetailShotVariantId}
                     swingsIncludedCount={clubDetailSwingsIncludedCount}
+                    variantLabel={getShotVariantLabel(
+                      selectedDetailClub,
+                      selectedDetailShotVariantId,
+                    )}
+                    variants={selectedDetailShotVariants}
+                    onVariantChange={setSelectedDetailShotVariantId}
                     dispersionChart={
                       selectedClubDispersionPoints.length === 0 ? (
                         <p className="support-card-copy">No shot data available for this club yet</p>

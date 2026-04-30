@@ -80,3 +80,23 @@ export const getShotVariantsForClub = (club: Club): ShotVariant[] => {
     ...storedVariants.filter((variant) => variant.id !== STOCK_SHOT_VARIANT_ID),
   ]
 }
+
+export const getShotVariantLabel = (club: Club, shotVariantId?: string) => {
+  const resolvedId = resolveShotVariantId(shotVariantId)
+  return (
+    getShotVariantsForClub(club).find((variant) => variant.id === resolvedId)?.name ??
+    stockShotVariant.name
+  )
+}
+
+export const shotMatchesIdentity = (
+  shot: { club: Club; shotVariantId?: string },
+  club: Club,
+  shotVariantId?: string,
+) => shot.club === club && resolveShotVariantId(shot.shotVariantId) === resolveShotVariantId(shotVariantId)
+
+export const shotsForClubVariant = <T extends { club: Club; shotVariantId?: string }>(
+  shots: T[],
+  club: Club,
+  shotVariantId?: string,
+) => shots.filter((shot) => shotMatchesIdentity(shot, club, shotVariantId))

@@ -90,6 +90,13 @@
   width: 100%;
 }
 
+.club-v2-score-context-line {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  margin-top: -32px;
+}
+
 .club-v2-score-line .club-detail-score-value {
   justify-self: start;
 }
@@ -107,16 +114,89 @@
   display: grid;
   justify-items: end;
   min-width: 0;
+  position: relative;
+  transform: translateX(8px);
+}
+
+.club-v2-club-identity-trigger {
+  display: grid;
+  justify-items: end;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: right;
+}
+
+.club-detail-v2 .club-v2-club-identity-trigger:hover,
+.club-detail-v2 .club-v2-club-identity-trigger:focus {
+  background: transparent;
+}
+
+.club-v2-club-identity-trigger:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .club-v2-shot-variant-label {
-  max-width: 180px;
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 6px;
+  width: 104px;
+  margin-top: 9px;
   color: rgba(207, 216, 205, 0.72);
   font-size: 13px;
-  line-height: 1.15;
+  line-height: 1.18;
+  text-align: right;
+}
+
+.club-v2-shot-variant-text {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.club-v2-variant-chevron {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  margin-top: 5px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid rgba(207, 216, 205, 0.72);
+}
+
+.club-v2-variant-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 180px;
+  border: 1px solid #314233;
+  border-radius: 8px;
+  background: rgba(19, 30, 22, 0.96);
+  padding: 5px;
+}
+
+.club-v2-variant-option {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #cfd8cd;
+  padding: 7px 8px;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.club-v2-variant-option.is-selected {
+  color: rgba(244, 206, 96, 0.96);
+  background: rgba(234, 179, 8, 0.12);
 }
 
 .club-detail-v2 .club-detail-score-col {
