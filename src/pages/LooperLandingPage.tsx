@@ -448,6 +448,9 @@ export default function LooperLandingPage() {
             <a className="looper-landing-action looper-landing-action-primary" href="/dashboard">
               Go to Dashboard
             </a>
+            <a className="looper-landing-action looper-landing-action-secondary" href="/read">
+              The Read
+            </a>
 
             <div className="looper-landing-session">
               <label className="looper-landing-label" htmlFor="landing-club-select">

@@ -5360,6 +5360,7 @@ function App({
               >
                 Last Session
               </button>
+              <a href="/read">The Read</a>
             </nav>
 
             <div className="dashboard-rail-clubs">

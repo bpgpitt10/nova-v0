@@ -8,6 +8,7 @@ import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
+import TheReadPage from './pages/TheReadPage.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -101,6 +102,7 @@ function RootRouter() {
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
     const showDashboardRoute = pathname === '/dashboard'
+    const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
 
     if (showBagSetup || !hasBagConfig) {
@@ -117,6 +119,9 @@ function RootRouter() {
     }
     if (showSessionIntelligence) {
       return <SessionIntelligencePage />
+    }
+    if (showTheRead) {
+      return <TheReadPage />
     }
     if (showLooperLanding) {
       return <LooperLandingPage />
