@@ -25,11 +25,16 @@ import ClubDetailV2, {
 } from './pages/ClubDetailV2'
 import {
   activeBagClubIds,
-  getClubConfig,
   getClubDisplayName,
   getClubLabel,
   type Club,
 } from './lib/bagConfig'
+import {
+  getClubBucket,
+  getClubBucketLabel,
+  getClubFamily,
+  getIronBucket,
+} from './lib/clubTaxonomy'
 import { confidenceConfig } from './lib/confidenceConfig'
 import { guardedWeightedCarryMean } from './lib/carryOutlierGuard'
 import {
@@ -474,25 +479,7 @@ const strongestComponentLabel = (
 }
 
 const clubGroupLabel = (club: Club) => {
-  const category = getClubConfig(club)?.category
-
-  if (category === 'wood') {
-    return 'Woods'
-  }
-
-  if (category === 'hybrid') {
-    return 'Hybrids'
-  }
-
-  if (club === '5i' || club === '6i') {
-    return 'Long Irons'
-  }
-
-  if (club === '7i' || club === '8i' || club === '9i' || club === 'PW') {
-    return 'Scoring Irons'
-  }
-
-  return 'Wedges'
+  return getClubBucketLabel(getClubBucket(club))
 }
 
 const clubAnchorId = (club: Club) => `club-${club.toLowerCase().replace(/\s+/g, '-')}`
@@ -3013,31 +3000,24 @@ function App({
 
     // Conservative tuning defaults by broad club bucket, not universal golf ideals.
     const flightFloorByClub = (() => {
-      const normalizedClub = sharedProfileClub.trim().toUpperCase()
+      const family = getClubFamily(sharedProfileClub)
+      const ironBucket = getIronBucket(sharedProfileClub)
       const isDriverBucket =
-        normalizedClub === 'DRIVER' || normalizedClub === 'MINI DRIVER'
-      const isFairwayHybridUtilityBucket =
-        /^\d+W$/.test(normalizedClub) ||
-        /^\d+H$/.test(normalizedClub) ||
-        normalizedClub.includes('UTILITY') ||
-        normalizedClub.includes('DRIVING IRON') ||
-        normalizedClub.includes('UDI')
-      const isShortIronWedgeBucket =
-        normalizedClub === '8I' ||
-        normalizedClub === '9I' ||
-        ['PW', 'GW', 'SW', 'LW'].includes(normalizedClub)
-      const isLongMidIronBucket = /^[3-7]I$/.test(normalizedClub)
+        sharedProfileClub === 'Driver' || sharedProfileClub === 'Mini Driver'
 
       if (isDriverBucket) {
         return { launch: 2.4, spin: 550 }
       }
-      if (isFairwayHybridUtilityBucket) {
+      if (family === 'wood' || family === 'hybrid') {
         return { launch: 2.1, spin: 500 }
       }
-      if (isShortIronWedgeBucket) {
+      if (family === 'wedge' || ironBucket === 'short') {
         return { launch: 1.3, spin: 300 }
       }
-      if (isLongMidIronBucket) {
+      if (ironBucket === 'mid') {
+        return { launch: 1.55, spin: 360 }
+      }
+      if (ironBucket === 'long') {
         return { launch: 1.8, spin: 425 }
       }
       return { launch: 1.8, spin: 425 }

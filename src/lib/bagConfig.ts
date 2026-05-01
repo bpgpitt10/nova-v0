@@ -1,3 +1,10 @@
+import {
+  BAG_SETUP_SECTION_ORDER,
+  getBagSetupSectionKey,
+  getBagSetupSectionLabel,
+  getClubFamily,
+} from './clubTaxonomy'
+
 export type Club =
   | 'Driver'
   | 'Mini Driver'
@@ -101,18 +108,13 @@ const LEGACY_DEFAULT_BAG: Club[] = [
 ]
 
 const CLUB_DISPLAY_NAMES: Partial<Record<Club, string>> = {
-  Driver: 'Dr',
   'Mini Driver': 'Mini',
 }
 
-export const bagSetupSections: BagSetupSection[] = [
-  { title: 'Driver', clubs: ['Driver', 'Mini Driver'] },
-  { title: 'Fairway Woods', clubs: ['2W', '3W', '4W', '5W', '7W', '9W'] },
-  { title: 'Hybrids', clubs: ['2H', '3H', '4H', '5H', '6H', '7H'] },
-  { title: 'Utility / Driving Irons', clubs: ['1i', '2i'] },
-  { title: 'Irons', clubs: ['3i', '4i', '5i', '6i', '7i', '8i', '9i', 'PW'] },
-  { title: 'Wedges', clubs: ['AW', 'GW', 'SW', 'LW'] },
-]
+export const bagSetupSections: BagSetupSection[] = BAG_SETUP_SECTION_ORDER.map((sectionKey) => ({
+  title: getBagSetupSectionLabel(sectionKey),
+  clubs: CLUB_ORDER.filter((club) => getBagSetupSectionKey(club) === sectionKey),
+})).filter((section) => section.clubs.length > 0)
 
 const isClub = (value: unknown): value is Club =>
   typeof value === 'string' && CLUB_SET.has(value as Club)
@@ -181,18 +183,7 @@ const buildCurrentBagConfig = (selectedClubs: Club[]): BagClubConfig[] => {
     id: club,
     label: club,
     displayName: CLUB_DISPLAY_NAMES[club] ?? club,
-    category:
-      club === 'Driver' || club === 'Mini Driver'
-        ? 'wood'
-        : ['2W', '3W', '4W', '5W', '7W', '9W'].includes(club)
-          ? 'wood'
-          : ['2H', '3H', '4H', '5H', '6H', '7H'].includes(club)
-            ? 'hybrid'
-            : ['1i', '2i'].includes(club)
-              ? 'iron'
-              : ['AW', 'GW', 'SW', 'LW'].includes(club)
-                ? 'wedge'
-                : 'iron',
+    category: getClubFamily(club),
     active: activeClubIdSet.has(club),
     sortOrder: (index + 1) * 10,
   }))

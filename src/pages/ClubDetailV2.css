@@ -115,6 +115,7 @@
   justify-items: end;
   min-width: 0;
   position: relative;
+  z-index: 3;
   transform: translateX(8px);
 }
 
@@ -269,6 +270,8 @@
 }
 
 .club-v2-heatmap-section {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
   gap: 0.82rem;

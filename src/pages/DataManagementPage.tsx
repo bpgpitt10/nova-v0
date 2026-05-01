@@ -5,7 +5,6 @@ import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import { getShotVariantLabel } from '../lib/shotVariants'
 import {
   clearActiveSessionDraft,
-  isSessionIncludedInAnalysis,
   isSessionOldExcludedBySystem,
   loadActiveSessionDraft,
   loadSavedSessions,
@@ -31,7 +30,7 @@ const formatWhole = (value: number | undefined, unit = '') => {
 const formatRank = (value: number | string | undefined) => formatShotRank(value)
 
 const shotTableColumns = [
-  'In',
+  'Select',
   'Delete',
   'Pure',
   'Time',
@@ -262,8 +261,8 @@ const isMockSession = (session: SavedSession) =>
     session.shots.length > 0 &&
     session.shots.every((shot) => shot.source === 'mock'))
 
-const shotTableRowValues = (shot: Shot, systemOldExcluded: boolean) => [
-  systemOldExcluded || !shot.included ? '' : 'Checked',
+const shotTableRowValues = (shot: Shot, _systemOldExcluded: boolean) => [
+  '',
   'Delete',
   shot.feltPerfect ? '✓ Pure' : 'Pure',
   new Date(shot.capturedAt).toLocaleTimeString(),
@@ -311,6 +310,8 @@ function DataManagementPage() {
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(() => new Set())
   const [allExpanded, setAllExpanded] = useState(false)
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(() => new Set())
+  const [selectedShotKeys, setSelectedShotKeys] = useState<Set<string>>(() => new Set())
   const showDevMockControls =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('devMock') === '1'
@@ -324,30 +325,12 @@ function DataManagementPage() {
     [savedSessions],
   )
   const nowMs = Date.now()
-  const isSessionSelected = (session: SavedSession) =>
-    !isSessionOldExcludedBySystem(session, nowMs) &&
-    isSessionIncludedInAnalysis(session) &&
-    (session.shots.length === 0 || session.shots.every((shot) => shot.included))
-  const allSessionsIncluded =
-    sortedSessions.filter((session) => !isSessionOldExcludedBySystem(session, nowMs)).length > 0 &&
-    sortedSessions
-      .filter((session) => !isSessionOldExcludedBySystem(session, nowMs))
-      .every(isSessionSelected)
-  const selectedSessionIds = useMemo(
-    () => sortedSessions.filter(isSessionSelected).map((session) => session.id),
-    [sortedSessions],
-  )
-  const selectedShotCount = useMemo(
-    () =>
-      sortedSessions.reduce((count, session) => {
-        if (isSessionOldExcludedBySystem(session, nowMs)) {
-          return count
-        }
-        return count + session.shots.filter((shot) => shot.included).length
-      }, 0),
-    [nowMs, sortedSessions],
-  )
-  const hasAnySelectedItems = selectedSessionIds.length > 0 || selectedShotCount > 0
+  const shotSelectionKey = (sessionId: string, shotId: string) => `${sessionId}:${shotId}`
+  const allRowsSelected =
+    sortedSessions.length > 0 &&
+    sortedSessions.every((session) => selectedSessionIds.has(session.id))
+  const selectedShotCount = selectedShotKeys.size
+  const hasAnySelectedItems = selectedSessionIds.size > 0 || selectedShotCount > 0
   const exportShotCount = useMemo(
     () => sortedSessions.reduce((count, session) => count + session.shots.length, 0),
     [sortedSessions],
@@ -363,6 +346,12 @@ function DataManagementPage() {
       if (allExpanded) {
         setAllExpanded(false)
       }
+      if (selectedSessionIds.size > 0) {
+        setSelectedSessionIds(new Set())
+      }
+      if (selectedShotKeys.size > 0) {
+        setSelectedShotKeys(new Set())
+      }
       return
     }
 
@@ -373,27 +362,17 @@ function DataManagementPage() {
     if (nextAllExpanded !== allExpanded) {
       setAllExpanded(nextAllExpanded)
     }
-  }, [allExpanded, expandedSessionIds, sortedSessions])
+  }, [allExpanded, expandedSessionIds, selectedSessionIds.size, selectedShotKeys.size, sortedSessions])
 
-  const setAllSessionsIncluded = (included: boolean) => {
-    persistSessions(
-      savedSessions.map((session) => ({
-        ...session,
-        shots: session.shots.map((shot) => ({
-          ...shot,
-          included: isSessionOldExcludedBySystem(session, nowMs) ? false : included,
-        })),
-        metadata: {
-          ...(session.metadata ?? {
-            app: 'nova-validation',
-            schemaVersion: 2,
-          }),
-          includeInAnalysis: isSessionOldExcludedBySystem(session, nowMs)
-            ? false
-            : included,
-        },
-      })),
-    )
+  const setAllRowsSelected = (selected: boolean) => {
+    if (!selected) {
+      setSelectedSessionIds(new Set())
+      setSelectedShotKeys(new Set())
+      return
+    }
+
+    setSelectedSessionIds(new Set(sortedSessions.map((session) => session.id)))
+    setSelectedShotKeys(new Set())
   }
 
   const toggleSessionExpanded = (sessionId: string) => {
@@ -423,66 +402,38 @@ function DataManagementPage() {
     setAllExpanded(true)
   }
 
-  const toggleSessionIncluded = (sessionId: string, included: boolean) => {
-    persistSessions(
-      savedSessions.map((session) =>
-        session.id === sessionId
-          ? isSessionOldExcludedBySystem(session, nowMs)
-            ? session
-            : {
-                ...session,
-                shots: session.shots.map((shot) => ({ ...shot, included })),
-                metadata: {
-                  ...(session.metadata ?? {
-                    app: 'nova-validation',
-                    schemaVersion: 2,
-                  }),
-                  includeInAnalysis: included,
-                },
-              }
-          : session,
-      ),
-    )
+  const toggleSessionSelected = (sessionId: string, selected: boolean) => {
+    setSelectedSessionIds((current) => {
+      const next = new Set(current)
+      if (selected) {
+        next.add(sessionId)
+      } else {
+        next.delete(sessionId)
+      }
+      return next
+    })
+    setSelectedShotKeys((current) => {
+      const next = new Set(current)
+      savedSessions
+        .find((session) => session.id === sessionId)
+        ?.shots.forEach((shot) => {
+          next.delete(shotSelectionKey(sessionId, shot.id))
+        })
+      return next
+    })
   }
 
-  const toggleShotIncluded = (sessionId: string, shotId: string) => {
-    persistSessions(
-      savedSessions.map((session) =>
-        session.id === sessionId
-          ? isSessionOldExcludedBySystem(session, nowMs)
-            ? {
-                ...session,
-                shots: session.shots.map((shot) =>
-                  shot.id === shotId ? { ...shot, included: false } : shot,
-                ),
-                metadata: {
-                  ...(session.metadata ?? {
-                    app: 'nova-validation',
-                    schemaVersion: 2,
-                  }),
-                  includeInAnalysis: false,
-                },
-              }
-            : (() => {
-                const nextShots = session.shots.map((shot) =>
-                  shot.id === shotId ? { ...shot, included: !shot.included } : shot,
-                )
-                return {
-                  ...session,
-                  shots: nextShots,
-                  metadata: {
-                    ...(session.metadata ?? {
-                      app: 'nova-validation',
-                      schemaVersion: 2,
-                    }),
-                    includeInAnalysis:
-                      nextShots.length > 0 && nextShots.every((shot) => shot.included),
-                  },
-                }
-              })()
-          : session,
-      ),
-    )
+  const toggleShotSelected = (sessionId: string, shotId: string) => {
+    const key = shotSelectionKey(sessionId, shotId)
+    setSelectedShotKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
   }
 
   const toggleShotPure = (sessionId: string, shotId: string) => {
@@ -516,6 +467,11 @@ function DataManagementPage() {
           : session,
       ),
     )
+    setSelectedShotKeys((current) => {
+      const next = new Set(current)
+      next.delete(shotSelectionKey(sessionId, shotId))
+      return next
+    })
   }
 
   const deleteSession = (sessionId: string) => {
@@ -525,6 +481,20 @@ function DataManagementPage() {
     }
 
     persistSessions(savedSessions.filter((session) => session.id !== sessionId))
+    setSelectedSessionIds((current) => {
+      const next = new Set(current)
+      next.delete(sessionId)
+      return next
+    })
+    setSelectedShotKeys((current) => {
+      const next = new Set(current)
+      savedSessions
+        .find((session) => session.id === sessionId)
+        ?.shots.forEach((shot) => {
+          next.delete(shotSelectionKey(sessionId, shot.id))
+        })
+      return next
+    })
     setExpandedSessionIds((current) => {
       const next = new Set(current)
       next.delete(sessionId)
@@ -533,37 +503,30 @@ function DataManagementPage() {
   }
 
   const deleteSelectedSessions = () => {
-    const selectedSessionIdSet = new Set(selectedSessionIds)
     if (!hasAnySelectedItems) {
       return
     }
 
     const persistedSessions = loadSavedSessions()
     const nextSessions = persistedSessions
-      .filter((session) => !selectedSessionIdSet.has(session.id))
+      .filter((session) => !selectedSessionIds.has(session.id))
       .map((session) => {
-        if (isSessionOldExcludedBySystem(session, nowMs)) {
-          return session
-        }
-        const remainingShots = session.shots.filter((shot) => !shot.included)
+        const remainingShots = session.shots.filter(
+          (shot) => !selectedShotKeys.has(shotSelectionKey(session.id, shot.id)),
+        )
         if (remainingShots.length === 0) {
           return null
         }
         return {
           ...session,
           shots: remainingShots,
-          metadata: {
-            ...(session.metadata ?? {
-              app: 'nova-validation',
-              schemaVersion: 2,
-            }),
-            includeInAnalysis: false,
-          },
         }
       })
       .filter((session): session is SavedSession => Boolean(session))
 
     persistSessions(nextSessions)
+    setSelectedSessionIds(new Set())
+    setSelectedShotKeys(new Set())
 
     setExpandedSessionIds((current) => {
       const next = new Set(current)
@@ -637,25 +600,17 @@ function DataManagementPage() {
       <div className="data-management-shell">
         <header className="data-management-header">
           <h1>Data Management</h1>
-          <p>Review sessions, maintain inclusion rules, and clean shot history.</p>
+          <p>Review sessions, select rows for deletion, and clean shot history.</p>
           <div className="data-management-controls">
             <label className="dm-master-toggle">
               <input
-                checked={allSessionsIncluded}
+                checked={allRowsSelected}
                 disabled={sortedSessions.length === 0}
-                onChange={(event) => setAllSessionsIncluded(event.target.checked)}
+                onChange={(event) => setAllRowsSelected(event.target.checked)}
                 type="checkbox"
               />
               <span>Select All</span>
             </label>
-            <button
-              className="dm-action dm-delete dm-delete-selected"
-              disabled={!hasAnySelectedItems}
-              onClick={deleteSelectedSessions}
-              type="button"
-            >
-              Delete Selected
-            </button>
             <button
               className="dm-action dm-expand-all"
               disabled={sortedSessions.length === 0}
@@ -680,14 +635,24 @@ function DataManagementPage() {
                 Delete All Mock
               </button>
             ) : null}
-            <button
-              className="dm-action dm-export"
-              disabled={exportShotCount === 0}
-              onClick={exportShotsCsv}
-              type="button"
-            >
-              Export CSV
-            </button>
+            <div className="dm-export-actions">
+              <button
+                className="dm-action dm-delete dm-delete-selected"
+                disabled={!hasAnySelectedItems}
+                onClick={deleteSelectedSessions}
+                type="button"
+              >
+                Delete Selected
+              </button>
+              <button
+                className="dm-action dm-export"
+                disabled={exportShotCount === 0}
+                onClick={exportShotsCsv}
+                type="button"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
         </header>
 
@@ -700,7 +665,7 @@ function DataManagementPage() {
                 <thead>
                   <tr>
                     <th>Open</th>
-                    <th>In</th>
+                    <th>Select</th>
                     <th>Delete</th>
                     <th>Date</th>
                     <th>Time</th>
@@ -713,7 +678,7 @@ function DataManagementPage() {
                   {sortedSessions.flatMap((session) => {
                     const expanded = expandedSessionIds.has(session.id)
                     const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
-                    const included = isSessionSelected(session)
+                    const sessionSelected = selectedSessionIds.has(session.id)
                     const groups = expanded ? sessionShotGroups(session) : []
                     const clubsText = sessionClubSummary(session) || '-'
                     const endedDate = new Date(session.endedAt)
@@ -721,9 +686,7 @@ function DataManagementPage() {
 
                     return [
                       <tr
-                        className={`data-session-row ${included ? '' : 'is-excluded'} ${
-                          systemOldExcluded ? 'is-system-old' : ''
-                        }`}
+                        className={`data-session-row ${systemOldExcluded ? 'is-system-old' : ''}`}
                         key={`session-${session.id}`}
                       >
                         <td>
@@ -737,11 +700,10 @@ function DataManagementPage() {
                         </td>
                         <td>
                           <input
-                            aria-label={`Include session ${session.id}`}
-                            checked={included}
-                            disabled={systemOldExcluded}
+                            aria-label={`Select session ${session.id}`}
+                            checked={sessionSelected}
                             onChange={(event) =>
-                              toggleSessionIncluded(session.id, event.target.checked)
+                              toggleSessionSelected(session.id, event.target.checked)
                             }
                             type="checkbox"
                           />
@@ -790,7 +752,7 @@ function DataManagementPage() {
                                         key={`${session.id}-avg-${group.club}`}
                                       >
                                         <td>AVG</td>
-                                        <td>{systemOldExcluded ? 'Old / Excluded' : 'Included'}</td>
+                                        <td>-</td>
                                         <td>-</td>
                                         <td>-</td>
                                         <td>{getClubLabel(group.club)}</td>
@@ -821,10 +783,12 @@ function DataManagementPage() {
                                         <tr key={`${session.id}-${shot.id}`}>
                                           <td>
                                             <input
-                                              aria-label={`Include shot ${shot.id}`}
-                                              checked={systemOldExcluded ? false : shot.included}
-                                              disabled={systemOldExcluded}
-                                              onChange={() => toggleShotIncluded(session.id, shot.id)}
+                                              aria-label={`Select shot ${shot.id}`}
+                                              checked={selectedShotKeys.has(
+                                                shotSelectionKey(session.id, shot.id),
+                                              )}
+                                              disabled={sessionSelected}
+                                              onChange={() => toggleShotSelected(session.id, shot.id)}
                                               type="checkbox"
                                             />
                                           </td>

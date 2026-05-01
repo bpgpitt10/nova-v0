@@ -647,6 +647,8 @@ td {
 }
 
 .club-detail-looper-read {
+  position: relative;
+  z-index: 2;
   padding: 16px;
   display: grid;
   grid-template-columns: 156px minmax(320px, 520px) minmax(180px, 225px);
