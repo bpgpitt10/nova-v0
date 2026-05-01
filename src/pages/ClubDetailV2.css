@@ -84,9 +84,9 @@
 
 .club-v2-score-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: baseline;
-  column-gap: 0.7rem;
+  column-gap: 1.05rem;
   width: 100%;
 }
 
@@ -95,6 +95,7 @@
   align-items: center;
   min-height: 30px;
   margin-top: -32px;
+  transform: translateX(-8px);
 }
 
 .club-v2-score-line .club-detail-score-value {
@@ -113,10 +114,11 @@
 .club-v2-club-identity {
   display: grid;
   justify-items: end;
+  justify-self: end;
   min-width: 0;
   position: relative;
   z-index: 3;
-  transform: translateX(8px);
+  transform: translateX(18px);
 }
 
 .club-v2-club-identity-trigger {

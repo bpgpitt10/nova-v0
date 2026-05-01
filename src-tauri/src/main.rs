@@ -7,7 +7,7 @@ use flume::RecvTimeoutError;
 use std::fs::{OpenOptions, create_dir_all};
 use std::io::Write;
 use std::net::{SocketAddr, TcpStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -15,7 +15,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use mdns_sd::{HostnameResolutionEvent, ServiceDaemon, ServiceEvent};
 use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 const HELPER_HOST: &str = "127.0.0.1";
 const HELPER_PORT: u16 = 8787;
@@ -172,11 +172,16 @@ fn launch_sidecar(app_handle: &AppHandle) -> Result<Child, String> {
 }
 
 fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &SidecarState) {
+    #[cfg(windows)]
+    log_windows_helper_processes("before-launch-probe", resolve_sidecar_path(app_handle).ok().as_deref());
+
     match probe_helper() {
         HelperProbe::CompatibleRunning => {
             println!(
         "[OpenGolfCoach sidecar] compatible helper already running at {HELPER_HEALTH_URL}; reusing existing process"
       );
+            #[cfg(windows)]
+            log_windows_helper_processes("compatible-helper-reused", resolve_sidecar_path(app_handle).ok().as_deref());
         }
         HelperProbe::IncompatibleService(reason) => {
             eprintln!(
@@ -185,6 +190,8 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
             eprintln!(
         "[OpenGolfCoach sidecar] leaving existing service untouched; enrichment will fail until port is freed or a compatible helper is running"
       );
+            #[cfg(windows)]
+            log_windows_helper_processes("incompatible-service-detected", resolve_sidecar_path(app_handle).ok().as_deref());
         }
         HelperProbe::PortFree => {
             let mut guard = match sidecar_state.child.lock() {
@@ -208,6 +215,8 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
                     println!(
             "[OpenGolfCoach sidecar] bundled helper started on http://{HELPER_HOST}:{HELPER_PORT}"
           );
+                    #[cfg(windows)]
+                    log_windows_helper_processes("after-launch", resolve_sidecar_path(app_handle).ok().as_deref());
                 }
                 Err(error) => {
                     eprintln!("[OpenGolfCoach sidecar] {error}");
@@ -215,6 +224,245 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
             }
         }
     }
+}
+
+fn shutdown_sidecar(app_handle: &AppHandle, sidecar_state: &SidecarState) {
+    println!("[OpenGolfCoach sidecar] shutdown_sidecar invoked");
+
+    let mut guard = match sidecar_state.child.lock() {
+        Ok(lock) => lock,
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] failed to acquire sidecar mutex during shutdown: {error}");
+            return;
+        }
+    };
+
+    let Some(mut child) = guard.take() else {
+        println!("[OpenGolfCoach sidecar] no tracked bundled helper child was present during shutdown");
+        return;
+    };
+
+    println!(
+        "[OpenGolfCoach sidecar] tracked bundled helper child found with pid {}",
+        child.id()
+    );
+
+    match child.try_wait() {
+        Ok(Some(status)) => {
+            println!(
+                "[OpenGolfCoach sidecar] bundled helper already exited with status {status}"
+            );
+            return;
+        }
+        Ok(None) => {
+            println!("[OpenGolfCoach sidecar] bundled helper is still running; attempting kill");
+        }
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] failed to query bundled helper status: {error}");
+        }
+    }
+
+    match child.kill() {
+        Ok(()) => {
+            println!("[OpenGolfCoach sidecar] kill signal sent to bundled helper");
+        }
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] failed to terminate bundled helper: {error}");
+        }
+    }
+
+    match child.wait() {
+        Ok(status) => {
+            println!(
+                "[OpenGolfCoach sidecar] bundled helper terminated during app shutdown with status {status}"
+            );
+        }
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] failed to reap bundled helper: {error}");
+        }
+    }
+
+    #[cfg(windows)]
+    cleanup_matching_windows_helper_processes(app_handle);
+}
+
+#[cfg(windows)]
+#[derive(Debug)]
+struct WindowsHelperProcessInfo {
+    pid: u32,
+    name: String,
+    executable_path: Option<PathBuf>,
+}
+
+#[cfg(windows)]
+fn normalized_path_string(path: &Path) -> String {
+    path.to_string_lossy().replace('/', "\\").to_ascii_lowercase()
+}
+
+#[cfg(windows)]
+fn list_windows_helper_processes() -> Vec<WindowsHelperProcessInfo> {
+    let script = "Get-CimInstance Win32_Process -Filter \"Name LIKE 'open-golf-coach-helper%'\" | ForEach-Object { $exe = if ($_.ExecutablePath) { $_.ExecutablePath } else { '' }; Write-Output (\"$($_.ProcessId)`t$($_.Name)`t$exe\") }";
+
+    let output = match Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] failed to enumerate helper processes via PowerShell: {error}");
+            return Vec::new();
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!(
+            "[OpenGolfCoach sidecar] helper process enumeration failed with status {}: {}",
+            output.status,
+            stderr.trim()
+        );
+        return Vec::new();
+    }
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.splitn(3, '\t');
+            let pid = parts.next()?.trim().parse::<u32>().ok()?;
+            let name = parts.next()?.trim().to_string();
+            let executable_path = parts
+                .next()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(PathBuf::from);
+
+            Some(WindowsHelperProcessInfo {
+                pid,
+                name,
+                executable_path,
+            })
+        })
+        .collect()
+}
+
+#[cfg(windows)]
+fn log_windows_helper_processes(context: &str, bundled_helper_path: Option<&Path>) {
+    let bundled_helper_path = bundled_helper_path.map(normalized_path_string);
+    let processes = list_windows_helper_processes();
+
+    if processes.is_empty() {
+        println!("[OpenGolfCoach sidecar] helper process snapshot ({context}): none");
+        return;
+    }
+
+    println!(
+        "[OpenGolfCoach sidecar] helper process snapshot ({context}): {} process(es)",
+        processes.len()
+    );
+    for process in processes {
+        let path_display = process
+            .executable_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "<unknown>".to_string());
+        let matches_bundled = process
+            .executable_path
+            .as_ref()
+            .map(|path| normalized_path_string(path))
+            .and_then(|path| bundled_helper_path.as_ref().map(|bundled| path == *bundled))
+            .unwrap_or(false);
+
+        println!(
+            "[OpenGolfCoach sidecar] helper process snapshot ({context}): pid={} name={} path={} matches_bundled={}",
+            process.pid,
+            process.name,
+            path_display,
+            matches_bundled
+        );
+    }
+}
+
+#[cfg(windows)]
+fn cleanup_matching_windows_helper_processes(app_handle: &AppHandle) {
+    let bundled_helper_path = match resolve_sidecar_path(app_handle) {
+        Ok(path) => path,
+        Err(error) => {
+            eprintln!("[OpenGolfCoach sidecar] could not resolve bundled helper path during cleanup: {error}");
+            return;
+        }
+    };
+
+    let bundled_helper_path_normalized = normalized_path_string(&bundled_helper_path);
+    let processes = list_windows_helper_processes();
+
+    if processes.is_empty() {
+        println!("[OpenGolfCoach sidecar] no helper processes remain after tracked child shutdown");
+        return;
+    }
+
+    println!(
+        "[OpenGolfCoach sidecar] helper processes remaining after tracked child shutdown: {}",
+        processes.len()
+    );
+
+    for process in processes {
+        let Some(executable_path) = process.executable_path.as_ref() else {
+            println!(
+                "[OpenGolfCoach sidecar] leaving helper pid={} name={} untouched because executable path is unknown",
+                process.pid, process.name
+            );
+            continue;
+        };
+
+        let normalized_process_path = normalized_path_string(executable_path);
+        let matches_bundled = normalized_process_path == bundled_helper_path_normalized;
+
+        println!(
+            "[OpenGolfCoach sidecar] remaining helper pid={} name={} path={} matches_bundled={}",
+            process.pid,
+            process.name,
+            executable_path.display(),
+            matches_bundled
+        );
+
+        if !matches_bundled {
+            continue;
+        }
+
+        match Command::new("taskkill")
+            .args(["/PID", &process.pid.to_string(), "/T", "/F"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                println!(
+                    "[OpenGolfCoach sidecar] terminated matching bundled helper cleanup pid={}",
+                    process.pid
+                );
+            }
+            Ok(output) => {
+                eprintln!(
+                    "[OpenGolfCoach sidecar] failed to terminate matching bundled helper cleanup pid={} status={} stderr={}",
+                    process.pid,
+                    output.status,
+                    String::from_utf8_lossy(&output.stderr).trim()
+                );
+            }
+            Err(error) => {
+                eprintln!(
+                    "[OpenGolfCoach sidecar] failed to invoke taskkill for bundled helper cleanup pid={}: {}",
+                    process.pid, error
+                );
+            }
+        }
+    }
+
+    log_windows_helper_processes("post-cleanup", Some(&bundled_helper_path));
 }
 
 #[derive(Serialize, Clone)]
@@ -458,12 +706,39 @@ fn main() {
             append_nova_log,
             discover_nova_ws_endpoint
         ])
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { .. } = event {
+                println!(
+                    "[OpenGolfCoach sidecar] main window close requested for label {}",
+                    window.label()
+                );
+                let sidecar_state = window.state::<SidecarState>();
+                shutdown_sidecar(window.app_handle(), sidecar_state.inner());
+                println!("[OpenGolfCoach sidecar] requesting full app exit after window close");
+                window.app_handle().exit(0);
+            }
+        })
         .setup(|app| {
             let app_handle = app.handle().clone();
             let sidecar_state = app_handle.state::<SidecarState>();
             ensure_open_golf_coach_helper(&app_handle, sidecar_state.inner());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application")
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            match event {
+                RunEvent::ExitRequested { .. } => {
+                    println!("[OpenGolfCoach sidecar] RunEvent::ExitRequested fired");
+                    let sidecar_state = app_handle.state::<SidecarState>();
+                    shutdown_sidecar(app_handle, sidecar_state.inner());
+                }
+                RunEvent::Exit => {
+                    println!("[OpenGolfCoach sidecar] RunEvent::Exit fired");
+                    let sidecar_state = app_handle.state::<SidecarState>();
+                    shutdown_sidecar(app_handle, sidecar_state.inner());
+                }
+                _ => {}
+            }
+        })
 }
