@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import theReadLogo from '../assets/the-read-logo.png'
 import './TheReadPage.css'
 
 const LADDER_MIN_YARDAGE = 30
@@ -6,7 +7,16 @@ const LADDER_MAX_YARDAGE = 320
 const BASE_TICK_SPACING = 72
 const SHOT_MARKER_VERTICAL_SPACE = 44
 const WHEEL_STEP_THRESHOLD = 110
+const TARGET_LINE_Y_PERCENT = 50
+const YARDAGE_PERCENT_PER_YARD = 1.2
 type ShotMode = 'stock' | 'pure'
+type SelectedMetric = 'carry' | 'total'
+
+const shotMarkers = [
+  { club: 'PW', optionLabel: 'Long', tone: 'strong', variant: 'Stock', yardage: 108 },
+  { club: 'GW', optionLabel: 'Best', tone: 'safe', variant: 'Flighted', yardage: 100 },
+  { club: 'SW', optionLabel: 'Short', tone: 'soft', variant: 'Soft', yardage: 94 },
+]
 
 const ladderMarks = Array.from(
   { length: (LADDER_MAX_YARDAGE - LADDER_MIN_YARDAGE) / 10 + 1 },
@@ -29,11 +39,11 @@ const LADDER_TICK_SPACING = Math.max(
 const readOptions = [
   {
     label: 'Short',
-    club: 'SW Soft',
+    club: 'SW',
+    variant: 'Soft',
     score: '91 (Play)',
     stock: {
       left: '34%',
-      top: '54%',
       width: '86px',
       height: '46px',
       rotate: '-10deg',
@@ -61,7 +71,6 @@ const readOptions = [
     },
     pure: {
       left: '40%',
-      top: '45%',
       width: '58px',
       height: '32px',
       rotate: '-6deg',
@@ -90,11 +99,11 @@ const readOptions = [
   },
   {
     label: 'Best',
-    club: 'GW Flighted',
+    club: 'GW',
+    variant: 'Flighted',
     score: '91 (Play)',
     stock: {
       left: '30%',
-      top: '38%',
       width: '102px',
       height: '40px',
       rotate: '7deg',
@@ -122,7 +131,6 @@ const readOptions = [
     },
     pure: {
       left: '42%',
-      top: '42%',
       width: '60px',
       height: '28px',
       rotate: '4deg',
@@ -151,11 +159,11 @@ const readOptions = [
   },
   {
     label: 'Long',
-    club: 'PW Stock',
+    club: 'PW',
+    variant: 'Stock',
     score: '91 (Play)',
     stock: {
       left: '40%',
-      top: '28%',
       width: '78px',
       height: '58px',
       rotate: '14deg',
@@ -183,7 +191,6 @@ const readOptions = [
     },
     pure: {
       left: '34%',
-      top: '36%',
       width: '54px',
       height: '36px',
       rotate: '8deg',
@@ -212,12 +219,6 @@ const readOptions = [
   },
 ]
 
-const shotMarkers = [
-  { label: 'PW Stock', optionLabel: 'Long', tone: 'strong', yardage: 108 },
-  { label: 'GW Flighted', optionLabel: 'Best', tone: 'safe', yardage: 100 },
-  { label: 'SW Soft', optionLabel: 'Short', tone: 'soft', yardage: 94 },
-]
-
 const inspectorRows = [
   ['Carry', 'carry'],
   ['Total Distance', 'total'],
@@ -242,11 +243,14 @@ const inspectorRows = [
 const yardageToOffset = (yardage: number) =>
   ((yardage - LADDER_MIN_YARDAGE) / 10) * LADDER_TICK_SPACING
 
+const getYPercentForYardage = (yardage: number, targetYardage: number) =>
+  TARGET_LINE_Y_PERCENT + (targetYardage - yardage) * YARDAGE_PERCENT_PER_YARD
+
 const clampYardage = (yardage: number) =>
   Math.min(LADDER_MAX_YARDAGE, Math.max(LADDER_MIN_YARDAGE, yardage))
 
 export default function TheReadPage() {
-  const [distanceMode, setDistanceMode] = useState<'carry' | 'total'>('carry')
+  const [selectedMetric, setSelectedMetric] = useState<SelectedMetric>('carry')
   const [selectedTargetYardage, setSelectedTargetYardage] = useState(100)
   const [selectedOptionLabel, setSelectedOptionLabel] = useState('Best')
   const [selectedMode, setSelectedMode] = useState<ShotMode>('stock')
@@ -270,27 +274,32 @@ export default function TheReadPage() {
     setSelectedTargetYardage((yardage) => clampYardage(yardage + direction * 10))
   }
   const formatDotValue = (option: (typeof readOptions)[number]['stock']) =>
-    `${distanceMode === 'carry' ? option.carry : option.total}`
+    `${selectedMetric === 'carry' ? option.carry : option.total}`
+  const metricTop = (option: (typeof readOptions)[number]['stock']) =>
+    `${getYPercentForYardage(option[selectedMetric], selectedTargetYardage)}%`
+  const targetLineTop = `${getYPercentForYardage(
+    selectedTargetYardage,
+    selectedTargetYardage,
+  )}%`
 
   return (
     <main className="the-read-page">
       <div className="the-read-shell">
         <header className="the-read-header">
           <div>
-            <h1>The Read</h1>
-            <p>Pick a yardage. The Looper will find the shot you can trust.</p>
+            <img alt="The Read" className="the-read-logo" src={theReadLogo} />
           </div>
           <div className="the-read-toggle" aria-label="Distance mode">
             <button
-              className={distanceMode === 'carry' ? 'is-active' : undefined}
-              onClick={() => setDistanceMode('carry')}
+              className={selectedMetric === 'carry' ? 'is-active' : undefined}
+              onClick={() => setSelectedMetric('carry')}
               type="button"
             >
               Carry
             </button>
             <button
-              className={distanceMode === 'total' ? 'is-active' : undefined}
-              onClick={() => setDistanceMode('total')}
+              className={selectedMetric === 'total' ? 'is-active' : undefined}
+              onClick={() => setSelectedMetric('total')}
               type="button"
             >
               Total
@@ -333,7 +342,7 @@ export default function TheReadPage() {
                 {shotMarkers.map((marker) => (
                   <button
                     className={`the-read-shot-marker the-read-shot-marker-${marker.tone}`}
-                    key={marker.label}
+                    key={`${marker.club}-${marker.variant}`}
                     onClick={() => {
                       selectYardage(marker.yardage)
                       selectShot(marker.optionLabel)
@@ -341,7 +350,7 @@ export default function TheReadPage() {
                     style={{ top: `${yardageToOffset(marker.yardage)}px` }}
                     type="button"
                   >
-                    {marker.label}
+                    {marker.club} {marker.variant}
                   </button>
                 ))}
               </div>
@@ -355,14 +364,17 @@ export default function TheReadPage() {
             </div>
 
             <div className="the-read-dispersion-panel">
-              <div className="the-read-target-line">
+              <div className="the-read-target-line" style={{ top: targetLineTop }}>
                 <span>{selectedTargetYardage} yd target</span>
               </div>
               {readOptions.map((option) => (
                 <article className="the-read-dispersion-column" key={option.label}>
                   <div className="the-read-dispersion-head">
                     <span>{option.label}</span>
-                    <strong>{option.club}</strong>
+                    <strong className="the-read-shot-identity-line">
+                      <span>{option.club}</span>
+                      <b>{option.variant}</b>
+                    </strong>
                     <p>{option.score}</p>
                   </div>
                   <div className="the-read-dispersion-plot">
@@ -375,10 +387,10 @@ export default function TheReadPage() {
                       onClick={() => selectShot(option.label, 'stock')}
                       style={{
                         left: option.stock.left,
-                        top: option.stock.top,
+                        top: metricTop(option.stock),
                         width: option.stock.width,
                         height: option.stock.height,
-                        transform: `rotate(${option.stock.rotate})`,
+                        transform: `translate(-50%, -50%) rotate(${option.stock.rotate})`,
                       }}
                       type="button"
                     >
@@ -395,10 +407,10 @@ export default function TheReadPage() {
                       onClick={() => selectShot(option.label, 'pure')}
                       style={{
                         left: option.pure.left,
-                        top: option.pure.top,
+                        top: metricTop(option.pure),
                         width: option.pure.width,
                         height: option.pure.height,
-                        transform: `rotate(${option.pure.rotate})`,
+                        transform: `translate(-50%, -50%) rotate(${option.pure.rotate})`,
                       }}
                       type="button"
                     >
@@ -413,17 +425,34 @@ export default function TheReadPage() {
 
             <aside className="the-read-inspector" aria-label="Selected shot details">
               <div className="the-read-inspector-head">
-                <span>{selectedMode === 'stock' ? 'Stock' : 'Pure'}</span>
-                <strong>{selectedOption.club}</strong>
+                <span
+                  className={
+                    selectedMode === 'stock'
+                      ? 'the-read-inspector-mode is-stock'
+                      : 'the-read-inspector-mode is-pure'
+                  }
+                >
+                  {selectedMode === 'stock' ? 'Stock' : 'Pure'}
+                </span>
+                <strong className="the-read-inspector-identity">
+                  <span>{selectedOption.club}</span>
+                  <em>{selectedOption.variant}</em>
+                </strong>
               </div>
               <div className="the-read-inspector-rows">
                 {inspectorRows.map(([label, key]) => {
-                  const [value, delta] =
-                    key === 'score'
-                      ? [selectedOption.score, '']
-                      : selectedShot.stats[key]
+                  const stat = key === 'score' ? null : selectedShot.stats[key]
+                  const value = key === 'score' ? selectedOption.score : stat?.[0] ?? '—'
+                  const delta = key === 'score' ? '' : stat?.[1] ?? ''
                   return (
-                    <div className="the-read-inspector-row" key={key}>
+                    <div
+                      className={
+                        key === selectedMetric
+                          ? 'the-read-inspector-row is-selected-metric'
+                          : 'the-read-inspector-row'
+                      }
+                      key={key}
+                    >
                       <span>{label}</span>
                       <strong>{value}</strong>
                       <em>{delta}</em>

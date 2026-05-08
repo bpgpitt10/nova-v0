@@ -45,7 +45,7 @@
   padding: 28px clamp(18px, 2.8vw, 36px) 36px;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 18px;
+  gap: 0;
 }
 
 .the-read-header {
@@ -55,16 +55,15 @@
   gap: 16px;
 }
 
-.the-read-header h1 {
-  margin: 0;
-  color: #ffffff;
-  font-size: 34px;
-  font-weight: 650;
-  line-height: 1;
+.the-read-logo {
+  display: block;
+  width: auto;
+  height: 210px;
+  margin: -46px 0 -74px -42px;
 }
 
 .the-read-header p {
-  margin: 8px 0 0;
+  margin: 0;
   color: #cfd8cd;
   font-size: 14px;
 }
@@ -121,7 +120,6 @@
 .the-read-ladder {
   position: relative;
   min-height: 100%;
-  border-right: 2px solid rgba(244, 206, 96, 0.56);
   overflow: hidden;
 }
 
@@ -131,7 +129,6 @@
   right: 0;
   top: 50%;
   z-index: 3;
-  border-top: 1px solid rgba(244, 206, 96, 0.44);
 }
 
 .the-read-ladder-tape {
@@ -144,60 +141,74 @@
 
 .the-read-yardage-tick {
   position: absolute;
+  left: 0;
   right: 0;
-  min-height: 26px;
-  width: 74px;
+  min-height: 72px;
+  width: 100%;
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0 16px 0 0;
-  color: #cfd8cd;
+  padding: 0;
+  color: #f8edc9;
   cursor: pointer;
   transform: translateY(-50%);
+  z-index: 0;
 }
 
 .the-read-yardage-tick::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  width: 10px;
-  border-top: 1px solid rgba(207, 216, 205, 0.35);
+  content: none;
 }
 
 .the-read-yardage-tick:hover,
 .the-read-yardage-tick:focus {
-  background: transparent;
-  color: #f8edc9;
+  background: rgba(234, 179, 8, 0.04);
 }
 
 .the-read-yardage-tick.is-selected {
+  background: rgba(234, 179, 8, 0.07);
   color: #f8edc9;
 }
 
 .the-read-yardage-tick span {
-  font-size: 16px;
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  font-size: 57px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  opacity: 0.11;
   pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.the-read-yardage-tick.is-selected span,
+.the-read-yardage-tick:hover span,
+.the-read-yardage-tick:focus span {
+  opacity: 0.22;
 }
 
 .the-read-shot-marker {
   position: absolute;
-  left: 0;
-  min-width: 118px;
+  left: 76%;
+  min-width: 82px;
   border: 1px solid rgba(207, 216, 205, 0.18);
   border-radius: 999px;
-  background: rgba(23, 36, 25, 0.92);
+  background: rgba(23, 36, 25, 0.78);
   color: #dce5d8;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 650;
   text-align: center;
+  white-space: nowrap;
   cursor: pointer;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
+  z-index: 4;
 }
 
 .the-read-shot-marker:hover,
 .the-read-shot-marker:focus {
-  background: rgba(30, 49, 35, 0.96);
+  background: rgba(30, 49, 35, 0.9);
 }
 
 .the-read-shot-marker-strong {
@@ -254,8 +265,8 @@
   border: 1px solid #314233;
   border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(23, 36, 25, 0.72), rgba(11, 20, 14, 0.7)),
-    radial-gradient(circle at 50% 45%, rgba(234, 179, 8, 0.08), transparent 38%);
+    linear-gradient(180deg, rgba(23, 36, 25, 0.46), rgba(11, 20, 14, 0.42)),
+    radial-gradient(circle at 50% 45%, rgba(234, 179, 8, 0.045), transparent 38%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
 }
@@ -295,6 +306,8 @@
 .the-read-dispersion-head {
   display: grid;
   gap: 6px;
+  position: relative;
+  z-index: 4;
 }
 
 .the-read-dispersion-head span {
@@ -310,6 +323,27 @@
   font-weight: 620;
 }
 
+.the-read-shot-identity-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.the-read-shot-identity-line span {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.the-read-shot-identity-line b {
+  color: rgba(244, 206, 96, 0.96);
+  font-size: 15px;
+  font-weight: 620;
+}
+
 .the-read-dispersion-head p {
   margin: 0;
   color: #ffffff;
@@ -317,7 +351,7 @@
 }
 
 .the-read-dispersion-plot {
-  position: relative;
+  position: static;
   min-height: 260px;
 }
 
@@ -328,7 +362,6 @@
   min-height: 0;
   padding: 0;
   border-radius: 999px;
-  translate: -50% -50%;
   cursor: pointer;
 }
 
@@ -366,7 +399,7 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 650;
-  translate: -50% -50%;
+  transform: translate(-50%, -50%);
 }
 
 .the-read-ellipse-stock .the-read-ellipse-dot {
@@ -407,9 +440,38 @@
   text-transform: uppercase;
 }
 
+.the-read-inspector-mode.is-stock {
+  color: rgba(244, 206, 96, 0.96);
+}
+
+.the-read-inspector-mode.is-pure {
+  color: rgba(132, 204, 22, 0.94);
+}
+
 .the-read-inspector-head strong {
   color: #ffffff;
   font-size: 19px;
+  line-height: 1.1;
+}
+
+.the-read-inspector-identity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.the-read-inspector-identity span {
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.the-read-inspector-identity em {
+  color: #9fb09f;
+  font-size: 13px;
+  font-style: normal;
   line-height: 1.1;
 }
 
@@ -448,6 +510,17 @@
   font-style: normal;
   text-align: right;
   white-space: nowrap;
+}
+
+.the-read-inspector-row.is-selected-metric span,
+.the-read-inspector-row.is-selected-metric strong {
+  color: #f8edc9;
+  font-weight: 760;
+}
+
+.the-read-inspector-row.is-selected-metric em {
+  color: rgba(244, 206, 96, 0.96);
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {
