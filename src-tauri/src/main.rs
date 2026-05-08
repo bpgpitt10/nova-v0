@@ -111,8 +111,17 @@ fn sidecar_executable_filename() -> String {
     }
 }
 
+fn packaged_sidecar_executable_filename() -> String {
+    if cfg!(target_os = "windows") {
+        format!("{SIDECAR_BASE_NAME}.exe")
+    } else {
+        SIDECAR_BASE_NAME.to_string()
+    }
+}
+
 fn resolve_sidecar_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     let sidecar_filename = sidecar_executable_filename();
+    let packaged_sidecar_filename = packaged_sidecar_executable_filename();
     let mut candidates: Vec<PathBuf> = Vec::new();
 
     if let Ok(resource_path) = app_handle.path().resolve(
@@ -127,6 +136,22 @@ fn resolve_sidecar_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
         .resolve(&sidecar_filename, BaseDirectory::Resource)
     {
         candidates.push(resource_path_flat);
+    }
+
+    if packaged_sidecar_filename != sidecar_filename {
+        if let Ok(resource_path) = app_handle.path().resolve(
+            format!("binaries/{packaged_sidecar_filename}"),
+            BaseDirectory::Resource,
+        ) {
+            candidates.push(resource_path);
+        }
+
+        if let Ok(resource_path_flat) = app_handle
+            .path()
+            .resolve(&packaged_sidecar_filename, BaseDirectory::Resource)
+        {
+            candidates.push(resource_path_flat);
+        }
     }
 
     candidates.push(
