@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import theReadLogo from '../assets/the-read-logo.png'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import { confidenceConfig } from '../lib/confidenceConfig'
@@ -17,7 +18,6 @@ const BASE_TICK_SPACING = 72
 const SHOT_MARKER_VERTICAL_SPACE = 44
 const SHOT_MARKER_LANE_THRESHOLD_PX = 46
 const SHOT_MARKER_LANE_RIGHT_OFFSETS = [8, 68, 128, 38, 98, 158]
-const WHEEL_STEP_THRESHOLD = 110
 const TARGET_LINE_Y_PERCENT = 50
 const YARDAGE_PERCENT_PER_YARD = 1.2
 type ShotMode = 'stock' | 'pure'
@@ -402,8 +402,18 @@ type ReadReasonCategory =
   | 'adjustment'
   | 'sampleSize'
 
+type ReadReasonFamily =
+  | 'pureLongRisk'
+  | 'controlledSwing'
+  | 'shortClubForced'
+  | 'distanceFit'
+  | 'directionWindow'
+  | 'trustScore'
+  | 'sampleSize'
+
 type ReadReasonTag = {
   category: ReadReasonCategory
+  family: ReadReasonFamily
   priority: number
   text: string
 }
@@ -583,30 +593,35 @@ const buildLooperRead = (
   if (distance <= 3) {
     reasonTags.push({
       category: 'distance',
+      family: 'distanceFit',
       priority: 60,
       text: 'This one fits the number without needing extra.',
     })
   } else if (shortBy > 0 && shortBy <= 3) {
     reasonTags.push({
       category: 'distance',
+      family: 'distanceFit',
       priority: 72,
       text: 'It’s barely short, and the front miss stays manageable.',
     })
   } else if (shortBy <= 6 && shortBy > 3) {
     reasonTags.push({
       category: 'distance',
+      family: 'distanceFit',
       priority: 76,
       text: 'It’s a little short, but the front miss is still playable.',
     })
   } else if (shortBy > 6) {
     reasonTags.push({
       category: 'distance',
+      family: 'shortClubForced',
       priority: 94,
       text: 'The shorter club leaves too much number.',
     })
   } else if (call.adjustmentHint === 'smooth') {
     reasonTags.push({
       category: 'adjustment',
+      family: 'controlledSwing',
       priority: 76,
       text:
         longBy <= 10
@@ -618,12 +633,14 @@ const buildLooperRead = (
   if (call.pureGapPercent > 0.1 || call.pureDelta > 6) {
     reasonTags.push({
       category: 'pureGap',
+      family: 'pureLongRisk',
       priority: 100,
       text: 'Pure jumps long here, so don’t chase the flushed one.',
     })
   } else if (call.adjustmentHint === 'stock') {
     reasonTags.push({
       category: 'adjustment',
+      family: 'pureLongRisk',
       priority: 64,
       text: 'Make a stock swing and keep the flushed one out of the plan.',
     })
@@ -632,6 +649,7 @@ const buildLooperRead = (
   if (call.directionTrust >= 13) {
     reasonTags.push({
       category: 'direction',
+      family: 'directionWindow',
       priority: distance > 3 ? 88 : 74,
       text:
         distance > 3
@@ -641,6 +659,7 @@ const buildLooperRead = (
   } else if (distance > 3) {
     reasonTags.push({
       category: 'trust',
+      family: shortBy > 0 ? 'shortClubForced' : 'controlledSwing',
       priority: 82,
       text:
         shortBy > 0
@@ -652,22 +671,25 @@ const buildLooperRead = (
   if (call.option.profile && call.option.profile.shotCount < 5) {
     reasonTags.push({
       category: 'sampleSize',
+      family: 'sampleSize',
       priority: 40,
       text: 'The sample is still light, so treat the read as a lean.',
     })
   }
 
   const selectedCategories = new Set<ReadReasonCategory>()
+  const selectedFamilies = new Set<ReadReasonFamily>()
   const lines = reasonTags
     .sort((left, right) => right.priority - left.priority)
     .filter((tag) => {
-      if (selectedCategories.has(tag.category)) {
+      if (selectedCategories.has(tag.category) || selectedFamilies.has(tag.family)) {
         return false
       }
       selectedCategories.add(tag.category)
+      selectedFamilies.add(tag.family)
       return true
     })
-    .slice(0, 3)
+    .slice(0, 2)
     .map((tag) => tag.text)
 
   return {
@@ -682,7 +704,8 @@ export default function TheReadPage() {
   const [selectedIdentityKey, setSelectedIdentityKey] = useState<string | null>(null)
   const [selectedOptionLabel, setSelectedOptionLabel] = useState('Target')
   const [selectedMode, setSelectedMode] = useState<ShotMode>('stock')
-  const wheelDeltaRef = useRef(0)
+  const dragStateRef = useRef<{ pointerId: number; startY: number; startYardage: number } | null>(null)
+  const ladderRef = useRef<HTMLDivElement | null>(null)
   const savedSessions = useMemo(
     () =>
       loadSavedSessions().filter(
@@ -849,14 +872,48 @@ export default function TheReadPage() {
     }
     setSelectedTargetYardage(clampYardage(Math.round(selectedProfile[selectedMetric])))
   }, [identityProfiles, selectedIdentityKey, selectedMetric])
-  const scrollLadder = (deltaY: number) => {
-    wheelDeltaRef.current += deltaY
-    if (Math.abs(wheelDeltaRef.current) < WHEEL_STEP_THRESHOLD) {
+  const yardagePerPixel = 10 / ladderTickSpacing
+  const scrollLadder = (deltaY: number) =>
+    setSelectedTargetYardage((yardage) =>
+      clampYardage(Math.round(yardage + deltaY * yardagePerPixel)),
+    )
+  useEffect(() => {
+    const ladderElement = ladderRef.current
+    if (!ladderElement) {
       return
     }
-    const direction = wheelDeltaRef.current > 0 ? 1 : -1
-    wheelDeltaRef.current = 0
-    setSelectedTargetYardage((yardage) => clampYardage(yardage + direction * 10))
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      scrollLadder(event.deltaY)
+    }
+
+    ladderElement.addEventListener('wheel', handleWheel, { passive: false })
+    return () => {
+      ladderElement.removeEventListener('wheel', handleWheel)
+    }
+  }, [yardagePerPixel])
+  const startLadderDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startYardage: selectedTargetYardage,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const dragLadder = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return
+    }
+    const draggedYards = (event.clientY - dragState.startY) * yardagePerPixel
+    setSelectedTargetYardage(clampYardage(Math.round(dragState.startYardage + draggedYards)))
+  }
+  const endLadderDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragStateRef.current?.pointerId === event.pointerId) {
+      dragStateRef.current = null
+    }
   }
   const formatDotValue = (option: ReadOption['stock']) =>
     `${selectedMetric === 'carry' ? option.carry : option.total}`
@@ -900,10 +957,11 @@ export default function TheReadPage() {
           <div className="the-read-ladder-card">
             <div
               className="the-read-ladder"
-              onWheel={(event) => {
-                event.preventDefault()
-                scrollLadder(event.deltaY)
-              }}
+              onPointerCancel={endLadderDrag}
+              onPointerDown={startLadderDrag}
+              onPointerMove={dragLadder}
+              onPointerUp={endLadderDrag}
+              ref={ladderRef}
             >
               <div className="the-read-ladder-target" />
               <div
@@ -922,6 +980,7 @@ export default function TheReadPage() {
                     }
                     key={yardage}
                     onClick={() => selectYardage(yardage)}
+                    onPointerDown={(event) => event.stopPropagation()}
                     style={{ top: `${yardageToOffset(yardage, ladderTickSpacing)}px` }}
                     type="button"
                   >
@@ -937,6 +996,7 @@ export default function TheReadPage() {
                     }
                     key={profile.key}
                     onClick={() => selectIdentity(profile)}
+                    onPointerDown={(event) => event.stopPropagation()}
                     style={{
                       right: `${rightOffset}px`,
                       top: `${yardageToOffset(profile[selectedMetric], ladderTickSpacing)}px`,
@@ -955,9 +1015,7 @@ export default function TheReadPage() {
           <aside className="the-read-decision-panel" aria-label="Decision panel">
             <div className="the-read-card the-read-looper-card">
               <strong>{looperRead.primary}</strong>
-              {looperRead.lines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
+              <p>{looperRead.lines.join(' ')}</p>
             </div>
 
             <div className="the-read-dispersion-panel">

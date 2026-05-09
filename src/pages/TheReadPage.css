@@ -159,6 +159,13 @@
   position: relative;
   min-height: 100%;
   overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.the-read-ladder:active {
+  cursor: grabbing;
 }
 
 .the-read-ladder-target {
