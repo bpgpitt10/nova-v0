@@ -4944,11 +4944,19 @@ function App({
 
         <section className="session-intelligence-heatmap-row" aria-label="Heatmap and comparison">
           <article className="session-intelligence-heatmap" aria-label="Active club heatmap">
-            {sessionIntelligencePoints.length === 0 ? (
-              <p className="support-card-copy">No included shots for this club yet.</p>
-            ) : (
-              <ClubDispersionPlot highlightLatestShot points={sessionIntelligencePoints} />
-            )}
+            <div className="session-intelligence-heatmap-frame">
+              {sessionIntelligencePoints.length === 0 ? (
+                <p className="support-card-copy">No included shots for this club yet.</p>
+              ) : (
+                <ClubDispersionPlot
+                  className="session-intelligence-dispersion-plot"
+                  fillContainer
+                  fixedChartHeight={430}
+                  highlightLatestShot
+                  points={sessionIntelligencePoints}
+                />
+              )}
+            </div>
           </article>
           <article className="session-intelligence-comparison" aria-label="Shot DNA comparison">
             <h3 className="session-intelligence-section-title">Shot DNA Comparison</h3>
@@ -5990,6 +5998,7 @@ type DispersionPoint = {
 
 type ClubDispersionPlotProps = {
   points: DispersionPoint[]
+  className?: string
   lastShotId?: string
   fillContainer?: boolean
   fixedChartHeight?: number
@@ -5998,6 +6007,7 @@ type ClubDispersionPlotProps = {
 
 function ClubDispersionPlot({
   points,
+  className,
   lastShotId,
   fillContainer = false,
   fixedChartHeight,
@@ -6062,7 +6072,7 @@ function ClubDispersionPlot({
   return (
     <svg
       aria-label="Carry versus offline dispersion plot"
-      className="club-detail-plot"
+      className={['club-detail-plot', className].filter(Boolean).join(' ')}
       preserveAspectRatio={fillContainer ? 'xMidYMid meet' : undefined}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
