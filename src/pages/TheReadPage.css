@@ -250,6 +250,7 @@
 .the-read-shot-marker:hover,
 .the-read-shot-marker:focus {
   background: rgba(30, 49, 35, 0.9);
+  z-index: 10 !important;
 }
 
 .the-read-shot-marker-strong {
@@ -285,7 +286,8 @@
   grid-row: 1;
   min-width: 0;
   min-height: 98px;
-  padding-bottom: 24px;
+  padding: 0 18px 24px;
+  transform: translateY(-8px);
 }
 
 .the-read-eyebrow {
@@ -296,11 +298,23 @@
   text-transform: uppercase;
 }
 
+.the-read-looper-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.the-read-looper-card strong {
+  color: rgba(244, 206, 96, 0.96);
+  font-size: 28px;
+  line-height: 1.08;
+}
+
 .the-read-looper-card p {
   margin: 0;
-  color: #ffffff;
-  font-size: 24px;
-  line-height: 1.25;
+  color: rgba(220, 229, 216, 0.86);
+  font-size: 17px;
+  line-height: 1.32;
 }
 
 .the-read-dispersion-panel {
@@ -348,6 +362,16 @@
 
 .the-read-dispersion-column:first-of-type {
   border-left: 0;
+}
+
+.the-read-dispersion-column.is-the-call::before {
+  content: '';
+  position: absolute;
+  inset: 10px 8px;
+  border-radius: 14px;
+  background: rgba(244, 206, 96, 0.045);
+  box-shadow: 0 0 36px rgba(244, 206, 96, 0.08);
+  pointer-events: none;
 }
 
 .the-read-dispersion-head {

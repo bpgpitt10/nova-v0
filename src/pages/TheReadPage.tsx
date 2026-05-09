@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import theReadLogo from '../assets/the-read-logo.png'
 import { getClubLabel, type Club } from '../lib/bagConfig'
+import { confidenceConfig } from '../lib/confidenceConfig'
 import {
   isSessionEligibleForAnalysis,
   isSessionIncludedInAnalysis,
@@ -14,6 +15,8 @@ const LADDER_MIN_YARDAGE = 30
 const LADDER_MAX_YARDAGE = 320
 const BASE_TICK_SPACING = 72
 const SHOT_MARKER_VERTICAL_SPACE = 44
+const SHOT_MARKER_LANE_THRESHOLD_PX = 46
+const SHOT_MARKER_LANE_RIGHT_OFFSETS = [8, 68, 128, 38, 98, 158]
 const WHEEL_STEP_THRESHOLD = 110
 const TARGET_LINE_Y_PERCENT = 50
 const YARDAGE_PERCENT_PER_YARD = 1.2
@@ -319,6 +322,47 @@ const totalValue = (shot: Shot) =>
         'total',
       ])
 
+const offlineValue = (shot: Shot) =>
+  typeof shot.offlineYards === 'number'
+    ? shot.offlineYards
+    : payloadNumber(shot.openGolfCoach, [
+        'offline_distance_yards',
+        'offlineDistanceYards',
+        'offline',
+      ])
+
+const percentile = (values: Array<number | undefined>, percentileValue: number) => {
+  const definedValues = values
+    .filter((value): value is number => typeof value === 'number')
+    .sort((a, b) => a - b)
+  if (definedValues.length === 0) {
+    return undefined
+  }
+
+  const index = Math.min(
+    definedValues.length - 1,
+    Math.max(0, Math.ceil((percentileValue / 100) * definedValues.length) - 1),
+  )
+  return definedValues[index]
+}
+
+const standardDeviation = (values: Array<number | undefined>) => {
+  const definedValues = values.filter((value): value is number => typeof value === 'number')
+  if (definedValues.length === 0) {
+    return undefined
+  }
+
+  const mean = averageNumbers(definedValues)
+  if (typeof mean !== 'number') {
+    return undefined
+  }
+
+  const variance =
+    definedValues.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    definedValues.length
+  return Math.sqrt(variance)
+}
+
 type ReadIdentityProfile = {
   key: string
   club: Club
@@ -328,25 +372,102 @@ type ReadIdentityProfile = {
   shotCount: number
   carry: number
   total: number
+  pureCarry: number
+  pureTotal: number
+  carryStdDev?: number
+  totalStdDev?: number
+  offlineStdDev?: number
 }
 
 type ReadOption = (typeof readOptions)[number]
+type DisplayReadOption = ReadOption & {
+  profile?: ReadIdentityProfile
+}
+
+type ReadCandidate = {
+  option: DisplayReadOption
+  score: number
+  distanceDelta: number
+  pureDelta: number
+  pureGapPercent: number
+  directionTrust: number
+  adjustmentHint: 'smooth' | 'stock' | 'none'
+}
+
+type ReadReasonCategory =
+  | 'distance'
+  | 'trust'
+  | 'pureGap'
+  | 'direction'
+  | 'adjustment'
+  | 'sampleSize'
+
+type ReadReasonTag = {
+  category: ReadReasonCategory
+  priority: number
+  text: string
+}
+
+const caddieCallForReadScore = (score: number, shotCount: number) => {
+  if (shotCount < confidenceConfig.insufficientData.minIncludedShots) {
+    return 'Insufficient Data'
+  }
+
+  return (
+    confidenceConfig.caddieCalls.find((call) => score >= call.minScore)?.label ??
+    'Liability'
+  )
+}
+
+const readScoreCallForProfile = (profile: ReadIdentityProfile) => {
+  const distanceStdDev = averageNumbers([profile.carryStdDev, profile.totalStdDev])
+  const distanceTrust =
+    typeof distanceStdDev === 'number' ? Math.max(0, 100 - distanceStdDev * 5) : 65
+  const directionTrust =
+    typeof profile.offlineStdDev === 'number'
+      ? Math.max(0, 100 - profile.offlineStdDev * 5)
+      : 65
+  const dataTrust = Math.min(100, (profile.shotCount / 12) * 100)
+  const carryPureGap = profile.carry > 0 ? Math.max(0, (profile.pureCarry - profile.carry) / profile.carry) : 0
+  const totalPureGap = profile.total > 0 ? Math.max(0, (profile.pureTotal - profile.total) / profile.total) : 0
+  const pureGap = Math.max(carryPureGap, totalPureGap)
+  const pureTrust =
+    pureGap < 0.05
+      ? 100
+      : pureGap <= 0.1
+        ? 78
+        : 52
+  const score = Math.round(
+    distanceTrust * 0.25 +
+    directionTrust * 0.35 +
+    dataTrust * 0.25 +
+    pureTrust * 0.15,
+  )
+  const call = caddieCallForReadScore(score, profile.shotCount)
+  const callLabel = call === 'Insufficient Data' ? 'Needs Data' : call
+
+  return `${score} (${callLabel})`
+}
 
 const applyIdentityToReadOption = (
   option: ReadOption,
   profile: ReadIdentityProfile | undefined,
-): ReadOption => {
+): DisplayReadOption => {
   if (!profile) {
     return option
   }
 
   const carry = Math.round(profile.carry)
   const total = Math.round(profile.total)
+  const pureCarry = Math.round(profile.pureCarry)
+  const pureTotal = Math.round(profile.pureTotal)
 
   return {
     ...option,
+    profile,
     club: profile.clubLabel,
     variant: profile.variantLabel,
+    score: readScoreCallForProfile(profile),
     stock: {
       ...option.stock,
       carry,
@@ -359,14 +480,199 @@ const applyIdentityToReadOption = (
     },
     pure: {
       ...option.pure,
-      carry,
-      total,
+      carry: pureCarry,
+      total: pureTotal,
       stats: {
         ...option.pure.stats,
-        carry: [`${carry} yd`, ''],
-        total: [`${total} yd`, ''],
+        carry: [`${pureCarry} yd`, ''],
+        total: [`${pureTotal} yd`, ''],
       },
     },
+  }
+}
+
+const scoreReadCandidate = (
+  option: DisplayReadOption,
+  selectedMetric: SelectedMetric,
+  selectedTargetYardage: number,
+): ReadCandidate | null => {
+  const profile = option.profile
+  if (!profile) {
+    return null
+  }
+
+  const stockValue = profile[selectedMetric]
+  const pureValue = selectedMetric === 'carry' ? profile.pureCarry : profile.pureTotal
+  const distanceDelta = stockValue - selectedTargetYardage
+  const pureDelta = pureValue - selectedTargetYardage
+  const shortBy = Math.max(0, -distanceDelta)
+  const longBy = Math.max(0, distanceDelta)
+  const manageableLong = longBy > 0 && longBy <= 10
+  const distanceFit = Math.max(
+    0,
+    44 - shortBy * 3.1 - (manageableLong ? longBy * 1.25 : longBy * 2.2),
+  )
+  const longMissRisk =
+    longBy <= 3
+      ? longBy * 0.9
+      : longBy <= 10
+        ? 2.7 + (longBy - 3) * 1.15
+        : 10.75 + (longBy - 10) * 3.4
+  const shortMissRisk =
+    shortBy <= 3
+      ? shortBy * 0.8
+      : shortBy <= 6
+        ? 2.4 + (shortBy - 3) * 2.2
+        : shortBy <= 10
+          ? 9 + (shortBy - 6) * 3.8
+          : 24.2 + (shortBy - 10) * 5.4
+  const pureLongRisk = Math.max(0, pureDelta - (manageableLong ? 6 : 2)) * 1.25
+  const pureGapPercent = stockValue > 0 ? Math.max(0, (pureValue - stockValue) / stockValue) : 0
+  const pureGapRisk =
+    pureGapPercent < 0.05
+      ? 0
+      : pureGapPercent <= 0.1
+        ? (pureGapPercent - 0.05) * 190
+        : 9.5 + (pureGapPercent - 0.1) * 280
+  const confidenceTrust = Math.min(18, profile.shotCount * 3)
+  const directionTrust =
+    typeof profile.offlineStdDev === 'number'
+      ? Math.max(0, 20 - profile.offlineStdDev * 1.55)
+      : 8
+  const dataConfidence = profile.shotCount >= 5 ? 0 : (5 - profile.shotCount) * 4
+  const adjustmentHint = manageableLong ? 'smooth' : pureGapPercent > 0.08 ? 'stock' : 'none'
+  const score =
+    distanceFit +
+    confidenceTrust +
+    directionTrust -
+    longMissRisk -
+    shortMissRisk -
+    pureLongRisk -
+    pureGapRisk -
+    dataConfidence
+
+  return {
+    option,
+    score,
+    distanceDelta,
+    pureDelta,
+    pureGapPercent,
+    directionTrust,
+    adjustmentHint,
+  }
+}
+
+const buildLooperRead = (
+  call: ReadCandidate | null,
+  hasProfiles: boolean,
+  selectedTargetYardage: number,
+) => {
+  if (!hasProfiles || !call) {
+    return {
+      primary: 'Not enough shot history yet.',
+      lines: ['Add more shots and I’ll make the read.'],
+    }
+  }
+
+  const reasonTags: ReadReasonTag[] = []
+  const distance = Math.round(Math.abs(call.distanceDelta))
+
+  const shortBy = Math.max(0, -call.distanceDelta)
+  const longBy = Math.max(0, call.distanceDelta)
+
+  if (distance <= 3) {
+    reasonTags.push({
+      category: 'distance',
+      priority: 60,
+      text: 'This one fits the number without needing extra.',
+    })
+  } else if (shortBy > 0 && shortBy <= 3) {
+    reasonTags.push({
+      category: 'distance',
+      priority: 72,
+      text: 'It’s barely short, and the front miss stays manageable.',
+    })
+  } else if (shortBy <= 6 && shortBy > 3) {
+    reasonTags.push({
+      category: 'distance',
+      priority: 76,
+      text: 'It’s a little short, but the front miss is still playable.',
+    })
+  } else if (shortBy > 6) {
+    reasonTags.push({
+      category: 'distance',
+      priority: 94,
+      text: 'The shorter club leaves too much number.',
+    })
+  } else if (call.adjustmentHint === 'smooth') {
+    reasonTags.push({
+      category: 'adjustment',
+      priority: 76,
+      text:
+        longBy <= 10
+          ? 'This is a touch long, but easier to take something off than force the shorter club.'
+          : 'Think controlled swing here, not full.',
+    })
+  }
+
+  if (call.pureGapPercent > 0.1 || call.pureDelta > 6) {
+    reasonTags.push({
+      category: 'pureGap',
+      priority: 100,
+      text: 'Pure jumps long here, so don’t chase the flushed one.',
+    })
+  } else if (call.adjustmentHint === 'stock') {
+    reasonTags.push({
+      category: 'adjustment',
+      priority: 64,
+      text: 'Make a stock swing and keep the flushed one out of the plan.',
+    })
+  }
+
+  if (call.directionTrust >= 13) {
+    reasonTags.push({
+      category: 'direction',
+      priority: distance > 3 ? 88 : 74,
+      text:
+        distance > 3
+          ? 'You’re giving up a couple yards, but the direction window is cleaner.'
+          : 'The stock window is tighter than the longer option.',
+    })
+  } else if (distance > 3) {
+    reasonTags.push({
+      category: 'trust',
+      priority: 82,
+      text:
+        shortBy > 0
+          ? 'The front miss comes into play with the shorter option.'
+          : 'Better to take a little off this than force the shorter club.',
+    })
+  }
+
+  if (call.option.profile && call.option.profile.shotCount < 5) {
+    reasonTags.push({
+      category: 'sampleSize',
+      priority: 40,
+      text: 'The sample is still light, so treat the read as a lean.',
+    })
+  }
+
+  const selectedCategories = new Set<ReadReasonCategory>()
+  const lines = reasonTags
+    .sort((left, right) => right.priority - left.priority)
+    .filter((tag) => {
+      if (selectedCategories.has(tag.category)) {
+        return false
+      }
+      selectedCategories.add(tag.category)
+      return true
+    })
+    .slice(0, 3)
+    .map((tag) => tag.text)
+
+  return {
+    primary: `${selectedTargetYardage} yd Target: ${call.option.club} ${call.option.variant}`,
+    lines,
   }
 }
 
@@ -400,9 +706,19 @@ export default function TheReadPage() {
     return Array.from(groups.entries())
       .map(([key, shots]): ReadIdentityProfile | null => {
         const firstShot = shots[0]
-        const carry = averageNumbers(shots.map(carryValue))
-        const total = averageNumbers(shots.map(totalValue))
-        if (!firstShot || typeof carry !== 'number' || typeof total !== 'number') {
+        const carryValues = shots.map(carryValue)
+        const totalValues = shots.map(totalValue)
+        const carry = averageNumbers(carryValues)
+        const total = averageNumbers(totalValues)
+        const pureCarry = percentile(carryValues, 80)
+        const pureTotal = percentile(totalValues, 80)
+        if (
+          !firstShot ||
+          typeof carry !== 'number' ||
+          typeof total !== 'number' ||
+          typeof pureCarry !== 'number' ||
+          typeof pureTotal !== 'number'
+        ) {
           return null
         }
 
@@ -416,6 +732,11 @@ export default function TheReadPage() {
           shotCount: shots.length,
           carry,
           total,
+          pureCarry,
+          pureTotal,
+          carryStdDev: standardDeviation(carryValues),
+          totalStdDev: standardDeviation(totalValues),
+          offlineStdDev: standardDeviation(shots.map(offlineValue)),
         }
       })
       .filter((profile): profile is ReadIdentityProfile => Boolean(profile))
@@ -435,6 +756,37 @@ export default function TheReadPage() {
     BASE_TICK_SPACING,
     maxShotMarkersInTenYardGap * SHOT_MARKER_VERTICAL_SPACE + 20,
   )
+  const ladderIdentityMarkers = useMemo(() => {
+    const clusters: ReadIdentityProfile[][] = []
+    identityProfiles.forEach((profile) => {
+      const profileOffset = yardageToOffset(profile[selectedMetric], ladderTickSpacing)
+      const currentCluster = clusters[clusters.length - 1]
+      const lastProfile = currentCluster?.[currentCluster.length - 1]
+      const lastOffset = lastProfile
+        ? yardageToOffset(lastProfile[selectedMetric], ladderTickSpacing)
+        : undefined
+
+      if (
+        currentCluster &&
+        typeof lastOffset === 'number' &&
+        Math.abs(profileOffset - lastOffset) <= SHOT_MARKER_LANE_THRESHOLD_PX
+      ) {
+        currentCluster.push(profile)
+        return
+      }
+
+      clusters.push([profile])
+    })
+
+    return clusters.flatMap((cluster) =>
+      cluster.map((profile, index) => ({
+        laneIndex: index,
+        profile,
+        rightOffset:
+          SHOT_MARKER_LANE_RIGHT_OFFSETS[index % SHOT_MARKER_LANE_RIGHT_OFFSETS.length],
+      })),
+    )
+  }, [identityProfiles, ladderTickSpacing, selectedMetric])
   const comparisonOptions = useMemo(() => {
     if (identityProfiles.length === 0) {
       return readOptions
@@ -470,6 +822,16 @@ export default function TheReadPage() {
   const selectedOption =
     comparisonOptions.find((option) => option.label === selectedOptionLabel) ?? comparisonOptions[1]
   const selectedShot = selectedOption[selectedMode]
+  const readCandidates = comparisonOptions
+    .map((option) => scoreReadCandidate(option, selectedMetric, selectedTargetYardage))
+    .filter((candidate): candidate is ReadCandidate => Boolean(candidate))
+  const readCall =
+    readCandidates.length > 0
+      ? readCandidates.reduce((best, candidate) =>
+          candidate.score > best.score ? candidate : best,
+        )
+      : null
+  const looperRead = buildLooperRead(readCall, identityProfiles.length > 0, selectedTargetYardage)
   const selectedYardageOffset = yardageToOffset(selectedTargetYardage, ladderTickSpacing)
   const selectYardage = (yardage: number) => setSelectedTargetYardage(clampYardage(yardage))
   const selectIdentity = (profile: ReadIdentityProfile) => {
@@ -566,7 +928,7 @@ export default function TheReadPage() {
                     <span>{yardage}</span>
                   </button>
                 ))}
-                {identityProfiles.map((profile) => (
+                {ladderIdentityMarkers.map(({ laneIndex, profile, rightOffset }) => (
                   <button
                     className={
                       selectedIdentityKey === profile.key
@@ -576,7 +938,9 @@ export default function TheReadPage() {
                     key={profile.key}
                     onClick={() => selectIdentity(profile)}
                     style={{
+                      right: `${rightOffset}px`,
                       top: `${yardageToOffset(profile[selectedMetric], ladderTickSpacing)}px`,
+                      zIndex: selectedIdentityKey === profile.key ? 9 : 4 + Math.min(laneIndex, 2),
                     }}
                     title={`${profile.clubLabel} ${profile.variantLabel} (${profile.shotCount} shots)`}
                     type="button"
@@ -590,7 +954,10 @@ export default function TheReadPage() {
 
           <aside className="the-read-decision-panel" aria-label="Decision panel">
             <div className="the-read-card the-read-looper-card">
-              <p>Select a yardage to get the call.</p>
+              <strong>{looperRead.primary}</strong>
+              {looperRead.lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
             </div>
 
             <div className="the-read-dispersion-panel">
@@ -598,7 +965,14 @@ export default function TheReadPage() {
                 <span>{selectedTargetYardage} yd target</span>
               </div>
               {comparisonOptions.map((option) => (
-                <article className="the-read-dispersion-column" key={option.label}>
+                <article
+                  className={
+                    readCall?.option.label === option.label
+                      ? 'the-read-dispersion-column is-the-call'
+                      : 'the-read-dispersion-column'
+                  }
+                  key={option.label}
+                >
                   <div className="the-read-dispersion-head">
                     <span>{option.label}</span>
                     <strong className="the-read-shot-identity-line">
