@@ -524,6 +524,7 @@ const buildShot = (
   spinRpm: incomingShot.spinRpm ?? incomingShot.spin,
   shotName: incomingShot.shotName ?? incomingShot.shot_name,
   shotRanking: incomingShot.shotRanking,
+  openGolfCoach: incomingShot.openGolfCoach,
   shotVariantId,
   source,
 })
@@ -1155,6 +1156,10 @@ function App({
               })
             }
           },
+          () => ({
+            club: selectedClubRef.current,
+            shotVariantId: selectedShotVariantIdRef.current,
+          }),
         )
 
     connectionRef.current = connection
@@ -5617,7 +5622,11 @@ function App({
                       selectedClubDispersionPoints.length === 0 ? (
                         <p className="support-card-copy">No shot data available for this club yet</p>
                       ) : (
-                        <ClubDispersionPlot fillContainer points={selectedClubDispersionPoints} />
+                        <ClubDispersionPlot
+                          fillContainer
+                          fixedChartHeight={570}
+                          points={selectedClubDispersionPoints}
+                        />
                       )
                     }
                     heatmapMetrics={clubDetailHeatmapMetricsV2}
@@ -5983,6 +5992,7 @@ type ClubDispersionPlotProps = {
   points: DispersionPoint[]
   lastShotId?: string
   fillContainer?: boolean
+  fixedChartHeight?: number
   highlightLatestShot?: boolean
 }
 
@@ -5990,6 +6000,7 @@ function ClubDispersionPlot({
   points,
   lastShotId,
   fillContainer = false,
+  fixedChartHeight,
   highlightLatestShot = false,
 }: ClubDispersionPlotProps) {
   const width = 820
@@ -6016,7 +6027,7 @@ function ClubDispersionPlot({
   const unitPixelsFromX = chartWidth / Math.max(xRange, 1)
   const idealChartHeight = yRange * unitPixelsFromX
   const maxChartHeight = chartWidth / 1.3
-  const chartHeight = Math.min(idealChartHeight, maxChartHeight)
+  const chartHeight = fixedChartHeight ?? Math.min(idealChartHeight, maxChartHeight)
   const height = padding.top + chartHeight + padding.bottom
 
   const pickTickStep = (span: number) => {

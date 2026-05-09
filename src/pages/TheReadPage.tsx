@@ -13,9 +13,9 @@ type ShotMode = 'stock' | 'pure'
 type SelectedMetric = 'carry' | 'total'
 
 const shotMarkers = [
-  { club: 'PW', optionLabel: 'Long', tone: 'strong', variant: 'Stock', yardage: 108 },
-  { club: 'GW', optionLabel: 'Best', tone: 'safe', variant: 'Flighted', yardage: 100 },
-  { club: 'SW', optionLabel: 'Short', tone: 'soft', variant: 'Soft', yardage: 94 },
+  { club: 'PW', optionLabel: 'Long', tone: 'strong', variant: 'Stock', yardage: 115 },
+  { club: 'GW', optionLabel: 'Best', tone: 'safe', variant: 'Flighted', yardage: 90 },
+  { club: 'SW', optionLabel: 'Short', tone: 'soft', variant: 'Soft', yardage: 84 },
 ]
 
 const ladderMarks = Array.from(
@@ -47,18 +47,18 @@ const readOptions = [
       width: '86px',
       height: '46px',
       rotate: '-10deg',
-      carry: 94,
-      total: 97,
+      carry: 82,
+      total: 84,
       stats: {
-        carry: ['94 yd', '-6'],
-        total: ['97 yd', '-5'],
+        carry: ['82 yd', '-6'],
+        total: ['84 yd', '-5'],
         offline: ['5.8 L', '-1.4'],
         launch: ['31.2°', '+2.1'],
         hla: ['1.8 L', '-0.5'],
         spin: ['8420', '+340'],
         spinAxis: ['6.4 L', '-1.1'],
         smash: ['1.19', '-0.02'],
-        ballSpeed: ['78 mph', '-3'],
+        ballSpeed: ['72 mph', '-3'],
         clubSpeed: ['65 mph', '-1'],
         peak: ['72 ft', '+5'],
         descent: ['47°', '+3'],
@@ -74,18 +74,18 @@ const readOptions = [
       width: '58px',
       height: '32px',
       rotate: '-6deg',
-      carry: 98,
-      total: 100,
+      carry: 84,
+      total: 86,
       stats: {
-        carry: ['98 yd', '-2'],
-        total: ['100 yd', '-2'],
+        carry: ['84 yd', '-2'],
+        total: ['86 yd', '-2'],
         offline: ['2.1 L', '+2.3'],
         launch: ['30.4°', '+1.3'],
         hla: ['0.7 L', '+0.6'],
         spin: ['8160', '+80'],
         spinAxis: ['2.0 L', '+3.3'],
         smash: ['1.21', '0.00'],
-        ballSpeed: ['80 mph', '-1'],
+        ballSpeed: ['74 mph', '-1'],
         clubSpeed: ['66 mph', '0'],
         peak: ['69 ft', '+2'],
         descent: ['45°', '+1'],
@@ -107,18 +107,18 @@ const readOptions = [
       width: '102px',
       height: '40px',
       rotate: '7deg',
-      carry: 101,
-      total: 104,
+      carry: 90,
+      total: 93,
       stats: {
-        carry: ['101 yd', '+1'],
-        total: ['104 yd', '+2'],
+        carry: ['90 yd', '+1'],
+        total: ['93 yd', '+2'],
         offline: ['3.0 R', '+1.2'],
         launch: ['27.8°', '+0.4'],
         hla: ['0.9 R', '+0.2'],
         spin: ['7620', '-120'],
         spinAxis: ['3.8 R', '+0.7'],
         smash: ['1.24', '+0.01'],
-        ballSpeed: ['86 mph', '+1'],
+        ballSpeed: ['78 mph', '+1'],
         clubSpeed: ['69 mph', '0'],
         peak: ['74 ft', '+3'],
         descent: ['44°', '+1'],
@@ -134,18 +134,18 @@ const readOptions = [
       width: '60px',
       height: '28px',
       rotate: '4deg',
-      carry: 100,
-      total: 102,
+      carry: 91,
+      total: 94,
       stats: {
-        carry: ['100 yd', '0'],
-        total: ['102 yd', '0'],
+        carry: ['91 yd', '0'],
+        total: ['94 yd', '0'],
         offline: ['0.8 R', '+3.4'],
         launch: ['27.1°', '-0.3'],
         hla: ['0.2 R', '+0.9'],
         spin: ['7710', '-30'],
         spinAxis: ['1.1 R', '+3.4'],
         smash: ['1.25', '+0.02'],
-        ballSpeed: ['87 mph', '+2'],
+        ballSpeed: ['79 mph', '+2'],
         clubSpeed: ['69 mph', '0'],
         peak: ['71 ft', '0'],
         descent: ['43°', '0'],
@@ -167,18 +167,18 @@ const readOptions = [
       width: '78px',
       height: '58px',
       rotate: '14deg',
-      carry: 108,
-      total: 112,
+      carry: 115,
+      total: 121,
       stats: {
-        carry: ['108 yd', '+8'],
-        total: ['112 yd', '+10'],
+        carry: ['115 yd', '+8'],
+        total: ['121 yd', '+10'],
         offline: ['6.4 R', '-1.8'],
         launch: ['25.0°', '-2.0'],
         hla: ['2.2 R', '-0.8'],
         spin: ['6880', '-520'],
         spinAxis: ['7.2 R', '-2.0'],
         smash: ['1.28', '+0.03'],
-        ballSpeed: ['92 mph', '+5'],
+        ballSpeed: ['86 mph', '+5'],
         clubSpeed: ['72 mph', '+2'],
         peak: ['67 ft', '-4'],
         descent: ['40°', '-3'],
@@ -194,18 +194,18 @@ const readOptions = [
       width: '54px',
       height: '36px',
       rotate: '8deg',
-      carry: 105,
-      total: 109,
+      carry: 113,
+      total: 119,
       stats: {
-        carry: ['105 yd', '+5'],
-        total: ['109 yd', '+7'],
+        carry: ['113 yd', '+5'],
+        total: ['119 yd', '+7'],
         offline: ['2.6 R', '+2.0'],
         launch: ['25.8°', '-1.2'],
         hla: ['0.8 R', '+0.6'],
         spin: ['7100', '-300'],
         spinAxis: ['2.4 R', '+2.8'],
         smash: ['1.27', '+0.02'],
-        ballSpeed: ['91 mph', '+4'],
+        ballSpeed: ['85 mph', '+4'],
         clubSpeed: ['72 mph', '+2'],
         peak: ['69 ft', '-2'],
         descent: ['41°', '-2'],
@@ -220,24 +220,22 @@ const readOptions = [
 ]
 
 const inspectorRows = [
-  ['Carry', 'carry'],
-  ['Total Distance', 'total'],
-  ['Offline', 'offline'],
-  ['Launch / VLA', 'launch'],
-  ['Start Line / HLA', 'hla'],
-  ['Spin', 'spin'],
-  ['Spin Axis', 'spinAxis'],
-  ['Smash Factor', 'smash'],
-  ['Ball Speed', 'ballSpeed'],
-  ['Club Speed', 'clubSpeed'],
-  ['Peak Height', 'peak'],
-  ['Descent Angle', 'descent'],
-  ['Club Path', 'clubPath'],
-  ['Face to Path', 'faceToPath'],
-  ['Face to Target', 'faceToTarget'],
+  ['Carry', 'carry', 10, 0],
+  ['Total Distance', 'total', 9, 0],
+  ['Offline', 'offline', 8, 0],
+  ['Launch / VLA', 'launch', 1.2, 1],
+  ['Start Line / HLA', 'hla', 1.1, 1],
+  ['Spin', 'spin', 189, 0],
+  ['Spin Axis', 'spinAxis', 4.2, 1],
+  ['Smash Factor', 'smash', 0.02, 2],
+  ['Ball Speed', 'ballSpeed', 4, 0],
+  ['Club Speed', 'clubSpeed', 3, 0],
+  ['Peak Height', 'peak', 7, 0],
+  ['Descent Angle', 'descent', 3, 0],
+  ['Club Path', 'clubPath', 1.3, 1],
+  ['Face to Path', 'faceToPath', 0.8, 1],
+  ['Face to Target', 'faceToTarget', 1.1, 1],
   ['Score / Call', 'score'],
-  ['OGC Shot Name', 'ogcShotName'],
-  ['OGC Rank', 'ogcRank'],
 ] as const
 
 const yardageToOffset = (yardage: number) =>
@@ -248,6 +246,14 @@ const getYPercentForYardage = (yardage: number, targetYardage: number) =>
 
 const clampYardage = (yardage: number) =>
   Math.min(LADDER_MAX_YARDAGE, Math.max(LADDER_MIN_YARDAGE, yardage))
+
+const variabilityValue = (value: number | undefined, digits = 0, mode: ShotMode = 'stock') => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return ''
+  }
+  const modeScale = mode === 'pure' ? 0.62 : 1
+  return `±${(value * modeScale).toFixed(digits)}`
+}
 
 export default function TheReadPage() {
   const [selectedMetric, setSelectedMetric] = useState<SelectedMetric>('carry')
@@ -286,25 +292,29 @@ export default function TheReadPage() {
     <main className="the-read-page">
       <div className="the-read-shell">
         <header className="the-read-header">
-          <div>
+          <div className="the-read-header-main">
             <img alt="The Read" className="the-read-logo" src={theReadLogo} />
+            <div className="the-read-toggle" aria-label="Distance mode">
+              <button
+                className={selectedMetric === 'carry' ? 'is-active' : undefined}
+                onClick={() => setSelectedMetric('carry')}
+                type="button"
+              >
+                Carry
+              </button>
+              <button
+                className={selectedMetric === 'total' ? 'is-active' : undefined}
+                onClick={() => setSelectedMetric('total')}
+                type="button"
+              >
+                Total
+              </button>
+            </div>
           </div>
-          <div className="the-read-toggle" aria-label="Distance mode">
-            <button
-              className={selectedMetric === 'carry' ? 'is-active' : undefined}
-              onClick={() => setSelectedMetric('carry')}
-              type="button"
-            >
-              Carry
-            </button>
-            <button
-              className={selectedMetric === 'total' ? 'is-active' : undefined}
-              onClick={() => setSelectedMetric('total')}
-              type="button"
-            >
-              Total
-            </button>
-          </div>
+          <nav className="the-read-utility-actions" aria-label="The Read navigation">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/looper">New Session</a>
+          </nav>
         </header>
 
         <section className="the-read-layout" aria-label="The Read workspace">
@@ -359,7 +369,6 @@ export default function TheReadPage() {
 
           <aside className="the-read-decision-panel" aria-label="Decision panel">
             <div className="the-read-card the-read-looper-card">
-              <span className="the-read-eyebrow">Looper Read</span>
               <p>Select a yardage to get the call.</p>
             </div>
 
@@ -440,10 +449,10 @@ export default function TheReadPage() {
                 </strong>
               </div>
               <div className="the-read-inspector-rows">
-                {inspectorRows.map(([label, key]) => {
-                  const stat = key === 'score' ? null : selectedShot.stats[key]
+                {inspectorRows.map(([label, key, variability, variabilityDigits]) => {
+                  const stat = key === 'score' ? undefined : selectedShot.stats[key]
                   const value = key === 'score' ? selectedOption.score : stat?.[0] ?? '—'
-                  const delta = key === 'score' ? '' : stat?.[1] ?? ''
+                  const range = variabilityValue(variability, variabilityDigits, selectedMode)
                   return (
                     <div
                       className={
@@ -455,7 +464,9 @@ export default function TheReadPage() {
                     >
                       <span>{label}</span>
                       <strong>{value}</strong>
-                      <em>{delta}</em>
+                      <em className={`the-read-inspector-range is-${selectedMode}`}>
+                        {range}
+                      </em>
                     </div>
                   )
                 })}

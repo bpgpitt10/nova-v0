@@ -30,6 +30,7 @@ export type Shot = {
 export type IncomingNovaShot = {
   id?: string
   timestamp?: string
+  openGolfCoach?: OpenGolfCoachPayload
   ballSpeedMetersPerSecond?: number
   ball_speed_meters_per_second?: number
   verticalLaunchAngleDegrees?: number

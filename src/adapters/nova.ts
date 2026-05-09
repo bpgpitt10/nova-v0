@@ -1,6 +1,7 @@
 import type { IncomingNovaShot } from '../types'
 import { novaWebSocketAdapter } from './novaWebSocket'
 import type { OpenGolfCoachDerivedValues, OpenGolfCoachInput } from '../types'
+import type { Club } from '../lib/bagConfig'
 
 const NOVA_WEBSOCKET_MDNS_SERVICE = '_openlaunch-ws._tcp.local.'
 const NOVA_TCP_MDNS_SERVICE = '_openapi-nova._tcp.local.'
@@ -29,11 +30,17 @@ export type NovaConnection = {
   resume?: () => void
 }
 
+export type MockShotContext = {
+  club: Club
+  shotVariantId?: string
+}
+
 export type NovaAdapter = {
   connectToShots: (
     onShot: NovaShotHandler,
     onStatusChange?: (status: NovaConnectionStatus) => void,
     onDebugEvent?: (event: NovaDebugEvent) => void,
+    getMockShotContext?: () => MockShotContext,
   ) => NovaConnection
 }
 
