@@ -1,5 +1,13 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import theReadLogo from '../assets/the-read-logo.png'
+import { getClubLabel, type Club } from '../lib/bagConfig'
+import {
+  isSessionEligibleForAnalysis,
+  isSessionIncludedInAnalysis,
+  loadSavedSessions,
+} from '../lib/sessions'
+import { getShotVariantLabel, resolveShotVariantId } from '../lib/shotVariants'
+import type { OpenGolfCoachPayload, Shot } from '../types'
 import './TheReadPage.css'
 
 const LADDER_MIN_YARDAGE = 30
@@ -12,28 +20,9 @@ const YARDAGE_PERCENT_PER_YARD = 1.2
 type ShotMode = 'stock' | 'pure'
 type SelectedMetric = 'carry' | 'total'
 
-const shotMarkers = [
-  { club: 'PW', optionLabel: 'Long', tone: 'strong', variant: 'Stock', yardage: 115 },
-  { club: 'GW', optionLabel: 'Best', tone: 'safe', variant: 'Flighted', yardage: 90 },
-  { club: 'SW', optionLabel: 'Short', tone: 'soft', variant: 'Soft', yardage: 84 },
-]
-
 const ladderMarks = Array.from(
   { length: (LADDER_MAX_YARDAGE - LADDER_MIN_YARDAGE) / 10 + 1 },
   (_, index) => LADDER_MIN_YARDAGE + index * 10,
-)
-
-const maxShotMarkersInTenYardGap = Math.max(
-  1,
-  ...ladderMarks.map(
-    (yardage) =>
-      shotMarkers.filter((marker) => marker.yardage >= yardage && marker.yardage < yardage + 10)
-        .length,
-  ),
-)
-const LADDER_TICK_SPACING = Math.max(
-  BASE_TICK_SPACING,
-  maxShotMarkersInTenYardGap * SHOT_MARKER_VERTICAL_SPACE + 20,
 )
 
 const readOptions = [
@@ -98,7 +87,7 @@ const readOptions = [
     },
   },
   {
-    label: 'Best',
+    label: 'Target',
     club: 'GW',
     variant: 'Flighted',
     score: '91 (Play)',
@@ -238,8 +227,8 @@ const inspectorRows = [
   ['Score / Call', 'score'],
 ] as const
 
-const yardageToOffset = (yardage: number) =>
-  ((yardage - LADDER_MIN_YARDAGE) / 10) * LADDER_TICK_SPACING
+const yardageToOffset = (yardage: number, tickSpacing: number) =>
+  ((yardage - LADDER_MIN_YARDAGE) / 10) * tickSpacing
 
 const getYPercentForYardage = (yardage: number, targetYardage: number) =>
   TARGET_LINE_Y_PERCENT + (targetYardage - yardage) * YARDAGE_PERCENT_PER_YARD
@@ -255,21 +244,249 @@ const variabilityValue = (value: number | undefined, digits = 0, mode: ShotMode 
   return `±${(value * modeScale).toFixed(digits)}`
 }
 
+const averageNumbers = (values: Array<number | undefined>) => {
+  const definedValues = values.filter((value): value is number => typeof value === 'number')
+  if (definedValues.length === 0) {
+    return undefined
+  }
+
+  return definedValues.reduce((sum, value) => sum + value, 0) / definedValues.length
+}
+
+const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
+  if (!payload) {
+    return undefined
+  }
+
+  const parseNumberLike = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : undefined
+    }
+    return undefined
+  }
+
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null
+
+  const root = asRecord(payload)
+  if (!root) {
+    return undefined
+  }
+
+  const scopedObjects: Record<string, unknown>[] = [root]
+  const coach = asRecord(root.open_golf_coach)
+  if (coach) {
+    scopedObjects.push(coach)
+    const usCustomaryUnits = asRecord(coach.us_customary_units)
+    if (usCustomaryUnits) {
+      scopedObjects.push(usCustomaryUnits)
+    }
+  }
+
+  for (const source of scopedObjects) {
+    for (const key of keys) {
+      const parsed = parseNumberLike(source[key])
+      if (typeof parsed === 'number') {
+        return parsed
+      }
+    }
+  }
+
+  return undefined
+}
+
+const carryValue = (shot: Shot) =>
+  typeof shot.carryYards === 'number'
+    ? shot.carryYards
+    : payloadNumber(shot.openGolfCoach, [
+        'carry_distance_yards',
+        'carryDistanceYards',
+        'carry',
+      ])
+
+const totalValue = (shot: Shot) =>
+  typeof shot.totalYards === 'number'
+    ? shot.totalYards
+    : payloadNumber(shot.openGolfCoach, [
+        'total_distance_yards',
+        'totalDistanceYards',
+        'total',
+      ])
+
+type ReadIdentityProfile = {
+  key: string
+  club: Club
+  clubLabel: string
+  variantId: string
+  variantLabel: string
+  shotCount: number
+  carry: number
+  total: number
+}
+
+type ReadOption = (typeof readOptions)[number]
+
+const applyIdentityToReadOption = (
+  option: ReadOption,
+  profile: ReadIdentityProfile | undefined,
+): ReadOption => {
+  if (!profile) {
+    return option
+  }
+
+  const carry = Math.round(profile.carry)
+  const total = Math.round(profile.total)
+
+  return {
+    ...option,
+    club: profile.clubLabel,
+    variant: profile.variantLabel,
+    stock: {
+      ...option.stock,
+      carry,
+      total,
+      stats: {
+        ...option.stock.stats,
+        carry: [`${carry} yd`, ''],
+        total: [`${total} yd`, ''],
+      },
+    },
+    pure: {
+      ...option.pure,
+      carry,
+      total,
+      stats: {
+        ...option.pure.stats,
+        carry: [`${carry} yd`, ''],
+        total: [`${total} yd`, ''],
+      },
+    },
+  }
+}
+
 export default function TheReadPage() {
   const [selectedMetric, setSelectedMetric] = useState<SelectedMetric>('carry')
   const [selectedTargetYardage, setSelectedTargetYardage] = useState(100)
-  const [selectedOptionLabel, setSelectedOptionLabel] = useState('Best')
+  const [selectedIdentityKey, setSelectedIdentityKey] = useState<string | null>(null)
+  const [selectedOptionLabel, setSelectedOptionLabel] = useState('Target')
   const [selectedMode, setSelectedMode] = useState<ShotMode>('stock')
   const wheelDeltaRef = useRef(0)
+  const savedSessions = useMemo(
+    () =>
+      loadSavedSessions().filter(
+        (session) => isSessionIncludedInAnalysis(session) && isSessionEligibleForAnalysis(session),
+      ),
+    [],
+  )
+  const identityProfiles = useMemo(() => {
+    const groups = new Map<string, Shot[]>()
+    savedSessions.forEach((session) => {
+      session.shots.forEach((shot) => {
+        if (!shot.included) {
+          return
+        }
+        const variantId = resolveShotVariantId(shot.shotVariantId)
+        const key = `${shot.club}:${variantId}`
+        groups.set(key, [...(groups.get(key) ?? []), shot])
+      })
+    })
+
+    return Array.from(groups.entries())
+      .map(([key, shots]): ReadIdentityProfile | null => {
+        const firstShot = shots[0]
+        const carry = averageNumbers(shots.map(carryValue))
+        const total = averageNumbers(shots.map(totalValue))
+        if (!firstShot || typeof carry !== 'number' || typeof total !== 'number') {
+          return null
+        }
+
+        const variantId = resolveShotVariantId(firstShot.shotVariantId)
+        return {
+          key,
+          club: firstShot.club,
+          clubLabel: getClubLabel(firstShot.club),
+          variantId,
+          variantLabel: getShotVariantLabel(firstShot.club, variantId),
+          shotCount: shots.length,
+          carry,
+          total,
+        }
+      })
+      .filter((profile): profile is ReadIdentityProfile => Boolean(profile))
+      .sort((a, b) => a[selectedMetric] - b[selectedMetric])
+  }, [savedSessions, selectedMetric])
+  const maxShotMarkersInTenYardGap = Math.max(
+    1,
+    ...ladderMarks.map(
+      (yardage) =>
+        identityProfiles.filter((profile) => {
+          const yardageValue = profile[selectedMetric]
+          return yardageValue >= yardage && yardageValue < yardage + 10
+        }).length,
+    ),
+  )
+  const ladderTickSpacing = Math.max(
+    BASE_TICK_SPACING,
+    maxShotMarkersInTenYardGap * SHOT_MARKER_VERTICAL_SPACE + 20,
+  )
+  const comparisonOptions = useMemo(() => {
+    if (identityProfiles.length === 0) {
+      return readOptions
+    }
+
+    const targetProfile = identityProfiles.reduce((closest, profile) => {
+      const closestDelta = Math.abs(closest[selectedMetric] - selectedTargetYardage)
+      const profileDelta = Math.abs(profile[selectedMetric] - selectedTargetYardage)
+      return profileDelta < closestDelta ? profile : closest
+    }, identityProfiles[0])
+    const shortProfiles = identityProfiles
+      .filter((profile) => profile[selectedMetric] <= selectedTargetYardage)
+      .sort((a, b) => b[selectedMetric] - a[selectedMetric])
+    const longProfiles = identityProfiles
+      .filter((profile) => profile[selectedMetric] >= selectedTargetYardage)
+      .sort((a, b) => a[selectedMetric] - b[selectedMetric])
+    const shortProfile =
+      shortProfiles[0]?.key === targetProfile.key && shortProfiles[1]
+        ? shortProfiles[1]
+        : shortProfiles[0]
+    const longProfile =
+      longProfiles[0]?.key === targetProfile.key && longProfiles[1]
+        ? longProfiles[1]
+        : longProfiles[0]
+    const profilesByLabel: Record<string, ReadIdentityProfile | undefined> = {
+      Short: shortProfile ?? targetProfile,
+      Target: targetProfile,
+      Long: longProfile ?? targetProfile,
+    }
+
+    return readOptions.map((option) => applyIdentityToReadOption(option, profilesByLabel[option.label]))
+  }, [identityProfiles, selectedMetric, selectedTargetYardage])
   const selectedOption =
-    readOptions.find((option) => option.label === selectedOptionLabel) ?? readOptions[1]
+    comparisonOptions.find((option) => option.label === selectedOptionLabel) ?? comparisonOptions[1]
   const selectedShot = selectedOption[selectedMode]
-  const selectedYardageOffset = yardageToOffset(selectedTargetYardage)
+  const selectedYardageOffset = yardageToOffset(selectedTargetYardage, ladderTickSpacing)
   const selectYardage = (yardage: number) => setSelectedTargetYardage(clampYardage(yardage))
+  const selectIdentity = (profile: ReadIdentityProfile) => {
+    setSelectedIdentityKey(profile.key)
+    selectYardage(Math.round(profile[selectedMetric]))
+  }
   const selectShot = (optionLabel: string, mode: ShotMode = 'stock') => {
     setSelectedOptionLabel(optionLabel)
     setSelectedMode(mode)
   }
+  useEffect(() => {
+    const selectedProfile = identityProfiles.find((profile) => profile.key === selectedIdentityKey)
+    if (!selectedProfile) {
+      return
+    }
+    setSelectedTargetYardage(clampYardage(Math.round(selectedProfile[selectedMetric])))
+  }, [identityProfiles, selectedIdentityKey, selectedMetric])
   const scrollLadder = (deltaY: number) => {
     wheelDeltaRef.current += deltaY
     if (Math.abs(wheelDeltaRef.current) < WHEEL_STEP_THRESHOLD) {
@@ -279,9 +496,9 @@ export default function TheReadPage() {
     wheelDeltaRef.current = 0
     setSelectedTargetYardage((yardage) => clampYardage(yardage + direction * 10))
   }
-  const formatDotValue = (option: (typeof readOptions)[number]['stock']) =>
+  const formatDotValue = (option: ReadOption['stock']) =>
     `${selectedMetric === 'carry' ? option.carry : option.total}`
-  const metricTop = (option: (typeof readOptions)[number]['stock']) =>
+  const metricTop = (option: ReadOption['stock']) =>
     `${getYPercentForYardage(option[selectedMetric], selectedTargetYardage)}%`
   const targetLineTop = `${getYPercentForYardage(
     selectedTargetYardage,
@@ -330,7 +547,7 @@ export default function TheReadPage() {
               <div
                 className="the-read-ladder-tape"
                 style={{
-                  height: `${(ladderMarks.length - 1) * LADDER_TICK_SPACING}px`,
+                  height: `${(ladderMarks.length - 1) * ladderTickSpacing}px`,
                   transform: `translateY(-${selectedYardageOffset}px)`,
                 }}
               >
@@ -343,24 +560,28 @@ export default function TheReadPage() {
                     }
                     key={yardage}
                     onClick={() => selectYardage(yardage)}
-                    style={{ top: `${yardageToOffset(yardage)}px` }}
+                    style={{ top: `${yardageToOffset(yardage, ladderTickSpacing)}px` }}
                     type="button"
                   >
                     <span>{yardage}</span>
                   </button>
                 ))}
-                {shotMarkers.map((marker) => (
+                {identityProfiles.map((profile) => (
                   <button
-                    className={`the-read-shot-marker the-read-shot-marker-${marker.tone}`}
-                    key={`${marker.club}-${marker.variant}`}
-                    onClick={() => {
-                      selectYardage(marker.yardage)
-                      selectShot(marker.optionLabel)
+                    className={
+                      selectedIdentityKey === profile.key
+                        ? 'the-read-shot-marker the-read-shot-marker-safe is-selected'
+                        : 'the-read-shot-marker the-read-shot-marker-safe'
+                    }
+                    key={profile.key}
+                    onClick={() => selectIdentity(profile)}
+                    style={{
+                      top: `${yardageToOffset(profile[selectedMetric], ladderTickSpacing)}px`,
                     }}
-                    style={{ top: `${yardageToOffset(marker.yardage)}px` }}
+                    title={`${profile.clubLabel} ${profile.variantLabel} (${profile.shotCount} shots)`}
                     type="button"
                   >
-                    {marker.club} {marker.variant}
+                    {profile.clubLabel} {profile.variantLabel}
                   </button>
                 ))}
               </div>
@@ -376,7 +597,7 @@ export default function TheReadPage() {
               <div className="the-read-target-line" style={{ top: targetLineTop }}>
                 <span>{selectedTargetYardage} yd target</span>
               </div>
-              {readOptions.map((option) => (
+              {comparisonOptions.map((option) => (
                 <article className="the-read-dispersion-column" key={option.label}>
                   <div className="the-read-dispersion-head">
                     <span>{option.label}</span>
