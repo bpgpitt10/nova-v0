@@ -27,7 +27,7 @@ const isShotVariant = (variant: unknown): variant is ShotVariant => {
 
 const stockShotVariant: ShotVariant = {
   id: STOCK_SHOT_VARIANT_ID,
-  name: 'Stock',
+  name: 'Full',
 }
 
 const readStoredShotVariants = () => {

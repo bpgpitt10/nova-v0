@@ -50,6 +50,7 @@ export default function ShotVariantsPage() {
     const normalizedName = trimmedName.toLowerCase()
     const duplicateExists =
       normalizedName === 'stock' ||
+      normalizedName === 'full' ||
       variants.some(
         (variant) =>
           (!variant.club || variant.club === selectedClub) &&
@@ -101,7 +102,7 @@ export default function ShotVariantsPage() {
             </button>
           </div>
           <img alt="The Looper" className="shot-variants-logo" src={looperLogoWhite} />
-          <p>Stock is always available. Add custom variants for the clubs in your bag.</p>
+          <p>Full is always available. Add custom variants for the clubs in your bag.</p>
         </header>
 
         <section className="shot-variants-form" aria-label="Add shot variant">
@@ -144,7 +145,7 @@ export default function ShotVariantsPage() {
                 <h2>{getClubDisplayName(club)}</h2>
                 <div className="shot-variants-list">
                   <div className="shot-variants-row">
-                    <span title="Stock">{formatVariantName('Stock')}</span>
+                    <span title="Full">{formatVariantName('Full')}</span>
                     <span className="shot-variants-built-in">Built in</span>
                   </div>
                   {clubVariants.map((variant) => (

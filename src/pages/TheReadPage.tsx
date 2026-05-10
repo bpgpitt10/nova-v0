@@ -157,7 +157,7 @@ const readOptions = [
   {
     label: 'Long',
     club: 'PW',
-    variant: 'Stock',
+    variant: 'Full',
     score: '91 (Play)',
     stock: {
       left: '40%',
@@ -216,6 +216,15 @@ const readOptions = [
   },
 ]
 
+type ShotStats = (typeof readOptions)[number]['stock']['stats']
+type InspectorMetricKey = keyof ShotStats | 'score'
+type InspectorRow = readonly [
+  label: string,
+  key: InspectorMetricKey,
+  variability?: number,
+  variabilityDigits?: number,
+]
+
 const inspectorRows = [
   ['Carry', 'carry', 10, 0],
   ['Total Distance', 'total', 9, 0],
@@ -232,7 +241,8 @@ const inspectorRows = [
   ['Club Path', 'clubPath', 1.3, 1],
   ['Face to Path', 'faceToPath', 0.8, 1],
   ['Face to Target', 'faceToTarget', 1.1, 1],
-] as const
+  ['Score / Call', 'score'],
+] satisfies readonly InspectorRow[]
 
 const yardageToOffset = (yardage: number, tickSpacing: number) =>
   ((yardage - LADDER_MIN_YARDAGE) / 10) * tickSpacing
