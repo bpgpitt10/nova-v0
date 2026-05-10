@@ -108,7 +108,8 @@
   z-index: 3;
 }
 
-.the-read-utility-actions a {
+.the-read-utility-actions a,
+.the-read-utility-actions button {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
@@ -123,10 +124,35 @@
 }
 
 .the-read-utility-actions a:hover,
-.the-read-utility-actions a:focus {
+.the-read-utility-actions a:focus,
+.the-read-utility-actions button:hover,
+.the-read-utility-actions button:focus {
   border-color: rgba(244, 206, 96, 0.78);
   background: rgba(234, 179, 8, 0.2);
   color: #f8edc9;
+}
+
+.the-read-utility-actions button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.the-read-utility-actions button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.the-read-utility-actions .the-read-utility-pdf {
+  border-color: rgba(114, 154, 122, 0.34);
+  background: rgba(39, 61, 43, 0.4);
+  color: rgba(191, 214, 194, 0.86);
+}
+
+.the-read-utility-actions .the-read-utility-pdf:hover,
+.the-read-utility-actions .the-read-utility-pdf:focus {
+  border-color: rgba(124, 186, 136, 0.52);
+  background: rgba(49, 92, 60, 0.58);
+  color: rgba(224, 239, 226, 0.96);
 }
 
 .the-read-layout {
@@ -609,6 +635,14 @@
 
 .the-read-inspector-row.is-selected-metric em {
   font-weight: 700;
+}
+
+.the-read-export-capture {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  pointer-events: none;
 }
 
 @media (max-width: 900px) {

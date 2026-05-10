@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import theReadLogo from '../assets/the-read-logo.png'
+import TheReadLadderExportCard from '../components/TheReadLadderExportCard'
+import type { ReadLadderExportRow } from '../components/TheReadLadderExportCard'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import { confidenceConfig } from '../lib/confidenceConfig'
 import {
@@ -20,6 +24,7 @@ const SHOT_MARKER_LANE_THRESHOLD_PX = 46
 const SHOT_MARKER_LANE_RIGHT_OFFSETS = [8, 68, 128, 38, 98, 158]
 const TARGET_LINE_Y_PERCENT = 50
 const YARDAGE_PERCENT_PER_YARD = 1.2
+const LADDER_SCROLL_SENSITIVITY = 2.55
 type ShotMode = 'stock' | 'pure'
 type SelectedMetric = 'carry' | 'total'
 
@@ -227,7 +232,6 @@ const inspectorRows = [
   ['Club Path', 'clubPath', 1.3, 1],
   ['Face to Path', 'faceToPath', 0.8, 1],
   ['Face to Target', 'faceToTarget', 1.1, 1],
-  ['Score / Call', 'score'],
 ] as const
 
 const yardageToOffset = (yardage: number, tickSpacing: number) =>
@@ -238,6 +242,8 @@ const getYPercentForYardage = (yardage: number, targetYardage: number) =>
 
 const clampYardage = (yardage: number) =>
   Math.min(LADDER_MAX_YARDAGE, Math.max(LADDER_MIN_YARDAGE, yardage))
+
+const pdfDateSlug = (date: Date) => date.toISOString().slice(0, 10)
 
 const variabilityValue = (value: number | undefined, digits = 0, mode: ShotMode = 'stock') => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -376,6 +382,7 @@ type ReadIdentityProfile = {
   pureTotal: number
   carryStdDev?: number
   totalStdDev?: number
+  offline?: number
   offlineStdDev?: number
 }
 
@@ -454,9 +461,40 @@ const readScoreCallForProfile = (profile: ReadIdentityProfile) => {
     pureTrust * 0.15,
   )
   const call = caddieCallForReadScore(score, profile.shotCount)
-  const callLabel = call === 'Insufficient Data' ? 'Needs Data' : call
 
-  return `${score} (${callLabel})`
+  return {
+    callTag: call === 'Insufficient Data' ? 'Needs Data' : call,
+    score,
+  }
+}
+
+const formatReadScoreCall = ({ callTag, score }: { callTag: string; score: number }) =>
+  `${score} (${callTag})`
+
+type ReadIdentityProfileWithOffline = ReadIdentityProfile & {
+  offline: number
+}
+
+const hasOfflineValue = (profile: ReadIdentityProfile): profile is ReadIdentityProfileWithOffline =>
+  typeof profile.offline === 'number'
+
+const buildReadLadderExportRow = (profile: ReadIdentityProfileWithOffline): ReadLadderExportRow => {
+  const scoreCall = readScoreCallForProfile(profile)
+  return {
+    key: profile.key,
+    club: profile.club,
+    clubLabel: profile.clubLabel,
+    variantId: profile.variantId,
+    variantLabel: profile.variantLabel,
+    carry: profile.carry,
+    carryRange: profile.carryStdDev,
+    total: profile.total,
+    totalRange: profile.totalStdDev,
+    offline: profile.offline,
+    offlineRange: profile.offlineStdDev,
+    score: scoreCall.score,
+    callTag: scoreCall.callTag,
+  }
 }
 
 const applyIdentityToReadOption = (
@@ -477,7 +515,7 @@ const applyIdentityToReadOption = (
     profile,
     club: profile.clubLabel,
     variant: profile.variantLabel,
-    score: readScoreCallForProfile(profile),
+    score: formatReadScoreCall(readScoreCallForProfile(profile)),
     stock: {
       ...option.stock,
       carry,
@@ -704,8 +742,11 @@ export default function TheReadPage() {
   const [selectedIdentityKey, setSelectedIdentityKey] = useState<string | null>(null)
   const [selectedOptionLabel, setSelectedOptionLabel] = useState('Target')
   const [selectedMode, setSelectedMode] = useState<ShotMode>('stock')
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [exportGeneratedAt, setExportGeneratedAt] = useState(() => new Date())
   const dragStateRef = useRef<{ pointerId: number; startY: number; startYardage: number } | null>(null)
   const ladderRef = useRef<HTMLDivElement | null>(null)
+  const exportCardRef = useRef<HTMLDivElement | null>(null)
   const savedSessions = useMemo(
     () =>
       loadSavedSessions().filter(
@@ -731,8 +772,10 @@ export default function TheReadPage() {
         const firstShot = shots[0]
         const carryValues = shots.map(carryValue)
         const totalValues = shots.map(totalValue)
+        const offlineValues = shots.map(offlineValue)
         const carry = averageNumbers(carryValues)
         const total = averageNumbers(totalValues)
+        const offline = averageNumbers(offlineValues)
         const pureCarry = percentile(carryValues, 80)
         const pureTotal = percentile(totalValues, 80)
         if (
@@ -759,12 +802,21 @@ export default function TheReadPage() {
           pureTotal,
           carryStdDev: standardDeviation(carryValues),
           totalStdDev: standardDeviation(totalValues),
-          offlineStdDev: standardDeviation(shots.map(offlineValue)),
+          offline,
+          offlineStdDev: standardDeviation(offlineValues),
         }
       })
       .filter((profile): profile is ReadIdentityProfile => Boolean(profile))
       .sort((a, b) => a[selectedMetric] - b[selectedMetric])
   }, [savedSessions, selectedMetric])
+  const readLadderExportRows = useMemo(
+    () =>
+      identityProfiles
+        .filter(hasOfflineValue)
+        .map(buildReadLadderExportRow)
+        .sort((a, b) => a.carry - b.carry),
+    [identityProfiles],
+  )
   const maxShotMarkersInTenYardGap = Math.max(
     1,
     ...ladderMarks.map(
@@ -872,7 +924,7 @@ export default function TheReadPage() {
     }
     setSelectedTargetYardage(clampYardage(Math.round(selectedProfile[selectedMetric])))
   }, [identityProfiles, selectedIdentityKey, selectedMetric])
-  const yardagePerPixel = 10 / ladderTickSpacing
+  const yardagePerPixel = (10 / ladderTickSpacing) * LADDER_SCROLL_SENSITIVITY
   const scrollLadder = (deltaY: number) =>
     setSelectedTargetYardage((yardage) =>
       clampYardage(Math.round(yardage + deltaY * yardagePerPixel)),
@@ -923,6 +975,39 @@ export default function TheReadPage() {
     selectedTargetYardage,
     selectedTargetYardage,
   )}%`
+  const exportReadLadderPdf = async () => {
+    const exportElement = exportCardRef.current
+    if (!exportElement || isExportingPdf) {
+      return
+    }
+
+    const generatedAt = new Date()
+    setExportGeneratedAt(generatedAt)
+    setIsExportingPdf(true)
+
+    try {
+      await document.fonts.ready
+      await new Promise((resolve) => window.requestAnimationFrame(resolve))
+      const canvas = await html2canvas(exportElement, {
+        backgroundColor: null,
+        scale: Math.max(2, Math.min(4, window.devicePixelRatio * 2)),
+        useCORS: true,
+      })
+      const imageData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        compress: true,
+        format: [canvas.width, canvas.height],
+        orientation: 'portrait',
+        unit: 'px',
+      })
+      pdf.addImage(imageData, 'PNG', 0, 0, canvas.width, canvas.height)
+      pdf.save(`the-read-ladder-card-${pdfDateSlug(generatedAt)}.pdf`)
+    } catch (error) {
+      console.error('Failed to export The Read ladder PDF', error)
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
 
   return (
     <main className="the-read-page">
@@ -950,6 +1035,14 @@ export default function TheReadPage() {
           <nav className="the-read-utility-actions" aria-label="The Read navigation">
             <a href="/dashboard">Dashboard</a>
             <a href="/looper">New Session</a>
+            <button
+              className="the-read-utility-pdf"
+              disabled={isExportingPdf}
+              onClick={exportReadLadderPdf}
+              type="button"
+            >
+              {isExportingPdf ? 'Saving...' : 'PDF'}
+            </button>
           </nav>
         </header>
 
@@ -1127,6 +1220,13 @@ export default function TheReadPage() {
             </aside>
           </aside>
         </section>
+
+        <div className="the-read-export-capture" ref={exportCardRef} aria-hidden="true">
+          <TheReadLadderExportCard
+            generatedAt={exportGeneratedAt}
+            rows={readLadderExportRows}
+          />
+        </div>
       </div>
     </main>
   )
