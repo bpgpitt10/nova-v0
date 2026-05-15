@@ -587,10 +587,11 @@ function DataManagementPage() {
 
     link.href = url
     link.download = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
+    link.style.display = 'none'
     document.body.appendChild(link)
     link.click()
     link.remove()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   return (
