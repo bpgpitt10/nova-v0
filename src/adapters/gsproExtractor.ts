@@ -221,6 +221,9 @@ type ResolvedShotValues = {
   backSpin?: number
   sideSpin?: number
   descentAngle?: number
+  clubPath?: number
+  faceToPath?: number
+  faceToTarget?: number
 }
 
 const OGC_INPUT_FIELD_LABELS: Record<SimreadOgcRequiredInputField, string> = {
@@ -314,6 +317,12 @@ const resolveLooperShotValues = (practice?: PracticeState | null): ResolvedShotV
       resolvedShot?.descentAngle,
       gsproFields?.descentAngle,
     ),
+    clubPath: firstDefinedNumber(resolvedShot?.clubPath, gsproFields?.clubPath),
+    faceToPath: firstDefinedNumber(resolvedShot?.faceToPath, gsproFields?.faceToPath),
+    faceToTarget: firstDefinedNumber(
+      resolvedShot?.faceToTarget,
+      gsproFields?.faceToTarget,
+    ),
   }
 }
 
@@ -404,6 +413,9 @@ const buildShotFromValues = (
     horizontalLaunchAngleDegrees: values.hla,
     totalSpinRpm: values.spin,
     spinAxisDegrees: values.spinAxis,
+    clubPathDegrees: values.clubPath,
+    faceToPathDegrees: values.faceToPath,
+    faceToTargetDegrees: values.faceToTarget,
     ballSpeedMph: values.ballSpeed,
     carryYards: values.carryYards,
     totalYards: values.totalYards,

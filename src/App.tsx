@@ -322,20 +322,54 @@ const descentValue = (shot: Shot) =>
   ])
 
 const clubPathValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, ['club_path_degrees', 'clubPathDegrees', 'club_path'])
+  shot.clubPathDegrees ??
+  shot.clubPathDeg ??
+  shot.clubPath ??
+  payloadNumber(shot.openGolfCoach, [
+    'club_path_degrees',
+    'clubPathDegrees',
+    'club_path_deg',
+    'clubPathDeg',
+    'club_path',
+    'clubPath',
+  ])
 
 const faceToPathValue = (shot: Shot) =>
+  shot.faceToPathDegrees ??
+  shot.faceToPathDeg ??
+  shot.faceToPath ??
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_path_degrees',
     'clubFaceToPathDegrees',
+    'face_to_path_degrees',
+    'faceToPathDegrees',
+    'club_face_to_path_deg',
+    'clubFaceToPathDeg',
+    'face_to_path_deg',
+    'faceToPathDeg',
     'club_face_to_path',
+    'clubFaceToPath',
+    'face_to_path',
+    'faceToPath',
   ])
 
 const faceToTargetValue = (shot: Shot) =>
+  shot.faceToTargetDegrees ??
+  shot.faceToTargetDeg ??
+  shot.faceToTarget ??
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_target_degrees',
     'clubFaceToTargetDegrees',
+    'face_to_target_degrees',
+    'faceToTargetDegrees',
+    'club_face_to_target_deg',
+    'clubFaceToTargetDeg',
+    'face_to_target_deg',
+    'faceToTargetDeg',
     'club_face_to_target',
+    'clubFaceToTarget',
+    'face_to_target',
+    'faceToTarget',
   ])
 
 const smashFactorValue = (shot: Shot) =>
@@ -516,6 +550,35 @@ const buildShot = (
     incomingShot.horizontal_launch_angle_degrees,
   totalSpinRpm: incomingShot.totalSpinRpm ?? incomingShot.total_spin_rpm,
   spinAxisDegrees: incomingShot.spinAxisDegrees ?? incomingShot.spin_axis_degrees,
+  clubPathDegrees:
+    incomingShot.clubPathDegrees ??
+    incomingShot.club_path_degrees ??
+    incomingShot.clubPathDeg ??
+    incomingShot.club_path_deg ??
+    incomingShot.clubPath ??
+    incomingShot.club_path,
+  faceToPathDegrees:
+    incomingShot.faceToPathDegrees ??
+    incomingShot.face_to_path_degrees ??
+    incomingShot.clubFaceToPathDegrees ??
+    incomingShot.club_face_to_path_degrees ??
+    incomingShot.faceToPathDeg ??
+    incomingShot.face_to_path_deg ??
+    incomingShot.faceToPath ??
+    incomingShot.face_to_path ??
+    incomingShot.clubFaceToPath ??
+    incomingShot.club_face_to_path,
+  faceToTargetDegrees:
+    incomingShot.faceToTargetDegrees ??
+    incomingShot.face_to_target_degrees ??
+    incomingShot.clubFaceToTargetDegrees ??
+    incomingShot.club_face_to_target_degrees ??
+    incomingShot.faceToTargetDeg ??
+    incomingShot.face_to_target_deg ??
+    incomingShot.faceToTarget ??
+    incomingShot.face_to_target ??
+    incomingShot.clubFaceToTarget ??
+    incomingShot.club_face_to_target,
   ballSpeedMph: incomingShot.ballSpeedMph,
   carryYards: incomingShot.carryYards ?? incomingShot.carry,
   totalYards: incomingShot.totalYards ?? incomingShot.total,

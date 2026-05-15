@@ -12,6 +12,15 @@ export type Shot = {
   horizontalLaunchAngleDegrees?: number
   totalSpinRpm?: number
   spinAxisDegrees?: number
+  clubPathDegrees?: number
+  faceToPathDegrees?: number
+  faceToTargetDegrees?: number
+  clubPath?: number
+  faceToPath?: number
+  faceToTarget?: number
+  clubPathDeg?: number
+  faceToPathDeg?: number
+  faceToTargetDeg?: number
   ballSpeedMph?: number
   carryYards?: number
   totalYards?: number
@@ -41,6 +50,32 @@ export type IncomingNovaShot = {
   total_spin_rpm?: number
   spinAxisDegrees?: number
   spin_axis_degrees?: number
+  clubPathDegrees?: number
+  club_path_degrees?: number
+  clubPathDeg?: number
+  club_path_deg?: number
+  clubPath?: number
+  club_path?: number
+  faceToPathDegrees?: number
+  face_to_path_degrees?: number
+  faceToPathDeg?: number
+  face_to_path_deg?: number
+  faceToPath?: number
+  face_to_path?: number
+  clubFaceToPathDegrees?: number
+  club_face_to_path_degrees?: number
+  clubFaceToPath?: number
+  club_face_to_path?: number
+  faceToTargetDegrees?: number
+  face_to_target_degrees?: number
+  faceToTargetDeg?: number
+  face_to_target_deg?: number
+  faceToTarget?: number
+  face_to_target?: number
+  clubFaceToTargetDegrees?: number
+  club_face_to_target_degrees?: number
+  clubFaceToTarget?: number
+  club_face_to_target?: number
   ballSpeedMph?: number
   carryYards?: number
   carry?: number

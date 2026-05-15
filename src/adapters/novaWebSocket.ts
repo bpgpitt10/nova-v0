@@ -15,6 +15,32 @@ const KNOWN_NOVA_SHOT_FIELDS = new Set([
   'horizontal_launch_angle_degrees',
   'total_spin_rpm',
   'spin_axis_degrees',
+  'club_path_degrees',
+  'club_path_deg',
+  'club_path',
+  'clubPathDegrees',
+  'clubPathDeg',
+  'clubPath',
+  'face_to_path_degrees',
+  'face_to_path_deg',
+  'face_to_path',
+  'faceToPathDegrees',
+  'faceToPathDeg',
+  'faceToPath',
+  'club_face_to_path_degrees',
+  'club_face_to_path',
+  'clubFaceToPathDegrees',
+  'clubFaceToPath',
+  'face_to_target_degrees',
+  'face_to_target_deg',
+  'face_to_target',
+  'faceToTargetDegrees',
+  'faceToTargetDeg',
+  'faceToTarget',
+  'club_face_to_target_degrees',
+  'club_face_to_target',
+  'clubFaceToTargetDegrees',
+  'clubFaceToTarget',
 ])
 const CONNECT_TIMEOUT_MS = 7000
 
@@ -117,6 +143,38 @@ const parseShot = (raw: MessageEvent<string>): IncomingNovaShot | null => {
       total_spin_rpm: optionalNumberish(shotRecord.total_spin_rpm ?? shotRecord.totalSpinRpm),
       spin_axis_degrees: optionalNumberish(
         shotRecord.spin_axis_degrees ?? shotRecord.spinAxisDegrees,
+      ),
+      club_path_degrees: optionalNumberish(
+        shotRecord.club_path_degrees ??
+          shotRecord.clubPathDegrees ??
+          shotRecord.club_path_deg ??
+          shotRecord.clubPathDeg ??
+          shotRecord.club_path ??
+          shotRecord.clubPath,
+      ),
+      face_to_path_degrees: optionalNumberish(
+        shotRecord.face_to_path_degrees ??
+          shotRecord.faceToPathDegrees ??
+          shotRecord.club_face_to_path_degrees ??
+          shotRecord.clubFaceToPathDegrees ??
+          shotRecord.face_to_path_deg ??
+          shotRecord.faceToPathDeg ??
+          shotRecord.face_to_path ??
+          shotRecord.faceToPath ??
+          shotRecord.club_face_to_path ??
+          shotRecord.clubFaceToPath,
+      ),
+      face_to_target_degrees: optionalNumberish(
+        shotRecord.face_to_target_degrees ??
+          shotRecord.faceToTargetDegrees ??
+          shotRecord.club_face_to_target_degrees ??
+          shotRecord.clubFaceToTargetDegrees ??
+          shotRecord.face_to_target_deg ??
+          shotRecord.faceToTargetDeg ??
+          shotRecord.face_to_target ??
+          shotRecord.faceToTarget ??
+          shotRecord.club_face_to_target ??
+          shotRecord.clubFaceToTarget,
       ),
       shotRanking: optionalStringOrNumber(
         shotRecord.shotRanking ?? shotRecord.shot_rank ?? shotRecord.shotRank,
