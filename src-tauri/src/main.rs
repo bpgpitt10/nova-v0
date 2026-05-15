@@ -721,6 +721,21 @@ fn append_enrichment_log(app: tauri::AppHandle, line: String) -> Result<(), Stri
     append_log_line(&app, "enrichment-pipeline.log", &line)
 }
 
+#[tauri::command]
+fn export_shots_csv(suggested_filename: String, csv: String) -> Result<bool, String> {
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("CSV", &["csv"])
+        .set_file_name(&suggested_filename)
+        .save_file()
+    else {
+        return Ok(false);
+    };
+
+    std::fs::write(&path, csv)
+        .map_err(|error| format!("failed to write CSV export to {}: {error}", path.display()))?;
+    Ok(true)
+}
+
 fn main() {
     let sidecar_state = SidecarState::default();
 
@@ -729,7 +744,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             append_enrichment_log,
             append_nova_log,
-            discover_nova_ws_endpoint
+            discover_nova_ws_endpoint,
+            export_shots_csv
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { .. } = event {

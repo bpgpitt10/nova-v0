@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
@@ -646,7 +647,7 @@ function DataManagementPage() {
     })
   }
 
-  const exportShotsCsv = () => {
+  const exportShotsCsv = async () => {
     if (exportableShotCount === 0) {
       return
     }
@@ -658,17 +659,14 @@ function DataManagementPage() {
     const csv = [shotTableColumns, ...rows]
       .map((row) => row.map((value) => escapeCsvField(value)).join(','))
       .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
+    const suggestedFilename = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
 
-    link.href = url
-    link.download = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
-    link.style.display = 'none'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    try {
+      await invoke('export_shots_csv', { suggestedFilename, csv })
+    } catch (error) {
+      console.error('Failed to export CSV.', error)
+      window.alert('Failed to export CSV. Please try again.')
+    }
   }
 
   return (
