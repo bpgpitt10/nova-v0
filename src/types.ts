@@ -123,6 +123,9 @@ export type OpenGolfCoachDerivedValues = {
   carry_distance_yards?: number
   total_distance_yards?: number
   offline_distance_yards?: number
+  club_path_degrees?: number
+  club_face_to_path_degrees?: number
+  club_face_to_target_degrees?: number
   shot_name?: string
   shot_rank?: number | string
 }

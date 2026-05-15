@@ -3,6 +3,7 @@ import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import { getShotVariantLabel } from '../lib/shotVariants'
+import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
 import {
   clearActiveSessionDraft,
   isSessionOldExcludedBySystem,
@@ -69,11 +70,12 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
   }
 
   const parseNumberLike = (value: unknown) => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value
+    const resolved = resolveHandedOpenGolfCoachValue(value)
+    if (typeof resolved === 'number' && Number.isFinite(resolved)) {
+      return resolved
     }
-    if (typeof value === 'string') {
-      const parsed = Number(value)
+    if (typeof resolved === 'string') {
+      const parsed = Number(resolved)
       if (!Number.isNaN(parsed)) {
         return parsed
       }
@@ -105,6 +107,49 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
       const parsed = parseNumberLike(current[key])
       if (typeof parsed === 'number') {
         return parsed
+      }
+    }
+
+    Object.values(current).forEach((value) => {
+      const nested = asRecord(value)
+      if (nested && !visited.has(nested)) {
+        stack.push(nested)
+      }
+    })
+  }
+
+  return undefined
+}
+
+const payloadStringOrNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
+  if (!payload) {
+    return undefined
+  }
+
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null
+
+  const root = asRecord(payload)
+  if (!root) {
+    return undefined
+  }
+
+  const visited = new Set<Record<string, unknown>>()
+  const stack: Record<string, unknown>[] = [root]
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current || visited.has(current)) {
+      continue
+    }
+    visited.add(current)
+
+    for (const key of keys) {
+      const resolved = resolveHandedOpenGolfCoachValue(current[key])
+      if (typeof resolved === 'string' || typeof resolved === 'number') {
+        return resolved
       }
     }
 
@@ -161,19 +206,50 @@ const smashFactorValue = (shot: Shot) =>
   payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor'])
 
 const clubPathValue = (shot: Shot) =>
+  shot.clubPathDegrees ??
+  shot.club_path_degrees ??
+  shot.clubPathDeg ??
+  shot.club_path_deg ??
+  shot.clubPath ??
+  shot.club_path ??
   payloadNumber(shot.openGolfCoach, ['club_path_degrees', 'clubPathDegrees'])
 
 const faceToPathValue = (shot: Shot) =>
-  payloadNumber(shot.openGolfCoach, [
-    'club_face_to_path_degrees',
-    'clubFaceToPathDegrees',
-  ])
+  shot.faceToPathDegrees ??
+  shot.face_to_path_degrees ??
+  shot.clubFaceToPathDegrees ??
+  shot.club_face_to_path_degrees ??
+  shot.faceToPathDeg ??
+  shot.face_to_path_deg ??
+  shot.faceToPath ??
+  shot.face_to_path ??
+  shot.clubFaceToPath ??
+  shot.club_face_to_path ??
+  payloadNumber(shot.openGolfCoach, ['club_face_to_path_degrees', 'clubFaceToPathDegrees'])
 
 const faceToTargetValue = (shot: Shot) =>
+  shot.faceToTargetDegrees ??
+  shot.face_to_target_degrees ??
+  shot.clubFaceToTargetDegrees ??
+  shot.club_face_to_target_degrees ??
+  shot.faceToTargetDeg ??
+  shot.face_to_target_deg ??
+  shot.faceToTarget ??
+  shot.face_to_target ??
+  shot.clubFaceToTarget ??
+  shot.club_face_to_target ??
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_target_degrees',
     'clubFaceToTargetDegrees',
   ])
+
+const shotRankValue = (shot: Shot) =>
+  shot.shotRanking ?? payloadStringOrNumber(shot.openGolfCoach, ['shot_rank', 'shotRank'])
+
+const shotShapeValue = (shot: Shot) => {
+  const value = shot.shotName ?? payloadStringOrNumber(shot.openGolfCoach, ['shot_name', 'shotName'])
+  return typeof value === 'string' ? value : undefined
+}
 
 const clubSpeedValue = (shot: Shot) =>
   payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph'])
@@ -218,10 +294,11 @@ const sessionShotGroups = (session: SavedSession) => {
       const included = clubShots
       const rankCounts = new Map<string, number>()
       included.forEach((shot) => {
-        if (typeof shot.shotRanking === 'undefined') {
+        const shotRank = shotRankValue(shot)
+        if (typeof shotRank === 'undefined') {
           return
         }
-        const rank = normalizeShotRank(shot.shotRanking) ?? String(shot.shotRanking)
+        const rank = normalizeShotRank(shotRank) ?? String(shotRank)
         rankCounts.set(rank, (rankCounts.get(rank) ?? 0) + 1)
       })
 
@@ -276,7 +353,7 @@ const shotTableRowValues = (shot: Shot, _systemOldExcluded: boolean) => [
   formatDecimal(shot.horizontalLaunchAngleDegrees, '°'),
   formatDecimal(shot.spinAxisDegrees, '°'),
   typeof smashFactorValue(shot) === 'number' ? smashFactorValue(shot)!.toFixed(2) : '-',
-  formatRank(shot.shotRanking),
+  formatRank(shotRankValue(shot)),
   formatDecimal(clubPathValue(shot), '°'),
   formatDecimal(faceToPathValue(shot), '°'),
   formatDecimal(faceToTargetValue(shot), '°'),
@@ -284,7 +361,7 @@ const shotTableRowValues = (shot: Shot, _systemOldExcluded: boolean) => [
   formatDecimal(ballSpeedMphValue(shot), ' mph'),
   formatDecimal(peakHeightValue(shot), ' yd'),
   formatDecimal(descentValue(shot), '°'),
-  shot.shotName ?? '-',
+  shotShapeValue(shot) ?? '-',
 ]
 
 const escapeCsvField = (value: string | null | undefined) => {
@@ -827,7 +904,7 @@ function DataManagementPage() {
                                               ? smashFactorValue(shot)!.toFixed(2)
                                               : '-'}
                                           </td>
-                                          <td>{formatRank(shot.shotRanking)}</td>
+                                          <td>{formatRank(shotRankValue(shot))}</td>
                                           <td>{formatDecimal(clubPathValue(shot), '°')}</td>
                                           <td>{formatDecimal(faceToPathValue(shot), '°')}</td>
                                           <td>{formatDecimal(faceToTargetValue(shot), '°')}</td>
@@ -835,7 +912,7 @@ function DataManagementPage() {
                                           <td>{formatDecimal(ballSpeedMphValue(shot), ' mph')}</td>
                                           <td>{formatDecimal(peakHeightValue(shot), ' yd')}</td>
                                           <td>{formatDecimal(descentValue(shot), '°')}</td>
-                                          <td>{shot.shotName ?? '-'}</td>
+                                          <td>{shotShapeValue(shot) ?? '-'}</td>
                                         </tr>
                                       )),
                                     ])}

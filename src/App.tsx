@@ -43,6 +43,7 @@ import {
   isOpenGolfCoachConfigured,
   logOpenGolfCoachPipeline,
   openGolfCoachEnricher,
+  resolveHandedOpenGolfCoachValue,
 } from './lib/openGolfCoach'
 import {
   weightedAverage,
@@ -169,11 +170,12 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
   }
 
   const parseNumberLike = (value: unknown) => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value
+    const resolved = resolveHandedOpenGolfCoachValue(value)
+    if (typeof resolved === 'number' && Number.isFinite(resolved)) {
+      return resolved
     }
-    if (typeof value === 'string') {
-      const parsed = Number(value)
+    if (typeof resolved === 'string') {
+      const parsed = Number(resolved)
       if (!Number.isNaN(parsed)) {
         return parsed
       }
@@ -627,6 +629,11 @@ const mergeDerivedValues = (
   carryYards: derivedValues.carry_distance_yards ?? shot.carryYards,
   totalYards: derivedValues.total_distance_yards ?? shot.totalYards,
   offlineYards: derivedValues.offline_distance_yards ?? shot.offlineYards,
+  clubPathDegrees: derivedValues.club_path_degrees ?? shot.clubPathDegrees,
+  faceToPathDegrees:
+    derivedValues.club_face_to_path_degrees ?? shot.faceToPathDegrees,
+  faceToTargetDegrees:
+    derivedValues.club_face_to_target_degrees ?? shot.faceToTargetDegrees,
   shotName: derivedValues.shot_name ?? shot.shotName,
   shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
 })

@@ -226,6 +226,8 @@ export const extractOpenGolfCoachDerivedValues = (
     !Array.isArray(coach.us_customary_units)
       ? (coach.us_customary_units as Record<string, unknown>)
       : {}
+  const resolvedShotName = resolveHandedOpenGolfCoachValue(coach.shot_name)
+  const resolvedShotRank = resolveHandedOpenGolfCoachValue(coach.shot_rank)
 
   return {
     carry_distance_yards:
@@ -240,12 +242,33 @@ export const extractOpenGolfCoachDerivedValues = (
       typeof customary.offline_distance_yards === 'number'
         ? customary.offline_distance_yards
         : undefined,
-    shot_name: typeof coach.shot_name === 'string' ? coach.shot_name : undefined,
+    club_path_degrees: resolveOpenGolfCoachNumber(coach.club_path_degrees),
+    club_face_to_path_degrees: resolveOpenGolfCoachNumber(
+      coach.club_face_to_path_degrees,
+    ),
+    club_face_to_target_degrees: resolveOpenGolfCoachNumber(
+      coach.club_face_to_target_degrees,
+    ),
+    shot_name: typeof resolvedShotName === 'string' ? resolvedShotName : undefined,
     shot_rank:
-      typeof coach.shot_rank === 'number' || typeof coach.shot_rank === 'string'
-        ? coach.shot_rank
+      typeof resolvedShotRank === 'number' || typeof resolvedShotRank === 'string'
+        ? resolvedShotRank
         : undefined,
   }
+}
+
+export const resolveHandedOpenGolfCoachValue = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value
+  }
+
+  const handed = value as Record<string, unknown>
+  return handed.right_handed ?? handed.left_handed
+}
+
+const resolveOpenGolfCoachNumber = (value: unknown) => {
+  const resolved = resolveHandedOpenGolfCoachValue(value)
+  return typeof resolved === 'number' && Number.isFinite(resolved) ? resolved : undefined
 }
 
 export const buildOpenGolfCoachInput = (
