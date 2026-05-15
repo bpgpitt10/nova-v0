@@ -331,7 +331,7 @@ function DataManagementPage() {
     sortedSessions.every((session) => selectedSessionIds.has(session.id))
   const selectedShotCount = selectedShotKeys.size
   const hasAnySelectedItems = selectedSessionIds.size > 0 || selectedShotCount > 0
-  const exportShotCount = useMemo(
+  const exportableShotCount = useMemo(
     () => sortedSessions.reduce((count, session) => count + session.shots.length, 0),
     [sortedSessions],
   )
@@ -570,15 +570,13 @@ function DataManagementPage() {
   }
 
   const exportShotsCsv = () => {
-    if (exportShotCount === 0) {
+    if (exportableShotCount === 0) {
       return
     }
 
     const rows = sortedSessions.flatMap((session) => {
       const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
-      return sessionShotGroups(session).flatMap((group) =>
-        group.shots.map((shot) => shotTableRowValues(shot, systemOldExcluded)),
-      )
+      return session.shots.map((shot) => shotTableRowValues(shot, systemOldExcluded))
     })
     const csv = [shotTableColumns, ...rows]
       .map((row) => row.map((value) => escapeCsvField(value)).join(','))
@@ -646,7 +644,7 @@ function DataManagementPage() {
               </button>
               <button
                 className="dm-action dm-export"
-                disabled={exportShotCount === 0}
+                disabled={exportableShotCount === 0}
                 onClick={exportShotsCsv}
                 type="button"
               >
