@@ -21,6 +21,23 @@ export type Shot = {
   clubPathDeg?: number
   faceToPathDeg?: number
   faceToTargetDeg?: number
+  club_path_degrees?: number
+  club_path_deg?: number
+  club_path?: number
+  face_to_path_degrees?: number
+  face_to_path_deg?: number
+  face_to_path?: number
+  clubFaceToPathDegrees?: number
+  club_face_to_path_degrees?: number
+  clubFaceToPath?: number
+  club_face_to_path?: number
+  face_to_target_degrees?: number
+  face_to_target_deg?: number
+  face_to_target?: number
+  clubFaceToTargetDegrees?: number
+  club_face_to_target_degrees?: number
+  clubFaceToTarget?: number
+  club_face_to_target?: number
   ballSpeedMph?: number
   carryYards?: number
   totalYards?: number

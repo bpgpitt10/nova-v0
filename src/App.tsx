@@ -323,8 +323,11 @@ const descentValue = (shot: Shot) =>
 
 const clubPathValue = (shot: Shot) =>
   shot.clubPathDegrees ??
+  shot.club_path_degrees ??
   shot.clubPathDeg ??
+  shot.club_path_deg ??
   shot.clubPath ??
+  shot.club_path ??
   payloadNumber(shot.openGolfCoach, [
     'club_path_degrees',
     'clubPathDegrees',
@@ -336,8 +339,15 @@ const clubPathValue = (shot: Shot) =>
 
 const faceToPathValue = (shot: Shot) =>
   shot.faceToPathDegrees ??
+  shot.face_to_path_degrees ??
+  shot.clubFaceToPathDegrees ??
+  shot.club_face_to_path_degrees ??
   shot.faceToPathDeg ??
+  shot.face_to_path_deg ??
   shot.faceToPath ??
+  shot.face_to_path ??
+  shot.clubFaceToPath ??
+  shot.club_face_to_path ??
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_path_degrees',
     'clubFaceToPathDegrees',
@@ -355,8 +365,15 @@ const faceToPathValue = (shot: Shot) =>
 
 const faceToTargetValue = (shot: Shot) =>
   shot.faceToTargetDegrees ??
+  shot.face_to_target_degrees ??
+  shot.clubFaceToTargetDegrees ??
+  shot.club_face_to_target_degrees ??
   shot.faceToTargetDeg ??
+  shot.face_to_target_deg ??
   shot.faceToTarget ??
+  shot.face_to_target ??
+  shot.clubFaceToTarget ??
+  shot.club_face_to_target ??
   payloadNumber(shot.openGolfCoach, [
     'club_face_to_target_degrees',
     'clubFaceToTargetDegrees',

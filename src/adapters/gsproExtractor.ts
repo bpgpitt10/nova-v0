@@ -29,11 +29,34 @@ export type ResolvedPracticeShot = {
   descentAngle?: number
   spinLoft?: number
   clubSpeed?: number
+  clubPathDegrees?: number
+  clubPathDeg?: number
+  club_path_degrees?: number
+  club_path_deg?: number
+  club_path?: number
   clubPath?: number
   clubAoa?: number
   clubLie?: number
   clubLoft?: number
+  faceToTargetDegrees?: number
+  faceToTargetDeg?: number
+  face_to_target_degrees?: number
+  face_to_target_deg?: number
+  face_to_target?: number
+  clubFaceToTargetDegrees?: number
+  club_face_to_target_degrees?: number
+  clubFaceToTarget?: number
+  club_face_to_target?: number
   faceToTarget?: number
+  faceToPathDegrees?: number
+  faceToPathDeg?: number
+  face_to_path_degrees?: number
+  face_to_path_deg?: number
+  face_to_path?: number
+  clubFaceToPathDegrees?: number
+  club_face_to_path_degrees?: number
+  clubFaceToPath?: number
+  club_face_to_path?: number
   faceToPath?: number
   closureRate?: number
   horImpact?: number
@@ -63,11 +86,34 @@ export type GsproPracticeFields = {
   spinAxis?: number
   spinLoft?: number
   clubSpeed?: number
+  clubPathDegrees?: number
+  clubPathDeg?: number
+  club_path_degrees?: number
+  club_path_deg?: number
+  club_path?: number
   clubPath?: number
   clubAoa?: number
   clubLie?: number
   clubLoft?: number
+  faceToTargetDegrees?: number
+  faceToTargetDeg?: number
+  face_to_target_degrees?: number
+  face_to_target_deg?: number
+  face_to_target?: number
+  clubFaceToTargetDegrees?: number
+  club_face_to_target_degrees?: number
+  clubFaceToTarget?: number
+  club_face_to_target?: number
   faceToTarget?: number
+  faceToPathDegrees?: number
+  faceToPathDeg?: number
+  face_to_path_degrees?: number
+  face_to_path_deg?: number
+  face_to_path?: number
+  clubFaceToPathDegrees?: number
+  club_face_to_path_degrees?: number
+  clubFaceToPath?: number
+  club_face_to_path?: number
   faceToPath?: number
   closureRate?: number
   horImpact?: number
@@ -317,11 +363,63 @@ const resolveLooperShotValues = (practice?: PracticeState | null): ResolvedShotV
       resolvedShot?.descentAngle,
       gsproFields?.descentAngle,
     ),
-    clubPath: firstDefinedNumber(resolvedShot?.clubPath, gsproFields?.clubPath),
-    faceToPath: firstDefinedNumber(resolvedShot?.faceToPath, gsproFields?.faceToPath),
+    clubPath: firstDefinedNumber(
+      resolvedShot?.clubPathDegrees,
+      resolvedShot?.club_path_degrees,
+      resolvedShot?.clubPathDeg,
+      resolvedShot?.club_path_deg,
+      resolvedShot?.clubPath,
+      resolvedShot?.club_path,
+      gsproFields?.clubPathDegrees,
+      gsproFields?.club_path_degrees,
+      gsproFields?.clubPathDeg,
+      gsproFields?.club_path_deg,
+      gsproFields?.clubPath,
+      gsproFields?.club_path,
+    ),
+    faceToPath: firstDefinedNumber(
+      resolvedShot?.faceToPathDegrees,
+      resolvedShot?.face_to_path_degrees,
+      resolvedShot?.clubFaceToPathDegrees,
+      resolvedShot?.club_face_to_path_degrees,
+      resolvedShot?.faceToPathDeg,
+      resolvedShot?.face_to_path_deg,
+      resolvedShot?.faceToPath,
+      resolvedShot?.face_to_path,
+      resolvedShot?.clubFaceToPath,
+      resolvedShot?.club_face_to_path,
+      gsproFields?.faceToPathDegrees,
+      gsproFields?.face_to_path_degrees,
+      gsproFields?.clubFaceToPathDegrees,
+      gsproFields?.club_face_to_path_degrees,
+      gsproFields?.faceToPathDeg,
+      gsproFields?.face_to_path_deg,
+      gsproFields?.faceToPath,
+      gsproFields?.face_to_path,
+      gsproFields?.clubFaceToPath,
+      gsproFields?.club_face_to_path,
+    ),
     faceToTarget: firstDefinedNumber(
+      resolvedShot?.faceToTargetDegrees,
+      resolvedShot?.face_to_target_degrees,
+      resolvedShot?.clubFaceToTargetDegrees,
+      resolvedShot?.club_face_to_target_degrees,
+      resolvedShot?.faceToTargetDeg,
+      resolvedShot?.face_to_target_deg,
       resolvedShot?.faceToTarget,
+      resolvedShot?.face_to_target,
+      resolvedShot?.clubFaceToTarget,
+      resolvedShot?.club_face_to_target,
+      gsproFields?.faceToTargetDegrees,
+      gsproFields?.face_to_target_degrees,
+      gsproFields?.clubFaceToTargetDegrees,
+      gsproFields?.club_face_to_target_degrees,
+      gsproFields?.faceToTargetDeg,
+      gsproFields?.face_to_target_deg,
       gsproFields?.faceToTarget,
+      gsproFields?.face_to_target,
+      gsproFields?.clubFaceToTarget,
+      gsproFields?.club_face_to_target,
     ),
   }
 }
