@@ -7,6 +7,7 @@ import {
 import { normalizeShotRank, shotRankWeight } from './shotRank'
 import {
   includedClubShotsForSession,
+  isShotIncludedInAnalysis,
   isSystemOldExcludedSession,
   sessionHistoricalWeightForClub,
 } from './historicalModel'
@@ -71,7 +72,7 @@ const descentAngleValue = (shot: Shot) =>
   ])
 
 const includedClubShots = (club: Club, shots: Shot[]) =>
-  shots.filter((shot) => shot.club === club)
+  shots.filter((shot) => shot.club === club && isShotIncludedInAnalysis(shot))
 
 const getRankWeight = (shot: Shot) => shotRankWeight(shot.shotRanking)
 
@@ -375,7 +376,7 @@ const buildPatternStabilityScore = (
     .map((session) =>
       session.shots.filter(
         (shot) =>
-          shot.club === club && recencyWeightForShot(shot) > 0,
+          shot.club === club && isShotIncludedInAnalysis(shot) && recencyWeightForShot(shot) > 0,
       ),
     )
     .filter((shots) => shots.length > 0)

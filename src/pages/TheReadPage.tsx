@@ -7,6 +7,7 @@ import TheReadLadderExportCard from '../components/TheReadLadderExportCard'
 import type { ReadLadderExportRow } from '../components/TheReadLadderExportCard'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import { confidenceConfig } from '../lib/confidenceConfig'
+import { isShotIncludedInAnalysis } from '../lib/historicalModel'
 import {
   isSessionEligibleForAnalysis,
   isSessionIncludedInAnalysis,
@@ -768,7 +769,7 @@ export default function TheReadPage() {
     const groups = new Map<string, Shot[]>()
     savedSessions.forEach((session) => {
       session.shots.forEach((shot) => {
-        if (!shot.included) {
+        if (!isShotIncludedInAnalysis(shot)) {
           return
         }
         const variantId = resolveShotVariantId(shot.shotVariantId)

@@ -33,10 +33,13 @@ export const sizeWeightForShotCount = (
   return Math.min(1, Math.sqrt(includedShotCount / targetShotCount))
 }
 
+export const isShotIncludedInAnalysis = (shot: Pick<Shot, 'included'>) =>
+  shot.included !== false
+
 export const includedClubShotsForSession = (
   session: SavedSession,
   club: Club,
-) => session.shots.filter((shot) => shot.club === club)
+) => session.shots.filter((shot) => shot.club === club && isShotIncludedInAnalysis(shot))
 
 export const sessionHistoricalWeightForClub = (
   session: SavedSession,

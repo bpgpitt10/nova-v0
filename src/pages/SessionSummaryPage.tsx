@@ -4,6 +4,7 @@ import {
   getClubLabel,
   type Club,
 } from '../lib/bagConfig'
+import { isShotIncludedInAnalysis } from '../lib/historicalModel'
 import { summarizeReviewClub } from '../lib/scoring'
 import { loadSavedSessions } from '../lib/sessions'
 import type { ReviewClubSummary, SavedSession, Shot } from '../types'
@@ -212,7 +213,7 @@ const buildSessionSummary = (
     clubShotMinimum: 4,
   }
 
-  const includedShots = latestSession.shots
+  const includedShots = latestSession.shots.filter(isShotIncludedInAnalysis)
   const totalShots = includedShots.length
 
   const clubCounts = new Map<Club, number>()

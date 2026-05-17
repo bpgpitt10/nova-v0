@@ -75,6 +75,7 @@ import {
   saveSessionHistory,
 } from './lib/sessions'
 import {
+  isShotIncludedInAnalysis,
   sessionHistoricalWeightForClub,
   weightedSessionMetricAverage,
 } from './lib/historicalModel'
@@ -1420,7 +1421,9 @@ function App({
 
     return activeBagClubIds
       .map((club) => {
-        const sessionShots = latestSession.shots.filter((shot) => shot.club === club)
+        const sessionShots = latestSession.shots.filter(
+          (shot) => shot.club === club && isShotIncludedInAnalysis(shot),
+        )
         if (sessionShots.length === 0) {
           return null
         }
@@ -1617,7 +1620,10 @@ function App({
       featuredDriverCard
         ? analysisSessions
             .flatMap((session) => session.shots)
-            .filter((shot) => shot.club === featuredDriverCard.club)
+            .filter(
+              (shot) =>
+                shot.club === featuredDriverCard.club && isShotIncludedInAnalysis(shot),
+            )
         : [],
     [analysisSessions, featuredDriverCard],
   )
@@ -1907,7 +1913,11 @@ function App({
     () =>
       analysisSessions.map((session) => ({
         ...session,
-        shots: shotsForClubVariant(session.shots, selectedDetailClub, selectedDetailShotVariantId),
+        shots: shotsForClubVariant(
+          session.shots,
+          selectedDetailClub,
+          selectedDetailShotVariantId,
+        ).filter(isShotIncludedInAnalysis),
       })),
     [analysisSessions, selectedDetailClub, selectedDetailShotVariantId],
   )
@@ -1926,11 +1936,13 @@ function App({
       : dashboardSummariesByClub.get(selectedDetailClub) ?? null
   const selectedClubHistoricalShots = useMemo(
     () =>
-      analysisSessions.flatMap((session) =>
-        forceSessionIntelligenceRoute
-          ? shotsForClubVariant(session.shots, sharedProfileClub, selectedShotVariantId)
-          : shotsForClubVariant(session.shots, sharedProfileClub, selectedDetailShotVariantId),
-      ),
+      analysisSessions
+        .flatMap((session) =>
+          forceSessionIntelligenceRoute
+            ? shotsForClubVariant(session.shots, sharedProfileClub, selectedShotVariantId)
+            : shotsForClubVariant(session.shots, sharedProfileClub, selectedDetailShotVariantId),
+        )
+        .filter(isShotIncludedInAnalysis),
     [
       analysisSessions,
       forceSessionIntelligenceRoute,
@@ -1946,7 +1958,8 @@ function App({
       const identityShots = forceSessionIntelligenceRoute
         ? shotsForClubVariant(session.shots, sharedProfileClub, selectedShotVariantId)
         : shotsForClubVariant(session.shots, sharedProfileClub, selectedDetailShotVariantId)
-      const clubIncludedCount = identityShots.filter((shot) => shot.included).length
+      const analysisIdentityShots = identityShots.filter(isShotIncludedInAnalysis)
+      const clubIncludedCount = analysisIdentityShots.length
       const sessionWeight = sessionHistoricalWeightForClub(
         session,
         sharedProfileClub,
@@ -1954,7 +1967,7 @@ function App({
       )
       const normalizedShotWeight =
         clubIncludedCount > 0 ? sessionWeight / clubIncludedCount : 0
-      identityShots.forEach((shot) => {
+      analysisIdentityShots.forEach((shot) => {
         if (!map.has(shot.id)) {
           map.set(shot.id, normalizedShotWeight)
         }
@@ -2114,6 +2127,7 @@ function App({
     const carryShots = session.shots.filter(
       (shot) =>
         shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
+        isShotIncludedInAnalysis(shot) &&
         typeof carryValue(shot) === 'number',
     )
     if (carryShots.length === 0) {
@@ -2135,6 +2149,7 @@ function App({
     const clubShots = session.shots.filter(
       (shot) =>
         shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
+        isShotIncludedInAnalysis(shot) &&
         typeof extractor(shot) === 'number',
     )
     if (clubShots.length === 0) {
@@ -3382,14 +3397,17 @@ function App({
     )
     const latestClubSession = orderedSessions.find((session) =>
       session.shots.some((shot) =>
-        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId),
+        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
+        isShotIncludedInAnalysis(shot),
       ),
     )
     if (!latestClubSession) {
       return 0
     }
     return latestClubSession.shots.filter(
-      (shot) => shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId),
+      (shot) =>
+        shotMatchesIdentity(shot, selectedDetailClub, selectedDetailShotVariantId) &&
+        isShotIncludedInAnalysis(shot),
     ).length
   }, [analysisSessions, selectedDetailClub, selectedDetailShotVariantId])
 
@@ -3425,6 +3443,7 @@ function App({
           const includedShots = session.shots.filter(
             (shot) =>
               shot.club === selectedDetailClub &&
+              isShotIncludedInAnalysis(shot) &&
               typeof carryValue(shot) === 'number',
           )
           if (includedShots.length === 0) {
@@ -3464,6 +3483,7 @@ function App({
       const carryShots = session.shots.filter(
         (shot) =>
           shot.club === selectedDetailClub &&
+          isShotIncludedInAnalysis(shot) &&
           typeof carryValue(shot) === 'number',
       )
       if (carryShots.length === 0) {
@@ -4155,7 +4175,9 @@ function App({
         month: 'numeric',
         day: 'numeric',
       })
-      const clubShots = session.shots.filter((shot) => shot.club === selectedDetailClub)
+      const clubShots = session.shots.filter(
+        (shot) => shot.club === selectedDetailClub && isShotIncludedInAnalysis(shot),
+      )
       if (clubShots.length === 0) {
         return
       }
