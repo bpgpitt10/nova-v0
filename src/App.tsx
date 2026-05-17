@@ -5112,6 +5112,7 @@ function App({
                   <th>In</th>
                   <th>Time</th>
                   <th>Club</th>
+                  <th>Variant</th>
                   <th>Carry</th>
                   <th>Total</th>
                   <th>Offline</th>
@@ -5134,7 +5135,7 @@ function App({
               <tbody>
                 {sessionShotGroups.flatMap((group) => [
                   <tr className="session-table-club-header" key={`header-${group.club}`}>
-                    <td colSpan={22}>{getClubLabel(group.club)}</td>
+                    <td colSpan={23}>{getClubLabel(group.club)}</td>
                   </tr>,
                   <tr className="session-table-club-average" key={`avg-${group.club}`}>
                     <td />
@@ -5142,6 +5143,7 @@ function App({
                     <td>AVG</td>
                     <td>Included</td>
                     <td>{getClubLabel(group.club)}</td>
+                    <td>—</td>
                     <td>{formatDecimal(group.averages.carry, ' yd')}</td>
                     <td>{formatDecimal(group.averages.total, ' yd')}</td>
                     <td>{formatDecimal(group.averages.offline, ' yd')}</td>
@@ -5190,6 +5192,7 @@ function App({
                       <td>{shot.included ? 'Y' : 'N'}</td>
                       <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>
                       <td>{getClubLabel(shot.club)}</td>
+                      <td>{getShotVariantLabel(shot.club, shot.shotVariantId)}</td>
                       <td>{formatDecimal(carryValue(shot), ' yd')}</td>
                       <td>{formatDecimal(totalValue(shot), ' yd')}</td>
                       <td>{formatDecimal(offlineValue(shot), ' yd')}</td>
