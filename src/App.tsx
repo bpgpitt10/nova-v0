@@ -36,7 +36,7 @@ import {
   getIronBucket,
 } from './lib/clubTaxonomy'
 import { confidenceConfig } from './lib/confidenceConfig'
-import { guardedWeightedCarryMean } from './lib/carryOutlierGuard'
+import { guardedWeightedCarryMean, guardedWeightedCarryStdDev } from './lib/carryOutlierGuard'
 import {
   buildOpenGolfCoachInput,
   hasOpenGolfCoachInput,
@@ -3027,7 +3027,15 @@ function App({
           confidenceConfig.displayCarryOutlierThresholdPct,
           confidenceConfig.displayCarryOutlierThresholdFloorYards,
         ),
-        carryVariability: weightedStandardDeviationNumbers(carry, weights),
+        carryVariability:
+          key === 'likely'
+            ? guardedWeightedCarryStdDev(
+                carry,
+                weights,
+                confidenceConfig.displayCarryOutlierThresholdPct,
+                confidenceConfig.displayCarryOutlierThresholdFloorYards,
+              )
+            : weightedStandardDeviationNumbers(carry, weights),
         total: weightedAverageNumbers(total, weights),
         totalVariability: weightedStandardDeviationNumbers(total, weights),
         offlineMean: weightedAverageNumbers(offline, weights),

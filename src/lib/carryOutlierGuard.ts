@@ -1,4 +1,4 @@
-import { weightedAverage } from './recency'
+import { weightedAverage, weightedStandardDeviation } from './recency'
 
 const toWeightedPoints = (
   values: Array<number | undefined>,
@@ -74,3 +74,37 @@ export const guardedWeightedCarryMean = (
   return typeof uncappedWeightedMean === 'number' ? uncappedWeightedMean : undefined
 }
 
+export const guardedWeightedCarryStdDev = (
+  carryValues: Array<number | undefined>,
+  weights: Array<number | undefined>,
+  thresholdPct: number,
+  thresholdFloorYards: number,
+  minGuardedSampleSize = 3,
+) => {
+  const fallbackStdDev = weightedStandardDeviation(carryValues, weights)
+  const typicalCarry = weightedMedianValue(carryValues, weights)
+
+  if (typeof typicalCarry !== 'number') {
+    return typeof fallbackStdDev === 'number' ? fallbackStdDev : undefined
+  }
+
+  const carryOutlierThreshold = Math.max(
+    thresholdFloorYards,
+    thresholdPct * typicalCarry,
+  )
+
+  const nonOutlierPoints = toWeightedPoints(carryValues, weights).filter(
+    (point) => Math.abs(point.value - typicalCarry) <= carryOutlierThreshold,
+  )
+
+  if (nonOutlierPoints.length < minGuardedSampleSize) {
+    return typeof fallbackStdDev === 'number' ? fallbackStdDev : undefined
+  }
+
+  const guardedStdDev = weightedStandardDeviation(
+    nonOutlierPoints.map((point) => point.value),
+    nonOutlierPoints.map((point) => point.weight),
+  )
+
+  return typeof guardedStdDev === 'number' ? guardedStdDev : undefined
+}
