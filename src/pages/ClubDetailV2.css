@@ -243,20 +243,9 @@
   height: 100%;
 }
 
-.club-v2-heatmap-profile-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.club-v2-heatmap-profile-overlay svg {
-  width: 100%;
-  height: 100%;
-}
-
 .club-v2-heatmap-overlay-label {
   fill: rgba(220, 229, 216, 0.76);
-  font-size: 3.5px;
+  font-size: 26px;
   letter-spacing: 0.02em;
   text-anchor: middle;
   dominant-baseline: middle;
@@ -264,11 +253,26 @@
 
 .club-v2-heatmap-overlay-label.stock {
   fill: rgba(244, 201, 90, 0.78);
-  dominant-baseline: auto;
 }
 
 .club-v2-heatmap-overlay-label.pure {
   fill: rgba(118, 170, 136, 0.88);
+}
+
+.club-v2-profile-overlay {
+  pointer-events: none;
+}
+
+.club-v2-profile-overlay-stock ellipse {
+  fill: rgba(244, 201, 90, 0.07);
+  stroke: rgba(244, 201, 90, 0.5);
+  stroke-width: 2;
+}
+
+.club-v2-profile-overlay-pure ellipse {
+  fill: rgba(118, 170, 136, 0.08);
+  stroke: rgba(118, 170, 136, 0.54);
+  stroke-width: 2;
 }
 
 .club-v2-heatmap-section {

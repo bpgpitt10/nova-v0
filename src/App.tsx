@@ -5721,6 +5721,18 @@ function App({
                           fillContainer
                           fixedChartHeight={570}
                           points={selectedClubDispersionPoints}
+                          profileOverlays={[
+                            {
+                              label: 'Stock',
+                              profile: selectedClubShotProfiles.mostLikely,
+                              tone: 'stock',
+                            },
+                            {
+                              label: 'Pure',
+                              profile: selectedClubShotProfiles.bestAvailable,
+                              tone: 'pure',
+                            },
+                          ]}
                         />
                       )
                     }
@@ -6083,6 +6095,18 @@ type DispersionPoint = {
   included: boolean
 }
 
+type DispersionProfileOverlay = {
+  label: 'Stock' | 'Pure'
+  tone: 'stock' | 'pure'
+  profile: {
+    carry?: number
+    carryVariability?: number
+    dispersion?: number
+    dispersionVariability?: number
+    offlineMean?: number
+  } | null
+}
+
 type ClubDispersionPlotProps = {
   points: DispersionPoint[]
   className?: string
@@ -6090,6 +6114,7 @@ type ClubDispersionPlotProps = {
   fillContainer?: boolean
   fixedChartHeight?: number
   highlightLatestShot?: boolean
+  profileOverlays?: DispersionProfileOverlay[]
 }
 
 function ClubDispersionPlot({
@@ -6099,6 +6124,7 @@ function ClubDispersionPlot({
   fillContainer = false,
   fixedChartHeight,
   highlightLatestShot = false,
+  profileOverlays = [],
 }: ClubDispersionPlotProps) {
   const width = 820
   const padding = { top: 22, right: 32, bottom: 48, left: 62 }
@@ -6155,6 +6181,30 @@ function ClubDispersionPlot({
     padding.top + ((carryDomainMax - carry) / yRange) * chartHeight
 
   const targetLineX = xScale(0)
+  const profileOverlayModels = profileOverlays
+    .map((overlay) => {
+      const profile = overlay.profile
+      if (!profile || typeof profile.carry !== 'number') {
+        return null
+      }
+
+      const centerX = xScale(profile.offlineMean ?? 0)
+      const centerY = yScale(profile.carry)
+      const xRadiusYards = Math.max(profile.dispersion ?? 2, 2)
+      const yRadiusYards = Math.max(
+        profile.carryVariability ?? profile.dispersionVariability ?? 2,
+        2,
+      )
+
+      return {
+        ...overlay,
+        cx: centerX,
+        cy: centerY,
+        rx: Math.max(12, Math.abs(xScale((profile.offlineMean ?? 0) + xRadiusYards) - centerX)),
+        ry: Math.max(12, Math.abs(yScale(profile.carry + yRadiusYards) - centerY)),
+      }
+    })
+    .filter((overlay): overlay is NonNullable<typeof overlay> => Boolean(overlay))
 
   return (
     <svg
@@ -6232,6 +6282,26 @@ function ClubDispersionPlot({
         y1={padding.top}
         y2={height - padding.bottom}
       />
+
+      {profileOverlayModels.map((overlay) => (
+        <g className={`club-v2-profile-overlay club-v2-profile-overlay-${overlay.tone}`} key={overlay.label}>
+          {/* Stock/Pure ellipses intentionally use the same chart scale as shot dots,
+              keeping the visual bounds faithful to the table values. */}
+          <ellipse
+            cx={overlay.cx}
+            cy={overlay.cy}
+            rx={overlay.rx}
+            ry={overlay.ry}
+          />
+          <text
+            className={`club-v2-heatmap-overlay-label ${overlay.tone}`}
+            x={overlay.cx}
+            y={overlay.cy}
+          >
+            {overlay.label}
+          </text>
+        </g>
+      ))}
 
       <g style={{ mixBlendMode: 'screen' }}>
         {points.map((point) => (

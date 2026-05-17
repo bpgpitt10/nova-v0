@@ -666,68 +666,6 @@ export default function ClubDetailV2({
     [shotProfiles.bestAvailable, shotProfiles.mostLikely],
   )
 
-  const heatmapOverlayModel = useMemo(() => {
-    const stockProfile = shotProfiles.mostLikely
-    const pureProfile = shotProfiles.bestAvailable
-    const profiles = [stockProfile, pureProfile].filter(
-      (profile): profile is NonNullable<typeof profile> => Boolean(profile),
-    )
-    if (profiles.length === 0) {
-      return { stockEllipse: null, pureEllipse: null }
-    }
-
-    const xEnvelope = Math.max(
-      ...profiles.map(
-        (profile) => Math.abs(profile.offlineMean ?? 0) + Math.max(profile.dispersion ?? 0, 2),
-      ),
-      8,
-    )
-    const xExtent = Math.max(10, xEnvelope * 1.5)
-
-    const referenceCarry = stockProfile?.carry ?? pureProfile?.carry ?? 0
-    const yMinRaw = Math.min(
-      ...profiles.map(
-        (profile) => (profile.carry ?? referenceCarry) - Math.max(profile.carryVariability ?? 0, 2),
-      ),
-      referenceCarry - 8,
-    )
-    const yMaxRaw = Math.max(
-      ...profiles.map(
-        (profile) => (profile.carry ?? referenceCarry) + Math.max(profile.carryVariability ?? 0, 2),
-      ),
-      referenceCarry + 8,
-    )
-    const yPadding = Math.max((yMaxRaw - yMinRaw) * 0.2, 4)
-    const yMin = yMinRaw - yPadding
-    const yMax = yMaxRaw + yPadding
-    const yRange = Math.max(yMax - yMin, 1)
-
-    const xScale = (offlineYd: number) => 50 + (offlineYd / xExtent) * 40
-    const yScale = (carryYd: number) => 90 - ((carryYd - yMin) / yRange) * 80
-    const xRadiusScale = (dispersionYd: number) => (dispersionYd / xExtent) * 40
-    const yRadiusScale = (carryVarYd: number) => (carryVarYd / yRange) * 80
-
-    const buildEllipse = (profile: ShotProfileSnapshot | null) => {
-      if (!profile) {
-        return null
-      }
-      return {
-        cx: xScale(profile.offlineMean ?? 0),
-        cy: yScale(profile.carry ?? referenceCarry),
-        rx: Math.max(3.5, xRadiusScale(Math.max(profile.dispersion ?? 2, 2))),
-        ry: Math.max(
-          3.5,
-          yRadiusScale(Math.max(profile.carryVariability ?? profile.dispersionVariability ?? 2, 2)),
-        ),
-      }
-    }
-
-    return {
-      stockEllipse: buildEllipse(stockProfile),
-      pureEllipse: buildEllipse(pureProfile),
-    }
-  }, [shotProfiles.bestAvailable, shotProfiles.mostLikely])
-
   return (
     <section className="club-detail-v2" id="club-detail-overview">
       <article className="dashboard-card club-detail-looper-read">
@@ -806,55 +744,6 @@ export default function ClubDetailV2({
         <article className="dashboard-card club-v2-heatmap-card">
           <div className="club-v2-heatmap-visual-stack">
             {dispersionChart}
-            {(heatmapOverlayModel.stockEllipse || heatmapOverlayModel.pureEllipse) && (
-              <div
-                aria-hidden="true"
-                className="club-v2-heatmap-profile-overlay"
-              >
-                <svg viewBox="0 0 100 100">
-                  {heatmapOverlayModel.stockEllipse && (
-                    <g>
-                      <ellipse
-                        cx={heatmapOverlayModel.stockEllipse.cx}
-                        cy={heatmapOverlayModel.stockEllipse.cy}
-                        fill="rgba(244, 201, 90, 0.07)"
-                        rx={heatmapOverlayModel.stockEllipse.rx}
-                        ry={heatmapOverlayModel.stockEllipse.ry}
-                        stroke="rgba(244, 201, 90, 0.5)"
-                        strokeWidth="0.25"
-                      />
-                      <text
-                        className="club-v2-heatmap-overlay-label stock"
-                        x={heatmapOverlayModel.stockEllipse.cx}
-                        y={heatmapOverlayModel.stockEllipse.cy + heatmapOverlayModel.stockEllipse.ry + 4}
-                      >
-                        Stock
-                      </text>
-                    </g>
-                  )}
-                  {heatmapOverlayModel.pureEllipse && (
-                    <g>
-                      <ellipse
-                        cx={heatmapOverlayModel.pureEllipse.cx}
-                        cy={heatmapOverlayModel.pureEllipse.cy}
-                        fill="rgba(118, 170, 136, 0.08)"
-                        rx={heatmapOverlayModel.pureEllipse.rx}
-                        ry={heatmapOverlayModel.pureEllipse.ry}
-                        stroke="rgba(118, 170, 136, 0.54)"
-                        strokeWidth="0.25"
-                      />
-                      <text
-                        className="club-v2-heatmap-overlay-label pure"
-                        x={heatmapOverlayModel.pureEllipse.cx}
-                        y={heatmapOverlayModel.pureEllipse.cy}
-                      >
-                        Pure
-                      </text>
-                    </g>
-                  )}
-                </svg>
-              </div>
-            )}
           </div>
         </article>
         <article className="dashboard-card club-v2-heatmap-metrics">
