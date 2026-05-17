@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
-import { getShotVariantLabel } from '../lib/shotVariants'
+import { getShotVariantLabel, resolveShotVariantId } from '../lib/shotVariants'
 import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
 import {
   clearActiveSessionDraft,
@@ -270,9 +270,9 @@ const descentValue = (shot: Shot) =>
     'descentAngleDegrees',
   ])
 
-const sessionClubSummary = (session: SavedSession) => {
+const sessionClubSummary = (session: SavedSession, shots = session.shots) => {
   const counts = new Map<Club, number>()
-  session.shots.forEach((shot) => {
+  shots.forEach((shot) => {
     counts.set(shot.club, (counts.get(shot.club) ?? 0) + 1)
   })
 
@@ -282,9 +282,9 @@ const sessionClubSummary = (session: SavedSession) => {
     .join(', ')
 }
 
-const sessionShotGroups = (session: SavedSession) => {
+const sessionShotGroups = (session: SavedSession, shots = session.shots) => {
   const byClub = new Map<Club, Shot[]>()
-  session.shots.forEach((shot) => {
+  shots.forEach((shot) => {
     byClub.set(shot.club, [...(byClub.get(shot.club) ?? []), shot])
   })
 
@@ -390,6 +390,8 @@ function DataManagementPage() {
   const [allExpanded, setAllExpanded] = useState(false)
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(() => new Set())
   const [selectedShotKeys, setSelectedShotKeys] = useState<Set<string>>(() => new Set())
+  const [selectedClubFilter, setSelectedClubFilter] = useState<'all' | Club>('all')
+  const [selectedVariantFilter, setSelectedVariantFilter] = useState('all')
   const showDevMockControls =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('devMock') === '1'
@@ -404,9 +406,58 @@ function DataManagementPage() {
   )
   const nowMs = Date.now()
   const shotSelectionKey = (sessionId: string, shotId: string) => `${sessionId}:${shotId}`
+  const hasActiveFilters = selectedClubFilter !== 'all' || selectedVariantFilter !== 'all'
+  const shotMatchesFilters = (shot: Shot) =>
+    (selectedClubFilter === 'all' || shot.club === selectedClubFilter) &&
+    (selectedVariantFilter === 'all' ||
+      resolveShotVariantId(shot.shotVariantId) === selectedVariantFilter)
+  const visibleSessions = useMemo(
+    () =>
+      sortedSessions
+        .map((session) => ({
+          ...session,
+          shots: hasActiveFilters ? session.shots.filter(shotMatchesFilters) : session.shots,
+        }))
+        .filter((session) => session.shots.length > 0),
+    [hasActiveFilters, selectedClubFilter, selectedVariantFilter, sortedSessions],
+  )
+  const clubFilterOptions = useMemo(() => {
+    const presentClubs = new Set<Club>()
+    sortedSessions.forEach((session) => {
+      session.shots.forEach((shot) => presentClubs.add(shot.club))
+    })
+    return activeBagClubIds.filter((club) => presentClubs.has(club))
+  }, [sortedSessions])
+  const variantFilterOptions = useMemo(() => {
+    const variants = new Map<string, string>()
+    sortedSessions.forEach((session) => {
+      session.shots.forEach((shot) => {
+        if (selectedClubFilter !== 'all' && shot.club !== selectedClubFilter) {
+          return
+        }
+        const variantId = resolveShotVariantId(shot.shotVariantId)
+        if (!variants.has(variantId)) {
+          variants.set(variantId, getShotVariantLabel(shot.club, variantId))
+        }
+      })
+    })
+    return [...variants.entries()].map(([id, label]) => ({ id, label }))
+  }, [selectedClubFilter, sortedSessions])
+  const visibleShotKeys = useMemo(
+    () =>
+      new Set(
+        visibleSessions.flatMap((session) =>
+          session.shots.map((shot) => shotSelectionKey(session.id, shot.id)),
+        ),
+      ),
+    [visibleSessions],
+  )
   const allRowsSelected =
-    sortedSessions.length > 0 &&
-    sortedSessions.every((session) => selectedSessionIds.has(session.id))
+    visibleSessions.length > 0 &&
+    (hasActiveFilters
+      ? visibleShotKeys.size > 0 &&
+        [...visibleShotKeys].every((key) => selectedShotKeys.has(key))
+      : visibleSessions.every((session) => selectedSessionIds.has(session.id)))
   const selectedShotCount = selectedShotKeys.size
   const hasAnySelectedItems = selectedSessionIds.size > 0 || selectedShotCount > 0
   const exportableShotCount = useMemo(
@@ -420,7 +471,7 @@ function DataManagementPage() {
   }
 
   useEffect(() => {
-    if (sortedSessions.length === 0) {
+    if (visibleSessions.length === 0) {
       if (allExpanded) {
         setAllExpanded(false)
       }
@@ -433,14 +484,28 @@ function DataManagementPage() {
       return
     }
 
-    const expandedCount = sortedSessions.filter((session) =>
+    const expandedCount = visibleSessions.filter((session) =>
       expandedSessionIds.has(session.id),
     ).length
-    const nextAllExpanded = expandedCount === sortedSessions.length
+    const nextAllExpanded = expandedCount === visibleSessions.length
     if (nextAllExpanded !== allExpanded) {
       setAllExpanded(nextAllExpanded)
     }
-  }, [allExpanded, expandedSessionIds, selectedSessionIds.size, selectedShotKeys.size, sortedSessions])
+  }, [allExpanded, expandedSessionIds, selectedSessionIds.size, selectedShotKeys.size, visibleSessions])
+
+  useEffect(() => {
+    if (
+      selectedVariantFilter !== 'all' &&
+      !variantFilterOptions.some((variant) => variant.id === selectedVariantFilter)
+    ) {
+      setSelectedVariantFilter('all')
+    }
+  }, [selectedVariantFilter, variantFilterOptions])
+
+  useEffect(() => {
+    setSelectedSessionIds(new Set())
+    setSelectedShotKeys(new Set())
+  }, [selectedClubFilter, selectedVariantFilter])
 
   const setAllRowsSelected = (selected: boolean) => {
     if (!selected) {
@@ -449,7 +514,13 @@ function DataManagementPage() {
       return
     }
 
-    setSelectedSessionIds(new Set(sortedSessions.map((session) => session.id)))
+    if (hasActiveFilters) {
+      setSelectedSessionIds(new Set())
+      setSelectedShotKeys(new Set(visibleShotKeys))
+      return
+    }
+
+    setSelectedSessionIds(new Set(visibleSessions.map((session) => session.id)))
     setSelectedShotKeys(new Set())
   }
 
@@ -466,7 +537,7 @@ function DataManagementPage() {
   }
 
   const toggleAllExpanded = () => {
-    if (sortedSessions.length === 0) {
+    if (visibleSessions.length === 0) {
       return
     }
 
@@ -476,11 +547,34 @@ function DataManagementPage() {
       return
     }
 
-    setExpandedSessionIds(new Set(sortedSessions.map((session) => session.id)))
+    setExpandedSessionIds(new Set(visibleSessions.map((session) => session.id)))
     setAllExpanded(true)
   }
 
   const toggleSessionSelected = (sessionId: string, selected: boolean) => {
+    if (hasActiveFilters) {
+      const visibleSession = visibleSessions.find((session) => session.id === sessionId)
+      const visibleKeys =
+        visibleSession?.shots.map((shot) => shotSelectionKey(sessionId, shot.id)) ?? []
+      setSelectedSessionIds((current) => {
+        const next = new Set(current)
+        next.delete(sessionId)
+        return next
+      })
+      setSelectedShotKeys((current) => {
+        const next = new Set(current)
+        visibleKeys.forEach((key) => {
+          if (selected) {
+            next.add(key)
+          } else {
+            next.delete(key)
+          }
+        })
+        return next
+      })
+      return
+    }
+
     setSelectedSessionIds((current) => {
       const next = new Set(current)
       if (selected) {
@@ -586,6 +680,28 @@ function DataManagementPage() {
     }
 
     const persistedSessions = loadSavedSessions()
+    if (hasActiveFilters) {
+      const nextSessions = persistedSessions
+        .map((session) => {
+          const remainingShots = session.shots.filter(
+            (shot) => !selectedShotKeys.has(shotSelectionKey(session.id, shot.id)),
+          )
+          if (remainingShots.length === 0) {
+            return null
+          }
+          return {
+            ...session,
+            shots: remainingShots,
+          }
+        })
+        .filter((session): session is SavedSession => Boolean(session))
+
+      persistSessions(nextSessions)
+      setSelectedSessionIds(new Set())
+      setSelectedShotKeys(new Set())
+      return
+    }
+
     const nextSessions = persistedSessions
       .filter((session) => !selectedSessionIds.has(session.id))
       .map((session) => {
@@ -679,7 +795,7 @@ function DataManagementPage() {
             <label className="dm-master-toggle">
               <input
                 checked={allRowsSelected}
-                disabled={sortedSessions.length === 0}
+                disabled={visibleSessions.length === 0}
                 onChange={(event) => setAllRowsSelected(event.target.checked)}
                 type="checkbox"
               />
@@ -687,7 +803,7 @@ function DataManagementPage() {
             </label>
             <button
               className="dm-action dm-expand-all"
-              disabled={sortedSessions.length === 0}
+              disabled={visibleSessions.length === 0}
               onClick={toggleAllExpanded}
               type="button"
             >
@@ -728,11 +844,44 @@ function DataManagementPage() {
               </button>
             </div>
           </div>
+          <div className="data-management-filters" aria-label="Data filters">
+            <label>
+              <span>Club</span>
+              <select
+                onChange={(event) => setSelectedClubFilter(event.target.value as 'all' | Club)}
+                value={selectedClubFilter}
+              >
+                <option value="all">All clubs</option>
+                {clubFilterOptions.map((club) => (
+                  <option key={club} value={club}>
+                    {getClubLabel(club)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Variant</span>
+              <select
+                onChange={(event) => setSelectedVariantFilter(event.target.value)}
+                value={selectedVariantFilter}
+              >
+                <option value="all">All variants</option>
+                {variantFilterOptions.map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="dm-filter-helper">CSV exports full history.</span>
+          </div>
         </header>
 
         <section className="data-management-surface" aria-label="Session administration table">
-          {sortedSessions.length === 0 ? (
-            <p className="data-management-empty">No saved sessions yet.</p>
+          {visibleSessions.length === 0 ? (
+            <p className="data-management-empty">
+              {sortedSessions.length === 0 ? 'No saved sessions yet.' : 'No shots match these filters.'}
+            </p>
           ) : (
             <div className="data-management-table-wrap">
               <table className="data-management-table">
@@ -749,10 +898,20 @@ function DataManagementPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedSessions.flatMap((session) => {
+                  {visibleSessions.flatMap((session) => {
                     const expanded = expandedSessionIds.has(session.id)
+                    const originalSession = sortedSessions.find(
+                      (candidate) => candidate.id === session.id,
+                    )
+                    const originalShotCount = originalSession?.shots.length ?? session.shots.length
                     const systemOldExcluded = isSessionOldExcludedBySystem(session, nowMs)
-                    const sessionSelected = selectedSessionIds.has(session.id)
+                    const visibleSessionShotKeys = session.shots.map((shot) =>
+                      shotSelectionKey(session.id, shot.id),
+                    )
+                    const sessionSelected = hasActiveFilters
+                      ? visibleSessionShotKeys.length > 0 &&
+                        visibleSessionShotKeys.every((key) => selectedShotKeys.has(key))
+                      : selectedSessionIds.has(session.id)
                     const groups = expanded ? sessionShotGroups(session) : []
                     const clubsText = sessionClubSummary(session) || '-'
                     const endedDate = new Date(session.endedAt)
@@ -796,7 +955,11 @@ function DataManagementPage() {
                         </td>
                         <td>{endedDate.toLocaleDateString()}</td>
                         <td>{endedDate.toLocaleTimeString()}</td>
-                        <td>{session.shots.length}</td>
+                        <td>
+                          {hasActiveFilters && session.shots.length !== originalShotCount
+                            ? `${session.shots.length} of ${originalShotCount}`
+                            : session.shots.length}
+                        </td>
                         <td>{clubsText}</td>
                         <td>{source}</td>
                       </tr>,

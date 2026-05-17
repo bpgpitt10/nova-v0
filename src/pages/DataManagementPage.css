@@ -74,6 +74,46 @@
   flex-wrap: wrap;
 }
 
+.data-management-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(49, 66, 51, 0.78);
+  border-radius: 10px;
+  background: rgba(19, 30, 22, 0.5);
+}
+
+.data-management-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #cfd8cd;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.data-management-filters select {
+  min-height: 28px;
+  border: 1px solid rgba(234, 179, 8, 0.26);
+  border-radius: 999px;
+  background: rgba(12, 19, 14, 0.82);
+  color: #ffffff;
+  padding: 0 28px 0 10px;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.dm-filter-helper {
+  margin-left: auto;
+  color: rgba(207, 216, 205, 0.66);
+  font-size: 11px;
+}
+
 .dm-master-toggle {
   display: inline-flex;
   align-items: center;
