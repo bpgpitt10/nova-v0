@@ -2408,7 +2408,7 @@ function App({
           return []
         }
 
-        return [{ id: shot.id, carry, offline, included: shot.included }]
+        return [{ id: shot.id, carry, offline, included: shot.included, feltPerfect: shot.feltPerfect }]
       }),
     [selectedClubHistoricalShots],
   )
@@ -4646,7 +4646,7 @@ function App({
         if (typeof carry !== 'number' || typeof offline !== 'number') {
           return []
         }
-        return [{ id: shot.id, carry, offline, included: shot.included }]
+        return [{ id: shot.id, carry, offline, included: shot.included, feltPerfect: shot.feltPerfect }]
       }),
     [selectedClubVariantShots],
   )
@@ -6089,6 +6089,7 @@ type DispersionPoint = {
   carry: number
   offline: number
   included: boolean
+  feltPerfect?: boolean
 }
 
 type DispersionProfileOverlay = {
@@ -6213,8 +6214,14 @@ function ClubDispersionPlot({
       <defs>
         {points.map((point) => (
           <radialGradient id={`heat-${point.id}`} key={`gradient-${point.id}`}>
-            <stop offset="0%" stopColor="rgba(255,215,0,0.34)" />
-            <stop offset="42%" stopColor="rgba(255,215,0,0.14)" />
+            <stop
+              offset="0%"
+              stopColor={point.feltPerfect ? 'rgba(132,204,22,0.3)' : 'rgba(255,215,0,0.34)'}
+            />
+            <stop
+              offset="42%"
+              stopColor={point.feltPerfect ? 'rgba(132,204,22,0.12)' : 'rgba(255,215,0,0.14)'}
+            />
             <stop offset="100%" stopColor="rgba(255,215,0,0)" />
           </radialGradient>
         ))}
@@ -6322,16 +6329,33 @@ function ClubDispersionPlot({
                 fill="none"
                 key={`latest-ring-${point.id}`}
                 r="9"
+                stroke={point.feltPerfect ? 'rgba(132, 204, 22, 0.9)' : undefined}
               />
             ))
         : null}
+
+      {points
+        .filter((point) => point.feltPerfect)
+        .map((point) => (
+          <circle
+            cx={xScale(point.offline)}
+            cy={yScale(point.carry)}
+            fill="none"
+            key={`felt-perfect-ring-${point.id}`}
+            r="8"
+            stroke="rgba(132, 204, 22, 0.74)"
+            strokeWidth="1.35"
+          />
+        ))}
 
       {points.map((point) => (
         <circle
           cx={xScale(point.offline)}
           cy={yScale(point.carry)}
           fill={
-            point.id === activeLastShotId && highlightLatestShot
+            point.feltPerfect
+              ? '#84cc16'
+              : point.id === activeLastShotId && highlightLatestShot
               ? '#f8edc9'
               : point.included
                 ? '#eab308'
@@ -6348,7 +6372,13 @@ function ClubDispersionPlot({
                   ? 4
                   : 3
           }
-          stroke={point.id === activeLastShotId && highlightLatestShot ? '#ffffff' : '#0e1710'}
+          stroke={
+            point.feltPerfect
+              ? '#d9f99d'
+              : point.id === activeLastShotId && highlightLatestShot
+                ? '#ffffff'
+                : '#0e1710'
+          }
           strokeWidth={point.id === activeLastShotId ? '1.5' : '1'}
         />
       ))}
