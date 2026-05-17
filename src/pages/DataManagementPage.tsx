@@ -782,7 +782,7 @@ function DataManagementPage() {
                             type="checkbox"
                           />
                           {systemOldExcluded ? (
-                            <span className="dm-system-old-label">Old / Excluded</span>
+                            <span className="dm-system-old-label">Old / System Filtered</span>
                           ) : null}
                         </td>
                         <td>

@@ -4363,12 +4363,8 @@ function App({
     }
   }
 
-  const toggleShot = (shotId: string) => {
-    setShots((currentShots) =>
-      currentShots.map((shot) =>
-        shot.id === shotId ? { ...shot, included: !shot.included } : shot,
-      ),
-    )
+  const deleteShotFromCurrentSession = (shotId: string) => {
+    setShots((currentShots) => currentShots.filter((shot) => shot.id !== shotId))
   }
 
   const toggleFeltPerfect = (shotId: string) => {
@@ -4810,7 +4806,7 @@ function App({
       })
   }, [shots])
 
-  const excludeLastShot = () => {
+  const deleteLastShot = () => {
     setShots((currentShots) => {
       const shotIndex = currentShots.findIndex((shot) =>
         shotMatchesIdentity(shot, selectedClub, selectedShotVariantId),
@@ -5022,10 +5018,10 @@ function App({
           <button
             className="session-strip-exclude"
             disabled={!latestShot}
-            onClick={excludeLastShot}
+            onClick={deleteLastShot}
             type="button"
           >
-            ✖ Exclude
+            ✖ Delete
           </button>
         </section>
 
@@ -5111,7 +5107,7 @@ function App({
             <table className="session-shot-data-table">
               <thead>
                 <tr>
-                  <th>Exclude</th>
+                  <th>Delete</th>
                   <th>Felt</th>
                   <th>In</th>
                   <th>Time</th>
@@ -5173,10 +5169,10 @@ function App({
                       <td>
                         <button
                           className="session-table-exclude"
-                          onClick={() => toggleShot(shot.id)}
+                          onClick={() => deleteShotFromCurrentSession(shot.id)}
                           type="button"
                         >
-                          {shot.included ? 'Exclude' : 'Include'}
+                          Delete
                         </button>
                       </td>
                       <td>
@@ -5412,7 +5408,7 @@ function App({
             </select>
           </label>
 
-          <ShotTable shots={shots} onToggleShot={toggleShot} />
+          <ShotTable shots={shots} onDeleteShot={deleteShotFromCurrentSession} />
         </section>
       )}
 
@@ -6433,10 +6429,10 @@ function TrendSparkline({ values }: TrendSparklineProps) {
 type ShotTableProps = {
   shots: Shot[]
   onChangeClub?: (shotId: string, club: Club) => void
-  onToggleShot: (shotId: string) => void
+  onDeleteShot: (shotId: string) => void
 }
 
-function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
+function ShotTable({ shots, onChangeClub, onDeleteShot }: ShotTableProps) {
   if (shots.length === 0) {
     return <p>No shots yet.</p>
   }
@@ -6501,10 +6497,10 @@ function ShotTable({ shots, onChangeClub, onToggleShot }: ShotTableProps) {
                   ? 'Enriched'
                   : 'Enrichment failed'}
             </td>
-            <td>{shot.included ? 'Included' : 'Excluded'}</td>
+            <td>{shot.included ? 'Included' : 'Not included'}</td>
             <td>
-              <button onClick={() => onToggleShot(shot.id)}>
-                {shot.included ? 'Exclude' : 'Include'}
+              <button onClick={() => onDeleteShot(shot.id)}>
+                Delete
               </button>
             </td>
           </tr>
