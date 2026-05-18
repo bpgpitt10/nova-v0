@@ -740,6 +740,7 @@ fn main() {
     let sidecar_state = SidecarState::default();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(sidecar_state)
         .invoke_handler(tauri::generate_handler![
             append_enrichment_log,

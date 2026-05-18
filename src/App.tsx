@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type NovaConnection,
   type NovaConnectionStatus,
@@ -64,6 +64,7 @@ import {
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
 import { buildShotProfilesForIdentity } from './lib/shotProfiles'
+import { checkForLooperUpdate } from './lib/updater'
 import {
   clearActiveSessionDraft,
   isSessionEligibleForAnalysis,
@@ -85,12 +86,22 @@ import {
   type SavedSession,
   type Shot,
 } from './types'
+import type { Update } from '@tauri-apps/plugin-updater'
 
 type SessionState = 'setup' | 'live' | 'review'
 type SessionFeedMode = 'mock' | 'real'
 type ReviewView = 'dashboard' | 'clubDetail'
 type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
+type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'unavailable'
+  | 'up-to-date'
+  | 'available'
+  | 'installing'
+  | 'installed'
+  | 'error'
 
 const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
@@ -736,6 +747,9 @@ function App({
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
+  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
+  const [updateError, setUpdateError] = useState<string | null>(null)
   const [sessionStartedAt] = useState<string | null>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.startedAt ?? startedAtFallback : null,
   )
@@ -886,6 +900,49 @@ function App({
       })
     })
   }
+
+  const checkForUpdates = useCallback(async () => {
+    setUpdateStatus('checking')
+    setUpdateError(null)
+
+    try {
+      const result = await checkForLooperUpdate()
+      if (result.status === 'available') {
+        setAvailableUpdate(result.update)
+        setUpdateStatus('available')
+        return
+      }
+      setAvailableUpdate(null)
+      setUpdateStatus(result.status)
+    } catch (error) {
+      console.error('Failed to check for updates.', error)
+      setAvailableUpdate(null)
+      setUpdateError(error instanceof Error ? error.message : 'Update check failed.')
+      setUpdateStatus('error')
+    }
+  }, [])
+
+  const installAvailableUpdate = async () => {
+    if (!availableUpdate) {
+      return
+    }
+
+    setUpdateStatus('installing')
+    setUpdateError(null)
+
+    try {
+      await availableUpdate.downloadAndInstall()
+      setUpdateStatus('installed')
+    } catch (error) {
+      console.error('Failed to install update.', error)
+      setUpdateError(error instanceof Error ? error.message : 'Update install failed.')
+      setUpdateStatus('error')
+    }
+  }
+
+  useEffect(() => {
+    void checkForUpdates()
+  }, [checkForUpdates])
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
@@ -5121,6 +5178,26 @@ function App({
               </button>
               <a href="/read">The Read</a>
             </nav>
+
+            <div className="dashboard-update-panel" aria-live="polite">
+              {updateStatus === 'available' && availableUpdate ? (
+                <button onClick={installAvailableUpdate} type="button">
+                  Update to {availableUpdate.version}
+                </button>
+              ) : updateStatus === 'installing' ? (
+                <span>Installing update…</span>
+              ) : updateStatus === 'installed' ? (
+                <span>Update installed. Restart The Looper to finish.</span>
+              ) : updateStatus === 'checking' ? (
+                <span>Checking for updates…</span>
+              ) : updateStatus === 'error' ? (
+                <button onClick={checkForUpdates} title={updateError ?? undefined} type="button">
+                  Retry update check
+                </button>
+              ) : updateStatus === 'up-to-date' ? (
+                <span>The Looper is up to date.</span>
+              ) : null}
+            </div>
 
             <div className="dashboard-rail-clubs">
               <div className="dashboard-rail-label">Club List</div>
