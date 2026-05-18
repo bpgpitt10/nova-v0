@@ -7,14 +7,18 @@ import TheReadLadderExportCard from '../components/TheReadLadderExportCard'
 import type { ReadLadderExportRow } from '../components/TheReadLadderExportCard'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import { confidenceConfig } from '../lib/confidenceConfig'
-import { isShotIncludedInAnalysis } from '../lib/historicalModel'
+import {
+  isShotIncludedInAnalysis,
+  sessionHistoricalWeightForClub,
+} from '../lib/historicalModel'
 import {
   isSessionEligibleForAnalysis,
   isSessionIncludedInAnalysis,
   loadSavedSessions,
 } from '../lib/sessions'
 import { getShotVariantLabel, resolveShotVariantId } from '../lib/shotVariants'
-import type { OpenGolfCoachPayload, Shot } from '../types'
+import { buildShotProfilesForIdentity } from '../lib/shotProfiles'
+import type { Shot } from '../types'
 import './TheReadPage.css'
 
 const LADDER_MIN_YARDAGE = 30
@@ -271,113 +275,6 @@ const averageNumbers = (values: Array<number | undefined>) => {
   }
 
   return definedValues.reduce((sum, value) => sum + value, 0) / definedValues.length
-}
-
-const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
-  if (!payload) {
-    return undefined
-  }
-
-  const parseNumberLike = (value: unknown) => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value
-    }
-    if (typeof value === 'string') {
-      const parsed = Number(value)
-      return Number.isFinite(parsed) ? parsed : undefined
-    }
-    return undefined
-  }
-
-  const asRecord = (value: unknown): Record<string, unknown> | null =>
-    value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : null
-
-  const root = asRecord(payload)
-  if (!root) {
-    return undefined
-  }
-
-  const scopedObjects: Record<string, unknown>[] = [root]
-  const coach = asRecord(root.open_golf_coach)
-  if (coach) {
-    scopedObjects.push(coach)
-    const usCustomaryUnits = asRecord(coach.us_customary_units)
-    if (usCustomaryUnits) {
-      scopedObjects.push(usCustomaryUnits)
-    }
-  }
-
-  for (const source of scopedObjects) {
-    for (const key of keys) {
-      const parsed = parseNumberLike(source[key])
-      if (typeof parsed === 'number') {
-        return parsed
-      }
-    }
-  }
-
-  return undefined
-}
-
-const carryValue = (shot: Shot) =>
-  typeof shot.carryYards === 'number'
-    ? shot.carryYards
-    : payloadNumber(shot.openGolfCoach, [
-        'carry_distance_yards',
-        'carryDistanceYards',
-        'carry',
-      ])
-
-const totalValue = (shot: Shot) =>
-  typeof shot.totalYards === 'number'
-    ? shot.totalYards
-    : payloadNumber(shot.openGolfCoach, [
-        'total_distance_yards',
-        'totalDistanceYards',
-        'total',
-      ])
-
-const offlineValue = (shot: Shot) =>
-  typeof shot.offlineYards === 'number'
-    ? shot.offlineYards
-    : payloadNumber(shot.openGolfCoach, [
-        'offline_distance_yards',
-        'offlineDistanceYards',
-        'offline',
-      ])
-
-const percentile = (values: Array<number | undefined>, percentileValue: number) => {
-  const definedValues = values
-    .filter((value): value is number => typeof value === 'number')
-    .sort((a, b) => a - b)
-  if (definedValues.length === 0) {
-    return undefined
-  }
-
-  const index = Math.min(
-    definedValues.length - 1,
-    Math.max(0, Math.ceil((percentileValue / 100) * definedValues.length) - 1),
-  )
-  return definedValues[index]
-}
-
-const standardDeviation = (values: Array<number | undefined>) => {
-  const definedValues = values.filter((value): value is number => typeof value === 'number')
-  if (definedValues.length === 0) {
-    return undefined
-  }
-
-  const mean = averageNumbers(definedValues)
-  if (typeof mean !== 'number') {
-    return undefined
-  }
-
-  const variance =
-    definedValues.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
-    definedValues.length
-  return Math.sqrt(variance)
 }
 
 type ReadIdentityProfile = {
@@ -766,31 +663,67 @@ export default function TheReadPage() {
     [],
   )
   const identityProfiles = useMemo(() => {
-    const groups = new Map<string, Shot[]>()
+    const groups = new Map<
+      string,
+      {
+        club: Club
+        variantId: string
+        shots: Shot[]
+        shotWeightsById: Map<string, number>
+      }
+    >()
     savedSessions.forEach((session) => {
+      const sessionGroups = new Map<string, Shot[]>()
       session.shots.forEach((shot) => {
         if (!isShotIncludedInAnalysis(shot)) {
           return
         }
         const variantId = resolveShotVariantId(shot.shotVariantId)
         const key = `${shot.club}:${variantId}`
-        groups.set(key, [...(groups.get(key) ?? []), shot])
+        sessionGroups.set(key, [...(sessionGroups.get(key) ?? []), shot])
+      })
+
+      sessionGroups.forEach((shots, key) => {
+        const firstShot = shots[0]
+        if (!firstShot) {
+          return
+        }
+        const variantId = resolveShotVariantId(firstShot.shotVariantId)
+        const group =
+          groups.get(key) ??
+          {
+            club: firstShot.club,
+            variantId,
+            shots: [],
+            shotWeightsById: new Map<string, number>(),
+          }
+        const sessionWeight = sessionHistoricalWeightForClub(session, firstShot.club)
+        const shotWeight = shots.length > 0 ? sessionWeight / shots.length : 0
+        shots.forEach((shot) => {
+          group.shots.push(shot)
+          if (!group.shotWeightsById.has(shot.id)) {
+            group.shotWeightsById.set(shot.id, shotWeight)
+          }
+        })
+        groups.set(key, group)
       })
     })
 
     return Array.from(groups.entries())
-      .map(([key, shots]): ReadIdentityProfile | null => {
-        const firstShot = shots[0]
-        const carryValues = shots.map(carryValue)
-        const totalValues = shots.map(totalValue)
-        const offlineValues = shots.map(offlineValue)
-        const carry = averageNumbers(carryValues)
-        const total = averageNumbers(totalValues)
-        const offline = averageNumbers(offlineValues)
-        const pureCarry = percentile(carryValues, 80)
-        const pureTotal = percentile(totalValues, 80)
+      .map(([key, group]): ReadIdentityProfile | null => {
+        const { shots, club, variantId, shotWeightsById } = group
+        const profiles = buildShotProfilesForIdentity({
+          shots,
+          club,
+          shotWeightsById,
+        })
+        const stock = profiles.mostLikely
+        const pure = profiles.bestAvailable
+        const carry = stock?.carry
+        const total = stock?.total
+        const pureCarry = pure?.carry ?? carry
+        const pureTotal = pure?.total ?? total
         if (
-          !firstShot ||
           typeof carry !== 'number' ||
           typeof total !== 'number' ||
           typeof pureCarry !== 'number' ||
@@ -799,22 +732,21 @@ export default function TheReadPage() {
           return null
         }
 
-        const variantId = resolveShotVariantId(firstShot.shotVariantId)
         return {
           key,
-          club: firstShot.club,
-          clubLabel: getClubLabel(firstShot.club),
+          club,
+          clubLabel: getClubLabel(club),
           variantId,
-          variantLabel: getShotVariantLabel(firstShot.club, variantId),
+          variantLabel: getShotVariantLabel(club, variantId),
           shotCount: shots.length,
           carry,
           total,
           pureCarry,
           pureTotal,
-          carryStdDev: standardDeviation(carryValues),
-          totalStdDev: standardDeviation(totalValues),
-          offline,
-          offlineStdDev: standardDeviation(offlineValues),
+          carryStdDev: stock?.carryVariability,
+          totalStdDev: stock?.totalVariability,
+          offline: stock?.offlineMean,
+          offlineStdDev: stock?.dispersionVariability,
         }
       })
       .filter((profile): profile is ReadIdentityProfile => Boolean(profile))

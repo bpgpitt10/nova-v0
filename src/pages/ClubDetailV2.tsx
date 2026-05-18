@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { ShotProfiles } from '../lib/shotProfiles'
 import type { ShotVariant } from '../lib/shotVariants'
 import './ClubDetailV2.css'
 
@@ -12,39 +13,6 @@ export type ComponentBreakdownRow = {
   delta?: number
   direction: ComparisonDirection
   tone: ComparisonTone
-}
-
-type ShotProfileSnapshot = {
-  carry?: number
-  carryVariability?: number
-  total?: number
-  totalVariability?: number
-  offlineMean?: number
-  dispersion?: number
-  dispersionVariability?: number
-  launch?: number
-  launchVariability?: number
-  hla?: number
-  hlaVariability?: number
-  spin?: number
-  spinVariability?: number
-  spinAxis?: number
-  smashFactor?: number
-  smashFactorVariability?: number
-  ballSpeed?: number
-  clubSpeed?: number
-  peakHeight?: number
-  descentAngle?: number
-  clubPath?: number
-  faceToPath?: number
-  faceToTarget?: number
-} | null
-
-export type ShotProfiles = {
-  bestAvailable: ShotProfileSnapshot
-  mostLikely: ShotProfileSnapshot
-  executionGapRows: Array<{ label: string; value: string }>
-  takeaway: string
 }
 
 export type DriverRow = {
