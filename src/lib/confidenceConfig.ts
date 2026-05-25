@@ -34,6 +34,16 @@ export type ConfidenceConfig = {
     inWindowThresholdFloorYards: number
     zeroScoreThresholdPct: number
     zeroScoreThresholdFloorYards: number
+    windowScoreWeight: number
+    spreadScoreWeight: number
+    spreadElitePct: number
+    spreadEliteFloorYards: number
+    spreadGoodPct: number
+    spreadGoodFloorYards: number
+    spreadZeroPct: number
+    spreadZeroFloorYards: number
+    spreadLowerPercentile: number
+    spreadUpperPercentile: number
     anchorTolerancePct: number
     anchorToleranceFloorYards: number
     stdDevTargetPct: number
@@ -116,10 +126,20 @@ export const confidenceConfig: ConfidenceConfig = {
     sideSwitchThresholdYards: 5,
   },
   distanceWindow: {
-    inWindowThresholdPct: 0.08,
-    inWindowThresholdFloorYards: 8,
-    zeroScoreThresholdPct: 0.16,
-    zeroScoreThresholdFloorYards: 16,
+    inWindowThresholdPct: 0.015,
+    inWindowThresholdFloorYards: 2,
+    zeroScoreThresholdPct: 0.12,
+    zeroScoreThresholdFloorYards: 24,
+    windowScoreWeight: 0.25,
+    spreadScoreWeight: 0.75,
+    spreadElitePct: 0.015,
+    spreadEliteFloorYards: 2,
+    spreadGoodPct: 0.04,
+    spreadGoodFloorYards: 8,
+    spreadZeroPct: 0.12,
+    spreadZeroFloorYards: 24,
+    spreadLowerPercentile: 10,
+    spreadUpperPercentile: 90,
     anchorTolerancePct: 0.08,
     anchorToleranceFloorYards: 8,
     stdDevTargetPct: 0.05,

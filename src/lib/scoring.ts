@@ -36,6 +36,46 @@ const weightedStdDevFromShots = (
     shots.map(weightAccessor),
   )
 
+const weightedPercentileValue = (
+  values: Array<number | undefined>,
+  weights: Array<number | undefined>,
+  percentile: number,
+) => {
+  const points = values
+    .map((value, index) => ({ value, weight: weights[index] }))
+    .filter(
+      (point): point is { value: number; weight: number } =>
+        typeof point.value === 'number' &&
+        Number.isFinite(point.value) &&
+        typeof point.weight === 'number' &&
+        Number.isFinite(point.weight) &&
+        point.weight > 0,
+    )
+    .sort((left, right) => left.value - right.value)
+
+  if (points.length === 0) {
+    return undefined
+  }
+
+  const boundedPercentile = Math.min(100, Math.max(0, percentile))
+  if (boundedPercentile === 0) {
+    return points[0].value
+  }
+
+  const totalWeight = points.reduce((sum, point) => sum + point.weight, 0)
+  const threshold = totalWeight * (boundedPercentile / 100)
+  let cumulativeWeight = 0
+
+  for (const point of points) {
+    cumulativeWeight += point.weight
+    if (cumulativeWeight >= threshold) {
+      return point.value
+    }
+  }
+
+  return points[points.length - 1]?.value
+}
+
 const oneDecimal = (value: number | null) =>
   value === null ? null : Number(value.toFixed(1))
 
@@ -214,11 +254,56 @@ const buildDistanceScore = (
           (zeroScoreThreshold - inWindowThreshold))
     )
   })
-  const distanceWindow = weightedAverage(shotDistanceScores, carryWeights) ?? 0
+  const windowScore = weightedAverage(shotDistanceScores, carryWeights) ?? 0
+  const lowerCarry = weightedPercentileValue(
+    carryValues,
+    carryWeights,
+    confidenceConfig.distanceWindow.spreadLowerPercentile,
+  )
+  const upperCarry = weightedPercentileValue(
+    carryValues,
+    carryWeights,
+    confidenceConfig.distanceWindow.spreadUpperPercentile,
+  )
+  if (typeof lowerCarry !== 'number' || typeof upperCarry !== 'number') {
+    return { score: 0, note: 'No carry spread' }
+  }
+
+  const carrySpread = Math.max(0, upperCarry - lowerCarry)
+  const eliteSpread = Math.max(
+    confidenceConfig.distanceWindow.spreadEliteFloorYards,
+    confidenceConfig.distanceWindow.spreadElitePct * typicalCarry,
+  )
+  const goodSpread = Math.max(
+    confidenceConfig.distanceWindow.spreadGoodFloorYards,
+    confidenceConfig.distanceWindow.spreadGoodPct * typicalCarry,
+  )
+  const zeroSpread = Math.max(
+    confidenceConfig.distanceWindow.spreadZeroFloorYards,
+    confidenceConfig.distanceWindow.spreadZeroPct * typicalCarry,
+  )
+  const spreadScore = (() => {
+    if (carrySpread <= eliteSpread) {
+      return 100
+    }
+    if (carrySpread <= goodSpread) {
+      return 100 - (20 * (carrySpread - eliteSpread)) / (goodSpread - eliteSpread)
+    }
+    if (carrySpread >= zeroSpread) {
+      return 0
+    }
+    return 80 * (1 - (carrySpread - goodSpread) / (zeroSpread - goodSpread))
+  })()
+  const distanceWindow = clamp(
+    Math.round(
+      windowScore * confidenceConfig.distanceWindow.windowScoreWeight +
+        spreadScore * confidenceConfig.distanceWindow.spreadScoreWeight,
+    ),
+  )
 
   return {
-    score: clamp(Math.round(distanceWindow)),
-    note: `Anchor ${oneDecimal(typicalCarry)} yd`,
+    score: distanceWindow,
+    note: `Anchor ${oneDecimal(typicalCarry)} yd, carry band P90-P10 ${oneDecimal(carrySpread)} yd`,
   }
 }
 
