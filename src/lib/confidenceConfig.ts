@@ -62,6 +62,8 @@ export type ConfidenceConfig = {
   dataConfidence: {
     targetIncludedShots: number
     targetSessions: number
+    shotEvidenceWeight: number
+    sessionEvidenceWeight: number
     missingRequiredFieldPenalty: number
   }
   caddieCalls: Array<{
@@ -157,8 +159,10 @@ export const confidenceConfig: ConfidenceConfig = {
     maxSessionSupportBonus: 20,
   },
   dataConfidence: {
-    targetIncludedShots: 12,
+    targetIncludedShots: 20,
     targetSessions: 3,
+    shotEvidenceWeight: 0.65,
+    sessionEvidenceWeight: 0.35,
     missingRequiredFieldPenalty: 20,
   },
   caddieCalls: [

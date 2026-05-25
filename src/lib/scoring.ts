@@ -344,10 +344,32 @@ const buildFlightQualityScore = (
   }
 }
 
+const patternTrendThresholds = {
+  recentWindowTargetShots: 12,
+  recentWindowMinShots: 5,
+  priorBaselineMinShots: 5,
+  totalUsableMinShots: 15,
+  minDistinctSessions: 2,
+}
+
+const timestampMs = (value: string | undefined) => {
+  if (!value) {
+    return undefined
+  }
+  const parsed = new Date(value).getTime()
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+type UsablePatternShot = {
+  capturedAt: number
+  sessionId: string | undefined
+  shot: Shot
+}
+
 const buildPatternStabilityScore = (
   includedShots: Shot[],
   supportingSessions: SavedSession[],
-  club: Club,
+  _club: Club,
   recencyWeightForShot: (shot: Shot) => number,
 ) => {
   const carryValues = includedShots.map((shot) => shot.carryYards)
@@ -368,30 +390,95 @@ const buildPatternStabilityScore = (
   )
   const offlineDriftTolerance = 0.5 * targetWidth
 
-  const clubSessionsByRecency = [...supportingSessions]
-    .sort(
-      (left, right) =>
-        new Date(right.endedAt).getTime() - new Date(left.endedAt).getTime(),
-    )
-    .map((session) =>
-      session.shots.filter(
-        (shot) =>
-          shot.club === club && isShotIncludedInAnalysis(shot) && recencyWeightForShot(shot) > 0,
-      ),
-    )
-    .filter((shots) => shots.length > 0)
+  const shotSessionMetadata = new Map<string, { endedAt?: string; sessionId: string }>()
+  supportingSessions.forEach((session) => {
+    session.shots.forEach((shot) => {
+      if (!shotSessionMetadata.has(shot.id)) {
+        shotSessionMetadata.set(shot.id, {
+          endedAt: session.endedAt,
+          sessionId: session.id,
+        })
+      }
+    })
+  })
 
-  const distinctSessionCount = clubSessionsByRecency.length
-  if (distinctSessionCount < 2) {
-    return { score: null, note: 'Insufficient supporting sessions' }
+  const usableShots = includedShots
+    .map((shot) => {
+      const carry = shot.carryYards
+      const offline = shot.offlineYards
+      const weight = recencyWeightForShot(shot)
+      const sessionMetadata = shotSessionMetadata.get(shot.id)
+      const capturedAtMs = timestampMs(shot.capturedAt)
+      const fallbackEndedAtMs = timestampMs(sessionMetadata?.endedAt)
+      const capturedAt = capturedAtMs ?? fallbackEndedAtMs
+
+      if (
+        !isShotIncludedInAnalysis(shot) ||
+        typeof carry !== 'number' ||
+        !Number.isFinite(carry) ||
+        typeof offline !== 'number' ||
+        !Number.isFinite(offline) ||
+        !(weight > 0) ||
+        typeof capturedAt !== 'number'
+      ) {
+        return null
+      }
+
+      return {
+        capturedAt,
+        sessionId: sessionMetadata?.sessionId ?? undefined,
+        shot,
+      }
+    })
+    .filter(
+      (point): point is UsablePatternShot =>
+        point !== null,
+    )
+    .sort((left, right) => right.capturedAt - left.capturedAt)
+
+  if (usableShots.length < patternTrendThresholds.totalUsableMinShots) {
+    return {
+      score: null,
+      note: 'Need at least 15 usable carry/offline shots for rolling pattern trend',
+    }
   }
 
-  const recentGroup = clubSessionsByRecency[0]
-  const priorGroup = clubSessionsByRecency.slice(1).flat()
-  const recentGroupShotCount = recentGroup.length
-  const priorGroupShotCount = priorGroup.length
-  if (recentGroupShotCount < 5 || priorGroupShotCount < 5) {
-    return { score: null, note: 'Insufficient shots for drift comparison' }
+  const distinctSessionCount = new Set(
+    usableShots
+      .map((point) => point.sessionId)
+      .filter((sessionId): sessionId is string => typeof sessionId === 'string'),
+  ).size
+
+  if (distinctSessionCount < patternTrendThresholds.minDistinctSessions) {
+    return {
+      score: null,
+      note: 'Need at least 2 sessions for rolling pattern trend',
+    }
+  }
+
+  const recentCount = Math.min(
+    patternTrendThresholds.recentWindowTargetShots,
+    usableShots.length - patternTrendThresholds.priorBaselineMinShots,
+  )
+
+  if (recentCount < patternTrendThresholds.recentWindowMinShots) {
+    return {
+      score: null,
+      note: 'Need at least 5 recent and 5 prior usable shots for rolling pattern trend',
+    }
+  }
+
+  const recentGroup = usableShots.slice(0, recentCount).map((point) => point.shot)
+  const priorGroup = usableShots.slice(recentCount).map((point) => point.shot)
+
+  if (
+    recentGroup.length < patternTrendThresholds.recentWindowMinShots ||
+    priorGroup.length < patternTrendThresholds.priorBaselineMinShots
+  ) {
+    return {
+      score: null,
+      note: 'Need at least 5 recent and 5 prior usable shots for rolling pattern trend',
+    }
   }
 
   const recentCarryCenter = weightedAverageFromShots(
@@ -428,33 +515,39 @@ const buildPatternStabilityScore = (
   const offlineDrift = Math.abs(recentOfflineCenter - priorOfflineCenter)
   const carryDriftScore = clamp(100 - (100 * carryDrift) / carryDriftTolerance)
   const offlineDriftScore = clamp(100 - (100 * offlineDrift) / offlineDriftTolerance)
-  const patternStability = clamp(Math.round(0.5 * carryDriftScore + 0.5 * offlineDriftScore))
+  const rawPatternStability = clamp(Math.round(0.5 * carryDriftScore + 0.5 * offlineDriftScore))
+  const evidenceScale = Math.min(1, recentGroup.length / 10, priorGroup.length / 10)
+  const patternStability = clamp(
+    Math.round(50 + (rawPatternStability - 50) * evidenceScale),
+  )
 
   return {
     score: patternStability,
-    note: `Carry drift ${oneDecimal(carryDrift)} yd, offline drift ${oneDecimal(offlineDrift)} yd`,
+    note: `Recent window drift: carry ${oneDecimal(carryDrift)} yd, offline ${oneDecimal(offlineDrift)} yd`,
   }
 }
 
 const buildDataConfidenceScore = (
   shots: Shot[],
   distinctSessionCount: number,
-  recencyWeightForShot: (shot: Shot) => number,
 ) => {
-  const weightedShotCount = shots.reduce(
-    (sum, shot) => sum + recencyWeightForShot(shot),
-    0,
-  )
+  const usableShotCount = shots.length
   const includedShotScore = clamp(
-    (weightedShotCount / confidenceConfig.dataConfidence.targetIncludedShots) * 100,
+    (usableShotCount / confidenceConfig.dataConfidence.targetIncludedShots) * 100,
   )
   const sessionScore = clamp(
     (distinctSessionCount / confidenceConfig.dataConfidence.targetSessions) * 100,
   )
+  const score = clamp(
+    Math.round(
+      includedShotScore * confidenceConfig.dataConfidence.shotEvidenceWeight +
+        sessionScore * confidenceConfig.dataConfidence.sessionEvidenceWeight,
+    ),
+  )
 
   return {
-    score: clamp(Math.round(includedShotScore * 0.7 + sessionScore * 0.3)),
-    note: `${oneDecimal(weightedShotCount)} weighted shots across ${distinctSessionCount} sessions`,
+    score,
+    note: `${usableShotCount} eligible shots across ${distinctSessionCount} sessions`,
   }
 }
 
@@ -664,7 +757,6 @@ export const summarizeReviewClub = (
   const dataConfidence = buildDataConfidenceScore(
     includedShots,
     distinctSessionCount,
-    recencyWeightForShot,
   )
 
   const componentWeights = confidenceConfig.componentWeights

@@ -3923,19 +3923,20 @@ function App({
           ? summary.componentScores.flightQuality
           : undefined,
       )
-      pushPoint(
-        'patternStability',
-        label,
-        typeof summary?.componentScores.patternStability === 'number'
-          ? summary.componentScores.patternStability
-          : undefined,
-      )
       pushPoint('distanceWindow', label, summary?.componentScores.distanceWindow)
       pushPoint('dataConfidence', label, summary?.componentScores.dataConfidence)
     })
 
     return series
   }, [selectedDetailClub, selectedDetailVariantSessions])
+
+  const clubDetailTrendMetricModelsV2 = useMemo(
+    () =>
+      selectedClubMetricModels.filter(
+        (model) => model.key !== 'patternStability',
+      ),
+    [selectedClubMetricModels],
+  )
 
   const clubDetailPatternInsightV2 = useMemo(() => {
     const byKey = new Map(selectedClubMetricModels.map((metric) => [metric.key, metric]))
@@ -4001,7 +4002,7 @@ function App({
 
     const mapped = preferredDriver ? map[preferredDriver.key] : null
     const available = new Set<ClubDetailMetricKey>(
-      selectedClubMetricModels.map((model) => model.key),
+      clubDetailTrendMetricModelsV2.map((model) => model.key),
     )
 
     if (mapped && available.has(mapped)) {
@@ -4013,8 +4014,8 @@ function App({
     if (available.has('carry')) {
       return 'carry'
     }
-    return selectedClubMetricModels[0]?.key ?? 'carry'
-  }, [selectedClubMetricModels, selectedClubPerformanceDrivers])
+    return clubDetailTrendMetricModelsV2[0]?.key ?? 'carry'
+  }, [clubDetailTrendMetricModelsV2, selectedClubPerformanceDrivers])
 
   // Temporary Club Detail skeleton mode: richer sections are intentionally
   // not rendered yet, but these values stay wired for the next layer.
@@ -5501,7 +5502,7 @@ function App({
                     heatmapMetrics={clubDetailHeatmapMetricsV2}
                     patternInsight={clubDetailPatternInsightV2}
                     looperRead={looperRead}
-                    metricModels={selectedClubMetricModels}
+                    metricModels={clubDetailTrendMetricModelsV2}
                     metricSessionSeries={clubDetailMetricSessionSeriesV2}
                     performanceDrivers={selectedClubPerformanceDrivers}
                     score={selectedClubSummary ? formatScore(selectedClubSummary.caddieScore) : '-'}
