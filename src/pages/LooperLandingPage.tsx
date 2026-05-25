@@ -15,6 +15,7 @@ import {
   SESSION_SOURCE_PARAM,
   legacyFeedModeForSessionSource,
 } from '../lib/sessionSources'
+import type { SessionSource } from '../types'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
@@ -188,6 +189,9 @@ const formatShotVariantName = (name: string) =>
   name.length > 24 ? `${name.slice(0, 21)}...` : name
 
 export default function LooperLandingPage() {
+  const [selectedSource, setSelectedSource] = useState<Extract<SessionSource, 'gspro' | 'nova'>>(
+    'gspro',
+  )
   const [selectedClub, setSelectedClub] = useState<Club>(() => activeBagClubIds[0] ?? '7i')
   const [selectedShotVariantId, setSelectedShotVariantId] = useState<string>(
     STOCK_SHOT_VARIANT_ID,
@@ -422,13 +426,13 @@ export default function LooperLandingPage() {
   })()
 
   const startSession = () => {
-    if (novaState !== 'connected' || !connectedUrl) {
+    if (selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl)) {
       return
     }
 
     const params = new URLSearchParams({
-      [SESSION_SOURCE_PARAM]: 'nova',
-      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource('nova'),
+      [SESSION_SOURCE_PARAM]: selectedSource,
+      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource(selectedSource),
       club: selectedClub,
       variant: resolveShotVariantId(selectedShotVariantId),
     })
@@ -477,35 +481,57 @@ export default function LooperLandingPage() {
                   </div>
                 </>
               )}
-              <div className="looper-landing-session-status">
-                <p className="looper-landing-status-tag">{novaStatusText}</p>
-                {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
-              </div>
-              <div className="looper-landing-session-row">
-                <div className="looper-landing-select-wrap">
-                  <select
-                    id="landing-club-select"
-                    onChange={(event) => setSelectedClub(event.target.value as Club)}
-                    value={selectedClub}
+              <div className="looper-landing-session-field">
+                <div className="looper-landing-source-toggle" role="radiogroup" aria-label="Session source">
+                  <button
+                    aria-checked={selectedSource === 'gspro'}
+                    className={`looper-landing-source-pill ${
+                      selectedSource === 'gspro' ? 'is-selected' : ''
+                    }`}
+                    onClick={() => setSelectedSource('gspro')}
+                    role="radio"
+                    type="button"
                   >
-                    {activeBagClubIds.map((club) => (
-                      <option key={club} value={club}>
-                        {getClubDisplayName(club)}
-                      </option>
-                    ))}
-                  </select>
+                    GSPro
+                  </button>
+                  <button
+                    aria-checked={selectedSource === 'nova'}
+                    className={`looper-landing-source-pill ${
+                      selectedSource === 'nova' ? 'is-selected' : ''
+                    }`}
+                    onClick={() => setSelectedSource('nova')}
+                    role="radio"
+                    type="button"
+                  >
+                    Nova
+                  </button>
                 </div>
-                <button
-                  className="looper-landing-action looper-landing-action-secondary"
-                  disabled={novaState !== 'connected' || !connectedUrl}
-                  onClick={startSession}
-                  type="button"
-                >
-                  Start
-                </button>
               </div>
-              {shotVariants.length > 1 ? (
-                <div className="looper-landing-session-row looper-landing-variant-row">
+              {selectedSource === 'nova' ? (
+                <div className="looper-landing-session-status">
+                  <p className="looper-landing-status-tag">{novaStatusText}</p>
+                  {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
+                </div>
+              ) : null}
+              <div className="looper-landing-club-variant-row">
+                <div className="looper-landing-session-field">
+                  <span className="looper-landing-field-label">Club</span>
+                  <div className="looper-landing-select-wrap">
+                    <select
+                      id="landing-club-select"
+                      onChange={(event) => setSelectedClub(event.target.value as Club)}
+                      value={selectedClub}
+                    >
+                      {activeBagClubIds.map((club) => (
+                        <option key={club} value={club}>
+                          {getClubDisplayName(club)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="looper-landing-session-field">
+                  <span className="looper-landing-field-label">Variant</span>
                   <div className="looper-landing-select-wrap">
                     <select
                       aria-label="Shot variant"
@@ -524,28 +550,38 @@ export default function LooperLandingPage() {
                     </select>
                   </div>
                 </div>
-              ) : null}
-              <details className="looper-landing-manual">
-                <summary>Manual Nova Connection</summary>
-                <div className="looper-landing-session-row">
-                  <div className="looper-landing-select-wrap">
-                    <input
-                      aria-label="Manual Nova WebSocket URL"
-                      onChange={(event) => setManualUrlInput(event.target.value)}
-                      placeholder="ws://nova-host:port"
-                      type="text"
-                      value={manualUrlInput}
-                    />
+              </div>
+              <button
+                className="looper-landing-action looper-landing-action-secondary looper-landing-start"
+                disabled={selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl)}
+                onClick={startSession}
+                type="button"
+              >
+                Start
+              </button>
+              {selectedSource === 'nova' ? (
+                <details className="looper-landing-manual">
+                  <summary>Manual Nova Connection</summary>
+                  <div className="looper-landing-session-row">
+                    <div className="looper-landing-select-wrap">
+                      <input
+                        aria-label="Manual Nova WebSocket URL"
+                        onChange={(event) => setManualUrlInput(event.target.value)}
+                        placeholder="ws://nova-host:port"
+                        type="text"
+                        value={manualUrlInput}
+                      />
+                    </div>
+                    <button
+                      className="looper-landing-action looper-landing-action-secondary"
+                      onClick={applyManualUrl}
+                      type="button"
+                    >
+                      Use URL
+                    </button>
                   </div>
-                  <button
-                    className="looper-landing-action looper-landing-action-secondary"
-                    onClick={applyManualUrl}
-                    type="button"
-                  >
-                    Use URL
-                  </button>
-                </div>
-              </details>
+                </details>
+              ) : null}
             </div>
 
             <div className="looper-landing-utility-actions">
