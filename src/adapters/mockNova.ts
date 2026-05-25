@@ -51,6 +51,9 @@ const seededNoise = (seed: number, salt: number) => {
 const jitter = (seed: number, salt: number, amount: number) =>
   (seededNoise(seed, salt) * 2 - 1) * amount
 
+const createMockSessionSeed = () =>
+  Date.now() + Math.floor(Math.random() * 1_000_000)
+
 const variantCarryFactor = (club: Club, shotVariantId: string | undefined, seed: number) => {
   const resolvedId = resolveShotVariantId(shotVariantId)
   if (resolvedId === STOCK_SHOT_VARIANT_ID) {
@@ -163,29 +166,31 @@ const descentForClub = (club: Club, seed: number) => {
 export const buildMockNovaShot = (
   shotNumber: number,
   context: MockShotContext = { club: '7i', shotVariantId: STOCK_SHOT_VARIANT_ID },
+  sessionSeed = 0,
 ): IncomingNovaShot => {
+  const shotSeed = shotNumber + sessionSeed * 1000
   const stockCarry = stockCarryForClub(context.club)
   const resolvedVariantId = resolveShotVariantId(context.shotVariantId)
   const carryFactor = Math.min(
     1,
-    Math.max(0.55, variantCarryFactor(context.club, resolvedVariantId, shotNumber)),
+    Math.max(0.55, variantCarryFactor(context.club, resolvedVariantId, shotSeed)),
   )
-  const rawCarryYards = Math.round(
-    stockCarry * carryFactor + jitter(shotNumber, 1, stockCarry * 0.025),
+  const rawCarryYards = Number(
+    (stockCarry * carryFactor + jitter(shotSeed, 1, stockCarry * 0.025)).toFixed(1),
   )
   const carryYards =
     resolvedVariantId === STOCK_SHOT_VARIANT_ID
       ? rawCarryYards
       : Math.min(stockCarry, rawCarryYards)
-  const totalYards = Math.round(carryYards + rolloutForClub(context.club, shotNumber))
-  const ballSpeedMph = Number(ballSpeedForCarry(carryYards, context.club, shotNumber).toFixed(1))
-  const verticalLaunchAngleDegrees = Number(launchForClub(context.club, shotNumber).toFixed(1))
-  const horizontalLaunchAngleDegrees = Number(jitter(shotNumber, 32, 3.5).toFixed(1))
-  const totalSpinRpm = Math.max(1800, Math.round(spinForClub(context.club, shotNumber)))
-  const spinAxisDegrees = Number(jitter(shotNumber, 33, 14).toFixed(1))
-  const offlineYards = Number(offlineForClub(context.club, shotNumber).toFixed(1))
-  const descentAngle = Number(descentForClub(context.club, shotNumber).toFixed(1))
-  const peakHeight = Math.round(carryYards * (verticalLaunchAngleDegrees / 100) + 36 + jitter(shotNumber, 62, 6))
+  const totalYards = Math.round(carryYards + rolloutForClub(context.club, shotSeed))
+  const ballSpeedMph = Number(ballSpeedForCarry(carryYards, context.club, shotSeed).toFixed(1))
+  const verticalLaunchAngleDegrees = Number(launchForClub(context.club, shotSeed).toFixed(1))
+  const horizontalLaunchAngleDegrees = Number(jitter(shotSeed, 32, 3.5).toFixed(1))
+  const totalSpinRpm = Math.max(1800, Math.round(spinForClub(context.club, shotSeed)))
+  const spinAxisDegrees = Number(jitter(shotSeed, 33, 14).toFixed(1))
+  const offlineYards = Number(offlineForClub(context.club, shotSeed).toFixed(2))
+  const descentAngle = Number(descentForClub(context.club, shotSeed).toFixed(1))
+  const peakHeight = Math.round(carryYards * (verticalLaunchAngleDegrees / 100) + 36 + jitter(shotSeed, 62, 6))
   const clubSpeed = Number((ballSpeedMph / (getClubFamily(context.club) === 'wedge' ? 1.22 : 1.38)).toFixed(1))
   const smashFactor = Number((ballSpeedMph / clubSpeed).toFixed(2))
   const shotVariantLabel = getShotVariantLabel(context.club, context.shotVariantId)
@@ -205,7 +210,7 @@ export const buildMockNovaShot = (
     total_spin_rpm: totalSpinRpm,
     spin_axis_degrees: spinAxisDegrees,
     shotName: `${context.club} ${shotVariantLabel}`,
-    shotRanking: seededNoise(shotNumber, 71) > 0.72 ? 'A' : seededNoise(shotNumber, 72) > 0.28 ? 'B' : 'C',
+    shotRanking: seededNoise(shotSeed, 71) > 0.72 ? 'A' : seededNoise(shotSeed, 72) > 0.28 ? 'B' : 'C',
     openGolfCoach: {
       carry_distance_yards: carryYards,
       total_distance_yards: totalYards,
@@ -222,11 +227,12 @@ export const buildMockNovaShot = (
 export const mockNovaAdapter: NovaAdapter = {
   connectToShots(onShot, onStatusChange, onDebugEvent, getMockShotContext): NovaConnection {
     console.info('[Mock Nova] mock mode active')
+    const sessionSeed = createMockSessionSeed()
     let shotNumber = 1
     let timer: number | null = null
 
     const emitShot = () => {
-      const shot = buildMockNovaShot(shotNumber, getMockShotContext?.())
+      const shot = buildMockNovaShot(shotNumber, getMockShotContext?.(), sessionSeed)
 
       onDebugEvent?.({
         rawMessage: JSON.stringify(shot),
