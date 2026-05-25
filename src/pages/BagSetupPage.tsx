@@ -83,7 +83,7 @@ export default function BagSetupPage() {
             <>
               {/* DEV ONLY — opens Session Intelligence without Nova for SimRead testing. Safe to remove. */}
               <div style={{ marginBottom: 12 }}>
-                <button onClick={() => navigateWithinApp('/session-intelligence?feed=mock')} type="button">
+                <button onClick={() => navigateWithinApp('/session-intelligence?source=mock&feed=mock')} type="button">
                   DEV: Open SimRead Test Session
                 </button>
               </div>

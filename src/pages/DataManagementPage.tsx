@@ -5,6 +5,7 @@ import { toggleFeltPerfectShot } from '../lib/feltPerfect'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import { getShotVariantLabel, resolveShotVariantId } from '../lib/shotVariants'
 import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
+import { sessionSourceFromMetadata, sessionSourceLabel } from '../lib/sessionSources'
 import {
   clearActiveSessionDraft,
   isSessionOldExcludedBySystem,
@@ -334,8 +335,9 @@ const sessionShotGroups = (session: SavedSession, shots = session.shots) => {
 }
 
 const isMockSession = (session: SavedSession) =>
-  session.metadata?.feedMode === 'mock' ||
+  sessionSourceFromMetadata(session.metadata) === 'mock' ||
   (!session.metadata?.feedMode &&
+    !session.metadata?.source &&
     session.shots.length > 0 &&
     session.shots.every((shot) => shot.source === 'mock'))
 
@@ -748,7 +750,7 @@ function DataManagementPage() {
     persistSessions(filteredSessions)
 
     const activeDraft = loadActiveSessionDraft()
-    if (activeDraft?.metadata.feedMode === 'mock') {
+    if (sessionSourceFromMetadata(activeDraft?.metadata) === 'mock') {
       clearActiveSessionDraft()
     }
 
@@ -915,7 +917,7 @@ function DataManagementPage() {
                     const groups = expanded ? sessionShotGroups(session) : []
                     const clubsText = sessionClubSummary(session) || '-'
                     const endedDate = new Date(session.endedAt)
-                    const source = session.metadata?.feedMode ?? 'unknown'
+                    const source = sessionSourceFromMetadata(session.metadata)
 
                     return [
                       <tr
@@ -961,7 +963,7 @@ function DataManagementPage() {
                             : session.shots.length}
                         </td>
                         <td>{clubsText}</td>
-                        <td>{source}</td>
+                        <td>{source ? sessionSourceLabel(source) : 'unknown'}</td>
                       </tr>,
                       expanded ? (
                         <tr className="data-session-expanded-row" key={`expanded-${session.id}`}>

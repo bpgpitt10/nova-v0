@@ -1,5 +1,7 @@
 import type { Club } from './lib/bagConfig'
 
+export type SessionSource = 'nova' | 'gspro' | 'mock'
+
 export type Shot = {
   id: string
   club: Club
@@ -133,6 +135,7 @@ export type OpenGolfCoachDerivedValues = {
 export type SessionMetadata = {
   app: 'nova-validation'
   schemaVersion: number
+  source?: SessionSource
   feedMode?: 'mock' | 'real'
   includeInAnalysis?: boolean
 }

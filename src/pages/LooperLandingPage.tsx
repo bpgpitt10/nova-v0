@@ -10,6 +10,11 @@ import {
   resolveShotVariantId,
   STOCK_SHOT_VARIANT_ID,
 } from '../lib/shotVariants'
+import {
+  LEGACY_SESSION_FEED_PARAM,
+  SESSION_SOURCE_PARAM,
+  legacyFeedModeForSessionSource,
+} from '../lib/sessionSources'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
@@ -422,7 +427,8 @@ export default function LooperLandingPage() {
     }
 
     const params = new URLSearchParams({
-      feed: 'real',
+      [SESSION_SOURCE_PARAM]: 'nova',
+      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource('nova'),
       club: selectedClub,
       variant: resolveShotVariantId(selectedShotVariantId),
     })
@@ -461,7 +467,7 @@ export default function LooperLandingPage() {
                       className="looper-landing-action looper-landing-action-secondary"
                       onClick={() =>
                         navigateWithinApp(
-                          `/session-intelligence?feed=mock&variant=${encodeURIComponent(resolveShotVariantId(selectedShotVariantId))}`,
+                          `/session-intelligence?source=mock&feed=mock&variant=${encodeURIComponent(resolveShotVariantId(selectedShotVariantId))}`,
                         )
                       }
                       type="button"

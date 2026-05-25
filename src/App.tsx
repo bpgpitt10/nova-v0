@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type NovaConnection,
   type NovaConnectionStatus,
-  type NovaFeedMode,
   resolveNovaWebSocketEndpoint,
 } from './adapters/nova'
 import { mockNovaAdapter } from './adapters/mockNova'
@@ -63,6 +62,15 @@ import {
 } from './lib/shotVariants'
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
+import {
+  LEGACY_SESSION_FEED_PARAM,
+  SESSION_SOURCE_PARAM,
+  legacyFeedModeForSessionSource,
+  sessionSourceFromMetadata,
+  sessionSourceFromSearchParams,
+  sessionSourceLabel,
+  shotSourceForSessionSource,
+} from './lib/sessionSources'
 import { buildShotProfilesForIdentity } from './lib/shotProfiles'
 import { checkForLooperUpdate } from './lib/updater'
 import {
@@ -84,12 +92,12 @@ import {
   type OpenGolfCoachPayload,
   type ReviewClubSummary,
   type SavedSession,
+  type SessionSource,
   type Shot,
 } from './types'
 import type { Update } from '@tauri-apps/plugin-updater'
 
 type SessionState = 'setup' | 'live' | 'review'
-type SessionFeedMode = 'mock' | 'real'
 type ReviewView = 'dashboard' | 'clubDetail'
 type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
@@ -621,10 +629,11 @@ const buildShot = (
   source,
 })
 
-const currentSessionMetadata = (feedMode: SessionFeedMode) => ({
+const currentSessionMetadata = (source: SessionSource) => ({
   app: 'nova-validation' as const,
-  schemaVersion: 2,
-  feedMode,
+  schemaVersion: 3,
+  source,
+  feedMode: legacyFeedModeForSessionSource(source),
   includeInAnalysis: true,
 })
 
@@ -687,8 +696,7 @@ function App({
   const sessionIntelligenceSearch = forceSessionIntelligenceRoute
     ? new URLSearchParams(window.location.search)
     : null
-  const routeFeedMode =
-    sessionIntelligenceSearch?.get('feed') === 'mock' ? 'mock' : 'real'
+  const routeSessionSource = sessionSourceFromSearchParams(sessionIntelligenceSearch)
   const fallbackClub = activeBagClubIds[0] ?? '7i'
   const routeClubParam = sessionIntelligenceSearch?.get('club')
   const routeClub = activeBagClubIds.includes(routeClubParam as Club)
@@ -702,10 +710,10 @@ function App({
   const [sessionState, setSessionState] = useState<SessionState>(() =>
     forceSessionIntelligenceRoute ? 'live' : forceDashboardRoute ? 'review' : 'setup',
   )
-  const [selectedFeedMode, setSelectedFeedMode] = useState<SessionFeedMode>(() =>
+  const [selectedSessionSource, setSelectedSessionSource] = useState<SessionSource>(() =>
     forceSessionIntelligenceRoute
-      ? resumedDraft?.metadata.feedMode ?? routeFeedMode
-      : 'real',
+      ? sessionSourceFromMetadata(resumedDraft?.metadata) ?? routeSessionSource
+      : 'nova',
   )
   const [selectedClub, setSelectedClub] = useState<Club>(() =>
     forceSessionIntelligenceRoute ? routeClub : fallbackClub,
@@ -740,7 +748,7 @@ function App({
     [historicalModelNowMs, savedSessions],
   )
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [feedMode, setFeedMode] = useState<NovaFeedMode | null>(null)
+  const [activeSessionSource, setActiveSessionSource] = useState<SessionSource | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<NovaConnectionStatus>('disconnected')
   const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
@@ -974,13 +982,13 @@ function App({
       id: liveSessionId,
       startedAt: sessionStartedAt,
       shots,
-      metadata: currentSessionMetadata(selectedFeedMode),
+      metadata: currentSessionMetadata(selectedSessionSource),
     }
 
     saveActiveSessionDraft(draft)
 
     return undefined
-  }, [liveSessionId, selectedFeedMode, sessionStartedAt, sessionState, shots])
+  }, [liveSessionId, selectedSessionSource, sessionStartedAt, sessionState, shots])
 
   useEffect(() => {
     if (sessionState !== 'live') {
@@ -990,25 +998,25 @@ function App({
     const novaEndpoint = resolveNovaWebSocketEndpoint()
     const resolvedWsUrl = novaEndpoint.url
     let isActive = true
-    const activeSource: Shot['source'] = selectedFeedMode === 'real' ? 'nova' : 'mock'
+    const activeSource = shotSourceForSessionSource(selectedSessionSource)
     const handleConnectionStatus = (status: NovaConnectionStatus) => {
       console.info('[Nova Connection] status changed', {
         status,
-        selectedFeedMode,
-        mockModeActive: selectedFeedMode === 'mock',
-        webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
-        webSocketUrl: selectedFeedMode === 'real' ? resolvedWsUrl : null,
+        selectedSessionSource,
+        mockModeActive: selectedSessionSource === 'mock',
+        webSocketSource: selectedSessionSource === 'nova' ? novaEndpoint.source : null,
+        webSocketUrl: selectedSessionSource === 'nova' ? resolvedWsUrl : null,
       })
       setConnectionStatus(status)
     }
     console.info('[Nova Config] live session feed selected', {
-      selectedFeedMode,
-      mockModeActive: selectedFeedMode === 'mock',
-      webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
-      webSocketUrl: selectedFeedMode === 'real' ? resolvedWsUrl : null,
+      selectedSessionSource,
+      mockModeActive: selectedSessionSource === 'mock',
+      webSocketSource: selectedSessionSource === 'nova' ? novaEndpoint.source : null,
+      webSocketUrl: selectedSessionSource === 'nova' ? resolvedWsUrl : null,
     })
 
-    const connection: NovaConnection = selectedFeedMode === 'real'
+    const connection: NovaConnection = selectedSessionSource === 'nova'
       ? subscribeSharedNovaConnection(
           resolvedWsUrl,
           (incomingShot) => {
@@ -1155,7 +1163,8 @@ function App({
             }
           },
         )
-      : mockNovaAdapter.connectToShots(
+      : selectedSessionSource === 'mock'
+        ? mockNovaAdapter.connectToShots(
           (incomingShot) => {
             if (!isActive) {
               return
@@ -1303,16 +1312,24 @@ function App({
             club: selectedClubRef.current,
             shotVariantId: selectedShotVariantIdRef.current,
           }),
-        )
+          )
+        : {
+            mode: 'real',
+            disconnect: () => undefined,
+          }
 
     connectionRef.current = connection
-    setFeedMode(connection.mode)
+    setActiveSessionSource(selectedSessionSource)
+    if (selectedSessionSource === 'gspro') {
+      setConnectionStatus('disconnected')
+      console.info('[GSPro Config] session source selected; live ingestion is not wired yet')
+    }
     console.info('[Nova Config] active connection established', {
-      requestedFeedMode: selectedFeedMode,
+      requestedSessionSource: selectedSessionSource,
       connectionMode: connection.mode,
-      mockModeActive: connection.mode === 'mock',
-      webSocketSource: connection.mode === 'real' ? novaEndpoint.source : null,
-      webSocketUrl: connection.mode === 'real' ? resolvedWsUrl : null,
+      mockModeActive: selectedSessionSource === 'mock',
+      webSocketSource: selectedSessionSource === 'nova' ? novaEndpoint.source : null,
+      webSocketUrl: selectedSessionSource === 'nova' ? resolvedWsUrl : null,
     })
 
     return () => {
@@ -1320,7 +1337,7 @@ function App({
       connection.disconnect()
       connectionRef.current = null
     }
-  }, [selectedFeedMode, sessionState])
+  }, [selectedSessionSource, sessionState])
 
   const dashboardShots = useMemo(
     () => analysisSessions.flatMap((savedSession) => savedSession.shots),
@@ -4025,23 +4042,24 @@ function App({
       id: nextLiveSessionId,
       startedAt,
       shots: [],
-      metadata: currentSessionMetadata(selectedFeedMode),
+      metadata: currentSessionMetadata(selectedSessionSource),
     }
     saveActiveSessionDraft(draft)
 
     const novaEndpoint = resolveNovaWebSocketEndpoint()
     console.info('[Nova Config] starting session', {
-      selectedFeedMode,
-      mockModeActive: selectedFeedMode === 'mock',
-      webSocketSource: selectedFeedMode === 'real' ? novaEndpoint.source : null,
-      webSocketUrl: selectedFeedMode === 'real' ? novaEndpoint.url : null,
+      selectedSessionSource,
+      mockModeActive: selectedSessionSource === 'mock',
+      webSocketSource: selectedSessionSource === 'nova' ? novaEndpoint.source : null,
+      webSocketUrl: selectedSessionSource === 'nova' ? novaEndpoint.url : null,
     })
-    if (selectedFeedMode === 'real') {
+    if (selectedSessionSource === 'nova') {
       prepareSharedNovaConnection(novaEndpoint.url)
     }
 
     const params = new URLSearchParams({
-      feed: selectedFeedMode,
+      [SESSION_SOURCE_PARAM]: selectedSessionSource,
+      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource(selectedSessionSource),
       club: selectedClub,
       variant: resolveShotVariantId(selectedShotVariantId),
     })
@@ -4055,13 +4073,13 @@ function App({
       startedAt: sessionStartedAt ?? endedAt,
       endedAt,
       shots,
-      metadata: currentSessionMetadata(selectedFeedMode),
+      metadata: currentSessionMetadata(selectedSessionSource),
     }
 
     const nextSessions = [savedSession, ...savedSessions]
     setSavedSessions(nextSessions)
     saveSessionHistory(nextSessions)
-    if (feedMode === 'real') {
+    if (activeSessionSource === 'nova') {
       disconnectSharedNovaConnection()
     }
     clearActiveSessionDraft()
@@ -4069,7 +4087,7 @@ function App({
   }
 
   const toggleMockFeed = () => {
-    if (feedMode !== 'mock') {
+    if (activeSessionSource !== 'mock') {
       return
     }
 
@@ -5006,11 +5024,11 @@ function App({
           <label>
             Feed mode
             <select
-              value={selectedFeedMode}
-              onChange={(event) => setSelectedFeedMode(event.target.value as SessionFeedMode)}
+              value={selectedSessionSource}
+              onChange={(event) => setSelectedSessionSource(event.target.value as SessionSource)}
             >
               <option value="mock">Mock</option>
-              <option value="real">Live Nova</option>
+              <option value="nova">Live Nova</option>
             </select>
           </label>
 
@@ -5046,7 +5064,7 @@ function App({
             <div>
               <h2>
                 Live Session
-                {feedMode === 'mock' && <span className="badge">Mock Nova Feed</span>}
+                {activeSessionSource === 'mock' && <span className="badge">Mock Nova Feed</span>}
               </h2>
               <p>
                 Started {sessionStartedAt ? new Date(sessionStartedAt).toLocaleString() : '-'}.
@@ -5064,7 +5082,7 @@ function App({
                   </button>
                 </>
               )}
-              {feedMode === 'mock' && (
+              {activeSessionSource === 'mock' && (
                 <button onClick={toggleMockFeed}>
                   {connectionStatus === 'paused'
                     ? 'Resume Mock Feed'
@@ -5079,16 +5097,16 @@ function App({
             <div>
               <strong>Feed</strong>
               <span>
-                {feedMode === null
+                {activeSessionSource === null
                   ? 'Connecting'
-                  : feedMode === 'mock'
+                  : activeSessionSource === 'mock'
                     ? 'Mock Nova Feed'
-                    : 'Real Nova Feed'}
+                    : `${sessionSourceLabel(activeSessionSource)} Feed`}
               </span>
             </div>
             <div>
               <strong>Mode</strong>
-              <span>{feedMode ?? 'connecting'}</span>
+              <span>{activeSessionSource ?? 'connecting'}</span>
             </div>
             <div>
               <strong>Status</strong>
