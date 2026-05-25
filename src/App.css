@@ -1216,6 +1216,7 @@ td {
   border: 1px solid #314233;
   border-radius: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  cursor: pointer;
 }
 
 .driver-feature-card::before {

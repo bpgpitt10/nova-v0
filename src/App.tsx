@@ -2495,7 +2495,7 @@ function App({
           return []
         }
 
-        return [{ id: shot.id, carry, offline, included: shot.included, feltPerfect: shot.feltPerfect }]
+        return [{ id: shot.id, carry, offline, included: shot.included }]
       }),
     [selectedClubHistoricalShots],
   )
@@ -4770,6 +4770,7 @@ function App({
                   className="session-intelligence-dispersion-plot"
                   fillContainer
                   fixedChartHeight={430}
+                  highlightFeltPerfectShots
                   highlightLatestShot
                   points={sessionIntelligencePoints}
                 />
@@ -5282,7 +5283,14 @@ function App({
                 </section>
 
                 {featuredDriverCard && featuredDriverSummary && featuredDriverRead && (
-                  <section className="driver-feature-card" id={clubAnchorId(featuredDriverCard.club)}>
+                  <section
+                    className="driver-feature-card"
+                    id={clubAnchorId(featuredDriverCard.club)}
+                    onClick={() => {
+                      setSelectedDetailClub(featuredDriverCard.club)
+                      setReviewView('clubDetail')
+                    }}
+                  >
                     <div className="driver-feature-header">
                       <div className="section-kicker driver-feature-kicker">Featured Club</div>
                       <div className="driver-feature-intro">
@@ -5868,6 +5876,7 @@ type ClubDispersionPlotProps = {
   lastShotId?: string
   fillContainer?: boolean
   fixedChartHeight?: number
+  highlightFeltPerfectShots?: boolean
   highlightLatestShot?: boolean
   profileOverlays?: DispersionProfileOverlay[]
 }
@@ -5878,6 +5887,7 @@ function ClubDispersionPlot({
   lastShotId,
   fillContainer = false,
   fixedChartHeight,
+  highlightFeltPerfectShots = false,
   highlightLatestShot = false,
   profileOverlays = [],
 }: ClubDispersionPlotProps) {
@@ -5974,11 +5984,19 @@ function ClubDispersionPlot({
           <radialGradient id={`heat-${point.id}`} key={`gradient-${point.id}`}>
             <stop
               offset="0%"
-              stopColor={point.feltPerfect ? 'rgba(132,204,22,0.3)' : 'rgba(255,215,0,0.34)'}
+              stopColor={
+                highlightFeltPerfectShots && point.feltPerfect
+                  ? 'rgba(132,204,22,0.3)'
+                  : 'rgba(255,215,0,0.34)'
+              }
             />
             <stop
               offset="42%"
-              stopColor={point.feltPerfect ? 'rgba(132,204,22,0.12)' : 'rgba(255,215,0,0.14)'}
+              stopColor={
+                highlightFeltPerfectShots && point.feltPerfect
+                  ? 'rgba(132,204,22,0.12)'
+                  : 'rgba(255,215,0,0.14)'
+              }
             />
             <stop offset="100%" stopColor="rgba(255,215,0,0)" />
           </radialGradient>
@@ -6087,59 +6105,62 @@ function ClubDispersionPlot({
                 fill="none"
                 key={`latest-ring-${point.id}`}
                 r="9"
-                stroke={point.feltPerfect ? 'rgba(132, 204, 22, 0.9)' : undefined}
+                stroke={
+                  highlightFeltPerfectShots && point.feltPerfect
+                    ? 'rgba(132, 204, 22, 0.9)'
+                    : undefined
+                }
               />
             ))
         : null}
 
-      {points
-        .filter((point) => point.feltPerfect)
-        .map((point) => (
+      {highlightFeltPerfectShots
+        ? points
+            .filter((point) => point.feltPerfect)
+            .map((point) => (
+              <circle
+                cx={xScale(point.offline)}
+                cy={yScale(point.carry)}
+                fill="none"
+                key={`felt-perfect-ring-${point.id}`}
+                r="8"
+                stroke="rgba(132, 204, 22, 0.74)"
+                strokeWidth="1.35"
+              />
+            ))
+        : null}
+
+      {points.map((point) => {
+        const isHighlightedLatest = highlightLatestShot && point.id === activeLastShotId
+        const isHighlightedFeltPerfect = highlightFeltPerfectShots && point.feltPerfect
+
+        return (
           <circle
             cx={xScale(point.offline)}
             cy={yScale(point.carry)}
-            fill="none"
-            key={`felt-perfect-ring-${point.id}`}
-            r="8"
-            stroke="rgba(132, 204, 22, 0.74)"
-            strokeWidth="1.35"
+            fill={
+              isHighlightedFeltPerfect
+                ? '#84cc16'
+                : isHighlightedLatest
+                  ? '#f8edc9'
+                  : point.included
+                    ? '#eab308'
+                    : '#c1b06d'
+            }
+            fillOpacity={isHighlightedLatest ? 1 : point.included ? 0.88 : 0.4}
+            key={point.id}
+            r={isHighlightedLatest ? 6 : point.included ? 4 : 3}
+            stroke={
+              isHighlightedFeltPerfect
+                ? '#d9f99d'
+                : isHighlightedLatest
+                  ? '#ffffff'
+                  : '#0e1710'
+            }
+            strokeWidth={isHighlightedLatest ? '1.5' : '1'}
           />
-        ))}
-
-      {points.map((point) => (
-        <circle
-          cx={xScale(point.offline)}
-          cy={yScale(point.carry)}
-          fill={
-            point.feltPerfect
-              ? '#84cc16'
-              : point.id === activeLastShotId && highlightLatestShot
-              ? '#f8edc9'
-              : point.included
-                ? '#eab308'
-                : '#c1b06d'
-          }
-          fillOpacity={point.id === activeLastShotId ? 1 : point.included ? 0.88 : 0.4}
-          key={point.id}
-          r={
-            point.id === activeLastShotId && highlightLatestShot
-              ? 6
-              : point.id === activeLastShotId
-                ? 5
-                : point.included
-                  ? 4
-                  : 3
-          }
-          stroke={
-            point.feltPerfect
-              ? '#d9f99d'
-              : point.id === activeLastShotId && highlightLatestShot
-                ? '#ffffff'
-                : '#0e1710'
-          }
-          strokeWidth={point.id === activeLastShotId ? '1.5' : '1'}
-        />
-      ))}
+        )
+      })}
       {highlightLatestShot && activeLastShotId ? (
         <g aria-hidden="true" className="club-detail-latest-shot-legend">
           <circle cx={width - padding.right - 88} cy={padding.top + 13} r="5" />
