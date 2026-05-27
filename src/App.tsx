@@ -15,6 +15,12 @@ import {
   type ExtractedFrame,
 } from './adapters/gsproExtractor'
 import { mapSimReadFinalShotToShot } from './adapters/simreadFinalShot'
+import {
+  connectToSimReadEvents,
+  dispatchSimReadFinalShotEvent,
+  type SimReadLiveConnection,
+  type SimReadLiveStatus,
+} from './adapters/simreadLive'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
@@ -102,6 +108,8 @@ type SessionState = 'setup' | 'live' | 'review'
 type ReviewView = 'dashboard' | 'clubDetail'
 type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
+type LiveConnectionStatus = NovaConnectionStatus | SimReadLiveStatus
+type LiveConnection = NovaConnection | SimReadLiveConnection
 type UpdateStatus =
   | 'idle'
   | 'checking'
@@ -751,7 +759,7 @@ function App({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [activeSessionSource, setActiveSessionSource] = useState<SessionSource | null>(null)
   const [connectionStatus, setConnectionStatus] =
-    useState<NovaConnectionStatus>('disconnected')
+    useState<LiveConnectionStatus>('disconnected')
   const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
@@ -767,7 +775,7 @@ function App({
   )
   const selectedClubRef = useRef(selectedClub)
   const selectedShotVariantIdRef = useRef(selectedShotVariantId)
-  const connectionRef = useRef<NovaConnection | null>(null)
+  const connectionRef = useRef<LiveConnection | null>(null)
   const liveNovaUnavailable = false
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
   const selectedDetailShotVariants = useMemo(
@@ -867,6 +875,27 @@ function App({
   }
   void injectSimReadFrame
 
+  const insertSimReadFinalShotEvent = (event: Parameters<typeof mapSimReadFinalShotToShot>[0]) => {
+    const shot = mapSimReadFinalShotToShot(event, {
+      selectedClub: selectedClubRef.current,
+      selectedShotVariantId: selectedShotVariantIdRef.current,
+    })
+
+    console.info('[SimRead] final-shot received', {
+      shotId: shot.id,
+      rowId: event.rowId,
+      source: event.source,
+      club: selectedClubRef.current,
+      shotVariantId: selectedShotVariantIdRef.current,
+    })
+
+    setShots((currentShots) =>
+      currentShots.some((currentShot) => currentShot.id === shot.id)
+        ? currentShots
+        : [shot, ...currentShots],
+    )
+  }
+
   const handleDevSimReadFinalShotInjection = async () => {
     if (!import.meta.env.DEV) {
       return
@@ -874,21 +903,17 @@ function App({
 
     try {
       const { simreadFinalShotFixture } = await import('./dev/simreadFinalShotFixture')
-      const shot = mapSimReadFinalShotToShot(simreadFinalShotFixture, {
-        selectedClub: selectedClubRef.current,
-        selectedShotVariantId: selectedShotVariantIdRef.current,
-      })
 
       console.log('[SimRead][DEV] final-shot fixture injection requested', {
         club: selectedClubRef.current,
         shotVariantId: selectedShotVariantIdRef.current,
-        shot,
+        event: simreadFinalShotFixture,
       })
-      setShots((currentShots) =>
-        currentShots.some((currentShot) => currentShot.id === shot.id)
-          ? currentShots
-          : [shot, ...currentShots],
-      )
+      if (activeSessionSource === 'gspro') {
+        dispatchSimReadFinalShotEvent(simreadFinalShotFixture)
+      } else {
+        insertSimReadFinalShotEvent(simreadFinalShotFixture)
+      }
     } catch (error) {
       console.error('[SimRead][DEV] final-shot fixture injection failed', error)
     }
@@ -1020,7 +1045,7 @@ function App({
       webSocketUrl: selectedSessionSource === 'nova' ? resolvedWsUrl : null,
     })
 
-    const connection: NovaConnection = selectedSessionSource === 'nova'
+    const connection: LiveConnection = selectedSessionSource === 'nova'
       ? subscribeSharedNovaConnection(
           resolvedWsUrl,
           (incomingShot) => {
@@ -1317,17 +1342,24 @@ function App({
             shotVariantId: selectedShotVariantIdRef.current,
           }),
           )
-        : {
-            mode: 'real',
-            disconnect: () => undefined,
-          }
+        : connectToSimReadEvents({
+            onFinalShot: (event) => {
+              if (!isActive) {
+                return
+              }
+              insertSimReadFinalShotEvent(event)
+            },
+            onStatusChange: (status) => {
+              console.info('[SimRead Connection] status changed', { status })
+              setConnectionStatus(status)
+            },
+            onError: (error) => {
+              console.error('[SimRead Connection] event handling failed', error)
+            },
+          })
 
     connectionRef.current = connection
     setActiveSessionSource(selectedSessionSource)
-    if (selectedSessionSource === 'gspro') {
-      setConnectionStatus('disconnected')
-      console.info('[GSPro Config] session source selected; live ingestion is not wired yet')
-    }
     console.info('[Nova Config] active connection established', {
       requestedSessionSource: selectedSessionSource,
       connectionMode: connection.mode,
@@ -4096,10 +4128,15 @@ function App({
       return
     }
 
+    const connection = connectionRef.current
+    if (!connection || connection.mode !== 'mock') {
+      return
+    }
+
     if (connectionStatus === 'paused') {
-      connectionRef.current?.resume?.()
+      connection.resume?.()
     } else {
-      connectionRef.current?.pause?.()
+      connection.pause?.()
     }
   }
 
