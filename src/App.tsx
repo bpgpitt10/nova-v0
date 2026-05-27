@@ -14,6 +14,7 @@ import {
   mapGsproExtractedFrameToShot,
   type ExtractedFrame,
 } from './adapters/gsproExtractor'
+import { mapSimReadFinalShotToShot } from './adapters/simreadFinalShot'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
@@ -866,30 +867,33 @@ function App({
   }
   void injectSimReadFrame
 
-  const handleDevSimReadInjection = async () => {
+  const handleDevSimReadFinalShotInjection = async () => {
     if (!import.meta.env.DEV) {
       return
     }
 
     try {
-      const { simreadMockFrames } = await import('./dev/simreadMockFrames')
-      const frame = simreadMockFrames[0]
-
-      if (!frame) {
-        console.warn('[SimRead][DEV] no mock frame available for manual injection')
-        return
-      }
-
-      console.log('[SimRead][DEV] manual injection requested', {
-        club: selectedClubRef.current,
-        frame,
+      const { simreadFinalShotFixture } = await import('./dev/simreadFinalShotFixture')
+      const shot = mapSimReadFinalShotToShot(simreadFinalShotFixture, {
+        selectedClub: selectedClubRef.current,
+        selectedShotVariantId: selectedShotVariantIdRef.current,
       })
-      injectSimReadFrame(frame, selectedClubRef.current)
+
+      console.log('[SimRead][DEV] final-shot fixture injection requested', {
+        club: selectedClubRef.current,
+        shotVariantId: selectedShotVariantIdRef.current,
+        shot,
+      })
+      setShots((currentShots) =>
+        currentShots.some((currentShot) => currentShot.id === shot.id)
+          ? currentShots
+          : [shot, ...currentShots],
+      )
     } catch (error) {
-      console.error('[SimRead][DEV] manual injection failed to load mock frame', error)
+      console.error('[SimRead][DEV] final-shot fixture injection failed', error)
     }
   }
-  void handleDevSimReadInjection
+  void handleDevSimReadFinalShotInjection
 
   const navigateDashboardSection = (
     sectionId: 'dashboard-overview' | 'dashboard-bag' | 'dashboard-review',
@@ -5078,9 +5082,9 @@ function App({
               </button>
               {import.meta.env.DEV && (
                 <>
-                  {/* DEV ONLY — SimRead manual injection test. Safe to remove before release. */}
-                  <button onClick={() => void handleDevSimReadInjection()} type="button">
-                    DEV: Inject SimRead Shot
+                  {/* DEV ONLY — SimRead final-shot fixture injection test. Safe to remove before release. */}
+                  <button onClick={() => void handleDevSimReadFinalShotInjection()} type="button">
+                    DEV: Inject SimRead Final Shot
                   </button>
                 </>
               )}
