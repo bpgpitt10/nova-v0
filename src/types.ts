@@ -14,12 +14,27 @@ export type Shot = {
   horizontalLaunchAngleDegrees?: number
   totalSpinRpm?: number
   spinAxisDegrees?: number
+  peakHeight?: number
+  descentAngle?: number
+  backSpin?: number
+  sideSpin?: number
+  clubSpeed?: number
   clubPathDegrees?: number
   faceToPathDegrees?: number
   faceToTargetDegrees?: number
   clubPath?: number
+  clubAoa?: number
   faceToPath?: number
   faceToTarget?: number
+  clubLie?: number
+  clubLoft?: number
+  dynamicLoft?: number
+  closureRate?: number
+  clubFaceHImpact?: number
+  clubFaceVImpact?: number
+  smashFactor?: number
+  distToPin?: number
+  distanceToPin?: number
   clubPathDeg?: number
   faceToPathDeg?: number
   faceToTargetDeg?: number
