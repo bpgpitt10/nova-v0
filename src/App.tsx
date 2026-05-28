@@ -703,6 +703,23 @@ const payloadString = (payload: OpenGolfCoachPayload | null, keys: string[]) => 
   return undefined
 }
 
+const payloadCoachString = (payload: OpenGolfCoachPayload | null, keys: string[]) => {
+  const root = payloadRecord(payload)
+  const coach = root ? payloadRecord(root.open_golf_coach) : null
+  if (!coach) {
+    return undefined
+  }
+
+  for (const key of keys) {
+    const resolved = resolveHandedOpenGolfCoachValue(coach[key])
+    if (typeof resolved === 'string' && resolved.length > 0) {
+      return resolved
+    }
+  }
+
+  return undefined
+}
+
 const payloadStringOrNumber = (
   payload: OpenGolfCoachPayload | null,
   keys: string[],
@@ -737,6 +754,7 @@ const mergeSimReadInterpretationValues = (
 ): Shot => {
   const shotName =
     derivedValues.shot_name ??
+    payloadCoachString(payload, ['shot_name', 'shotName']) ??
     payloadString(payload, ['shot_name', 'shotName']) ??
     shot.shotName
   const shotRanking =
@@ -766,6 +784,51 @@ const mergeSimReadInterpretationValues = (
     shotRanking,
   }
 }
+
+const normalizedLabelKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+
+const isClubVariantShotLabel = (shot: Shot, value: string) => {
+  const variantLabel = getShotVariantLabel(shot.club, shot.shotVariantId)
+  const candidate = normalizedLabelKey(value)
+  return [
+    `${shot.club} ${variantLabel}`,
+    `${getClubLabel(shot.club)} ${variantLabel}`,
+    `${getClubDisplayName(shot.club)} ${variantLabel}`,
+  ].some((label) => normalizedLabelKey(label) === candidate)
+}
+
+const shotShapeLabel = (shot: Shot | null) => {
+  if (!shot) {
+    return 'Waiting for shot'
+  }
+
+  const labels = [
+    payloadCoachString(shot.openGolfCoach ?? null, ['shot_name', 'shotName']),
+    payloadString(shot.openGolfCoach ?? null, ['shot_name', 'shotName']),
+    shot.shotName,
+  ]
+
+  for (const label of labels) {
+    const trimmedLabel = typeof label === 'string' ? label.trim() : ''
+    if (!trimmedLabel || isClubVariantShotLabel(shot, trimmedLabel)) {
+      continue
+    }
+
+    return trimmedLabel
+  }
+
+  return '—'
+}
+
+const isGsproErrorStatus = (status: GsproHelperStatusText | null) =>
+  status === 'GSPro range data not available' ||
+  status === 'SimRead helper could not start'
+
+const gsproErrorCopy = (status: GsproHelperStatusText | null) =>
+  status === 'SimRead helper could not start'
+    ? 'Could not start GSPro helper. Restart The Looper and try again.'
+    : 'GSPro connection issue — open GSPro Practice Range and try again.'
 
 type AppProps = {
   forceDashboardRoute?: boolean
@@ -853,7 +916,7 @@ function App({
     useState<LiveConnectionStatus>('disconnected')
   const [gsproHelperStatus, setGsproHelperStatus] =
     useState<GsproHelperStatusText | null>(null)
-  const [gsproHelperMessage, setGsproHelperMessage] = useState<string | null>(null)
+  const [, setGsproHelperMessage] = useState<string | null>(null)
   const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
@@ -4435,9 +4498,14 @@ function App({
     [selectedClub, selectedShotVariantId, shots],
   )
   const latestShot = selectedClubVariantShots[0] ?? null
-  const latestShotShape = latestShot?.shotName ? String(latestShot.shotName).toUpperCase() : 'WAITING FOR SHOT'
+  const latestShotShape = shotShapeLabel(latestShot)
   const latestShotScoreTag = shotRankScoreTone(latestShot?.shotRanking)
   const latestShotRankPill = formatRank(latestShot?.shotRanking)
+  const gsproSessionError =
+    activeSessionSource === 'gspro' &&
+    (connectionStatus === 'error' || isGsproErrorStatus(gsproHelperStatus))
+      ? gsproErrorCopy(gsproHelperStatus)
+      : null
 
   const latestShotReaction = (() => {
     if (!latestShot) {
@@ -4894,6 +4962,11 @@ function App({
               </div>
             ) : null}
           </div>
+          {gsproSessionError ? (
+            <div className="session-intelligence-gspro-error" role="alert">
+              {gsproSessionError}
+            </div>
+          ) : null}
           <div className="session-intelligence-actions">
             <button className="session-intelligence-end" onClick={endSession} type="button">
               End Session
@@ -4903,7 +4976,7 @@ function App({
 
         <section className="session-intelligence-looper" aria-label="Looper reaction">
           <div className="session-intelligence-tags">
-            <span className="session-tag">{latestShotShape}</span>
+            <span className="session-tag session-tag-shape">{latestShotShape}</span>
             <span className={`session-tag score-${latestShotScoreTag.tone}`}>
               {latestShotScoreTag.label}
             </span>
@@ -5419,18 +5492,12 @@ function App({
                 {connectionStatus}
               </span>
             </div>
-            {activeSessionSource === 'gspro' && (
-              <div>
-                <strong>GSPro helper</strong>
-                <span>{gsproHelperStatus ?? 'Starting GSPro helper'}</span>
+            {activeSessionSource === 'gspro' && gsproSessionError ? (
+              <div className="status-error-card">
+                <strong>GSPro issue</strong>
+                <span>{gsproSessionError}</span>
               </div>
-            )}
-            {activeSessionSource === 'gspro' && gsproHelperMessage && (
-              <div>
-                <strong>GSPro detail</strong>
-                <span>{gsproHelperMessage}</span>
-              </div>
-            )}
+            ) : null}
             <div>
               <strong>Shots received</strong>
               <span>{shots.length}</span>
