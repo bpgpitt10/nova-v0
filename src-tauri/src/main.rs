@@ -1,19 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use flume::RecvTimeoutError;
+use mdns_sd::{HostnameResolutionEvent, ServiceDaemon, ServiceEvent};
 use reqwest::blocking::Client;
 use serde::Serialize;
 use serde_json::Value;
-use flume::RecvTimeoutError;
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::{create_dir_all, OpenOptions};
 use std::io::Write;
 use std::net::{SocketAddr, TcpStream};
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use mdns_sd::{HostnameResolutionEvent, ServiceDaemon, ServiceEvent};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
@@ -22,6 +22,12 @@ const HELPER_PORT: u16 = 8787;
 const HELPER_SERVICE_NAME: &str = "open-golf-coach-helper";
 const HELPER_HEALTH_URL: &str = "http://127.0.0.1:8787/health";
 const SIDECAR_BASE_NAME: &str = "open-golf-coach-helper";
+const SIMREAD_HOST: &str = "127.0.0.1";
+const SIMREAD_PORT: u16 = 8788;
+const SIMREAD_HEALTH_URL: &str = "http://127.0.0.1:8788/health";
+const SIMREAD_SERVICE_NAME: &str = "simread";
+const SIMREAD_DEV_DIR_ENV: &str = "SIMREAD_DEV_DIR";
+const SIMREAD_DEFAULT_DEV_DIR: &str = r"C:\Users\User\Documents\SimRead";
 const NOVA_WS_SERVICE_NAME: &str = "_openlaunch-ws._tcp.local.";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -29,6 +35,18 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 #[derive(Default)]
 struct SidecarState {
     child: Mutex<Option<Child>>,
+}
+
+#[derive(Default)]
+struct SimReadState {
+    child: Mutex<Option<Child>>,
+}
+
+#[derive(Serialize)]
+struct SimReadHelperStartResult {
+    ok: bool,
+    status: String,
+    message: Option<String>,
 }
 
 enum HelperProbe {
@@ -198,7 +216,10 @@ fn launch_sidecar(app_handle: &AppHandle) -> Result<Child, String> {
 
 fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &SidecarState) {
     #[cfg(windows)]
-    log_windows_helper_processes("before-launch-probe", resolve_sidecar_path(app_handle).ok().as_deref());
+    log_windows_helper_processes(
+        "before-launch-probe",
+        resolve_sidecar_path(app_handle).ok().as_deref(),
+    );
 
     match probe_helper() {
         HelperProbe::CompatibleRunning => {
@@ -206,7 +227,10 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
         "[OpenGolfCoach sidecar] compatible helper already running at {HELPER_HEALTH_URL}; reusing existing process"
       );
             #[cfg(windows)]
-            log_windows_helper_processes("compatible-helper-reused", resolve_sidecar_path(app_handle).ok().as_deref());
+            log_windows_helper_processes(
+                "compatible-helper-reused",
+                resolve_sidecar_path(app_handle).ok().as_deref(),
+            );
         }
         HelperProbe::IncompatibleService(reason) => {
             eprintln!(
@@ -216,7 +240,10 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
         "[OpenGolfCoach sidecar] leaving existing service untouched; enrichment will fail until port is freed or a compatible helper is running"
       );
             #[cfg(windows)]
-            log_windows_helper_processes("incompatible-service-detected", resolve_sidecar_path(app_handle).ok().as_deref());
+            log_windows_helper_processes(
+                "incompatible-service-detected",
+                resolve_sidecar_path(app_handle).ok().as_deref(),
+            );
         }
         HelperProbe::PortFree => {
             let mut guard = match sidecar_state.child.lock() {
@@ -241,7 +268,10 @@ fn ensure_open_golf_coach_helper(app_handle: &AppHandle, sidecar_state: &Sidecar
             "[OpenGolfCoach sidecar] bundled helper started on http://{HELPER_HOST}:{HELPER_PORT}"
           );
                     #[cfg(windows)]
-                    log_windows_helper_processes("after-launch", resolve_sidecar_path(app_handle).ok().as_deref());
+                    log_windows_helper_processes(
+                        "after-launch",
+                        resolve_sidecar_path(app_handle).ok().as_deref(),
+                    );
                 }
                 Err(error) => {
                     eprintln!("[OpenGolfCoach sidecar] {error}");
@@ -257,13 +287,17 @@ fn shutdown_sidecar(app_handle: &AppHandle, sidecar_state: &SidecarState) {
     let mut guard = match sidecar_state.child.lock() {
         Ok(lock) => lock,
         Err(error) => {
-            eprintln!("[OpenGolfCoach sidecar] failed to acquire sidecar mutex during shutdown: {error}");
+            eprintln!(
+                "[OpenGolfCoach sidecar] failed to acquire sidecar mutex during shutdown: {error}"
+            );
             return;
         }
     };
 
     let Some(mut child) = guard.take() else {
-        println!("[OpenGolfCoach sidecar] no tracked bundled helper child was present during shutdown");
+        println!(
+            "[OpenGolfCoach sidecar] no tracked bundled helper child was present during shutdown"
+        );
         return;
     };
 
@@ -274,9 +308,7 @@ fn shutdown_sidecar(app_handle: &AppHandle, sidecar_state: &SidecarState) {
 
     match child.try_wait() {
         Ok(Some(status)) => {
-            println!(
-                "[OpenGolfCoach sidecar] bundled helper already exited with status {status}"
-            );
+            println!("[OpenGolfCoach sidecar] bundled helper already exited with status {status}");
             return;
         }
         Ok(None) => {
@@ -321,7 +353,9 @@ struct WindowsHelperProcessInfo {
 
 #[cfg(windows)]
 fn normalized_path_string(path: &Path) -> String {
-    path.to_string_lossy().replace('/', "\\").to_ascii_lowercase()
+    path.to_string_lossy()
+        .replace('/', "\\")
+        .to_ascii_lowercase()
 }
 
 #[cfg(windows)]
@@ -490,6 +524,186 @@ fn cleanup_matching_windows_helper_processes(app_handle: &AppHandle) {
     log_windows_helper_processes("post-cleanup", Some(&bundled_helper_path));
 }
 
+enum SimReadProbe {
+    CompatibleRunning,
+    PortFree,
+    IncompatibleService(String),
+}
+
+fn probe_simread_helper() -> SimReadProbe {
+    let port_addr = format!("{SIMREAD_HOST}:{SIMREAD_PORT}");
+    if !is_port_open(&port_addr) {
+        return SimReadProbe::PortFree;
+    }
+
+    let client = match Client::builder()
+        .timeout(Duration::from_millis(1200))
+        .build()
+    {
+        Ok(value) => value,
+        Err(error) => {
+            return SimReadProbe::IncompatibleService(format!(
+                "port is occupied and health check client failed: {error}"
+            ))
+        }
+    };
+
+    let response = match client.get(SIMREAD_HEALTH_URL).send() {
+        Ok(value) => value,
+        Err(error) => {
+            return SimReadProbe::IncompatibleService(format!(
+                "port is occupied but health check failed: {error}"
+            ))
+        }
+    };
+
+    if !response.status().is_success() {
+        return SimReadProbe::IncompatibleService(format!(
+            "port is occupied and /health returned status {}",
+            response.status()
+        ));
+    }
+
+    let payload: Value = match response.json() {
+        Ok(value) => value,
+        Err(error) => {
+            return SimReadProbe::IncompatibleService(format!(
+                "port is occupied and /health payload is invalid JSON: {error}"
+            ))
+        }
+    };
+
+    let ok = payload.get("ok").and_then(Value::as_bool);
+    let service_name = payload.get("service").and_then(Value::as_str);
+
+    if ok == Some(true) && service_name == Some(SIMREAD_SERVICE_NAME) {
+        SimReadProbe::CompatibleRunning
+    } else {
+        SimReadProbe::IncompatibleService(format!(
+            "port is occupied by incompatible service: {:?}",
+            payload
+        ))
+    }
+}
+
+fn resolve_simread_dev_dir() -> PathBuf {
+    std::env::var(SIMREAD_DEV_DIR_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(SIMREAD_DEFAULT_DEV_DIR))
+}
+
+fn launch_simread_dev_helper() -> Result<Child, String> {
+    let simread_dir = resolve_simread_dev_dir();
+    if !simread_dir.exists() {
+        return Err(format!(
+            "SimRead dev directory does not exist: {}",
+            simread_dir.display()
+        ));
+    }
+
+    let npm_command = if cfg!(windows) { "npm.cmd" } else { "npm" };
+    let mut command = Command::new(npm_command);
+
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    // TODO(beta-packaging): replace this dev npm command with a bundled SimRead
+    // executable/resource path. These env vars express Looper's GSPro beta policy:
+    // range DB only, with no OCR/Tesseract fallback requirement.
+    command
+        .arg("run")
+        .arg("simread:serve")
+        .current_dir(&simread_dir)
+        .env("SIMREAD_PORT", SIMREAD_PORT.to_string())
+        .env("SIMREAD_SOURCE", "range-db-only")
+        .env("SIMREAD_DISABLE_OCR_FALLBACK", "1")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| {
+            format!(
+                "failed to launch SimRead helper from {}: {error}",
+                simread_dir.display()
+            )
+        })
+}
+
+fn wait_for_simread_health(timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        if matches!(probe_simread_helper(), SimReadProbe::CompatibleRunning) {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+
+    false
+}
+
+fn shutdown_simread_helper(simread_state: &SimReadState) {
+    let mut guard = match simread_state.child.lock() {
+        Ok(lock) => lock,
+        Err(error) => {
+            eprintln!("[SimRead helper] failed to acquire mutex during shutdown: {error}");
+            return;
+        }
+    };
+
+    let Some(mut child) = guard.take() else {
+        return;
+    };
+
+    match child.try_wait() {
+        Ok(Some(_)) => return,
+        Ok(None) => {}
+        Err(error) => {
+            eprintln!("[SimRead helper] failed to query child status: {error}");
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        match Command::new("taskkill")
+            .args(["/PID", &child.id().to_string(), "/T", "/F"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) if output.status.success() => {}
+            Ok(output) => {
+                eprintln!(
+                    "[SimRead helper] taskkill failed for tracked child pid={} status={}",
+                    child.id(),
+                    output.status
+                );
+            }
+            Err(error) => {
+                eprintln!(
+                    "[SimRead helper] failed to invoke taskkill for tracked child pid={}: {}",
+                    child.id(),
+                    error
+                );
+            }
+        }
+        let _ = child.wait();
+        return;
+    }
+
+    #[cfg(not(windows))]
+    {
+        if let Err(error) = child.kill() {
+            eprintln!("[SimRead helper] failed to terminate tracked child: {error}");
+        }
+        if let Err(error) = child.wait() {
+            eprintln!("[SimRead helper] failed to reap tracked child: {error}");
+        }
+    }
+}
+
 #[derive(Serialize, Clone)]
 struct NovaDiscoveredEndpoint {
     service: String,
@@ -513,8 +727,12 @@ fn append_log_line(app: &tauri::AppHandle, file_name: &str, line: &str) -> Resul
         .open(&log_file)
         .map_err(|error| format!("failed to open log file {}: {error}", log_file.display()))?;
 
-    writeln!(file, "{line}")
-        .map_err(|error| format!("failed to write log line to {}: {error}", log_file.display()))?;
+    writeln!(file, "{line}").map_err(|error| {
+        format!(
+            "failed to write log line to {}: {error}",
+            log_file.display()
+        )
+    })?;
     Ok(())
 }
 
@@ -546,7 +764,10 @@ fn discover_nova_ws_endpoint(
     append_log_line(
         &app,
         "nova-connection.log",
-        &format!("[discovery] browse_started ok service={}", NOVA_WS_SERVICE_NAME),
+        &format!(
+            "[discovery] browse_started ok service={}",
+            NOVA_WS_SERVICE_NAME
+        ),
     )?;
     let deadline = Instant::now() + timeout;
     let mut discovered: Option<NovaDiscoveredEndpoint> = None;
@@ -601,18 +822,17 @@ fn discover_nova_ws_endpoint(
                         info.get_port()
                     ),
                 )?;
-                let mut host = info
-                    .get_addresses()
-                    .iter()
-                    .next()
-                    .map(|ip| ip.to_string());
+                let mut host = info.get_addresses().iter().next().map(|ip| ip.to_string());
 
                 if host.is_none() {
                     let hostname = info.get_hostname();
                     append_log_line(
                         &app,
                         "nova-connection.log",
-                        &format!("[discovery] explicit_hostname_resolve_attempt hostname={}", hostname),
+                        &format!(
+                            "[discovery] explicit_hostname_resolve_attempt hostname={}",
+                            hostname
+                        ),
                     )?;
                     match mdns.resolve_hostname(hostname, Some(1500)) {
                         Ok(host_receiver) => {
@@ -722,6 +942,101 @@ fn append_enrichment_log(app: tauri::AppHandle, line: String) -> Result<(), Stri
 }
 
 #[tauri::command]
+fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResult, String> {
+    let simread_state = app.state::<SimReadState>();
+
+    match probe_simread_helper() {
+        SimReadProbe::CompatibleRunning => {
+            return Ok(SimReadHelperStartResult {
+                ok: true,
+                status: "already_running".to_string(),
+                message: Some("SimRead helper is already healthy.".to_string()),
+            });
+        }
+        SimReadProbe::IncompatibleService(reason) => {
+            return Ok(SimReadHelperStartResult {
+                ok: false,
+                status: "failed".to_string(),
+                message: Some(format!(
+                    "SimRead helper could not start because port {SIMREAD_PORT} is unavailable: {reason}"
+                )),
+            });
+        }
+        SimReadProbe::PortFree => {}
+    }
+
+    {
+        let mut guard = simread_state
+            .child
+            .lock()
+            .map_err(|error| format!("failed to acquire SimRead helper mutex: {error}"))?;
+
+        if let Some(child) = guard.as_mut() {
+            match child.try_wait() {
+                Ok(Some(_status)) => {
+                    *guard = None;
+                }
+                Ok(None) => {
+                    drop(guard);
+                    if wait_for_simread_health(Duration::from_secs(8)) {
+                        return Ok(SimReadHelperStartResult {
+                            ok: true,
+                            status: "already_running".to_string(),
+                            message: Some(
+                                "SimRead helper was already starting and became healthy."
+                                    .to_string(),
+                            ),
+                        });
+                    }
+                    return Ok(SimReadHelperStartResult {
+                        ok: false,
+                        status: "failed".to_string(),
+                        message: Some(
+                            "SimRead helper process is running but health did not become ready."
+                                .to_string(),
+                        ),
+                    });
+                }
+                Err(error) => {
+                    *guard = None;
+                    eprintln!("[SimRead helper] failed to inspect tracked child: {error}");
+                }
+            }
+        }
+
+        let child = match launch_simread_dev_helper() {
+            Ok(child) => child,
+            Err(error) => {
+                return Ok(SimReadHelperStartResult {
+                    ok: false,
+                    status: "failed".to_string(),
+                    message: Some(error),
+                });
+            }
+        };
+
+        *guard = Some(child);
+    }
+
+    if wait_for_simread_health(Duration::from_secs(8)) {
+        Ok(SimReadHelperStartResult {
+            ok: true,
+            status: "started".to_string(),
+            message: Some("SimRead helper started and is healthy.".to_string()),
+        })
+    } else {
+        Ok(SimReadHelperStartResult {
+            ok: false,
+            status: "failed".to_string(),
+            message: Some(
+                "SimRead helper started, but health did not become ready. Make sure GSPro is open on the range."
+                    .to_string(),
+            ),
+        })
+    }
+}
+
+#[tauri::command]
 fn export_shots_csv(suggested_filename: String, csv: String) -> Result<bool, String> {
     let Some(path) = rfd::FileDialog::new()
         .add_filter("CSV", &["csv"])
@@ -738,15 +1053,18 @@ fn export_shots_csv(suggested_filename: String, csv: String) -> Result<bool, Str
 
 fn main() {
     let sidecar_state = SidecarState::default();
+    let simread_state = SimReadState::default();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(sidecar_state)
+        .manage(simread_state)
         .invoke_handler(tauri::generate_handler![
             append_enrichment_log,
             append_nova_log,
             discover_nova_ws_endpoint,
-            export_shots_csv
+            export_shots_csv,
+            start_simread_helper
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { .. } = event {
@@ -756,6 +1074,8 @@ fn main() {
                 );
                 let sidecar_state = window.state::<SidecarState>();
                 shutdown_sidecar(window.app_handle(), sidecar_state.inner());
+                let simread_state = window.state::<SimReadState>();
+                shutdown_simread_helper(simread_state.inner());
                 println!("[OpenGolfCoach sidecar] requesting full app exit after window close");
                 window.app_handle().exit(0);
             }
@@ -768,19 +1088,21 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            match event {
-                RunEvent::ExitRequested { .. } => {
-                    println!("[OpenGolfCoach sidecar] RunEvent::ExitRequested fired");
-                    let sidecar_state = app_handle.state::<SidecarState>();
-                    shutdown_sidecar(app_handle, sidecar_state.inner());
-                }
-                RunEvent::Exit => {
-                    println!("[OpenGolfCoach sidecar] RunEvent::Exit fired");
-                    let sidecar_state = app_handle.state::<SidecarState>();
-                    shutdown_sidecar(app_handle, sidecar_state.inner());
-                }
-                _ => {}
+        .run(|app_handle, event| match event {
+            RunEvent::ExitRequested { .. } => {
+                println!("[OpenGolfCoach sidecar] RunEvent::ExitRequested fired");
+                let sidecar_state = app_handle.state::<SidecarState>();
+                shutdown_sidecar(app_handle, sidecar_state.inner());
+                let simread_state = app_handle.state::<SimReadState>();
+                shutdown_simread_helper(simread_state.inner());
             }
+            RunEvent::Exit => {
+                println!("[OpenGolfCoach sidecar] RunEvent::Exit fired");
+                let sidecar_state = app_handle.state::<SidecarState>();
+                shutdown_sidecar(app_handle, sidecar_state.inner());
+                let simread_state = app_handle.state::<SimReadState>();
+                shutdown_simread_helper(simread_state.inner());
+            }
+            _ => {}
         })
 }

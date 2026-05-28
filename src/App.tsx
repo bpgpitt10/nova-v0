@@ -69,6 +69,7 @@ import {
 } from './lib/shotVariants'
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
+import { startSimReadHelper } from './lib/simreadHelper'
 import {
   LEGACY_SESSION_FEED_PARAM,
   SESSION_SOURCE_PARAM,
@@ -110,6 +111,13 @@ type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
 type LiveConnectionStatus = NovaConnectionStatus | SimReadLiveStatus
 type LiveConnection = NovaConnection | SimReadLiveConnection
+type GsproHelperStatusText =
+  | 'Starting GSPro helper'
+  | 'Connected to GSPro helper'
+  | 'Waiting for GSPro range shots'
+  | 'Shot received'
+  | 'GSPro range data not available'
+  | 'SimRead helper could not start'
 type UpdateStatus =
   | 'idle'
   | 'checking'
@@ -843,6 +851,9 @@ function App({
   const [activeSessionSource, setActiveSessionSource] = useState<SessionSource | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<LiveConnectionStatus>('disconnected')
+  const [gsproHelperStatus, setGsproHelperStatus] =
+    useState<GsproHelperStatusText | null>(null)
+  const [gsproHelperMessage, setGsproHelperMessage] = useState<string | null>(null)
   const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
@@ -1207,6 +1218,104 @@ function App({
       webSocketUrl: selectedSessionSource === 'nova' ? resolvedWsUrl : null,
     })
 
+    if (selectedSessionSource === 'gspro') {
+      setActiveSessionSource(selectedSessionSource)
+      setConnectionStatus('connecting')
+      setGsproHelperStatus('Starting GSPro helper')
+      setGsproHelperMessage(null)
+
+      void startSimReadHelper()
+        .then((result) => {
+          if (!isActive) {
+            return
+          }
+
+          if (!result.ok) {
+            setConnectionStatus('error')
+            setGsproHelperStatus(
+              result.message?.toLowerCase().includes('range')
+                ? 'GSPro range data not available'
+                : 'SimRead helper could not start',
+            )
+            setGsproHelperMessage(
+              result.message ??
+                'GSPro connection not ready. Make sure GSPro is open on the range.',
+            )
+            return
+          }
+
+          setGsproHelperStatus('Connected to GSPro helper')
+          setGsproHelperMessage(result.message ?? null)
+
+          const connection = connectToSimReadEvents({
+            onFinalShot: (event) => {
+              if (!isActive) {
+                return
+              }
+              setGsproHelperStatus('Shot received')
+              insertSimReadFinalShotEvent(event)
+            },
+            onStatusChange: (status) => {
+              if (!isActive) {
+                return
+              }
+              setConnectionStatus(status)
+              if (status === 'waiting') {
+                setGsproHelperStatus('Waiting for GSPro range shots')
+              } else if (status === 'received-shot') {
+                setGsproHelperStatus('Shot received')
+              } else if (status === 'connected') {
+                setGsproHelperStatus('Connected to GSPro helper')
+              } else if (status === 'error') {
+                setGsproHelperStatus('GSPro range data not available')
+              }
+            },
+            onError: (error) => {
+              if (!isActive) {
+                return
+              }
+              setGsproHelperStatus('GSPro range data not available')
+              setGsproHelperMessage(
+                error instanceof Error
+                  ? error.message
+                  : 'GSPro connection not ready. Make sure GSPro is open on the range.',
+              )
+              if (import.meta.env.DEV) {
+                console.error('[SimRead Connection] event handling failed', error)
+              }
+            },
+          })
+
+          connectionRef.current = connection
+          console.info('[Nova Config] active connection established', {
+            requestedSessionSource: selectedSessionSource,
+            connectionMode: connection.mode,
+            mockModeActive: false,
+            webSocketSource: null,
+            webSocketUrl: null,
+          })
+        })
+        .catch((error) => {
+          if (!isActive) {
+            return
+          }
+          setConnectionStatus('error')
+          setGsproHelperStatus('SimRead helper could not start')
+          setGsproHelperMessage(
+            error instanceof Error ? error.message : 'SimRead helper could not start.',
+          )
+        })
+
+      return () => {
+        isActive = false
+        connectionRef.current?.disconnect()
+        connectionRef.current = null
+      }
+    }
+
+    setGsproHelperStatus(null)
+    setGsproHelperMessage(null)
+
     const connection: LiveConnection = selectedSessionSource === 'nova'
       ? subscribeSharedNovaConnection(
           resolvedWsUrl,
@@ -1354,8 +1463,7 @@ function App({
             }
           },
         )
-      : selectedSessionSource === 'mock'
-        ? mockNovaAdapter.connectToShots(
+      : mockNovaAdapter.connectToShots(
           (incomingShot) => {
             if (!isActive) {
               return
@@ -1504,22 +1612,6 @@ function App({
             shotVariantId: selectedShotVariantIdRef.current,
           }),
           )
-        : connectToSimReadEvents({
-            onFinalShot: (event) => {
-              if (!isActive) {
-                return
-              }
-              insertSimReadFinalShotEvent(event)
-            },
-            onStatusChange: (status) => {
-              setConnectionStatus(status)
-            },
-            onError: (error) => {
-              if (import.meta.env.DEV) {
-                console.error('[SimRead Connection] event handling failed', error)
-              }
-            },
-          })
 
     connectionRef.current = connection
     setActiveSessionSource(selectedSessionSource)
@@ -1558,6 +1650,13 @@ function App({
   )
 
   const dashboardSummaryLead = rankedDashboardSummaries[0] ?? null
+  const showDashboardUpdateStatus =
+    !import.meta.env.DEV &&
+    (updateStatus === 'available' ||
+      updateStatus === 'installing' ||
+      updateStatus === 'installed' ||
+      updateStatus === 'checking' ||
+      updateStatus === 'error')
 
   const dashboardSummariesByClub = useMemo(
     () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
@@ -5320,6 +5419,18 @@ function App({
                 {connectionStatus}
               </span>
             </div>
+            {activeSessionSource === 'gspro' && (
+              <div>
+                <strong>GSPro helper</strong>
+                <span>{gsproHelperStatus ?? 'Starting GSPro helper'}</span>
+              </div>
+            )}
+            {activeSessionSource === 'gspro' && gsproHelperMessage && (
+              <div>
+                <strong>GSPro detail</strong>
+                <span>{gsproHelperMessage}</span>
+              </div>
+            )}
             <div>
               <strong>Shots received</strong>
               <span>{shots.length}</span>
@@ -5403,10 +5514,11 @@ function App({
               <a href="/read">The Read</a>
             </nav>
 
+            {showDashboardUpdateStatus ? (
             <div className="dashboard-update-panel" aria-live="polite">
               {updateStatus === 'available' && availableUpdate ? (
                 <button onClick={installAvailableUpdate} type="button">
-                  Update to {availableUpdate.version}
+                  Install update
                 </button>
               ) : updateStatus === 'installing' ? (
                 <span>Installing update…</span>
@@ -5416,12 +5528,11 @@ function App({
                 <span>Checking for updates…</span>
               ) : updateStatus === 'error' ? (
                 <button onClick={checkForUpdates} title={updateError ?? undefined} type="button">
-                  Retry update check
+                  Retry
                 </button>
-              ) : updateStatus === 'up-to-date' ? (
-                <span>The Looper is up to date.</span>
               ) : null}
             </div>
+            ) : null}
 
             <div className="dashboard-rail-clubs">
               <div className="dashboard-rail-label">Club List</div>
