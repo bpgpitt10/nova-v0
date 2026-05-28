@@ -19,6 +19,7 @@ export type OpenGolfCoachEnricher = {
 
 const OPEN_GOLF_COACH_LOCAL_STORAGE_KEY = 'open-golf-coach-url'
 const OPEN_GOLF_COACH_DEFAULT_URL = 'http://127.0.0.1:8787'
+const OPEN_GOLF_COACH_DEV_PROXY_URL = '/open-golf-coach'
 const ENRICHMENT_LOG_FILE_CHANNEL = 'enrichment-pipeline'
 
 const safeLocalStorageGet = (key: string) => {
@@ -68,6 +69,13 @@ const resolveOpenGolfCoachUrl = () => {
 
   const localUrl = safeLocalStorageGet(OPEN_GOLF_COACH_LOCAL_STORAGE_KEY)?.trim()
   if (localUrl) {
+    if (
+      import.meta.env.DEV &&
+      !isTauriRuntime() &&
+      localUrl.replace(/\/+$/, '') === OPEN_GOLF_COACH_DEFAULT_URL
+    ) {
+      return { url: OPEN_GOLF_COACH_DEV_PROXY_URL, source: 'localStorage' as const }
+    }
     return { url: localUrl, source: 'localStorage' as const }
   }
 
@@ -79,7 +87,10 @@ const resolveOpenGolfCoachUrl = () => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
     if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
-      return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'localhost_fallback' as const }
+      return {
+        url: import.meta.env.DEV ? OPEN_GOLF_COACH_DEV_PROXY_URL : OPEN_GOLF_COACH_DEFAULT_URL,
+        source: 'localhost_fallback' as const,
+      }
     }
   }
 

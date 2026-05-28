@@ -3,9 +3,12 @@ import type { SimReadFinalShotEvent } from './simreadFinalShot'
 const SIMREAD_FINAL_SHOT_EVENT = 'looper:simread-final-shot'
 const SIMREAD_EVENT_TARGET_KEY = '__looperSimReadEventTarget'
 const SIMREAD_DISPATCH_KEY = '__looperDispatchSimReadFinalShot'
+export const DEFAULT_SIMREAD_EVENTS_URL = 'http://127.0.0.1:8788/events'
+export const DEV_SIMREAD_EVENTS_PROXY_URL = '/simread/events'
 
 export type SimReadLiveStatus =
   | 'idle'
+  | 'connecting'
   | 'connected'
   | 'waiting'
   | 'received-shot'
@@ -21,6 +24,7 @@ export type ConnectToSimReadEventsOptions = {
   onFinalShot: (event: SimReadFinalShotEvent) => void
   onStatusChange?: (status: SimReadLiveStatus) => void
   onError?: (error: unknown) => void
+  eventsUrl?: string
 }
 
 type SimReadWindow = Window &
@@ -63,20 +67,82 @@ const installDevDispatchHelper = () => {
   simreadWindow[SIMREAD_DISPATCH_KEY] = dispatchSimReadFinalShotEvent
 }
 
+const isSimReadLiveStatus = (value: unknown): value is SimReadLiveStatus =>
+  value === 'idle' ||
+  value === 'connecting' ||
+  value === 'connected' ||
+  value === 'waiting' ||
+  value === 'received-shot' ||
+  value === 'error' ||
+  value === 'disconnected'
+
+const resolveSimReadEventsUrl = (overrideUrl?: string) => {
+  if (overrideUrl?.trim()) {
+    return overrideUrl.trim()
+  }
+
+  const envUrl = (import.meta.env.VITE_SIMREAD_EVENTS_URL as string | undefined)?.trim()
+  return envUrl || (import.meta.env.DEV ? DEV_SIMREAD_EVENTS_PROXY_URL : DEFAULT_SIMREAD_EVENTS_URL)
+}
+
+const logSimReadDev = (message: string, detail?: Record<string, unknown>) => {
+  if (import.meta.env.DEV) {
+    console.info(message, detail ?? {})
+  }
+}
+
+const parseFinalShotEvent = (data: string): SimReadFinalShotEvent => {
+  const parsed: unknown = JSON.parse(data)
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('SimRead final-shot SSE data was not an object')
+  }
+
+  return parsed as SimReadFinalShotEvent
+}
+
+const parseStatusEvent = (data: string): SimReadLiveStatus | null => {
+  const trimmed = data.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  if (isSimReadLiveStatus(trimmed)) {
+    return trimmed
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (isSimReadLiveStatus(parsed)) {
+      return parsed
+    }
+    if (parsed && typeof parsed === 'object' && 'status' in parsed) {
+      const status = (parsed as { status?: unknown }).status
+      return isSimReadLiveStatus(status) ? status : null
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 export const connectToSimReadEvents = ({
   onFinalShot,
   onStatusChange,
   onError,
+  eventsUrl,
 }: ConnectToSimReadEventsOptions): SimReadLiveConnection => {
   onStatusChange?.('idle')
   const target = getSimReadEventTarget()
   installDevDispatchHelper()
+  const resolvedEventsUrl = resolveSimReadEventsUrl(eventsUrl)
+  let eventSource: EventSource | null = null
+  logSimReadDev('[SimRead SSE] adapter starting', { eventsUrl: resolvedEventsUrl })
 
-  const handleFinalShot = (event: Event) => {
+  const handleFinalShot = (event: SimReadFinalShotEvent) => {
     try {
-      const finalShotEvent = (event as CustomEvent<SimReadFinalShotEvent>).detail
       onStatusChange?.('received-shot')
-      onFinalShot(finalShotEvent)
+      onFinalShot(event)
       onStatusChange?.('waiting')
     } catch (error) {
       onStatusChange?.('error')
@@ -84,14 +150,88 @@ export const connectToSimReadEvents = ({
     }
   }
 
-  target.addEventListener(SIMREAD_FINAL_SHOT_EVENT, handleFinalShot)
-  onStatusChange?.('connected')
-  onStatusChange?.('waiting')
+  const handleManualFinalShot = (event: Event) => {
+    handleFinalShot((event as CustomEvent<SimReadFinalShotEvent>).detail)
+  }
+
+  const handleSseFinalShot = (event: MessageEvent<string>) => {
+    try {
+      logSimReadDev('[SimRead SSE] raw final-shot event received', {
+        dataPreview: event.data.slice(0, 500),
+      })
+      const finalShotEvent = parseFinalShotEvent(event.data)
+      logSimReadDev('[SimRead SSE] parsed final-shot event', {
+        rowId: finalShotEvent.rowId,
+        source: finalShotEvent.source,
+      })
+      handleFinalShot(finalShotEvent)
+    } catch (error) {
+      onStatusChange?.('error')
+      onError?.(error)
+    }
+  }
+
+  const handleSseMessage = (event: MessageEvent<string>) => {
+    try {
+      const parsed: unknown = JSON.parse(event.data)
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        'event' in parsed &&
+        (parsed as { event?: unknown }).event === 'final-shot'
+      ) {
+        const finalShotEvent = parsed as SimReadFinalShotEvent
+        logSimReadDev('[SimRead SSE] parsed final-shot message event', {
+          rowId: finalShotEvent.rowId,
+          source: finalShotEvent.source,
+        })
+        handleFinalShot(finalShotEvent)
+      }
+    } catch {
+      // Ignore generic heartbeat/message payloads that are not JSON events.
+    }
+  }
+
+  const handleSseStatus = (event: MessageEvent<string>) => {
+    const status = parseStatusEvent(event.data)
+    if (status) {
+      onStatusChange?.(status)
+    }
+  }
+
+  target.addEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
+  onStatusChange?.('connecting')
+
+  if (typeof EventSource === 'undefined') {
+    const error = new Error('EventSource is not available in this browser')
+    onStatusChange?.('error')
+    onError?.(error)
+  } else {
+    eventSource = new EventSource(resolvedEventsUrl)
+    eventSource.addEventListener('open', () => {
+      logSimReadDev('[SimRead SSE] EventSource open', { eventsUrl: resolvedEventsUrl })
+      onStatusChange?.('connected')
+      onStatusChange?.('waiting')
+    })
+    eventSource.addEventListener('final-shot', handleSseFinalShot)
+    eventSource.addEventListener('status', handleSseStatus)
+    eventSource.addEventListener('message', handleSseMessage)
+    eventSource.addEventListener('error', (event) => {
+      logSimReadDev('[SimRead SSE] EventSource error', {
+        eventsUrl: resolvedEventsUrl,
+        readyState: eventSource?.readyState,
+      })
+      onStatusChange?.('error')
+      onError?.(event)
+    })
+  }
 
   return {
     mode: 'simread',
     disconnect: () => {
-      target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleFinalShot)
+      logSimReadDev('[SimRead SSE] disconnecting', { eventsUrl: resolvedEventsUrl })
+      eventSource?.close()
+      target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
       onStatusChange?.('disconnected')
     },
   }

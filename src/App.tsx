@@ -666,15 +666,98 @@ const mergeDerivedValues = (
   shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
 })
 
+const payloadRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+
+const payloadString = (payload: OpenGolfCoachPayload | null, keys: string[]) => {
+  const root = payloadRecord(payload)
+  if (!root) {
+    return undefined
+  }
+
+  const scopedObjects = [root]
+  const coach = payloadRecord(root.open_golf_coach)
+  if (coach) {
+    scopedObjects.push(coach)
+  }
+
+  for (const source of scopedObjects) {
+    for (const key of keys) {
+      const resolved = resolveHandedOpenGolfCoachValue(source[key])
+      if (typeof resolved === 'string' && resolved.length > 0) {
+        return resolved
+      }
+    }
+  }
+
+  return undefined
+}
+
+const payloadStringOrNumber = (
+  payload: OpenGolfCoachPayload | null,
+  keys: string[],
+) => {
+  const root = payloadRecord(payload)
+  if (!root) {
+    return undefined
+  }
+
+  const scopedObjects = [root]
+  const coach = payloadRecord(root.open_golf_coach)
+  if (coach) {
+    scopedObjects.push(coach)
+  }
+
+  for (const source of scopedObjects) {
+    for (const key of keys) {
+      const resolved = resolveHandedOpenGolfCoachValue(source[key])
+      if (typeof resolved === 'string' || typeof resolved === 'number') {
+        return resolved
+      }
+    }
+  }
+
+  return undefined
+}
+
 const mergeSimReadInterpretationValues = (
   shot: Shot,
+  payload: OpenGolfCoachPayload | null,
   derivedValues: Awaited<ReturnType<typeof openGolfCoachEnricher.enrichShot>>['derivedValues'],
-): Shot => ({
-  ...shot,
-  enrichmentStatus: 'enriched',
-  shotName: derivedValues.shot_name ?? shot.shotName,
-  shotRanking: derivedValues.shot_rank ?? shot.shotRanking,
-})
+): Shot => {
+  const shotName =
+    derivedValues.shot_name ??
+    payloadString(payload, ['shot_name', 'shotName']) ??
+    shot.shotName
+  const shotRanking =
+    derivedValues.shot_rank ??
+    payloadStringOrNumber(payload, ['shot_rank', 'shotRank', 'shotRanking']) ??
+    shot.shotRanking
+  const simreadMetadata =
+    shot.openGolfCoach && typeof shot.openGolfCoach === 'object'
+      ? shot.openGolfCoach.simread
+      : undefined
+  const openGolfCoach = payload
+    ? {
+        ...payload,
+        ...(shotName ? { shot_name: shotName, shotName } : {}),
+        ...(typeof shotRanking !== 'undefined'
+          ? { shot_rank: shotRanking, shotRank: shotRanking }
+          : {}),
+        simread: simreadMetadata,
+      }
+    : shot.openGolfCoach
+
+  return {
+    ...shot,
+    enrichmentStatus: 'enriched',
+    openGolfCoach,
+    shotName,
+    shotRanking,
+  }
+}
 
 type AppProps = {
   forceDashboardRoute?: boolean
@@ -775,6 +858,7 @@ function App({
   )
   const selectedClubRef = useRef(selectedClub)
   const selectedShotVariantIdRef = useRef(selectedShotVariantId)
+  const shotsRef = useRef(shots)
   const connectionRef = useRef<LiveConnection | null>(null)
   const liveNovaUnavailable = false
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
@@ -846,7 +930,11 @@ function App({
           setShots((currentShots) =>
             currentShots.map((currentShot) =>
               currentShot.id === result.shot?.id
-                ? mergeSimReadInterpretationValues(currentShot, ogcResult.derivedValues)
+                ? mergeSimReadInterpretationValues(
+                    currentShot,
+                    ogcResult.payload,
+                    ogcResult.derivedValues,
+                  )
                 : currentShot,
             ),
           )
@@ -875,25 +963,100 @@ function App({
   }
   void injectSimReadFrame
 
+  const shouldEnrichSimReadShot = (shot: Shot) =>
+    shot.source === 'simread' &&
+    (shot.enrichmentStatus !== 'enriched' ||
+      (typeof shot.shotName !== 'string' && typeof shot.shotRanking === 'undefined'))
+
+  const enrichSimReadShot = (shot: Shot) => {
+    const openGolfCoachInput = buildOpenGolfCoachInput(shot)
+
+    void openGolfCoachEnricher
+      .enrichShot(openGolfCoachInput)
+      .then((result) => {
+        if (result.status === 'failure') {
+          console.error('[SimRead] OGC interpretation failed', { shotId: shot.id })
+          setHelperReachable(false)
+          setLastEnrichmentStatus('failure')
+          setShots((currentShots) =>
+            currentShots.map((currentShot) =>
+              currentShot.id === shot.id
+                ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+                : currentShot,
+            ),
+          )
+          return
+        }
+
+        if (result.status === 'success') {
+          setHelperReachable(true)
+          setLastEnrichmentStatus('success')
+        }
+
+        if (!result.payload) {
+          console.warn('[SimRead] OGC interpretation returned no payload', {
+            shotId: shot.id,
+            status: result.status,
+          })
+          return
+        }
+
+        setShots((currentShots) => {
+          const nextShots = currentShots.map((currentShot) => {
+            if (currentShot.id !== shot.id) {
+              return currentShot
+            }
+
+            return mergeSimReadInterpretationValues(
+              currentShot,
+              result.payload,
+              result.derivedValues,
+            )
+          })
+
+          shotsRef.current = nextShots
+          return nextShots
+        })
+      })
+      .catch((error) => {
+        console.error('[SimRead] OGC interpretation failed with error', {
+          shotId: shot.id,
+          error,
+        })
+        setHelperReachable(false)
+        setLastEnrichmentStatus('failure')
+        setShots((currentShots) =>
+          currentShots.map((currentShot) =>
+            currentShot.id === shot.id
+              ? { ...currentShot, enrichmentStatus: 'enrichment_failed' }
+              : currentShot,
+          ),
+        )
+      })
+  }
+
   const insertSimReadFinalShotEvent = (event: Parameters<typeof mapSimReadFinalShotToShot>[0]) => {
     const shot = mapSimReadFinalShotToShot(event, {
       selectedClub: selectedClubRef.current,
       selectedShotVariantId: selectedShotVariantIdRef.current,
     })
+    const duplicateShot = shotsRef.current.find((currentShot) => currentShot.id === shot.id)
+    const isDuplicate = Boolean(duplicateShot)
 
-    console.info('[SimRead] final-shot received', {
-      shotId: shot.id,
-      rowId: event.rowId,
-      source: event.source,
-      club: selectedClubRef.current,
-      shotVariantId: selectedShotVariantIdRef.current,
+    if (isDuplicate) {
+      if (duplicateShot && shouldEnrichSimReadShot(duplicateShot)) {
+        enrichSimReadShot(duplicateShot)
+      }
+      return
+    }
+
+    setShots((currentShots) => {
+      const nextShots = [shot, ...currentShots]
+      shotsRef.current = nextShots
+      return nextShots
     })
 
-    setShots((currentShots) =>
-      currentShots.some((currentShot) => currentShot.id === shot.id)
-        ? currentShots
-        : [shot, ...currentShots],
-    )
+    enrichSimReadShot(shot)
   }
 
   const handleDevSimReadFinalShotInjection = async () => {
@@ -904,11 +1067,6 @@ function App({
     try {
       const { simreadFinalShotFixture } = await import('./dev/simreadFinalShotFixture')
 
-      console.log('[SimRead][DEV] final-shot fixture injection requested', {
-        club: selectedClubRef.current,
-        shotVariantId: selectedShotVariantIdRef.current,
-        event: simreadFinalShotFixture,
-      })
       if (activeSessionSource === 'gspro') {
         dispatchSimReadFinalShotEvent(simreadFinalShotFixture)
       } else {
@@ -980,6 +1138,10 @@ function App({
   useEffect(() => {
     void checkForUpdates()
   }, [checkForUpdates])
+
+  useEffect(() => {
+    shotsRef.current = shots
+  }, [shots])
 
   useEffect(() => {
     selectedClubRef.current = selectedClub
@@ -1350,11 +1512,12 @@ function App({
               insertSimReadFinalShotEvent(event)
             },
             onStatusChange: (status) => {
-              console.info('[SimRead Connection] status changed', { status })
               setConnectionStatus(status)
             },
             onError: (error) => {
-              console.error('[SimRead Connection] event handling failed', error)
+              if (import.meta.env.DEV) {
+                console.error('[SimRead Connection] event handling failed', error)
+              }
             },
           })
 

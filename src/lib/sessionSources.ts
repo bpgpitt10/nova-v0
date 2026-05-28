@@ -11,6 +11,8 @@ export const resolveSessionSource = (value: string | null | undefined): SessionS
     case 'gspro':
     case 'mock':
       return value
+    case 'simread':
+      return 'gspro'
     case 'real':
       return 'nova'
     default:
