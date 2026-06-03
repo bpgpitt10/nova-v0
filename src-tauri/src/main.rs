@@ -28,6 +28,9 @@ const SIMREAD_HEALTH_URL: &str = "http://127.0.0.1:8788/health";
 const SIMREAD_SERVICE_NAME: &str = "simread";
 const SIMREAD_DEV_DIR_ENV: &str = "SIMREAD_DEV_DIR";
 const SIMREAD_DEFAULT_DEV_DIR: &str = r"C:\Users\User\Documents\SimRead";
+const SIMREAD_HELPER_RESOURCE_DIR: &str = "resources/simread-helper";
+const SIMREAD_NODE_RESOURCE_DIR: &str = "resources/node";
+const SIMREAD_CLI_RELATIVE_PATH: &str = "dist/simread/cli.js";
 const NOVA_WS_SERVICE_NAME: &str = "_openlaunch-ws._tcp.local.";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -592,6 +595,120 @@ fn resolve_simread_dev_dir() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from(SIMREAD_DEFAULT_DEV_DIR))
 }
 
+fn simread_node_executable_filename() -> &'static str {
+    if cfg!(windows) {
+        "node.exe"
+    } else {
+        "node"
+    }
+}
+
+fn existing_path_from_candidates(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    candidates.into_iter().find(|candidate| candidate.exists())
+}
+
+fn resolve_bundled_simread_helper_dir(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    let mut candidates = Vec::new();
+
+    if let Ok(resource_path) = app_handle
+        .path()
+        .resolve(SIMREAD_HELPER_RESOURCE_DIR, BaseDirectory::Resource)
+    {
+        candidates.push(resource_path);
+    }
+
+    if let Ok(resource_path) = app_handle
+        .path()
+        .resolve("simread-helper", BaseDirectory::Resource)
+    {
+        candidates.push(resource_path);
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("simread-helper"),
+    );
+
+    let Some(helper_dir) = existing_path_from_candidates(candidates) else {
+        return Err(format!(
+            "Bundled SimRead helper artifact is missing. Expected {SIMREAD_HELPER_RESOURCE_DIR}/ with {SIMREAD_CLI_RELATIVE_PATH}."
+        ));
+    };
+
+    let cli_path = helper_dir.join(SIMREAD_CLI_RELATIVE_PATH);
+    if !cli_path.exists() {
+        return Err(format!(
+            "Bundled SimRead helper entrypoint is missing: {}",
+            cli_path.display()
+        ));
+    }
+
+    let package_json = helper_dir.join("package.json");
+    if !package_json.exists() {
+        return Err(format!(
+            "Bundled SimRead helper package.json is missing: {}",
+            package_json.display()
+        ));
+    }
+
+    let node_modules = helper_dir.join("node_modules");
+    if !node_modules.exists() {
+        return Err(format!(
+            "Bundled SimRead helper node_modules directory is missing: {}",
+            node_modules.display()
+        ));
+    }
+
+    Ok(helper_dir)
+}
+
+fn resolve_bundled_simread_node_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    let node_filename = simread_node_executable_filename();
+    let mut candidates = Vec::new();
+
+    if let Ok(resource_path) = app_handle.path().resolve(
+        format!("{SIMREAD_NODE_RESOURCE_DIR}/{node_filename}"),
+        BaseDirectory::Resource,
+    ) {
+        candidates.push(resource_path);
+    }
+
+    if let Ok(resource_path) = app_handle
+        .path()
+        .resolve(format!("node/{node_filename}"), BaseDirectory::Resource)
+    {
+        candidates.push(resource_path);
+    }
+
+    if let Ok(resource_path) = app_handle
+        .path()
+        .resolve(node_filename, BaseDirectory::Resource)
+    {
+        candidates.push(resource_path);
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("node")
+            .join(node_filename),
+    );
+
+    existing_path_from_candidates(candidates).ok_or_else(|| {
+        format!(
+            "Bundled Node runtime is missing. Expected {SIMREAD_NODE_RESOURCE_DIR}/{node_filename}; production builds do not fall back to global Node."
+        )
+    })
+}
+
+fn apply_simread_environment(command: &mut Command) -> &mut Command {
+    command
+        .env("SIMREAD_PORT", SIMREAD_PORT.to_string())
+        .env("SIMREAD_SOURCE", "range-db-only")
+        .env("SIMREAD_DISABLE_OCR_FALLBACK", "1")
+}
+
 fn launch_simread_dev_helper() -> Result<Child, String> {
     let simread_dir = resolve_simread_dev_dir();
     if !simread_dir.exists() {
@@ -609,16 +726,10 @@ fn launch_simread_dev_helper() -> Result<Child, String> {
         command.creation_flags(CREATE_NO_WINDOW);
     }
 
-    // TODO(beta-packaging): replace this dev npm command with a bundled SimRead
-    // executable/resource path. These env vars express Looper's GSPro beta policy:
-    // range DB only, with no OCR/Tesseract fallback requirement.
-    command
+    apply_simread_environment(&mut command)
         .arg("run")
         .arg("simread:serve")
         .current_dir(&simread_dir)
-        .env("SIMREAD_PORT", SIMREAD_PORT.to_string())
-        .env("SIMREAD_SOURCE", "range-db-only")
-        .env("SIMREAD_DISABLE_OCR_FALLBACK", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -629,6 +740,48 @@ fn launch_simread_dev_helper() -> Result<Child, String> {
                 simread_dir.display()
             )
         })
+}
+
+fn launch_simread_bundled_helper(app_handle: &AppHandle) -> Result<Child, String> {
+    let helper_dir = resolve_bundled_simread_helper_dir(app_handle)?;
+    let node_path = resolve_bundled_simread_node_path(app_handle)?;
+    let cli_path = helper_dir.join(SIMREAD_CLI_RELATIVE_PATH);
+
+    println!(
+        "[SimRead helper] launching bundled helper with node={} helper_dir={}",
+        node_path.display(),
+        helper_dir.display()
+    );
+
+    let mut command = Command::new(node_path);
+
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    apply_simread_environment(&mut command)
+        .arg(cli_path)
+        .arg("serve")
+        .current_dir(&helper_dir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| {
+            format!(
+                "failed to launch bundled SimRead helper from {}: {error}",
+                helper_dir.display()
+            )
+        })
+}
+
+fn launch_simread_helper(app_handle: &AppHandle) -> Result<Child, String> {
+    if cfg!(debug_assertions) {
+        launch_simread_dev_helper()
+    } else {
+        launch_simread_bundled_helper(app_handle)
+    }
 }
 
 fn wait_for_simread_health(timeout: Duration) -> bool {
@@ -1004,7 +1157,7 @@ fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResul
             }
         }
 
-        let child = match launch_simread_dev_helper() {
+        let child = match launch_simread_helper(&app) {
             Ok(child) => child,
             Err(error) => {
                 return Ok(SimReadHelperStartResult {

@@ -35,6 +35,9 @@
     "externalBin": [
       "binaries/open-golf-coach-helper"
     ],
+    "resources": [
+      "resources/**/*"
+    ],
     "windows": {
       "wix": {
         "language": "en-US"
