@@ -20,6 +20,7 @@ import {
   dispatchSimReadFinalShotEvent,
   type SimReadLiveConnection,
   type SimReadLiveStatus,
+  type SimReadStructuredStatusEvent,
 } from './adapters/simreadLive'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
@@ -111,13 +112,10 @@ type ComparisonDirection = 'up' | 'down'
 type ComparisonTone = 'up' | 'down' | 'neutral'
 type LiveConnectionStatus = NovaConnectionStatus | SimReadLiveStatus
 type LiveConnection = NovaConnection | SimReadLiveConnection
-type GsproHelperStatusText =
-  | 'Starting GSPro helper'
-  | 'Connected to GSPro helper'
-  | 'Waiting for GSPro range shots'
-  | 'Shot received'
-  | 'GSPro range data not available'
-  | 'SimRead helper could not start'
+type GsproSessionAlert = {
+  severity: 'warning' | 'error'
+  message: string
+}
 type UpdateStatus =
   | 'idle'
   | 'checking'
@@ -818,18 +816,43 @@ const shotShapeLabel = (shot: Shot | null) => {
     return trimmedLabel
   }
 
-  return '—'
+  return '\u2014'
 }
 
-const isGsproErrorStatus = (status: GsproHelperStatusText | null) =>
-  status === 'GSPro range data not available' ||
-  status === 'SimRead helper could not start'
+const mapSimReadStatusToGsproAlert = (
+  event: SimReadStructuredStatusEvent,
+): GsproSessionAlert | null => {
+  switch (event.status) {
+    case 'waiting-for-fresh-range-shot':
+    case 'no-range-shots':
+      return {
+        severity: 'warning',
+        message: 'GSPro Practice Range not detected \u2014 open GSPro Practice Range and hit a shot.',
+      }
+    case 'range-db-unavailable':
+      return {
+        severity: 'error',
+        message: 'GSPro range data is not available. Open GSPro Practice Range and try again.',
+      }
+    case 'missing-required-fields':
+      return {
+        severity: 'error',
+        message: 'GSPro shot data was incomplete. Hit another shot on GSPro Practice Range.',
+      }
+    default:
+      return null
+  }
+}
 
-const gsproErrorCopy = (status: GsproHelperStatusText | null) =>
-  status === 'SimRead helper could not start'
-    ? 'Could not start GSPro helper. Restart The Looper and try again.'
-    : 'GSPro connection issue — open GSPro Practice Range and try again.'
+const helperStartFailureAlert = (): GsproSessionAlert => ({
+  severity: 'error',
+  message: 'Could not start GSPro helper. Restart The Looper and try again.',
+})
 
+const sseConnectionFailureAlert = (): GsproSessionAlert => ({
+  severity: 'error',
+  message: 'GSPro range data is not available. Open GSPro Practice Range and try again.',
+})
 type AppProps = {
   forceDashboardRoute?: boolean
   forceSessionIntelligenceRoute?: boolean
@@ -914,9 +937,7 @@ function App({
   const [activeSessionSource, setActiveSessionSource] = useState<SessionSource | null>(null)
   const [connectionStatus, setConnectionStatus] =
     useState<LiveConnectionStatus>('disconnected')
-  const [gsproHelperStatus, setGsproHelperStatus] =
-    useState<GsproHelperStatusText | null>(null)
-  const [, setGsproHelperMessage] = useState<string | null>(null)
+  const [gsproSessionAlert, setGsproSessionAlert] = useState<GsproSessionAlert | null>(null)
   const [helperReachable, setHelperReachable] = useState<boolean | null>(null)
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
@@ -1284,8 +1305,7 @@ function App({
     if (selectedSessionSource === 'gspro') {
       setActiveSessionSource(selectedSessionSource)
       setConnectionStatus('connecting')
-      setGsproHelperStatus('Starting GSPro helper')
-      setGsproHelperMessage(null)
+      setGsproSessionAlert(null)
 
       void startSimReadHelper()
         .then((result) => {
@@ -1295,27 +1315,16 @@ function App({
 
           if (!result.ok) {
             setConnectionStatus('error')
-            setGsproHelperStatus(
-              result.message?.toLowerCase().includes('range')
-                ? 'GSPro range data not available'
-                : 'SimRead helper could not start',
-            )
-            setGsproHelperMessage(
-              result.message ??
-                'GSPro connection not ready. Make sure GSPro is open on the range.',
-            )
+            setGsproSessionAlert(helperStartFailureAlert())
             return
           }
-
-          setGsproHelperStatus('Connected to GSPro helper')
-          setGsproHelperMessage(result.message ?? null)
 
           const connection = connectToSimReadEvents({
             onFinalShot: (event) => {
               if (!isActive) {
                 return
               }
-              setGsproHelperStatus('Shot received')
+              setGsproSessionAlert(null)
               insertSimReadFinalShotEvent(event)
             },
             onStatusChange: (status) => {
@@ -1323,26 +1332,21 @@ function App({
                 return
               }
               setConnectionStatus(status)
-              if (status === 'waiting') {
-                setGsproHelperStatus('Waiting for GSPro range shots')
-              } else if (status === 'received-shot') {
-                setGsproHelperStatus('Shot received')
-              } else if (status === 'connected') {
-                setGsproHelperStatus('Connected to GSPro helper')
-              } else if (status === 'error') {
-                setGsproHelperStatus('GSPro range data not available')
+            },
+            onStructuredStatus: (event) => {
+              if (!isActive) {
+                return
+              }
+              const alert = mapSimReadStatusToGsproAlert(event)
+              if (alert) {
+                setGsproSessionAlert(alert)
               }
             },
             onError: (error) => {
               if (!isActive) {
                 return
               }
-              setGsproHelperStatus('GSPro range data not available')
-              setGsproHelperMessage(
-                error instanceof Error
-                  ? error.message
-                  : 'GSPro connection not ready. Make sure GSPro is open on the range.',
-              )
+              setGsproSessionAlert(sseConnectionFailureAlert())
               if (import.meta.env.DEV) {
                 console.error('[SimRead Connection] event handling failed', error)
               }
@@ -1358,15 +1362,12 @@ function App({
             webSocketUrl: null,
           })
         })
-        .catch((error) => {
+        .catch(() => {
           if (!isActive) {
             return
           }
           setConnectionStatus('error')
-          setGsproHelperStatus('SimRead helper could not start')
-          setGsproHelperMessage(
-            error instanceof Error ? error.message : 'SimRead helper could not start.',
-          )
+          setGsproSessionAlert(helperStartFailureAlert())
         })
 
       return () => {
@@ -1376,8 +1377,7 @@ function App({
       }
     }
 
-    setGsproHelperStatus(null)
-    setGsproHelperMessage(null)
+    setGsproSessionAlert(null)
 
     const connection: LiveConnection = selectedSessionSource === 'nova'
       ? subscribeSharedNovaConnection(
@@ -4501,11 +4501,8 @@ function App({
   const latestShotShape = shotShapeLabel(latestShot)
   const latestShotScoreTag = shotRankScoreTone(latestShot?.shotRanking)
   const latestShotRankPill = formatRank(latestShot?.shotRanking)
-  const gsproSessionError =
-    activeSessionSource === 'gspro' &&
-    (connectionStatus === 'error' || isGsproErrorStatus(gsproHelperStatus))
-      ? gsproErrorCopy(gsproHelperStatus)
-      : null
+  const visibleGsproSessionAlert =
+    activeSessionSource === 'gspro' ? gsproSessionAlert : null
 
   const latestShotReaction = (() => {
     if (!latestShot) {
@@ -4962,9 +4959,12 @@ function App({
               </div>
             ) : null}
           </div>
-          {gsproSessionError ? (
-            <div className="session-intelligence-gspro-error" role="alert">
-              {gsproSessionError}
+          {visibleGsproSessionAlert ? (
+            <div
+              className={`session-intelligence-gspro-alert is-${visibleGsproSessionAlert.severity}`}
+              role="alert"
+            >
+              {visibleGsproSessionAlert.message}
             </div>
           ) : null}
           <div className="session-intelligence-actions">
@@ -5492,12 +5492,6 @@ function App({
                 {connectionStatus}
               </span>
             </div>
-            {activeSessionSource === 'gspro' && gsproSessionError ? (
-              <div className="status-error-card">
-                <strong>GSPro issue</strong>
-                <span>{gsproSessionError}</span>
-              </div>
-            ) : null}
             <div>
               <strong>Shots received</strong>
               <span>{shots.length}</span>

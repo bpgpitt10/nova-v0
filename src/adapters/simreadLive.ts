@@ -15,6 +15,16 @@ export type SimReadLiveStatus =
   | 'error'
   | 'disconnected'
 
+export type SimReadStatusSeverity = 'info' | 'warning' | 'error'
+
+export type SimReadStructuredStatusEvent = {
+  event: 'status'
+  status: string
+  severity: SimReadStatusSeverity
+  message: string
+  userAction?: string
+}
+
 export type SimReadLiveConnection = {
   mode: 'simread'
   disconnect: () => void
@@ -23,6 +33,7 @@ export type SimReadLiveConnection = {
 export type ConnectToSimReadEventsOptions = {
   onFinalShot: (event: SimReadFinalShotEvent) => void
   onStatusChange?: (status: SimReadLiveStatus) => void
+  onStructuredStatus?: (event: SimReadStructuredStatusEvent) => void
   onError?: (error: unknown) => void
   eventsUrl?: string
 }
@@ -126,9 +137,41 @@ const parseStatusEvent = (data: string): SimReadLiveStatus | null => {
   return null
 }
 
+const parseStructuredStatusEvent = (data: string): SimReadStructuredStatusEvent | null => {
+  try {
+    const parsed: unknown = JSON.parse(data.trim())
+    if (!parsed || typeof parsed !== 'object') {
+      return null
+    }
+
+    const candidate = parsed as Partial<SimReadStructuredStatusEvent>
+    if (
+      candidate.event === 'status' &&
+      typeof candidate.status === 'string' &&
+      (candidate.severity === 'info' ||
+        candidate.severity === 'warning' ||
+        candidate.severity === 'error') &&
+      typeof candidate.message === 'string'
+    ) {
+      return {
+        event: 'status',
+        status: candidate.status,
+        severity: candidate.severity,
+        message: candidate.message,
+        ...(typeof candidate.userAction === 'string' ? { userAction: candidate.userAction } : {}),
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 export const connectToSimReadEvents = ({
   onFinalShot,
   onStatusChange,
+  onStructuredStatus,
   onError,
   eventsUrl,
 }: ConnectToSimReadEventsOptions): SimReadLiveConnection => {
@@ -193,6 +236,11 @@ export const connectToSimReadEvents = ({
   }
 
   const handleSseStatus = (event: MessageEvent<string>) => {
+    const structuredStatus = parseStructuredStatusEvent(event.data)
+    if (structuredStatus) {
+      onStructuredStatus?.(structuredStatus)
+    }
+
     const status = parseStatusEvent(event.data)
     if (status) {
       onStatusChange?.(status)

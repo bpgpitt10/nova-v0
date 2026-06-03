@@ -1971,17 +1971,27 @@ td {
   min-width: 0;
 }
 
-.session-intelligence-gspro-error {
+.session-intelligence-gspro-alert {
   justify-self: center;
   max-width: min(560px, 44vw);
-  border: 1px solid rgba(248, 113, 113, 0.58);
   border-radius: 999px;
   padding: 9px 14px;
-  color: #fecaca;
-  background: rgba(127, 29, 29, 0.28);
   font-size: 13px;
   font-weight: 700;
   text-align: center;
+}
+
+.session-intelligence-gspro-alert.is-warning {
+  border: 1px solid rgba(245, 158, 11, 0.62);
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.34);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.16);
+}
+
+.session-intelligence-gspro-alert.is-error {
+  border: 1px solid rgba(248, 113, 113, 0.58);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.28);
   box-shadow: 0 0 24px rgba(127, 29, 29, 0.18);
 }
 
