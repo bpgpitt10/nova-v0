@@ -4,6 +4,10 @@ export type SimReadHelperStartResult = {
   ok: boolean
   status: 'already_running' | 'started' | 'failed'
   message?: string
+  node_path?: string
+  cli_path?: string
+  cwd?: string
+  detail?: string
 }
 
 export const isTauriRuntime = () =>

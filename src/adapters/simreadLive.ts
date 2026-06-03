@@ -1,8 +1,12 @@
+import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { SimReadFinalShotEvent } from './simreadFinalShot'
 
 const SIMREAD_FINAL_SHOT_EVENT = 'looper:simread-final-shot'
 const SIMREAD_EVENT_TARGET_KEY = '__looperSimReadEventTarget'
 const SIMREAD_DISPATCH_KEY = '__looperDispatchSimReadFinalShot'
+const SIMREAD_SSE_EVENT_NAME = 'simread-sse-event'
+const SIMREAD_SSE_ERROR_NAME = 'simread-sse-error'
 export const DEFAULT_SIMREAD_EVENTS_URL = 'http://127.0.0.1:8788/events'
 export const DEV_SIMREAD_EVENTS_PROXY_URL = '/simread/events'
 
@@ -38,14 +42,40 @@ export type ConnectToSimReadEventsOptions = {
   eventsUrl?: string
 }
 
+type SimReadTauriSsePayload = {
+  event: string
+  data: string
+}
+
+type SimReadTauriSseErrorPayload = {
+  events_url: string
+  message: string
+}
+
 type SimReadWindow = Window &
   typeof globalThis & {
     [SIMREAD_EVENT_TARGET_KEY]?: EventTarget
     [SIMREAD_DISPATCH_KEY]?: (event: SimReadFinalShotEvent) => void
+    __TAURI_INTERNALS__?: unknown
   }
 
 const getWindow = (): SimReadWindow | null =>
   typeof window === 'undefined' ? null : (window as SimReadWindow)
+
+const isTauriRuntime = () => {
+  const simreadWindow = getWindow()
+  if (!simreadWindow) {
+    return false
+  }
+
+  return (
+    Boolean(simreadWindow.__TAURI_INTERNALS__) ||
+    simreadWindow.location.protocol === 'tauri:' ||
+    simreadWindow.location.hostname === 'tauri.localhost'
+  )
+}
+
+const shouldUseTauriSseBridge = () => isTauriRuntime() && !import.meta.env.DEV
 
 const getSimReadEventTarget = () => {
   const simreadWindow = getWindow()
@@ -93,13 +123,23 @@ const resolveSimReadEventsUrl = (overrideUrl?: string) => {
   }
 
   const envUrl = (import.meta.env.VITE_SIMREAD_EVENTS_URL as string | undefined)?.trim()
-  return envUrl || (import.meta.env.DEV ? DEV_SIMREAD_EVENTS_PROXY_URL : DEFAULT_SIMREAD_EVENTS_URL)
+  if (envUrl) {
+    return envUrl
+  }
+
+  if (shouldUseTauriSseBridge()) {
+    return DEFAULT_SIMREAD_EVENTS_URL
+  }
+
+  return import.meta.env.DEV ? DEV_SIMREAD_EVENTS_PROXY_URL : DEFAULT_SIMREAD_EVENTS_URL
 }
 
-const logSimReadDev = (message: string, detail?: Record<string, unknown>) => {
-  if (import.meta.env.DEV) {
-    console.info(message, detail ?? {})
-  }
+const logSimReadInfo = (message: string, detail?: Record<string, unknown>) => {
+  console.info(message, detail ?? {})
+}
+
+const logSimReadError = (message: string, detail?: Record<string, unknown>) => {
+  console.error(message, detail ?? {})
 }
 
 const parseFinalShotEvent = (data: string): SimReadFinalShotEvent => {
@@ -180,7 +220,12 @@ export const connectToSimReadEvents = ({
   installDevDispatchHelper()
   const resolvedEventsUrl = resolveSimReadEventsUrl(eventsUrl)
   let eventSource: EventSource | null = null
-  logSimReadDev('[SimRead SSE] adapter starting', { eventsUrl: resolvedEventsUrl })
+  logSimReadInfo('[SimRead SSE] adapter starting', {
+    eventsUrl: resolvedEventsUrl,
+    isDev: import.meta.env.DEV,
+    isTauriRuntime: isTauriRuntime(),
+    transport: shouldUseTauriSseBridge() ? 'tauri-bridge' : 'eventsource',
+  })
 
   const handleFinalShot = (event: SimReadFinalShotEvent) => {
     try {
@@ -199,11 +244,11 @@ export const connectToSimReadEvents = ({
 
   const handleSseFinalShot = (event: MessageEvent<string>) => {
     try {
-      logSimReadDev('[SimRead SSE] raw final-shot event received', {
+      logSimReadInfo('[SimRead SSE] final-shot event received', {
         dataPreview: event.data.slice(0, 500),
       })
       const finalShotEvent = parseFinalShotEvent(event.data)
-      logSimReadDev('[SimRead SSE] parsed final-shot event', {
+      logSimReadInfo('[SimRead SSE] parsed final-shot event', {
         rowId: finalShotEvent.rowId,
         source: finalShotEvent.source,
       })
@@ -224,7 +269,7 @@ export const connectToSimReadEvents = ({
         (parsed as { event?: unknown }).event === 'final-shot'
       ) {
         const finalShotEvent = parsed as SimReadFinalShotEvent
-        logSimReadDev('[SimRead SSE] parsed final-shot message event', {
+        logSimReadInfo('[SimRead SSE] parsed final-shot message event', {
           rowId: finalShotEvent.rowId,
           source: finalShotEvent.source,
         })
@@ -250,6 +295,97 @@ export const connectToSimReadEvents = ({
   target.addEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
   onStatusChange?.('connecting')
 
+  const handleSsePayload = (payload: SimReadTauriSsePayload) => {
+    const messageEvent = { data: payload.data } as MessageEvent<string>
+    if (payload.event === 'final-shot') {
+      handleSseFinalShot(messageEvent)
+      return
+    }
+
+    if (payload.event === 'status') {
+      handleSseStatus(messageEvent)
+      return
+    }
+
+    handleSseMessage(messageEvent)
+  }
+
+  if (shouldUseTauriSseBridge()) {
+    let unlistenPayload: UnlistenFn | null = null
+    let unlistenError: UnlistenFn | null = null
+    let disconnected = false
+
+    void listen<SimReadTauriSsePayload>(SIMREAD_SSE_EVENT_NAME, (event) => {
+      if (!disconnected) {
+        handleSsePayload(event.payload)
+      }
+    }).then((unlisten) => {
+      if (disconnected) {
+        unlisten()
+        return
+      }
+      unlistenPayload = unlisten
+    })
+
+    void listen<SimReadTauriSseErrorPayload>(SIMREAD_SSE_ERROR_NAME, (event) => {
+      if (disconnected) {
+        return
+      }
+      logSimReadError('[SimRead SSE] Tauri bridge error', {
+        eventsUrl: event.payload.events_url,
+        message: event.payload.message,
+      })
+      onStatusChange?.('error')
+      onError?.(new Error(event.payload.message))
+    }).then((unlisten) => {
+      if (disconnected) {
+        unlisten()
+        return
+      }
+      unlistenError = unlisten
+    })
+
+    void invoke('start_simread_event_stream', { eventsUrl: resolvedEventsUrl })
+      .then((result) => {
+        logSimReadInfo('[SimRead SSE] Tauri bridge started', {
+          result,
+          eventsUrl: resolvedEventsUrl,
+        })
+        if (!disconnected) {
+          onStatusChange?.('connected')
+          onStatusChange?.('waiting')
+        }
+      })
+      .catch((error) => {
+        logSimReadError('[SimRead SSE] Tauri bridge failed to start', {
+          eventsUrl: resolvedEventsUrl,
+          error,
+        })
+        if (!disconnected) {
+          onStatusChange?.('error')
+          onError?.(error)
+        }
+      })
+
+    return {
+      mode: 'simread',
+      disconnect: () => {
+        disconnected = true
+        logSimReadInfo('[SimRead SSE] disconnecting', {
+          eventsUrl: resolvedEventsUrl,
+          transport: 'tauri-bridge',
+        })
+        unlistenPayload?.()
+        unlistenError?.()
+        void invoke('stop_simread_event_stream').catch((error) => {
+          logSimReadError('[SimRead SSE] Tauri bridge stop failed', { error })
+        })
+        target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
+        onStatusChange?.('disconnected')
+      },
+    }
+  }
+
   if (typeof EventSource === 'undefined') {
     const error = new Error('EventSource is not available in this browser')
     onStatusChange?.('error')
@@ -257,7 +393,7 @@ export const connectToSimReadEvents = ({
   } else {
     eventSource = new EventSource(resolvedEventsUrl)
     eventSource.addEventListener('open', () => {
-      logSimReadDev('[SimRead SSE] EventSource open', { eventsUrl: resolvedEventsUrl })
+      logSimReadInfo('[SimRead SSE] EventSource open', { eventsUrl: resolvedEventsUrl })
       onStatusChange?.('connected')
       onStatusChange?.('waiting')
     })
@@ -265,9 +401,10 @@ export const connectToSimReadEvents = ({
     eventSource.addEventListener('status', handleSseStatus)
     eventSource.addEventListener('message', handleSseMessage)
     eventSource.addEventListener('error', (event) => {
-      logSimReadDev('[SimRead SSE] EventSource error', {
+      logSimReadError('[SimRead SSE] EventSource error', {
         eventsUrl: resolvedEventsUrl,
         readyState: eventSource?.readyState,
+        eventType: event.type,
       })
       onStatusChange?.('error')
       onError?.(event)
@@ -277,7 +414,7 @@ export const connectToSimReadEvents = ({
   return {
     mode: 'simread',
     disconnect: () => {
-      logSimReadDev('[SimRead SSE] disconnecting', { eventsUrl: resolvedEventsUrl })
+      logSimReadInfo('[SimRead SSE] disconnecting', { eventsUrl: resolvedEventsUrl })
       eventSource?.close()
       target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
       onStatusChange?.('disconnected')

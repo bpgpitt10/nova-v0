@@ -1315,6 +1315,7 @@ function App({
 
           if (!result.ok) {
             setConnectionStatus('error')
+            console.error('[SimRead helper] start failed', result)
             setGsproSessionAlert(helperStartFailureAlert())
             return
           }
@@ -1347,9 +1348,7 @@ function App({
                 return
               }
               setGsproSessionAlert(sseConnectionFailureAlert())
-              if (import.meta.env.DEV) {
-                console.error('[SimRead Connection] event handling failed', error)
-              }
+              console.error('[SimRead Connection] event handling failed', error)
             },
           })
 

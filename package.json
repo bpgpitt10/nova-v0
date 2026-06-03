@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "tauri:build:local": "tauri build --config src-tauri/tauri.local.conf.json",
+    "tauri:build:local": "npm run simread:prepare-resources:windows && tauri build --config src-tauri/tauri.local.conf.json",
     "simread:prepare-resources:windows": "powershell -ExecutionPolicy Bypass -File helpers/prepare_simread_resources_windows.ps1",
     "helper:build:mac": "bash helpers/build_open_golf_coach_sidecar_macos.sh",
     "helper:build:windows": "powershell -ExecutionPolicy Bypass -File helpers/build_open_golf_coach_sidecar_windows.ps1"

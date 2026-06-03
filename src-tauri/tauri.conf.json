@@ -35,9 +35,13 @@
     "externalBin": [
       "binaries/open-golf-coach-helper"
     ],
-    "resources": [
-      "resources/**/*"
-    ],
+    "resources": {
+      "resources/node/node.exe": "resources/node/node.exe",
+      "resources/simread-helper/dist": "resources/simread-helper/dist",
+      "resources/simread-helper/node_modules": "resources/simread-helper/node_modules",
+      "resources/simread-helper/package.json": "resources/simread-helper/package.json",
+      "resources/simread-helper/simread.cmd": "resources/simread-helper/simread.cmd"
+    },
     "windows": {
       "wix": {
         "language": "en-US"

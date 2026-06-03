@@ -6,16 +6,20 @@ use reqwest::blocking::Client;
 use serde::Serialize;
 use serde_json::Value;
 use std::fs::{create_dir_all, OpenOptions};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpStream};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::thread;
 use std::time::{Duration, Instant};
 use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 
 const HELPER_HOST: &str = "127.0.0.1";
 const HELPER_PORT: u16 = 8787;
@@ -31,6 +35,9 @@ const SIMREAD_DEFAULT_DEV_DIR: &str = r"C:\Users\User\Documents\SimRead";
 const SIMREAD_HELPER_RESOURCE_DIR: &str = "resources/simread-helper";
 const SIMREAD_NODE_RESOURCE_DIR: &str = "resources/node";
 const SIMREAD_CLI_RELATIVE_PATH: &str = "dist/simread/cli.js";
+const SIMREAD_EVENTS_URL: &str = "http://127.0.0.1:8788/events";
+const SIMREAD_SSE_EVENT_NAME: &str = "simread-sse-event";
+const SIMREAD_SSE_ERROR_NAME: &str = "simread-sse-error";
 const NOVA_WS_SERVICE_NAME: &str = "_openlaunch-ws._tcp.local.";
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -45,11 +52,90 @@ struct SimReadState {
     child: Mutex<Option<Child>>,
 }
 
+#[derive(Default)]
+struct SimReadEventStreamState {
+    stop: Mutex<Option<Arc<AtomicBool>>>,
+}
+
 #[derive(Serialize)]
 struct SimReadHelperStartResult {
     ok: bool,
     status: String,
     message: Option<String>,
+    node_path: Option<String>,
+    cli_path: Option<String>,
+    cwd: Option<String>,
+    detail: Option<String>,
+}
+
+#[derive(Clone)]
+struct SimReadLaunchPaths {
+    node_path: PathBuf,
+    helper_dir: PathBuf,
+    cli_path: PathBuf,
+    sql_wasm_path: PathBuf,
+}
+
+struct SimReadStartedHelper {
+    child: Child,
+    launch_paths: Option<SimReadLaunchPaths>,
+}
+
+struct SimReadLaunchError {
+    message: String,
+    launch_paths: Option<SimReadLaunchPaths>,
+}
+
+#[derive(Serialize)]
+struct SimReadEventStreamStartResult {
+    ok: bool,
+    status: String,
+    events_url: String,
+    message: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+struct SimReadSsePayload {
+    event: String,
+    data: String,
+}
+
+#[derive(Clone, Serialize)]
+struct SimReadSseErrorPayload {
+    events_url: String,
+    message: String,
+}
+
+impl SimReadLaunchPaths {
+    fn node_path_string(&self) -> String {
+        self.node_path.display().to_string()
+    }
+
+    fn cli_path_string(&self) -> String {
+        self.cli_path.display().to_string()
+    }
+
+    fn cwd_string(&self) -> String {
+        self.helper_dir.display().to_string()
+    }
+}
+
+fn simread_start_result(
+    ok: bool,
+    status: &str,
+    message: Option<String>,
+    launch_paths: Option<&SimReadLaunchPaths>,
+    detail: Option<String>,
+) -> SimReadHelperStartResult {
+    SimReadHelperStartResult {
+        ok,
+        status: status.to_string(),
+        message,
+        node_path: launch_paths.map(SimReadLaunchPaths::node_path_string),
+        cli_path: launch_paths.map(SimReadLaunchPaths::cli_path_string),
+        cwd: launch_paths.map(SimReadLaunchPaths::cwd_string),
+        detail,
+    }
 }
 
 enum HelperProbe {
@@ -612,14 +698,14 @@ fn resolve_bundled_simread_helper_dir(app_handle: &AppHandle) -> Result<PathBuf,
 
     if let Ok(resource_path) = app_handle
         .path()
-        .resolve(SIMREAD_HELPER_RESOURCE_DIR, BaseDirectory::Resource)
+        .resolve("simread-helper", BaseDirectory::Resource)
     {
         candidates.push(resource_path);
     }
 
     if let Ok(resource_path) = app_handle
         .path()
-        .resolve("simread-helper", BaseDirectory::Resource)
+        .resolve(SIMREAD_HELPER_RESOURCE_DIR, BaseDirectory::Resource)
     {
         candidates.push(resource_path);
     }
@@ -667,17 +753,17 @@ fn resolve_bundled_simread_node_path(app_handle: &AppHandle) -> Result<PathBuf, 
     let node_filename = simread_node_executable_filename();
     let mut candidates = Vec::new();
 
-    if let Ok(resource_path) = app_handle.path().resolve(
-        format!("{SIMREAD_NODE_RESOURCE_DIR}/{node_filename}"),
-        BaseDirectory::Resource,
-    ) {
-        candidates.push(resource_path);
-    }
-
     if let Ok(resource_path) = app_handle
         .path()
         .resolve(format!("node/{node_filename}"), BaseDirectory::Resource)
     {
+        candidates.push(resource_path);
+    }
+
+    if let Ok(resource_path) = app_handle.path().resolve(
+        format!("{SIMREAD_NODE_RESOURCE_DIR}/{node_filename}"),
+        BaseDirectory::Resource,
+    ) {
         candidates.push(resource_path);
     }
 
@@ -702,6 +788,39 @@ fn resolve_bundled_simread_node_path(app_handle: &AppHandle) -> Result<PathBuf, 
     })
 }
 
+fn resolve_bundled_simread_launch_paths(
+    app_handle: &AppHandle,
+) -> Result<SimReadLaunchPaths, String> {
+    let helper_dir = resolve_bundled_simread_helper_dir(app_handle)?;
+    let node_path = resolve_bundled_simread_node_path(app_handle)?;
+    let cli_path = helper_dir.join(SIMREAD_CLI_RELATIVE_PATH);
+    let sql_wasm_path = helper_dir
+        .join("node_modules")
+        .join("sql.js")
+        .join("dist")
+        .join("sql-wasm.wasm");
+
+    let required_paths = [
+        ("bundled node.exe", &node_path),
+        ("bundled SimRead helper directory", &helper_dir),
+        ("bundled SimRead CLI", &cli_path),
+        ("bundled sql.js wasm", &sql_wasm_path),
+    ];
+
+    for (label, path) in required_paths {
+        if !path.exists() {
+            return Err(format!("{label} is missing: {}", path.display()));
+        }
+    }
+
+    Ok(SimReadLaunchPaths {
+        node_path,
+        helper_dir,
+        cli_path,
+        sql_wasm_path,
+    })
+}
+
 fn apply_simread_environment(command: &mut Command) -> &mut Command {
     command
         .env("SIMREAD_PORT", SIMREAD_PORT.to_string())
@@ -709,13 +828,16 @@ fn apply_simread_environment(command: &mut Command) -> &mut Command {
         .env("SIMREAD_DISABLE_OCR_FALLBACK", "1")
 }
 
-fn launch_simread_dev_helper() -> Result<Child, String> {
+fn launch_simread_dev_helper() -> Result<SimReadStartedHelper, SimReadLaunchError> {
     let simread_dir = resolve_simread_dev_dir();
     if !simread_dir.exists() {
-        return Err(format!(
-            "SimRead dev directory does not exist: {}",
-            simread_dir.display()
-        ));
+        return Err(SimReadLaunchError {
+            message: format!(
+                "SimRead dev directory does not exist: {}",
+                simread_dir.display()
+            ),
+            launch_paths: None,
+        });
     }
 
     let npm_command = if cfg!(windows) { "npm.cmd" } else { "npm" };
@@ -734,26 +856,37 @@ fn launch_simread_dev_helper() -> Result<Child, String> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|error| {
-            format!(
+        .map(|child| SimReadStartedHelper {
+            child,
+            launch_paths: None,
+        })
+        .map_err(|error| SimReadLaunchError {
+            message: format!(
                 "failed to launch SimRead helper from {}: {error}",
                 simread_dir.display()
-            )
+            ),
+            launch_paths: None,
         })
 }
 
-fn launch_simread_bundled_helper(app_handle: &AppHandle) -> Result<Child, String> {
-    let helper_dir = resolve_bundled_simread_helper_dir(app_handle)?;
-    let node_path = resolve_bundled_simread_node_path(app_handle)?;
-    let cli_path = helper_dir.join(SIMREAD_CLI_RELATIVE_PATH);
+fn launch_simread_bundled_helper(
+    app_handle: &AppHandle,
+) -> Result<SimReadStartedHelper, SimReadLaunchError> {
+    let launch_paths =
+        resolve_bundled_simread_launch_paths(app_handle).map_err(|error| SimReadLaunchError {
+            message: error,
+            launch_paths: None,
+        })?;
 
     println!(
-        "[SimRead helper] launching bundled helper with node={} helper_dir={}",
-        node_path.display(),
-        helper_dir.display()
+        "[SimRead helper] launching bundled helper with node={} cwd={} cli={} sql_wasm={}",
+        launch_paths.node_path.display(),
+        launch_paths.helper_dir.display(),
+        launch_paths.cli_path.display(),
+        launch_paths.sql_wasm_path.display()
     );
 
-    let mut command = Command::new(node_path);
+    let mut command = Command::new(&launch_paths.node_path);
 
     #[cfg(windows)]
     {
@@ -761,22 +894,31 @@ fn launch_simread_bundled_helper(app_handle: &AppHandle) -> Result<Child, String
     }
 
     apply_simread_environment(&mut command)
-        .arg(cli_path)
+        .arg(SIMREAD_CLI_RELATIVE_PATH)
         .arg("serve")
-        .current_dir(&helper_dir)
+        .current_dir(&launch_paths.helper_dir)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|error| {
-            format!(
-                "failed to launch bundled SimRead helper from {}: {error}",
-                helper_dir.display()
-            )
+        .map(|child| SimReadStartedHelper {
+            child,
+            launch_paths: Some(launch_paths.clone()),
+        })
+        .map_err(|error| SimReadLaunchError {
+            message: format!(
+                "failed to launch bundled SimRead helper: node={} cwd={} cli={} error={error}",
+                launch_paths.node_path.display(),
+                launch_paths.helper_dir.display(),
+                launch_paths.cli_path.display()
+            ),
+            launch_paths: Some(launch_paths),
         })
 }
 
-fn launch_simread_helper(app_handle: &AppHandle) -> Result<Child, String> {
+fn launch_simread_helper(
+    app_handle: &AppHandle,
+) -> Result<SimReadStartedHelper, SimReadLaunchError> {
     if cfg!(debug_assertions) {
         launch_simread_dev_helper()
     } else {
@@ -1100,20 +1242,24 @@ fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResul
 
     match probe_simread_helper() {
         SimReadProbe::CompatibleRunning => {
-            return Ok(SimReadHelperStartResult {
-                ok: true,
-                status: "already_running".to_string(),
-                message: Some("SimRead helper is already healthy.".to_string()),
-            });
+            return Ok(simread_start_result(
+                true,
+                "already_running",
+                Some("SimRead helper is already healthy.".to_string()),
+                None,
+                None,
+            ));
         }
         SimReadProbe::IncompatibleService(reason) => {
-            return Ok(SimReadHelperStartResult {
-                ok: false,
-                status: "failed".to_string(),
-                message: Some(format!(
+            return Ok(simread_start_result(
+                false,
+                "failed",
+                Some(format!(
                     "SimRead helper could not start because port {SIMREAD_PORT} is unavailable: {reason}"
                 )),
-            });
+                None,
+                Some(reason),
+            ));
         }
         SimReadProbe::PortFree => {}
     }
@@ -1132,23 +1278,27 @@ fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResul
                 Ok(None) => {
                     drop(guard);
                     if wait_for_simread_health(Duration::from_secs(8)) {
-                        return Ok(SimReadHelperStartResult {
-                            ok: true,
-                            status: "already_running".to_string(),
-                            message: Some(
+                        return Ok(simread_start_result(
+                            true,
+                            "already_running",
+                            Some(
                                 "SimRead helper was already starting and became healthy."
                                     .to_string(),
                             ),
-                        });
+                            None,
+                            None,
+                        ));
                     }
-                    return Ok(SimReadHelperStartResult {
-                        ok: false,
-                        status: "failed".to_string(),
-                        message: Some(
+                    return Ok(simread_start_result(
+                        false,
+                        "failed",
+                        Some(
                             "SimRead helper process is running but health did not become ready."
                                 .to_string(),
                         ),
-                    });
+                        None,
+                        None,
+                    ));
                 }
                 Err(error) => {
                     *guard = None;
@@ -1157,36 +1307,222 @@ fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResul
             }
         }
 
-        let child = match launch_simread_helper(&app) {
-            Ok(child) => child,
+        let started_helper = match launch_simread_helper(&app) {
+            Ok(started_helper) => started_helper,
             Err(error) => {
-                return Ok(SimReadHelperStartResult {
-                    ok: false,
-                    status: "failed".to_string(),
-                    message: Some(error),
-                });
+                return Ok(simread_start_result(
+                    false,
+                    "failed",
+                    Some(error.message.clone()),
+                    error.launch_paths.as_ref(),
+                    Some(error.message),
+                ));
             }
         };
 
-        *guard = Some(child);
-    }
+        let launch_paths = started_helper.launch_paths.clone();
+        *guard = Some(started_helper.child);
+        drop(guard);
 
-    if wait_for_simread_health(Duration::from_secs(8)) {
-        Ok(SimReadHelperStartResult {
-            ok: true,
-            status: "started".to_string(),
-            message: Some("SimRead helper started and is healthy.".to_string()),
-        })
-    } else {
-        Ok(SimReadHelperStartResult {
-            ok: false,
-            status: "failed".to_string(),
-            message: Some(
+        if wait_for_simread_health(Duration::from_secs(12)) {
+            return Ok(simread_start_result(
+                true,
+                "started",
+                Some("SimRead helper started and is healthy.".to_string()),
+                launch_paths.as_ref(),
+                None,
+            ));
+        }
+
+        return Ok(simread_start_result(
+            false,
+            "failed",
+            Some(
                 "SimRead helper started, but health did not become ready. Make sure GSPro is open on the range."
                     .to_string(),
             ),
-        })
+            launch_paths.as_ref(),
+            Some("Health check did not become ready within 12 seconds after spawn.".to_string()),
+        ));
     }
+}
+
+fn stop_simread_event_stream_state(stream_state: &SimReadEventStreamState) {
+    let mut guard = match stream_state.stop.lock() {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("[SimRead SSE] failed to acquire stream mutex: {error}");
+            return;
+        }
+    };
+
+    if let Some(stop) = guard.take() {
+        stop.store(true, Ordering::SeqCst);
+    }
+}
+
+fn emit_simread_sse_frame(
+    app: &AppHandle,
+    event_name: &str,
+    data_lines: &[String],
+) -> Result<(), String> {
+    if data_lines.is_empty() {
+        return Ok(());
+    }
+
+    let data = data_lines.join("\n");
+    app.emit(
+        SIMREAD_SSE_EVENT_NAME,
+        SimReadSsePayload {
+            event: event_name.to_string(),
+            data,
+        },
+    )
+    .map_err(|error| format!("failed to emit SimRead SSE payload: {error}"))
+}
+
+fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<AtomicBool>) {
+    let client = match Client::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .no_gzip()
+        .build()
+    {
+        Ok(value) => value,
+        Err(error) => {
+            let _ = app.emit(
+                SIMREAD_SSE_ERROR_NAME,
+                SimReadSseErrorPayload {
+                    events_url,
+                    message: format!("failed to create SimRead SSE client: {error}"),
+                },
+            );
+            return;
+        }
+    };
+
+    let response = match client.get(&events_url).send() {
+        Ok(value) => value,
+        Err(error) => {
+            let _ = app.emit(
+                SIMREAD_SSE_ERROR_NAME,
+                SimReadSseErrorPayload {
+                    events_url,
+                    message: format!("failed to connect to SimRead SSE stream: {error}"),
+                },
+            );
+            return;
+        }
+    };
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let _ = app.emit(
+            SIMREAD_SSE_ERROR_NAME,
+            SimReadSseErrorPayload {
+                events_url,
+                message: format!("SimRead SSE stream returned HTTP {status}"),
+            },
+        );
+        return;
+    }
+
+    let mut reader = BufReader::new(response);
+    let mut event_name = "message".to_string();
+    let mut data_lines: Vec<String> = Vec::new();
+
+    loop {
+        if stop.load(Ordering::SeqCst) {
+            break;
+        }
+
+        let mut line = String::new();
+        match reader.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) => {
+                let trimmed = line.trim_end_matches(['\r', '\n']);
+                if trimmed.is_empty() {
+                    if let Err(error) = emit_simread_sse_frame(&app, &event_name, &data_lines) {
+                        eprintln!("[SimRead SSE] {error}");
+                    }
+                    event_name = "message".to_string();
+                    data_lines.clear();
+                    continue;
+                }
+
+                if trimmed.starts_with(':') {
+                    continue;
+                }
+
+                if let Some(value) = trimmed.strip_prefix("event:") {
+                    event_name = value.trim_start().to_string();
+                    continue;
+                }
+
+                if let Some(value) = trimmed.strip_prefix("data:") {
+                    data_lines.push(value.trim_start().to_string());
+                }
+            }
+            Err(error) => {
+                if !stop.load(Ordering::SeqCst) {
+                    let _ = app.emit(
+                        SIMREAD_SSE_ERROR_NAME,
+                        SimReadSseErrorPayload {
+                            events_url,
+                            message: format!("SimRead SSE stream read failed: {error}"),
+                        },
+                    );
+                }
+                break;
+            }
+        }
+    }
+}
+
+#[tauri::command]
+fn start_simread_event_stream(
+    app: tauri::AppHandle,
+    events_url: Option<String>,
+) -> Result<SimReadEventStreamStartResult, String> {
+    let resolved_events_url = events_url
+        .and_then(|value| {
+            let trimmed = value.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
+        .unwrap_or_else(|| SIMREAD_EVENTS_URL.to_string());
+
+    let stream_state = app.state::<SimReadEventStreamState>();
+    stop_simread_event_stream_state(stream_state.inner());
+
+    let stop = Arc::new(AtomicBool::new(false));
+    {
+        let mut guard = stream_state
+            .stop
+            .lock()
+            .map_err(|error| format!("failed to acquire SimRead SSE mutex: {error}"))?;
+        *guard = Some(stop.clone());
+    }
+
+    let app_for_stream = app.clone();
+    let events_url_for_stream = resolved_events_url.clone();
+    thread::spawn(move || run_simread_event_stream(app_for_stream, events_url_for_stream, stop));
+
+    Ok(SimReadEventStreamStartResult {
+        ok: true,
+        status: "started".to_string(),
+        events_url: resolved_events_url,
+        message: Some("SimRead SSE stream connected through Tauri.".to_string()),
+    })
+}
+
+#[tauri::command]
+fn stop_simread_event_stream(app: tauri::AppHandle) -> Result<bool, String> {
+    let stream_state = app.state::<SimReadEventStreamState>();
+    stop_simread_event_stream_state(stream_state.inner());
+    Ok(true)
 }
 
 #[tauri::command]
@@ -1207,17 +1543,21 @@ fn export_shots_csv(suggested_filename: String, csv: String) -> Result<bool, Str
 fn main() {
     let sidecar_state = SidecarState::default();
     let simread_state = SimReadState::default();
+    let simread_event_stream_state = SimReadEventStreamState::default();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(sidecar_state)
         .manage(simread_state)
+        .manage(simread_event_stream_state)
         .invoke_handler(tauri::generate_handler![
             append_enrichment_log,
             append_nova_log,
             discover_nova_ws_endpoint,
             export_shots_csv,
-            start_simread_helper
+            start_simread_event_stream,
+            start_simread_helper,
+            stop_simread_event_stream
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { .. } = event {
@@ -1229,6 +1569,8 @@ fn main() {
                 shutdown_sidecar(window.app_handle(), sidecar_state.inner());
                 let simread_state = window.state::<SimReadState>();
                 shutdown_simread_helper(simread_state.inner());
+                let simread_event_stream_state = window.state::<SimReadEventStreamState>();
+                stop_simread_event_stream_state(simread_event_stream_state.inner());
                 println!("[OpenGolfCoach sidecar] requesting full app exit after window close");
                 window.app_handle().exit(0);
             }
@@ -1248,6 +1590,8 @@ fn main() {
                 shutdown_sidecar(app_handle, sidecar_state.inner());
                 let simread_state = app_handle.state::<SimReadState>();
                 shutdown_simread_helper(simread_state.inner());
+                let simread_event_stream_state = app_handle.state::<SimReadEventStreamState>();
+                stop_simread_event_stream_state(simread_event_stream_state.inner());
             }
             RunEvent::Exit => {
                 println!("[OpenGolfCoach sidecar] RunEvent::Exit fired");
@@ -1255,6 +1599,8 @@ fn main() {
                 shutdown_sidecar(app_handle, sidecar_state.inner());
                 let simread_state = app_handle.state::<SimReadState>();
                 shutdown_simread_helper(simread_state.inner());
+                let simread_event_stream_state = app_handle.state::<SimReadEventStreamState>();
+                stop_simread_event_stream_state(simread_event_stream_state.inner());
             }
             _ => {}
         })
