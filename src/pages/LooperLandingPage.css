@@ -262,6 +262,32 @@
   padding-top: 2px;
 }
 
+.looper-landing-update-status {
+  min-height: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: #9fb09f;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.looper-landing-update-status button {
+  border: 0;
+  background: transparent;
+  color: #dce5d8;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.looper-landing-update-status button:hover {
+  color: #f5d76e;
+}
+
 @media (max-width: 760px) {
   .looper-landing-shell {
     padding-top: 22px;

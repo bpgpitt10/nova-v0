@@ -27,6 +27,23 @@ type NovaConnectionState =
   | 'error'
   | 'disconnected'
 
+type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'unavailable'
+  | 'up-to-date'
+  | 'available'
+  | 'installing'
+  | 'installed'
+  | 'error'
+
+type LooperLandingPageProps = {
+  installAvailableUpdate?: () => void
+  onRetryUpdateCheck?: () => void
+  updateError?: string | null
+  updateStatus?: UpdateStatus
+}
+
 const CONNECT_TIMEOUT_MS = 7000
 const VALIDATION_TIMEOUT_MS = 2500
 const DISCOVERY_TIMEOUT_MS = 5000
@@ -188,7 +205,12 @@ const navigateWithinApp = (path: string) => {
 const formatShotVariantName = (name: string) =>
   name.length > 24 ? `${name.slice(0, 21)}...` : name
 
-export default function LooperLandingPage() {
+export default function LooperLandingPage({
+  installAvailableUpdate,
+  onRetryUpdateCheck,
+  updateError = null,
+  updateStatus = 'idle',
+}: LooperLandingPageProps = {}) {
   const [selectedSource, setSelectedSource] = useState<Extract<SessionSource, 'gspro' | 'nova'>>(
     'gspro',
   )
@@ -448,6 +470,37 @@ export default function LooperLandingPage() {
     setManualOverrideUrl(trimmed)
   }
 
+  const updateStatusContent = (() => {
+    switch (updateStatus) {
+      case 'error':
+        return (
+          <>
+            <span>Update check failed ·</span>
+            <button onClick={onRetryUpdateCheck} title={updateError ?? undefined} type="button">
+              Retry
+            </button>
+          </>
+        )
+      case 'available':
+        return installAvailableUpdate ? (
+          <>
+            <span>Update available ·</span>
+            <button onClick={installAvailableUpdate} type="button">
+              Install
+            </button>
+          </>
+        ) : null
+      case 'installing':
+        return <span>Installing update...</span>
+      case 'installed':
+        return <span>Update installed. Restart The Looper to finish.</span>
+      case 'checking':
+        return <span>Checking for updates...</span>
+      default:
+        return null
+    }
+  })()
+
   return (
     <main className="looper-landing-page">
       <div className="looper-landing-shell">
@@ -598,6 +651,12 @@ export default function LooperLandingPage() {
                 Manage Data
               </a>
             </div>
+
+            {updateStatusContent ? (
+              <div className="looper-landing-update-status" aria-live="polite">
+                {updateStatusContent}
+              </div>
+            ) : null}
           </div>
         </section>
       </div>

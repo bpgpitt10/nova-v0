@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
@@ -14,6 +14,18 @@ import {
   hasSavedBagConfig,
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
+import { checkForLooperUpdate } from './lib/updater.ts'
+import type { Update } from '@tauri-apps/plugin-updater'
+
+type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'unavailable'
+  | 'up-to-date'
+  | 'available'
+  | 'installing'
+  | 'installed'
+  | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
 
@@ -21,6 +33,52 @@ function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
   const [bagConfigRevision, setBagConfigRevision] = useState(0)
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
+  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+
+  const checkForUpdates = useCallback(async () => {
+    setUpdateStatus('checking')
+    setUpdateError(null)
+
+    try {
+      const result = await checkForLooperUpdate()
+      if (result.status === 'available') {
+        setAvailableUpdate(result.update)
+        setUpdateStatus('available')
+        return
+      }
+      setAvailableUpdate(null)
+      setUpdateStatus(result.status)
+    } catch (error) {
+      console.error('Failed to check for updates.', error)
+      setAvailableUpdate(null)
+      setUpdateError(error instanceof Error ? error.message : 'Update check failed.')
+      setUpdateStatus('error')
+    }
+  }, [])
+
+  const installAvailableUpdate = useCallback(async () => {
+    if (!availableUpdate) {
+      return
+    }
+
+    setUpdateStatus('installing')
+    setUpdateError(null)
+
+    try {
+      await availableUpdate.downloadAndInstall()
+      setUpdateStatus('installed')
+    } catch (error) {
+      console.error('Failed to install update.', error)
+      setUpdateError(error instanceof Error ? error.message : 'Update install failed.')
+      setUpdateStatus('error')
+    }
+  }, [availableUpdate])
+
+  useEffect(() => {
+    void checkForUpdates()
+  }, [checkForUpdates])
 
   useEffect(() => {
     const onPopState = () => {
@@ -98,7 +156,7 @@ function RootRouter() {
   const view = useMemo(() => {
     const showBagSetup = pathname === '/bag-setup'
     const showShotVariants = pathname === '/edit-bag/variants'
-    const showLooperLanding = pathname === '/looper'
+    const showLooperLanding = pathname === '/' || pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
     const showDashboardRoute = pathname === '/dashboard'
@@ -124,10 +182,17 @@ function RootRouter() {
       return <TheReadPage />
     }
     if (showLooperLanding) {
-      return <LooperLandingPage />
+      return (
+        <LooperLandingPage
+          installAvailableUpdate={installAvailableUpdate}
+          updateError={updateError}
+          updateStatus={updateStatus}
+          onRetryUpdateCheck={checkForUpdates}
+        />
+      )
     }
     return <App forceDashboardRoute={showDashboardRoute} />
-  }, [hasBagConfig, pathname])
+  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
 
   return view
 }

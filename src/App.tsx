@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   type NovaConnection,
   type NovaConnectionStatus,
@@ -25,7 +25,6 @@ import {
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
-import LooperLandingPage from './pages/LooperLandingPage'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
   type MetricModel as ClubDetailMetricModel,
@@ -81,7 +80,6 @@ import {
   shotSourceForSessionSource,
 } from './lib/sessionSources'
 import { buildShotProfilesForIdentity } from './lib/shotProfiles'
-import { checkForLooperUpdate } from './lib/updater'
 import {
   clearActiveSessionDraft,
   isSessionEligibleForAnalysis,
@@ -104,7 +102,6 @@ import {
   type SessionSource,
   type Shot,
 } from './types'
-import type { Update } from '@tauri-apps/plugin-updater'
 
 type SessionState = 'setup' | 'live' | 'review'
 type ReviewView = 'dashboard' | 'clubDetail'
@@ -120,16 +117,6 @@ type GsproSessionAlert = {
 type TimedGsproSessionAlert = GsproSessionAlert & {
   graceMs?: number
 }
-type UpdateStatus =
-  | 'idle'
-  | 'checking'
-  | 'unavailable'
-  | 'up-to-date'
-  | 'available'
-  | 'installing'
-  | 'installed'
-  | 'error'
-
 const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
@@ -874,14 +861,6 @@ function App({
   forceDashboardRoute = false,
   forceSessionIntelligenceRoute = false,
 }: AppProps) {
-  const normalizedPath =
-    typeof window !== 'undefined'
-      ? window.location.pathname.replace(/\/+$/, '') || '/'
-      : '/'
-  if (!forceDashboardRoute && !forceSessionIntelligenceRoute && normalizedPath === '/') {
-    return <LooperLandingPage />
-  }
-
   type DashboardNavTarget = 'dashboard' | 'bag' | 'lastSession'
   type ClubDriverKey = keyof ReviewClubSummary['componentScores']
   const useClubDetailV2 = (() => {
@@ -954,9 +933,6 @@ function App({
   const [lastEnrichmentStatus, setLastEnrichmentStatus] = useState<
     'idle' | 'success' | 'failure'
   >('idle')
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
-  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
-  const [updateError, setUpdateError] = useState<string | null>(null)
   const [sessionStartedAt] = useState<string | null>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.startedAt ?? startedAtFallback : null,
   )
@@ -1222,49 +1198,6 @@ function App({
       })
     })
   }
-
-  const checkForUpdates = useCallback(async () => {
-    setUpdateStatus('checking')
-    setUpdateError(null)
-
-    try {
-      const result = await checkForLooperUpdate()
-      if (result.status === 'available') {
-        setAvailableUpdate(result.update)
-        setUpdateStatus('available')
-        return
-      }
-      setAvailableUpdate(null)
-      setUpdateStatus(result.status)
-    } catch (error) {
-      console.error('Failed to check for updates.', error)
-      setAvailableUpdate(null)
-      setUpdateError(error instanceof Error ? error.message : 'Update check failed.')
-      setUpdateStatus('error')
-    }
-  }, [])
-
-  const installAvailableUpdate = async () => {
-    if (!availableUpdate) {
-      return
-    }
-
-    setUpdateStatus('installing')
-    setUpdateError(null)
-
-    try {
-      await availableUpdate.downloadAndInstall()
-      setUpdateStatus('installed')
-    } catch (error) {
-      console.error('Failed to install update.', error)
-      setUpdateError(error instanceof Error ? error.message : 'Update install failed.')
-      setUpdateStatus('error')
-    }
-  }
-
-  useEffect(() => {
-    void checkForUpdates()
-  }, [checkForUpdates])
 
   useEffect(() => {
     shotsRef.current = shots
@@ -1782,14 +1715,6 @@ function App({
   )
 
   const dashboardSummaryLead = rankedDashboardSummaries[0] ?? null
-  const showDashboardUpdateStatus =
-    !import.meta.env.DEV &&
-    (updateStatus === 'available' ||
-      updateStatus === 'installing' ||
-      updateStatus === 'installed' ||
-      updateStatus === 'checking' ||
-      updateStatus === 'error')
-
   const dashboardSummariesByClub = useMemo(
     () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
     [dashboardSummaries],
@@ -5646,26 +5571,6 @@ function App({
               </button>
               <a href="/read">The Read</a>
             </nav>
-
-            {showDashboardUpdateStatus ? (
-            <div className="dashboard-update-panel" aria-live="polite">
-              {updateStatus === 'available' && availableUpdate ? (
-                <button onClick={installAvailableUpdate} type="button">
-                  Install update
-                </button>
-              ) : updateStatus === 'installing' ? (
-                <span>Installing update…</span>
-              ) : updateStatus === 'installed' ? (
-                <span>Update installed. Restart The Looper to finish.</span>
-              ) : updateStatus === 'checking' ? (
-                <span>Checking for updates…</span>
-              ) : updateStatus === 'error' ? (
-                <button onClick={checkForUpdates} title={updateError ?? undefined} type="button">
-                  Retry
-                </button>
-              ) : null}
-            </div>
-            ) : null}
 
             <div className="dashboard-rail-clubs">
               <div className="dashboard-rail-label">Club List</div>
