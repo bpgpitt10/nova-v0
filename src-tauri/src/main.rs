@@ -1031,6 +1031,40 @@ fn append_log_line(app: &tauri::AppHandle, file_name: &str, line: &str) -> Resul
     Ok(())
 }
 
+fn append_simread_sse_log(app: &tauri::AppHandle, line: &str) {
+    println!("[SimRead SSE] {line}");
+    if let Err(error) = append_log_line(app, "simread-sse-bridge.log", line) {
+        eprintln!("[SimRead SSE] failed to write diagnostic log: {error}");
+    }
+
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let local_logs_dir = PathBuf::from(local_app_data).join("The Looper").join("logs");
+        if let Err(error) = create_dir_all(&local_logs_dir) {
+            eprintln!("[SimRead SSE] failed to create local diagnostic log dir: {error}");
+            return;
+        }
+
+        let local_log_file = local_logs_dir.join("simread-sse-bridge.log");
+        match OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&local_log_file)
+        {
+            Ok(mut file) => {
+                if let Err(error) = writeln!(file, "{line}") {
+                    eprintln!("[SimRead SSE] failed to write local diagnostic log: {error}");
+                }
+            }
+            Err(error) => {
+                eprintln!(
+                    "[SimRead SSE] failed to open local diagnostic log {}: {error}",
+                    local_log_file.display()
+                );
+            }
+        }
+    }
+}
+
 #[tauri::command]
 fn append_nova_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
     append_log_line(&app, "nova-connection.log", &line)
@@ -1237,6 +1271,12 @@ fn append_enrichment_log(app: tauri::AppHandle, line: String) -> Result<(), Stri
 }
 
 #[tauri::command]
+fn append_simread_sse_bridge_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
+    append_simread_sse_log(&app, &line);
+    Ok(())
+}
+
+#[tauri::command]
 fn start_simread_helper(app: tauri::AppHandle) -> Result<SimReadHelperStartResult, String> {
     let simread_state = app.state::<SimReadState>();
 
@@ -1371,17 +1411,54 @@ fn emit_simread_sse_frame(
     }
 
     let data = data_lines.join("\n");
-    app.emit(
+    let row_id = serde_json::from_str::<Value>(&data)
+        .ok()
+        .and_then(|value| value.get("rowId").and_then(Value::as_i64));
+    append_simread_sse_log(
+        app,
+        &format!(
+            "emit_attempt event_name={} tauri_event={} row_id={:?} data_len={}",
+            event_name,
+            SIMREAD_SSE_EVENT_NAME,
+            row_id,
+            data.len()
+        ),
+    );
+
+    let emit_result = app.emit(
         SIMREAD_SSE_EVENT_NAME,
         SimReadSsePayload {
             event: event_name.to_string(),
             data,
         },
-    )
-    .map_err(|error| format!("failed to emit SimRead SSE payload: {error}"))
+    );
+
+    match emit_result {
+        Ok(()) => {
+            append_simread_sse_log(
+                app,
+                &format!(
+                    "emit_success event_name={} tauri_event={} row_id={:?}",
+                    event_name, SIMREAD_SSE_EVENT_NAME, row_id
+                ),
+            );
+            Ok(())
+        }
+        Err(error) => {
+            append_simread_sse_log(
+                app,
+                &format!(
+                    "emit_failure event_name={} tauri_event={} row_id={:?} error={}",
+                    event_name, SIMREAD_SSE_EVENT_NAME, row_id, error
+                ),
+            );
+            Err(format!("failed to emit SimRead SSE payload: {error}"))
+        }
+    }
 }
 
 fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<AtomicBool>) {
+    append_simread_sse_log(&app, &format!("bridge_thread_start url={events_url}"));
     let client = match Client::builder()
         .connect_timeout(Duration::from_secs(5))
         .no_gzip()
@@ -1389,10 +1466,14 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
     {
         Ok(value) => value,
         Err(error) => {
+            append_simread_sse_log(
+                &app,
+                &format!("bridge_client_create_failure url={events_url} error={error}"),
+            );
             let _ = app.emit(
                 SIMREAD_SSE_ERROR_NAME,
                 SimReadSseErrorPayload {
-                    events_url,
+                    events_url: events_url.clone(),
                     message: format!("failed to create SimRead SSE client: {error}"),
                 },
             );
@@ -1403,10 +1484,14 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
     let response = match client.get(&events_url).send() {
         Ok(value) => value,
         Err(error) => {
+            append_simread_sse_log(
+                &app,
+                &format!("bridge_connect_failure url={events_url} error={error}"),
+            );
             let _ = app.emit(
                 SIMREAD_SSE_ERROR_NAME,
                 SimReadSseErrorPayload {
-                    events_url,
+                    events_url: events_url.clone(),
                     message: format!("failed to connect to SimRead SSE stream: {error}"),
                 },
             );
@@ -1416,16 +1501,21 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
 
     if !response.status().is_success() {
         let status = response.status();
+        append_simread_sse_log(
+            &app,
+            &format!("bridge_http_failure url={events_url} status={status}"),
+        );
         let _ = app.emit(
             SIMREAD_SSE_ERROR_NAME,
             SimReadSseErrorPayload {
-                events_url,
+                events_url: events_url.clone(),
                 message: format!("SimRead SSE stream returned HTTP {status}"),
             },
         );
         return;
     }
 
+    append_simread_sse_log(&app, &format!("bridge_connected url={events_url}"));
     let mut reader = BufReader::new(response);
     let mut event_name = "message".to_string();
     let mut data_lines: Vec<String> = Vec::new();
@@ -1455,6 +1545,10 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
 
                 if let Some(value) = trimmed.strip_prefix("event:") {
                     event_name = value.trim_start().to_string();
+                    append_simread_sse_log(
+                        &app,
+                        &format!("parsed_event_type event_name={event_name}"),
+                    );
                     continue;
                 }
 
@@ -1464,10 +1558,14 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
             }
             Err(error) => {
                 if !stop.load(Ordering::SeqCst) {
+                    append_simread_sse_log(
+                        &app,
+                        &format!("bridge_read_failure url={events_url} error={error}"),
+                    );
                     let _ = app.emit(
                         SIMREAD_SSE_ERROR_NAME,
                         SimReadSseErrorPayload {
-                            events_url,
+                            events_url: events_url.clone(),
                             message: format!("SimRead SSE stream read failed: {error}"),
                         },
                     );
@@ -1476,6 +1574,7 @@ fn run_simread_event_stream(app: AppHandle, events_url: String, stop: Arc<Atomic
             }
         }
     }
+    append_simread_sse_log(&app, &format!("bridge_thread_stop url={events_url}"));
 }
 
 #[tauri::command]
@@ -1495,6 +1594,10 @@ fn start_simread_event_stream(
         .unwrap_or_else(|| SIMREAD_EVENTS_URL.to_string());
 
     let stream_state = app.state::<SimReadEventStreamState>();
+    append_simread_sse_log(
+        &app,
+        &format!("start_command url={resolved_events_url} tauri_event={SIMREAD_SSE_EVENT_NAME}"),
+    );
     stop_simread_event_stream_state(stream_state.inner());
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -1553,6 +1656,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             append_enrichment_log,
             append_nova_log,
+            append_simread_sse_bridge_log,
             discover_nova_ws_endpoint,
             export_shots_csv,
             start_simread_event_stream,

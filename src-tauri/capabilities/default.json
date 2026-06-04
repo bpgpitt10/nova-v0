@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Allow the main Looper window to use core Tauri APIs required by the app.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1131,6 +1131,10 @@ function App({
   }
 
   const insertSimReadFinalShotEvent = (event: Parameters<typeof mapSimReadFinalShotToShot>[0]) => {
+    console.info('[SimRead Shot] final-shot insertion handler called', {
+      rowId: event.rowId,
+      source: event.source,
+    })
     const shot = mapSimReadFinalShotToShot(event, {
       selectedClub: selectedClubRef.current,
       selectedShotVariantId: selectedShotVariantIdRef.current,
@@ -1139,18 +1143,34 @@ function App({
     const isDuplicate = Boolean(duplicateShot)
 
     if (isDuplicate) {
+      console.info('[SimRead Shot] skipped duplicate final-shot', {
+        rowId: event.rowId,
+        shotId: shot.id,
+      })
       if (duplicateShot && shouldEnrichSimReadShot(duplicateShot)) {
+        console.info('[SimRead Shot] enriching duplicate final-shot', {
+          rowId: event.rowId,
+          shotId: duplicateShot.id,
+        })
         enrichSimReadShot(duplicateShot)
       }
       return
     }
 
+    console.info('[SimRead Shot] inserting final-shot', {
+      rowId: event.rowId,
+      shotId: shot.id,
+    })
     setShots((currentShots) => {
       const nextShots = [shot, ...currentShots]
       shotsRef.current = nextShots
       return nextShots
     })
 
+    console.info('[SimRead Shot] enrichment queued', {
+      rowId: event.rowId,
+      shotId: shot.id,
+    })
     enrichSimReadShot(shot)
   }
 
@@ -1325,6 +1345,10 @@ function App({
               if (!isActive) {
                 return
               }
+              console.info('[SimRead Connection] onFinalShot called', {
+                rowId: event.rowId,
+                source: event.source,
+              })
               setGsproSessionAlert(null)
               insertSimReadFinalShotEvent(event)
             },
