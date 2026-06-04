@@ -115,6 +115,10 @@ type LiveConnection = NovaConnection | SimReadLiveConnection
 type GsproSessionAlert = {
   severity: 'warning' | 'error'
   message: string
+  action?: string
+}
+type TimedGsproSessionAlert = GsproSessionAlert & {
+  graceMs?: number
 }
 type UpdateStatus =
   | 'idle'
@@ -130,6 +134,9 @@ const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
+
+const GSPRO_WAITING_ALERT_GRACE_MS = 9000
+const GSPRO_STARTUP_ERROR_GRACE_MS = 4000
 
 const formatDecimal = (value: number | undefined, unit = '') => {
   if (typeof value !== 'number') {
@@ -821,23 +828,28 @@ const shotShapeLabel = (shot: Shot | null) => {
 
 const mapSimReadStatusToGsproAlert = (
   event: SimReadStructuredStatusEvent,
-): GsproSessionAlert | null => {
+): TimedGsproSessionAlert | null => {
   switch (event.status) {
     case 'waiting-for-fresh-range-shot':
     case 'no-range-shots':
       return {
         severity: 'warning',
-        message: 'GSPro Practice Range not detected \u2014 open GSPro Practice Range and hit a shot.',
+        message: 'Waiting for a fresh GSPro Practice Range shot.',
+        action: 'Open GSPro Practice Range and hit a shot.',
+        graceMs: GSPRO_WAITING_ALERT_GRACE_MS,
       }
     case 'range-db-unavailable':
       return {
         severity: 'error',
-        message: 'GSPro range data is not available. Open GSPro Practice Range and try again.',
+        message: 'GSPro range data is not available.',
+        action: 'Open GSPro Practice Range and try again.',
+        graceMs: GSPRO_STARTUP_ERROR_GRACE_MS,
       }
     case 'missing-required-fields':
       return {
         severity: 'error',
-        message: 'GSPro shot data was incomplete. Hit another shot on GSPro Practice Range.',
+        message: 'GSPro shot data was incomplete.',
+        action: 'Hit another shot on GSPro Practice Range.',
       }
     default:
       return null
@@ -851,7 +863,7 @@ const helperStartFailureAlert = (): GsproSessionAlert => ({
 
 const sseConnectionFailureAlert = (): GsproSessionAlert => ({
   severity: 'error',
-  message: 'GSPro range data is not available. Open GSPro Practice Range and try again.',
+  message: 'GSPro connection issue. Restart The Looper and try again.',
 })
 type AppProps = {
   forceDashboardRoute?: boolean
@@ -1326,6 +1338,35 @@ function App({
       setActiveSessionSource(selectedSessionSource)
       setConnectionStatus('connecting')
       setGsproSessionAlert(null)
+      const gsproSessionStartedAt = Date.now()
+      let gsproAlertTimer: ReturnType<typeof setTimeout> | null = null
+      const clearPendingGsproAlert = () => {
+        if (gsproAlertTimer) {
+          clearTimeout(gsproAlertTimer)
+          gsproAlertTimer = null
+        }
+      }
+      const showGsproAlertWithGrace = (alert: TimedGsproSessionAlert) => {
+        clearPendingGsproAlert()
+        const graceMs = alert.graceMs ?? 0
+        const elapsedMs = Date.now() - gsproSessionStartedAt
+        const visibleAlert: GsproSessionAlert = {
+          severity: alert.severity,
+          message: alert.message,
+          ...(alert.action ? { action: alert.action } : {}),
+        }
+
+        if (elapsedMs >= graceMs) {
+          setGsproSessionAlert(visibleAlert)
+          return
+        }
+
+        gsproAlertTimer = setTimeout(() => {
+          if (isActive) {
+            setGsproSessionAlert(visibleAlert)
+          }
+        }, graceMs - elapsedMs)
+      }
 
       void startSimReadHelper()
         .then((result) => {
@@ -1336,6 +1377,7 @@ function App({
           if (!result.ok) {
             setConnectionStatus('error')
             console.error('[SimRead helper] start failed', result)
+            clearPendingGsproAlert()
             setGsproSessionAlert(helperStartFailureAlert())
             return
           }
@@ -1349,6 +1391,7 @@ function App({
                 rowId: event.rowId,
                 source: event.source,
               })
+              clearPendingGsproAlert()
               setGsproSessionAlert(null)
               insertSimReadFinalShotEvent(event)
             },
@@ -1364,13 +1407,14 @@ function App({
               }
               const alert = mapSimReadStatusToGsproAlert(event)
               if (alert) {
-                setGsproSessionAlert(alert)
+                showGsproAlertWithGrace(alert)
               }
             },
             onError: (error) => {
               if (!isActive) {
                 return
               }
+              clearPendingGsproAlert()
               setGsproSessionAlert(sseConnectionFailureAlert())
               console.error('[SimRead Connection] event handling failed', error)
             },
@@ -1390,11 +1434,13 @@ function App({
             return
           }
           setConnectionStatus('error')
+          clearPendingGsproAlert()
           setGsproSessionAlert(helperStartFailureAlert())
         })
 
       return () => {
         isActive = false
+        clearPendingGsproAlert()
         connectionRef.current?.disconnect()
         connectionRef.current = null
       }
@@ -4987,7 +5033,10 @@ function App({
               className={`session-intelligence-gspro-alert is-${visibleGsproSessionAlert.severity}`}
               role="alert"
             >
-              {visibleGsproSessionAlert.message}
+              <span>{visibleGsproSessionAlert.message}</span>
+              {visibleGsproSessionAlert.action ? (
+                <small>{visibleGsproSessionAlert.action}</small>
+              ) : null}
             </div>
           ) : null}
           <div className="session-intelligence-actions">
