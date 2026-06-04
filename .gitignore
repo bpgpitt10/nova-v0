@@ -34,3 +34,5 @@ src-tauri/resources/node/*
 *.sln
 *.sw?
 nova-tester/
+
+release/
