@@ -50,7 +50,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkzNkM1RTYxMTMxQjM0NDcKUldSSE5Cc1RZVjVzazMzV3NLMVNkbnZGQ2sycEdsaVdhVjQ4QnBKNXRaWUNiWG15c2VaY2FTUEMK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4ODQwNDNGNDg5NUIzODUKUldTRnM1VklQd1NFZUgyVnlWSlFNQVdvSXNsaUtrdTdWNkFRQzNld0ViNFhSMy9keFMyZHlzckwK",
       "endpoints": [
         "https://github.com/bpgpitt10/nova-v0/releases/latest/download/latest.json"
       ]
