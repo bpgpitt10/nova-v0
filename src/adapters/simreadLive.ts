@@ -8,6 +8,7 @@ import {
 import {
   patchGsproRuntimeDiagnostics,
   recordGsproRuntimeError,
+  recordGsproVisibility,
   resetGsproRuntimeDiagnostics,
 } from '../lib/gsproRuntimeDiagnostics'
 import type { SimReadFinalShotEvent, SimReadResolvedShot } from './simreadFinalShot'
@@ -264,6 +265,16 @@ export const connectToSimReadEvents = ({
     handleFinalShot((event as CustomEvent<SimReadFinalShotEvent>).detail)
   }
 
+  const handleVisibilityOrFocus = () => {
+    recordGsproVisibility()
+    if (!disconnected && document.visibilityState === 'visible') {
+      // Chrome can throttle interval timers while GSPro is in the foreground.
+      // Invalidating the signature guarantees the next 750ms poll re-reads the
+      // database and drains anything that accumulated while Looper was hidden.
+      lastSignature = null
+    }
+  }
+
   const fail = (error: unknown, message: string, userAction?: string) => {
     if (disconnected) {
       return
@@ -281,6 +292,9 @@ export const connectToSimReadEvents = ({
   }
 
   target.addEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
+  document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+  window.addEventListener('focus', handleVisibilityOrFocus)
+  recordGsproVisibility()
   onStatusChange?.('connecting')
 
   const initialize = async () => {
@@ -403,6 +417,8 @@ export const connectToSimReadEvents = ({
       }
       patchGsproRuntimeDiagnostics({ status: 'disconnected' })
       target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
       onStatusChange?.('disconnected')
     },
   }
