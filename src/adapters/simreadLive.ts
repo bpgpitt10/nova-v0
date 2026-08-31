@@ -11,6 +11,7 @@ const SIMREAD_FINAL_SHOT_EVENT = 'looper:simread-final-shot'
 const SIMREAD_EVENT_TARGET_KEY = '__looperSimReadEventTarget'
 const SIMREAD_DISPATCH_KEY = '__looperDispatchSimReadFinalShot'
 const GSPRO_POLL_MS = 750
+const GSPRO_CATCH_UP_BATCH_SIZE = 25
 
 export const DEFAULT_SIMREAD_EVENTS_URL = 'browser-gspro-db'
 export const DEV_SIMREAD_EVENTS_PROXY_URL = 'browser-gspro-db'
@@ -264,9 +265,9 @@ export const connectToSimReadEvents = ({
     const handle = getSelectedGsproDatabase()
     if (!handle) {
       fail(
-        new Error('GSPro.db has not been selected.'),
+        new Error('GSPro database access has not been prepared.'),
         'GSPro database access is not connected.',
-        'Return to the Looper home screen and start the session again to select GSPro.db.',
+        'Return to the Looper home screen and reconnect the remembered GSPro folder.',
       )
       return
     }
@@ -295,7 +296,11 @@ export const connectToSimReadEvents = ({
               return
             }
 
-            const newRows = await readGsproRangeShotsAfterIdFromFile(file, lastRowId)
+            const newRows = await readGsproRangeShotsAfterIdFromFile(
+              file,
+              lastRowId,
+              GSPRO_CATCH_UP_BATCH_SIZE,
+            )
             if (disconnected) {
               return
             }
@@ -305,7 +310,12 @@ export const connectToSimReadEvents = ({
               handleFinalShot(mapRangeRowToFinalShot(row, sequence))
               lastRowId = Math.max(lastRowId, row.id)
             }
-            lastSignature = signature
+
+            // If the batch filled, force another read on the next poll even if the
+            // SQLite file metadata has not changed again. This drains every row that
+            // accumulated while the tab was throttled or temporarily unable to read.
+            lastSignature =
+              newRows.length >= GSPRO_CATCH_UP_BATCH_SIZE ? null : signature
           } catch (error) {
             // GSPro may be writing the SQLite file while we snapshot it. Do not advance
             // the signature on failure; the next poll will retry the same change.
@@ -318,8 +328,8 @@ export const connectToSimReadEvents = ({
     } catch (error) {
       fail(
         error,
-        'Looper could not read the selected GSPro database.',
-        'Confirm you selected GSPro.db from the GSPro data folder.',
+        'Looper could not read GSPro.db from the connected GSPro folder.',
+        'Reconnect the GSPro folder from the Looper home screen and try again.',
       )
     }
   }
