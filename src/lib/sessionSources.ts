@@ -44,8 +44,11 @@ export const sessionSourceFromMetadata = (
 export const sessionSourceFromSearchParams = (search: URLSearchParams | null) =>
   resolveSessionSource(search?.get(SESSION_SOURCE_PARAM)) ??
   resolveSessionSource(search?.get(LEGACY_SESSION_FEED_PARAM)) ??
-  'nova'
+  'gspro'
 
+// Keep legacy persisted shot-source values readable while the web migration is in progress.
+// New live sessions are GSPro-first; the underlying Shot union can be migrated separately
+// without rewriting historical session data in place.
 export const shotSourceForSessionSource = (source: SessionSource): Shot['source'] => {
   if (source === 'mock') {
     return 'mock'
@@ -59,7 +62,7 @@ export const shotSourceForSessionSource = (source: SessionSource): Shot['source'
 export const sessionSourceLabel = (source: SessionSource) => {
   switch (source) {
     case 'nova':
-      return 'Nova'
+      return 'Nova (legacy)'
     case 'gspro':
       return 'GSPro'
     case 'mock':
