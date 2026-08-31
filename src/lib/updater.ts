@@ -1,19 +1,14 @@
-import { check, type Update } from '@tauri-apps/plugin-updater'
+import type { Update } from '@tauri-apps/plugin-updater'
 
 export type LooperUpdateCheckResult =
   | { status: 'unavailable' }
   | { status: 'up-to-date' }
   | { status: 'available'; update: Update }
 
-export const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+// Web deployments update when the site is redeployed/refreshed. Keep this API
+// temporarily so the existing App shell does not need to change during migration.
+export const isTauriRuntime = () => false
 
-export const checkForLooperUpdate = async (): Promise<LooperUpdateCheckResult> => {
-  if (!isTauriRuntime()) {
-    return { status: 'unavailable' }
-  }
-
-  const update = await check()
-  return update ? { status: 'available', update } : { status: 'up-to-date' }
-}
+export const checkForLooperUpdate = async (): Promise<LooperUpdateCheckResult> => ({
+  status: 'unavailable',
+})
