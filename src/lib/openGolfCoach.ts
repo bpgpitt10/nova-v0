@@ -24,6 +24,7 @@ export type OpenGolfCoachEnricher = {
 }
 
 const OPEN_GOLF_COACH_WEB_API_BASE = '/api/open-golf-coach'
+const OPEN_GOLF_COACH_REQUEST_TIMEOUT_MS = 8000
 const ENRICHMENT_LOG_CHANNEL = 'enrichment-pipeline'
 const OPEN_GOLF_COACH_REQUIRED_INPUT_FIELDS = [
   'ball_speed_meters_per_second',
@@ -78,11 +79,19 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
 
     const resolved = resolveOpenGolfCoachUrl()
     const openGolfCoachUrl = resolved.url
-    recordOgcAttempt(input)
+    const startedAt = Date.now()
+    const elapsedMs = () => Math.max(0, Date.now() - startedAt)
+    const controller = new AbortController()
+    const timeoutId = globalThis.setTimeout(
+      () => controller.abort(),
+      OPEN_GOLF_COACH_REQUEST_TIMEOUT_MS,
+    )
 
+    recordOgcAttempt(input)
     void appendEnrichmentLog('enrichment_attempt', {
       apiBase: openGolfCoachUrl,
       source: resolved.source,
+      timeoutMs: OPEN_GOLF_COACH_REQUEST_TIMEOUT_MS,
       input,
     })
 
@@ -93,23 +102,28 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(input),
+        signal: controller.signal,
       })
 
       void appendEnrichmentLog('enrichment_response_status', {
         status: response.status,
         ok: response.ok,
+        durationMs: elapsedMs(),
       })
 
       if (!response.ok) {
         const responseText = await response.text().catch(() => '')
+        const durationMs = elapsedMs()
         recordOgcFailure(
           `HTTP ${response.status}${responseText ? ` · ${responseText}` : ''}`,
           response.status,
+          durationMs,
         )
         void appendEnrichmentLog('enrichment_failure_http', {
           status: response.status,
           statusText: response.statusText,
           responseText,
+          durationMs,
         })
         return {
           derivedValues: {},
@@ -128,10 +142,12 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         payload = rawResponseText ? JSON.parse(rawResponseText) : {}
       } catch (parseError) {
         const message = parseError instanceof Error ? parseError.message : String(parseError)
-        recordOgcFailure(`Response parse failed: ${message}`, response.status)
+        const durationMs = elapsedMs()
+        recordOgcFailure(`Response parse failed: ${message}`, response.status, durationMs)
         void appendEnrichmentLog('enrichment_failure_parse', {
           rawResponseText,
           parseError: message,
+          durationMs,
         })
         return {
           derivedValues: {},
@@ -141,9 +157,15 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       if (!payload || typeof payload !== 'object') {
-        recordOgcFailure(`Unexpected response payload type: ${typeof payload}`, response.status)
+        const durationMs = elapsedMs()
+        recordOgcFailure(
+          `Unexpected response payload type: ${typeof payload}`,
+          response.status,
+          durationMs,
+        )
         void appendEnrichmentLog('enrichment_failure_payload_shape', {
           payloadType: typeof payload,
+          durationMs,
         })
         return {
           derivedValues: {},
@@ -153,8 +175,9 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       const derivedValues = extractOpenGolfCoachDerivedValues(payload as OpenGolfCoachPayload)
-      recordOgcSuccess(derivedValues, response.status)
-      void appendEnrichmentLog('enrichment_success', { derivedValues })
+      const durationMs = elapsedMs()
+      recordOgcSuccess(derivedValues, response.status, durationMs)
+      void appendEnrichmentLog('enrichment_success', { derivedValues, durationMs })
 
       return {
         derivedValues,
@@ -162,16 +185,25 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         status: 'success',
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      recordOgcFailure(message)
+      const timedOut = error instanceof DOMException && error.name === 'AbortError'
+      const message = timedOut
+        ? `OpenGolfCoach request timed out after ${OPEN_GOLF_COACH_REQUEST_TIMEOUT_MS} ms.`
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      const durationMs = elapsedMs()
+      recordOgcFailure(message, null, durationMs)
       void appendEnrichmentLog('enrichment_failure_fetch', {
         error: message,
+        durationMs,
       })
       return {
         derivedValues: {},
         payload: null,
         status: 'failure',
       }
+    } finally {
+      globalThis.clearTimeout(timeoutId)
     }
   },
 }
