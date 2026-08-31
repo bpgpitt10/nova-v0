@@ -1,128 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
+import {
+  getGsproConnectionStatus,
+  getSelectedGsproDatabase,
+  gsproFileSignature,
+  isGsproBrowserFileAccessSupported,
+  pickAndRememberGsproDirectory,
+  prepareGsproDatabaseForSession,
+  readLatestGsproRangeShot,
+  type BrowserGsproRangeShot,
+  type GsproConnectionStatus,
+} from '../lib/browserGsproDb'
 
-type GsproFileHandle = {
-  kind: 'file'
-  name: string
-  getFile: () => Promise<File>
-  queryPermission?: (options?: { mode?: 'read' | 'readwrite' }) => Promise<PermissionState>
-  requestPermission?: (options?: { mode?: 'read' | 'readwrite' }) => Promise<PermissionState>
-}
-
-type SqlValue = number | string | Uint8Array | null
-
-type SqlResult = {
-  columns: string[]
-  values: SqlValue[][]
-}
-
-type SqlDatabase = {
-  exec: (sql: string) => SqlResult[]
-  close: () => void
-}
-
-type SqlJsStatic = {
-  Database: new (bytes?: Uint8Array) => SqlDatabase
-}
-
-type InitSqlJs = (config?: {
-  locateFile?: (file: string) => string
-}) => Promise<SqlJsStatic>
-
-type GsproProofWindow = Window &
-  typeof globalThis & {
-    showOpenFilePicker?: (options?: {
-      multiple?: boolean
-      types?: Array<{
-        description: string
-        accept: Record<string, string[]>
-      }>
-    }) => Promise<GsproFileHandle[]>
-    initSqlJs?: InitSqlJs
-  }
-
-type LatestRangeShot = {
-  id: number
-  dateCreated: string | number | null
-  rawShotData: string
-  parsedShotData: unknown
-}
-
-const SQL_JS_VERSION = '1.14.2'
-const SQL_JS_BASE = `https://cdn.jsdelivr.net/npm/sql.js@${SQL_JS_VERSION}/dist`
 const POLL_MS = 1000
 
-let sqlJsPromise: Promise<SqlJsStatic> | null = null
-
-const getWindow = () => window as GsproProofWindow
-
-const loadSqlJs = () => {
-  if (sqlJsPromise) {
-    return sqlJsPromise
-  }
-
-  sqlJsPromise = new Promise<SqlJsStatic>((resolve, reject) => {
-    const existingInit = getWindow().initSqlJs
-    if (existingInit) {
-      existingInit({ locateFile: (file) => `${SQL_JS_BASE}/${file}` }).then(resolve, reject)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = `${SQL_JS_BASE}/sql-wasm.js`
-    script.async = true
-    script.onload = () => {
-      const initSqlJs = getWindow().initSqlJs
-      if (!initSqlJs) {
-        reject(new Error('sql.js loaded but initSqlJs was not available'))
-        return
-      }
-      initSqlJs({ locateFile: (file) => `${SQL_JS_BASE}/${file}` }).then(resolve, reject)
-    }
-    script.onerror = () => reject(new Error('Failed to load sql.js from jsDelivr'))
-    document.head.appendChild(script)
-  })
-
-  return sqlJsPromise
-}
-
-const parseLatestRangeShot = async (file: File): Promise<LatestRangeShot | null> => {
-  const SQL = await loadSqlJs()
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const db = new SQL.Database(bytes)
-
-  try {
-    const result = db.exec(
-      'SELECT ID, DateCreated, ShotData FROM DrivingRangeShot ORDER BY ID DESC LIMIT 1',
-    )[0]
-    const row = result?.values?.[0]
-    if (!row) {
-      return null
-    }
-
-    const [id, dateCreated, shotData] = row
-    if (typeof id !== 'number' || typeof shotData !== 'string') {
-      throw new Error('Latest DrivingRangeShot row did not have the expected GSPro shape')
-    }
-
-    let parsedShotData: unknown = shotData
-    try {
-      parsedShotData = JSON.parse(shotData)
-    } catch {
-      // Keep the raw string visible if GSPro ever returns non-JSON text.
-    }
-
-    return {
-      id,
-      dateCreated:
-        typeof dateCreated === 'number' || typeof dateCreated === 'string' || dateCreated === null
-          ? dateCreated
-          : null,
-      rawShotData: shotData,
-      parsedShotData,
-    }
-  } finally {
-    db.close()
-  }
+type OgcHealth = {
+  ok: boolean
+  status: number | null
+  payload: unknown
+  error: string | null
 }
 
 const formatTimestamp = (value: number | null) => {
@@ -132,105 +27,167 @@ const formatTimestamp = (value: number | null) => {
   return new Date(value).toLocaleString()
 }
 
+const connectionSummary = (status: GsproConnectionStatus | null) => {
+  if (!status) {
+    return 'Not checked'
+  }
+  if (status.permission === 'unsupported') {
+    return 'Unsupported browser'
+  }
+  if (status.ready) {
+    return `Ready · ${status.directoryName ?? 'GSPro folder'}`
+  }
+  if (status.remembered) {
+    return `Remembered · permission ${status.permission}`
+  }
+  return 'Not connected'
+}
+
 function GsproWebProofPage() {
-  const [fileName, setFileName] = useState<string>('None selected')
-  const [latestShot, setLatestShot] = useState<LatestRangeShot | null>(null)
-  const [status, setStatus] = useState('Select GSPro.db to begin.')
-  const [error, setError] = useState<string | null>(null)
+  const [connection, setConnection] = useState<GsproConnectionStatus | null>(null)
+  const [latestShot, setLatestShot] = useState<BrowserGsproRangeShot | null>(null)
   const [lastFileModified, setLastFileModified] = useState<number | null>(null)
-  const [watching, setWatching] = useState(false)
-  const handleRef = useRef<GsproFileHandle | null>(null)
-  const lastObservedSignatureRef = useRef<string | null>(null)
+  const [dbStatus, setDbStatus] = useState('Not checked')
+  const [ogcHealth, setOgcHealth] = useState<OgcHealth>({
+    ok: false,
+    status: null,
+    payload: null,
+    error: null,
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const readInFlightRef = useRef(false)
+  const lastSignatureRef = useRef<string | null>(null)
+  const supported = isGsproBrowserFileAccessSupported()
 
-  const supported = typeof window !== 'undefined' && Boolean(getWindow().showOpenFilePicker)
+  const refreshConnection = async () => {
+    const status = await getGsproConnectionStatus()
+    setConnection(status)
+    return status
+  }
 
-  const readCurrentFile = async (force = false) => {
-    const handle = handleRef.current
+  const readDatabase = async (force = false) => {
+    const handle = getSelectedGsproDatabase()
     if (!handle || readInFlightRef.current) {
       return
     }
 
     readInFlightRef.current = true
     try {
-      const file = await handle.getFile()
-      const signature = `${file.lastModified}:${file.size}`
+      const { file, shot } = await readLatestGsproRangeShot(handle)
+      const signature = gsproFileSignature(file)
       setLastFileModified(file.lastModified)
-
-      if (!force && signature === lastObservedSignatureRef.current) {
+      if (!force && signature === lastSignatureRef.current) {
         return
       }
 
-      lastObservedSignatureRef.current = signature
-      setStatus('GSPro.db changed — reading latest shot…')
-      const shot = await parseLatestRangeShot(file)
+      lastSignatureRef.current = signature
       setLatestShot(shot)
-      setError(null)
-      setStatus(
+      setDbStatus(
         shot
-          ? `Watching GSPro.db · latest DrivingRangeShot ID ${shot.id}`
-          : 'Watching GSPro.db · no DrivingRangeShot rows found yet.',
+          ? `Readable · latest DrivingRangeShot ID ${shot.id}`
+          : 'Readable · no DrivingRangeShot rows found',
       )
+      setError(null)
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught)
+      setDbStatus('Read failed')
       setError(message)
-      setStatus('Could not read GSPro.db.')
     } finally {
       readInFlightRef.current = false
     }
   }
 
-  const selectGsproDatabase = async () => {
-    setError(null)
-    if (!supported || !getWindow().showOpenFilePicker) {
-      setError('This browser does not support the File System Access picker. Use desktop Chrome.')
-      return
-    }
-
+  const checkOgc = async () => {
     try {
-      const [handle] = await getWindow().showOpenFilePicker({
-        multiple: false,
-        types: [
-          {
-            description: 'GSPro database',
-            accept: {
-              'application/octet-stream': ['.db'],
-            },
-          },
-        ],
-      })
-
-      if (!handle) {
-        return
+      const response = await fetch('/api/open-golf-coach/derive', { method: 'GET' })
+      const text = await response.text()
+      let payload: unknown = text
+      try {
+        payload = text ? JSON.parse(text) : null
+      } catch {
+        // Keep raw text visible for diagnostics.
       }
+      setOgcHealth({
+        ok: response.ok,
+        status: response.status,
+        payload,
+        error: response.ok ? null : `HTTP ${response.status}`,
+      })
+    } catch (caught) {
+      setOgcHealth({
+        ok: false,
+        status: null,
+        payload: null,
+        error: caught instanceof Error ? caught.message : String(caught),
+      })
+    }
+  }
 
-      handleRef.current = handle
-      lastObservedSignatureRef.current = null
-      setFileName(handle.name)
-      setWatching(true)
-      setStatus('Loading GSPro.db…')
-      await readCurrentFile(true)
+  const runChecks = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const status = await refreshConnection()
+      if (status.ready) {
+        await readDatabase(true)
+      } else if (status.remembered && status.permission === 'prompt') {
+        setDbStatus('Folder remembered · permission will be requested from Start or Connect')
+      } else if (!status.remembered) {
+        setDbStatus('Connect the GSPro folder first')
+      }
+      await checkOgc()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const connectGspro = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await pickAndRememberGsproDirectory()
+      await refreshConnection()
+      await readDatabase(true)
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught)
-      if (message.toLowerCase().includes('abort')) {
-        return
+      if (!message.toLowerCase().includes('abort')) {
+        setError(message)
       }
-      setError(message)
-      setStatus('GSPro.db selection failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const authorizeRememberedFolder = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await prepareGsproDatabaseForSession()
+      await refreshConnection()
+      await readDatabase(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setBusy(false)
     }
   }
 
   useEffect(() => {
-    if (!watching) {
+    void runChecks()
+  }, [])
+
+  useEffect(() => {
+    if (!connection?.ready) {
       return
     }
-
     const interval = window.setInterval(() => {
-      void readCurrentFile(false)
+      void readDatabase(false)
     }, POLL_MS)
-
     return () => window.clearInterval(interval)
-  }, [watching])
+  }, [connection?.ready])
 
   return (
     <main
@@ -245,13 +202,13 @@ function GsproWebProofPage() {
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: 24 }}>
           <p style={{ color: '#D4B15A', fontWeight: 700, margin: '0 0 8px' }}>
-            LOOPER · WEB GSPro PROOF
+            LOOPER · GSPro WEB DIAGNOSTICS
           </p>
-          <h1 style={{ margin: 0, fontSize: 38 }}>Direct GSPro capture in Chrome</h1>
-          <p style={{ color: '#CFD8CD', maxWidth: 760, lineHeight: 1.5 }}>
-            This page reads GSPro.db directly from the browser. No Tauri, no SimRead runtime,
-            no localhost helper. Select the live GSPro.db file, then hit shots in the GSPro
-            practice range and watch the latest DrivingRangeShot row change.
+          <h1 style={{ margin: 0, fontSize: 38 }}>Browser GSPro readiness</h1>
+          <p style={{ color: '#CFD8CD', maxWidth: 820, lineHeight: 1.5 }}>
+            This page exercises the same remembered GSPro folder access, SQLite reader, and hosted
+            OpenGolfCoach endpoint used by the real Looper session flow. No Tauri or local helper is
+            involved.
           </p>
         </div>
 
@@ -266,65 +223,94 @@ function GsproWebProofPage() {
         >
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
-              onClick={() => void selectGsproDatabase()}
+              onClick={() => void runChecks()}
               type="button"
-              disabled={!supported}
+              disabled={busy}
               style={{
                 border: 0,
                 borderRadius: 10,
                 padding: '11px 16px',
                 fontWeight: 800,
-                cursor: supported ? 'pointer' : 'not-allowed',
+                cursor: busy ? 'wait' : 'pointer',
                 background: '#D4B15A',
                 color: '#0E1710',
               }}
             >
-              Select GSPro.db
+              {busy ? 'Checking…' : 'Run checks'}
             </button>
-            <button
-              onClick={() => void readCurrentFile(true)}
-              type="button"
-              disabled={!handleRef.current}
-              style={{
-                border: '1px solid #314233',
-                borderRadius: 10,
-                padding: '10px 16px',
-                fontWeight: 700,
-                cursor: handleRef.current ? 'pointer' : 'not-allowed',
-                background: '#172419',
-                color: '#fff',
-              }}
-            >
-              Read now
-            </button>
-            <span style={{ color: supported ? '#76D39B' : '#D18A3B', fontWeight: 700 }}>
-              {supported ? 'Browser file access available' : 'Use desktop Chrome'}
-            </span>
+            {supported ? (
+              <button
+                onClick={() => void connectGspro()}
+                type="button"
+                disabled={busy}
+                style={{
+                  border: '1px solid #314233',
+                  borderRadius: 10,
+                  padding: '10px 16px',
+                  fontWeight: 700,
+                  cursor: busy ? 'wait' : 'pointer',
+                  background: '#172419',
+                  color: '#fff',
+                }}
+              >
+                {connection?.remembered ? 'Change GSPro Folder' : 'Connect GSPro Folder'}
+              </button>
+            ) : null}
+            {connection?.remembered && connection.permission === 'prompt' ? (
+              <button
+                onClick={() => void authorizeRememberedFolder()}
+                type="button"
+                disabled={busy}
+                style={{
+                  border: '1px solid #314233',
+                  borderRadius: 10,
+                  padding: '10px 16px',
+                  fontWeight: 700,
+                  cursor: busy ? 'wait' : 'pointer',
+                  background: '#172419',
+                  color: '#fff',
+                }}
+              >
+                Allow remembered folder
+              </button>
+            ) : null}
           </div>
 
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: 12,
-              marginTop: 18,
+              gap: 16,
+              marginTop: 20,
             }}
           >
             <div>
-              <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>File</div>
-              <div style={{ fontWeight: 700 }}>{fileName}</div>
+              <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+                Browser file access
+              </div>
+              <div style={{ fontWeight: 800, color: supported ? '#76D39B' : '#D18A3B' }}>
+                {supported ? 'Available' : 'Unavailable'}
+              </div>
             </div>
             <div>
               <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
-                Watch status
+                GSPro connection
               </div>
-              <div style={{ fontWeight: 700 }}>{status}</div>
+              <div style={{ fontWeight: 800 }}>{connectionSummary(connection)}</div>
             </div>
             <div>
               <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
-                DB modified
+                GSPro.db
               </div>
-              <div style={{ fontWeight: 700 }}>{formatTimestamp(lastFileModified)}</div>
+              <div style={{ fontWeight: 800 }}>{dbStatus}</div>
+            </div>
+            <div>
+              <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+                Hosted OGC
+              </div>
+              <div style={{ fontWeight: 800, color: ogcHealth.ok ? '#76D39B' : '#D18A3B' }}>
+                {ogcHealth.ok ? `Healthy · HTTP ${ogcHealth.status}` : ogcHealth.error ?? 'Not checked'}
+              </div>
             </div>
           </div>
 
@@ -335,7 +321,6 @@ function GsproWebProofPage() {
                 padding: 12,
                 borderRadius: 10,
                 background: 'rgba(200, 90, 74, 0.14)',
-                color: '#fff',
               }}
             >
               {error}
@@ -345,59 +330,82 @@ function GsproWebProofPage() {
 
         <section
           style={{
-            background: '#142118',
-            border: '1px solid #314233',
-            borderRadius: 16,
-            padding: 20,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
           }}
         >
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: 12,
-              marginBottom: 18,
+              background: '#142118',
+              border: '1px solid #314233',
+              borderRadius: 16,
+              padding: 20,
             }}
           >
-            <div>
-              <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
-                Latest row ID
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+                  Latest row ID
+                </div>
+                <div style={{ fontSize: 30, fontWeight: 800 }}>{latestShot?.id ?? '—'}</div>
               </div>
-              <div style={{ fontSize: 30, fontWeight: 800 }}>{latestShot?.id ?? '—'}</div>
-            </div>
-            <div>
-              <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
-                DateCreated
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>
-                {latestShot?.dateCreated === null || latestShot?.dateCreated === undefined
-                  ? '—'
-                  : String(latestShot.dateCreated)}
+              <div>
+                <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+                  DB modified
+                </div>
+                <div style={{ fontWeight: 700 }}>{formatTimestamp(lastFileModified)}</div>
               </div>
             </div>
+            <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase', marginTop: 18 }}>
+              Latest GSPro ShotData
+            </div>
+            <pre
+              style={{
+                margin: '8px 0 0',
+                padding: 16,
+                overflow: 'auto',
+                maxHeight: '48vh',
+                borderRadius: 12,
+                background: '#0E1710',
+                border: '1px solid #314233',
+                color: '#CFD8CD',
+                fontSize: 12,
+                lineHeight: 1.45,
+              }}
+            >
+              {latestShot ? JSON.stringify(latestShot.parsedShotData, null, 2) : 'No GSPro row loaded.'}
+            </pre>
           </div>
 
-          <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
-            Parsed ShotData
-          </div>
-          <pre
+          <div
             style={{
-              margin: '8px 0 0',
-              padding: 16,
-              overflow: 'auto',
-              maxHeight: '55vh',
-              borderRadius: 12,
-              background: '#0E1710',
+              background: '#142118',
               border: '1px solid #314233',
-              color: '#CFD8CD',
-              fontSize: 12,
-              lineHeight: 1.45,
+              borderRadius: 16,
+              padding: 20,
             }}
           >
-            {latestShot
-              ? JSON.stringify(latestShot.parsedShotData, null, 2)
-              : 'Select GSPro.db to inspect the latest shot.'}
-          </pre>
+            <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+              Hosted OpenGolfCoach self-test
+            </div>
+            <pre
+              style={{
+                margin: '8px 0 0',
+                padding: 16,
+                overflow: 'auto',
+                maxHeight: '58vh',
+                borderRadius: 12,
+                background: '#0E1710',
+                border: '1px solid #314233',
+                color: '#CFD8CD',
+                fontSize: 12,
+                lineHeight: 1.45,
+              }}
+            >
+              {ogcHealth.payload ? JSON.stringify(ogcHealth.payload, null, 2) : ogcHealth.error ?? 'Not checked.'}
+            </pre>
+          </div>
         </section>
       </div>
     </main>
