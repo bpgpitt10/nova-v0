@@ -3,6 +3,8 @@ export type GsproRuntimeDiagnostics = {
   status: 'idle' | 'connecting' | 'waiting' | 'error' | 'disconnected'
   sessionStartedAt: string | null
   updatedAt: string
+  pageVisibility: DocumentVisibilityState | 'unknown'
+  lastVisibilityChangeAt: string | null
   pollCount: number
   successfulReads: number
   readRetryCount: number
@@ -23,11 +25,16 @@ const STORAGE_KEY = 'looper:gspro-runtime-diagnostics:v1'
 
 const now = () => new Date().toISOString()
 
+const currentVisibility = (): DocumentVisibilityState | 'unknown' =>
+  typeof document === 'undefined' ? 'unknown' : document.visibilityState
+
 const initialDiagnostics = (): GsproRuntimeDiagnostics => ({
   version: 1,
   status: 'idle',
   sessionStartedAt: null,
   updatedAt: now(),
+  pageVisibility: currentVisibility(),
+  lastVisibilityChangeAt: null,
   pollCount: 0,
   successfulReads: 0,
   readRetryCount: 0,
@@ -99,6 +106,12 @@ export const patchGsproRuntimeDiagnostics = (
     updatedAt: now(),
   })
 }
+
+export const recordGsproVisibility = () =>
+  patchGsproRuntimeDiagnostics({
+    pageVisibility: currentVisibility(),
+    lastVisibilityChangeAt: now(),
+  })
 
 export const recordGsproRuntimeError = (error: unknown) =>
   patchGsproRuntimeDiagnostics({
