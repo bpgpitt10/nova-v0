@@ -12,6 +12,9 @@ export type GsproRuntimeDiagnostics = {
   lastObservedRowId: number | null
   lastEmittedRowId: number | null
   rowsEmitted: number
+  skippedUnsupportedRows: number
+  lastSkippedRowId: number | null
+  lastSkippedMissingFields: string[]
   lastFileSignature: string | null
   lastFileModified: number | null
   lastPollAt: string | null
@@ -42,6 +45,9 @@ const initialDiagnostics = (): GsproRuntimeDiagnostics => ({
   lastObservedRowId: null,
   lastEmittedRowId: null,
   rowsEmitted: 0,
+  skippedUnsupportedRows: 0,
+  lastSkippedRowId: null,
+  lastSkippedMissingFields: [],
   lastFileSignature: null,
   lastFileModified: null,
   lastPollAt: null,
