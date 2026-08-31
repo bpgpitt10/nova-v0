@@ -36,11 +36,17 @@ Later sessions:
 3. Press **Start**.
 4. Looper reuses the remembered folder. Chrome may occasionally ask to re-authorize access, but the user should not need to browse back to `GSPro.db` every session.
 
+Browser file permissions and IndexedDB are scoped to the site origin. During preview testing always use the stable branch alias:
+
+`https://looper-web-git-web-gspro-proof-wqk25hkxcg-3591.vercel.app`
+
+Do not switch between Vercel's one-off deployment URLs when testing remembered access; Chrome treats each hostname as a different site. A future production/custom domain will provide the same stable-origin behavior.
+
 If a Session Intelligence URL is refreshed directly, Looper attempts to restore the remembered folder silently when Chrome still reports read permission as granted. It never opens a folder picker from background initialization. If permission must be renewed, return to the landing page and use **Start** or **Connect GSPro** so Chrome can request permission from a user gesture.
 
 ## Live Windows validation
 
-Use the Vercel preview for branch `web-gspro-proof` in desktop Chrome.
+Use the stable Vercel branch alias above for branch `web-gspro-proof` in desktop Chrome.
 
 1. Launch GSPro and enter the Practice Range.
 2. Open the Looper preview.
@@ -84,6 +90,7 @@ The browser-first architecture is proven when all of the following are true:
 - Carry, total, and offline are required before a GSPro row is emitted into the Looper shot pipeline.
 - Hosted OGC requests require all five finite launch inputs before the request is made.
 - Hosted OGC has an 8-second client timeout so enrichment cannot hang indefinitely.
+- Hosted OGC JSON responses use `Cache-Control: no-store`, including the live self-test.
 
 ## GSPro Diagnostics
 
