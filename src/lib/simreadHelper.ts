@@ -1,5 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
-
 export type SimReadHelperStartResult = {
   ok: boolean
   status: 'already_running' | 'started' | 'failed'
@@ -10,18 +8,12 @@ export type SimReadHelperStartResult = {
   detail?: string
 }
 
-export const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+// Compatibility seam for the existing session flow while the web migration is underway.
+// The browser build must never launch or manage a local SimRead process.
+export const isTauriRuntime = () => false
 
-export const startSimReadHelper = async (): Promise<SimReadHelperStartResult> => {
-  if (!isTauriRuntime()) {
-    return {
-      ok: true,
-      status: 'already_running',
-      message: 'Running outside Tauri; assuming the dev SimRead server is managed separately.',
-    }
-  }
-
-  return invoke<SimReadHelperStartResult>('start_simread_helper')
-}
+export const startSimReadHelper = async (): Promise<SimReadHelperStartResult> => ({
+  ok: true,
+  status: 'already_running',
+  message: 'Web GSPro mode: no local SimRead helper is started.',
+})
