@@ -11,6 +11,7 @@ export type OgcRuntimeDiagnostics = {
   lastSuccessAt: string | null
   lastFailureAt: string | null
   lastHttpStatus: number | null
+  lastDurationMs: number | null
   lastInput: OpenGolfCoachInput | null
   lastMissingFields: string[]
   lastDerivedValues: OpenGolfCoachDerivedValues | null
@@ -32,6 +33,7 @@ const initialDiagnostics = (): OgcRuntimeDiagnostics => ({
   lastSuccessAt: null,
   lastFailureAt: null,
   lastHttpStatus: null,
+  lastDurationMs: null,
   lastInput: null,
   lastMissingFields: [],
   lastDerivedValues: null,
@@ -89,6 +91,7 @@ export const recordOgcSkipped = (input: OpenGolfCoachInput, missingFields: strin
     status: 'skipped',
     lastInput: input,
     lastMissingFields: [...missingFields],
+    lastDurationMs: null,
     lastError: `Missing or invalid OGC inputs: ${missingFields.join(', ')}`,
   })
 
@@ -99,6 +102,7 @@ export const recordOgcAttempt = (input: OpenGolfCoachInput) => {
     attemptCount: current.attemptCount + 1,
     lastAttemptAt: now(),
     lastHttpStatus: null,
+    lastDurationMs: null,
     lastInput: input,
     lastMissingFields: [],
     lastDerivedValues: null,
@@ -109,6 +113,7 @@ export const recordOgcAttempt = (input: OpenGolfCoachInput) => {
 export const recordOgcSuccess = (
   derivedValues: OpenGolfCoachDerivedValues,
   httpStatus: number,
+  durationMs: number,
 ) => {
   const current = readOgcRuntimeDiagnostics()
   return patch({
@@ -116,18 +121,24 @@ export const recordOgcSuccess = (
     successCount: current.successCount + 1,
     lastSuccessAt: now(),
     lastHttpStatus: httpStatus,
+    lastDurationMs: durationMs,
     lastDerivedValues: derivedValues,
     lastError: null,
   })
 }
 
-export const recordOgcFailure = (error: string, httpStatus: number | null = null) => {
+export const recordOgcFailure = (
+  error: string,
+  httpStatus: number | null = null,
+  durationMs: number | null = null,
+) => {
   const current = readOgcRuntimeDiagnostics()
   return patch({
     status: 'failure',
     failureCount: current.failureCount + 1,
     lastFailureAt: now(),
     lastHttpStatus: httpStatus,
+    lastDurationMs: durationMs,
     lastError: error,
   })
 }
