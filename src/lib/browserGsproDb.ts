@@ -83,6 +83,30 @@ const loadSqlJs = () => {
   return sqlJsPromise
 }
 
+const rowToRangeShot = (row: SqlValue[]): BrowserGsproRangeShot => {
+  const [id, dateCreated, shotData] = row
+  if (typeof id !== 'number' || typeof shotData !== 'string') {
+    throw new Error('DrivingRangeShot row did not have the expected GSPro shape.')
+  }
+
+  let parsedShotData: unknown = shotData
+  try {
+    parsedShotData = JSON.parse(shotData)
+  } catch {
+    // Preserve the raw text so capture failures remain diagnosable.
+  }
+
+  return {
+    id,
+    dateCreated:
+      typeof dateCreated === 'number' || typeof dateCreated === 'string' || dateCreated === null
+        ? dateCreated
+        : null,
+    rawShotData: shotData,
+    parsedShotData,
+  }
+}
+
 export const isGsproBrowserFileAccessSupported = () =>
   typeof window !== 'undefined' && Boolean(getWindow().showOpenFilePicker)
 
@@ -137,31 +161,28 @@ export const readLatestGsproRangeShotFromFile = async (
       'SELECT ID, DateCreated, ShotData FROM DrivingRangeShot ORDER BY ID DESC LIMIT 1',
     )[0]
     const row = result?.values?.[0]
-    if (!row) {
-      return null
-    }
+    return row ? rowToRangeShot(row) : null
+  } finally {
+    db.close()
+  }
+}
 
-    const [id, dateCreated, shotData] = row
-    if (typeof id !== 'number' || typeof shotData !== 'string') {
-      throw new Error('Latest DrivingRangeShot row did not have the expected GSPro shape.')
-    }
+export const readGsproRangeShotsAfterIdFromFile = async (
+  file: File,
+  afterId: number,
+  limit = 25,
+): Promise<BrowserGsproRangeShot[]> => {
+  const SQL = await loadSqlJs()
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const db = new SQL.Database(bytes)
+  const safeAfterId = Math.max(0, Math.floor(afterId))
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(limit)))
 
-    let parsedShotData: unknown = shotData
-    try {
-      parsedShotData = JSON.parse(shotData)
-    } catch {
-      // Preserve the raw text so capture failures remain diagnosable.
-    }
-
-    return {
-      id,
-      dateCreated:
-        typeof dateCreated === 'number' || typeof dateCreated === 'string' || dateCreated === null
-          ? dateCreated
-          : null,
-      rawShotData: shotData,
-      parsedShotData,
-    }
+  try {
+    const result = db.exec(
+      `SELECT ID, DateCreated, ShotData FROM DrivingRangeShot WHERE ID > ${safeAfterId} ORDER BY ID ASC LIMIT ${safeLimit}`,
+    )[0]
+    return result?.values?.map(rowToRangeShot) ?? []
   } finally {
     db.close()
   }
