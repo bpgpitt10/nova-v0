@@ -5,6 +5,11 @@ import {
   readLatestGsproRangeShot,
   type BrowserGsproRangeShot,
 } from '../lib/browserGsproDb'
+import {
+  patchGsproRuntimeDiagnostics,
+  recordGsproRuntimeError,
+  resetGsproRuntimeDiagnostics,
+} from '../lib/gsproRuntimeDiagnostics'
 import type { SimReadFinalShotEvent, SimReadResolvedShot } from './simreadFinalShot'
 
 const SIMREAD_FINAL_SHOT_EVENT = 'looper:simread-final-shot'
@@ -218,12 +223,18 @@ export const connectToSimReadEvents = ({
 }: ConnectToSimReadEventsOptions): SimReadLiveConnection => {
   const target = getSimReadEventTarget()
   installDevDispatchHelper()
+  resetGsproRuntimeDiagnostics()
+
   let disconnected = false
   let intervalId: number | null = null
   let pollInFlight = false
   let lastRowId = 0
   let lastSignature: string | null = null
   let sequence = 0
+  let pollCount = 0
+  let successfulReads = 0
+  let readRetryCount = 0
+  let rowsEmitted = 0
 
   const handleFinalShot = (event: SimReadFinalShotEvent) => {
     if (disconnected) {
@@ -232,8 +243,18 @@ export const connectToSimReadEvents = ({
     try {
       onStatusChange?.('received-shot')
       onFinalShot(event)
+      rowsEmitted += 1
+      patchGsproRuntimeDiagnostics({
+        status: 'waiting',
+        rowsEmitted,
+        lastEmittedRowId: event.rowId,
+        lastObservedRowId: Math.max(lastRowId, event.rowId),
+        lastShotAt: new Date().toISOString(),
+        lastError: null,
+      })
       onStatusChange?.('waiting')
     } catch (error) {
+      recordGsproRuntimeError(error)
       onStatusChange?.('error')
       onError?.(error)
     }
@@ -247,6 +268,7 @@ export const connectToSimReadEvents = ({
     if (disconnected) {
       return
     }
+    recordGsproRuntimeError(error)
     onStatusChange?.('error')
     onStructuredStatus?.({
       event: 'status',
@@ -277,8 +299,19 @@ export const connectToSimReadEvents = ({
       if (disconnected) {
         return
       }
+      successfulReads += 1
       lastRowId = initial.shot?.id ?? 0
       lastSignature = gsproFileSignature(initial.file)
+      patchGsproRuntimeDiagnostics({
+        status: 'waiting',
+        successfulReads,
+        baselineRowId: lastRowId,
+        lastObservedRowId: lastRowId,
+        lastFileSignature: lastSignature,
+        lastFileModified: initial.file.lastModified,
+        lastReadAt: new Date().toISOString(),
+        lastError: null,
+      })
       onStatusChange?.('connected')
       onStatusChange?.('waiting')
 
@@ -288,6 +321,12 @@ export const connectToSimReadEvents = ({
         }
 
         pollInFlight = true
+        pollCount += 1
+        patchGsproRuntimeDiagnostics({
+          pollCount,
+          lastPollAt: new Date().toISOString(),
+        })
+
         void (async () => {
           try {
             const file = await handle.getFile()
@@ -305,6 +344,18 @@ export const connectToSimReadEvents = ({
               return
             }
 
+            successfulReads += 1
+            const observedRowId = newRows.at(-1)?.id ?? lastRowId
+            patchGsproRuntimeDiagnostics({
+              status: 'waiting',
+              successfulReads,
+              lastObservedRowId: Math.max(lastRowId, observedRowId),
+              lastFileSignature: signature,
+              lastFileModified: file.lastModified,
+              lastReadAt: new Date().toISOString(),
+              lastError: null,
+            })
+
             for (const row of newRows) {
               sequence += 1
               handleFinalShot(mapRangeRowToFinalShot(row, sequence))
@@ -319,6 +370,13 @@ export const connectToSimReadEvents = ({
           } catch (error) {
             // GSPro may be writing the SQLite file while we snapshot it. Do not advance
             // the signature on failure; the next poll will retry the same change.
+            readRetryCount += 1
+            patchGsproRuntimeDiagnostics({
+              status: 'waiting',
+              readRetryCount,
+              lastError: error instanceof Error ? error.message : String(error),
+              lastErrorAt: new Date().toISOString(),
+            })
             console.warn('[GSPro browser] database read retry', error)
           } finally {
             pollInFlight = false
@@ -343,6 +401,7 @@ export const connectToSimReadEvents = ({
       if (intervalId !== null) {
         window.clearInterval(intervalId)
       }
+      patchGsproRuntimeDiagnostics({ status: 'disconnected' })
       target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
       onStatusChange?.('disconnected')
     },
