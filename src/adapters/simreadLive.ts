@@ -237,6 +237,7 @@ export const connectToSimReadEvents = ({
   let successfulReads = 0
   let readRetryCount = 0
   let rowsEmitted = 0
+  let skippedUnsupportedRows = 0
 
   const handleFinalShot = (event: SimReadFinalShotEvent) => {
     if (disconnected) {
@@ -385,9 +386,30 @@ export const connectToSimReadEvents = ({
             })
 
             for (const row of newRows) {
-              sequence += 1
-              handleFinalShot(mapRangeRowToFinalShot(row, sequence))
+              const event = mapRangeRowToFinalShot(row, sequence + 1)
               lastRowId = Math.max(lastRowId, row.id)
+
+              if (!event.layoutSupport?.isSupported) {
+                skippedUnsupportedRows += 1
+                const missingRequiredFields = event.layoutSupport?.missingRequiredFields ?? []
+                patchGsproRuntimeDiagnostics({
+                  status: 'waiting',
+                  skippedUnsupportedRows,
+                  lastSkippedRowId: row.id,
+                  lastSkippedMissingFields: [...missingRequiredFields],
+                  lastObservedRowId: lastRowId,
+                  lastError: `Skipped GSPro row ${row.id}; missing required outcome fields: ${missingRequiredFields.join(', ')}`,
+                  lastErrorAt: new Date().toISOString(),
+                })
+                console.warn('[GSPro browser] skipped incomplete outcome row', {
+                  rowId: row.id,
+                  missingRequiredFields,
+                })
+                continue
+              }
+
+              sequence += 1
+              handleFinalShot(event)
             }
 
             // If the batch filled, force another read on the next poll even if the
