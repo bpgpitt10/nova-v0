@@ -283,6 +283,12 @@ export default function LooperLandingPage() {
               >
                 Manage Data
               </a>
+              <a
+                className="looper-landing-action looper-landing-action-secondary"
+                href="/gspro-web-proof"
+              >
+                GSPro Diagnostics
+              </a>
             </div>
           </div>
         </section>
