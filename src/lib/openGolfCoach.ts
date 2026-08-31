@@ -19,6 +19,13 @@ export type OpenGolfCoachEnricher = {
 
 const OPEN_GOLF_COACH_WEB_API_BASE = '/api/open-golf-coach'
 const ENRICHMENT_LOG_CHANNEL = 'enrichment-pipeline'
+const OPEN_GOLF_COACH_REQUIRED_INPUT_FIELDS = [
+  'ball_speed_meters_per_second',
+  'vertical_launch_angle_degrees',
+  'horizontal_launch_angle_degrees',
+  'total_spin_rpm',
+  'spin_axis_degrees',
+] as const satisfies readonly (keyof OpenGolfCoachInput)[]
 
 const appendEnrichmentLog = async (event: string, payload?: Record<string, unknown>) => {
   console.info(`[OpenGolfCoach][${ENRICHMENT_LOG_CHANNEL}][${event}]`, payload ?? {})
@@ -33,6 +40,12 @@ const resolveOpenGolfCoachUrl = () => {
   return { url: OPEN_GOLF_COACH_WEB_API_BASE, source: 'web_api' as const }
 }
 
+export const missingOpenGolfCoachInputFields = (input: OpenGolfCoachInput) =>
+  OPEN_GOLF_COACH_REQUIRED_INPUT_FIELDS.filter((field) => {
+    const value = input[field]
+    return typeof value !== 'number' || !Number.isFinite(value)
+  })
+
 // The web application always has an OGC endpoint contract. Whether that endpoint
 // is deployed/healthy is handled as a normal request failure rather than by
 // launching or probing a local helper process.
@@ -43,6 +56,19 @@ export const isOpenGolfCoachConfigured = true
 // Looper enrichment fields such as shot name/rank and other derived values.
 export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
+    const missingFields = missingOpenGolfCoachInputFields(input)
+    if (missingFields.length > 0) {
+      void appendEnrichmentLog('enrichment_skipped_incomplete_input', {
+        missingFields: [...missingFields],
+        input,
+      })
+      return {
+        derivedValues: {},
+        payload: null,
+        status: 'failure',
+      }
+    }
+
     const resolved = resolveOpenGolfCoachUrl()
     const openGolfCoachUrl = resolved.url
 
@@ -67,9 +93,11 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       })
 
       if (!response.ok) {
+        const responseText = await response.text().catch(() => '')
         void appendEnrichmentLog('enrichment_failure_http', {
           status: response.status,
           statusText: response.statusText,
+          responseText,
         })
         return {
           derivedValues: {},
@@ -204,7 +232,7 @@ export const buildOpenGolfCoachInput = (
 })
 
 export const hasOpenGolfCoachInput = (input: OpenGolfCoachInput) =>
-  Object.values(input).some((value) => typeof value === 'number')
+  missingOpenGolfCoachInputFields(input).length === 0
 
 export const logOpenGolfCoachPipeline = (event: string, payload?: Record<string, unknown>) =>
   void appendEnrichmentLog(event, payload)
