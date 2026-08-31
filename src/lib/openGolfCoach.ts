@@ -4,6 +4,12 @@ import type {
   OpenGolfCoachInput,
   OpenGolfCoachPayload,
 } from '../types'
+import {
+  recordOgcAttempt,
+  recordOgcFailure,
+  recordOgcSkipped,
+  recordOgcSuccess,
+} from './ogcRuntimeDiagnostics'
 
 export type OpenGolfCoachEnrichmentResult = {
   derivedValues: OpenGolfCoachDerivedValues
@@ -58,6 +64,7 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
     const missingFields = missingOpenGolfCoachInputFields(input)
     if (missingFields.length > 0) {
+      recordOgcSkipped(input, [...missingFields])
       void appendEnrichmentLog('enrichment_skipped_incomplete_input', {
         missingFields: [...missingFields],
         input,
@@ -71,6 +78,7 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
 
     const resolved = resolveOpenGolfCoachUrl()
     const openGolfCoachUrl = resolved.url
+    recordOgcAttempt(input)
 
     void appendEnrichmentLog('enrichment_attempt', {
       apiBase: openGolfCoachUrl,
@@ -94,6 +102,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
 
       if (!response.ok) {
         const responseText = await response.text().catch(() => '')
+        recordOgcFailure(
+          `HTTP ${response.status}${responseText ? ` · ${responseText}` : ''}`,
+          response.status,
+        )
         void appendEnrichmentLog('enrichment_failure_http', {
           status: response.status,
           statusText: response.statusText,
@@ -115,9 +127,11 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       try {
         payload = rawResponseText ? JSON.parse(rawResponseText) : {}
       } catch (parseError) {
+        const message = parseError instanceof Error ? parseError.message : String(parseError)
+        recordOgcFailure(`Response parse failed: ${message}`, response.status)
         void appendEnrichmentLog('enrichment_failure_parse', {
           rawResponseText,
-          parseError: parseError instanceof Error ? parseError.message : String(parseError),
+          parseError: message,
         })
         return {
           derivedValues: {},
@@ -127,6 +141,7 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       if (!payload || typeof payload !== 'object') {
+        recordOgcFailure(`Unexpected response payload type: ${typeof payload}`, response.status)
         void appendEnrichmentLog('enrichment_failure_payload_shape', {
           payloadType: typeof payload,
         })
@@ -138,6 +153,7 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       const derivedValues = extractOpenGolfCoachDerivedValues(payload as OpenGolfCoachPayload)
+      recordOgcSuccess(derivedValues, response.status)
       void appendEnrichmentLog('enrichment_success', { derivedValues })
 
       return {
@@ -146,8 +162,10 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         status: 'success',
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      recordOgcFailure(message)
       void appendEnrichmentLog('enrichment_failure_fetch', {
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       })
       return {
         derivedValues: {},
