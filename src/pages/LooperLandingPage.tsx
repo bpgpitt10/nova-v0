@@ -10,6 +10,10 @@ import {
   SESSION_SOURCE_PARAM,
   legacyFeedModeForSessionSource,
 } from '../lib/sessionSources'
+import {
+  isGsproBrowserFileAccessSupported,
+  selectGsproDatabaseForSession,
+} from '../lib/browserGsproDb'
 import './LooperLandingPage.css'
 
 import looperLogoWhite from '../assets/looperlogowhite.png'
@@ -27,7 +31,10 @@ export default function LooperLandingPage() {
   const [selectedShotVariantId, setSelectedShotVariantId] = useState<string>(
     STOCK_SHOT_VARIANT_ID,
   )
+  const [startingSession, setStartingSession] = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
+  const browserFileAccessSupported = isGsproBrowserFileAccessSupported()
 
   useEffect(() => {
     if (activeBagClubIds.length === 0) {
@@ -44,15 +51,29 @@ export default function LooperLandingPage() {
     }
   }, [selectedShotVariantId, shotVariants])
 
-  const startSession = () => {
-    const source = 'gspro' as const
-    const params = new URLSearchParams({
-      [SESSION_SOURCE_PARAM]: source,
-      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource(source),
-      club: selectedClub,
-      variant: resolveShotVariantId(selectedShotVariantId),
-    })
-    navigateWithinApp(`/session-intelligence?${params.toString()}`)
+  const startSession = async () => {
+    setStartError(null)
+    setStartingSession(true)
+
+    try {
+      await selectGsproDatabaseForSession()
+
+      const source = 'gspro' as const
+      const params = new URLSearchParams({
+        [SESSION_SOURCE_PARAM]: source,
+        [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource(source),
+        club: selectedClub,
+        variant: resolveShotVariantId(selectedShotVariantId),
+      })
+      navigateWithinApp(`/session-intelligence?${params.toString()}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!message.toLowerCase().includes('abort')) {
+        setStartError(message)
+      }
+    } finally {
+      setStartingSession(false)
+    }
   }
 
   return (
@@ -141,11 +162,19 @@ export default function LooperLandingPage() {
 
               <button
                 className="looper-landing-action looper-landing-action-secondary looper-landing-start"
-                onClick={startSession}
+                disabled={startingSession || !browserFileAccessSupported}
+                onClick={() => void startSession()}
                 type="button"
               >
-                Start
+                {startingSession ? 'Connecting…' : 'Start'}
               </button>
+
+              <p className="looper-landing-status-detail">
+                {browserFileAccessSupported
+                  ? 'Starting a session will ask you to select GSPro.db.'
+                  : 'Live GSPro sessions require desktop Chrome file access.'}
+              </p>
+              {startError ? <p className="looper-landing-status-detail">{startError}</p> : null}
             </div>
 
             <div className="looper-landing-utility-actions">
