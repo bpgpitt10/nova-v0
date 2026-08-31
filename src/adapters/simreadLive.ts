@@ -1,14 +1,19 @@
-import type { SimReadFinalShotEvent } from './simreadFinalShot'
+import {
+  getSelectedGsproDatabase,
+  gsproFileSignature,
+  readGsproRangeShotsAfterIdFromFile,
+  readLatestGsproRangeShot,
+  type BrowserGsproRangeShot,
+} from '../lib/browserGsproDb'
+import type { SimReadFinalShotEvent, SimReadResolvedShot } from './simreadFinalShot'
 
 const SIMREAD_FINAL_SHOT_EVENT = 'looper:simread-final-shot'
 const SIMREAD_EVENT_TARGET_KEY = '__looperSimReadEventTarget'
 const SIMREAD_DISPATCH_KEY = '__looperDispatchSimReadFinalShot'
+const GSPRO_POLL_MS = 750
 
-// Compatibility transport only. The preferred web path is direct GSPro database access.
-// This endpoint remains available as a fallback if we later decide to stream GSPro events
-// from a web service rather than read the granted local file directly.
-export const DEFAULT_SIMREAD_EVENTS_URL = '/api/gspro/events'
-export const DEV_SIMREAD_EVENTS_PROXY_URL = '/api/gspro/events'
+export const DEFAULT_SIMREAD_EVENTS_URL = 'browser-gspro-db'
+export const DEV_SIMREAD_EVENTS_PROXY_URL = 'browser-gspro-db'
 
 export type SimReadLiveStatus =
   | 'idle'
@@ -48,6 +53,8 @@ type SimReadWindow = Window &
     [SIMREAD_DISPATCH_KEY]?: (event: SimReadFinalShotEvent) => void
   }
 
+type ShotDataObject = Record<string, unknown>
+
 const getWindow = (): SimReadWindow | null =>
   typeof window === 'undefined' ? null : (window as SimReadWindow)
 
@@ -75,104 +82,131 @@ const installDevDispatchHelper = () => {
   }
 
   const simreadWindow = getWindow()
-  if (!simreadWindow) {
-    return
+  if (simreadWindow) {
+    simreadWindow[SIMREAD_DISPATCH_KEY] = dispatchSimReadFinalShotEvent
   }
-
-  simreadWindow[SIMREAD_DISPATCH_KEY] = dispatchSimReadFinalShotEvent
 }
 
-const isSimReadLiveStatus = (value: unknown): value is SimReadLiveStatus =>
-  value === 'idle' ||
-  value === 'connecting' ||
-  value === 'connected' ||
-  value === 'waiting' ||
-  value === 'received-shot' ||
-  value === 'error' ||
-  value === 'disconnected'
-
-const resolveSimReadEventsUrl = (overrideUrl?: string) => {
-  if (overrideUrl?.trim()) {
-    return overrideUrl.trim()
+const toNumber = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
   }
-
-  const gsproEnvUrl = (import.meta.env.VITE_GSPRO_EVENTS_URL as string | undefined)?.trim()
-  if (gsproEnvUrl) {
-    return gsproEnvUrl
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
   }
-
-  const legacyEnvUrl = (import.meta.env.VITE_SIMREAD_EVENTS_URL as string | undefined)?.trim()
-  if (legacyEnvUrl) {
-    return legacyEnvUrl
-  }
-
-  return DEFAULT_SIMREAD_EVENTS_URL
+  return undefined
 }
 
-const parseFinalShotEvent = (data: string): SimReadFinalShotEvent => {
-  const parsed: unknown = JSON.parse(data)
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('GSPro final-shot event data was not an object')
+const firstNumber = (data: ShotDataObject, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = toNumber(data[key])
+    if (value !== undefined) {
+      return value
+    }
   }
-
-  return parsed as SimReadFinalShotEvent
+  return undefined
 }
 
-const parseStatusEvent = (data: string): SimReadLiveStatus | null => {
-  const trimmed = data.trim()
-  if (!trimmed) {
-    return null
+const toShotDataObject = (row: BrowserGsproRangeShot): ShotDataObject => {
+  const parsed = row.parsedShotData
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('GSPro DrivingRangeShot.ShotData was not a JSON object.')
   }
-
-  if (isSimReadLiveStatus(trimmed)) {
-    return trimmed
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(trimmed)
-    if (isSimReadLiveStatus(parsed)) {
-      return parsed
-    }
-    if (parsed && typeof parsed === 'object' && 'status' in parsed) {
-      const status = (parsed as { status?: unknown }).status
-      return isSimReadLiveStatus(status) ? status : null
-    }
-  } catch {
-    return null
-  }
-
-  return null
+  return parsed as ShotDataObject
 }
 
-const parseStructuredStatusEvent = (data: string): SimReadStructuredStatusEvent | null => {
-  try {
-    const parsed: unknown = JSON.parse(data.trim())
-    if (!parsed || typeof parsed !== 'object') {
-      return null
-    }
+const mapRangeRowToFinalShot = (
+  row: BrowserGsproRangeShot,
+  sequence: number,
+): SimReadFinalShotEvent => {
+  const data = toShotDataObject(row)
+  const backSpin = firstNumber(data, 'BackSpin')
+  const sideSpin = firstNumber(data, 'SideSpin')
+  const explicitSpin = firstNumber(data, 'TotalSpin', 'Spin')
+  const derivedSpin =
+    explicitSpin ??
+    (backSpin !== undefined && sideSpin !== undefined
+      ? Math.sqrt(backSpin ** 2 + sideSpin ** 2)
+      : undefined)
 
-    const candidate = parsed as Partial<SimReadStructuredStatusEvent>
-    if (
-      candidate.event === 'status' &&
-      typeof candidate.status === 'string' &&
-      (candidate.severity === 'info' ||
-        candidate.severity === 'warning' ||
-        candidate.severity === 'error') &&
-      typeof candidate.message === 'string'
-    ) {
-      return {
-        event: 'status',
-        status: candidate.status,
-        severity: candidate.severity,
-        message: candidate.message,
-        ...(typeof candidate.userAction === 'string' ? { userAction: candidate.userAction } : {}),
-      }
-    }
-  } catch {
-    return null
+  const resolvedShot: SimReadResolvedShot = {
+    club: typeof data.club === 'string' && data.club.trim() ? data.club : undefined,
+    carry: firstNumber(data, 'Carry', 'rawCarryGame', 'rawCarryLM'),
+    carrySource: 'gspro',
+    totalDistance: firstNumber(data, 'TotalDistance'),
+    totalDistanceSource: 'gspro',
+    offline: firstNumber(data, 'Offline'),
+    offlineSource: 'gspro',
+    ballSpeed: firstNumber(data, 'BallSpeed'),
+    ballSpeedSource: 'gspro',
+    vla: firstNumber(data, 'VLA'),
+    vlaSource: 'gspro',
+    hla: firstNumber(data, 'HLA'),
+    hlaSource: 'gspro',
+    spin: derivedSpin,
+    spinSource: explicitSpin !== undefined ? 'gspro' : derivedSpin !== undefined ? 'derived' : 'missing',
+    spinAxis: firstNumber(data, 'rawSpinAxis'),
+    spinAxisSource: 'gspro',
+    peakHeight: firstNumber(data, 'PeakHeight'),
+    peakHeightSource: 'gspro',
+    descentAngle: firstNumber(data, 'Decent'),
+    descentAngleSource: 'gspro',
+    backSpin,
+    sideSpin,
+    clubSpeed: firstNumber(data, 'ClubSpeed'),
+    clubPath: firstNumber(data, 'Path'),
+    clubAoa: firstNumber(data, 'AoA'),
+    faceToTarget: firstNumber(data, 'FaceToTarget'),
+    faceToPath: firstNumber(data, 'FaceToPath'),
+    clubLie: firstNumber(data, 'Lie'),
+    clubLoft: firstNumber(data, 'Loft'),
+    dynamicLoft: firstNumber(data, 'DynamicLoft'),
+    closureRate: firstNumber(data, 'CR'),
+    clubFaceHImpact: firstNumber(data, 'HI'),
+    clubFaceVImpact: firstNumber(data, 'VI'),
+    smashFactor: firstNumber(data, 'SmashFactor'),
+    distToPin: firstNumber(data, 'DistanceToPin'),
   }
 
-  return null
+  const visibleFields = Object.entries(resolvedShot)
+    .filter(([, value]) => value !== undefined && value !== 'missing')
+    .map(([key]) => key)
+    .sort()
+  const ogcFields = ['ballSpeed', 'vla', 'hla', 'spin', 'spinAxis'] as const
+  const presentFields = ogcFields.filter((field) => typeof resolvedShot[field] === 'number')
+  const missingFields = ogcFields.filter((field) => typeof resolvedShot[field] !== 'number')
+  const requiredLayoutFields = ['carry', 'totalDistance', 'offline'] as const
+  const missingRequiredFields = requiredLayoutFields.filter(
+    (field) => typeof resolvedShot[field] !== 'number',
+  )
+  const emitTimestamp = new Date().toISOString()
+
+  return {
+    event: 'final-shot',
+    timestamp: emitTimestamp,
+    sequence,
+    source: 'gspro-range-db',
+    rowId: row.id,
+    resolvedShot,
+    visibleFields,
+    ogcEligibility: {
+      callable: missingFields.length === 0,
+      recommended: missingFields.length === 0,
+      presentFields: [...presentFields],
+      missingFields: [...missingFields],
+    },
+    layoutSupport: {
+      isSupported: missingRequiredFields.length === 0,
+      missingRequiredFields: [...missingRequiredFields],
+      missingRecommendedFields: [...missingFields],
+    },
+    rangeDbTiming: {
+      rowId: row.id,
+      dateCreated: row.dateCreated,
+      emitTimestamp,
+    },
+  }
 }
 
 export const connectToSimReadEvents = ({
@@ -180,15 +214,20 @@ export const connectToSimReadEvents = ({
   onStatusChange,
   onStructuredStatus,
   onError,
-  eventsUrl,
 }: ConnectToSimReadEventsOptions): SimReadLiveConnection => {
-  onStatusChange?.('idle')
   const target = getSimReadEventTarget()
   installDevDispatchHelper()
-  const resolvedEventsUrl = resolveSimReadEventsUrl(eventsUrl)
-  let eventSource: EventSource | null = null
+  let disconnected = false
+  let intervalId: number | null = null
+  let pollInFlight = false
+  let lastRowId = 0
+  let lastSignature: string | null = null
+  let sequence = 0
 
   const handleFinalShot = (event: SimReadFinalShotEvent) => {
+    if (disconnected) {
+      return
+    }
     try {
       onStatusChange?.('received-shot')
       onFinalShot(event)
@@ -203,69 +242,97 @@ export const connectToSimReadEvents = ({
     handleFinalShot((event as CustomEvent<SimReadFinalShotEvent>).detail)
   }
 
-  const handleSseFinalShot = (event: MessageEvent<string>) => {
-    try {
-      handleFinalShot(parseFinalShotEvent(event.data))
-    } catch (error) {
-      onStatusChange?.('error')
-      onError?.(error)
+  const fail = (error: unknown, message: string, userAction?: string) => {
+    if (disconnected) {
+      return
     }
-  }
-
-  const handleSseMessage = (event: MessageEvent<string>) => {
-    try {
-      const parsed: unknown = JSON.parse(event.data)
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        'event' in parsed &&
-        (parsed as { event?: unknown }).event === 'final-shot'
-      ) {
-        handleFinalShot(parsed as SimReadFinalShotEvent)
-      }
-    } catch {
-      // Ignore heartbeat/message payloads that are not JSON shot events.
-    }
-  }
-
-  const handleSseStatus = (event: MessageEvent<string>) => {
-    const structuredStatus = parseStructuredStatusEvent(event.data)
-    if (structuredStatus) {
-      onStructuredStatus?.(structuredStatus)
-    }
-
-    const status = parseStatusEvent(event.data)
-    if (status) {
-      onStatusChange?.(status)
-    }
+    onStatusChange?.('error')
+    onStructuredStatus?.({
+      event: 'status',
+      status: 'browser_gspro_error',
+      severity: 'error',
+      message,
+      ...(userAction ? { userAction } : {}),
+    })
+    onError?.(error)
   }
 
   target.addEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
   onStatusChange?.('connecting')
 
-  if (typeof EventSource === 'undefined') {
-    const error = new Error('EventSource is not available in this browser')
-    onStatusChange?.('error')
-    onError?.(error)
-  } else {
-    eventSource = new EventSource(resolvedEventsUrl)
-    eventSource.addEventListener('open', () => {
+  const initialize = async () => {
+    const handle = getSelectedGsproDatabase()
+    if (!handle) {
+      fail(
+        new Error('GSPro.db has not been selected.'),
+        'GSPro database access is not connected.',
+        'Return to the Looper home screen and start the session again to select GSPro.db.',
+      )
+      return
+    }
+
+    try {
+      const initial = await readLatestGsproRangeShot(handle)
+      if (disconnected) {
+        return
+      }
+      lastRowId = initial.shot?.id ?? 0
+      lastSignature = gsproFileSignature(initial.file)
       onStatusChange?.('connected')
       onStatusChange?.('waiting')
-    })
-    eventSource.addEventListener('final-shot', handleSseFinalShot)
-    eventSource.addEventListener('status', handleSseStatus)
-    eventSource.addEventListener('message', handleSseMessage)
-    eventSource.addEventListener('error', (event) => {
-      onStatusChange?.('error')
-      onError?.(event)
-    })
+
+      intervalId = window.setInterval(() => {
+        if (pollInFlight || disconnected) {
+          return
+        }
+
+        pollInFlight = true
+        void (async () => {
+          try {
+            const file = await handle.getFile()
+            const signature = gsproFileSignature(file)
+            if (signature === lastSignature) {
+              return
+            }
+
+            const newRows = await readGsproRangeShotsAfterIdFromFile(file, lastRowId)
+            if (disconnected) {
+              return
+            }
+
+            for (const row of newRows) {
+              sequence += 1
+              handleFinalShot(mapRangeRowToFinalShot(row, sequence))
+              lastRowId = Math.max(lastRowId, row.id)
+            }
+            lastSignature = signature
+          } catch (error) {
+            // GSPro may be writing the SQLite file while we snapshot it. Do not advance
+            // the signature on failure; the next poll will retry the same change.
+            console.warn('[GSPro browser] database read retry', error)
+          } finally {
+            pollInFlight = false
+          }
+        })()
+      }, GSPRO_POLL_MS)
+    } catch (error) {
+      fail(
+        error,
+        'Looper could not read the selected GSPro database.',
+        'Confirm you selected GSPro.db from the GSPro data folder.',
+      )
+    }
   }
+
+  void initialize()
 
   return {
     mode: 'simread',
     disconnect: () => {
-      eventSource?.close()
+      disconnected = true
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+      }
       target.removeEventListener(SIMREAD_FINAL_SHOT_EVENT, handleManualFinalShot)
       onStatusChange?.('disconnected')
     },
