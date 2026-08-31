@@ -27,10 +27,13 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Verify OpenGolfCoach calculation
+      - name: Verify OpenGolfCoach calculation and input contract
         run: |
           python - <<'PY'
+          import importlib.util
           import json
+          from pathlib import Path
+
           import opengolfcoach
 
           shot = {
@@ -45,9 +48,21 @@ jobs:
           assert "shot_name" in ogc
           assert "shot_rank" in ogc
           assert "us_customary_units" in ogc
+
+          module_path = Path("api/open-golf-coach/derive.py")
+          spec = importlib.util.spec_from_file_location("looper_ogc_api", module_path)
+          module = importlib.util.module_from_spec(spec)
+          assert spec and spec.loader
+          spec.loader.exec_module(module)
+          assert module._missing_or_invalid_fields(shot) == []
+          partial = dict(shot)
+          partial.pop("spin_axis_degrees")
+          assert module._missing_or_invalid_fields(partial) == ["spin_axis_degrees"]
+
           print(json.dumps({
               "shot_name": ogc.get("shot_name"),
               "shot_rank": ogc.get("shot_rank"),
               "carry_yards": ogc.get("us_customary_units", {}).get("carry_distance_yards"),
+              "input_contract": "ok",
           }))
           PY
