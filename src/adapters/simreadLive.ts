@@ -3,6 +3,7 @@ import {
   gsproFileSignature,
   readGsproRangeShotsAfterIdFromFile,
   readLatestGsproRangeShot,
+  restoreRememberedGsproDatabase,
   type BrowserGsproRangeShot,
 } from '../lib/browserGsproDb'
 import {
@@ -298,12 +299,25 @@ export const connectToSimReadEvents = ({
   onStatusChange?.('connecting')
 
   const initialize = async () => {
-    const handle = getSelectedGsproDatabase()
+    let handle = getSelectedGsproDatabase()
+    if (!handle) {
+      try {
+        handle = await restoreRememberedGsproDatabase()
+      } catch (error) {
+        fail(
+          error,
+          'Looper could not restore the remembered GSPro folder.',
+          'Return to the Looper home screen and reconnect the GSPro folder.',
+        )
+        return
+      }
+    }
+
     if (!handle) {
       fail(
-        new Error('GSPro database access has not been prepared.'),
-        'GSPro database access is not connected.',
-        'Return to the Looper home screen and reconnect the remembered GSPro folder.',
+        new Error('GSPro database access requires renewed browser permission.'),
+        'GSPro folder access needs to be re-authorized.',
+        'Return to the Looper home screen and click Start or Connect GSPro to allow access.',
       )
       return
     }
