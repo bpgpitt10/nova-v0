@@ -4,6 +4,15 @@ from http.server import BaseHTTPRequestHandler
 import opengolfcoach
 
 
+SELF_TEST_SHOT = {
+    "ball_speed_meters_per_second": 70.0,
+    "vertical_launch_angle_degrees": 12.5,
+    "horizontal_launch_angle_degrees": -2.0,
+    "total_spin_rpm": 2800.0,
+    "spin_axis_degrees": 15.0,
+}
+
+
 class handler(BaseHTTPRequestHandler):
     def _write_json(self, status_code: int, payload: dict) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -36,12 +45,39 @@ class handler(BaseHTTPRequestHandler):
         self._write_json(200, result)
 
     def do_GET(self) -> None:
+        try:
+            result = json.loads(
+                opengolfcoach.calculate_derived_values(json.dumps(SELF_TEST_SHOT))
+            )
+            ogc = result.get("open_golf_coach", {})
+            shot_name = ogc.get("shot_name")
+            shot_rank = ogc.get("shot_rank")
+            carry_yards = ogc.get("us_customary_units", {}).get("carry_distance_yards")
+            if shot_name is None or shot_rank is None:
+                raise ValueError("OpenGolfCoach self-test did not return expected fields")
+        except Exception as exc:  # noqa: BLE001
+            self._write_json(
+                500,
+                {
+                    "service": "looper-open-golf-coach",
+                    "status": "error",
+                    "self_test": {"ok": False, "error": str(exc)},
+                },
+            )
+            return
+
         self._write_json(
             200,
             {
                 "service": "looper-open-golf-coach",
                 "status": "ok",
                 "method": "POST",
+                "self_test": {
+                    "ok": True,
+                    "shot_name": shot_name,
+                    "shot_rank": shot_rank,
+                    "carry_yards": carry_yards,
+                },
             },
         )
 
