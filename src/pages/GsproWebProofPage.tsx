@@ -10,6 +10,10 @@ import {
   type BrowserGsproRangeShot,
   type GsproConnectionStatus,
 } from '../lib/browserGsproDb'
+import {
+  readGsproRuntimeDiagnostics,
+  type GsproRuntimeDiagnostics,
+} from '../lib/gsproRuntimeDiagnostics'
 
 const POLL_MS = 1000
 
@@ -48,6 +52,9 @@ function GsproWebProofPage() {
   const [latestShot, setLatestShot] = useState<BrowserGsproRangeShot | null>(null)
   const [lastFileModified, setLastFileModified] = useState<number | null>(null)
   const [dbStatus, setDbStatus] = useState('Not checked')
+  const [runtimeTrace, setRuntimeTrace] = useState<GsproRuntimeDiagnostics>(() =>
+    readGsproRuntimeDiagnostics(),
+  )
   const [ogcHealth, setOgcHealth] = useState<OgcHealth>({
     ok: false,
     status: null,
@@ -64,6 +71,10 @@ function GsproWebProofPage() {
     const status = await getGsproConnectionStatus()
     setConnection(status)
     return status
+  }
+
+  const refreshRuntimeTrace = () => {
+    setRuntimeTrace(readGsproRuntimeDiagnostics())
   }
 
   const readDatabase = async (force = false) => {
@@ -137,6 +148,7 @@ function GsproWebProofPage() {
         setDbStatus('Connect the GSPro folder first')
       }
       await checkOgc()
+      refreshRuntimeTrace()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -180,11 +192,11 @@ function GsproWebProofPage() {
   }, [])
 
   useEffect(() => {
-    if (!connection?.ready) {
-      return
-    }
     const interval = window.setInterval(() => {
-      void readDatabase(false)
+      refreshRuntimeTrace()
+      if (connection?.ready) {
+        void readDatabase(false)
+      }
     }, POLL_MS)
     return () => window.clearInterval(interval)
   }, [connection?.ready])
@@ -404,6 +416,40 @@ function GsproWebProofPage() {
               }}
             >
               {ogcHealth.payload ? JSON.stringify(ogcHealth.payload, null, 2) : ogcHealth.error ?? 'Not checked.'}
+            </pre>
+          </div>
+
+          <div
+            style={{
+              background: '#142118',
+              border: '1px solid #314233',
+              borderRadius: 16,
+              padding: 20,
+              gridColumn: '1 / -1',
+            }}
+          >
+            <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+              Last live-session GSPro runtime trace
+            </div>
+            <p style={{ color: '#CFD8CD', margin: '8px 0 12px', lineHeight: 1.45 }}>
+              This survives navigation away from Session Intelligence so a failed live test can be
+              inspected here without opening browser DevTools.
+            </p>
+            <pre
+              style={{
+                margin: 0,
+                padding: 16,
+                overflow: 'auto',
+                maxHeight: '48vh',
+                borderRadius: 12,
+                background: '#0E1710',
+                border: '1px solid #314233',
+                color: '#CFD8CD',
+                fontSize: 12,
+                lineHeight: 1.45,
+              }}
+            >
+              {JSON.stringify(runtimeTrace, null, 2)}
             </pre>
           </div>
         </section>
