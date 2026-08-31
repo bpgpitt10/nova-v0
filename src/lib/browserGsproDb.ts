@@ -326,6 +326,26 @@ export const getGsproConnectionStatus = async (): Promise<GsproConnectionStatus>
   }
 }
 
+// Restore a previously authorized directory without opening a picker or prompting.
+// This is safe to call during page initialization or a direct route refresh.
+export const restoreRememberedGsproDatabase = async (): Promise<GsproFileHandle | null> => {
+  if (activeGsproDatabaseHandle) {
+    return activeGsproDatabaseHandle
+  }
+
+  const rememberedDirectory = await readRememberedDirectoryHandle()
+  if (!rememberedDirectory) {
+    return null
+  }
+
+  const permission = await queryReadPermission(rememberedDirectory)
+  if (permission !== 'granted') {
+    return null
+  }
+
+  return activateDirectory(rememberedDirectory)
+}
+
 export const prepareGsproDatabaseForSession = async () => {
   if (activeGsproDatabaseHandle) {
     return activeGsproDatabaseHandle
