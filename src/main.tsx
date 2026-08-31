@@ -9,6 +9,7 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import GsproWebProofPage from './pages/GsproWebProofPage.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -88,7 +89,8 @@ function RootRouter() {
   }, [])
 
   useEffect(() => {
-    if (hasBagConfig || pathname === '/bag-setup') {
+    const showGsproWebProof = pathname === '/gspro-web-proof'
+    if (hasBagConfig || pathname === '/bag-setup' || showGsproWebProof) {
       return
     }
     window.history.replaceState({}, '', '/bag-setup')
@@ -96,6 +98,7 @@ function RootRouter() {
   }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
+    const showGsproWebProof = pathname === '/gspro-web-proof'
     const showBagSetup = pathname === '/bag-setup'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/looper'
@@ -105,6 +108,9 @@ function RootRouter() {
     const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
 
+    if (showGsproWebProof) {
+      return <GsproWebProofPage />
+    }
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
     }
