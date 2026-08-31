@@ -49,6 +49,7 @@ const SQL_JS_VERSION = '1.14.2'
 const SQL_JS_BASE = `https://cdn.jsdelivr.net/npm/sql.js@${SQL_JS_VERSION}/dist`
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null
+let activeGsproDatabaseHandle: GsproFileHandle | null = null
 
 const getWindow = () => window as GsproBrowserWindow
 
@@ -108,6 +109,18 @@ export const pickGsproDatabase = async (): Promise<GsproFileHandle> => {
   }
 
   return handle
+}
+
+export const selectGsproDatabaseForSession = async () => {
+  const handle = await pickGsproDatabase()
+  activeGsproDatabaseHandle = handle
+  return handle
+}
+
+export const getSelectedGsproDatabase = () => activeGsproDatabaseHandle
+
+export const clearSelectedGsproDatabase = () => {
+  activeGsproDatabaseHandle = null
 }
 
 export const gsproFileSignature = (file: File) => `${file.lastModified}:${file.size}`
