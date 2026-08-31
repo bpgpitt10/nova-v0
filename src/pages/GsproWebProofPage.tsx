@@ -14,6 +14,10 @@ import {
   readGsproRuntimeDiagnostics,
   type GsproRuntimeDiagnostics,
 } from '../lib/gsproRuntimeDiagnostics'
+import {
+  readOgcRuntimeDiagnostics,
+  type OgcRuntimeDiagnostics,
+} from '../lib/ogcRuntimeDiagnostics'
 
 const POLL_MS = 1000
 
@@ -55,6 +59,9 @@ function GsproWebProofPage() {
   const [runtimeTrace, setRuntimeTrace] = useState<GsproRuntimeDiagnostics>(() =>
     readGsproRuntimeDiagnostics(),
   )
+  const [ogcRuntimeTrace, setOgcRuntimeTrace] = useState<OgcRuntimeDiagnostics>(() =>
+    readOgcRuntimeDiagnostics(),
+  )
   const [ogcHealth, setOgcHealth] = useState<OgcHealth>({
     ok: false,
     status: null,
@@ -73,8 +80,9 @@ function GsproWebProofPage() {
     return status
   }
 
-  const refreshRuntimeTrace = () => {
+  const refreshRuntimeTraces = () => {
     setRuntimeTrace(readGsproRuntimeDiagnostics())
+    setOgcRuntimeTrace(readOgcRuntimeDiagnostics())
   }
 
   const readDatabase = async (force = false) => {
@@ -148,7 +156,7 @@ function GsproWebProofPage() {
         setDbStatus('Connect the GSPro folder first')
       }
       await checkOgc()
-      refreshRuntimeTrace()
+      refreshRuntimeTraces()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -193,7 +201,7 @@ function GsproWebProofPage() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      refreshRuntimeTrace()
+      refreshRuntimeTraces()
       if (connection?.ready) {
         void readDatabase(false)
       }
@@ -425,15 +433,13 @@ function GsproWebProofPage() {
               border: '1px solid #314233',
               borderRadius: 16,
               padding: 20,
-              gridColumn: '1 / -1',
             }}
           >
             <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
               Last live-session GSPro runtime trace
             </div>
             <p style={{ color: '#CFD8CD', margin: '8px 0 12px', lineHeight: 1.45 }}>
-              This survives navigation away from Session Intelligence so a failed live test can be
-              inspected here without opening browser DevTools.
+              Shows whether the browser watcher saw and emitted new DrivingRangeShot rows.
             </p>
             <pre
               style={{
@@ -450,6 +456,39 @@ function GsproWebProofPage() {
               }}
             >
               {JSON.stringify(runtimeTrace, null, 2)}
+            </pre>
+          </div>
+
+          <div
+            style={{
+              background: '#142118',
+              border: '1px solid #314233',
+              borderRadius: 16,
+              padding: 20,
+            }}
+          >
+            <div style={{ color: '#9FB09F', fontSize: 12, textTransform: 'uppercase' }}>
+              Last real-shot OGC runtime trace
+            </div>
+            <p style={{ color: '#CFD8CD', margin: '8px 0 12px', lineHeight: 1.45 }}>
+              Shows whether the detected shot had all five OGC inputs and whether hosted enrichment
+              succeeded.
+            </p>
+            <pre
+              style={{
+                margin: 0,
+                padding: 16,
+                overflow: 'auto',
+                maxHeight: '48vh',
+                borderRadius: 12,
+                background: '#0E1710',
+                border: '1px solid #314233',
+                color: '#CFD8CD',
+                fontSize: 12,
+                lineHeight: 1.45,
+              }}
+            >
+              {JSON.stringify(ogcRuntimeTrace, null, 2)}
             </pre>
           </div>
         </section>
