@@ -1,8 +1,17 @@
 import json
+import math
 from http.server import BaseHTTPRequestHandler
 
 import opengolfcoach
 
+
+REQUIRED_INPUT_FIELDS = (
+    "ball_speed_meters_per_second",
+    "vertical_launch_angle_degrees",
+    "horizontal_launch_angle_degrees",
+    "total_spin_rpm",
+    "spin_axis_degrees",
+)
 
 SELF_TEST_SHOT = {
     "ball_speed_meters_per_second": 70.0,
@@ -11,6 +20,15 @@ SELF_TEST_SHOT = {
     "total_spin_rpm": 2800.0,
     "spin_axis_degrees": 15.0,
 }
+
+
+def _missing_or_invalid_fields(payload: dict) -> list[str]:
+    missing = []
+    for field in REQUIRED_INPUT_FIELDS:
+        value = payload.get(field)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            missing.append(field)
+    return missing
 
 
 class handler(BaseHTTPRequestHandler):
@@ -31,6 +49,17 @@ class handler(BaseHTTPRequestHandler):
             if not isinstance(payload, dict):
                 raise ValueError("payload must be an object")
 
+            invalid_fields = _missing_or_invalid_fields(payload)
+            if invalid_fields:
+                self._write_json(
+                    400,
+                    {
+                        "error": "OpenGolfCoach requires five finite launch inputs.",
+                        "missing_or_invalid_fields": invalid_fields,
+                    },
+                )
+                return
+
             result_json = opengolfcoach.calculate_derived_values(json.dumps(payload))
             result = json.loads(result_json)
             if not isinstance(result, dict):
@@ -46,6 +75,10 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         try:
+            invalid_fields = _missing_or_invalid_fields(SELF_TEST_SHOT)
+            if invalid_fields:
+                raise ValueError(f"OpenGolfCoach self-test inputs invalid: {invalid_fields}")
+
             result = json.loads(
                 opengolfcoach.calculate_derived_values(json.dumps(SELF_TEST_SHOT))
             )
@@ -72,6 +105,7 @@ class handler(BaseHTTPRequestHandler):
                 "service": "looper-open-golf-coach",
                 "status": "ok",
                 "method": "POST",
+                "required_fields": list(REQUIRED_INPUT_FIELDS),
                 "self_test": {
                     "ok": True,
                     "shot_name": shot_name,
