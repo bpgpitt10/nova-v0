@@ -1,10 +1,24 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+const loopermanAsset = fileURLToPath(new URL('./src/assets/looperman.PNG', import.meta.url))
+const looperLogoWhiteAsset = fileURLToPath(
+  new URL('./src/assets/LooperLogoWhite.png', import.meta.url),
+)
+
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
+  resolve: {
+    alias: [
+      { find: /(?:\.\.\/|\.\/)assets\/looperman\.png$/, replacement: loopermanAsset },
+      {
+        find: /(?:\.\.\/|\.\/)assets\/looperlogowhite\.png$/,
+        replacement: looperLogoWhiteAsset,
+      },
+    ],
+  },
   server: {
     port: 1420,
     strictPort: true,
