@@ -7,9 +7,16 @@ const looperLogoWhiteAsset = fileURLToPath(
   new URL('./src/assets/LooperLogoWhite.png', import.meta.url),
 )
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
   clearScreen: false,
+  ...(command === 'build'
+    ? {
+        define: {
+          'import.meta.env.VITE_OPEN_GOLF_COACH_URL': JSON.stringify('/api/open-golf-coach'),
+        },
+      }
+    : {}),
   resolve: {
     alias: [
       { find: /(?:\.\.\/|\.\/)assets\/looperman\.png$/, replacement: loopermanAsset },
@@ -35,4 +42,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
