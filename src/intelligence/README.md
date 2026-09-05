@@ -24,9 +24,33 @@ Do not combine these change types in one migration step.
 
 The current web application still persists saved sessions and the active-session draft in browser `localStorage` through `src/lib/sessions.ts`.
 
-The intelligence layer must therefore remain storage-agnostic. A model should receive normalized inputs and must not know whether they came from localStorage, a future database, imported fixtures, GSPro, Nova, or another source.
+The intelligence layer must therefore remain storage-agnostic. A model receives normalized inputs and must not know whether they came from localStorage, a future database, imported fixtures, GSPro, Nova, or another source.
 
 The future persistence migration should be able to change the input adapter without changing the intelligence models.
+
+## Input boundary
+
+`input.ts` defines storage-agnostic analytical inputs. The current legacy adapter lives in `adapters/legacySavedHistory.ts`.
+
+The adapter is allowed to know about today's `SavedSession` shape and historical weighting rules. Models are not.
+
+This separation is deliberate:
+
+`SavedSession/localStorage -> legacy adapter -> IntelligenceAnalysisDataset -> model`
+
+A future database should replace only the left side of that chain.
+
+## Golden fixtures
+
+`fixtures/legacyLooperFixture.ts` captures:
+
+- the full saved-session objects currently persisted by Looper
+- the active-session draft for forensic completeness
+- the legacy saved-history Club Review outputs for each club at capture time
+
+The fixture's saved-history expectations intentionally use `activeSessionId = null`. This creates a stable comparison target that can be rerun later without requiring a live session.
+
+The fixture is a migration artifact. It is not the future persistence format.
 
 ## Model contract
 
@@ -45,7 +69,7 @@ Every important Looper concept should eventually have one registered model defin
 - legacy source references during migration
 - notes about known limitations or historical artifacts
 
-Executable models should additionally return a structured calculation trace so Looper can explain how a result was produced for a specific club/session.
+Executable models additionally return a structured calculation trace so Looper can explain how a result was produced for a specific club/session.
 
 ## One canonical implementation
 
@@ -77,7 +101,7 @@ The future admin input page should edit approved parameters, not arbitrary execu
 
 ## Traces / explainability
 
-A calculation should eventually be able to return both a value and a trace, for example:
+A calculation can return both a value and a trace, including:
 
 - evidence used
 - observations excluded and why
@@ -98,9 +122,9 @@ This supports both a future Model Explorer and our own debugging/model-design wo
 
 ### Phase 1 — input boundary and golden fixtures
 
-- define the normalized intelligence input boundary based on actual current data needs
+- define normalized intelligence inputs
 - create stable test fixtures from current Looper session data
-- capture legacy outputs for several representative clubs
+- capture current legacy outputs for representative clubs
 
 ### Phase 2 — Pattern Stability pilot
 
@@ -109,7 +133,7 @@ Pattern Stability is the first migration candidate because it can be calculated 
 1. Document current behavior and dependencies.
 2. Reproduce the legacy algorithm in a canonical model module.
 3. Run legacy and canonical calculations side-by-side on identical inputs.
-4. Require parity before switching any caller.
+4. Require exact displayed-score parity before switching any caller.
 5. Only after parity, consider an experimental v2 algorithm.
 
 ### Phase 3 — Model Explorer
@@ -131,12 +155,43 @@ After canonical model configs exist:
 
 ## Pattern Stability pilot status
 
-`models/patternStability/definition.ts` documents the current legacy behavior only. No production calculation has been moved or changed.
+The pilot now has all shadow-mode pieces without changing any production caller:
 
-The initial archaeology already highlights why this architecture is needed:
+- `models/patternStability/definition.ts` — human-readable legacy model definition
+- `models/patternStability/config.ts` — frozen active legacy-v1 constants
+- `models/patternStability/legacyV1.ts` — independent, traceable shadow implementation
+- `adapters/legacySavedHistory.ts` — converts today's saved sessions into storage-agnostic inputs
+- `fixtures/legacyLooperFixture.ts` — golden-fixture builder
+- `parity/patternStabilityParity.ts` — legacy-vs-shadow comparison report
+- `dev/browserParity.ts` — browser-only developer helpers
 
-- some Pattern Stability algorithm values are hard-coded directly in `scoring.ts`
-- Pattern Stability also reaches into the Direction Window config for one of its tolerances
-- `confidenceConfig.patternStability` contains fields that the current Pattern Stability function does not appear to consume
+No production scoring function or UI currently imports the shadow implementation.
 
-The next step is to establish the normalized input/test-fixture boundary and then build a shadow `legacy-v1` implementation that can be compared to the current function.
+### Run against current browser data in Vite dev mode
+
+From the browser developer console while Looper is running locally:
+
+```js
+const parity = await import('/src/intelligence/dev/browserParity.ts')
+parity.runCurrentBrowserPatternStabilityParity()
+```
+
+This prints one row per club containing the legacy Pattern Stability value, the shadow value, and whether they match.
+
+To download a full golden fixture:
+
+```js
+const parity = await import('/src/intelligence/dev/browserParity.ts')
+parity.downloadCurrentBrowserLegacyFixture()
+```
+
+The downloaded JSON should be retained as a test artifact before any legacy algorithm code is modified.
+
+## Known archaeology findings already captured
+
+- some active Pattern Stability algorithm values are hard-coded directly in `scoring.ts`
+- Pattern Stability reaches into the Direction Window config for its offline tolerance
+- `confidenceConfig.patternStability` contains fields the current Pattern Stability function does not consume
+- the 50/50 drift blend, evidence anchor of 50, and 10-shot evidence scale were previously executable behavior with no canonical configuration entry
+
+These are preserved in `legacy-v1` for parity rather than silently cleaned up during extraction.
