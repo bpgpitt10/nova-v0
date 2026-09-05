@@ -236,7 +236,7 @@ export default function BrowserGsproSpikePage() {
   }
 
   const connected = Boolean(directoryHandle)
-  const canRead = connected && permission === 'granted'
+  const readableDirectoryHandle = permission === 'granted' ? directoryHandle : null
 
   return (
     <main className="browser-gspro-spike">
@@ -262,12 +262,12 @@ export default function BrowserGsproSpikePage() {
               Restore saved permission
             </button>
           ) : null}
-          {canRead ? (
-            <button type="button" onClick={() => void readLatest(directoryHandle)}>
+          {readableDirectoryHandle ? (
+            <button type="button" onClick={() => void readLatest(readableDirectoryHandle)}>
               Read latest shot
             </button>
           ) : null}
-          {canRead ? (
+          {readableDirectoryHandle ? (
             <button
               type="button"
               className={watching ? 'browser-gspro-spike__stop' : ''}
