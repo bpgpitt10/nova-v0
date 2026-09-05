@@ -1,5 +1,7 @@
 export type IntelligenceClubId = string
 
+export type IntelligenceShotRank = number | string | null
+
 export type IntelligenceShot = {
   id: string
   clubId: IntelligenceClubId
@@ -15,6 +17,8 @@ export type IntelligenceShot = {
   horizontalLaunchAngleDegrees: number | null
   totalSpinRpm: number | null
   spinAxisDegrees: number | null
+  descentAngleDegrees: number | null
+  shotRank: IntelligenceShotRank
 }
 
 export type IntelligenceSession = {
@@ -28,6 +32,27 @@ export type IntelligenceAnalysisDataset = {
   asOf: string
   shots: readonly IntelligenceShot[]
   sessions: readonly IntelligenceSession[]
+}
+
+export type PerformanceDriverInputShot = Pick<
+  IntelligenceShot,
+  | 'id'
+  | 'included'
+  | 'capturedAt'
+  | 'sessionId'
+  | 'analysisWeight'
+  | 'carryYards'
+  | 'offlineYards'
+  | 'verticalLaunchAngleDegrees'
+  | 'totalSpinRpm'
+  | 'spinAxisDegrees'
+  | 'descentAngleDegrees'
+  | 'shotRank'
+>
+
+export type PerformanceDriverInput = {
+  clubId: IntelligenceClubId
+  shots: readonly PerformanceDriverInputShot[]
 }
 
 export type PatternStabilityInputShot = Pick<
