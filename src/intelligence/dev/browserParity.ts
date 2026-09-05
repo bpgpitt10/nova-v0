@@ -6,6 +6,7 @@ import {
   buildLegacyLooperFixture,
   serializeLegacyLooperFixture,
 } from '../fixtures/legacyLooperFixture'
+import { comparePerformanceProfileFixture } from '../parity/performanceProfileParity'
 import { comparePatternStabilityFixture } from '../parity/patternStabilityParity'
 
 const downloadJson = (filename: string, content: string) => {
@@ -41,5 +42,25 @@ export const runCurrentBrowserPatternStabilityParity = () => {
   const fixture = buildCurrentBrowserLegacyFixture()
   const report = comparePatternStabilityFixture(fixture)
   console.table(report.rows)
+  return { fixture, report }
+}
+
+export const runCurrentBrowserPerformanceProfileParity = () => {
+  const fixture = buildCurrentBrowserLegacyFixture()
+  const report = comparePerformanceProfileFixture(fixture)
+  console.table(
+    report.rows.map((row) => ({
+      club: row.clubId,
+      included: row.includedShots.matches,
+      distance: row.distanceWindow.matches,
+      direction: row.directionWindow.matches,
+      flight: row.flightQuality.matches,
+      pattern: row.patternStability.matches,
+      data: row.dataConfidence.matches,
+      aggregate: row.aggregateScore.matches,
+      call: row.caddieCall.matches,
+      all: row.allMatch,
+    })),
+  )
   return { fixture, report }
 }
