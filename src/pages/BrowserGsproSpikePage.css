@@ -1,0 +1,234 @@
+.browser-gspro-spike {
+  min-height: 100vh;
+  background: #0d1216;
+  color: #eef1eb;
+  padding: 36px 18px 72px;
+}
+
+.browser-gspro-spike__panel {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+}
+
+.browser-gspro-spike__eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #b8a36c;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.browser-gspro-spike h1,
+.browser-gspro-spike h2 {
+  margin: 0;
+  color: #f6f5ef;
+}
+
+.browser-gspro-spike h1 {
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 0.98;
+}
+
+.browser-gspro-spike h2 {
+  font-size: 26px;
+}
+
+.browser-gspro-spike__lead {
+  max-width: 820px;
+  margin: 18px 0 24px;
+  color: #bfc7c4;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.browser-gspro-spike__steps {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 1px solid #273138;
+  border-radius: 14px;
+  background: #11191e;
+  color: #d8ddda;
+}
+
+.browser-gspro-spike code {
+  color: #e6d39e;
+}
+
+.browser-gspro-spike__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 24px;
+}
+
+.browser-gspro-spike button {
+  appearance: none;
+  border: 1px solid #39454d;
+  border-radius: 10px;
+  background: #172026;
+  color: #f1f3ef;
+  padding: 11px 15px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.browser-gspro-spike button:hover {
+  background: #202b32;
+}
+
+.browser-gspro-spike__primary {
+  border-color: #b8a36c !important;
+  background: #b8a36c !important;
+  color: #111517 !important;
+}
+
+.browser-gspro-spike__stop {
+  border-color: #c97467 !important;
+}
+
+.browser-gspro-spike__quiet {
+  color: #9ca7a3 !important;
+}
+
+.browser-gspro-spike__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.browser-gspro-spike__card {
+  min-height: 120px;
+  padding: 16px;
+  border: 1px solid #263039;
+  border-radius: 14px;
+  background: #11191e;
+}
+
+.browser-gspro-spike__card span,
+.browser-gspro-spike__card small {
+  display: block;
+  color: #8f9b97;
+}
+
+.browser-gspro-spike__card span {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.browser-gspro-spike__card strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.browser-gspro-spike__card small {
+  line-height: 1.4;
+}
+
+.browser-gspro-spike__error,
+.browser-gspro-spike__success {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  line-height: 1.45;
+}
+
+.browser-gspro-spike__error {
+  border: 1px solid #7c3e39;
+  background: #241615;
+  color: #f0b2aa;
+}
+
+.browser-gspro-spike__success {
+  border: 1px solid #536e58;
+  background: #142019;
+  color: #cce4ce;
+}
+
+.browser-gspro-spike__latest {
+  overflow: hidden;
+  border: 1px solid #263039;
+  border-radius: 16px;
+  background: #0a0f12;
+}
+
+.browser-gspro-spike__latest-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-bottom: 1px solid #263039;
+  background: #11191e;
+}
+
+.browser-gspro-spike__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  color: #899590;
+  font-size: 12px;
+}
+
+.browser-gspro-spike pre {
+  max-height: 460px;
+  margin: 0;
+  padding: 18px;
+  overflow: auto;
+  color: #d9dfda;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.browser-gspro-spike__note {
+  margin-top: 14px;
+  color: #7f8b87;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .browser-gspro-spike__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .browser-gspro-spike__latest-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .browser-gspro-spike__meta {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .browser-gspro-spike {
+    padding: 24px 12px 48px;
+  }
+
+  .browser-gspro-spike__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .browser-gspro-spike__actions {
+    flex-direction: column;
+  }
+
+  .browser-gspro-spike button {
+    width: 100%;
+  }
+}
