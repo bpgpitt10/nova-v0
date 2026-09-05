@@ -58,3 +58,34 @@ export const weightedMedian = (
 
   return points[points.length - 1]?.value
 }
+
+export const weightedPercentile = (
+  values: readonly (number | null | undefined)[],
+  weights: readonly (number | null | undefined)[],
+  percentile: number,
+) => {
+  const points = toWeightedPoints(values, weights).sort(
+    (left, right) => left.value - right.value,
+  )
+  if (points.length === 0) {
+    return undefined
+  }
+
+  const boundedPercentile = Math.min(100, Math.max(0, percentile))
+  if (boundedPercentile === 0) {
+    return points[0].value
+  }
+
+  const totalWeight = points.reduce((sum, point) => sum + point.weight, 0)
+  const threshold = totalWeight * (boundedPercentile / 100)
+  let cumulativeWeight = 0
+
+  for (const point of points) {
+    cumulativeWeight += point.weight
+    if (cumulativeWeight >= threshold) {
+      return point.value
+    }
+  }
+
+  return points[points.length - 1]?.value
+}
