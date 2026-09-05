@@ -1,4 +1,5 @@
 export type IntelligenceClubId = string
+export type IntelligenceAnalysisPolicyId = string
 
 export type IntelligenceShotRank = number | string | null
 
@@ -30,6 +31,7 @@ export type IntelligenceSession = {
 
 export type IntelligenceAnalysisDataset = {
   asOf: string
+  analysisPolicyId: IntelligenceAnalysisPolicyId
   shots: readonly IntelligenceShot[]
   sessions: readonly IntelligenceSession[]
 }
