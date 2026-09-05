@@ -65,6 +65,7 @@ export type IntelligenceResult<TValue> = {
   modelId: string
   modelVersion: string
   value: TValue
+  explanation: string
   evidence: IntelligenceEvidence
   trace: readonly IntelligenceTraceStep[]
 }
