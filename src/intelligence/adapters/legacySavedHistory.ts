@@ -13,6 +13,8 @@ import type {
   PerformanceDriverInput,
 } from '../input'
 
+export const LEGACY_MANUAL_CLEANUP_POLICY_ID = 'legacy-manual-cleanup'
+
 const validTimestampOrFallback = (
   capturedAt: string | undefined,
   fallbackEndedAt: string | undefined,
@@ -66,6 +68,10 @@ const legacyDescentAngle = (payload: OpenGolfCoachPayload | undefined) =>
  * Important: analysisWeight intentionally reproduces the weighting currently used by
  * summarizeReviewClub on saved history. This is an adapter for parity, not a new
  * weighting policy.
+ *
+ * The legacy policy assumes the user has already manually removed true mishits from
+ * the analysis set. Future automated mishit classification should produce a separate
+ * planning-policy dataset rather than changing these driver formulas in place.
  */
 export const buildLegacySavedHistoryDataset = (
   savedSessions: readonly SavedSession[],
@@ -160,6 +166,7 @@ export const buildLegacySavedHistoryDataset = (
 
   return {
     asOf: new Date(asOfMs).toISOString(),
+    analysisPolicyId: LEGACY_MANUAL_CLEANUP_POLICY_ID,
     shots,
     sessions,
   }
