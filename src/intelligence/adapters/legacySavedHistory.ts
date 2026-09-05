@@ -4,12 +4,13 @@ import {
   isSystemOldExcludedSession,
   sessionHistoricalWeightForClub,
 } from '../../lib/historicalModel'
-import type { SavedSession } from '../../types'
+import type { OpenGolfCoachPayload, SavedSession } from '../../types'
 import type {
   IntelligenceAnalysisDataset,
   IntelligenceSession,
   IntelligenceShot,
   PatternStabilityInput,
+  PerformanceDriverInput,
 } from '../input'
 
 const validTimestampOrFallback = (
@@ -24,6 +25,40 @@ const validTimestampOrFallback = (
   }
   return null
 }
+
+const payloadNumber = (
+  payload: OpenGolfCoachPayload | undefined,
+  keys: readonly string[],
+) => {
+  if (!payload) {
+    return null
+  }
+
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value)
+      if (!Number.isNaN(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+const legacyDescentAngle = (payload: OpenGolfCoachPayload | undefined) =>
+  payloadNumber(payload, [
+    'descent_angle_degrees',
+    'descent_angle_deg',
+    'descent_angle',
+    'descentAngleDegrees',
+    'descentAngleDeg',
+    'descentAngle',
+  ])
 
 /**
  * Converts today's SavedSession persistence shape into a storage-agnostic dataset.
@@ -114,6 +149,11 @@ export const buildLegacySavedHistoryDataset = (
           typeof shot.spinAxisDegrees === 'number' && Number.isFinite(shot.spinAxisDegrees)
             ? shot.spinAxisDegrees
             : null,
+        descentAngleDegrees: legacyDescentAngle(shot.openGolfCoach),
+        shotRank:
+          typeof shot.shotRanking === 'number' || typeof shot.shotRanking === 'string'
+            ? shot.shotRanking
+            : null,
       })
     })
   })
@@ -124,6 +164,14 @@ export const buildLegacySavedHistoryDataset = (
     sessions,
   }
 }
+
+export const performanceDriverInputFromDataset = (
+  dataset: IntelligenceAnalysisDataset,
+  clubId: string,
+): PerformanceDriverInput => ({
+  clubId,
+  shots: dataset.shots.filter((shot) => shot.clubId === clubId),
+})
 
 export const patternStabilityInputFromDataset = (
   dataset: IntelligenceAnalysisDataset,
