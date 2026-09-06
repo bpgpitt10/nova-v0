@@ -2,7 +2,7 @@ param(
   [int]$Monitor = 1,
   [Nullable[double]]$Distance = $null,
   [string]$Roi = "",
-  [string]$ZoomOutKey = ""
+  [string]$ZoomOutKey = "W"
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,6 +41,7 @@ if ($ZoomOutKey) {
 Write-Host "Running GSPro minimap hazard probe v2 once."
 if ($ZoomOutKey) {
   Write-Host "Automatic zoom recovery enabled with key: $ZoomOutKey"
+  Write-Host "If recovery zooms out, the broader map view is intentionally left in place."
 }
 
 & $Python @argsList
