@@ -1,11 +1,11 @@
 param(
   [int]$Monitor = 1,
-  [Nullable[double]]$Distance = $null,
   [string]$Roi = "",
-  [string]$TargetCardRoi = "",
   [string]$LieRoi = "",
   [string]$Tesseract = "",
-  [string]$ZoomOutKey = "W",
+  [string]$HeatmapKey = "Y",
+  [double]$HeatmapSettleMs = 320,
+  [double]$HeatmapPulseMs = 45,
   [double]$AimPulseMs = 45,
   [double]$AimSettleMs = 180,
   [double]$AimReturnTolerancePx = 1.5,
@@ -27,8 +27,11 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v7.py"),
+  (Join-Path $Here "probe_v8.py"),
   "--monitor", "$Monitor",
+  "--heatmap-key", "$HeatmapKey",
+  "--heatmap-settle-ms", "$HeatmapSettleMs",
+  "--heatmap-pulse-ms", "$HeatmapPulseMs",
   "--aim-pulse-ms", "$AimPulseMs",
   "--aim-settle-ms", "$AimSettleMs",
   "--aim-return-tolerance-px", "$AimReturnTolerancePx",
@@ -36,18 +39,8 @@ $argsList = @(
   "--aim-max-corrections", "$AimMaxCorrections"
 )
 
-# Manual distance remains only a debugging fallback/override. Normal live use
-# reads distance/elevation from GSPro's white PIN target card.
-if ($Distance -ne $null) {
-  $argsList += @("--distance", "$Distance")
-}
-
 if ($Roi) {
   $argsList += @("--roi", $Roi)
-}
-
-if ($TargetCardRoi) {
-  $argsList += @("--target-card-roi", $TargetCardRoi)
 }
 
 if ($LieRoi) {
@@ -58,33 +51,24 @@ if ($Tesseract) {
   $argsList += @("--tesseract", $Tesseract)
 }
 
-if ($ZoomOutKey) {
-  if ($ZoomOutKey -notin @("W", "w")) {
-    throw "-ZoomOutKey must be W (GSPro zoom out)."
-  }
-  $argsList += @("--zoom-out-key", $ZoomOutKey)
-}
-
 if ($NoAimSummon) {
   $argsList += "--no-aim-summon"
 }
 
-Write-Host "Running GSPro live-state + minimap hazard probe v7 once."
-Write-Host "White PIN + player-color AIM target-card detection enabled."
-Write-Host "Screen PIN card is primary for distance + elevation."
-Write-Host "Directional lie OCR enabled from minimap footer (UP/DOWN + LEFT/RIGHT)."
+if ($HeatmapKey -notin @("Y", "y")) {
+  throw "-HeatmapKey must be Y for the current GSPro heatmap capture contract."
+}
+
+Write-Host "Running GSPro tee-capture orchestrator v8 once."
+Write-Host "TEE RULE: minimap zoom is never changed; W recovery is disabled by design."
+Write-Host "Screen PIN distance/elevation + minimap directional lie enabled."
+Write-Host "Heatmap sequence: initial capture -> Y toggle -> registered capture -> Y restore."
+Write-Host "One canonical HEATMAP-ON minimap is written to the HoleModel."
+Write-Host "Red penalty CV restores only Y-changed green pixels transiently to avoid heatmap contamination."
 if ($NoAimSummon) {
   Write-Host "Automatic AIM-card summon disabled."
 } else {
-  Write-Host "Automatic AIM-card summon enabled: controlled L/R pulse with visual return verification."
-  Write-Host "Aim pulse: $AimPulseMs ms each direction; return tolerance: $AimReturnTolerancePx px."
-}
-Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
-if ($Distance -ne $null) {
-  Write-Host "Manual distance override supplied: $Distance yd"
-}
-if ($ZoomOutKey) {
-  Write-Host "Automatic zoom-out recovery enabled with key: $ZoomOutKey (view is left zoomed out)."
+  Write-Host "AIM acquisition runs after heatmap restoration with controlled L/R return verification."
 }
 
 & $Python @argsList
