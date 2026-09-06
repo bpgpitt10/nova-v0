@@ -50,7 +50,7 @@ if ($ZoomOutKey) {
 }
 
 Write-Host "Running GSPro live-state + minimap hazard probe v6 once."
-Write-Host "White PIN + red AIM target-card detection enabled."
+Write-Host "White PIN + player-color AIM target-card detection enabled."
 Write-Host "Screen PIN card is primary for distance + elevation."
 Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
 if ($Distance -ne $null) {
