@@ -18,7 +18,7 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe.py"),
+  (Join-Path $Here "probe_v2.py"),
   "--monitor", "$Monitor"
 )
 
