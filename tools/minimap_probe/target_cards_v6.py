@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Robust GSPro target-card detection for live full-shot play.
 
-v5 tried to discover the card from its dark interior. On tree-lined / blind-shot
-views the black card can visually merge with the dark course background, so that
-approach can miss an obvious card.
+v6 originally tried to find cards from the colored border component. On tree-lined
+views the white pin border can connect to bright background pixels, which shifts the
+component's top edge upward and causes OCR to crop the wrong place.
 
-v6 instead detects the BORDER, which is the stable UI signature:
-- white border (+ white pointer tail) = permanent pin card;
-- red border = currently selected / aim-point card.
+This version instead finds the card's enclosed DARK INTERIOR with RETR_LIST. The
+interior remains a clean, almost-square contour even when the outer white border is
+visually connected to trees/sky. We then inspect a thin ring around that interior to
+classify the card:
+- white/neutral ring = permanent PIN card;
+- red-tinted ring = selected AIM card.
 
-The card body is screen-space UI and is roughly square. The white pointer tail is
-much taller than the body, so for a white connected component we intentionally
-crop only the square top portion. Red aim cards have a red square border while
-the pointer tail remains white, so the red component is already approximately the
-card body.
+The card body is screen-space UI. We expand the dark interior by a small fixed-scale
+padding to recover the border, then reuse target_card.py for OCR + elevation parsing.
 """
 
 from __future__ import annotations
@@ -49,26 +49,6 @@ def _search_mask(shape: tuple[int, int]) -> np.ndarray:
     return mask
 
 
-def _border_masks(screen: np.ndarray) -> dict[str, np.ndarray]:
-    hsv = cv2.cvtColor(screen, cv2.COLOR_BGR2HSV)
-    search = _search_mask(screen.shape[:2])
-
-    white = (
-        (hsv[:, :, 1] < 70)
-        & (hsv[:, :, 2] > 170)
-        & (search > 0)
-    ).astype(np.uint8) * 255
-
-    red = (
-        (((hsv[:, :, 0] <= 12) | (hsv[:, :, 0] >= 168)))
-        & (hsv[:, :, 1] > 110)
-        & (hsv[:, :, 2] > 100)
-        & (search > 0)
-    ).astype(np.uint8) * 255
-
-    return {"pin": white, "aim": red}
-
-
 def _validate_card_body(screen: np.ndarray, bbox: tuple[int, int, int, int]) -> tuple[bool, float]:
     x, y, w, h = bbox
     card = screen[y:y + h, x:x + w]
@@ -82,94 +62,146 @@ def _validate_card_body(screen: np.ndarray, bbox: tuple[int, int, int, int]) -> 
     if inner.size == 0:
         return False, 0.0
 
-    # The actual GSPro card interior is extremely dark. This is the strongest
-    # rejection for bright sky/building shapes that can also form white components.
     dark_ratio = float((inner < 90).mean())
-    if dark_ratio < 0.72:
+    if dark_ratio < 0.62:
         return False, 0.0
 
-    top = hsv[int(h * 0.08):int(h * 0.50), int(w * 0.10):int(w * 0.90)]
-    white_text_ratio = float(((top[:, :, 1] < 80) & (top[:, :, 2] > 165)).mean()) if top.size else 0.0
-    if white_text_ratio < 0.035:
+    # Large white distance numerals should exist in the upper half.
+    top = hsv[int(h * 0.08):int(h * 0.52), int(w * 0.10):int(w * 0.90)]
+    white_text_ratio = float(((top[:, :, 1] < 85) & (top[:, :, 2] > 160)).mean()) if top.size else 0.0
+    if white_text_ratio < 0.025:
         return False, 0.0
 
-    lower_left = hsv[int(h * 0.48):int(h * 0.95), :int(w * 0.56)]
+    # Every full-shot target card has the green elevation triangle in the lower-left.
+    lower_left = hsv[int(h * 0.46):int(h * 0.96), :int(w * 0.58)]
     green_ratio = float((
         (lower_left[:, :, 0] >= 35)
         & (lower_left[:, :, 0] <= 95)
-        & (lower_left[:, :, 1] > 70)
-        & (lower_left[:, :, 2] > 80)
+        & (lower_left[:, :, 1] > 65)
+        & (lower_left[:, :, 2] > 75)
     ).mean()) if lower_left.size else 0.0
-    if green_ratio < 0.002:
+    if green_ratio < 0.0015:
         return False, 0.0
 
-    # Score only needs to rank multiple plausible UI components.
-    score = dark_ratio * 160.0 + white_text_ratio * 80.0 + min(green_ratio, 0.08) * 250.0
+    score = dark_ratio * 150.0 + white_text_ratio * 90.0 + min(green_ratio, 0.08) * 260.0
     return True, score
+
+
+def _ring_classification(
+    screen: np.ndarray,
+    interior_bbox: tuple[int, int, int, int],
+    pad: int,
+) -> tuple[str | None, float, float]:
+    """Return (type, red_ratio, white_ratio) from pixels just outside dark interior."""
+    H, W = screen.shape[:2]
+    x, y, w, h = interior_bbox
+
+    x0 = max(0, x - pad)
+    y0 = max(0, y - pad)
+    x1 = min(W, x + w + pad)
+    y1 = min(H, y + h + pad)
+    outer = screen[y0:y1, x0:x1]
+    if outer.size == 0:
+        return None, 0.0, 0.0
+
+    mask = np.ones(outer.shape[:2], dtype=bool)
+    ix = x - x0
+    iy = y - y0
+    mask[iy:iy + h, ix:ix + w] = False
+    pixels = outer[mask].astype(np.int16)
+    if pixels.size == 0:
+        return None, 0.0, 0.0
+
+    b = pixels[:, 0]
+    g = pixels[:, 1]
+    r = pixels[:, 2]
+
+    # GSPro's red border is strongly red at its core but heavily anti-aliased around
+    # the edge. Relative RGB is more robust than requiring high HSV saturation.
+    red_ratio = float(((r - np.maximum(b, g) > 25) & (r > 140)).mean())
+
+    spread = np.maximum.reduce([b, g, r]) - np.minimum.reduce([b, g, r])
+    white_ratio = float(((spread < 45) & (np.maximum.reduce([b, g, r]) > 170)).mean())
+
+    # In observed captures a red aim card has ~6-12% red-tinted pixels in the close
+    # ring while the white pin card is essentially 0% red. Keep the threshold loose
+    # enough for anti-aliasing / render scaling.
+    if red_ratio >= 0.025:
+        return "aim", red_ratio, white_ratio
+    if white_ratio >= 0.20:
+        return "pin", red_ratio, white_ratio
+    return None, red_ratio, white_ratio
 
 
 def detect_cards(screen: np.ndarray) -> list[DetectedCard]:
     H, W = screen.shape[:2]
+    search = _search_mask((H, W))
+    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+
+    # IMPORTANT: RETR_LIST is intentional. A pin card can sit in front of dark trees,
+    # so its dark interior may be nested inside a much larger dark background contour.
+    # RETR_EXTERNAL loses the card; RETR_LIST preserves the enclosed square interior.
+    dark = ((gray < 78) & (search > 0)).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(dark, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
     detected: list[DetectedCard] = []
+    for contour in contours:
+        x, y, rw, rh = cv2.boundingRect(contour)
 
-    for card_type, raw_mask in _border_masks(screen).items():
-        mask = cv2.morphologyEx(
-            raw_mask,
-            cv2.MORPH_CLOSE,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)),
+        # Observed dark interiors are roughly 5-6% of screen width and ~10% of
+        # screen height on 16:9-ish captures. Keep broader tolerances for scaling.
+        if not (W * 0.028 <= rw <= W * 0.090):
+            continue
+        if not (H * 0.045 <= rh <= H * 0.145):
+            continue
+
+        aspect = rw / max(float(rh), 1.0)
+        if not (0.72 <= aspect <= 1.32):
+            continue
+
+        area = cv2.contourArea(contour)
+        rectangularity = area / max(float(rw * rh), 1.0)
+        if rectangularity < 0.72:
+            continue
+
+        interior = gray[y:y + rh, x:x + rw]
+        if interior.size == 0:
+            continue
+        interior_dark = float((interior < 92).mean())
+        if interior_dark < 0.78:
+            continue
+
+        # Padding around the dark interior recovers the visible border/card body.
+        # ~0.6% of screen height is 7px at 1150p and matched observed GSPro cards.
+        pad = max(5, int(round(H * 0.006)))
+        card_type, red_ratio, white_ratio = _ring_classification(
+            screen, (x, y, rw, rh), max(3, pad // 2)
         )
-        mask = cv2.dilate(
-            mask,
-            cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)),
-            iterations=1,
+        if card_type is None:
+            continue
+
+        bx = max(0, x - pad)
+        by = max(0, y - pad)
+        bw = min(W - bx, rw + 2 * pad)
+        bh = min(H - by, rh + 2 * pad)
+        bbox = (bx, by, bw, bh)
+
+        valid, body_score = _validate_card_body(screen, bbox)
+        if not valid:
+            continue
+
+        size_target = W * 0.055
+        size_bonus = max(0.0, 22.0 - abs(rw - size_target) * 0.16)
+        vertical_center = y + rh / 2
+        vertical_bonus = max(0.0, 10.0 - abs(vertical_center - H * 0.28) / max(H * 0.03, 1.0))
+        border_bonus = red_ratio * 180.0 if card_type == "aim" else white_ratio * 22.0
+
+        detected.append(
+            DetectedCard(card_type, bbox, body_score + size_bonus + vertical_bonus + border_bonus)
         )
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for contour in contours:
-            x, y, rw, rh = cv2.boundingRect(contour)
-
-            # Observed cards are ~5-7% of screen width; keep modest tolerance for
-            # different monitor/render scaling.
-            if not (W * 0.032 <= rw <= W * 0.095):
-                continue
-
-            if card_type == "pin":
-                # White card border is connected to its long white pointer tail.
-                if not (rw * 1.15 <= rh <= rw * 2.8):
-                    continue
-                card_h = int(round(rw * 1.02))
-            else:
-                # Red aim-card border is approximately square. Its pointer remains white.
-                if not (rw * 0.72 <= rh <= rw * 1.42):
-                    continue
-                card_h = int(round(max(rh, rw * 0.95)))
-
-            card_h = min(card_h, H - y)
-            if card_h <= 0:
-                continue
-
-            # Small pad recovers anti-aliased border pixels while still excluding
-            # almost all of the pointer tail.
-            pad = max(1, int(round(H * 0.0015)))
-            bx = max(0, x - pad)
-            by = max(0, y - pad)
-            bw = min(W - bx, rw + 2 * pad)
-            bh = min(H - by, card_h + 2 * pad)
-            bbox = (bx, by, bw, bh)
-
-            valid, score = _validate_card_body(screen, bbox)
-            if not valid:
-                continue
-
-            # Prefer normal card size and locations near the middle vertical region,
-            # but do not require a particular horizontal position.
-            size_bonus = max(0.0, 25.0 - abs(rw - W * 0.061) * 0.20)
-            vertical_center = y + card_h / 2
-            vertical_bonus = max(0.0, 12.0 - abs(vertical_center - H * 0.30) / max(H * 0.025, 1.0))
-            detected.append(DetectedCard(card_type, bbox, score + size_bonus + vertical_bonus))
-
-    # There should normally be at most one of each type. If rendering artifacts
-    # create duplicates, keep the strongest candidate per type.
+    # There should normally be one pin and zero/one aim card. Keep the strongest
+    # candidate per type if scenery creates additional square dark candidates.
     best: dict[str, DetectedCard] = {}
     for item in detected:
         current = best.get(item.card_type)
