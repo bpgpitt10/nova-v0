@@ -1,5 +1,5 @@
 param(
-  [double]$WatchSeconds = 2.0,
+  [Nullable[double]]$WatchSeconds = $null,
   [int]$Monitor = 1,
   [Nullable[double]]$Distance = $null,
   [string]$Roi = ""
@@ -19,9 +19,12 @@ if (-not (Test-Path $Python)) {
 
 $argsList = @(
   (Join-Path $Here "probe.py"),
-  "--watch", "$WatchSeconds",
   "--monitor", "$Monitor"
 )
+
+if ($WatchSeconds -ne $null) {
+  $argsList += @("--watch", "$WatchSeconds")
+}
 
 if ($Distance -ne $null) {
   $argsList += @("--distance", "$Distance")
@@ -31,5 +34,10 @@ if ($Roi) {
   $argsList += @("--roi", $Roi)
 }
 
-Write-Host "Starting GSPro minimap probe. Ctrl+C to stop."
+if ($WatchSeconds -ne $null) {
+  Write-Host "Starting GSPro minimap probe in watch mode. Ctrl+C to stop."
+} else {
+  Write-Host "Running GSPro minimap probe once."
+}
+
 & $Python @argsList
