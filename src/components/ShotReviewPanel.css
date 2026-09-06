@@ -1,0 +1,282 @@
+.shot-review-launcher,
+.shot-review-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 30;
+}
+
+.shot-review-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(212, 177, 90, 0.5);
+  border-radius: 999px;
+  background: rgba(14, 23, 16, 0.94);
+  color: #ffffff;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.shot-review-launcher strong {
+  color: #d4b15a;
+  font-size: 12px;
+}
+
+.shot-review-panel {
+  box-sizing: border-box;
+  width: min(430px, calc(100vw - 28px));
+  padding: 18px;
+  border: 1px solid rgba(49, 66, 51, 0.95);
+  border-radius: 18px;
+  background: rgba(14, 23, 16, 0.97);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.46);
+  color: #ffffff;
+  backdrop-filter: blur(16px);
+}
+
+.shot-review-header,
+.shot-review-progress,
+.shot-review-shot-title,
+.shot-review-metrics,
+.shot-review-option {
+  display: flex;
+  align-items: center;
+}
+
+.shot-review-header {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.shot-review-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: #d4b15a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.shot-review-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.shot-review-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #314233;
+  border-radius: 999px;
+  background: #172419;
+  color: #cfd8cd;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shot-review-empty {
+  padding: 18px 2px 4px;
+  color: #9fb09f;
+  line-height: 1.45;
+}
+
+.shot-review-progress {
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #9fb09f;
+  font-size: 12px;
+}
+
+.shot-review-progress > span {
+  flex: 1;
+  text-align: center;
+}
+
+.shot-review-progress button {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid #314233;
+  border-radius: 9px;
+  background: #172419;
+  color: #cfd8cd;
+  cursor: pointer;
+}
+
+.shot-review-progress button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.shot-review-progress .shot-review-latest {
+  width: auto;
+  padding: 0 9px;
+  color: #d4b15a;
+}
+
+.shot-review-shot-card {
+  padding: 13px;
+  border: 1px solid rgba(49, 66, 51, 0.85);
+  border-radius: 13px;
+  background: rgba(23, 36, 25, 0.78);
+}
+
+.shot-review-shot-title {
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.shot-review-shot-title strong {
+  font-size: 16px;
+}
+
+.shot-review-shot-title span {
+  color: #9fb09f;
+  font-size: 11px;
+}
+
+.shot-review-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.shot-review-metrics div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.shot-review-metrics span {
+  color: #9fb09f;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shot-review-metrics strong {
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.shot-review-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.shot-review-option {
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 5px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid #314233;
+  border-radius: 10px;
+  background: #172419;
+  color: #cfd8cd;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.shot-review-option kbd {
+  color: #7f917f;
+  font: inherit;
+  font-size: 9px;
+}
+
+.shot-review-option.is-selected {
+  color: #ffffff;
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.shot-review-option-normal.is-selected {
+  background: rgba(95, 191, 122, 0.16);
+  color: #76d39b;
+}
+
+.shot-review-option-mishit.is-selected {
+  background: rgba(209, 138, 59, 0.18);
+  color: #d18a3b;
+}
+
+.shot-review-option-severe_mishit.is-selected {
+  background: rgba(200, 90, 74, 0.18);
+  color: #c85a4a;
+}
+
+.shot-review-option-intentional.is-selected {
+  background: rgba(212, 177, 90, 0.15);
+  color: #d4b15a;
+}
+
+.shot-review-option-unsure.is-selected {
+  background: rgba(159, 176, 159, 0.13);
+  color: #cfd8cd;
+}
+
+.shot-review-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.shot-review-note > span {
+  color: #9fb09f;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shot-review-note textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+  padding: 10px 11px;
+  border: 1px solid #314233;
+  border-radius: 10px;
+  outline: none;
+  background: #172419;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.shot-review-note textarea:focus {
+  border-color: rgba(212, 177, 90, 0.75);
+}
+
+.shot-review-note textarea::placeholder {
+  color: #708070;
+}
+
+.shot-review-footnote {
+  margin: 10px 1px 0;
+  color: #7f917f;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+@media (max-width: 620px) {
+  .shot-review-launcher,
+  .shot-review-panel {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .shot-review-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
