@@ -2,6 +2,8 @@ param(
   [int]$Monitor = 1,
   [Nullable[double]]$Distance = $null,
   [string]$Roi = "",
+  [string]$TargetCardRoi = "",
+  [string]$Tesseract = "",
   [string]$ZoomOutKey = "W"
 )
 
@@ -17,18 +19,27 @@ if (-not (Test-Path $Python)) {
   & $Python -m pip install -r (Join-Path $Here "requirements.txt")
 }
 
-if ($Distance -eq $null) {
-  throw "Probe requires -Distance <current GSPro distance to pin>."
-}
-
 $argsList = @(
-  (Join-Path $Here "probe_v4.py"),
-  "--monitor", "$Monitor",
-  "--distance", "$Distance"
+  (Join-Path $Here "probe_v5.py"),
+  "--monitor", "$Monitor"
 )
+
+# Manual distance is now only a debugging fallback/override. Normal live use
+# reads distance from GSPro's white target card, including tee shots.
+if ($Distance -ne $null) {
+  $argsList += @("--distance", "$Distance")
+}
 
 if ($Roi) {
   $argsList += @("--roi", $Roi)
+}
+
+if ($TargetCardRoi) {
+  $argsList += @("--target-card-roi", $TargetCardRoi)
+}
+
+if ($Tesseract) {
+  $argsList += @("--tesseract", $Tesseract)
 }
 
 if ($ZoomOutKey) {
@@ -38,8 +49,12 @@ if ($ZoomOutKey) {
   $argsList += @("--zoom-out-key", $ZoomOutKey)
 }
 
-Write-Host "Running GSPro minimap hazard probe v4 once."
+Write-Host "Running GSPro live-state + minimap hazard probe v5 once."
+Write-Host "Screen target card is primary for distance + elevation."
 Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
+if ($Distance -ne $null) {
+  Write-Host "Manual distance override supplied: $Distance yd"
+}
 if ($ZoomOutKey) {
   Write-Host "Automatic zoom-out recovery enabled with key: $ZoomOutKey (view is left zoomed out)."
 }
