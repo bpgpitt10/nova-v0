@@ -3,6 +3,7 @@ param(
   [Nullable[double]]$Distance = $null,
   [string]$Roi = "",
   [string]$TargetCardRoi = "",
+  [string]$LieRoi = "",
   [string]$Tesseract = "",
   [string]$ZoomOutKey = "W",
   [double]$AimPulseMs = 45,
@@ -49,6 +50,10 @@ if ($TargetCardRoi) {
   $argsList += @("--target-card-roi", $TargetCardRoi)
 }
 
+if ($LieRoi) {
+  $argsList += @("--lie-roi", $LieRoi)
+}
+
 if ($Tesseract) {
   $argsList += @("--tesseract", $Tesseract)
 }
@@ -67,6 +72,7 @@ if ($NoAimSummon) {
 Write-Host "Running GSPro live-state + minimap hazard probe v7 once."
 Write-Host "White PIN + player-color AIM target-card detection enabled."
 Write-Host "Screen PIN card is primary for distance + elevation."
+Write-Host "Directional lie OCR enabled from minimap footer (UP/DOWN + LEFT/RIGHT)."
 if ($NoAimSummon) {
   Write-Host "Automatic AIM-card summon disabled."
 } else {
