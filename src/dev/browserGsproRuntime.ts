@@ -24,6 +24,7 @@ const GSPRO_DATABASE_NAME = 'GSPro.db'
 let pollTimer: number | null = null
 let pollBusy = false
 let runtimeRunning = false
+let runtimeStartPromise: Promise<void> | null = null
 let shimInstalled = false
 
 const toNumber = (value: unknown) => {
@@ -251,11 +252,7 @@ const installSimReadEventSourceShim = () => {
 
 export const isBrowserGsproRuntimeRunning = () => runtimeRunning
 
-export const startBrowserGsproRuntime = async () => {
-  if (runtimeRunning) {
-    return
-  }
-
+const startRuntime = async () => {
   const directoryHandle = await loadGsproDirectoryHandle()
   if (!directoryHandle) {
     throw new Error('No saved GSPro folder is available.')
@@ -320,6 +317,23 @@ export const startBrowserGsproRuntime = async () => {
   }, POLL_INTERVAL_MS)
 }
 
+export const startBrowserGsproRuntime = () => {
+  if (runtimeRunning) {
+    return Promise.resolve()
+  }
+
+  if (runtimeStartPromise) {
+    return runtimeStartPromise
+  }
+
+  runtimeStartPromise = startRuntime().catch((error) => {
+    runtimeStartPromise = null
+    throw error
+  })
+
+  return runtimeStartPromise
+}
+
 export const stopBrowserGsproRuntime = () => {
   if (pollTimer !== null) {
     window.clearInterval(pollTimer)
@@ -327,4 +341,5 @@ export const stopBrowserGsproRuntime = () => {
   }
   pollBusy = false
   runtimeRunning = false
+  runtimeStartPromise = null
 }
