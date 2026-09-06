@@ -6,6 +6,11 @@ round behavior. It keeps the white PIN card as the stable distance/elevation anc
 and, when the player-colored AIM card is not already visible, briefly exposes it with
 matched duration-controlled L/R aim pulses.
 
+It also captures GSPro's directional lie from the minimap footer:
+- longitudinal slope: UP/DOWN degrees;
+- lateral slope: LEFT/RIGHT degrees.
+This is distinct from target elevation and is needed by the eventual shot/aim model.
+
 Read-only safety matters: the probe verifies GSPro owns keyboard focus, returns with
 the same-duration opposite pulse, measures residual scene shift, and only applies a
 small bounded corrective pulse when visual feedback is reliable.
@@ -17,6 +22,7 @@ import argparse
 from pathlib import Path
 
 import aim_actuator
+import lie_state
 import probe_v5 as v5
 import probe_v6 as v6
 import target_card
@@ -27,6 +33,8 @@ import target_cards_v6
 # can layer AIM summon around them without creating recursive monkey-patches.
 _v6_read_screen_state = v6.read_screen_state_v6
 _last_aim_summon: aim_actuator.AimSummonResult | None = None
+_last_lie: lie_state.LieState | None = None
+_last_lie_error: Exception | None = None
 
 
 def parse_args_v7() -> argparse.Namespace:
@@ -39,6 +47,7 @@ def parse_args_v7() -> argparse.Namespace:
     p.add_argument("--monitor", type=int, default=1)
     p.add_argument("--roi", help="Override minimap crop as x,y,w,h in screen pixels.")
     p.add_argument("--target-card-roi", help="Debug override for PIN target card crop as x,y,w,h.")
+    p.add_argument("--lie-roi", help="Debug override for minimap lie footer as x,y,w,h.")
     p.add_argument("--tesseract", help="Explicit path to tesseract.exe if auto-discovery fails.")
     p.add_argument("--corridor", type=float, default=40.0)
     p.add_argument("--centerline-band", type=float, default=4.0)
@@ -62,8 +71,22 @@ def parse_args_v7() -> argparse.Namespace:
 
 
 def read_screen_state_v7(screen, args: argparse.Namespace, debug_dir: Path):
-    """Read PIN/AIM, auto-summoning AIM only when it is initially absent."""
-    global _last_aim_summon
+    """Read PIN/AIM + directional lie, auto-summoning AIM only when absent."""
+    global _last_aim_summon, _last_lie, _last_lie_error
+
+    # Directional lie is screen truth in the minimap footer. Read it from the
+    # untouched initial screen so later aim pulses/zoom changes cannot affect it.
+    _last_lie = None
+    _last_lie_error = None
+    try:
+        _last_lie = lie_state.read_lie_state(
+            screen,
+            tesseract_path=args.tesseract,
+            roi_override=args.lie_roi,
+            debug_dir=debug_dir,
+        )
+    except Exception as exc:
+        _last_lie_error = exc
 
     state, distance, distance_source, target_error = _v6_read_screen_state(
         screen,
@@ -171,6 +194,9 @@ def print_result_v7(result, state, target_error: Exception | None, corridor: flo
     print(f"Pin target:          {result.distance_to_pin_yds:.1f} yd [{result.distance_source}]")
     print(f"Pin elevation:       {v5._elevation_text(state)}")
     print(f"GSPro aim target:    {v6._state_text(v6._last_cards.get('aim'))}")
+    print(f"Lie slope:           {lie_state.state_text(_last_lie)}")
+    if _last_lie_error is not None:
+        print(f"Lie warning:         {_last_lie_error}")
     print(f"AIM card:            {_aim_status_text()}")
 
     status = _last_aim_summon
@@ -212,6 +238,9 @@ def print_result_v7(result, state, target_error: Exception | None, corridor: flo
             f"mostly {v5.v2.side_text(obj.median_lateral_yds)}; {corridor_text}; "
             f"centerline red crossings [{crossings}]"
         )
+
+    if _last_lie is not None:
+        print(f"\nLie debug:         {Path(__file__).with_name('output') / 'latest_lie_footer.png'}")
 
 
 # v5.main() resolves these globals at runtime.
