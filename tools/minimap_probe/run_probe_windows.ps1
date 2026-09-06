@@ -22,7 +22,7 @@ if ($Distance -eq $null) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v3.py"),
+  (Join-Path $Here "probe_v4.py"),
   "--monitor", "$Monitor",
   "--distance", "$Distance"
 )
@@ -38,8 +38,8 @@ if ($ZoomOutKey) {
   $argsList += @("--zoom-out-key", $ZoomOutKey)
 }
 
-Write-Host "Running GSPro minimap hazard probe v3 once."
-Write-Host "Fixed-size filled-circle player detection enabled."
+Write-Host "Running GSPro minimap hazard probe v4 once."
+Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
 if ($ZoomOutKey) {
   Write-Host "Automatic zoom-out recovery enabled with key: $ZoomOutKey (view is left zoomed out)."
 }
