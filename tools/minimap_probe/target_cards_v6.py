@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """Robust GSPro target-card detection for live full-shot play.
 
-v6 now uses the colored card BORDER as the primary detector:
-- white border + white pointer tail = permanent PIN card;
-- red square border = selected AIM card.
+GSPro uses two visually related cards:
+- WHITE border + white pointer tail = permanent PIN card.
+- PLAYER/TEAM-COLORED square border = selected AIM card.
 
-The earlier dark-interior classifier could find the red card but misclassify it as
-white when its sampling ring missed the red pixels. It could also miss the white
-card against dark/bright scenery. Direct raw-color connected components are much
-cleaner for these UI elements as long as we avoid morphology that merges the white
-border into scenery.
-
-A dark-interior fallback remains for unusual anti-alias/render cases.
+The aim-card color is NOT always red; it follows the player's chosen color. White is
+reserved for the pin card in the observed UI. Detection therefore treats white as a
+semantic pin signature and accepts any sufficiently saturated non-white UI border as
+an aim-card candidate.
 """
 
 from __future__ import annotations
@@ -82,18 +79,20 @@ def _validate_card_body(screen: np.ndarray, bbox: tuple[int, int, int, int]) -> 
 
 
 def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
-    """Primary detector: raw UI border colors, intentionally with NO dilation/close."""
+    """Primary detector using white pin geometry + any saturated team-color aim border."""
     H, W = screen.shape[:2]
     hsv = cv2.cvtColor(screen, cv2.COLOR_BGR2HSV)
     search = _search_mask((H, W)) > 0
 
-    red = (
-        (((hsv[:, :, 0] <= 12) | (hsv[:, :, 0] >= 168)))
-        & (hsv[:, :, 1] > 110)
-        & (hsv[:, :, 2] > 100)
+    # Team/player colors can be red, purple, yellow, etc.  Aim-card border is a
+    # saturated UI color; do not assign semantic meaning to one hue.
+    team_color = (
+        (hsv[:, :, 1] > 105)
+        & (hsv[:, :, 2] > 95)
         & search
     ).astype(np.uint8) * 255
 
+    # White is the stable, unique PIN-card signature.
     white = (
         (hsv[:, :, 1] < 70)
         & (hsv[:, :, 2] > 170)
@@ -102,8 +101,9 @@ def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
 
     found: list[DetectedCard] = []
 
-    # RED AIM CARD: the red component is the square body border. The pointer is white.
-    contours, _ = cv2.findContours(red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # AIM CARD: square team-color border; pointer is white. Raw mask, no dilation,
+    # so we do not merge the UI border into nearby scenery unnecessarily.
+    contours, _ = cv2.findContours(team_color, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for contour in contours:
         x, y, rw, rh = cv2.boundingRect(contour)
         if not (W * 0.032 <= rw <= W * 0.095):
@@ -112,7 +112,7 @@ def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
         if not (0.76 <= aspect <= 1.28):
             continue
         area = cv2.contourArea(contour)
-        if area < rw * rh * 0.20:
+        if area < rw * rh * 0.18:
             continue
 
         pad = max(1, int(round(H * 0.0015)))
@@ -127,8 +127,8 @@ def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
             continue
         found.append(DetectedCard("aim", bbox, body_score + area / max(rw * rh, 1.0) * 30.0))
 
-    # WHITE PIN CARD: border is connected to the long white pointer tail. The raw
-    # component therefore has a card-sized width and is roughly 1.4-2.5x as tall.
+    # PIN CARD: white border is connected to the long white pointer tail.  Crop only
+    # the square card body at the top of that component.
     contours, _ = cv2.findContours(white, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for contour in contours:
         x, y, rw, rh = cv2.boundingRect(contour)
@@ -138,7 +138,6 @@ def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
         if not (1.28 <= tall_ratio <= 2.65):
             continue
 
-        # Crop only the square card body at the TOP of the connected border+pointer.
         body_h = int(round(rw * 1.02))
         body_h = min(body_h, H - y)
         if body_h <= 0:
@@ -154,8 +153,6 @@ def _direct_border_candidates(screen: np.ndarray) -> list[DetectedCard]:
         valid, body_score = _validate_card_body(screen, bbox)
         if not valid:
             continue
-
-        # Strongly prefer the canonical pointer-tail shape over incidental white scenery.
         shape_bonus = max(0.0, 28.0 - abs(tall_ratio - 1.90) * 25.0)
         found.append(DetectedCard("pin", bbox, body_score + shape_bonus))
 
@@ -167,7 +164,7 @@ def _ring_classification(
     interior_bbox: tuple[int, int, int, int],
     pad: int,
 ) -> tuple[str | None, float, float]:
-    """Fallback classifier for a square dark card interior."""
+    """Fallback: white ring => pin; saturated/chromatic ring => aim, regardless of hue."""
     H, W = screen.shape[:2]
     x, y, w, h = interior_bbox
     x0 = max(0, x - pad)
@@ -182,22 +179,25 @@ def _ring_classification(
     ix = x - x0
     iy = y - y0
     mask[iy:iy + h, ix:ix + w] = False
-    pixels = outer[mask].astype(np.int16)
+    pixels = outer[mask]
     if pixels.size == 0:
         return None, 0.0, 0.0
 
-    b = pixels[:, 0]
-    g = pixels[:, 1]
-    r = pixels[:, 2]
-    red_ratio = float(((r - np.maximum(b, g) > 25) & (r > 140)).mean())
+    hsv = cv2.cvtColor(outer, cv2.COLOR_BGR2HSV)[mask]
+    bgr = pixels.astype(np.int16)
+    b, g, r = bgr[:, 0], bgr[:, 1], bgr[:, 2]
     spread = np.maximum.reduce([b, g, r]) - np.minimum.reduce([b, g, r])
-    white_ratio = float(((spread < 45) & (np.maximum.reduce([b, g, r]) > 170)).mean())
 
-    if red_ratio >= 0.018:
-        return "aim", red_ratio, white_ratio
-    if white_ratio >= 0.14:
-        return "pin", red_ratio, white_ratio
-    return None, red_ratio, white_ratio
+    white_ratio = float(((spread < 45) & (np.maximum.reduce([b, g, r]) > 170)).mean())
+    color_ratio = float(((hsv[:, 1] > 100) & (hsv[:, 2] > 95)).mean())
+
+    # White is unique to the pin.  Any strong non-white/chromatic ring can be the
+    # player's chosen aim-card color.
+    if white_ratio >= 0.14 and white_ratio >= color_ratio * 1.25:
+        return "pin", color_ratio, white_ratio
+    if color_ratio >= 0.10:
+        return "aim", color_ratio, white_ratio
+    return None, color_ratio, white_ratio
 
 
 def _interior_fallback_candidates(screen: np.ndarray, missing_types: set[str]) -> list[DetectedCard]:
@@ -230,7 +230,7 @@ def _interior_fallback_candidates(screen: np.ndarray, missing_types: set[str]) -
             continue
 
         pad = max(6, int(round(H * 0.008)))
-        card_type, red_ratio, white_ratio = _ring_classification(screen, (x, y, rw, rh), pad)
+        card_type, color_ratio, white_ratio = _ring_classification(screen, (x, y, rw, rh), pad)
         if card_type is None or card_type not in missing_types:
             continue
 
@@ -243,7 +243,7 @@ def _interior_fallback_candidates(screen: np.ndarray, missing_types: set[str]) -
         if not valid:
             continue
 
-        border_bonus = red_ratio * 200.0 if card_type == "aim" else white_ratio * 30.0
+        border_bonus = color_ratio * 200.0 if card_type == "aim" else white_ratio * 30.0
         found.append(DetectedCard(card_type, bbox, body_score + border_bonus))
 
     return found
@@ -278,7 +278,7 @@ def detect_aim_bbox(screen: np.ndarray) -> tuple[int, int, int, int]:
     for card in detect_cards(screen):
         if card.card_type == "aim":
             return card.bbox
-    raise RuntimeError("Could not locate a red GSPro aim target card.")
+    raise RuntimeError("Could not locate the player-colored GSPro aim target card.")
 
 
 def _read_bbox(
@@ -315,7 +315,8 @@ def read_cards(
         annotated = screen.copy()
         for card in detected:
             x, y, w, h = card.bbox
-            color = (255, 255, 255) if card.card_type == "pin" else (0, 0, 255)
+            # Debug box only; semantic classification no longer assumes AIM is red.
+            color = (255, 255, 255) if card.card_type == "pin" else (0, 255, 255)
             cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
             state = states.get(card.card_type)
             if state is not None:
