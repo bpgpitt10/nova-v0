@@ -56,27 +56,21 @@ def _heatmap_color_score(roi: np.ndarray, pin: base.Point) -> float:
     v = hsv[:, :, 2]
     vivid = (s >= 115) & (v >= 105)
     hue = (
-        (h <= 12)                       # red
-        | ((h >= 15) & (h <= 42))      # orange/yellow
-        | ((h >= 43) & (h <= 95))      # green
-        | (h >= 172)                    # red wrap
+        (h <= 12)
+        | ((h >= 15) & (h <= 42))
+        | ((h >= 43) & (h <= 95))
+        | (h >= 172)
     )
     mask = near & vivid & hue
-    # Count plus a small saturation-weighted term so a filled heatmap wins over a
-    # thin red penalty line passing near the pin.
     return float(mask.sum()) + float(s[mask].sum()) / 255.0 if mask.any() else 0.0
 
 
 def _difference_mask(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     diff = cv2.absdiff(a, b)
-    # Require a material color/intensity change. Anti-alias shimmer should not be
-    # enough to become a green candidate.
     max_diff = diff.max(axis=2)
     mean_diff = diff.mean(axis=2)
     mask = ((max_diff >= 30) & (mean_diff >= 12)).astype(np.uint8) * 255
 
-    # Registered GSPro frames should differ primarily on heatmapped greens. Close
-    # small internal gaps but avoid giant dilation that could merge neighboring holes.
     mask = cv2.morphologyEx(
         mask,
         cv2.MORPH_OPEN,
@@ -99,7 +93,6 @@ def _point_to_component_distance(mask: np.ndarray, pin: base.Point) -> float:
 
 
 def _select_target_green(changed: np.ndarray, pin: base.Point) -> tuple[np.ndarray, tuple[int, int, int, int], float]:
-    # A light dilation joins heatmap transition bands belonging to the same green.
     joined = cv2.dilate(
         changed,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
@@ -119,7 +112,6 @@ def _select_target_green(changed: np.ndarray, pin: base.Point) -> tuple[np.ndarr
         distance = _point_to_component_distance(component, pin)
         if distance > max_pin_distance:
             continue
-        # Prefer components close to the pin, then larger coherent regions.
         score = 120.0 / (1.0 + distance) + min(area, 2000) / 80.0
         candidates.append((score, label, distance, area))
 
@@ -128,9 +120,6 @@ def _select_target_green(changed: np.ndarray, pin: base.Point) -> tuple[np.ndarr
 
     _score, label, distance, _area = max(candidates, key=lambda item: item[0])
     selected_joined = (labels == label).astype(np.uint8) * 255
-
-    # Return only genuinely changed pixels inside the selected component. Then close
-    # tiny holes so the mask can safely exclude heatmap fill from hazard-red CV.
     selected = cv2.bitwise_and(changed, selected_joined)
     selected = cv2.morphologyEx(
         selected,
@@ -156,8 +145,6 @@ def classify_and_extract(
     if initial_roi.shape != toggled_roi.shape:
         raise RuntimeError("Initial/toggled minimap crops do not share identical geometry.")
 
-    # The pin must be in the same place in both frames. Use both reads as a sanity
-    # check that Y did not alter minimap camera/zoom state.
     pin_initial = v2.detect_pin_marker(initial_roi)
     pin_toggled = v2.detect_pin_marker(toggled_roi)
     pin_shift = float(np.hypot(pin_initial.x - pin_toggled.x, pin_initial.y - pin_toggled.y))
@@ -187,8 +174,6 @@ def classify_and_extract(
     green_mask, bbox, pin_distance = _select_target_green(changed, pin)
     area = int((green_mask > 0).sum())
 
-    # Confidence combines heatmap-state separation, pin association, and enough
-    # changed area to be useful. It is intentionally conservative for the first POC.
     score_sep = abs(score_initial - score_toggled) / max(total_score, 1.0)
     pin_term = max(0.0, 1.0 - pin_distance / max(18.0, min(changed.shape) * 0.10))
     area_term = min(1.0, area / 140.0)
@@ -223,12 +208,14 @@ def classify_and_extract(
 
 
 def hazard_safe_roi(result: GreenHeatmapResult, margin_px: int = 4) -> np.ndarray:
-    """Keep canonical heatmap frame but restore normal pixels only under target green.
+    """Create a hazard-CV view registered to the canonical heatmap minimap.
 
-    This prevents red heatmap fill from becoming a fake red-stake penalty boundary
-    while still letting hazards be extracted from the same registered tee geometry.
+    Every minimap pixel materially changed by the Y heatmap toggle is restored from
+    the normal frame before red-penalty extraction. This handles the target green AND
+    any neighboring heatmapped greens that GSPro happens to show, while preserving
+    exactly the same ball/pin geometry and map transform.
     """
-    mask = result.target_green_mask
+    mask = result.changed_mask
     if margin_px > 0:
         k = margin_px * 2 + 1
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
