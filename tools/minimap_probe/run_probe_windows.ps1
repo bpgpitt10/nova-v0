@@ -1,8 +1,8 @@
 param(
-  [Nullable[double]]$WatchSeconds = $null,
   [int]$Monitor = 1,
   [Nullable[double]]$Distance = $null,
-  [string]$Roi = ""
+  [string]$Roi = "",
+  [string]$ZoomOutKey = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,27 +17,30 @@ if (-not (Test-Path $Python)) {
   & $Python -m pip install -r (Join-Path $Here "requirements.txt")
 }
 
+if ($Distance -eq $null) {
+  throw "v2 probe requires -Distance <current GSPro distance to pin>."
+}
+
 $argsList = @(
   (Join-Path $Here "probe_v2.py"),
-  "--monitor", "$Monitor"
+  "--monitor", "$Monitor",
+  "--distance", "$Distance"
 )
-
-if ($WatchSeconds -ne $null) {
-  $argsList += @("--watch", "$WatchSeconds")
-}
-
-if ($Distance -ne $null) {
-  $argsList += @("--distance", "$Distance")
-}
 
 if ($Roi) {
   $argsList += @("--roi", $Roi)
 }
 
-if ($WatchSeconds -ne $null) {
-  Write-Host "Starting GSPro minimap probe in watch mode. Ctrl+C to stop."
-} else {
-  Write-Host "Running GSPro minimap probe once."
+if ($ZoomOutKey) {
+  if ($ZoomOutKey -notin @("Q", "W", "q", "w")) {
+    throw "-ZoomOutKey must be Q or W."
+  }
+  $argsList += @("--zoom-out-key", $ZoomOutKey)
+}
+
+Write-Host "Running GSPro minimap hazard probe v2 once."
+if ($ZoomOutKey) {
+  Write-Host "Automatic zoom recovery enabled with key: $ZoomOutKey"
 }
 
 & $Python @argsList
