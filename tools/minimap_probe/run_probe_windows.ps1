@@ -20,12 +20,12 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v5.py"),
+  (Join-Path $Here "probe_v6.py"),
   "--monitor", "$Monitor"
 )
 
-# Manual distance is now only a debugging fallback/override. Normal live use
-# reads distance from GSPro's white target card, including tee shots.
+# Manual distance remains only a debugging fallback/override. Normal live use
+# reads distance/elevation from GSPro's white PIN target card.
 if ($Distance -ne $null) {
   $argsList += @("--distance", "$Distance")
 }
@@ -49,8 +49,9 @@ if ($ZoomOutKey) {
   $argsList += @("--zoom-out-key", $ZoomOutKey)
 }
 
-Write-Host "Running GSPro live-state + minimap hazard probe v5 once."
-Write-Host "Screen target card is primary for distance + elevation."
+Write-Host "Running GSPro live-state + minimap hazard probe v6 once."
+Write-Host "White PIN + red AIM target-card detection enabled."
+Write-Host "Screen PIN card is primary for distance + elevation."
 Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
 if ($Distance -ne $null) {
   Write-Host "Manual distance override supplied: $Distance yd"
