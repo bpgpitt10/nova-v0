@@ -4,7 +4,13 @@ param(
   [string]$Roi = "",
   [string]$TargetCardRoi = "",
   [string]$Tesseract = "",
-  [string]$ZoomOutKey = "W"
+  [string]$ZoomOutKey = "W",
+  [double]$AimPulseMs = 45,
+  [double]$AimSettleMs = 180,
+  [double]$AimReturnTolerancePx = 1.5,
+  [double]$AimMaxCorrectionMs = 20,
+  [int]$AimMaxCorrections = 2,
+  [switch]$NoAimSummon
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,8 +26,13 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v6.py"),
-  "--monitor", "$Monitor"
+  (Join-Path $Here "probe_v7.py"),
+  "--monitor", "$Monitor",
+  "--aim-pulse-ms", "$AimPulseMs",
+  "--aim-settle-ms", "$AimSettleMs",
+  "--aim-return-tolerance-px", "$AimReturnTolerancePx",
+  "--aim-max-correction-ms", "$AimMaxCorrectionMs",
+  "--aim-max-corrections", "$AimMaxCorrections"
 )
 
 # Manual distance remains only a debugging fallback/override. Normal live use
@@ -49,9 +60,19 @@ if ($ZoomOutKey) {
   $argsList += @("--zoom-out-key", $ZoomOutKey)
 }
 
-Write-Host "Running GSPro live-state + minimap hazard probe v6 once."
+if ($NoAimSummon) {
+  $argsList += "--no-aim-summon"
+}
+
+Write-Host "Running GSPro live-state + minimap hazard probe v7 once."
 Write-Host "White PIN + player-color AIM target-card detection enabled."
 Write-Host "Screen PIN card is primary for distance + elevation."
+if ($NoAimSummon) {
+  Write-Host "Automatic AIM-card summon disabled."
+} else {
+  Write-Host "Automatic AIM-card summon enabled: controlled L/R pulse with visual return verification."
+  Write-Host "Aim pulse: $AimPulseMs ms each direction; return tolerance: $AimReturnTolerancePx px."
+}
 Write-Host "Fixed-size player detection + label-occlusion tolerant hazard crossings enabled."
 if ($Distance -ne $null) {
   Write-Host "Manual distance override supplied: $Distance yd"
