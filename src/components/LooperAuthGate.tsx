@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { bootstrapLooperCloudData } from '../cloud/cloudBootstrap'
 import {
   getAllowedUserRecord,
   getCurrentLooperUser,
@@ -16,6 +17,7 @@ type AuthState =
   | 'checking'
   | 'signed-out'
   | 'checking-access'
+  | 'syncing-data'
   | 'allowed'
   | 'not-allowed'
   | 'error'
@@ -34,6 +36,29 @@ export default function LooperAuthGate({ children }: Props) {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const bootstrapRef = useRef<{ userId: string; promise: Promise<void> } | null>(null)
+
+  const bootstrapUserData = async (nextUser: LooperAuthUser) => {
+    if (!bootstrapRef.current || bootstrapRef.current.userId !== nextUser.id) {
+      bootstrapRef.current = {
+        userId: nextUser.id,
+        promise: bootstrapLooperCloudData(nextUser.id)
+          .then((result) => {
+            if (result.warnings.length > 0) {
+              console.warn('[Cloud Bootstrap] completed with local safety copy retained', result)
+            } else {
+              console.info('[Cloud Bootstrap] complete', result)
+            }
+          })
+          .catch((bootstrapError) => {
+            // Cloud migration must never make the existing local Looper unusable.
+            console.warn('[Cloud Bootstrap] cloud bootstrap failed; continuing with local data', bootstrapError)
+          }),
+      }
+    }
+
+    await bootstrapRef.current.promise
+  }
 
   const resolveAccess = async (nextUser: LooperAuthUser | null) => {
     setUser(nextUser)
@@ -53,6 +78,8 @@ export default function LooperAuthGate({ children }: Props) {
         return
       }
       setAllowedUser(allowlistRecord)
+      setState('syncing-data')
+      await bootstrapUserData(nextUser)
       setState('allowed')
     } catch (accessError) {
       setError(accessError instanceof Error ? accessError.message : String(accessError))
@@ -149,12 +176,23 @@ export default function LooperAuthGate({ children }: Props) {
     return children
   }
 
-  if (state === 'checking' || state === 'checking-access') {
+  if (state === 'checking' || state === 'checking-access' || state === 'syncing-data') {
+    const heading =
+      state === 'checking-access'
+        ? 'Checking your invite…'
+        : state === 'syncing-data'
+          ? 'Preparing your Looper data…'
+          : 'Signing you in…'
     return (
       <main className="looper-auth">
         <section className="looper-auth__card looper-auth__card--compact">
           <span className="looper-auth__eyebrow">The Looper</span>
-          <h1>{state === 'checking-access' ? 'Checking your invite…' : 'Signing you in…'}</h1>
+          <h1>{heading}</h1>
+          {state === 'syncing-data' ? (
+            <p className="looper-auth__lead">
+              Your existing local data stays intact while Looper connects it to your account.
+            </p>
+          ) : null}
         </section>
       </main>
     )
