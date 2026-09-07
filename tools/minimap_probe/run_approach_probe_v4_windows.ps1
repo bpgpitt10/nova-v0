@@ -4,7 +4,7 @@ param(
   [string]$LieRoi = "",
   [string]$Tesseract = "",
   [string]$ProfilesJson = "",
-  [ValidateSet("approach", "strategic")][string]$Mode = "approach",
+  [ValidateSet("auto", "approach", "strategic")][string]$Mode = "auto",
   [double]$ExternalCarryAdjustmentYds = 0,
   [double]$ExternalLateralAdjustmentYds = 0,
   [double]$AimPulseMs = 45,
@@ -50,8 +50,10 @@ if ($DeepDebug) { $argsList += "--deep-debug" }
 
 Write-Host "Running GSPro POST-TEE ShotState probe v4 once."
 Write-Host "Identity selects the exact tee HoleModel; visible minimap pin is optional."
+Write-Host "Shot mode defaults to AUTO: GSPro surface + canonical AIM/green geometry + AIM/PIN fallback."
 Write-Host "Approach refinement may W zoom OUT only, bounded by assumptions; it never zooms back in."
 Write-Host "Y heatmap uses field-proven fixed toggle/restore timing and confidence-gated canonical merge."
+Write-Host "Green/no-full-shot states skip the full-shot recommendation."
 Write-Host "Recommendation is READ ONLY; no solver-driven aim movement is applied."
 
 & $Python @argsList
