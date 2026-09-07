@@ -51,6 +51,11 @@ if ($DeepDebug) { $argsList += "--deep-debug" }
 Write-Host "Running GSPro POST-TEE ShotState probe v4 once."
 Write-Host "Identity selects the exact tee HoleModel; visible minimap pin is optional."
 Write-Host "Shot mode defaults to AUTO: GSPro surface + canonical AIM/green geometry + AIM/PIN fallback."
+if ($ProfilesJson) {
+  Write-Host "Player model: explicit -ProfilesJson diagnostic override."
+} else {
+  Write-Host "Player model: auto-load looper-live-caddie-profiles.json published by authenticated Looper into the GSPro folder."
+}
 Write-Host "Approach refinement may W zoom OUT only, bounded by assumptions; it never zooms back in."
 Write-Host "Y heatmap uses field-proven fixed toggle/restore timing and confidence-gated canonical merge."
 Write-Host "Green/no-full-shot states skip the full-shot recommendation."
