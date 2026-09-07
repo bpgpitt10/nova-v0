@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Build post-tee geometry against the cached tee HoleModel without touching GSPro."""
+"""Build post-tee geometry against the correct cached tee HoleModel.
+
+The white minimap pin is useful confirmation, but it is no longer required after the
+tee.  Course/hole screen identity selects the cached HoleModel; feature registration
+places the current ball into it; the cached canonical pin is then projected back into
+the current minimap even when GSPro has cropped the real pin completely offscreen.
+"""
 
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import cv2
@@ -43,21 +50,40 @@ def _tee_relative_yards(hole_model: dict, canonical_x: float, canonical_y: float
     return float(np.dot(delta, forward) * scale), float(np.dot(delta, right) * scale)
 
 
+def _inverse_transform_point(matrix_2x3, canonical_x: float, canonical_y: float) -> tuple[float, float]:
+    matrix = np.asarray(matrix_2x3, dtype=np.float64).reshape(2, 3)
+    inverse = cv2.invertAffineTransform(matrix)
+    point = inverse @ np.array([float(canonical_x), float(canonical_y), 1.0], dtype=np.float64)
+    return float(point[0]), float(point[1])
+
+
+def _project_cached_pin(hole_model: dict, registration) -> tuple[float, float]:
+    pin = (hole_model.get("minimap") or {}).get("pin_pixel") or {}
+    return _inverse_transform_point(
+        registration.matrix_2x3,
+        float(pin["x"]),
+        float(pin["y"]),
+    )
+
+
 def analyze(
     *,
     current_minimap,
     pin_distance_yds: float,
     output_root,
     aim_distance_yds: float | None = None,
+    round_identity: dict | object | None = None,
 ) -> dict:
     config = _config()
-    hole_model, hole_model_path, canonical_path = hole_model_cache.find_latest_hole_model(output_root)
+    selection = hole_model_cache.find_hole_model(output_root, identity=round_identity)
+    hole_model = selection.model
+    hole_model_path = selection.model_path
+    canonical_path = selection.canonical_path
     canonical = cv2.imread(str(canonical_path), cv2.IMREAD_COLOR)
     if canonical is None:
         raise RuntimeError(f"Could not read cached canonical minimap {canonical_path}")
 
     ball = v2.detect_ball_marker(current_minimap)
-    pin = v2.detect_pin_marker(current_minimap)
 
     registration = minimap_registration.register_current_to_canonical(
         current_minimap,
@@ -70,15 +96,41 @@ def analyze(
         registration=registration,
     )
 
+    # Registration itself supplies the current minimap scale.  This removes the
+    # previous dependency on a visible white minimap pin.
+    canonical_yd_per_px = float((hole_model.get("minimap") or {}).get("yards_per_pixel") or 0.0)
+    current_yd_per_px = canonical_yd_per_px * float(registration.scale)
+    if current_yd_per_px <= 0:
+        raise RuntimeError("Could not derive current minimap scale from registration")
+
+    projected_pin_x, projected_pin_y = _project_cached_pin(hole_model, registration)
+    visible_pin = None
+    visible_pin_error = None
+    try:
+        visible_pin = v2.detect_pin_marker(current_minimap)
+        visible_pin_error = math.dist(
+            (visible_pin.x, visible_pin.y),
+            (projected_pin_x, projected_pin_y),
+        )
+    except Exception:
+        visible_pin = None
+
+    projection_tolerance = float(config["screen_detection"]["green_visibility"]["pin_projection_check_tolerance_px"])
+    pin_marker_verified = visible_pin is not None and visible_pin_error is not None and visible_pin_error <= projection_tolerance
+    # Canonical projection is authoritative for geometry.  A visible marker is a
+    # diagnostic/check only, because the projection also works when the pin is offscreen.
+    pin_x, pin_y = projected_pin_x, projected_pin_y
+
     visibility = green_visibility.evaluate_visibility(
         hole_model=hole_model,
         minimap_width=current_minimap.shape[1],
         minimap_height=current_minimap.shape[0],
         ball_x=ball.x,
         ball_y=ball.y,
-        pin_x=pin.x,
-        pin_y=pin.y,
+        pin_x=pin_x,
+        pin_y=pin_y,
         pin_distance_yds=float(pin_distance_yds),
+        current_yards_per_pixel=current_yd_per_px,
         detector_config=config["screen_detection"]["green_visibility"],
     )
 
@@ -98,9 +150,9 @@ def analyze(
             marker = aim_marker.detect_aim_marker(
                 current_minimap,
                 ball_xy=(ball.x, ball.y),
-                pin_xy=(pin.x, pin.y),
-                pin_distance_yds=float(pin_distance_yds),
+                pin_xy=(pin_x, pin_y),
                 aim_distance_yds=float(aim_distance_yds),
+                yards_per_pixel=current_yd_per_px,
                 detector_config=config["screen_detection"]["aim_marker"],
             )
             canonical_aim_x, canonical_aim_y = minimap_registration.transform_point(
@@ -126,14 +178,26 @@ def analyze(
         except Exception as exc:
             aim_warning = str(exc)
 
+    visible_pin_payload = None
+    if visible_pin is not None:
+        visible_pin_payload = {"x": visible_pin.x, "y": visible_pin.y}
+
     return {
         "hole_model_path": str(hole_model_path),
         "canonical_minimap_path": str(canonical_path),
+        "hole_model_selection": selection.meta(),
         "current_markers": {
             "ball_pixel": {"x": ball.x, "y": ball.y},
-            "pin_pixel": {"x": pin.x, "y": pin.y},
+            "pin_pixel": {"x": pin_x, "y": pin_y},
+            "pin_pixel_source": "cached-canonical-projection",
+            "visible_pin_pixel": visible_pin_payload,
+            "pin_marker_visible": visible_pin is not None,
+            "pin_marker_verified_against_projection": pin_marker_verified,
+            "pin_projection_error_px": visible_pin_error,
+            "pin_projection_tolerance_px": projection_tolerance,
         },
         "registration": registration.to_dict(),
+        "current_yards_per_pixel": current_yd_per_px,
         "canonical_position": canonical_position,
         "pin_distance_crosscheck": {
             "screen_pin_distance_yds": float(pin_distance_yds),
@@ -148,7 +212,7 @@ def analyze(
         "w_recovery_recommended": not visibility.visible,
         "assumption_version": config.get("assumptions_version"),
         "note": (
-            "Geometry analysis only. This module never presses W; W actuation remains a "
-            "separate bounded UI step."
+            "Post-tee geometry does not require a visible minimap pin. Course/hole identity selects "
+            "the tee HoleModel; registration projects its cached pin/green into the current viewport."
         ),
     }
