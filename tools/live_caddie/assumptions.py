@@ -220,6 +220,8 @@ class Assumptions:
                 raise ValueError(f"Negative scoring weight in scoring.{mode}")
             if abs(sum(values) - 1.0) > 1e-6:
                 raise ValueError(f"scoring.{mode} weights must sum to 1.0")
+        if float(self.get("scoring.aim_change_exponent")) <= 0:
+            raise ValueError("scoring.aim_change_exponent must be positive")
 
         for key in ("approach_aim_offsets_yds", "strategic_aim_offsets_yds"):
             offsets = self.get(f"candidate_policy.{key}")
