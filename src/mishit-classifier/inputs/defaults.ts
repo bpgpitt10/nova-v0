@@ -5,7 +5,7 @@ import type { MishitConfig } from '../types'
  * changes. Analyses keep the version so input changes can force a deterministic
  * reclassification instead of silently reusing stale results.
  */
-export const MISHIT_INPUT_VERSION = 3
+export const MISHIT_INPUT_VERSION = 4
 
 /**
  * Shared starter policy only. These are NOT Brian-specific thresholds.
@@ -21,7 +21,7 @@ export const DEFAULT_MISHIT_INPUTS: MishitConfig = {
     provisionalSampleSize: 5,
     stableSampleSize: 12,
     maturePopulationSize: 30,
-    maxReferenceShots: 100,
+    maxReferenceShots: 50,
   },
   refresh: {
     earlyEveryNewShots: 5,
