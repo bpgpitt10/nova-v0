@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """v8 target-card OCR patch.
 
-Field validation showed that the tightest legacy elevation crop can clip the top of
-GSPro's small `5` glyph and make Tesseract read visible `5y` as `2y`.  v8 therefore
-starts with a slightly taller crop that preserves the full glyph, then falls back to
-broader crops for feet/inches cards such as `9'9`.
+Field validation showed that an overly tight elevation crop can clip GSPro's small
+`5` glyph and turn visible `5y` into OCR `2y`. v8 uses field-proven crop priority
+and an adaptive fast path so common cards need only one or two elevation OCR calls.
 
 Importing this module patches target_card.read_target_card for the v8 orchestrator.
 """
@@ -36,42 +35,46 @@ def read_target_card_v8(
     distance = target_card._parse_distance(distance_raw)
     direction = target_card._green_triangle_direction(card)
 
-    # IMPORTANT: do not start at y=.55.  On observed GSPro cards that crop clips
-    # the top of a visible `5` and produces a repeatable false `2y` read.
-    crop_specs = [
-        (0.53, 0.91, 0.28, 0.90),
-        (0.50, 0.94, 0.28, 0.94),
-        (0.48, 0.86, 0.30, 0.90),
-        (0.55, 0.89, 0.30, 0.88),  # legacy crop retained only as last fallback
+    # Fast priority is intentional:
+    # 1) full-glyph yards crop solves the observed 5y card in one pass;
+    # 2) punctuation-preserving feet crop solves observed 9'9 in one pass;
+    # 3) alternate PSM/crops are only fallbacks.
+    attempts = [
+        ("yards-primary", (0.53, 0.91, 0.28, 0.90), "7"),
+        ("feet-primary", (0.48, 0.86, 0.30, 0.90), "7"),
+        ("yards-alt", (0.53, 0.91, 0.28, 0.90), "6"),
+        ("feet-alt", (0.48, 0.86, 0.30, 0.90), "6"),
+        ("broad", (0.50, 0.94, 0.28, 0.94), "7"),
+        ("broad", (0.50, 0.94, 0.28, 0.94), "6"),
+        ("yards-primary", (0.53, 0.91, 0.28, 0.90), "8"),
+        ("feet-primary", (0.48, 0.86, 0.30, 0.90), "8"),
+        ("legacy-last", (0.55, 0.89, 0.30, 0.88), "7"),
     ]
-    psms = ("7", "6", "8", "13")
 
     first_raw = ""
     chosen_crop = None
     elevation_raw = ""
     elevation_ft = None
     elevation_yds = None
+    debug_attempts: list[str] = []
 
-    # Prefer the first semantically valid read from the field-proven crop order.
-    # This avoids a 2-vs-2 vote tie where the clipped legacy crop previously won
-    # simply because it appeared first.
-    for y0, y1, x0, x1 in crop_specs:
+    for label, (y0, y1, x0, x1), psm in attempts:
         crop = card[int(h * y0):int(h * y1), int(w * x0):int(w * x1)]
         if crop.size == 0:
             continue
-        for psm in psms:
-            raw = target_card._ocr(crop, tess, "0123456789yY'\"", psm=psm).strip()
-            if raw and not first_raw:
-                first_raw = raw
-                chosen_crop = crop
-            parsed_ft, parsed_yds = v6._strict_parse_elevation(raw, direction)
-            if parsed_ft is not None and parsed_yds is not None:
-                elevation_raw = raw
-                elevation_ft = parsed_ft
-                elevation_yds = parsed_yds
-                chosen_crop = crop
-                break
-        if elevation_ft is not None:
+        raw = target_card._ocr(crop, tess, "0123456789yY'\"", psm=psm).strip()
+        if raw and not first_raw:
+            first_raw = raw
+            chosen_crop = crop
+        parsed_ft, parsed_yds = v6._strict_parse_elevation(raw, direction)
+        debug_attempts.append(
+            f"{label} psm={psm} raw={raw!r} parsed_ft={parsed_ft!r}"
+        )
+        if parsed_ft is not None and parsed_yds is not None:
+            elevation_raw = raw
+            elevation_ft = parsed_ft
+            elevation_yds = parsed_yds
+            chosen_crop = crop
             break
 
     if not elevation_raw:
@@ -91,6 +94,12 @@ def read_target_card_v8(
                 str(debug_dir / "latest_target_elevation_ocr.png"),
                 target_card._prep_ocr(chosen_crop),
             )
+        try:
+            (debug_dir / "latest_target_elevation_attempts.txt").write_text(
+                "\n".join(debug_attempts), encoding="utf-8"
+            )
+        except Exception:
+            pass
 
     return target_card.TargetCardState(
         distance_yds=distance,
