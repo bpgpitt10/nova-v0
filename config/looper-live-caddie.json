@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.8.0",
+  "assumptions_version": "0.9.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -9,7 +9,8 @@
     "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments.",
     "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
     "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
-    "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only."
+    "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only.",
+    "Tee-state inference is evidence-based: upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -88,6 +89,23 @@
     "yardage_match_bonus": 0.10,
     "allow_legacy_latest_when_no_identity_tagged_models": true,
     "allow_latest_when_current_identity_unavailable": true
+  },
+  "tee_state": {
+    "minimum_confirmed_confidence": 0.70,
+    "minimum_probable_confidence": 0.50,
+    "require_transition_or_shot_one_anchor": true,
+    "current_identity_valid_weight": 0.12,
+    "hole_change_weight": 0.40,
+    "shot_number_one_weight": 0.28,
+    "no_recorded_shots_weight": 0.12,
+    "distance_matches_hole_weight": 0.10,
+    "previous_hole_terminal_weight": 0.08,
+    "flat_lie_weight": 0.04,
+    "full_hole_minimap_weight": 0.04,
+    "distance_absolute_tolerance_yds": 18.0,
+    "distance_relative_tolerance_fraction": 0.06,
+    "shot_number_gt_one_is_hard_contradiction": true,
+    "recorded_shots_is_hard_contradiction": true
   },
   "candidate_policy": {
     "include_stock": true,
