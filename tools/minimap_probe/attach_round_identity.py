@@ -2,11 +2,12 @@
 """Post-process a successful tee capture with GSPro course/hole identity.
 
 Kept outside probe_v8's critical path so the field-proven tee orchestrator remains
-unchanged.  Identity OCR runs only after HoleModel/ShotState and review PNGs exist.
+unchanged. Identity OCR runs only after HoleModel/ShotState and review PNGs exist.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -59,3 +60,38 @@ def attach_latest_round_identity(
     _patch_json(capture / "shot_state.json", identity_payload, warning)
     _patch_json(capture / "tee_capture_meta.json", identity_payload, warning)
     return identity_payload, warning, capture
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Attach GSPro course/hole identity to latest tee capture")
+    parser.add_argument("--output-root", required=True)
+    parser.add_argument("--tesseract")
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
+
+    try:
+        identity, warning, capture = attach_latest_round_identity(
+            args.output_root,
+            tesseract_path=args.tesseract,
+            debug=args.debug,
+        )
+        if identity:
+            print(
+                "Round identity:        "
+                f"{identity.get('course_name') or '?'} | H{identity.get('hole_number') or '?'} | "
+                f"PAR {identity.get('par') or '?'} | {identity.get('hole_yards') or '?'} yd"
+            )
+            print(f"Identity confidence:   {float(identity.get('confidence') or 0.0):.2f}")
+        else:
+            print("Round identity:        unavailable")
+        if warning:
+            print(f"Identity warning:      {warning}")
+        print(f"Identity tagged:       {capture / 'hole_model.json'}")
+        return 0
+    except Exception as exc:
+        print(f"Round identity error:  {exc}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
