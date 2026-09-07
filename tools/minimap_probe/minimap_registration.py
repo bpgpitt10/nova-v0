@@ -35,12 +35,12 @@ def _default_config() -> dict:
     return payload["screen_detection"]["registration"]
 
 
-def _play_mask(shape: tuple[int, int]) -> np.ndarray:
+def _play_mask(shape: tuple[int, int], config: dict) -> np.ndarray:
     """Mask out minimap title/footer UI while keeping the course imagery."""
     h, w = shape
     mask = np.zeros((h, w), dtype=np.uint8)
-    y0 = int(round(h * 0.105))
-    y1 = int(round(h * 0.945))
+    y0 = int(round(h * float(config["play_mask_top_fraction"])))
+    y1 = int(round(h * float(config["play_mask_bottom_fraction"])))
     cv2.rectangle(mask, (0, y0), (w - 1, max(y0, y1 - 1)), 255, -1)
     return mask
 
@@ -68,8 +68,8 @@ def register_current_to_canonical(
     canonical_gray = cv2.cvtColor(canonical_bgr, cv2.COLOR_BGR2GRAY)
 
     sift = cv2.SIFT_create()
-    kp_cur, des_cur = sift.detectAndCompute(current_gray, _play_mask(current_gray.shape))
-    kp_can, des_can = sift.detectAndCompute(canonical_gray, _play_mask(canonical_gray.shape))
+    kp_cur, des_cur = sift.detectAndCompute(current_gray, _play_mask(current_gray.shape, config))
+    kp_can, des_can = sift.detectAndCompute(canonical_gray, _play_mask(canonical_gray.shape, config))
     if des_cur is None or des_can is None:
         raise RuntimeError("Could not compute enough minimap features for registration")
 
@@ -89,9 +89,9 @@ def register_current_to_canonical(
         dst,
         method=cv2.RANSAC,
         ransacReprojThreshold=ransac_reproj_px,
-        maxIters=3000,
-        confidence=0.995,
-        refineIters=20,
+        maxIters=int(config["ransac_max_iters"]),
+        confidence=float(config["ransac_confidence"]),
+        refineIters=int(config["ransac_refine_iters"]),
     )
     if matrix is None or inlier_mask is None:
         raise RuntimeError("Could not solve minimap similarity transform")
