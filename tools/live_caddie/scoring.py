@@ -1,20 +1,30 @@
 from __future__ import annotations
 from .assumptions import Assumptions
+from .environment import effective_target_distance
 from .models import CandidateShot, CandidateEvaluation, LiveShotState, HazardBoundary, GreenSurface
 from .risk import boundary_risk, green_containment
 
-def effective_target_distance(state: LiveShotState, assumptions: Assumptions) -> float:
-    target = float(state.pin_distance_yds) + float(state.external_carry_adjustment_yds)
-    if assumptions.get("environment.use_target_elevation"):
-        target += float(state.pin_elevation_delta_yds)
-    return target
 
-def evaluate(candidate: CandidateShot, state: LiveShotState, hazards: list[HazardBoundary], green: GreenSurface | None, assumptions: Assumptions) -> CandidateEvaluation:
+def distance_fit_components(candidate: CandidateShot, state: LiveShotState, assumptions: Assumptions) -> tuple[float, float, float]:
     target = effective_target_distance(state, assumptions)
     absolute_tol = float(assumptions.get("distance_fit.absolute_tolerance_yds"))
     relative_tol = float(assumptions.get("distance_fit.relative_tolerance_fraction")) * max(target, 1.0)
     tolerance = max(absolute_tol, relative_tol)
-    distance_fit = min(1.0, abs(candidate.planned_carry_yds - target) / max(tolerance, 1e-6))
+    error = abs(float(candidate.planned_carry_yds) - target)
+    score = min(1.0, error / max(tolerance, 1e-6))
+    return target, error, score
+
+
+def is_hard_distance_miss(candidate: CandidateShot, state: LiveShotState, assumptions: Assumptions) -> bool:
+    target, error, _score = distance_fit_components(candidate, state, assumptions)
+    absolute_tol = float(assumptions.get("distance_fit.absolute_tolerance_yds"))
+    relative_tol = float(assumptions.get("distance_fit.relative_tolerance_fraction")) * max(target, 1.0)
+    tolerance = max(absolute_tol, relative_tol)
+    return error > tolerance * float(assumptions.get("distance_fit.hard_reject_multiplier"))
+
+
+def evaluate(candidate: CandidateShot, state: LiveShotState, hazards: list[HazardBoundary], green: GreenSurface | None, assumptions: Assumptions) -> CandidateEvaluation:
+    target, distance_error, distance_fit = distance_fit_components(candidate, state, assumptions)
 
     h_risk, clearance = boundary_risk(candidate, hazards, assumptions)
     containment = green_containment(candidate, green, assumptions)
@@ -43,7 +53,7 @@ def evaluate(candidate: CandidateShot, state: LiveShotState, hazards: list[Hazar
             reasons.append("strong modeled green containment")
         elif containment < float(assumptions.get("green.minimum_containment_fraction")):
             reasons.append("too much modeled pattern misses the target green")
-    if distance_fit < 0.30:
+    if distance_fit < float(assumptions.get("distance_fit.strong_fit_score")):
         reasons.append("carry fits the effective target distance")
     if state.mode == "strategic" and abs(candidate.aim_offset_yds) <= 1e-6:
         reasons.append("preserves GSPro strategic aim")
@@ -51,6 +61,8 @@ def evaluate(candidate: CandidateShot, state: LiveShotState, hazards: list[Hazar
     return CandidateEvaluation(
         candidate=candidate,
         total_score=total,
+        effective_target_distance_yds=target,
+        distance_error_yds=distance_error,
         distance_fit_score=distance_fit,
         hazard_boundary_risk=h_risk,
         green_containment=containment,
