@@ -31,6 +31,8 @@ class RoundTracker:
         self,
         *,
         current_identity: dict[str, Any] | None,
+        minimap_surface_is_tee: bool | None = None,
+        minimap_surface_label: str | None = None,
         screen_shot_number: int | None = None,
         screen_distance_to_pin_yds: float | None = None,
         pin_card_distance_to_pin_yds: float | None = None,
@@ -43,6 +45,8 @@ class RoundTracker:
         probe = TeeStateInputs(
             current_identity=current_identity,
             previous_identity=self.active_identity,
+            minimap_surface_is_tee=minimap_surface_is_tee,
+            minimap_surface_label=minimap_surface_label,
             screen_shot_number=screen_shot_number,
             screen_distance_to_pin_yds=screen_distance_to_pin_yds,
             pin_card_distance_to_pin_yds=pin_card_distance_to_pin_yds,
