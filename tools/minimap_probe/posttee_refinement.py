@@ -181,6 +181,7 @@ def refine_green_if_useful(
     else:
         zoom_ok, w_pulses, _payload, zoom_history = zoom_recovery.recover_until_visible(
             capture_and_evaluate=capture_and_evaluate,
+            initial_evaluation=(False, first),
         )
 
     if not zoom_ok:
