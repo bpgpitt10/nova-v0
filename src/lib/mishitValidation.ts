@@ -19,7 +19,7 @@ import {
 import { loadActiveSessionDraft, loadSavedSessions } from './sessions'
 import { resolveShotVariantId } from './shotVariants'
 
-export const MISHIT_VALIDATION_SNAPSHOT_VERSION = 2
+export const MISHIT_VALIDATION_SNAPSHOT_VERSION = 3
 
 export type MishitValidationAgreement =
   | 'exact'
@@ -472,10 +472,11 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
     playerCalibrations,
     notes: [
       'Human labels are stored independently from raw shots and automatic classifications.',
-      'Shared classifier defaults are starter policy, not player-specific learned thresholds.',
+      'Shared classifier defaults are cold-start priors, not player-specific learned thresholds or permanent floors.',
       'Each club + variant population has its own robust center and MAD-based variability.',
-      'Stable player variability can widen exclusion boundaries but cannot make them more aggressive than global starter floors.',
-      'Optional human/manual player calibrations are stored separately by population and exported here.',
+      'Player variability can tighten or widen boundaries as its maturity weight increases.',
+      'Only separately configured statistical sanity minimums remain as hard lower constraints.',
+      'Optional human/manual player calibrations are stored separately by population and may tighten or widen automatic boundaries.',
       'Intentional shots are exported but excluded from classifier population construction.',
       'Shots with included=false are exported but excluded from classifier population construction.',
       'Unsure shots remain in the automatic population but are excluded from human-vs-auto accuracy counts.',
