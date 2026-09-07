@@ -1,0 +1,86 @@
+{
+  "schema_version": "looper-live-caddie-assumptions-v0",
+  "assumptions_version": "0.1.0",
+  "status": "provisional-offline-defaults",
+  "notes": [
+    "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
+    "Pure is a reference profile by default, not an automatically selected planned shot.",
+    "Hazard scoring is boundary-proximity risk until penalty-side semantics are validated.",
+    "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments."
+  ],
+  "candidate_policy": {
+    "include_stock": true,
+    "include_smooth": true,
+    "smooth_factor": 0.9,
+    "smooth_sigma_factor": 0.95,
+    "include_pure_as_playable": false,
+    "approach_aim_offsets_yds": [-12, -8, -4, 0, 4, 8, 12],
+    "strategic_aim_offsets_yds": [-15, -10, -5, 0, 5, 10, 15],
+    "max_candidates": 160,
+    "min_carry_yds": 20
+  },
+  "distance_fit": {
+    "absolute_tolerance_yds": 18,
+    "relative_tolerance_fraction": 0.12,
+    "hard_reject_multiplier": 2.5
+  },
+  "dispersion": {
+    "minimum_carry_sigma_yds": 4.0,
+    "minimum_lateral_sigma_yds": 5.0,
+    "default_carry_sigma_fraction": 0.055,
+    "default_lateral_sigma_fraction": 0.05
+  },
+  "hazard_boundary": {
+    "buffer_sigma": 1.6,
+    "danger_sigma": 0.8,
+    "tight_sigma": 1.4,
+    "max_relevant_forward_beyond_landing_yds": 25,
+    "max_relevant_behind_landing_yds": 25
+  },
+  "green": {
+    "minimum_containment_fraction": 0.68,
+    "strong_containment_fraction": 0.82,
+    "sample_sigma_extent": 2.0
+  },
+  "scoring": {
+    "approach": {
+      "distance_fit_weight": 0.3,
+      "hazard_boundary_weight": 0.38,
+      "green_miss_weight": 0.28,
+      "aim_change_weight": 0.04
+    },
+    "strategic": {
+      "distance_fit_weight": 0.28,
+      "hazard_boundary_weight": 0.52,
+      "green_miss_weight": 0.0,
+      "aim_change_weight": 0.2
+    },
+    "aim_change_reference_yds": 15
+  },
+  "confidence": {
+    "minimum_registration_confidence": 0.65,
+    "pin_crosscheck_absolute_yds": 8,
+    "pin_crosscheck_relative_fraction": 0.05,
+    "minimum_recommendation_confidence": 0.55,
+    "low_confidence_score_gap": 0.08
+  },
+  "environment": {
+    "use_target_elevation": true,
+    "lie_carry_adjustment_enabled": false,
+    "wind_mode": "external_adjustments_only"
+  },
+  "actuation": {
+    "enabled_by_default": false,
+    "aim_settle_ms": 60,
+    "aim_pulse_ms": 45,
+    "aim_return_tolerance_px": 1.5,
+    "max_correction_ms": 20,
+    "max_corrections": 2,
+    "zoom_out_key": "W",
+    "zoom_max_pulses": 4,
+    "zoom_settle_ms": 350,
+    "never_zoom_back_in": true,
+    "heatmap_key": "Y",
+    "heatmap_settle_ms": 320
+  }
+}
