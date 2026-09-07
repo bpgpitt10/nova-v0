@@ -1,5 +1,6 @@
 import { confidenceConfig } from './confidenceConfig'
 import type { Club } from './bagConfig'
+import { MISHIT_PLANNING_INPUTS } from './mishitPlanningInputs'
 import { isShotMishitPlanningEligible } from './mishitPlanningPopulation'
 import type { SavedSession, Shot } from '../types'
 
@@ -44,14 +45,17 @@ export const isShotSourceIncluded = (shot: Pick<Shot, 'included'>) =>
 /**
  * Planning truth used by Looper calculations.
  *
- * Source-excluded shots are always out. Mishit/severe_mishit shots are also
- * out once the derived planning registry has classified them. Unknown and
- * unclassified shots stay in so cold start remains conservative.
+ * Source-excluded shots are always out. When the planning-filter input is on,
+ * mishit/severe_mishit shots are also out once the derived registry has
+ * classified them. Unknown and unclassified shots stay in so cold start
+ * remains conservative.
  */
 export const isShotIncludedInAnalysis = (
   shot: Pick<Shot, 'id' | 'included'>,
 ) =>
-  isShotSourceIncluded(shot) && isShotMishitPlanningEligible(shot.id)
+  isShotSourceIncluded(shot) &&
+  (!MISHIT_PLANNING_INPUTS.filterPlanningCalculations ||
+    isShotMishitPlanningEligible(shot.id))
 
 export const includedClubShotsForSession = (
   session: SavedSession,
