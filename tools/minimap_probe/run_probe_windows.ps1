@@ -32,7 +32,7 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v8_fixed.py"),
+  (Join-Path $Here "probe_v8_adaptive.py"),
   "--monitor", "$Monitor",
   "--heatmap-key", "$HeatmapKey",
   "--heatmap-settle-ms", "$HeatmapSettleMs",
@@ -76,8 +76,8 @@ if ($VerifyTeeLie) {
 } else {
   Write-Host "Tee lie uses GSPro invariant 0.0 / 0.0; OCR skipped for speed."
 }
-Write-Host "Heatmap sequence: initial capture -> Y toggle -> registered capture -> Y restore."
-Write-Host "Heatmap settle: $HeatmapSettleMs ms; AIM settle: $AimSettleMs ms."
+Write-Host "Heatmap sequence: Y toggle -> adaptive minimap readiness -> Y restore -> adaptive restore verification."
+Write-Host "Heatmap render wait is adaptive (short first attempt, bounded fallback); AIM settle: $AimSettleMs ms."
 Write-Host "One canonical HEATMAP-ON minimap is written to the HoleModel."
 Write-Host "Red penalty CV restores only Y-changed green pixels transiently to avoid heatmap contamination."
 if ($NoAimSummon) {
