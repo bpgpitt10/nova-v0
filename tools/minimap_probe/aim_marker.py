@@ -48,21 +48,32 @@ def detect_aim_marker(
     roi: np.ndarray,
     *,
     ball_xy: tuple[float, float],
-    pin_xy: tuple[float, float],
-    pin_distance_yds: float,
     aim_distance_yds: float,
+    pin_xy: tuple[float, float] | None = None,
+    pin_distance_yds: float | None = None,
+    yards_per_pixel: float | None = None,
     detector_config: dict | None = None,
 ) -> AimMarkerResult:
     """Locate GSPro's gray selected-AIM dot using the AIM card distance as a checksum.
 
-    The marker is not identified by a hard-coded screen position. Candidate gray circles
-    are scored by whether their physical ball->marker distance agrees with the AIM card.
+    Preferred post-tee calibration is ``yards_per_pixel`` derived from minimap
+    registration.  That keeps AIM localization working even when GSPro has cropped
+    the white minimap pin completely out of view.  The older visible-pin distance
+    calibration remains available as a fallback.
     """
     config = detector_config or _default_config()
-    ball_pin_px = math.dist(ball_xy, pin_xy)
-    if ball_pin_px < 10:
-        raise RuntimeError("ball/pin separation too small to calibrate AIM marker distance")
-    yards_per_pixel = float(pin_distance_yds) / ball_pin_px
+
+    if yards_per_pixel is not None:
+        scale = float(yards_per_pixel)
+        if scale <= 0:
+            raise ValueError("yards_per_pixel must be positive")
+    else:
+        if pin_xy is None or pin_distance_yds is None:
+            raise RuntimeError("AIM marker needs either yards_per_pixel or visible pin calibration")
+        ball_pin_px = math.dist(ball_xy, pin_xy)
+        if ball_pin_px < 10:
+            raise RuntimeError("ball/pin separation too small to calibrate AIM marker distance")
+        scale = float(pin_distance_yds) / ball_pin_px
 
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (3, 3), 0)
@@ -87,7 +98,9 @@ def detect_aim_marker(
 
     for raw_x, raw_y, raw_radius in circles[0]:
         x, y, radius = float(raw_x), float(raw_y), float(raw_radius)
-        if math.dist((x, y), ball_xy) < exclusion or math.dist((x, y), pin_xy) < exclusion:
+        if math.dist((x, y), ball_xy) < exclusion:
+            continue
+        if pin_xy is not None and math.dist((x, y), pin_xy) < exclusion:
             continue
         _hue, saturation, value = _center_hsv(hsv, x, y, patch_radius)
         if saturation > float(config["max_saturation"]):
@@ -95,7 +108,7 @@ def detect_aim_marker(
         if value < float(config["min_value"]) or value > float(config["max_value"]):
             continue
 
-        inferred = math.dist((x, y), ball_xy) * yards_per_pixel
+        inferred = math.dist((x, y), ball_xy) * scale
         error = abs(inferred - float(aim_distance_yds))
         if error > tolerance:
             continue
