@@ -89,6 +89,7 @@ if ($DeepDebug) {
   Write-Host "Deep AIM debug frames enabled (diagnostic; slower critical path)."
 }
 Write-Host "Performance timing is enabled; STATE READY excludes review PNG/ZIP persistence."
+Write-Host "Course/hole identity OCR runs after STATE READY and tags the cached HoleModel."
 if (-not $NoReviewZip) {
   Write-Host "A review ZIP will be created automatically after the run."
 }
@@ -101,6 +102,35 @@ $ProbeStopwatch.Stop()
 $ProbeWallMs = [math]::Round($ProbeStopwatch.Elapsed.TotalMilliseconds, 1)
 Write-Host ""
 Write-Host ("Python process wall:     {0:N1} ms" -f $ProbeWallMs)
+
+# Identity is product state, but intentionally post-ready so the proven tee capture
+# critical path stays untouched. Failure to OCR identity does not invalidate the tee
+# model; later cache selection will surface the lower-confidence fallback explicitly.
+if ($ProbeExitCode -eq 0) {
+  try {
+    $IdentityArgs = @(
+      (Join-Path $Here "attach_round_identity.py"),
+      "--output-root", $OutputRoot
+    )
+    if ($Tesseract) {
+      $IdentityArgs += @("--tesseract", $Tesseract)
+    }
+    if ($DeepDebug) {
+      $IdentityArgs += "--debug"
+    }
+    $IdentityStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    & $Python @IdentityArgs
+    $IdentityExitCode = $LASTEXITCODE
+    $IdentityStopwatch.Stop()
+    $IdentityMs = [math]::Round($IdentityStopwatch.Elapsed.TotalMilliseconds, 1)
+    Write-Host ("Identity tagging:        {0:N1} ms (post-ready)" -f $IdentityMs)
+    if ($IdentityExitCode -ne 0) {
+      Write-Warning "Course/hole identity could not be attached; tee capture remains valid but cache selection will fall back conservatively."
+    }
+  } catch {
+    Write-Warning "Could not attach course/hole identity: $($_.Exception.Message)"
+  }
+}
 
 # ZIP creation is development/debug convenience only. It is intentionally outside
 # the capture/recommendation critical path and can be disabled with -NoReviewZip.
