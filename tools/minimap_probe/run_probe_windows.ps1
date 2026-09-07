@@ -68,7 +68,7 @@ Write-Host "Red penalty CV restores only Y-changed green pixels transiently to a
 if ($NoAimSummon) {
   Write-Host "Automatic AIM-card summon disabled."
 } else {
-  Write-Host "AIM acquisition runs after heatmap restoration with controlled L/R return verification."
+  Write-Host "AIM acquisition runs after heatmap restoration with controlled LEFT/RIGHT ARROW return verification."
 }
 
 & $Python @argsList
