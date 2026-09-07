@@ -5,15 +5,16 @@ This runtime adapter connects screen facts to the pure RoundOrchestrator. It is 
 by default: no GSPro keys are pressed and no capture scripts are launched unless the
 operator passes --execute-actions explicitly.
 
-Current capability without non-practice upper-left screenshots:
+Current capability:
 - detect/confirm new tees from minimap Tee state + upper-right identity + DTP;
 - plan and optionally launch the proven tee HoleModel capture;
 - retain the accepted active-hole identity across the round;
-- recognize non-tee states without falsely re-triggering tee capture.
+- recognize non-tee states without falsely re-triggering tee capture;
+- when explicit upper-left ROIs are supplied, read shot number + DTP and plan
+  post-tee refreshes on authoritative shot-counter advancement.
 
-Automatic post-tee capture is intentionally blocked until the upper-left shot-number
-reader is calibrated, because the config requires that authoritative shot-advance
-signal before firing capture on its own.
+We intentionally ship NO default upper-left coordinates until a real non-practice
+screenshot is available. Supplying those ROIs is therefore explicit calibration.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ import probe as base
 import round_identity
 import target_card
 import target_card_v8  # noqa: F401
+import upper_left_state
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -45,7 +47,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--roi")
     p.add_argument("--tesseract")
     p.add_argument("--poll-ms", type=float, default=250.0)
-    p.add_argument("--execute-actions", action="store_true", help="EXPLICITLY allow configured capture scripts to run")
+    p.add_argument("--upper-left-shot-roi", help="EXPLICIT calibrated x,y,w,h shot-number ROI; no default exists")
+    p.add_argument("--upper-left-distance-roi", help="EXPLICIT calibrated x,y,w,h DTP ROI; no default exists")
+    p.add_argument("--execute-actions", action="store_true", help="EXPLICITLY allow configured tee capture script to run")
     p.add_argument("--json", action="store_true")
     p.add_argument("--once", action="store_true")
     p.add_argument("--state-file", default=str(Path(__file__).with_name("output") / "round_watch_state.json"))
@@ -67,6 +71,14 @@ def _safe_pin_distance(screen, tesseract_path: str | None) -> float | None:
         return float(target_card.read_target_card(screen, tesseract_path=tesseract_path).distance_yds)
     except Exception:
         return None
+
+
+def _upper_left_enabled(args: argparse.Namespace) -> bool:
+    any_roi = bool(args.upper_left_shot_roi or args.upper_left_distance_roi)
+    both = bool(args.upper_left_shot_roi and args.upper_left_distance_roi)
+    if any_roi and not both:
+        raise ValueError("upper-left calibration requires BOTH --upper-left-shot-roi and --upper-left-distance-roi")
+    return both
 
 
 def _run_capture(script_name: str) -> tuple[bool, str]:
@@ -102,6 +114,7 @@ def _emit(payload: dict, as_json: bool) -> None:
 
 def main() -> int:
     args = parse_args()
+    upper_left_enabled = _upper_left_enabled(args)
     assumptions = Assumptions.load()
     config = assumptions.get("round_orchestrator")
     orchestrator = RoundOrchestrator(
@@ -119,7 +132,8 @@ def main() -> int:
         print("ACTIONS: ENABLED" if args.execute_actions else "ACTIONS: DRY RUN (default)")
         if not args.execute_actions:
             print("No GSPro keys or capture scripts will run.")
-        print("Automatic post-tee capture remains gated on future upper-left shot-number OCR.")
+        print("Upper-left shot-state OCR: CALIBRATED/ENABLED" if upper_left_enabled else "Upper-left shot-state OCR: WAITING FOR NON-PRACTICE SCREENSHOT/ROI CALIBRATION")
+        print("Post-tee events are planned when shot number is available; automatic post-tee execution remains intentionally disabled in this watcher.")
         print("Ctrl+C to stop.")
 
     try:
@@ -133,9 +147,24 @@ def main() -> int:
             except Exception:
                 surface = None
 
+            upper_left = None
+            upper_left_warning = None
+            if upper_left_enabled:
+                try:
+                    upper_left = upper_left_state.read_upper_left_state(
+                        screen,
+                        shot_roi=args.upper_left_shot_roi,
+                        distance_roi=args.upper_left_distance_roi,
+                        tesseract_path=args.tesseract,
+                    )
+                except Exception as exc:
+                    upper_left_warning = str(exc)
+
             identity = None
             identity_warning = None
             pin_distance = None
+            # A tee needs the new upper-right identity. On an established non-tee
+            # hole we reuse active identity; shot-number changes provide progression.
             should_read_identity = surface is None or not surface.recognized or surface.is_tee
             if should_read_identity:
                 identity, identity_warning = round_identity.try_read_round_identity(
@@ -159,9 +188,10 @@ def main() -> int:
                 minimap_surface_label=surface_label,
                 minimap_surface_is_tee=surface_is_tee,
                 minimap_surface_confidence=(surface.confidence if surface is not None else None),
+                upper_left_shot_number=(upper_left.shot_number if upper_left is not None else None),
+                upper_left_distance_to_pin_yds=(upper_left.distance_to_pin_yds if upper_left is not None else None),
                 pin_card_distance_to_pin_yds=pin_distance,
-                # Do not synthesize flat-lie/full-hole evidence from the Tee label.
-                # Those are independent signals and should only be populated by their own readers.
+                # Do not synthesize independent evidence from the Tee label.
                 flat_lie=None,
                 full_hole_minimap=None,
             )
@@ -185,7 +215,14 @@ def main() -> int:
                 if candidate == "capture-tee"
                 else int(config["normal_state_stable_observations"])
             )
-            report_key = (candidate or "none", key or "?")
+            # Shot events are unique by resulting shot number, so repeated stable
+            # frames cannot suppress a later shot on the same hole.
+            shot_suffix = (
+                f"shot-{upper_left.shot_number}"
+                if upper_left is not None and upper_left.shot_number is not None
+                else "no-shot-counter"
+            )
+            report_key = (candidate or "none", f"{key or '?'}::{shot_suffix}")
             if candidate is not None and stable_count >= required_stable and report_key not in reported:
                 event = {
                     "event": "planned-action",
@@ -195,6 +232,8 @@ def main() -> int:
                     "execute_allowed": action.execute_allowed,
                     "stable_observations": stable_count,
                     "identity_warning": identity_warning,
+                    "upper_left_warning": upper_left_warning,
+                    "upper_left": upper_left.to_dict() if upper_left is not None else None,
                     "surface": surface.to_dict() if surface is not None else None,
                     "plan": action.to_dict(),
                 }
@@ -221,10 +260,20 @@ def main() -> int:
                             "identity_key": key,
                             "reason": execution_detail,
                         }, args.json)
+                elif action.action == "capture-posttee" and args.execute_actions:
+                    # Deliberately not executed yet. We need field validation of the
+                    # shot-mode/refinement decision before round watch may launch v4 automatically.
+                    _emit({
+                        "event": "posttee-execution-blocked",
+                        "action": "capture-posttee",
+                        "identity_key": key,
+                        "reason": "shot transition recognized, but automatic post-tee execution is not yet field-enabled",
+                    }, args.json)
 
             _write_state(state_path, orchestrator, {
                 "last_surface": surface.to_dict() if surface is not None else None,
                 "last_identity": identity_payload,
+                "last_upper_left": upper_left.to_dict() if upper_left is not None else None,
                 "last_planned_action": action.to_dict(),
                 "updated_local_epoch": time.time(),
             })
