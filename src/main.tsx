@@ -10,6 +10,7 @@ import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
+import LooperAuthGate from './components/LooperAuthGate.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -195,7 +196,11 @@ function RootRouter() {
     return <App forceDashboardRoute={showDashboardRoute} />
   }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
 
-  return <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+  return (
+    <LooperAuthGate>
+      <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+    </LooperAuthGate>
+  )
 }
 
 createRoot(document.getElementById('root')!).render(
