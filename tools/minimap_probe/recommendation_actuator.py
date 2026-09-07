@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Explicitly gated GSPro application of a Looper full-shot recommendation.
 
-This is intentionally NOT called by post-tee v4.  v4 remains read-only.  A future
+This is intentionally NOT called by post-tee v4. v4 remains read-only. A future
 v5/live runtime may call this module only when automatic aim is explicitly enabled.
 
 Safety sequence when enabled:
 1. perform a same-shot neutral LEFT/RIGHT calibration pair;
-2. derive yards/ms from canonical AIM-marker geometry, not 3D camera pixels;
-3. require the neutral return to verify within configured tolerance;
-4. ask the pure aim planner for a bounded LEFT/RIGHT duration;
-5. apply one command;
-6. re-read the fresh AIM card and marker after movement;
-7. verify achieved cross-track offset; never silently assume success.
+2. GUARANTEE a matched RIGHT return attempt after any LEFT sample, even if OCR/CV fails;
+3. derive yards/ms from canonical AIM-marker geometry, not 3D camera pixels;
+4. require the neutral return to verify within configured tolerance;
+5. ask the pure aim planner for a bounded LEFT/RIGHT duration;
+6. apply one command;
+7. re-read the fresh AIM card and marker after movement;
+8. verify achieved cross-track offset; never silently assume success.
 
 No putting logic is involved.
 """
@@ -59,6 +60,14 @@ class RecommendationAimApplyResult:
         return asdict(self)
 
 
+@dataclass
+class NeutralCalibrationScreens:
+    sampled_screen: object | None
+    returned_screen: object | None
+    return_attempted: bool
+    return_error: str | None = None
+
+
 def _context(geometry: dict) -> AimContext2D:
     aim = geometry.get("aim_context") or {}
     if aim.get("forward_yds") is None or aim.get("right_yds") is None:
@@ -102,6 +111,64 @@ def _pulse_and_capture(*, key: str, duration_ms: float, settle_ms: float, monito
     return base.capture_monitor(monitor)
 
 
+def _neutral_sample_with_guaranteed_return(
+    *,
+    sample_ms: float,
+    settle_ms: float,
+    monitor: int,
+) -> NeutralCalibrationScreens:
+    """Sample LEFT but always attempt the matched RIGHT return before propagating failure.
+
+    This mirrors the safety property of the field-proven AIM-card summon path.  The
+    helper deliberately does no OCR/CV between LEFT and RIGHT, so downstream parsing
+    cannot strand GSPro at the sampled aim.  We capture both frames, return to neutral,
+    then analyze them afterward.
+    """
+    sampled = None
+    returned = None
+    left_sent = False
+    return_attempted = False
+    return_error = None
+
+    found = aim_actuator.find_gspro_window()
+    if found is None:
+        raise RuntimeError("Could not find visible GSPro window for recommendation AIM calibration")
+    hwnd, _title = found
+    if not aim_actuator.focus_gspro(hwnd, wait_s=0.02):
+        raise RuntimeError("Could not safely focus GSPro for recommendation AIM calibration")
+
+    try:
+        aim_actuator.pulse_key_windows("LEFT", float(sample_ms))
+        left_sent = True
+        time.sleep(max(0.0, float(settle_ms)) / 1000.0)
+        sampled = base.capture_monitor(monitor)
+    finally:
+        if left_sent:
+            return_attempted = True
+            try:
+                if not aim_actuator.focus_gspro(hwnd, wait_s=0.015):
+                    raise RuntimeError("GSPro lost focus before matched AIM calibration return")
+                aim_actuator.pulse_key_windows("RIGHT", float(sample_ms))
+                time.sleep(max(0.0, float(settle_ms)) / 1000.0)
+                returned = base.capture_monitor(monitor)
+            except Exception as exc:
+                return_error = str(exc)
+
+    if return_error is not None:
+        raise RuntimeError(
+            "AIM calibration LEFT sample was sent but the matched RIGHT return could not be verified/captured: "
+            + return_error
+        )
+    if sampled is None or returned is None:
+        raise RuntimeError("AIM calibration did not produce both sampled and returned frames")
+    return NeutralCalibrationScreens(
+        sampled_screen=sampled,
+        returned_screen=returned,
+        return_attempted=return_attempted,
+        return_error=None,
+    )
+
+
 def calibrate_and_apply(
     *,
     recommendation: RecommendationResult,
@@ -142,10 +209,16 @@ def calibrate_and_apply(
     settle_ms = float(config["aim_settle_ms"])
     tolerance = float(config["verification_tolerance_yds"])
 
-    # Controlled sample left.
-    after_left = _pulse_and_capture(
-        key="LEFT", duration_ms=sample_ms, settle_ms=settle_ms, monitor=monitor
+    # No OCR/CV occurs between the sample and matched return.  Any later parsing
+    # failure therefore happens with GSPro already returned to the starting aim.
+    neutral_frames = _neutral_sample_with_guaranteed_return(
+        sample_ms=sample_ms,
+        settle_ms=settle_ms,
+        monitor=monitor,
     )
+    after_left = neutral_frames.sampled_screen
+    returned = neutral_frames.returned_screen
+
     left_aim = _read_aim(after_left, tesseract_path)
     left_geometry = _analyze_screen(
         screen=after_left,
@@ -154,12 +227,6 @@ def calibrate_and_apply(
         aim_distance_yds=float(left_aim.distance_yds),
         output_root=output_root,
         round_identity=round_identity,
-    )
-
-    # Matched return right.  If anything after the left pulse fails, caller should
-    # treat the run as unsafe/failed and require human review rather than guessing.
-    returned = _pulse_and_capture(
-        key="RIGHT", duration_ms=sample_ms, settle_ms=settle_ms, monitor=monitor
     )
     returned_aim = _read_aim(returned, tesseract_path)
     returned_geometry = _analyze_screen(
@@ -212,16 +279,17 @@ def calibrate_and_apply(
         assumptions=assumptions,
         automatic_enabled=True,
     )
+    calibration_payload = {
+        "sample_pulse_ms": calibration.sample_pulse_ms,
+        "observed_cross_track_yds": calibration.observed_cross_track_yds,
+        "yards_per_ms": calibration.yards_per_ms,
+        "confidence": calibration.confidence,
+    }
     if plan.status != "ready":
         return RecommendationAimApplyResult(
             status="blocked",
             plan=plan.to_dict(),
-            calibration={
-                "sample_pulse_ms": calibration.sample_pulse_ms,
-                "observed_cross_track_yds": calibration.observed_cross_track_yds,
-                "yards_per_ms": calibration.yards_per_ms,
-                "confidence": calibration.confidence,
-            },
+            calibration=calibration_payload,
             neutral_return=neutral_verify.to_dict(),
             verification=None,
             final_aim=probe_v8._state_dict(returned_aim),
@@ -254,12 +322,7 @@ def calibrate_and_apply(
     return RecommendationAimApplyResult(
         status="applied-verified" if verification.verified else "applied-unverified",
         plan=plan.to_dict(),
-        calibration={
-            "sample_pulse_ms": calibration.sample_pulse_ms,
-            "observed_cross_track_yds": calibration.observed_cross_track_yds,
-            "yards_per_ms": calibration.yards_per_ms,
-            "confidence": calibration.confidence,
-        },
+        calibration=calibration_payload,
         neutral_return=neutral_verify.to_dict(),
         verification=verification.to_dict(),
         final_aim=probe_v8._state_dict(moved_aim),
