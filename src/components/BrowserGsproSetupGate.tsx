@@ -7,8 +7,8 @@ import {
   requestGsproDirectoryPermission,
   saveGsproDirectoryHandle,
   type BrowserDirectoryHandle,
-} from '../dev/browserGsproAccess'
-import { startBrowserGsproRuntime } from '../dev/browserGsproRuntime'
+} from '../adapters/browserGsproAccess'
+import { prepareBrowserGsproRuntime } from '../adapters/browserGsproLive'
 import './BrowserGsproSetupGate.css'
 
 type SetupState =
@@ -26,7 +26,6 @@ type BrowserGsproSetupGateProps = {
 }
 
 const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
-const PERSISTENCE_NUDGE_KEY = 'looper-browser-gspro-persistence-nudge'
 
 export default function BrowserGsproSetupGate({
   children,
@@ -38,11 +37,15 @@ export default function BrowserGsproSetupGate({
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const enterLooper = async () => {
+  const prepareAndEnterLooper = async () => {
     setBusy(true)
     setError(null)
     try {
-      await startBrowserGsproRuntime()
+      const prepared = await prepareBrowserGsproRuntime()
+      if (!prepared) {
+        setSetupState('needs-permission')
+        return
+      }
       setSetupState('ready')
     } catch (runtimeError) {
       setError(runtimeError instanceof Error ? runtimeError.message : String(runtimeError))
@@ -83,10 +86,9 @@ export default function BrowserGsproSetupGate({
         }
 
         if (permission === 'granted') {
-          localStorage.removeItem(PERSISTENCE_NUDGE_KEY)
-          await startBrowserGsproRuntime()
+          const prepared = await prepareBrowserGsproRuntime()
           if (!cancelled) {
-            setSetupState('ready')
+            setSetupState(prepared ? 'ready' : 'needs-permission')
           }
           return
         }
@@ -115,7 +117,6 @@ export default function BrowserGsproSetupGate({
       await handle.getFileHandle('GSPro.db')
       await saveGsproDirectoryHandle(handle)
       setDirectoryHandle(handle)
-      localStorage.setItem(PERSISTENCE_NUDGE_KEY, '1')
       setSetupState('session-ready')
     } catch (chooseError) {
       const message = chooseError instanceof Error ? chooseError.message : String(chooseError)
@@ -148,8 +149,13 @@ export default function BrowserGsproSetupGate({
         setError('Chrome did not grant GSPro folder access. Try again and choose Allow every time.')
         return
       }
-      localStorage.removeItem(PERSISTENCE_NUDGE_KEY)
-      await enterLooper()
+
+      const prepared = await prepareBrowserGsproRuntime()
+      if (!prepared) {
+        setError('Looper could not restore the saved GSPro connection.')
+        return
+      }
+      setSetupState('ready')
     } catch (permissionError) {
       setError(permissionError instanceof Error ? permissionError.message : String(permissionError))
     } finally {
@@ -264,7 +270,7 @@ export default function BrowserGsproSetupGate({
               type="button"
               className="gspro-setup__primary"
               disabled={busy}
-              onClick={() => void enterLooper()}
+              onClick={() => void prepareAndEnterLooper()}
             >
               {busy ? 'Starting…' : 'Enter Looper'}
             </button>
@@ -274,7 +280,7 @@ export default function BrowserGsproSetupGate({
         {setupState === 'error' ? (
           <>
             <h1>GSPro connection needs attention</h1>
-            <p className="gspro-setup__lead">{error ?? 'Looper could not start the browser GSPro connection.'}</p>
+            <p className="gspro-setup__lead">{error ?? 'Looper could not prepare the browser GSPro connection.'}</p>
             <button type="button" className="gspro-setup__primary" onClick={() => window.location.reload()}>
               Try again
             </button>
