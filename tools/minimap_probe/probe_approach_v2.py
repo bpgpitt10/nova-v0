@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""GSPro post-tee v2: canonical AIM context + optional read-only recommendation.
+"""GSPro post-tee v2: identity-safe canonical AIM context + read-only recommendation.
 
 Still field-safe: no W, no Y, and no recommendation-driven aim movement. v2 adds:
+- upper-right course/hole identity and identity-keyed HoleModel selection;
 - gray AIM marker localization checked against the AIM-card distance;
 - AIM target mapped into the canonical HoleModel coordinate system;
 - optional read-only live-caddie recommendation using existing Looper club profiles.
+
+The minimap white pin is optional after the tee: registration projects the cached
+canonical pin back into the current minimap when GSPro crops the real pin offscreen.
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ import lie_state
 import posttee_geometry
 import probe as base
 import probe_v8
+import round_identity
 import target_card_v8  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -109,7 +114,9 @@ def main() -> int:
         initial = timer.call("initial_capture", base.capture_monitor, args.monitor)
         minimap, minimap_bbox = base.crop_minimap(initial, args.roi)
 
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="approach-v2") as executor:
+        # PIN, lie, and course/hole identity are all reads from one frozen screen.
+        # Run them under the unavoidable AIM acquisition rather than serially.
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approach-v2") as executor:
             pin_future = executor.submit(
                 timer.call,
                 "pin_card_ocr",
@@ -129,13 +136,24 @@ def main() -> int:
                 args.lie_roi,
                 None,
             )
+            identity_future = executor.submit(
+                timer.call,
+                "round_identity_ocr",
+                round_identity.try_read_round_identity,
+                initial,
+                args.tesseract,
+                None,
+                out if args.deep_debug else None,
+            )
 
             t0 = time.perf_counter()
             aim_state, aim_meta, aim_screen = probe_v8._acquire_aim(initial, args, out)
             timer.phase_ms["aim_acquisition"] = round((time.perf_counter() - t0) * 1000.0, 1)
             pin_state = pin_future.result()
             lie = lie_future.result()
+            identity, identity_warning = identity_future.result()
 
+        identity_payload = identity.to_dict() if identity is not None else None
         geometry = timer.call(
             "canonical_geometry",
             posttee_geometry.analyze,
@@ -143,11 +161,14 @@ def main() -> int:
             pin_distance_yds=float(pin_state.distance_yds),
             aim_distance_yds=(float(aim_state.distance_yds) if aim_state is not None else None),
             output_root=args.output_root,
+            round_identity=identity_payload,
         )
 
         payload = {
             "schema_version": "post-tee-shot-state-v2",
             "capture_mode": "post-tee",
+            "round_identity": identity_payload,
+            "round_identity_warning": identity_warning,
             "pin": _state_dict(pin_state),
             "aim": _state_dict(aim_state),
             "aim_acquisition": aim_meta,
@@ -220,6 +241,21 @@ def main() -> int:
         print("W zoom:                NOT USED")
         print("Y heatmap:             NOT USED")
         print("Recommendation aim:    READ ONLY; never applied")
+        if identity_payload:
+            print(
+                f"Round identity:         {identity_payload.get('course_name') or '?'} | "
+                f"H{identity_payload.get('hole_number') or '?'} | "
+                f"PAR {identity_payload.get('par') or '?'} | "
+                f"{identity_payload.get('hole_yards') or '?'} yd"
+            )
+        else:
+            print("Round identity:         unavailable")
+        if identity_warning:
+            print(f"Identity warning:      {identity_warning}")
+        selection = geometry.get("hole_model_selection") or {}
+        print(f"HoleModel selection:   {selection.get('method') or '?'} | confidence {float(selection.get('confidence') or 0.0):.2f}")
+        if selection.get("warning"):
+            print(f"Cache warning:         {selection['warning']}")
         print(f"Pin target:            {pin_state.distance_yds:.0f} yd")
         print(f"Pin elevation:         {pin_state.elevation_direction} {pin_state.elevation_raw or '?'}")
         print(f"Lie slope:             {lie_state.state_text(lie)}")
@@ -238,10 +274,15 @@ def main() -> int:
         registration = geometry["registration"]
         position = geometry["canonical_position"]
         crosscheck = geometry["pin_distance_crosscheck"]
+        markers = geometry.get("current_markers") or {}
         print(f"Map registration:      {registration['confidence']:.2f} confidence | {registration['inliers']} inliers")
         print(
             f"Canonical position:    {position['tee_relative_forward_yds']:.0f} yd forward | "
             f"{position['tee_relative_lateral_yds']:+.0f} yd lateral"
+        )
+        print(
+            f"Minimap pin:           {'VISIBLE' if markers.get('pin_marker_visible') else 'CROPPED/NOT REQUIRED'} | "
+            f"geometry source {markers.get('pin_pixel_source') or '?'}"
         )
         print(
             f"Pin cross-check:       {crosscheck['canonical_remaining_pin_yds']:.1f} yd canonical "
