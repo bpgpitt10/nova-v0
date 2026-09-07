@@ -25,6 +25,10 @@ The database includes a constraint that rejects common image-payload keys from d
 
 The web client is wired to the Looper Supabase project with a browser-safe publishable key. Supabase environment variables may override the checked-in public project configuration later.
 
+Looper is a client-only Vite application, so passwordless email uses Supabase's implicit browser flow rather than PKCE. This keeps magic-link handling in the browser and avoids a separate server-side token-exchange endpoint.
+
+The production domain is `https://thelooper.golf`. Transactional auth mail is sent through Resend using the verified `auth.thelooper.golf` sending domain and Supabase custom SMTP; no SMTP secret is stored in this repository.
+
 Planned/implemented login options:
 - Google OAuth
 - passwordless email magic link
@@ -80,9 +84,9 @@ This gives Looper fleet-wide failure telemetry without accumulating image storag
 
 ## Remaining setup before merge
 
-1. Set Supabase Auth Site URL to the intended production Looper URL.
-2. Add the Vercel preview branch pattern as an allowed redirect while testing.
-3. Configure Google OAuth credentials in Supabase (or temporarily test email magic-link login first).
+1. Confirm Supabase Auth Site URL is `https://thelooper.golf` and preview redirects remain allowlisted.
+2. Confirm custom SMTP delivery through Resend from `auth.thelooper.golf`.
+3. Configure Google OAuth credentials in Supabase after email login is proven.
 4. Exercise one allowed account and one non-allowed account in the Vercel preview.
 5. Confirm the first allowed login migrates local sessions and bag without changing the existing Looper UI/data behavior.
 6. Confirm `/admin/users` can add/disable a test invite.
