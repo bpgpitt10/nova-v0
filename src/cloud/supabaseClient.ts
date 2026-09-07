@@ -165,6 +165,11 @@ export const getCurrentLooperUser = async () => {
   const client = await getSupabaseClient()
   const result = await client.auth.getUser()
   if (result.error) {
+    // A brand-new visitor has no Supabase session yet. That is the normal
+    // signed-out state, not an account-service failure.
+    if (result.error.message.toLowerCase().includes('auth session missing')) {
+      return null
+    }
     throw new Error(result.error.message)
   }
   return result.data.user
