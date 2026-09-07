@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.11.2",
+  "assumptions_version": "0.12.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -13,7 +13,8 @@
     "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation.",
     "State-source precedence, source confidence, and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
     "Post-tee W recovery is one-way only and green refinement is confidence-gated before it can replace the tee GreenSurfaceModel.",
-    "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior."
+    "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior.",
+    "Shot mode is inferred outside orchestration from GSPro surface, canonical AIM/green geometry, and AIM-vs-PIN distance; explicit mode remains available only as a diagnostic override."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -166,6 +167,20 @@
     "posttee_capture_command": "run_approach_probe_v4_windows.ps1",
     "automatic_posttee_capture_requires_shot_counter": true,
     "automatic_aim_requires_explicit_enable": true
+  },
+  "shot_mode": {
+    "non_full_shot_surfaces": ["green"],
+    "non_full_shot_surface_confidence": 0.99,
+    "aim_inside_green_confidence": 0.96,
+    "aim_outside_green_confidence": 0.93,
+    "aim_pin_distance_absolute_tolerance_yds": 12.0,
+    "aim_pin_distance_relative_tolerance_fraction": 0.08,
+    "aim_pin_distance_match_confidence": 0.84,
+    "aim_pin_distance_divergence_confidence": 0.80,
+    "fallback_approach_max_pin_distance_yds": 220.0,
+    "fallback_approach_confidence": 0.58,
+    "unknown_confidence": 0.25,
+    "minimum_actionable_confidence": 0.55
   },
   "candidate_policy": {
     "include_stock": true,
