@@ -3,6 +3,9 @@ param(
   [string]$Roi = "",
   [string]$LieRoi = "",
   [string]$Tesseract = "",
+  [string]$ProfilesJson = "",
+  [double]$ExternalCarryAdjustmentYds = 0,
+  [double]$ExternalLateralAdjustmentYds = 0,
   [string]$HeatmapKey = "Y",
   [double]$HeatmapSettleMs = 320,
   [double]$HeatmapPulseMs = 45,
@@ -44,24 +47,12 @@ $argsList = @(
   "--aim-max-corrections", "$AimMaxCorrections"
 )
 
-if ($Roi) {
-  $argsList += @("--roi", $Roi)
-}
-if ($LieRoi) {
-  $argsList += @("--lie-roi", $LieRoi)
-}
-if ($Tesseract) {
-  $argsList += @("--tesseract", $Tesseract)
-}
-if ($NoAimSummon) {
-  $argsList += "--no-aim-summon"
-}
-if ($VerifyTeeLie) {
-  $argsList += "--verify-tee-lie"
-}
-if ($DeepDebug) {
-  $argsList += "--deep-debug"
-}
+if ($Roi) { $argsList += @("--roi", $Roi) }
+if ($LieRoi) { $argsList += @("--lie-roi", $LieRoi) }
+if ($Tesseract) { $argsList += @("--tesseract", $Tesseract) }
+if ($NoAimSummon) { $argsList += "--no-aim-summon" }
+if ($VerifyTeeLie) { $argsList += "--verify-tee-lie" }
+if ($DeepDebug) { $argsList += "--deep-debug" }
 
 if ($HeatmapKey -notin @("Y", "y")) {
   throw "-HeatmapKey must be Y for the current GSPro heatmap capture contract."
@@ -88,8 +79,13 @@ if ($NoAimSummon) {
 if ($DeepDebug) {
   Write-Host "Deep AIM debug frames enabled (diagnostic; slower critical path)."
 }
+if ($ProfilesJson) {
+  Write-Host "Player model: explicit -ProfilesJson diagnostic override."
+} else {
+  Write-Host "Player model: authenticated Looper profile file auto-loaded from the GSPro folder."
+}
 Write-Host "Performance timing is enabled; STATE READY excludes review PNG/ZIP persistence."
-Write-Host "Course/hole identity OCR runs after STATE READY and tags the cached HoleModel."
+Write-Host "Course/hole identity and READ-ONLY tee recommendation run after tee capture succeeds."
 if (-not $NoReviewZip) {
   Write-Host "A review ZIP will be created automatically after the run."
 }
@@ -103,6 +99,20 @@ $ProbeWallMs = [math]::Round($ProbeStopwatch.Elapsed.TotalMilliseconds, 1)
 Write-Host ""
 Write-Host ("Python process wall:     {0:N1} ms" -f $ProbeWallMs)
 
+# Locate this run's capture once so all post-ready steps operate on the same model.
+$Capture = $null
+if ($ProbeExitCode -eq 0 -and (Test-Path $OutputRoot)) {
+  $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
+    Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-3) } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+  if (-not $Capture) {
+    $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1
+  }
+}
+
 # Identity is product state, but intentionally post-ready so the proven tee capture
 # critical path stays untouched. Failure to OCR identity does not invalidate the tee
 # model; later cache selection will surface the lower-confidence fallback explicitly.
@@ -112,12 +122,8 @@ if ($ProbeExitCode -eq 0) {
       (Join-Path $Here "attach_round_identity.py"),
       "--output-root", $OutputRoot
     )
-    if ($Tesseract) {
-      $IdentityArgs += @("--tesseract", $Tesseract)
-    }
-    if ($DeepDebug) {
-      $IdentityArgs += "--debug"
-    }
+    if ($Tesseract) { $IdentityArgs += @("--tesseract", $Tesseract) }
+    if ($DeepDebug) { $IdentityArgs += "--debug" }
     $IdentityStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     & $Python @IdentityArgs
     $IdentityExitCode = $LASTEXITCODE
@@ -132,53 +138,70 @@ if ($ProbeExitCode -eq 0) {
   }
 }
 
+# Read-only recommendation is also post-capture. It uses the existing Looper player
+# model published by the authenticated web app; Python never recalculates Stock/Pure.
+if ($ProbeExitCode -eq 0 -and $Capture) {
+  try {
+    $RecommendationArgs = @(
+      "-m", "tools.live_caddie.tee_recommend",
+      $Capture.FullName,
+      "--external-carry-adjustment-yds", "$ExternalCarryAdjustmentYds",
+      "--external-lateral-adjustment-yds", "$ExternalLateralAdjustmentYds"
+    )
+    if ($ProfilesJson) { $RecommendationArgs += @("--profiles-json", $ProfilesJson) }
+    $RecommendationStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Push-Location $RepoRoot
+    try {
+      & $Python @RecommendationArgs
+      $RecommendationExitCode = $LASTEXITCODE
+    } finally {
+      Pop-Location
+    }
+    $RecommendationStopwatch.Stop()
+    $RecommendationMs = [math]::Round($RecommendationStopwatch.Elapsed.TotalMilliseconds, 1)
+    Write-Host ("Tee recommendation:      {0:N1} ms (post-capture, read-only)" -f $RecommendationMs)
+    if ($RecommendationExitCode -ne 0) {
+      Write-Warning "Tee recommendation failed; captured HoleModel remains valid."
+    }
+  } catch {
+    Write-Warning "Could not build tee recommendation: $($_.Exception.Message)"
+  }
+}
+
 # ZIP creation is development/debug convenience only. It is intentionally outside
 # the capture/recommendation critical path and can be disabled with -NoReviewZip.
 if (-not $NoReviewZip) {
   try {
-    if (Test-Path $OutputRoot) {
-      $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
-        Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-3) } |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
+    if ($Capture) {
+      $Branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
+      $Commit = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+      $Manifest = @(
+        "Looper GSPro tee-capture review bundle",
+        "capture=$($Capture.Name)",
+        "branch=$Branch",
+        "commit=$Commit",
+        "probe_exit_code=$ProbeExitCode",
+        "probe_process_wall_ms=$ProbeWallMs",
+        "packaged_local=$((Get-Date).ToString('s'))"
+      )
+      $Manifest | Set-Content -Path (Join-Path $Capture.FullName "review_manifest.txt") -Encoding UTF8
 
-      if (-not $Capture) {
-        $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
-          Sort-Object LastWriteTime -Descending |
-          Select-Object -First 1
-      }
+      $ReviewFiles = Get-ChildItem -Path $Capture.FullName -File |
+        Where-Object { $_.Extension -ne ".zip" }
 
-      if ($Capture) {
-        $Branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
-        $Commit = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
-        $Manifest = @(
-          "Looper GSPro tee-capture review bundle",
-          "capture=$($Capture.Name)",
-          "branch=$Branch",
-          "commit=$Commit",
-          "probe_exit_code=$ProbeExitCode",
-          "probe_process_wall_ms=$ProbeWallMs",
-          "packaged_local=$((Get-Date).ToString('s'))"
-        )
-        $Manifest | Set-Content -Path (Join-Path $Capture.FullName "review_manifest.txt") -Encoding UTF8
-
-        $ReviewFiles = Get-ChildItem -Path $Capture.FullName -File |
-          Where-Object { $_.Extension -ne ".zip" }
-
-        if ($ReviewFiles.Count -gt 0) {
-          $ArchiveZip = Join-Path $OutputRoot ($Capture.Name + "_review.zip")
-          $LatestZip = Join-Path $OutputRoot "latest_tee_review.zip"
-          $ZipStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-          Compress-Archive -Path $ReviewFiles.FullName -DestinationPath $ArchiveZip -Force
-          Copy-Item -Path $ArchiveZip -Destination $LatestZip -Force
-          $ZipStopwatch.Stop()
-          $ZipMs = [math]::Round($ZipStopwatch.Elapsed.TotalMilliseconds, 1)
-          Write-Host ""
-          Write-Host "Review ZIP:           $ArchiveZip"
-          Write-Host "Latest review ZIP:    $LatestZip"
-          Write-Host ("ZIP packaging:        {0:N1} ms (debug only; not live critical path)" -f $ZipMs)
-          Write-Host "Upload latest_tee_review.zip when we need visual review."
-        }
+      if ($ReviewFiles.Count -gt 0) {
+        $ArchiveZip = Join-Path $OutputRoot ($Capture.Name + "_review.zip")
+        $LatestZip = Join-Path $OutputRoot "latest_tee_review.zip"
+        $ZipStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        Compress-Archive -Path $ReviewFiles.FullName -DestinationPath $ArchiveZip -Force
+        Copy-Item -Path $ArchiveZip -Destination $LatestZip -Force
+        $ZipStopwatch.Stop()
+        $ZipMs = [math]::Round($ZipStopwatch.Elapsed.TotalMilliseconds, 1)
+        Write-Host ""
+        Write-Host "Review ZIP:           $ArchiveZip"
+        Write-Host "Latest review ZIP:    $LatestZip"
+        Write-Host ("ZIP packaging:        {0:N1} ms (debug only; not live critical path)" -f $ZipMs)
+        Write-Host "Upload latest_tee_review.zip when we need visual review."
       }
     }
   } catch {
