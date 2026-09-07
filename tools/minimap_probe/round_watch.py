@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GSPro full-shot round watcher with dry-run default.
 
-This runtime adapter connects screen facts to the pure RoundOrchestrator.  It is safe
+This runtime adapter connects screen facts to the pure RoundOrchestrator. It is safe
 by default: no GSPro keys are pressed and no capture scripts are launched unless the
 operator passes --execute-actions explicitly.
 
@@ -128,7 +128,6 @@ def main() -> int:
             screen = base.capture_monitor(args.monitor)
             minimap, _ = base.crop_minimap(screen, args.roi)
 
-            surface = None
             try:
                 surface = minimap_surface.read_minimap_surface(minimap, tesseract_path=args.tesseract)
             except Exception:
@@ -137,8 +136,6 @@ def main() -> int:
             identity = None
             identity_warning = None
             pin_distance = None
-            # New-hole tee is the actionable state we can identify today.  Header OCR
-            # is therefore avoided on ordinary recognized non-tee frames for latency.
             should_read_identity = surface is None or not surface.recognized or surface.is_tee
             if should_read_identity:
                 identity, identity_warning = round_identity.try_read_round_identity(
@@ -148,10 +145,7 @@ def main() -> int:
                 if surface is not None and surface.is_tee:
                     pin_distance = _safe_pin_distance(screen, args.tesseract)
             else:
-                # Preserve active identity on non-tee frames.  Future upper-left shot
-                # OCR will cause these frames to read the header as well.
                 identity_payload = orchestrator.tracker.active_identity
-                identity = None
 
             if identity is not None:
                 identity_payload = identity.to_dict()
@@ -166,8 +160,10 @@ def main() -> int:
                 minimap_surface_is_tee=surface_is_tee,
                 minimap_surface_confidence=(surface.confidence if surface is not None else None),
                 pin_card_distance_to_pin_yds=pin_distance,
-                flat_lie=(True if surface_is_tee is True else None),
-                full_hole_minimap=(True if surface_is_tee is True else None),
+                # Do not synthesize flat-lie/full-hole evidence from the Tee label.
+                # Those are independent signals and should only be populated by their own readers.
+                flat_lie=None,
+                full_hole_minimap=None,
             )
             action = orchestrator.observe(observation)
             key = action.identity_key or _identity_key(identity_payload)
@@ -212,21 +208,19 @@ def main() -> int:
                         success, execution_detail = _run_capture(str(config["tee_capture_command"]))
                     if success:
                         orchestrator.accept_tee_capture(identity=identity_payload)
-                        event2 = {
+                        _emit({
                             "event": "tee-capture-accepted",
                             "action": "capture-tee",
                             "identity_key": key,
                             "reason": execution_detail,
-                        }
-                        _emit(event2, args.json)
+                        }, args.json)
                     else:
-                        event2 = {
+                        _emit({
                             "event": "tee-capture-failed",
                             "action": "capture-tee",
                             "identity_key": key,
                             "reason": execution_detail,
-                        }
-                        _emit(event2, args.json)
+                        }, args.json)
 
             _write_state(state_path, orchestrator, {
                 "last_surface": surface.to_dict() if surface is not None else None,
