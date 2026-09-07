@@ -8,6 +8,7 @@ better green context. Product safety rules:
 - W is zoom-out only and bounded; never automatically zoom back in;
 - Y uses the field-proven fixed toggle/restore timing;
 - refined green geometry is merged only after registration/heatmap/pin checks;
+- player profiles auto-load from the authenticated Looper materialization in the GSPro folder;
 - recommendation AIM remains READ ONLY; no recommendation-driven arrow movement;
 - all tunable policy/timing lives in config/looper-live-caddie.json.
 """
@@ -42,6 +43,7 @@ from tools.live_caddie.adapters import live_state_from_probe  # noqa: E402
 from tools.live_caddie.assumptions import Assumptions  # noqa: E402
 from tools.live_caddie.canonicalize_capture import build_canonical_hole  # noqa: E402
 from tools.live_caddie.engine import recommend  # noqa: E402
+from tools.live_caddie.profile_store import resolve_profile_store  # noqa: E402
 from tools.live_caddie.source_resolution import resolve_distance_to_pin  # noqa: E402
 
 
@@ -59,7 +61,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--aim-max-corrections", type=int, default=2)
     p.add_argument("--deep-debug", action="store_true")
     p.add_argument("--output-root", default=str(Path(__file__).with_name("output")))
-    p.add_argument("--profiles-json", help="Optional JSON array/object exported from Looper player profiles.")
+    p.add_argument(
+        "--profiles-json",
+        help="Optional diagnostic override. Normally Looper auto-loads looper-live-caddie-profiles.json from the GSPro folder.",
+    )
     p.add_argument(
         "--mode",
         choices=["auto", "approach", "strategic"],
@@ -96,6 +101,7 @@ def main() -> int:
     timer = v3.Timer()
 
     try:
+        profile_selection = resolve_profile_store(args.profiles_json)
         initial = timer.call("initial_capture", base.capture_monitor, args.monitor)
         initial_minimap, _ = base.crop_minimap(initial, args.roi)
 
@@ -205,6 +211,7 @@ def main() -> int:
             "lie_slope": asdict(lie),
             "canonical_geometry": geometry,
             "green_refinement": _public_refinement(refinement),
+            "player_profiles": profile_selection.to_dict(),
             "minimap": {
                 "as_presented": "approach_initial_minimap.png",
                 "final": "approach_final_minimap.png",
@@ -226,9 +233,9 @@ def main() -> int:
             recommendation_warning = "GSPro state is not a full-shot caddie state; recommendation intentionally skipped."
         elif resolved_mode == "unknown":
             recommendation_warning = "Shot mode could not be resolved confidently; recommendation intentionally skipped."
-        elif args.profiles_json:
+        elif profile_selection.available and profile_selection.path:
             try:
-                profiles = _load_profiles(args.profiles_json)
+                profiles = _load_profiles(profile_selection.path)
                 capture_dir = Path(geometry["hole_model_path"]).parent
                 canonical_path = capture_dir / "canonical_hole_model.json"
                 if canonical_path.exists():
@@ -252,6 +259,8 @@ def main() -> int:
                 ).to_dict()
             except Exception as exc:
                 recommendation_warning = str(exc)
+        else:
+            recommendation_warning = profile_selection.warning or "Looper player profiles are unavailable."
 
         state_ready_ms = timer.elapsed_ms()
         payload["recommendation"] = recommendation
@@ -292,6 +301,13 @@ def main() -> int:
         print(f"Pin elevation:          {pin_state.elevation_direction} {pin_state.elevation_raw or '?'}")
         print(f"Lie slope:              {lie_state.state_text(lie)}")
         print(f"Resolved DTP:           {resolved_distance.value_yds if resolved_distance.value_yds is not None else '?'} | {resolved_distance.source or '?'} | {resolved_distance.status}")
+        if profile_selection.available:
+            profile_detail = f"{profile_selection.club_count} clubs"
+            if profile_selection.shot_count is not None:
+                profile_detail += f" | {profile_selection.shot_count} shots"
+            print(f"Player profiles:        {profile_selection.method.upper()} | {profile_detail}")
+        else:
+            print(f"Player profiles:        UNAVAILABLE | {profile_selection.warning or '?'}")
         print(f"W zoom-out pulses:      {int(refinement.get('w_pulses') or 0)}")
         print(f"Y green refinement:     {'YES' if refinement.get('heatmap_toggled') else 'NO'}")
         if refinement.get("merge"):
