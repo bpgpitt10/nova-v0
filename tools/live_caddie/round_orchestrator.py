@@ -81,6 +81,12 @@ class RoundOrchestrator:
             assumptions=self.assumptions,
         )
 
+        # Preserve the previous counter before observe_pre_shot records the current
+        # screen counter. This matters immediately after accept_tee(), where there is
+        # intentionally no previous RoundObservation but tracker.last_screen_shot_number
+        # is the authoritative prior value (1).
+        prior_tracker_shot_number = self.tracker.last_screen_shot_number
+
         # Tee inference receives each independent source as what it actually is.
         # The central source resolver is still recorded for downstream state use, but
         # we never relabel canonical DTP as a PIN-card observation or double-count it.
@@ -113,7 +119,7 @@ class RoundOrchestrator:
         progression = infer_shot_progression(ShotProgressionInputs(
             previous_identity=(previous.identity if previous else self.tracker.active_identity),
             current_identity=observation.identity,
-            previous_screen_shot_number=(previous.upper_left_shot_number if previous else self.tracker.last_screen_shot_number),
+            previous_screen_shot_number=(previous.upper_left_shot_number if previous else prior_tracker_shot_number),
             current_screen_shot_number=observation.upper_left_shot_number,
             previous_distance_to_pin_yds=(previous.upper_left_distance_to_pin_yds if previous else None),
             current_distance_to_pin_yds=observation.upper_left_distance_to_pin_yds,
