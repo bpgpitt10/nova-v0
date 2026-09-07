@@ -4,10 +4,13 @@ import {
   type MishitBaseline,
   type MishitClass,
   type MishitClassification,
+  type MishitEffectiveThresholds,
+  type MishitPlayerCalibration,
   type MishitReason,
   type MishitShot,
 } from '../mishit-classifier'
 import type { Shot } from '../types'
+import { loadMishitPlayerCalibrations } from './mishitPlayerCalibration'
 import {
   loadHumanShotReviews,
   type HumanShotJudgment,
@@ -16,7 +19,7 @@ import {
 import { loadActiveSessionDraft, loadSavedSessions } from './sessions'
 import { resolveShotVariantId } from './shotVariants'
 
-export const MISHIT_VALIDATION_SNAPSHOT_VERSION = 1
+export const MISHIT_VALIDATION_SNAPSHOT_VERSION = 2
 
 export type MishitValidationAgreement =
   | 'exact'
@@ -65,6 +68,10 @@ export type MishitValidationPopulation = {
   humanReviewedCount: number
   comparableHumanCount: number
   baseline: MishitBaseline
+  inputVersion: number
+  calibrationVersion?: number
+  playerCalibration?: MishitPlayerCalibration
+  effectiveThresholds: MishitEffectiveThresholds
   classifierCounts: Record<MishitClass, number>
   comparison: {
     exactMatches: number
@@ -79,6 +86,7 @@ export type MishitValidationSnapshot = {
   schemaVersion: number
   generatedAt: string
   classifierConfig: typeof DEFAULT_MISHIT_CONFIG
+  playerCalibrations: Record<string, MishitPlayerCalibration>
   notes: string[]
   summary: {
     shotRecords: number
@@ -310,6 +318,7 @@ const comparisonSummary = (rows: MishitValidationShot[]) => {
 export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
   const records = collectShotRecords()
   const reviews = loadHumanShotReviews()
+  const playerCalibrations = loadMishitPlayerCalibrations()
   const groups = new Map<string, StoredShotRecord[]>()
 
   records.forEach((record) => {
@@ -331,18 +340,28 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
     string,
     {
       baseline: MishitBaseline
+      inputVersion: number
+      calibrationVersion?: number
+      playerCalibration?: MishitPlayerCalibration
+      effectiveThresholds: MishitEffectiveThresholds
       classifications: MishitClassification[]
       byShotId: Map<string, MishitClassification>
     }
   >()
 
   groups.forEach((group, populationKey) => {
+    const playerCalibration = playerCalibrations[populationKey]
     const analysis = analyzeShotPopulation(
       group.map((record) => toMishitShot(record.shot)),
       DEFAULT_MISHIT_CONFIG,
+      playerCalibration,
     )
     analysisByPopulation.set(populationKey, {
       baseline: analysis.baseline,
+      inputVersion: analysis.inputVersion,
+      calibrationVersion: analysis.calibrationVersion,
+      playerCalibration,
+      effectiveThresholds: analysis.effectiveThresholds,
       classifications: analysis.classifications,
       byShotId: new Map(
         analysis.classifications.map((classification) => [
@@ -423,6 +442,10 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
           .length,
         comparableHumanCount: comparison.comparableCount,
         baseline: analysis.baseline,
+        inputVersion: analysis.inputVersion,
+        calibrationVersion: analysis.calibrationVersion,
+        playerCalibration: analysis.playerCalibration,
+        effectiveThresholds: analysis.effectiveThresholds,
         classifierCounts: countClassifications(analysis.classifications),
         comparison: {
           exactMatches: comparison.exactMatches,
@@ -446,8 +469,13 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
     schemaVersion: MISHIT_VALIDATION_SNAPSHOT_VERSION,
     generatedAt: new Date().toISOString(),
     classifierConfig: DEFAULT_MISHIT_CONFIG,
+    playerCalibrations,
     notes: [
       'Human labels are stored independently from raw shots and automatic classifications.',
+      'Shared classifier defaults are starter policy, not player-specific learned thresholds.',
+      'Each club + variant population has its own robust center and MAD-based variability.',
+      'Stable player variability can widen exclusion boundaries but cannot make them more aggressive than global starter floors.',
+      'Optional human/manual player calibrations are stored separately by population and exported here.',
       'Intentional shots are exported but excluded from classifier population construction.',
       'Shots with included=false are exported but excluded from classifier population construction.',
       'Unsure shots remain in the automatic population but are excluded from human-vs-auto accuracy counts.',
