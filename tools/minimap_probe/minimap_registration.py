@@ -1,26 +1,12 @@
 #!/usr/bin/env python3
-"""Register a later GSPro minimap back into the tee HoleModel coordinate system.
-
-GSPro's minimap behaves like a 2D map that is translated, scaled, and can rotate a
-few degrees as the player advances.  That means a post-tee minimap can be aligned to
-the cached tee minimap using image features and a similarity transform
-(scale + rotation + translation).
-
-Why this matters:
-- the tee HoleModel already owns hazards + target-green geometry in canonical pixels;
-- after registration, the current ball can be expressed in those same pixels;
-- downstream recommendation logic can then reason about hazards relative to the
-  *current* ball without re-extracting the whole hole every shot.
-
-The implementation deliberately uses estimateAffinePartial2D rather than a free
-homography because the observed GSPro geometry is a scaled/rotated 2D map.  A more
-flexible projective transform could overfit dynamic UI/markers.
-"""
+"""Register a later GSPro minimap back into the tee HoleModel coordinate system."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+import json
 import math
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -43,6 +29,12 @@ class RegistrationResult:
         return asdict(self)
 
 
+def _default_config() -> dict:
+    path = Path(__file__).resolve().parents[2] / "config" / "looper-live-caddie.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload["screen_detection"]["registration"]
+
+
 def _play_mask(shape: tuple[int, int]) -> np.ndarray:
     """Mask out minimap title/footer UI while keeping the course imagery."""
     h, w = shape
@@ -57,17 +49,20 @@ def register_current_to_canonical(
     current_bgr: np.ndarray,
     canonical_bgr: np.ndarray,
     *,
-    ratio_test: float = 0.72,
-    ransac_reproj_px: float = 3.0,
-    min_good_matches: int = 30,
-    min_inliers: int = 20,
+    detector_config: dict | None = None,
+    ratio_test: float | None = None,
+    ransac_reproj_px: float | None = None,
+    min_good_matches: int | None = None,
+    min_inliers: int | None = None,
 ) -> RegistrationResult:
     if current_bgr is None or canonical_bgr is None:
         raise ValueError("registration images are missing")
-    if current_bgr.shape[:2] != canonical_bgr.shape[:2]:
-        # Same crop dimensions are normal today, but the registration math itself
-        # does not require them to match.  Different sizes are still accepted.
-        pass
+
+    config = detector_config or _default_config()
+    ratio_test = float(config["ratio_test"] if ratio_test is None else ratio_test)
+    ransac_reproj_px = float(config["ransac_reprojection_px"] if ransac_reproj_px is None else ransac_reproj_px)
+    min_good_matches = int(config["min_good_matches"] if min_good_matches is None else min_good_matches)
+    min_inliers = int(config["min_inliers"] if min_inliers is None else min_inliers)
 
     current_gray = cv2.cvtColor(current_bgr, cv2.COLOR_BGR2GRAY)
     canonical_gray = cv2.cvtColor(canonical_bgr, cv2.COLOR_BGR2GRAY)
@@ -80,8 +75,8 @@ def register_current_to_canonical(
 
     matcher = cv2.BFMatcher(cv2.NORM_L2)
     pairs = matcher.knnMatch(des_cur, des_can, k=2)
-    good = [m for m, n in pairs if m.distance < float(ratio_test) * n.distance]
-    if len(good) < int(min_good_matches):
+    good = [m for m, n in pairs if m.distance < ratio_test * n.distance]
+    if len(good) < min_good_matches:
         raise RuntimeError(
             f"Minimap registration had only {len(good)} good feature matches "
             f"(need >= {min_good_matches})"
@@ -93,7 +88,7 @@ def register_current_to_canonical(
         src,
         dst,
         method=cv2.RANSAC,
-        ransacReprojThreshold=float(ransac_reproj_px),
+        ransacReprojThreshold=ransac_reproj_px,
         maxIters=3000,
         confidence=0.995,
         refineIters=20,
@@ -103,20 +98,19 @@ def register_current_to_canonical(
 
     inliers_bool = inlier_mask.ravel().astype(bool)
     inliers = int(inliers_bool.sum())
-    if inliers < int(min_inliers):
+    if inliers < min_inliers:
         raise RuntimeError(f"Minimap registration had only {inliers} RANSAC inliers")
 
-    a, b, tx = [float(v) for v in matrix[0]]
-    c, d, ty = [float(v) for v in matrix[1]]
-    # estimateAffinePartial2D should produce [[s cos,-s sin],[s sin,s cos]].
+    a, b, _tx = [float(v) for v in matrix[0]]
+    c, d, _ty = [float(v) for v in matrix[1]]
     scale_x = math.hypot(a, c)
     scale_y = math.hypot(b, d)
     scale = (scale_x + scale_y) / 2.0
     rotation_deg = math.degrees(math.atan2(c, a))
 
-    if not (0.15 <= scale <= 4.0):
+    if not (float(config["min_scale"]) <= scale <= float(config["max_scale"])):
         raise RuntimeError(f"Implausible minimap registration scale {scale:.3f}")
-    if abs(rotation_deg) > 30.0:
+    if abs(rotation_deg) > float(config["max_rotation_deg"]):
         raise RuntimeError(f"Implausible minimap registration rotation {rotation_deg:.1f} deg")
 
     src_in = src[inliers_bool]
@@ -126,11 +120,15 @@ def register_current_to_canonical(
     median_error = float(np.median(errors)) if len(errors) else 999.0
     inlier_ratio = inliers / max(len(good), 1)
 
-    # A simple bounded confidence score for debug/gating, not a probabilistic claim.
-    match_score = min(1.0, inliers / 100.0)
-    ratio_score = min(1.0, inlier_ratio / 0.65)
-    error_score = max(0.0, min(1.0, 1.0 - median_error / 4.0))
-    confidence = float(0.35 * match_score + 0.35 * ratio_score + 0.30 * error_score)
+    match_score = min(1.0, inliers / float(config["confidence_match_inliers_full"]))
+    ratio_score = min(1.0, inlier_ratio / float(config["confidence_inlier_ratio_full"]))
+    error_floor = float(config["confidence_error_zero_px"])
+    error_score = max(0.0, min(1.0, 1.0 - median_error / max(error_floor, 1e-6)))
+    confidence = float(
+        float(config["confidence_match_weight"]) * match_score
+        + float(config["confidence_ratio_weight"]) * ratio_score
+        + float(config["confidence_error_weight"]) * error_score
+    )
 
     return RegistrationResult(
         matrix_2x3=[[float(v) for v in row] for row in matrix.tolist()],
@@ -158,7 +156,6 @@ def canonical_position_from_hole_model(
     current_ball_xy: tuple[float, float],
     registration: RegistrationResult,
 ) -> dict:
-    """Express the current ball in canonical pixels and tee-relative yards."""
     minimap = hole_model.get("minimap") or {}
     tee_ball = minimap.get("ball_pixel") or {}
     pin = minimap.get("pin_pixel") or {}
@@ -180,7 +177,6 @@ def canonical_position_from_hole_model(
     if norm < 10.0:
         raise ValueError("Canonical tee/pin axis is invalid")
     forward_unit = axis / norm
-    # Screen-space vector pointing to the player's right when tee->pin is forward.
     right_unit = np.array([-forward_unit[1], forward_unit[0]], dtype=float)
     delta = current - tee
 
