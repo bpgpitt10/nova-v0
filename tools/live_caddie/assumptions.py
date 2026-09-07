@@ -40,6 +40,7 @@ class Assumptions:
             "canonical_geometry",
             "screen_detection",
             "hole_model_cache",
+            "tee_state",
             "candidate_policy",
             "distance_fit",
             "dispersion",
@@ -81,6 +82,28 @@ class Assumptions:
             raise ValueError("hole_model_cache.course_name_similarity_min must be 0..1")
         if float(cache["hole_yardage_tolerance_yds"]) < 0:
             raise ValueError("hole_model_cache.hole_yardage_tolerance_yds cannot be negative")
+
+        tee = self.get("tee_state")
+        probable = float(tee["minimum_probable_confidence"])
+        confirmed = float(tee["minimum_confirmed_confidence"])
+        if not (0.0 <= probable <= confirmed <= 1.0):
+            raise ValueError("tee_state confidence thresholds must satisfy 0 <= probable <= confirmed <= 1")
+        for key in (
+            "current_identity_valid_weight",
+            "hole_change_weight",
+            "shot_number_one_weight",
+            "no_recorded_shots_weight",
+            "distance_matches_hole_weight",
+            "previous_hole_terminal_weight",
+            "flat_lie_weight",
+            "full_hole_minimap_weight",
+        ):
+            if float(tee[key]) < 0:
+                raise ValueError(f"tee_state.{key} cannot be negative")
+        if float(tee["distance_absolute_tolerance_yds"]) < 0:
+            raise ValueError("tee_state.distance_absolute_tolerance_yds cannot be negative")
+        if float(tee["distance_relative_tolerance_fraction"]) < 0:
+            raise ValueError("tee_state.distance_relative_tolerance_fraction cannot be negative")
 
         for mode in ("approach", "strategic"):
             weights = self.get(f"scoring.{mode}")
