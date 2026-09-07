@@ -1,12 +1,13 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.5.0",
+  "assumptions_version": "0.6.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
     "Pure is a reference profile by default, not an automatically selected planned shot.",
     "Hazard scoring is boundary-proximity risk until penalty-side semantics are validated.",
-    "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments."
+    "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments.",
+    "Strategic distance fit uses GSPro AIM distance, not PIN distance."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -69,7 +70,8 @@
   "distance_fit": {
     "absolute_tolerance_yds": 18,
     "relative_tolerance_fraction": 0.12,
-    "hard_reject_multiplier": 2.5
+    "hard_reject_multiplier": 2.5,
+    "strong_fit_score": 0.3
   },
   "dispersion": {
     "minimum_carry_sigma_yds": 4.0,
@@ -81,6 +83,7 @@
     "buffer_sigma": 1.6,
     "danger_sigma": 0.8,
     "tight_sigma": 1.4,
+    "sample_sigma_extent": 2.0,
     "max_relevant_forward_beyond_landing_yds": 25,
     "max_relevant_behind_landing_yds": 25
   },
@@ -109,15 +112,20 @@
     "pin_crosscheck_absolute_yds": 8,
     "pin_crosscheck_relative_fraction": 0.05,
     "minimum_recommendation_confidence": 0.55,
-    "low_confidence_score_gap": 0.08
+    "low_confidence_score_gap": 0.08,
+    "missing_strategic_aim_multiplier": 0.55,
+    "missing_approach_green_multiplier": 0.75
   },
   "environment": {
     "use_target_elevation": true,
+    "elevation_effective_distance_factor": 1.0,
     "lie_carry_adjustment_enabled": false,
     "wind_mode": "external_adjustments_only"
   },
   "actuation": {
     "enabled_by_default": false,
+    "minimum_confidence": 0.72,
+    "maximum_automatic_aim_offset_yds": 15,
     "aim_settle_ms": 60,
     "aim_pulse_ms": 45,
     "aim_return_tolerance_px": 1.5,
