@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.9.0",
+  "assumptions_version": "0.9.1",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -87,6 +87,12 @@
     "hole_yardage_tolerance_yds": 12,
     "par_match_bonus": 0.10,
     "yardage_match_bonus": 0.10,
+    "base_course_hole_confidence": 0.65,
+    "course_similarity_weight": 0.25,
+    "missing_course_par_yard_confidence": 0.68,
+    "unique_hole_confidence": 0.52,
+    "legacy_latest_confidence": 0.35,
+    "latest_without_warning_confidence": 0.50,
     "allow_legacy_latest_when_no_identity_tagged_models": true,
     "allow_latest_when_current_identity_unavailable": true
   },
