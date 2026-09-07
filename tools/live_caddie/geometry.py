@@ -33,8 +33,39 @@ def point_in_polygon(p: PointYards, polygon: list[PointYards]) -> bool:
         j = i
     return inside
 
-def gaussian_pattern_samples(center: PointYards, carry_sigma: float, lateral_sigma: float, extent: float = 2.0):
-    # Stable deterministic approximation used for ranking, not an exact probability claim.
+def unit_and_cross(target: PointYards) -> tuple[PointYards, PointYards]:
+    """Return along-shot unit vector and its player's-right cross-track vector."""
+    norm = math.hypot(target.forward, target.right)
+    if norm <= 1e-9:
+        return PointYards(1.0, 0.0), PointYards(0.0, 1.0)
+    unit = PointYards(target.forward / norm, target.right / norm)
+    cross = PointYards(-unit.right, unit.forward)
+    return unit, cross
+
+def add_scaled(origin: PointYards, direction: PointYards, amount: float) -> PointYards:
+    return PointYards(
+        origin.forward + direction.forward * float(amount),
+        origin.right + direction.right * float(amount),
+    )
+
+def gaussian_pattern_samples(
+    center: PointYards,
+    carry_sigma: float,
+    lateral_sigma: float,
+    extent: float = 2.0,
+    *,
+    shot_unit: PointYards | None = None,
+    cross_unit: PointYards | None = None,
+):
+    """Deterministic Gaussian sample in shot-relative carry/cross-track coordinates.
+
+    The old implementation treated carry dispersion as canonical-map forward and
+    lateral dispersion as canonical-map right. That is only correct when the shot
+    aims exactly along the tee-to-pin axis. Strategic GSPro targets can be far off
+    that axis, so the pattern must rotate with the intended shot direction.
+    """
+    if shot_unit is None or cross_unit is None:
+        shot_unit, cross_unit = PointYards(1.0, 0.0), PointYards(0.0, 1.0)
     zs = (-extent, -1.0, 0.0, 1.0, extent)
     out = []
     total = 0.0
@@ -42,5 +73,13 @@ def gaussian_pattern_samples(center: PointYards, carry_sigma: float, lateral_sig
         for zr in zs:
             weight = math.exp(-0.5 * (zf * zf + zr * zr))
             total += weight
-            out.append((PointYards(center.forward + zf * carry_sigma, center.right + zr * lateral_sigma), weight))
+            point = PointYards(
+                center.forward
+                + zf * carry_sigma * shot_unit.forward
+                + zr * lateral_sigma * cross_unit.forward,
+                center.right
+                + zf * carry_sigma * shot_unit.right
+                + zr * lateral_sigma * cross_unit.right,
+            )
+            out.append((point, weight))
     return [(point, weight / total) for point, weight in out]
