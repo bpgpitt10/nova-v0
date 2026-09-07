@@ -1,85 +1,94 @@
-# GSPro Minimap Hazard Probe
+# GSPro Minimap / Live Caddie Capture
 
-Standalone proof-of-concept for turning the GSPro minimap into usable course geometry without touching Looper app code.
+This folder is the GSPro screen-understanding layer for Looper's full-shot live caddie. It should answer **what is happening in GSPro** and hand clean state to `tools/live_caddie/`; recommendation math does not belong here.
 
-## What it does now
+## Current capture architecture
 
-- Captures the GSPro monitor or analyzes a saved screenshot.
-- Crops the minimap using the current GSPro layout proportions.
-- Detects the player marker without assuming it is red. This is intentional because the marker may follow team color.
-- Detects the white pin marker.
-- Reads `DistanceToPin` from `C:\Users\<user>\AppData\LocalLow\GSPro\GSPro\currentRound.dat` when available.
-- Recomputes minimap scale every shot as `DistanceToPin / ball-to-pin pixels`, so GSPro zoom changes do not need to be reverse engineered.
-- Treats GSPro red boundary lines as penalty-area boundaries.
-- Reports each visible penalty-boundary component in yards relative to the ball-to-pin axis, including whether it enters a configurable target corridor.
-- Writes `latest_crop.png` and `latest_debug.png` so we can inspect what the CV actually detected.
+### Tee
 
-No Looper UI, persistence, aim recommendation, bunker classification, or Stock/Pure integration is included yet.
+`run_probe_windows.ps1` runs the field-proven v8 tee capture:
 
-## Fastest live test on the sim PC
+- never presses `W` at the tee;
+- reads the white PIN card for distance/elevation;
+- treats tee lie as GSPro invariant `0.0 / 0.0` unless diagnostic OCR is requested;
+- toggles `Y` using the proven fixed settle timing;
+- stores one canonical heatmap-on minimap;
+- extracts the current target green and red penalty boundaries;
+- acquires the player-color AIM card with neutral LEFT/RIGHT-arrow return verification;
+- writes `HoleModel` + tee `ShotState`;
+- writes review imagery after `STATE READY`;
+- **after `STATE READY`, OCRs the persistent upper-right course/hole header and tags the cached HoleModel.**
 
-From the repo root on Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\minimap_probe\run_probe_windows.ps1
-```
-
-The launcher creates its own small Python virtual environment on first run, installs `numpy`, `opencv-python`, and `mss`, then checks the screen every 2 seconds.
-
-Stop with `Ctrl+C`.
-
-Debug images are written to:
+The upper-right identity is currently:
 
 ```text
-tools\minimap_probe\output\latest_crop.png
-tools\minimap_probe\output\latest_debug.png
+hole number | course name
+            | PAR n | nnn YDS
 ```
 
-## One-shot screenshot test
+That identity is the preferred cache key for every later shot. Newest-capture selection is only an explicit legacy fallback.
 
-```powershell
-tools\minimap_probe\.venv\Scripts\python.exe tools\minimap_probe\probe.py --image C:\path\to\screenshot.png --distance 440
-```
+### Post-tee
 
-`--distance` is useful when testing a screenshot or if the current GSPro state file is stale.
+`probe_approach_v2.py` / `run_approach_probe_v2_windows.ps1` are the identity-safe read-only post-tee path:
 
-## Useful options
+- PIN card, real directional lie, and course/hole identity OCR overlap AIM acquisition;
+- course + hole select the correct cached tee HoleModel;
+- the current minimap is feature-registered back to the tee minimap;
+- current ball position is transformed into canonical hole coordinates;
+- **the white minimap pin is optional after the tee**;
+- the cached canonical pin is projected back into the current viewport when GSPro crops the real pin offscreen;
+- the PIN card remains the preferred fresh distance/elevation measurement and cross-checks canonical geometry;
+- the gray GSPro AIM marker is located and mapped into canonical coordinates;
+- green visibility is evaluated against the cached green footprint;
+- recommendation output is read-only; it never applies solver-driven aim yet.
 
-```text
---monitor 1            Physical monitor index used by mss.
---watch 2              Re-run every 2 seconds.
---distance 245         Override currentRound.dat pin distance.
---corridor 40          Half-width of the target corridor in yards.
---roi x,y,w,h          Override the minimap crop in screen pixels.
---json                 Emit structured JSON instead of console prose.
-```
+## Source hierarchy
 
-Example with a manual ROI:
+### Hole identity
 
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\minimap_probe\run_probe_windows.ps1 -Roi "1735,600,300,510"
-```
+1. Upper-right GSPro course/hole header.
+2. Other round-state source if one becomes authoritative.
+3. Newest cached tee model only as an explicit lower-confidence legacy fallback.
 
-## POC validation already performed
+### Current PIN distance/elevation
 
-The algorithm was run against the screenshots collected in the September 5 minimap experiment.
+1. White PIN card.
+2. Future upper-left distance-to-pin state when validated.
+3. Canonical map distance as fallback/check.
 
-Observed automatic map scales:
+### PIN / green geometry after the tee
 
-- Hole 1 tee, 440 yd: about `1.191 yd/px`
-- Hole 3 tee, 344 yd: about `0.940 yd/px`
-- Hole 3 fairway, 116 yd after GSPro zoomed: about `0.315 yd/px`
+1. Cached canonical HoleModel.
+2. Visible white minimap pin as a confirmation/refinement signal.
 
-The same ball/pin detector found the correct markers across those zoom states, and the red penalty-boundary extractor produced the visible red geometry. This is the reason the probe recalibrates each shot instead of trying to model GSPro's zoom behavior.
+This inversion matters: **cropped minimap pin does not mean post-tee failure anymore.**
 
-## Known POC limitations
+## Automatic tee-state direction
 
-1. `currentRound.dat` is useful but has previously been observed to lag or be incomplete around some hole/tee transitions. For the probe, `--distance` is the fallback. Looper can later supply its existing live shot-state distance instead.
-2. Player-marker hue is deliberately not hard-coded. We still need to verify whether changing team color changes the minimap marker color.
-3. The default minimap crop is based on the current screenshots. If the monitor/UI layout differs, pass `--roi` and then update the normalized defaults once we have the real sim-PC capture.
-4. Penalty areas are the first high-confidence hazard class. Bunkers are visibly segmentable but are intentionally deferred until this live capture path is proven on the sim PC.
-5. This reports geometry; it does not yet overlay Looper dispersion or choose an aim point.
+Tee detection is a separate calculation in `tools/live_caddie/tee_state.py`. It does not guess from one pixel pattern. It combines evidence such as:
 
-## Next step if the live probe holds up
+- course/hole transition from the upper-right header;
+- future upper-left shot number = `1`;
+- no Looper-recorded shot yet on the new hole;
+- current DTP reasonably matching displayed hole yardage;
+- optional previous-hole made/gimme/terminal signal;
+- flat `0.0 / 0.0` lie;
+- full-hole minimap appearance.
 
-Feed the penalty mask and current map transform into a small aim-risk layer that projects Looper's Stock/Pure shot pattern into the minimap coordinate system. That should remain separate until the screen capture and hazard geometry are stable.
+The weights and thresholds live in `config/looper-live-caddie.json`, not inline in the screen code. `RoundTracker` deliberately keeps the previous active hole until a new tee is accepted, so a very fast made/gimme -> next tee transition does **not** require us to capture an intermediate result screen.
+
+The upper-left shot-number/DTP OCR adapter is intentionally not implemented yet because we do not have a representative non-practice-mode screenshot. The tee-state calculation already accepts those fields, so adding that reader later will not change lifecycle math.
+
+## Next live validation
+
+When back at the sim:
+
+1. Validate upper-right OCR on several courses/holes.
+2. Run post-tee v2 and confirm exact HoleModel selection.
+3. Confirm post-tee registration still works with the minimap pin cropped.
+4. Validate `2.8 DOWN / 2.5 RIGHT` lie fix on a real shot.
+5. Exercise bounded `W` green recovery and later `Y` refinement.
+6. Provide one full non-practice-mode screenshot showing the upper-left shot number + DTP so that adapter can be calibrated.
+
+Putting is not part of this workstream.
