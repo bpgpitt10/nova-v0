@@ -1,13 +1,14 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.6.0",
+  "assumptions_version": "0.7.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
     "Pure is a reference profile by default, not an automatically selected planned shot.",
     "Hazard scoring is boundary-proximity risk until penalty-side semantics are validated.",
     "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments.",
-    "Strategic distance fit uses GSPro AIM distance, not PIN distance."
+    "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
+    "Automatic aim remains disabled by default until solver decisions and large moves are field validated."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -18,8 +19,13 @@
   },
   "screen_detection": {
     "registration": {
+      "play_mask_top_fraction": 0.105,
+      "play_mask_bottom_fraction": 0.945,
       "ratio_test": 0.72,
       "ransac_reprojection_px": 3.0,
+      "ransac_max_iters": 3000,
+      "ransac_confidence": 0.995,
+      "ransac_refine_iters": 20,
       "min_good_matches": 30,
       "min_inliers": 20,
       "min_scale": 0.15,
@@ -126,6 +132,12 @@
     "enabled_by_default": false,
     "minimum_confidence": 0.72,
     "maximum_automatic_aim_offset_yds": 15,
+    "aim_deadband_yds": 0.75,
+    "minimum_calibration_confidence": 0.75,
+    "minimum_yards_per_ms": 0.001,
+    "maximum_yards_per_ms": 2.0,
+    "maximum_single_command_ms": 500,
+    "verification_tolerance_yds": 1.5,
     "aim_settle_ms": 60,
     "aim_pulse_ms": 45,
     "aim_return_tolerance_px": 1.5,
