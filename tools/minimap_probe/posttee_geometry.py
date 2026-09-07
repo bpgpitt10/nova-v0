@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import cv2
 import numpy as np
 
@@ -12,6 +15,11 @@ import hole_model_cache
 import minimap_registration
 import probe_v2 as v2
 import probe_v4  # noqa: F401; installs robust player-marker patch used by tee v8
+
+
+def _config() -> dict:
+    path = Path(__file__).resolve().parents[2] / "config" / "looper-live-caddie.json"
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _tee_relative_yards(hole_model: dict, canonical_x: float, canonical_y: float) -> tuple[float, float]:
@@ -42,6 +50,7 @@ def analyze(
     output_root,
     aim_distance_yds: float | None = None,
 ) -> dict:
+    config = _config()
     hole_model, hole_model_path, canonical_path = hole_model_cache.find_latest_hole_model(output_root)
     canonical = cv2.imread(str(canonical_path), cv2.IMREAD_COLOR)
     if canonical is None:
@@ -53,6 +62,7 @@ def analyze(
     registration = minimap_registration.register_current_to_canonical(
         current_minimap,
         canonical,
+        detector_config=config["screen_detection"]["registration"],
     )
     canonical_position = minimap_registration.canonical_position_from_hole_model(
         hole_model=hole_model,
@@ -69,11 +79,17 @@ def analyze(
         pin_x=pin.x,
         pin_y=pin.y,
         pin_distance_yds=float(pin_distance_yds),
+        detector_config=config["screen_detection"]["green_visibility"],
     )
 
     canonical_remaining = float(canonical_position["canonical_remaining_pin_yds"])
     pin_crosscheck_error = canonical_remaining - float(pin_distance_yds)
-    crosscheck_ok = abs(pin_crosscheck_error) <= max(8.0, float(pin_distance_yds) * 0.05)
+    confidence_cfg = config["confidence"]
+    crosscheck_limit = max(
+        float(confidence_cfg["pin_crosscheck_absolute_yds"]),
+        float(pin_distance_yds) * float(confidence_cfg["pin_crosscheck_relative_fraction"]),
+    )
+    crosscheck_ok = abs(pin_crosscheck_error) <= crosscheck_limit
 
     aim_context = None
     aim_warning = None
@@ -85,6 +101,7 @@ def analyze(
                 pin_xy=(pin.x, pin.y),
                 pin_distance_yds=float(pin_distance_yds),
                 aim_distance_yds=float(aim_distance_yds),
+                detector_config=config["screen_detection"]["aim_marker"],
             )
             canonical_aim_x, canonical_aim_y = minimap_registration.transform_point(
                 registration.matrix_2x3,
@@ -122,12 +139,14 @@ def analyze(
             "screen_pin_distance_yds": float(pin_distance_yds),
             "canonical_remaining_pin_yds": canonical_remaining,
             "error_yds": pin_crosscheck_error,
+            "limit_yds": crosscheck_limit,
             "ok": crosscheck_ok,
         },
         "aim_context": aim_context,
         "aim_context_warning": aim_warning,
         "green_visibility": visibility.to_dict(),
         "w_recovery_recommended": not visibility.visible,
+        "assumption_version": config.get("assumptions_version"),
         "note": (
             "Geometry analysis only. This module never presses W; W actuation remains a "
             "separate bounded UI step."
