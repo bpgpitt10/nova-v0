@@ -82,6 +82,19 @@ class Assumptions:
             raise ValueError("hole_model_cache.course_name_similarity_min must be 0..1")
         if float(cache["hole_yardage_tolerance_yds"]) < 0:
             raise ValueError("hole_model_cache.hole_yardage_tolerance_yds cannot be negative")
+        for key in (
+            "par_match_bonus",
+            "yardage_match_bonus",
+            "base_course_hole_confidence",
+            "course_similarity_weight",
+            "missing_course_par_yard_confidence",
+            "unique_hole_confidence",
+            "legacy_latest_confidence",
+            "latest_without_warning_confidence",
+        ):
+            value = float(cache[key])
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"hole_model_cache.{key} must be 0..1")
 
         tee = self.get("tee_state")
         probable = float(tee["minimum_probable_confidence"])
