@@ -95,6 +95,7 @@ def evaluate_visibility(
     pin_y: float,
     pin_distance_yds: float,
     detector_config: dict | None = None,
+    current_yards_per_pixel: float | None = None,
     content_top_fraction: float | None = None,
     content_bottom_fraction: float | None = None,
     content_side_inset_px: float | None = None,
@@ -107,14 +108,19 @@ def evaluate_visibility(
     safety_margin = float(config["safety_margin_px"] if safety_margin_px is None else safety_margin_px)
 
     ext = extents_from_hole_model(hole_model)
-    scale = current_scale_yd_per_px(
-        ball_x=ball_x,
-        ball_y=ball_y,
-        pin_x=pin_x,
-        pin_y=pin_y,
-        pin_distance_yds=pin_distance_yds,
-        detector_config=config,
-    )
+    if current_yards_per_pixel is None:
+        scale = current_scale_yd_per_px(
+            ball_x=ball_x,
+            ball_y=ball_y,
+            pin_x=pin_x,
+            pin_y=pin_y,
+            pin_distance_yds=pin_distance_yds,
+            detector_config=config,
+        )
+    else:
+        scale = float(current_yards_per_pixel)
+        if not (float(config["min_yards_per_pixel"]) <= scale <= float(config["max_yards_per_pixel"])):
+            raise ValueError(f"Implausible current minimap scale {scale:.4f} yd/px")
 
     left_px = float(pin_x) - ext.left / scale
     right_px = float(pin_x) + ext.right / scale
