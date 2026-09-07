@@ -69,33 +69,84 @@ def _footer_bbox(screen, override: str | None = None) -> tuple[int, int, int, in
 
 
 def _display_precision(value: float) -> float:
-    """Normalize OCR to GSPro's one-decimal lie display precision.
-
-    The degree symbol can be hallucinated as an extra trailing digit by OCR
-    (visible `0.0°` became `0.02` in a field test). GSPro itself only displays one
-    decimal place, so retaining more precision would be false detail.
-    """
+    """Normalize to GSPro's one-decimal lie display precision."""
     return round(float(value), 1)
 
 
+def _parse_display_number(raw: str) -> float | None:
+    """Parse the displayed one-decimal lie value without trusting OCR junk after it.
+
+    GSPro renders exactly one decimal place followed immediately by a degree symbol.
+    Tesseract often turns that degree symbol into another digit (for example visible
+    `2.8°` -> `2.89`, or `2.5°` -> `2.52`). Rounding the hallucinated number can
+    therefore change the true displayed value. Preserve only the first decimal digit.
+    """
+    compact = re.sub(r"\s+", "", raw)
+    m = re.search(r"(\d{1,2})\.(\d)", compact)
+    if m:
+        value = float(f"{m.group(1)}.{m.group(2)}")
+        return value if 0.0 <= value <= 60.0 else None
+
+    # Integer zero is useful as a fallback on perfectly flat lies; do not invent a
+    # decimal location for other multi-digit OCR strings.
+    if compact in ("0", "00"):
+        return 0.0
+    return None
+
+
+def _parse_direction(raw: str) -> str | None:
+    compact = re.sub(r"\s+", "", raw).upper()
+    m = re.search(r"UP|DOWN|LEFT|RIGHT", compact)
+    return m.group(0).lower() if m else None
+
+
 def _ocr_component(crop, tess: str) -> tuple[str, float | None, str | None]:
-    """Return best OCR text plus numeric value + direction if parseable."""
-    best_raw = ""
+    """Read one GSPro lie component using separate numeric and direction crops.
+
+    Field testing showed that OCRing the whole component let the degree glyph alter
+    the final digit (`2.8° DOWN` was read as `2.0 DOWN`). The UI layout is stable, so
+    value and direction are read independently, then recombined. The legacy whole-
+    component passes remain only as a fallback.
+    """
+    width = crop.shape[1]
+    number_crop = crop[:, : max(1, int(width * 0.53))]
+    direction_crop = crop[:, min(width - 1, int(width * 0.42)) :]
+
+    # These settings were validated against the first live fairway capture:
+    # numeric PSM 6 read visible 2.8° as `2.89` and 2.5° as `2.5`; parsing only the
+    # first decimal digit recovers the exact GSPro display. Direction PSM 7 cleanly
+    # read DOWN / RIGHT on the same frame.
+    number_raw = target_card._ocr(number_crop, tess, "0123456789.", psm="6").strip().upper()
+    direction_raw = target_card._ocr(
+        direction_crop,
+        tess,
+        "UPDOWNLEFTRIGHT",
+        psm="7",
+    ).strip().upper()
+    value = _parse_display_number(number_raw)
+    direction = _parse_direction(direction_raw)
+    combined_raw = f"{number_raw} {direction_raw}".strip()
+    if value is not None and direction is not None:
+        return combined_raw, _display_precision(value), direction
+
+    # Fallback for unusual rendering/scaling. Keep value and direction independent
+    # across passes rather than requiring one OCR string to get both right.
+    best_raw = combined_raw
+    best_value = value
+    best_direction = direction
     whitelist = "0123456789.UPDOWNLEFTRIGHT"
     for psm in ("7", "6", "11", "13"):
         raw = target_card._ocr(crop, tess, whitelist, psm=psm).strip().upper()
         if raw and not best_raw:
             best_raw = raw
+        if best_value is None:
+            best_value = _parse_display_number(raw)
+        if best_direction is None:
+            best_direction = _parse_direction(raw)
+        if best_value is not None and best_direction is not None:
+            return raw or best_raw, _display_precision(best_value), best_direction
 
-        compact = re.sub(r"\s+", "", raw)
-        number_match = re.search(r"\d+(?:\.\d+)?", compact)
-        direction_match = re.search(r"UP|DOWN|LEFT|RIGHT", compact)
-        if number_match and direction_match:
-            value = _display_precision(float(number_match.group(0)))
-            if 0.0 <= value <= 60.0:
-                return raw, value, direction_match.group(0).lower()
-
-    return best_raw, None, None
+    return best_raw, best_value, best_direction
 
 
 def _signed(value: float, direction: str) -> float:
@@ -141,12 +192,12 @@ def read_lie_state(
     # If OCR got 0.0 but dropped direction, direction is mathematically irrelevant;
     # keep canonical UP/RIGHT so the shot state is still useful.
     if up_down is None:
-        m = re.search(r"\d+(?:\.\d+)?", re.sub(r"\s+", "", left_raw))
-        if m and _display_precision(float(m.group(0))) == 0.0:
+        parsed = _parse_display_number(left_raw)
+        if parsed == 0.0:
             up_down, up_down_dir = 0.0, "up"
     if left_right is None:
-        m = re.search(r"\d+(?:\.\d+)?", re.sub(r"\s+", "", right_raw))
-        if m and _display_precision(float(m.group(0))) == 0.0:
+        parsed = _parse_display_number(right_raw)
+        if parsed == 0.0:
             left_right, left_right_dir = 0.0, "right"
 
     if up_down is None or up_down_dir is None or left_right is None or left_right_dir is None:
