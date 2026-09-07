@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.11.0",
+  "assumptions_version": "0.11.1",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -139,6 +139,9 @@
     "surface_recognition_minimum_confidence": 0.75
   },
   "green_refinement": {
+    "capture_on_approach": true,
+    "maximum_auto_refinement_distance_yds": 220.0,
+    "persist_debug_artifacts": true,
     "minimum_source_area_px": 45,
     "polygon_simplify_epsilon_px": 1.5,
     "heatmap_sample_stride_px": 5,
