@@ -9,6 +9,7 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import {
@@ -148,7 +149,7 @@ function RootRouter() {
   }, [])
 
   useEffect(() => {
-    if (hasBagConfig || pathname === '/bag-setup') {
+    if (hasBagConfig || pathname === '/bag-setup' || pathname === '/admin/users') {
       return
     }
     window.history.replaceState({}, '', '/bag-setup')
@@ -164,7 +165,11 @@ function RootRouter() {
     const showDashboardRoute = pathname === '/dashboard'
     const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
+    const showAdminUsers = pathname === '/admin/users'
 
+    if (showAdminUsers) {
+      return <AdminUsersPage />
+    }
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
     }
