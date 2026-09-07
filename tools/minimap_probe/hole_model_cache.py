@@ -100,6 +100,60 @@ def _latest_selection(candidates, requested, method: str, warning: str | None) -
     )
 
 
+def _fallback_without_course(
+    tagged_same_hole,
+    *,
+    requested: dict,
+    yard_tolerance: float,
+) -> HoleModelSelection | None:
+    """Use non-course fields only when they identify one unambiguous cached hole."""
+    requested_par = requested.get("par")
+    requested_yards = requested.get("hole_yards")
+
+    strong = []
+    for model, path, canonical in tagged_same_hole:
+        stored = model.get("round_identity") or {}
+        par_ok = (
+            requested_par is not None
+            and stored.get("par") is not None
+            and int(stored["par"]) == int(requested_par)
+        )
+        yards_ok = (
+            requested_yards is not None
+            and stored.get("hole_yards") is not None
+            and abs(float(stored["hole_yards"]) - float(requested_yards)) <= yard_tolerance
+        )
+        if par_ok and yards_ok:
+            strong.append((model, path, canonical, stored))
+
+    if len(strong) == 1:
+        model, path, canonical, stored = strong[0]
+        return HoleModelSelection(
+            model=model,
+            model_path=path,
+            canonical_path=canonical,
+            method="hole-par-yard-fallback",
+            confidence=0.68,
+            requested_identity=requested,
+            selected_identity=stored,
+            warning="course name OCR was unavailable; selected the only matching hole/par/yardage model",
+        )
+
+    if len(tagged_same_hole) == 1:
+        model, path, canonical = tagged_same_hole[0]
+        return HoleModelSelection(
+            model=model,
+            model_path=path,
+            canonical_path=canonical,
+            method="unique-hole-fallback",
+            confidence=0.52,
+            requested_identity=requested,
+            selected_identity=model.get("round_identity"),
+            warning="course name OCR was unavailable; only one tagged model exists for this hole number",
+        )
+    return None
+
+
 def find_hole_model(
     output_root: str | Path,
     *,
@@ -129,20 +183,43 @@ def find_hole_model(
     yard_tolerance = float(config["hole_yardage_tolerance_yds"])
 
     identity_tagged = [row for row in candidates if (row[0].get("round_identity") or {}).get("hole_number") is not None]
+    same_hole = [
+        row for row in identity_tagged
+        if int((row[0].get("round_identity") or {}).get("hole_number") or -1) == requested_hole
+    ]
+
+    if not requested_course:
+        fallback = _fallback_without_course(
+            same_hole,
+            requested=requested,
+            yard_tolerance=yard_tolerance,
+        )
+        if fallback is not None:
+            return fallback
+        if not identity_tagged and bool(config["allow_legacy_latest_when_no_identity_tagged_models"]):
+            return _latest_selection(
+                candidates,
+                requested,
+                "legacy-latest-no-tagged-models",
+                "cached tee captures predate course/hole identity; selected newest legacy HoleModel",
+            )
+        raise RuntimeError(
+            f"Course name OCR was unavailable and cached hole {requested_hole} is ambiguous. "
+            "Refusing to silently use the wrong HoleModel."
+        )
+
     scored = []
-    for model, path, canonical in identity_tagged:
+    for model, path, canonical in same_hole:
         stored = model.get("round_identity") or {}
-        if int(stored.get("hole_number") or -1) != requested_hole:
+        stored_course = stored.get("course_name")
+        if not stored_course:
             continue
-        course_similarity = _course_similarity(requested_course, stored.get("course_name"))
-        if requested_course and stored.get("course_name") and course_similarity < similarity_min:
+        course_similarity = _course_similarity(requested_course, stored_course)
+        if course_similarity < similarity_min:
             continue
 
-        score = 0.65
-        method = "hole-identity"
-        if requested_course and stored.get("course_name"):
-            score += 0.25 * course_similarity
-            method = "course-hole-exact" if course_similarity >= 0.999 else "course-hole-fuzzy"
+        score = 0.65 + 0.25 * course_similarity
+        method = "course-hole-exact" if course_similarity >= 0.999 else "course-hole-fuzzy"
         if requested_par is not None and stored.get("par") is not None and int(stored["par"]) == int(requested_par):
             score += float(config["par_match_bonus"])
         if requested_yards is not None and stored.get("hole_yards") is not None:
