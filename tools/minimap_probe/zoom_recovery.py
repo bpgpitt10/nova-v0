@@ -39,14 +39,16 @@ def press_w_once(*, pulse_ms: float | None = None, settle_ms: float | None = Non
 def recover_until_visible(
     *,
     capture_and_evaluate,
+    initial_evaluation=None,
     max_pulses: int | None = None,
     pulse_ms: float | None = None,
     settle_ms: float | None = None,
 ):
     """Call capture_and_evaluate() after each bounded W pulse until visible.
 
-    capture_and_evaluate must return (visible: bool, payload: object). The caller
-    owns marker detection/green projection and can persist each attempt for review.
+    `initial_evaluation` may contain the caller's already-computed `(visible, payload)`
+    for the as-presented minimap. Supplying it avoids an unnecessary duplicate screen
+    capture before the first W pulse.
     """
     config = _config()
     max_pulses = int(config["zoom_max_pulses"] if max_pulses is None else max_pulses)
@@ -57,7 +59,10 @@ def recover_until_visible(
         raise RuntimeError("Looper zoom recovery invariant requires never_zoom_back_in=true")
 
     history = []
-    visible, payload = capture_and_evaluate()
+    if initial_evaluation is None:
+        visible, payload = capture_and_evaluate()
+    else:
+        visible, payload = initial_evaluation
     history.append({"w_pulses": 0, "visible": bool(visible), "payload": payload})
     if visible:
         return True, 0, payload, history
