@@ -6,10 +6,13 @@ It reads PIN state, captures one canonical heatmap-on minimap, restores GSPro,
 extracts green/hazards, acquires the player AIM card, and writes HoleModel +
 ShotState.
 
-Performance matters because recommendation logic still has to run afterward. v8
-therefore records phase timings and reports the moment a complete state is ready.
+Performance matters because recommendation logic still has to run afterward. The
+live path therefore overlaps frozen-image CV/OCR with GSPro UI actuation, keeps PNG
+encoding off the critical path, and records the moment a complete in-memory state is
+ready for the recommendation model.
+
 Tee lie is a known GSPro invariant (0.0/0.0), so default tee capture does not spend
-OCR time proving it every hole; --verify-tee-lie is available for diagnostics.
+OCR time proving it every hole; --verify-tee-lie remains available for diagnostics.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime
@@ -54,6 +58,10 @@ class PhaseTimer:
         finally:
             self.phase_ms[name] = round((time.perf_counter() - t0) * 1000.0, 1)
 
+    def timed_call(self, name: str, fn, *args, **kwargs):
+        with self.phase(name):
+            return fn(*args, **kwargs)
+
     def elapsed_ms(self) -> float:
         return round((time.perf_counter() - self.started) * 1000.0, 1)
 
@@ -65,15 +73,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lie-roi", help="Override minimap lie footer as x,y,w,h in screen pixels.")
     p.add_argument("--tesseract", help="Explicit path to tesseract.exe if auto-discovery fails.")
     p.add_argument("--verify-tee-lie", action="store_true", help="OCR lie even though GSPro tee lie is invariant 0/0.")
+    p.add_argument("--deep-debug", action="store_true", help="Save AIM intermediate frames during the critical path; slower, diagnostics only.")
     p.add_argument("--heatmap-key", default="Y")
-    p.add_argument("--heatmap-settle-ms", type=float, default=320.0)
+    p.add_argument("--heatmap-settle-ms", type=float, default=80.0)
     p.add_argument("--heatmap-pulse-ms", type=float, default=45.0)
     p.add_argument("--corridor", type=float, default=40.0)
     p.add_argument("--centerline-band", type=float, default=4.0)
     p.add_argument("--merge-gap", type=float, default=4.0)
     p.add_argument("--no-aim-summon", action="store_true")
     p.add_argument("--aim-pulse-ms", type=float, default=45.0)
-    p.add_argument("--aim-settle-ms", type=float, default=180.0)
+    p.add_argument("--aim-settle-ms", type=float, default=60.0)
     p.add_argument("--aim-return-tolerance-px", type=float, default=1.5)
     p.add_argument("--aim-max-correction-ms", type=float, default=20.0)
     p.add_argument("--aim-max-corrections", type=int, default=2)
@@ -89,7 +98,7 @@ def _capture_dir(root: str) -> Path:
     return path
 
 
-def _focus_and_pulse(hwnd: int, key: str, duration_ms: float, wait_s: float = 0.05) -> None:
+def _focus_and_pulse(hwnd: int, key: str, duration_ms: float, wait_s: float = 0.02) -> None:
     if not aim_actuator.focus_gspro(hwnd, wait_s=wait_s):
         raise RuntimeError("Could not safely focus GSPro for heatmap toggle.")
     aim_actuator.pulse_key_windows(key, duration_ms)
@@ -101,9 +110,12 @@ def _toggle_heatmap_pair(
     key: str,
     pulse_ms: float,
     settle_ms: float,
-    debug_dir: Path,
 ):
-    """Toggle heatmap once, capture, then restore the user's original Y state."""
+    """Toggle heatmap once, capture, then restore the user's original Y state.
+
+    No PNG encoding happens here. Full-screen PNG writes were a surprisingly large
+    share of measured latency and are now deferred until after STATE READY.
+    """
     found = aim_actuator.find_gspro_window()
     if found is None:
         raise RuntimeError("Could not find a visible GSPro window for heatmap toggle.")
@@ -116,25 +128,21 @@ def _toggle_heatmap_pair(
     toggled_screen = None
     restored_screen = None
 
-    cv2.imwrite(str(debug_dir / "tee_initial_screen.png"), initial_screen)
-
     try:
         _focus_and_pulse(hwnd, key, pulse_ms)
         first_sent = True
         time.sleep(max(0.0, settle_ms) / 1000.0)
         toggled_screen = base.capture_monitor(monitor)
-        cv2.imwrite(str(debug_dir / "tee_toggled_screen.png"), toggled_screen)
 
-        _focus_and_pulse(hwnd, key, pulse_ms)
+        _focus_and_pulse(hwnd, key, pulse_ms, wait_s=0.015)
         time.sleep(max(0.0, settle_ms) / 1000.0)
         restored_screen = base.capture_monitor(monitor)
         restored = True
-        cv2.imwrite(str(debug_dir / "tee_restored_screen.png"), restored_screen)
         return toggled_screen, restored_screen, title
     finally:
         if first_sent and not restored:
             try:
-                _focus_and_pulse(hwnd, key, pulse_ms, wait_s=0.04)
+                _focus_and_pulse(hwnd, key, pulse_ms, wait_s=0.015)
                 time.sleep(max(0.0, settle_ms) / 1000.0)
             except Exception:
                 pass
@@ -149,14 +157,10 @@ def _read_card_type(
     screen,
     card_type: str,
     args: argparse.Namespace,
-    debug_dir: Path,
+    debug_dir: Path | None = None,
     required: bool = False,
 ):
-    """Detect all card geometry but OCR only the requested semantic card.
-
-    This avoids repeatedly OCRing the permanent PIN card while we are merely
-    checking whether an AIM card exists after heatmap restoration.
-    """
+    """Detect all card geometry but OCR only the requested semantic card."""
     detected = target_cards_v6.detect_cards(screen)
     chosen = next((c for c in detected if c.card_type == card_type), None)
     if chosen is None:
@@ -172,10 +176,11 @@ def _read_card_type(
     )
     state.source = "gspro-screen-pin-card" if card_type == "pin" else "gspro-screen-aim-card"
 
-    x, y, w, h = chosen.bbox
-    crop = screen[y:y + h, x:x + w]
-    if crop.size:
-        cv2.imwrite(str(debug_dir / f"latest_{card_type}_card_v6.png"), crop)
+    if debug_dir is not None:
+        x, y, w, h = chosen.bbox
+        crop = screen[y:y + h, x:x + w]
+        if crop.size:
+            cv2.imwrite(str(debug_dir / f"latest_{card_type}_card_v6.png"), crop)
     return state
 
 
@@ -210,7 +215,13 @@ def _state_dict(state):
 def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
     # Cheap geometry check first; OCR only AIM if it is already present.
     try:
-        existing = _read_card_type(restored_screen, "aim", args, debug_dir, required=False)
+        existing = _read_card_type(
+            restored_screen,
+            "aim",
+            args,
+            debug_dir if args.deep_debug else None,
+            required=False,
+        )
     except Exception as exc:
         existing = None
         existing_error = str(exc)
@@ -223,7 +234,7 @@ def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
             "attempted": False,
             "verified_return": None,
             "warning": existing_error,
-        }
+        }, restored_screen
 
     if args.no_aim_summon:
         return None, {
@@ -231,7 +242,7 @@ def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
             "attempted": False,
             "verified_return": None,
             "warning": "AIM summon disabled by --no-aim-summon.",
-        }
+        }, restored_screen
 
     summon = aim_actuator.summon_aim_card(
         initial_screen=restored_screen,
@@ -241,14 +252,21 @@ def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
         return_tolerance_px=args.aim_return_tolerance_px,
         max_correction_ms=args.aim_max_correction_ms,
         max_corrections=args.aim_max_corrections,
-        debug_dir=debug_dir,
+        debug_dir=debug_dir if args.deep_debug else None,
     )
 
     aim = None
     parse_warning = None
+    aim_screen = summon.final_screen if summon.final_screen is not None else restored_screen
     if summon.final_screen is not None:
         try:
-            aim = _read_card_type(summon.final_screen, "aim", args, debug_dir, required=False)
+            aim = _read_card_type(
+                summon.final_screen,
+                "aim",
+                args,
+                debug_dir if args.deep_debug else None,
+                required=False,
+            )
         except Exception as exc:
             parse_warning = str(exc)
 
@@ -264,33 +282,121 @@ def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
         "verified_return": summon.verified,
         "corrections": [asdict(c) for c in summon.corrections],
         "warning": " ".join(warning_parts) if warning_parts else None,
-    }
+    }, aim_screen
+
+
+def _geometry_work(
+    initial_screen,
+    toggled_screen,
+    pin_future: Future,
+    args: argparse.Namespace,
+    timer: PhaseTimer,
+):
+    """Frozen-image work intentionally runs while the main thread manipulates AIM."""
+    with timer.phase("green_extract"):
+        green = green_heatmap.classify_and_extract(
+            initial_screen=initial_screen,
+            toggled_screen=toggled_screen,
+            roi_override=args.roi,
+            debug_dir=None,
+        )
+
+    pin_state = pin_future.result()
+
+    with timer.phase("marker_scale"):
+        heatmap_roi = green.heatmap_roi
+        ball = v2.detect_ball_marker(heatmap_roi)
+        pin = v2.detect_pin_marker(heatmap_roi)
+        pin_pixels = float(((pin.x - ball.x) ** 2 + (pin.y - ball.y) ** 2) ** 0.5)
+        if pin_pixels < 10:
+            raise RuntimeError("Ball/pin separation too small for tee minimap calibration.")
+        scale = float(pin_state.distance_yds) / pin_pixels
+        if not (0.03 <= scale <= 3.0):
+            raise RuntimeError(f"Implausible tee minimap scale {scale:.4f} yd/px.")
+
+    with timer.phase("hazard_extract"):
+        hazard_roi = green_heatmap.hazard_safe_roi(green)
+        hazards, _pin_pixels2, _scale2 = v2.build_penalty_objects(
+            roi=hazard_roi,
+            ball=ball,
+            pin=pin,
+            distance_to_pin_yds=float(pin_state.distance_yds),
+            corridor_half_width_yds=args.corridor,
+            centerline_band_yds=args.centerline_band,
+            merge_gap_yds=args.merge_gap,
+        )
+
+    return green, ball, pin, pin_pixels, scale, hazard_roi, hazards
 
 
 def _write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _write_card_crop(path: Path, screen, state) -> None:
+    if screen is None or state is None:
+        return
+    x, y, w, h = state.card_bbox
+    crop = screen[y:y + h, x:x + w]
+    if crop.size:
+        cv2.imwrite(str(path), crop)
+
+
+def _write_review_artifacts(
+    out: Path,
+    initial_screen,
+    toggled_screen,
+    restored_screen,
+    aim_screen,
+    pin_state,
+    aim_state,
+    green,
+    pin,
+    hazard_roi,
+) -> None:
+    """Persist review imagery after state is already available to recommendations."""
+    cv2.imwrite(str(out / "tee_initial_screen.png"), initial_screen)
+    cv2.imwrite(str(out / "tee_toggled_screen.png"), toggled_screen)
+    cv2.imwrite(str(out / "tee_restored_screen.png"), restored_screen)
+    cv2.imwrite(str(out / "tee_heatmap_minimap.png"), green.heatmap_roi)
+    cv2.imwrite(str(out / "tee_green_changed_mask.png"), green.changed_mask)
+    cv2.imwrite(str(out / "tee_target_green_mask.png"), green.target_green_mask)
+    cv2.imwrite(str(out / "tee_hazard_safe_minimap.png"), hazard_roi)
+
+    overlay = green.heatmap_roi.copy()
+    contours, _ = cv2.findContours(green.target_green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(overlay, contours, -1, (255, 255, 255), 2)
+    cv2.circle(overlay, (round(pin.x), round(pin.y)), 6, (255, 255, 255), 2)
+    x, y, w, h = green.target_green_bbox
+    cv2.rectangle(overlay, (x, y), (x + w, y + h), (255, 255, 255), 1)
+    cv2.imwrite(str(out / "tee_green_debug_overlay.png"), overlay)
+
+    _write_card_crop(out / "latest_pin_card_v6.png", initial_screen, pin_state)
+    _write_card_crop(out / "latest_aim_card_v6.png", aim_screen, aim_state)
+
+
 def _print_timings(phase_ms: dict[str, float], state_ready_ms: float, probe_total_ms: float) -> None:
     labels = [
         ("initial_capture", "Initial capture"),
-        ("pin_card_read", "PIN card OCR"),
+        ("pin_card_read", "PIN card OCR*"),
         ("tee_lie", "Tee lie"),
         ("heatmap_toggle_restore", "Heatmap toggle/restore"),
-        ("green_extract", "Green extraction"),
-        ("marker_scale", "Ball/pin + scale"),
-        ("hazard_extract", "Hazard extraction"),
+        ("green_extract", "Green extraction*"),
+        ("marker_scale", "Ball/pin + scale*"),
+        ("hazard_extract", "Hazard extraction*"),
         ("aim_acquire", "AIM acquisition"),
         ("persist_models", "Persist models"),
+        ("review_artifacts", "Review PNGs (post-ready)"),
     ]
     print()
     print("Performance timing")
     print("------------------")
     for key, label in labels:
         if key in phase_ms:
-            print(f"{label + ':':24} {phase_ms[key]:7.1f} ms")
-    print(f"{'STATE READY:':24} {state_ready_ms:7.1f} ms")
-    print(f"{'Probe total:':24} {probe_total_ms:7.1f} ms")
+            print(f"{label + ':':26} {phase_ms[key]:7.1f} ms")
+    print("* runs overlapped with GSPro UI work; phase times no longer sum to latency")
+    print(f"{'STATE READY:':26} {state_ready_ms:7.1f} ms")
+    print(f"{'Probe total:':26} {probe_total_ms:7.1f} ms")
 
 
 def main() -> int:
@@ -303,9 +409,6 @@ def main() -> int:
         with timer.phase("initial_capture"):
             initial_screen = base.capture_monitor(args.monitor)
 
-        with timer.phase("pin_card_read"):
-            pin_state = _read_card_type(initial_screen, "pin", args, out, required=True)
-
         lie_error = None
         with timer.phase("tee_lie"):
             if args.verify_tee_lie:
@@ -314,7 +417,7 @@ def main() -> int:
                         initial_screen,
                         tesseract_path=args.tesseract,
                         roi_override=args.lie_roi,
-                        debug_dir=out,
+                        debug_dir=out if args.deep_debug else None,
                     )
                 except Exception as exc:
                     lie_error = str(exc)
@@ -322,52 +425,48 @@ def main() -> int:
             else:
                 lie = _tee_flat_lie()
 
-        with timer.phase("heatmap_toggle_restore"):
-            toggled_screen, restored_screen, gspro_title = _toggle_heatmap_pair(
-                initial_screen=initial_screen,
-                monitor=args.monitor,
-                key=args.heatmap_key,
-                pulse_ms=args.heatmap_pulse_ms,
-                settle_ms=args.heatmap_settle_ms,
-                debug_dir=out,
+        # PIN OCR works entirely from the frozen initial frame. Start it now and
+        # hide most/all of its cost under the required GSPro heatmap toggle cycle.
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="tee-capture") as executor:
+            pin_future = executor.submit(
+                timer.timed_call,
+                "pin_card_read",
+                _read_card_type,
+                initial_screen,
+                "pin",
+                args,
+                None,
+                True,
             )
 
-        with timer.phase("green_extract"):
-            green = green_heatmap.classify_and_extract(
-                initial_screen=initial_screen,
-                toggled_screen=toggled_screen,
-                roi_override=args.roi,
-                debug_dir=out,
+            with timer.phase("heatmap_toggle_restore"):
+                toggled_screen, restored_screen, gspro_title = _toggle_heatmap_pair(
+                    initial_screen=initial_screen,
+                    monitor=args.monitor,
+                    key=args.heatmap_key,
+                    pulse_ms=args.heatmap_pulse_ms,
+                    settle_ms=args.heatmap_settle_ms,
+                )
+
+            # Green/hazard CV is also frozen-image work. Run it in the background
+            # while the main thread spends unavoidable time exposing/restoring AIM.
+            geometry_future = executor.submit(
+                _geometry_work,
+                initial_screen,
+                toggled_screen,
+                pin_future,
+                args,
+                timer,
             )
 
-        with timer.phase("marker_scale"):
-            heatmap_roi = green.heatmap_roi
-            ball = v2.detect_ball_marker(heatmap_roi)
-            pin = v2.detect_pin_marker(heatmap_roi)
-            pin_pixels = float(((pin.x - ball.x) ** 2 + (pin.y - ball.y) ** 2) ** 0.5)
-            if pin_pixels < 10:
-                raise RuntimeError("Ball/pin separation too small for tee minimap calibration.")
-            scale = float(pin_state.distance_yds) / pin_pixels
-            if not (0.03 <= scale <= 3.0):
-                raise RuntimeError(f"Implausible tee minimap scale {scale:.4f} yd/px.")
+            with timer.phase("aim_acquire"):
+                aim_state, aim_meta, aim_screen = _acquire_aim(restored_screen, args, out)
 
-        with timer.phase("hazard_extract"):
-            hazard_roi = green_heatmap.hazard_safe_roi(green)
-            cv2.imwrite(str(out / "tee_hazard_safe_minimap.png"), hazard_roi)
-            hazards, _pin_pixels2, _scale2 = v2.build_penalty_objects(
-                roi=hazard_roi,
-                ball=ball,
-                pin=pin,
-                distance_to_pin_yds=float(pin_state.distance_yds),
-                corridor_half_width_yds=args.corridor,
-                centerline_band_yds=args.centerline_band,
-                merge_gap_yds=args.merge_gap,
-            )
+            pin_state = pin_future.result()
+            green, ball, pin, pin_pixels, scale, hazard_roi, hazards = geometry_future.result()
 
-        with timer.phase("aim_acquire"):
-            aim_state, aim_meta = _acquire_aim(restored_screen, args, out)
-
-        # This is the important product latency: recommendation can begin now.
+        # This is the real product latency. Recommendation can begin from these
+        # in-memory structures now; debug PNGs and ZIP packaging happen afterward.
         state_ready_ms = timer.elapsed_ms()
         performance = {
             "state_ready_ms": state_ready_ms,
@@ -379,6 +478,8 @@ def main() -> int:
                 1,
             ),
             "tee_lie_mode": "verified-ocr" if args.verify_tee_lie else "invariant-zero",
+            "parallel_pipeline": True,
+            "deep_debug": bool(args.deep_debug),
         }
 
         hole_model = {
@@ -435,11 +536,26 @@ def main() -> int:
             _write_json(out / "hole_model.json", hole_model)
             _write_json(out / "shot_state.json", shot_state)
 
+        # Development/review artifacts are intentionally outside STATE READY. In
+        # the integrated Looper these can be disabled or persisted asynchronously.
+        with timer.phase("review_artifacts"):
+            _write_review_artifacts(
+                out,
+                initial_screen,
+                toggled_screen,
+                restored_screen,
+                aim_screen,
+                pin_state,
+                aim_state,
+                green,
+                pin,
+                hazard_roi,
+            )
+
         probe_total_ms = timer.elapsed_ms()
         performance["probe_total_ms"] = probe_total_ms
         performance["phase_ms"] = dict(timer.phase_ms)
 
-        # Rewrite the models once with final persistence timing included.
         hole_model["capture"]["performance"] = performance
         shot_state["capture_performance"] = performance
         _write_json(out / "hole_model.json", hole_model)
