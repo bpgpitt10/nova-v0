@@ -1,25 +1,33 @@
 import type { ActiveSessionDraft, SavedSession } from '../types'
 import { isSystemOldExcludedSession } from './historicalModel'
+import { installMishitPlanningState } from './mishitPlanningPopulation'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
+
+const installPlanningState = (sessions: SavedSession[]) => {
+  installMishitPlanningState(sessions)
+  return sessions
+}
 
 export const loadSavedSessions = (): SavedSession[] => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return []
+      return installPlanningState([])
     }
-
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as SavedSession[]) : []
+    return installPlanningState(Array.isArray(parsed) ? (parsed as SavedSession[]) : [])
   } catch {
-    return []
+    return installPlanningState([])
   }
 }
 
 export const saveSessionHistory = (sessions: SavedSession[]) => {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  // Derived planning interpretation follows the latest raw history immediately;
+  // nothing is written back onto the source Shot records.
+  installMishitPlanningState(sessions)
 }
 
 export const saveActiveSessionDraft = (session: ActiveSessionDraft) => {
@@ -32,7 +40,6 @@ export const loadActiveSessionDraft = (): ActiveSessionDraft | null => {
     if (!raw) {
       return null
     }
-
     const parsed: unknown = JSON.parse(raw)
     return parsed && typeof parsed === 'object' ? (parsed as ActiveSessionDraft) : null
   } catch {
