@@ -6,16 +6,10 @@ v6 understands both GSPro card roles:
 - player-color AIM card: current selected/default aim-point distance/elevation.
 
 The AIM card follows the player's/team color, so it must not be hard-coded red.
-This revision also hardens the small elevation OCR. GSPro's feet/inches text can be
-misread by Tesseract (for example 5'11" as 5'14"), and the pin's yard value can be
-lost when the card divider/border enters the OCR crop. We therefore:
-- use tighter elevation crops first;
-- retry several Tesseract page-segmentation modes;
-- reject impossible inch values (>11) instead of silently converting them;
-- vote across all valid OCR passes instead of trusting the first parseable value.
-
-This version intentionally does NOT synthesize aim input itself; later probes layer
-controlled arrow-key actuation on top of these card readers.
+Elevation OCR uses an adaptive fast path: two agreeing reads from a field-validated
+crop are enough. Only ambiguous cards fall back to the broader multi-crop vote.
+This preserves the 5y-vs-2y fix while avoiding ~16 Tesseract launches per card on
+the common path.
 """
 
 from __future__ import annotations
@@ -60,7 +54,9 @@ def _strict_parse_elevation(raw: str, direction: str) -> tuple[float | None, flo
             return feet, feet / 3.0
         return None, None
 
-    # OCR sometimes drops punctuation but leaves two numeric groups.
+    # OCR sometimes drops punctuation but leaves two numeric groups separated by
+    # whitespace/noise. A single run-together token such as `99` is deliberately
+    # NOT interpreted as 9'9 because that would be too easy to hallucinate.
     groups = re.findall(r"\d+", text)
     if len(groups) >= 2:
         inches = int(groups[1])
@@ -71,13 +67,18 @@ def _strict_parse_elevation(raw: str, direction: str) -> tuple[float | None, flo
     return None, None
 
 
+def _candidate_key(feet: float) -> int:
+    """Normalize semantically equivalent OCR reads to signed total inches."""
+    return int(round(feet * 12.0))
+
+
 def _read_target_card_v6(
     screen,
     tesseract_path: str | None = None,
     bbox_override: tuple[int, int, int, int] | None = None,
     debug_dir=None,
 ):
-    """Read one already-located target card with consensus multi-pass elevation OCR."""
+    """Read one already-located target card with adaptive consensus OCR."""
     bbox = bbox_override or target_card.detect_target_card(screen)
     x, y, w, h = bbox
     card = screen[y:y + h, x:x + w].copy()
@@ -86,32 +87,29 @@ def _read_target_card_v6(
 
     tess = target_card._resolve_tesseract(tesseract_path)
 
-    # Distance OCR was already reliable in the field; keep its proven crop.
     distance_crop = card[int(h * 0.08):int(h * 0.52), int(w * 0.12):int(w * 0.90)]
     distance_raw = target_card._ocr(distance_crop, tess, "0123456789", psm="7")
     distance = target_card._parse_distance(distance_raw)
     direction = target_card._green_triangle_direction(card)
 
-    # Start tight enough to exclude the horizontal divider and right card border.
-    # Multiple crops/PSMs are intentionally ALL evaluated. A field case displayed
-    # `5y` but one OCR pass returned `2y`; accepting the first parseable pass made
-    # that wrong value authoritative. Consensus is much safer for these tiny glyphs.
-    crop_specs = [
-        (0.55, 0.89, 0.30, 0.88),
-        (0.53, 0.91, 0.28, 0.90),
-        (0.50, 0.94, 0.28, 0.94),
-        (0.48, 0.86, 0.30, 0.90),
+    # Field-validated fast paths. The first crop keeps the full single-digit yard
+    # glyph (important: a tighter crop turned visible `5y` into OCR `2y`). The
+    # second crop preserves feet/inches punctuation such as 9'9.
+    fast_specs = [
+        ("yards", (0.53, 0.91, 0.28, 0.90), ("7", "6")),
+        ("feet", (0.48, 0.86, 0.30, 0.90), ("7", "6")),
     ]
-    psms = ("7", "8", "13", "6")
 
     first_raw = ""
     first_crop = None
-    candidates: list[tuple[str, float, float, object, str]] = []
+    all_candidates: list[tuple[str, float, float, object, str, str]] = []
+    winner = None
 
-    for y0, y1, x0, x1 in crop_specs:
+    for label, (y0, y1, x0, x1), psms in fast_specs:
         crop = card[int(h * y0):int(h * y1), int(w * x0):int(w * x1)]
         if crop.size == 0:
             continue
+        local_candidates = []
         for psm in psms:
             raw = target_card._ocr(crop, tess, "0123456789yY'\"", psm=psm).strip()
             if raw and not first_raw:
@@ -119,27 +117,59 @@ def _read_target_card_v6(
                 first_crop = crop
             parsed_ft, parsed_yds = _strict_parse_elevation(raw, direction)
             if parsed_ft is not None and parsed_yds is not None:
-                candidates.append((raw, parsed_ft, parsed_yds, crop, psm))
+                item = (raw, parsed_ft, parsed_yds, crop, psm, label)
+                local_candidates.append(item)
+                all_candidates.append(item)
+
+        # Two independent PSMs agreeing on the same semantic value is enough for
+        # the common path. This cuts a typical PIN read from 16 elevation OCR calls
+        # to 2, and a feet/inches AIM read to 4 or fewer.
+        if len(local_candidates) >= 2:
+            keys = [_candidate_key(item[1]) for item in local_candidates]
+            if len(set(keys)) == 1:
+                winner = local_candidates[0]
+                break
+
+    if winner is None:
+        # Ambiguous cards fall back to the older broad vote. Order the known-good
+        # full-glyph crop first so ties favor it rather than the clipped crop.
+        fallback_specs = [
+            (0.53, 0.91, 0.28, 0.90),
+            (0.48, 0.86, 0.30, 0.90),
+            (0.50, 0.94, 0.28, 0.94),
+            (0.55, 0.89, 0.30, 0.88),
+        ]
+        psms = ("7", "8", "13", "6")
+        seen = {(item[5], item[4], item[0]) for item in all_candidates}
+
+        for y0, y1, x0, x1 in fallback_specs:
+            crop = card[int(h * y0):int(h * y1), int(w * x0):int(w * x1)]
+            if crop.size == 0:
+                continue
+            for psm in psms:
+                raw = target_card._ocr(crop, tess, "0123456789yY'\"", psm=psm).strip()
+                if raw and not first_raw:
+                    first_raw = raw
+                    first_crop = crop
+                parsed_ft, parsed_yds = _strict_parse_elevation(raw, direction)
+                if parsed_ft is not None and parsed_yds is not None:
+                    all_candidates.append((raw, parsed_ft, parsed_yds, crop, psm, "fallback"))
+
+        if all_candidates:
+            keys = [_candidate_key(item[1]) for item in all_candidates]
+            counts = Counter(keys)
+            winning_key, _votes = counts.most_common(1)[0]
+            winner = next(item for item, key in zip(all_candidates, keys) if key == winning_key)
 
     elevation_raw = first_raw
     elevation_ft = None
     elevation_yds = None
     chosen_elevation_crop = first_crop
+    if winner is not None:
+        elevation_raw, elevation_ft, elevation_yds, chosen_elevation_crop, _psm, _label = winner
 
-    if candidates:
-        # Normalize all semantically equivalent reads to total inches. This lets
-        # repeated `5y` votes beat a one-off `2y`, and also unifies equivalent
-        # feet/inches formatting if punctuation differs between OCR passes.
-        keys = [int(round(item[1] * 12.0)) for item in candidates]
-        counts = Counter(keys)
-        winning_key, _votes = counts.most_common(1)[0]
-        winner = next(item for item, key in zip(candidates, keys) if key == winning_key)
-        elevation_raw, elevation_ft, elevation_yds, chosen_elevation_crop, _psm = winner
-
-    # Do not turn an impossible OCR value into a plausible-looking elevation.
-    # Preserve raw OCR for debugging if every retry failed validation.
     if chosen_elevation_crop is None:
-        chosen_elevation_crop = card[int(h * 0.55):int(h * 0.89), int(w * 0.30):int(w * 0.88)]
+        chosen_elevation_crop = card[int(h * 0.53):int(h * 0.91), int(w * 0.28):int(w * 0.90)]
 
     if debug_dir is not None:
         debug_dir.mkdir(parents=True, exist_ok=True)
@@ -153,6 +183,16 @@ def _read_target_card_v6(
                 str(debug_dir / "latest_target_elevation_ocr.png"),
                 target_card._prep_ocr(chosen_elevation_crop),
             )
+        try:
+            lines = [
+                f"{label} psm={psm} raw={raw!r} feet={ft:.4f} yds={yd:.4f}"
+                for raw, ft, yd, _crop, psm, label in all_candidates
+            ]
+            (debug_dir / "latest_target_elevation_candidates.txt").write_text(
+                "\n".join(lines), encoding="utf-8"
+            )
+        except Exception:
+            pass
 
         annotated = screen.copy()
         cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 255, 255), 2)
@@ -205,8 +245,6 @@ def read_screen_state_v6(screen, args: argparse.Namespace, debug_dir):
         if args.distance is None:
             distance_source = state.source
 
-    # Independently inspect all visible target cards. The player-color AIM card is
-    # optional; its absence must never fail the live shot.
     _last_cards = {}
     _last_cards_error = None
     try:
@@ -268,7 +306,6 @@ def print_result_v6(result, state, target_error: Exception | None, corridor: flo
         )
 
 
-# v5.main() resolves these functions from its module globals at runtime.
 v5.read_screen_state = read_screen_state_v6
 v5.print_result = print_result_v6
 
