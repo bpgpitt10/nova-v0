@@ -11,7 +11,9 @@ param(
   [double]$AimReturnTolerancePx = 1.5,
   [double]$AimMaxCorrectionMs = 20,
   [int]$AimMaxCorrections = 2,
-  [switch]$NoAimSummon
+  [switch]$NoAimSummon,
+  [switch]$VerifyTeeLie,
+  [switch]$NoReviewZip
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,17 +46,17 @@ $argsList = @(
 if ($Roi) {
   $argsList += @("--roi", $Roi)
 }
-
 if ($LieRoi) {
   $argsList += @("--lie-roi", $LieRoi)
 }
-
 if ($Tesseract) {
   $argsList += @("--tesseract", $Tesseract)
 }
-
 if ($NoAimSummon) {
   $argsList += "--no-aim-summon"
+}
+if ($VerifyTeeLie) {
+  $argsList += "--verify-tee-lie"
 }
 
 if ($HeatmapKey -notin @("Y", "y")) {
@@ -63,7 +65,11 @@ if ($HeatmapKey -notin @("Y", "y")) {
 
 Write-Host "Running GSPro tee-capture orchestrator v8 once."
 Write-Host "TEE RULE: minimap zoom is never changed; W recovery is disabled by design."
-Write-Host "Screen PIN distance/elevation + minimap directional lie enabled."
+if ($VerifyTeeLie) {
+  Write-Host "Directional tee lie OCR verification enabled (diagnostic / slower)."
+} else {
+  Write-Host "Tee lie uses GSPro invariant 0.0 / 0.0; OCR skipped for speed."
+}
 Write-Host "Heatmap sequence: initial capture -> Y toggle -> registered capture -> Y restore."
 Write-Host "One canonical HEATMAP-ON minimap is written to the HoleModel."
 Write-Host "Red penalty CV restores only Y-changed green pixels transiently to avoid heatmap contamination."
@@ -72,61 +78,72 @@ if ($NoAimSummon) {
 } else {
   Write-Host "AIM acquisition runs after heatmap restoration with controlled LEFT/RIGHT ARROW return verification."
 }
-Write-Host "A review ZIP will be created automatically after the run."
+Write-Host "Performance timing is enabled; STATE READY excludes review-ZIP packaging."
+if (-not $NoReviewZip) {
+  Write-Host "A review ZIP will be created automatically after the run."
+}
 
 $RunStart = Get-Date
+$ProbeStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 & $Python @argsList
 $ProbeExitCode = $LASTEXITCODE
+$ProbeStopwatch.Stop()
+$ProbeWallMs = [math]::Round($ProbeStopwatch.Elapsed.TotalMilliseconds, 1)
+Write-Host ""
+Write-Host ("Python process wall:     {0:N1} ms" -f $ProbeWallMs)
 
-# Package the just-created capture folder so one file contains everything useful
-# for remote review: raw screens, minimap products, OCR crops, JSON, AIM-return
-# frames, and any new debug artifacts future probe revisions add.
-try {
-  if (Test-Path $OutputRoot) {
-    $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
-      Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-3) } |
-      Sort-Object LastWriteTime -Descending |
-      Select-Object -First 1
-
-    if (-not $Capture) {
-      # Fallback for filesystem timestamp quirks: newest tee capture is still the
-      # most useful review bundle, even if its LastWriteTime missed the run window.
+# ZIP creation is development/debug convenience only. It is intentionally outside
+# the capture/recommendation critical path and can be disabled with -NoReviewZip.
+if (-not $NoReviewZip) {
+  try {
+    if (Test-Path $OutputRoot) {
       $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
+        Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-3) } |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
-    }
 
-    if ($Capture) {
-      $Branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
-      $Commit = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
-      $Manifest = @(
-        "Looper GSPro tee-capture review bundle",
-        "capture=$($Capture.Name)",
-        "branch=$Branch",
-        "commit=$Commit",
-        "probe_exit_code=$ProbeExitCode",
-        "packaged_local=$((Get-Date).ToString('s'))"
-      )
-      $Manifest | Set-Content -Path (Join-Path $Capture.FullName "review_manifest.txt") -Encoding UTF8
+      if (-not $Capture) {
+        $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" |
+          Sort-Object LastWriteTime -Descending |
+          Select-Object -First 1
+      }
 
-      $ReviewFiles = Get-ChildItem -Path $Capture.FullName -File |
-        Where-Object { $_.Extension -ne ".zip" }
+      if ($Capture) {
+        $Branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
+        $Commit = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+        $Manifest = @(
+          "Looper GSPro tee-capture review bundle",
+          "capture=$($Capture.Name)",
+          "branch=$Branch",
+          "commit=$Commit",
+          "probe_exit_code=$ProbeExitCode",
+          "probe_process_wall_ms=$ProbeWallMs",
+          "packaged_local=$((Get-Date).ToString('s'))"
+        )
+        $Manifest | Set-Content -Path (Join-Path $Capture.FullName "review_manifest.txt") -Encoding UTF8
 
-      if ($ReviewFiles.Count -gt 0) {
-        $ArchiveZip = Join-Path $OutputRoot ($Capture.Name + "_review.zip")
-        $LatestZip = Join-Path $OutputRoot "latest_tee_review.zip"
-        Compress-Archive -Path $ReviewFiles.FullName -DestinationPath $ArchiveZip -Force
-        Copy-Item -Path $ArchiveZip -Destination $LatestZip -Force
-        Write-Host ""
-        Write-Host "Review ZIP:           $ArchiveZip"
-        Write-Host "Latest review ZIP:    $LatestZip"
-        Write-Host "Upload latest_tee_review.zip next time instead of selecting individual files."
+        $ReviewFiles = Get-ChildItem -Path $Capture.FullName -File |
+          Where-Object { $_.Extension -ne ".zip" }
+
+        if ($ReviewFiles.Count -gt 0) {
+          $ArchiveZip = Join-Path $OutputRoot ($Capture.Name + "_review.zip")
+          $LatestZip = Join-Path $OutputRoot "latest_tee_review.zip"
+          $ZipStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+          Compress-Archive -Path $ReviewFiles.FullName -DestinationPath $ArchiveZip -Force
+          Copy-Item -Path $ArchiveZip -Destination $LatestZip -Force
+          $ZipStopwatch.Stop()
+          $ZipMs = [math]::Round($ZipStopwatch.Elapsed.TotalMilliseconds, 1)
+          Write-Host ""
+          Write-Host "Review ZIP:           $ArchiveZip"
+          Write-Host "Latest review ZIP:    $LatestZip"
+          Write-Host ("ZIP packaging:        {0:N1} ms (debug only; not live critical path)" -f $ZipMs)
+          Write-Host "Upload latest_tee_review.zip next time instead of selecting individual files."
+        }
       }
     }
+  } catch {
+    Write-Warning "Could not create review ZIP: $($_.Exception.Message)"
   }
-} catch {
-  # Packaging must never turn a successful capture into a failed capture.
-  Write-Warning "Could not create review ZIP: $($_.Exception.Message)"
 }
 
 exit $ProbeExitCode
