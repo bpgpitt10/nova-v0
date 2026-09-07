@@ -104,7 +104,6 @@ def find_gspro_window() -> tuple[int, str] | None:
     if not matches:
         return None
 
-    # Prefer the largest title-bearing GSPro window if there are launchers/helpers.
     def score(item: tuple[int, str]) -> tuple[int, int]:
         hwnd, title = item
         rect = ctypes.wintypes.RECT() if hasattr(ctypes, "wintypes") else None
@@ -116,8 +115,13 @@ def find_gspro_window() -> tuple[int, str] | None:
     return max(matches, key=score)
 
 
-def focus_gspro(hwnd: int, wait_s: float = 0.10) -> bool:
-    """Bring the verified GSPro window foreground and confirm it really owns input."""
+def focus_gspro(hwnd: int, wait_s: float = 0.02) -> bool:
+    """Bring the verified GSPro window foreground and confirm it owns input.
+
+    SetForegroundWindow itself is synchronous enough on the dedicated sim PC that
+    a 100 ms blanket delay was unnecessary. Callers can still request a longer wait
+    if a future environment needs it.
+    """
     _require_windows()
     user32 = ctypes.windll.user32
     user32.ShowWindow(hwnd, SW_RESTORE)
@@ -127,7 +131,6 @@ def focus_gspro(hwnd: int, wait_s: float = 0.10) -> bool:
 
 
 def _virtual_key(key: str) -> tuple[int, int]:
-    """Resolve a safe key name to Win32 virtual-key code + keybd_event flags."""
     normalized = key.strip().upper()
     if normalized == "LEFT":
         return VK_LEFT, KEYEVENTF_EXTENDEDKEY
@@ -153,8 +156,6 @@ def pulse_key_windows(key: str, duration_ms: float) -> None:
             remaining = deadline - time.perf_counter()
             if remaining <= 0:
                 break
-            # Sleep most of the remaining interval; the final millisecond is left to
-            # the scheduler rather than busy-spinning the simulator PC.
             time.sleep(max(0.0005, remaining - 0.001))
     finally:
         user32.keybd_event(vk, 0, flags | KEYEVENTF_KEYUP, 0)
@@ -195,7 +196,7 @@ def summon_aim_card(
     initial_screen: np.ndarray,
     capture_fn: Callable[[], np.ndarray],
     pulse_ms: float = 45.0,
-    settle_ms: float = 180.0,
+    settle_ms: float = 60.0,
     return_tolerance_px: float = 1.5,
     max_correction_ms: float = 20.0,
     max_corrections: int = 2,
@@ -223,20 +224,20 @@ def summon_aim_card(
     right_was_sent = False
 
     try:
-        if not focus_gspro(hwnd):
+        if not focus_gspro(hwnd, wait_s=0.02):
             result.warning = "Could not safely focus GSPro; no arrow input sent."
             return result
 
-        # First controlled LEFT-arrow pulse makes GSPro render/move its AIM state.
+        # Capture itself costs ~100 ms on the current sim PC, so a large additional
+        # blanket settle was redundant. The configurable short settle merely lets
+        # GSPro enter the next rendered frame before capture starts.
         pulse_key_windows("LEFT", pulse_ms)
         left_was_sent = True
         time.sleep(settle_ms / 1000.0)
         after_left = capture_fn()
         _save_debug(debug_dir, "latest_aim_summon_after_left.png", after_left)
 
-        # Always pair it with the same-duration opposite pulse before doing any
-        # measurement/correction. This is the neutral baseline operation.
-        if not focus_gspro(hwnd, wait_s=0.04):
+        if not focus_gspro(hwnd, wait_s=0.015):
             raise RuntimeError("GSPro lost foreground focus before the return pulse.")
         pulse_key_windows("RIGHT", pulse_ms)
         right_was_sent = True
@@ -252,8 +253,6 @@ def summon_aim_card(
         result.response_left = response_left
         result.response_return = response_return
 
-        # We only trust correction math if the intentional LEFT move was measurable
-        # and both phase-correlation responses contain useful signal.
         reliable = (
             abs(left_dx) >= 0.75
             and response_left >= 0.035
@@ -275,13 +274,11 @@ def summon_aim_card(
 
         previous_abs = abs(residual_dx)
         for _ in range(max(0, int(max_corrections))):
-            # If residual has the same sign as the intentional LEFT shift, the pair
-            # left us slightly toward LEFT, so correct RIGHT; otherwise correct LEFT.
             correction_key = "RIGHT" if residual_dx * left_dx > 0 else "LEFT"
             duration_ms = pulse_ms * abs(residual_dx / left_dx)
             duration_ms = min(max(duration_ms, 2.0), max_correction_ms)
 
-            if not focus_gspro(hwnd, wait_s=0.04):
+            if not focus_gspro(hwnd, wait_s=0.015):
                 result.warning = "GSPro lost focus before AIM return correction."
                 break
 
@@ -315,8 +312,6 @@ def summon_aim_card(
                 result.verified = True
                 break
 
-            # Do not chase a correction that made the return worse; read-only mode
-            # should prefer stopping over oscillating around the original aim.
             if abs(new_residual_dx) >= previous_abs * 0.98:
                 result.warning = "AIM return correction did not improve the measured residual; stopped safely."
                 result.verified = False
@@ -336,12 +331,9 @@ def summon_aim_card(
         return result
 
     except Exception as exc:
-        # If LEFT was sent but the normal RIGHT path failed, best-effort neutralize
-        # before returning. We deliberately do not run further correction without
-        # screenshots.
         if left_was_sent and not right_was_sent:
             try:
-                if focus_gspro(hwnd, wait_s=0.04):
+                if focus_gspro(hwnd, wait_s=0.015):
                     pulse_key_windows("RIGHT", pulse_ms)
                     time.sleep(settle_ms / 1000.0)
                     result.final_screen = capture_fn()
@@ -351,7 +343,6 @@ def summon_aim_card(
         _save_debug(debug_dir, "latest_aim_summon_final.png", result.final_screen)
         return result
     finally:
-        # Restore whatever window the user had before the probe invoked GSPro.
         if previous_hwnd and previous_hwnd != hwnd:
             try:
                 user32.SetForegroundWindow(previous_hwnd)
