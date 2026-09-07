@@ -8,6 +8,7 @@ on:
       - 'tools/live_caddie/**'
       - 'tools/minimap_probe/**'
       - 'config/looper-live-caddie.json'
+      - 'config/gspro-upper-left-state.json'
       - '.github/workflows/live-caddie-offline-tests.yml'
   workflow_dispatch:
 
@@ -46,7 +47,8 @@ jobs:
             tools/minimap_probe/probe_approach_v4.py \
             tools/minimap_probe/posttee_refinement.py \
             tools/minimap_probe/green_heatmap.py \
-            tools/minimap_probe/round_watch.py
+            tools/minimap_probe/round_watch.py \
+            tools/minimap_probe/upper_left_state.py
 
       - name: Run live-caddie unit tests
         run: python -m unittest discover -s tools/live_caddie/tests -p 'test_*.py' -v
