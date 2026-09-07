@@ -1,3 +1,8 @@
+import type {
+  MishitEffectiveThresholds,
+  MishitPlayerCalibration,
+} from './inputs/types'
+
 export type BaselineStatus = 'insufficient' | 'provisional' | 'stable'
 
 export type MishitClass = 'unclassified' | 'normal' | 'mishit' | 'severe_mishit'
@@ -91,9 +96,13 @@ export type MishitAnalysis = {
   baseline: MishitBaseline
   classifications: MishitClassification[]
   refresh: MishitRefreshMetadata
+  inputVersion: number
+  calibrationVersion?: number
+  effectiveThresholds: MishitEffectiveThresholds
 }
 
 export type MishitConfig = {
+  version: number
   sample: {
     provisionalSampleSize: number
     stableSampleSize: number
@@ -139,11 +148,32 @@ export type MishitConfig = {
     mishitSignalCount: number
     severeSignalCount: number
   }
+  personalization: {
+    enabled: boolean
+    stableBaselineOnly: boolean
+    carryMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    directionMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    ballSpeedMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    smashFactorMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+  }
 }
 
 export type RefreshMishitAnalysisArgs = {
   shots: MishitShot[]
   previous?: MishitAnalysis
   config?: MishitConfig
+  calibration?: MishitPlayerCalibration
   forceFullReclass?: boolean
 }

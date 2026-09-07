@@ -1,6 +1,8 @@
 import { buildMishitBaseline, selectReferenceShots } from './baseline'
 import { classifyShot, classifyShots } from './classify'
 import { DEFAULT_MISHIT_CONFIG } from './config'
+import { resolveMishitEffectiveThresholds } from './inputs/resolve'
+import type { MishitPlayerCalibration } from './inputs/types'
 import { relativeChange, uniqueStrings } from './stats'
 import type {
   MishitAnalysis,
@@ -60,6 +62,7 @@ const buildRefinedBaseline = (
   shots: MishitShot[],
   config: MishitConfig,
   version: number,
+  calibration?: MishitPlayerCalibration,
 ) => {
   let baseline = buildMishitBaseline(shots, config, version)
   if (!config.baselineRefinement.enabled || baseline.status === 'insufficient') {
@@ -70,7 +73,7 @@ const buildRefinedBaseline = (
   const passes = Math.max(1, config.baselineRefinement.maxPasses)
 
   for (let pass = 1; pass < passes; pass += 1) {
-    const classifications = classifyShots(referenceShots, baseline, config)
+    const classifications = classifyShots(referenceShots, baseline, config, calibration)
     const severeIds = new Set(
       classifications
         .filter((classification) => classification.classification === 'severe_mishit')
@@ -127,6 +130,7 @@ const classifyNewOnly = (
   previous: MishitAnalysis,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ) => {
   const currentIds = new Set(shots.map((shot) => shot.id))
   const prior = classificationMap(previous.classifications)
@@ -134,7 +138,7 @@ const classifyNewOnly = (
 
   shots.forEach((shot) => {
     const existing = prior.get(shot.id)
-    next.push(existing ?? classifyShot(shot, baseline, config))
+    next.push(existing ?? classifyShot(shot, baseline, config, calibration))
   })
 
   return next.filter((classification) => currentIds.has(classification.shotId))
@@ -143,11 +147,12 @@ const classifyNewOnly = (
 export const analyzeShotPopulation = (
   shots: MishitShot[],
   config: MishitConfig = DEFAULT_MISHIT_CONFIG,
+  calibration?: MishitPlayerCalibration,
 ): MishitAnalysis => {
-  const baseline = buildRefinedBaseline(shots, config, 1)
+  const baseline = buildRefinedBaseline(shots, config, 1, calibration)
   return {
     baseline,
-    classifications: classifyShots(shots, baseline, config),
+    classifications: classifyShots(shots, baseline, config, calibration),
     refresh: {
       action: 'initial_full_analysis',
       newShotCount: shots.length,
@@ -155,6 +160,13 @@ export const analyzeShotPopulation = (
       pendingNewShotIds: [],
       baselineChangedMaterially: false,
     },
+    inputVersion: config.version,
+    calibrationVersion: calibration?.version,
+    effectiveThresholds: resolveMishitEffectiveThresholds(
+      baseline,
+      config,
+      calibration,
+    ),
   }
 }
 
@@ -162,10 +174,11 @@ export const refreshMishitAnalysis = ({
   shots,
   previous,
   config = DEFAULT_MISHIT_CONFIG,
+  calibration,
   forceFullReclass = false,
 }: RefreshMishitAnalysisArgs): MishitAnalysis => {
   if (!previous) {
-    return analyzeShotPopulation(shots, config)
+    return analyzeShotPopulation(shots, config, calibration)
   }
 
   const currentIds = new Set(shots.map((shot) => shot.id))
@@ -179,8 +192,14 @@ export const refreshMishitAnalysis = ({
     ...newShotIds,
   ]).filter((id) => currentIds.has(id))
 
+  const inputVersionChanged = previous.inputVersion !== config.version
+  const calibrationVersionChanged =
+    previous.calibrationVersion !== calibration?.version
+  const inputsChanged = inputVersionChanged || calibrationVersionChanged
+
   if (
     !forceFullReclass &&
+    !inputsChanged &&
     newShotIds.length === 0 &&
     removedShotCount === 0
   ) {
@@ -199,6 +218,7 @@ export const refreshMishitAnalysis = ({
   const cadence = refreshCadence(previous, config)
   const shouldRebuildBaseline =
     forceFullReclass ||
+    inputsChanged ||
     removedShotCount > 0 ||
     pendingNewShotIds.length >= cadence ||
     stageTransitionRequiresRefresh(previous.baseline, shots.length, config)
@@ -206,7 +226,13 @@ export const refreshMishitAnalysis = ({
   if (!shouldRebuildBaseline) {
     return {
       baseline: previous.baseline,
-      classifications: classifyNewOnly(shots, previous, previous.baseline, config),
+      classifications: classifyNewOnly(
+        shots,
+        previous,
+        previous.baseline,
+        config,
+        calibration,
+      ),
       refresh: {
         action: 'new_shots_only',
         newShotCount: newShotIds.length,
@@ -214,6 +240,13 @@ export const refreshMishitAnalysis = ({
         pendingNewShotIds,
         baselineChangedMaterially: false,
       },
+      inputVersion: config.version,
+      calibrationVersion: calibration?.version,
+      effectiveThresholds: resolveMishitEffectiveThresholds(
+        previous.baseline,
+        config,
+        calibration,
+      ),
     }
   }
 
@@ -221,6 +254,7 @@ export const refreshMishitAnalysis = ({
     shots,
     config,
     previous.baseline.version + 1,
+    calibration,
   )
   const materiallyChanged = baselineChangedMaterially(previous.baseline, nextBaseline, config)
   const earlyPopulation =
@@ -228,6 +262,7 @@ export const refreshMishitAnalysis = ({
   const statusChanged = nextBaseline.status !== previous.baseline.status
   const shouldFullReclass =
     forceFullReclass ||
+    inputsChanged ||
     removedShotCount > 0 ||
     earlyPopulation ||
     statusChanged ||
@@ -236,8 +271,8 @@ export const refreshMishitAnalysis = ({
   return {
     baseline: nextBaseline,
     classifications: shouldFullReclass
-      ? classifyShots(shots, nextBaseline, config)
-      : classifyNewOnly(shots, previous, nextBaseline, config),
+      ? classifyShots(shots, nextBaseline, config, calibration)
+      : classifyNewOnly(shots, previous, nextBaseline, config, calibration),
     refresh: {
       action: shouldFullReclass
         ? 'baseline_rebuilt_full_reclass'
@@ -247,5 +282,12 @@ export const refreshMishitAnalysis = ({
       pendingNewShotIds: [],
       baselineChangedMaterially: materiallyChanged,
     },
+    inputVersion: config.version,
+    calibrationVersion: calibration?.version,
+    effectiveThresholds: resolveMishitEffectiveThresholds(
+      nextBaseline,
+      config,
+      calibration,
+    ),
   }
 }

@@ -1,3 +1,6 @@
+import { resolveMishitEffectiveThresholds } from './inputs/resolve'
+import type { MishitPlayerCalibration } from './inputs/types'
+import { clamp01 } from './stats'
 import type {
   MishitBaseline,
   MishitClassification,
@@ -5,12 +8,12 @@ import type {
   MishitReason,
   MishitShot,
 } from './types'
-import { clamp01 } from './stats'
 
 const carryReasons = (
   shot: MishitShot,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ): MishitReason[] => {
   const reference = baseline.carry.center
   if (typeof shot.carry !== 'number' || typeof reference !== 'number' || reference <= 0) {
@@ -23,10 +26,9 @@ const carryReasons = (
     return []
   }
 
-  if (
-    lossPct >= config.carry.severeLossPct &&
-    loss >= config.carry.severeLossFloorYards
-  ) {
+  const thresholds = resolveMishitEffectiveThresholds(baseline, config, calibration)
+
+  if (loss >= thresholds.carry.severeLossYards.effective) {
     return [{
       code: 'severe_carry_loss',
       metric: 'carry',
@@ -34,18 +36,12 @@ const carryReasons = (
       reference,
       deviation: -loss,
       deviationPct: -lossPct,
-      threshold: Math.max(
-        config.carry.severeLossFloorYards,
-        reference * config.carry.severeLossPct,
-      ),
+      threshold: thresholds.carry.severeLossYards.effective,
       severity: 'severe',
     }]
   }
 
-  if (
-    lossPct >= config.carry.mishitLossPct &&
-    loss >= config.carry.mishitLossFloorYards
-  ) {
+  if (loss >= thresholds.carry.mishitLossYards.effective) {
     return [{
       code: 'major_carry_loss',
       metric: 'carry',
@@ -53,10 +49,7 @@ const carryReasons = (
       reference,
       deviation: -loss,
       deviationPct: -lossPct,
-      threshold: Math.max(
-        config.carry.mishitLossFloorYards,
-        reference * config.carry.mishitLossPct,
-      ),
+      threshold: thresholds.carry.mishitLossYards.effective,
       severity: 'mishit',
     }]
   }
@@ -68,61 +61,46 @@ const offlineReasons = (
   shot: MishitShot,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ): MishitReason[] => {
   if (typeof shot.offline !== 'number') {
     return []
   }
 
-  const carryCenter = baseline.carry.center
   const offlineCenter = baseline.offline.center ?? 0
   const absoluteOffline = Math.abs(shot.offline)
   const deviationFromCenter = Math.abs(shot.offline - offlineCenter)
+  const thresholds = resolveMishitEffectiveThresholds(baseline, config, calibration)
 
-  const severeAbsoluteThreshold = Math.max(
-    config.direction.severeAbsoluteFloorYards,
-    typeof carryCenter === 'number'
-      ? carryCenter * config.direction.severePctOfCarryCenter
-      : 0,
-  )
-  const mishitAbsoluteThreshold = Math.max(
-    config.direction.mishitAbsoluteFloorYards,
-    typeof carryCenter === 'number'
-      ? carryCenter * config.direction.mishitPctOfCarryCenter
-      : 0,
-  )
+  const severeAbsolute = thresholds.direction.severeAbsoluteYards.effective
+  const severeDeviation = thresholds.direction.severeDeviationYards.effective
+  const mishitAbsolute = thresholds.direction.mishitAbsoluteYards.effective
+  const mishitDeviation = thresholds.direction.mishitDeviationYards.effective
 
-  if (
-    absoluteOffline >= severeAbsoluteThreshold ||
-    deviationFromCenter >= config.direction.severeDeviationFromCenterYards
-  ) {
+  const severeAbsoluteTriggered = absoluteOffline >= severeAbsolute
+  const severeDeviationTriggered = deviationFromCenter >= severeDeviation
+  if (severeAbsoluteTriggered || severeDeviationTriggered) {
     return [{
       code: 'severe_offline',
       metric: 'offline',
       observed: shot.offline,
       reference: offlineCenter,
       deviation: shot.offline - offlineCenter,
-      threshold: Math.min(
-        severeAbsoluteThreshold,
-        config.direction.severeDeviationFromCenterYards,
-      ),
+      threshold: severeDeviationTriggered ? severeDeviation : severeAbsolute,
       severity: 'severe',
     }]
   }
 
-  if (
-    absoluteOffline >= mishitAbsoluteThreshold ||
-    deviationFromCenter >= config.direction.mishitDeviationFromCenterYards
-  ) {
+  const mishitAbsoluteTriggered = absoluteOffline >= mishitAbsolute
+  const mishitDeviationTriggered = deviationFromCenter >= mishitDeviation
+  if (mishitAbsoluteTriggered || mishitDeviationTriggered) {
     return [{
       code: 'extreme_offline',
       metric: 'offline',
       observed: shot.offline,
       reference: offlineCenter,
       deviation: shot.offline - offlineCenter,
-      threshold: Math.min(
-        mishitAbsoluteThreshold,
-        config.direction.mishitDeviationFromCenterYards,
-      ),
+      threshold: mishitDeviationTriggered ? mishitDeviation : mishitAbsolute,
       severity: 'mishit',
     }]
   }
@@ -134,34 +112,41 @@ const ballSpeedReasons = (
   shot: MishitShot,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ): MishitReason[] => {
   const reference = baseline.ballSpeed.center
   if (typeof shot.ballSpeed !== 'number' || typeof reference !== 'number' || reference <= 0) {
     return []
   }
 
-  const lossPct = (reference - shot.ballSpeed) / reference
-  if (lossPct >= config.strike.ballSpeedSevereLossPct) {
+  const loss = reference - shot.ballSpeed
+  if (loss <= 0) {
+    return []
+  }
+  const lossPct = loss / reference
+  const thresholds = resolveMishitEffectiveThresholds(baseline, config, calibration)
+
+  if (loss >= thresholds.ballSpeed.severeLossMph.effective) {
     return [{
       code: 'severe_ball_speed_loss',
       metric: 'ballSpeed',
       observed: shot.ballSpeed,
       reference,
-      deviation: shot.ballSpeed - reference,
+      deviation: -loss,
       deviationPct: -lossPct,
-      threshold: reference * config.strike.ballSpeedSevereLossPct,
+      threshold: thresholds.ballSpeed.severeLossMph.effective,
       severity: 'severe',
     }]
   }
-  if (lossPct >= config.strike.ballSpeedMishitLossPct) {
+  if (loss >= thresholds.ballSpeed.mishitLossMph.effective) {
     return [{
       code: 'ball_speed_loss',
       metric: 'ballSpeed',
       observed: shot.ballSpeed,
       reference,
-      deviation: shot.ballSpeed - reference,
+      deviation: -loss,
       deviationPct: -lossPct,
-      threshold: reference * config.strike.ballSpeedMishitLossPct,
+      threshold: thresholds.ballSpeed.mishitLossMph.effective,
       severity: 'mishit',
     }]
   }
@@ -172,6 +157,7 @@ const smashReasons = (
   shot: MishitShot,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ): MishitReason[] => {
   const reference = baseline.smashFactor.center
   if (typeof shot.smashFactor !== 'number' || typeof reference !== 'number') {
@@ -179,25 +165,30 @@ const smashReasons = (
   }
 
   const loss = reference - shot.smashFactor
-  if (loss >= config.strike.smashFactorSevereLoss) {
+  if (loss <= 0) {
+    return []
+  }
+  const thresholds = resolveMishitEffectiveThresholds(baseline, config, calibration)
+
+  if (loss >= thresholds.smashFactor.severeLoss.effective) {
     return [{
       code: 'severe_smash_loss',
       metric: 'smashFactor',
       observed: shot.smashFactor,
       reference,
       deviation: -loss,
-      threshold: config.strike.smashFactorSevereLoss,
+      threshold: thresholds.smashFactor.severeLoss.effective,
       severity: 'severe',
     }]
   }
-  if (loss >= config.strike.smashFactorMishitLoss) {
+  if (loss >= thresholds.smashFactor.mishitLoss.effective) {
     return [{
       code: 'smash_loss',
       metric: 'smashFactor',
       observed: shot.smashFactor,
       reference,
       deviation: -loss,
-      threshold: config.strike.smashFactorMishitLoss,
+      threshold: thresholds.smashFactor.mishitLoss.effective,
       severity: 'mishit',
     }]
   }
@@ -208,6 +199,7 @@ export const classifyShot = (
   shot: MishitShot,
   baseline: MishitBaseline,
   config: MishitConfig,
+  calibration?: MishitPlayerCalibration,
 ): MishitClassification => {
   if (baseline.status === 'insufficient') {
     return {
@@ -228,10 +220,10 @@ export const classifyShot = (
   }
 
   const reasons = [
-    ...carryReasons(shot, baseline, config),
-    ...offlineReasons(shot, baseline, config),
-    ...ballSpeedReasons(shot, baseline, config),
-    ...smashReasons(shot, baseline, config),
+    ...carryReasons(shot, baseline, config, calibration),
+    ...offlineReasons(shot, baseline, config, calibration),
+    ...ballSpeedReasons(shot, baseline, config, calibration),
+    ...smashReasons(shot, baseline, config, calibration),
   ]
 
   const severeCount = reasons.filter((reason) => reason.severity === 'severe').length
@@ -281,4 +273,5 @@ export const classifyShots = (
   shots: MishitShot[],
   baseline: MishitBaseline,
   config: MishitConfig,
-) => shots.map((shot) => classifyShot(shot, baseline, config))
+  calibration?: MishitPlayerCalibration,
+) => shots.map((shot) => classifyShot(shot, baseline, config, calibration))
