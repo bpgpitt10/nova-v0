@@ -4,7 +4,7 @@ param(
   [string]$LieRoi = "",
   [string]$Tesseract = "",
   [string]$HeatmapKey = "Y",
-  [double]$HeatmapSettleMs = 80,
+  [double]$HeatmapSettleMs = 320,
   [double]$HeatmapPulseMs = 45,
   [double]$AimPulseMs = 45,
   [double]$AimSettleMs = 60,
@@ -32,7 +32,7 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v8_adaptive.py"),
+  (Join-Path $Here "probe_v8_fixed.py"),
   "--monitor", "$Monitor",
   "--heatmap-key", "$HeatmapKey",
   "--heatmap-settle-ms", "$HeatmapSettleMs",
@@ -76,8 +76,8 @@ if ($VerifyTeeLie) {
 } else {
   Write-Host "Tee lie uses GSPro invariant 0.0 / 0.0; OCR skipped for speed."
 }
-Write-Host "Heatmap sequence: Y ON -> adaptive readiness -> minimum safe toggle gap -> Y OFF -> adaptive restore verification."
-Write-Host "Heatmap render wait is adaptive; Y toggles are kept >=260 ms apart; AIM settle: $AimSettleMs ms."
+Write-Host "Heatmap sequence: Y ON -> fixed proven render settle -> capture -> Y OFF -> fixed proven restore settle."
+Write-Host "Heatmap settle: $HeatmapSettleMs ms (field-proven); AIM settle remains optimized at $AimSettleMs ms."
 Write-Host "One canonical HEATMAP-ON minimap is written to the HoleModel."
 Write-Host "Red penalty CV restores only Y-changed green pixels transiently to avoid heatmap contamination."
 if ($NoAimSummon) {
