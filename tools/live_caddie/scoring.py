@@ -30,8 +30,14 @@ def evaluate(candidate: CandidateShot, state: LiveShotState, hazards: list[Hazar
     containment = green_containment(candidate, green, assumptions)
     green_miss = 0.0 if containment is None else 1.0 - containment
 
+    # Preserve GSPro's strategic target as a meaningful baseline without making
+    # small dispersion-driven safety shifts artificially expensive. The curve shape
+    # is an explicit assumption, not embedded policy: exponent > 1 makes small shifts
+    # relatively cheap while still penalizing large departures strongly.
     aim_reference = max(1.0, float(assumptions.get("scoring.aim_change_reference_yds")))
-    aim_change = min(1.0, abs(candidate.aim_offset_yds) / aim_reference)
+    normalized_aim_change = min(1.0, abs(candidate.aim_offset_yds) / aim_reference)
+    aim_exponent = float(assumptions.get("scoring.aim_change_exponent"))
+    aim_change = normalized_aim_change ** aim_exponent
 
     weights = assumptions.get(f"scoring.{state.mode}")
     total = (
