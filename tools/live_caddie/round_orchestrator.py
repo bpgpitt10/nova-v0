@@ -39,8 +39,8 @@ class PlannedAction:
 class RoundOrchestrator:
     """Pure-ish round action planner with safe execution gates.
 
-    It does not capture screens or press keys.  It combines screen facts into actions
-    such as `capture-tee` or `capture-posttee`.  A separate runtime adapter may execute
+    It does not capture screens or press keys. It combines screen facts into actions
+    such as `capture-tee` or `capture-posttee`. A separate runtime adapter may execute
     those actions only when the user explicitly enables actions.
     """
 
@@ -64,17 +64,15 @@ class RoundOrchestrator:
         return f"{course}::hole-{int(hole):02d}"
 
     def _action(self, action: str, observation: RoundObservation, reason: str, **payload) -> PlannedAction:
-        key = self._identity_key(observation.identity)
         return PlannedAction(
             action=action,
             execute_allowed=self.actions_enabled,
             reason=reason,
-            identity_key=key,
+            identity_key=self._identity_key(observation.identity),
             payload=payload,
         )
 
     def observe(self, observation: RoundObservation) -> PlannedAction:
-        cfg = self.assumptions.get("round_orchestrator")
         resolved_distance = resolve_distance_to_pin(
             upper_left_yds=observation.upper_left_distance_to_pin_yds,
             pin_card_yds=observation.pin_card_distance_to_pin_yds,
@@ -83,17 +81,16 @@ class RoundOrchestrator:
             assumptions=self.assumptions,
         )
 
+        # Tee inference receives each independent source as what it actually is.
+        # The central source resolver is still recorded for downstream state use, but
+        # we never relabel canonical DTP as a PIN-card observation or double-count it.
         tee_decision = self.tracker.observe_pre_shot(
             current_identity=observation.identity,
             minimap_surface_is_tee=observation.minimap_surface_is_tee,
             minimap_surface_label=observation.minimap_surface_label,
             screen_shot_number=observation.upper_left_shot_number,
-            screen_distance_to_pin_yds=(
-                resolved_distance.value_yds if resolved_distance.source == "upper-left-distance-to-pin" else None
-            ),
-            pin_card_distance_to_pin_yds=(
-                resolved_distance.value_yds if resolved_distance.source != "upper-left-distance-to-pin" else observation.pin_card_distance_to_pin_yds
-            ),
+            screen_distance_to_pin_yds=observation.upper_left_distance_to_pin_yds,
+            pin_card_distance_to_pin_yds=observation.pin_card_distance_to_pin_yds,
             flat_lie=observation.flat_lie,
             full_hole_minimap=observation.full_hole_minimap,
             assumptions=self.assumptions,
