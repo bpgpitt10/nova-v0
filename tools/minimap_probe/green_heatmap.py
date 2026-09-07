@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GSPro tee green-heatmap frame classification + target-green isolation.
+"""GSPro green-heatmap frame classification + target-green isolation.
 
 The tee capture orchestrator already has an initial screen for PIN/lie state. It
 briefly toggles GSPro's green heatmap and captures a second screen at the exact same
@@ -7,10 +7,11 @@ minimap zoom. We use the pair only as a transient registration aid:
 
 - determine which frame is heatmap-on;
 - derive the pixels that changed because of the heatmap;
-- select the changed green region associated with the current white pin marker;
+- select the changed green region associated with the current pin;
 - preserve one canonical HEATMAP-ON minimap for the HoleModel.
 
-The normal frame is not a second hole model and does not need to be persisted.
+For post-tee refinement, callers may supply a projected canonical pin coordinate.
+That avoids making the tiny white minimap pin a hard dependency after tee capture.
 """
 
 from __future__ import annotations
@@ -40,11 +41,7 @@ class GreenHeatmapResult:
 
 
 def _heatmap_color_score(roi: np.ndarray, pin: base.Point) -> float:
-    """Score vivid red/yellow/green fill around the current pin.
-
-    This is deliberately used only to decide which of two registered frames is the
-    heatmap frame. The actual target-green mask comes from frame differencing.
-    """
+    """Score vivid red/yellow/green fill around the current pin."""
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     H, W = roi.shape[:2]
     yy, xx = np.ogrid[:H, :W]
@@ -134,22 +131,37 @@ def _select_target_green(changed: np.ndarray, pin: base.Point) -> tuple[np.ndarr
     return selected, (x1, y1, x2 - x1 + 1, y2 - y1 + 1), distance
 
 
+def _pin_from_override(pin_override_xy) -> base.Point | None:
+    if pin_override_xy is None:
+        return None
+    if hasattr(pin_override_xy, "x") and hasattr(pin_override_xy, "y"):
+        return base.Point(float(pin_override_xy.x), float(pin_override_xy.y))
+    x, y = pin_override_xy
+    return base.Point(float(x), float(y))
+
+
 def classify_and_extract(
     initial_screen: np.ndarray,
     toggled_screen: np.ndarray,
     roi_override: str | None = None,
     debug_dir: Path | None = None,
+    pin_override_xy=None,
 ) -> GreenHeatmapResult:
     initial_roi, _ = base.crop_minimap(initial_screen, roi_override)
     toggled_roi, _ = base.crop_minimap(toggled_screen, roi_override)
     if initial_roi.shape != toggled_roi.shape:
         raise RuntimeError("Initial/toggled minimap crops do not share identical geometry.")
 
-    pin_initial = v2.detect_pin_marker(initial_roi)
-    pin_toggled = v2.detect_pin_marker(toggled_roi)
-    pin_shift = float(np.hypot(pin_initial.x - pin_toggled.x, pin_initial.y - pin_toggled.y))
-    if pin_shift > 3.0:
-        raise RuntimeError(f"Minimap moved during heatmap toggle (pin shifted {pin_shift:.1f}px).")
+    projected_pin = _pin_from_override(pin_override_xy)
+    if projected_pin is None:
+        pin_initial = v2.detect_pin_marker(initial_roi)
+        pin_toggled = v2.detect_pin_marker(toggled_roi)
+        pin_shift = float(np.hypot(pin_initial.x - pin_toggled.x, pin_initial.y - pin_toggled.y))
+        if pin_shift > 3.0:
+            raise RuntimeError(f"Minimap moved during heatmap toggle (pin shifted {pin_shift:.1f}px).")
+    else:
+        pin_initial = projected_pin
+        pin_toggled = projected_pin
 
     score_initial = _heatmap_color_score(initial_roi, pin_initial)
     score_toggled = _heatmap_color_score(toggled_roi, pin_toggled)
@@ -208,13 +220,7 @@ def classify_and_extract(
 
 
 def hazard_safe_roi(result: GreenHeatmapResult, margin_px: int = 4) -> np.ndarray:
-    """Create a hazard-CV view registered to the canonical heatmap minimap.
-
-    Every minimap pixel materially changed by the Y heatmap toggle is restored from
-    the normal frame before red-penalty extraction. This handles the target green AND
-    any neighboring heatmapped greens that GSPro happens to show, while preserving
-    exactly the same ball/pin geometry and map transform.
-    """
+    """Create a hazard-CV view registered to the canonical heatmap minimap."""
     mask = result.changed_mask
     if margin_px > 0:
         k = margin_px * 2 + 1
