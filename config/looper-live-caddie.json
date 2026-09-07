@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.11.1",
+  "assumptions_version": "0.11.2",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -11,7 +11,7 @@
     "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
     "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only.",
     "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation.",
-    "State-source precedence and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
+    "State-source precedence, source confidence, and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
     "Post-tee W recovery is one-way only and green refinement is confidence-gated before it can replace the tee GreenSurfaceModel.",
     "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior."
   ],
@@ -130,6 +130,11 @@
   },
   "source_resolution": {
     "distance_to_pin_precedence": ["upper-left-distance-to-pin", "pin-card-distance-to-pin", "canonical-distance-to-pin"],
+    "upper_left_source_confidence": 0.97,
+    "pin_card_source_confidence": 0.98,
+    "unrated_source_confidence": 0.80,
+    "warning_confidence_cap": 0.75,
+    "hard_conflict_confidence_cap": 0.35,
     "distance_warning_absolute_yds": 5.0,
     "distance_warning_relative_fraction": 0.03,
     "distance_hard_conflict_absolute_yds": 12.0,
