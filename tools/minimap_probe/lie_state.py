@@ -68,6 +68,16 @@ def _footer_bbox(screen, override: str | None = None) -> tuple[int, int, int, in
     return x, y, w, h
 
 
+def _display_precision(value: float) -> float:
+    """Normalize OCR to GSPro's one-decimal lie display precision.
+
+    The degree symbol can be hallucinated as an extra trailing digit by OCR
+    (visible `0.0°` became `0.02` in a field test). GSPro itself only displays one
+    decimal place, so retaining more precision would be false detail.
+    """
+    return round(float(value), 1)
+
+
 def _ocr_component(crop, tess: str) -> tuple[str, float | None, str | None]:
     """Return best OCR text plus numeric value + direction if parseable."""
     best_raw = ""
@@ -81,7 +91,7 @@ def _ocr_component(crop, tess: str) -> tuple[str, float | None, str | None]:
         number_match = re.search(r"\d+(?:\.\d+)?", compact)
         direction_match = re.search(r"UP|DOWN|LEFT|RIGHT", compact)
         if number_match and direction_match:
-            value = float(number_match.group(0))
+            value = _display_precision(float(number_match.group(0)))
             if 0.0 <= value <= 60.0:
                 return raw, value, direction_match.group(0).lower()
 
@@ -128,15 +138,15 @@ def read_lie_state(
         left_right_dir = None
 
     # A perfectly flat tee often reads the number more reliably than the short word.
-    # If OCR got exactly 0.0 but dropped direction, direction is mathematically
-    # irrelevant; keep canonical UP/RIGHT so the shot state is still useful.
+    # If OCR got 0.0 but dropped direction, direction is mathematically irrelevant;
+    # keep canonical UP/RIGHT so the shot state is still useful.
     if up_down is None:
         m = re.search(r"\d+(?:\.\d+)?", re.sub(r"\s+", "", left_raw))
-        if m and float(m.group(0)) == 0.0:
+        if m and _display_precision(float(m.group(0))) == 0.0:
             up_down, up_down_dir = 0.0, "up"
     if left_right is None:
         m = re.search(r"\d+(?:\.\d+)?", re.sub(r"\s+", "", right_raw))
-        if m and float(m.group(0)) == 0.0:
+        if m and _display_precision(float(m.group(0))) == 0.0:
             left_right, left_right_dir = 0.0, "right"
 
     if up_down is None or up_down_dir is None or left_right is None or left_right_dir is None:
