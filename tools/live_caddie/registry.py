@@ -10,6 +10,13 @@ class CalculationSpec:
     dependencies: tuple[str, ...] = ()
 
 CALCULATIONS = {
+    "canonical_hole_extraction": CalculationSpec(
+        "canonical-hole-extraction", "v0",
+        "Convert tee minimap hazard/green pixels into a stable yard-space hole coordinate system.",
+        ("canonical_geometry.player_marker_mask_radius_px", "canonical_geometry.hazard_min_arc_length_px",
+         "canonical_geometry.hazard_simplify_epsilon_px", "canonical_geometry.green_simplify_epsilon_px",
+         "canonical_geometry.heatmap_sample_stride_px"),
+    ),
     "candidate_generation": CalculationSpec(
         "candidate-generation", "v1",
         "Create Stock, Smooth and explicit playable shot candidates without redefining Looper Stock/Pure.",
