@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""GSPro post-tee v4: identity-safe geometry + bounded W/Y refinement + read-only caddie.
+"""GSPro post-tee v4: identity-safe geometry + automatic mode + bounded W/Y + read-only caddie.
 
 v4 is the first integrated post-tee pipeline that may manipulate the minimap for
 better green context. Product safety rules:
-- W is zoom-out only and bounded; never automatically zoom back in.
-- Y uses the field-proven fixed toggle/restore timing.
-- refined green geometry is merged only after registration/heatmap/pin checks.
-- recommendation AIM remains READ ONLY; no recommendation-driven arrow movement.
+- shot mode is a pure calculation outside orchestration; default is automatic;
+- GSPro Green explicitly yields out of the full-shot caddie path;
+- W is zoom-out only and bounded; never automatically zoom back in;
+- Y uses the field-proven fixed toggle/restore timing;
+- refined green geometry is merged only after registration/heatmap/pin checks;
+- recommendation AIM remains READ ONLY; no recommendation-driven arrow movement;
 - all tunable policy/timing lives in config/looper-live-caddie.json.
 """
 
@@ -24,6 +26,7 @@ from pathlib import Path
 import cv2
 
 import lie_state
+import minimap_surface
 import posttee_refinement
 import probe as base
 import probe_approach_v3 as v3
@@ -57,7 +60,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--deep-debug", action="store_true")
     p.add_argument("--output-root", default=str(Path(__file__).with_name("output")))
     p.add_argument("--profiles-json", help="Optional JSON array/object exported from Looper player profiles.")
-    p.add_argument("--mode", choices=["approach", "strategic"], default="approach")
+    p.add_argument(
+        "--mode",
+        choices=["auto", "approach", "strategic"],
+        default="auto",
+        help="Default auto uses the registered shot-mode calculation; explicit values are diagnostic overrides.",
+    )
     p.add_argument("--external-carry-adjustment-yds", type=float, default=0.0)
     p.add_argument("--external-lateral-adjustment-yds", type=float, default=0.0)
     return p.parse_args()
@@ -89,9 +97,10 @@ def main() -> int:
 
     try:
         initial = timer.call("initial_capture", base.capture_monitor, args.monitor)
+        initial_minimap, _ = base.crop_minimap(initial, args.roi)
 
         # Frozen-frame OCR is overlapped with the neutral AIM expose/return cycle.
-        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approach-v4") as executor:
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="approach-v4") as executor:
             pin_future = executor.submit(
                 timer.call,
                 "pin_card_ocr",
@@ -120,6 +129,14 @@ def main() -> int:
                 None,
                 out if args.deep_debug else None,
             )
+            surface_future = executor.submit(
+                timer.call,
+                "minimap_surface_ocr",
+                minimap_surface.read_minimap_surface,
+                initial_minimap,
+                tesseract_path=args.tesseract,
+                debug_dir=(out if args.deep_debug else None),
+            )
 
             t0 = time.perf_counter()
             aim_state, aim_meta, aim_screen = probe_v8._acquire_aim(initial, args, out)
@@ -127,8 +144,14 @@ def main() -> int:
             pin_state = pin_future.result()
             lie = lie_future.result()
             identity, identity_warning = identity_future.result()
+            try:
+                surface = surface_future.result()
+            except Exception:
+                surface = None
 
         identity_payload = identity.to_dict() if identity is not None else None
+        surface_payload = surface.to_dict() if surface is not None else None
+        surface_label = surface.label if surface is not None and surface.recognized else None
         aim_distance = float(aim_state.distance_yds) if aim_state is not None else None
 
         t0 = time.perf_counter()
@@ -142,12 +165,15 @@ def main() -> int:
             output_root=args.output_root,
             capture_dir=out,
             mode=args.mode,
+            surface_label=surface_label,
             assumptions=assumptions,
         )
         timer.phase_ms["geometry_refinement"] = round((time.perf_counter() - t0) * 1000.0, 1)
         geometry = refinement["final_geometry"]
         final_screen = refinement["final_screen"]
         final_minimap = refinement["final_minimap"]
+        resolved_mode = str(refinement.get("resolved_mode") or args.mode)
+        shot_mode_decision = refinement.get("shot_mode_decision")
 
         registration = geometry.get("registration") or {}
         canonical_position = geometry.get("canonical_position") or {}
@@ -166,6 +192,10 @@ def main() -> int:
             "capture_mode": "post-tee",
             "round_identity": identity_payload,
             "round_identity_warning": identity_warning,
+            "minimap_surface": surface_payload,
+            "requested_mode": args.mode,
+            "resolved_mode": resolved_mode,
+            "shot_mode_decision": shot_mode_decision,
             "pin": v3._state_dict(pin_state),
             "resolved_distance_to_pin": resolved_distance.to_dict(),
             "aim": v3._state_dict(aim_state),
@@ -192,7 +222,11 @@ def main() -> int:
 
         recommendation = None
         recommendation_warning = None
-        if args.profiles_json:
+        if resolved_mode == "no-full-shot":
+            recommendation_warning = "GSPro state is not a full-shot caddie state; recommendation intentionally skipped."
+        elif resolved_mode == "unknown":
+            recommendation_warning = "Shot mode could not be resolved confidently; recommendation intentionally skipped."
+        elif args.profiles_json:
             try:
                 profiles = _load_profiles(args.profiles_json)
                 capture_dir = Path(geometry["hole_model_path"]).parent
@@ -204,7 +238,7 @@ def main() -> int:
                 live_state, hazards, green = live_state_from_probe(
                     payload,
                     canonical_hole,
-                    mode=args.mode,
+                    mode=resolved_mode,
                     external_carry_adjustment_yds=args.external_carry_adjustment_yds,
                     external_lateral_adjustment_yds=args.external_lateral_adjustment_yds,
                 )
@@ -230,7 +264,6 @@ def main() -> int:
         }
         (out / "shot_state.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-        initial_minimap, _ = base.crop_minimap(initial, args.roi)
         cv2.imwrite(str(out / "approach_initial_screen.png"), initial)
         cv2.imwrite(str(out / "approach_initial_minimap.png"), initial_minimap)
         cv2.imwrite(str(out / "approach_final_screen.png"), final_screen)
@@ -250,6 +283,11 @@ def main() -> int:
                 f"H{identity_payload.get('hole_number') or '?'} | PAR {identity_payload.get('par') or '?'} | "
                 f"{identity_payload.get('hole_yards') or '?'} YDS"
             )
+        print(f"Minimap surface:        {surface_label or '?'}")
+        print(f"Shot mode:              {resolved_mode.upper()} | requested {args.mode}")
+        if shot_mode_decision:
+            print(f"Mode confidence:        {float(shot_mode_decision.get('confidence') or 0.0):.2f}")
+            print(f"Mode reason:            {shot_mode_decision.get('reason') or '?'}")
         print(f"Pin target:             {pin_state.distance_yds:.0f} yd")
         print(f"Pin elevation:          {pin_state.elevation_direction} {pin_state.elevation_raw or '?'}")
         print(f"Lie slope:              {lie_state.state_text(lie)}")
@@ -289,14 +327,15 @@ def main() -> int:
             ("pin_card_ocr", "PIN card OCR*"),
             ("lie_ocr", "Lie OCR*"),
             ("round_identity_ocr", "Hole identity OCR*"),
+            ("minimap_surface_ocr", "Surface OCR*"),
             ("aim_acquisition", "AIM acquisition"),
-            ("geometry_refinement", "Geometry + optional W/Y"),
+            ("geometry_refinement", "Geometry + mode + optional W/Y"),
             ("recommendation", "Recommendation"),
         ):
             if key in timer.phase_ms:
-                print(f"{label + ':':27} {timer.phase_ms[key]:7.1f} ms")
+                print(f"{label + ':':30} {timer.phase_ms[key]:7.1f} ms")
         print("* OCR runs overlapped with AIM acquisition")
-        print(f"{'STATE READY:':27} {state_ready_ms:7.1f} ms")
+        print(f"{'STATE READY:':30} {state_ready_ms:7.1f} ms")
         print()
         print(f"ShotState:              {out / 'shot_state.json'}")
         print(f"Capture folder:         {out}")
