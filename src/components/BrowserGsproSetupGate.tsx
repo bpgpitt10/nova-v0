@@ -26,6 +26,17 @@ type BrowserGsproSetupGateProps = {
 
 const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
 
+const isTauriRuntime = () =>
+  typeof window !== 'undefined' &&
+  Boolean(
+    (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }).__TAURI__ ||
+      (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown })
+        .__TAURI_INTERNALS__,
+  )
+
+const isWindowsBrowser = () =>
+  typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+
 export default function BrowserGsproSetupGate({
   children,
 }: BrowserGsproSetupGateProps) {
@@ -54,6 +65,13 @@ export default function BrowserGsproSetupGate({
   }
 
   useEffect(() => {
+    // The direct-file flow is only for the hosted Windows browser experience.
+    // Tauri keeps its existing local helper path; Mac/other devices remain normal Looper viewers.
+    if (isTauriRuntime() || !isWindowsBrowser()) {
+      setSetupState('ready')
+      return
+    }
+
     if (!isBrowserGsproAccessSupported()) {
       setSetupState('unsupported')
       return
@@ -186,9 +204,9 @@ export default function BrowserGsproSetupGate({
       <main className="gspro-setup">
         <section className="gspro-setup__card">
           <span className="gspro-setup__eyebrow">Looper setup</span>
-          <h1>Open Looper in Chrome on your GSPro PC</h1>
+          <h1>Use Chrome or Edge for direct GSPro connection</h1>
           <p>
-            Direct GSPro connection currently requires desktop Chrome or Edge on Windows. This is the no-download path.
+            Direct GSPro connection currently requires desktop Chrome or Edge on Windows.
           </p>
           <button type="button" className="gspro-setup__secondary" onClick={() => setSetupState('ready')}>
             Continue without GSPro
@@ -226,6 +244,15 @@ export default function BrowserGsproSetupGate({
               onClick={() => void chooseFolder()}
             >
               {busy ? 'Opening…' : 'Choose GSPro folder'}
+            </button>
+            <button
+              type="button"
+              className="gspro-setup__secondary"
+              disabled={busy}
+              onClick={() => setSetupState('ready')}
+              style={{ marginLeft: 10 }}
+            >
+              Continue without GSPro
             </button>
           </>
         ) : null}
