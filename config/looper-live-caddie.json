@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.12.0",
+  "assumptions_version": "0.12.1",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -14,7 +14,8 @@
     "State-source precedence, source confidence, and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
     "Post-tee W recovery is one-way only and green refinement is confidence-gated before it can replace the tee GreenSurfaceModel.",
     "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior.",
-    "Shot mode is inferred outside orchestration from GSPro surface, canonical AIM/green geometry, and AIM-vs-PIN distance; explicit mode remains available only as a diagnostic override."
+    "Shot mode is inferred outside orchestration from GSPro surface, canonical AIM/green geometry, and AIM-vs-PIN distance; explicit mode remains available only as a diagnostic override.",
+    "Aim-change cost uses a configurable exponent so small dispersion-driven safety shifts are cheaper than large departures from GSPro strategic aim."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -231,7 +232,8 @@
       "green_miss_weight": 0.0,
       "aim_change_weight": 0.2
     },
-    "aim_change_reference_yds": 15
+    "aim_change_reference_yds": 15,
+    "aim_change_exponent": 2.0
   },
   "confidence": {
     "minimum_registration_confidence": 0.65,
