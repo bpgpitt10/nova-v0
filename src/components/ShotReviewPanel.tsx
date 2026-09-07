@@ -5,9 +5,11 @@ import {
   loadHumanShotReviews,
   updateHumanShotReview,
 } from '../lib/shotReview'
+import { downloadMishitValidationSnapshot } from '../lib/mishitValidation'
 import { loadActiveSessionDraft } from '../lib/sessions'
 import type { Shot } from '../types'
 import './ShotReviewPanel.css'
+import './ShotReviewValidation.css'
 
 const JUDGMENT_OPTIONS: Array<{
   value: HumanShotJudgment
@@ -82,6 +84,7 @@ function ShotReviewPanel() {
   const selectedShot = selectedIndex >= 0 ? shots[selectedIndex] : null
   const selectedReview = selectedShot ? reviews[selectedShot.id] : undefined
   const labeledCount = shots.filter((shot) => Boolean(reviews[shot.id]?.judgment)).length
+  const unlabeledCount = shots.length - labeledCount
 
   const applyReview = (
     shotId: string,
@@ -138,6 +141,22 @@ function ShotReviewPanel() {
     const nextIndex = selectedIndex + direction
     if (nextIndex >= 0 && nextIndex < shots.length) {
       setSelectedShotId(shots[nextIndex].id)
+    }
+  }
+
+  const selectNextUnlabeledShot = () => {
+    if (shots.length === 0 || unlabeledCount === 0) {
+      return
+    }
+
+    const startIndex = selectedIndex >= 0 ? selectedIndex : shots.length - 1
+    for (let offset = 1; offset <= shots.length; offset += 1) {
+      const nextIndex = (startIndex + offset) % shots.length
+      const candidate = shots[nextIndex]
+      if (!reviews[candidate.id]?.judgment) {
+        setSelectedShotId(candidate.id)
+        return
+      }
     }
   }
 
@@ -198,6 +217,14 @@ function ShotReviewPanel() {
               type="button"
             >
               →
+            </button>
+            <button
+              className="shot-review-latest"
+              onClick={selectNextUnlabeledShot}
+              disabled={unlabeledCount === 0}
+              type="button"
+            >
+              Next unlabeled
             </button>
             <button
               className="shot-review-latest"
@@ -270,6 +297,21 @@ function ShotReviewPanel() {
           </p>
         </>
       )}
+
+      <div className="shot-review-validation-actions">
+        <button
+          className="shot-review-export"
+          onClick={() => downloadMishitValidationSnapshot()}
+          type="button"
+        >
+          Export validation snapshot
+        </button>
+        <p className="shot-review-export-help">
+          Exports saved sessions + the active session, human labels/notes, current classifier
+          results and reasons, club/variant baselines, config, and false-positive/false-negative
+          counts. The classifier answer stays hidden here so your labels remain blind.
+        </p>
+      </div>
     </aside>
   )
 }
