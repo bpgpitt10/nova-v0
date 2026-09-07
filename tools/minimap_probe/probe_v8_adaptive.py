@@ -2,16 +2,18 @@
 """Field-safe adaptive launcher for the optimized v8 tee orchestrator.
 
 The first fast-path test proved that a fixed 80 ms GSPro heatmap settle is too
-aggressive on the sim PC. Instead of retreating to the old 320 ms blanket sleeps,
-this launcher polls the *minimap itself* and proceeds as soon as the Y-state change
-is actually visible.
+aggressive on the sim PC. A second test showed an equally important behavior: if we
+send the restore Y too soon after the first Y, GSPro can leave the heatmap on even
+though the key event itself was delivered.
 
-This preserves the fast parallel v8 pipeline while making render timing adaptive:
-- after Y ON/OFF toggle, capture after a short initial delay;
-- measure material minimap change against the initial frame;
-- if GSPro has not rendered yet, retry briefly up to a bounded deadline;
-- after the restore Y, verify the minimap has returned to the initial state;
-- never send an extra restore toggle merely because visual verification timed out.
+This launcher therefore adapts to *render readiness* while also respecting a small
+minimum inter-toggle gap:
+- press Y and poll the minimap until the heatmap is actually visible;
+- never send the second Y earlier than the measured-safe toggle gap;
+- press Y to restore;
+- verify the restored frame is materially closer to the starting minimap than the
+  heatmap frame, rather than demanding pixel-for-pixel identity;
+- never send a speculative third Y if restore verification is uncertain.
 
 Importing target_card_v8 keeps the field-validated 5y/feet-inches OCR patch active.
 """
@@ -21,8 +23,6 @@ from __future__ import annotations
 import ctypes
 import os
 import time
-
-import numpy as np
 
 import aim_actuator
 import green_heatmap
@@ -35,6 +35,11 @@ CHANGE_RATIO_THRESHOLD = 0.0005
 INITIAL_RENDER_WAIT_MS = 40.0
 POLL_GAP_MS = 25.0
 MAX_RENDER_WAIT_MS = 420.0
+MAX_RESTORE_WAIT_MS = 700.0
+# Field test 2026-09-06: restoring immediately after the first rendered heatmap
+# could be ignored/ineffective. Keep the two Y pulses at least this far apart while
+# still saving far more time than the original 320 ms blanket sleeps.
+MIN_TOGGLE_GAP_MS = 260.0
 
 # Exposed for future diagnostics without changing the v8 HoleModel contract.
 last_heatmap_timing: dict[str, float | int | bool] = {}
@@ -49,12 +54,11 @@ def _minimap_change_ratio(reference_screen, candidate_screen, roi_override: str 
     return float((changed > 0).mean())
 
 
-def _poll_render_state(
+def _poll_on_state(
     *,
     reference_screen,
     monitor: int,
     roi_override: str | None,
-    want_changed: bool,
     initial_wait_ms: float,
     max_wait_ms: float,
 ):
@@ -70,19 +74,72 @@ def _poll_render_state(
         last_screen = base.capture_monitor(monitor)
         attempts += 1
         last_ratio = _minimap_change_ratio(reference_screen, last_screen, roi_override)
-
-        ready = (
-            last_ratio >= CHANGE_RATIO_THRESHOLD
-            if want_changed
-            else last_ratio < CHANGE_RATIO_THRESHOLD
-        )
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-        if ready:
+        if last_ratio >= CHANGE_RATIO_THRESHOLD:
             return last_screen, attempts, last_ratio, elapsed_ms, True
-
         if elapsed_ms >= max_wait_ms:
             return last_screen, attempts, last_ratio, elapsed_ms, False
+        time.sleep(POLL_GAP_MS / 1000.0)
 
+
+def _poll_restore_state(
+    *,
+    initial_screen,
+    heatmap_screen,
+    heatmap_change_ratio: float,
+    monitor: int,
+    roi_override: str | None,
+    initial_wait_ms: float,
+    max_wait_ms: float,
+):
+    """Wait until the minimap is clearly back toward its pre-heatmap state.
+
+    Requiring candidate==initial was too strict for a live rendered UI. Instead we
+    require the candidate to be both absolutely close to initial and closer to
+    initial than to the known heatmap frame. The threshold scales with the observed
+    heatmap delta but remains conservative.
+    """
+    start = time.perf_counter()
+    attempts = 0
+    last_screen = None
+    last_to_initial = 1.0
+    last_to_heatmap = 1.0
+    restore_threshold = max(0.0010, min(0.0060, heatmap_change_ratio * 0.12))
+
+    if initial_wait_ms > 0:
+        time.sleep(initial_wait_ms / 1000.0)
+
+    while True:
+        last_screen = base.capture_monitor(monitor)
+        attempts += 1
+        last_to_initial = _minimap_change_ratio(initial_screen, last_screen, roi_override)
+        last_to_heatmap = _minimap_change_ratio(heatmap_screen, last_screen, roi_override)
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+
+        ready = (
+            last_to_initial <= restore_threshold
+            and last_to_initial < last_to_heatmap
+        )
+        if ready:
+            return (
+                last_screen,
+                attempts,
+                last_to_initial,
+                last_to_heatmap,
+                elapsed_ms,
+                True,
+                restore_threshold,
+            )
+        if elapsed_ms >= max_wait_ms:
+            return (
+                last_screen,
+                attempts,
+                last_to_initial,
+                last_to_heatmap,
+                elapsed_ms,
+                False,
+                restore_threshold,
+            )
         time.sleep(POLL_GAP_MS / 1000.0)
 
 
@@ -93,7 +150,7 @@ def adaptive_toggle_heatmap_pair(
     pulse_ms: float,
     settle_ms: float,
 ):
-    """Y toggle with visual readiness polling instead of fixed render sleeps."""
+    """Y toggle with adaptive render polling and a field-safe inter-toggle gap."""
     global last_heatmap_timing
 
     found = aim_actuator.find_gspro_window()
@@ -106,19 +163,18 @@ def adaptive_toggle_heatmap_pair(
     first_sent = False
     restore_sent = False
 
-    # Keep CLI compatibility: a caller may intentionally ask for a larger minimum
-    # delay, but the optimized default is capped by the adaptive launcher's 40 ms.
+    # Preserve CLI compatibility while keeping the optimized first look short.
     first_wait_ms = min(max(0.0, float(settle_ms)), INITIAL_RENDER_WAIT_MS)
 
     try:
         probe_v8._focus_and_pulse(hwnd, key, pulse_ms, wait_s=0.015)
         first_sent = True
+        first_toggle_completed_at = time.perf_counter()
 
-        toggled_screen, on_attempts, on_ratio, on_ms, on_ready = _poll_render_state(
+        toggled_screen, on_attempts, on_ratio, on_ms, on_ready = _poll_on_state(
             reference_screen=initial_screen,
             monitor=monitor,
             roi_override=None,
-            want_changed=True,
             initial_wait_ms=first_wait_ms,
             max_wait_ms=MAX_RENDER_WAIT_MS,
         )
@@ -128,16 +184,33 @@ def adaptive_toggle_heatmap_pair(
                 f"{MAX_RENDER_WAIT_MS:.0f} ms (last minimap change ratio {on_ratio:.5f})."
             )
 
+        # GSPro appears to need a short debounce/cooldown between Y toggles. If the
+        # heatmap rendered very quickly, use the remaining time productively as the
+        # minimum gap rather than immediately firing a restore that may be ignored.
+        since_first_ms = (time.perf_counter() - first_toggle_completed_at) * 1000.0
+        toggle_gap_wait_ms = max(0.0, MIN_TOGGLE_GAP_MS - since_first_ms)
+        if toggle_gap_wait_ms > 0:
+            time.sleep(toggle_gap_wait_ms / 1000.0)
+
         probe_v8._focus_and_pulse(hwnd, key, pulse_ms, wait_s=0.010)
         restore_sent = True
 
-        restored_screen, off_attempts, off_ratio, off_ms, off_ready = _poll_render_state(
-            reference_screen=initial_screen,
+        (
+            restored_screen,
+            off_attempts,
+            off_ratio,
+            off_to_heatmap,
+            off_ms,
+            off_ready,
+            restore_threshold,
+        ) = _poll_restore_state(
+            initial_screen=initial_screen,
+            heatmap_screen=toggled_screen,
+            heatmap_change_ratio=on_ratio,
             monitor=monitor,
             roi_override=None,
-            want_changed=False,
             initial_wait_ms=first_wait_ms,
-            max_wait_ms=MAX_RENDER_WAIT_MS,
+            max_wait_ms=MAX_RESTORE_WAIT_MS,
         )
 
         last_heatmap_timing = {
@@ -145,19 +218,24 @@ def adaptive_toggle_heatmap_pair(
             "on_attempts": int(on_attempts),
             "on_ready_ms": round(on_ms, 1),
             "on_change_ratio": round(on_ratio, 6),
+            "toggle_gap_wait_ms": round(toggle_gap_wait_ms, 1),
+            "min_toggle_gap_ms": MIN_TOGGLE_GAP_MS,
             "off_attempts": int(off_attempts),
             "off_ready_ms": round(off_ms, 1),
-            "off_change_ratio": round(off_ratio, 6),
+            "off_change_ratio_to_initial": round(off_ratio, 6),
+            "off_change_ratio_to_heatmap": round(off_to_heatmap, 6),
+            "restore_threshold": round(restore_threshold, 6),
             "restore_verified": bool(off_ready),
         }
 
         if not off_ready:
             # The restore key was already sent. Do NOT send another Y here; doing so
-            # could turn heatmap back on. Fail safely and leave a precise diagnostic.
+            # could turn heatmap back on if the render was merely delayed.
             raise RuntimeError(
-                "Heatmap restore key was sent, but the minimap did not visually match "
-                f"the starting state within {MAX_RENDER_WAIT_MS:.0f} ms "
-                f"(last change ratio {off_ratio:.5f})."
+                "Heatmap restore key was sent, but the minimap did not return close "
+                f"enough to the starting state within {MAX_RESTORE_WAIT_MS:.0f} ms "
+                f"(to start {off_ratio:.5f}, to heatmap {off_to_heatmap:.5f}, "
+                f"threshold {restore_threshold:.5f})."
             )
 
         return toggled_screen, restored_screen, title
