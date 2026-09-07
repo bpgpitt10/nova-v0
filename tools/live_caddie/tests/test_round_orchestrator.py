@@ -65,6 +65,32 @@ class RoundOrchestratorTests(unittest.TestCase):
         self.assertEqual(action.action, "capture-posttee")
         self.assertEqual(orchestrator.tracker.shots_recorded_on_active_hole, 1)
 
+    def test_first_observation_after_accepted_tee_can_be_shot_two(self):
+        orchestrator = RoundOrchestrator(assumptions=self.assumptions)
+        tee = orchestrator.observe(RoundObservation(
+            identity=self.hole2,
+            minimap_surface_label="tee",
+            minimap_surface_is_tee=True,
+            upper_left_shot_number=1,
+            upper_left_distance_to_pin_yds=501,
+        ))
+        self.assertEqual(tee.action, "capture-tee")
+        orchestrator.accept_tee_capture(identity=self.hole2)
+
+        # GSPro may move directly from the accepted tee state to shot 2; Looper
+        # must preserve the tee's counter=1 anchor even without an extra tee frame.
+        action = orchestrator.observe(RoundObservation(
+            identity=self.hole2,
+            minimap_surface_label="fairway",
+            minimap_surface_is_tee=False,
+            upper_left_shot_number=2,
+            upper_left_distance_to_pin_yds=245,
+        ))
+        self.assertEqual(action.action, "capture-posttee")
+        self.assertEqual(action.payload["shot_progression"]["previous_shot_number"], 1)
+        self.assertEqual(action.payload["shot_progression"]["current_shot_number"], 2)
+        self.assertEqual(orchestrator.tracker.shots_recorded_on_active_hole, 1)
+
     def test_fast_hole_change_routes_back_to_tee_capture(self):
         orchestrator = RoundOrchestrator(assumptions=self.assumptions)
         orchestrator.tracker.active_identity = dict(self.hole2)
