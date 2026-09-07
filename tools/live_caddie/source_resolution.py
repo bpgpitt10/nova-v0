@@ -53,9 +53,9 @@ def resolve_distance_to_pin(
 ) -> ResolvedDistance:
     """Resolve DTP once for the whole product and expose disagreement explicitly.
 
-    Precedence is configuration, not code.  A lower-priority source remains useful as
-    a cross-check.  Canonical geometry is only eligible when registration confidence
-    meets the configured floor.
+    Precedence, confidence and disagreement behavior are all configuration. A lower-
+    priority source remains useful as a cross-check. Canonical geometry is only
+    eligible when registration confidence meets the configured floor.
     """
     assumptions = assumptions or Assumptions.load()
     cfg = assumptions.get("source_resolution")
@@ -67,15 +67,20 @@ def resolve_distance_to_pin(
     )
     values = {
         "upper-left-distance-to-pin": DistanceSourceValue(
-            "upper-left-distance-to-pin", upper_left_yds, 1.0 if upper_left_yds is not None else None,
+            "upper-left-distance-to-pin",
+            upper_left_yds,
+            float(cfg["upper_left_source_confidence"]) if upper_left_yds is not None else None,
             upper_left_yds is not None,
         ),
         "pin-card-distance-to-pin": DistanceSourceValue(
-            "pin-card-distance-to-pin", pin_card_yds, 0.98 if pin_card_yds is not None else None,
+            "pin-card-distance-to-pin",
+            pin_card_yds,
+            float(cfg["pin_card_source_confidence"]) if pin_card_yds is not None else None,
             pin_card_yds is not None,
         ),
         "canonical-distance-to-pin": DistanceSourceValue(
-            "canonical-distance-to-pin", canonical_yds,
+            "canonical-distance-to-pin",
+            canonical_yds,
             float(canonical_registration_confidence) if canonical_registration_confidence is not None else None,
             canonical_ok,
         ),
@@ -85,8 +90,9 @@ def resolve_distance_to_pin(
     for source in cfg["distance_to_pin_precedence"]:
         if source in values:
             ordered.append(values[source])
+    already = {item.source for item in ordered}
     for source, value in values.items():
-        if source not in {item.source for item in ordered}:
+        if source not in already:
             ordered.append(value)
 
     eligible = [item for item in ordered if item.available and item.value_yds is not None]
@@ -129,13 +135,17 @@ def resolve_distance_to_pin(
                 level = "agree"
             disagreements.append(SourceDisagreement(left.source, right.source, difference, level))
 
-    base_confidence = float(selected.confidence if selected.confidence is not None else 0.8)
+    base_confidence = float(
+        selected.confidence
+        if selected.confidence is not None
+        else cfg["unrated_source_confidence"]
+    )
     if hard:
         status = "hard-conflict"
-        confidence = min(base_confidence, 0.35)
+        confidence = min(base_confidence, float(cfg["hard_conflict_confidence_cap"]))
     elif warning:
         status = "warning"
-        confidence = min(base_confidence, 0.75)
+        confidence = min(base_confidence, float(cfg["warning_confidence_cap"]))
     else:
         status = "resolved"
         confidence = base_confidence
@@ -156,7 +166,11 @@ def resolve_identity(identity: dict[str, Any] | None, assumptions: Assumptions |
     cfg = assumptions.get("source_resolution")
     payload = dict(identity or {})
     confidence = float(payload.get("confidence") or 0.0)
-    usable = bool(payload.get("course_name") and payload.get("hole_number") is not None and confidence >= float(cfg["identity_minimum_confidence"]))
+    usable = bool(
+        payload.get("course_name")
+        and payload.get("hole_number") is not None
+        and confidence >= float(cfg["identity_minimum_confidence"])
+    )
     return {
         "value": payload if usable else None,
         "usable": usable,
