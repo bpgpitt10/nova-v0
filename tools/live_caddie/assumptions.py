@@ -44,6 +44,7 @@ class Assumptions:
             "source_resolution",
             "green_refinement",
             "round_orchestrator",
+            "shot_mode",
             "candidate_policy",
             "distance_fit",
             "dispersion",
@@ -181,6 +182,30 @@ class Assumptions:
             raise ValueError("round_orchestrator.normal_state_stable_observations must be positive")
         if float(orchestrator["minimum_action_interval_ms"]) < 0:
             raise ValueError("round_orchestrator.minimum_action_interval_ms cannot be negative")
+
+        shot_mode = self.get("shot_mode")
+        surfaces = shot_mode.get("non_full_shot_surfaces")
+        if not isinstance(surfaces, list) or not surfaces:
+            raise ValueError("shot_mode.non_full_shot_surfaces must be a non-empty list")
+        for key in (
+            "non_full_shot_surface_confidence",
+            "aim_inside_green_confidence",
+            "aim_outside_green_confidence",
+            "aim_pin_distance_match_confidence",
+            "aim_pin_distance_divergence_confidence",
+            "fallback_approach_confidence",
+            "unknown_confidence",
+            "minimum_actionable_confidence",
+        ):
+            value = float(shot_mode[key])
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"shot_mode.{key} must be 0..1")
+        if float(shot_mode["aim_pin_distance_absolute_tolerance_yds"]) < 0:
+            raise ValueError("shot_mode aim/pin absolute tolerance cannot be negative")
+        if float(shot_mode["aim_pin_distance_relative_tolerance_fraction"]) < 0:
+            raise ValueError("shot_mode aim/pin relative tolerance cannot be negative")
+        if float(shot_mode["fallback_approach_max_pin_distance_yds"]) <= 0:
+            raise ValueError("shot_mode fallback approach distance must be positive")
 
         for mode in ("approach", "strategic"):
             weights = self.get(f"scoring.{mode}")
