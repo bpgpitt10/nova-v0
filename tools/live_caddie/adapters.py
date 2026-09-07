@@ -95,6 +95,7 @@ def live_state_from_probe(
     )
 
     pin = shot_state.get("pin") or {}
+    aim = shot_state.get("aim") or {}
     lie = shot_state.get("lie_slope") or {}
     registration = geometry.get("registration") or {}
     crosscheck = geometry.get("pin_distance_crosscheck") or {}
@@ -111,6 +112,8 @@ def live_state_from_probe(
         pin_right_yds=pin_right,
         gspro_aim_forward_yds=(float(aim_context["forward_yds"]) if aim_context.get("forward_yds") is not None else None),
         gspro_aim_right_yds=(float(aim_context["right_yds"]) if aim_context.get("right_yds") is not None else None),
+        gspro_aim_distance_yds=(float(aim["distance_yds"]) if aim.get("distance_yds") is not None else None),
+        gspro_aim_elevation_delta_yds=float(aim.get("elevation_delta_yds") or 0.0),
         external_carry_adjustment_yds=float(external_carry_adjustment_yds),
         external_lateral_adjustment_yds=float(external_lateral_adjustment_yds),
         lie_up_down_deg=(float(lie.get("signed_up_down_deg")) if lie.get("signed_up_down_deg") is not None else None),
