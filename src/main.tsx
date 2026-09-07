@@ -9,6 +9,7 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -194,7 +195,7 @@ function RootRouter() {
     return <App forceDashboardRoute={showDashboardRoute} />
   }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
 
-  return view
+  return <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
 }
 
 createRoot(document.getElementById('root')!).render(

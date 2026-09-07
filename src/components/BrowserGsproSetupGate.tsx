@@ -1,0 +1,314 @@
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  chooseGsproDirectory,
+  isBrowserGsproAccessSupported,
+  loadGsproDirectoryHandle,
+  queryGsproDirectoryPermission,
+  requestGsproDirectoryPermission,
+  saveGsproDirectoryHandle,
+  type BrowserDirectoryHandle,
+} from '../adapters/browserGsproAccess'
+import { prepareBrowserGsproRuntime } from '../adapters/browserGsproLive'
+import './BrowserGsproSetupGate.css'
+
+type SetupState =
+  | 'checking'
+  | 'needs-folder'
+  | 'needs-permission'
+  | 'session-ready'
+  | 'ready'
+  | 'unsupported'
+  | 'error'
+
+type BrowserGsproSetupGateProps = {
+  children: ReactNode
+}
+
+const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
+
+const isTauriRuntime = () =>
+  typeof window !== 'undefined' &&
+  Boolean(
+    (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }).__TAURI__ ||
+      (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown })
+        .__TAURI_INTERNALS__,
+  )
+
+const isWindowsBrowser = () =>
+  typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+
+export default function BrowserGsproSetupGate({
+  children,
+}: BrowserGsproSetupGateProps) {
+  const [setupState, setSetupState] = useState<SetupState>('checking')
+  const [directoryHandle, setDirectoryHandle] = useState<BrowserDirectoryHandle | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const prepareAndEnterLooper = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const prepared = await prepareBrowserGsproRuntime()
+      if (!prepared) {
+        setSetupState('needs-permission')
+        return
+      }
+      setSetupState('ready')
+    } catch (runtimeError) {
+      setError(runtimeError instanceof Error ? runtimeError.message : String(runtimeError))
+      setSetupState('error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    // The direct-file flow is only for the hosted Windows browser experience.
+    // Tauri keeps its existing local helper path; Mac/other devices remain normal Looper viewers.
+    if (isTauriRuntime() || !isWindowsBrowser()) {
+      setSetupState('ready')
+      return
+    }
+
+    if (!isBrowserGsproAccessSupported()) {
+      setSetupState('unsupported')
+      return
+    }
+
+    let cancelled = false
+
+    const restore = async () => {
+      try {
+        const handle = await loadGsproDirectoryHandle()
+        if (cancelled) {
+          return
+        }
+        if (!handle) {
+          setSetupState('needs-folder')
+          return
+        }
+
+        setDirectoryHandle(handle)
+        const permission = await queryGsproDirectoryPermission(handle, 'readwrite')
+        if (cancelled) {
+          return
+        }
+
+        if (permission === 'granted') {
+          const prepared = await prepareBrowserGsproRuntime()
+          if (!cancelled) {
+            setSetupState(prepared ? 'ready' : 'needs-permission')
+          }
+          return
+        }
+
+        setSetupState('needs-permission')
+      } catch (restoreError) {
+        if (!cancelled) {
+          setError(restoreError instanceof Error ? restoreError.message : String(restoreError))
+          setSetupState('error')
+        }
+      }
+    }
+
+    void restore()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const chooseFolder = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const handle = await chooseGsproDirectory()
+      await handle.getFileHandle('GSPro.db')
+      await saveGsproDirectoryHandle(handle)
+      setDirectoryHandle(handle)
+      setSetupState('session-ready')
+    } catch (chooseError) {
+      const message = chooseError instanceof Error ? chooseError.message : String(chooseError)
+      if (message.toLowerCase().includes('abort')) {
+        setSetupState('needs-folder')
+      } else {
+        setError(
+          message.includes('GSPro.db')
+            ? 'That folder does not contain GSPro.db. Choose the GSPro folder inside AppData\\LocalLow\\GSPro.'
+            : message,
+        )
+        setSetupState('needs-folder')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const restorePermission = async () => {
+    if (!directoryHandle) {
+      setSetupState('needs-folder')
+      return
+    }
+
+    setBusy(true)
+    setError(null)
+    try {
+      const permission = await requestGsproDirectoryPermission(directoryHandle, 'readwrite')
+      if (permission !== 'granted') {
+        setError('Chrome did not grant GSPro folder access. Try again and choose Allow every time.')
+        return
+      }
+
+      const prepared = await prepareBrowserGsproRuntime()
+      if (!prepared) {
+        setError('Looper could not restore the saved GSPro connection.')
+        return
+      }
+      setSetupState('ready')
+    } catch (permissionError) {
+      setError(permissionError instanceof Error ? permissionError.message : String(permissionError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(DEFAULT_GSPRO_PATH)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  if (setupState === 'ready') {
+    return children
+  }
+
+  if (setupState === 'checking') {
+    return (
+      <main className="gspro-setup">
+        <section className="gspro-setup__card gspro-setup__card--compact">
+          <span className="gspro-setup__eyebrow">Looper setup</span>
+          <h1>Connecting to GSPro…</h1>
+        </section>
+      </main>
+    )
+  }
+
+  if (setupState === 'unsupported') {
+    return (
+      <main className="gspro-setup">
+        <section className="gspro-setup__card">
+          <span className="gspro-setup__eyebrow">Looper setup</span>
+          <h1>Use Chrome or Edge for direct GSPro connection</h1>
+          <p>
+            Direct GSPro connection currently requires desktop Chrome or Edge on Windows.
+          </p>
+          <button type="button" className="gspro-setup__secondary" onClick={() => setSetupState('ready')}>
+            Continue without GSPro
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <main className="gspro-setup">
+      <section className="gspro-setup__card">
+        <span className="gspro-setup__eyebrow">Looper · GSPro connection</span>
+
+        {setupState === 'needs-folder' ? (
+          <>
+            <h1>Connect GSPro</h1>
+            <p className="gspro-setup__lead">
+              Looper can read GSPro directly from Chrome. No SimRead download is required.
+            </p>
+            <div className="gspro-setup__step">
+              <strong>Choose the folder containing GSPro.db</strong>
+              <p>GSPro normally stores it here. In the Windows folder picker, press Ctrl + L and paste this path.</p>
+              <div className="gspro-setup__path-row">
+                <code>{DEFAULT_GSPRO_PATH}</code>
+                <button type="button" className="gspro-setup__secondary" onClick={() => void copyPath()}>
+                  {copied ? 'Copied' : 'Copy path'}
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="gspro-setup__primary"
+              disabled={busy}
+              onClick={() => void chooseFolder()}
+            >
+              {busy ? 'Opening…' : 'Choose GSPro folder'}
+            </button>
+            <button
+              type="button"
+              className="gspro-setup__secondary"
+              disabled={busy}
+              onClick={() => setSetupState('ready')}
+              style={{ marginLeft: 10 }}
+            >
+              Continue without GSPro
+            </button>
+          </>
+        ) : null}
+
+        {setupState === 'needs-permission' ? (
+          <>
+            <h1>Keep GSPro connected</h1>
+            <p className="gspro-setup__lead">
+              Looper remembered your GSPro folder. One final Chrome permission makes the connection persist.
+            </p>
+            <div className="gspro-setup__callout">
+              <strong>Important:</strong> after you click below, choose <strong>Allow every time</strong> in Chrome.
+            </div>
+            <button
+              type="button"
+              className="gspro-setup__primary"
+              disabled={busy}
+              onClick={() => void restorePermission()}
+            >
+              {busy ? 'Connecting…' : 'Keep GSPro connected'}
+            </button>
+          </>
+        ) : null}
+
+        {setupState === 'session-ready' ? (
+          <>
+            <h1>GSPro connected</h1>
+            <p className="gspro-setup__lead">
+              You are ready for this session. On a future visit Chrome may ask one more time for folder access.
+            </p>
+            <div className="gspro-setup__callout">
+              If that happens, Looper will show a <strong>Keep GSPro connected</strong> button. Choose <strong>Allow every time</strong> in Chrome and you should not have to do this again.
+            </div>
+            <button
+              type="button"
+              className="gspro-setup__primary"
+              disabled={busy}
+              onClick={() => void prepareAndEnterLooper()}
+            >
+              {busy ? 'Starting…' : 'Enter Looper'}
+            </button>
+          </>
+        ) : null}
+
+        {setupState === 'error' ? (
+          <>
+            <h1>GSPro connection needs attention</h1>
+            <p className="gspro-setup__lead">{error ?? 'Looper could not prepare the browser GSPro connection.'}</p>
+            <button type="button" className="gspro-setup__primary" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          </>
+        ) : null}
+
+        {error && setupState !== 'error' ? <div className="gspro-setup__error">{error}</div> : null}
+      </section>
+    </main>
+  )
+}
