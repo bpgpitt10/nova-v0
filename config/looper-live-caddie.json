@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.2.0",
+  "assumptions_version": "0.3.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -14,6 +14,22 @@
     "hazard_simplify_epsilon_px": 1.5,
     "green_simplify_epsilon_px": 1.5,
     "heatmap_sample_stride_px": 5
+  },
+  "screen_detection": {
+    "aim_marker": {
+      "hough_dp": 1.1,
+      "hough_min_distance_px": 12,
+      "hough_param1": 80,
+      "hough_param2": 18,
+      "min_radius_px": 5,
+      "max_radius_px": 14,
+      "center_patch_radius_px": 3,
+      "max_saturation": 80,
+      "min_value": 100,
+      "max_value": 230,
+      "marker_exclusion_radius_px": 20,
+      "distance_tolerance_yds": 10
+    }
   },
   "candidate_policy": {
     "include_stock": true,
