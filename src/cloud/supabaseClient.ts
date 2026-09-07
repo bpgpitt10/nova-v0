@@ -153,7 +153,9 @@ export const getSupabaseClient = async (): Promise<SupabaseClientLike> => {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'pkce',
+        // Looper is a client-only Vite app. The implicit flow lets the standard
+        // Supabase magic-link template return the session directly to the browser.
+        flowType: 'implicit',
       },
     })
   })()
