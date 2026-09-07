@@ -11,18 +11,18 @@ misread by Tesseract (for example 5'11" as 5'14"), and the pin's yard value can 
 lost when the card divider/border enters the OCR crop. We therefore:
 - use tighter elevation crops first;
 - retry several Tesseract page-segmentation modes;
-- reject impossible inch values (>11) instead of silently converting them.
+- reject impossible inch values (>11) instead of silently converting them;
+- vote across all valid OCR passes instead of trusting the first parseable value.
 
-This version intentionally does NOT synthesize L/R aim input yet. First prove that
-both cards can be detected/read reliably without altering the player's aim. The
-next step can reuse the calibrated duration-based aim actuator pattern from the
-putting auto-aim project.
+This version intentionally does NOT synthesize aim input itself; later probes layer
+controlled arrow-key actuation on top of these card readers.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+from collections import Counter
 
 import cv2
 
@@ -77,7 +77,7 @@ def _read_target_card_v6(
     bbox_override: tuple[int, int, int, int] | None = None,
     debug_dir=None,
 ):
-    """Read one already-located target card with multi-pass elevation OCR."""
+    """Read one already-located target card with consensus multi-pass elevation OCR."""
     bbox = bbox_override or target_card.detect_target_card(screen)
     x, y, w, h = bbox
     card = screen[y:y + h, x:x + w].copy()
@@ -93,19 +93,20 @@ def _read_target_card_v6(
     direction = target_card._green_triangle_direction(card)
 
     # Start tight enough to exclude the horizontal divider and right card border.
-    # Retry broader crops only if needed. Multiple PSMs help with GSPro's condensed
-    # font, especially repeated '1' glyphs such as 5'11".
+    # Multiple crops/PSMs are intentionally ALL evaluated. A field case displayed
+    # `5y` but one OCR pass returned `2y`; accepting the first parseable pass made
+    # that wrong value authoritative. Consensus is much safer for these tiny glyphs.
     crop_specs = [
         (0.55, 0.89, 0.30, 0.88),
         (0.53, 0.91, 0.28, 0.90),
         (0.50, 0.94, 0.28, 0.94),
+        (0.48, 0.86, 0.30, 0.90),
     ]
     psms = ("7", "8", "13", "6")
 
-    elevation_raw = ""
-    elevation_ft = None
-    elevation_yds = None
-    chosen_elevation_crop = None
+    first_raw = ""
+    first_crop = None
+    candidates: list[tuple[str, float, float, object, str]] = []
 
     for y0, y1, x0, x1 in crop_specs:
         crop = card[int(h * y0):int(h * y1), int(w * x0):int(w * x1)]
@@ -113,18 +114,27 @@ def _read_target_card_v6(
             continue
         for psm in psms:
             raw = target_card._ocr(crop, tess, "0123456789yY'\"", psm=psm).strip()
-            if raw and not elevation_raw:
-                elevation_raw = raw
-                chosen_elevation_crop = crop
+            if raw and not first_raw:
+                first_raw = raw
+                first_crop = crop
             parsed_ft, parsed_yds = _strict_parse_elevation(raw, direction)
-            if parsed_ft is not None:
-                elevation_raw = raw
-                elevation_ft = parsed_ft
-                elevation_yds = parsed_yds
-                chosen_elevation_crop = crop
-                break
-        if elevation_ft is not None:
-            break
+            if parsed_ft is not None and parsed_yds is not None:
+                candidates.append((raw, parsed_ft, parsed_yds, crop, psm))
+
+    elevation_raw = first_raw
+    elevation_ft = None
+    elevation_yds = None
+    chosen_elevation_crop = first_crop
+
+    if candidates:
+        # Normalize all semantically equivalent reads to total inches. This lets
+        # repeated `5y` votes beat a one-off `2y`, and also unifies equivalent
+        # feet/inches formatting if punctuation differs between OCR passes.
+        keys = [int(round(item[1] * 12.0)) for item in candidates]
+        counts = Counter(keys)
+        winning_key, _votes = counts.most_common(1)[0]
+        winner = next(item for item, key in zip(candidates, keys) if key == winning_key)
+        elevation_raw, elevation_ft, elevation_yds, chosen_elevation_crop, _psm = winner
 
     # Do not turn an impossible OCR value into a plausible-looking elevation.
     # Preserve raw OCR for debugging if every retry failed validation.
