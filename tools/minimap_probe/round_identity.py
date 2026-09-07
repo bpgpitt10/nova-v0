@@ -5,13 +5,14 @@ The full-screen GSPro HUD carries a stable course/hole block in the upper-right:
     hole number | course name
                 | PAR n | nnn YDS
 
-This module treats that block as identity, not golf calculation.  It is intentionally
+This module treats that block as identity, not golf calculation. It is intentionally
 independent of minimap PIN visibility so post-tee shots can select the correct cached
 HoleModel even when GSPro crops the green/pin out of the minimap.
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
@@ -114,15 +115,36 @@ def read_round_identity(
     par_crop, par_box = _crop_normalized(screen, config["par_roi_normalized"])
     yards_crop, yards_box = _crop_normalized(screen, config["yards_roi_normalized"])
 
-    hole_raw = target_card._ocr(hole_crop, tess, "0123456789", psm="7")
-    course_raw = target_card._ocr(
-        course_crop,
-        tess,
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 &'\-",
-        psm="7",
-    )
-    par_raw = target_card._ocr(par_crop, tess, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ", psm="7")
-    yards_raw = target_card._ocr(yards_crop, tess, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ", psm="7")
+    # Four independent frozen-image OCR reads. Running them concurrently keeps the
+    # identity check underneath the existing AIM/UI latency instead of stacking four
+    # serial Tesseract waits onto STATE READY.
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="round-id") as executor:
+        hole_future = executor.submit(target_card._ocr, hole_crop, tess, "0123456789", "7")
+        course_future = executor.submit(
+            target_card._ocr,
+            course_crop,
+            tess,
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 &'\-",
+            "7",
+        )
+        par_future = executor.submit(
+            target_card._ocr,
+            par_crop,
+            tess,
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
+            "7",
+        )
+        yards_future = executor.submit(
+            target_card._ocr,
+            yards_crop,
+            tess,
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
+            "7",
+        )
+        hole_raw = hole_future.result()
+        course_raw = course_future.result()
+        par_raw = par_future.result()
+        yards_raw = yards_future.result()
 
     hole = _first_int(hole_raw)
     par = _first_int(par_raw)
