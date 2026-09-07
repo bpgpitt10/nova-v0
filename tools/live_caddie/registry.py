@@ -136,14 +136,14 @@ CALCULATIONS = {
         ("green.sample_sigma_extent", "green.minimum_containment_fraction", "green.strong_containment_fraction"),
     ),
     "shot_scoring": CalculationSpec(
-        "shot-scoring", "v2",
-        "Combine mode-aware distance fit, boundary risk, green containment and strategic aim change using external weights.",
+        "shot-scoring", "v3",
+        "Combine mode-aware distance fit, boundary risk, green containment and nonlinear strategic aim-change cost using external assumptions.",
         "tools.live_caddie.scoring.evaluate",
         ("CandidateShot", "LiveShotState", "HazardBoundary[]", "GreenSurface?"),
         ("CandidateEvaluation",),
         ("distance_fit.absolute_tolerance_yds", "distance_fit.relative_tolerance_fraction",
          "distance_fit.hard_reject_multiplier", "scoring.approach", "scoring.strategic",
-         "scoring.aim_change_reference_yds"),
+         "scoring.aim_change_reference_yds", "scoring.aim_change_exponent"),
         ("effective-target-distance", "hazard-boundary-risk", "green-containment"),
     ),
     "recommendation_confidence": CalculationSpec(
