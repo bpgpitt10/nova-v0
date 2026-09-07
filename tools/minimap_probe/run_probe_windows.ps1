@@ -29,7 +29,7 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v8.py"),
+  (Join-Path $Here "probe_v8_fixed.py"),
   "--monitor", "$Monitor",
   "--heatmap-key", "$HeatmapKey",
   "--heatmap-settle-ms", "$HeatmapSettleMs",
