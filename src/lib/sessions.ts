@@ -4,6 +4,7 @@ import { isSystemOldExcludedSession } from './historicalModel'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
+export const SESSION_HISTORY_UPDATED_EVENT = 'looper-session-history-updated'
 
 export const loadSavedSessions = (): SavedSession[] => {
   try {
@@ -26,6 +27,7 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
   )
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  window.dispatchEvent(new Event(SESSION_HISTORY_UPDATED_EVENT))
 
   sessions.forEach((session) => {
     const previousSerialized = previousById.get(session.id)
