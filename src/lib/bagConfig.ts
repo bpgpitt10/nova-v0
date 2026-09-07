@@ -1,3 +1,4 @@
+import { syncBagConfigToCloud } from '../cloud/cloudPersistence'
 import {
   BAG_SETUP_SECTION_ORDER,
   getBagSetupSectionKey,
@@ -169,6 +170,14 @@ export const saveBagConfig = (selectedClubs: Club[]) => {
   window.localStorage.setItem(BAG_CONFIG_STORAGE_KEY, JSON.stringify(payload))
   refreshBagConfigState()
   window.dispatchEvent(new Event(BAG_CONFIG_UPDATED_EVENT))
+
+  void syncBagConfigToCloud(payload.selectedClubs).then((result) => {
+    if (result.status === 'failed') {
+      console.warn('[Cloud Sync] bag sync failed; local copy retained', {
+        error: result.error,
+      })
+    }
+  })
 }
 
 export const hasSavedBagConfig = () => loadBagConfig() !== null
