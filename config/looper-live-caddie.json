@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.7.0",
+  "assumptions_version": "0.8.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -8,7 +8,8 @@
     "Hazard scoring is boundary-proximity risk until penalty-side semantics are validated.",
     "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments.",
     "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
-    "Automatic aim remains disabled by default until solver decisions and large moves are field validated."
+    "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
+    "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -18,6 +19,23 @@
     "heatmap_sample_stride_px": 5
   },
   "screen_detection": {
+    "round_identity": {
+      "hole_number_roi_normalized": [0.778, 0.018, 0.815, 0.092],
+      "course_name_roi_normalized": [0.818, 0.018, 0.950, 0.060],
+      "par_roi_normalized": [0.814, 0.052, 0.878, 0.092],
+      "yards_roi_normalized": [0.872, 0.052, 0.950, 0.092],
+      "hole_min": 1,
+      "hole_max": 18,
+      "par_min": 3,
+      "par_max": 6,
+      "yards_min": 50,
+      "yards_max": 900,
+      "minimum_usable_confidence": 0.65,
+      "course_weight": 0.35,
+      "hole_weight": 0.35,
+      "par_weight": 0.15,
+      "yards_weight": 0.15
+    },
     "registration": {
       "play_mask_top_fraction": 0.105,
       "play_mask_bottom_fraction": 0.945,
@@ -45,7 +63,8 @@
       "safety_margin_px": 8.0,
       "min_ball_pin_separation_px": 10.0,
       "min_yards_per_pixel": 0.02,
-      "max_yards_per_pixel": 3.0
+      "max_yards_per_pixel": 3.0,
+      "pin_projection_check_tolerance_px": 18.0
     },
     "aim_marker": {
       "hough_dp": 1.1,
@@ -61,6 +80,14 @@
       "marker_exclusion_radius_px": 20,
       "distance_tolerance_yds": 10
     }
+  },
+  "hole_model_cache": {
+    "course_name_similarity_min": 0.78,
+    "hole_yardage_tolerance_yds": 12,
+    "par_match_bonus": 0.10,
+    "yardage_match_bonus": 0.10,
+    "allow_legacy_latest_when_no_identity_tagged_models": true,
+    "allow_latest_when_current_identity_unavailable": true
   },
   "candidate_policy": {
     "include_stock": true,
