@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.9.1",
+  "assumptions_version": "0.10.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -10,7 +10,7 @@
     "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
     "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
     "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only.",
-    "Tee-state inference is evidence-based: upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation."
+    "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -36,6 +36,15 @@
       "hole_weight": 0.35,
       "par_weight": 0.15,
       "yards_weight": 0.15
+    },
+    "minimap_surface": {
+      "title_roi_normalized": [0.25, 0.01, 0.72, 0.105],
+      "ocr_psm": "7",
+      "tee_label": "tee",
+      "recognized_non_tee_labels": ["fairway", "rough", "sand", "green", "fringe", "bunker"],
+      "fuzzy_match_min": 0.80,
+      "exact_match_confidence": 1.0,
+      "fuzzy_match_confidence": 0.78
     },
     "registration": {
       "play_mask_top_fraction": 0.105,
@@ -100,7 +109,9 @@
     "minimum_confirmed_confidence": 0.70,
     "minimum_probable_confidence": 0.50,
     "require_transition_or_shot_one_anchor": true,
+    "minimap_tee_surface_counts_as_anchor": true,
     "current_identity_valid_weight": 0.12,
+    "minimap_tee_surface_weight": 0.50,
     "hole_change_weight": 0.40,
     "shot_number_one_weight": 0.28,
     "no_recorded_shots_weight": 0.12,
@@ -110,6 +121,7 @@
     "full_hole_minimap_weight": 0.04,
     "distance_absolute_tolerance_yds": 18.0,
     "distance_relative_tolerance_fraction": 0.06,
+    "non_tee_surface_is_hard_contradiction": true,
     "shot_number_gt_one_is_hard_contradiction": true,
     "recorded_shots_is_hard_contradiction": true
   },
