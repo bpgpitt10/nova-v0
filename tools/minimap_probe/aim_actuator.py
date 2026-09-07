@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Controlled GSPro full-shot aim pulses for exposing the live AIM target card.
 
+GSPro's full-shot aim controls are the LEFT/RIGHT ARROW keys. Letter L is the
+Lighting menu and letter R is Range Finder, so aim actuation must never use literal
+L/R letters.
+
 The read-only live probe may need to make GSPro render its player-colored AIM card.
-A human L/R tap is not safe because GSPro aim movement is duration based. This
+A human arrow tap is not safe because GSPro aim movement is duration based. This
 module therefore:
 - focuses a verified GSPro window before sending input;
-- sends a measured L pulse followed by the same R pulse;
+- sends a measured LEFT-arrow pulse followed by the same RIGHT-arrow pulse;
 - captures the scene after each stage;
 - estimates residual camera/aim shift with phase correlation;
-- applies at most a tiny bounded corrective pulse when the visual measurement is
+- applies at most a tiny bounded corrective arrow pulse when visual measurement is
   reliable;
 - refuses speculative correction when confidence is poor.
 
@@ -29,8 +33,11 @@ import cv2
 import numpy as np
 
 
+KEYEVENTF_EXTENDEDKEY = 0x0001
 KEYEVENTF_KEYUP = 0x0002
 SW_RESTORE = 9
+VK_LEFT = 0x25
+VK_RIGHT = 0x27
 
 
 @dataclass
@@ -119,17 +126,27 @@ def focus_gspro(hwnd: int, wait_s: float = 0.10) -> bool:
     return int(user32.GetForegroundWindow()) == int(hwnd)
 
 
-def pulse_key_windows(key: str, duration_ms: float) -> None:
-    """Hold one GSPro aim key for a controlled duration and always release it."""
-    _require_windows()
-    if not key or len(key) != 1:
-        raise ValueError("Aim key must be one character.")
-    if duration_ms <= 0:
-        raise ValueError("Aim pulse duration must be > 0 ms.")
+def _virtual_key(key: str) -> tuple[int, int]:
+    """Resolve a safe key name to Win32 virtual-key code + keybd_event flags."""
+    normalized = key.strip().upper()
+    if normalized == "LEFT":
+        return VK_LEFT, KEYEVENTF_EXTENDEDKEY
+    if normalized == "RIGHT":
+        return VK_RIGHT, KEYEVENTF_EXTENDEDKEY
+    if len(normalized) == 1 and normalized.isascii():
+        return ord(normalized), 0
+    raise ValueError(f"Unsupported key {key!r}; use LEFT, RIGHT, or a single ASCII key.")
 
-    vk = ord(key.upper())
+
+def pulse_key_windows(key: str, duration_ms: float) -> None:
+    """Hold one GSPro key for a controlled duration and always release it."""
+    _require_windows()
+    if duration_ms <= 0:
+        raise ValueError("Key pulse duration must be > 0 ms.")
+
+    vk, flags = _virtual_key(key)
     user32 = ctypes.windll.user32
-    user32.keybd_event(vk, 0, 0, 0)
+    user32.keybd_event(vk, 0, flags, 0)
     try:
         deadline = time.perf_counter() + duration_ms / 1000.0
         while True:
@@ -140,7 +157,7 @@ def pulse_key_windows(key: str, duration_ms: float) -> None:
             # the scheduler rather than busy-spinning the simulator PC.
             time.sleep(max(0.0005, remaining - 0.001))
     finally:
-        user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+        user32.keybd_event(vk, 0, flags | KEYEVENTF_KEYUP, 0)
 
 
 def _scene_gray(screen: np.ndarray) -> np.ndarray:
@@ -184,7 +201,7 @@ def summon_aim_card(
     max_corrections: int = 2,
     debug_dir: Path | None = None,
 ) -> AimSummonResult:
-    """Expose AIM card with L/R while returning as closely as possible to start aim."""
+    """Expose AIM card with LEFT/RIGHT arrows while returning close to start aim."""
     result = AimSummonResult(attempted=True, pulse_ms=float(pulse_ms))
     result.final_screen = initial_screen
     _save_debug(debug_dir, "latest_aim_summon_before.png", initial_screen)
@@ -195,7 +212,7 @@ def summon_aim_card(
 
     found = find_gspro_window()
     if found is None:
-        result.warning = "Could not find a visible GSPro window; no L/R input sent."
+        result.warning = "Could not find a visible GSPro window; no arrow input sent."
         return result
 
     hwnd, title = found
@@ -207,11 +224,11 @@ def summon_aim_card(
 
     try:
         if not focus_gspro(hwnd):
-            result.warning = "Could not safely focus GSPro; no L/R input sent."
+            result.warning = "Could not safely focus GSPro; no arrow input sent."
             return result
 
-        # First controlled pulse makes GSPro render/move its AIM state.
-        pulse_key_windows("L", pulse_ms)
+        # First controlled LEFT-arrow pulse makes GSPro render/move its AIM state.
+        pulse_key_windows("LEFT", pulse_ms)
         left_was_sent = True
         time.sleep(settle_ms / 1000.0)
         after_left = capture_fn()
@@ -221,7 +238,7 @@ def summon_aim_card(
         # measurement/correction. This is the neutral baseline operation.
         if not focus_gspro(hwnd, wait_s=0.04):
             raise RuntimeError("GSPro lost foreground focus before the return pulse.")
-        pulse_key_windows("R", pulse_ms)
+        pulse_key_windows("RIGHT", pulse_ms)
         right_was_sent = True
         time.sleep(settle_ms / 1000.0)
         returned = capture_fn()
@@ -235,8 +252,8 @@ def summon_aim_card(
         result.response_left = response_left
         result.response_return = response_return
 
-        # We only trust correction math if the intentional L move was measurable and
-        # both phase-correlation responses contain useful signal.
+        # We only trust correction math if the intentional LEFT move was measurable
+        # and both phase-correlation responses contain useful signal.
         reliable = (
             abs(left_dx) >= 0.75
             and response_left >= 0.035
@@ -245,8 +262,8 @@ def summon_aim_card(
         if not reliable:
             result.verified = None
             result.warning = (
-                "AIM card was summoned with matched L/R pulses, but visual return "
-                "verification was low-confidence; no speculative correction applied."
+                "AIM card was summoned with matched LEFT/RIGHT arrow pulses, but visual "
+                "return verification was low-confidence; no speculative correction applied."
             )
             _save_debug(debug_dir, "latest_aim_summon_final.png", result.final_screen)
             return result
@@ -258,9 +275,9 @@ def summon_aim_card(
 
         previous_abs = abs(residual_dx)
         for _ in range(max(0, int(max_corrections))):
-            # If residual has the same sign as the intentional L shift, the pair left
-            # us slightly toward L, so correct with R; otherwise correct with L.
-            correction_key = "R" if residual_dx * left_dx > 0 else "L"
+            # If residual has the same sign as the intentional LEFT shift, the pair
+            # left us slightly toward LEFT, so correct RIGHT; otherwise correct LEFT.
+            correction_key = "RIGHT" if residual_dx * left_dx > 0 else "LEFT"
             duration_ms = pulse_ms * abs(residual_dx / left_dx)
             duration_ms = min(max(duration_ms, 2.0), max_correction_ms)
 
@@ -319,12 +336,13 @@ def summon_aim_card(
         return result
 
     except Exception as exc:
-        # If L was sent but the normal R path failed, best-effort neutralize before
-        # returning. We deliberately do not run further correction without screenshots.
+        # If LEFT was sent but the normal RIGHT path failed, best-effort neutralize
+        # before returning. We deliberately do not run further correction without
+        # screenshots.
         if left_was_sent and not right_was_sent:
             try:
                 if focus_gspro(hwnd, wait_s=0.04):
-                    pulse_key_windows("R", pulse_ms)
+                    pulse_key_windows("RIGHT", pulse_ms)
                     time.sleep(settle_ms / 1000.0)
                     result.final_screen = capture_fn()
             except Exception:
