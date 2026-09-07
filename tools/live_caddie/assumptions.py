@@ -41,6 +41,9 @@ class Assumptions:
             "screen_detection",
             "hole_model_cache",
             "tee_state",
+            "source_resolution",
+            "green_refinement",
+            "round_orchestrator",
             "candidate_policy",
             "distance_fit",
             "dispersion",
@@ -77,6 +80,10 @@ class Assumptions:
         if abs(identity_weight_sum - 1.0) > 1e-6:
             raise ValueError("round identity confidence weights must sum to 1.0")
 
+        surface = self.get("screen_detection.minimap_surface")
+        if not (0.0 <= float(surface["fuzzy_match_min"]) <= 1.0):
+            raise ValueError("minimap surface fuzzy_match_min must be 0..1")
+
         cache = self.get("hole_model_cache")
         if not (0.0 <= float(cache["course_name_similarity_min"]) <= 1.0):
             raise ValueError("hole_model_cache.course_name_similarity_min must be 0..1")
@@ -103,6 +110,7 @@ class Assumptions:
             raise ValueError("tee_state confidence thresholds must satisfy 0 <= probable <= confirmed <= 1")
         for key in (
             "current_identity_valid_weight",
+            "minimap_tee_surface_weight",
             "hole_change_weight",
             "shot_number_one_weight",
             "no_recorded_shots_weight",
@@ -117,6 +125,45 @@ class Assumptions:
             raise ValueError("tee_state.distance_absolute_tolerance_yds cannot be negative")
         if float(tee["distance_relative_tolerance_fraction"]) < 0:
             raise ValueError("tee_state.distance_relative_tolerance_fraction cannot be negative")
+
+        source = self.get("source_resolution")
+        precedence = source.get("distance_to_pin_precedence")
+        if not isinstance(precedence, list) or not precedence:
+            raise ValueError("source_resolution.distance_to_pin_precedence must be a non-empty list")
+        if len(precedence) != len(set(precedence)):
+            raise ValueError("distance-to-pin precedence contains duplicate sources")
+        for key in (
+            "distance_warning_absolute_yds",
+            "distance_warning_relative_fraction",
+            "distance_hard_conflict_absolute_yds",
+            "distance_hard_conflict_relative_fraction",
+        ):
+            if float(source[key]) < 0:
+                raise ValueError(f"source_resolution.{key} cannot be negative")
+        if float(source["distance_hard_conflict_absolute_yds"]) < float(source["distance_warning_absolute_yds"]):
+            raise ValueError("distance hard-conflict absolute threshold must be >= warning threshold")
+        if float(source["distance_hard_conflict_relative_fraction"]) < float(source["distance_warning_relative_fraction"]):
+            raise ValueError("distance hard-conflict relative threshold must be >= warning threshold")
+
+        refinement = self.get("green_refinement")
+        for key in (
+            "minimum_registration_confidence",
+            "minimum_heatmap_confidence",
+        ):
+            if not (0.0 <= float(refinement[key]) <= 1.0):
+                raise ValueError(f"green_refinement.{key} must be 0..1")
+        if float(refinement["maximum_pin_alignment_error_yds"]) <= 0:
+            raise ValueError("green_refinement.maximum_pin_alignment_error_yds must be positive")
+        if int(refinement["maximum_history_entries"]) <= 0:
+            raise ValueError("green_refinement.maximum_history_entries must be positive")
+
+        orchestrator = self.get("round_orchestrator")
+        if int(orchestrator["tee_stable_observations"]) <= 0:
+            raise ValueError("round_orchestrator.tee_stable_observations must be positive")
+        if int(orchestrator["normal_state_stable_observations"]) <= 0:
+            raise ValueError("round_orchestrator.normal_state_stable_observations must be positive")
+        if float(orchestrator["minimum_action_interval_ms"]) < 0:
+            raise ValueError("round_orchestrator.minimum_action_interval_ms cannot be negative")
 
         for mode in ("approach", "strategic"):
             weights = self.get(f"scoring.{mode}")
