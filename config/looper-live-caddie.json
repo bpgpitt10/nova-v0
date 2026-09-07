@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.1.0",
+  "assumptions_version": "0.2.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -8,6 +8,13 @@
     "Hazard scoring is boundary-proximity risk until penalty-side semantics are validated.",
     "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments."
   ],
+  "canonical_geometry": {
+    "player_marker_mask_radius_px": 14,
+    "hazard_min_arc_length_px": 18,
+    "hazard_simplify_epsilon_px": 1.5,
+    "green_simplify_epsilon_px": 1.5,
+    "heatmap_sample_stride_px": 5
+  },
   "candidate_policy": {
     "include_stock": true,
     "include_smooth": true,
