@@ -6,15 +6,15 @@ by default: no GSPro keys are pressed and no capture scripts are launched unless
 operator passes --execute-actions explicitly.
 
 Current capability:
-- detect/confirm new tees from minimap Tee state + upper-right identity + DTP;
+- detect/confirm new tees from minimap Tee state + upper-right identity + upper-left shot/DTP;
+- read non-practice player name, shot number, decimal DTP and signed elevation;
 - plan and optionally launch the proven tee HoleModel capture;
 - retain the accepted active-hole identity across the round;
 - recognize non-tee states without falsely re-triggering tee capture;
-- when explicit upper-left ROIs are supplied, read shot number + DTP and plan
-  post-tee refreshes on authoritative shot-counter advancement.
+- plan post-tee refreshes on authoritative shot-counter advancement.
 
-We intentionally ship NO default upper-left coordinates until a real non-practice
-screenshot is available. Supplying those ROIs is therefore explicit calibration.
+The upper-left HUD now has calibrated normalized defaults from two real non-practice
+screenshots. Explicit x,y,w,h overrides remain diagnostic escape hatches.
 """
 
 from __future__ import annotations
@@ -47,8 +47,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--roi")
     p.add_argument("--tesseract")
     p.add_argument("--poll-ms", type=float, default=250.0)
-    p.add_argument("--upper-left-shot-roi", help="EXPLICIT calibrated x,y,w,h shot-number ROI; no default exists")
-    p.add_argument("--upper-left-distance-roi", help="EXPLICIT calibrated x,y,w,h DTP ROI; no default exists")
+    p.add_argument("--upper-left-shot-roi", help="Optional diagnostic x,y,w,h override")
+    p.add_argument("--upper-left-distance-roi", help="Optional diagnostic x,y,w,h override")
+    p.add_argument("--upper-left-elevation-roi", help="Optional diagnostic x,y,w,h override")
+    p.add_argument("--upper-left-player-roi", help="Optional diagnostic x,y,w,h override")
+    p.add_argument("--disable-upper-left", action="store_true", help="Disable calibrated non-practice upper-left HUD reader")
     p.add_argument("--execute-actions", action="store_true", help="EXPLICITLY allow configured tee capture script to run")
     p.add_argument("--json", action="store_true")
     p.add_argument("--once", action="store_true")
@@ -71,14 +74,6 @@ def _safe_pin_distance(screen, tesseract_path: str | None) -> float | None:
         return float(target_card.read_target_card(screen, tesseract_path=tesseract_path).distance_yds)
     except Exception:
         return None
-
-
-def _upper_left_enabled(args: argparse.Namespace) -> bool:
-    any_roi = bool(args.upper_left_shot_roi or args.upper_left_distance_roi)
-    both = bool(args.upper_left_shot_roi and args.upper_left_distance_roi)
-    if any_roi and not both:
-        raise ValueError("upper-left calibration requires BOTH --upper-left-shot-roi and --upper-left-distance-roi")
-    return both
 
 
 def _run_capture(script_name: str) -> tuple[bool, str]:
@@ -114,7 +109,7 @@ def _emit(payload: dict, as_json: bool) -> None:
 
 def main() -> int:
     args = parse_args()
-    upper_left_enabled = _upper_left_enabled(args)
+    upper_left_enabled = not bool(args.disable_upper_left)
     assumptions = Assumptions.load()
     config = assumptions.get("round_orchestrator")
     orchestrator = RoundOrchestrator(
@@ -132,8 +127,9 @@ def main() -> int:
         print("ACTIONS: ENABLED" if args.execute_actions else "ACTIONS: DRY RUN (default)")
         if not args.execute_actions:
             print("No GSPro keys or capture scripts will run.")
-        print("Upper-left shot-state OCR: CALIBRATED/ENABLED" if upper_left_enabled else "Upper-left shot-state OCR: WAITING FOR NON-PRACTICE SCREENSHOT/ROI CALIBRATION")
-        print("Post-tee events are planned when shot number is available; automatic post-tee execution remains intentionally disabled in this watcher.")
+        print("Upper-left shot-state OCR: CALIBRATED/ENABLED" if upper_left_enabled else "Upper-left shot-state OCR: DISABLED")
+        print("Upper-left provides player + shot number + decimal DTP + signed elevation in non-practice rounds.")
+        print("Post-tee events are planned from shot-number advancement; automatic post-tee execution remains intentionally disabled in this watcher.")
         print("Ctrl+C to stop.")
 
     try:
@@ -155,6 +151,8 @@ def main() -> int:
                         screen,
                         shot_roi=args.upper_left_shot_roi,
                         distance_roi=args.upper_left_distance_roi,
+                        elevation_roi=args.upper_left_elevation_roi,
+                        player_roi=args.upper_left_player_roi,
                         tesseract_path=args.tesseract,
                     )
                 except Exception as exc:
@@ -172,7 +170,12 @@ def main() -> int:
                     tesseract_path=args.tesseract,
                 )
                 if surface is not None and surface.is_tee:
-                    pin_distance = _safe_pin_distance(screen, args.tesseract)
+                    # Non-practice upper-left DTP is more precise and already being
+                    # read for lifecycle. Keep the large PIN card as fallback/cross-check.
+                    if upper_left is not None and upper_left.distance_to_pin_yds is not None:
+                        pin_distance = float(upper_left.distance_to_pin_yds)
+                    else:
+                        pin_distance = _safe_pin_distance(screen, args.tesseract)
             else:
                 identity_payload = orchestrator.tracker.active_identity
 
@@ -190,8 +193,11 @@ def main() -> int:
                 minimap_surface_confidence=(surface.confidence if surface is not None else None),
                 upper_left_shot_number=(upper_left.shot_number if upper_left is not None else None),
                 upper_left_distance_to_pin_yds=(upper_left.distance_to_pin_yds if upper_left is not None else None),
-                pin_card_distance_to_pin_yds=pin_distance,
-                # Do not synthesize independent evidence from the Tee label.
+                pin_card_distance_to_pin_yds=(
+                    None
+                    if upper_left is not None and upper_left.distance_to_pin_yds is not None
+                    else pin_distance
+                ),
                 flat_lie=None,
                 full_hole_minimap=None,
             )
@@ -215,8 +221,6 @@ def main() -> int:
                 if candidate == "capture-tee"
                 else int(config["normal_state_stable_observations"])
             )
-            # Shot events are unique by resulting shot number, so repeated stable
-            # frames cannot suppress a later shot on the same hole.
             shot_suffix = (
                 f"shot-{upper_left.shot_number}"
                 if upper_left is not None and upper_left.shot_number is not None
@@ -261,8 +265,6 @@ def main() -> int:
                             "reason": execution_detail,
                         }, args.json)
                 elif action.action == "capture-posttee" and args.execute_actions:
-                    # Deliberately not executed yet. We need field validation of the
-                    # shot-mode/refinement decision before round watch may launch v4 automatically.
                     _emit({
                         "event": "posttee-execution-blocked",
                         "action": "capture-posttee",
