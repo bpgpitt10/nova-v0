@@ -3,7 +3,10 @@ export {
   MISHIT_INPUT_DEFINITIONS,
   MISHIT_PLAYER_OVERRIDE_DEFINITIONS,
 } from './definitions'
-export { resolveMishitEffectiveThresholds } from './resolve'
+export {
+  resolveMishitEffectiveThresholds,
+  resolveMishitPlayerWeight,
+} from './resolve'
 export type {
   MishitEffectiveThresholdDetail,
   MishitEffectiveThresholds,
@@ -12,4 +15,5 @@ export type {
   MishitPlayerCalibrationOverrides,
   MishitPlayerCalibrationSource,
   MishitPlayerCalibrationStatus,
+  MishitThresholdResolutionSource,
 } from './types'

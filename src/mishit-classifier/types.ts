@@ -126,17 +126,17 @@ export type MishitConfig = {
   }
   carry: {
     mishitLossPct: number
-    mishitLossFloorYards: number
+    mishitLossPriorYards: number
     severeLossPct: number
-    severeLossFloorYards: number
+    severeLossPriorYards: number
   }
   direction: {
-    mishitAbsoluteFloorYards: number
+    mishitAbsolutePriorYards: number
     mishitPctOfCarryCenter: number
-    severeAbsoluteFloorYards: number
+    severeAbsolutePriorYards: number
     severePctOfCarryCenter: number
-    mishitDeviationFromCenterYards: number
-    severeDeviationFromCenterYards: number
+    mishitDeviationPriorYards: number
+    severeDeviationPriorYards: number
   }
   strike: {
     ballSpeedMishitLossPct: number
@@ -150,7 +150,12 @@ export type MishitConfig = {
   }
   personalization: {
     enabled: boolean
-    stableBaselineOnly: boolean
+    maturityWeight: {
+      playerWeightAtProvisional: number
+      playerWeightAtStable: number
+      playerWeightAtMature: number
+      playerWeightAtMaxReference: number
+    }
     carryMadMultiplier: {
       mishit: number
       severe: number
@@ -166,6 +171,26 @@ export type MishitConfig = {
     smashFactorMadMultiplier: {
       mishit: number
       severe: number
+    }
+    sanityMinimums: {
+      carry: {
+        mishitLossYards: number
+        severeLossYards: number
+      }
+      direction: {
+        mishitAbsoluteYards: number
+        severeAbsoluteYards: number
+        mishitDeviationYards: number
+        severeDeviationYards: number
+      }
+      ballSpeed: {
+        mishitLossMph: number
+        severeLossMph: number
+      }
+      smashFactor: {
+        mishitLoss: number
+        severeLoss: number
+      }
     }
   }
 }

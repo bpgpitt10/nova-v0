@@ -5,14 +5,15 @@ import type { MishitConfig } from '../types'
  * changes. Analyses keep the version so input changes can force a deterministic
  * reclassification instead of silently reusing stale results.
  */
-export const MISHIT_INPUT_VERSION = 2
+export const MISHIT_INPUT_VERSION = 3
 
 /**
  * Shared starter policy only. These are NOT Brian-specific thresholds.
  *
- * Player-specific centers and variability come from each club + shot-variant
- * population. Optional per-player boundary overrides live in
- * MishitPlayerCalibration, not here.
+ * The shared boundaries are priors for cold start. As each club + shot-variant
+ * population matures, its own robust variability receives increasing weight and
+ * may tighten OR widen the boundary. Optional per-player learned/manual
+ * boundaries live in MishitPlayerCalibration, not here.
  */
 export const DEFAULT_MISHIT_INPUTS: MishitConfig = {
   version: MISHIT_INPUT_VERSION,
@@ -39,17 +40,17 @@ export const DEFAULT_MISHIT_INPUTS: MishitConfig = {
   },
   carry: {
     mishitLossPct: 0.15,
-    mishitLossFloorYards: 12,
+    mishitLossPriorYards: 12,
     severeLossPct: 0.22,
-    severeLossFloorYards: 20,
+    severeLossPriorYards: 20,
   },
   direction: {
-    mishitAbsoluteFloorYards: 35,
-    mishitPctOfCarryCenter: 0.2,
-    severeAbsoluteFloorYards: 55,
+    mishitAbsolutePriorYards: 35,
+    mishitPctOfCarryCenter: 0.20,
+    severeAbsolutePriorYards: 55,
     severePctOfCarryCenter: 0.25,
-    mishitDeviationFromCenterYards: 30,
-    severeDeviationFromCenterYards: 45,
+    mishitDeviationPriorYards: 30,
+    severeDeviationPriorYards: 45,
   },
   strike: {
     ballSpeedMishitLossPct: 0.12,
@@ -63,7 +64,12 @@ export const DEFAULT_MISHIT_INPUTS: MishitConfig = {
   },
   personalization: {
     enabled: true,
-    stableBaselineOnly: true,
+    maturityWeight: {
+      playerWeightAtProvisional: 0.10,
+      playerWeightAtStable: 0.50,
+      playerWeightAtMature: 0.80,
+      playerWeightAtMaxReference: 0.95,
+    },
     carryMadMultiplier: {
       mishit: 4.5,
       severe: 6.5,
@@ -79,6 +85,29 @@ export const DEFAULT_MISHIT_INPUTS: MishitConfig = {
     smashFactorMadMultiplier: {
       mishit: 4.5,
       severe: 6.5,
+    },
+    // These are numerical guardrails, not golf-performance priors. They exist
+    // only to prevent a zero/tiny MAD from collapsing a mature boundary toward
+    // zero. They are intentionally far below the cold-start priors.
+    sanityMinimums: {
+      carry: {
+        mishitLossYards: 2,
+        severeLossYards: 4,
+      },
+      direction: {
+        mishitAbsoluteYards: 5,
+        severeAbsoluteYards: 10,
+        mishitDeviationYards: 5,
+        severeDeviationYards: 10,
+      },
+      ballSpeed: {
+        mishitLossMph: 2,
+        severeLossMph: 4,
+      },
+      smashFactor: {
+        mishitLoss: 0.015,
+        severeLoss: 0.03,
+      },
     },
   },
 }

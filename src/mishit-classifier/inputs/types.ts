@@ -43,15 +43,26 @@ export type MishitPlayerCalibration = {
   notes?: string[]
 }
 
+export type MishitThresholdResolutionSource =
+  | 'global_prior'
+  | 'maturity_blend'
+  | 'player_override'
+
 export type MishitEffectiveThresholdDetail = {
-  globalBase: number
+  globalPrior: number
   playerVariation?: number
+  playerWeight: number
+  blendedBoundary?: number
   playerOverride?: number
+  sanityMinimum: number
+  sanityConstrained: boolean
+  resolutionSource: MishitThresholdResolutionSource
   effective: number
 }
 
 export type MishitEffectiveThresholds = {
   personalizationApplied: boolean
+  playerWeight: number
   calibrationVersion?: number
   carry: {
     mishitLossYards: MishitEffectiveThresholdDetail
@@ -77,7 +88,7 @@ export type MishitInputDefinition = {
   path: string
   label: string
   group: string
-  scope: 'global_policy' | 'player_override'
+  scope: 'global_policy' | 'sanity_constraint' | 'player_override'
   kind: 'number' | 'boolean'
   description: string
   min?: number

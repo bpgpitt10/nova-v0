@@ -65,6 +65,16 @@ Baseline states:
 
 The baseline is optionally refined by removing only first-pass `severe_mishit` shots and rebuilding. Ordinary `mishit` shots are not removed from the baseline-refinement pass because the first version should remain conservative.
 
+## Player-specific personalization
+
+Shared mishit boundaries are cold-start priors, not permanent floors. Each homogeneous club + shot-variant population earns increasing control of its own boundaries as its sample matures.
+
+The automatic personal boundary is derived from that population's robust MAD and blended with the shared prior. By default the player evidence receives 10% weight at provisional sample size, 50% at stable, 80% at mature population size, and 95% at a full reference window. These are shadow-mode assumptions and are centrally editable inputs.
+
+Because the blend is two-way, a highly consistent golfer can earn a tighter boundary and a high-variance golfer can earn a wider boundary. Player-specific human-review/manual calibration is a separate layer and may also tighten or widen the boundary.
+
+Only small statistical sanity minimums remain as hard lower constraints to prevent zero/tiny MAD samples from producing nonsensical near-zero thresholds. Those constraints are stored separately from golf-performance priors and are exposed independently for a future Inputs page.
+
 ## Refresh policy
 
 A new shot can be classified immediately against the current baseline. The baseline itself is not rebuilt after every swing.
@@ -76,33 +86,34 @@ Default behavior:
 - after the population matures, rebuild every 10 new shots
 - after a mature rebuild, reclassify the full population only if the baseline moved materially
 - otherwise classify only the new shots and preserve existing classifications
+- changing the shared input version or player calibration version forces deterministic reclassification
 
-This cadence and every material-change threshold live in `config.ts`.
+All tunable values live under `inputs/`. `config.ts` is only a compatibility export; classifier engine files should not embed numeric assumptions.
 
-## Initial assumptions
+## Initial shared priors
 
-All numbers below are INITIAL assumptions for shadow-mode validation. None are yet wired into Looper Stock/Pure.
+All numbers below are INITIAL cold-start assumptions for shadow-mode validation. They are not Brian-specific and they are not permanent floors. None are yet wired into Looper Stock/Pure.
 
-| Assumption | Default |
+| Assumption | Default cold-start prior |
 | --- | ---: |
 | Provisional sample | 5 shots |
 | Stable sample | 12 shots |
 | Mature population | 30 shots |
-| Early baseline refresh | every 5 new shots |
-| Mature baseline refresh | every 10 new shots |
 | Max baseline reference window | 100 shots |
-| Mishit carry loss | >= 15% AND >= 12 yd |
-| Severe carry loss | >= 22% AND >= 20 yd |
-| Mishit absolute offline | max(35 yd, 20% of carry center) |
-| Severe absolute offline | max(55 yd, 25% of carry center) |
-| Mishit deviation from offline center | >= 30 yd |
-| Severe deviation from offline center | >= 45 yd |
-| Mishit ball-speed loss | >= 12% |
-| Severe ball-speed loss | >= 18% |
-| Mishit smash loss | >= 0.08 |
-| Severe smash loss | >= 0.13 |
+| Mishit carry prior | max(15% of carry center, 12 yd) |
+| Severe carry prior | max(22% of carry center, 20 yd) |
+| Mishit absolute offline prior | max(35 yd, 20% of carry center) |
+| Severe absolute offline prior | max(55 yd, 25% of carry center) |
+| Mishit deviation prior | 30 yd from offline center |
+| Severe deviation prior | 45 yd from offline center |
+| Mishit ball-speed prior | 12% loss |
+| Severe ball-speed prior | 18% loss |
+| Mishit smash prior | 0.08 loss |
+| Severe smash prior | 0.13 loss |
 | Compound mishit | 2+ mishit-level signals |
 | Compound severe mishit | 3+ mishit-level signals |
+
+Default player-population blend weights are 10% at provisional, 50% at stable, 80% at mature, and 95% at the full reference window. Statistical sanity minimums are defined separately in `inputs/defaults.ts` and should not be interpreted as golf-performance targets.
 
 These values should be tuned against real shot histories before the classifier becomes authoritative for Stock/Pure.
 
@@ -125,6 +136,7 @@ Typical shadow-mode use:
 const analysis = analyzeShotPopulation(shots, DEFAULT_MISHIT_CONFIG)
 
 analysis.baseline.status
+analysis.effectiveThresholds
 analysis.classifications
 ```
 
@@ -135,6 +147,7 @@ const next = refreshMishitAnalysis({
   shots,
   previous: priorAnalysis,
   config: DEFAULT_MISHIT_CONFIG,
+  calibration: optionalPlayerPopulationCalibration,
 })
 ```
 
@@ -148,4 +161,4 @@ Conceptually:
 const planningShots = shots.filter((shot) => classificationById[shot.id]?.planningEligible !== false)
 ```
 
-The classifier remains derived state. Raw shot data is source truth.
+The classifier remains derived state. Raw shot data is source truth. Shared inputs, player baseline state, player calibration state, and final effective thresholds remain separately inspectable.
