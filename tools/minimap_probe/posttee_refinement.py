@@ -5,15 +5,17 @@ This module owns the optional GSPro UI sequence used only when a better approach
 GreenSurfaceModel is worthwhile:
 
 1. analyze the as-presented minimap against the cached tee HoleModel;
-2. if the projected target green is cropped, press W one bounded pulse at a time;
-3. never zoom back in;
-4. once the green is usable, perform the field-proven fixed Y toggle pair;
-5. isolate the target green using the cached/projected pin anchor;
-6. register the refined green back into canonical tee coordinates;
-7. confidence-gate the merge into canonical_hole_model.json.
+2. run the pure shot-mode calculation before any W/Y input;
+3. if the shot is an approach and the projected target green is cropped, press W one
+   bounded pulse at a time;
+4. never zoom back in;
+5. once the green is usable, perform the field-proven fixed Y toggle pair;
+6. isolate the target green using the cached/projected pin anchor;
+7. register the refined green back into canonical tee coordinates;
+8. confidence-gate the merge into canonical_hole_model.json.
 
-The recommendation engine never contains these UI operations. Timing, bounds, and
-merge thresholds come from config/looper-live-caddie.json.
+The recommendation engine never contains these UI operations. Timing, bounds, mode
+policy, and merge thresholds come from config/looper-live-caddie.json.
 """
 
 from __future__ import annotations
@@ -39,6 +41,11 @@ if str(REPO_ROOT) not in sys.path:
 from tools.live_caddie.assumptions import Assumptions  # noqa: E402
 from tools.live_caddie.canonicalize_capture import build_canonical_hole  # noqa: E402
 from tools.live_caddie.green_refinement import build_refinement, merge_refinement  # noqa: E402
+from tools.live_caddie.shot_mode import (  # noqa: E402
+    ShotModeInputs,
+    infer_shot_mode,
+    polygon_from_canonical_hole,
+)
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -46,6 +53,12 @@ def _write_json(path: Path, payload: dict) -> None:
 
 
 def _heatmap_pair(*, monitor: int, assumptions: Assumptions):
+    """Capture one Y-on frame and restore exactly once.
+
+    If the first pulse succeeds but an exception occurs before restore is sent, one
+    best-effort restore pulse is attempted. If restore has already been sent, a third
+    speculative Y is never issued.
+    """
     config = assumptions.get("actuation")
     found = aim_actuator.find_gspro_window()
     if found is None:
@@ -57,17 +70,30 @@ def _heatmap_pair(*, monitor: int, assumptions: Assumptions):
     pulse_ms = float(config["heatmap_pulse_ms"])
     settle_ms = float(config["heatmap_settle_ms"])
     key = str(config["heatmap_key"])
+    first_sent = False
+    restore_sent = False
 
-    aim_actuator.pulse_key_windows(key, pulse_ms)
-    time.sleep(max(0.0, settle_ms) / 1000.0)
-    toggled = base.capture_monitor(monitor)
+    try:
+        aim_actuator.pulse_key_windows(key, pulse_ms)
+        first_sent = True
+        time.sleep(max(0.0, settle_ms) / 1000.0)
+        toggled = base.capture_monitor(monitor)
 
-    # Restore exactly once using the field-proven fixed timing. We intentionally do
-    # not retry speculative third toggles because that can leave GSPro in the wrong state.
-    aim_actuator.pulse_key_windows(key, pulse_ms)
-    time.sleep(max(0.0, settle_ms) / 1000.0)
-    restored = base.capture_monitor(monitor)
-    return toggled, restored, title
+        if not aim_actuator.focus_gspro(hwnd, wait_s=0.015):
+            raise RuntimeError("GSPro lost focus before Y heatmap restore")
+        aim_actuator.pulse_key_windows(key, pulse_ms)
+        restore_sent = True
+        time.sleep(max(0.0, settle_ms) / 1000.0)
+        restored = base.capture_monitor(monitor)
+        return toggled, restored, title
+    finally:
+        if first_sent and not restore_sent:
+            try:
+                if aim_actuator.focus_gspro(hwnd, wait_s=0.015):
+                    aim_actuator.pulse_key_windows(key, pulse_ms)
+                    time.sleep(max(0.0, settle_ms) / 1000.0)
+            except Exception:
+                pass
 
 
 def _geometry_payload(
@@ -95,6 +121,63 @@ def _geometry_payload(
     }
 
 
+def _canonical_for_geometry(geometry: dict) -> tuple[dict, Path, dict]:
+    selected_hole_model = Path(geometry["hole_model_path"])
+    tee_capture_dir = selected_hole_model.parent
+    canonical_path = tee_capture_dir / "canonical_hole_model.json"
+    if canonical_path.exists():
+        canonical_hole = json.loads(canonical_path.read_text(encoding="utf-8"))
+    else:
+        canonical_hole = build_canonical_hole(tee_capture_dir)
+    tee_hole_model = json.loads(selected_hole_model.read_text(encoding="utf-8"))
+    return canonical_hole, canonical_path, tee_hole_model
+
+
+def _resolve_mode(
+    *,
+    requested_mode: str,
+    surface_label: str | None,
+    pin_distance_yds: float,
+    aim_distance_yds: float | None,
+    geometry: dict,
+    canonical_hole: dict,
+    assumptions: Assumptions,
+) -> tuple[str, dict]:
+    aim_context = geometry.get("aim_context") or {}
+    polygon = polygon_from_canonical_hole(canonical_hole)
+    decision = infer_shot_mode(
+        ShotModeInputs(
+            surface_label=surface_label,
+            pin_distance_yds=float(pin_distance_yds),
+            aim_distance_yds=(float(aim_distance_yds) if aim_distance_yds is not None else None),
+            aim_forward_tee_yds=(
+                float(aim_context["tee_relative_forward_yds"])
+                if aim_context.get("tee_relative_forward_yds") is not None else None
+            ),
+            aim_right_tee_yds=(
+                float(aim_context["tee_relative_right_yds"])
+                if aim_context.get("tee_relative_right_yds") is not None else None
+            ),
+            canonical_green_polygon=polygon,
+            green_context_available=polygon is not None,
+        ),
+        assumptions=assumptions,
+    )
+    payload = decision.to_dict()
+    requested = str(requested_mode).lower()
+    if requested in ("approach", "strategic"):
+        payload["diagnostic_override"] = requested
+        payload["automatic_mode"] = decision.mode
+        return requested, payload
+
+    minimum = float(assumptions.get("shot_mode.minimum_actionable_confidence"))
+    if decision.mode in ("approach", "strategic") and decision.confidence < minimum:
+        payload["automatic_mode"] = decision.mode
+        payload["blocked_by_minimum_actionable_confidence"] = True
+        return "unknown", payload
+    return decision.mode, payload
+
+
 def _public_zoom_history(history: list[dict]) -> list[dict]:
     out = []
     for item in history:
@@ -110,6 +193,28 @@ def _public_zoom_history(history: list[dict]) -> list[dict]:
     return out
 
 
+def _no_refinement_result(
+    *,
+    reason: str,
+    first: dict,
+    resolved_mode: str,
+    shot_mode_decision: dict,
+) -> dict[str, Any]:
+    return {
+        "attempted": False,
+        "reason": reason,
+        "resolved_mode": resolved_mode,
+        "shot_mode_decision": shot_mode_decision,
+        "w_pulses": 0,
+        "zoom_history": [],
+        "heatmap_toggled": False,
+        "merge": None,
+        "final_geometry": first["geometry"],
+        "final_screen": first["screen"],
+        "final_minimap": first["minimap"],
+    }
+
+
 def refine_green_if_useful(
     *,
     initial_screen,
@@ -121,6 +226,7 @@ def refine_green_if_useful(
     output_root: str | Path,
     capture_dir: str | Path,
     mode: str,
+    surface_label: str | None = None,
     assumptions: Assumptions | None = None,
 ) -> dict[str, Any]:
     assumptions = assumptions or Assumptions.load()
@@ -137,25 +243,47 @@ def refine_green_if_useful(
         round_identity=round_identity,
     )
     first_geometry = first["geometry"]
+    canonical_hole, canonical_path, tee_hole_model = _canonical_for_geometry(first_geometry)
+    resolved_mode, mode_decision = _resolve_mode(
+        requested_mode=mode,
+        surface_label=surface_label,
+        pin_distance_yds=pin_distance_yds,
+        aim_distance_yds=aim_distance_yds,
+        geometry=first_geometry,
+        canonical_hole=canonical_hole,
+        assumptions=assumptions,
+    )
+
+    if resolved_mode == "no-full-shot":
+        return _no_refinement_result(
+            reason="GSPro state is not a full-shot caddie state; no W/Y or recommendation context is needed",
+            first=first,
+            resolved_mode=resolved_mode,
+            shot_mode_decision=mode_decision,
+        )
+    if resolved_mode == "unknown":
+        return _no_refinement_result(
+            reason="shot mode is uncertain; skipped mode-dependent W/Y refinement",
+            first=first,
+            resolved_mode=resolved_mode,
+            shot_mode_decision=mode_decision,
+        )
+    if resolved_mode != "approach":
+        return _no_refinement_result(
+            reason="strategic shot uses cached HoleModel without approach green refinement",
+            first=first,
+            resolved_mode=resolved_mode,
+            shot_mode_decision=mode_decision,
+        )
 
     maximum_distance = float(refinement_cfg["maximum_auto_refinement_distance_yds"])
-    should_refine = (
-        str(mode).lower() == "approach"
-        and bool(refinement_cfg["capture_on_approach"])
-        and float(pin_distance_yds) <= maximum_distance
-    )
-    if not should_refine:
-        return {
-            "attempted": False,
-            "reason": "green refinement not required for this shot mode/distance",
-            "w_pulses": 0,
-            "zoom_history": [],
-            "heatmap_toggled": False,
-            "merge": None,
-            "final_geometry": first_geometry,
-            "final_screen": initial_screen,
-            "final_minimap": first["minimap"],
-        }
+    if not bool(refinement_cfg["capture_on_approach"]) or float(pin_distance_yds) > maximum_distance:
+        return _no_refinement_result(
+            reason="approach green refinement is disabled or beyond configured refinement distance",
+            first=first,
+            resolved_mode=resolved_mode,
+            shot_mode_decision=mode_decision,
+        )
 
     latest = first
 
@@ -181,13 +309,14 @@ def refine_green_if_useful(
     else:
         zoom_ok, w_pulses, _payload, zoom_history = zoom_recovery.recover_until_visible(
             capture_and_evaluate=capture_and_evaluate,
-            initial_evaluation=(False, first),
         )
 
     if not zoom_ok:
         return {
             "attempted": True,
             "reason": "bounded W recovery exhausted before target green became fully usable",
+            "resolved_mode": resolved_mode,
+            "shot_mode_decision": mode_decision,
             "w_pulses": w_pulses,
             "zoom_history": _public_zoom_history(zoom_history),
             "heatmap_toggled": False,
@@ -215,15 +344,9 @@ def refine_green_if_useful(
         pin_override_xy=(float(projected_pin["x"]), float(projected_pin["y"])),
     )
 
-    selected_hole_model = Path(geometry["hole_model_path"])
-    tee_capture_dir = selected_hole_model.parent
-    canonical_path = tee_capture_dir / "canonical_hole_model.json"
-    if canonical_path.exists():
-        canonical_hole = json.loads(canonical_path.read_text(encoding="utf-8"))
-    else:
-        canonical_hole = build_canonical_hole(tee_capture_dir)
-    tee_hole_model = json.loads(selected_hole_model.read_text(encoding="utf-8"))
-
+    # W may have changed the registration, so refresh the selected canonical objects
+    # from the final pre-Y geometry rather than assuming the initial transform.
+    canonical_hole, canonical_path, tee_hole_model = _canonical_for_geometry(geometry)
     registration = geometry.get("registration") or {}
     matrix = registration.get("matrix_2x3")
     if matrix is None:
@@ -252,6 +375,8 @@ def refine_green_if_useful(
     result = {
         "attempted": True,
         "reason": merge.get("reason") or "green refinement completed",
+        "resolved_mode": resolved_mode,
+        "shot_mode_decision": mode_decision,
         "w_pulses": w_pulses,
         "zoom_history": _public_zoom_history(zoom_history),
         "heatmap_toggled": True,
