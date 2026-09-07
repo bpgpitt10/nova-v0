@@ -74,14 +74,21 @@ const SUPABASE_JS_VERSION = '2.115.0'
 const SUPABASE_SCRIPT_URL = `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${SUPABASE_JS_VERSION}/dist/umd/supabase.js`
 const SUPABASE_SCRIPT_MARKER = `looper-supabase-${SUPABASE_JS_VERSION}`
 
+// Publishable Supabase project configuration is intentionally safe to ship in a browser bundle.
+// Environment variables can override these values later without changing the application code.
+const DEFAULT_SUPABASE_URL = 'https://kdjfdchzfemjpmaqpobn.supabase.co'
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Lu_EV3L6mSIzQzcB0fESsA_4bJcnT4T'
+
 let clientPromise: Promise<SupabaseClientLike> | null = null
 
 const config = () => ({
-  url: (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? '',
+  url:
+    (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ||
+    DEFAULT_SUPABASE_URL,
   key:
-    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ??
-    (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ??
-    '',
+    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim() ||
+    (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ||
+    DEFAULT_SUPABASE_PUBLISHABLE_KEY,
 })
 
 export const isSupabaseConfigured = () => {
