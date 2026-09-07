@@ -1,21 +1,11 @@
 #!/usr/bin/env python3
-"""Determine whether the cached target green should fit in the current GSPro minimap.
-
-The tee HoleModel gives us a stable green footprint in *yards*: the target-green
-bbox relative to the pin, multiplied by the tee yards/pixel scale.  On a later
-shot, GSPro may use a different minimap zoom.  Re-detecting ball + pin and dividing
-current PIN distance by their pixel separation gives the current yards/pixel scale.
-We can then project the cached green footprint around the current pin and ask
-whether it fits inside the visible map canvas.
-
-This is intentionally a pure decision module: it never presses W.  The live
-approach orchestrator can use the result to decide whether a bounded W recovery is
-needed, while the first field test can validate the decision without changing UI.
-"""
+"""Determine whether the cached target green should fit in the current GSPro minimap."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+import json
+from pathlib import Path
 
 
 @dataclass
@@ -43,6 +33,12 @@ class GreenVisibilityResult:
         return d
 
 
+def _default_config() -> dict:
+    path = Path(__file__).resolve().parents[2] / "config" / "looper-live-caddie.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload["screen_detection"]["green_visibility"]
+
+
 def extents_from_hole_model(hole_model: dict) -> GreenExtentsYards:
     minimap = hole_model.get("minimap") or {}
     green = hole_model.get("green_surface") or {}
@@ -59,7 +55,6 @@ def extents_from_hole_model(hole_model: dict) -> GreenExtentsYards:
     x2 = x + w
     y2 = y + h
 
-    # Clamp at zero because the pin can sit slightly outside a noisy mask bbox.
     return GreenExtentsYards(
         left=max(0.0, (pin_x - x) * scale),
         right=max(0.0, (x2 - pin_x) * scale),
@@ -75,14 +70,16 @@ def current_scale_yd_per_px(
     pin_x: float,
     pin_y: float,
     pin_distance_yds: float,
+    detector_config: dict | None = None,
 ) -> float:
+    config = detector_config or _default_config()
     dx = float(pin_x) - float(ball_x)
     dy = float(pin_y) - float(ball_y)
     pixels = (dx * dx + dy * dy) ** 0.5
-    if pixels < 10.0:
+    if pixels < float(config["min_ball_pin_separation_px"]):
         raise ValueError("Ball/pin separation too small for current minimap scale")
     scale = float(pin_distance_yds) / pixels
-    if not (0.02 <= scale <= 3.0):
+    if not (float(config["min_yards_per_pixel"]) <= scale <= float(config["max_yards_per_pixel"])):
         raise ValueError(f"Implausible current minimap scale {scale:.4f} yd/px")
     return scale
 
@@ -97,14 +94,18 @@ def evaluate_visibility(
     pin_x: float,
     pin_y: float,
     pin_distance_yds: float,
-    # GSPro minimap crop includes a title bar and lie footer.  These fractions are
-    # conservative and can be calibrated later from screen geometry if GSPro themes
-    # change.  Current 4K captures place the playable image at roughly 11%-94% H.
-    content_top_fraction: float = 0.11,
-    content_bottom_fraction: float = 0.94,
-    content_side_inset_px: float = 4.0,
-    safety_margin_px: float = 8.0,
+    detector_config: dict | None = None,
+    content_top_fraction: float | None = None,
+    content_bottom_fraction: float | None = None,
+    content_side_inset_px: float | None = None,
+    safety_margin_px: float | None = None,
 ) -> GreenVisibilityResult:
+    config = detector_config or _default_config()
+    top_fraction = float(config["content_top_fraction"] if content_top_fraction is None else content_top_fraction)
+    bottom_fraction = float(config["content_bottom_fraction"] if content_bottom_fraction is None else content_bottom_fraction)
+    side_inset = float(config["content_side_inset_px"] if content_side_inset_px is None else content_side_inset_px)
+    safety_margin = float(config["safety_margin_px"] if safety_margin_px is None else safety_margin_px)
+
     ext = extents_from_hole_model(hole_model)
     scale = current_scale_yd_per_px(
         ball_x=ball_x,
@@ -112,6 +113,7 @@ def evaluate_visibility(
         pin_x=pin_x,
         pin_y=pin_y,
         pin_distance_yds=pin_distance_yds,
+        detector_config=config,
     )
 
     left_px = float(pin_x) - ext.left / scale
@@ -119,10 +121,10 @@ def evaluate_visibility(
     top_px = float(pin_y) - ext.top / scale
     bottom_px = float(pin_y) + ext.bottom / scale
 
-    content_left = float(content_side_inset_px)
-    content_right = float(minimap_width) - float(content_side_inset_px)
-    content_top = float(minimap_height) * float(content_top_fraction)
-    content_bottom = float(minimap_height) * float(content_bottom_fraction)
+    content_left = side_inset
+    content_right = float(minimap_width) - side_inset
+    content_top = float(minimap_height) * top_fraction
+    content_bottom = float(minimap_height) * bottom_fraction
 
     clearances = (
         left_px - content_left,
@@ -131,7 +133,7 @@ def evaluate_visibility(
         content_bottom - bottom_px,
     )
     minimum_clearance = min(clearances)
-    visible = minimum_clearance >= float(safety_margin_px)
+    visible = minimum_clearance >= safety_margin
 
     if visible:
         reason = "cached target-green footprint fits inside current minimap viewport"
