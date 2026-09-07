@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
 """GSPro tee-capture orchestrator v8.
 
-Purpose
--------
-Move beyond isolated screen/minimap probes and capture a reusable tee HoleModel in
-one deterministic sequence.
+At the tee GSPro always shows the full hole, so v8 never changes minimap zoom.
+It reads PIN state, captures one canonical heatmap-on minimap, restores GSPro,
+extracts green/hazards, acquires the player AIM card, and writes HoleModel +
+ShotState.
 
-At the tee GSPro always shows the full hole in the minimap, so v8 deliberately does
-NOT zoom. It captures dynamic pre-shot state, toggles the green heatmap with Y,
-acquires one canonical HEATMAP-ON minimap, restores the UI, extracts hazards + the
-target green in a shared coordinate system, then acquires the player AIM card.
-
-The initial and toggled minimaps are used transiently to identify which frame is
-heatmap-on and to isolate all heatmap-changed green pixels. Only the heatmap-on
-minimap is the canonical HoleModel image.
+Performance matters because recommendation logic still has to run afterward. v8
+therefore records phase timings and reports the moment a complete state is ready.
+Tee lie is a known GSPro invariant (0.0/0.0), so default tee capture does not spend
+OCR time proving it every hole; --verify-tee-lie is available for diagnostics.
 """
 
 from __future__ import annotations
@@ -24,6 +20,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -37,10 +34,28 @@ import probe as base
 import probe_v2 as v2
 import probe_v4  # noqa: F401; applies marker/hazard patches
 import probe_v6 as v6  # noqa: F401; applies hardened PIN/AIM OCR patches
+import target_card
 import target_cards_v6
 
 
 SW_RESTORE = 9
+
+
+class PhaseTimer:
+    def __init__(self) -> None:
+        self.started = time.perf_counter()
+        self.phase_ms: dict[str, float] = {}
+
+    @contextmanager
+    def phase(self, name: str):
+        t0 = time.perf_counter()
+        try:
+            yield
+        finally:
+            self.phase_ms[name] = round((time.perf_counter() - t0) * 1000.0, 1)
+
+    def elapsed_ms(self) -> float:
+        return round((time.perf_counter() - self.started) * 1000.0, 1)
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,6 +64,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--roi", help="Override minimap crop as x,y,w,h in screen pixels.")
     p.add_argument("--lie-roi", help="Override minimap lie footer as x,y,w,h in screen pixels.")
     p.add_argument("--tesseract", help="Explicit path to tesseract.exe if auto-discovery fails.")
+    p.add_argument("--verify-tee-lie", action="store_true", help="OCR lie even though GSPro tee lie is invariant 0/0.")
     p.add_argument("--heatmap-key", default="Y")
     p.add_argument("--heatmap-settle-ms", type=float, default=320.0)
     p.add_argument("--heatmap-pulse-ms", type=float, default=45.0)
@@ -87,11 +103,7 @@ def _toggle_heatmap_pair(
     settle_ms: float,
     debug_dir: Path,
 ):
-    """Toggle Y once, capture, toggle back, capture restored state.
-
-    Restoration is attempted in finally whenever the first toggle was successfully
-    sent. This preserves the user's original heatmap state whether it began ON or OFF.
-    """
+    """Toggle heatmap once, capture, then restore the user's original Y state."""
     found = aim_actuator.find_gspro_window()
     if found is None:
         raise RuntimeError("Could not find a visible GSPro window for heatmap toggle.")
@@ -133,11 +145,52 @@ def _toggle_heatmap_pair(
                 pass
 
 
-def _read_cards(screen, args: argparse.Namespace, debug_dir: Path):
-    return target_cards_v6.read_cards(
+def _read_card_type(
+    screen,
+    card_type: str,
+    args: argparse.Namespace,
+    debug_dir: Path,
+    required: bool = False,
+):
+    """Detect all card geometry but OCR only the requested semantic card.
+
+    This avoids repeatedly OCRing the permanent PIN card while we are merely
+    checking whether an AIM card exists after heatmap restoration.
+    """
+    detected = target_cards_v6.detect_cards(screen)
+    chosen = next((c for c in detected if c.card_type == card_type), None)
+    if chosen is None:
+        if required:
+            raise RuntimeError(f"Could not locate the GSPro {card_type.upper()} card.")
+        return None
+
+    state = target_card.read_target_card(
         screen,
         tesseract_path=args.tesseract,
-        debug_dir=debug_dir,
+        bbox_override=chosen.bbox,
+        debug_dir=None,
+    )
+    state.source = "gspro-screen-pin-card" if card_type == "pin" else "gspro-screen-aim-card"
+
+    x, y, w, h = chosen.bbox
+    crop = screen[y:y + h, x:x + w]
+    if crop.size:
+        cv2.imwrite(str(debug_dir / f"latest_{card_type}_card_v6.png"), crop)
+    return state
+
+
+def _tee_flat_lie() -> lie_state.LieState:
+    return lie_state.LieState(
+        up_down_deg=0.0,
+        up_down_direction="up",
+        left_right_deg=0.0,
+        left_right_direction="right",
+        signed_up_down_deg=0.0,
+        signed_left_right_deg=0.0,
+        up_down_ocr_raw="TEE_INVARIANT_0.0",
+        left_right_ocr_raw="TEE_INVARIANT_0.0",
+        footer_bbox=(0, 0, 0, 0),
+        source="gspro-tee-invariant",
     )
 
 
@@ -155,19 +208,21 @@ def _state_dict(state):
 
 
 def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
-    cards_error = None
+    # Cheap geometry check first; OCR only AIM if it is already present.
     try:
-        cards = _read_cards(restored_screen, args, debug_dir)
+        existing = _read_card_type(restored_screen, "aim", args, debug_dir, required=False)
     except Exception as exc:
-        cards = {}
-        cards_error = str(exc)
+        existing = None
+        existing_error = str(exc)
+    else:
+        existing_error = None
 
-    if cards.get("aim") is not None:
-        return cards.get("aim"), {
+    if existing is not None:
+        return existing, {
             "status": "already-visible",
             "attempted": False,
             "verified_return": None,
-            "warning": cards_error,
+            "warning": existing_error,
         }
 
     if args.no_aim_summon:
@@ -193,12 +248,11 @@ def _acquire_aim(restored_screen, args: argparse.Namespace, debug_dir: Path):
     parse_warning = None
     if summon.final_screen is not None:
         try:
-            final_cards = _read_cards(summon.final_screen, args, debug_dir)
-            aim = final_cards.get("aim")
+            aim = _read_card_type(summon.final_screen, "aim", args, debug_dir, required=False)
         except Exception as exc:
             parse_warning = str(exc)
 
-    warning_parts = [x for x in (summon.warning, cards_error, parse_warning) if x]
+    warning_parts = [x for x in (summon.warning, existing_error, parse_warning) if x]
     return aim, {
         "status": "auto-summoned" if aim is not None else "summon-attempted-no-aim-read",
         "attempted": summon.attempted,
@@ -217,70 +271,115 @@ def _write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _print_timings(phase_ms: dict[str, float], state_ready_ms: float, probe_total_ms: float) -> None:
+    labels = [
+        ("initial_capture", "Initial capture"),
+        ("pin_card_read", "PIN card OCR"),
+        ("tee_lie", "Tee lie"),
+        ("heatmap_toggle_restore", "Heatmap toggle/restore"),
+        ("green_extract", "Green extraction"),
+        ("marker_scale", "Ball/pin + scale"),
+        ("hazard_extract", "Hazard extraction"),
+        ("aim_acquire", "AIM acquisition"),
+        ("persist_models", "Persist models"),
+    ]
+    print()
+    print("Performance timing")
+    print("------------------")
+    for key, label in labels:
+        if key in phase_ms:
+            print(f"{label + ':':24} {phase_ms[key]:7.1f} ms")
+    print(f"{'STATE READY:':24} {state_ready_ms:7.1f} ms")
+    print(f"{'Probe total:':24} {probe_total_ms:7.1f} ms")
+
+
 def main() -> int:
     args = parse_args()
     out = _capture_dir(args.output_root)
+    timer = PhaseTimer()
 
     try:
         # TEE RULE: capture GSPro exactly as presented. No W, no zoom recovery.
-        initial_screen = base.capture_monitor(args.monitor)
+        with timer.phase("initial_capture"):
+            initial_screen = base.capture_monitor(args.monitor)
 
-        cards = _read_cards(initial_screen, args, out)
-        pin_state = cards.get("pin")
-        if pin_state is None:
-            raise RuntimeError("Could not read the white PIN card; tee capture cannot calibrate map scale.")
+        with timer.phase("pin_card_read"):
+            pin_state = _read_card_type(initial_screen, "pin", args, out, required=True)
 
-        lie = None
         lie_error = None
-        try:
-            lie = lie_state.read_lie_state(
-                initial_screen,
-                tesseract_path=args.tesseract,
-                roi_override=args.lie_roi,
+        with timer.phase("tee_lie"):
+            if args.verify_tee_lie:
+                try:
+                    lie = lie_state.read_lie_state(
+                        initial_screen,
+                        tesseract_path=args.tesseract,
+                        roi_override=args.lie_roi,
+                        debug_dir=out,
+                    )
+                except Exception as exc:
+                    lie_error = str(exc)
+                    lie = _tee_flat_lie()
+            else:
+                lie = _tee_flat_lie()
+
+        with timer.phase("heatmap_toggle_restore"):
+            toggled_screen, restored_screen, gspro_title = _toggle_heatmap_pair(
+                initial_screen=initial_screen,
+                monitor=args.monitor,
+                key=args.heatmap_key,
+                pulse_ms=args.heatmap_pulse_ms,
+                settle_ms=args.heatmap_settle_ms,
                 debug_dir=out,
             )
-        except Exception as exc:
-            lie_error = str(exc)
 
-        toggled_screen, restored_screen, gspro_title = _toggle_heatmap_pair(
-            initial_screen=initial_screen,
-            monitor=args.monitor,
-            key=args.heatmap_key,
-            pulse_ms=args.heatmap_pulse_ms,
-            settle_ms=args.heatmap_settle_ms,
-            debug_dir=out,
-        )
+        with timer.phase("green_extract"):
+            green = green_heatmap.classify_and_extract(
+                initial_screen=initial_screen,
+                toggled_screen=toggled_screen,
+                roi_override=args.roi,
+                debug_dir=out,
+            )
 
-        green = green_heatmap.classify_and_extract(
-            initial_screen=initial_screen,
-            toggled_screen=toggled_screen,
-            roi_override=args.roi,
-            debug_dir=out,
-        )
+        with timer.phase("marker_scale"):
+            heatmap_roi = green.heatmap_roi
+            ball = v2.detect_ball_marker(heatmap_roi)
+            pin = v2.detect_pin_marker(heatmap_roi)
+            pin_pixels = float(((pin.x - ball.x) ** 2 + (pin.y - ball.y) ** 2) ** 0.5)
+            if pin_pixels < 10:
+                raise RuntimeError("Ball/pin separation too small for tee minimap calibration.")
+            scale = float(pin_state.distance_yds) / pin_pixels
+            if not (0.03 <= scale <= 3.0):
+                raise RuntimeError(f"Implausible tee minimap scale {scale:.4f} yd/px.")
 
-        heatmap_roi = green.heatmap_roi
-        ball = v2.detect_ball_marker(heatmap_roi)
-        pin = v2.detect_pin_marker(heatmap_roi)
-        pin_pixels = float(((pin.x - ball.x) ** 2 + (pin.y - ball.y) ** 2) ** 0.5)
-        if pin_pixels < 10:
-            raise RuntimeError("Ball/pin separation too small for tee minimap calibration.")
-        scale = float(pin_state.distance_yds) / pin_pixels
-        if not (0.03 <= scale <= 3.0):
-            raise RuntimeError(f"Implausible tee minimap scale {scale:.4f} yd/px.")
+        with timer.phase("hazard_extract"):
+            hazard_roi = green_heatmap.hazard_safe_roi(green)
+            cv2.imwrite(str(out / "tee_hazard_safe_minimap.png"), hazard_roi)
+            hazards, _pin_pixels2, _scale2 = v2.build_penalty_objects(
+                roi=hazard_roi,
+                ball=ball,
+                pin=pin,
+                distance_to_pin_yds=float(pin_state.distance_yds),
+                corridor_half_width_yds=args.corridor,
+                centerline_band_yds=args.centerline_band,
+                merge_gap_yds=args.merge_gap,
+            )
 
-        hazard_roi = green_heatmap.hazard_safe_roi(green)
-        cv2.imwrite(str(out / "tee_hazard_safe_minimap.png"), hazard_roi)
-        hazards, _pin_pixels2, _scale2 = v2.build_penalty_objects(
-            roi=hazard_roi,
-            ball=ball,
-            pin=pin,
-            distance_to_pin_yds=float(pin_state.distance_yds),
-            corridor_half_width_yds=args.corridor,
-            centerline_band_yds=args.centerline_band,
-            merge_gap_yds=args.merge_gap,
-        )
+        with timer.phase("aim_acquire"):
+            aim_state, aim_meta = _acquire_aim(restored_screen, args, out)
 
-        aim_state, aim_meta = _acquire_aim(restored_screen, args, out)
+        # This is the important product latency: recommendation can begin now.
+        state_ready_ms = timer.elapsed_ms()
+        performance = {
+            "state_ready_ms": state_ready_ms,
+            "phase_ms": dict(timer.phase_ms),
+            "configured_ui_wait_floor_ms": round(
+                2.0 * args.heatmap_settle_ms
+                + (0.0 if aim_meta.get("status") == "already-visible" else 2.0 * args.aim_settle_ms)
+                + len(aim_meta.get("corrections") or []) * args.aim_settle_ms,
+                1,
+            ),
+            "tee_lie_mode": "verified-ocr" if args.verify_tee_lie else "invariant-zero",
+        }
 
         hole_model = {
             "schema_version": "tee-hole-model-v0",
@@ -315,6 +414,7 @@ def main() -> int:
                 "heatmap_settle_ms": args.heatmap_settle_ms,
                 "heatmap_restored": True,
                 "created_local": datetime.now().isoformat(timespec="seconds"),
+                "performance": performance,
             },
         }
 
@@ -324,14 +424,24 @@ def main() -> int:
             "pin": _state_dict(pin_state),
             "aim": _state_dict(aim_state),
             "aim_acquisition": aim_meta,
-            "lie_slope": asdict(lie) if lie is not None else None,
+            "lie_slope": asdict(lie),
             "lie_warning": lie_error,
-            # Wind intentionally remains owned by Looper's existing wind path; v8
-            # proves the minimap/screen capture contract without duplicating it.
             "wind": None,
             "wind_note": "Use existing Looper wind source; not duplicated in tee minimap probe v8.",
+            "capture_performance": performance,
         }
 
+        with timer.phase("persist_models"):
+            _write_json(out / "hole_model.json", hole_model)
+            _write_json(out / "shot_state.json", shot_state)
+
+        probe_total_ms = timer.elapsed_ms()
+        performance["probe_total_ms"] = probe_total_ms
+        performance["phase_ms"] = dict(timer.phase_ms)
+
+        # Rewrite the models once with final persistence timing included.
+        hole_model["capture"]["performance"] = performance
+        shot_state["capture_performance"] = performance
         _write_json(out / "hole_model.json", hole_model)
         _write_json(out / "shot_state.json", shot_state)
         _write_json(
@@ -345,7 +455,8 @@ def main() -> int:
                 "green_confidence": green.confidence,
                 "penalty_object_count": len(hazards),
                 "aim_status": aim_meta.get("status"),
-                "lie_read": lie is not None,
+                "lie_read": True,
+                "performance": performance,
             },
         )
 
@@ -358,15 +469,13 @@ def main() -> int:
         print("=================================")
         print("Tee zoom:             untouched (W disabled by design)")
         print(f"Pin target:           {pin_state.distance_yds:.0f} yd")
-        print(
-            f"Pin elevation:        {pin_state.elevation_direction} "
-            f"{pin_state.elevation_raw or '?'}"
-        )
+        print(f"Pin elevation:        {pin_state.elevation_direction} {pin_state.elevation_raw or '?'}")
         print(f"Lie slope:            {lie_state.state_text(lie)}")
+        print(f"Lie source:           {lie.source}")
         if lie_error:
             print(f"Lie warning:          {lie_error}")
         print(f"Heatmap state:        {'already ON' if green.heatmap_is_initial else 'turned ON for capture'}")
-        print(f"Heatmap restored:     YES")
+        print("Heatmap restored:     YES")
         print(f"Green confidence:     {green.confidence:.2f}")
         print(f"Target green pixels:  {green.target_green_area_px}")
         print(f"Map scale:            {scale:.4f} yd/px")
@@ -382,6 +491,9 @@ def main() -> int:
             print(f"Aim return verified:  {aim_meta.get('verified_return')}")
         if aim_meta.get("warning"):
             print(f"Aim warning:          {aim_meta.get('warning')}")
+
+        _print_timings(timer.phase_ms, state_ready_ms, probe_total_ms)
+
         print()
         print(f"HoleModel:            {out / 'hole_model.json'}")
         print(f"ShotState:            {out / 'shot_state.json'}")
@@ -392,7 +504,17 @@ def main() -> int:
 
     except Exception as exc:
         try:
-            _write_json(out / "tee_capture_meta.json", {"success": False, "error": str(exc)})
+            _write_json(
+                out / "tee_capture_meta.json",
+                {
+                    "success": False,
+                    "error": str(exc),
+                    "performance": {
+                        "elapsed_ms": timer.elapsed_ms(),
+                        "phase_ms": timer.phase_ms,
+                    },
+                },
+            )
         except Exception:
             pass
         print(f"ERROR: {exc}", file=sys.stderr)
