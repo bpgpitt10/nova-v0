@@ -1,102 +1,90 @@
-# Looper auth, cloud persistence, and capture policy
+# Looper Auth + Cloud Persistence
 
-## Goal
+## Current direction
 
-Make `thelooper.golf` easy to share with a small invite-only group while keeping the normal operating cost effectively zero and preserving Looper's ability to improve its GSPro visual extraction over time.
+Looper uses Supabase for account identity and structured cloud persistence while keeping simulator-local filesystem permissions and training captures on the local device.
 
-## Identity
-
-Initial sign-in methods:
-
-- Google OAuth
-- Email magic link / one-time link for users who do not want a Google account
-- No passwords in Looper
-
-Authentication alone does not grant access. Every authenticated email must also have an enabled row in `allowed_users`. The database RLS policies enforce the same allow-list rule, so bypassing the UI does not expose another user's data.
-
-Initial administration can be done directly in Supabase by adding or disabling an email in `allowed_users`. A tiny Looper admin screen can come later.
-
-## Cloud-owned data
-
-Supabase becomes canonical for:
-
-- user identity/profile
+### Cloud data
+- invite-only allowed users
+- user profiles
 - bag configuration
-- sessions
-- shots
-- shot variants/preferences as they are migrated
-- small diagnostic/extractor events
+- saved sessions
+- structured shot rows
+- diagnostic metadata
 
-Every durable row is user-scoped. Row Level Security must prevent one user from reading or writing another user's data.
+### Never stored in Supabase
+- screenshots
+- minimap images
+- heatmap captures
+- base64 image payloads
+- local GSPro filesystem handles
 
-`localStorage` remains a temporary safety copy during migration, not the final source of truth.
+The database includes a constraint that rejects common image-payload keys from diagnostic event metadata.
 
-## Device-owned data
+## Authentication
 
-The GSPro directory handle is a device/browser permission and must never be synced to Supabase. A user connects the simulator PC once and Chrome/Edge retains that permission locally.
+The web client is wired to the Looper Supabase project with a browser-safe publishable key. Supabase environment variables may override the checked-in public project configuration later.
 
-Developer/training capture is also a device setting, not an account role. Logging into the same account on a phone or another computer must not make that device start retaining screenshots.
+Planned/implemented login options:
+- Google OAuth
+- passwordless email magic link
 
-## Screenshot policy
+Access remains invite-only after authentication. A successfully authenticated email must also have an enabled row in `public.allowed_users`.
 
-### Normal users
+## First-user / admin model
 
-Screenshots are working memory only.
+The initial owner account is stored as an enabled admin in `allowed_users`.
 
-- do not upload screenshots to Supabase
-- do not put screenshots in Postgres JSON
-- do not accumulate screenshots in browser storage
-- prefer in-memory captures
-- if a persistent working slot is technically required, keep only a tiny rolling set for the current hole and overwrite/delete it when the hole changes
+Admins may manage the allow list through `/admin/users`. Row Level Security allows an admin to list, add, enable, or disable invited users without exposing a service-role key to the browser.
 
-Normal users may emit small diagnostic metadata such as extractor version, course/hole, result, confidence, detected classes, and failure reason. This lets us identify patterns without storing the image itself.
+## Persistence migration behavior
+
+Existing local Looper data is treated conservatively during migration:
+
+1. localStorage remains intact as the safety copy;
+2. on the first allowed sign-in on a device, existing saved sessions and bag configuration are uploaded;
+3. Looper then downloads cloud sessions and merges them with local saved sessions;
+4. local data wins when the same session ID exists in both places during the initial migration pass;
+5. a successful one-time bootstrap marker prevents repeated full uploads;
+6. ordinary future bag/session changes dual-write locally first and cloud second.
+
+A failed cloud write must never erase or block the existing local copy.
+
+## Screenshot / capture policy
+
+### Normal user
+A screenshot exists only long enough to support the current extraction. Captures should live in memory or a tiny rolling working set and be overwritten/deleted when the hole advances. No growing browser image archive.
 
 ### Development simulator
+A device-local **Training Capture Mode** will retain useful screenshots and accompanying extractor metadata in a user-approved local folder. This is a device setting, not a cloud account role.
 
-A simulator PC can opt into **Training Capture Mode**. That setting is local to that device.
+### Cloud telemetry
+Only compact structured diagnostic metadata is uploaded, such as:
+- course and hole
+- extractor/model version
+- success/failure result
+- reason/fallback code
+- confidence
+- detected class counts / crop dimensions when useful
 
-When enabled, Looper may write full capture bundles to a user-selected local folder using the same persistent browser filesystem-access approach used for GSPro.
+This gives Looper fleet-wide failure telemetry without accumulating image storage.
 
-Recommended bundle shape:
+## Supabase hardening
 
-```
-Looper Training Captures/
-  YYYY-MM-DD/
-    course/
-      hole-01/
-        tee.png
-        working.png
-        extraction.json
-        diagnostics.json
-```
+- Row Level Security is enabled on all Looper public tables.
+- helper `SECURITY DEFINER` functions live in a non-exposed `private` schema;
+- the `citext` extension was moved out of `public`;
+- RLS auth calls are evaluated once per statement for better query planning;
+- foreign-key lookup indexes required by the advisor were added;
+- Supabase Security Advisor currently reports no findings.
 
-This data is retained locally for extractor/model improvement and never counts against Supabase storage.
+## Remaining setup before merge
 
-### User-reported bad reads
+1. Set Supabase Auth Site URL to the intended production Looper URL.
+2. Add the Vercel preview branch pattern as an allowed redirect while testing.
+3. Configure Google OAuth credentials in Supabase (or temporarily test email magic-link login first).
+4. Exercise one allowed account and one non-allowed account in the Vercel preview.
+5. Confirm the first allowed login migrates local sessions and bag without changing the existing Looper UI/data behavior.
+6. Confirm `/admin/users` can add/disable a test invite.
 
-A later optional feature can expose **Report bad read**. The user would explicitly choose to share the current screenshot plus diagnostics. It should not be an automatic upload path.
-
-## Migration strategy
-
-1. Add Supabase Auth + allow-list gate.
-2. Add user-scoped cloud tables and RLS.
-3. Dual-write new sessions to Supabase while retaining the existing local copy as rollback protection.
-4. Import the existing Looper history into the signed-in owner's account.
-5. Validate cloud/local parity.
-6. Make Supabase canonical and reduce localStorage to cache/offline safety where useful.
-
-Do not mix this migration with scoring, Stock/Pure algorithm, mishit, or intelligence-model changes.
-
-## Cost guardrails
-
-Design for the Supabase Free plan and Vercel Hobby plan at the expected hobby scale.
-
-- no cloud screenshot retention
-- no unnecessary blob/object storage
-- structured shot rows instead of repeated giant payloads where practical
-- keep `open_golf_coach` JSON temporarily for migration fidelity, then narrow it once all required derived fields are explicit
-- diagnostics are metadata, not images
-
-## Branch safety
-
-This work belongs on `auth-cloud-persistence`, based on the browser-native GSPro `web-gspro-clean` baseline. Do not alter Production until auth and cloud persistence are separately validated.
+Do not merge this branch into `web-gspro-clean` until those tests pass.
