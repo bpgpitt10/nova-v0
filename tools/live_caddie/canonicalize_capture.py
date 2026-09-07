@@ -137,6 +137,8 @@ def build_canonical_hole(capture_dir: str | Path, assumptions: Assumptions | Non
     payload = {
         "schema_version": "canonical-hole-model-v0",
         "assumption_version": assumptions.version,
+        "round_identity": hole_model.get("round_identity"),
+        "round_identity_warning": hole_model.get("round_identity_warning"),
         "coordinate_system": {
             "origin": "tee ball",
             "forward_axis": "tee-to-pin",
