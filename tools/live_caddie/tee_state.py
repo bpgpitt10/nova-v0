@@ -12,13 +12,15 @@ class TeeStateInputs:
     """Evidence available before a GSPro shot.
 
     `screen_shot_number` and `screen_distance_to_pin_yds` intentionally exist now
-    even though the upper-left OCR adapter is not built yet.  When those screenshots
+    even though the upper-left OCR adapter is not built yet. When those screenshots
     arrive, the screen reader can populate these fields without changing tee-state
     math or lifecycle behavior.
     """
 
     current_identity: dict[str, Any] | None = None
     previous_identity: dict[str, Any] | None = None
+    minimap_surface_is_tee: bool | None = None
+    minimap_surface_label: str | None = None
     screen_shot_number: int | None = None
     screen_distance_to_pin_yds: float | None = None
     pin_card_distance_to_pin_yds: float | None = None
@@ -44,6 +46,7 @@ class TeeStateDecision:
     anchor_present: bool
     hole_changed: bool
     current_identity_valid: bool
+    minimap_surface_is_tee: bool | None
     distance_matches_hole: bool | None
     distance_error_yds: float | None
     distance_source: str | None
@@ -126,8 +129,8 @@ def infer_tee_state(
 ) -> TeeStateDecision:
     """Infer whether the current GSPro pre-shot state is a new-hole tee.
 
-    This is deliberately a pure calculation.  It never captures the screen, presses
-    keys, or mutates lifecycle state.  Screen/log adapters provide evidence; this
+    This is deliberately a pure calculation. It never captures the screen, presses
+    keys, or mutates lifecycle state. Screen/log adapters provide evidence; this
     function only combines that evidence using externally configured weights.
     """
 
@@ -137,10 +140,16 @@ def infer_tee_state(
     current_course, current_hole = _identity_parts(inputs.current_identity)
     current_identity_valid = bool(current_course and current_hole is not None)
     changed = _hole_changed(inputs.previous_identity, inputs.current_identity)
+    surface_tee = inputs.minimap_surface_is_tee is True
     shot_one = inputs.screen_shot_number == 1
     no_recorded_shots = int(inputs.shots_recorded_on_current_hole) == 0
 
     contradictions: list[str] = []
+    if bool(cfg["non_tee_surface_is_hard_contradiction"]):
+        if inputs.minimap_surface_is_tee is False:
+            contradictions.append(
+                f"GSPro minimap surface is {inputs.minimap_surface_label or 'recognized non-tee'}, not Tee"
+            )
     if bool(cfg["shot_number_gt_one_is_hard_contradiction"]):
         if inputs.screen_shot_number is not None and int(inputs.screen_shot_number) > 1:
             contradictions.append(f"upper-left shot number is {int(inputs.screen_shot_number)}, not 1")
@@ -158,6 +167,16 @@ def infer_tee_state(
             current_identity_valid,
             float(cfg["current_identity_valid_weight"]),
             f"current header identifies {current_course or '?'} hole {current_hole or '?'}",
+        ),
+        TeeEvidenceItem(
+            "minimap_tee_surface",
+            surface_tee,
+            float(cfg["minimap_tee_surface_weight"]),
+            (
+                f"GSPro minimap surface title is {inputs.minimap_surface_label or 'Tee'}"
+                if inputs.minimap_surface_is_tee is not None
+                else "minimap surface title unavailable"
+            ),
         ),
         TeeEvidenceItem(
             "hole_changed",
@@ -216,7 +235,11 @@ def infer_tee_state(
     )
 
     score = min(1.0, sum(item.weight for item in evidence if item.present))
-    anchor_present = bool(changed or shot_one)
+    anchor_present = bool(
+        changed
+        or shot_one
+        or (surface_tee and bool(cfg["minimap_tee_surface_counts_as_anchor"]))
+    )
 
     if contradictions:
         status = "not-tee"
@@ -244,6 +267,7 @@ def infer_tee_state(
         anchor_present=anchor_present,
         hole_changed=changed,
         current_identity_valid=current_identity_valid,
+        minimap_surface_is_tee=inputs.minimap_surface_is_tee,
         distance_matches_hole=distance_match,
         distance_error_yds=distance_error,
         distance_source=distance_source,
