@@ -1,0 +1,52 @@
+name: Live Caddie Offline Tests
+
+on:
+  push:
+    branches:
+      - looper-live-caddie-engine-v0
+    paths:
+      - 'tools/live_caddie/**'
+      - 'tools/minimap_probe/**'
+      - 'config/looper-live-caddie.json'
+      - '.github/workflows/live-caddie-offline-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: tools/minimap_probe/requirements.txt
+
+      - name: Install probe dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/minimap_probe/requirements.txt
+
+      - name: Validate assumptions load
+        run: |
+          python - <<'PY'
+          from tools.live_caddie.assumptions import Assumptions
+          assumptions = Assumptions.load()
+          print('assumptions', assumptions.version)
+          PY
+
+      - name: Compile live-caddie modules
+        run: |
+          python -m compileall -q tools/live_caddie
+          python -m py_compile \
+            tools/minimap_probe/probe_approach_v4.py \
+            tools/minimap_probe/posttee_refinement.py \
+            tools/minimap_probe/green_heatmap.py \
+            tools/minimap_probe/round_watch.py
+
+      - name: Run live-caddie unit tests
+        run: python -m unittest discover -s tools/live_caddie/tests -p 'test_*.py' -v
