@@ -201,6 +201,8 @@ def try_read_round_identity(
             debug_dir=debug_dir,
         )
         minimum = float((detector_config or _config())["minimum_usable_confidence"])
+        if identity.cache_key is None:
+            return identity, "course/hole cache key is incomplete; identity can only support a lower-confidence fallback"
         if identity.confidence < minimum:
             return identity, f"round identity OCR confidence {identity.confidence:.2f} is below preferred {minimum:.2f}"
         return identity, None
