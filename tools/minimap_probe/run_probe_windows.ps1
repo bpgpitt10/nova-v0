@@ -4,15 +4,16 @@ param(
   [string]$LieRoi = "",
   [string]$Tesseract = "",
   [string]$HeatmapKey = "Y",
-  [double]$HeatmapSettleMs = 320,
+  [double]$HeatmapSettleMs = 80,
   [double]$HeatmapPulseMs = 45,
   [double]$AimPulseMs = 45,
-  [double]$AimSettleMs = 180,
+  [double]$AimSettleMs = 60,
   [double]$AimReturnTolerancePx = 1.5,
   [double]$AimMaxCorrectionMs = 20,
   [int]$AimMaxCorrections = 2,
   [switch]$NoAimSummon,
   [switch]$VerifyTeeLie,
+  [switch]$DeepDebug,
   [switch]$NoReviewZip
 )
 
@@ -58,6 +59,9 @@ if ($NoAimSummon) {
 if ($VerifyTeeLie) {
   $argsList += "--verify-tee-lie"
 }
+if ($DeepDebug) {
+  $argsList += "--deep-debug"
+}
 
 if ($HeatmapKey -notin @("Y", "y")) {
   throw "-HeatmapKey must be Y for the current GSPro heatmap capture contract."
@@ -65,20 +69,26 @@ if ($HeatmapKey -notin @("Y", "y")) {
 
 Write-Host "Running GSPro tee-capture orchestrator v8 once."
 Write-Host "TEE RULE: minimap zoom is never changed; W recovery is disabled by design."
+Write-Host "FAST PATH: PIN OCR + green/hazard CV overlap the GSPro UI sequence."
+Write-Host "Review PNG encoding is deferred until after STATE READY."
 if ($VerifyTeeLie) {
   Write-Host "Directional tee lie OCR verification enabled (diagnostic / slower)."
 } else {
   Write-Host "Tee lie uses GSPro invariant 0.0 / 0.0; OCR skipped for speed."
 }
 Write-Host "Heatmap sequence: initial capture -> Y toggle -> registered capture -> Y restore."
+Write-Host "Heatmap settle: $HeatmapSettleMs ms; AIM settle: $AimSettleMs ms."
 Write-Host "One canonical HEATMAP-ON minimap is written to the HoleModel."
 Write-Host "Red penalty CV restores only Y-changed green pixels transiently to avoid heatmap contamination."
 if ($NoAimSummon) {
   Write-Host "Automatic AIM-card summon disabled."
 } else {
-  Write-Host "AIM acquisition runs after heatmap restoration with controlled LEFT/RIGHT ARROW return verification."
+  Write-Host "AIM acquisition uses controlled LEFT/RIGHT ARROW return verification."
 }
-Write-Host "Performance timing is enabled; STATE READY excludes review-ZIP packaging."
+if ($DeepDebug) {
+  Write-Host "Deep AIM debug frames enabled (diagnostic; slower critical path)."
+}
+Write-Host "Performance timing is enabled; STATE READY excludes review PNG/ZIP persistence."
 if (-not $NoReviewZip) {
   Write-Host "A review ZIP will be created automatically after the run."
 }
@@ -137,7 +147,7 @@ if (-not $NoReviewZip) {
           Write-Host "Review ZIP:           $ArchiveZip"
           Write-Host "Latest review ZIP:    $LatestZip"
           Write-Host ("ZIP packaging:        {0:N1} ms (debug only; not live critical path)" -f $ZipMs)
-          Write-Host "Upload latest_tee_review.zip next time instead of selecting individual files."
+          Write-Host "Upload latest_tee_review.zip when we need visual review."
         }
       }
     }
