@@ -5,6 +5,9 @@ param(
   [double]$PollMs = 250,
   [string]$UpperLeftShotRoi = "",
   [string]$UpperLeftDistanceRoi = "",
+  [string]$UpperLeftElevationRoi = "",
+  [string]$UpperLeftPlayerRoi = "",
+  [switch]$DisableUpperLeft,
   [switch]$ExecuteActions,
   [switch]$Json,
   [switch]$Once
@@ -22,10 +25,6 @@ if (-not (Test-Path $Python)) {
   & $Python -m pip install -r (Join-Path $Here "requirements.txt")
 }
 
-if (($UpperLeftShotRoi -and -not $UpperLeftDistanceRoi) -or ($UpperLeftDistanceRoi -and -not $UpperLeftShotRoi)) {
-  throw "Upper-left calibration requires BOTH -UpperLeftShotRoi and -UpperLeftDistanceRoi."
-}
-
 $argsList = @(
   (Join-Path $Here "round_watch.py"),
   "--monitor", "$Monitor",
@@ -35,6 +34,9 @@ if ($Roi) { $argsList += @("--roi", $Roi) }
 if ($Tesseract) { $argsList += @("--tesseract", $Tesseract) }
 if ($UpperLeftShotRoi) { $argsList += @("--upper-left-shot-roi", $UpperLeftShotRoi) }
 if ($UpperLeftDistanceRoi) { $argsList += @("--upper-left-distance-roi", $UpperLeftDistanceRoi) }
+if ($UpperLeftElevationRoi) { $argsList += @("--upper-left-elevation-roi", $UpperLeftElevationRoi) }
+if ($UpperLeftPlayerRoi) { $argsList += @("--upper-left-player-roi", $UpperLeftPlayerRoi) }
+if ($DisableUpperLeft) { $argsList += "--disable-upper-left" }
 if ($ExecuteActions) { $argsList += "--execute-actions" }
 if ($Json) { $argsList += "--json" }
 if ($Once) { $argsList += "--once" }
@@ -44,12 +46,13 @@ if ($ExecuteActions) {
 } else {
   Write-Host "ROUND WATCH DRY RUN: no capture scripts or GSPro keys will be triggered."
 }
-if ($UpperLeftShotRoi) {
-  Write-Host "Upper-left shot number + DTP OCR enabled using explicit calibrated ROIs."
+if ($DisableUpperLeft) {
+  Write-Host "Upper-left HUD reader DISABLED by request."
 } else {
-  Write-Host "Upper-left shot state not configured yet; no default ROI is guessed."
+  Write-Host "Upper-left HUD reader ENABLED with calibrated normalized defaults."
+  Write-Host "Reads player + shot number + decimal DTP + signed elevation."
 }
-Write-Host "Post-tee transitions may be detected once upper-left OCR is configured, but automatic post-tee execution remains field-blocked."
+Write-Host "Post-tee transitions are detected from shot-number advancement; automatic post-tee execution remains field-blocked."
 
 & $Python @argsList
 exit $LASTEXITCODE
