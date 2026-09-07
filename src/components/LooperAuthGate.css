@@ -1,0 +1,169 @@
+.looper-auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: #0b1115;
+  color: #f4f0e8;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.looper-auth__card {
+  width: min(620px, 100%);
+  padding: 34px;
+  border: 1px solid #29343a;
+  border-radius: 18px;
+  background: #11191e;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+}
+
+.looper-auth__card--compact {
+  width: min(500px, 100%);
+}
+
+.looper-auth__eyebrow {
+  display: block;
+  margin-bottom: 12px;
+  color: #cfb36e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.looper-auth h1 {
+  margin: 0 0 14px;
+  font-size: clamp(34px, 6vw, 54px);
+  line-height: 1.02;
+}
+
+.looper-auth__lead,
+.looper-auth p {
+  color: #b8c2c7;
+  line-height: 1.55;
+}
+
+.looper-auth button,
+.looper-auth input {
+  min-height: 48px;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.looper-auth button {
+  padding: 0 18px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.looper-auth button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.looper-auth__primary {
+  background: #cfb36e;
+  color: #101418;
+}
+
+.looper-auth__secondary {
+  border-color: #3b4a51 !important;
+  background: #172126;
+  color: #edf0ee;
+}
+
+.looper-auth__full {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.looper-auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 24px 0;
+  color: #7e8a90;
+  font-size: 13px;
+}
+
+.looper-auth__divider::before,
+.looper-auth__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #29343a;
+}
+
+.looper-auth__label {
+  display: block;
+  margin-bottom: 8px;
+  color: #e9e3d6;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.looper-auth__email-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.looper-auth input {
+  width: 100%;
+  padding: 0 14px;
+  border: 1px solid #3b4a51;
+  outline: none;
+  background: #0d1519;
+  color: #f4f0e8;
+}
+
+.looper-auth input:focus {
+  border-color: #cfb36e;
+}
+
+.looper-auth__fineprint {
+  margin: 18px 0 0;
+  font-size: 12px;
+}
+
+.looper-auth__success,
+.looper-auth__error {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+.looper-auth__success {
+  border: 1px solid #46624c;
+  background: #111b14;
+  color: #c9e0cd;
+}
+
+.looper-auth__error {
+  border: 1px solid #864944;
+  background: #241413;
+  color: #f2c2bc;
+}
+
+.looper-auth__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .looper-auth__card {
+    padding: 24px 20px;
+  }
+
+  .looper-auth__email-row {
+    grid-template-columns: 1fr;
+  }
+}
