@@ -39,6 +39,7 @@ class Assumptions:
         required_sections = (
             "canonical_geometry",
             "screen_detection",
+            "hole_model_cache",
             "candidate_policy",
             "distance_fit",
             "dispersion",
@@ -52,6 +53,34 @@ class Assumptions:
         for section in required_sections:
             if not isinstance(self.payload.get(section), dict):
                 raise ValueError(f"Missing/invalid assumptions section: {section}")
+
+        identity = self.get("screen_detection.round_identity")
+        for key in (
+            "hole_number_roi_normalized",
+            "course_name_roi_normalized",
+            "par_roi_normalized",
+            "yards_roi_normalized",
+        ):
+            roi = identity.get(key)
+            if not isinstance(roi, list) or len(roi) != 4:
+                raise ValueError(f"screen_detection.round_identity.{key} must be x1,y1,x2,y2")
+            x1, y1, x2, y2 = [float(value) for value in roi]
+            if not (0 <= x1 < x2 <= 1 and 0 <= y1 < y2 <= 1):
+                raise ValueError(f"screen_detection.round_identity.{key} must be normalized to 0..1")
+        if not (0.0 <= float(identity["minimum_usable_confidence"]) <= 1.0):
+            raise ValueError("round identity minimum_usable_confidence must be 0..1")
+        identity_weight_sum = sum(
+            float(identity[key])
+            for key in ("course_weight", "hole_weight", "par_weight", "yards_weight")
+        )
+        if abs(identity_weight_sum - 1.0) > 1e-6:
+            raise ValueError("round identity confidence weights must sum to 1.0")
+
+        cache = self.get("hole_model_cache")
+        if not (0.0 <= float(cache["course_name_similarity_min"]) <= 1.0):
+            raise ValueError("hole_model_cache.course_name_similarity_min must be 0..1")
+        if float(cache["hole_yardage_tolerance_yds"]) < 0:
+            raise ValueError("hole_model_cache.hole_yardage_tolerance_yds cannot be negative")
 
         for mode in ("approach", "strategic"):
             weights = self.get(f"scoring.{mode}")
