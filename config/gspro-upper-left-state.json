@@ -1,14 +1,15 @@
 {
   "schema_version": "gspro-upper-left-state-v1",
-  "status": "calibrated-from-two-real-non-practice-tee-screenshots",
+  "status": "calibrated-and-offline-ocr-validated-from-two-real-non-practice-tee-screenshots",
   "notes": [
     "ROIs are normalized so the reader scales across the two supplied ~2048-wide screenshots.",
     "The HUD provides player name, shot number, decimal distance-to-pin, and signed elevation in yards.",
+    "Player/shot ROIs were tightened after replaying both supplied screenshots through local Tesseract.",
     "Explicit x,y,w,h CLI overrides remain available for diagnostics; normal live-round use should use these defaults."
   ],
   "roi_normalized": {
-    "player_name": [0.0, 0.006, 0.15, 0.055],
-    "shot_number": [0.002, 0.04, 0.047, 0.087],
+    "player_name": [0.002, 0.018, 0.145, 0.058],
+    "shot_number": [0.002, 0.055, 0.05, 0.09],
     "distance_to_pin": [0.045, 0.04, 0.105, 0.087],
     "elevation": [0.09, 0.04, 0.155, 0.087]
   },
