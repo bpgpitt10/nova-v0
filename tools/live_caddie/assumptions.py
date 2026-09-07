@@ -133,6 +133,19 @@ class Assumptions:
         if len(precedence) != len(set(precedence)):
             raise ValueError("distance-to-pin precedence contains duplicate sources")
         for key in (
+            "upper_left_source_confidence",
+            "pin_card_source_confidence",
+            "unrated_source_confidence",
+            "warning_confidence_cap",
+            "hard_conflict_confidence_cap",
+            "identity_minimum_confidence",
+            "canonical_distance_minimum_registration_confidence",
+            "surface_recognition_minimum_confidence",
+        ):
+            value = float(source[key])
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"source_resolution.{key} must be 0..1")
+        for key in (
             "distance_warning_absolute_yds",
             "distance_warning_relative_fraction",
             "distance_hard_conflict_absolute_yds",
@@ -144,6 +157,8 @@ class Assumptions:
             raise ValueError("distance hard-conflict absolute threshold must be >= warning threshold")
         if float(source["distance_hard_conflict_relative_fraction"]) < float(source["distance_warning_relative_fraction"]):
             raise ValueError("distance hard-conflict relative threshold must be >= warning threshold")
+        if float(source["hard_conflict_confidence_cap"]) > float(source["warning_confidence_cap"]):
+            raise ValueError("hard-conflict confidence cap must be <= warning confidence cap")
 
         refinement = self.get("green_refinement")
         for key in (
@@ -154,6 +169,8 @@ class Assumptions:
                 raise ValueError(f"green_refinement.{key} must be 0..1")
         if float(refinement["maximum_pin_alignment_error_yds"]) <= 0:
             raise ValueError("green_refinement.maximum_pin_alignment_error_yds must be positive")
+        if float(refinement["maximum_auto_refinement_distance_yds"]) <= 0:
+            raise ValueError("green_refinement.maximum_auto_refinement_distance_yds must be positive")
         if int(refinement["maximum_history_entries"]) <= 0:
             raise ValueError("green_refinement.maximum_history_entries must be positive")
 
