@@ -43,6 +43,8 @@ class LiveShotState:
     pin_right_yds: float = 0.0
     gspro_aim_forward_yds: float | None = None
     gspro_aim_right_yds: float | None = None
+    gspro_aim_distance_yds: float | None = None
+    gspro_aim_elevation_delta_yds: float = 0.0
     external_carry_adjustment_yds: float = 0.0
     external_lateral_adjustment_yds: float = 0.0
     lie_up_down_deg: float | None = None
@@ -59,13 +61,18 @@ class CandidateShot:
     lateral_sigma_yds: float
     pattern_bias_yds: float
     aim_offset_yds: float
-    base_aim_right_yds: float
+    base_target: PointYards
+    aim_point: PointYards
+    shot_unit: PointYards
+    cross_unit: PointYards
     landing: PointYards
 
 @dataclass
 class CandidateEvaluation:
     candidate: CandidateShot
     total_score: float
+    effective_target_distance_yds: float
+    distance_error_yds: float
     distance_fit_score: float
     hazard_boundary_risk: float
     green_containment: float | None
