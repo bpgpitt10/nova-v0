@@ -12,7 +12,7 @@ GreenSurfaceModel is worthwhile:
 6. register the refined green back into canonical tee coordinates;
 7. confidence-gate the merge into canonical_hole_model.json.
 
-The recommendation engine never contains these UI operations.  Timing, bounds, and
+The recommendation engine never contains these UI operations. Timing, bounds, and
 merge thresholds come from config/looper-live-caddie.json.
 """
 
@@ -45,7 +45,7 @@ def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _heatmap_pair(*, normal_screen, monitor: int, assumptions: Assumptions):
+def _heatmap_pair(*, monitor: int, assumptions: Assumptions):
     config = assumptions.get("actuation")
     found = aim_actuator.find_gspro_window()
     if found is None:
@@ -62,7 +62,7 @@ def _heatmap_pair(*, normal_screen, monitor: int, assumptions: Assumptions):
     time.sleep(max(0.0, settle_ms) / 1000.0)
     toggled = base.capture_monitor(monitor)
 
-    # Restore exactly once using the field-proven fixed timing.  We intentionally do
+    # Restore exactly once using the field-proven fixed timing. We intentionally do
     # not retry speculative third toggles because that can leave GSPro in the wrong state.
     aim_actuator.pulse_key_windows(key, pulse_ms)
     time.sleep(max(0.0, settle_ms) / 1000.0)
@@ -138,10 +138,10 @@ def refine_green_if_useful(
     )
     first_geometry = first["geometry"]
 
-    maximum_distance = float(refinement_cfg.get("maximum_auto_refinement_distance_yds", 220.0))
+    maximum_distance = float(refinement_cfg["maximum_auto_refinement_distance_yds"])
     should_refine = (
         str(mode).lower() == "approach"
-        and bool(refinement_cfg.get("capture_on_approach", True))
+        and bool(refinement_cfg["capture_on_approach"])
         and float(pin_distance_yds) <= maximum_distance
     )
     if not should_refine:
@@ -175,7 +175,7 @@ def refine_green_if_useful(
 
     initially_visible = bool((first_geometry.get("green_visibility") or {}).get("visible"))
     if initially_visible:
-        zoom_ok, w_pulses, _payload, zoom_history = True, 0, first, [
+        zoom_ok, w_pulses, zoom_history = True, 0, [
             {"w_pulses": 0, "visible": True, "payload": first}
         ]
     else:
@@ -203,7 +203,6 @@ def refine_green_if_useful(
         raise RuntimeError("canonical pin projection unavailable for post-tee Y refinement")
 
     toggled_screen, restored_screen, gspro_title = _heatmap_pair(
-        normal_screen=normal_screen,
         monitor=monitor,
         assumptions=assumptions,
     )
@@ -211,7 +210,7 @@ def refine_green_if_useful(
         initial_screen=normal_screen,
         toggled_screen=toggled_screen,
         roi_override=roi,
-        debug_dir=(out if bool(refinement_cfg.get("persist_debug_artifacts", True)) else None),
+        debug_dir=(out if bool(refinement_cfg["persist_debug_artifacts"]) else None),
         pin_override_xy=(float(projected_pin["x"]), float(projected_pin["y"])),
     )
 
@@ -244,9 +243,10 @@ def refine_green_if_useful(
     if merge.get("accepted"):
         _write_json(canonical_path, updated_hole)
 
-    cv2.imwrite(str(out / "approach_refinement_normal.png"), first["minimap"])
-    cv2.imwrite(str(out / "approach_refinement_heatmap.png"), heatmap.heatmap_roi)
-    cv2.imwrite(str(out / "approach_refinement_green_mask.png"), heatmap.target_green_mask)
+    if bool(refinement_cfg["persist_debug_artifacts"]):
+        cv2.imwrite(str(out / "approach_refinement_normal.png"), latest["minimap"])
+        cv2.imwrite(str(out / "approach_refinement_heatmap.png"), heatmap.heatmap_roi)
+        cv2.imwrite(str(out / "approach_refinement_green_mask.png"), heatmap.target_green_mask)
 
     result = {
         "attempted": True,
