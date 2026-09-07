@@ -216,7 +216,7 @@ export const prepareBrowserGsproRuntime = async () => {
     return false
   }
 
-  // Validate both the expected file and the SQLite table before the normal app is allowed through.
+  // Validate both the expected file and the DrivingRangeShot table before normal app use.
   await readLatestGsproRangeShot(handle)
   preparedDirectoryHandle = handle
   return true
@@ -242,28 +242,11 @@ export const connectToBrowserGsproEvents = ({
   let pollBusy = false
   let consecutiveFailures = 0
   let errorReported = false
+  let initialized = false
   let lastRowId: number | null = null
   let databaseState: { size: number; lastModified: number } | null = null
 
   onStatusChange?.('connecting')
-
-  const initialize = async () => {
-    const latest = await readLatestGsproRangeShot(directoryHandle)
-    if (disconnected) {
-      return
-    }
-
-    lastRowId = latest?.rowId ?? null
-    databaseState = latest
-      ? {
-          size: latest.databaseSizeBytes,
-          lastModified: latest.databaseLastModified,
-        }
-      : await readGsproDatabaseState(directoryHandle)
-
-    onStatusChange?.('connected')
-    onStatusChange?.('waiting')
-  }
 
   const handleFailure = (error: unknown) => {
     consecutiveFailures += 1
@@ -291,64 +274,90 @@ export const connectToBrowserGsproEvents = ({
     }
   }
 
-  void initialize().catch(handleFailure)
-
-  const pollTimer = window.setInterval(() => {
-    if (disconnected || pollBusy || !databaseState) {
+  const initialize = async () => {
+    const latest = await readLatestGsproRangeShot(directoryHandle)
+    if (disconnected) {
       return
     }
 
+    lastRowId = latest?.rowId ?? null
+    databaseState = latest
+      ? {
+          size: latest.databaseSizeBytes,
+          lastModified: latest.databaseLastModified,
+        }
+      : await readGsproDatabaseState(directoryHandle)
+    initialized = true
+    handleRecovery()
+    onStatusChange?.('connected')
+    onStatusChange?.('waiting')
+  }
+
+  const pollOnce = async () => {
+    if (!initialized || !databaseState) {
+      await initialize()
+      return
+    }
+
+    const nextState = await readGsproDatabaseState(directoryHandle)
+    if (disconnected) {
+      return
+    }
+
+    if (
+      nextState.size === databaseState.size &&
+      nextState.lastModified === databaseState.lastModified
+    ) {
+      handleRecovery()
+      return
+    }
+
+    // Advance databaseState only after the SQLite read succeeds. If GSPro is mid-write,
+    // the next poll retries the same change instead of silently missing the shot.
+    const latest = await readLatestGsproRangeShot(directoryHandle)
+    if (disconnected) {
+      return
+    }
+
+    databaseState = {
+      size: latest?.databaseSizeBytes ?? nextState.size,
+      lastModified: latest?.databaseLastModified ?? nextState.lastModified,
+    }
+    handleRecovery()
+
+    if (!latest) {
+      return
+    }
+
+    if (lastRowId === null) {
+      lastRowId = latest.rowId
+      return
+    }
+
+    if (latest.rowId === lastRowId) {
+      return
+    }
+
+    lastRowId = latest.rowId
+    onStatusChange?.('received-shot')
+    onFinalShot(buildFinalShotEvent(latest))
+    onStatusChange?.('waiting')
+  }
+
+  const runPoll = () => {
+    if (disconnected || pollBusy) {
+      return
+    }
     pollBusy = true
-    void readGsproDatabaseState(directoryHandle)
-      .then(async (nextState) => {
-        if (disconnected || !databaseState) {
-          return
-        }
-
-        if (
-          nextState.size === databaseState.size &&
-          nextState.lastModified === databaseState.lastModified
-        ) {
-          handleRecovery()
-          return
-        }
-
-        // Do not advance databaseState until the SQLite read succeeds. If GSPro is
-        // mid-write, the next poll retries the same change instead of silently missing it.
-        const latest = await readLatestGsproRangeShot(directoryHandle)
-        if (disconnected) {
-          return
-        }
-
-        databaseState = {
-          size: latest?.databaseSizeBytes ?? nextState.size,
-          lastModified: latest?.databaseLastModified ?? nextState.lastModified,
-        }
-        handleRecovery()
-
-        if (!latest) {
-          return
-        }
-
-        if (lastRowId === null) {
-          lastRowId = latest.rowId
-          return
-        }
-
-        if (latest.rowId === lastRowId) {
-          return
-        }
-
-        lastRowId = latest.rowId
-        onStatusChange?.('received-shot')
-        onFinalShot(buildFinalShotEvent(latest))
-        onStatusChange?.('waiting')
-      })
+    void pollOnce()
       .catch(handleFailure)
       .finally(() => {
         pollBusy = false
       })
-  }, POLL_INTERVAL_MS)
+  }
+
+  runPoll()
+  const pollTimer = window.setInterval(runPoll, POLL_INTERVAL_MS)
 
   return {
     mode: 'simread',
