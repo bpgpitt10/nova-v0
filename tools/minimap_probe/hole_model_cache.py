@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Select the correct cached tee HoleModel for post-tee use.
 
-Preferred key: GSPro screen identity (course + hole).  Newest-capture selection is
+Preferred key: GSPro screen identity (course + hole). Newest-capture selection is
 kept only as an explicit legacy fallback for old captures that predate identity OCR
 or for runs where the screen header could not be read.
 """
@@ -84,16 +84,21 @@ def _identity_dict(value) -> dict | None:
     return dict(value)
 
 
-def _latest_selection(candidates, requested, method: str, warning: str | None) -> HoleModelSelection:
+def _latest_selection(candidates, requested, method: str, warning: str | None, config: dict) -> HoleModelSelection:
     if not candidates:
         raise RuntimeError("No usable tee HoleModel found. Run the tee capture first.")
     model, path, canonical = candidates[0]
+    confidence = (
+        float(config["legacy_latest_confidence"])
+        if warning
+        else float(config["latest_without_warning_confidence"])
+    )
     return HoleModelSelection(
         model=model,
         model_path=path,
         canonical_path=canonical,
         method=method,
-        confidence=0.35 if warning else 0.50,
+        confidence=confidence,
         requested_identity=requested,
         selected_identity=model.get("round_identity"),
         warning=warning,
@@ -105,6 +110,7 @@ def _fallback_without_course(
     *,
     requested: dict,
     yard_tolerance: float,
+    config: dict,
 ) -> HoleModelSelection | None:
     """Use non-course fields only when they identify one unambiguous cached hole."""
     requested_par = requested.get("par")
@@ -133,7 +139,7 @@ def _fallback_without_course(
             model_path=path,
             canonical_path=canonical,
             method="hole-par-yard-fallback",
-            confidence=0.68,
+            confidence=float(config["missing_course_par_yard_confidence"]),
             requested_identity=requested,
             selected_identity=stored,
             warning="course name OCR was unavailable; selected the only matching hole/par/yardage model",
@@ -146,7 +152,7 @@ def _fallback_without_course(
             model_path=path,
             canonical_path=canonical,
             method="unique-hole-fallback",
-            confidence=0.52,
+            confidence=float(config["unique_hole_confidence"]),
             requested_identity=requested,
             selected_identity=model.get("round_identity"),
             warning="course name OCR was unavailable; only one tagged model exists for this hole number",
@@ -173,6 +179,7 @@ def find_hole_model(
             requested,
             "latest-current-identity-unavailable",
             "current course/hole header was unavailable; selected newest tee HoleModel",
+            config,
         )
 
     requested_hole = int(requested["hole_number"])
@@ -193,6 +200,7 @@ def find_hole_model(
             same_hole,
             requested=requested,
             yard_tolerance=yard_tolerance,
+            config=config,
         )
         if fallback is not None:
             return fallback
@@ -202,6 +210,7 @@ def find_hole_model(
                 requested,
                 "legacy-latest-no-tagged-models",
                 "cached tee captures predate course/hole identity; selected newest legacy HoleModel",
+                config,
             )
         raise RuntimeError(
             f"Course name OCR was unavailable and cached hole {requested_hole} is ambiguous. "
@@ -218,7 +227,10 @@ def find_hole_model(
         if course_similarity < similarity_min:
             continue
 
-        score = 0.65 + 0.25 * course_similarity
+        score = (
+            float(config["base_course_hole_confidence"])
+            + float(config["course_similarity_weight"]) * course_similarity
+        )
         method = "course-hole-exact" if course_similarity >= 0.999 else "course-hole-fuzzy"
         if requested_par is not None and stored.get("par") is not None and int(stored["par"]) == int(requested_par):
             score += float(config["par_match_bonus"])
@@ -247,6 +259,7 @@ def find_hole_model(
             requested,
             "legacy-latest-no-tagged-models",
             "cached tee captures predate course/hole identity; selected newest legacy HoleModel",
+            config,
         )
 
     raise RuntimeError(
