@@ -41,11 +41,9 @@ class RoundIdentityCacheTests(unittest.TestCase):
             correct = self._capture(root, "tee_capture_20260906_100000", {
                 "course_name": "The Old Game", "hole_number": 2, "par": 5, "hole_yards": 501,
             })
-            wrong = self._capture(root, "tee_capture_20260906_110000", {
+            self._capture(root, "tee_capture_20260906_110000", {
                 "course_name": "The Old Game", "hole_number": 3, "par": 4, "hole_yards": 410,
             })
-            # Make the wrong hole newer to prove latest-capture ordering no longer wins.
-            wrong.touch()
             selection = hole_model_cache.find_hole_model(root, identity={
                 "course_name": "The Old Game", "hole_number": 2, "par": 5, "hole_yards": 501,
             })
@@ -74,6 +72,36 @@ class RoundIdentityCacheTests(unittest.TestCase):
                     "course_name": "The Old Game", "hole_number": 2, "par": 5, "hole_yards": 501,
                 })
 
+    def test_missing_course_uses_unique_par_yardage_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wanted = self._capture(root, "tee_capture_20260906_120000", {
+                "course_name": "The Old Game", "hole_number": 2, "par": 5, "hole_yards": 501,
+            })
+            self._capture(root, "tee_capture_20260906_130000", {
+                "course_name": "Another Course", "hole_number": 2, "par": 4, "hole_yards": 390,
+            })
+            selection = hole_model_cache.find_hole_model(root, identity={
+                "course_name": None, "hole_number": 2, "par": 5, "hole_yards": 501,
+            })
+            self.assertEqual(selection.model_path.parent, wanted)
+            self.assertEqual(selection.method, "hole-par-yard-fallback")
+            self.assertIsNotNone(selection.warning)
+
+    def test_missing_course_refuses_ambiguous_hole(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._capture(root, "tee_capture_20260906_120000", {
+                "course_name": "The Old Game", "hole_number": 2, "par": 5, "hole_yards": 501,
+            })
+            self._capture(root, "tee_capture_20260906_130000", {
+                "course_name": "Another Course", "hole_number": 2, "par": 5, "hole_yards": 501,
+            })
+            with self.assertRaises(RuntimeError):
+                hole_model_cache.find_hole_model(root, identity={
+                    "course_name": None, "hole_number": 2, "par": 5, "hole_yards": 501,
+                })
+
     def test_green_visibility_can_use_registration_scale_without_visible_pin(self):
         hole_model = {
             "minimap": {
@@ -92,7 +120,7 @@ class RoundIdentityCacheTests(unittest.TestCase):
             ball_y=250,
             pin_x=150,
             pin_y=120,
-            pin_distance_yds=999,  # intentionally irrelevant when registration scale is supplied
+            pin_distance_yds=999,
             current_yards_per_pixel=0.5,
         )
         self.assertTrue(result.visible)
