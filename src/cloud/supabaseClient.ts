@@ -35,10 +35,21 @@ type AuthSubscription = {
   unsubscribe(): void
 }
 
+type SupabaseAuthSession = {
+  user: LooperAuthUser
+}
+
 type SupabaseClientLike = {
   auth: {
     getUser(): Promise<{
       data: { user: LooperAuthUser | null }
+      error: SupabaseError | null
+    }>
+    setSession(tokens: {
+      access_token: string
+      refresh_token: string
+    }): Promise<{
+      data: { session: SupabaseAuthSession | null }
       error: SupabaseError | null
     }>
     signInWithOAuth(options: {
@@ -54,7 +65,7 @@ type SupabaseClientLike = {
     }): Promise<{ error: SupabaseError | null }>
     signOut(): Promise<{ error: SupabaseError | null }>
     onAuthStateChange(
-      callback: (event: string, session: { user: LooperAuthUser } | null) => void,
+      callback: (event: string, session: SupabaseAuthSession | null) => void,
     ): { data: { subscription: AuthSubscription } }
   }
   from<T>(table: string): SupabaseQueryBuilder<T>
@@ -152,9 +163,10 @@ export const getSupabaseClient = async (): Promise<SupabaseClientLike> => {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
-        // Looper is a client-only Vite app. The implicit flow lets the standard
-        // Supabase magic-link template return the session directly to the browser.
+        // Looper handles the implicit callback explicitly below. Doing this
+        // deterministically avoids a startup race between URL detection and the
+        // auth gate's first getUser() call on a fresh magic-link redirect.
+        detectSessionInUrl: false,
         flowType: 'implicit',
       },
     })
@@ -163,8 +175,46 @@ export const getSupabaseClient = async (): Promise<SupabaseClientLike> => {
   return clientPromise
 }
 
+const consumeImplicitAuthRedirect = async (client: SupabaseClientLike) => {
+  if (!window.location.hash) {
+    return
+  }
+
+  const params = new URLSearchParams(window.location.hash.slice(1))
+  const authError = params.get('error_description') || params.get('error')
+  if (authError) {
+    throw new Error(authError)
+  }
+
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+  if (!accessToken && !refreshToken) {
+    return
+  }
+  if (!accessToken || !refreshToken) {
+    throw new Error('Looper received an incomplete sign-in response. Please request a new sign-in link.')
+  }
+
+  const result = await client.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
+
+  // Remove credentials from the address bar once Supabase has persisted them.
+  window.history.replaceState(
+    window.history.state,
+    document.title,
+    `${window.location.pathname}${window.location.search}`,
+  )
+}
+
 export const getCurrentLooperUser = async () => {
   const client = await getSupabaseClient()
+  await consumeImplicitAuthRedirect(client)
+
   const result = await client.auth.getUser()
   if (result.error) {
     // A brand-new visitor has no Supabase session yet. That is the normal
