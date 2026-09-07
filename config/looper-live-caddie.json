@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.10.0",
+  "assumptions_version": "0.11.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -10,7 +10,10 @@
     "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
     "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
     "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only.",
-    "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation."
+    "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation.",
+    "State-source precedence and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
+    "Post-tee W recovery is one-way only and green refinement is confidence-gated before it can replace the tee GreenSurfaceModel.",
+    "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -124,6 +127,37 @@
     "non_tee_surface_is_hard_contradiction": true,
     "shot_number_gt_one_is_hard_contradiction": true,
     "recorded_shots_is_hard_contradiction": true
+  },
+  "source_resolution": {
+    "distance_to_pin_precedence": ["upper-left-distance-to-pin", "pin-card-distance-to-pin", "canonical-distance-to-pin"],
+    "distance_warning_absolute_yds": 5.0,
+    "distance_warning_relative_fraction": 0.03,
+    "distance_hard_conflict_absolute_yds": 12.0,
+    "distance_hard_conflict_relative_fraction": 0.07,
+    "identity_minimum_confidence": 0.65,
+    "canonical_distance_minimum_registration_confidence": 0.65,
+    "surface_recognition_minimum_confidence": 0.75
+  },
+  "green_refinement": {
+    "minimum_source_area_px": 45,
+    "polygon_simplify_epsilon_px": 1.5,
+    "heatmap_sample_stride_px": 5,
+    "maximum_pin_alignment_error_yds": 8.0,
+    "minimum_registration_confidence": 0.65,
+    "minimum_heatmap_confidence": 0.60,
+    "prefer_refinement_when_valid": true,
+    "minimum_confidence_gain_to_replace": 0.05,
+    "maximum_history_entries": 6
+  },
+  "round_orchestrator": {
+    "actions_enabled_by_default": false,
+    "tee_stable_observations": 2,
+    "normal_state_stable_observations": 2,
+    "minimum_action_interval_ms": 700,
+    "tee_capture_command": "run_probe_windows.ps1",
+    "posttee_capture_command": "run_approach_probe_v4_windows.ps1",
+    "automatic_posttee_capture_requires_shot_counter": true,
+    "automatic_aim_requires_explicit_enable": true
   },
   "candidate_policy": {
     "include_stock": true,
