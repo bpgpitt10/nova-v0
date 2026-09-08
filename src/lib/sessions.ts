@@ -1,22 +1,28 @@
 import { syncSavedSessionToCloud } from '../cloud/cloudPersistence'
 import type { ActiveSessionDraft, SavedSession } from '../types'
 import { isSystemOldExcludedSession } from './historicalModel'
+import { installMishitPlanningState } from './mishitPlanningPopulation'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
 export const SESSION_HISTORY_UPDATED_EVENT = 'looper-session-history-updated'
 
+const installPlanningState = (sessions: SavedSession[]) => {
+  installMishitPlanningState(sessions)
+  return sessions
+}
+
 export const loadSavedSessions = (): SavedSession[] => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return []
+      return installPlanningState([])
     }
 
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as SavedSession[]) : []
+    return installPlanningState(Array.isArray(parsed) ? (parsed as SavedSession[]) : [])
   } catch {
-    return []
+    return installPlanningState([])
   }
 }
 
@@ -27,6 +33,9 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
   )
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  // Derived mishit state follows the latest raw history immediately. It is not
+  // written back into the source Shot records and does not alter human Pure tags.
+  installMishitPlanningState(sessions)
   window.dispatchEvent(new Event(SESSION_HISTORY_UPDATED_EVENT))
 
   sessions.forEach((session) => {
