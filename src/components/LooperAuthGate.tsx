@@ -11,6 +11,7 @@ import {
   type AllowedUserRecord,
   type LooperAuthUser,
 } from '../cloud/supabaseClient'
+import { deactivateLocalUserScope } from '../lib/localUserScope'
 import { loadSavedSessions } from '../lib/sessions'
 import './LooperAuthGate.css'
 
@@ -39,11 +40,18 @@ export default function LooperAuthGate({ children }: Props) {
   const [error, setError] = useState<string | null>(null)
   const bootstrapRef = useRef<{ userId: string; promise: Promise<void> } | null>(null)
 
-  const bootstrapUserData = async (nextUser: LooperAuthUser) => {
+  const bootstrapUserData = async (
+    nextUser: LooperAuthUser,
+    access: AllowedUserRecord,
+  ) => {
     if (!bootstrapRef.current || bootstrapRef.current.userId !== nextUser.id) {
       bootstrapRef.current = {
         userId: nextUser.id,
-        promise: bootstrapLooperCloudData(nextUser.id)
+        promise: bootstrapLooperCloudData(nextUser.id, {
+          // Brian/admin is the controlled migration path for the old pre-auth
+          // browser cache. Normal invitees always start from their own scope.
+          claimUnscopedLegacyData: access.is_admin,
+        })
           .then((result) => {
             if (result.warnings.length > 0) {
               console.warn('[Cloud Bootstrap] completed with local safety copy retained', result)
@@ -60,9 +68,9 @@ export default function LooperAuthGate({ children }: Props) {
             }
           })
           .catch((bootstrapError) => {
-            // If this browser already has usable local history, keep Looper available as
-            // an offline-safe fallback. But an empty browser must not silently continue
-            // after a failed cloud read, because that looks exactly like "my data is gone."
+            // If this user's isolated browser scope already has usable local history,
+            // keep Looper available as an offline-safe fallback. An empty browser must
+            // not silently continue after a failed cloud read.
             const hasUsableLocalHistory = loadSavedSessions().some(
               (session) => session.shots.length > 0,
             )
@@ -87,6 +95,9 @@ export default function LooperAuthGate({ children }: Props) {
     setError(null)
 
     if (!nextUser) {
+      // Keep the prior user's safety copy under its private namespace, but clear
+      // the generic working cache before another account can sign in.
+      deactivateLocalUserScope()
       setState('signed-out')
       return
     }
@@ -95,12 +106,15 @@ export default function LooperAuthGate({ children }: Props) {
     try {
       const allowlistRecord = await getAllowedUserRecord(nextUser)
       if (!allowlistRecord) {
+        // An uninvited signed-in identity must not inherit the previous allowed
+        // user's working cache while it sees the invite-only screen.
+        deactivateLocalUserScope()
         setState('not-allowed')
         return
       }
       setAllowedUser(allowlistRecord)
       setState('syncing-data')
-      await bootstrapUserData(nextUser)
+      await bootstrapUserData(nextUser, allowlistRecord)
       setState('allowed')
     } catch (accessError) {
       setError(accessError instanceof Error ? accessError.message : String(accessError))
@@ -187,6 +201,7 @@ export default function LooperAuthGate({ children }: Props) {
     setError(null)
     try {
       await signOutLooper()
+      deactivateLocalUserScope()
       setState('signed-out')
       setUser(null)
     } catch (signOutError) {
