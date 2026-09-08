@@ -2,7 +2,12 @@ import type { Club, OpenGolfCoachPayload, Shot } from '../types'
 
 export type SimReadRangeDbSource = 'gspro-range-db'
 
-export type SimReadResolvedShotFieldSource = 'gspro' | 'ogc' | 'derived' | 'missing'
+export type SimReadResolvedShotFieldSource =
+  | 'gspro'
+  | 'ogc'
+  | 'derived'
+  | 'missing'
+  | 'ambiguous'
 
 export type SimReadResolvedShot = {
   club?: string
@@ -29,10 +34,15 @@ export type SimReadResolvedShot = {
   backSpin?: number
   sideSpin?: number
   clubSpeed?: number
+  clubSpeedSource?: SimReadResolvedShotFieldSource
   clubPath?: number
+  clubPathSource?: SimReadResolvedShotFieldSource
   clubAoa?: number
+  clubAoaSource?: SimReadResolvedShotFieldSource
   faceToTarget?: number
+  faceToTargetSource?: SimReadResolvedShotFieldSource
   faceToPath?: number
+  faceToPathSource?: SimReadResolvedShotFieldSource
   clubLie?: number
   clubLoft?: number
   dynamicLoft?: number
@@ -40,6 +50,7 @@ export type SimReadResolvedShot = {
   clubFaceHImpact?: number
   clubFaceVImpact?: number
   smashFactor?: number
+  smashFactorSource?: SimReadResolvedShotFieldSource
   distToPin?: number
   distanceToPin?: number
   shotName?: string
@@ -90,6 +101,13 @@ const toMetersPerSecond = (milesPerHour: number) => milesPerHour * 0.44704
 const isFiniteNumber = (value: number | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
+// GSPro writes 0 for some launch-monitor fields when the device does not
+// provide them. For physical speed/efficiency metrics, 0 means unavailable,
+// not a real measured value. Keeping that sentinel out of Shot prevents a
+// missing club-speed/smash read from becoming a catastrophic mishit signal.
+const isPositiveFiniteNumber = (value: number | undefined): value is number =>
+  isFiniteNumber(value) && value > 0
+
 const buildOpenGolfCoachPayload = (
   event: SimReadFinalShotEvent,
 ): OpenGolfCoachPayload | undefined => {
@@ -117,12 +135,12 @@ const buildOpenGolfCoachPayload = (
     payload.descentAngle = shot.descentAngle
   }
 
-  if (isFiniteNumber(shot.clubSpeed)) {
+  if (isPositiveFiniteNumber(shot.clubSpeed)) {
     payload.club_speed_mph = shot.clubSpeed
     payload.clubSpeed = shot.clubSpeed
   }
 
-  if (isFiniteNumber(shot.smashFactor)) {
+  if (isPositiveFiniteNumber(shot.smashFactor)) {
     payload.smash_factor = shot.smashFactor
     payload.smashFactor = shot.smashFactor
   }
@@ -148,7 +166,7 @@ export const mapSimReadFinalShotToShot = (
     capturedAt,
     enrichmentStatus: 'raw_only',
     openGolfCoach: buildOpenGolfCoachPayload(event),
-    ballSpeedMetersPerSecond: isFiniteNumber(shot.ballSpeed)
+    ballSpeedMetersPerSecond: isPositiveFiniteNumber(shot.ballSpeed)
       ? toMetersPerSecond(shot.ballSpeed)
       : undefined,
     verticalLaunchAngleDegrees: shot.vla,
@@ -159,7 +177,7 @@ export const mapSimReadFinalShotToShot = (
     descentAngle: shot.descentAngle,
     backSpin: shot.backSpin,
     sideSpin: shot.sideSpin,
-    clubSpeed: shot.clubSpeed,
+    clubSpeed: isPositiveFiniteNumber(shot.clubSpeed) ? shot.clubSpeed : undefined,
     clubPath: shot.clubPath,
     clubPathDegrees: shot.clubPath,
     clubAoa: shot.clubAoa,
@@ -173,10 +191,10 @@ export const mapSimReadFinalShotToShot = (
     closureRate: shot.closureRate,
     clubFaceHImpact: shot.clubFaceHImpact,
     clubFaceVImpact: shot.clubFaceVImpact,
-    smashFactor: shot.smashFactor,
+    smashFactor: isPositiveFiniteNumber(shot.smashFactor) ? shot.smashFactor : undefined,
     distToPin: shot.distToPin,
     distanceToPin: shot.distanceToPin ?? shot.distToPin,
-    ballSpeedMph: shot.ballSpeed,
+    ballSpeedMph: isPositiveFiniteNumber(shot.ballSpeed) ? shot.ballSpeed : undefined,
     carryYards: shot.carry,
     totalYards: shot.totalDistance,
     offlineYards: shot.offline,

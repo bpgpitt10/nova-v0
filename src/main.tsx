@@ -57,7 +57,6 @@ function SignOutPage() {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
-  const [bagConfigRevision, setBagConfigRevision] = useState(0)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
@@ -157,7 +156,6 @@ function RootRouter() {
     const onBagConfigUpdated = () => {
       refreshBagConfigState()
       setHasBagConfig(hasSavedBagConfig())
-      setBagConfigRevision((current) => current + 1)
     }
     window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
     window.addEventListener('storage', onBagConfigUpdated)
@@ -169,20 +167,6 @@ function RootRouter() {
       window.removeEventListener('storage', onBagConfigUpdated)
     }
   }, [])
-
-  useEffect(() => {
-    if (
-      hasBagConfig ||
-      pathname === '/bag-setup' ||
-      pathname === '/admin/users' ||
-      pathname === '/cloud-repair' ||
-      pathname === '/signout'
-    ) {
-      return
-    }
-    window.history.replaceState({}, '', '/bag-setup')
-    setPathname('/bag-setup')
-  }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
