@@ -1,0 +1,53 @@
+{
+  "schema_version": "gspro-round-watch-v0",
+  "status": "field-validation",
+  "notes": [
+    "Persistent watcher for the minimap hazard/green validation session.",
+    "Tee capture uses the proven v8 tee HoleModel path; post-tee capture uses the safe v1 dry-run geometry path.",
+    "Automatic W zoom recovery is intentionally disabled.",
+    "The watcher does not actuate a caddie recommendation or leave GSPro aim changed."
+  ],
+  "screen_detection": {
+    "round_identity": {
+      "hole_number_roi_normalized": [0.778, 0.018, 0.815, 0.092],
+      "course_name_roi_normalized": [0.818, 0.018, 0.950, 0.060],
+      "par_roi_normalized": [0.814, 0.052, 0.878, 0.092],
+      "yards_roi_normalized": [0.872, 0.052, 0.950, 0.092],
+      "hole_min": 1,
+      "hole_max": 18,
+      "par_min": 3,
+      "par_max": 6,
+      "yards_min": 50,
+      "yards_max": 900,
+      "minimum_usable_confidence": 0.65,
+      "course_weight": 0.35,
+      "hole_weight": 0.35,
+      "par_weight": 0.15,
+      "yards_weight": 0.15
+    },
+    "minimap_surface": {
+      "title_roi_normalized": [0.25, 0.01, 0.72, 0.105],
+      "ocr_psm": "7",
+      "tee_label": "tee",
+      "recognized_non_tee_labels": ["fairway", "rough", "sand", "green", "fringe", "bunker"],
+      "fuzzy_match_min": 0.80,
+      "exact_match_confidence": 1.0,
+      "fuzzy_match_confidence": 0.78
+    },
+    "shot_counter": {
+      "roi_normalized": [0.002, 0.055, 0.050, 0.090],
+      "ocr_psm": "7",
+      "minimum": 1,
+      "maximum": 20
+    }
+  },
+  "watcher": {
+    "poll_ms": 500,
+    "tee_stable_observations": 2,
+    "posttee_stable_observations": 2,
+    "minimum_action_interval_ms": 1500,
+    "maximum_forward_shot_jump": 1,
+    "tee_capture_command": "run_probe_windows.ps1",
+    "posttee_capture_command": "run_approach_probe_v1_windows.ps1"
+  }
+}
