@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-import math
 from typing import Literal
 
 from .assumptions import Assumptions
@@ -101,13 +100,21 @@ def build_short_game_guidance(
 ) -> ShortGameGuidance:
     """Provide geometry-only short-game perspective without inventing shot physics.
 
-    The output intentionally contains no club, carry distribution, spin assumption,
-    green-hit probability or hazard probability. It only answers the useful question
-    still supported by known geometry: which side of the target leaves more room from
-    the green edge / authoritative penalty boundaries.
+    With a known green, any candidate point retained inside that green is known safe
+    terrain, so distance from an authoritative red penalty boundary is useful even
+    when the boundary's penalty-side semantics are not encoded. Without green
+    containment, a bare red line does *not* tell us which side is safe; such boundaries
+    are ignored unless their side semantics are explicitly known.
     """
     base_target = green.pin if green is not None else base_target_for_state(state)
     _, cross = unit_and_cross(base_target)
+
+    usable_hazards = (
+        list(hazards)
+        if green is not None
+        else [hazard for hazard in hazards if hazard.side_semantics_known]
+    )
+    ignored_unknown_side_hazards = len(hazards) - len(usable_hazards)
 
     green_room_left = green_room_right = None
     if green is not None and point_in_polygon(green.pin, green.polygon):
@@ -132,20 +139,14 @@ def build_short_game_guidance(
         )
         inside = point_in_polygon(point, green.polygon) if green is not None else None
         if green is not None and inside is False:
-            # A geometry-only suggestion should never deliberately move the target
-            # outside a known green just to gain penalty-boundary clearance.
+            # Never deliberately move a geometry-only target outside a known green
+            # merely to gain penalty-boundary clearance.
             continue
 
         green_clearance = _polygon_boundary_distance(point, green.polygon) if green is not None else None
-        hazard_clearance = _minimum_hazard_clearance(point, hazards)
-        green_score = (
-            min(1.0, float(green_clearance) / green_reference)
-            if green_clearance is not None else 0.0
-        )
-        hazard_score = (
-            min(1.0, float(hazard_clearance) / hazard_reference)
-            if hazard_clearance is not None else 0.0
-        )
+        hazard_clearance = _minimum_hazard_clearance(point, usable_hazards)
+        green_score = min(1.0, float(green_clearance) / green_reference) if green_clearance is not None else 0.0
+        hazard_score = min(1.0, float(hazard_clearance) / hazard_reference) if hazard_clearance is not None else 0.0
         aim_cost = min(1.0, abs(offset) / aim_reference)
 
         available_weight = 0.0
@@ -154,17 +155,16 @@ def build_short_game_guidance(
             w = float(weights["green_clearance_weight"])
             total += w * green_score
             available_weight += w
-        if hazards:
+        if usable_hazards:
             w = float(weights["hazard_clearance_weight"])
             total += w * hazard_score
             available_weight += w
         w = float(weights["aim_change_weight"])
         total -= w * aim_cost
         available_weight += w
-        normalized = total / max(available_weight, 1e-6)
         rows.append({
             "offset": offset,
-            "score": normalized,
+            "score": total / max(available_weight, 1e-6),
             "green_clearance": green_clearance,
             "hazard_clearance": hazard_clearance,
         })
@@ -172,8 +172,13 @@ def build_short_game_guidance(
     notes = [
         "No modeled carry/dispersion is used because the shot is shorter than Looper's supported Stock/Smooth/explicit-variant coverage."
     ]
-    if green is None and not hazards:
-        notes.append("No green or penalty-boundary geometry is available, so Looper cannot offer a reliable safe-side perspective.")
+    if ignored_unknown_side_hazards:
+        notes.append(
+            f"Ignored {ignored_unknown_side_hazards} penalty boundary/boundaries for directional advice because no known-green containment or penalty-side semantics proved which side was safe."
+        )
+
+    if green is None and not usable_hazards:
+        notes.append("No directional geometry with known safe-side meaning is available, so Looper cannot offer a reliable safe-side perspective.")
         return ShortGameGuidance(
             guidance_type="geometry-only-short-game",
             target_distance_yds=float(target_distance_yds),
@@ -186,12 +191,12 @@ def build_short_game_guidance(
             selected_hazard_boundary_clearance_yds=None,
             green_context_available=False,
             hazard_context_available=False,
-            confidence=_guidance_confidence(green, hazards, assumptions),
+            confidence=_guidance_confidence(None, [], assumptions),
             notes=notes,
         )
 
     if not rows:
-        notes.append("Known green geometry did not produce a valid geometry-only target offset; preserve the current target rather than inventing one.")
+        notes.append("Known geometry did not produce a valid target offset; preserve the current target rather than inventing one.")
         return ShortGameGuidance(
             guidance_type="geometry-only-short-game",
             target_distance_yds=float(target_distance_yds),
@@ -201,10 +206,10 @@ def build_short_game_guidance(
             green_room_left_yds=green_room_left,
             green_room_right_yds=green_room_right,
             selected_green_edge_clearance_yds=None,
-            selected_hazard_boundary_clearance_yds=_minimum_hazard_clearance(base_target, hazards),
+            selected_hazard_boundary_clearance_yds=_minimum_hazard_clearance(base_target, usable_hazards),
             green_context_available=green is not None,
-            hazard_context_available=bool(hazards),
-            confidence=_guidance_confidence(green, hazards, assumptions),
+            hazard_context_available=bool(usable_hazards),
+            confidence=_guidance_confidence(green, usable_hazards, assumptions),
             notes=notes,
         )
 
@@ -229,7 +234,7 @@ def build_short_game_guidance(
         )
     if best["hazard_clearance"] is not None:
         notes.append(
-            f"The selected geometry-only target is about {float(best['hazard_clearance']):.1f} yd from the nearest mapped penalty boundary."
+            f"The selected geometry-only target is about {float(best['hazard_clearance']):.1f} yd from the nearest usable penalty boundary."
         )
     if side == "center":
         notes.append("Available geometry does not justify moving materially away from the current target.")
@@ -244,14 +249,10 @@ def build_short_game_guidance(
         suggested_safe_offset_yds=offset,
         green_room_left_yds=green_room_left,
         green_room_right_yds=green_room_right,
-        selected_green_edge_clearance_yds=(
-            float(best["green_clearance"]) if best["green_clearance"] is not None else None
-        ),
-        selected_hazard_boundary_clearance_yds=(
-            float(best["hazard_clearance"]) if best["hazard_clearance"] is not None else None
-        ),
+        selected_green_edge_clearance_yds=(float(best["green_clearance"]) if best["green_clearance"] is not None else None),
+        selected_hazard_boundary_clearance_yds=(float(best["hazard_clearance"]) if best["hazard_clearance"] is not None else None),
         green_context_available=green is not None,
-        hazard_context_available=bool(hazards),
-        confidence=_guidance_confidence(green, hazards, assumptions),
+        hazard_context_available=bool(usable_hazards),
+        confidence=_guidance_confidence(green, usable_hazards, assumptions),
         notes=notes,
     )
