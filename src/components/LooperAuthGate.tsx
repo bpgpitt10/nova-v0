@@ -11,6 +11,7 @@ import {
   type AllowedUserRecord,
   type LooperAuthUser,
 } from '../cloud/supabaseClient'
+import { loadSavedSessions } from '../lib/sessions'
 import './LooperAuthGate.css'
 
 type AuthState =
@@ -59,8 +60,20 @@ export default function LooperAuthGate({ children }: Props) {
             }
           })
           .catch((bootstrapError) => {
-            // Cloud migration must never make the existing local Looper unusable.
-            console.warn('[Cloud Bootstrap] cloud bootstrap failed; continuing with local data', bootstrapError)
+            // If this browser already has usable local history, keep Looper available as
+            // an offline-safe fallback. But an empty browser must not silently continue
+            // after a failed cloud read, because that looks exactly like "my data is gone."
+            const hasUsableLocalHistory = loadSavedSessions().some(
+              (session) => session.shots.length > 0,
+            )
+            if (hasUsableLocalHistory) {
+              console.warn(
+                '[Cloud Bootstrap] cloud bootstrap failed; continuing with existing local data',
+                bootstrapError,
+              )
+              return
+            }
+            throw bootstrapError
           }),
       }
     }
@@ -104,31 +117,34 @@ export default function LooperAuthGate({ children }: Props) {
     let cancelled = false
     let unsubscribe: (() => void) | null = null
 
-    void getCurrentLooperUser()
-      .then((initialUser) => {
-        if (!cancelled) {
-          return resolveAccess(initialUser)
-        }
-        return undefined
-      })
-      .then(() => subscribeToLooperAuth((nextUser) => {
-        if (!cancelled) {
-          void resolveAccess(nextUser)
-        }
-      }))
-      .then((stop) => {
+    const startAuth = async () => {
+      try {
+        // Subscribe first so a SIGNED_IN event emitted while the implicit callback is
+        // being consumed cannot slip between the initial session check and listener setup.
+        const stop = await subscribeToLooperAuth((nextUser) => {
+          if (!cancelled) {
+            void resolveAccess(nextUser)
+          }
+        })
         if (cancelled) {
           stop()
-        } else {
-          unsubscribe = stop
+          return
         }
-      })
-      .catch((authError) => {
+        unsubscribe = stop
+
+        const initialUser = await getCurrentLooperUser()
+        if (!cancelled) {
+          await resolveAccess(initialUser)
+        }
+      } catch (authError) {
         if (!cancelled) {
           setError(authError instanceof Error ? authError.message : String(authError))
           setState('error')
         }
-      })
+      }
+    }
+
+    void startAuth()
 
     return () => {
       cancelled = true
