@@ -8,6 +8,10 @@ export type LiveCaddieClubProfile = {
   explicit_variants?: Array<{
     name: string
     carry_yds: number
+    carry_sigma_yds?: number
+    lateral_bias_yds?: number
+    lateral_sigma_yds?: number
+    /** Backward-compatible fallback only when variant-specific sigmas are unavailable. */
     sigma_factor?: number
     playable?: boolean
   }>
@@ -50,4 +54,28 @@ export type LiveCaddieRecommendation = {
   fallbacks: string[]
   calculation_versions: Record<string, string>
   assumption_version: string
+  recommendation_kind?: 'modeled-shot' | 'geometry-only' | 'none'
+  guidance?: {
+    guidance_type: string
+    target_distance_yds: number
+    modeled_club_available: boolean
+    preferred_side: 'left' | 'center' | 'right' | 'unknown'
+    suggested_safe_offset_yds?: number | null
+    green_room_left_yds?: number | null
+    green_room_right_yds?: number | null
+    selected_green_edge_clearance_yds?: number | null
+    selected_hazard_boundary_clearance_yds?: number | null
+    green_context_available: boolean
+    hazard_context_available: boolean
+    confidence: number
+    notes: string[]
+  } | null
+  coverage?: {
+    scope: 'modeled-shot' | 'geometry-only' | 'none'
+    effective_target_distance_yds: number
+    shortest_modeled_carry_yds?: number | null
+    lower_coverage_limit_yds?: number | null
+    distance_below_shortest_modeled_carry_yds?: number | null
+    reason: string
+  } | null
 }
