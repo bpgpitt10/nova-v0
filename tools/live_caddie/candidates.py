@@ -4,6 +4,7 @@ from .assumptions import Assumptions
 from .geometry import unit_and_cross
 from .models import ClubProfile, LiveShotState, CandidateShot, PointYards
 
+
 def _sigma(profile: ClubProfile, assumptions: Assumptions) -> tuple[float, float]:
     carry = profile.carry_sigma_yds
     lateral = profile.lateral_sigma_yds
@@ -15,6 +16,7 @@ def _sigma(profile: ClubProfile, assumptions: Assumptions) -> tuple[float, float
     lateral = max(float(lateral), float(assumptions.get("dispersion.minimum_lateral_sigma_yds")))
     return carry, lateral
 
+
 def _scaled_direction(forward: float | None, right: float | None, distance: float | None) -> PointYards | None:
     if forward is None or right is None:
         return None
@@ -23,6 +25,7 @@ def _scaled_direction(forward: float | None, right: float | None, distance: floa
         return None
     magnitude = float(distance) if distance is not None and distance > 0 else norm
     return PointYards(float(forward) / norm * magnitude, float(right) / norm * magnitude)
+
 
 def base_target_for_state(state: LiveShotState) -> PointYards:
     """Resolve the golf target vector without embedding strategic policy in UI code.
@@ -51,6 +54,81 @@ def base_target_for_state(state: LiveShotState) -> PointYards:
         return target
     return PointYards(max(0.0, float(state.pin_distance_yds)), float(state.pin_right_yds))
 
+
+def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
+    """Return playable variants with their own pattern statistics when available.
+
+    Stock and synthetic Smooth intentionally inherit the Stock pattern under explicit
+    assumptions. A real tagged variant is different: if Looper calculated variant-
+    specific carry/lateral statistics, those values take precedence so a 45-yard
+    pitch is never modeled with the stock wedge's dispersion merely because it uses
+    the same physical club.
+    """
+    policy = assumptions.get("candidate_policy")
+    base_carry_sigma, base_lateral_sigma = _sigma(profile, assumptions)
+    rows: list[dict] = []
+
+    if policy.get("include_stock", True):
+        rows.append({
+            "name": "Stock",
+            "carry": float(profile.stock_carry_yds),
+            "carry_sigma": base_carry_sigma,
+            "lateral_sigma": base_lateral_sigma,
+            "lateral_bias": float(profile.lateral_bias_yds),
+            "source": "stock",
+        })
+
+    if policy.get("include_smooth", True):
+        sigma_factor = float(policy["smooth_sigma_factor"])
+        rows.append({
+            "name": "Smooth",
+            "carry": float(profile.stock_carry_yds) * float(policy["smooth_factor"]),
+            "carry_sigma": base_carry_sigma * sigma_factor,
+            "lateral_sigma": base_lateral_sigma * sigma_factor,
+            "lateral_bias": float(profile.lateral_bias_yds),
+            "source": "synthetic-smooth",
+        })
+
+    if policy.get("include_pure_as_playable", False) and profile.pure_carry_yds:
+        rows.append({
+            "name": "Pure",
+            "carry": float(profile.pure_carry_yds),
+            "carry_sigma": base_carry_sigma,
+            "lateral_sigma": base_lateral_sigma,
+            "lateral_bias": float(profile.lateral_bias_yds),
+            "source": "pure-reference-enabled",
+        })
+
+    for explicit in profile.explicit_variants:
+        if not explicit.get("playable", True) or "carry_yds" not in explicit:
+            continue
+        sigma_factor = float(explicit.get("sigma_factor", 1.0) or 1.0)
+        carry_sigma = (
+            float(explicit["carry_sigma_yds"])
+            if explicit.get("carry_sigma_yds") is not None
+            else base_carry_sigma * sigma_factor
+        )
+        lateral_sigma = (
+            float(explicit["lateral_sigma_yds"])
+            if explicit.get("lateral_sigma_yds") is not None
+            else base_lateral_sigma * sigma_factor
+        )
+        lateral_bias = (
+            float(explicit["lateral_bias_yds"])
+            if explicit.get("lateral_bias_yds") is not None
+            else float(profile.lateral_bias_yds)
+        )
+        rows.append({
+            "name": str(explicit.get("name", "Variant")),
+            "carry": float(explicit["carry_yds"]),
+            "carry_sigma": max(carry_sigma, float(assumptions.get("dispersion.minimum_carry_sigma_yds"))),
+            "lateral_sigma": max(lateral_sigma, float(assumptions.get("dispersion.minimum_lateral_sigma_yds"))),
+            "lateral_bias": lateral_bias,
+            "source": "explicit-variant",
+        })
+    return rows
+
+
 def generate_candidates(profiles: list[ClubProfile], state: LiveShotState, assumptions: Assumptions) -> list[CandidateShot]:
     policy = assumptions.get("candidate_policy")
     offsets = policy["approach_aim_offsets_yds"] if state.mode == "approach" else policy["strategic_aim_offsets_yds"]
@@ -58,30 +136,15 @@ def generate_candidates(profiles: list[ClubProfile], state: LiveShotState, assum
     _base_unit, base_cross = unit_and_cross(base_target)
 
     shots: list[CandidateShot] = []
+    minimum_carry = float(policy["min_carry_yds"])
     for profile in profiles:
-        carry_sigma, lateral_sigma = _sigma(profile, assumptions)
-        variants: list[tuple[str, float, float]] = []
-        if policy.get("include_stock", True):
-            variants.append(("Stock", profile.stock_carry_yds, 1.0))
-        if policy.get("include_smooth", True):
-            variants.append((
-                "Smooth",
-                profile.stock_carry_yds * float(policy["smooth_factor"]),
-                float(policy["smooth_sigma_factor"]),
-            ))
-        if policy.get("include_pure_as_playable", False) and profile.pure_carry_yds:
-            variants.append(("Pure", profile.pure_carry_yds, 1.0))
-        for explicit in profile.explicit_variants:
-            if explicit.get("playable", True) and "carry_yds" in explicit:
-                variants.append((
-                    str(explicit.get("name", "Variant")),
-                    float(explicit["carry_yds"]),
-                    float(explicit.get("sigma_factor", 1.0)),
-                ))
-
-        for name, carry, sigma_factor in variants:
-            if carry < float(policy["min_carry_yds"]):
+        for variant in _variant_rows(profile, assumptions):
+            carry = float(variant["carry"])
+            if carry < minimum_carry:
                 continue
+            carry_sigma = float(variant["carry_sigma"])
+            lateral_sigma = float(variant["lateral_sigma"])
+            lateral_bias = float(variant["lateral_bias"])
             for offset in offsets:
                 # Offset is cross-track from GSPro strategic aim / pin target, not
                 # absolute canonical-map right. This remains correct when GSPro's
@@ -91,18 +154,18 @@ def generate_candidates(profiles: list[ClubProfile], state: LiveShotState, assum
                     base_target.right + base_cross.right * float(offset),
                 )
                 shot_unit, cross_unit = unit_and_cross(aim_point)
-                cross_mean = float(profile.lateral_bias_yds) + float(state.external_lateral_adjustment_yds)
+                cross_mean = lateral_bias + float(state.external_lateral_adjustment_yds)
                 landing = PointYards(
-                    shot_unit.forward * float(carry) + cross_unit.forward * cross_mean,
-                    shot_unit.right * float(carry) + cross_unit.right * cross_mean,
+                    shot_unit.forward * carry + cross_unit.forward * cross_mean,
+                    shot_unit.right * carry + cross_unit.right * cross_mean,
                 )
                 shots.append(CandidateShot(
                     club=profile.club,
-                    variant=name,
-                    planned_carry_yds=float(carry),
-                    carry_sigma_yds=carry_sigma * sigma_factor,
-                    lateral_sigma_yds=lateral_sigma * sigma_factor,
-                    pattern_bias_yds=float(profile.lateral_bias_yds),
+                    variant=str(variant["name"]),
+                    planned_carry_yds=carry,
+                    carry_sigma_yds=carry_sigma,
+                    lateral_sigma_yds=lateral_sigma,
+                    pattern_bias_yds=lateral_bias,
                     aim_offset_yds=float(offset),
                     base_target=base_target,
                     aim_point=aim_point,
