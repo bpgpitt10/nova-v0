@@ -10,6 +10,7 @@ import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
+import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -174,6 +175,7 @@ function RootRouter() {
       hasBagConfig ||
       pathname === '/bag-setup' ||
       pathname === '/admin/users' ||
+      pathname === '/cloud-repair' ||
       pathname === '/signout'
     ) {
       return
@@ -193,12 +195,16 @@ function RootRouter() {
     const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
     const showAdminUsers = pathname === '/admin/users'
+    const showCloudRepair = pathname === '/cloud-repair'
 
     if (showSignOut) {
       return <SignOutPage />
     }
     if (showAdminUsers) {
       return <AdminUsersPage />
+    }
+    if (showCloudRepair) {
+      return <CloudRepairPage />
     }
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
