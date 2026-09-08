@@ -89,6 +89,32 @@ class RoundLifecycleOcrGuardTests(unittest.TestCase):
         self.assertEqual(real_two.payload["shot_progression"]["previous_shot_number"], 1)
         self.assertEqual(real_two.payload["shot_progression"]["current_shot_number"], 2)
 
+    def test_identity_missing_1_to_4_to_1_noise_does_not_poison_counter(self):
+        orchestrator = self._accepted_tee()
+
+        # Field reproduction from the rapid Canyon Run hole transition. The header
+        # was temporarily unreadable while OCR emitted 4, then 1. Missing identity
+        # plus an impossible counter jump must not create fake missed-shot events.
+        noisy_four = orchestrator.observe(RoundObservation(
+            identity=None,
+            minimap_surface_label=None,
+            minimap_surface_is_tee=None,
+            upper_left_shot_number=4,
+            upper_left_distance_to_pin_yds=None,
+        ))
+        self.assertEqual(noisy_four.action, "none")
+        self.assertEqual(orchestrator.tracker.last_screen_shot_number, 1)
+
+        transient_one = orchestrator.observe(RoundObservation(
+            identity=None,
+            minimap_surface_label=None,
+            minimap_surface_is_tee=None,
+            upper_left_shot_number=1,
+            upper_left_distance_to_pin_yds=None,
+        ))
+        self.assertEqual(transient_one.action, "none")
+        self.assertEqual(orchestrator.tracker.last_screen_shot_number, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
