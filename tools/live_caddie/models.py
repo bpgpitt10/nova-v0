@@ -88,6 +88,9 @@ class RecommendationResult:
     fallbacks: list[str]
     calculation_versions: dict[str, str]
     assumption_version: str
+    recommendation_kind: str = "modeled-shot"
+    guidance: dict | None = None
+    coverage: dict | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
