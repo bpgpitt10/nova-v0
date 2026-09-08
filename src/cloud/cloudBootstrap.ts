@@ -1,4 +1,5 @@
 import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
+import { activateLocalUserScope } from '../lib/localUserScope'
 import { loadSavedSessions, saveSessionHistory } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import {
@@ -10,15 +11,15 @@ import {
   syncSavedSessionToCloud,
 } from './cloudPersistence'
 
-const BOOTSTRAP_VERSION = 1
+const BOOTSTRAP_VERSION = 2
 const bootstrapKey = (userId: string) => `looper-cloud-bootstrap-v${BOOTSTRAP_VERSION}:${userId}`
 
 const mergeSessions = (local: SavedSession[], cloud: SavedSession[]) => {
   const byId = new Map<string, SavedSession>()
 
   cloud.forEach((session) => byId.set(session.id, session))
-  // On the first migration pass, the current browser's local copy wins for an
-  // identical session id because it is the data Looper has been actively using.
+  // Within the already-isolated user scope, the browser's local copy wins for
+  // an identical session id because it may contain newer offline-safe changes.
   local.forEach((session) => byId.set(session.id, session))
 
   return Array.from(byId.values()).sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -35,7 +36,16 @@ export type CloudBootstrapResult = {
 
 export const bootstrapLooperCloudData = async (
   userId: string,
+  options: { claimUnscopedLegacyData?: boolean } = {},
 ): Promise<CloudBootstrapResult> => {
+  // This must happen before any session or bag read. It prevents a second
+  // account on the same browser from seeing or uploading the first golfer's
+  // local safety copy. Only an explicitly approved migration path may claim the
+  // old pre-auth cache.
+  activateLocalUserScope(userId, {
+    claimUnscopedLegacyData: options.claimUnscopedLegacyData,
+  })
+
   const warnings: string[] = []
   const key = bootstrapKey(userId)
   const hasBootstrapped = window.localStorage.getItem(key) === 'done'
