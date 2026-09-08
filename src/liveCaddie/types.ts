@@ -13,6 +13,11 @@ export type LiveCaddieClubProfile = {
     lateral_sigma_yds?: number
     /** Backward-compatible fallback only when variant-specific sigmas are unavailable. */
     sigma_factor?: number
+    /** Variant evidence published from Looper's normal historical model. */
+    support_shots?: number
+    supporting_sessions?: number
+    /** True only when the variant has enough evidence + its own carry/lateral pattern statistics. */
+    model_ready?: boolean
     playable?: boolean
   }>
 }
@@ -60,9 +65,15 @@ export type LiveCaddieRecommendation = {
     target_distance_yds: number
     modeled_club_available: boolean
     preferred_side: 'left' | 'center' | 'right' | 'unknown'
+    preferred_depth?: 'short' | 'center' | 'long' | 'unknown'
     suggested_safe_offset_yds?: number | null
+    suggested_safe_longitudinal_offset_yds?: number | null
+    suggested_target_forward_yds?: number | null
+    suggested_target_right_yds?: number | null
     green_room_left_yds?: number | null
     green_room_right_yds?: number | null
+    green_room_short_yds?: number | null
+    green_room_long_yds?: number | null
     selected_green_edge_clearance_yds?: number | null
     selected_hazard_boundary_clearance_yds?: number | null
     green_context_available: boolean
