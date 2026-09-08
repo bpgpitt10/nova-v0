@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .assumptions import Assumptions
+from .identity import canonical_identity_key
 from .tee_state import TeeStateDecision, TeeStateInputs, infer_tee_state
 
 
@@ -93,12 +94,8 @@ class RoundTracker:
     def _is_new_identity(self, current: dict[str, Any] | None) -> bool:
         if self.active_identity is None or current is None:
             return self.active_identity is not current
-        active_course = str(self.active_identity.get("course_name") or "").strip().lower()
-        current_course = str(current.get("course_name") or "").strip().lower()
-        active_hole = self.active_identity.get("hole_number")
-        current_hole = current.get("hole_number")
-        if active_hole is None or current_hole is None:
+        active_key = canonical_identity_key(self.active_identity)
+        current_key = canonical_identity_key(current)
+        if active_key is None or current_key is None:
             return False
-        if active_course and current_course and active_course != current_course:
-            return True
-        return int(active_hole) != int(current_hole)
+        return current_key != active_key
