@@ -76,14 +76,10 @@ class RoundOrchestrator:
             assumptions=self.assumptions,
         )
 
-        # Preserve the previous trusted counter before observe_pre_shot considers the
-        # current OCR frame. The tracker may deliberately reject an implausible tee
-        # OCR spike, so this is the lifecycle anchor progression should compare to.
+        # Capture the previous trusted lifecycle counter before the current OCR frame
+        # is considered. The tracker may reject impossible OCR jumps/backward reads.
         prior_tracker_shot_number = self.tracker.last_screen_shot_number
 
-        # Tee inference receives each independent source as what it actually is.
-        # The central source resolver is still recorded for downstream state use, but
-        # we never relabel canonical DTP as a PIN-card observation or double-count it.
         tee_decision = self.tracker.observe_pre_shot(
             current_identity=observation.identity,
             minimap_surface_is_tee=observation.minimap_surface_is_tee,
@@ -95,20 +91,14 @@ class RoundOrchestrator:
             full_hole_minimap=observation.full_hole_minimap,
             assumptions=self.assumptions,
         )
+        trusted_current_shot_number = self.tracker.last_screen_shot_number
 
         # Once a tee HoleModel has been accepted, the unchanged pre-shot tee frame
         # remains strong tee evidence for as long as the player stands there. Do not
-        # let that same accepted hole re-arm capture or let one bad OCR digit create a
-        # fake shot-counter jump. OCR punctuation/spacing jitter is normalized by the
-        # canonical identity key.
+        # let that same accepted hole re-arm capture. OCR punctuation/spacing jitter
+        # is normalized by the canonical identity key.
         active_identity_key = self._identity_key(self.tracker.active_identity)
         current_identity_key = self._identity_key(observation.identity)
-        same_accepted_tee = (
-            active_identity_key is not None
-            and current_identity_key == active_identity_key
-            and observation.minimap_surface_is_tee is True
-            and self.tracker.shots_recorded_on_active_hole == 0
-        )
         tee_capture_eligible = (
             active_identity_key is None
             or (
@@ -137,8 +127,8 @@ class RoundOrchestrator:
             else (previous.upper_left_shot_number if previous else None)
         )
         current_shot_number = (
-            previous_shot_number
-            if same_accepted_tee and previous_shot_number is not None
+            trusted_current_shot_number
+            if trusted_current_shot_number is not None
             else observation.upper_left_shot_number
         )
         progression = infer_shot_progression(ShotProgressionInputs(
