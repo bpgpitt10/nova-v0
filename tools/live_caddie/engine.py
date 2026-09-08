@@ -52,13 +52,12 @@ def recommend(*, profiles: list[ClubProfile], state: LiveShotState, hazards: lis
               green: GreenSurface | None = None, assumptions: Assumptions | None = None,
               alternatives: int = 4) -> RecommendationResult:
     assumptions = assumptions or Assumptions.load()
-    candidates = generate_candidates(profiles, state, assumptions)
-    coverage = assess_shot_coverage(candidates, state, assumptions)
+    coverage = assess_shot_coverage(profiles, state, assumptions)
 
-    # Below the player's shortest modeled Stock/Smooth/explicit shot, never stretch a
-    # full-shot distribution down to an invented 50% wedge. Looper can still use the
-    # known green and penalty geometry to say which side is safer, without claiming a
-    # club, carry distribution, spin behavior, hit probability, or automatic aim.
+    # Below the player's shortest model-ready Stock/Smooth/explicit shot, never
+    # stretch a full-shot distribution down to an invented partial wedge. Looper can
+    # still use known green/penalty geometry without claiming club, spin, dispersion,
+    # hit probability, or automatic aim.
     if coverage.scope == "geometry-only":
         guidance = build_short_game_guidance(
             state,
@@ -91,6 +90,8 @@ def recommend(*, profiles: list[ClubProfile], state: LiveShotState, hazards: lis
             guidance=None,
             coverage=coverage.to_dict(),
         )
+
+    candidates = generate_candidates(profiles, state, assumptions)
 
     # Grossly wrong carry choices are not allowed to win merely because they happen
     # to avoid every visible hazard. This broad rejection remains useful inside the
