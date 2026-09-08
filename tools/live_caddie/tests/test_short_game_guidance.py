@@ -6,6 +6,7 @@ from tools.live_caddie.assumptions import Assumptions
 from tools.live_caddie.candidates import generate_candidates
 from tools.live_caddie.engine import recommend
 from tools.live_caddie.models import ClubProfile, GreenSurface, HazardBoundary, LiveShotState, PointYards
+from tools.live_caddie.short_game import build_short_game_guidance
 
 
 class ShortGameGuidanceTests(unittest.TestCase):
@@ -128,6 +129,35 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertEqual(result.recommendation_kind, "modeled-shot")
         self.assertIsNotNone(result.recommended)
         self.assertEqual(result.recommended.candidate.variant, "15y Chip")
+
+    def test_bare_unknown_side_penalty_boundary_cannot_claim_safe_direction(self) -> None:
+        guidance = build_short_game_guidance(
+            self.state(40.0),
+            [self.right_hazard],
+            None,
+            self.assumptions,
+            target_distance_yds=40.0,
+        )
+        self.assertEqual(guidance.preferred_side, "unknown")
+        self.assertIsNone(guidance.suggested_safe_offset_yds)
+        self.assertFalse(guidance.hazard_context_available)
+        self.assertTrue(any("Ignored 1 penalty" in note for note in guidance.notes))
+
+    def test_known_side_penalty_boundary_can_support_hazard_only_guidance(self) -> None:
+        known = HazardBoundary(
+            hazard_id="known-right-water",
+            points=[PointYards(25.0, 10.0), PointYards(55.0, 10.0)],
+            side_semantics_known=True,
+        )
+        guidance = build_short_game_guidance(
+            self.state(40.0),
+            [known],
+            None,
+            self.assumptions,
+            target_distance_yds=40.0,
+        )
+        self.assertTrue(guidance.hazard_context_available)
+        self.assertIn(guidance.preferred_side, ("left", "center"))
 
 
 if __name__ == "__main__":
