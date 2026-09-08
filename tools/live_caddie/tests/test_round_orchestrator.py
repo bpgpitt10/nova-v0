@@ -35,6 +35,28 @@ class RoundOrchestratorTests(unittest.TestCase):
         self.assertEqual(action.action, "capture-tee")
         self.assertFalse(action.execute_allowed)
 
+    def test_accepted_tee_does_not_retrigger_while_player_remains_on_same_tee(self):
+        orchestrator = RoundOrchestrator(assumptions=self.assumptions)
+        tee_observation = RoundObservation(
+            identity=self.hole2,
+            minimap_surface_label="tee",
+            minimap_surface_is_tee=True,
+            upper_left_shot_number=1,
+            upper_left_distance_to_pin_yds=501,
+        )
+
+        first = orchestrator.observe(tee_observation)
+        self.assertEqual(first.action, "capture-tee")
+        orchestrator.accept_tee_capture(identity=self.hole2)
+
+        second = orchestrator.observe(tee_observation)
+        third = orchestrator.observe(tee_observation)
+
+        self.assertEqual(second.action, "none")
+        self.assertEqual(third.action, "none")
+        self.assertEqual(orchestrator.tracker.active_identity, self.hole2)
+        self.assertEqual(orchestrator.tracker.shots_recorded_on_active_hole, 0)
+
     def test_shot_counter_advance_routes_to_posttee_capture(self):
         orchestrator = RoundOrchestrator(assumptions=self.assumptions)
         tee = orchestrator.observe(RoundObservation(
