@@ -57,6 +57,43 @@ class RoundOrchestratorTests(unittest.TestCase):
         self.assertEqual(orchestrator.tracker.active_identity, self.hole2)
         self.assertEqual(orchestrator.tracker.shots_recorded_on_active_hole, 0)
 
+    def test_accepted_tee_ignores_harmless_course_ocr_spacing_jitter(self):
+        orchestrator = RoundOrchestrator(assumptions=self.assumptions)
+        first_identity = {
+            "course_name": "Canyon Run - Par 3",
+            "hole_number": 1,
+            "par": 3,
+            "hole_yards": 145,
+        }
+        jittered_identity = {
+            "course_name": "Canyon Run -Par 3",
+            "hole_number": 1,
+            "par": 3,
+            "hole_yards": 145,
+        }
+        first = orchestrator.observe(RoundObservation(
+            identity=first_identity,
+            minimap_surface_label="tee",
+            minimap_surface_is_tee=True,
+            upper_left_shot_number=1,
+            upper_left_distance_to_pin_yds=145,
+        ))
+        self.assertEqual(first.action, "capture-tee")
+        orchestrator.accept_tee_capture(identity=first_identity)
+
+        second = orchestrator.observe(RoundObservation(
+            identity=jittered_identity,
+            minimap_surface_label="tee",
+            minimap_surface_is_tee=True,
+            upper_left_shot_number=1,
+            upper_left_distance_to_pin_yds=145,
+        ))
+        self.assertEqual(second.action, "none")
+        self.assertEqual(
+            orchestrator._identity_key(first_identity),
+            orchestrator._identity_key(jittered_identity),
+        )
+
     def test_shot_counter_advance_routes_to_posttee_capture(self):
         orchestrator = RoundOrchestrator(assumptions=self.assumptions)
         tee = orchestrator.observe(RoundObservation(
