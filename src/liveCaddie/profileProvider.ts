@@ -124,6 +124,12 @@ const explicitVariantsForClub = (
       {
         name: getShotVariantLabel(club, variantId),
         carry_yds: variantStock.carry,
+        // A tagged variant is its own shot identity. Send its actual Looper pattern
+        // outputs so the live caddie never borrows Stock wedge dispersion/bias for a
+        // 40-yard pitch merely because both shots use the same physical club.
+        carry_sigma_yds: variantStock.carryVariability,
+        lateral_bias_yds: variantStock.offlineMean ?? 0,
+        lateral_sigma_yds: variantStock.dispersionVariability,
         sigma_factor: sigmaFactor,
         playable: true,
       },
