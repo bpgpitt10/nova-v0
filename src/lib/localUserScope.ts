@@ -31,6 +31,17 @@ const copyWorkingCacheToScope = (userId: string) => {
   })
 }
 
+const claimUnscopedWorkingCacheToScope = (userId: string) => {
+  managedKeys.forEach((baseKey) => {
+    const value = window.localStorage.getItem(baseKey)
+    if (value != null) {
+      // Migration is additive: an empty shared cache on a later login must not
+      // erase a previously established user-scoped safety copy.
+      window.localStorage.setItem(scopedKey(baseKey, userId), value)
+    }
+  })
+}
+
 const clearWorkingCache = () => {
   managedKeys.forEach((baseKey) => window.localStorage.removeItem(baseKey))
 }
@@ -91,7 +102,7 @@ export const activateLocalUserScope = (
     copyWorkingCacheToScope(currentUserId)
   } else if (options.claimUnscopedLegacyData) {
     // One-time migration of the old, pre-auth Looper browser cache.
-    copyWorkingCacheToScope(userId)
+    claimUnscopedWorkingCacheToScope(userId)
   } else {
     // Do not silently throw old unscoped data away, but do not expose it to the
     // newly signed-in user either.
