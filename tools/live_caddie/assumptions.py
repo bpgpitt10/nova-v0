@@ -243,6 +243,7 @@ class Assumptions:
             "modeled_coverage_absolute_tolerance_yds",
             "modeled_coverage_relative_fraction",
             "minimum_geometry_guidance_distance_yds",
+            "maximum_geometry_guidance_distance_yds",
             "green_clearance_reference_yds",
             "hazard_clearance_reference_yds",
             "aim_offset_reference_yds",
@@ -250,6 +251,8 @@ class Assumptions:
         ):
             if float(short_game[key]) < 0:
                 raise ValueError(f"short_game.{key} cannot be negative")
+        if float(short_game["maximum_geometry_guidance_distance_yds"]) < float(short_game["minimum_geometry_guidance_distance_yds"]):
+            raise ValueError("short_game maximum guidance distance must be >= minimum guidance distance")
         for key in (
             "green_clearance_reference_yds",
             "hazard_clearance_reference_yds",
@@ -257,14 +260,15 @@ class Assumptions:
         ):
             if float(short_game[key]) <= 0:
                 raise ValueError(f"short_game.{key} must be positive")
-        guidance_offsets = short_game.get("geometry_aim_offsets_yds")
-        if not isinstance(guidance_offsets, list) or not guidance_offsets:
-            raise ValueError("short_game.geometry_aim_offsets_yds must be a non-empty list")
-        if not any(abs(float(value)) <= 1e-9 for value in guidance_offsets):
-            raise ValueError("short_game.geometry_aim_offsets_yds must include zero")
-        rounded_offsets = {round(float(value), 9) for value in guidance_offsets}
-        if any(round(-float(value), 9) not in rounded_offsets for value in guidance_offsets):
-            raise ValueError("short_game.geometry_aim_offsets_yds must be symmetric around zero")
+        for key in ("geometry_lateral_offsets_yds", "geometry_longitudinal_offsets_yds"):
+            guidance_offsets = short_game.get(key)
+            if not isinstance(guidance_offsets, list) or not guidance_offsets:
+                raise ValueError(f"short_game.{key} must be a non-empty list")
+            if not any(abs(float(value)) <= 1e-9 for value in guidance_offsets):
+                raise ValueError(f"short_game.{key} must include zero")
+            rounded_offsets = {round(float(value), 9) for value in guidance_offsets}
+            if any(round(-float(value), 9) not in rounded_offsets for value in guidance_offsets):
+                raise ValueError(f"short_game.{key} must be symmetric around zero")
         guidance_weights = short_game.get("geometry_scoring")
         if not isinstance(guidance_weights, dict):
             raise ValueError("short_game.geometry_scoring must be an object")
@@ -281,6 +285,7 @@ class Assumptions:
             "confidence_green_only",
             "confidence_hazard_only",
             "confidence_no_geometry",
+            "unknown_green_confidence_multiplier",
         ):
             value = float(short_game[key])
             if not (0.0 <= value <= 1.0):
