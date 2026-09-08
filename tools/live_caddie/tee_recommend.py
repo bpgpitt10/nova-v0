@@ -33,7 +33,10 @@ def build_tee_recommendation(
     """Post-process a proven tee capture into a read-only caddie recommendation.
 
     No GSPro key is sent here. The tee probe owns screen capture; this module only
-    consumes persisted tee geometry plus the authenticated Looper player-model file.
+    consumes persisted tee geometry plus the authenticated Looper player-model cache.
+    Missing player profiles no longer block geometry-only short-game guidance: green
+    and hazard geometry can still describe a safer target without inventing a club or
+    partial-shot pattern.
     """
     assumptions = assumptions or Assumptions.load()
     capture = Path(capture_dir)
@@ -62,14 +65,6 @@ def build_tee_recommendation(
         "shot_mode": None,
         "assumption_version": assumptions.version,
     }
-    if not profile_selection.available or not profile_selection.path:
-        payload["recommendation_warning"] = (
-            profile_selection.warning or "Looper player profiles are unavailable."
-        )
-        (capture / "tee_recommendation.json").write_text(
-            json.dumps(payload, indent=2), encoding="utf-8"
-        )
-        return payload
 
     pin = shot_state.get("pin") or {}
     aim = shot_state.get("aim") or {}
@@ -119,18 +114,39 @@ def build_tee_recommendation(
         registration_confidence=1.0,
         pin_crosscheck_error_yds=0.0,
     )
+
+    profiles = (
+        _load_profiles(profile_selection.path)
+        if profile_selection.available and profile_selection.path
+        else []
+    )
     result = recommend(
-        profiles=_load_profiles(profile_selection.path),
+        profiles=profiles,
         state=state,
         hazards=hazards,
         green=green,
         assumptions=assumptions,
     )
     payload["recommendation"] = result.to_dict()
+    if result.recommendation_kind == "none" and not profile_selection.available:
+        payload["recommendation_warning"] = (
+            profile_selection.warning or "Looper player profiles are unavailable and geometry-only scope did not apply."
+        )
     (capture / "tee_recommendation.json").write_text(
         json.dumps(payload, indent=2), encoding="utf-8"
     )
     return payload
+
+
+def _guidance_label(guidance: dict) -> str:
+    parts: list[str] = []
+    depth = str(guidance.get("preferred_depth") or "center")
+    side = str(guidance.get("preferred_side") or "center")
+    if depth not in ("center", "unknown"):
+        parts.append(depth)
+    if side not in ("center", "unknown"):
+        parts.append(side)
+    return "-".join(parts) if parts else ("center" if side != "unknown" else "unknown")
 
 
 def main() -> int:
@@ -156,8 +172,8 @@ def main() -> int:
     if decision:
         print(f"Tee shot mode: {str(decision.get('mode') or '?').upper()} | confidence {float(decision.get('confidence') or 0.0):.2f}")
 
-    recommendation = payload.get("recommendation")
-    if recommendation and recommendation.get("recommended"):
+    recommendation = payload.get("recommendation") or {}
+    if recommendation.get("recommended"):
         best = recommendation["recommended"]
         candidate = best["candidate"]
         print("READ-ONLY TEE RECOMMENDATION")
@@ -166,8 +182,16 @@ def main() -> int:
         print(f"Confidence:  {float(recommendation.get('confidence') or 0.0):.2f}")
         for reason in best.get("reasons") or []:
             print(f"  - {reason}")
+    elif recommendation.get("recommendation_kind") == "geometry-only" and recommendation.get("guidance"):
+        guidance = recommendation["guidance"]
+        print("GEOMETRY-ONLY SHORT-GAME GUIDANCE")
+        print(f"Safer target: {_guidance_label(guidance).upper()}")
+        print(f"Lateral shift: {float(guidance.get('suggested_safe_offset_yds') or 0.0):+.1f} yd")
+        print(f"Depth shift:   {float(guidance.get('suggested_safe_longitudinal_offset_yds') or 0.0):+.1f} yd")
+        print(f"Confidence:    {float(guidance.get('confidence') or 0.0):.2f}")
+        print("No club / partial-shot dispersion modeled; recommendation aim remains read only.")
     else:
-        print(f"Recommendation warning: {payload.get('recommendation_warning') or '?'}")
+        print(f"Recommendation warning: {payload.get('recommendation_warning') or (recommendation.get('fallbacks') or ['?'])[0]}")
     print(capture_dir := Path(args.capture_dir) / "tee_recommendation.json")
     return 0
 
