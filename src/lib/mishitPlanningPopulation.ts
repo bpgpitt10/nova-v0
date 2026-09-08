@@ -37,6 +37,11 @@ let installedPlanningState: MishitPlanningState = {
 const finiteNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 
+const positiveFiniteNumber = (value: unknown) => {
+  const finite = finiteNumber(value)
+  return typeof finite === 'number' && finite > 0 ? finite : undefined
+}
+
 const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
   if (!payload) {
     return undefined
@@ -77,10 +82,12 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
 
 export const toMishitPlanningShot = (shot: Shot): MishitShot => {
   const ballSpeed =
-    finiteNumber(shot.ballSpeedMph) ??
-    (typeof shot.ballSpeedMetersPerSecond === 'number'
+    positiveFiniteNumber(shot.ballSpeedMph) ??
+    (typeof shot.ballSpeedMetersPerSecond === 'number' && shot.ballSpeedMetersPerSecond > 0
       ? shot.ballSpeedMetersPerSecond * 2.23694
-      : payloadNumber(shot.openGolfCoach, ['ball_speed_mph', 'ballSpeedMph']))
+      : positiveFiniteNumber(
+          payloadNumber(shot.openGolfCoach, ['ball_speed_mph', 'ballSpeedMph']),
+        ))
 
   return {
     id: shot.id,
@@ -108,11 +115,15 @@ export const toMishitPlanningShot = (shot: Shot): MishitShot => {
       ]),
     ballSpeed,
     clubSpeed:
-      finiteNumber(shot.clubSpeed) ??
-      payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph']),
+      positiveFiniteNumber(shot.clubSpeed) ??
+      positiveFiniteNumber(
+        payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph']),
+      ),
     smashFactor:
-      finiteNumber(shot.smashFactor) ??
-      payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor', 'smash']),
+      positiveFiniteNumber(shot.smashFactor) ??
+      positiveFiniteNumber(
+        payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor', 'smash']),
+      ),
     launch:
       finiteNumber(shot.verticalLaunchAngleDegrees) ??
       finiteNumber(shot.launchAngleDeg) ??
