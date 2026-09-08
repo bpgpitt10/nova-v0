@@ -228,6 +228,7 @@ def main() -> int:
             identity_warning = None
             identity_key = state.get("active_identity_key")
             is_tee = bool(surface is not None and surface.recognized and surface.is_tee)
+            is_non_tee = bool(surface is not None and surface.recognized and not surface.is_tee)
             if is_tee:
                 identity, identity_warning = round_identity.try_read_round_identity(
                     screen,
@@ -245,7 +246,7 @@ def main() -> int:
             if is_tee and identity_key and identity_key != active_key and identity_key not in tee_attempted:
                 action = "capture-tee"
                 reason = "stable Tee surface + new course/hole identity"
-            elif active_key and not is_tee and shot_number is not None:
+            elif active_key and is_non_tee and shot_number is not None:
                 last_shot = state.get("last_shot_number")
                 if last_shot is None:
                     state["last_shot_number"] = shot_number
