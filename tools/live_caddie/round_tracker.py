@@ -17,6 +17,10 @@ class RoundTracker:
     missed just because the intermediate screen disappeared: every frame on the new
     hole continues to compare against the previous active hole until tee capture is
     successfully started.
+
+    `last_screen_shot_number` is a trusted lifecycle counter, not the latest raw OCR
+    digit. Same-counter frames and +1 increments are accepted; impossible jumps and
+    backward reads are ignored until another source/corroboration can reconcile them.
     """
 
     active_identity: dict[str, Any] | None = None
@@ -41,6 +45,8 @@ class RoundTracker:
         full_hole_minimap: bool | None = None,
         assumptions: Assumptions | None = None,
     ) -> TeeStateDecision:
+        is_new_identity = self._is_new_identity(current_identity)
+
         # If the header is different from the active hole, this is a candidate new
         # hole and therefore has zero Looper-recorded shots until accepted.
         probe = TeeStateInputs(
@@ -52,7 +58,7 @@ class RoundTracker:
             screen_distance_to_pin_yds=screen_distance_to_pin_yds,
             pin_card_distance_to_pin_yds=pin_card_distance_to_pin_yds,
             shots_recorded_on_current_hole=(
-                0 if self._is_new_identity(current_identity) else self.shots_recorded_on_active_hole
+                0 if is_new_identity else self.shots_recorded_on_active_hole
             ),
             previous_hole_terminal=self.active_hole_terminal,
             flat_lie=flat_lie,
@@ -60,20 +66,37 @@ class RoundTracker:
         )
         decision = infer_tee_state(probe, assumptions=assumptions)
 
-        # After Looper accepts a tee, GSPro is authoritatively still on Shot 1 until
-        # the ball is struck. A single-frame OCR hallucination such as 1 -> 7 must not
-        # poison the lifecycle anchor and later make the real Shot 2 look like a reset.
-        same_accepted_tee = (
-            self.active_identity is not None
-            and current_identity is not None
-            and not self._is_new_identity(current_identity)
-            and minimap_surface_is_tee is True
-            and self.shots_recorded_on_active_hole == 0
-        )
-        if same_accepted_tee:
-            self.last_screen_shot_number = 1
+        # Maintain a trusted shot counter rather than copying every OCR result.
+        # Field testing produced both 1 -> 7 spikes on the tee and 7 -> 1 transient
+        # sequences during the shot animation. Neither should poison lifecycle state.
+        if self.active_identity is None:
+            # Before the first tee is accepted this value is only provisional;
+            # accept_tee() will establish the authoritative Shot 1 anchor.
+            if screen_shot_number == 1:
+                self.last_screen_shot_number = 1
+        elif is_new_identity:
+            # Keep the old hole's trusted counter until the new tee is accepted.
+            pass
         else:
-            self.last_screen_shot_number = screen_shot_number
+            same_accepted_tee = (
+                minimap_surface_is_tee is True
+                and self.shots_recorded_on_active_hole == 0
+            )
+            if same_accepted_tee:
+                self.last_screen_shot_number = 1
+            elif screen_shot_number is not None:
+                observed = int(screen_shot_number)
+                trusted = self.last_screen_shot_number
+                if trusted is None:
+                    if observed >= 1:
+                        self.last_screen_shot_number = observed
+                elif observed == trusted:
+                    pass
+                elif observed == trusted + 1:
+                    self.last_screen_shot_number = observed
+                else:
+                    # Ignore backward reads and jumps >1 as uncorroborated OCR noise.
+                    pass
 
         if decision.hole_changed or self.active_identity is None:
             self.pending_identity = dict(current_identity) if current_identity else None
