@@ -11,7 +11,7 @@ import {
   syncSavedSessionToCloud,
 } from './cloudPersistence'
 
-const BOOTSTRAP_VERSION = 2
+const BOOTSTRAP_VERSION = 3
 const bootstrapKey = (userId: string) => `looper-cloud-bootstrap-v${BOOTSTRAP_VERSION}:${userId}`
 
 const mergeSessions = (local: SavedSession[], cloud: SavedSession[]) => {
