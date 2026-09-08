@@ -130,7 +130,7 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertIsNotNone(result.recommended)
         self.assertEqual(result.recommended.candidate.variant, "15y Chip")
 
-    def test_bare_unknown_side_penalty_boundary_cannot_claim_safe_direction(self) -> None:
+    def test_bare_penalty_boundary_cannot_claim_safe_direction_without_known_green(self) -> None:
         guidance = build_short_game_guidance(
             self.state(40.0),
             [self.right_hazard],
@@ -141,23 +141,19 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertEqual(guidance.preferred_side, "unknown")
         self.assertIsNone(guidance.suggested_safe_offset_yds)
         self.assertFalse(guidance.hazard_context_available)
-        self.assertTrue(any("Ignored 1 penalty" in note for note in guidance.notes))
+        self.assertTrue(any("Ignored 1 bare penalty" in note for note in guidance.notes))
 
-    def test_known_side_penalty_boundary_can_support_hazard_only_guidance(self) -> None:
-        known = HazardBoundary(
-            hazard_id="known-right-water",
-            points=[PointYards(25.0, 10.0), PointYards(55.0, 10.0)],
-            side_semantics_known=True,
-        )
+    def test_green_containment_makes_boundary_clearance_directionally_safe_to_use(self) -> None:
         guidance = build_short_game_guidance(
             self.state(40.0),
-            [known],
-            None,
+            [self.right_hazard],
+            self.green,
             self.assumptions,
             target_distance_yds=40.0,
         )
+        self.assertTrue(guidance.green_context_available)
         self.assertTrue(guidance.hazard_context_available)
-        self.assertIn(guidance.preferred_side, ("left", "center"))
+        self.assertEqual(guidance.preferred_side, "left")
 
 
 if __name__ == "__main__":
