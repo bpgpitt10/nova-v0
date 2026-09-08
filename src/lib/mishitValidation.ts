@@ -290,8 +290,11 @@ const countClassifications = (classifications: MishitClassification[]) => {
 }
 
 const comparisonSummary = (rows: MishitValidationShot[]) => {
-  const comparable = rows.filter((row) =>
-    isComparableJudgment(row.humanReview?.judgment),
+  const comparable = rows.filter(
+    (row) =>
+      row.classifierPopulationEligible &&
+      Boolean(row.automatic) &&
+      isComparableJudgment(row.humanReview?.judgment),
   )
   const exactMatches = comparable.filter((row) => row.agreement === 'exact').length
   const planningMatches = comparable.filter(
@@ -479,6 +482,7 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
       'Optional human/manual player calibrations are stored separately by population and may tighten or widen automatic boundaries.',
       'Intentional shots are exported but excluded from classifier population construction.',
       'Shots with included=false are exported but excluded from classifier population construction.',
+      'Only classifier-population-eligible reviewed shots with automatic results count toward human-vs-auto agreement rates.',
       'Unsure shots remain in the automatic population but are excluded from human-vs-auto accuracy counts.',
       'Automatic classifier results are included in this export but are not shown before human labeling in Session Intelligence.',
     ],
