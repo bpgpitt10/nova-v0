@@ -422,44 +422,45 @@ export const buildMishitValidationSnapshot = (): MishitValidationSnapshot => {
   })
 
   const populations: MishitValidationPopulation[] = [...groups.entries()]
-    .map(([populationKey, group]) => {
+    .flatMap(([populationKey, group]): MishitValidationPopulation[] => {
       const analysis = analysisByPopulation.get(populationKey)
       if (!analysis) {
-        return null
+        return []
       }
       const sample = group[0]?.shot
       if (!sample) {
-        return null
+        return []
       }
       const shotVariantId = resolveShotVariantId(sample.shotVariantId)
       const populationRows = rows.filter((row) => row.populationKey === populationKey)
       const comparison = comparisonSummary(populationRows)
 
-      return {
-        populationKey,
-        club: sample.club,
-        shotVariantId,
-        allShotCount: populationRows.length,
-        classifierShotCount: group.length,
-        humanReviewedCount: populationRows.filter((row) => row.humanReview?.judgment)
-          .length,
-        comparableHumanCount: comparison.comparableCount,
-        baseline: analysis.baseline,
-        inputVersion: analysis.inputVersion,
-        calibrationVersion: analysis.calibrationVersion,
-        playerCalibration: analysis.playerCalibration,
-        effectiveThresholds: analysis.effectiveThresholds,
-        classifierCounts: countClassifications(analysis.classifications),
-        comparison: {
-          exactMatches: comparison.exactMatches,
-          planningMatches: comparison.planningMatches,
-          falsePositives: comparison.falsePositives,
-          falseNegatives: comparison.falseNegatives,
-          planningAgreementRate: comparison.planningAgreementRate,
+      return [
+        {
+          populationKey,
+          club: sample.club,
+          shotVariantId,
+          allShotCount: populationRows.length,
+          classifierShotCount: group.length,
+          humanReviewedCount: populationRows.filter((row) => row.humanReview?.judgment)
+            .length,
+          comparableHumanCount: comparison.comparableCount,
+          baseline: analysis.baseline,
+          inputVersion: analysis.inputVersion,
+          calibrationVersion: analysis.calibrationVersion,
+          playerCalibration: analysis.playerCalibration,
+          effectiveThresholds: analysis.effectiveThresholds,
+          classifierCounts: countClassifications(analysis.classifications),
+          comparison: {
+            exactMatches: comparison.exactMatches,
+            planningMatches: comparison.planningMatches,
+            falsePositives: comparison.falsePositives,
+            falseNegatives: comparison.falseNegatives,
+            planningAgreementRate: comparison.planningAgreementRate,
+          },
         },
-      }
+      ]
     })
-    .filter((population): population is MishitValidationPopulation => Boolean(population))
     .sort((a, b) => a.populationKey.localeCompare(b.populationKey))
 
   const overall = comparisonSummary(rows)
