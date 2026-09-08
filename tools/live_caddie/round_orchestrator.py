@@ -76,10 +76,9 @@ class RoundOrchestrator:
             assumptions=self.assumptions,
         )
 
-        # Preserve the previous counter before observe_pre_shot records the current
-        # screen counter. This matters immediately after accept_tee(), where there is
-        # intentionally no previous RoundObservation but tracker.last_screen_shot_number
-        # is the authoritative prior value (1).
+        # Preserve the previous trusted counter before observe_pre_shot considers the
+        # current OCR frame. The tracker may deliberately reject an implausible tee
+        # OCR spike, so this is the lifecycle anchor progression should compare to.
         prior_tracker_shot_number = self.tracker.last_screen_shot_number
 
         # Tee inference receives each independent source as what it actually is.
@@ -125,10 +124,15 @@ class RoundOrchestrator:
             return action
 
         previous = self.previous_observation
+        previous_shot_number = (
+            prior_tracker_shot_number
+            if prior_tracker_shot_number is not None
+            else (previous.upper_left_shot_number if previous else None)
+        )
         progression = infer_shot_progression(ShotProgressionInputs(
             previous_identity=(previous.identity if previous else self.tracker.active_identity),
             current_identity=observation.identity,
-            previous_screen_shot_number=(previous.upper_left_shot_number if previous else prior_tracker_shot_number),
+            previous_screen_shot_number=previous_shot_number,
             current_screen_shot_number=observation.upper_left_shot_number,
             previous_distance_to_pin_yds=(previous.upper_left_distance_to_pin_yds if previous else None),
             current_distance_to_pin_yds=observation.upper_left_distance_to_pin_yds,
