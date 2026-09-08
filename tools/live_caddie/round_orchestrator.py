@@ -97,11 +97,18 @@ class RoundOrchestrator:
         )
 
         # Once a tee HoleModel has been accepted, the unchanged pre-shot tee frame
-        # remains strong tee evidence (Tee + Shot 1) for as long as the player stands
-        # there. Do not let that same accepted hole re-arm capture. OCR punctuation
-        # and spacing jitter are normalized by canonical_identity_key.
+        # remains strong tee evidence for as long as the player stands there. Do not
+        # let that same accepted hole re-arm capture or let one bad OCR digit create a
+        # fake shot-counter jump. OCR punctuation/spacing jitter is normalized by the
+        # canonical identity key.
         active_identity_key = self._identity_key(self.tracker.active_identity)
         current_identity_key = self._identity_key(observation.identity)
+        same_accepted_tee = (
+            active_identity_key is not None
+            and current_identity_key == active_identity_key
+            and observation.minimap_surface_is_tee is True
+            and self.tracker.shots_recorded_on_active_hole == 0
+        )
         tee_capture_eligible = (
             active_identity_key is None
             or (
@@ -129,11 +136,16 @@ class RoundOrchestrator:
             if prior_tracker_shot_number is not None
             else (previous.upper_left_shot_number if previous else None)
         )
+        current_shot_number = (
+            previous_shot_number
+            if same_accepted_tee and previous_shot_number is not None
+            else observation.upper_left_shot_number
+        )
         progression = infer_shot_progression(ShotProgressionInputs(
             previous_identity=(previous.identity if previous else self.tracker.active_identity),
             current_identity=observation.identity,
             previous_screen_shot_number=previous_shot_number,
-            current_screen_shot_number=observation.upper_left_shot_number,
+            current_screen_shot_number=current_shot_number,
             previous_distance_to_pin_yds=(previous.upper_left_distance_to_pin_yds if previous else None),
             current_distance_to_pin_yds=observation.upper_left_distance_to_pin_yds,
         ))
