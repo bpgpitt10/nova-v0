@@ -102,7 +102,22 @@ class RoundOrchestrator:
             assumptions=self.assumptions,
         )
 
-        if tee_decision.should_capture_tee:
+        # Once a tee HoleModel has been accepted, the unchanged pre-shot tee frame
+        # remains strong tee evidence (Tee + Shot 1) for as long as the player stands
+        # there. Do not let that same accepted hole re-arm capture. After an active
+        # hole exists, a tee capture is eligible only when a different valid course/
+        # hole identity is observed. Missing identity waits safely for the next poll.
+        active_identity_key = self._identity_key(self.tracker.active_identity)
+        current_identity_key = self._identity_key(observation.identity)
+        tee_capture_eligible = (
+            active_identity_key is None
+            or (
+                current_identity_key is not None
+                and current_identity_key != active_identity_key
+            )
+        )
+
+        if tee_decision.should_capture_tee and tee_capture_eligible:
             action = self._action(
                 "capture-tee",
                 observation,
