@@ -1,5 +1,9 @@
 import { syncBagConfigToCloud } from '../cloud/cloudPersistence'
 import {
+  BAG_CONFIG_STORAGE_KEY,
+  persistWorkingCacheValueForActiveUser,
+} from './localUserScope'
+import {
   BAG_SETUP_SECTION_ORDER,
   getBagSetupSectionKey,
   getBagSetupSectionLabel,
@@ -57,7 +61,6 @@ export type PersistedBagConfig = {
   selectedClubs: Club[]
 }
 
-const BAG_CONFIG_STORAGE_KEY = 'nova-validation-bag-config'
 export const BAG_CONFIG_UPDATED_EVENT = 'bag-config-updated'
 
 const CLUB_ORDER: Club[] = [
@@ -167,7 +170,9 @@ export const saveBagConfig = (selectedClubs: Club[]) => {
     version: 1,
     selectedClubs: sortClubIds(selectedClubs),
   }
-  window.localStorage.setItem(BAG_CONFIG_STORAGE_KEY, JSON.stringify(payload))
+  const serialized = JSON.stringify(payload)
+  window.localStorage.setItem(BAG_CONFIG_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(BAG_CONFIG_STORAGE_KEY, serialized)
   refreshBagConfigState()
   window.dispatchEvent(new Event(BAG_CONFIG_UPDATED_EVENT))
 
