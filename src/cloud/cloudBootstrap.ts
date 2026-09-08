@@ -26,6 +26,7 @@ export type CloudBootstrapResult = {
   uploadedLocalSessions: number
   downloadedCloudSessions: number
   mergedSessionCount: number
+  sessionHistoryChanged: boolean
   loadedCloudBag: boolean
   warnings: string[]
 }
@@ -61,7 +62,9 @@ export const bootstrapLooperCloudData = async (
 
   const cloudSessions = await loadSavedSessionsFromCloud()
   const mergedSessions = mergeSessions(localSessions, cloudSessions)
-  if (JSON.stringify(mergedSessions) !== JSON.stringify(localSessions)) {
+  const sessionHistoryChanged =
+    JSON.stringify(mergedSessions) !== JSON.stringify(localSessions)
+  if (sessionHistoryChanged) {
     saveSessionHistory(mergedSessions)
   }
 
@@ -82,6 +85,7 @@ export const bootstrapLooperCloudData = async (
     uploadedLocalSessions,
     downloadedCloudSessions: cloudSessions.length,
     mergedSessionCount: mergedSessions.length,
+    sessionHistoryChanged,
     loadedCloudBag,
     warnings,
   }
