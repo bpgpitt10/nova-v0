@@ -4,6 +4,8 @@ from .candidates import generate_candidates
 from .models import ClubProfile, LiveShotState, HazardBoundary, GreenSurface, RecommendationResult
 from .registry import versions
 from .scoring import evaluate, is_hard_distance_miss
+from .shot_coverage import assess_shot_coverage
+from .short_game import build_short_game_guidance
 
 
 def _confidence(state: LiveShotState, green: GreenSurface | None, scored, assumptions: Assumptions) -> tuple[float, list[str]]:
@@ -51,9 +53,48 @@ def recommend(*, profiles: list[ClubProfile], state: LiveShotState, hazards: lis
               alternatives: int = 4) -> RecommendationResult:
     assumptions = assumptions or Assumptions.load()
     candidates = generate_candidates(profiles, state, assumptions)
+    coverage = assess_shot_coverage(candidates, state, assumptions)
+
+    # Below the player's shortest modeled Stock/Smooth/explicit shot, never stretch a
+    # full-shot distribution down to an invented 50% wedge. Looper can still use the
+    # known green and penalty geometry to say which side is safer, without claiming a
+    # club, carry distribution, spin behavior, hit probability, or automatic aim.
+    if coverage.scope == "geometry-only":
+        guidance = build_short_game_guidance(
+            state,
+            hazards,
+            green,
+            assumptions,
+            target_distance_yds=coverage.effective_target_distance_yds,
+        )
+        return RecommendationResult(
+            recommended=None,
+            alternatives=[],
+            confidence=guidance.confidence,
+            fallbacks=[coverage.reason],
+            calculation_versions=versions(),
+            assumption_version=assumptions.version,
+            recommendation_kind="geometry-only",
+            guidance=guidance.to_dict(),
+            coverage=coverage.to_dict(),
+        )
+
+    if coverage.scope == "none":
+        return RecommendationResult(
+            recommended=None,
+            alternatives=[],
+            confidence=0.0,
+            fallbacks=[coverage.reason],
+            calculation_versions=versions(),
+            assumption_version=assumptions.version,
+            recommendation_kind="none",
+            guidance=None,
+            coverage=coverage.to_dict(),
+        )
 
     # Grossly wrong carry choices are not allowed to win merely because they happen
-    # to avoid every visible hazard. The rejection rule is itself externalized.
+    # to avoid every visible hazard. This broad rejection remains useful inside the
+    # modeled range; short-end extrapolation is handled separately by shot coverage.
     eligible = [
         candidate for candidate in candidates
         if not is_hard_distance_miss(candidate, state, assumptions)
@@ -77,4 +118,7 @@ def recommend(*, profiles: list[ClubProfile], state: LiveShotState, hazards: lis
         fallbacks=fallbacks,
         calculation_versions=versions(),
         assumption_version=assumptions.version,
+        recommendation_kind="modeled-shot" if recommended is not None else "none",
+        guidance=None,
+        coverage=coverage.to_dict(),
     )
