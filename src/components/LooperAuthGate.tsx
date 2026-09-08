@@ -5,7 +5,6 @@ import {
   getCurrentLooperUser,
   isSupabaseConfigured,
   sendLooperMagicLink,
-  signInLooperWithGoogle,
   signOutLooper,
   subscribeToLooperAuth,
   type AllowedUserRecord,
@@ -166,17 +165,6 @@ export default function LooperAuthGate({ children }: Props) {
     }
   }, [])
 
-  const handleGoogle = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      await signInLooperWithGoogle()
-    } catch (signInError) {
-      setError(signInError instanceof Error ? signInError.message : String(signInError))
-      setBusy(false)
-    }
-  }
-
   const handleMagicLink = async (event: FormEvent) => {
     event.preventDefault()
     const normalized = email.trim().toLowerCase()
@@ -278,19 +266,8 @@ export default function LooperAuthGate({ children }: Props) {
         <span className="looper-auth__eyebrow">The Looper</span>
         <h1>Sign in</h1>
         <p className="looper-auth__lead">
-          Looper is currently a small invite-only golf project.
+          Looper is currently a small invite-only golf project. Enter the email address that was invited.
         </p>
-
-        <button
-          type="button"
-          className="looper-auth__primary looper-auth__full"
-          disabled={busy}
-          onClick={() => void handleGoogle()}
-        >
-          Continue with Google
-        </button>
-
-        <div className="looper-auth__divider"><span>or</span></div>
 
         {magicLinkSent ? (
           <div className="looper-auth__success">
@@ -309,15 +286,15 @@ export default function LooperAuthGate({ children }: Props) {
                 placeholder="you@example.com"
                 required
               />
-              <button type="submit" className="looper-auth__secondary" disabled={busy || !email.trim()}>
-                Email me a sign-in link
+              <button type="submit" className="looper-auth__primary" disabled={busy || !email.trim()}>
+                {busy ? 'Sending…' : 'Send me a sign-in link'}
               </button>
             </div>
           </form>
         )}
 
         <p className="looper-auth__fineprint">
-          No Looper password required. Access is still limited to approved email addresses.
+          No password required. Access is limited to approved email addresses.
         </p>
 
         {allowedUser?.display_name ? (
