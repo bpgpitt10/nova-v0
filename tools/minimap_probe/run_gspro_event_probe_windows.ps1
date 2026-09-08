@@ -14,6 +14,22 @@ $ErrorActionPreference = "Stop"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Venv = Join-Path $Here ".venv"
 $Python = Join-Path $Venv "Scripts\python.exe"
+$GsproDir = Join-Path $env:USERPROFILE "AppData\LocalLow\GSPro\GSPro"
+$GsproDb = Join-Path $GsproDir "GSPro.db"
+$OutputLog = Join-Path $GsproDir "output_log.txt"
+
+if (-not (Test-Path $GsproDir -PathType Container)) {
+  throw "GSPro directory not found: $GsproDir"
+}
+# The Python research probe opens GSPro.db only for SELECT/PRAGMA reads, but SQLite
+# could create a database if a missing path were opened normally. Refuse to launch
+# unless the real GSPro database already exists so this instrument cannot create one.
+if (-not (Test-Path $GsproDb -PathType Leaf)) {
+  throw "GSPro.db not found; passive probe will not create it: $GsproDb"
+}
+if (-not (Test-Path $OutputLog -PathType Leaf)) {
+  throw "output_log.txt not found; start GSPro before running the passive probe: $OutputLog"
+}
 
 if (-not (Test-Path $Python)) {
   Write-Host "Creating minimap probe virtual environment..."
@@ -24,6 +40,7 @@ if (-not (Test-Path $Python)) {
 
 $argsList = @(
   (Join-Path $Here "gspro_event_probe_v3.py"),
+  "--gspro-dir", "$GsproDir",
   "--monitor", "$Monitor",
   "--file-poll-ms", "$FilePollMs",
   "--db-poll-ms", "$DbPollMs",
