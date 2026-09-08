@@ -12,9 +12,10 @@ Standalone proof-of-concept for turning the GSPro minimap into usable course geo
 - Recomputes minimap scale every shot as `DistanceToPin / ball-to-pin pixels`, so GSPro zoom changes do not need to be reverse engineered.
 - Treats GSPro red boundary lines as penalty-area boundaries.
 - Reports each visible penalty-boundary component in yards relative to the ball-to-pin axis, including whether it enters a configurable target corridor.
-- Writes `latest_crop.png` and `latest_debug.png` so we can inspect what the CV actually detected.
+- Tee capture v8 also persists the canonical hole minimap, target green and penalty geometry for later shots.
+- The `minimap-hazard-bunkers-v0` branch adds an offline/read-only bunker segmentation probe for saved tee captures.
 
-No Looper UI, persistence, aim recommendation, bunker classification, or Stock/Pure integration is included yet.
+No Looper UI, aim recommendation, or Stock/Pure integration is included yet.
 
 ## Fastest live test on the sim PC
 
@@ -34,6 +35,42 @@ Debug images are written to:
 tools\minimap_probe\output\latest_crop.png
 tools\minimap_probe\output\latest_debug.png
 ```
+
+## Offline bunker identification v0
+
+Bunker work is intentionally separated from live GSPro actuation while the classifier is being calibrated. It consumes the latest saved `tee_capture_*` folder, reuses `ball_pixel`, `pin_pixel`, and `yards_per_pixel` from `hole_model.json`, and analyzes `tee_hazard_safe_minimap.png` when available.
+
+From the repo root:
+
+```powershell
+git switch minimap-hazard-bunkers-v0
+git pull --ff-only origin minimap-hazard-bunkers-v0
+powershell -ExecutionPolicy Bypass -File tools\minimap_probe\run_bunker_probe_windows.ps1
+```
+
+The runner does **not** focus GSPro, press keys, change zoom, or mutate the canonical HoleModel. It writes review artifacts beside the saved tee capture:
+
+```text
+bunkers_v0.json
+bunker_candidates_v0.png
+bunker_mask_v0.png
+bunker_debug_overlay_v0.png
+hole_model_bunkers_preview_v0.json
+```
+
+Each accepted bunker includes a confidence score, pixel polygon, polygon transformed into forward/lateral yards, front/back extent, lateral extent, and whether it enters the configured planning corridor.
+
+A synthetic mechanical regression test is also available:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\minimap_probe\run_bunker_probe_windows.ps1 -SelfTest
+```
+
+That self-test only proves the code path; real GSPro minimaps remain the acceptance test.
+
+### Bunker v0 validation rule
+
+Prefer precision over recall. Do not lower thresholds merely to increase the bunker count. Review `bunker_debug_overlay_v0.png` on several different holes/courses. Only after the accepted polygons consistently match visible sand should `bunker_extractor.extract_bunkers()` be called from tee capture v8 and stored as authoritative HoleModel hazard geometry.
 
 ## One-shot screenshot test
 
@@ -75,11 +112,11 @@ The same ball/pin detector found the correct markers across those zoom states, a
 ## Known POC limitations
 
 1. `currentRound.dat` is useful but has previously been observed to lag or be incomplete around some hole/tee transitions. For the probe, `--distance` is the fallback. Looper can later supply its existing live shot-state distance instead.
-2. Player-marker hue is deliberately not hard-coded. We still need to verify whether changing team color changes the minimap marker color.
+2. Player-marker hue is deliberately not hard-coded because testing showed it follows the GSPro team color.
 3. The default minimap crop is based on the current screenshots. If the monitor/UI layout differs, pass `--roi` and then update the normalized defaults once we have the real sim-PC capture.
-4. Penalty areas are the first high-confidence hazard class. Bunkers are visibly segmentable but are intentionally deferred until this live capture path is proven on the sim PC.
+4. Penalty-area extraction is field-proven. Bunker identification is currently an offline v0 and must still be validated against real saved tee minimaps before integration.
 5. This reports geometry; it does not yet overlay Looper dispersion or choose an aim point.
 
-## Next step if the live probe holds up
+## Next step
 
-Feed the penalty mask and current map transform into a small aim-risk layer that projects Looper's Stock/Pure shot pattern into the minimap coordinate system. That should remain separate until the screen capture and hazard geometry are stable.
+Validate bunker overlays on several saved tee captures. If precision holds, promote bunker objects into the tee HoleModel next to `penalty_objects`, then feed both hazard classes into a later aim-risk layer that projects Looper's Stock/Pure shot pattern into the canonical hole coordinate system.
