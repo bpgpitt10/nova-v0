@@ -249,12 +249,15 @@ export const getAllowedUserRecord = async (
   return result.data
 }
 
+const currentLooperUrl = () =>
+  `${window.location.origin}${window.location.pathname}${window.location.search}`
+
 export const signInLooperWithGoogle = async () => {
   const client = await getSupabaseClient()
   const result = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: currentLooperUrl(),
     },
   })
   if (result.error) {
@@ -267,7 +270,7 @@ export const sendLooperMagicLink = async (email: string) => {
   const result = await client.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: currentLooperUrl(),
       shouldCreateUser: true,
     },
   })
