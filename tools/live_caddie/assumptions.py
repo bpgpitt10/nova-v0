@@ -46,6 +46,7 @@ class Assumptions:
             "round_orchestrator",
             "shot_mode",
             "candidate_policy",
+            "short_game",
             "distance_fit",
             "dispersion",
             "hazard_boundary",
@@ -234,6 +235,57 @@ class Assumptions:
             raise ValueError("candidate_policy.smooth_factor must be positive")
         if int(self.get("candidate_policy.max_candidates")) <= 0:
             raise ValueError("candidate_policy.max_candidates must be positive")
+        if float(self.get("candidate_policy.min_carry_yds")) < 0:
+            raise ValueError("candidate_policy.min_carry_yds cannot be negative")
+
+        short_game = self.get("short_game")
+        for key in (
+            "modeled_coverage_absolute_tolerance_yds",
+            "modeled_coverage_relative_fraction",
+            "minimum_geometry_guidance_distance_yds",
+            "green_clearance_reference_yds",
+            "hazard_clearance_reference_yds",
+            "aim_offset_reference_yds",
+            "minimum_side_advantage_score",
+        ):
+            if float(short_game[key]) < 0:
+                raise ValueError(f"short_game.{key} cannot be negative")
+        for key in (
+            "green_clearance_reference_yds",
+            "hazard_clearance_reference_yds",
+            "aim_offset_reference_yds",
+        ):
+            if float(short_game[key]) <= 0:
+                raise ValueError(f"short_game.{key} must be positive")
+        guidance_offsets = short_game.get("geometry_aim_offsets_yds")
+        if not isinstance(guidance_offsets, list) or not guidance_offsets:
+            raise ValueError("short_game.geometry_aim_offsets_yds must be a non-empty list")
+        if not any(abs(float(value)) <= 1e-9 for value in guidance_offsets):
+            raise ValueError("short_game.geometry_aim_offsets_yds must include zero")
+        rounded_offsets = {round(float(value), 9) for value in guidance_offsets}
+        if any(round(-float(value), 9) not in rounded_offsets for value in guidance_offsets):
+            raise ValueError("short_game.geometry_aim_offsets_yds must be symmetric around zero")
+        guidance_weights = short_game.get("geometry_scoring")
+        if not isinstance(guidance_weights, dict):
+            raise ValueError("short_game.geometry_scoring must be an object")
+        guidance_weight_values = [
+            float(guidance_weights[key])
+            for key in ("green_clearance_weight", "hazard_clearance_weight", "aim_change_weight")
+        ]
+        if any(value < 0 for value in guidance_weight_values):
+            raise ValueError("short_game.geometry_scoring weights cannot be negative")
+        if abs(sum(guidance_weight_values) - 1.0) > 1e-6:
+            raise ValueError("short_game.geometry_scoring weights must sum to 1.0")
+        for key in (
+            "confidence_green_and_hazard",
+            "confidence_green_only",
+            "confidence_hazard_only",
+            "confidence_no_geometry",
+        ):
+            value = float(short_game[key])
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"short_game.{key} must be 0..1")
+
         if float(self.get("distance_fit.hard_reject_multiplier")) <= 1.0:
             raise ValueError("distance_fit.hard_reject_multiplier must be > 1")
         if not bool(self.get("actuation.never_zoom_back_in")):
