@@ -1,10 +1,13 @@
 import { syncSavedSessionToCloud } from '../cloud/cloudPersistence'
 import type { ActiveSessionDraft, SavedSession } from '../types'
 import { isSystemOldExcludedSession } from './historicalModel'
+import {
+  ACTIVE_SESSION_STORAGE_KEY,
+  SESSION_HISTORY_STORAGE_KEY,
+  persistWorkingCacheValueForActiveUser,
+} from './localUserScope'
 import { installMishitPlanningState } from './mishitPlanningPopulation'
 
-const STORAGE_KEY = 'nova-validation-sessions'
-const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
 export const SESSION_HISTORY_UPDATED_EVENT = 'looper-session-history-updated'
 
 const installPlanningState = (sessions: SavedSession[]) => {
@@ -14,7 +17,7 @@ const installPlanningState = (sessions: SavedSession[]) => {
 
 export const loadSavedSessions = (): SavedSession[] => {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(SESSION_HISTORY_STORAGE_KEY)
     if (!raw) {
       return installPlanningState([])
     }
@@ -32,7 +35,10 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
     previousSessions.map((session) => [session.id, JSON.stringify(session)]),
   )
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  const serialized = JSON.stringify(sessions)
+  window.localStorage.setItem(SESSION_HISTORY_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(SESSION_HISTORY_STORAGE_KEY, serialized)
+
   // Derived mishit state follows the latest raw history immediately. It is not
   // written back into the source Shot records and does not alter human Pure tags.
   installMishitPlanningState(sessions)
@@ -57,7 +63,9 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
 }
 
 export const saveActiveSessionDraft = (session: ActiveSessionDraft) => {
-  window.localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, JSON.stringify(session))
+  const serialized = JSON.stringify(session)
+  window.localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(ACTIVE_SESSION_STORAGE_KEY, serialized)
 }
 
 export const loadActiveSessionDraft = (): ActiveSessionDraft | null => {
@@ -76,6 +84,7 @@ export const loadActiveSessionDraft = (): ActiveSessionDraft | null => {
 
 export const clearActiveSessionDraft = () => {
   window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY)
+  persistWorkingCacheValueForActiveUser(ACTIVE_SESSION_STORAGE_KEY, null)
 }
 
 export const isSessionIncludedInAnalysis = (session: SavedSession) =>
