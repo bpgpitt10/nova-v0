@@ -2,8 +2,10 @@ import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
 import { loadSavedSessions, saveSessionHistory } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import {
-  loadDefaultBagFromCloud,
-  loadSavedSessionsFromCloud,
+  hydrateDefaultBagForUser,
+  hydrateSessionsForUser,
+} from './cloudHydration'
+import {
   syncBagConfigToCloud,
   syncSavedSessionToCloud,
 } from './cloudPersistence'
@@ -60,7 +62,10 @@ export const bootstrapLooperCloudData = async (
     }
   }
 
-  const cloudSessions = await loadSavedSessionsFromCloud()
+  // The auth gate has already resolved this exact user. Hydrate by that stable
+  // user id rather than re-checking auth inside the read path and potentially
+  // mistaking a startup timing gap for a genuinely empty account.
+  const cloudSessions = await hydrateSessionsForUser(userId)
   const mergedSessions = mergeSessions(localSessions, cloudSessions)
   const sessionHistoryChanged =
     JSON.stringify(mergedSessions) !== JSON.stringify(localSessions)
@@ -68,7 +73,7 @@ export const bootstrapLooperCloudData = async (
     saveSessionHistory(mergedSessions)
   }
 
-  const cloudBag = await loadDefaultBagFromCloud()
+  const cloudBag = await hydrateDefaultBagForUser(userId)
   let loadedCloudBag = false
   if (!localBag && cloudBag?.length) {
     saveBagConfig(cloudBag)
