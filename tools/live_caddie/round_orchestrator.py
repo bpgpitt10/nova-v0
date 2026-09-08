@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .assumptions import Assumptions
+from .identity import canonical_identity_key
 from .round_tracker import RoundTracker
 from .shot_progression import ShotProgressionInputs, infer_shot_progression
 from .source_resolution import resolve_distance_to_pin
@@ -55,13 +56,7 @@ class RoundOrchestrator:
 
     @staticmethod
     def _identity_key(identity: dict[str, Any] | None) -> str | None:
-        if not identity:
-            return None
-        course = " ".join(str(identity.get("course_name") or "").strip().lower().split())
-        hole = identity.get("hole_number")
-        if not course or hole is None:
-            return None
-        return f"{course}::hole-{int(hole):02d}"
+        return canonical_identity_key(identity)
 
     def _action(self, action: str, observation: RoundObservation, reason: str, **payload) -> PlannedAction:
         return PlannedAction(
@@ -104,9 +99,8 @@ class RoundOrchestrator:
 
         # Once a tee HoleModel has been accepted, the unchanged pre-shot tee frame
         # remains strong tee evidence (Tee + Shot 1) for as long as the player stands
-        # there. Do not let that same accepted hole re-arm capture. After an active
-        # hole exists, a tee capture is eligible only when a different valid course/
-        # hole identity is observed. Missing identity waits safely for the next poll.
+        # there. Do not let that same accepted hole re-arm capture. OCR punctuation
+        # and spacing jitter are normalized by canonical_identity_key.
         active_identity_key = self._identity_key(self.tracker.active_identity)
         current_identity_key = self._identity_key(observation.identity)
         tee_capture_eligible = (
