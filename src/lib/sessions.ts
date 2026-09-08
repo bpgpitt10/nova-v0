@@ -21,12 +21,40 @@ const finiteNumber = (value: unknown) => {
   return typeof resolved === 'number' && Number.isFinite(resolved) ? resolved : undefined
 }
 
+const directFiniteNumber = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined
+
+const resolveOgcClubAngle = (
+  currentValue: number | undefined,
+  ogcValue: number | undefined,
+  source: unknown,
+) => {
+  if (source === 'gspro') {
+    return currentValue
+  }
+
+  if (source === 'ambiguous' || source === 'missing') {
+    return ogcValue ?? currentValue
+  }
+
+  // Backward compatibility for shots captured before per-field provenance was
+  // recorded. A non-zero GSPro club angle is clearly real and remains primary;
+  // a legacy zero is treated as ambiguous so OGC can fill it.
+  if (source === undefined) {
+    if (typeof currentValue === 'number' && currentValue !== 0) {
+      return currentValue
+    }
+    return ogcValue ?? currentValue
+  }
+
+  return currentValue ?? ogcValue
+}
+
 /**
- * GSPro's range row can contain literal zero placeholders for club-delivery fields
- * the launch monitor did not provide. Once OpenGolfCoach enrichment succeeds,
- * promote the OGC-derived values into the canonical Shot fields so every consumer
- * (dashboard, mishit model, Manage Data, CSV, and cloud persistence) sees the same
- * values instead of the raw zero sentinels.
+ * GSPro is the primary record whenever a field is known to be measured. OGC fills
+ * genuine gaps and ambiguous GSPro zero placeholders. The raw GSPro value and its
+ * source remain inside openGolfCoach.simread.resolvedShot, so a legitimate 0.0
+ * club angle is never discarded just because its numeric value is zero.
  */
 const normalizeOgcDerivedShotFields = (shot: Shot): Shot => {
   const root = payloadRecord(shot.openGolfCoach)
@@ -36,22 +64,62 @@ const normalizeOgcDerivedShotFields = (shot: Shot): Shot => {
   }
 
   const customary = payloadRecord(coach.us_customary_units)
-  const clubSpeed = finiteNumber(customary?.club_speed_mph)
-  const smashFactor = finiteNumber(coach.smash_factor)
-  const clubPath = finiteNumber(coach.club_path_degrees)
-  const faceToPath = finiteNumber(coach.club_face_to_path_degrees)
-  const faceToTarget = finiteNumber(coach.club_face_to_target_degrees)
+  const clubSpeedOgc = finiteNumber(customary?.club_speed_mph)
+  const smashFactorOgc = finiteNumber(coach.smash_factor)
+  const clubPathOgc = finiteNumber(coach.club_path_degrees)
+  const faceToPathOgc = finiteNumber(coach.club_face_to_path_degrees)
+  const faceToTargetOgc = finiteNumber(coach.club_face_to_target_degrees)
+
+  const simread = payloadRecord(root.simread)
+  const resolvedShot = simread ? payloadRecord(simread.resolvedShot) : null
+
+  const currentClubSpeed = directFiniteNumber(shot.clubSpeed)
+  const currentSmashFactor = directFiniteNumber(shot.smashFactor)
+  const currentClubPath = directFiniteNumber(shot.clubPathDegrees ?? shot.clubPath)
+  const currentFaceToPath = directFiniteNumber(
+    shot.faceToPathDegrees ?? shot.faceToPath,
+  )
+  const currentFaceToTarget = directFiniteNumber(
+    shot.faceToTargetDegrees ?? shot.faceToTarget,
+  )
+
+  // Speed and smash cannot legitimately be zero on a recorded shot. A positive
+  // GSPro measurement is authoritative; OGC only fills when GSPro did not provide one.
+  const clubSpeed =
+    typeof currentClubSpeed === 'number' && currentClubSpeed > 0
+      ? currentClubSpeed
+      : clubSpeedOgc
+  const smashFactor =
+    typeof currentSmashFactor === 'number' && currentSmashFactor > 0
+      ? currentSmashFactor
+      : smashFactorOgc
+
+  const clubPath = resolveOgcClubAngle(
+    currentClubPath,
+    clubPathOgc,
+    resolvedShot?.clubPathSource,
+  )
+  const faceToPath = resolveOgcClubAngle(
+    currentFaceToPath,
+    faceToPathOgc,
+    resolvedShot?.faceToPathSource,
+  )
+  const faceToTarget = resolveOgcClubAngle(
+    currentFaceToTarget,
+    faceToTargetOgc,
+    resolvedShot?.faceToTargetSource,
+  )
 
   const openGolfCoach = {
     ...root,
-    ...(typeof clubSpeed === 'number' ? { club_speed_mph: clubSpeed } : {}),
-    ...(typeof smashFactor === 'number' ? { smash_factor: smashFactor } : {}),
-    ...(typeof clubPath === 'number' ? { club_path_degrees: clubPath } : {}),
-    ...(typeof faceToPath === 'number'
-      ? { club_face_to_path_degrees: faceToPath }
+    ...(typeof clubSpeedOgc === 'number' ? { club_speed_mph: clubSpeedOgc } : {}),
+    ...(typeof smashFactorOgc === 'number' ? { smash_factor: smashFactorOgc } : {}),
+    ...(typeof clubPathOgc === 'number' ? { club_path_degrees: clubPathOgc } : {}),
+    ...(typeof faceToPathOgc === 'number'
+      ? { club_face_to_path_degrees: faceToPathOgc }
       : {}),
-    ...(typeof faceToTarget === 'number'
-      ? { club_face_to_target_degrees: faceToTarget }
+    ...(typeof faceToTargetOgc === 'number'
+      ? { club_face_to_target_degrees: faceToTargetOgc }
       : {}),
   }
 
@@ -60,9 +128,15 @@ const normalizeOgcDerivedShotFields = (shot: Shot): Shot => {
     openGolfCoach,
     ...(typeof clubSpeed === 'number' ? { clubSpeed } : {}),
     ...(typeof smashFactor === 'number' ? { smashFactor } : {}),
-    ...(typeof clubPath === 'number' ? { clubPathDegrees: clubPath } : {}),
-    ...(typeof faceToPath === 'number' ? { faceToPathDegrees: faceToPath } : {}),
-    ...(typeof faceToTarget === 'number' ? { faceToTargetDegrees: faceToTarget } : {}),
+    ...(typeof clubPath === 'number'
+      ? { clubPath, clubPathDegrees: clubPath }
+      : {}),
+    ...(typeof faceToPath === 'number'
+      ? { faceToPath, faceToPathDegrees: faceToPath }
+      : {}),
+    ...(typeof faceToTarget === 'number'
+      ? { faceToTarget, faceToTargetDegrees: faceToTarget }
+      : {}),
   }
 }
 

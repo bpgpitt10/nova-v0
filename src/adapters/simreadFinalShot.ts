@@ -2,7 +2,12 @@ import type { Club, OpenGolfCoachPayload, Shot } from '../types'
 
 export type SimReadRangeDbSource = 'gspro-range-db'
 
-export type SimReadResolvedShotFieldSource = 'gspro' | 'ogc' | 'derived' | 'missing'
+export type SimReadResolvedShotFieldSource =
+  | 'gspro'
+  | 'ogc'
+  | 'derived'
+  | 'missing'
+  | 'ambiguous'
 
 export type SimReadResolvedShot = {
   club?: string
@@ -29,10 +34,15 @@ export type SimReadResolvedShot = {
   backSpin?: number
   sideSpin?: number
   clubSpeed?: number
+  clubSpeedSource?: SimReadResolvedShotFieldSource
   clubPath?: number
+  clubPathSource?: SimReadResolvedShotFieldSource
   clubAoa?: number
+  clubAoaSource?: SimReadResolvedShotFieldSource
   faceToTarget?: number
+  faceToTargetSource?: SimReadResolvedShotFieldSource
   faceToPath?: number
+  faceToPathSource?: SimReadResolvedShotFieldSource
   clubLie?: number
   clubLoft?: number
   dynamicLoft?: number
@@ -40,6 +50,7 @@ export type SimReadResolvedShot = {
   clubFaceHImpact?: number
   clubFaceVImpact?: number
   smashFactor?: number
+  smashFactorSource?: SimReadResolvedShotFieldSource
   distToPin?: number
   distanceToPin?: number
   shotName?: string
