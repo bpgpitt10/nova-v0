@@ -1,6 +1,7 @@
 from __future__ import annotations
 import math
 from .assumptions import Assumptions
+from .environment import effective_target_distance
 from .geometry import unit_and_cross
 from .models import ClubProfile, LiveShotState, CandidateShot, PointYards
 
@@ -178,4 +179,15 @@ def generate_candidates(profiles: list[ClubProfile], state: LiveShotState, assum
                     cross_unit=cross_unit,
                     landing=landing,
                 ))
+
+    # Never let bag ordering make the max-candidate guard silently drop the scoring
+    # clubs / explicit variants at the end of a configured bag. Keep the candidates
+    # closest to the effective target first, then the smallest aim departures.
+    target = effective_target_distance(state, assumptions)
+    shots.sort(key=lambda shot: (
+        abs(float(shot.planned_carry_yds) - target),
+        abs(float(shot.aim_offset_yds)),
+        shot.club,
+        shot.variant,
+    ))
     return shots[:int(policy["max_candidates"])]
