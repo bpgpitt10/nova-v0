@@ -1,5 +1,6 @@
 import type { Club } from '../lib/bagConfig'
 import { sortClubIds } from '../lib/bagConfig'
+import { confidenceConfig } from '../lib/confidenceConfig'
 import {
   isShotIncludedInAnalysis,
   isSystemOldExcludedSession,
@@ -120,6 +121,15 @@ const explicitVariantsForClub = (
         ? variantSigma / baseSigma
         : undefined
 
+    const hasOwnPattern =
+      typeof variantStock.carryVariability === 'number' &&
+      Number.isFinite(variantStock.carryVariability) &&
+      typeof variantStock.dispersionVariability === 'number' &&
+      Number.isFinite(variantStock.dispersionVariability)
+    const modelReady =
+      weighted.shots.length >= confidenceConfig.insufficientData.minIncludedShots &&
+      hasOwnPattern
+
     return [
       {
         name: getShotVariantLabel(club, variantId),
@@ -131,7 +141,12 @@ const explicitVariantsForClub = (
         lateral_bias_yds: variantStock.offlineMean ?? 0,
         lateral_sigma_yds: variantStock.dispersionVariability,
         sigma_factor: sigmaFactor,
-        playable: true,
+        support_shots: weighted.shots.length,
+        supporting_sessions: weighted.supportingSessions,
+        model_ready: modelReady,
+        // Under-supported variants remain visible in the contract but are not a
+        // modeled playable candidate until their own pattern is sufficiently supported.
+        playable: modelReady,
       },
     ]
   })
