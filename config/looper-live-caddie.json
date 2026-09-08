@@ -1,6 +1,6 @@
 {
   "schema_version": "looper-live-caddie-assumptions-v0",
-  "assumptions_version": "0.12.1",
+  "assumptions_version": "0.13.0",
   "status": "provisional-offline-defaults",
   "notes": [
     "All tunable recommendation assumptions live here; orchestration/UI code must not embed them.",
@@ -9,13 +9,17 @@
     "Wind corrections are supplied by Looper's existing wind path as external carry/lateral adjustments.",
     "Strategic distance fit uses GSPro AIM distance, not PIN distance.",
     "Automatic aim remains disabled by default until solver decisions and large moves are field validated.",
-    "GSPro course/hole header identity is the preferred HoleModel cache key; newest-capture selection is legacy fallback only.",
-    "Tee-state inference is evidence-based: the minimap's own Tee/Fairway surface label is direct evidence; upper-right hole transition works now; future upper-left shot number and DTP can plug in without changing the calculation.",
-    "State-source precedence, source confidence, and disagreement thresholds are centralized in source_resolution rather than embedded in probes.",
+    "Normal-round lifecycle is structured-source-first: currentRound/output_log/GSPro.db should own any fact they expose reliably; screen OCR is for missing live facts, validation and recovery.",
+    "GSPro.db ActiveHole is a candidate current-hole authority but must not become authoritative until the passive timing probe proves when it changes relative to the next tee.",
+    "Tee-state inference remains available as a fallback/recovery calculation while the structured-source lifecycle is field validated.",
+    "State-source precedence, source confidence, and disagreement thresholds are centralized rather than embedded in probes.",
     "Post-tee W recovery is one-way only and green refinement is confidence-gated before it can replace the tee GreenSurfaceModel.",
     "Automatic round actions remain disabled by default; dry-run orchestration is the default behavior.",
     "Shot mode is inferred outside orchestration from GSPro surface, canonical AIM/green geometry, and AIM-vs-PIN distance; explicit mode remains available only as a diagnostic override.",
-    "Aim-change cost uses a configurable exponent so small dispersion-driven safety shifts are cheaper than large departures from GSPro strategic aim."
+    "Aim-change cost uses a configurable exponent so small dispersion-driven safety shifts are cheaper than large departures from GSPro strategic aim.",
+    "Smooth is a modeled 90% candidate only; Looper must not keep scaling Stock/Smooth into arbitrary partial wedges.",
+    "When an approach is materially shorter than the shortest modeled Stock/Smooth/explicit variant, the caddie drops to geometry-only safe-side guidance rather than inventing partial-shot dispersion or spin.",
+    "A real explicit shot variant may extend modeled coverage into the short game because it carries its own observed carry, bias and dispersion statistics."
   ],
   "canonical_geometry": {
     "player_marker_mask_radius_px": 14,
@@ -192,7 +196,26 @@
     "approach_aim_offsets_yds": [-12, -8, -4, 0, 4, 8, 12],
     "strategic_aim_offsets_yds": [-15, -10, -5, 0, 5, 10, 15],
     "max_candidates": 160,
-    "min_carry_yds": 20
+    "min_carry_yds": 5
+  },
+  "short_game": {
+    "modeled_coverage_absolute_tolerance_yds": 12.0,
+    "modeled_coverage_relative_fraction": 0.15,
+    "minimum_geometry_guidance_distance_yds": 20.0,
+    "geometry_aim_offsets_yds": [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10],
+    "green_clearance_reference_yds": 10.0,
+    "hazard_clearance_reference_yds": 18.0,
+    "aim_offset_reference_yds": 10.0,
+    "minimum_side_advantage_score": 0.05,
+    "geometry_scoring": {
+      "green_clearance_weight": 0.52,
+      "hazard_clearance_weight": 0.38,
+      "aim_change_weight": 0.10
+    },
+    "confidence_green_and_hazard": 0.72,
+    "confidence_green_only": 0.64,
+    "confidence_hazard_only": 0.58,
+    "confidence_no_geometry": 0.20
   },
   "distance_fit": {
     "absolute_tolerance_yds": 18,
