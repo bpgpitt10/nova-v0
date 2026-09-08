@@ -57,14 +57,13 @@ def base_target_for_state(state: LiveShotState) -> PointYards:
 
 
 def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
-    """Return playable variants with their own pattern statistics when available.
+    """Return playable variants with trustworthy pattern statistics.
 
     Stock and synthetic Smooth intentionally inherit the Stock pattern under explicit
-    assumptions. A real tagged variant is different: if Looper calculated variant-
-    specific carry/lateral statistics, those values take precedence so a 45-yard
-    pitch is never modeled with the stock wedge's dispersion merely because it uses
-    the same physical club. Full-shot fallback sigma floors apply only when variant-
-    specific statistics are absent; observed variant sigmas are preserved as-is.
+    assumptions. A real tagged variant is different: Looper must never borrow Stock
+    wedge dispersion for a materially shorter pitch/chip. An explicit variant is
+    therefore modeled only when it carries its own carry/lateral dispersion values
+    and the publisher has not marked it model-unready.
     """
     policy = assumptions.get("candidate_policy")
     base_carry_sigma, base_lateral_sigma = _sigma(profile, assumptions)
@@ -104,22 +103,22 @@ def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
     for explicit in profile.explicit_variants:
         if not explicit.get("playable", True) or "carry_yds" not in explicit:
             continue
-        sigma_factor = float(explicit.get("sigma_factor", 1.0) or 1.0)
-        carry_sigma = (
-            float(explicit["carry_sigma_yds"])
-            if explicit.get("carry_sigma_yds") is not None
-            else base_carry_sigma * sigma_factor
+        if explicit.get("model_ready") is False:
+            continue
+
+        has_own_pattern = (
+            explicit.get("carry_sigma_yds") is not None
+            and explicit.get("lateral_sigma_yds") is not None
+            and explicit.get("lateral_bias_yds") is not None
         )
-        lateral_sigma = (
-            float(explicit["lateral_sigma_yds"])
-            if explicit.get("lateral_sigma_yds") is not None
-            else base_lateral_sigma * sigma_factor
-        )
-        lateral_bias = (
-            float(explicit["lateral_bias_yds"])
-            if explicit.get("lateral_bias_yds") is not None
-            else float(profile.lateral_bias_yds)
-        )
+        if not has_own_pattern:
+            # Even a named/known-carry variant is not a hazard-risk model until its
+            # own pattern exists. It can still cause geometry-only guidance upstream.
+            continue
+
+        carry_sigma = float(explicit["carry_sigma_yds"])
+        lateral_sigma = float(explicit["lateral_sigma_yds"])
+        lateral_bias = float(explicit["lateral_bias_yds"])
         if carry_sigma < 0 or lateral_sigma < 0:
             # A negative dispersion is invalid source data. Do not silently abs() it
             # into a seemingly trustworthy player model.
@@ -133,6 +132,22 @@ def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
             "source": "explicit-variant",
         })
     return rows
+
+
+def modeled_variant_carries(profiles: list[ClubProfile], assumptions: Assumptions) -> list[float]:
+    """Return every model-supported carry before aim expansion/truncation.
+
+    Shot-coverage decisions must not depend on bag order, aim-offset count, or the
+    max-candidate cap. This list is the lower-bound model inventory itself.
+    """
+    minimum_carry = float(assumptions.get("candidate_policy.min_carry_yds"))
+    carries: list[float] = []
+    for profile in profiles:
+        for variant in _variant_rows(profile, assumptions):
+            carry = float(variant["carry"])
+            if carry >= minimum_carry:
+                carries.append(carry)
+    return carries
 
 
 def generate_candidates(profiles: list[ClubProfile], state: LiveShotState, assumptions: Assumptions) -> list[CandidateShot]:
