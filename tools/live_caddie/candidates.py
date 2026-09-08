@@ -62,7 +62,8 @@ def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
     assumptions. A real tagged variant is different: if Looper calculated variant-
     specific carry/lateral statistics, those values take precedence so a 45-yard
     pitch is never modeled with the stock wedge's dispersion merely because it uses
-    the same physical club.
+    the same physical club. Full-shot fallback sigma floors apply only when variant-
+    specific statistics are absent; observed variant sigmas are preserved as-is.
     """
     policy = assumptions.get("candidate_policy")
     base_carry_sigma, base_lateral_sigma = _sigma(profile, assumptions)
@@ -118,11 +119,15 @@ def _variant_rows(profile: ClubProfile, assumptions: Assumptions) -> list[dict]:
             if explicit.get("lateral_bias_yds") is not None
             else float(profile.lateral_bias_yds)
         )
+        if carry_sigma < 0 or lateral_sigma < 0:
+            # A negative dispersion is invalid source data. Do not silently abs() it
+            # into a seemingly trustworthy player model.
+            continue
         rows.append({
             "name": str(explicit.get("name", "Variant")),
             "carry": float(explicit["carry_yds"]),
-            "carry_sigma": max(carry_sigma, float(assumptions.get("dispersion.minimum_carry_sigma_yds"))),
-            "lateral_sigma": max(lateral_sigma, float(assumptions.get("dispersion.minimum_lateral_sigma_yds"))),
+            "carry_sigma": carry_sigma,
+            "lateral_sigma": lateral_sigma,
             "lateral_bias": lateral_bias,
             "source": "explicit-variant",
         })
