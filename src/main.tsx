@@ -12,6 +12,7 @@ import TheReadPage from './pages/TheReadPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
+import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -31,6 +32,26 @@ type UpdateStatus =
   | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
+
+function SignOutPage() {
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void signOutLooper()
+      .then(() => {
+        window.location.replace('/')
+      })
+      .catch((signOutError) => {
+        setError(signOutError instanceof Error ? signOutError.message : String(signOutError))
+      })
+  }, [])
+
+  return (
+    <main style={{ padding: '2rem' }}>
+      <p>{error ? `Could not sign out: ${error}` : 'Signing you out…'}</p>
+    </main>
+  )
+}
 
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
@@ -149,7 +170,12 @@ function RootRouter() {
   }, [])
 
   useEffect(() => {
-    if (hasBagConfig || pathname === '/bag-setup' || pathname === '/admin/users') {
+    if (
+      hasBagConfig ||
+      pathname === '/bag-setup' ||
+      pathname === '/admin/users' ||
+      pathname === '/signout'
+    ) {
       return
     }
     window.history.replaceState({}, '', '/bag-setup')
@@ -157,6 +183,7 @@ function RootRouter() {
   }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
+    const showSignOut = pathname === '/signout'
     const showBagSetup = pathname === '/bag-setup'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/' || pathname === '/looper'
@@ -167,6 +194,9 @@ function RootRouter() {
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
     const showAdminUsers = pathname === '/admin/users'
 
+    if (showSignOut) {
+      return <SignOutPage />
+    }
     if (showAdminUsers) {
       return <AdminUsersPage />
     }
