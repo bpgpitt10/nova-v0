@@ -1,8 +1,10 @@
+import { syncSavedSessionToCloud } from '../cloud/cloudPersistence'
 import type { ActiveSessionDraft, SavedSession } from '../types'
 import { isSystemOldExcludedSession } from './historicalModel'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
+export const SESSION_HISTORY_UPDATED_EVENT = 'looper-session-history-updated'
 
 export const loadSavedSessions = (): SavedSession[] => {
   try {
@@ -19,7 +21,30 @@ export const loadSavedSessions = (): SavedSession[] => {
 }
 
 export const saveSessionHistory = (sessions: SavedSession[]) => {
+  const previousSessions = loadSavedSessions()
+  const previousById = new Map(
+    previousSessions.map((session) => [session.id, JSON.stringify(session)]),
+  )
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  window.dispatchEvent(new Event(SESSION_HISTORY_UPDATED_EVENT))
+
+  sessions.forEach((session) => {
+    const previousSerialized = previousById.get(session.id)
+    const nextSerialized = JSON.stringify(session)
+    if (previousSerialized === nextSerialized) {
+      return
+    }
+
+    void syncSavedSessionToCloud(session).then((result) => {
+      if (result.status === 'failed') {
+        console.warn('[Cloud Sync] session sync failed; local copy retained', {
+          sessionId: session.id,
+          error: result.error,
+        })
+      }
+    })
+  })
 }
 
 export const saveActiveSessionDraft = (session: ActiveSessionDraft) => {

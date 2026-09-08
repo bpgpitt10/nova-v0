@@ -9,6 +9,8 @@ import {
   type BrowserDirectoryHandle,
 } from '../adapters/browserGsproAccess'
 import { prepareBrowserGsproRuntime } from '../adapters/browserGsproLive'
+import { SESSION_HISTORY_UPDATED_EVENT } from '../lib/sessions'
+import { publishLiveCaddieProfilesToGsproFolder } from '../liveCaddie/profilePublisher'
 import './BrowserGsproSetupGate.css'
 
 type SetupState =
@@ -119,6 +121,58 @@ export default function BrowserGsproSetupGate({
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (setupState !== 'ready' || isTauriRuntime() || !isWindowsBrowser()) {
+      return
+    }
+
+    let cancelled = false
+    let publishBusy = false
+    let republishRequested = false
+
+    const publishProfiles = async () => {
+      if (cancelled) {
+        return
+      }
+      if (publishBusy) {
+        republishRequested = true
+        return
+      }
+
+      publishBusy = true
+      try {
+        const result = await publishLiveCaddieProfilesToGsproFolder()
+        if (result.status === 'published') {
+          console.info('[Live Caddie] player profiles published to GSPro folder', result)
+        } else if (result.status === 'failed') {
+          console.warn('[Live Caddie] player profile publish failed; normal Looper remains available', result)
+        } else {
+          console.info('[Live Caddie] player profile publish skipped', result)
+        }
+      } finally {
+        publishBusy = false
+        if (republishRequested && !cancelled) {
+          republishRequested = false
+          void publishProfiles()
+        }
+      }
+    }
+
+    const onSessionHistoryUpdated = () => {
+      void publishProfiles()
+    }
+
+    // LooperAuthGate finishes cloud bootstrap before this gate renders, so this
+    // initial write materializes the user's current persisted history immediately.
+    void publishProfiles()
+    window.addEventListener(SESSION_HISTORY_UPDATED_EVENT, onSessionHistoryUpdated)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener(SESSION_HISTORY_UPDATED_EVENT, onSessionHistoryUpdated)
+    }
+  }, [setupState])
 
   const chooseFolder = async () => {
     setBusy(true)

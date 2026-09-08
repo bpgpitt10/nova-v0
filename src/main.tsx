@@ -9,7 +9,11 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import AdminUsersPage from './pages/AdminUsersPage.tsx'
+import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
+import LooperAuthGate from './components/LooperAuthGate.tsx'
+import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -29,6 +33,26 @@ type UpdateStatus =
   | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
+
+function SignOutPage() {
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void signOutLooper()
+      .then(() => {
+        window.location.replace('/')
+      })
+      .catch((signOutError) => {
+        setError(signOutError instanceof Error ? signOutError.message : String(signOutError))
+      })
+  }, [])
+
+  return (
+    <main style={{ padding: '2rem' }}>
+      <p>{error ? `Could not sign out: ${error}` : 'Signing you out…'}</p>
+    </main>
+  )
+}
 
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
@@ -147,7 +171,13 @@ function RootRouter() {
   }, [])
 
   useEffect(() => {
-    if (hasBagConfig || pathname === '/bag-setup') {
+    if (
+      hasBagConfig ||
+      pathname === '/bag-setup' ||
+      pathname === '/admin/users' ||
+      pathname === '/cloud-repair' ||
+      pathname === '/signout'
+    ) {
       return
     }
     window.history.replaceState({}, '', '/bag-setup')
@@ -155,6 +185,7 @@ function RootRouter() {
   }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
+    const showSignOut = pathname === '/signout'
     const showBagSetup = pathname === '/bag-setup'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/' || pathname === '/looper'
@@ -163,7 +194,18 @@ function RootRouter() {
     const showDashboardRoute = pathname === '/dashboard'
     const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
+    const showAdminUsers = pathname === '/admin/users'
+    const showCloudRepair = pathname === '/cloud-repair'
 
+    if (showSignOut) {
+      return <SignOutPage />
+    }
+    if (showAdminUsers) {
+      return <AdminUsersPage />
+    }
+    if (showCloudRepair) {
+      return <CloudRepairPage />
+    }
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
     }
@@ -195,7 +237,11 @@ function RootRouter() {
     return <App forceDashboardRoute={showDashboardRoute} />
   }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
 
-  return <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+  return (
+    <LooperAuthGate>
+      <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+    </LooperAuthGate>
+  )
 }
 
 createRoot(document.getElementById('root')!).render(

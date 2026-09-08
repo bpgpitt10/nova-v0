@@ -1,0 +1,38 @@
+name: Live Caddie Profile Bridge
+
+on:
+  push:
+    branches:
+      - auth-cloud-persistence
+    paths:
+      - 'src/liveCaddie/**'
+      - 'src/cloud/**'
+      - 'src/lib/sessions.ts'
+      - 'src/components/BrowserGsproSetupGate.tsx'
+      - 'src/lib/shotProfiles.ts'
+      - 'src/lib/historicalModel.ts'
+      - 'src/lib/shotVariants.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/live-caddie-profile-bridge.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript and production build
+        run: npm run build

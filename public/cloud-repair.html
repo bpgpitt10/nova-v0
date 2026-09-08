@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Looper Cloud Repair</title>
+  <style>
+    body{margin:0;min-height:100vh;background:#0b0d0c;color:#f5f3ed;display:grid;place-items:center;padding:24px;font-family:Inter,system-ui,sans-serif}.card{width:min(620px,100%);box-sizing:border-box;border:1px solid rgba(255,255,255,.15);border-radius:18px;padding:24px;background:#151817}.eyebrow{font-size:12px;letter-spacing:.16em;opacity:.65}h1{margin:10px 0 8px;font-size:28px}.rows{display:grid;gap:8px;margin:18px 0}.ok{color:#b9f6ca}.warn{color:#ffd8a8}.error{color:#ffb4ab;white-space:pre-wrap}.button{display:inline-block;margin-top:12px;padding:12px 16px;border-radius:10px;background:#f5f3ed;color:#111;text-decoration:none;font-weight:700}code{font-size:12px;opacity:.8}
+  </style>
+</head>
+<body>
+  <section class="card">
+    <div class="eyebrow">THE LOOPER</div>
+    <h1>Cloud data repair</h1>
+    <div id="status">Checking your signed-in account…</div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js"></script>
+  <script>
+    const statusEl = document.getElementById('status')
+    const SUPABASE_URL = 'https://kdjfdchzfemjpmaqpobn.supabase.co'
+    const SUPABASE_KEY = 'sb_publishable_Lu_EV3L6mSIzQzcB0fESsA_4bJcnT4T'
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+    })
+
+    const nullable = (value) => value == null ? undefined : value
+    const toShot = (row) => ({
+      id: row.id,
+      club: row.club,
+      included: row.included,
+      capturedAt: row.captured_at,
+      enrichmentStatus: row.enrichment_status,
+      source: row.source,
+      shotVariantId: nullable(row.shot_variant_id),
+      feltPerfect: nullable(row.felt_perfect),
+      feltPerfectTaggedAt: nullable(row.felt_perfect_tagged_at),
+      feltPerfectSource: nullable(row.felt_perfect_source),
+      carryYards: nullable(row.carry_yards),
+      totalYards: nullable(row.total_yards),
+      offlineYards: nullable(row.offline_yards),
+      ballSpeedMph: nullable(row.ball_speed_mph),
+      ballSpeedMetersPerSecond: nullable(row.ball_speed_meters_per_second),
+      verticalLaunchAngleDegrees: nullable(row.vertical_launch_angle_degrees),
+      horizontalLaunchAngleDegrees: nullable(row.horizontal_launch_angle_degrees),
+      totalSpinRpm: nullable(row.total_spin_rpm),
+      spinAxisDegrees: nullable(row.spin_axis_degrees),
+      peakHeight: nullable(row.peak_height),
+      descentAngle: nullable(row.descent_angle),
+      backSpin: nullable(row.back_spin),
+      sideSpin: nullable(row.side_spin),
+      clubSpeed: nullable(row.club_speed),
+      clubPathDegrees: nullable(row.club_path_degrees),
+      faceToPathDegrees: nullable(row.face_to_path_degrees),
+      faceToTargetDegrees: nullable(row.face_to_target_degrees),
+      clubAoa: nullable(row.club_aoa),
+      clubLie: nullable(row.club_lie),
+      clubLoft: nullable(row.club_loft),
+      dynamicLoft: nullable(row.dynamic_loft),
+      closureRate: nullable(row.closure_rate),
+      clubFaceHImpact: nullable(row.club_face_h_impact),
+      clubFaceVImpact: nullable(row.club_face_v_impact),
+      smashFactor: nullable(row.smash_factor),
+      distanceToPin: nullable(row.distance_to_pin),
+      shotName: nullable(row.shot_name),
+      shotRanking: nullable(row.shot_ranking),
+      openGolfCoach: nullable(row.open_golf_coach),
+    })
+
+    async function run() {
+      try {
+        const userResult = await client.auth.getUser()
+        if (userResult.error) throw userResult.error
+        const user = userResult.data.user
+        if (!user) throw new Error('No signed-in Supabase user was found on this preview URL.')
+
+        const allowResult = await client.from('allowed_users')
+          .select('email, enabled, is_admin, display_name')
+          .eq('email', user.email)
+          .eq('enabled', true)
+          .maybeSingle()
+        if (allowResult.error) throw allowResult.error
+        if (!allowResult.data) throw new Error(`${user.email} is signed in but is not on the Looper allowlist.`)
+
+        const sessionsResult = await client.from('sessions')
+          .select('id, started_at, ended_at, source, feed_mode, include_in_analysis, schema_version')
+        if (sessionsResult.error) throw sessionsResult.error
+
+        const shotsResult = await client.from('shots').select('*')
+        if (shotsResult.error) throw shotsResult.error
+
+        const shotsBySession = new Map()
+        for (const row of shotsResult.data || []) {
+          const bucket = shotsBySession.get(row.session_id) || []
+          bucket.push(toShot(row))
+          shotsBySession.set(row.session_id, bucket)
+        }
+
+        const sessions = (sessionsResult.data || []).map((row) => ({
+          id: row.id,
+          startedAt: row.started_at,
+          endedAt: row.ended_at || row.started_at,
+          shots: (shotsBySession.get(row.id) || []).sort((a,b) => a.capturedAt.localeCompare(b.capturedAt)),
+          metadata: {
+            app: 'nova-validation',
+            schemaVersion: row.schema_version || 1,
+            source: row.source || undefined,
+            feedMode: row.feed_mode || undefined,
+            includeInAnalysis: row.include_in_analysis !== false,
+          }
+        })).sort((a,b) => b.startedAt.localeCompare(a.startedAt))
+
+        const cloudShotCount = sessions.reduce((sum, session) => sum + session.shots.length, 0)
+        localStorage.setItem('nova-validation-sessions', JSON.stringify(sessions))
+
+        const bagResult = await client.from('bags')
+          .select('selected_clubs')
+          .eq('is_default', true)
+          .maybeSingle()
+        if (bagResult.error) throw bagResult.error
+        if (bagResult.data && Array.isArray(bagResult.data.selected_clubs) && bagResult.data.selected_clubs.length) {
+          localStorage.setItem('nova-validation-bag-config', JSON.stringify({
+            version: 1,
+            selectedClubs: bagResult.data.selected_clubs,
+          }))
+        }
+
+        const parsed = JSON.parse(localStorage.getItem('nova-validation-sessions') || '[]')
+        const localShotCount = parsed.reduce((sum, session) => sum + (session.shots || []).length, 0)
+
+        statusEl.innerHTML = `
+          <p>Signed in as <strong>${user.email}</strong>.</p>
+          <div class="rows">
+            <div>Supabase: <strong>${sessions.length}</strong> session · <strong>${cloudShotCount}</strong> shots</div>
+            <div>Browser cache after repair: <strong>${parsed.length}</strong> session · <strong>${localShotCount}</strong> shots</div>
+            <div>Bag: <strong>${bagResult.data?.selected_clubs?.length || 0}</strong> clubs</div>
+          </div>
+          ${cloudShotCount === localShotCount && cloudShotCount > 0
+            ? '<p class="ok">Repair succeeded. The cloud shots are now stored in this browser.</p><a class="button" href="/dashboard">Open Dashboard</a>'
+            : '<p class="warn">The counts still do not match. Send me a screenshot of this page.</p>'}
+        `
+      } catch (error) {
+        console.error('[Looper cloud repair]', error)
+        statusEl.innerHTML = `<p class="error">Repair stopped: ${error?.message || String(error)}</p><p>Send me a screenshot of this page. This is the exact browser-side failure we need.</p>`
+      }
+    }
+
+    run()
+  </script>
+</body>
+</html>
