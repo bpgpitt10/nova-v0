@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -89,11 +90,31 @@ def _run_capture(script_name: str) -> tuple[bool, str]:
 
 
 def _write_state(path: Path, orchestrator: RoundOrchestrator, extra: dict | None = None) -> None:
+    """Persist watcher state without allowing an interrupted write to destroy last-good JSON.
+
+    The first live field run ended with a hard PC shutdown and left a non-empty state
+    file containing only NUL bytes. Write+fsync a same-directory temp file, then use
+    atomic replacement so a crash can at worst leave a stale temp alongside the last
+    complete state file.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = orchestrator.state()
     if extra:
         payload.update(extra)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    encoded = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
+    temp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temp_path.open("wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            if temp_path.exists():
+                temp_path.unlink()
+        except OSError:
+            pass
 
 
 def _emit(payload: dict, as_json: bool) -> None:
