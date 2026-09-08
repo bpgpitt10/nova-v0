@@ -59,7 +59,22 @@ class RoundTracker:
             full_hole_minimap=full_hole_minimap,
         )
         decision = infer_tee_state(probe, assumptions=assumptions)
-        self.last_screen_shot_number = screen_shot_number
+
+        # After Looper accepts a tee, GSPro is authoritatively still on Shot 1 until
+        # the ball is struck. A single-frame OCR hallucination such as 1 -> 7 must not
+        # poison the lifecycle anchor and later make the real Shot 2 look like a reset.
+        same_accepted_tee = (
+            self.active_identity is not None
+            and current_identity is not None
+            and not self._is_new_identity(current_identity)
+            and minimap_surface_is_tee is True
+            and self.shots_recorded_on_active_hole == 0
+        )
+        if same_accepted_tee:
+            self.last_screen_shot_number = 1
+        else:
+            self.last_screen_shot_number = screen_shot_number
+
         if decision.hole_changed or self.active_identity is None:
             self.pending_identity = dict(current_identity) if current_identity else None
         return decision
