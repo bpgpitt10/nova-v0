@@ -49,6 +49,14 @@ export default function LooperAuthGate({ children }: Props) {
             } else {
               console.info('[Cloud Bootstrap] complete', result)
             }
+
+            // RootRouter and several analysis views initialize from local storage before
+            // the auth gate finishes hydrating cloud history. When cloud history changed
+            // that local cache, reload once so every existing view starts from the newly
+            // hydrated data. The next bootstrap sees identical history, preventing a loop.
+            if (result.sessionHistoryChanged) {
+              window.location.reload()
+            }
           })
           .catch((bootstrapError) => {
             // Cloud migration must never make the existing local Looper unusable.
