@@ -5,6 +5,7 @@ import unittest
 from tools.live_caddie.gspro_sources import (
     normalize_round_db_row,
     parse_output_log_line,
+    round_ids_from_summaries,
     shot_ids_from_summaries,
     summarize_current_round_payload,
 )
@@ -46,6 +47,31 @@ class GsproSourcesTests(unittest.TestCase):
         self.assertEqual(shot["material_hit"], "TVGfairway")
         self.assertFalse(shot["is_putt"])
         self.assertEqual(shot_ids_from_summaries(summaries), {"shot-1"})
+        self.assertEqual(round_ids_from_summaries(summaries), {183})
+
+    def test_current_round_tolerates_wrapper_and_key_case(self) -> None:
+        payload = {
+            "Shots": [{
+                "shotid": "shot-2",
+                "roundid": "184",
+                "hole": 0,
+                "holeshot": 2,
+                "ActiveShot": {
+                    "SD": {
+                        "ISPUTT": True,
+                        "ISHOLED": False,
+                        "ISGIMME": False,
+                    }
+                },
+            }]
+        }
+        summaries = summarize_current_round_payload(payload)
+        self.assertEqual(len(summaries), 1)
+        self.assertEqual(summaries[0]["shot_id"], "shot-2")
+        self.assertEqual(summaries[0]["round_id"], "184")
+        self.assertEqual(summaries[0]["hole_display"], 1)
+        self.assertEqual(summaries[0]["hole_shot"], 2)
+        self.assertTrue(summaries[0]["is_putt"])
 
     def test_output_log_known_facts(self) -> None:
         lines = [
@@ -68,15 +94,28 @@ class GsproSourcesTests(unittest.TestCase):
         self.assertEqual(active["hole_raw_zero_based"], 6)
         self.assertEqual(active["hole_display"], 7)
 
-    def test_db_active_hole_normalization(self) -> None:
+    def test_output_log_accepts_standalone_current_hole_and_partial_tdist(self) -> None:
+        hole = [fact.to_dict() for fact in parse_output_log_line("foo currentHole: 5 bar")]
+        self.assertEqual(hole[0]["kind"], "current_hole_observation")
+        self.assertEqual(hole[0]["hole_display"], 6)
+
+        distance = [fact.to_dict() for fact in parse_output_log_line("Logging tdist: 12.345")]
+        self.assertEqual(distance[0]["kind"], "distance_state")
+        self.assertAlmostEqual(distance[0]["tdist_raw"], 12.345)
+        self.assertIsNone(distance[0]["gimmie_distance_raw"])
+
+    def test_db_active_hole_normalization_keeps_assumption_explicit(self) -> None:
         row = normalize_round_db_row({
             "ID": 162,
             "CourseName": "greywolf_gsp",
             "ActiveHole": 6,
             "RoundStatus": 1,
         })
+        self.assertEqual(row["ActiveHoleRaw"], 6)
+        self.assertEqual(row["ActiveHoleDisplayAssumingZeroBased"], 7)
         self.assertEqual(row["ActiveHoleRawZeroBased"], 6)
         self.assertEqual(row["ActiveHoleDisplay"], 7)
+        self.assertIn("timing still unproven", row["ActiveHoleSemantics"])
 
 
 if __name__ == "__main__":
