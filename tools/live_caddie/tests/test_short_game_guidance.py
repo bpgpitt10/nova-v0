@@ -71,6 +71,7 @@ class ShortGameGuidanceTests(unittest.TestCase):
                 "carry_sigma_yds": 2.5,
                 "lateral_bias_yds": -1.0,
                 "lateral_sigma_yds": 3.0,
+                "model_ready": True,
                 "playable": True,
             }],
         )
@@ -91,6 +92,34 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertEqual(result.recommendation_kind, "modeled-shot")
         self.assertIsNotNone(result.recommended)
         self.assertEqual(result.recommended.candidate.variant, "40y Pitch")
+
+    def test_under_supported_explicit_variant_does_not_claim_modeled_coverage(self) -> None:
+        profile = ClubProfile(
+            club="LW",
+            stock_carry_yds=88.0,
+            carry_sigma_yds=5.0,
+            lateral_sigma_yds=6.0,
+            explicit_variants=[{
+                "name": "40y Pitch",
+                "carry_yds": 40.0,
+                "carry_sigma_yds": 2.0,
+                "lateral_bias_yds": 0.0,
+                "lateral_sigma_yds": 3.0,
+                "support_shots": 2,
+                "model_ready": False,
+                "playable": False,
+            }],
+        )
+        candidates = generate_candidates([profile], self.state(40.0), self.assumptions)
+        self.assertFalse(any(candidate.variant == "40y Pitch" for candidate in candidates))
+        result = recommend(
+            profiles=[profile],
+            state=self.state(40.0),
+            hazards=[],
+            green=self.green,
+            assumptions=self.assumptions,
+        )
+        self.assertEqual(result.recommendation_kind, "geometry-only")
 
     def test_true_greenside_cutoff_returns_no_guidance_without_variant(self) -> None:
         profile = ClubProfile(club="LW", stock_carry_yds=88.0)
@@ -116,6 +145,7 @@ class ShortGameGuidanceTests(unittest.TestCase):
                 "carry_sigma_yds": 1.5,
                 "lateral_bias_yds": 0.0,
                 "lateral_sigma_yds": 2.0,
+                "model_ready": True,
                 "playable": True,
             }],
         )
@@ -130,6 +160,29 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertIsNotNone(result.recommended)
         self.assertEqual(result.recommended.candidate.variant, "15y Chip")
 
+    def test_geometry_only_can_work_without_player_profiles(self) -> None:
+        result = recommend(
+            profiles=[],
+            state=self.state(40.0),
+            hazards=[self.right_hazard],
+            green=self.green,
+            assumptions=self.assumptions,
+        )
+        self.assertEqual(result.recommendation_kind, "geometry-only")
+        self.assertIsNotNone(result.guidance)
+        self.assertEqual(result.guidance["preferred_side"], "left")
+
+    def test_no_profiles_does_not_turn_long_approach_into_geometry_only_mode(self) -> None:
+        result = recommend(
+            profiles=[],
+            state=self.state(150.0),
+            hazards=[],
+            green=self.green,
+            assumptions=self.assumptions,
+        )
+        self.assertEqual(result.recommendation_kind, "none")
+        self.assertIsNone(result.guidance)
+
     def test_bare_penalty_boundary_cannot_claim_safe_direction_without_known_green(self) -> None:
         guidance = build_short_game_guidance(
             self.state(40.0),
@@ -139,6 +192,7 @@ class ShortGameGuidanceTests(unittest.TestCase):
             target_distance_yds=40.0,
         )
         self.assertEqual(guidance.preferred_side, "unknown")
+        self.assertEqual(guidance.preferred_depth, "unknown")
         self.assertIsNone(guidance.suggested_safe_offset_yds)
         self.assertFalse(guidance.hazard_context_available)
         self.assertTrue(any("Ignored 1 bare penalty" in note for note in guidance.notes))
@@ -154,6 +208,42 @@ class ShortGameGuidanceTests(unittest.TestCase):
         self.assertTrue(guidance.green_context_available)
         self.assertTrue(guidance.hazard_context_available)
         self.assertEqual(guidance.preferred_side, "left")
+
+    def test_geometry_guidance_can_favor_long_side_not_only_left_right(self) -> None:
+        front_pin_green = GreenSurface(
+            polygon=[
+                PointYards(30.0, -20.0),
+                PointYards(50.0, -20.0),
+                PointYards(50.0, 20.0),
+                PointYards(30.0, 20.0),
+            ],
+            pin=PointYards(33.0, 0.0),
+            confidence=1.0,
+        )
+        guidance = build_short_game_guidance(
+            self.state(33.0),
+            [],
+            front_pin_green,
+            self.assumptions,
+            target_distance_yds=33.0,
+        )
+        self.assertEqual(guidance.preferred_depth, "long")
+        self.assertGreater(guidance.suggested_safe_longitudinal_offset_yds or 0.0, 0.0)
+        self.assertGreater(guidance.green_room_long_yds or 0.0, guidance.green_room_short_yds or 0.0)
+
+    def test_unknown_green_confidence_is_not_treated_as_full_confidence(self) -> None:
+        uncertain_green = GreenSurface(
+            polygon=self.green.polygon,
+            pin=self.green.pin,
+            confidence=0.0,
+        )
+        certain = build_short_game_guidance(
+            self.state(40.0), [], self.green, self.assumptions, target_distance_yds=40.0
+        )
+        uncertain = build_short_game_guidance(
+            self.state(40.0), [], uncertain_green, self.assumptions, target_distance_yds=40.0
+        )
+        self.assertLess(uncertain.confidence, certain.confidence)
 
 
 if __name__ == "__main__":
