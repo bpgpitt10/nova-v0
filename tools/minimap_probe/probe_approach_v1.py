@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
-"""GSPro post-tee ShotState probe v1: canonical geometry + green visibility.
+"""GSPro post-tee ShotState probe v1: live state + optional exact canonical geometry.
 
-v1 keeps v0's proven behavior (no W, no Y) and adds a read-only geometry layer:
-- register the current minimap back to the latest tee HoleModel;
-- express the current ball in canonical hole coordinates;
-- cross-check canonical remaining distance against the screen PIN card;
-- project the cached target-green footprint into the current minimap;
-- report whether W recovery would be recommended, WITHOUT pressing W.
-
-This lets the next sim session validate the decision logic before UI actuation is
-allowed to change zoom.
+Safety:
+- no W zoom actuation;
+- no Y heatmap actuation;
+- AIM card acquisition keeps the existing bounded LEFT/RIGHT return behavior;
+- unattended callers should pass --hole-model-path for exact current-hole binding,
+  or --no-canonical-geometry when tee geometry is unavailable.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -61,14 +57,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--aim-max-correction-ms", type=float, default=20.0)
     p.add_argument("--aim-max-corrections", type=int, default=2)
     p.add_argument("--deep-debug", action="store_true")
+    p.add_argument("--hole-model-path", help="Exact tee hole_model.json for this current hole.")
+    p.add_argument(
+        "--no-canonical-geometry",
+        action="store_true",
+        help="Capture live PIN/AIM/lie/minimap but do not attempt canonical registration.",
+    )
     p.add_argument("--output-root", default=str(Path(__file__).with_name("output")))
     return p.parse_args()
 
 
 def _out_dir(root: str) -> Path:
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     p = Path(root) / f"approach_capture_{stamp}"
-    p.mkdir(parents=True, exist_ok=True)
+    p.mkdir(parents=True, exist_ok=False)
     return p
 
 
@@ -96,6 +98,10 @@ def _save_card(path: Path, screen, state) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.hole_model_path and args.no_canonical_geometry:
+        print("ERROR: choose either --hole-model-path or --no-canonical-geometry, not both.", file=sys.stderr)
+        return 2
+
     out = _out_dir(args.output_root)
     timer = Timer()
 
@@ -133,21 +139,26 @@ def main() -> int:
 
         geometry = None
         geometry_warning = None
-        try:
-            geometry = timer.call(
-                "canonical_geometry",
-                posttee_geometry.analyze,
-                current_minimap=minimap,
-                pin_distance_yds=float(pin_state.distance_yds),
-                output_root=args.output_root,
-            )
-        except Exception as exc:
-            geometry_warning = str(exc)
+        geometry_attempted = not args.no_canonical_geometry
+        if geometry_attempted:
+            try:
+                geometry = timer.call(
+                    "canonical_geometry",
+                    posttee_geometry.analyze,
+                    current_minimap=minimap,
+                    pin_distance_yds=float(pin_state.distance_yds),
+                    output_root=args.output_root,
+                    hole_model_path=args.hole_model_path,
+                )
+            except Exception as exc:
+                geometry_warning = str(exc)
+        else:
+            geometry_warning = "canonical geometry intentionally disabled: no valid tee HoleModel for this hole"
 
         state_ready_ms = timer.elapsed_ms()
 
         payload = {
-            "schema_version": "post-tee-shot-state-v1",
+            "schema_version": "post-tee-shot-state-v1.1",
             "capture_mode": "post-tee",
             "pin": _state_dict(pin_state),
             "aim": _state_dict(aim_state),
@@ -159,8 +170,13 @@ def main() -> int:
                 "zoom_changed": False,
                 "heatmap_toggled": False,
             },
+            "canonical_geometry_attempted": geometry_attempted,
+            "requested_hole_model_path": args.hole_model_path,
             "canonical_geometry": geometry,
             "canonical_geometry_warning": geometry_warning,
+            "canonical_geometry_trusted": bool(
+                geometry and geometry.get("geometry_trusted")
+            ),
             "wind": None,
             "wind_note": "Use existing Looper wind source; not duplicated in approach probe v1.",
             "performance": {
@@ -170,7 +186,6 @@ def main() -> int:
             },
             "created_local": datetime.now().isoformat(timespec="seconds"),
         }
-
         (out / "shot_state.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
         t0 = time.perf_counter()
@@ -184,15 +199,18 @@ def main() -> int:
         persist_ms = round((time.perf_counter() - t0) * 1000.0, 1)
 
         print()
-        print("GSPro POST-TEE SHOT STATE PROBE v1")
-        print("=================================")
+        print("GSPro POST-TEE SHOT STATE PROBE v1.1")
+        print("====================================")
         print("W zoom:                NOT USED (decision only)")
         print("Y heatmap:             NOT USED")
         print(f"Pin target:            {pin_state.distance_yds:.0f} yd")
         print(f"Pin elevation:         {pin_state.elevation_direction} {pin_state.elevation_raw or '?'}")
         print(f"Lie slope:             {lie_state.state_text(lie)}")
         if aim_state is not None:
-            print(f"GSPro aim target:      {aim_state.distance_yds:.0f} yd | {aim_state.elevation_direction} {aim_state.elevation_raw or '?'}")
+            print(
+                f"GSPro aim target:      {aim_state.distance_yds:.0f} yd | "
+                f"{aim_state.elevation_direction} {aim_state.elevation_raw or '?'}"
+            )
         else:
             print("GSPro aim target:      unavailable")
         print(f"AIM acquisition:       {aim_meta.get('status')}")
@@ -211,10 +229,15 @@ def main() -> int:
             )
             print(
                 f"Pin cross-check:       {chk['canonical_remaining_pin_yds']:.1f} yd canonical "
-                f"vs {chk['screen_pin_distance_yds']:.1f} yd screen | {'PASS' if chk['ok'] else 'WARN'}"
+                f"vs {chk['screen_pin_distance_yds']:.1f} yd screen | "
+                f"{'PASS' if chk['ok'] else 'REJECT'}"
             )
+            print(f"Canonical trusted:     {bool(geometry.get('geometry_trusted'))}")
             print(f"Target green visible:  {'YES' if gv['visible'] else 'NO'}")
-            print(f"W recovery decision:   {'WOULD ZOOM OUT' if geometry['w_recovery_recommended'] else 'NOT NEEDED'}")
+            print(
+                f"W recovery decision:   "
+                f"{'WOULD ZOOM OUT' if geometry['w_recovery_recommended'] else 'NOT NEEDED'}"
+            )
         else:
             print("Canonical geometry:    unavailable")
             print(f"Geometry warning:      {geometry_warning}")
@@ -234,7 +257,6 @@ def main() -> int:
         print("* OCR runs overlapped with AIM acquisition")
         print(f"{'STATE READY:':24} {state_ready_ms:7.1f} ms")
         print(f"{'Review persistence:':24} {persist_ms:7.1f} ms")
-
         print()
         print(f"ShotState:             {out / 'shot_state.json'}")
         print(f"As-presented minimap:  {out / 'approach_minimap.png'}")
@@ -249,6 +271,8 @@ def main() -> int:
                     "error": str(exc),
                     "elapsed_ms": timer.elapsed_ms(),
                     "phase_ms": timer.phase_ms,
+                    "requested_hole_model_path": args.hole_model_path,
+                    "no_canonical_geometry": args.no_canonical_geometry,
                 }, indent=2),
                 encoding="utf-8",
             )

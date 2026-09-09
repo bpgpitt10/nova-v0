@@ -1,19 +1,39 @@
 #!/usr/bin/env python3
-"""v8 target-card OCR patch.
+"""v8 target-card OCR patch with field-proven crops and semantic sanity gates.
 
 Field validation showed that an overly tight elevation crop can clip GSPro's small
-`5` glyph and turn visible `5y` into OCR `2y`. v8 uses field-proven crop priority
-and an adaptive fast path so common cards need only one or two elevation OCR calls.
-
-Importing this module patches target_card.read_target_card for the v8 orchestrator.
+`5` glyph and turn visible `5y` into OCR `2y`. v8 keeps the proven crop priority,
+but now rejects implausible feet/inches reads such as 121'4" before they can enter
+ShotState. Large elevations should be represented by the card's yard form, not a
+three-digit feet token.
 """
-
 from __future__ import annotations
+
+import re
 
 import cv2
 
 import probe_v6 as v6
 import target_card
+
+
+def _plausible_elevation(raw: str, feet: float | None, yards: float | None, distance_yds: float) -> bool:
+    if feet is None or yards is None:
+        return False
+    text = raw.strip()
+    lower = text.lower()
+
+    # GSPro's feet/inches card format has only been observed for small elevations.
+    # A three-digit feet OCR token is far more likely to be a merged/misread glyph.
+    # Yard-form values remain allowed for legitimately large elevation changes.
+    if "y" not in lower and abs(float(feet)) >= 100.0:
+        return False
+
+    # A target elevation exceeding the horizontal target distance is physically
+    # nonsensical and indicates OCR failure. This is intentionally generous.
+    if abs(float(yards)) > max(60.0, float(distance_yds)):
+        return False
+    return True
 
 
 def read_target_card_v8(
@@ -35,10 +55,6 @@ def read_target_card_v8(
     distance = target_card._parse_distance(distance_raw)
     direction = target_card._green_triangle_direction(card)
 
-    # Fast priority is intentional:
-    # 1) full-glyph yards crop solves the observed 5y card in one pass;
-    # 2) punctuation-preserving feet crop solves observed 9'9 in one pass;
-    # 3) alternate PSM/crops are only fallbacks.
     attempts = [
         ("yards-primary", (0.53, 0.91, 0.28, 0.90), "7"),
         ("feet-primary", (0.48, 0.86, 0.30, 0.90), "7"),
@@ -67,10 +83,11 @@ def read_target_card_v8(
             first_raw = raw
             chosen_crop = crop
         parsed_ft, parsed_yds = v6._strict_parse_elevation(raw, direction)
+        plausible = _plausible_elevation(raw, parsed_ft, parsed_yds, distance)
         debug_attempts.append(
-            f"{label} psm={psm} raw={raw!r} parsed_ft={parsed_ft!r}"
+            f"{label} psm={psm} raw={raw!r} parsed_ft={parsed_ft!r} plausible={plausible}"
         )
-        if parsed_ft is not None and parsed_yds is not None:
+        if plausible:
             elevation_raw = raw
             elevation_ft = parsed_ft
             elevation_yds = parsed_yds

@@ -8,6 +8,8 @@ param(
   [double]$AimReturnTolerancePx = 1.5,
   [double]$AimMaxCorrectionMs = 20,
   [int]$AimMaxCorrections = 2,
+  [string]$HoleModelPath = "",
+  [switch]$NoCanonicalGeometry,
   [switch]$NoAimSummon,
   [switch]$DeepDebug
 )
@@ -24,6 +26,10 @@ if (-not (Test-Path $Python)) {
   & $Python -m pip install -r (Join-Path $Here "requirements.txt")
 }
 
+if ($HoleModelPath -and $NoCanonicalGeometry) {
+  throw "Use either -HoleModelPath or -NoCanonicalGeometry, not both."
+}
+
 $argsList = @(
   (Join-Path $Here "probe_approach_v1.py"),
   "--monitor", "$Monitor",
@@ -37,13 +43,20 @@ $argsList = @(
 if ($Roi) { $argsList += @("--roi", $Roi) }
 if ($LieRoi) { $argsList += @("--lie-roi", $LieRoi) }
 if ($Tesseract) { $argsList += @("--tesseract", $Tesseract) }
+if ($HoleModelPath) { $argsList += @("--hole-model-path", $HoleModelPath) }
+if ($NoCanonicalGeometry) { $argsList += "--no-canonical-geometry" }
 if ($NoAimSummon) { $argsList += "--no-aim-summon" }
 if ($DeepDebug) { $argsList += "--deep-debug" }
 
-Write-Host "Running GSPro POST-TEE ShotState probe v1 once."
-Write-Host "SAFE DRY RUN: no W zoom and no Y heatmap."
-Write-Host "Adds canonical minimap registration + cached-green visibility decision."
-Write-Host "If green is clipped it only reports WOULD ZOOM OUT; W actuation is not enabled yet."
+Write-Host "Running GSPro POST-TEE ShotState probe v1.1 once."
+Write-Host "SAFE: no W zoom and no Y heatmap."
+if ($HoleModelPath) {
+  Write-Host "Canonical geometry is bound to exact HoleModel: $HoleModelPath"
+} elseif ($NoCanonicalGeometry) {
+  Write-Host "Canonical geometry disabled for this shot because no valid tee HoleModel exists."
+} else {
+  Write-Host "WARNING: no exact HoleModel supplied; manual legacy latest-model fallback may be used."
+}
 
 & $Python @argsList
 exit $LASTEXITCODE

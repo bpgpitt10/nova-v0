@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Build post-tee geometry against the cached tee HoleModel without touching GSPro."""
-
+"""Build post-tee geometry against a tee HoleModel without touching GSPro."""
 from __future__ import annotations
+
+from pathlib import Path
 
 import cv2
 
@@ -17,8 +18,24 @@ def analyze(
     current_minimap,
     pin_distance_yds: float,
     output_root,
+    hole_model_path: str | Path | None = None,
 ) -> dict:
-    hole_model, hole_model_path, canonical_path = hole_model_cache.find_latest_hole_model(output_root)
+    """Analyze current minimap against an explicit tee model when supplied.
+
+    `hole_model_path` is required by unattended watcher callers. The latest-by-time
+    fallback exists only for manual diagnostic flows that do not know hole identity.
+    """
+    if hole_model_path:
+        hole_model, resolved_model_path, canonical_path = hole_model_cache.load_hole_model(
+            hole_model_path
+        )
+        model_resolution = "explicit"
+    else:
+        hole_model, resolved_model_path, canonical_path = hole_model_cache.find_latest_hole_model(
+            output_root
+        )
+        model_resolution = "legacy-latest"
+
     canonical = cv2.imread(str(canonical_path), cv2.IMREAD_COLOR)
     if canonical is None:
         raise RuntimeError(f"Could not read cached canonical minimap {canonical_path}")
@@ -49,10 +66,12 @@ def analyze(
 
     canonical_remaining = float(canonical_position["canonical_remaining_pin_yds"])
     pin_crosscheck_error = canonical_remaining - float(pin_distance_yds)
-    crosscheck_ok = abs(pin_crosscheck_error) <= max(8.0, float(pin_distance_yds) * 0.05)
+    tolerance = max(8.0, float(pin_distance_yds) * 0.05)
+    crosscheck_ok = abs(pin_crosscheck_error) <= tolerance
 
-    return {
-        "hole_model_path": str(hole_model_path),
+    result = {
+        "hole_model_path": str(resolved_model_path),
+        "hole_model_resolution": model_resolution,
         "canonical_minimap_path": str(canonical_path),
         "current_markers": {
             "ball_pixel": {"x": ball.x, "y": ball.y},
@@ -64,12 +83,24 @@ def analyze(
             "screen_pin_distance_yds": float(pin_distance_yds),
             "canonical_remaining_pin_yds": canonical_remaining,
             "error_yds": pin_crosscheck_error,
+            "tolerance_yds": tolerance,
             "ok": crosscheck_ok,
         },
         "green_visibility": visibility.to_dict(),
-        "w_recovery_recommended": not visibility.visible,
+        "w_recovery_recommended": bool(crosscheck_ok and not visibility.visible),
+        "geometry_trusted": bool(crosscheck_ok),
         "note": (
-            "Geometry analysis only. This module never presses W; field-tested W actuation "
-            "must remain a separate bounded step."
+            "Geometry analysis only. This module never presses W. Canonical geometry "
+            "must not feed the caddie when geometry_trusted is false."
         ),
     }
+
+    # Hard semantic gate: keep the diagnostic registration, but make it explicit
+    # that downstream strategy must not consume the canonical result when the
+    # screen PIN distance disagrees with the transformed canonical geometry.
+    if not crosscheck_ok:
+        result["geometry_rejection_reason"] = (
+            "canonical PIN-distance cross-check failed; registration retained for "
+            "diagnostics only"
+        )
+    return result

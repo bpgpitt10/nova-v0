@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """Read GSPro's white-bordered pre-shot target card from a screen capture.
 
-The target card is the black card in the 3D view with:
-- distance to target/pin on the top line;
-- a green up/down triangle plus elevation on the bottom line.
-
-This intentionally ignores red-bordered click/aim cards. Distance/elevation are
-screen truth and remain available on tee shots where currentRound.dat can be stale.
+This module is shared by tee/post-tee probes and lightweight watcher OCR helpers.
+It intentionally ignores red-bordered click/aim cards. Windows subprocess creation
+uses CREATE_NO_WINDOW rather than the removed/non-standard `windows_hidden`
+keyword so it works on Python 3.14+.
 """
-
 from __future__ import annotations
 
 import os
@@ -43,8 +40,6 @@ def _resolve_tesseract(explicit: str | None = None) -> str:
     env = os.environ.get("SIMREAD_TESSERACT_PATH")
     if env:
         candidates.append(Path(env))
-
-    # Same locations SimRead checks, plus common sibling-repo locations on the sim PC.
     candidates.extend([
         Path.cwd() / "resources" / "tesseract" / "tesseract.exe",
         Path.cwd() / "vendor" / "tesseract" / "tesseract.exe",
@@ -53,15 +48,12 @@ def _resolve_tesseract(explicit: str | None = None) -> str:
         Path.home() / "SimRead" / "vendor" / "tesseract" / "tesseract.exe",
         Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
     ])
-
     for candidate in candidates:
         if candidate.exists():
             return str(candidate)
-
     on_path = shutil.which("tesseract")
     if on_path:
         return on_path
-
     raise RuntimeError(
         "Tesseract was not found. Install/use the same local Tesseract as SimRead, "
         "or set SIMREAD_TESSERACT_PATH to tesseract.exe."
@@ -90,8 +82,6 @@ def detect_target_card(screen: np.ndarray) -> tuple[int, int, int, int]:
     hsv = cv2.cvtColor(screen, cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
-    # Target cards live in the central 3D view. Excluding the top HUD and side
-    # data panels removes most unrelated dark rectangles.
     search = np.zeros((H, W), dtype=np.uint8)
     cv2.rectangle(
         search,
@@ -100,7 +90,6 @@ def detect_target_card(screen: np.ndarray) -> tuple[int, int, int, int]:
         255,
         -1,
     )
-
     dark = ((gray < 72) & (search > 0)).astype(np.uint8) * 255
     dark = cv2.morphologyEx(
         dark,
@@ -121,7 +110,6 @@ def detect_target_card(screen: np.ndarray) -> tuple[int, int, int, int]:
         rectangularity = area / max(float(rw * rh), 1.0)
         if rectangularity < 0.50:
             continue
-
         inner = gray[y:y + rh, x:x + rw]
         if inner.size == 0:
             continue
@@ -133,21 +121,17 @@ def detect_target_card(screen: np.ndarray) -> tuple[int, int, int, int]:
         ring_pixels = hsv[ring > 0]
         if ring_pixels.size == 0:
             continue
-
         ring_sat = ring_pixels[:, 1].astype(float)
         ring_val = ring_pixels[:, 2].astype(float)
         white_ratio = float(((ring_sat < 55) & (ring_val > 185)).mean())
 
-        # Red-bordered click cards have a saturated red ring. Reject them even if
-        # white text inside produces a few white pixels near the edge.
         ring_hue = ring_pixels[:, 0].astype(float)
-        red_ratio = float((((ring_hue <= 10) | (ring_hue >= 170)) & (ring_sat > 120) & (ring_val > 110)).mean())
-        if red_ratio > 0.12:
-            continue
-        if white_ratio < 0.055:
+        red_ratio = float(
+            (((ring_hue <= 10) | (ring_hue >= 170)) & (ring_sat > 120) & (ring_val > 110)).mean()
+        )
+        if red_ratio > 0.12 or white_ratio < 0.055:
             continue
 
-        # Target cards contain large white numerals in their upper half.
         top = hsv[y:y + max(1, rh // 2), x:x + rw]
         text_ratio = float(((top[:, :, 1] < 70) & (top[:, :, 2] > 175)).mean())
         if text_ratio < 0.025:
@@ -170,8 +154,6 @@ def detect_target_card(screen: np.ndarray) -> tuple[int, int, int, int]:
     if not candidates:
         raise RuntimeError("Could not locate the white-bordered GSPro target card.")
 
-    # Expand from the dark interior to include the white border, but not the long
-    # pointer tail below the card.
     _, (x, y, rw, rh) = max(candidates, key=lambda item: item[0])
     pad = max(5, int(round(H * 0.006)))
     x1 = max(0, x - pad)
@@ -188,12 +170,9 @@ def _prep_ocr(crop: np.ndarray, scale: int = 5) -> np.ndarray:
     enlarged = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     enlarged = cv2.GaussianBlur(enlarged, (3, 3), 0)
     _, binary = cv2.threshold(enlarged, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # GSPro is white text on black. Tesseract is more reliable with black text on white.
     if float(binary.mean()) < 127:
         binary = cv2.bitwise_not(binary)
-    binary = cv2.copyMakeBorder(binary, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
-    return binary
+    return cv2.copyMakeBorder(binary, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
 
 
 def _ocr(image: np.ndarray, tesseract: str, whitelist: str, psm: str = "7") -> str:
@@ -203,20 +182,24 @@ def _ocr(image: np.ndarray, tesseract: str, whitelist: str, psm: str = "7") -> s
     tmp.close()
     try:
         cv2.imwrite(tmp_path, prepared)
+        kwargs = {
+            "capture_output": True,
+            "text": True,
+            "timeout": 8,
+        }
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         completed = subprocess.run(
             [
                 tesseract,
                 tmp_path,
                 "stdout",
                 "--psm",
-                psm,
+                str(psm),
                 "-c",
                 f"tessedit_char_whitelist={whitelist}",
             ],
-            capture_output=True,
-            text=True,
-            windows_hidden=True if os.name == "nt" else False,
-            timeout=8,
+            **kwargs,
         )
         if completed.returncode != 0:
             raise RuntimeError(completed.stderr.strip() or f"Tesseract exited {completed.returncode}")
@@ -237,17 +220,13 @@ def _green_triangle_direction(card: np.ndarray) -> str:
     candidates = [c for c in contours if 5 <= cv2.contourArea(c) <= max(500, card.size)]
     if not candidates:
         raise RuntimeError("Could not detect the green elevation triangle on the target card.")
-
     contour = max(candidates, key=cv2.contourArea)
-    x, y, rw, rh = cv2.boundingRect(contour)
+    _x, y, _rw, rh = cv2.boundingRect(contour)
     M = cv2.moments(contour)
     if M["m00"] == 0 or rh < 3:
         raise RuntimeError("Elevation triangle geometry was invalid.")
     cy = M["m01"] / M["m00"]
     box_mid = y + rh / 2
-
-    # Triangle centroid lies toward its base: centroid above box center means the
-    # base is on top and the point faces down; below means the point faces up.
     return "down" if cy < box_mid else "up"
 
 
@@ -271,19 +250,18 @@ def _parse_elevation(raw: str, direction: str) -> tuple[float | None, float | No
         feet = float(yard_match.group(1)) * 3.0 * sign
         return feet, feet / 3.0
 
-    # Handles 5'3", 0'9", 5'3 and OCR with punctuation noise between digit groups.
     ft_in = re.search(r"(\d+)\s*['`]\s*(\d{1,2})", compact)
     if ft_in:
-        feet = (float(ft_in.group(1)) + float(ft_in.group(2)) / 12.0) * sign
-        return feet, feet / 3.0
+        inches = int(ft_in.group(2))
+        if 0 <= inches <= 11:
+            feet = (float(ft_in.group(1)) + inches / 12.0) * sign
+            return feet, feet / 3.0
+        return None, None
 
-    # If OCR preserved two numeric groups but lost the apostrophe, the target card's
-    # feet/inches format is still unambiguous enough for a POC (e.g. '5 3').
     groups = re.findall(r"\d+", text)
     if len(groups) >= 2 and int(groups[1]) <= 11:
         feet = (float(groups[0]) + float(groups[1]) / 12.0) * sign
         return feet, feet / 3.0
-
     return None, None
 
 
@@ -300,12 +278,8 @@ def read_target_card(
         raise RuntimeError("Target card crop was empty.")
 
     tess = _resolve_tesseract(tesseract_path)
-
-    # The top value is large and centered. The lower line puts the triangle on the
-    # left and elevation text to its right.
     distance_crop = card[int(h * 0.08):int(h * 0.52), int(w * 0.12):int(w * 0.90)]
     elevation_crop = card[int(h * 0.50):int(h * 0.94), int(w * 0.28):int(w * 0.94)]
-
     distance_raw = _ocr(distance_crop, tess, "0123456789")
     elevation_raw = _ocr(elevation_crop, tess, "0123456789yY'\"")
     direction = _green_triangle_direction(card)
@@ -317,7 +291,6 @@ def read_target_card(
         cv2.imwrite(str(debug_dir / "latest_target_card.png"), card)
         cv2.imwrite(str(debug_dir / "latest_target_distance_ocr.png"), _prep_ocr(distance_crop))
         cv2.imwrite(str(debug_dir / "latest_target_elevation_ocr.png"), _prep_ocr(elevation_crop))
-
         annotated = screen.copy()
         cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 255, 255), 2)
         label = f"target {distance:.0f} yd | {direction} | elev OCR: {elevation_raw or '?'}"
