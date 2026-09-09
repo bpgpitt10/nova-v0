@@ -9,6 +9,10 @@ Safety contract for this validation watcher:
 - post-tee: v1 geometry/visibility dry run; no W and no Y;
 - no recommendation actuation and no persistent aim change;
 - one tee attempt per hole and one post-tee attempt per observed shot number.
+
+Every real capture is tagged with durable watcher/course/hole/shot metadata so the
+saved pixels can become a reusable geometry-validation corpus rather than a pile of
+timestamp-only folders.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import re
 import subprocess
 import time
 from typing import Any
+import uuid
 
 import numpy as np
 
@@ -32,7 +37,8 @@ import target_card
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "gspro-round-watch.json"
-DEFAULT_STATE_PATH = Path(__file__).with_name("output") / "round_watch_state.json"
+OUTPUT_ROOT = Path(__file__).with_name("output")
+DEFAULT_STATE_PATH = OUTPUT_ROOT / "round_watch_state.json"
 
 
 def _load_config() -> dict:
@@ -79,9 +85,14 @@ def _read_shot_number(screen: np.ndarray, *, tesseract_path: str | None, cfg: di
     return value, raw
 
 
+def _new_session_id() -> str:
+    return f"round-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+
+
 def _blank_state() -> dict[str, Any]:
     return {
-        "schema_version": "gspro-round-watch-state-v0",
+        "schema_version": "gspro-round-watch-state-v1",
+        "session_id": None,
         "active_identity_key": None,
         "active_identity": None,
         "last_shot_number": None,
@@ -94,23 +105,47 @@ def _blank_state() -> dict[str, Any]:
 
 def _load_state(path: Path, resume: bool) -> dict[str, Any]:
     if not resume or not path.exists():
-        return _blank_state()
+        state = _blank_state()
+        state["session_id"] = _new_session_id()
+        return state
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("state root is not an object")
         state = _blank_state()
         state.update(payload)
+        if not state.get("session_id"):
+            state["session_id"] = _new_session_id()
         return state
     except Exception as exc:
         print(f"WARNING: could not load watcher state; starting fresh: {exc}", flush=True)
-        return _blank_state()
+        state = _blank_state()
+        state["session_id"] = _new_session_id()
+        return state
 
 
 def _write_state(path: Path, state: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     state["updated_local_epoch"] = time.time()
     encoded = (json.dumps(state, indent=2) + "\n").encode("utf-8")
+    temp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temp_path.open("wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            if temp_path.exists():
+                temp_path.unlink()
+        except OSError:
+            pass
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
     temp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
         with temp_path.open("wb") as handle:
@@ -156,16 +191,107 @@ def _powershell_capture_command(script_name: str, args: argparse.Namespace, *, t
     return command
 
 
-def _run_capture(script_name: str, args: argparse.Namespace, *, tee: bool) -> tuple[bool, str]:
+def _capture_prefix(*, tee: bool) -> str:
+    return "tee_capture_" if tee else "approach_capture_"
+
+
+def _capture_dir_names(*, tee: bool) -> set[str]:
+    prefix = _capture_prefix(tee=tee)
+    if not OUTPUT_ROOT.exists():
+        return set()
+    return {p.name for p in OUTPUT_ROOT.iterdir() if p.is_dir() and p.name.startswith(prefix)}
+
+
+def _find_created_capture_dir(*, tee: bool, before: set[str]) -> Path | None:
+    prefix = _capture_prefix(tee=tee)
+    if not OUTPUT_ROOT.exists():
+        return None
+    created = [
+        p for p in OUTPUT_ROOT.iterdir()
+        if p.is_dir() and p.name.startswith(prefix) and p.name not in before
+    ]
+    if not created:
+        return None
+    return max(created, key=lambda p: p.stat().st_mtime)
+
+
+def _run_capture(script_name: str, args: argparse.Namespace, *, tee: bool) -> tuple[bool, str, Path | None]:
     script = Path(__file__).with_name(script_name)
     if not script.exists():
-        return False, f"capture script missing: {script}"
+        return False, f"capture script missing: {script}", None
+    before = _capture_dir_names(tee=tee)
     completed = subprocess.run(
         _powershell_capture_command(script_name, args, tee=tee),
         cwd=str(REPO_ROOT),
         check=False,
     )
-    return completed.returncode == 0, f"exit={completed.returncode}"
+    capture_dir = _find_created_capture_dir(tee=tee, before=before)
+    detail = f"exit={completed.returncode}"
+    if capture_dir is not None:
+        detail += f"; capture_dir={capture_dir.name}"
+    return completed.returncode == 0, detail, capture_dir
+
+
+def _capture_context_payload(
+    *,
+    state: dict[str, Any],
+    state_path: Path,
+    action: str,
+    identity_key: str | None,
+    identity_payload: dict[str, Any] | None,
+    shot_number: int | None,
+    capture_dir: Path,
+    success: bool,
+    detail: str,
+) -> dict[str, Any]:
+    identity_payload = identity_payload or {}
+    is_tee = action == "capture-tee"
+    return {
+        "schema_version": "gspro-capture-context-v0",
+        "watcher_session_id": state.get("session_id"),
+        "capture_type": "tee" if is_tee else "post-tee",
+        "identity_key": identity_key,
+        "course_name": identity_payload.get("course_name"),
+        "hole_number": identity_payload.get("hole_number"),
+        "par": identity_payload.get("par"),
+        "original_hole_yards": identity_payload.get("hole_yards"),
+        "shot_number": (shot_number if shot_number is not None else 1) if is_tee else shot_number,
+        "capture_folder": capture_dir.name,
+        "capture_folder_timestamp": capture_dir.name.replace(_capture_prefix(tee=is_tee), "", 1),
+        "capture_succeeded": bool(success),
+        "watcher_capture_detail": detail,
+        "watcher_state_file": str(state_path),
+        "tagged_local_epoch": time.time(),
+        "identity": identity_payload or None,
+    }
+
+
+def _tag_capture_context(
+    *,
+    state: dict[str, Any],
+    state_path: Path,
+    action: str,
+    identity_key: str | None,
+    identity_payload: dict[str, Any] | None,
+    shot_number: int | None,
+    capture_dir: Path,
+    success: bool,
+    detail: str,
+) -> Path:
+    path = capture_dir / "capture_context.json"
+    payload = _capture_context_payload(
+        state=state,
+        state_path=state_path,
+        action=action,
+        identity_key=identity_key,
+        identity_payload=identity_payload,
+        shot_number=shot_number,
+        capture_dir=capture_dir,
+        success=success,
+        detail=detail,
+    )
+    _write_json_atomic(path, payload)
+    return path
 
 
 def _candidate_key(action: str | None, identity_key: str | None, shot_number: int | None) -> str | None:
@@ -195,7 +321,9 @@ def main() -> int:
         print("Tee: v8 HoleModel capture; Y restored; W disabled.")
         print("Post-tee: v1 canonical registration + green visibility; NO W; NO Y.")
         print("One launch is intended to cover several holes. Ctrl+C stops cleanly.")
+        print(f"Session: {state.get('session_id')}")
         print(f"State: {state_path}")
+        print("Capture folders receive capture_context.json with course/hole/shot/session metadata.")
         if args.resume:
             print("State policy: RESUME existing session.")
         else:
@@ -305,6 +433,7 @@ def main() -> int:
             interval_ok = (now_ms - last_action_epoch_ms) >= float(watcher_cfg["minimum_action_interval_ms"])
 
             if action and candidate_key and stable_count >= required and interval_ok:
+                identity_payload = identity.to_dict() if identity is not None else state.get("active_identity")
                 planned = {
                     "event": "planned-action",
                     "action": action,
@@ -313,11 +442,12 @@ def main() -> int:
                     "shot_number": shot_number,
                     "shot_raw": shot_raw,
                     "surface": surface.to_dict() if surface is not None else None,
-                    "identity": identity.to_dict() if identity is not None else state.get("active_identity"),
+                    "identity": identity_payload,
                     "surface_warning": surface_warning,
                     "shot_warning": shot_warning,
                     "identity_warning": identity_warning,
                     "execute_allowed": bool(args.execute_actions),
+                    "watcher_session_id": state.get("session_id"),
                 }
                 _emit(planned, args.json)
                 _record_event(state, planned)
@@ -325,13 +455,32 @@ def main() -> int:
 
                 success = True
                 detail = "dry-run simulated success"
+                capture_dir = None
                 if args.execute_actions:
                     script_name = (
                         str(watcher_cfg["tee_capture_command"])
                         if action == "capture-tee"
                         else str(watcher_cfg["posttee_capture_command"])
                     )
-                    success, detail = _run_capture(script_name, args, tee=(action == "capture-tee"))
+                    success, detail, capture_dir = _run_capture(script_name, args, tee=(action == "capture-tee"))
+
+                context_path = None
+                context_warning = None
+                if capture_dir is not None:
+                    try:
+                        context_path = _tag_capture_context(
+                            state=state,
+                            state_path=state_path,
+                            action=action,
+                            identity_key=identity_key,
+                            identity_payload=identity_payload,
+                            shot_number=shot_number,
+                            capture_dir=capture_dir,
+                            success=success,
+                            detail=detail,
+                        )
+                    except Exception as exc:
+                        context_warning = str(exc)
 
                 outcome = {
                     "event": "capture-succeeded" if success else "capture-failed",
@@ -339,6 +488,10 @@ def main() -> int:
                     "identity_key": identity_key,
                     "detail": detail,
                     "shot_number": shot_number,
+                    "watcher_session_id": state.get("session_id"),
+                    "capture_dir": str(capture_dir) if capture_dir is not None else None,
+                    "capture_context": str(context_path) if context_path is not None else None,
+                    "capture_context_warning": context_warning,
                 }
                 _emit(outcome, args.json)
                 _record_event(state, outcome)
@@ -347,7 +500,7 @@ def main() -> int:
                     state.setdefault("tee_attempted_keys", []).append(candidate_key.replace("tee::", "", 1))
                     if success:
                         state["active_identity_key"] = identity_key
-                        state["active_identity"] = identity.to_dict() if identity is not None else None
+                        state["active_identity"] = identity_payload
                         state["last_shot_number"] = shot_number if shot_number is not None else 1
                 else:
                     state.setdefault("posttee_attempted_keys", []).append(candidate_key)
