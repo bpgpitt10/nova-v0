@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
+sys.path.insert(0, str(Path(__file__).parent))
 import hazard_field_shadow as field
 import hazard_geometry_contract as hg
 
