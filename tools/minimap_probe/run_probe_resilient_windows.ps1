@@ -58,16 +58,19 @@ Write-Host "Running GSPro tee-capture orchestrator v8.1 resilient once."
 Write-Host "BASE MODEL survives optional green/red-penalty semantic extractor failures."
 Write-Host "TEE RULE: no W zoom. Y toggle/restore only. No auto aim or extra calibration pulses."
 Write-Host "Raw before/toggled/restored minimaps are retained for replay."
-Write-Host "Bunker + water extractors run in TRAINING SHADOW mode after every saved tee capture."
+Write-Host "Step 8 hazard field shadow is queued after every saved tee capture."
+Write-Host "Legacy CV, Gemini/SAM when available, and unified HazardGeometry remain TRAINING SHADOW only."
 Write-Host "Shadow hazard failures/detections never block the watcher or gain strategy authority."
 
 $RunStart = Get-Date
 & $Python @argsList
 $TeeExit = $LASTEXITCODE
 
-# Fire-and-forget semantic training pass. It consumes only the saved tee imagery,
-# writes masks/JSON/overlays, and attaches non-authoritative shadow data to the
-# HoleModel. It never changes the tee probe exit code or blocks the watcher.
+# Fire-and-forget Step 8 pass. The worker waits briefly for watcher capture_context,
+# consumes only saved tee artifacts, and is independent from live GSPro actuation.
+# It may call Gemini/SAM only when the saved image has explicit heatmap-off evidence;
+# otherwise those semantic sources are recorded as skipped. No dependencies are
+# installed by this worker and its exit status never changes the tee probe result.
 try {
   $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-2) } |
@@ -75,15 +78,15 @@ try {
     Select-Object -First 1
 
   if ($Capture) {
-    $ShadowScript = Join-Path $Here "hazard_shadow_capture.py"
+    $ShadowScript = Join-Path $Here "hazard_field_shadow.py"
     if (Test-Path $ShadowScript) {
       $ShadowArgs = @($ShadowScript, "--capture-dir", $Capture.FullName)
       Start-Process -FilePath $Python -ArgumentList $ShadowArgs -WorkingDirectory $Here -WindowStyle Hidden | Out-Null
-      Write-Host "Hazard shadow queued:   $($Capture.Name) (async / non-blocking)"
+      Write-Host "Hazard field shadow queued: $($Capture.Name) (async / non-blocking)"
     }
   }
 } catch {
-  Write-Warning "Could not queue hazard shadow review (non-blocking): $($_.Exception.Message)"
+  Write-Warning "Could not queue Step 8 hazard field shadow (non-blocking): $($_.Exception.Message)"
 }
 
 exit $TeeExit
