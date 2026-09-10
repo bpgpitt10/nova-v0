@@ -58,7 +58,8 @@ Write-Host "Running GSPro tee-capture orchestrator v8.1 resilient once."
 Write-Host "BASE MODEL survives optional green/red-penalty semantic extractor failures."
 Write-Host "TEE RULE: no W zoom. Y toggle/restore only. No auto aim or extra calibration pulses."
 Write-Host "Raw before/toggled/restored minimaps are retained for replay."
-Write-Host "Step 8 hazard field shadow is queued after every saved tee capture."
+Write-Host "Step 8+9 hazard field shadow is queued after every saved tee capture."
+Write-Host "Static GKD/Unity archaeology is reused from the course/version/hash cache when available."
 Write-Host "Legacy CV, Gemini/SAM when available, and unified HazardGeometry remain TRAINING SHADOW only."
 Write-Host "Shadow hazard failures/detections never block the watcher or gain strategy authority."
 
@@ -66,11 +67,12 @@ $RunStart = Get-Date
 & $Python @argsList
 $TeeExit = $LASTEXITCODE
 
-# Fire-and-forget Step 8 pass. The worker waits briefly for watcher capture_context,
+# Fire-and-forget Step 8+9 pass. The worker waits briefly for watcher capture_context,
 # consumes only saved tee artifacts, and is independent from live GSPro actuation.
-# It may call Gemini/SAM only when the saved image has explicit heatmap-off evidence;
-# otherwise those semantic sources are recorded as skipped. No dependencies are
-# installed by this worker and its exit status never changes the tee probe result.
+# Step 9 reuses static course archaeology instead of making it a per-hole job. A
+# course-key-only cache match is diagnostic until an exact asset/version fingerprint
+# is available. No dependencies are installed and this worker never changes the tee
+# probe result.
 try {
   $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-2) } |
@@ -78,15 +80,15 @@ try {
     Select-Object -First 1
 
   if ($Capture) {
-    $ShadowScript = Join-Path $Here "hazard_field_shadow.py"
+    $ShadowScript = Join-Path $Here "hazard_field_shadow_cached.py"
     if (Test-Path $ShadowScript) {
       $ShadowArgs = @($ShadowScript, "--capture-dir", $Capture.FullName)
       Start-Process -FilePath $Python -ArgumentList $ShadowArgs -WorkingDirectory $Here -WindowStyle Hidden | Out-Null
-      Write-Host "Hazard field shadow queued: $($Capture.Name) (async / non-blocking)"
+      Write-Host "Hazard field shadow + course cache queued: $($Capture.Name) (async / non-blocking)"
     }
   }
 } catch {
-  Write-Warning "Could not queue Step 8 hazard field shadow (non-blocking): $($_.Exception.Message)"
+  Write-Warning "Could not queue Step 8+9 hazard field shadow (non-blocking): $($_.Exception.Message)"
 }
 
 exit $TeeExit
