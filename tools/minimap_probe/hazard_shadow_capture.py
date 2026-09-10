@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Shadow-run bunker/water semantic extractors on saved tee minimap imagery.
+"""Shadow-run hazard semantics on saved tee minimap imagery.
 
-Development contract:
-- ALWAYS attempt both semantic detectors when a usable saved tee minimap exists.
-- Detector failure, zero detections, or obviously noisy detections are DATA, not a
-  reason to fail tee capture or block the watcher.
-- When a HoleModel with ball/pin/scale exists, run full object extraction.
-- Without geometry, still run candidate segmentation so older/failed captures remain
-  useful training data.
-- Persist masks/JSON/overlays and attach a non-authoritative `shadow_semantics`
-  section to hole_model.json when present.
-- Never mark bunker/water results trusted for strategy in this shadow version.
+Two tracks run in parallel conceptually:
+1. legacy whole-image bunker/water CV remains a noisy training baseline;
+2. VLM semantics always get a request artifact and, when a model response exists,
+   are locally refined into tighter polygons.
+
+Nothing here can block live play or gain strategy authority.
 """
 from __future__ import annotations
 
@@ -23,6 +19,7 @@ import cv2
 import numpy as np
 
 import bunker_extractor
+import hazard_vlm_shadow
 import water_extractor
 
 
@@ -70,7 +67,7 @@ def _resolve(args):
 
     out = capture or image_path.parent
     out.mkdir(parents=True, exist_ok=True)
-    return image_path, model_path, model, out
+    return capture, image_path, model_path, model, out
 
 
 def _geometry(model):
@@ -86,25 +83,15 @@ def _geometry(model):
         scale = float(scale)
     except Exception:
         return None
-    if not (0.03 <= scale <= 3.0):
-        return None
-    return ball, pin, scale
+    return (ball, pin, scale) if 0.03 <= scale <= 3.0 else None
 
 
 def _write_overlay(path, image, detector_name, result, geom):
     try:
         if detector_name == "bunker":
-            overlay = bunker_extractor.draw_debug_overlay(
-                image, result,
-                ball_xy=geom[0] if geom else None,
-                pin_xy=geom[1] if geom else None,
-            )
+            overlay = bunker_extractor.draw_debug_overlay(image, result, ball_xy=geom[0] if geom else None, pin_xy=geom[1] if geom else None)
         else:
-            overlay = water_extractor.draw_debug_overlay(
-                image, result,
-                ball_xy=geom[0] if geom else None,
-                pin_xy=geom[1] if geom else None,
-            )
+            overlay = water_extractor.draw_debug_overlay(image, result, ball_xy=geom[0] if geom else None, pin_xy=geom[1] if geom else None)
         cv2.imwrite(str(path), overlay)
     except Exception:
         pass
@@ -113,12 +100,12 @@ def _write_overlay(path, image, detector_name, result, geom):
 def _run_bunker(image, out, geom, args):
     candidate_mask = bunker_extractor.sand_candidate_mask(image)
     cv2.imwrite(str(out / "bunker_shadow_candidates_v0.png"), candidate_mask)
-    candidate_only_count = _candidate_count(candidate_mask, args.min_area_px)
     payload = {
-        "detector": "bunker-v0",
+        "detector": "bunker-whole-image-v0",
+        "role": "legacy-training-baseline-not-primary-semantic-recognizer",
         "status": "candidate-only" if geom is None else "full",
         "trusted_for_strategy": False,
-        "candidate_count_without_geometry": candidate_only_count,
+        "candidate_count_without_geometry": _candidate_count(candidate_mask, args.min_area_px),
         "accepted_count": None,
         "objects": [],
         "error": None,
@@ -156,12 +143,12 @@ def _run_bunker(image, out, geom, args):
 def _run_water(image, out, geom, args):
     candidate_mask = water_extractor.water_candidate_mask(image)
     cv2.imwrite(str(out / "water_shadow_candidates_v0.png"), candidate_mask)
-    candidate_only_count = _candidate_count(candidate_mask, args.min_area_px)
     payload = {
-        "detector": "water-v0",
+        "detector": "water-whole-image-v0",
+        "role": "legacy-training-baseline-not-primary-semantic-recognizer",
         "status": "candidate-only" if geom is None else "full",
         "trusted_for_strategy": False,
-        "candidate_count_without_geometry": candidate_only_count,
+        "candidate_count_without_geometry": _candidate_count(candidate_mask, args.min_area_px),
         "accepted_count": None,
         "objects": [],
         "error": None,
@@ -199,33 +186,61 @@ def _run_water(image, out, geom, args):
 def main():
     args = parse_args()
     try:
-        image_path, model_path, model, out = _resolve(args)
+        capture, image_path, model_path, model, out = _resolve(args)
         image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
         if image is None:
             raise RuntimeError(f"Could not read saved minimap {image_path}")
+
         geom = _geometry(model)
         bunker = _run_bunker(image, out, geom, args)
         water = _run_water(image, out, geom, args)
+
+        vlm = {"status": "not-run", "strategy_authority": False, "error": None}
+        if capture is not None:
+            try:
+                vlm_payload = hazard_vlm_shadow.run_capture(capture)
+                vlm = {
+                    "status": vlm_payload.get("status"),
+                    "strategy_authority": False,
+                    "request_artifact": vlm_payload.get("request_artifact"),
+                    "response_artifact": vlm_payload.get("response_artifact"),
+                    "objects": vlm_payload.get("objects") or [],
+                    "counts": vlm_payload.get("counts"),
+                    "error": vlm_payload.get("error"),
+                    "artifact": "hazard_vlm_shadow_v0.json",
+                }
+            except Exception as exc:
+                vlm = {"status": "error", "strategy_authority": False, "error": str(exc)}
+
         payload = {
-            "schema_version": "looper-hazard-shadow-v0",
+            "schema_version": "looper-hazard-shadow-v0.1",
             "created_epoch": time.time(),
             "source_image": image_path.name,
             "geometry_mode": "full-hole-model" if geom else "candidate-only-no-hole-geometry",
             "strategy_authority": False,
             "failure_policy": "log-and-continue",
+            "primary_semantic_path": "VLM-localization-then-local-CV-refinement",
+            "legacy_whole_image_cv_role": "training-baseline-only",
             "bunker": bunker,
             "water": water,
+            "vlm": vlm,
         }
         (out / "hazard_shadow_v0.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
         if isinstance(model, dict) and model_path is not None and model_path.exists():
+            try:
+                model = json.loads(model_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
             hazards = model.setdefault("hazards", {})
             hazards["shadow_semantics"] = {
                 "validation_state": "training-shadow-unvalidated",
                 "trusted_for_strategy": False,
+                "primary_semantic_path": "VLM-localization-then-local-CV-refinement",
                 "source_image": image_path.name,
-                "bunker": bunker,
-                "water": water,
+                "legacy_bunker": bunker,
+                "legacy_water": water,
+                "vlm": vlm,
                 "artifact": "hazard_shadow_v0.json",
             }
             tmp = model_path.with_suffix(".json.tmp")
@@ -234,14 +249,12 @@ def main():
 
         print(
             "Hazard shadow complete | "
-            f"bunker={bunker.get('status')} accepted={bunker.get('accepted_count')} | "
-            f"water={water.get('status')} accepted={water.get('accepted_count')} | "
-            "strategy authority=OFF"
+            f"legacy bunker={bunker.get('accepted_count')} | "
+            f"legacy water={water.get('accepted_count')} | "
+            f"VLM={vlm.get('status')} | strategy authority=OFF"
         )
         return 0
     except Exception as exc:
-        # A shadow-review infrastructure failure is printed but intentionally returns
-        # success so it can never block the live watcher/capture lifecycle.
         print(f"Hazard shadow logging error (non-blocking): {exc}")
         return 0
 
