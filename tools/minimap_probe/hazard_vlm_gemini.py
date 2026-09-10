@@ -2,7 +2,12 @@
 """Gemini provider adapter for Looper VLM hazard shadow benchmarking.
 
 Uses the Gemini GenerateContent REST API with the local GEMINI_API_KEY environment
-variable. No SDK dependency is required. Results are always diagnostic-only.
+variable. No SDK dependency is required. Gemini is asked for its native object-
+detection representation: boxes in [ymin,xmin,ymax,xmax] coordinates on a 0-1000
+scale plus optional segmentation polygons. The adapter converts boxes into Looper's
+provider-neutral [x1,y1,x2,y2] 0-1 contract before local refinement.
+
+Everything here is diagnostic-only. No result can influence strategy or GSPro.
 """
 from __future__ import annotations
 
@@ -18,6 +23,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 
 import cv2
+import numpy as np
 
 import hazard_vlm_contract
 import hazard_vlm_refine
@@ -25,6 +31,33 @@ import hazard_vlm_shadow
 
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"
 DEFAULT_MODEL = "gemini-3.7-flash"
+
+NATIVE_SYSTEM = """You analyze a golf-simulator minimap for Looper.
+Identify only hazards that belong to the CURRENT HOLE, whose playable route runs
+from the ball/player marker toward the pin/flag marker.
+
+Classes:
+- bunker: rendered sand bunker that is part of the current hole
+- water: visible water surface that is part of the current hole
+- uncertain: a region that may be bunker/water but is not reliable enough to classify
+
+Ignore and DO NOT label buildings, roofs, houses, tennis courts, paths/cart paths,
+roads, trees, shadows, UI text, yardage labels, icons, player marker, pin marker,
+white out-of-bounds/boundary lines, red penalty-boundary lines, or obvious hazards
+belonging only to adjacent holes.
+
+Prefer precision over recall. If there is no water, return an empty water list.
+Return only JSON matching the supplied schema."""
+
+NATIVE_USER = """Analyze this tee minimap for CURRENT-HOLE bunkers and visible water.
+For every object return:
+- id
+- confidence from 0 to 1
+- box_2d as [ymin, xmin, ymax, xmax] normalized to integer coordinates 0-1000
+- mask as a polygon of [x,y] points normalized to 0-1000; use an empty list only if
+  a reliable polygon cannot be produced
+- note, or null
+Return separate bunkers, water, and uncertain arrays. Do not infer invisible hazards."""
 
 
 def _slug(model: str) -> str:
@@ -38,36 +71,39 @@ def _mime(path: Path) -> str:
     return "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
 
 
-def _gemini_response_schema() -> dict[str, Any]:
-    """Subset-friendly schema for Gemini structured output.
-
-    The provider-neutral contract performs the final strict validation. This API
-    schema intentionally avoids JSON Schema features that some Gemini models reject.
-    """
+def _gemini_native_schema() -> dict[str, Any]:
     item = {
         "type": "object",
         "properties": {
             "id": {"type": "string"},
             "confidence": {"type": "number"},
-            "bbox_norm": {
+            "box_2d": {
                 "type": "array",
-                "items": {"type": "number"},
+                "items": {"type": "integer"},
                 "minItems": 4,
                 "maxItems": 4,
             },
+            "mask": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 2,
+                    "maxItems": 2,
+                },
+            },
             "note": {"type": "string", "nullable": True},
         },
-        "required": ["id", "confidence", "bbox_norm"],
+        "required": ["id", "confidence", "box_2d", "mask"],
     }
     return {
         "type": "object",
         "properties": {
-            "schema_version": {"type": "string"},
             "bunkers": {"type": "array", "items": item},
             "water": {"type": "array", "items": item},
             "uncertain": {"type": "array", "items": item},
         },
-        "required": ["schema_version", "bunkers", "water", "uncertain"],
+        "required": ["bunkers", "water", "uncertain"],
     }
 
 
@@ -107,6 +143,84 @@ def _extract_json(api_payload: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"Gemini response was not valid JSON: {text[:1200]}") from exc
 
 
+def _native_box_to_looper(value: Any) -> list[float]:
+    if not isinstance(value, list) or len(value) != 4:
+        raise ValueError(f"Gemini box_2d must have four values: {value!r}")
+    ymin, xmin, ymax, xmax = [float(v) for v in value]
+    vals = [ymin, xmin, ymax, xmax]
+    if any(v < 0 or v > 1000 for v in vals):
+        raise ValueError(f"Gemini box_2d outside 0-1000: {value!r}")
+    if ymax <= ymin or xmax <= xmin:
+        raise ValueError(f"Gemini box_2d has non-positive area: {value!r}")
+    return [xmin / 1000.0, ymin / 1000.0, xmax / 1000.0, ymax / 1000.0]
+
+
+def _native_to_contract(native: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "schema_version": hazard_vlm_contract.SCHEMA_VERSION,
+        "bunkers": [],
+        "water": [],
+        "uncertain": [],
+    }
+    for field in ("bunkers", "water", "uncertain"):
+        raw = native.get(field)
+        if not isinstance(raw, list):
+            raise ValueError(f"Gemini {field} must be a list")
+        for index, item in enumerate(raw, 1):
+            if not isinstance(item, dict):
+                raise ValueError(f"Gemini {field}[{index}] must be an object")
+            result[field].append({
+                "id": str(item.get("id") or f"{field}-{index}"),
+                "confidence": float(item.get("confidence", 0.0)),
+                "bbox_norm": _native_box_to_looper(item.get("box_2d")),
+                "note": item.get("note"),
+            })
+    hazard_vlm_contract.parse_response(result)
+    return result
+
+
+def _native_overlay(image: np.ndarray, native: dict[str, Any]) -> np.ndarray:
+    canvas = image.copy()
+    h, w = canvas.shape[:2]
+    for field, prefix in (("bunkers", "B"), ("water", "W"), ("uncertain", "U")):
+        for index, item in enumerate(native.get(field) or [], 1):
+            try:
+                ymin, xmin, ymax, xmax = [float(v) for v in item.get("box_2d")]
+                x1, y1 = round(xmin / 1000.0 * w), round(ymin / 1000.0 * h)
+                x2, y2 = round(xmax / 1000.0 * w), round(ymax / 1000.0 * h)
+                cv2.rectangle(canvas, (x1, y1), (x2, y2), (255, 255, 255), 1)
+                mask = item.get("mask") or []
+                pts = []
+                for point in mask:
+                    if isinstance(point, list) and len(point) == 2:
+                        px = round(float(point[0]) / 1000.0 * w)
+                        py = round(float(point[1]) / 1000.0 * h)
+                        pts.append([px, py])
+                if len(pts) >= 3:
+                    cv2.polylines(
+                        canvas,
+                        [np.array(pts, dtype=np.int32).reshape((-1, 1, 2))],
+                        True,
+                        (255, 255, 255),
+                        2,
+                        cv2.LINE_AA,
+                    )
+                label = f"{prefix}{index} {float(item.get('confidence', 0.0)):.2f}"
+                cv2.putText(
+                    canvas,
+                    label,
+                    (max(2, x1), max(14, y1 - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.38,
+                    (255, 255, 255),
+                    1,
+                    cv2.LINE_AA,
+                )
+            except Exception:
+                continue
+    return canvas
+
+
 def call_gemini(
     *,
     image_path: str | Path,
@@ -115,7 +229,7 @@ def call_gemini(
     thinking_level: str | None = None,
     timeout_seconds: float = 90.0,
     retries: int = 3,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     image_path = Path(image_path)
     key = api_key or os.environ.get("GEMINI_API_KEY")
     if not key:
@@ -132,15 +246,9 @@ def call_gemini(
         )
 
     image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
-    prompt = (
-        hazard_vlm_contract.USER_INSTRUCTION
-        + "\nThe schema_version value MUST be exactly "
-        + json.dumps(hazard_vlm_contract.SCHEMA_VERSION)
-        + ". Return JSON only."
-    )
     generation_config: dict[str, Any] = {
         "responseMimeType": "application/json",
-        "responseSchema": _gemini_response_schema(),
+        "responseSchema": _gemini_native_schema(),
         "maxOutputTokens": 4096,
     }
     thinking = _thinking_config(model, thinking_level)
@@ -148,9 +256,7 @@ def call_gemini(
         generation_config["thinkingConfig"] = thinking
 
     body = {
-        "systemInstruction": {
-            "parts": [{"text": hazard_vlm_contract.SYSTEM_INSTRUCTION}]
-        },
+        "systemInstruction": {"parts": [{"text": NATIVE_SYSTEM}]},
         "contents": [{
             "role": "user",
             "parts": [
@@ -160,7 +266,7 @@ def call_gemini(
                         "data": image_b64,
                     }
                 },
-                {"text": prompt},
+                {"text": NATIVE_USER},
             ],
         }],
         "generationConfig": generation_config,
@@ -182,7 +288,8 @@ def call_gemini(
             with urlrequest.urlopen(req, timeout=float(timeout_seconds)) as resp:
                 api_payload = json.loads(resp.read().decode("utf-8"))
             latency = time.perf_counter() - started
-            result = _extract_json(api_payload)
+            native = _extract_json(api_payload)
+            result = _native_to_contract(native)
             hazards = hazard_vlm_contract.parse_response(result)
             meta = {
                 "provider": "google-gemini",
@@ -196,7 +303,7 @@ def call_gemini(
                     "uncertain": sum(1 for x in hazards if x.hazard_class == "uncertain"),
                 },
             }
-            return result, meta
+            return result, meta, native
         except urlerror.HTTPError as exc:
             try:
                 detail = exc.read().decode("utf-8", errors="replace")
@@ -236,15 +343,21 @@ def analyze_capture(
         height=h,
     )
 
-    response, meta = call_gemini(
+    response, meta, native = call_gemini(
         image_path=image_path,
         model=model,
         thinking_level=thinking_level,
         timeout_seconds=timeout_seconds,
     )
     slug = _slug(model)
+    native_path = capture / f"hazard_vlm_provider_raw_{slug}_v0.json"
+    native_path.write_text(json.dumps(native, indent=2), encoding="utf-8")
+
     response_path = capture / f"hazard_vlm_response_{slug}_v0.json"
     response_path.write_text(json.dumps(response, indent=2), encoding="utf-8")
+
+    native_overlay_path = capture / f"hazard_vlm_native_overlay_{slug}_v0.png"
+    cv2.imwrite(str(native_overlay_path), _native_overlay(image, native))
 
     hazards = hazard_vlm_contract.parse_response(response)
     _model_payload, geom = hazard_vlm_shadow._geometry(capture)
@@ -268,8 +381,10 @@ def analyze_capture(
         "created_epoch": time.time(),
         "source_image": image_path.name,
         "request_artifact": request_path.name,
+        "provider_raw_artifact": native_path.name,
         "response_artifact": response_path.name,
-        "overlay_artifact": overlay_path.name,
+        "native_overlay_artifact": native_overlay_path.name,
+        "cv_refined_overlay_artifact": overlay_path.name,
         **meta,
         "objects": [item.to_dict() for item in refined],
     }
@@ -313,7 +428,13 @@ def main() -> int:
                 f"tokens={usage.get('totalTokenCount', '?')} | "
                 "strategy authority=OFF"
             )
-            print(f"Overlay: {Path(args.capture_dir) / payload['overlay_artifact']}")
+            print(
+                f"Native overlay: {Path(args.capture_dir) / payload['native_overlay_artifact']}"
+            )
+            print(
+                f"CV-refined overlay: "
+                f"{Path(args.capture_dir) / payload['cv_refined_overlay_artifact']}"
+            )
         return 0
     except Exception as exc:
         print(f"Gemini hazard VLM error: {exc}")
