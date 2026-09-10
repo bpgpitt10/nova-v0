@@ -73,8 +73,10 @@ def main() -> int:
                         "latency_seconds": payload.get("latency_seconds"),
                         "hazard_counts": payload.get("hazard_counts"),
                         "usage_metadata": payload.get("usage_metadata"),
+                        "provider_raw_artifact": payload.get("provider_raw_artifact"),
                         "response_artifact": payload.get("response_artifact"),
-                        "overlay_artifact": payload.get("overlay_artifact"),
+                        "native_overlay_artifact": payload.get("native_overlay_artifact"),
+                        "cv_refined_overlay_artifact": payload.get("cv_refined_overlay_artifact"),
                         "result_artifact": payload.get("result_artifact"),
                     })
                     c = row["hazard_counts"] or {}
@@ -107,8 +109,8 @@ def main() -> int:
     print()
     print(f"Benchmark JSON: {out}")
     print(
-        "Review the model-specific hazard_vlm_overlay_*.png files for "
-        "semantic/localization quality."
+        "Review hazard_vlm_native_overlay_*.png for Gemini's own localization, "
+        "then hazard_vlm_overlay_*.png for the local CV-refined version."
     )
     return 0 if summary["successes"] > 0 else 1
 
