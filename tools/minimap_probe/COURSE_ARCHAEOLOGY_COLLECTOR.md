@@ -17,7 +17,7 @@ The collector attempts to discover:
 For the selected course folder it writes:
 
 - recursive file inventory
-- size, timestamps, extension, SHA-256, entropy sample, magic bytes
+- size, timestamps, extension, SHA-256 (full for normal-size files; deterministic sampled fingerprint for very large assets), entropy sample, and magic bytes
 - printable-string samples for opaque/binary files
 - text previews for text-like files
 - copies of small archaeology-relevant files such as GKD/GKDalt/GKD_BAK/LRS/LRSv2/LRSv35/CSV/JSON/TXT/BIOME/DAT files
@@ -54,6 +54,7 @@ The launcher prints the final review ZIP path. Upload that one ZIP for remote an
 - Files larger than the copy threshold are inventoried only.
 - Per-file text/string extraction is bounded.
 - Individual failures are logged and the collector continues.
+- Python standard library only; this step adds no new pip/model dependency.
 
 ## Output
 
@@ -64,3 +65,9 @@ Default output root:
 Review archive:
 
 `tools/minimap_probe/output/course_archaeology_review_<timestamp>.zip`
+
+## Developer smoke test
+
+```powershell
+py -3 -m unittest tools.minimap_probe.test_course_archaeology_collector
+```
