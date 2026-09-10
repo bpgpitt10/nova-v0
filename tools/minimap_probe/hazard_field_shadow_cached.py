@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sqlite3
 import subprocess
 import sys
 import time
@@ -18,6 +19,8 @@ from typing import Any
 
 import course_hazard_cache as chc
 import hazard_geometry_contract as hg
+
+DEFAULT_GSPRO_DB = Path.home() / "AppData" / "LocalLow" / "GSPro" / "GSPro" / "GSPro.db"
 
 
 def _read(path: Path) -> Any:
@@ -28,6 +31,45 @@ def _write(path: Path, payload: Any) -> None:
     temp = path.with_suffix(path.suffix + ".tmp")
     temp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     temp.replace(path)
+
+
+def _db_course_key(context: dict[str, Any], db_path: Path = DEFAULT_GSPRO_DB) -> str | None:
+    """Recover CourseCode for first-tee captures before currentRound has a CourseKey.
+
+    This is field-lab metadata lookup only. Round.ActiveHole remains ignored; the
+    stale ActiveHole finding is unchanged.
+    """
+    if not db_path.is_file():
+        return None
+    round_id = context.get("db_round_id") or context.get("round_id")
+    course_name = context.get("course_name")
+    try:
+        con = sqlite3.connect(str(db_path), timeout=0.05)
+        try:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
+            if round_id is not None:
+                row = con.execute(
+                    'SELECT "CourseCode","CourseName" FROM "Round" WHERE "ID"=? LIMIT 1',
+                    (round_id,),
+                ).fetchone()
+            elif course_name:
+                row = con.execute(
+                    'SELECT "CourseCode","CourseName" FROM "Round" WHERE "CourseName"=? ORDER BY "ID" DESC LIMIT 1',
+                    (course_name,),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    'SELECT "CourseCode","CourseName" FROM "Round" ORDER BY "ID" DESC LIMIT 1'
+                ).fetchone()
+            if row is None:
+                return None
+            value = row["CourseCode"]
+            return str(value).strip() if value not in (None, "") else None
+        finally:
+            con.close()
+    except Exception:
+        return None
 
 
 def _identity(capture: Path) -> tuple[str | None, str | None, dict[str, Any]]:
@@ -43,7 +85,8 @@ def _identity(capture: Path) -> tuple[str | None, str | None, dict[str, Any]]:
     course_name = context.get("course_name") or nested.get("course_name")
 
     # v3 capture_context predates an explicit top-level course_key. Recover it from
-    # the watcher state when available instead of changing the validated watcher.
+    # watcher state when available, then from Round.CourseCode for Hole 1 before the
+    # first completed shot has populated currentRound.CourseKey.
     state_path = context.get("watcher_state_file")
     if state_path and (not course_key or not course_name):
         try:
@@ -53,6 +96,11 @@ def _identity(capture: Path) -> tuple[str | None, str | None, dict[str, Any]]:
             context["course_identity_recovered_from_watcher_state"] = bool(course_key)
         except Exception as exc:
             context["course_identity_recovery_warning"] = str(exc)
+    if not course_key:
+        recovered = _db_course_key({**context, "course_name": course_name})
+        if recovered:
+            course_key = recovered
+            context["course_key_recovered_from_db_course_code"] = True
     return course_key, course_name, context
 
 
