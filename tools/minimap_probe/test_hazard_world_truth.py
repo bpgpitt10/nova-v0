@@ -103,6 +103,30 @@ class HazardWorldTruthTests(unittest.TestCase):
         self.assertFalse(terminal[0]["validation_eligible"])
         self.assertEqual(terminal[0]["physicality_reason"], "gimme-terminal-repeated-global")
 
+    def test_dpc_pebble_h2_sand_shot_becomes_positive_truth(self):
+        raw = {
+            "ShotID": "field-h2-s1",
+            "RoundID": 212,
+            "CourseKey": "pebblebeach_gsp",
+            "Hole": 1,
+            "HoleShot": 1,
+            "GlobalShotNumber": 5,
+            "StartingSurface": 18,
+            "EndingSurface": 11,
+            "StartingPOS": {"x": 1714.30786, "y": 21.170433, "z": 912.139038},
+            "EndingPOS": {"x": 1550.35449, "y": 21.03809, "z": 926.0144},
+            "DistanceToPin": 168.6337,
+            "TotalDistance": 164.5395,
+            "activeShot": {"materialHit": "TVGsand", "sd": {"isGimme": False, "isHoled": False, "waterhit": False, "HazardNumber": 1000, "HazardLastPointOfEntry": {"x": 0.0, "y": 0.0, "z": 0.0}}},
+        }
+        shot = h.gs.summarize_shot(raw)
+        obs = h.build_observations([shot])
+        ending = next(o for o in obs if o["role"] == "shot_end")
+        self.assertEqual(ending["hole_display"], 2)
+        self.assertEqual(ending["expectation"], "sand")
+        self.assertEqual(ending["point_xz"], {"x": 1550.35449, "y": 21.03809, "z": 926.0144})
+        self.assertTrue(ending["validation_eligible"])
+
     def test_loads_gkd_features_as_world_comparable(self):
         payload = {
             "features": [{
