@@ -1,0 +1,6 @@
+# Step 6 field-lab only. Uses Hugging Face's SAM2 implementation rather than
+# compiling Meta's optional CUDA extension, which keeps the Windows test path simple.
+torch>=2.5.1,<3
+transformers>=5.8.1,<6
+pillow>=10,<13
+huggingface-hub>=0.34,<2
