@@ -27,7 +27,7 @@ general multimodal visual read identified 8 current-hole bunker regions and no
 visible water. The failure mode is semantic, not merely a threshold calibration
 problem.
 
-## Contract
+## Provider-neutral contract
 
 Each saved tee capture gets `hazard_vlm_request_v0.json`. It contains:
 - source image and dimensions;
@@ -35,7 +35,7 @@ Each saved tee capture gets `hazard_vlm_request_v0.json`. It contains:
 - JSON response schema;
 - normalized `[x1,y1,x2,y2]` coordinate contract.
 
-A model response is stored as `hazard_vlm_response_v0.json`:
+The canonical model response has this form:
 
 ```json
 {
@@ -48,21 +48,85 @@ A model response is stored as `hazard_vlm_response_v0.json`:
 }
 ```
 
-`hazard_vlm_shadow.py` consumes the response if present, creates
-`hazard_vlm_shadow_v0.json`, and writes `hazard_vlm_overlay_v0.png`.
+`hazard_vlm_shadow.py` consumes provider-neutral responses and writes diagnostic
+refinement artifacts.
+
+## Gemini adapter
+
+`hazard_vlm_gemini.py` is the first provider adapter. It reads `GEMINI_API_KEY`
+from the local process and sends the saved minimap to Gemini's image-understanding
+API. No Gemini SDK package is required.
+
+For Gemini, the adapter intentionally uses the provider's native object-detection
+format rather than forcing Looper coordinates in the prompt:
+
+- `box_2d = [ymin, xmin, ymax, xmax]`, integer coordinates on a 0-1000 scale;
+- optional segmentation polygon `mask`, `[x,y]` points on the same 0-1000 scale;
+- bunker / water / uncertain semantic class;
+- confidence.
+
+The adapter preserves Gemini's raw response, converts its box into Looper's 0-1
+`[x1,y1,x2,y2]` contract, and then runs the local CV refinement independently. This
+lets us compare three geometries later: Gemini's native polygon, Gemini's box, and
+CV refinement inside the VLM box.
+
+Artifacts are model-specific and include:
+
+- `hazard_vlm_provider_raw_<model>_v0.json`
+- `hazard_vlm_response_<model>_v0.json`
+- `hazard_vlm_native_overlay_<model>_v0.png`
+- `hazard_vlm_overlay_<model>_v0.png` (local CV refinement)
+- `hazard_vlm_gemini_<model>_v0.json`
+
+## Cost-sensitive benchmark
+
+The default Windows benchmark compares:
+
+1. `gemini-3.7-flash` — stronger multimodal baseline, low thinking.
+2. `gemini-3.1-flash-lite` — low-cost baseline, minimal thinking.
+
+Both are diagnostic only. The benchmark defaults to the latest five tee captures and
+one call per model per image (10 calls total):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File `
+  ".\tools\minimap_probe\run_gemini_hazard_benchmark_windows.ps1"
+```
+
+It writes `hazard_vlm_gemini_benchmark_v0.json` under the output directory and leaves
+model-specific overlays in each tee capture folder.
+
+For a repeatability check after the first pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File `
+  ".\tools\minimap_probe\run_gemini_hazard_benchmark_windows.ps1" `
+  -Latest 5 -Repeats 3
+```
+
+Do not start with repeats=3; first confirm the prompt/schema works and inspect the
+single-pass semantic quality.
 
 ## Fail-soft rules
 
 - No VLM response: request is logged and play continues.
-- Bad/malformed response: error is logged and play continues.
+- Bad/malformed provider response: error is logged and play continues.
 - Pixel refinement fails: keep the semantic VLM box as diagnostic geometry.
 - No HoleModel geometry: semantic/local pixel geometry is still saved.
 - No VLM or CV hazard result can block tee capture or post-shot capture.
 - Nothing in V0 can alter aim or influence the caddie recommendation.
 
-## Next validation
+## Promotion criteria
 
-Run the same prompt/schema over the saved tee corpus with a consistent multimodal
-model. Review false positives, false negatives, duplicate objects, box tightness,
-and repeatability. Only then decide which provider/model to wire for live calls and
-what confidence/refinement gates are required for strategy.
+Do not promote a model based only on object count. Review:
+
+- false-positive bunker/water objects;
+- missed current-hole hazards;
+- adjacent-hole contamination;
+- native box/polygon placement;
+- CV refinement quality versus native Gemini geometry;
+- repeatability across identical images;
+- latency and token usage.
+
+Use the cheapest model whose semantic and localization performance is effectively
+indistinguishable from the best model on the Looper corpus.
