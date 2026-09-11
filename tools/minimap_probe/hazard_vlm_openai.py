@@ -103,7 +103,7 @@ def call_openai_boxes(
                     {
                         "type": "input_image",
                         "image_url": f"data:{_mime(path)};base64,{image_b64}",
-                        "detail": "high",
+                        "detail": "original",
                     },
                     {"type": "input_text", "text": hazard_vlm_contract.USER_INSTRUCTION},
                 ],
