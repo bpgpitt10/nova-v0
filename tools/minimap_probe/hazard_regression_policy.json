@@ -1,0 +1,27 @@
+{
+  "schema_version": "looper-hazard-regression-policy-v0",
+  "policy_status": "provisional",
+  "promotion_enabled": false,
+  "strategy_authority": false,
+  "require_replay_ready": true,
+  "require_zero_adapter_errors": true,
+  "required_hazard_classes": [],
+  "thresholds": {
+    "min_case_count": null,
+    "min_course_count": null,
+    "min_positive_truth": null,
+    "min_boundary_truth": null,
+    "positive_truth_hit_rate_min": null,
+    "boundary_truth_hit_rate_min": null,
+    "pairwise_spatial_f1_median_min": null,
+    "pairwise_semantic_agreement_median_min": null,
+    "safe_contradictions_max": 0,
+    "positive_misses_max": null,
+    "boundary_misses_max": null
+  },
+  "notes": [
+    "Thresholds intentionally remain unset until Step 11 field evidence is reviewed.",
+    "Unset thresholds block promotion.",
+    "Changing this policy never grants strategy authority automatically; it only marks a source eligible for explicit review."
+  ]
+}
