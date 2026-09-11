@@ -33,6 +33,9 @@ def _mime(path: Path) -> str:
 
 def _strict_schema() -> dict[str, Any]:
     schema = copy.deepcopy(hazard_vlm_contract.response_schema())
+    fixed = schema["properties"]["schema_version"]
+    expected = fixed.pop("const", hazard_vlm_contract.SCHEMA_VERSION)
+    fixed["enum"] = [expected]
     for field in ("bunkers", "water", "uncertain"):
         schema["properties"][field]["items"]["required"] = [
             "id", "confidence", "bbox_norm", "note"
