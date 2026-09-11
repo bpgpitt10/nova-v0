@@ -1,0 +1,9 @@
+{
+  "schema_version": "looper-hazard-regression-corpus-v0",
+  "strategy_authority": false,
+  "cases": [],
+  "notes": [
+    "Register immutable Step 11/Step 10 comparison snapshots here after field review.",
+    "replay_ready must remain false until the case can be replayed through the relevant extractor path from saved raw evidence."
+  ]
+}
