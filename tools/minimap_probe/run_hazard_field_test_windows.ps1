@@ -23,7 +23,7 @@ if (-not (Test-Path $Python)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "hazard_field_run.py"),
+  (Join-Path $Here "hazard_field_run_safe.py"),
   "--monitor", "$Monitor",
   "--shadow-settle-seconds", "$ShadowSettleSeconds",
   "--max-file-mb", "$MaxFileMb",
@@ -39,6 +39,7 @@ if ($DryRun) { $argsList += "--dry-run" }
 Write-Host "Looper Hazard Field Test - Step 11"
 Write-Host "FIELD-LAB VALIDATION ONLY. Production remains hosted looper.golf; this is not a packaged-app dependency."
 Write-Host "One run: start -> play GSPro normally -> Ctrl+C -> bounded evidence ZIP + Step 10 report."
+Write-Host "Finalization stages are fail-soft and hard-time-bounded."
 Write-Host "Strategy authority: OFF | Promotion: NONE"
 
 & $Python @argsList
