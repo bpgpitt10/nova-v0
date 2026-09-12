@@ -63,8 +63,8 @@ Write-Host "DB ActiveHole: diagnostic only (field-proven stale)."
 Write-Host "Next hole: AllPlayersHoledOut -> expect N+1 -> Shot 1 + Tee can confirm."
 Write-Host "Post-shot DistanceToPin: currentRound meters -> yards, used to validate/fallback PIN OCR."
 Write-Host "Tee capture: verified Y state + inside-child tee-race guard."
-Write-Host "Post-tee AIM: passive minimap marker first; prior bounded card summon/return only as fallback."
-Write-Host "Exact per-hole HoleModel binding. No strategy auto-aim. W disabled."
+Write-Host "Post-shot elevation: PIN is first-class; AIM card is read passively only when already visible."
+Write-Host "Exact per-hole HoleModel binding. No active AIM acquisition, no strategy auto-aim, W disabled."
 Write-Host "Ctrl+C stops cleanly."
 
 Push-Location $RepoRoot
