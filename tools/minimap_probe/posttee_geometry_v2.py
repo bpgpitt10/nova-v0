@@ -4,6 +4,12 @@
 Canonical registration and PIN-distance validation are independent of optional green
 semantics. A missing/failed green heatmap layer no longer destroys otherwise useful
 canonical position geometry.
+
+Step 11 field evidence also proved GSPro can rotate the minimap dramatically on a
+late approach (the saved ~141 degree transform aligned the green/bunker and mapped
+the ball to a physically plausible point beyond/left of the pin). Registration
+therefore uses the normal base path first, then a strongly PIN-anchored wide-rotation
+fallback when descriptor evidence is exceptionally clean.
 """
 from __future__ import annotations
 
@@ -13,7 +19,7 @@ import cv2
 
 import green_visibility
 import hole_model_cache
-import minimap_registration
+import minimap_registration_rotating as minimap_registration
 import probe_v2 as v2
 import probe_v4  # noqa: F401; installs robust marker detection patches
 
@@ -100,5 +106,5 @@ def analyze(*, current_minimap, pin_distance_yds: float, hole_model_path: str | 
         "geometry_trusted": trusted,
         "w_recovery_recommended": bool(trusted and green_visible is False),
         "geometry_rejection_reason": None if trusted else "canonical PIN-distance cross-check failed",
-        "note": "Registration uses the shared PIN as an optional semantic anchor, then still requires the independent PIN-distance cross-check. W is never actuated here.",
+        "note": "Registration uses a shared PIN anchor, including a tightly gated wide-rotation fallback for GSPro reorientation, then still requires the independent PIN-distance cross-check. W is never actuated here.",
     }
