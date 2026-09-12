@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""GSPro post-shot ShotState v1.4: structured world position + PIN + lie only.
+"""GSPro post-shot ShotState v1.4: structured world position + PIN + lie + wind.
 
 Production live placement now comes from currentRound world coordinates projected
 through hole_spatial_model_v1. Post-shot AIM and minimap registration are retired
 from the live capture path. This probe keeps only the dynamic sensors still needed:
-structured currentRound state, resolved PIN distance, and lie slope.
+structured currentRound state, resolved PIN distance, lie slope, and screen wind.
 """
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ import lie_state
 import probe as base
 import probe_v8
 import target_card_v9  # noqa: F401; patches shared target-card reader
+import wind_state
 
 DEFAULT_GSPRO_DIR = Path.home() / "AppData" / "LocalLow" / "GSPro" / "GSPro"
 
@@ -50,6 +51,7 @@ def parse_args():
     p.add_argument("--monitor", type=int, default=1)
     p.add_argument("--roi")
     p.add_argument("--lie-roi")
+    p.add_argument("--wind-roi")
     p.add_argument("--tesseract")
     p.add_argument("--gspro-dir", default=str(DEFAULT_GSPRO_DIR))
     p.add_argument("--structured-pin-yards", type=float)
@@ -157,13 +159,29 @@ def main():
             except Exception as exc:
                 return None, str(exc)
 
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="approach-v14") as ex:
+        def read_wind():
+            try:
+                return wind_state.read_wind_state(initial, args.tesseract, args.wind_roi, out if args.deep_debug else None), None
+            except Exception as exc:
+                return None, str(exc)
+
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approach-v14") as ex:
             pin_future = ex.submit(timer.call, "pin_card_ocr", read_pin)
             lie_future = ex.submit(timer.call, "lie_ocr", read_lie)
+            wind_future = ex.submit(timer.call, "wind_ocr", read_wind)
             pin_state, pin_error = pin_future.result()
             lie, lie_error = lie_future.result()
+            wind, wind_error = wind_future.result()
 
         pin = _resolve_pin(pin_state, structured, pin_error or structured_warning)
+        wind_payload = asdict(wind) if wind is not None else {
+            "speed_mph": None,
+            "direction_cardinal": None,
+            "available": False,
+            "confidence": 0.0,
+            "source": "gspro-screen-wind-panel",
+            "direction_semantics": "gspro-display",
+        }
         payload = {
             "schema_version": "post-tee-shot-state-v1.4",
             "capture_mode": "post-tee",
@@ -172,6 +190,12 @@ def main():
             "pin": pin,
             "lie_slope": asdict(lie) if lie is not None else None,
             "lie_sensor": {"available": lie is not None, "error": lie_error},
+            "wind": wind_payload,
+            "wind_sensor": {
+                "available": bool(wind is not None and wind.available),
+                "error": wind_error,
+                "source": "gspro-screen-wind-panel",
+            },
             "structured_current_round": structured,
             "structured_warning": structured_warning,
             "aim": None,
@@ -196,18 +220,23 @@ def main():
                     cv2.imwrite(str(out / "approach_lie_footer.png"), initial[y:y+h, x:x+w])
             except Exception:
                 pass
-        warnings = [x for x in (pin.get("warning"), lie_error, structured_warning) if x]
+        warnings = [x for x in (pin.get("warning"), lie_error, wind_error, structured_warning) if x]
+        if wind is not None and not wind.available:
+            warnings.append(
+                f"wind OCR partial/unavailable: speed={wind.speed_ocr_raw!r}, direction={wind.direction_ocr_raw!r}"
+            )
         (out / "approach_capture_meta.json").write_text(json.dumps({
             "success": True,
             "partial": bool(warnings),
             "warnings": warnings,
             "pin_available": pin["available"],
             "lie_available": lie is not None,
+            "wind_available": bool(wind is not None and wind.available),
             "position_authority": "structured_current_round_world_coordinates",
             "aim_retired": True,
             "posttee_registration_retired": True,
         }, indent=2), encoding="utf-8")
-        print("GSPro POST-SHOT STATE v1.4 | structured world position + PIN + lie")
+        print("GSPro POST-SHOT STATE v1.4 | structured world position + PIN + lie + wind")
         print(f"ShotState: {out / 'shot_state.json'}")
         return 0
     except Exception as exc:
