@@ -32,7 +32,7 @@ if (-not (Test-Path $Python)) {
 }
 
 Write-Host ""
-Write-Host "=== PRECHECK: compile new analysis/capture policy + run shadow fusion tests ===" -ForegroundColor Cyan
+Write-Host "=== PRECHECK: compile new analysis/capture policy + run shadow/passive-AIM unit tests ===" -ForegroundColor Cyan
 & $Python -m py_compile `
   "tools\minimap_probe\hazard_step11_regression_suite.py" `
   "tools\minimap_probe\hazard_luna_sam2_replay.py" `
@@ -48,6 +48,8 @@ Write-Host "=== PRECHECK: compile new analysis/capture policy + run shadow fusio
 if ($LASTEXITCODE -ne 0) { throw "Truth-harvest Python compile precheck failed." }
 & $Python "tools\minimap_probe\test_hazard_map_shadow.py"
 if ($LASTEXITCODE -ne 0) { throw "HazardMap fusion unit tests failed." }
+& $Python "tools\minimap_probe\test_minimap_aim.py"
+if ($LASTEXITCODE -ne 0) { throw "Passive minimap AIM unit tests failed." }
 
 Write-Host ""
 Write-Host "=== 1/9 Replay passive minimap AIM against saved AIM-card ground truth ===" -ForegroundColor Cyan
