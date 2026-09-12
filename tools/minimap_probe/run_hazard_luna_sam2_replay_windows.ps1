@@ -1,5 +1,6 @@
 param(
   [string]$OutputRoot = "tools\minimap_probe\output",
+  [string[]]$CaptureDir = @(),
   [int]$Latest = 4,
   [string]$SamModel = "facebook/sam2.1-hiera-tiny"
 )
@@ -34,11 +35,18 @@ if ($LASTEXITCODE -ne 0) {
   if ($LASTEXITCODE -ne 0) { throw "SAM2 dependency installation failed." }
 }
 
+$ArgsList = @(
+  "tools\minimap_probe\hazard_luna_sam2_replay.py",
+  "--output-root", $OutputRoot,
+  "--latest", "$Latest",
+  "--sam-model", $SamModel
+)
+foreach ($Path in $CaptureDir) {
+  if ($Path) { $ArgsList += @("--capture-dir", $Path) }
+}
+
 Write-Host ""
 Write-Host "Looper saved Luna boxes -> local SAM2"
 Write-Host "NO OpenAI/Gemini API calls. NO GSPro input. Strategy authority OFF."
-& $Python "tools\minimap_probe\hazard_luna_sam2_replay.py" `
-  --output-root $OutputRoot `
-  --latest $Latest `
-  --sam-model $SamModel
+& $Python @ArgsList
 exit $LASTEXITCODE
