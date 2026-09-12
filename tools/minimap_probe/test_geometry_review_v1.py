@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import unittest
 
 import geometry_review_v1 as gr
@@ -8,8 +7,9 @@ import geometry_review_v1 as gr
 
 class GeometryReviewV1Tests(unittest.TestCase):
     def setUp(self):
-        # Tee at (100, 300), pin straight up the image at (100, 100).
-        # Forward therefore points up-screen; right-positive points screen-right.
+        # Tee at (100, 300), pin straight up the image at (100, 100). The synthetic
+        # pixel_right_unit deliberately follows the stored spatial-model basis rather
+        # than assuming that positive lateral must equal increasing screen X.
         self.transform = {
             "tee_pixel": {"x": 100.0, "y": 300.0},
             "pin_pixel": {"x": 100.0, "y": 100.0},
@@ -27,8 +27,6 @@ class GeometryReviewV1Tests(unittest.TestCase):
         self.assertAlmostEqual(y, 200.0)
 
     def test_lateral_sign_comes_from_transform_not_screen_assumption(self):
-        # The helper deliberately obeys pixel_right_unit exactly; it must not invent
-        # a screen-x sign convention independent of the stored spatial model.
         x, y = gr.local_to_pixel(self.transform, 20.0, 0.0)
         self.assertAlmostEqual(x, 90.0)
         self.assertAlmostEqual(y, 300.0)
