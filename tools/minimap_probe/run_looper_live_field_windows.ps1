@@ -13,7 +13,9 @@ $Venv = Join-Path $Here ".venv"
 $Python = Join-Path $Venv "Scripts\python.exe"
 $Watcher = Join-Path $Here "run_round_watch_v3_windows.ps1"
 $StatusScript = Join-Path $Here "hazard_live_status.py"
+$SpatialScript = Join-Path $Here "hole_spatial_model_v1.py"
 $OutputRoot = Join-Path $Here "output"
+$ResolvedGsproDir = if ($GsproDir) { $GsproDir } else { Join-Path $env:USERPROFILE "AppData\LocalLow\GSPro\GSPro" }
 
 if (-not (Test-Path $Python)) {
   Write-Host "Creating minimap probe virtual environment..."
@@ -33,8 +35,8 @@ Write-Host "==============================================" -ForegroundColor Gre
 Write-Host " LOOPER LIVE FIELD BUILD" -ForegroundColor Green
 Write-Host "==============================================" -ForegroundColor Green
 Write-Host "Play GSPro normally."
-Write-Host "Tee: resilient HoleModel + verified Y + Luna/SAM shadow hazards."
-Write-Host "After shots: PIN/lie/geometry + passive AIM first; bounded fallback only if needed."
+Write-Host "Tee: HoleModel + shadow hazards -> world/local spatial model."
+Write-Host "After shots: structured world position + PIN/lie sensors."
 Write-Host "No W. No strategy auto-aim. Ctrl+C stops cleanly."
 if ($env:OPENAI_API_KEY) {
   Write-Host "Luna: READY" -ForegroundColor Green
@@ -53,6 +55,16 @@ if (-not $NoStatus -and (Test-Path $StatusScript)) {
   }
 }
 
+$SpatialProcess = $null
+if (Test-Path $SpatialScript) {
+  try {
+    $SpatialArgs = @($SpatialScript, "--output-root", $OutputRoot, "--gspro-dir", $ResolvedGsproDir)
+    $SpatialProcess = Start-Process -FilePath $Python -ArgumentList $SpatialArgs -WorkingDirectory $RepoRoot -NoNewWindow -PassThru
+  } catch {
+    Write-Warning "Spatial-model sidecar could not start; round watcher will continue: $($_.Exception.Message)"
+  }
+}
+
 $WatcherArgs = @("-Monitor", "$Monitor")
 if ($Roi) { $WatcherArgs += @("-Roi", $Roi) }
 if ($Tesseract) { $WatcherArgs += @("-Tesseract", $Tesseract) }
@@ -63,6 +75,9 @@ try {
   & powershell -NoProfile -ExecutionPolicy Bypass -File $Watcher @WatcherArgs
   exit $LASTEXITCODE
 } finally {
+  if ($SpatialProcess -and -not $SpatialProcess.HasExited) {
+    try { Stop-Process -Id $SpatialProcess.Id -Force -ErrorAction SilentlyContinue } catch {}
+  }
   if ($StatusProcess -and -not $StatusProcess.HasExited) {
     try { Stop-Process -Id $StatusProcess.Id -Force -ErrorAction SilentlyContinue } catch {}
   }
