@@ -34,7 +34,7 @@ if (-not $Resume -and (Test-Path $StateFile)) {
 }
 
 $argsList = @(
-  (Join-Path $Here "round_watch_v32.py"),
+  (Join-Path $Here "round_watch_v33.py"),
   "--monitor", "$Monitor",
   "--poll-ms", "$PollMs",
   "--posttee-min-settle-ms", "$PostteeMinSettleMs",
@@ -53,7 +53,7 @@ if ($Roi) { $argsList += @("--roi", $Roi) }
 if ($Tesseract) { $argsList += @("--tesseract", $Tesseract) }
 if ($GsproDir) { $argsList += @("--gspro-dir", $GsproDir) }
 
-Write-Host "Looper watcher v3.2 policy layer (v3.1 engine)"
+Write-Host "Looper watcher v3.3 policy layer (v3.2/v3.1 engine)"
 if ($DryRun) {
   Write-Host "MODE: DRY RUN - lifecycle/evidence only; no capture actions."
 } else {
@@ -62,8 +62,9 @@ if ($DryRun) {
 Write-Host "DB ActiveHole: diagnostic only (field-proven stale)."
 Write-Host "Next hole: AllPlayersHoledOut -> expect N+1 -> Shot 1 + Tee can confirm."
 Write-Host "Post-shot DistanceToPin: currentRound meters -> yards, used to validate/fallback PIN OCR."
-Write-Host "Tee/approach capture: fail-soft semantic sensors; exact per-hole HoleModel binding."
-Write-Host "No auto aim. No extra aim calibration pulses. W disabled."
+Write-Host "Tee capture: verified Y state + inside-child tee-race guard."
+Write-Host "Post-tee AIM: passive minimap marker first; prior bounded card summon/return only as fallback."
+Write-Host "Exact per-hole HoleModel binding. No strategy auto-aim. W disabled."
 Write-Host "Ctrl+C stops cleanly."
 
 Push-Location $RepoRoot
