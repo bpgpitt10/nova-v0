@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""GSPro post-shot ShotState v1.4: structured world position + PIN + lie + wind.
+"""GSPro post-shot ShotState v1.4: structured world position + PIN + lie + wind + elevation.
 
-Production live placement now comes from currentRound world coordinates projected
-through hole_spatial_model_v1. Post-shot AIM and minimap registration are retired
-from the live capture path. This probe keeps only the dynamic sensors still needed:
-structured currentRound state, resolved PIN distance, lie slope, and screen wind.
+Production live placement still comes from currentRound world coordinates projected
+through hole_spatial_model_v1. Post-shot minimap registration and active AIM
+acquisition remain retired from the live capture path. This probe keeps the dynamic
+sensors still needed: structured currentRound state, resolved PIN distance/elevation,
+lie slope, screen wind, and passive-only AIM card distance/elevation when that card is
+already visible in the frozen screenshot.
 """
 from __future__ import annotations
 
@@ -78,6 +80,7 @@ def _state_dict(state):
         "elevation_delta_yds": state.elevation_delta_yds,
         "source": state.source,
         "distance_ocr_raw": getattr(state, "distance_ocr_raw", None),
+        "elevation_ocr_raw": getattr(state, "elevation_ocr_raw", None),
     }
 
 
@@ -128,10 +131,22 @@ def _resolve_pin(screen_state, structured_shot, screen_error):
     elif structured_yds is not None:
         resolved, source = structured_yds, "currentRound-meters-to-yards"
         warnings.append("screen PIN unavailable; used structured DistanceToPin")
+
+    elevation_ft = getattr(screen_state, "elevation_delta_ft", None) if screen_state is not None else None
+    elevation_yds = getattr(screen_state, "elevation_delta_yds", None) if screen_state is not None else None
+    elevation_direction = getattr(screen_state, "elevation_direction", None) if screen_state is not None else None
+    elevation_raw = getattr(screen_state, "elevation_raw", None) if screen_state is not None else None
+
     return {
         "available": resolved is not None,
         "distance_yds": resolved,
         "source": source,
+        "elevation_available": elevation_ft is not None,
+        "elevation_delta_ft": elevation_ft,
+        "elevation_delta_yds": elevation_yds,
+        "elevation_direction": elevation_direction,
+        "elevation_raw": elevation_raw,
+        "elevation_source": getattr(screen_state, "source", None) if elevation_ft is not None else None,
         "screen": _state_dict(screen_state),
         "structured": structured_shot,
         "screen_minus_structured_yds": delta,
@@ -153,6 +168,12 @@ def main():
             except Exception as exc:
                 return None, str(exc)
 
+        def read_aim_passive():
+            try:
+                return probe_v8._read_card_type(initial, "aim", args, out if args.deep_debug else None, False), None
+            except Exception as exc:
+                return None, str(exc)
+
         def read_lie():
             try:
                 return lie_state.read_lie_state(initial, args.tesseract, args.lie_roi, out if args.deep_debug else None), None
@@ -165,15 +186,18 @@ def main():
             except Exception as exc:
                 return None, str(exc)
 
-        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approach-v14") as ex:
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="approach-v14") as ex:
             pin_future = ex.submit(timer.call, "pin_card_ocr", read_pin)
+            aim_future = ex.submit(timer.call, "aim_card_passive_ocr", read_aim_passive)
             lie_future = ex.submit(timer.call, "lie_ocr", read_lie)
             wind_future = ex.submit(timer.call, "wind_ocr", read_wind)
             pin_state, pin_error = pin_future.result()
+            aim_state, aim_error = aim_future.result()
             lie, lie_error = lie_future.result()
             wind, wind_error = wind_future.result()
 
         pin = _resolve_pin(pin_state, structured, pin_error or structured_warning)
+        aim_payload = _state_dict(aim_state)
         wind_payload = asdict(wind) if wind is not None else {
             "speed_mph": None,
             "direction_cardinal": None,
@@ -198,8 +222,14 @@ def main():
             },
             "structured_current_round": structured,
             "structured_warning": structured_warning,
-            "aim": None,
-            "aim_sensor": {"available": False, "retired_from_live_path": True},
+            "aim": aim_payload,
+            "aim_sensor": {
+                "available": aim_state is not None,
+                "passive_only": True,
+                "active_acquisition_retired": True,
+                "error": aim_error,
+                "source": getattr(aim_state, "source", "gspro-screen-aim-card") if aim_state is not None else "gspro-screen-aim-card",
+            },
             "canonical_geometry": None,
             "canonical_geometry_trusted": False,
             "canonical_geometry_warning": "retired from live path; use hole_spatial_model_v1 + structured world position",
@@ -220,7 +250,7 @@ def main():
                     cv2.imwrite(str(out / "approach_lie_footer.png"), initial[y:y+h, x:x+w])
             except Exception:
                 pass
-        warnings = [x for x in (pin.get("warning"), lie_error, wind_error, structured_warning) if x]
+        warnings = [x for x in (pin.get("warning"), aim_error, lie_error, wind_error, structured_warning) if x]
         if wind is not None and not wind.available:
             warnings.append(
                 f"wind OCR partial/unavailable: speed={wind.speed_ocr_raw!r}, direction={wind.direction_ocr_raw!r}"
@@ -230,13 +260,15 @@ def main():
             "partial": bool(warnings),
             "warnings": warnings,
             "pin_available": pin["available"],
+            "pin_elevation_available": pin["elevation_available"],
             "lie_available": lie is not None,
             "wind_available": bool(wind is not None and wind.available),
+            "aim_available_passive": aim_state is not None,
             "position_authority": "structured_current_round_world_coordinates",
-            "aim_retired": True,
+            "aim_active_acquisition_retired": True,
             "posttee_registration_retired": True,
         }, indent=2), encoding="utf-8")
-        print("GSPro POST-SHOT STATE v1.4 | structured world position + PIN + lie + wind")
+        print("GSPro POST-SHOT STATE v1.4 | structured world position + PIN/elevation + lie + wind + passive AIM")
         print(f"ShotState: {out / 'shot_state.json'}")
         return 0
     except Exception as exc:
