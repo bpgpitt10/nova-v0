@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""GSPro post-shot ShotState v1.4: structured world position + PIN + lie + wind + elevation.
+"""GSPro post-shot ShotState v1.5: structured position + PIN/aim elevation + lie + wind.
 
 Production live placement still comes from currentRound world coordinates projected
-through hole_spatial_model_v1. Post-shot minimap registration and active AIM
-acquisition remain retired from the live capture path. This probe keeps the dynamic
-sensors still needed: structured currentRound state, resolved PIN distance/elevation,
-lie slope, screen wind, and passive-only AIM card distance/elevation when that card is
-already visible in the frozen screenshot.
+through hole_spatial_model_v1. Post-shot minimap registration remains retired.
+AIM is now a bounded sensor action: read the AIM card passively first; if unavailable,
+send one matched LEFT/RIGHT summon sequence, verify return, read distance/elevation,
+and fail soft without restoring any registration dependency.
 """
 from __future__ import annotations
 
@@ -22,6 +21,7 @@ from pathlib import Path
 
 import cv2
 
+import aim_actuator
 import gspro_structured
 import lie_state
 import probe as base
@@ -49,7 +49,7 @@ class Timer:
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="GSPro post-shot ShotState probe v1.4")
+    p = argparse.ArgumentParser(description="GSPro post-shot ShotState probe v1.5")
     p.add_argument("--monitor", type=int, default=1)
     p.add_argument("--roi")
     p.add_argument("--lie-roi")
@@ -59,6 +59,10 @@ def parse_args():
     p.add_argument("--structured-pin-yards", type=float)
     p.add_argument("--output-root", default=str(Path(__file__).with_name("output")))
     p.add_argument("--deep-debug", action="store_true")
+    p.add_argument("--aim-pulse-ms", type=float, default=45.0)
+    p.add_argument("--aim-settle-ms", type=float, default=60.0)
+    p.add_argument("--aim-return-tolerance-px", type=float, default=1.5)
+    p.add_argument("--aim-max-correction-ms", type=float, default=20.0)
     return p.parse_args()
 
 
@@ -154,6 +158,70 @@ def _resolve_pin(screen_state, structured_shot, screen_error):
     }
 
 
+def _acquire_aim_bounded(initial, args, out):
+    """Read AIM passively, else perform one reversible bounded summon."""
+    try:
+        passive = probe_v8._read_card_type(
+            initial, "aim", args, out if args.deep_debug else None, False
+        )
+    except Exception as exc:
+        passive = None
+        passive_error = str(exc)
+    else:
+        passive_error = None
+
+    if passive is not None:
+        return passive, {
+            "available": True,
+            "mode": "passive",
+            "actuation_attempted": False,
+            "return_verified": None,
+            "warning": passive_error,
+            "source": getattr(passive, "source", "gspro-screen-aim-card"),
+        }
+
+    summon = aim_actuator.summon_aim_card(
+        initial_screen=initial,
+        capture_fn=lambda: base.capture_monitor(args.monitor),
+        pulse_ms=args.aim_pulse_ms,
+        settle_ms=args.aim_settle_ms,
+        return_tolerance_px=args.aim_return_tolerance_px,
+        max_correction_ms=args.aim_max_correction_ms,
+        max_corrections=1,
+        debug_dir=out if args.deep_debug else None,
+    )
+
+    aim_state = None
+    parse_error = None
+    if summon.final_screen is not None:
+        try:
+            aim_state = probe_v8._read_card_type(
+                summon.final_screen,
+                "aim",
+                args,
+                out if args.deep_debug else None,
+                False,
+            )
+        except Exception as exc:
+            parse_error = str(exc)
+
+    warnings = [x for x in (passive_error, summon.warning, parse_error) if x]
+    return aim_state, {
+        "available": aim_state is not None,
+        "mode": "bounded-active" if summon.attempted else "unavailable",
+        "actuation_attempted": bool(summon.attempted),
+        "return_verified": summon.verified,
+        "pulse_ms": summon.pulse_ms,
+        "left_dx_px": summon.left_dx_px,
+        "residual_dx_px": summon.residual_dx_px,
+        "response_left": summon.response_left,
+        "response_return": summon.response_return,
+        "corrections": [asdict(c) for c in summon.corrections],
+        "warning": " | ".join(warnings) if warnings else None,
+        "source": getattr(aim_state, "source", "gspro-screen-aim-card"),
+    }
+
+
 def main():
     args = parse_args()
     out = _out_dir(args.output_root)
@@ -165,12 +233,6 @@ def main():
         def read_pin():
             try:
                 return probe_v8._read_card_type(initial, "pin", args, out if args.deep_debug else None, False), None
-            except Exception as exc:
-                return None, str(exc)
-
-        def read_aim_passive():
-            try:
-                return probe_v8._read_card_type(initial, "aim", args, out if args.deep_debug else None, False), None
             except Exception as exc:
                 return None, str(exc)
 
@@ -186,15 +248,18 @@ def main():
             except Exception as exc:
                 return None, str(exc)
 
-        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="approach-v14") as ex:
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="approach-v15") as ex:
             pin_future = ex.submit(timer.call, "pin_card_ocr", read_pin)
-            aim_future = ex.submit(timer.call, "aim_card_passive_ocr", read_aim_passive)
             lie_future = ex.submit(timer.call, "lie_ocr", read_lie)
             wind_future = ex.submit(timer.call, "wind_ocr", read_wind)
             pin_state, pin_error = pin_future.result()
-            aim_state, aim_error = aim_future.result()
             lie, lie_error = lie_future.result()
             wind, wind_error = wind_future.result()
+
+        # AIM acquisition is intentionally serialized after frozen-image OCR. It may
+        # focus GSPro and send one reversible key sequence, so it must not race other
+        # screen readers against changing frames.
+        aim_state, aim_sensor = timer.call("aim_acquire", _acquire_aim_bounded, initial, args, out)
 
         pin = _resolve_pin(pin_state, structured, pin_error or structured_warning)
         aim_payload = _state_dict(aim_state)
@@ -207,7 +272,7 @@ def main():
             "direction_semantics": "gspro-display",
         }
         payload = {
-            "schema_version": "post-tee-shot-state-v1.4",
+            "schema_version": "post-tee-shot-state-v1.5",
             "capture_mode": "post-tee",
             "partial_state_allowed": True,
             "position_authority": "structured_current_round_world_coordinates",
@@ -223,13 +288,7 @@ def main():
             "structured_current_round": structured,
             "structured_warning": structured_warning,
             "aim": aim_payload,
-            "aim_sensor": {
-                "available": aim_state is not None,
-                "passive_only": True,
-                "active_acquisition_retired": True,
-                "error": aim_error,
-                "source": getattr(aim_state, "source", "gspro-screen-aim-card") if aim_state is not None else "gspro-screen-aim-card",
-            },
+            "aim_sensor": aim_sensor,
             "canonical_geometry": None,
             "canonical_geometry_trusted": False,
             "canonical_geometry_warning": "retired from live path; use hole_spatial_model_v1 + structured world position",
@@ -250,11 +309,22 @@ def main():
                     cv2.imwrite(str(out / "approach_lie_footer.png"), initial[y:y+h, x:x+w])
             except Exception:
                 pass
-        warnings = [x for x in (pin.get("warning"), aim_error, lie_error, wind_error, structured_warning) if x]
+
+        warnings = [
+            x for x in (
+                pin.get("warning"),
+                aim_sensor.get("warning"),
+                lie_error,
+                wind_error,
+                structured_warning,
+            )
+            if x
+        ]
         if wind is not None and not wind.available:
             warnings.append(
                 f"wind OCR partial/unavailable: speed={wind.speed_ocr_raw!r}, direction={wind.direction_ocr_raw!r}"
             )
+
         (out / "approach_capture_meta.json").write_text(json.dumps({
             "success": True,
             "partial": bool(warnings),
@@ -263,12 +333,14 @@ def main():
             "pin_elevation_available": pin["elevation_available"],
             "lie_available": lie is not None,
             "wind_available": bool(wind is not None and wind.available),
-            "aim_available_passive": aim_state is not None,
+            "aim_available": aim_state is not None,
+            "aim_mode": aim_sensor.get("mode"),
+            "aim_return_verified": aim_sensor.get("return_verified"),
             "position_authority": "structured_current_round_world_coordinates",
-            "aim_active_acquisition_retired": True,
             "posttee_registration_retired": True,
         }, indent=2), encoding="utf-8")
-        print("GSPro POST-SHOT STATE v1.4 | structured world position + PIN/elevation + lie + wind + passive AIM")
+
+        print("GSPro POST-SHOT STATE v1.5 | world position + PIN/aim elevation + lie + wind")
         print(f"ShotState: {out / 'shot_state.json'}")
         return 0
     except Exception as exc:
