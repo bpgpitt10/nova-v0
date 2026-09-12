@@ -10,7 +10,10 @@ minimap zoom. We use the pair only as a transient registration aid:
 - select the changed green region associated with the current white pin marker;
 - preserve one canonical HEATMAP-ON minimap for the HoleModel.
 
-The normal frame is not a second hole model and does not need to be persisted.
+Step 11 field evidence showed some valid-looking Y pairs below the original global
+changed-pixel threshold. The classifier now keeps the strict detector first, then
+uses a more sensitive fallback only when the pair still has a stable pin, a clear
+heatmap-color winner, and a changed component physically near the pin.
 """
 
 from __future__ import annotations
@@ -37,14 +40,11 @@ class GreenHeatmapResult:
     normal_roi: np.ndarray
     target_green_mask: np.ndarray
     changed_mask: np.ndarray
+    difference_mode: str
 
 
 def _heatmap_color_score(roi: np.ndarray, pin: base.Point) -> float:
-    """Score vivid red/yellow/green fill around the current pin.
-
-    This is deliberately used only to decide which of two registered frames is the
-    heatmap frame. The actual target-green mask comes from frame differencing.
-    """
+    """Score vivid red/yellow/green fill around the current pin."""
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     H, W = roi.shape[:2]
     yy, xx = np.ogrid[:H, :W]
@@ -66,6 +66,7 @@ def _heatmap_color_score(roi: np.ndarray, pin: base.Point) -> float:
 
 
 def _difference_mask(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Original conservative pair-difference detector."""
     diff = cv2.absdiff(a, b)
     max_diff = diff.max(axis=2)
     mean_diff = diff.mean(axis=2)
@@ -80,6 +81,25 @@ def _difference_mask(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         mask,
         cv2.MORPH_CLOSE,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
+    )
+    return mask
+
+
+def _difference_mask_sensitive(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Preserve smaller valid Y changes without turning minor frame noise into truth.
+
+    Unlike the strict path, this intentionally skips MORPH_OPEN because the live
+    failure mode was a very small changed region. Later pin proximity/component-size
+    checks remain mandatory before the result can be accepted.
+    """
+    diff = cv2.absdiff(a, b)
+    max_diff = diff.max(axis=2)
+    mean_diff = diff.mean(axis=2)
+    mask = ((max_diff >= 18) & (mean_diff >= 7)).astype(np.uint8) * 255
+    mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
     )
     return mask
 
@@ -134,14 +154,14 @@ def _select_target_green(changed: np.ndarray, pin: base.Point) -> tuple[np.ndarr
     return selected, (x1, y1, x2 - x1 + 1, y2 - y1 + 1), distance
 
 
-def classify_and_extract(
-    initial_screen: np.ndarray,
-    toggled_screen: np.ndarray,
-    roi_override: str | None = None,
+def classify_minimap_pair(
+    initial_roi: np.ndarray,
+    toggled_roi: np.ndarray,
     debug_dir: Path | None = None,
 ) -> GreenHeatmapResult:
-    initial_roi, _ = base.crop_minimap(initial_screen, roi_override)
-    toggled_roi, _ = base.crop_minimap(toggled_screen, roi_override)
+    """Classify an already-cropped saved minimap pair; safe for offline replay."""
+    if initial_roi is None or toggled_roi is None:
+        raise RuntimeError("Initial/toggled minimap pair is missing.")
     if initial_roi.shape != toggled_roi.shape:
         raise RuntimeError("Initial/toggled minimap crops do not share identical geometry.")
 
@@ -157,6 +177,7 @@ def classify_and_extract(
     if total_score <= 1.0:
         raise RuntimeError("Neither registered minimap frame looked heatmap-like near the pin.")
 
+    score_sep = abs(score_initial - score_toggled) / max(total_score, 1.0)
     heatmap_is_initial = score_initial > score_toggled
     heatmap_roi = initial_roi if heatmap_is_initial else toggled_roi
     normal_roi = toggled_roi if heatmap_is_initial else initial_roi
@@ -164,8 +185,27 @@ def classify_and_extract(
 
     changed = _difference_mask(initial_roi, toggled_roi)
     changed_ratio = float((changed > 0).mean())
+    difference_mode = "strict"
+
     if changed_ratio < 0.0005:
-        raise RuntimeError("Y toggle produced too little minimap change to identify a heatmap frame.")
+        # The sensitive path is diagnostic-safe only when the heatmap-color state is
+        # independently distinguishable. This avoids promoting ordinary frame noise.
+        if score_sep < 0.08:
+            raise RuntimeError(
+                f"Y toggle produced too little minimap change and heatmap state was ambiguous "
+                f"(changed={changed_ratio:.4%}, color_separation={score_sep:.3f})."
+            )
+        sensitive = _difference_mask_sensitive(initial_roi, toggled_roi)
+        sensitive_ratio = float((sensitive > 0).mean())
+        if sensitive_ratio < 0.00015:
+            raise RuntimeError(
+                f"Y toggle produced too little minimap change to identify a heatmap frame "
+                f"(strict={changed_ratio:.4%}, sensitive={sensitive_ratio:.4%})."
+            )
+        changed = sensitive
+        changed_ratio = sensitive_ratio
+        difference_mode = "sensitive-pin-gated"
+
     if changed_ratio > 0.35:
         raise RuntimeError(
             f"Y toggle changed {changed_ratio:.1%} of minimap pixels; frames may not be registered."
@@ -174,10 +214,11 @@ def classify_and_extract(
     green_mask, bbox, pin_distance = _select_target_green(changed, pin)
     area = int((green_mask > 0).sum())
 
-    score_sep = abs(score_initial - score_toggled) / max(total_score, 1.0)
     pin_term = max(0.0, 1.0 - pin_distance / max(18.0, min(changed.shape) * 0.10))
     area_term = min(1.0, area / 140.0)
     confidence = float(max(0.0, min(1.0, 0.45 * score_sep + 0.35 * pin_term + 0.20 * area_term)))
+    if difference_mode != "strict":
+        confidence *= 0.90
 
     if debug_dir is not None:
         debug_dir.mkdir(parents=True, exist_ok=True)
@@ -204,7 +245,19 @@ def classify_and_extract(
         normal_roi=normal_roi,
         target_green_mask=green_mask,
         changed_mask=changed,
+        difference_mode=difference_mode,
     )
+
+
+def classify_and_extract(
+    initial_screen: np.ndarray,
+    toggled_screen: np.ndarray,
+    roi_override: str | None = None,
+    debug_dir: Path | None = None,
+) -> GreenHeatmapResult:
+    initial_roi, _ = base.crop_minimap(initial_screen, roi_override)
+    toggled_roi, _ = base.crop_minimap(toggled_screen, roi_override)
+    return classify_minimap_pair(initial_roi, toggled_roi, debug_dir=debug_dir)
 
 
 def hazard_safe_roi(result: GreenHeatmapResult, margin_px: int = 4) -> np.ndarray:
