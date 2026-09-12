@@ -1,0 +1,106 @@
+{
+  "schema_version": "looper-step11-field-regression-v0",
+  "name": "farmlinks-2026-09-11-step11",
+  "course_name": "Farmlinks Golf Club",
+  "course_key": "farmlinks_al_2_7_gsp",
+  "round_id": 214,
+  "strategy_authority": false,
+  "notes": [
+    "Field evidence captured during normal play. This manifest records observed truth; it does not promote any hazard source.",
+    "Hole 1 is a tee-capture race regression: watcher readiness was tee, but child capture occurred after the shot and base geometry failed.",
+    "Holes 2-4 are valid tee HoleModels with completed Luna semantic localization.",
+    "Initial->toggled was effectively unchanged on H2-H4 while initial->restored materially changed, proving the first Y pulse could be ignored and the second pulse could become the actual toggle.",
+    "Post-tee H3 late approach requires a legitimate large minimap rotation near 141 degrees.",
+    "currentRound DistanceToPin is meters in this corpus and independently agrees with screen PIN yards after conversion."
+  ],
+  "tee_cases": [
+    {
+      "capture": "tee_capture_20260911_210704_309871",
+      "hole": 1,
+      "expect_base_geometry": false,
+      "expect_capture_context_succeeded": false,
+      "failure_class": "tee-capture-race-post-shot",
+      "expect_luna_status_any": ["skipped-unconfirmed-heatmap-state", "complete"]
+    },
+    {
+      "capture": "tee_capture_20260911_210855_776326",
+      "hole": 2,
+      "expect_base_geometry": true,
+      "expect_pin_yds": 296.0,
+      "expect_luna_status": "complete",
+      "expect_luna_counts": {"bunker": 6, "water": 0, "uncertain": 0},
+      "y_evidence": {
+        "initial_to_toggled_max_changed_ratio": 0.001,
+        "initial_to_restored_min_changed_ratio": 0.005
+      }
+    },
+    {
+      "capture": "tee_capture_20260911_211018_339043",
+      "hole": 3,
+      "expect_base_geometry": true,
+      "expect_pin_yds": 231.0,
+      "expect_luna_status": "complete",
+      "expect_luna_counts": {"bunker": 2, "water": 0, "uncertain": 0},
+      "y_evidence": {
+        "initial_to_toggled_max_changed_ratio": 0.001,
+        "initial_to_restored_min_changed_ratio": 0.05
+      }
+    },
+    {
+      "capture": "tee_capture_20260911_211252_751665",
+      "hole": 4,
+      "expect_base_geometry": true,
+      "expect_pin_yds": 347.0,
+      "expect_luna_status": "complete",
+      "expect_luna_counts": {"bunker": 4, "water": 0, "uncertain": 0},
+      "y_evidence": {
+        "initial_to_toggled_max_changed_ratio": 0.001,
+        "initial_to_restored_min_changed_ratio": 0.005
+      }
+    }
+  ],
+  "approach_cases": [
+    {
+      "capture": "approach_capture_20260911_210938_997538",
+      "hole": 2,
+      "tee_capture": "tee_capture_20260911_210855_776326",
+      "screen_pin_yds": 107.0,
+      "structured_pin_m": 98.23114,
+      "structured_pin_yds": 107.42688101487315,
+      "expect_geometry_trusted": true,
+      "expect_registration_mode_any": ["adaptive-strict-ratio", "adaptive-relaxed-ratio", "pin-anchored-adaptive"],
+      "expect_rotation_abs_max_deg": 30.0,
+      "expect_pin_error_abs_max_yds": 8.0
+    },
+    {
+      "capture": "approach_capture_20260911_211118_485845",
+      "hole": 3,
+      "tee_capture": "tee_capture_20260911_211018_339043",
+      "screen_pin_yds": 65.0,
+      "structured_pin_m": 59.80077,
+      "structured_pin_yds": 65.39891732283465,
+      "hazard_last_point_of_entry_world": {"x": 855.551636, "y": 45.50523, "z": 1021.54858},
+      "expect_geometry_trusted": true,
+      "expect_registration_mode_any": ["adaptive-strict-ratio", "adaptive-relaxed-ratio", "pin-anchored-adaptive"],
+      "expect_rotation_abs_max_deg": 30.0,
+      "expect_pin_error_abs_max_yds": 8.0
+    },
+    {
+      "capture": "approach_capture_20260911_211149_959082",
+      "hole": 3,
+      "tee_capture": "tee_capture_20260911_211018_339043",
+      "screen_pin_yds": 21.0,
+      "structured_pin_m": 18.88145,
+      "structured_pin_yds": 20.649004811898514,
+      "expect_geometry_trusted": true,
+      "expect_registration_mode": "pin-anchored-wide-rotation",
+      "expect_rotation_deg_range": [135.0, 147.0],
+      "expect_pin_error_abs_max_yds": 8.0
+    }
+  ],
+  "performance_observations": {
+    "posttee_aim_acquisition_ms": [3448.7, 2764.7, 2408.5],
+    "posttee_state_ready_ms": [3736.0, 3000.2, 2604.8],
+    "interpretation": "AIM acquisition dominates post-tee latency and is a priority for passive-read optimization."
+  }
+}
