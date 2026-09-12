@@ -37,7 +37,7 @@ if ($HeatmapKey -notin @("Y", "y")) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v8_resilient.py"),
+  (Join-Path $Here "probe_v8_resilient_verified.py"),
   "--monitor", "$Monitor",
   "--heatmap-key", "$HeatmapKey",
   "--heatmap-settle-ms", "$HeatmapSettleMs",
@@ -56,9 +56,9 @@ if ($NoAimSummon) { $argsList += "--no-aim-summon" }
 if ($VerifyTeeLie) { $argsList += "--verify-tee-lie" }
 if ($DeepDebug) { $argsList += "--deep-debug" }
 
-Write-Host "Running GSPro tee-capture orchestrator v8.1 resilient once."
+Write-Host "Running GSPro tee-capture orchestrator v8.2 resilient + verified Y state once."
 Write-Host "BASE MODEL survives optional green/red-penalty semantic extractor failures."
-Write-Host "TEE RULE: no W zoom. Y toggle/restore only. No auto aim or extra calibration pulses."
+Write-Host "TEE RULE: no W zoom. Y toggle/restore only, with visual state verification. No auto aim or extra aim calibration pulses."
 Write-Host "Raw before/toggled/restored minimaps are retained for replay."
 Write-Host "Step 8+9 hazard field shadow is queued after every saved tee capture."
 Write-Host "Static GKD/Unity archaeology is reused from the course/version/hash cache when available."
