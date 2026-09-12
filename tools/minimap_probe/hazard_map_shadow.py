@@ -5,7 +5,8 @@ This is the architectural bridge between extraction and live strategy, but remai
 shadow-only. It intentionally does NOT invent transforms or promotion thresholds.
 
 For tee minimap hazards:
-- SAM2 prompted by the semantic model is preferred for bunker/water edge geometry;
+- accepted SAM2 prompted by the semantic model is preferred for bunker/water edges;
+- rejected SAM2 stays in the evidence chain but can never become primary;
 - VLM-localized classical refinement is a fallback edge source;
 - the VLM bbox remains semantic/localization evidence;
 - deterministic red-boundary CV is the preferred penalty-area geometry source;
@@ -66,10 +67,6 @@ def source_object_id(item: dict[str, Any]) -> str:
     return str((item.get("source") or {}).get("object_id") or item.get("geometry_id") or "unknown")
 
 
-def has_space(item: dict[str, Any], space: str) -> bool:
-    return any(rep.get("coordinate_space") == space for rep in item.get("representations") or [])
-
-
 def best_representation(item: dict[str, Any]) -> dict[str, Any] | None:
     reps = list(item.get("representations") or [])
     preferred = [
@@ -96,8 +93,26 @@ def chain_key(item: dict[str, Any]) -> tuple[str, str]:
     return str(item.get("hazard_class")), source_object_id(item)
 
 
+def _accepted_as_primary(row: dict[str, Any]) -> bool:
+    kind = source_kind(row)
+    if kind not in PRIMARY_PRIORITY:
+        return False
+    if kind in {"sam2", "prompt_segmentation"}:
+        state = str((row.get("validation") or {}).get("state") or "")
+        if state != "segmentation-accepted-unvalidated":
+            return False
+        # A SAM source is only an edge source when an accepted polygon actually exists.
+        if not any(
+            rep.get("geometry_type") == "polygon"
+            and rep.get("coordinate_space") in {"minimap_pixel", "minimap_normalized"}
+            for rep in row.get("representations") or []
+        ):
+            return False
+    return True
+
+
 def choose_primary(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    eligible = [row for row in rows if source_kind(row) in PRIMARY_PRIORITY]
+    eligible = [row for row in rows if _accepted_as_primary(row)]
     if not eligible:
         return None
     eligible.sort(
@@ -120,6 +135,7 @@ def summarize_object(item: dict[str, Any]) -> dict[str, Any]:
         "confidence": item.get("confidence"),
         "validation": item.get("validation"),
         "representation": best_representation(item),
+        "eligible_as_primary": _accepted_as_primary(item),
         "strategy_authority": False,
     }
 
@@ -153,7 +169,7 @@ def build_shadow_map(objects: list[dict[str, Any]], identity: dict[str, Any] | N
             "hazard_class": hazard_class,
             "primary": summarize_object(primary),
             "evidence_chain": [summarize_object(row) for row in rows],
-            "selection_reason": "SAM2 > VLM-localized classical refinement > VLM bbox; no promotion implied",
+            "selection_reason": "accepted SAM2 polygon > VLM-localized classical refinement > VLM bbox; rejected SAM stays evidence-only; no promotion implied",
             "strategy_authority": False,
         })
 
@@ -193,13 +209,14 @@ def identity_from_capture(capture: Path) -> dict[str, Any]:
     if not context_path.is_file():
         return {"capture_id": capture.name}
     context = read_json(context_path)
-    structured = context.get("structured_trigger") or {}
+    nested = context.get("identity") if isinstance(context.get("identity"), dict) else {}
+    structured = context.get("structured_trigger") if isinstance(context.get("structured_trigger"), dict) else {}
     return {
         "capture_id": capture.name,
-        "course_key": structured.get("course_key"),
-        "course_name": context.get("course_name"),
-        "round_id": context.get("round_id"),
-        "hole_display": context.get("hole_number"),
+        "course_key": context.get("course_key") or nested.get("course_key") or structured.get("course_key"),
+        "course_name": context.get("course_name") or nested.get("course_name"),
+        "round_id": context.get("round_id") or context.get("db_round_id") or nested.get("round_id"),
+        "hole_display": context.get("hole_number") or nested.get("hole_number"),
     }
 
 
@@ -223,14 +240,12 @@ def main() -> int:
         print("No HazardGeometry bundles supplied.")
         return 1
 
-    outputs = []
     for bundle_path in bundle_paths:
         capture = bundle_path.parent
         objects = load_bundle(bundle_path)
         payload = build_shadow_map(objects, identity_from_capture(capture))
         out = Path(args.output).expanduser().resolve() if args.output and len(bundle_paths) == 1 else capture / "hazard_map_shadow_v0.json"
         write_json(out, payload)
-        outputs.append({"capture": capture.name, "output": str(out), "hazards": payload["canonical_hazard_count"], "classes": payload["canonical_class_counts"]})
         print(f"{capture.name}: canonical_shadow={payload['canonical_hazard_count']} {payload['canonical_class_counts']} | baseline={payload['legacy_baseline']['object_count']}")
     print("Strategy authority: OFF | Promotion decision: NONE")
     return 0
