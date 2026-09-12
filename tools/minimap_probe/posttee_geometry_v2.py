@@ -32,7 +32,19 @@ def analyze(*, current_minimap, pin_distance_yds: float, hole_model_path: str | 
 
     ball = v2.detect_ball_marker(current_minimap)
     pin = v2.detect_pin_marker(current_minimap)
-    registration = minimap_registration.register_current_to_canonical(current_minimap, canonical)
+    canonical_pin = (model.get("minimap") or {}).get("pin_pixel") or {}
+    canonical_pin_xy = None
+    try:
+        canonical_pin_xy = (float(canonical_pin["x"]), float(canonical_pin["y"]))
+    except Exception:
+        canonical_pin_xy = None
+
+    registration = minimap_registration.register_current_to_canonical(
+        current_minimap,
+        canonical,
+        current_anchor_xy=(float(pin.x), float(pin.y)) if canonical_pin_xy is not None else None,
+        canonical_anchor_xy=canonical_pin_xy,
+    )
     canonical_position = minimap_registration.canonical_position_from_hole_model(
         hole_model=model,
         current_ball_xy=(ball.x, ball.y),
@@ -88,5 +100,5 @@ def analyze(*, current_minimap, pin_distance_yds: float, hole_model_path: str | 
         "geometry_trusted": trusted,
         "w_recovery_recommended": bool(trusted and green_visible is False),
         "geometry_rejection_reason": None if trusted else "canonical PIN-distance cross-check failed",
-        "note": "Canonical position can remain trusted even when optional green semantics are unavailable. W is never actuated here.",
+        "note": "Registration uses the shared PIN as an optional semantic anchor, then still requires the independent PIN-distance cross-check. W is never actuated here.",
     }
