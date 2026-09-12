@@ -11,7 +11,10 @@ GSPro display semantics until that convention is explicitly validated.
 """
 from __future__ import annotations
 
+import os
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -78,15 +81,48 @@ def _parse_direction(raw: str) -> str | None:
     if letters in VALID_DIRECTIONS:
         return letters
     # PSM 10 can occasionally repeat a glyph. Collapse exact repeats only.
-    if len(set(letters)) == 1 and letters[:1] in VALID_DIRECTIONS:
+    if letters and len(set(letters)) == 1 and letters[:1] in VALID_DIRECTIONS:
         return letters[:1]
     return None
 
 
-def _prep_direction(crop):
+def _prep_hud(crop, scale: float = 3.0):
+    """Preserve GSPro's thin white HUD glyphs; target-card OCR is too aggressive."""
     gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
-    return cv2.resize(binary, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
+    return cv2.resize(binary, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+
+def _ocr_hud(crop, tesseract: str, whitelist: str, psm: str) -> str:
+    prepared = _prep_hud(crop)
+    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    tmp_path = tmp.name
+    tmp.close()
+    try:
+        cv2.imwrite(tmp_path, prepared)
+        kwargs = {"capture_output": True, "text": True, "timeout": 8}
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        completed = subprocess.run(
+            [
+                tesseract,
+                tmp_path,
+                "stdout",
+                "--psm",
+                str(psm),
+                "-c",
+                f"tessedit_char_whitelist={whitelist}",
+            ],
+            **kwargs,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(completed.stderr.strip() or f"Tesseract exited {completed.returncode}")
+        return completed.stdout.strip().upper()
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 def read_wind_state(
@@ -107,24 +143,16 @@ def read_wind_state(
     # its icon cannot be hallucinated into the speed or direction strings.
     speed_crop = panel[:, : max(1, int(w * 0.42))]
     direction_crop = panel[:, min(w - 1, int(w * 0.68)) :]
-    direction_prepped = _prep_direction(direction_crop)
 
-    speed_raw = target_card._ocr(
-        speed_crop, tess, "0123456789MPH", psm="7"
-    ).strip().upper()
-    direction_raw = target_card._ocr(
-        direction_prepped, tess, "NSEW", psm="10"
-    ).strip().upper()
-
+    speed_raw = _ocr_hud(speed_crop, tess, "0123456789MPH", psm="7")
+    direction_raw = _ocr_hud(direction_crop, tess, "NSEW", psm="10")
     speed = _parse_speed(speed_raw)
     direction = _parse_direction(direction_raw)
 
     # One fallback whole-panel pass is useful if GSPro shifts text a few pixels at
     # another resolution. It never overrides a successfully isolated field.
     if speed is None or direction is None:
-        whole_raw = target_card._ocr(
-            panel, tess, "0123456789MPHNSEW", psm="6"
-        ).strip().upper()
+        whole_raw = _ocr_hud(panel, tess, "0123456789MPHNSEW", psm="6")
         if speed is None:
             speed = _parse_speed(whole_raw)
             if speed is not None:
@@ -141,8 +169,8 @@ def read_wind_state(
     if debug_dir is not None:
         debug_dir.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(debug_dir / "wind_panel.png"), panel)
-        cv2.imwrite(str(debug_dir / "wind_speed_crop.png"), speed_crop)
-        cv2.imwrite(str(debug_dir / "wind_direction_crop.png"), direction_prepped)
+        cv2.imwrite(str(debug_dir / "wind_speed_crop.png"), _prep_hud(speed_crop))
+        cv2.imwrite(str(debug_dir / "wind_direction_crop.png"), _prep_hud(direction_crop))
 
     return WindState(
         speed_mph=speed,
