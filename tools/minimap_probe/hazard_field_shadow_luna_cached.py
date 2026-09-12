@@ -5,6 +5,10 @@ The base collector is intentionally reused unchanged with Gemini/SAM disabled. A
 its cache work completes, its manifest is staged aside while the OpenAI enrichment
 runs. The final manifest name is restored only after enrichment completes/fails soft,
 so Step 11's settle check does not package a half-enriched capture.
+
+For the simulator field build, finish by materializing `hazard_map_shadow_v0.json`.
+That gives the live status monitor one stable, source-aware artifact to consume while
+keeping strategy authority OFF.
 """
 from __future__ import annotations
 
@@ -30,6 +34,7 @@ def main() -> int:
     capture = Path(args.capture_dir).expanduser().resolve()
     cached = here / "hazard_field_shadow_cached.py"
     enrich = here / "hazard_field_openai_enrich.py"
+    map_builder = here / "hazard_map_shadow.py"
 
     base_command = [
         sys.executable,
@@ -84,6 +89,27 @@ def main() -> int:
             base_manifest.replace(final_manifest)
     except Exception:
         pass
+
+    # Materialize the canonical shadow map after the final geometry bundle settles.
+    # This is deliberately fail-soft and never grants strategy authority.
+    try:
+        bundle = capture / "hazard_geometry_v0.json"
+        if bundle.is_file() and map_builder.is_file():
+            completed = subprocess.run(
+                [sys.executable, str(map_builder), "--capture-dir", str(capture)],
+                cwd=str(here),
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30.0,
+            )
+            if completed.returncode != 0:
+                print(
+                    "HazardMap shadow build failed non-blocking: "
+                    + ((completed.stderr or completed.stdout or "unknown error")[-800:])
+                )
+    except Exception as exc:
+        print(f"HazardMap shadow build failed non-blocking: {exc}")
 
     return base_returncode
 
