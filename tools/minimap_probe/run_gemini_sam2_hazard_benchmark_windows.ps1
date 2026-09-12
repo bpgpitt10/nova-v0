@@ -34,20 +34,38 @@ if (-not (Test-Path $Python)) {
   if ($LASTEXITCODE -ne 0) { throw "Could not create Python environment." }
 }
 
+function Test-PythonImport {
+  param([Parameter(Mandatory=$true)][string]$Code)
+  # Missing optional dependencies are expected during first-run probing. Windows
+  # PowerShell can promote native stderr to a terminating NativeCommandError when
+  # ErrorActionPreference is Stop, so suppress it only for this probe and inspect
+  # the process exit code ourselves.
+  $PreviousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "SilentlyContinue"
+    & $Python -c $Code 2>$null
+    return ($LASTEXITCODE -eq 0)
+  } finally {
+    $ErrorActionPreference = $PreviousPreference
+  }
+}
+
 Write-Host "Checking base probe dependencies..."
-& $Python -c "import cv2, numpy" 2>$null
-if ($LASTEXITCODE -ne 0) {
+$BaseReady = Test-PythonImport "import cv2, numpy"
+if (-not $BaseReady) {
   & $Python -m pip install --disable-pip-version-check -r "tools\minimap_probe\requirements.txt"
   if ($LASTEXITCODE -ne 0) { throw "Base minimap-probe dependency installation failed." }
 }
 
 Write-Host "Checking SAM2 field-lab dependencies..."
-& $Python -c "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image" 2>$null
-if ($LASTEXITCODE -ne 0) {
+$SamReady = Test-PythonImport "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
+if (-not $SamReady) {
   Write-Host "Installing PyTorch + Transformers SAM2 support into the isolated probe environment..."
   Write-Host "This may take a while on the first run and downloads model/runtime packages only for the field lab."
   & $Python -m pip install --disable-pip-version-check -r "tools\minimap_probe\requirements_sam2.txt"
   if ($LASTEXITCODE -ne 0) { throw "SAM2 field-lab dependency installation failed." }
+  $SamReady = Test-PythonImport "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
+  if (-not $SamReady) { throw "SAM2 dependencies installed but the import check still fails." }
 }
 
 Write-Host ""
