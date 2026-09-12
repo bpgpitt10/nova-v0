@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Watcher v3.3 policy delta: simplified post-shot live capture.
 
-All validated v3.2 lifecycle/source policy remains unchanged. Post-shot capture now
-uses ShotState v1.4: structured currentRound world position plus PIN and lie only.
-AIM acquisition and post-shot minimap registration are retired from the live path.
+All validated v3.2 lifecycle/source policy remains unchanged. Post-shot capture uses
+ShotState v1.4: structured currentRound world position plus PIN/elevation, lie, wind,
+and passive-only AIM card distance/elevation when already visible. Active AIM
+acquisition and post-shot minimap registration remain retired from the live path.
 """
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ core._cfg = _cfg
 if __name__ == "__main__":
     print(
         "Looper watcher policy v3.3 active over v3.2/v3.1: "
-        "post-shot structured world position + PIN + lie; AIM/registration retired."
+        "post-shot structured world position + PIN/elevation + lie + wind + passive AIM; "
+        "active AIM acquisition/registration retired."
     )
     raise SystemExit(core.main())
