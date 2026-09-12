@@ -182,7 +182,7 @@ def main() -> int:
         "rows": rows,
         "errors": errors,
         "api_calls": 0,
-        "gspro_actuation": false if False else False,
+        "gspro_actuation": False,
         "strategy_authority": False,
     }
     summary_path = Path(args.summary_out).expanduser().resolve() if args.summary_out else root / "hazard_luna_sam2_saved_replay_v0.json"
