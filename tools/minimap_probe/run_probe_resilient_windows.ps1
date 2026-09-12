@@ -37,7 +37,7 @@ if ($HeatmapKey -notin @("Y", "y")) {
 }
 
 $argsList = @(
-  (Join-Path $Here "probe_v8_resilient_verified_guarded.py"),
+  (Join-Path $Here "probe_v8_resilient_verified_guarded_passiveaim.py"),
   "--monitor", "$Monitor",
   "--heatmap-key", "$HeatmapKey",
   "--heatmap-settle-ms", "$HeatmapSettleMs",
@@ -56,10 +56,12 @@ if ($NoAimSummon) { $argsList += "--no-aim-summon" }
 if ($VerifyTeeLie) { $argsList += "--verify-tee-lie" }
 if ($DeepDebug) { $argsList += "--deep-debug" }
 
-Write-Host "Running GSPro tee-capture orchestrator v8.3 resilient + verified Y + tee-race guard once."
+Write-Host "Running GSPro tee-capture orchestrator v8.4 resilient + verified Y + tee-race guard + passive AIM once."
 Write-Host "BASE MODEL survives optional green/red-penalty semantic extractor failures."
 Write-Host "TEE RACE GUARD: the actual child-capture first frame must not be a recognized non-tee surface."
-Write-Host "TEE RULE: no W zoom. Y toggle/restore only, with visual state verification. No auto aim or extra aim calibration pulses."
+Write-Host "TEE RULE: no W zoom. Y toggle/restore only, with visual state verification."
+Write-Host "AIM policy: passive minimap marker first; existing bounded AIM-card summon/verified-return only as fallback."
+Write-Host "No strategy auto-aim or extra aim calibration pulses."
 Write-Host "Raw before/toggled/restored minimaps are retained for replay."
 Write-Host "Step 8+9 hazard field shadow is queued after every saved tee capture."
 Write-Host "Static GKD/Unity archaeology is reused from the course/version/hash cache when available."
