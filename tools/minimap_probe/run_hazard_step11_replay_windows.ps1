@@ -22,7 +22,7 @@ if (-not $env:OPENAI_API_KEY) {
 }
 
 $argsList = @(
-  (Join-Path $Here "hazard_step11_replay.py"),
+  (Join-Path $Here "hazard_step11_replay_v2.py"),
   "--tee-limit", "$TeeLimit",
   "--approach-limit", "$ApproachLimit"
 )
