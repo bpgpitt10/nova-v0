@@ -2,7 +2,7 @@
 """Register a later GSPro minimap back into the tee HoleModel coordinate system.
 
 GSPro's minimap behaves like a 2D map that is translated, scaled, and can rotate a
-few degrees as the player advances.  That means a post-tee minimap can be aligned to
+few degrees as the player advances. That means a post-tee minimap can be aligned to
 the cached tee minimap using image features and a similarity transform
 (scale + rotation + translation).
 
@@ -13,8 +13,13 @@ Why this matters:
   *current* ball without re-extracting the whole hole every shot.
 
 The implementation deliberately uses estimateAffinePartial2D rather than a free
-homography because the observed GSPro geometry is a scaled/rotated 2D map.  A more
+homography because the observed GSPro geometry is a scaled/rotated 2D map. A more
 flexible projective transform could overfit dynamic UI/markers.
+
+Field note: a hard 30-match pre-gate rejected otherwise promising live captures.
+Registration now has an adaptive low-match path, but it is still gated by RANSAC
+inlier ratio/reprojection quality and the caller's independent PIN-distance
+cross-check before geometry can become trusted.
 """
 
 from __future__ import annotations
@@ -38,6 +43,8 @@ class RegistrationResult:
     rotation_deg: float
     median_reprojection_error_px: float
     confidence: float
+    ratio_test_used: float
+    acceptance_mode: str
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -53,40 +60,22 @@ def _play_mask(shape: tuple[int, int]) -> np.ndarray:
     return mask
 
 
-def register_current_to_canonical(
-    current_bgr: np.ndarray,
-    canonical_bgr: np.ndarray,
+def _good_matches(pairs, ratio: float):
+    return [m for m, n in pairs if m.distance < float(ratio) * n.distance]
+
+
+def _solve_candidate(
     *,
-    ratio_test: float = 0.72,
-    ransac_reproj_px: float = 3.0,
-    min_good_matches: int = 30,
-    min_inliers: int = 20,
-) -> RegistrationResult:
-    if current_bgr is None or canonical_bgr is None:
-        raise ValueError("registration images are missing")
-    if current_bgr.shape[:2] != canonical_bgr.shape[:2]:
-        # Same crop dimensions are normal today, but the registration math itself
-        # does not require them to match.  Different sizes are still accepted.
-        pass
-
-    current_gray = cv2.cvtColor(current_bgr, cv2.COLOR_BGR2GRAY)
-    canonical_gray = cv2.cvtColor(canonical_bgr, cv2.COLOR_BGR2GRAY)
-
-    sift = cv2.SIFT_create()
-    kp_cur, des_cur = sift.detectAndCompute(current_gray, _play_mask(current_gray.shape))
-    kp_can, des_can = sift.detectAndCompute(canonical_gray, _play_mask(canonical_gray.shape))
-    if des_cur is None or des_can is None:
-        raise RuntimeError("Could not compute enough minimap features for registration")
-
-    matcher = cv2.BFMatcher(cv2.NORM_L2)
-    pairs = matcher.knnMatch(des_cur, des_can, k=2)
-    good = [m for m, n in pairs if m.distance < float(ratio_test) * n.distance]
-    if len(good) < int(min_good_matches):
-        raise RuntimeError(
-            f"Minimap registration had only {len(good)} good feature matches "
-            f"(need >= {min_good_matches})"
-        )
-
+    good,
+    kp_cur,
+    kp_can,
+    ratio_used: float,
+    mode: str,
+    ransac_reproj_px: float,
+    min_inliers: int,
+    min_inlier_ratio: float,
+    max_median_reprojection_error_px: float,
+):
     src = np.float32([kp_cur[m.queryIdx].pt for m in good])
     dst = np.float32([kp_can[m.trainIdx].pt for m in good])
     matrix, inlier_mask = cv2.estimateAffinePartial2D(
@@ -103,11 +92,20 @@ def register_current_to_canonical(
 
     inliers_bool = inlier_mask.ravel().astype(bool)
     inliers = int(inliers_bool.sum())
+    inlier_ratio = inliers / max(len(good), 1)
     if inliers < int(min_inliers):
-        raise RuntimeError(f"Minimap registration had only {inliers} RANSAC inliers")
+        raise RuntimeError(
+            f"Minimap registration had only {inliers} RANSAC inliers "
+            f"from {len(good)} matches"
+        )
+    if inlier_ratio < float(min_inlier_ratio):
+        raise RuntimeError(
+            f"Minimap registration inlier ratio {inlier_ratio:.2f} below "
+            f"{float(min_inlier_ratio):.2f}"
+        )
 
-    a, b, tx = [float(v) for v in matrix[0]]
-    c, d, ty = [float(v) for v in matrix[1]]
+    a, b, _tx = [float(v) for v in matrix[0]]
+    c, d, _ty = [float(v) for v in matrix[1]]
     # estimateAffinePartial2D should produce [[s cos,-s sin],[s sin,s cos]].
     scale_x = math.hypot(a, c)
     scale_y = math.hypot(b, d)
@@ -124,7 +122,11 @@ def register_current_to_canonical(
     projected = cv2.transform(src_in.reshape(-1, 1, 2), matrix).reshape(-1, 2)
     errors = np.linalg.norm(projected - dst_in, axis=1)
     median_error = float(np.median(errors)) if len(errors) else 999.0
-    inlier_ratio = inliers / max(len(good), 1)
+    if median_error > float(max_median_reprojection_error_px):
+        raise RuntimeError(
+            f"Minimap registration median reprojection error {median_error:.2f}px exceeds "
+            f"{float(max_median_reprojection_error_px):.2f}px"
+        )
 
     # A simple bounded confidence score for debug/gating, not a probabilistic claim.
     match_score = min(1.0, inliers / 100.0)
@@ -143,6 +145,101 @@ def register_current_to_canonical(
         rotation_deg=float(rotation_deg),
         median_reprojection_error_px=median_error,
         confidence=confidence,
+        ratio_test_used=float(ratio_used),
+        acceptance_mode=mode,
+    )
+
+
+def register_current_to_canonical(
+    current_bgr: np.ndarray,
+    canonical_bgr: np.ndarray,
+    *,
+    ratio_test: float = 0.72,
+    relaxed_ratio_test: float = 0.78,
+    ransac_reproj_px: float = 3.0,
+    min_good_matches: int = 30,
+    min_inliers: int = 20,
+    min_inlier_ratio: float = 0.42,
+    max_median_reprojection_error_px: float = 2.75,
+) -> RegistrationResult:
+    if current_bgr is None or canonical_bgr is None:
+        raise ValueError("registration images are missing")
+
+    current_gray = cv2.cvtColor(current_bgr, cv2.COLOR_BGR2GRAY)
+    canonical_gray = cv2.cvtColor(canonical_bgr, cv2.COLOR_BGR2GRAY)
+
+    sift = cv2.SIFT_create()
+    kp_cur, des_cur = sift.detectAndCompute(current_gray, _play_mask(current_gray.shape))
+    kp_can, des_can = sift.detectAndCompute(canonical_gray, _play_mask(canonical_gray.shape))
+    if des_cur is None or des_can is None:
+        raise RuntimeError("Could not compute enough minimap features for registration")
+
+    matcher = cv2.BFMatcher(cv2.NORM_L2)
+    pairs = matcher.knnMatch(des_cur, des_can, k=2)
+    strict_good = _good_matches(pairs, ratio_test)
+
+    # Default live threshold remains the preferred path. The adaptive floor exists
+    # specifically for the 20s-match regime observed in Step 11 field evidence.
+    adaptive_good_floor = max(12, int(math.ceil(float(min_good_matches) * 0.60)))
+    adaptive_inlier_floor = max(8, int(math.ceil(float(min_inliers) * 0.60)))
+    errors: list[str] = []
+
+    if len(strict_good) >= int(min_good_matches):
+        try:
+            return _solve_candidate(
+                good=strict_good,
+                kp_cur=kp_cur,
+                kp_can=kp_can,
+                ratio_used=ratio_test,
+                mode="strict",
+                ransac_reproj_px=ransac_reproj_px,
+                min_inliers=min_inliers,
+                min_inlier_ratio=min_inlier_ratio,
+                max_median_reprojection_error_px=max_median_reprojection_error_px,
+            )
+        except Exception as exc:
+            errors.append(f"strict: {exc}")
+
+    # If the strict ratio found a useful but sub-30 set, try it first with stronger
+    # transform-quality gates instead of discarding it before RANSAC.
+    if adaptive_good_floor <= len(strict_good) < int(min_good_matches):
+        try:
+            return _solve_candidate(
+                good=strict_good,
+                kp_cur=kp_cur,
+                kp_can=kp_can,
+                ratio_used=ratio_test,
+                mode="adaptive-strict-ratio",
+                ransac_reproj_px=ransac_reproj_px,
+                min_inliers=adaptive_inlier_floor,
+                min_inlier_ratio=min_inlier_ratio,
+                max_median_reprojection_error_px=max_median_reprojection_error_px,
+            )
+        except Exception as exc:
+            errors.append(f"adaptive strict-ratio: {exc}")
+
+    relaxed_good = _good_matches(pairs, relaxed_ratio_test)
+    if len(relaxed_good) >= adaptive_good_floor:
+        try:
+            return _solve_candidate(
+                good=relaxed_good,
+                kp_cur=kp_cur,
+                kp_can=kp_can,
+                ratio_used=relaxed_ratio_test,
+                mode="adaptive-relaxed-ratio",
+                ransac_reproj_px=ransac_reproj_px,
+                min_inliers=adaptive_inlier_floor,
+                min_inlier_ratio=max(min_inlier_ratio, 0.46),
+                max_median_reprojection_error_px=max_median_reprojection_error_px,
+            )
+        except Exception as exc:
+            errors.append(f"adaptive relaxed-ratio: {exc}")
+
+    detail = "; ".join(errors[-3:]) if errors else "no candidate reached the adaptive floor"
+    raise RuntimeError(
+        f"Minimap registration could not validate a transform: "
+        f"strict_matches={len(strict_good)}, relaxed_matches={len(relaxed_good)}, "
+        f"adaptive_floor={adaptive_good_floor}; {detail}"
     )
 
 
