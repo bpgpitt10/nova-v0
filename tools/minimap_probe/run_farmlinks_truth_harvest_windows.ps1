@@ -7,12 +7,11 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $RepoRoot
-$RunStart = Get-Date
 $OutputPath = Join-Path $RepoRoot $OutputRoot
 $ManifestPath = Join-Path $RepoRoot $Manifest
 
 Write-Host "Looper FarmLinks TRUTH HARVEST" -ForegroundColor Green
-Write-Host "Source files + saved Luna boxes + SAM2 + locked Step 11 regression + Step 10 comparison."
+Write-Host "Source files + structured hazard IDs + saved Luna boxes + SAM2 + physical field validation + Step 10."
 Write-Host "READ ONLY against GSPro/course files. NO GSPro input. NO VLM API calls. Strategy authority OFF."
 
 if (-not (Test-Path $ManifestPath)) { throw "Regression manifest missing: $ManifestPath" }
@@ -26,8 +25,27 @@ foreach ($Case in $ValidCases) {
   $CapturePaths += $Path
 }
 
+$VenvRoot = Join-Path $PSScriptRoot ".venv"
+$Python = Join-Path $VenvRoot "Scripts\python.exe"
+if (-not (Test-Path $Python)) {
+  throw "Minimap probe Python environment is missing. Run the existing field-lab setup/preflight before truth harvest."
+}
+
 Write-Host ""
-Write-Host "=== 1/6 Fresh FarmLinks GKD + Unity archaeology ===" -ForegroundColor Cyan
+Write-Host "=== PRECHECK: compile new analysis code + run fusion unit tests ===" -ForegroundColor Cyan
+& $Python -m py_compile `
+  "tools\minimap_probe\hazard_step11_regression_suite.py" `
+  "tools\minimap_probe\hazard_luna_sam2_replay.py" `
+  "tools\minimap_probe\hazard_map_shadow.py" `
+  "tools\minimap_probe\hazard_source_geometry_merge.py" `
+  "tools\minimap_probe\hazard_red_field_validation.py" `
+  "tools\minimap_probe\gkd_hazard_number_validation.py"
+if ($LASTEXITCODE -ne 0) { throw "Truth-harvest Python compile precheck failed." }
+& $Python "tools\minimap_probe\test_hazard_map_shadow.py"
+if ($LASTEXITCODE -ne 0) { throw "HazardMap fusion unit tests failed." }
+
+Write-Host ""
+Write-Host "=== 1/8 Fresh FarmLinks GKD + Unity archaeology ===" -ForegroundColor Cyan
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run_farmlinks_source_geometry_windows.ps1") -OutputRoot $OutputRoot -RecentRounds 1
 if ($LASTEXITCODE -ne 0) { throw "FarmLinks source-geometry archaeology failed." }
 
@@ -41,12 +59,18 @@ $UnityGeometry = Join-Path $AssetDir.FullName "geometry_candidates.json"
 if (-not (Test-Path $GkdFeatures)) { throw "GKD features.json missing: $GkdFeatures" }
 if (-not (Test-Path $UnityGeometry)) { throw "Unity geometry_candidates.json missing: $UnityGeometry" }
 
-$VenvRoot = Join-Path $PSScriptRoot ".venv"
-$Python = Join-Path $VenvRoot "Scripts\python.exe"
-if (-not (Test-Path $Python)) { throw "Minimap probe Python environment missing after archaeology run." }
+Write-Host ""
+Write-Host "=== 2/8 Test currentRound HazardNumber=9 against GKD.Hazards source geometry ===" -ForegroundColor Cyan
+$H3ApproachA = Join-Path $OutputPath "approach_capture_20260911_211118_485845"
+$GkdNumberValidation = Join-Path $OutputPath "gkd_hazard_number_validation_20260911.json"
+& $Python "tools\minimap_probe\gkd_hazard_number_validation.py" `
+  --features $GkdFeatures `
+  --shot-state (Join-Path $H3ApproachA "shot_state.json") `
+  --output $GkdNumberValidation
+if ($LASTEXITCODE -ne 0) { throw "GKD HazardNumber probe failed to execute." }
 
 Write-Host ""
-Write-Host "=== 2/6 Merge hazard-relevant source geometry without overwriting Luna ===" -ForegroundColor Cyan
+Write-Host "=== 3/8 Merge hazard-relevant source geometry without overwriting Luna ===" -ForegroundColor Cyan
 $MergeArgs = @("tools\minimap_probe\hazard_source_geometry_merge.py")
 foreach ($Capture in $CapturePaths) { $MergeArgs += @("--capture-dir", $Capture) }
 $MergeArgs += @(
@@ -60,7 +84,7 @@ $MergeArgs += @(
 if ($LASTEXITCODE -ne 0) { throw "Fresh source-geometry merge failed." }
 
 Write-Host ""
-Write-Host "=== 3/6 Saved Luna boxes -> local SAM2, with ZERO API calls ===" -ForegroundColor Cyan
+Write-Host "=== 4/8 Saved Luna boxes -> local SAM2, with ZERO API calls ===" -ForegroundColor Cyan
 & $Python -c "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image" 2>$null
 if ($LASTEXITCODE -ne 0) {
   Write-Host "Installing SAM2 field-lab dependencies. First run can take a while."
@@ -77,7 +101,7 @@ foreach ($Capture in $CapturePaths) { $SamArgs += @("--capture-dir", $Capture) }
 if ($LASTEXITCODE -ne 0) { throw "Saved Luna -> SAM2 replay failed. No API retry was attempted." }
 
 Write-Host ""
-Write-Host "=== 4/6 Replay locked Step 11 field regressions ===" -ForegroundColor Cyan
+Write-Host "=== 5/8 Replay locked Step 11 field regressions ===" -ForegroundColor Cyan
 $RegressionResult = Join-Path $OutputPath "step11_20260911_regression_result.json"
 & $Python "tools\minimap_probe\hazard_step11_regression_suite.py" `
   --manifest $ManifestPath `
@@ -86,14 +110,20 @@ $RegressionResult = Join-Path $OutputPath "step11_20260911_regression_result.jso
 if ($LASTEXITCODE -ne 0) { throw "Locked Step 11 field regression failed. Stop here rather than hiding the regression." }
 
 Write-Host ""
-Write-Host "=== 5/6 Build canonical shadow HazardMaps ===" -ForegroundColor Cyan
+Write-Host "=== 6/8 Independently validate H3 red CV against GSPro HazardLastPointOfEntry ===" -ForegroundColor Cyan
+$RedValidation = Join-Path $OutputPath "red_penalty_field_validation_20260911.json"
+& $Python "tools\minimap_probe\hazard_red_field_validation.py" --output-root $OutputPath --output $RedValidation
+if ($LASTEXITCODE -ne 0) { throw "H3 red penalty physical validation failed current tolerances." }
+
+Write-Host ""
+Write-Host "=== 7/8 Build canonical shadow HazardMaps ===" -ForegroundColor Cyan
 foreach ($Capture in $CapturePaths) {
   & $Python "tools\minimap_probe\hazard_map_shadow.py" --capture-dir $Capture
   if ($LASTEXITCODE -ne 0) { throw "HazardMap shadow build failed for $Capture" }
 }
 
 Write-Host ""
-Write-Host "=== 6/6 Compare all sources against tonight's physical shot truth ===" -ForegroundColor Cyan
+Write-Host "=== 8/8 Compare all sources against tonight's physical shot truth ===" -ForegroundColor Cyan
 $FirstContext = Get-Content (Join-Path $CapturePaths[0] "capture_context.json") -Raw | ConvertFrom-Json
 $SessionId = $FirstContext.watcher_session_id
 if (-not $SessionId) { throw "watcher_session_id missing from saved tee capture context." }
@@ -123,7 +153,9 @@ $Stage = Join-Path $OutputPath ("farmlinks_truth_harvest_review_" + $Stamp)
 New-Item -ItemType Directory -Path $Stage -Force | Out-Null
 
 Copy-Item $ManifestPath (Join-Path $Stage "step11_regression_manifest.json") -Force
-if (Test-Path $RegressionResult) { Copy-Item $RegressionResult $Stage -Force }
+foreach ($EvidenceFile in @($RegressionResult, $GkdNumberValidation, $RedValidation)) {
+  if (Test-Path $EvidenceFile) { Copy-Item $EvidenceFile $Stage -Force }
+}
 $SamSummary = Join-Path $OutputPath "hazard_luna_sam2_saved_replay_v0.json"
 if (Test-Path $SamSummary) { Copy-Item $SamSummary $Stage -Force }
 Copy-Item $CompareDir.FullName (Join-Path $Stage "step10_comparison") -Recurse -Force
@@ -172,9 +204,11 @@ Watcher session: $SessionId
 
 Included:
 - fresh read-only GKD and Unity hazard-relevant archaeology
+- structured HazardNumber=9 -> GKD.Hazards index/spatial probe
 - saved Luna semantic boxes (no new VLM API calls)
 - local SAM2 exact-mask replay
 - locked Step 11 field regression result
+- independent red-CV vs GSPro HazardLastPointOfEntry physical validation
 - canonical shadow HazardMaps
 - Step 10 cross-source + physical-shot truth comparison
 
