@@ -16,10 +16,13 @@ The implementation deliberately uses estimateAffinePartial2D rather than a free
 homography because the observed GSPro geometry is a scaled/rotated 2D map. A more
 flexible projective transform could overfit dynamic UI/markers.
 
-Field note: a hard 30-match pre-gate rejected otherwise promising live captures.
-Registration now has an adaptive low-match path, but it is still gated by RANSAC
-inlier ratio/reprojection quality and the caller's independent PIN-distance
-cross-check before geometry can become trusted.
+Field note: Step 11 exposed two distinct failure modes. A hard 30-match pre-gate
+rejected good 20s-match captures, and one later capture produced a visually
+self-consistent but impossible ~141-degree transform from repeated course texture.
+The adaptive path therefore remains RANSAC-gated, while an optional shared PIN
+anchor can now reject/redirect geometrically wrong descriptor consensus. Geometry
+still cannot become trusted until the caller's independent PIN-distance cross-check
+also passes.
 """
 
 from __future__ import annotations
@@ -45,6 +48,7 @@ class RegistrationResult:
     confidence: float
     ratio_test_used: float
     acceptance_mode: str
+    anchor_error_px: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -64,6 +68,47 @@ def _good_matches(pairs, ratio: float):
     return [m for m, n in pairs if m.distance < float(ratio) * n.distance]
 
 
+def _wrapped_deg(value: float) -> float:
+    return (float(value) + 180.0) % 360.0 - 180.0
+
+
+def _anchor_prefilter(
+    good,
+    kp_cur,
+    kp_can,
+    *,
+    current_anchor_xy: tuple[float, float],
+    canonical_anchor_xy: tuple[float, float],
+    max_rotation_deg: float = 35.0,
+):
+    """Keep descriptor matches whose geometry around the shared PIN is plausible.
+
+    For the same physical PIN in both minimaps, a correct feature match implies the
+    same similarity transform when each feature is expressed as a vector from PIN.
+    Repeated course texture that wants to rotate the hole ~140 degrees is removed
+    before RANSAC rather than being allowed to dominate it.
+    """
+    cur_anchor = np.asarray(current_anchor_xy, dtype=float)
+    can_anchor = np.asarray(canonical_anchor_xy, dtype=float)
+    kept = []
+    for match in good:
+        cur = np.asarray(kp_cur[match.queryIdx].pt, dtype=float) - cur_anchor
+        can = np.asarray(kp_can[match.trainIdx].pt, dtype=float) - can_anchor
+        cur_norm = float(np.linalg.norm(cur))
+        can_norm = float(np.linalg.norm(can))
+        if cur_norm < 8.0 or can_norm < 8.0:
+            continue
+        scale = can_norm / cur_norm
+        if not (0.15 <= scale <= 4.0):
+            continue
+        cur_angle = math.degrees(math.atan2(cur[1], cur[0]))
+        can_angle = math.degrees(math.atan2(can[1], can[0]))
+        rotation = _wrapped_deg(can_angle - cur_angle)
+        if abs(rotation) <= float(max_rotation_deg):
+            kept.append(match)
+    return kept
+
+
 def _solve_candidate(
     *,
     good,
@@ -75,6 +120,9 @@ def _solve_candidate(
     min_inliers: int,
     min_inlier_ratio: float,
     max_median_reprojection_error_px: float,
+    current_anchor_xy: tuple[float, float] | None = None,
+    canonical_anchor_xy: tuple[float, float] | None = None,
+    max_anchor_error_px: float = 7.0,
 ):
     src = np.float32([kp_cur[m.queryIdx].pt for m in good])
     dst = np.float32([kp_can[m.trainIdx].pt for m in good])
@@ -106,7 +154,6 @@ def _solve_candidate(
 
     a, b, _tx = [float(v) for v in matrix[0]]
     c, d, _ty = [float(v) for v in matrix[1]]
-    # estimateAffinePartial2D should produce [[s cos,-s sin],[s sin,s cos]].
     scale_x = math.hypot(a, c)
     scale_y = math.hypot(b, d)
     scale = (scale_x + scale_y) / 2.0
@@ -128,11 +175,26 @@ def _solve_candidate(
             f"{float(max_median_reprojection_error_px):.2f}px"
         )
 
-    # A simple bounded confidence score for debug/gating, not a probabilistic claim.
+    anchor_error = None
+    if current_anchor_xy is not None and canonical_anchor_xy is not None:
+        cur_anchor = np.array(
+            [[[float(current_anchor_xy[0]), float(current_anchor_xy[1])]]],
+            dtype=np.float32,
+        )
+        projected_anchor = cv2.transform(cur_anchor, matrix).reshape(2)
+        target_anchor = np.asarray(canonical_anchor_xy, dtype=float)
+        anchor_error = float(np.linalg.norm(projected_anchor - target_anchor))
+        if anchor_error > float(max_anchor_error_px):
+            raise RuntimeError(
+                f"Minimap registration PIN-anchor error {anchor_error:.2f}px exceeds "
+                f"{float(max_anchor_error_px):.2f}px"
+            )
+
     match_score = min(1.0, inliers / 100.0)
     ratio_score = min(1.0, inlier_ratio / 0.65)
     error_score = max(0.0, min(1.0, 1.0 - median_error / 4.0))
-    confidence = float(0.35 * match_score + 0.35 * ratio_score + 0.30 * error_score)
+    anchor_score = 1.0 if anchor_error is None else max(0.0, min(1.0, 1.0 - anchor_error / max(max_anchor_error_px, 1.0)))
+    confidence = float(0.30 * match_score + 0.30 * ratio_score + 0.25 * error_score + 0.15 * anchor_score)
 
     return RegistrationResult(
         matrix_2x3=[[float(v) for v in row] for row in matrix.tolist()],
@@ -147,6 +209,7 @@ def _solve_candidate(
         confidence=confidence,
         ratio_test_used=float(ratio_used),
         acceptance_mode=mode,
+        anchor_error_px=anchor_error,
     )
 
 
@@ -161,6 +224,8 @@ def register_current_to_canonical(
     min_inliers: int = 20,
     min_inlier_ratio: float = 0.42,
     max_median_reprojection_error_px: float = 2.75,
+    current_anchor_xy: tuple[float, float] | None = None,
+    canonical_anchor_xy: tuple[float, float] | None = None,
 ) -> RegistrationResult:
     if current_bgr is None or canonical_bgr is None:
         raise ValueError("registration images are missing")
@@ -178,42 +243,42 @@ def register_current_to_canonical(
     pairs = matcher.knnMatch(des_cur, des_can, k=2)
     strict_good = _good_matches(pairs, ratio_test)
 
-    # Default live threshold remains the preferred path. The adaptive floor exists
-    # specifically for the 20s-match regime observed in Step 11 field evidence.
     adaptive_good_floor = max(12, int(math.ceil(float(min_good_matches) * 0.60)))
     adaptive_inlier_floor = max(8, int(math.ceil(float(min_inliers) * 0.60)))
     errors: list[str] = []
+
+    solve_common = {
+        "kp_cur": kp_cur,
+        "kp_can": kp_can,
+        "ransac_reproj_px": ransac_reproj_px,
+        "current_anchor_xy": current_anchor_xy,
+        "canonical_anchor_xy": canonical_anchor_xy,
+    }
 
     if len(strict_good) >= int(min_good_matches):
         try:
             return _solve_candidate(
                 good=strict_good,
-                kp_cur=kp_cur,
-                kp_can=kp_can,
                 ratio_used=ratio_test,
                 mode="strict",
-                ransac_reproj_px=ransac_reproj_px,
                 min_inliers=min_inliers,
                 min_inlier_ratio=min_inlier_ratio,
                 max_median_reprojection_error_px=max_median_reprojection_error_px,
+                **solve_common,
             )
         except Exception as exc:
             errors.append(f"strict: {exc}")
 
-    # If the strict ratio found a useful but sub-30 set, try it first with stronger
-    # transform-quality gates instead of discarding it before RANSAC.
     if adaptive_good_floor <= len(strict_good) < int(min_good_matches):
         try:
             return _solve_candidate(
                 good=strict_good,
-                kp_cur=kp_cur,
-                kp_can=kp_can,
                 ratio_used=ratio_test,
                 mode="adaptive-strict-ratio",
-                ransac_reproj_px=ransac_reproj_px,
                 min_inliers=adaptive_inlier_floor,
                 min_inlier_ratio=min_inlier_ratio,
                 max_median_reprojection_error_px=max_median_reprojection_error_px,
+                **solve_common,
             )
         except Exception as exc:
             errors.append(f"adaptive strict-ratio: {exc}")
@@ -223,19 +288,46 @@ def register_current_to_canonical(
         try:
             return _solve_candidate(
                 good=relaxed_good,
-                kp_cur=kp_cur,
-                kp_can=kp_can,
                 ratio_used=relaxed_ratio_test,
                 mode="adaptive-relaxed-ratio",
-                ransac_reproj_px=ransac_reproj_px,
                 min_inliers=adaptive_inlier_floor,
                 min_inlier_ratio=max(min_inlier_ratio, 0.46),
                 max_median_reprojection_error_px=max_median_reprojection_error_px,
+                **solve_common,
             )
         except Exception as exc:
             errors.append(f"adaptive relaxed-ratio: {exc}")
 
-    detail = "; ".join(errors[-3:]) if errors else "no candidate reached the adaptive floor"
+    # Last field-safe fallback: use the shared PIN as a semantic anchor to remove
+    # descriptor matches that imply impossible hole rotation around that same point.
+    if current_anchor_xy is not None and canonical_anchor_xy is not None:
+        anchored = _anchor_prefilter(
+            relaxed_good,
+            kp_cur,
+            kp_can,
+            current_anchor_xy=current_anchor_xy,
+            canonical_anchor_xy=canonical_anchor_xy,
+        )
+        anchored_floor = max(9, int(math.ceil(float(min_good_matches) * 0.30)))
+        anchored_inlier_floor = max(6, int(math.ceil(float(min_inliers) * 0.30)))
+        if len(anchored) >= anchored_floor:
+            try:
+                return _solve_candidate(
+                    good=anchored,
+                    ratio_used=relaxed_ratio_test,
+                    mode="pin-anchored-adaptive",
+                    min_inliers=anchored_inlier_floor,
+                    min_inlier_ratio=max(min_inlier_ratio, 0.52),
+                    max_median_reprojection_error_px=min(max_median_reprojection_error_px, 2.25),
+                    max_anchor_error_px=5.0,
+                    **solve_common,
+                )
+            except Exception as exc:
+                errors.append(f"pin-anchored: {exc}")
+        else:
+            errors.append(f"pin-anchored: only {len(anchored)} plausible matches (need {anchored_floor})")
+
+    detail = "; ".join(errors[-4:]) if errors else "no candidate reached the adaptive floor"
     raise RuntimeError(
         f"Minimap registration could not validate a transform: "
         f"strict_matches={len(strict_good)}, relaxed_matches={len(relaxed_good)}, "
@@ -277,7 +369,6 @@ def canonical_position_from_hole_model(
     if norm < 10.0:
         raise ValueError("Canonical tee/pin axis is invalid")
     forward_unit = axis / norm
-    # Screen-space vector pointing to the player's right when tee->pin is forward.
     right_unit = np.array([-forward_unit[1], forward_unit[0]], dtype=float)
     delta = current - tee
 
