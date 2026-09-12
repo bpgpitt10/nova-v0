@@ -22,21 +22,29 @@ class HazardMapShadowTests(unittest.TestCase):
             semantic_confidence=0.98,
         )
 
-    def _sam(self, object_id: str = "bunker_1"):
+    def _sam(self, object_id: str = "bunker_1", accepted: bool = True):
+        reps = [hg.representation(
+            geometry_type="bbox",
+            coordinate_space="minimap_normalized",
+            bbox=[0.2, 0.2, 0.4, 0.4],
+            coordinate_authority="semantic-prompt",
+        )]
+        if accepted:
+            reps.append(hg.representation(
+                geometry_type="polygon",
+                coordinate_space="minimap_normalized",
+                points=[[0.22, 0.22], [0.38, 0.22], [0.36, 0.37], [0.23, 0.36]],
+                coordinate_authority="prompt-segmenter",
+            ))
         return hg.make_geometry(
             hazard_class="bunker",
             source_kind="sam2",
             source_name="SAM2 prompted by Luna",
             source_object_id=object_id,
-            representations=[hg.representation(
-                geometry_type="polygon",
-                coordinate_space="minimap_normalized",
-                points=[[0.22, 0.22], [0.38, 0.22], [0.36, 0.37], [0.23, 0.36]],
-                coordinate_authority="prompt-segmenter",
-            )],
+            representations=reps,
             semantic_confidence=0.98,
-            geometry_confidence=0.91,
-            validation_state="segmentation-accepted-unvalidated",
+            geometry_confidence=0.91 if accepted else None,
+            validation_state="segmentation-accepted-unvalidated" if accepted else "segmentation-rejected",
         )
 
     def _legacy_whole(self):
@@ -69,12 +77,21 @@ class HazardMapShadowTests(unittest.TestCase):
             validation_state="red-cv-shadow-unvalidated",
         )
 
-    def test_sam_becomes_primary_for_semantic_chain(self):
+    def test_accepted_sam_becomes_primary_for_semantic_chain(self):
         payload = hm.build_shadow_map([self._vlm(), self._sam()])
         self.assertEqual(payload["canonical_hazard_count"], 1)
         self.assertEqual(payload["hazards"][0]["primary"]["source"]["kind"], "sam2")
         self.assertFalse(payload["strategy_authority"])
         self.assertEqual(payload["promotion_decision"], "none")
+
+    def test_rejected_sam_cannot_displace_vlm(self):
+        payload = hm.build_shadow_map([self._vlm(), self._sam(accepted=False)])
+        self.assertEqual(payload["canonical_hazard_count"], 1)
+        hazard = payload["hazards"][0]
+        self.assertEqual(hazard["primary"]["source"]["kind"], "vlm")
+        sam_rows = [row for row in hazard["evidence_chain"] if row["source"]["kind"] == "sam2"]
+        self.assertEqual(len(sam_rows), 1)
+        self.assertFalse(sam_rows[0]["eligible_as_primary"])
 
     def test_whole_image_legacy_cannot_create_primary(self):
         payload = hm.build_shadow_map([self._legacy_whole()])
