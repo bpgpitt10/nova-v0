@@ -64,6 +64,7 @@ Write-Host "Step 8+9 hazard field shadow is queued after every saved tee capture
 Write-Host "Static GKD/Unity archaeology is reused from the course/version/hash cache when available."
 if ($HazardProvider -eq "Luna") {
   Write-Host "Semantic provider: OpenAI Luna enrichment after validated Step 8/9 base collection."
+  Write-Host "Field-lab Luna may inspect an unconfirmed heatmap-state image, but it remains diagnostic-only with strategy authority OFF."
   if (-not $env:OPENAI_API_KEY) {
     Write-Warning "OPENAI_API_KEY is not set; Luna enrichment will fail soft and base Step 8/9 evidence will remain. Run the Luna preflight before counting this as Step 11 validation."
   }
@@ -81,7 +82,8 @@ $TeeExit = $LASTEXITCODE
 # consumes only saved tee artifacts, and is independent from live GSPro actuation.
 # Luna is the default Step 11 field provider. It reuses the validated base collector
 # with Gemini/SAM disabled, then enriches the saved capture with OpenAI semantics.
-# Either provider remains fail-soft and never changes the tee probe result.
+# Field-lab Luna is allowed to run even when the Y classifier cannot prove heatmap-off;
+# that image policy is recorded in the manifest and can never grant strategy authority.
 try {
   $Capture = Get-ChildItem -Path $OutputRoot -Directory -Filter "tee_capture_*" -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -ge $RunStart.AddSeconds(-2) } |
@@ -97,6 +99,9 @@ try {
     $ShadowScript = Join-Path $Here $ShadowScriptName
     if (Test-Path $ShadowScript) {
       $ShadowArgs = @($ShadowScript, "--capture-dir", $Capture.FullName)
+      if ($HazardProvider -eq "Luna") {
+        $ShadowArgs += "--allow-unconfirmed-semantic-image"
+      }
       Start-Process -FilePath $Python -ArgumentList $ShadowArgs -WorkingDirectory $Here -WindowStyle Hidden | Out-Null
       Write-Host "Hazard field shadow queued: $($Capture.Name) | provider=$HazardProvider (async / non-blocking)"
     } else {
