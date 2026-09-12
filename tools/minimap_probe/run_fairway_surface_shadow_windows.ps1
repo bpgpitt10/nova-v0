@@ -2,7 +2,7 @@ param(
   [string[]]$CaptureRoot = @(),
   [string[]]$CaptureDir = @(),
   [int]$Latest = 0,
-  [string]$Model = "gemini-3.1-flash-lite",
+  [string]$Model = "gpt-5.6-luna",
   [string]$SamModel = "facebook/sam2.1-hiera-tiny",
   [string]$Device = "auto",
   [switch]$Force
@@ -24,7 +24,7 @@ if (-not $CaptureRoot -and -not $CaptureDir) {
 }
 
 $ArgsList = @(
-  "tools\minimap_probe\fairway_surface_shadow.py",
+  "tools\minimap_probe\fairway_surface_shadow_luna.py",
   "--model", $Model,
   "--sam-model", $SamModel,
   "--device", $Device,
@@ -36,7 +36,7 @@ if ($Force) { $ArgsList += "--force" }
 
 Write-Host "Looper Fairway Surface Shadow v0"
 Write-Host "OFFLINE SAVED-CAPTURE MODE. No GSPro input. Strategy authority OFF."
-Write-Host "Semantic localization -> SAM2 edge -> tee/pin topology QA."
+Write-Host "Luna semantic localization -> Gemini fallback -> SAM2 edge -> tee/pin topology QA."
 Write-Host "Par 3 no-fairway is an allowed result."
 Write-Host ""
 & $Python @ArgsList
