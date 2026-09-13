@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Package Fairway Corridor v1 outputs into one visual review ZIP."""
+"""Package Fairway Corridor v1 outputs into one self-contained visual review ZIP.
+
+The review bundle intentionally carries the strategy/transform/source artifacts that
+are expensive or impossible to recreate away from the simulator PC. A single upload
+is therefore sufficient for offline review and shadow aim work.
+"""
 from __future__ import annotations
 
 import argparse
@@ -30,6 +35,41 @@ def _panel(image: np.ndarray, title: str, subtitle: str, width: int = 360) -> np
     cv2.putText(header, title, (9, 21), cv2.FONT_HERSHEY_SIMPLEX, 0.53, (245, 245, 245), 1, cv2.LINE_AA)
     cv2.putText(header, subtitle[:58], (9, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.39, (185, 205, 190), 1, cv2.LINE_AA)
     return np.vstack([header, body])
+
+
+def _copy_if_present(source: Path, destination_dir: Path, name: str) -> bool:
+    path = source / name
+    if not path.is_file():
+        return False
+    shutil.copy2(path, destination_dir / name)
+    return True
+
+
+def _copy_source_minimap(capture: Path, hole_dir: Path, corridor_payload: dict) -> str | None:
+    # Prefer the exact image the corridor extractor used. Fall back to the standard
+    # screenshot-first source priority so the review bundle always preserves visual truth.
+    candidates = []
+    source_name = corridor_payload.get("source_image")
+    if isinstance(source_name, str) and source_name.strip():
+        candidates.append(source_name.strip())
+    candidates.extend([
+        "tee_hazard_safe_minimap.png",
+        "tee_canonical_minimap.png",
+        "tee_initial_minimap.png",
+        "watcher_prelaunch_minimap.png",
+        "tee_heatmap_minimap.png",
+    ])
+    seen = set()
+    for name in candidates:
+        if name in seen:
+            continue
+        seen.add(name)
+        path = capture / name
+        if path.is_file():
+            target_name = "gspro_minimap_visual_truth.png"
+            shutil.copy2(path, hole_dir / target_name)
+            return name
+    return None
 
 
 def build(capture_root: Path, *, latest: int = 18) -> tuple[Path, Path]:
@@ -76,6 +116,26 @@ def build(capture_root: Path, *, latest: int = 18) -> tuple[Path, Path]:
         prompt = capture / "fairway_corridor_prompt_v1.png"
         if prompt.is_file():
             shutil.copy2(prompt, hole_dir / "fairway_corridor_prompt_v1.png")
+
+        # One-upload contract: preserve everything needed for offline strategy work.
+        copied = []
+        for artifact in (
+            "screenshot_strategy_geometry_v2.json",
+            "screenshot_strategy_geometry_overlay_v2.png",
+            "hole_spatial_model_v1.json",
+            "hole_model.json",
+            "bunker_recall_v1.json",
+            "red_penalty_pixel_geometry_v1.json",
+            "white_boundary_pixel_geometry_v1.json",
+            "fairway_surface_shadow_v0.json",
+            "capture_context.json",
+        ):
+            if _copy_if_present(capture, hole_dir, artifact):
+                copied.append(artifact)
+        original_source = _copy_source_minimap(capture, hole_dir, payload)
+        if original_source:
+            copied.append("gspro_minimap_visual_truth.png")
+
         manifest_rows.append({
             "hole": hole,
             "capture": capture.name,
@@ -84,6 +144,8 @@ def build(capture_root: Path, *, latest: int = 18) -> tuple[Path, Path]:
             "minimum_width_yds": min(widths) if widths else None,
             "maximum_width_yds": max(widths) if widths else None,
             "station_warning_count": warning_count,
+            "visual_truth_original_filename": original_source,
+            "included_strategy_artifacts": copied,
         })
 
     cols = 3
@@ -104,6 +166,7 @@ def build(capture_root: Path, *, latest: int = 18) -> tuple[Path, Path]:
 
     manifest = {
         "schema_version": SCHEMA_VERSION,
+        "bundle_contract": "single upload contains corridor + strategy geometry + transform + visual-truth artifacts for offline review",
         "rows": manifest_rows,
         "contact_sheet": contact_name,
         "strategy_authority": False,
@@ -120,7 +183,7 @@ def build(capture_root: Path, *, latest: int = 18) -> tuple[Path, Path]:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Create Fairway Corridor v1 review ZIP")
+    p = argparse.ArgumentParser(description="Create self-contained Fairway Corridor v1 review ZIP")
     p.add_argument("--capture-root", default="tools/minimap_probe/output")
     p.add_argument("--latest", type=int, default=18)
     args = p.parse_args()
