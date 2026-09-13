@@ -12,8 +12,6 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $RepoRoot
 
-# Hugging Face falls back safely when Windows symlinks are unavailable. Suppress
-# that noisy warning because it is not an execution failure.
 $env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
 
 $VenvRoot = Join-Path $PSScriptRoot ".venv"
@@ -34,8 +32,6 @@ function Test-PythonImport {
   param([Parameter(Mandatory=$true)][string]$Code)
   $PreviousPreference = $ErrorActionPreference
   try {
-    # A failed first-run import is expected and should not become a PowerShell
-    # NativeCommandError before we can inspect the Python exit code.
     $ErrorActionPreference = "SilentlyContinue"
     & $Python -c $Code 2>$null
     return ($LASTEXITCODE -eq 0)
@@ -51,8 +47,6 @@ function Invoke-PythonChecked {
   )
   $PreviousPreference = $ErrorActionPreference
   try {
-    # Python/pip/Transformers legitimately write progress and warnings to stderr.
-    # Let the process exit code, not PowerShell's stderr promotion, decide success.
     $ErrorActionPreference = "Continue"
     & $Python @Arguments
     $Code = $LASTEXITCODE
@@ -65,9 +59,6 @@ function Invoke-PythonChecked {
 $PythonVersion = (& $Python -c "import sys; print(sys.version.split()[0])").Trim()
 Write-Host "Fairway runtime preflight"
 Write-Host "  python=$PythonVersion"
-if ($PythonVersion -eq "3.14.1") {
-  throw "Python 3.14.1 is explicitly excluded by current torchvision wheels. Update Python to another 3.14 patch (or 3.13), then recreate tools\minimap_probe\.venv."
-}
 
 Write-Host "Checking base probe dependencies..."
 $BaseReady = Test-PythonImport "import cv2, numpy"
@@ -78,10 +69,6 @@ if (-not $BaseReady) {
   ) -FailureMessage "Base minimap-probe dependency installation failed."
 }
 
-# Current Windows/Python 3.14 pair verified for this field lab:
-# torch 2.14.0 <-> torchvision 0.29.0. Import both explicitly because
-# Sam2Processor can import successfully even when torchvision is absent and then
-# fail only when the image processor is instantiated.
 $SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; assert torch.__version__.split('+')[0] == '2.14.0'; assert torchvision.__version__.split('+')[0] == '0.29.0'"
 if (-not $SamReady) {
   Write-Host "Installing/repairing matched SAM2 runtime (torch 2.14.0 + torchvision 0.29.0)..."
