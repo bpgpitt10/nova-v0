@@ -16,6 +16,7 @@ from typing import Any
 
 YARDS_PER_WORLD_UNIT = 1.0936132983377078
 SCHEMA_VERSION = "looper-hole-spatial-model-v1"
+BASIS_REVISION = "image-y-down-right-positive-v2"
 
 
 def read_json(path: Path) -> Any:
@@ -114,12 +115,17 @@ def anchor_transform(hole_model: dict[str, Any], row: dict[str, Any]) -> dict[st
     tx, ty = float(tee_px["x"]), float(tee_px["y"])
     px, py = float(pin_px["x"]), float(pin_px["y"])
     pfx, pfy = norm(px - tx, py - ty)
-    prx, pry = pfy, -pfx
+    # Image coordinates are x-right / y-down. A golfer-right basis is therefore
+    # the counter-clockwise image-space perpendicular (-fy, fx). The prior
+    # (fy, -fx) basis mirrored every minimap-derived lateral coordinate.
+    prx, pry = -pfy, pfx
 
     tee, pin = row["teePos"], row["pinPos"]
     wx0, wz0 = float(tee["x"]), float(tee["z"])
     wx1, wz1 = float(pin["x"]), float(pin["z"])
     wfx, wfz = norm(wx1 - wx0, wz1 - wz0)
+    # Unity/GSPro XZ is x-right / z-forward, so this world-space perpendicular is
+    # correctly right-positive and intentionally differs from image-space rotation.
     wrx, wrz = wfz, -wfx
     world_xz_yds = math.hypot(wx1 - wx0, wz1 - wz0) * YARDS_PER_WORLD_UNIT
     pixel_dist = math.hypot(px - tx, py - ty)
@@ -135,6 +141,7 @@ def anchor_transform(hole_model: dict[str, Any], row: dict[str, Any]) -> dict[st
         "world_xz_tee_to_pin_yds": world_xz_yds,
         "pixel_tee_to_pin": pixel_dist,
         "yards_per_pixel": world_xz_yds / pixel_dist,
+        "basis_revision": BASIS_REVISION,
     }
 
 
@@ -145,6 +152,30 @@ def pixel_to_local(t: dict[str, Any], x: float, y: float) -> tuple[float, float]
     prx, pry = t["pixel_right_unit"]
     scale = float(t["yards_per_pixel"])
     return (dx * prx + dy * pry) * scale, (dx * pfx + dy * pfy) * scale
+
+
+def local_to_pixel(t: dict[str, Any], lateral: float, forward: float) -> tuple[float, float]:
+    tx, ty = float(t["tee_pixel"]["x"]), float(t["tee_pixel"]["y"])
+    pfx, pfy = t["pixel_forward_unit"]
+    prx, pry = t["pixel_right_unit"]
+    scale = float(t["yards_per_pixel"])
+    if scale <= 0:
+        raise ValueError("yards_per_pixel must be > 0")
+    return (
+        tx + (forward * pfx + lateral * prx) / scale,
+        ty + (forward * pfy + lateral * pry) / scale,
+    )
+
+
+def world_to_local(t: dict[str, Any], x: float, z: float) -> tuple[float, float]:
+    wx0, wz0 = t["tee_world_xz"]
+    wfx, wfz = t["world_forward_unit_xz"]
+    wrx, wrz = t["world_right_unit_xz"]
+    dx, dz = float(x) - float(wx0), float(z) - float(wz0)
+    return (
+        (dx * wrx + dz * wrz) * YARDS_PER_WORLD_UNIT,
+        (dx * wfx + dz * wfz) * YARDS_PER_WORLD_UNIT,
+    )
 
 
 def local_to_world(t: dict[str, Any], lateral: float, forward: float) -> tuple[float, float]:
@@ -235,6 +266,7 @@ def build_model(capture: Path, output_log: Path) -> dict[str, Any]:
             "canonical_live_space": "hole_local_yards",
             "axes": {"lateral": "right-positive", "forward": "tee-toward-pin-positive"},
             "yards_per_world_unit": YARDS_PER_WORLD_UNIT,
+            "basis_revision": BASIS_REVISION,
         },
         "anchors": {
             "tee_world_xyz": row.get("teePos"),
@@ -257,7 +289,14 @@ def build_model(capture: Path, output_log: Path) -> dict[str, Any]:
 def process_capture(capture: Path, output_log: Path, force: bool = False) -> bool:
     out = capture / "hole_spatial_model_v1.json"
     if out.is_file() and not force:
-        return True
+        try:
+            existing = read_json(out)
+            if (existing.get("coordinate_contract") or {}).get("basis_revision") == BASIS_REVISION:
+                return True
+        except Exception:
+            pass
+        # Older v1 models used a mirrored image-space lateral basis. Rebuild them
+        # automatically rather than silently consuming stale left/right geometry.
     required = [capture / "hole_model.json", capture / "hazard_map_shadow_v0.json", capture / "capture_context.json"]
     if not all(p.is_file() for p in required) or not output_log.is_file():
         return False
