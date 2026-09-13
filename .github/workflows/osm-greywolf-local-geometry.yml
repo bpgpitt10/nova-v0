@@ -1,0 +1,90 @@
+name: Greywolf OSM local geometry proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - tools/minimap_probe/experimental/osm_geometry_poc.py
+      - .github/workflows/osm-greywolf-local-geometry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  local-geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout proof branch
+        uses: actions/checkout@v4
+
+      - name: Download preserved Greywolf OSM snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          rm -rf seed
+          mkdir -p seed
+          gh run download 34788665457 -R bpgpitt10/nova-v0 -n greywolf-osm-proof --dir seed
+          test -s seed/greywolf-osm.json
+
+      - name: Write captured GSPro tee targets
+        shell: bash
+        run: |
+          cat > seed/greywolf-gspro-tee-targets.json <<'JSON'
+          {
+            "1": 350,
+            "2": 355,
+            "3": 439,
+            "4": 397,
+            "5": 524,
+            "6": 147,
+            "7": 362,
+            "8": 396,
+            "9": 131,
+            "10": 544,
+            "11": 289,
+            "12": 127,
+            "13": 326,
+            "14": 444,
+            "15": 126,
+            "16": 345,
+            "17": 373,
+            "18": 361
+          }
+          JSON
+
+      - name: Build all 18 local-yard hole models
+        shell: bash
+        run: |
+          rm -rf artifacts/osm-proof/local-geometry
+          python tools/minimap_probe/experimental/osm_geometry_poc.py \
+            --osm seed/greywolf-osm.json \
+            --tee-targets-json seed/greywolf-gspro-tee-targets.json \
+            --out-dir artifacts/osm-proof/local-geometry \
+            --course-name "Greywolf Golf Course"
+          test "$(find artifacts/osm-proof/local-geometry -name 'greywolf-hole-*.json' | wc -l)" -eq 18
+          test "$(find artifacts/osm-proof/local-geometry -name 'greywolf-hole-*.svg' | wc -l)" -eq 18
+
+      - name: Persist proof outputs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/local-geometry
+          if git diff --cached --quiet; then
+            echo "Local geometry proof outputs unchanged"
+          else
+            git commit -m "test(strategy): record Greywolf OSM local geometry proof"
+            git push
+          fi
+
+      - name: Upload local geometry proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-osm-local-geometry
+          path: artifacts/osm-proof/local-geometry
+          retention-days: 14
