@@ -12,6 +12,8 @@ $Python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $Python)) { throw "minimap-probe .venv missing; run the bunker recall runner first." }
 
 Write-Host "Running screenshot strategy geometry v2 tests..."
+& $Python "tools\minimap_probe\test_white_boundary_pixel_geometry_v1.py"
+if ($LASTEXITCODE -ne 0) { throw "White boundary geometry tests failed." }
 & $Python "tools\minimap_probe\test_screenshot_strategy_geometry_v2.py"
 if ($LASTEXITCODE -ne 0) { throw "Screenshot strategy geometry v2 tests failed." }
 
@@ -24,7 +26,7 @@ if ($ForceRed) { $ArgsList += "--force-red" }
 
 Write-Host ""
 Write-Host "Building screenshot-first strategy geometry v2..."
-Write-Host "Original GSPro minimap = visual truth | bunker recall v1 = bunker geometry | red CV = penalty geometry"
+Write-Host "Original GSPro minimap = visual truth | bunker recall = bunker geometry | red CV = penalty geometry | white CV = OB geometry"
 Write-Host "No API calls. No GSPro input. Strategy authority OFF."
 & $Python @ArgsList
 exit $LASTEXITCODE
