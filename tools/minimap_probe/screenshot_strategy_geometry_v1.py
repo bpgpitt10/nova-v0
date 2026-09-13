@@ -25,6 +25,7 @@ import red_penalty_pixel_geometry_v1 as red_pixel
 
 SCHEMA_VERSION = "looper-screenshot-strategy-geometry-v1"
 STRATEGY_AUTHORITY = False
+MIN_PRECISE_GEOMETRY_CONFIDENCE = 0.50
 
 
 def read_json(path: Path) -> Any:
@@ -107,40 +108,63 @@ def pixel_to_local(model: dict[str, Any], x: float, y: float) -> tuple[float, fl
     return (qx * rx + qy * ry) * float(scale), (qx * fx + qy * fy) * float(scale)
 
 
-def _legacy_precise_layers(capture: Path, width: int, height: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Return exact-image polygons separately from semantic/localization evidence."""
-    path = capture / "hazard_shadow_v0.json"
+def _canonical_precise_layers(capture: Path, width: int, height: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Use only canonical in-bounds image polygons as precise collision geometry.
+
+    This intentionally ignores semantic bboxes.  The Greywolf review showed that the
+    canonical VLM-localized CV bunker polygons are useful while zero-quality four-point
+    rectangles are obvious artifacts.  Geometry confidence < 0.50 therefore remains
+    evidence-only in this shadow layer.
+    """
+    path = capture / "hazard_map_shadow_v0.json"
     if not path.is_file():
         return [], []
     raw = read_json(path)
     precise: list[dict[str, Any]] = []
     evidence: list[dict[str, Any]] = []
-    for hazard_class in ("bunker", "water"):
-        section = raw.get(hazard_class) if isinstance(raw, dict) else None
-        for row in (section or {}).get("objects") or []:
-            if not isinstance(row, dict):
-                continue
-            polygon = _valid_polygon(row.get("polygon_pixel"), width, height)
-            confidence = finite(row.get("confidence"))
-            record = {
-                "hazard_class": hazard_class,
-                "source": f"legacy_{hazard_class}_cv",
-                "source_object_id": row.get("object_id"),
-                "confidence": confidence,
-                "strategy_authority": False,
-            }
-            if polygon:
-                precise.append(record | {
-                    "geometry_type": "polygon",
-                    "coordinate_space": "minimap_pixel",
-                    "polygon_pixel": polygon,
-                    "coordinate_authority": "saved-minimap-local-cv",
-                    "validation_state": "shadow-needs-visual-review",
-                })
-            else:
-                evidence.append(record | {
-                    "reason": "legacy object had no valid in-bounds pixel polygon",
-                })
+    for hazard in raw.get("hazards") or []:
+        if not isinstance(hazard, dict):
+            continue
+        hazard_class = str(hazard.get("hazard_class") or "")
+        if hazard_class not in {"bunker", "water"}:
+            continue
+        primary = hazard.get("primary") or {}
+        rep = primary.get("representation") or {}
+        source = primary.get("source") or {}
+        confidence = primary.get("confidence") or {}
+        geometry_conf = finite(confidence.get("geometry"))
+        record = {
+            "hazard_class": hazard_class,
+            "source": source.get("kind") or source.get("name") or "unknown",
+            "source_object_id": source.get("object_id"),
+            "semantic_confidence": finite(confidence.get("semantic")),
+            "geometry_confidence": geometry_conf,
+            "strategy_authority": False,
+        }
+        if rep.get("geometry_type") != "polygon" or rep.get("coordinate_space") != "minimap_pixel":
+            evidence.append(record | {
+                "reason": "canonical primary is not a minimap-pixel polygon",
+                "geometry_type": rep.get("geometry_type"),
+                "coordinate_space": rep.get("coordinate_space"),
+            })
+            continue
+        polygon = _valid_polygon(rep.get("points"), width, height)
+        if not polygon:
+            evidence.append(record | {"reason": "canonical pixel polygon is missing or out of image bounds"})
+            continue
+        if geometry_conf is not None and geometry_conf < MIN_PRECISE_GEOMETRY_CONFIDENCE:
+            evidence.append(record | {
+                "reason": f"geometry confidence below {MIN_PRECISE_GEOMETRY_CONFIDENCE:.2f}",
+                "polygon_pixel": polygon,
+            })
+            continue
+        precise.append(record | {
+            "geometry_type": "polygon",
+            "coordinate_space": "minimap_pixel",
+            "polygon_pixel": polygon,
+            "coordinate_authority": "canonical-saved-minimap-polygon",
+            "validation_state": "shadow-needs-visual-review",
+        })
     return precise, evidence
 
 
@@ -200,16 +224,16 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
             "strategy_authority": False,
         })
 
-    legacy_precise, legacy_evidence = _legacy_precise_layers(capture, width, height)
-    precise.extend(legacy_precise)
+    canonical_precise, rejected_evidence = _canonical_precise_layers(capture, width, height)
+    precise.extend(canonical_precise)
     semantic = _semantic_evidence(capture)
 
     # Draw evaluation overlay.  This is intentionally not a course reconstruction;
     # the original screenshot remains the background.
     overlay = image.copy()
     colors = {
-        "penalty_area": (0, 0, 255),
-        "bunker": (80, 220, 255),
+        "penalty_area": (0, 220, 255),  # gold/yellow, distinct from GSPro red
+        "bunker": (255, 255, 0),       # cyan
         "water": (255, 170, 50),
     }
     for row in precise:
@@ -237,7 +261,7 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
         },
         "precise_pixel_geometry": precise,
         "semantic_localization_evidence": semantic,
-        "rejected_or_nonprecise_evidence": legacy_evidence,
+        "rejected_or_nonprecise_evidence": rejected_evidence,
         "overlay_artifact": overlay_name,
         "strategy_authority": False,
         "promotion_decision": "none",
@@ -245,6 +269,7 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
             "synthetic_course_redraw": False,
             "semantic_bbox_is_collision_geometry": False,
             "red_boundary_pixel_geometry": True,
+            "minimum_precise_geometry_confidence": MIN_PRECISE_GEOMETRY_CONFIDENCE,
         },
     }
     atomic_json(capture / "screenshot_strategy_geometry_v1.json", payload)
