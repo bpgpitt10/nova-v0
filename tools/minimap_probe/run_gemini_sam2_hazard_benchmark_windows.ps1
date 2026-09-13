@@ -36,10 +36,6 @@ if (-not (Test-Path $Python)) {
 
 function Test-PythonImport {
   param([Parameter(Mandatory=$true)][string]$Code)
-  # Missing optional dependencies are expected during first-run probing. Windows
-  # PowerShell can promote native stderr to a terminating NativeCommandError when
-  # ErrorActionPreference is Stop, so suppress it only for this probe and inspect
-  # the process exit code ourselves.
   $PreviousPreference = $ErrorActionPreference
   try {
     $ErrorActionPreference = "SilentlyContinue"
@@ -58,19 +54,19 @@ if (-not $BaseReady) {
 }
 
 Write-Host "Checking SAM2 field-lab dependencies..."
-$SamReady = Test-PythonImport "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
+$SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
 if (-not $SamReady) {
-  Write-Host "Installing PyTorch + Transformers SAM2 support into the isolated probe environment..."
+  Write-Host "Installing PyTorch + Torchvision + Transformers SAM2 support into the isolated probe environment..."
   Write-Host "This may take a while on the first run and downloads model/runtime packages only for the field lab."
   & $Python -m pip install --disable-pip-version-check -r "tools\minimap_probe\requirements_sam2.txt"
   if ($LASTEXITCODE -ne 0) { throw "SAM2 field-lab dependency installation failed." }
-  $SamReady = Test-PythonImport "import torch; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
+  $SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
   if (-not $SamReady) { throw "SAM2 dependencies installed but the import check still fails." }
 }
 
 Write-Host ""
 Write-Host "Segmentation runtime:"
-& $Python -c "import torch; print('  torch=' + torch.__version__); print('  cuda=' + str(torch.cuda.is_available())); print('  gpu=' + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU fallback'))"
+& $Python -c "import torch, torchvision; print('  torch=' + torch.__version__); print('  torchvision=' + torchvision.__version__); print('  cuda=' + str(torch.cuda.is_available())); print('  gpu=' + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU fallback'))"
 if ($LASTEXITCODE -ne 0) { throw "Could not inspect PyTorch runtime." }
 
 if (-not $SkipTests) {
