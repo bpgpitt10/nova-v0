@@ -22,6 +22,8 @@ if ($LASTEXITCODE -ne 0) { throw "Strategy risk v0 tests failed." }
 if ($LASTEXITCODE -ne 0) { throw "Strategy risk overlay v0 tests failed." }
 & $Python "tools\minimap_probe\test_strategy_risk_overlay_v1.py"
 if ($LASTEXITCODE -ne 0) { throw "Strategy risk overlay v1 tests failed." }
+& $Python "tools\minimap_probe\test_strategy_fairway_section_v0.py"
+if ($LASTEXITCODE -ne 0) { throw "Strategy fairway section v0 tests failed." }
 
 $ArgsList = @(
   "tools\minimap_probe\screenshot_strategy_geometry_v2.py",
