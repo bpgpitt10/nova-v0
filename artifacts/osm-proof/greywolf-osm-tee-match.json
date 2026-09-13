@@ -1,0 +1,1081 @@
+{
+  "holes": [
+    {
+      "best": {
+        "centroid": [
+          50.446423107692304,
+          -116.24757067692309
+        ],
+        "green_distance_yards": 347.7,
+        "gspro_diff_yards": -2.3,
+        "start_gap_yards": 46.9,
+        "tee_id": 1209190795
+      },
+      "candidate_tees": 6,
+      "green_endpoint_gap_yards": 3.7,
+      "green_id": 1212577098,
+      "gspro_tee_pin_yards": 350,
+      "hole": 1,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.446423107692304,
+            -116.24757067692309
+          ],
+          "green_distance_yards": 347.7,
+          "gspro_diff_yards": -2.3,
+          "start_gap_yards": 46.9,
+          "tee_id": 1209190795
+        },
+        {
+          "centroid": [
+            50.4465687,
+            -116.2473621882353
+          ],
+          "green_distance_yards": 368.8,
+          "gspro_diff_yards": 18.8,
+          "start_gap_yards": 23.0,
+          "tee_id": 1209190794
+        },
+        {
+          "centroid": [
+            50.44672972,
+            -116.24717074
+          ],
+          "green_distance_yards": 391.6,
+          "gspro_diff_yards": 41.6,
+          "start_gap_yards": 1.6,
+          "tee_id": 1209190793
+        },
+        {
+          "centroid": [
+            50.447600470588235,
+            -116.2463172647059
+          ],
+          "green_distance_yards": 512.7,
+          "gspro_diff_yards": 162.7,
+          "start_gap_yards": 126.4,
+          "tee_id": 1214871677
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44322640769231,
+          -116.24920309230768
+        ],
+        "green_distance_yards": 366.4,
+        "gspro_diff_yards": 11.4,
+        "start_gap_yards": 23.4,
+        "tee_id": 1209268502
+      },
+      "candidate_tees": 4,
+      "green_endpoint_gap_yards": 7.9,
+      "green_id": 1212578887,
+      "gspro_tee_pin_yards": 355,
+      "hole": 2,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44322640769231,
+            -116.24920309230768
+          ],
+          "green_distance_yards": 366.4,
+          "gspro_diff_yards": 11.4,
+          "start_gap_yards": 23.4,
+          "tee_id": 1209268502
+        },
+        {
+          "centroid": [
+            50.44300482727272,
+            -116.24918184545454
+          ],
+          "green_distance_yards": 340.1,
+          "gspro_diff_yards": -14.9,
+          "start_gap_yards": 50.3,
+          "tee_id": 1209268503
+        },
+        {
+          "centroid": [
+            50.44341332222222,
+            -116.24918397777778
+          ],
+          "green_distance_yards": 387.9,
+          "gspro_diff_yards": 32.9,
+          "start_gap_yards": 0.8,
+          "tee_id": 1209268501
+        },
+        {
+          "centroid": [
+            50.4424469625,
+            -116.24928275
+          ],
+          "green_distance_yards": 278.8,
+          "gspro_diff_yards": -76.2,
+          "start_gap_yards": 118.4,
+          "tee_id": 1209268514
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.43978042727272,
+          -116.24675434545453
+        ],
+        "green_distance_yards": 415.2,
+        "gspro_diff_yards": -23.8,
+        "start_gap_yards": 84.6,
+        "tee_id": 1209268524
+      },
+      "candidate_tees": 4,
+      "green_endpoint_gap_yards": 1.7,
+      "green_id": 1212582280,
+      "gspro_tee_pin_yards": 439,
+      "hole": 3,
+      "osm_par": "5",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.43978042727272,
+            -116.24675434545453
+          ],
+          "green_distance_yards": 415.2,
+          "gspro_diff_yards": -23.8,
+          "start_gap_yards": 84.6,
+          "tee_id": 1209268524
+        },
+        {
+          "centroid": [
+            50.44020885,
+            -116.24638268000001
+          ],
+          "green_distance_yards": 462.9,
+          "gspro_diff_yards": 23.9,
+          "start_gap_yards": 26.2,
+          "tee_id": 1209268523
+        },
+        {
+          "centroid": [
+            50.440408225,
+            -116.24632101666667
+          ],
+          "green_distance_yards": 486.7,
+          "gspro_diff_yards": 47.7,
+          "start_gap_yards": 1.7,
+          "tee_id": 1212582275
+        },
+        {
+          "centroid": [
+            50.43946626666667,
+            -116.24691130000001
+          ],
+          "green_distance_yards": 380.1,
+          "gspro_diff_yards": -58.9,
+          "start_gap_yards": 124.6,
+          "tee_id": 1209268525
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.43699414545454,
+          -116.24737101818182
+        ],
+        "green_distance_yards": 385.8,
+        "gspro_diff_yards": -11.2,
+        "start_gap_yards": 99.2,
+        "tee_id": 1209268541
+      },
+      "candidate_tees": 5,
+      "green_endpoint_gap_yards": 3.6,
+      "green_id": 1212584551,
+      "gspro_tee_pin_yards": 397,
+      "hole": 4,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.43699414545454,
+            -116.24737101818182
+          ],
+          "green_distance_yards": 385.8,
+          "gspro_diff_yards": -11.2,
+          "start_gap_yards": 99.2,
+          "tee_id": 1209268541
+        },
+        {
+          "centroid": [
+            50.436642544444446,
+            -116.24738797777779
+          ],
+          "green_distance_yards": 425.9,
+          "gspro_diff_yards": 28.9,
+          "start_gap_yards": 56.8,
+          "tee_id": 1209268540
+        },
+        {
+          "centroid": [
+            50.437401808333334,
+            -116.24741391666667
+          ],
+          "green_distance_yards": 338.3,
+          "gspro_diff_yards": -58.7,
+          "start_gap_yards": 148.9,
+          "tee_id": 1212584550
+        },
+        {
+          "centroid": [
+            50.43635356,
+            -116.24734527000001
+          ],
+          "green_distance_yards": 460.4,
+          "gspro_diff_yards": 63.4,
+          "start_gap_yards": 21.7,
+          "tee_id": 1209268539
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.4405376,
+          -116.24936657272728
+        ],
+        "green_distance_yards": 514.9,
+        "gspro_diff_yards": -9.1,
+        "start_gap_yards": 21.6,
+        "tee_id": 1209268511
+      },
+      "candidate_tees": 4,
+      "green_endpoint_gap_yards": 4.0,
+      "green_id": 1212586614,
+      "gspro_tee_pin_yards": 524,
+      "hole": 5,
+      "osm_par": "5",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.4405376,
+            -116.24936657272728
+          ],
+          "green_distance_yards": 514.9,
+          "gspro_diff_yards": -9.1,
+          "start_gap_yards": 21.6,
+          "tee_id": 1209268511
+        },
+        {
+          "centroid": [
+            50.44037645454546,
+            -116.24920334545455
+          ],
+          "green_distance_yards": 536.5,
+          "gspro_diff_yards": 12.5,
+          "start_gap_yards": 1.8,
+          "tee_id": 1209268512
+        },
+        {
+          "centroid": [
+            50.440690036363634,
+            -116.24950434545454
+          ],
+          "green_distance_yards": 494.8,
+          "gspro_diff_yards": -29.2,
+          "start_gap_yards": 42.9,
+          "tee_id": 1209268510
+        },
+        {
+          "centroid": [
+            50.44104595,
+            -116.2500387
+          ],
+          "green_distance_yards": 446.6,
+          "gspro_diff_yards": -77.4,
+          "start_gap_yards": 102.3,
+          "tee_id": 1209268509
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44472585,
+          -116.25251108333333
+        ],
+        "green_distance_yards": 148.9,
+        "gspro_diff_yards": 1.9,
+        "start_gap_yards": 57.6,
+        "tee_id": 1209190780
+      },
+      "candidate_tees": 9,
+      "green_endpoint_gap_yards": 3.5,
+      "green_id": 1212589670,
+      "gspro_tee_pin_yards": 147,
+      "hole": 6,
+      "osm_par": "6",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44472585,
+            -116.25251108333333
+          ],
+          "green_distance_yards": 148.9,
+          "gspro_diff_yards": 1.9,
+          "start_gap_yards": 57.6,
+          "tee_id": 1209190780
+        },
+        {
+          "centroid": [
+            50.44486100666666,
+            -116.25255803333333
+          ],
+          "green_distance_yards": 134.4,
+          "gspro_diff_yards": -12.6,
+          "start_gap_yards": 65.0,
+          "tee_id": 1209190779
+        },
+        {
+          "centroid": [
+            50.444569622222225,
+            -116.25234618888888
+          ],
+          "green_distance_yards": 171.7,
+          "gspro_diff_yards": 24.7,
+          "start_gap_yards": 46.2,
+          "tee_id": 1209190781
+        },
+        {
+          "centroid": [
+            50.444666118181814,
+            -116.25216711818183
+          ],
+          "green_distance_yards": 172.6,
+          "gspro_diff_yards": 25.6,
+          "start_gap_yards": 30.6,
+          "tee_id": 1209190782
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.446577285714284,
+          -116.25304951428572
+        ],
+        "green_distance_yards": 352.9,
+        "gspro_diff_yards": -9.1,
+        "start_gap_yards": 62.7,
+        "tee_id": 1209190773
+      },
+      "candidate_tees": 7,
+      "green_endpoint_gap_yards": 2.7,
+      "green_id": 1212592440,
+      "gspro_tee_pin_yards": 362,
+      "hole": 7,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.446577285714284,
+            -116.25304951428572
+          ],
+          "green_distance_yards": 352.9,
+          "gspro_diff_yards": -9.1,
+          "start_gap_yards": 62.7,
+          "tee_id": 1209190773
+        },
+        {
+          "centroid": [
+            50.446355864285714,
+            -116.25317067142858
+          ],
+          "green_distance_yards": 379.8,
+          "gspro_diff_yards": 17.8,
+          "start_gap_yards": 34.3,
+          "tee_id": 1209190774
+        },
+        {
+          "centroid": [
+            50.44686495,
+            -116.2528354
+          ],
+          "green_distance_yards": 318.6,
+          "gspro_diff_yards": -43.4,
+          "start_gap_yards": 101.4,
+          "tee_id": 1209190772
+        },
+        {
+          "centroid": [
+            50.44609045,
+            -116.25333590714285
+          ],
+          "green_distance_yards": 412.4,
+          "gspro_diff_yards": 50.4,
+          "start_gap_yards": 1.3,
+          "tee_id": 1209190775
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44952665833333,
+          -116.25239198333334
+        ],
+        "green_distance_yards": 386.1,
+        "gspro_diff_yards": -9.9,
+        "start_gap_yards": 54.3,
+        "tee_id": 1209190760
+      },
+      "candidate_tees": 5,
+      "green_endpoint_gap_yards": 4.9,
+      "green_id": 1212593307,
+      "gspro_tee_pin_yards": 396,
+      "hole": 8,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44952665833333,
+            -116.25239198333334
+          ],
+          "green_distance_yards": 386.1,
+          "gspro_diff_yards": -9.9,
+          "start_gap_yards": 54.3,
+          "tee_id": 1209190760
+        },
+        {
+          "centroid": [
+            50.44975461,
+            -116.25236423999999
+          ],
+          "green_distance_yards": 413.8,
+          "gspro_diff_yards": 17.8,
+          "start_gap_yards": 26.7,
+          "tee_id": 1209190759
+        },
+        {
+          "centroid": [
+            50.449968828571436,
+            -116.25239024285715
+          ],
+          "green_distance_yards": 439.8,
+          "gspro_diff_yards": 43.8,
+          "start_gap_yards": 1.1,
+          "tee_id": 1209190758
+        },
+        {
+          "centroid": [
+            50.44914343636364,
+            -116.25212586363637
+          ],
+          "green_distance_yards": 340.1,
+          "gspro_diff_yards": -55.9,
+          "start_gap_yards": 103.1,
+          "tee_id": 1209190761
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44535647692308,
+          -116.25007964615385
+        ],
+        "green_distance_yards": 127.9,
+        "gspro_diff_yards": -3.1,
+        "start_gap_yards": 56.2,
+        "tee_id": 1212594561
+      },
+      "candidate_tees": 10,
+      "green_endpoint_gap_yards": 4.1,
+      "green_id": 1212594562,
+      "gspro_tee_pin_yards": 131,
+      "hole": 9,
+      "osm_par": "3",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44535647692308,
+            -116.25007964615385
+          ],
+          "green_distance_yards": 127.9,
+          "gspro_diff_yards": -3.1,
+          "start_gap_yards": 56.2,
+          "tee_id": 1212594561
+        },
+        {
+          "centroid": [
+            50.44524644375,
+            -116.25039311875
+          ],
+          "green_distance_yards": 154.7,
+          "gspro_diff_yards": 23.7,
+          "start_gap_yards": 31.3,
+          "tee_id": 1212594560
+        },
+        {
+          "centroid": [
+            50.44548354545454,
+            -116.24959129090908
+          ],
+          "green_distance_yards": 91.8,
+          "gspro_diff_yards": -39.2,
+          "start_gap_yards": 96.6,
+          "tee_id": 1209190802
+        },
+        {
+          "centroid": [
+            50.44527753,
+            -116.25078778
+          ],
+          "green_distance_yards": 176.2,
+          "gspro_diff_yards": 45.2,
+          "start_gap_yards": 0.6,
+          "tee_id": 1209190805
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44775794545455,
+          -116.2461714
+        ],
+        "green_distance_yards": 550.7,
+        "gspro_diff_yards": 6.7,
+        "start_gap_yards": 22.5,
+        "tee_id": 1208932466
+      },
+      "candidate_tees": 8,
+      "green_endpoint_gap_yards": 5.3,
+      "green_id": 1212597307,
+      "gspro_tee_pin_yards": 544,
+      "hole": 10,
+      "osm_par": "5",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44775794545455,
+            -116.2461714
+          ],
+          "green_distance_yards": 550.7,
+          "gspro_diff_yards": 6.7,
+          "start_gap_yards": 22.5,
+          "tee_id": 1208932466
+        },
+        {
+          "centroid": [
+            50.4479066,
+            -116.24598668
+          ],
+          "green_distance_yards": 528.9,
+          "gspro_diff_yards": -15.1,
+          "start_gap_yards": 45.4,
+          "tee_id": 1208932465
+        },
+        {
+          "centroid": [
+            50.447600470588235,
+            -116.2463172647059
+          ],
+          "green_distance_yards": 572.5,
+          "gspro_diff_yards": 28.5,
+          "start_gap_yards": 0.5,
+          "tee_id": 1214871677
+        },
+        {
+          "centroid": [
+            50.44819163076923,
+            -116.24520900769231
+          ],
+          "green_distance_yards": 478.9,
+          "gspro_diff_yards": -65.1,
+          "start_gap_yards": 112.1,
+          "tee_id": 1208932464
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45284434285714,
+          -116.24272422857143
+        ],
+        "green_distance_yards": 292.6,
+        "gspro_diff_yards": 3.6,
+        "start_gap_yards": 89.8,
+        "tee_id": 1212598845
+      },
+      "candidate_tees": 5,
+      "green_endpoint_gap_yards": 0.8,
+      "green_id": 1212598847,
+      "gspro_tee_pin_yards": 289,
+      "hole": 11,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45284434285714,
+            -116.24272422857143
+          ],
+          "green_distance_yards": 292.6,
+          "gspro_diff_yards": 3.6,
+          "start_gap_yards": 89.8,
+          "tee_id": 1212598845
+        },
+        {
+          "centroid": [
+            50.452993122222225,
+            -116.24271562222222
+          ],
+          "green_distance_yards": 274.6,
+          "gspro_diff_yards": -14.4,
+          "start_gap_yards": 99.0,
+          "tee_id": 1212598846
+        },
+        {
+          "centroid": [
+            50.45267685,
+            -116.2427635
+          ],
+          "green_distance_yards": 313.2,
+          "gspro_diff_yards": 24.2,
+          "start_gap_yards": 80.7,
+          "tee_id": 1212598844
+        },
+        {
+          "centroid": [
+            50.453348919999996,
+            -116.24281593999999
+          ],
+          "green_distance_yards": 233.5,
+          "gspro_diff_yards": -55.5,
+          "start_gap_yards": 123.1,
+          "tee_id": 1446802851
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45624918181818,
+          -116.24561097272726
+        ],
+        "green_distance_yards": 128.8,
+        "gspro_diff_yards": 1.8,
+        "start_gap_yards": 54.5,
+        "tee_id": 1209183582
+      },
+      "candidate_tees": 4,
+      "green_endpoint_gap_yards": 2.2,
+      "green_id": 1212600748,
+      "gspro_tee_pin_yards": 127,
+      "hole": 12,
+      "osm_par": "3",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45624918181818,
+            -116.24561097272726
+          ],
+          "green_distance_yards": 128.8,
+          "gspro_diff_yards": 1.8,
+          "start_gap_yards": 54.5,
+          "tee_id": 1209183582
+        },
+        {
+          "centroid": [
+            50.45635341,
+            -116.24590218
+          ],
+          "green_distance_yards": 103.6,
+          "gspro_diff_yards": -23.4,
+          "start_gap_yards": 80.4,
+          "tee_id": 1209183581
+        },
+        {
+          "centroid": [
+            50.456123899999994,
+            -116.2453000909091
+          ],
+          "green_distance_yards": 156.5,
+          "gspro_diff_yards": 29.5,
+          "start_gap_yards": 26.1,
+          "tee_id": 1209183583
+        },
+        {
+          "centroid": [
+            50.45604142,
+            -116.24501278
+          ],
+          "green_distance_yards": 180.9,
+          "gspro_diff_yards": 53.9,
+          "start_gap_yards": 1.7,
+          "tee_id": 1209183584
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.4553650125,
+          -116.2496866375
+        ],
+        "green_distance_yards": 320.9,
+        "gspro_diff_yards": -5.1,
+        "start_gap_yards": 107.4,
+        "tee_id": 1209183589
+      },
+      "candidate_tees": 5,
+      "green_endpoint_gap_yards": 2.9,
+      "green_id": 1212601668,
+      "gspro_tee_pin_yards": 326,
+      "hole": 13,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.4553650125,
+            -116.2496866375
+          ],
+          "green_distance_yards": 320.9,
+          "gspro_diff_yards": -5.1,
+          "start_gap_yards": 107.4,
+          "tee_id": 1209183589
+        },
+        {
+          "centroid": [
+            50.4551654,
+            -116.2496689125
+          ],
+          "green_distance_yards": 304.5,
+          "gspro_diff_yards": -21.5,
+          "start_gap_yards": 129.7,
+          "tee_id": 1209183590
+        },
+        {
+          "centroid": [
+            50.45576454166667,
+            -116.24942834166666
+          ],
+          "green_distance_yards": 370.6,
+          "gspro_diff_yards": 44.6,
+          "start_gap_yards": 54.8,
+          "tee_id": 1209183588
+        },
+        {
+          "centroid": [
+            50.456036072727265,
+            -116.24925388181818
+          ],
+          "green_distance_yards": 404.8,
+          "gspro_diff_yards": 78.8,
+          "start_gap_yards": 19.2,
+          "tee_id": 1209183587
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45174230769231,
+          -116.25079121538462
+        ],
+        "green_distance_yards": 423.6,
+        "gspro_diff_yards": -20.4,
+        "start_gap_yards": 102.8,
+        "tee_id": 1212602837
+      },
+      "candidate_tees": 3,
+      "green_endpoint_gap_yards": 2.2,
+      "green_id": 1212602840,
+      "gspro_tee_pin_yards": 444,
+      "hole": 14,
+      "osm_par": "5",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45174230769231,
+            -116.25079121538462
+          ],
+          "green_distance_yards": 423.6,
+          "gspro_diff_yards": -20.4,
+          "start_gap_yards": 102.8,
+          "tee_id": 1212602837
+        },
+        {
+          "centroid": [
+            50.45225947826086,
+            -116.25162565652172
+          ],
+          "green_distance_yards": 491.0,
+          "gspro_diff_yards": 47.0,
+          "start_gap_yards": 17.3,
+          "tee_id": 1209190741
+        },
+        {
+          "centroid": [
+            50.4512340625,
+            -116.25026461249999
+          ],
+          "green_distance_yards": 363.9,
+          "gspro_diff_yards": -80.1,
+          "start_gap_yards": 176.7,
+          "tee_id": 1212602845
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.44840396,
+          -116.24989222
+        ],
+        "green_distance_yards": 123.8,
+        "gspro_diff_yards": -2.2,
+        "start_gap_yards": 46.3,
+        "tee_id": 1209190752
+      },
+      "candidate_tees": 5,
+      "green_endpoint_gap_yards": 1.0,
+      "green_id": 1212603724,
+      "gspro_tee_pin_yards": 126,
+      "hole": 15,
+      "osm_par": null,
+      "top_candidates": [
+        {
+          "centroid": [
+            50.44840396,
+            -116.24989222
+          ],
+          "green_distance_yards": 123.8,
+          "gspro_diff_yards": -2.2,
+          "start_gap_yards": 46.3,
+          "tee_id": 1209190752
+        },
+        {
+          "centroid": [
+            50.44818986470588,
+            -116.25009975882352
+          ],
+          "green_distance_yards": 154.3,
+          "gspro_diff_yards": 28.3,
+          "start_gap_yards": 16.6,
+          "tee_id": 1209190751
+        },
+        {
+          "centroid": [
+            50.44805542727273,
+            -116.25013587272728
+          ],
+          "green_distance_yards": 170.2,
+          "gspro_diff_yards": 44.2,
+          "start_gap_yards": 0.4,
+          "tee_id": 1212603722
+        },
+        {
+          "centroid": [
+            50.44867253636364,
+            -116.24945661818182
+          ],
+          "green_distance_yards": 80.9,
+          "gspro_diff_yards": -45.1,
+          "start_gap_yards": 91.5,
+          "tee_id": 1212603723
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45037550666667,
+          -116.24915923333333
+        ],
+        "green_distance_yards": 337.2,
+        "gspro_diff_yards": -7.8,
+        "start_gap_yards": 43.8,
+        "tee_id": 1209190736
+      },
+      "candidate_tees": 8,
+      "green_endpoint_gap_yards": 2.9,
+      "green_id": 1212604633,
+      "gspro_tee_pin_yards": 345,
+      "hole": 16,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45037550666667,
+            -116.24915923333333
+          ],
+          "green_distance_yards": 337.2,
+          "gspro_diff_yards": -7.8,
+          "start_gap_yards": 43.8,
+          "tee_id": 1209190736
+        },
+        {
+          "centroid": [
+            50.4501970625,
+            -116.24908570625
+          ],
+          "green_distance_yards": 359.2,
+          "gspro_diff_yards": 14.2,
+          "start_gap_yards": 21.4,
+          "tee_id": 1209190737
+        },
+        {
+          "centroid": [
+            50.450603189999995,
+            -116.24900901999999
+          ],
+          "green_distance_yards": 310.5,
+          "gspro_diff_yards": -34.5,
+          "start_gap_yards": 70.5,
+          "tee_id": 1209190739
+        },
+        {
+          "centroid": [
+            50.45002275,
+            -116.24903755625
+          ],
+          "green_distance_yards": 380.6,
+          "gspro_diff_yards": 35.6,
+          "start_gap_yards": 0.2,
+          "tee_id": 1209190738
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45375772,
+          -116.24873034000001
+        ],
+        "green_distance_yards": 383.9,
+        "gspro_diff_yards": 10.9,
+        "start_gap_yards": 28.8,
+        "tee_id": 1212605459
+      },
+      "candidate_tees": 6,
+      "green_endpoint_gap_yards": 5.0,
+      "green_id": 1212605460,
+      "gspro_tee_pin_yards": 373,
+      "hole": 17,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45375772,
+            -116.24873034000001
+          ],
+          "green_distance_yards": 383.9,
+          "gspro_diff_yards": 10.9,
+          "start_gap_yards": 28.8,
+          "tee_id": 1212605459
+        },
+        {
+          "centroid": [
+            50.45342109230769,
+            -116.24880373846153
+          ],
+          "green_distance_yards": 348.5,
+          "gspro_diff_yards": -24.5,
+          "start_gap_yards": 70.1,
+          "tee_id": 1209183575
+        },
+        {
+          "centroid": [
+            50.4539902,
+            -116.24867541333333
+          ],
+          "green_distance_yards": 408.8,
+          "gspro_diff_yards": 35.8,
+          "start_gap_yards": 0.2,
+          "tee_id": 1212605458
+        },
+        {
+          "centroid": [
+            50.452842329999996,
+            -116.24866698999999
+          ],
+          "green_distance_yards": 280.9,
+          "gspro_diff_yards": -92.1,
+          "start_gap_yards": 139.8,
+          "tee_id": 1209183574
+        }
+      ]
+    },
+    {
+      "best": {
+        "centroid": [
+          50.45033664166667,
+          -116.2453743
+        ],
+        "green_distance_yards": 373.1,
+        "gspro_diff_yards": 12.1,
+        "start_gap_yards": 56.2,
+        "tee_id": 1208932469
+      },
+      "candidate_tees": 4,
+      "green_endpoint_gap_yards": 2.1,
+      "green_id": 1212606506,
+      "gspro_tee_pin_yards": 361,
+      "hole": 18,
+      "osm_par": "4",
+      "top_candidates": [
+        {
+          "centroid": [
+            50.45033664166667,
+            -116.2453743
+          ],
+          "green_distance_yards": 373.1,
+          "gspro_diff_yards": 12.1,
+          "start_gap_yards": 56.2,
+          "tee_id": 1208932469
+        },
+        {
+          "centroid": [
+            50.450050222222224,
+            -116.24576610000001
+          ],
+          "green_distance_yards": 329.4,
+          "gspro_diff_yards": -31.6,
+          "start_gap_yards": 102.1,
+          "tee_id": 1209190785
+        },
+        {
+          "centroid": [
+            50.450514749999996,
+            -116.245185175
+          ],
+          "green_distance_yards": 398.8,
+          "gspro_diff_yards": 37.8,
+          "start_gap_yards": 30.1,
+          "tee_id": 1208932468
+        },
+        {
+          "centroid": [
+            50.45071985384615,
+            -116.2449712076923
+          ],
+          "green_distance_yards": 428.4,
+          "gspro_diff_yards": 67.4,
+          "start_gap_yards": 1.5,
+          "tee_id": 1208932467
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "holes_matched": 18,
+    "mean_abs_diff_yards": 8.5,
+    "median_abs_diff_yards": 9.1,
+    "within_10_yards": 12,
+    "within_20_yards": 16
+  }
+}
