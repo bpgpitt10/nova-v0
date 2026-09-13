@@ -29,6 +29,21 @@ class FairwaySemanticProviderTests(unittest.TestCase):
         self.assertIsNone(result["box_2d"])
         self.assertIsNone(result["note"])
 
+    def test_normalize_rejects_present_with_empty_box(self):
+        with self.assertRaisesRegex(ValueError, "non-empty box_2d"):
+            sp._normalize({
+                "present": True,
+                "confidence": 0.88,
+                "box_2d": [0, 0, 0, 0],
+                "note": "",
+            })
+
+    def test_gemini_schema_omits_unsupported_additional_properties(self):
+        schema = sp.gemini_semantic_schema()
+        self.assertNotIn("additionalProperties", schema)
+        self.assertNotIn("minimum", schema["properties"]["confidence"])
+        self.assertNotIn("minimum", schema["properties"]["box_2d"]["items"])
+
     def test_chain_uses_luna_without_touching_gemini_when_luna_succeeds(self):
         luna_result = {"present": True, "confidence": 0.8, "box_2d": [1, 2, 3, 4], "note": None}
         luna_meta = {"provider": "openai-luna", "model": sp.DEFAULT_LUNA_MODEL, "latency_seconds": 0.2}
@@ -47,7 +62,7 @@ class FairwaySemanticProviderTests(unittest.TestCase):
         with mock.patch.object(
             sp,
             "call_provider",
-            side_effect=[RuntimeError("Luna busy"), (gemini_result, gemini_meta)],
+            side_effect=[RuntimeError("Luna invalid output"), (gemini_result, gemini_meta)],
         ) as call:
             result, meta = sp.call_chain("fake.png")
         self.assertEqual(result, gemini_result)
@@ -55,7 +70,7 @@ class FairwaySemanticProviderTests(unittest.TestCase):
         self.assertEqual(call.call_args_list[0].kwargs["provider"], "luna")
         self.assertEqual(call.call_args_list[1].kwargs["provider"], "gemini")
         self.assertTrue(meta["fallback_used"])
-        self.assertIn("Luna busy", meta["fallback_reason"])
+        self.assertIn("Luna invalid output", meta["fallback_reason"])
         self.assertEqual(meta["provider_attempts"][0]["status"], "error")
         self.assertEqual(meta["provider_attempts"][1]["status"], "complete")
         self.assertEqual(meta["provider"], "google-gemini")
