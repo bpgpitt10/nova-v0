@@ -1,7 +1,7 @@
 param(
   [string]$OutputRoot = "tools\minimap_probe\output",
-  [string]$CourseKey = "GreyWolf_gsp",
-  [string]$RoundId = "215",
+  [string]$CourseKey = "",
+  [string]$RoundId = "",
   [int]$Latest = 18,
   [string]$Model = "gpt-5.6-luna",
   [string]$SamModel = "facebook/sam2.1-hiera-tiny",
@@ -63,16 +63,16 @@ if ($LASTEXITCODE -ne 0) { throw "Bunker recall regression tests failed; no sema
 $ArgsList = @(
   "tools\minimap_probe\bunker_recall_v1.py",
   "--output-root", $OutputRoot,
-  "--course-key", $CourseKey,
-  "--round-id", $RoundId,
   "--latest", "$Latest",
   "--model", $Model,
   "--sam-model", $SamModel
 )
+if ($CourseKey) { $ArgsList += @("--course-key", $CourseKey) }
+if ($RoundId) { $ArgsList += @("--round-id", $RoundId) }
 if ($Force) { $ArgsList += "--force" }
 
 Write-Host ""
-Write-Host "Running recall-first bunker replay on saved Greywolf tee captures..."
+Write-Host "Running recall-first bunker replay on the latest saved tee captures..."
 Write-Host "GSPro input: NONE | Fairway redraw: NONE | Strategy authority: OFF"
 & $Python @ArgsList
 exit $LASTEXITCODE
