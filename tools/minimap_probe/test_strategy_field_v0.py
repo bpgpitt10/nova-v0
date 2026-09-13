@@ -85,9 +85,11 @@ def test_surface_slice_support_and_candidates():
     slices = [sf.normalize_arc_slice(arc(190, -10, 10)), sf.normalize_arc_slice(arc(210, -8, 12))]
     support = sf.surface_support(slices, math.radians(5))
     assert support["slice_support_count"] == 2
-    source, candidates = sf.candidate_angles(slices, 200, [.2, .5, .8])
+    profile = {"carry_mean_yds": 200, "carry_sigma_yds": 10, "lateral_sigma_yds": 15}
+    source, candidates = sf.candidate_angles(slices, profile, [.2, .5, .8])
     assert source in {190, 210}
     assert len(candidates) == 3
+    assert any(not row["inside_source_fairway"] for row in candidates)
 
 
 def test_field_keeps_context_unapplied():
@@ -117,7 +119,8 @@ def test_field_keeps_context_unapplied():
         profile,
         gameplay_context={"wind_mph": 12},
     )
-    assert len(out["candidate_evidence"]) == 3
+    assert len(out["candidate_evidence"]) == 9
+    assert any(not row["inside_source_fairway"] for row in out["candidate_evidence"])
     assert out["gameplay_context"]["applied_to_distribution"] == []
     assert out["gameplay_context"]["unapplied_keys"] == ["wind_mph"]
     assert out["recommendation"] is None
