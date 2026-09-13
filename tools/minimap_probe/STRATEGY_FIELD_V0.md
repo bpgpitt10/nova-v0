@@ -20,11 +20,18 @@ The intended aim target lies on the player's mean-carry radius at a chosen direc
 
 This is required for Looper. A golfer who normally misses right should not have the same expected outcome from a given aim point as a golfer with a neutral pattern.
 
+## Fairway is route evidence, not an aim fence
+
+Candidate search is intentionally allowed to extend **outside** the visible fairway. The current-hole fairway interval supplies a trustworthy route seed, but each side of the search domain is expanded by the player's absolute stock lateral bias plus two lateral sigmas by default. That means Looper can test an aim line in rough-side space when doing so moves the expected landing pattern away from a large one-sided miss or hazard.
+
+Those off-fairway aim lines are candidate evidence only. They are not recommendations, and they do not imply that rough is desirable. A later decision layer must decide whether the resulting outcome distribution is actually better.
+
 ## What v0 outputs
 
-For each candidate direction seeded from an accepted fairway interval near the player's mean carry, v0 outputs:
+For each candidate direction sampled across the expanded route-centered search domain, v0 outputs:
 
 - intended aim direction and intended mean-carry target;
+- whether that aim direction itself lies inside the source fairway interval;
 - expected landing mean after player bias;
 - rotated 2-D covariance in hole-local coordinates;
 - discrete current-hole fairway support across every extracted radial slice;
@@ -45,9 +52,10 @@ That samples the longitudinal shape of the player's landing distribution instead
 ## Known blockers before strategy authority can turn on
 
 1. Red-penalty and white-OB line geometry still lacks a trusted **unsafe-side orientation**. Until that exists, Looper can report clearance / ellipse intersection but must not invent penalty probability.
-2. Radial fairway slices are discrete evidence. If we need true fairway landing probability, we need either a reviewed continuous surface model or a conservative interpolation method with strong QA.
-3. Wind, lie, elevation, temperature, and other gameplay modifiers need explicit models and provenance before they can shift the expected landing distribution.
-4. A later decision layer must define the utility / expected-cost logic that trades fairway, rough, bunker, penalty, OB, distance, next-shot value, and player confidence. Strategy Field v0 intentionally does none of that.
+2. Carry Arc v1 currently supplies fairway intervals only. The field preserves a `surface_class` boundary so rough, deep rough and green radial evidence can be added without redesigning the player-distribution layer.
+3. Radial surface slices are discrete evidence. If we need true surface landing probability, we need either a reviewed continuous surface model or a conservative interpolation method with strong QA.
+4. Wind, lie, elevation, temperature, and other gameplay modifiers need explicit models and provenance before they can shift the expected landing distribution.
+5. A later decision layer must define the utility / expected-cost logic that trades fairway, rough, bunker, penalty, OB, distance, next-shot value, and player confidence. Strategy Field v0 intentionally does none of that.
 
 ## Files
 
@@ -55,4 +63,4 @@ That samples the longitudinal shape of the player's landing distribution instead
 - `strategy_risk_v0.py` — pure landing-distribution vs trusted-hazard geometry evaluator.
 - `strategy_field_v0.py` — composition layer described here.
 - `run_strategy_field_v0_windows.ps1` — one-shot Greywolf replay using player-specific longitudinal carry bands.
-- `test_strategy_field_v0.py` — regression checks for coordinate rotation, player bias, surface support, and gameplay-context separation.
+- `test_strategy_field_v0.py` — regression checks for coordinate rotation, player bias, off-fairway search, surface support, and gameplay-context separation.
