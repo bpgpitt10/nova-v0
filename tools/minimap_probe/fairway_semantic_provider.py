@@ -8,7 +8,6 @@ normalize into the same tiny fairway semantic contract; exact geometry remains S
 from __future__ import annotations
 
 import base64
-import copy
 import json
 import os
 from pathlib import Path
@@ -47,6 +46,7 @@ integer 0-1000 image coordinates. Do not include a polygon or mask."""
 
 
 def semantic_schema() -> dict[str, Any]:
+    """Strict schema for OpenAI structured output."""
     return {
         "type": "object",
         "properties": {
@@ -66,10 +66,27 @@ def semantic_schema() -> dict[str, Any]:
 
 
 def gemini_semantic_schema() -> dict[str, Any]:
-    """Gemini responseSchema supports a JSON-Schema subset; strip unsupported keys."""
-    schema = copy.deepcopy(semantic_schema())
-    schema.pop("additionalProperties", None)
-    return schema
+    """Gemini-safe responseSchema matching the already-proven hazard box schema.
+
+    Gemini's responseSchema endpoint accepts a JSON-Schema subset. Keep validation
+    details such as numeric bounds in local normalization rather than sending keys
+    that Gemini may reject.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "present": {"type": "boolean"},
+            "confidence": {"type": "number"},
+            "box_2d": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "minItems": 4,
+                "maxItems": 4,
+            },
+            "note": {"type": "string"},
+        },
+        "required": ["present", "confidence", "box_2d", "note"],
+    }
 
 
 def _normalize(result: dict[str, Any]) -> dict[str, Any]:
@@ -85,22 +102,15 @@ def _normalize(result: dict[str, Any]) -> dict[str, Any]:
     vals = [int(v) for v in box]
     if any(v < 0 or v > 1000 for v in vals):
         raise ValueError("fairway semantic box_2d outside [0,1000]")
-    note = str(result.get("note") or "").strip() or None
-
-    # Conservative contract repair: both provider prompts explicitly define an empty
-    # box as the no-fairway sentinel. If a model contradicts itself by setting
-    # present=true while returning that sentinel, treat it as absent rather than
-    # crashing the whole replay or inventing geometry.
-    if present and (vals[2] <= vals[0] or vals[3] <= vals[1]):
-        present = False
-        normalized_box: list[int] | None = None
-        repair = "provider-returned-present-with-empty-box; treated-as-absent"
-        note = f"{note}; {repair}" if note else repair
-    elif present:
-        normalized_box = vals
+    if present:
+        # A contradictory provider response is a provider failure, not evidence of
+        # no fairway. Raise so call_chain can try the fallback provider.
+        if vals[2] <= vals[0] or vals[3] <= vals[1]:
+            raise ValueError("present fairway requires a non-empty box_2d")
+        normalized_box: list[int] | None = vals
     else:
         normalized_box = None
-
+    note = str(result.get("note") or "").strip() or None
     return {
         "present": present,
         "confidence": confidence,
