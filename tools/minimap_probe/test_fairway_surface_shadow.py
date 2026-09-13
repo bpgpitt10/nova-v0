@@ -8,9 +8,12 @@ import fairway_surface_shadow as fw
 
 
 class FairwaySurfaceShadowTests(unittest.TestCase):
-    def test_box_1000_converts_to_pixels(self):
+    def test_box_1000_converts_to_pixels_with_minimum_safety_pad(self):
+        # The SAM2 prompt box deliberately keeps a minimum 2px safety margin even
+        # when fractional padding is zero, matching the hazard segmenter behavior.
+        # This prevents the semantic box from clipping the visible surface edge.
         box = fw.box_px([100, 200, 900, 800], 500, 400, pad_fraction=0.0)
-        self.assertEqual(box, (100, 40, 400, 360))
+        self.assertEqual(box, (98, 38, 402, 362))
 
     def test_centerline_support_detects_route_overlap(self):
         mask = np.zeros((100, 100), dtype=bool)
@@ -47,7 +50,7 @@ class FairwaySurfaceShadowTests(unittest.TestCase):
 
     def test_par3_no_fairway_is_valid_product_state(self):
         # The extractor's contract deliberately supports present=false rather than
-        # forcing a fairway shape onto a par 3.  Keep the schema flag explicit.
+        # forcing a fairway shape onto a par 3. Keep the schema flag explicit.
         self.assertFalse(fw.STRATEGY_AUTHORITY)
         self.assertIn("fairway-surface-shadow", fw.SCHEMA_VERSION)
 
