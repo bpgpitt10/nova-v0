@@ -25,7 +25,8 @@ from typing import Any, Iterable
 import strategy_risk_v0 as risk
 
 SCHEMA_VERSION = "looper-strategy-field-v0"
-DEFAULT_FRACTIONS = (0.20, 0.50, 0.80)
+DEFAULT_AIM_GRID = tuple(i / 8 for i in range(9))
+AIM_DOMAIN_SIGMAS = 2.0
 DEFAULT_SAMPLE_COUNT = 2048
 
 
@@ -78,10 +79,12 @@ def _rotate_covariance(cov: tuple[tuple[float, float], tuple[float, float]], ang
     """Rotate shot-frame covariance into hole-local [lateral, forward] coordinates."""
     c = math.cos(angle_rad)
     s = math.sin(angle_rad)
+    # M maps [shot lateral, shot forward] -> [hole lateral, hole forward].
     m00, m01 = c, s
     m10, m11 = -s, c
     a, b = cov[0]
     _, d = cov[1]
+    # M C M^T for symmetric C=[[a,b],[b,d]].
     r00 = m00 * (a * m00 + b * m01) + m01 * (b * m00 + d * m01)
     r01 = m00 * (a * m10 + b * m11) + m01 * (b * m10 + d * m11)
     r11 = m10 * (a * m10 + b * m11) + m11 * (b * m10 + d * m11)
@@ -129,6 +132,7 @@ def _span_interval(span: dict[str, Any]) -> dict[str, Any] | None:
     half = abs(delta) * 0.5
     return {
         "span_id": span.get("span_id"),
+        "surface_class": span.get("surface_class", "fairway"),
         "angle_a_rad": a,
         "angle_b_rad": b,
         "center_angle_rad": center,
@@ -204,23 +208,50 @@ def recommended_probe_carries(player_profile: dict[str, Any], sigmas: Iterable[f
     return sorted(values)
 
 
-def candidate_angles(slices: list[dict[str, Any]], carry_mean_yds: float,
-                     fractions: Iterable[float] = DEFAULT_FRACTIONS) -> tuple[float | None, list[dict[str, Any]]]:
+def candidate_angles(slices: list[dict[str, Any]], player_profile: dict[str, Any],
+                     fractions: Iterable[float] = DEFAULT_AIM_GRID,
+                     domain_sigmas: float = AIM_DOMAIN_SIGMAS) -> tuple[float | None, list[dict[str, Any]]]:
+    """Seed an aim-search domain around the current-hole route, not merely inside fairway.
+
+    The nearest fairway interval supplies route geometry.  We then expand each side by
+    the player's absolute stock bias plus ``domain_sigmas`` lateral sigmas.  This is a
+    search domain only: candidates may intentionally lie outside the fairway.
+    """
+    p = normalize_player_profile(player_profile)
     eligible = [sl for sl in slices if sl["intervals"]]
     if not eligible:
         return None, []
-    source = min(eligible, key=lambda sl: abs(sl["carry_yds"] - carry_mean_yds))
+    source = min(eligible, key=lambda sl: abs(sl["carry_yds"] - p["carry_mean_yds"]))
+    buffer_yds = abs(p["mean_lateral_bias_yds"]) + float(domain_sigmas) * p["lateral_sigma_yds"]
+    buffer_angle = math.atan2(buffer_yds, max(1.0, p["carry_mean_yds"]))
     rows = []
+    seen = set()
     candidate_id = 0
     for interval in source["intervals"]:
+        center = float(interval["center_angle_rad"])
+        half = float(interval["half_width_rad"])
+        domain_half = min(math.pi * 0.49, half + buffer_angle)
         for fraction in fractions:
+            f = max(0.0, min(1.0, float(fraction)))
+            angle = _wrap_angle(center + (2.0 * f - 1.0) * domain_half)
+            key = round(angle, 8)
+            if key in seen:
+                continue
+            seen.add(key)
             candidate_id += 1
             rows.append({
                 "candidate_id": candidate_id,
                 "source_carry_yds": source["carry_yds"],
                 "source_span_id": interval.get("span_id"),
-                "fraction_along_span": float(fraction),
-                "aim_angle_rad": _fraction_angle(interval, float(fraction)),
+                "fraction_across_search_domain": f,
+                "aim_angle_rad": angle,
+                "inside_source_fairway": _contains(interval, angle),
+                "search_domain": {
+                    "basis": "source fairway interval expanded by player bias + lateral dispersion",
+                    "lateral_buffer_yds": buffer_yds,
+                    "domain_sigmas": float(domain_sigmas),
+                    "angular_buffer_deg": math.degrees(buffer_angle),
+                },
             })
     return source["carry_yds"], rows
 
@@ -282,11 +313,11 @@ def evaluate_candidate(geometry_payload: dict[str, Any], slices: list[dict[str, 
 
 def build_strategy_field(geometry_payload: dict[str, Any], arc_payloads: Iterable[dict[str, Any]],
                          player_profile: dict[str, Any], *, gameplay_context: dict[str, Any] | None = None,
-                         fractions: Iterable[float] = DEFAULT_FRACTIONS,
+                         fractions: Iterable[float] = DEFAULT_AIM_GRID,
                          sample_count: int = DEFAULT_SAMPLE_COUNT) -> dict[str, Any]:
     profile = normalize_player_profile(player_profile)
     slices = sorted((normalize_arc_slice(p) for p in arc_payloads), key=lambda row: row["carry_yds"])
-    source_carry, seeds = candidate_angles(slices, profile["carry_mean_yds"], fractions)
+    source_carry, seeds = candidate_angles(slices, profile, fractions)
     candidates = [
         evaluate_candidate(geometry_payload, slices, profile, seed, sample_count=sample_count)
         for seed in seeds
@@ -298,7 +329,7 @@ def build_strategy_field(geometry_payload: dict[str, Any], arc_payloads: Iterabl
         "identity": identity,
         "player_profile": profile,
         "course_field": {
-            "representation": "radial current-hole fairway slices + trusted hazard geometry",
+            "representation": "radial current-hole surface slices (fairway supplied by Carry Arc v1) + trusted hazard geometry",
             "radial_slices": slices,
             "candidate_source_carry_yds": source_carry,
             "hazard_geometry_source_schema": geometry_payload.get("schema_version"),
@@ -312,6 +343,7 @@ def build_strategy_field(geometry_payload: dict[str, Any], arc_payloads: Iterabl
         "candidate_evidence": candidates,
         "limitations": [
             "Fairway evidence is discrete radial-slice support, not a reconstructed fairway polygon or fairway probability.",
+            "Carry Arc v1 currently supplies fairway intervals only; the field schema preserves surface_class so rough/deep_rough/green slices can be added without changing the player-distribution layer.",
             "Penalty-area and OB boundaries do not yet expose unsafe-side orientation, so boundary probability remains unavailable in strategy_risk_v0.",
             "No decision weights, strokes-gained values, club choice, or aim recommendation are applied in this layer.",
         ],
