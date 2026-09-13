@@ -9,6 +9,7 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import OsmGeometryProofPage from './pages/OsmGeometryProofPage.tsx'
 import {
   BAG_CONFIG_UPDATED_EVENT,
   hasSavedBagConfig,
@@ -146,6 +147,9 @@ function RootRouter() {
   }, [])
 
   useEffect(() => {
+    if (pathname === '/osm-geometry-proof') {
+      return
+    }
     if (hasBagConfig || pathname === '/bag-setup') {
       return
     }
@@ -154,6 +158,7 @@ function RootRouter() {
   }, [bagConfigRevision, hasBagConfig, pathname])
 
   const view = useMemo(() => {
+    const showOsmGeometryProof = pathname === '/osm-geometry-proof'
     const showBagSetup = pathname === '/bag-setup'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/' || pathname === '/looper'
@@ -163,6 +168,9 @@ function RootRouter() {
     const showTheRead = pathname === '/read'
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
 
+    if (showOsmGeometryProof) {
+      return <OsmGeometryProofPage />
+    }
     if (showBagSetup || !hasBagConfig) {
       return <BagSetupPage />
     }
