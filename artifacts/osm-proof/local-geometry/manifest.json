@@ -1,5 +1,62 @@
 {
   "all_holes_static_geometry_ready": true,
+  "cleanup": {
+    "behind_tee_tolerance_yards": 35.0,
+    "past_green_tolerance_yards": 50.0,
+    "removed": [
+      {
+        "forward_range_yards": [
+          -87.1,
+          -58.1
+        ],
+        "golf": "green",
+        "hole": 1,
+        "osm_id": 1212606915,
+        "reason": "non_target_green"
+      },
+      {
+        "forward_range_yards": [
+          -89.8,
+          -49.4
+        ],
+        "golf": "rough",
+        "hole": 1,
+        "osm_id": 1446802838,
+        "reason": "wholly_behind_selected_tee"
+      },
+      {
+        "forward_range_yards": [
+          -60.5,
+          -41.0
+        ],
+        "golf": "rough",
+        "hole": 8,
+        "osm_id": 1446802842,
+        "reason": "wholly_behind_selected_tee"
+      },
+      {
+        "forward_range_yards": [
+          -108.2,
+          -69.0
+        ],
+        "golf": "rough",
+        "hole": 13,
+        "osm_id": 1446806453,
+        "reason": "wholly_behind_selected_tee"
+      },
+      {
+        "forward_range_yards": [
+          -51.0,
+          -41.3
+        ],
+        "golf": "rough",
+        "hole": 15,
+        "osm_id": 1446921219,
+        "reason": "wholly_behind_selected_tee"
+      }
+    ],
+    "removed_feature_count": 5
+  },
   "coordinate_system": "selected tee origin; +forward to target green centroid; +right golfer-right; yards",
   "course": "Greywolf Golf Course",
   "feature_totals_assigned": {
@@ -8,6 +65,14 @@
     "green": 19,
     "lateral_water_hazard": 7,
     "rough": 48,
+    "tee": 18
+  },
+  "feature_totals_in_play_window": {
+    "bunker": 67,
+    "fairway": 20,
+    "green": 18,
+    "lateral_water_hazard": 7,
+    "rough": 44,
     "tee": 18
   },
   "hole_count": 18,
@@ -20,8 +85,10 @@
       "hole": 1,
       "osm_tee_green_yards": 347.7,
       "ready": true,
+      "removed_out_of_play": 2,
       "residual_yards": -2.3,
-      "rough": 2,
+      "rough": 1,
+      "target_greens": 1,
       "water": 2
     },
     {
@@ -32,8 +99,10 @@
       "hole": 2,
       "osm_tee_green_yards": 366.4,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 11.4,
       "rough": 1,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -44,8 +113,10 @@
       "hole": 3,
       "osm_tee_green_yards": 415.2,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -23.8,
       "rough": 3,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -56,8 +127,10 @@
       "hole": 4,
       "osm_tee_green_yards": 385.8,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -11.2,
       "rough": 1,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -68,8 +141,10 @@
       "hole": 5,
       "osm_tee_green_yards": 514.9,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -9.1,
       "rough": 3,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -80,8 +155,10 @@
       "hole": 6,
       "osm_tee_green_yards": 148.9,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 1.9,
       "rough": 2,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -92,8 +169,10 @@
       "hole": 7,
       "osm_tee_green_yards": 352.9,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -9.1,
       "rough": 1,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -104,8 +183,10 @@
       "hole": 8,
       "osm_tee_green_yards": 386.1,
       "ready": true,
+      "removed_out_of_play": 1,
       "residual_yards": -9.9,
-      "rough": 5,
+      "rough": 4,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -116,8 +197,10 @@
       "hole": 9,
       "osm_tee_green_yards": 127.9,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -3.1,
       "rough": 1,
+      "target_greens": 1,
       "water": 1
     },
     {
@@ -128,8 +211,10 @@
       "hole": 10,
       "osm_tee_green_yards": 550.7,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 6.7,
       "rough": 2,
+      "target_greens": 1,
       "water": 1
     },
     {
@@ -140,8 +225,10 @@
       "hole": 11,
       "osm_tee_green_yards": 292.6,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 3.6,
       "rough": 5,
+      "target_greens": 1,
       "water": 1
     },
     {
@@ -152,8 +239,10 @@
       "hole": 12,
       "osm_tee_green_yards": 128.8,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 1.8,
       "rough": 1,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -164,8 +253,10 @@
       "hole": 13,
       "osm_tee_green_yards": 320.9,
       "ready": true,
+      "removed_out_of_play": 1,
       "residual_yards": -5.1,
-      "rough": 6,
+      "rough": 5,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -176,8 +267,10 @@
       "hole": 14,
       "osm_tee_green_yards": 423.6,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -20.4,
       "rough": 2,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -188,8 +281,10 @@
       "hole": 15,
       "osm_tee_green_yards": 123.8,
       "ready": true,
+      "removed_out_of_play": 1,
       "residual_yards": -2.2,
-      "rough": 5,
+      "rough": 4,
+      "target_greens": 1,
       "water": 1
     },
     {
@@ -200,8 +295,10 @@
       "hole": 16,
       "osm_tee_green_yards": 337.2,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": -7.8,
       "rough": 3,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -212,8 +309,10 @@
       "hole": 17,
       "osm_tee_green_yards": 383.9,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 10.9,
       "rough": 3,
+      "target_greens": 1,
       "water": 0
     },
     {
@@ -224,8 +323,10 @@
       "hole": 18,
       "osm_tee_green_yards": 373.1,
       "ready": true,
+      "removed_out_of_play": 0,
       "residual_yards": 12.1,
       "rough": 2,
+      "target_greens": 1,
       "water": 1
     }
   ],

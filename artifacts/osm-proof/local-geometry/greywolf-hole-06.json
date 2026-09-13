@@ -62,11 +62,21 @@
     "bunker_count": 2,
     "fairway_count": 1,
     "fairway_route_gap_yards": 0.0,
+    "in_play_window": {
+      "max_forward_yards": 198.9,
+      "min_forward_yards": -35.0
+    },
     "rough_count": 2,
     "selected_tee_present": true,
     "static_geometry_ready": true,
+    "target_green_count": 1,
     "target_green_present": true,
     "water_count": 0
+  },
+  "cleanup": {
+    "policy": "selected target green only; drop polygons wholly behind selected tee or wholly beyond target green",
+    "removed": [],
+    "removed_feature_count": 0
   },
   "course": "Greywolf Golf Course",
   "features": {

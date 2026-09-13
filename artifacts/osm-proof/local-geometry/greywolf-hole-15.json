@@ -49,18 +49,38 @@
   "bounds": {
     "max_forward_yards": 149.6,
     "max_right_yards": 34.5,
-    "min_forward_yards": -51.0,
+    "min_forward_yards": -46.2,
     "min_right_yards": -39.3
   },
   "checks": {
     "bunker_count": 2,
     "fairway_count": 1,
     "fairway_route_gap_yards": 0.0,
-    "rough_count": 5,
+    "in_play_window": {
+      "max_forward_yards": 173.8,
+      "min_forward_yards": -35.0
+    },
+    "rough_count": 4,
     "selected_tee_present": true,
     "static_geometry_ready": true,
+    "target_green_count": 1,
     "target_green_present": true,
     "water_count": 1
+  },
+  "cleanup": {
+    "policy": "selected target green only; drop polygons wholly behind selected tee or wholly beyond target green",
+    "removed": [
+      {
+        "forward_range_yards": [
+          -51.0,
+          -41.3
+        ],
+        "golf": "rough",
+        "osm_id": 1446921219,
+        "reason": "wholly_behind_selected_tee"
+      }
+    ],
+    "removed_feature_count": 1
   },
   "course": "Greywolf Golf Course",
   "features": {
@@ -771,73 +791,6 @@
           {
             "forward_yards": 134.002,
             "right_yards": -35.508
-          }
-        ],
-        "ref": null
-      },
-      {
-        "assigned_hole": 15,
-        "association_distance_yards": 0.0,
-        "centroid": {
-          "forward_yards": -46.267,
-          "right_yards": 2.872
-        },
-        "golf": "rough",
-        "name": null,
-        "osm_id": 1446921219,
-        "osm_type": "way",
-        "polygon": [
-          {
-            "forward_yards": -48.844,
-            "right_yards": 9.203
-          },
-          {
-            "forward_yards": -51.016,
-            "right_yards": 5.313
-          },
-          {
-            "forward_yards": -50.813,
-            "right_yards": 1.56
-          },
-          {
-            "forward_yards": -49.259,
-            "right_yards": -1.257
-          },
-          {
-            "forward_yards": -47.545,
-            "right_yards": -2.608
-          },
-          {
-            "forward_yards": -45.44,
-            "right_yards": -3.002
-          },
-          {
-            "forward_yards": -44.027,
-            "right_yards": -2.479
-          },
-          {
-            "forward_yards": -42.089,
-            "right_yards": -0.39
-          },
-          {
-            "forward_yards": -41.65,
-            "right_yards": 1.411
-          },
-          {
-            "forward_yards": -41.289,
-            "right_yards": 4.208
-          },
-          {
-            "forward_yards": -43.838,
-            "right_yards": 6.949
-          },
-          {
-            "forward_yards": -46.812,
-            "right_yards": 9.228
-          },
-          {
-            "forward_yards": -48.844,
-            "right_yards": 9.203
           }
         ],
         "ref": null

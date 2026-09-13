@@ -48,19 +48,39 @@
   },
   "bounds": {
     "max_forward_yards": 350.4,
-    "max_right_yards": 40.7,
-    "min_forward_yards": -108.2,
+    "max_right_yards": 36.5,
+    "min_forward_yards": -101.0,
     "min_right_yards": -83.7
   },
   "checks": {
     "bunker_count": 2,
     "fairway_count": 1,
     "fairway_route_gap_yards": 0.0,
-    "rough_count": 6,
+    "in_play_window": {
+      "max_forward_yards": 370.9,
+      "min_forward_yards": -35.0
+    },
+    "rough_count": 5,
     "selected_tee_present": true,
     "static_geometry_ready": true,
+    "target_green_count": 1,
     "target_green_present": true,
     "water_count": 0
+  },
+  "cleanup": {
+    "policy": "selected target green only; drop polygons wholly behind selected tee or wholly beyond target green",
+    "removed": [
+      {
+        "forward_range_yards": [
+          -108.2,
+          -69.0
+        ],
+        "golf": "rough",
+        "osm_id": 1446806453,
+        "reason": "wholly_behind_selected_tee"
+      }
+    ],
+    "removed_feature_count": 1
   },
   "course": "Greywolf Golf Course",
   "features": {
@@ -1071,93 +1091,6 @@
       }
     ],
     "rough": [
-      {
-        "assigned_hole": 13,
-        "association_distance_yards": 0.0,
-        "centroid": {
-          "forward_yards": -88.064,
-          "right_yards": 31.489
-        },
-        "golf": "rough",
-        "name": null,
-        "osm_id": 1446806453,
-        "osm_type": "way",
-        "polygon": [
-          {
-            "forward_yards": -76.178,
-            "right_yards": 21.184
-          },
-          {
-            "forward_yards": -71.733,
-            "right_yards": 23.479
-          },
-          {
-            "forward_yards": -69.924,
-            "right_yards": 25.065
-          },
-          {
-            "forward_yards": -69.05,
-            "right_yards": 28.671
-          },
-          {
-            "forward_yards": -71.025,
-            "right_yards": 32.701
-          },
-          {
-            "forward_yards": -76.008,
-            "right_yards": 34.848
-          },
-          {
-            "forward_yards": -83.805,
-            "right_yards": 37.619
-          },
-          {
-            "forward_yards": -90.062,
-            "right_yards": 38.509
-          },
-          {
-            "forward_yards": -97.508,
-            "right_yards": 40.135
-          },
-          {
-            "forward_yards": -102.186,
-            "right_yards": 40.728
-          },
-          {
-            "forward_yards": -105.602,
-            "right_yards": 39.927
-          },
-          {
-            "forward_yards": -108.161,
-            "right_yards": 37.4
-          },
-          {
-            "forward_yards": -108.179,
-            "right_yards": 35.101
-          },
-          {
-            "forward_yards": -107.21,
-            "right_yards": 33.514
-          },
-          {
-            "forward_yards": -101.824,
-            "right_yards": 30.406
-          },
-          {
-            "forward_yards": -87.845,
-            "right_yards": 24.151
-          },
-          {
-            "forward_yards": -82.68,
-            "right_yards": 22.183
-          },
-          {
-            "forward_yards": -76.178,
-            "right_yards": 21.184
-          }
-        ],
-        "ref": null
-      },
       {
         "assigned_hole": 13,
         "association_distance_yards": 1.46,
