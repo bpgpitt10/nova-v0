@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Screenshot-first strategy geometry v2.
 
-Extends v1 by consuming the reviewed recall-first bunker layer when available.
-The original GSPro tee minimap remains visual truth.  Red penalty pixel geometry
-remains exact screenshot-derived geometry.  Bunkers come from bunker_recall_v1's
-accepted/deduped polygons; semantic boxes never become collision geometry.
+Extends v1 by consuming the reviewed recall-first bunker layer when available and
+long neutral-white OB boundaries from the saved GSPro minimap. The original GSPro
+tee minimap remains visual truth. Red penalty pixel geometry remains exact
+screenshot-derived geometry. Semantic boxes never become collision geometry.
 
 Offline/read-only. No API calls. No GSPro input. Strategy authority remains off.
 """
@@ -20,6 +20,7 @@ import cv2
 import numpy as np
 
 import screenshot_strategy_geometry_v1 as v1
+import white_boundary_pixel_geometry_v1 as white_boundary
 
 SCHEMA_VERSION = "looper-screenshot-strategy-geometry-v2"
 
@@ -78,6 +79,33 @@ def recall_bunkers(capture: Path, width: int, height: int) -> tuple[list[dict[st
     return accepted, rejected
 
 
+def white_boundaries(capture: Path, width: int, height: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    raw = white_boundary.process_capture(capture)
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for row in raw.get("objects") or []:
+        poly = v1._valid_polygon(row.get("polygon_pixel"), width, height)
+        if not poly:
+            rejected.append({
+                "source_object_id": row.get("object_id"),
+                "reason": "white boundary polygon missing or outside image",
+                "strategy_authority": False,
+            })
+            continue
+        accepted.append({
+            "hazard_class": "out_of_bounds",
+            "source": "white_boundary_pixel_geometry_v1",
+            "source_object_id": row.get("object_id"),
+            "geometry_type": "polygon",
+            "coordinate_space": "minimap_pixel",
+            "polygon_pixel": poly,
+            "coordinate_authority": "exact-saved-minimap-white-pixels",
+            "validation_state": "greywolf-18-hole-pixel-topology-shadow",
+            "strategy_authority": False,
+        })
+    return accepted, rejected
+
+
 def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
     capture = capture.expanduser().resolve()
     base = v1.build(capture, force_red=force_red)
@@ -87,13 +115,15 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
     if width <= 0 or height <= 0:
         raise RuntimeError("v1 visual truth lacks valid image dimensions")
 
-    # Keep all v1 precise geometry except bunker. v2 owns bunker selection.
+    # Keep v1 precise geometry except bunkers/OB; v2 owns those selection paths.
     precise = [
         dict(row) for row in (base.get("precise_pixel_geometry") or [])
-        if row.get("hazard_class") != "bunker"
+        if row.get("hazard_class") not in {"bunker", "out_of_bounds"}
     ]
     bunkers, bunker_rejected = recall_bunkers(capture, width, height)
+    obs, ob_rejected = white_boundaries(capture, width, height)
     precise.extend(bunkers)
+    precise.extend(obs)
 
     image_path = capture / str(visual.get("source_image"))
     image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
@@ -104,7 +134,7 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
         "penalty_area": (0, 220, 255),
         "bunker": (255, 255, 0),
         "water": (255, 170, 50),
-        "out_of_bounds": (255, 255, 255),
+        "out_of_bounds": (80, 255, 80),
     }
     for row in precise:
         poly = v1._valid_polygon(row.get("polygon_pixel"), width, height)
@@ -123,7 +153,7 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
         "coordinate_transform": base.get("coordinate_transform") or {},
         "precise_pixel_geometry": precise,
         "semantic_localization_evidence": base.get("semantic_localization_evidence") or [],
-        "rejected_or_nonprecise_evidence": (base.get("rejected_or_nonprecise_evidence") or []) + bunker_rejected,
+        "rejected_or_nonprecise_evidence": (base.get("rejected_or_nonprecise_evidence") or []) + bunker_rejected + ob_rejected,
         "overlay_artifact": overlay_name,
         "strategy_authority": False,
         "promotion_decision": "none",
@@ -132,6 +162,7 @@ def build(capture: Path, *, force_red: bool = False) -> dict[str, Any]:
             "original_gspro_minimap_is_visual_truth": True,
             "red_boundary_pixel_geometry": True,
             "bunker_geometry": "bunker_recall_v1 accepted/deduped polygons when available",
+            "out_of_bounds_geometry": "long neutral-white screenshot pixel components",
             "semantic_bbox_is_collision_geometry": False,
             "confidence_range": "clamped to [0,1] on v2 ingestion",
         },
