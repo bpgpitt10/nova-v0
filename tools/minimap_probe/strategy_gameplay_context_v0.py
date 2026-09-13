@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Normalize live GSPro ShotState into Strategy Field gameplay context.
 
-This is an adapter, not an elevation model. GSPro target-card elevation is a point
-measurement to the displayed PIN or AIM target. It must not be treated as a terrain
-elevation field for every candidate landing point.
+This is an adapter, not a terrain model. For Looper v1, elevation is deliberately
+simplified to one shot-level scalar. GSPro's displayed PIN/AIM elevation is trusted
+as the best available elevation context for the shot, and nearby candidate aims are
+assumed to share it.
+
+Policy locked for v1:
+- tee shots: prefer current GSPro AIM elevation; nearby candidate aims inherit it;
+- approach-to-green shots: prefer PIN elevation;
+- other post-tee / layup shots: prefer current GSPro AIM elevation, PIN as fallback;
+- candidate-specific terrain elevation is deferred and is NOT a strategy blocker.
 
 The adapter preserves the source measurements and provenance, makes the sign
-convention explicit, and leaves all modifiers unapplied for Strategy Field v0.
+convention explicit, and leaves the physical playing-distance adjustment itself to
+the later gameplay model.
 """
 from __future__ import annotations
 
@@ -18,7 +26,8 @@ from typing import Any
 
 SCHEMA_VERSION = "looper-strategy-gameplay-context-v0"
 SIGN_CONVENTION = "positive_uphill_negative_downhill"
-ELEVATION_SCOPE = "single GSPro screen target point; not a terrain/elevation field"
+ELEVATION_SCOPE = "single shot-level elevation scalar; nearby candidate aims assumed equivalent for v1"
+ELEVATION_POLICY_VERSION = "looper-elevation-policy-v1"
 
 
 def read_json(path: Path) -> Any:
@@ -77,7 +86,6 @@ def normalize_target_measurement(state: Any, role: str) -> dict[str, Any] | None
             "direction": direction,
             "raw_display": state.get("elevation_raw"),
             "sign_convention": SIGN_CONVENTION,
-            "scope": ELEVATION_SCOPE,
             "unit_consistency_ok": consistency_ok,
             "unit_consistency_error_yds": consistency_error_yds,
             "sign_direction_consistency_ok": sign_direction_ok,
@@ -89,6 +97,35 @@ def normalize_target_measurement(state: Any, role: str) -> dict[str, Any] | None
             "confidence": confidence,
             "confidence_status": "reported" if confidence is not None else "not-calibrated-by-current-target-card-reader",
         },
+    }
+
+
+def elevation_policy() -> dict[str, Any]:
+    return {
+        "policy_version": ELEVATION_POLICY_VERSION,
+        "scope": ELEVATION_SCOPE,
+        "tee": {
+            "preferred_source": "gspro_aim",
+            "fallback_source": "pin",
+            "candidate_handling": "reuse selected shot-level elevation for nearby aim candidates",
+        },
+        "approach_to_green": {
+            "preferred_source": "pin",
+            "fallback_source": "gspro_aim",
+            "candidate_handling": "reuse pin elevation across the green; small intra-green elevation differences ignored",
+        },
+        "other_post_tee": {
+            "preferred_source": "gspro_aim",
+            "fallback_source": "pin",
+            "candidate_handling": "reuse selected shot-level elevation for nearby layup/strategy candidates",
+        },
+        "candidate_specific_terrain_elevation_required": False,
+        "candidate_specific_terrain_elevation_deferred": True,
+        "strategy_blocker": False,
+        "accepted_v1_limitations": [
+            "A materially different layup target may sit at a somewhat different elevation.",
+            "Small elevation differences across a green are intentionally ignored.",
+        ],
     }
 
 
@@ -119,18 +156,14 @@ def build_gameplay_context(shot_state: dict[str, Any], *, supplemental: dict[str
             "screen_truth": True,
             "target_card_source": "GSPro displayed PIN/AIM card",
         },
-        "elevation_contract": {
-            "sign_convention": SIGN_CONVENTION,
-            "scope": ELEVATION_SCOPE,
-            "pin_is_not_candidate_landing_terrain": True,
-            "aim_is_current_gspro_aim_only": True,
-            "candidate_specific_elevation_available": False,
-        },
+        "elevation_contract": elevation_policy(),
         "application": {
+            "shot_level_elevation_policy_locked": True,
+            "elevation_adjustment_model_applied": False,
             "applied_to_distribution": False,
             "applied_to_club_selection": False,
             "applied_to_aim_scoring": False,
-            "note": "Strategy Field v0 preserves these measurements but does not apply an elevation, lie, or wind model.",
+            "note": "The v1 elevation source policy is locked; the numerical playing-distance/flight adjustment is still a separate gameplay model.",
         },
     }
 
@@ -155,7 +188,7 @@ def main() -> int:
     )
     write_json(output, payload)
     print(f"Wrote {output}")
-    print("Elevation preserved as PIN/AIM point measurements only; strategy application OFF")
+    print("Elevation policy v1 locked: one shot-level scalar; candidate-specific terrain elevation deferred")
     return 0
 
 
