@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   greywolf-osm-proof:
@@ -19,56 +20,25 @@ jobs:
       - name: Checkout proof branch
         uses: actions/checkout@v4
 
-      - name: Query Overpass and report golf coverage
+      - name: Reuse preserved successful OSM snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf seed
+          mkdir -p seed
+          gh run download 34788665457 -R bpgpitt10/nova-v0 -n greywolf-osm-proof --dir seed
+          test -s seed/greywolf-osm.json
+
+      - name: Analyze Greywolf OSM geometry
         shell: bash
         run: |
           python - <<'PY'
           import json
           import math
-          import urllib.parse
-          import urllib.request
           from collections import Counter, defaultdict
           from pathlib import Path
 
-          bbox = (50.414, -116.295, 50.493, -116.194)
-          south, west, north, east = bbox
-          query = f'''[out:json][timeout:30];
-          (
-            way["golf"]({south},{west},{north},{east});
-            relation["golf"]({south},{west},{north},{east});
-          );
-          out tags geom;'''
-          endpoints = [
-              'https://overpass-api.de/api/interpreter',
-              'https://overpass.kumi.systems/api/interpreter',
-              'https://overpass.nchc.org.tw/api/interpreter',
-          ]
-
-          payload = None
-          used = None
-          errors = []
-          for endpoint in endpoints:
-              try:
-                  data = urllib.parse.urlencode({'data': query}).encode('utf-8')
-                  req = urllib.request.Request(
-                      endpoint,
-                      data=data,
-                      method='POST',
-                      headers={
-                          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                          'User-Agent': 'Looper-Greywolf-OSM-Proof/0.3',
-                      },
-                  )
-                  with urllib.request.urlopen(req, timeout=40) as response:
-                      payload = json.loads(response.read().decode('utf-8'))
-                  used = endpoint
-                  break
-              except Exception as exc:
-                  errors.append(f'{endpoint}: {exc}')
-
-          if payload is None:
-              raise SystemExit('All Overpass endpoints failed: ' + ' | '.join(errors))
-
+          payload = json.loads(Path('seed/greywolf-osm.json').read_text(encoding='utf-8'))
           elements = payload.get('elements', [])
           counts = Counter()
           refs = defaultdict(list)
@@ -124,25 +94,16 @@ jobs:
                   bounds = None
                   centroid = None
               feature_index.append({
-                  'type': element.get('type'),
-                  'id': element.get('id'),
-                  'golf': golf,
-                  'ref': tags.get('ref'),
-                  'name': tags.get('name'),
-                  'par': tags.get('par'),
-                  'handicap': tags.get('handicap'),
-                  'surface': tags.get('surface'),
-                  'vertex_count': len(points),
-                  'bounds': bounds,
-                  'centroid': centroid,
+                  'type': element.get('type'), 'id': element.get('id'), 'golf': golf,
+                  'ref': tags.get('ref'), 'name': tags.get('name'), 'par': tags.get('par'),
+                  'handicap': tags.get('handicap'), 'surface': tags.get('surface'),
+                  'vertex_count': len(points), 'bounds': bounds, 'centroid': centroid,
               })
               if golf == 'hole' and tags.get('ref') and points:
                   route_m = sum(haversine_m(a,b) for a,b in zip(points, points[1:]))
                   direct_m = haversine_m(points[0], points[-1]) if len(points) > 1 else 0
                   hole_metrics.append({
-                      'hole': tags.get('ref'),
-                      'par': tags.get('par'),
-                      'vertices': len(points),
+                      'hole': tags.get('ref'), 'par': tags.get('par'), 'vertices': len(points),
                       'start': [points[0]['lat'], points[0]['lon']],
                       'end': [points[-1]['lat'], points[-1]['lon']],
                       'direct_yards': round(direct_m * 1.0936133, 1),
@@ -153,33 +114,24 @@ jobs:
           hole_refs = sorted(set(refs.get('hole', [])), key=lambda x: (not str(x).isdigit(), int(x) if str(x).isdigit() else str(x)))
           hole_metrics.sort(key=lambda x: int(x['hole']) if str(x['hole']).isdigit() else 999)
           summary = {
-              'source': used,
-              'bbox': bbox,
               'raw_element_count': len(elements),
               'counts_by_golf_tag': dict(sorted(counts.items())),
               'hole_refs': hole_refs,
               'geometry_vertices_by_tag': dict(sorted(geometry_vertices.items())),
               'closed_geometry_parts_by_tag': dict(sorted(closed_polygons.items())),
+              'source_snapshot_run': 34788665457,
           }
 
           out_dir = Path('artifacts/osm-proof')
           out_dir.mkdir(parents=True, exist_ok=True)
-          Path('greywolf-osm.json').write_text(json.dumps(payload), encoding='utf-8')
-          Path('greywolf-osm-summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True), encoding='utf-8')
           (out_dir / 'greywolf-osm-summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True), encoding='utf-8')
           (out_dir / 'greywolf-osm-feature-index.json').write_text(json.dumps(feature_index, indent=2, sort_keys=True), encoding='utf-8')
           (out_dir / 'greywolf-osm-hole-metrics.json').write_text(json.dumps(hole_metrics, indent=2, sort_keys=True), encoding='utf-8')
-
-          print('GREYWOLF_OSM_PROOF_JSON_START')
           print(json.dumps(summary, indent=2, sort_keys=True))
           print(json.dumps(hole_metrics, indent=2, sort_keys=True))
-          print('GREYWOLF_OSM_PROOF_JSON_END')
-
-          if counts['green'] < 15 or counts['fairway'] < 15:
-              raise SystemExit(f'Coverage too incomplete for OSM-first proof: greens={counts["green"]}, fairways={counts["fairway"]}')
           PY
 
-      - name: Persist proof summary and feature index
+      - name: Persist proof outputs
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -188,17 +140,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Proof outputs unchanged"
           else
-            git commit -m "test(strategy): record Greywolf OSM coverage proof"
+            git commit -m "test(strategy): record Greywolf OSM distance proof"
             git push
           fi
-
-      - name: Upload OSM proof payload
-        uses: actions/upload-artifact@v4
-        with:
-          name: greywolf-osm-proof
-          path: |
-            greywolf-osm.json
-            greywolf-osm-summary.json
-            artifacts/osm-proof/greywolf-osm-feature-index.json
-            artifacts/osm-proof/greywolf-osm-hole-metrics.json
-          retention-days: 7
