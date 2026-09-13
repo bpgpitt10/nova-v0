@@ -1,0 +1,5630 @@
+[
+  {
+    "bounds": [
+      50.448827,
+      -116.2496355,
+      50.4493082,
+      -116.2487202
+    ],
+    "centroid": [
+      50.44910263043478,
+      -116.2492816173913
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 422318632,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 46
+  },
+  {
+    "bounds": [
+      50.4465852,
+      -116.2479077,
+      50.4470019,
+      -116.247422
+    ],
+    "centroid": [
+      50.446802325,
+      -116.24768232500001
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 422318633,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 24
+  },
+  {
+    "bounds": [
+      50.4485347,
+      -116.2456873,
+      50.449213,
+      -116.2450968
+    ],
+    "centroid": [
+      50.448867090625,
+      -116.24540460625
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 422318634,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 32
+  },
+  {
+    "bounds": [
+      50.4495102,
+      -116.2454679,
+      50.4500879,
+      -116.244927
+    ],
+    "centroid": [
+      50.44982996129032,
+      -116.24519555161291
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 422318635,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 31
+  },
+  {
+    "bounds": [
+      50.4454263,
+      -116.2505085,
+      50.4462313,
+      -116.249084
+    ],
+    "centroid": [
+      50.44583131590909,
+      -116.24983550454544
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 422318636,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 44
+  },
+  {
+    "bounds": [
+      50.4436961,
+      -116.2483828,
+      50.4437893,
+      -116.2482706
+    ],
+    "centroid": [
+      50.44374625454545,
+      -116.24831994545455
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 798212129,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4433942,
+      -116.2487404,
+      50.444185,
+      -116.2483433
+    ],
+    "centroid": [
+      50.443781895,
+      -116.2485334225
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 798212132,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 40
+  },
+  {
+    "bounds": [
+      50.4443274,
+      -116.2490641,
+      50.4456666,
+      -116.2482017
+    ],
+    "centroid": [
+      50.44502546818182,
+      -116.24864904318183
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 798212133,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 44
+  },
+  {
+    "bounds": [
+      50.4459839,
+      -116.2479692,
+      50.4462736,
+      -116.2475769
+    ],
+    "centroid": [
+      50.44615713076923,
+      -116.24779021538461
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 798212137,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.4471508,
+      -116.2483808,
+      50.4473934,
+      -116.2477425
+    ],
+    "centroid": [
+      50.4473032,
+      -116.24812872
+    ],
+    "golf": "clubhouse",
+    "handicap": null,
+    "id": 1208181321,
+    "name": "Greywolf Golf Clubhouse",
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 5
+  },
+  {
+    "bounds": [
+      50.4505974,
+      -116.2446211,
+      50.4508156,
+      -116.2443292
+    ],
+    "centroid": [
+      50.45070381428571,
+      -116.24448000714287
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1208932463,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.4481156,
+      -116.2453071,
+      50.4482574,
+      -116.245114
+    ],
+    "centroid": [
+      50.44819163076923,
+      -116.24520900769231
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932464,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4478209,
+      -116.2461229,
+      50.4479866,
+      -116.2458519
+    ],
+    "centroid": [
+      50.4479066,
+      -116.24598668
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932465,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4476925,
+      -116.2462572,
+      50.4478116,
+      -116.2460833
+    ],
+    "centroid": [
+      50.44775794545455,
+      -116.2461714
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932466,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4506559,
+      -116.245064,
+      50.4507806,
+      -116.2448835
+    ],
+    "centroid": [
+      50.45071985384615,
+      -116.2449712076923
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932467,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4504092,
+      -116.245304,
+      50.4506186,
+      -116.2450574
+    ],
+    "centroid": [
+      50.450514749999996,
+      -116.245185175
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932468,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4502513,
+      -116.2454963,
+      50.4504117,
+      -116.2452453
+    ],
+    "centroid": [
+      50.45033664166667,
+      -116.2453743
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932469,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4548657,
+      -116.2429395,
+      50.4553549,
+      -116.242474
+    ],
+    "centroid": [
+      50.455103996874996,
+      -116.2427148875
+    ],
+    "golf": "lateral_water_hazard",
+    "handicap": null,
+    "id": 1208932470,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 32
+  },
+  {
+    "bounds": [
+      50.4524559,
+      -116.2439339,
+      50.4526686,
+      -116.2435991
+    ],
+    "centroid": [
+      50.45256969090909,
+      -116.24380095454545
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1208932475,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4494634,
+      -116.2442748,
+      50.4495985,
+      -116.2441449
+    ],
+    "centroid": [
+      50.44952937894737,
+      -116.24421462105265
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1208932481,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4491984,
+      -116.244412,
+      50.4493704,
+      -116.244237
+    ],
+    "centroid": [
+      50.44929305,
+      -116.24431840909091
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1208932482,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4525472,
+      -116.2437856,
+      50.4552282,
+      -116.2421526
+    ],
+    "centroid": [
+      50.454147,
+      -116.2427622
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1208932483,
+    "name": null,
+    "par": "4",
+    "ref": "11",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4475969,
+      -116.2463151,
+      50.4520137,
+      -116.2437213
+    ],
+    "centroid": [
+      50.4497461,
+      -116.24487636666667
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1208932484,
+    "name": null,
+    "par": "5",
+    "ref": "10",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4527718,
+      -116.2487529,
+      50.4529001,
+      -116.2485795
+    ],
+    "centroid": [
+      50.452842329999996,
+      -116.24866698999999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183574,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.453316,
+      -116.2489003,
+      50.4535101,
+      -116.2486931
+    ],
+    "centroid": [
+      50.45342109230769,
+      -116.24880373846153
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183575,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4507978,
+      -116.248676,
+      50.4539921,
+      -116.2468589
+    ],
+    "centroid": [
+      50.4522681,
+      -116.2480297
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209183578,
+    "name": null,
+    "par": "4",
+    "ref": "17",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.456293,
+      -116.2459926,
+      50.4563971,
+      -116.2457995
+    ],
+    "centroid": [
+      50.45635341,
+      -116.24590218
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183581,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4561666,
+      -116.2457136,
+      50.4562998,
+      -116.245483
+    ],
+    "centroid": [
+      50.45624918181818,
+      -116.24561097272726
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183582,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4560556,
+      -116.2454105,
+      50.4561785,
+      -116.2451826
+    ],
+    "centroid": [
+      50.456123899999994,
+      -116.2453000909091
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183583,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4559924,
+      -116.2450914,
+      50.4560778,
+      -116.2449224
+    ],
+    "centroid": [
+      50.45604142,
+      -116.24501278
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183584,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4561465,
+      -116.2491897,
+      50.4562107,
+      -116.2490837
+    ],
+    "centroid": [
+      50.45618044545454,
+      -116.24913505454546
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183586,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4559358,
+      -116.249357,
+      50.4561144,
+      -116.2491629
+    ],
+    "centroid": [
+      50.456036072727265,
+      -116.24925388181818
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183587,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4556436,
+      -116.2495203,
+      50.4558652,
+      -116.2493508
+    ],
+    "centroid": [
+      50.45576454166667,
+      -116.24942834166666
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183588,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.455312,
+      -116.2497544,
+      50.4553984,
+      -116.2496373
+    ],
+    "centroid": [
+      50.4553650125,
+      -116.2496866375
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183589,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 8
+  },
+  {
+    "bounds": [
+      50.4550904,
+      -116.2497267,
+      50.4552198,
+      -116.2496219
+    ],
+    "centroid": [
+      50.4551654,
+      -116.2496689125
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209183590,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 8
+  },
+  {
+    "bounds": [
+      50.4534073,
+      -116.2525212,
+      50.4561791,
+      -116.24915
+    ],
+    "centroid": [
+      50.45462546666667,
+      -116.25071143333334
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209183595,
+    "name": null,
+    "par": "4",
+    "ref": "13",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4524883,
+      -116.250054,
+      50.4525814,
+      -116.2499331
+    ],
+    "centroid": [
+      50.45253904615385,
+      -116.24999899999999
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190730,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4523067,
+      -116.2501858,
+      50.4524656,
+      -116.250041
+    ],
+    "centroid": [
+      50.45239911818182,
+      -116.2501135
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190731,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4507487,
+      -116.2491302,
+      50.4508507,
+      -116.2489379
+    ],
+    "centroid": [
+      50.45080321538462,
+      -116.24903705384615
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190735,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.450303,
+      -116.2492307,
+      50.4504391,
+      -116.2490735
+    ],
+    "centroid": [
+      50.45037550666667,
+      -116.24915923333333
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190736,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4501213,
+      -116.2491576,
+      50.4502629,
+      -116.2490026
+    ],
+    "centroid": [
+      50.4501970625,
+      -116.24908570625
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190737,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4499761,
+      -116.2491043,
+      50.4500644,
+      -116.2489724
+    ],
+    "centroid": [
+      50.45002275,
+      -116.24903755625
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190738,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4505597,
+      -116.2490604,
+      50.4506399,
+      -116.2489547
+    ],
+    "centroid": [
+      50.450603189999995,
+      -116.24900901999999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190739,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4500238,
+      -116.2498166,
+      50.4531638,
+      -116.2490401
+    ],
+    "centroid": [
+      50.45175559999999,
+      -116.24941006666667
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190740,
+    "name": null,
+    "par": "4",
+    "ref": "16",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4520478,
+      -116.2517934,
+      50.452465,
+      -116.2514831
+    ],
+    "centroid": [
+      50.45225947826086,
+      -116.25162565652172
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190741,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 23
+  },
+  {
+    "bounds": [
+      50.4485164,
+      -116.2505119,
+      50.4487473,
+      -116.2503136
+    ],
+    "centroid": [
+      50.448640118181814,
+      -116.25041797727272
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190746,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4482468,
+      -116.251622,
+      50.452402,
+      -116.2502077
+    ],
+    "centroid": [
+      50.4503499,
+      -116.25085990000001
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190749,
+    "name": null,
+    "par": "5",
+    "ref": "14",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4481362,
+      -116.2501671,
+      50.448231,
+      -116.2500205
+    ],
+    "centroid": [
+      50.44818986470588,
+      -116.25009975882352
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190751,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4482852,
+      -116.250009,
+      50.4485047,
+      -116.2497522
+    ],
+    "centroid": [
+      50.44840396,
+      -116.24989222
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190752,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4480547,
+      -116.2501309,
+      50.4493145,
+      -116.2491788
+    ],
+    "centroid": [
+      50.4486846,
+      -116.24965485
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190757,
+    "name": null,
+    "par": null,
+    "ref": "15",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4499366,
+      -116.252441,
+      50.4499967,
+      -116.2523376
+    ],
+    "centroid": [
+      50.449968828571436,
+      -116.25239024285715
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190758,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 7
+  },
+  {
+    "bounds": [
+      50.4497019,
+      -116.2524494,
+      50.4498061,
+      -116.25226
+    ],
+    "centroid": [
+      50.44975461,
+      -116.25236423999999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190759,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4494289,
+      -116.2525121,
+      50.4496142,
+      -116.2522761
+    ],
+    "centroid": [
+      50.44952665833333,
+      -116.25239198333334
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190760,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4490767,
+      -116.2522003,
+      50.4491972,
+      -116.252057
+    ],
+    "centroid": [
+      50.44914343636364,
+      -116.25212586363637
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190761,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4463113,
+      -116.2524023,
+      50.4499731,
+      -116.251839
+    ],
+    "centroid": [
+      50.4480921,
+      -116.25221453333334
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190769,
+    "name": null,
+    "par": "4",
+    "ref": "8",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4468026,
+      -116.2528951,
+      50.4469146,
+      -116.2527854
+    ],
+    "centroid": [
+      50.44686495,
+      -116.2528354
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190772,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4464859,
+      -116.2531217,
+      50.4466441,
+      -116.2529758
+    ],
+    "centroid": [
+      50.446577285714284,
+      -116.25304951428572
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190773,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4462544,
+      -116.2532632,
+      50.446447,
+      -116.2530669
+    ],
+    "centroid": [
+      50.446355864285714,
+      -116.25317067142858
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190774,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4459873,
+      -116.2534734,
+      50.44618,
+      -116.2532039
+    ],
+    "centroid": [
+      50.44609045,
+      -116.25333590714285
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190775,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4460977,
+      -116.253348,
+      50.4494963,
+      -116.2529801
+    ],
+    "centroid": [
+      50.447956266666665,
+      -116.25314283333334
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190776,
+    "name": null,
+    "par": "4",
+    "ref": "7",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4448003,
+      -116.252748,
+      50.444919,
+      -116.2523247
+    ],
+    "centroid": [
+      50.44486100666666,
+      -116.25255803333333
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190779,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4446749,
+      -116.2526132,
+      50.4447715,
+      -116.252395
+    ],
+    "centroid": [
+      50.44472585,
+      -116.25251108333333
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190780,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4445181,
+      -116.2524185,
+      50.4446073,
+      -116.2522643
+    ],
+    "centroid": [
+      50.444569622222225,
+      -116.25234618888888
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190781,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.4446059,
+      -116.2522399,
+      50.4447135,
+      -116.2520902
+    ],
+    "centroid": [
+      50.444666118181814,
+      -116.25216711818183
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190782,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4446251,
+      -116.251854,
+      50.4447225,
+      -116.2517036
+    ],
+    "centroid": [
+      50.44468259090909,
+      -116.25178537272727
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190783,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4446734,
+      -116.2538181,
+      50.4456622,
+      -116.251772
+    ],
+    "centroid": [
+      50.4451678,
+      -116.25279505
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190784,
+    "name": null,
+    "par": "6",
+    "ref": "6",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4499254,
+      -116.2458551,
+      50.4501325,
+      -116.2456843
+    ],
+    "centroid": [
+      50.450050222222224,
+      -116.24576610000001
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190785,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.4475078,
+      -116.2473095,
+      50.4507273,
+      -116.244986
+    ],
+    "centroid": [
+      50.44895403333334,
+      -116.2462935
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190792,
+    "name": null,
+    "par": "4",
+    "ref": "18",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4466507,
+      -116.2472879,
+      50.4467995,
+      -116.2470722
+    ],
+    "centroid": [
+      50.44672972,
+      -116.24717074
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190793,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4464856,
+      -116.2475071,
+      50.4466411,
+      -116.2472214
+    ],
+    "centroid": [
+      50.4465687,
+      -116.2473621882353
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190794,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4463331,
+      -116.2477134,
+      50.4464931,
+      -116.2473969
+    ],
+    "centroid": [
+      50.446423107692304,
+      -116.24757067692309
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190795,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4436217,
+      -116.2486657,
+      50.4467178,
+      -116.24718
+    ],
+    "centroid": [
+      50.44515473333333,
+      -116.24812323333333
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190796,
+    "name": null,
+    "par": "4",
+    "ref": "1",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4454261,
+      -116.2497688,
+      50.4455409,
+      -116.2494269
+    ],
+    "centroid": [
+      50.44548354545454,
+      -116.24959129090908
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190802,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4452181,
+      -116.2508808,
+      50.4453279,
+      -116.2506898
+    ],
+    "centroid": [
+      50.44527753,
+      -116.25078778
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209190805,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.445275,
+      -116.2507945,
+      50.4461206,
+      -116.248872
+    ],
+    "centroid": [
+      50.445697800000005,
+      -116.24983325
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209190806,
+    "name": null,
+    "par": "3",
+    "ref": "9",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4445585,
+      -116.2503364,
+      50.4446815,
+      -116.2502015
+    ],
+    "centroid": [
+      50.44462392105263,
+      -116.25028664736843
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190808,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4445987,
+      -116.2499925,
+      50.4447035,
+      -116.2498493
+    ],
+    "centroid": [
+      50.44465965384616,
+      -116.2499156
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190809,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.4445592,
+      -116.2497655,
+      50.4446648,
+      -116.2495603
+    ],
+    "centroid": [
+      50.444618473913046,
+      -116.24967091304349
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209190810,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 23
+  },
+  {
+    "bounds": [
+      50.4433442,
+      -116.2492772,
+      50.4434611,
+      -116.2490812
+    ],
+    "centroid": [
+      50.44341332222222,
+      -116.24918397777778
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268501,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.443121,
+      -116.2493202,
+      50.4433173,
+      -116.2490703
+    ],
+    "centroid": [
+      50.44322640769231,
+      -116.24920309230768
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268502,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4429048,
+      -116.2492713,
+      50.4430964,
+      -116.2490715
+    ],
+    "centroid": [
+      50.44300482727272,
+      -116.24918184545454
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268503,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4412398,
+      -116.250694,
+      50.4433583,
+      -116.2496217
+    ],
+    "centroid": [
+      50.442177488709675,
+      -116.25015284032258
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1209268504,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 62
+  },
+  {
+    "bounds": [
+      50.4423385,
+      -116.2507456,
+      50.4424973,
+      -116.2505406
+    ],
+    "centroid": [
+      50.442420866666666,
+      -116.25064436666668
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268505,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4421011,
+      -116.2507724,
+      50.4422831,
+      -116.2505901
+    ],
+    "centroid": [
+      50.442196855,
+      -116.25068137999999
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268506,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4410027,
+      -116.2501249,
+      50.4410794,
+      -116.2499389
+    ],
+    "centroid": [
+      50.44104595,
+      -116.2500387
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268509,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4406129,
+      -116.2496649,
+      50.4407484,
+      -116.2493633
+    ],
+    "centroid": [
+      50.440690036363634,
+      -116.24950434545454
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268510,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4404653,
+      -116.2494983,
+      50.4405935,
+      -116.2492123
+    ],
+    "centroid": [
+      50.4405376,
+      -116.24936657272728
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268511,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4403065,
+      -116.2493025,
+      50.4404329,
+      -116.2490965
+    ],
+    "centroid": [
+      50.44037645454546,
+      -116.24920334545455
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268512,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4403892,
+      -116.2505517,
+      50.4447366,
+      -116.249214
+    ],
+    "centroid": [
+      50.44259763333333,
+      -116.25002726666666
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209268513,
+    "name": null,
+    "par": "5",
+    "ref": "5",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4423609,
+      -116.249356,
+      50.4425098,
+      -116.249191
+    ],
+    "centroid": [
+      50.4424469625,
+      -116.24928275
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268514,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 8
+  },
+  {
+    "bounds": [
+      50.4401188,
+      -116.249161,
+      50.442311,
+      -116.2476656
+    ],
+    "centroid": [
+      50.44121547179487,
+      -116.2483252551282
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1209268517,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 78
+  },
+  {
+    "bounds": [
+      50.4402697,
+      -116.249191,
+      50.4434185,
+      -116.24786
+    ],
+    "centroid": [
+      50.44151206666667,
+      -116.24840763333333
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209268518,
+    "name": null,
+    "par": "4",
+    "ref": "2",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4402518,
+      -116.2482761,
+      50.4406355,
+      -116.2480646
+    ],
+    "centroid": [
+      50.44045949393939,
+      -116.24815965757575
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268519,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 33
+  },
+  {
+    "bounds": [
+      50.4401367,
+      -116.2464722,
+      50.4402644,
+      -116.2462952
+    ],
+    "centroid": [
+      50.44020885,
+      -116.24638268000001
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268523,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4396879,
+      -116.2469362,
+      50.439849,
+      -116.2465896
+    ],
+    "centroid": [
+      50.43978042727272,
+      -116.24675434545453
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268524,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4393611,
+      -116.2470601,
+      50.4395552,
+      -116.2467757
+    ],
+    "centroid": [
+      50.43946626666667,
+      -116.24691130000001
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268525,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4379321,
+      -116.2473733,
+      50.438093,
+      -116.2471433
+    ],
+    "centroid": [
+      50.4380130125,
+      -116.24726182916667
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268527,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 24
+  },
+  {
+    "bounds": [
+      50.4377581,
+      -116.2472055,
+      50.4378974,
+      -116.2470313
+    ],
+    "centroid": [
+      50.43782024545454,
+      -116.24712740909091
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268528,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.437157,
+      -116.2467646,
+      50.4372917,
+      -116.2465016
+    ],
+    "centroid": [
+      50.437224872222224,
+      -116.24664532222222
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268529,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.437043,
+      -116.2464403,
+      50.4371753,
+      -116.2462313
+    ],
+    "centroid": [
+      50.4371114625,
+      -116.24634695
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1209268530,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4364269,
+      -116.2469285,
+      50.4404212,
+      -116.2458337
+    ],
+    "centroid": [
+      50.43840153333334,
+      -116.2463638
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209268536,
+    "name": null,
+    "par": "5",
+    "ref": "3",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4363078,
+      -116.2474256,
+      50.4363953,
+      -116.2472643
+    ],
+    "centroid": [
+      50.43635356,
+      -116.24734527000001
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268539,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4365715,
+      -116.247505,
+      50.4366887,
+      -116.247264
+    ],
+    "centroid": [
+      50.436642544444446,
+      -116.24738797777779
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268540,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.436928,
+      -116.247471,
+      50.4370574,
+      -116.247282
+    ],
+    "centroid": [
+      50.43699414545454,
+      -116.24737101818182
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1209268541,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4361805,
+      -116.249045,
+      50.4400076,
+      -116.2472796
+    ],
+    "centroid": [
+      50.43821056666667,
+      -116.24815426666667
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1209268544,
+    "name": null,
+    "par": "4",
+    "ref": "4",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 3
+  },
+  {
+    "bounds": [
+      50.4397648,
+      -116.2493118,
+      50.4398912,
+      -116.2491648
+    ],
+    "centroid": [
+      50.43983204117647,
+      -116.24923802941176
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1210827193,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4397342,
+      -116.2491287,
+      50.4398268,
+      -116.2490084
+    ],
+    "centroid": [
+      50.43978124285714,
+      -116.24907739285713
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1210827194,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4360692,
+      -116.2498373,
+      50.4408472,
+      -116.2471041
+    ],
+    "centroid": [
+      50.43856705,
+      -116.24831740214286
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210827197,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 140
+  },
+  {
+    "bounds": [
+      50.4362006,
+      -116.247595,
+      50.4390108,
+      -116.2454063
+    ],
+    "centroid": [
+      50.43748409142857,
+      -116.24655225714285
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830324,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 70
+  },
+  {
+    "bounds": [
+      50.4393183,
+      -116.2471444,
+      50.4398991,
+      -116.2465435
+    ],
+    "centroid": [
+      50.43960508529412,
+      -116.24685917352942
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830325,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 34
+  },
+  {
+    "bounds": [
+      50.4401075,
+      -116.2465248,
+      50.4405226,
+      -116.2461922
+    ],
+    "centroid": [
+      50.4402943826087,
+      -116.24636885217392
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830326,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 23
+  },
+  {
+    "bounds": [
+      50.4399333,
+      -116.2494001,
+      50.4435205,
+      -116.2474314
+    ],
+    "centroid": [
+      50.44186076853933,
+      -116.24860896404495
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830327,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 89
+  },
+  {
+    "bounds": [
+      50.4408461,
+      -116.250832,
+      50.4435342,
+      -116.2494216
+    ],
+    "centroid": [
+      50.44217568205128,
+      -116.25006495641027
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830328,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 39
+  },
+  {
+    "bounds": [
+      50.4432357,
+      -116.2507838,
+      50.44498,
+      -116.2492094
+    ],
+    "centroid": [
+      50.44414902978723,
+      -116.2499349319149
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830329,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 47
+  },
+  {
+    "bounds": [
+      50.4433456,
+      -116.2492279,
+      50.4468617,
+      -116.2470157
+    ],
+    "centroid": [
+      50.445156655,
+      -116.24834065200001
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830330,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 100
+  },
+  {
+    "bounds": [
+      50.445135,
+      -116.2509102,
+      50.4463519,
+      -116.2485686
+    ],
+    "centroid": [
+      50.445641411764704,
+      -116.24967810980392
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1210830331,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 51
+  },
+  {
+    "bounds": [
+      50.4452596,
+      -116.2490335,
+      50.4453995,
+      -116.248871
+    ],
+    "centroid": [
+      50.44533507647059,
+      -116.24896667647059
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212577095,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4447126,
+      -116.2491226,
+      50.4448559,
+      -116.2489694
+    ],
+    "centroid": [
+      50.444784941176465,
+      -116.24905008823531
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212577096,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4438335,
+      -116.2484259,
+      50.4438971,
+      -116.2483232
+    ],
+    "centroid": [
+      50.44386598888889,
+      -116.24837563333332
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212577097,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.4434355,
+      -116.2487093,
+      50.4438313,
+      -116.2484044
+    ],
+    "centroid": [
+      50.443634984615386,
+      -116.24856764615384
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212577098,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.4419546,
+      -116.2486104,
+      50.4421003,
+      -116.2483835
+    ],
+    "centroid": [
+      50.44202607647059,
+      -116.24850764705882
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212578885,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4418157,
+      -116.2484039,
+      50.4419719,
+      -116.2482148
+    ],
+    "centroid": [
+      50.44188614285714,
+      -116.24831781428573
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212578886,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 21
+  },
+  {
+    "bounds": [
+      50.4401363,
+      -116.2480436,
+      50.4404999,
+      -116.2476945
+    ],
+    "centroid": [
+      50.44033083214286,
+      -116.24789634642856
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212578887,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.4403375,
+      -116.2463945,
+      50.4404734,
+      -116.2462507
+    ],
+    "centroid": [
+      50.440408225,
+      -116.24632101666667
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212582275,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4362487,
+      -116.2473761,
+      50.438887,
+      -116.2455575
+    ],
+    "centroid": [
+      50.43731043636364,
+      -116.2463456810606
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212582276,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 132
+  },
+  {
+    "bounds": [
+      50.4369415,
+      -116.246163,
+      50.4370439,
+      -116.2459736
+    ],
+    "centroid": [
+      50.43699185,
+      -116.2460714375
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212582277,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4366008,
+      -116.246005,
+      50.4366945,
+      -116.2458711
+    ],
+    "centroid": [
+      50.43665291,
+      -116.24593749
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212582278,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4365177,
+      -116.2458287,
+      50.4366805,
+      -116.2455407
+    ],
+    "centroid": [
+      50.436606908108104,
+      -116.24569006756758
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212582279,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 37
+  },
+  {
+    "bounds": [
+      50.436263,
+      -116.2460532,
+      50.4365589,
+      -116.2455776
+    ],
+    "centroid": [
+      50.436419093103446,
+      -116.24581563793103
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212582280,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4361385,
+      -116.2473513,
+      50.4362055,
+      -116.2472076
+    ],
+    "centroid": [
+      50.436173409999995,
+      -116.24728921
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212584549,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4373598,
+      -116.2474758,
+      50.4374353,
+      -116.2473632
+    ],
+    "centroid": [
+      50.437401808333334,
+      -116.24741391666667
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212584550,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4398345,
+      -116.2492689,
+      50.4401119,
+      -116.2488311
+    ],
+    "centroid": [
+      50.43997947083333,
+      -116.24905765416666
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212584551,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 24
+  },
+  {
+    "bounds": [
+      50.4373818,
+      -116.2493051,
+      50.440141,
+      -116.2474787
+    ],
+    "centroid": [
+      50.43897947727273,
+      -116.24846910681818
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212584552,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 88
+  },
+  {
+    "bounds": [
+      50.4376531,
+      -116.247994,
+      50.4376877,
+      -116.2479203
+    ],
+    "centroid": [
+      50.4376726,
+      -116.24796083999999
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212584553,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 5
+  },
+  {
+    "bounds": [
+      50.444549,
+      -116.2507337,
+      50.444864,
+      -116.2503774
+    ],
+    "centroid": [
+      50.444703978125,
+      -116.250551296875
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212586614,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 32
+  },
+  {
+    "bounds": [
+      50.4434675,
+      -116.2507516,
+      50.4448792,
+      -116.2494258
+    ],
+    "centroid": [
+      50.444233150877196,
+      -116.25002582807016
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212586615,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 57
+  },
+  {
+    "bounds": [
+      50.4416287,
+      -116.24975,
+      50.4417868,
+      -116.2495707
+    ],
+    "centroid": [
+      50.44171228214286,
+      -116.24967333214285
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212586616,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.4416094,
+      -116.249984,
+      50.441842,
+      -116.2498148
+    ],
+    "centroid": [
+      50.44174456756757,
+      -116.24990096756758
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212586617,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 37
+  },
+  {
+    "bounds": [
+      50.4430074,
+      -116.2497557,
+      50.4430717,
+      -116.2496891
+    ],
+    "centroid": [
+      50.443039549999995,
+      -116.2497224
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1212589669,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4454526,
+      -116.2539875,
+      50.4457915,
+      -116.2535708
+    ],
+    "centroid": [
+      50.445646121428574,
+      -116.25378020000001
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212589670,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.445524,
+      -116.2536203,
+      50.4456344,
+      -116.253506
+    ],
+    "centroid": [
+      50.44558071666667,
+      -116.25356106666666
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212589671,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4456256,
+      -116.2535475,
+      50.4456862,
+      -116.2534207
+    ],
+    "centroid": [
+      50.44565977777778,
+      -116.25348116666666
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212589672,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4454195,
+      -116.254016,
+      50.4458118,
+      -116.2535136
+    ],
+    "centroid": [
+      50.44563973684211,
+      -116.25377501578946
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212589673,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4454004,
+      -116.2541316,
+      50.4458867,
+      -116.2533561
+    ],
+    "centroid": [
+      50.445686275999996,
+      -116.253725648
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212589674,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 25
+  },
+  {
+    "bounds": [
+      50.4493203,
+      -116.2532942,
+      50.4496369,
+      -116.2529031
+    ],
+    "centroid": [
+      50.44947869655173,
+      -116.25312067586206
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212592440,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4470511,
+      -116.2535144,
+      50.4496635,
+      -116.2524485
+    ],
+    "centroid": [
+      50.44866769493671,
+      -116.25305468101266
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212592441,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 79
+  },
+  {
+    "bounds": [
+      50.449373,
+      -116.2529244,
+      50.4495551,
+      -116.2527785
+    ],
+    "centroid": [
+      50.44946703181818,
+      -116.25284855454547
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212592442,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4492574,
+      -116.2530274,
+      50.4493735,
+      -116.2528978
+    ],
+    "centroid": [
+      50.44931778571429,
+      -116.25296720476192
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212592443,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 21
+  },
+  {
+    "bounds": [
+      50.4489573,
+      -116.253031,
+      50.4490968,
+      -116.2528405
+    ],
+    "centroid": [
+      50.449028596153845,
+      -116.25292594999999
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212592444,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.448849,
+      -116.2530482,
+      50.4489233,
+      -116.2528969
+    ],
+    "centroid": [
+      50.44889027222222,
+      -116.25297615555554
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212592445,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4461656,
+      -116.2526302,
+      50.4464967,
+      -116.2522307
+    ],
+    "centroid": [
+      50.44635184137931,
+      -116.25239717241378
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212593307,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4461575,
+      -116.2526528,
+      50.4489255,
+      -116.2515073
+    ],
+    "centroid": [
+      50.44743984869565,
+      -116.2521152
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212593308,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 115
+  },
+  {
+    "bounds": [
+      50.446395,
+      -116.2526923,
+      50.4466155,
+      -116.2524265
+    ],
+    "centroid": [
+      50.446505933333334,
+      -116.25256701794872
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212593309,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 39
+  },
+  {
+    "bounds": [
+      50.4451611,
+      -116.2505276,
+      50.4453154,
+      -116.2502474
+    ],
+    "centroid": [
+      50.44524644375,
+      -116.25039311875
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212594560,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4452846,
+      -116.2502015,
+      50.4454206,
+      -116.2499443
+    ],
+    "centroid": [
+      50.44535647692308,
+      -116.25007964615385
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212594561,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4459337,
+      -116.249051,
+      50.4462676,
+      -116.2486889
+    ],
+    "centroid": [
+      50.44610552941177,
+      -116.24891983235295
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212594562,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 34
+  },
+  {
+    "bounds": [
+      50.4456229,
+      -116.2492418,
+      50.4462771,
+      -116.248674
+    ],
+    "centroid": [
+      50.445926425925926,
+      -116.24897747222222
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212594563,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 54
+  },
+  {
+    "bounds": [
+      50.4457706,
+      -116.248898,
+      50.4458899,
+      -116.2487307
+    ],
+    "centroid": [
+      50.44582745862069,
+      -116.24882411724138
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212594564,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4459617,
+      -116.248767,
+      50.4460456,
+      -116.2486403
+    ],
+    "centroid": [
+      50.4460015,
+      -116.24870465
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212594565,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 24
+  },
+  {
+    "bounds": [
+      50.4517434,
+      -116.2440115,
+      50.4518823,
+      -116.243861
+    ],
+    "centroid": [
+      50.45181507391304,
+      -116.24392743913045
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212597305,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 23
+  },
+  {
+    "bounds": [
+      50.4518966,
+      -116.2441598,
+      50.4520037,
+      -116.2439994
+    ],
+    "centroid": [
+      50.451956765,
+      -116.244087465
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212597306,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4518692,
+      -116.2439837,
+      50.4521535,
+      -116.2435865
+    ],
+    "centroid": [
+      50.4520246875,
+      -116.24378773333332
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212597307,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 24
+  },
+  {
+    "bounds": [
+      50.4488891,
+      -116.2450673,
+      50.4521695,
+      -116.2434749
+    ],
+    "centroid": [
+      50.45075639568965,
+      -116.24421271551725
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212597308,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 116
+  },
+  {
+    "bounds": [
+      50.4526039,
+      -116.2428272,
+      50.4527329,
+      -116.2426992
+    ],
+    "centroid": [
+      50.45267685,
+      -116.2427635
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212598844,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.452797,
+      -116.2427632,
+      50.4528784,
+      -116.2426809
+    ],
+    "centroid": [
+      50.45284434285714,
+      -116.24272422857143
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212598845,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 7
+  },
+  {
+    "bounds": [
+      50.4529357,
+      -116.242786,
+      50.4530385,
+      -116.2426505
+    ],
+    "centroid": [
+      50.452993122222225,
+      -116.24271562222222
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212598846,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.4550837,
+      -116.2422859,
+      50.4553573,
+      -116.2419899
+    ],
+    "centroid": [
+      50.455223399999994,
+      -116.24216032307693
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212598847,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.45406,
+      -116.2432723,
+      50.4553807,
+      -116.2419649
+    ],
+    "centroid": [
+      50.45463823095238,
+      -116.24261416428573
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212598848,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 84
+  },
+  {
+    "bounds": [
+      50.4541339,
+      -116.2426708,
+      50.4542984,
+      -116.2424673
+    ],
+    "centroid": [
+      50.454234276923074,
+      -116.24257448974357
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212598849,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 39
+  },
+  {
+    "bounds": [
+      50.4540384,
+      -116.2428266,
+      50.454189,
+      -116.2426708
+    ],
+    "centroid": [
+      50.454108719354835,
+      -116.24274938064517
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212598850,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 31
+  },
+  {
+    "bounds": [
+      50.454509,
+      -116.2432544,
+      50.4546146,
+      -116.2431254
+    ],
+    "centroid": [
+      50.45456488,
+      -116.24319140499999
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212598851,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4546827,
+      -116.2431446,
+      50.4548269,
+      -116.243037
+    ],
+    "centroid": [
+      50.454757900000004,
+      -116.24308785
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212598852,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.454004,
+      -116.2441139,
+      50.4555489,
+      -116.2423126
+    ],
+    "centroid": [
+      50.455021376666664,
+      -116.24329357666667
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1212598853,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 30
+  },
+  {
+    "bounds": [
+      50.453562,
+      -116.2434848,
+      50.4549921,
+      -116.2432813
+    ],
+    "centroid": [
+      50.45434542272728,
+      -116.24335323636365
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1212598854,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4538809,
+      -116.2433346,
+      50.4555286,
+      -116.2418347
+    ],
+    "centroid": [
+      50.45479908,
+      -116.24257515833332
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212598855,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 60
+  },
+  {
+    "bounds": [
+      50.4564421,
+      -116.2473985,
+      50.4567181,
+      -116.2469649
+    ],
+    "centroid": [
+      50.456569800000004,
+      -116.24719676060606
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212600748,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 33
+  },
+  {
+    "bounds": [
+      50.4563935,
+      -116.2469807,
+      50.4565713,
+      -116.2463165
+    ],
+    "centroid": [
+      50.456471569444446,
+      -116.24664118055554
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212600749,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 36
+  },
+  {
+    "bounds": [
+      50.4565737,
+      -116.2470357,
+      50.4567748,
+      -116.2467573
+    ],
+    "centroid": [
+      50.45666604883721,
+      -116.24689674883722
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212600750,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 43
+  },
+  {
+    "bounds": [
+      50.4532534,
+      -116.2520924,
+      50.456883,
+      -116.2440265
+    ],
+    "centroid": [
+      50.4551909991453,
+      -116.24803600940172
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1212600751,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 117
+  },
+  {
+    "bounds": [
+      50.456343,
+      -116.2476449,
+      50.4568651,
+      -116.2462482
+    ],
+    "centroid": [
+      50.45655445357143,
+      -116.24690150357142
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212600752,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.4560348,
+      -116.2471839,
+      50.4565863,
+      -116.2449928
+    ],
+    "centroid": [
+      50.45631055,
+      -116.24608835000001
+    ],
+    "golf": "hole",
+    "handicap": null,
+    "id": 1212600753,
+    "name": null,
+    "par": "3",
+    "ref": "12",
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4532404,
+      -116.2526915,
+      50.4535819,
+      -116.2523121
+    ],
+    "centroid": [
+      50.45342418,
+      -116.252494405
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212601668,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4533671,
+      -116.2523563,
+      50.4545915,
+      -116.2499893
+    ],
+    "centroid": [
+      50.453961844339624,
+      -116.2513473735849
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212601669,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 106
+  },
+  {
+    "bounds": [
+      50.4545038,
+      -116.2506838,
+      50.4547444,
+      -116.2501999
+    ],
+    "centroid": [
+      50.45460836769231,
+      -116.25041860769231
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212601670,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 65
+  },
+  {
+    "bounds": [
+      50.4536423,
+      -116.2524649,
+      50.4538825,
+      -116.2521456
+    ],
+    "centroid": [
+      50.453761061363636,
+      -116.252318125
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212601671,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 44
+  },
+  {
+    "bounds": [
+      50.4516893,
+      -116.2508516,
+      50.4517876,
+      -116.2507294
+    ],
+    "centroid": [
+      50.45174230769231,
+      -116.25079121538462
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212602837,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4480921,
+      -116.2513019,
+      50.4516225,
+      -116.2497529
+    ],
+    "centroid": [
+      50.44974737651515,
+      -116.25064174242424
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212602839,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 132
+  },
+  {
+    "bounds": [
+      50.4481095,
+      -116.2509595,
+      50.4483998,
+      -116.2505611
+    ],
+    "centroid": [
+      50.448258894999995,
+      -116.25077065999999
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212602840,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4483189,
+      -116.2506286,
+      50.4484776,
+      -116.2504624
+    ],
+    "centroid": [
+      50.44839842105264,
+      -116.25055129473685
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212602841,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4487305,
+      -116.2504391,
+      50.4491333,
+      -116.2500998
+    ],
+    "centroid": [
+      50.448945144999996,
+      -116.25025568250001
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212602842,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 40
+  },
+  {
+    "bounds": [
+      50.4508782,
+      -116.2507534,
+      50.4510592,
+      -116.2505252
+    ],
+    "centroid": [
+      50.4509733423077,
+      -116.25064445769232
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212602843,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.451249,
+      -116.2511919,
+      50.4513337,
+      -116.2509808
+    ],
+    "centroid": [
+      50.45129072727273,
+      -116.25107841818182
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212602844,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4511816,
+      -116.2503205,
+      50.4512695,
+      -116.2502002
+    ],
+    "centroid": [
+      50.4512340625,
+      -116.25026461249999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212602845,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 8
+  },
+  {
+    "bounds": [
+      50.4480183,
+      -116.2501918,
+      50.4480823,
+      -116.2500842
+    ],
+    "centroid": [
+      50.44805542727273,
+      -116.25013587272728
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212603722,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4485874,
+      -116.2495734,
+      50.44873,
+      -116.2493438
+    ],
+    "centroid": [
+      50.44867253636364,
+      -116.24945661818182
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212603723,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4491991,
+      -116.2493862,
+      50.4494179,
+      -116.2489109
+    ],
+    "centroid": [
+      50.44931125185185,
+      -116.24916648888887
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212603724,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 27
+  },
+  {
+    "bounds": [
+      50.4494233,
+      -116.2491026,
+      50.4494887,
+      -116.2490144
+    ],
+    "centroid": [
+      50.449455676470585,
+      -116.24906085294117
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212603725,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4494408,
+      -116.2492427,
+      50.4495065,
+      -116.2491554
+    ],
+    "centroid": [
+      50.44947580555556,
+      -116.24919970555555
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212603726,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4491878,
+      -116.2494197,
+      50.4494345,
+      -116.248882
+    ],
+    "centroid": [
+      50.449307104545454,
+      -116.24916873181819
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212603727,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.449152,
+      -116.2497045,
+      50.4495611,
+      -116.2488435
+    ],
+    "centroid": [
+      50.44936113913044,
+      -116.2493538
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212603728,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 23
+  },
+  {
+    "bounds": [
+      50.4530153,
+      -116.2495634,
+      50.4532886,
+      -116.2491717
+    ],
+    "centroid": [
+      50.45314451851851,
+      -116.24939478148147
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212604633,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 27
+  },
+  {
+    "bounds": [
+      50.4511023,
+      -116.2501482,
+      50.4533031,
+      -116.2490133
+    ],
+    "centroid": [
+      50.45223629,
+      -116.24959631249999
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212604634,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 80
+  },
+  {
+    "bounds": [
+      50.4529691,
+      -116.2497247,
+      50.4530779,
+      -116.2495884
+    ],
+    "centroid": [
+      50.45302924,
+      -116.2496549
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212604635,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4528607,
+      -116.2496262,
+      50.4530181,
+      -116.2494267
+    ],
+    "centroid": [
+      50.452947780769236,
+      -116.24951707692307
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212604636,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.4518329,
+      -116.2493381,
+      50.4520678,
+      -116.249066
+    ],
+    "centroid": [
+      50.45196529655172,
+      -116.24922391034484
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212604637,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4515746,
+      -116.2494767,
+      50.4517936,
+      -116.2492155
+    ],
+    "centroid": [
+      50.45169785294118,
+      -116.24935683529412
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212604638,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 34
+  },
+  {
+    "bounds": [
+      50.4513874,
+      -116.2495983,
+      50.4515549,
+      -116.249371
+    ],
+    "centroid": [
+      50.45147402068966,
+      -116.24948548965516
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212604639,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4539534,
+      -116.2487083,
+      50.454021,
+      -116.2486417
+    ],
+    "centroid": [
+      50.4539902,
+      -116.24867541333333
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212605458,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4536988,
+      -116.2487831,
+      50.4538098,
+      -116.2486775
+    ],
+    "centroid": [
+      50.45375772,
+      -116.24873034000001
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1212605459,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4506463,
+      -116.2471156,
+      50.4509632,
+      -116.2466569
+    ],
+    "centroid": [
+      50.450821117241375,
+      -116.24691193793103
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212605460,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 29
+  },
+  {
+    "bounds": [
+      50.4507941,
+      -116.2475086,
+      50.4508959,
+      -116.2473149
+    ],
+    "centroid": [
+      50.450844288,
+      -116.24739776
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212605461,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 25
+  },
+  {
+    "bounds": [
+      50.4511388,
+      -116.2473867,
+      50.4512692,
+      -116.2470117
+    ],
+    "centroid": [
+      50.45119918108108,
+      -116.24720615135135
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212605462,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 37
+  },
+  {
+    "bounds": [
+      50.4514119,
+      -116.2484992,
+      50.4515531,
+      -116.2482918
+    ],
+    "centroid": [
+      50.45147586,
+      -116.24840490000001
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212605463,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 25
+  },
+  {
+    "bounds": [
+      50.4515535,
+      -116.2487196,
+      50.4516295,
+      -116.2485703
+    ],
+    "centroid": [
+      50.45159359473684,
+      -116.24864612105263
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212605464,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4516063,
+      -116.2489798,
+      50.4517965,
+      -116.2487607
+    ],
+    "centroid": [
+      50.45171083333333,
+      -116.24888152424242
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212605465,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 33
+  },
+  {
+    "bounds": [
+      50.4506369,
+      -116.2488797,
+      50.4524043,
+      -116.2466412
+    ],
+    "centroid": [
+      50.45138324936709,
+      -116.24774395949368
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212605466,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 79
+  },
+  {
+    "bounds": [
+      50.4506239,
+      -116.249019,
+      50.4530396,
+      -116.2466139
+    ],
+    "centroid": [
+      50.451590605999996,
+      -116.247900964
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1212605467,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 50
+  },
+  {
+    "bounds": [
+      50.4492409,
+      -116.2453283,
+      50.449268,
+      -116.2452495
+    ],
+    "centroid": [
+      50.44925445,
+      -116.24528889999999
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1212606505,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 2
+  },
+  {
+    "bounds": [
+      50.4473578,
+      -116.2474813,
+      50.4476824,
+      -116.2470932
+    ],
+    "centroid": [
+      50.44752355,
+      -116.24729782727273
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212606506,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 22
+  },
+  {
+    "bounds": [
+      50.4473444,
+      -116.2475982,
+      50.4496718,
+      -116.245792
+    ],
+    "centroid": [
+      50.44843258695652,
+      -116.24670721086956
+    ],
+    "golf": "fairway",
+    "handicap": null,
+    "id": 1212606507,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 92
+  },
+  {
+    "bounds": [
+      50.4475055,
+      -116.2471216,
+      50.4476923,
+      -116.2469147
+    ],
+    "centroid": [
+      50.44761230571429,
+      -116.24702648285715
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212606508,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 35
+  },
+  {
+    "bounds": [
+      50.4477261,
+      -116.2469505,
+      50.4478601,
+      -116.2467549
+    ],
+    "centroid": [
+      50.44779431111111,
+      -116.2468483037037
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212606509,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 27
+  },
+  {
+    "bounds": [
+      50.4489072,
+      -116.2468076,
+      50.4491004,
+      -116.2466151
+    ],
+    "centroid": [
+      50.44900055666667,
+      -116.24671284333334
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212606510,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 30
+  },
+  {
+    "bounds": [
+      50.4492437,
+      -116.246669,
+      50.4493886,
+      -116.2464844
+    ],
+    "centroid": [
+      50.44932061851851,
+      -116.24659517777779
+    ],
+    "golf": "bunker",
+    "handicap": null,
+    "id": 1212606511,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 27
+  },
+  {
+    "bounds": [
+      50.4468825,
+      -116.2476365,
+      50.447125,
+      -116.2470843
+    ],
+    "centroid": [
+      50.44700786538461,
+      -116.24738215
+    ],
+    "golf": "green",
+    "handicap": null,
+    "id": 1212606915,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 26
+  },
+  {
+    "bounds": [
+      50.4475404,
+      -116.2463964,
+      50.447653,
+      -116.2462378
+    ],
+    "centroid": [
+      50.447600470588235,
+      -116.2463172647059
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1214871677,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4485822,
+      -116.2447394,
+      50.4486946,
+      -116.2445887
+    ],
+    "centroid": [
+      50.44863221333333,
+      -116.24466595333334
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446737004,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4480862,
+      -116.2453966,
+      50.4522426,
+      -116.2433808
+    ],
+    "centroid": [
+      50.45032502604167,
+      -116.24436486354166
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446737005,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 96
+  },
+  {
+    "bounds": [
+      50.4546927,
+      -116.2499523,
+      50.4547825,
+      -116.2498635
+    ],
+    "centroid": [
+      50.45473697647059,
+      -116.24990324117647
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446737006,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4485016,
+      -116.2522568,
+      50.4485743,
+      -116.252159
+    ],
+    "centroid": [
+      50.44853607692308,
+      -116.25220664615384
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446738260,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4456743,
+      -116.2528493,
+      50.4457525,
+      -116.2527339
+    ],
+    "centroid": [
+      50.44571026,
+      -116.25279121999999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446738261,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 10
+  },
+  {
+    "bounds": [
+      50.4459515,
+      -116.2536183,
+      50.4497077,
+      -116.252344
+    ],
+    "centroid": [
+      50.447760043956045,
+      -116.25307901208791
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446738262,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 91
+  },
+  {
+    "bounds": [
+      50.4468114,
+      -116.2477045,
+      50.4471397,
+      -116.2470526
+    ],
+    "centroid": [
+      50.44701161851852,
+      -116.24736511851852
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802838,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 27
+  },
+  {
+    "bounds": [
+      50.4472819,
+      -116.247685,
+      50.4502072,
+      -116.2455236
+    ],
+    "centroid": [
+      50.44871782535211,
+      -116.2465258309859
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802839,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 71
+  },
+  {
+    "bounds": [
+      50.4502122,
+      -116.2455619,
+      50.450798,
+      -116.2448345
+    ],
+    "centroid": [
+      50.45052338918919,
+      -116.24517527837838
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802840,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 37
+  },
+  {
+    "bounds": [
+      50.4445863,
+      -116.2519006,
+      50.4447397,
+      -116.2516923
+    ],
+    "centroid": [
+      50.4446715,
+      -116.25176956666668
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802841,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 9
+  },
+  {
+    "bounds": [
+      50.4498641,
+      -116.252471,
+      50.4500245,
+      -116.2522555
+    ],
+    "centroid": [
+      50.44994698333333,
+      -116.25238968333333
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802842,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4496833,
+      -116.2524753,
+      50.4498307,
+      -116.2522293
+    ],
+    "centroid": [
+      50.449763966666666,
+      -116.25235207333334
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802843,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.449408,
+      -116.2525336,
+      50.4496499,
+      -116.2522395
+    ],
+    "centroid": [
+      50.449519942857144,
+      -116.25239912142857
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802844,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4459847,
+      -116.2527545,
+      50.4489811,
+      -116.2513362
+    ],
+    "centroid": [
+      50.44755974615385,
+      -116.25211408615385
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802845,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 65
+  },
+  {
+    "bounds": [
+      50.4490614,
+      -116.2522415,
+      50.4492749,
+      -116.2520261
+    ],
+    "centroid": [
+      50.449167125,
+      -116.25214661666666
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802846,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 12
+  },
+  {
+    "bounds": [
+      50.4475316,
+      -116.2464085,
+      50.4480282,
+      -116.2457774
+    ],
+    "centroid": [
+      50.4477987,
+      -116.24607191666668
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802847,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 30
+  },
+  {
+    "bounds": [
+      50.4525593,
+      -116.242853,
+      50.4527549,
+      -116.2426332
+    ],
+    "centroid": [
+      50.452668249999995,
+      -116.24274507142857
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802848,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4527762,
+      -116.2428268,
+      50.452894,
+      -116.2426404
+    ],
+    "centroid": [
+      50.45282868571429,
+      -116.24274148571429
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802849,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 7
+  },
+  {
+    "bounds": [
+      50.4529227,
+      -116.2428035,
+      50.4530581,
+      -116.242623
+    ],
+    "centroid": [
+      50.452982036363636,
+      -116.24272276363637
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446802850,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 11
+  },
+  {
+    "bounds": [
+      50.4533217,
+      -116.2428517,
+      50.4533908,
+      -116.2427872
+    ],
+    "centroid": [
+      50.453348919999996,
+      -116.24281593999999
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446802851,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 5
+  },
+  {
+    "bounds": [
+      50.453297,
+      -116.2428901,
+      50.4534061,
+      -116.2427156
+    ],
+    "centroid": [
+      50.453360673333336,
+      -116.24280304
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806452,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4559276,
+      -116.2493758,
+      50.4562276,
+      -116.2490669
+    ],
+    "centroid": [
+      50.45607311111111,
+      -116.24921519444443
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806453,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 18
+  },
+  {
+    "bounds": [
+      50.4555918,
+      -116.2495722,
+      50.4558946,
+      -116.2493217
+    ],
+    "centroid": [
+      50.45574503684211,
+      -116.24944033684211
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806454,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4552904,
+      -116.249773,
+      50.4554204,
+      -116.2496164
+    ],
+    "centroid": [
+      50.45534959230769,
+      -116.24970055384617
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806455,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4550656,
+      -116.2497653,
+      50.4552553,
+      -116.2495766
+    ],
+    "centroid": [
+      50.455165535714286,
+      -116.24965268571428
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806456,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 14
+  },
+  {
+    "bounds": [
+      50.4546746,
+      -116.2499911,
+      50.4548153,
+      -116.2498183
+    ],
+    "centroid": [
+      50.454742915384614,
+      -116.24990227692307
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806457,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.453164,
+      -116.2528007,
+      50.4549612,
+      -116.2498522
+    ],
+    "centroid": [
+      50.454084168181815,
+      -116.25114846022728
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806458,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 88
+  },
+  {
+    "bounds": [
+      50.4519867,
+      -116.2518475,
+      50.4524999,
+      -116.2513689
+    ],
+    "centroid": [
+      50.452237530000005,
+      -116.251580035
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806459,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 20
+  },
+  {
+    "bounds": [
+      50.4480496,
+      -116.251355,
+      50.451815,
+      -116.2494984
+    ],
+    "centroid": [
+      50.449976515,
+      -116.250555635
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446806460,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 120
+  },
+  {
+    "bounds": [
+      50.4480103,
+      -116.2502009,
+      50.448097,
+      -116.2500604
+    ],
+    "centroid": [
+      50.44805421538462,
+      -116.25013034615384
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921219,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4480688,
+      -116.2501954,
+      50.4482463,
+      -116.249963
+    ],
+    "centroid": [
+      50.44816688235294,
+      -116.25007197058824
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921220,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4482471,
+      -116.2500361,
+      50.4485293,
+      -116.2497211
+    ],
+    "centroid": [
+      50.44839813529411,
+      -116.24987581764705
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921221,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 17
+  },
+  {
+    "bounds": [
+      50.4485596,
+      -116.2499153,
+      50.4487521,
+      -116.2493127
+    ],
+    "centroid": [
+      50.44865951052632,
+      -116.24957882631578
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921222,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4499616,
+      -116.2492804,
+      50.4506504,
+      -116.2488945
+    ],
+    "centroid": [
+      50.450316342553194,
+      -116.24903338297871
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921223,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 47
+  },
+  {
+    "bounds": [
+      50.4507324,
+      -116.2491487,
+      50.4508678,
+      -116.2489166
+    ],
+    "centroid": [
+      50.4507950375,
+      -116.2490238625
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921224,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 16
+  },
+  {
+    "bounds": [
+      50.4508358,
+      -116.2503315,
+      50.4533777,
+      -116.2487879
+    ],
+    "centroid": [
+      50.45216103571429,
+      -116.24951867428572
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921225,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 70
+  },
+  {
+    "bounds": [
+      50.4512249,
+      -116.2500902,
+      50.4513052,
+      -116.2499884
+    ],
+    "centroid": [
+      50.4512633,
+      -116.2500386
+    ],
+    "golf": "tee",
+    "handicap": null,
+    "id": 1446921226,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 13
+  },
+  {
+    "bounds": [
+      50.4533014,
+      -116.2489907,
+      50.4535358,
+      -116.2486665
+    ],
+    "centroid": [
+      50.45341395333333,
+      -116.24880751333333
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921227,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 15
+  },
+  {
+    "bounds": [
+      50.4536034,
+      -116.2488277,
+      50.4540361,
+      -116.2486115
+    ],
+    "centroid": [
+      50.453818614285716,
+      -116.24871842142856
+    ],
+    "golf": "rough",
+    "handicap": null,
+    "id": 1446921228,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 28
+  },
+  {
+    "bounds": [
+      50.4511979,
+      -116.2433322,
+      50.4538547,
+      -116.2423982
+    ],
+    "centroid": [
+      50.452864798076924,
+      -116.24272463461537
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1447441330,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 52
+  },
+  {
+    "bounds": [
+      50.4480461,
+      -116.2500832,
+      50.4487709,
+      -116.2497947
+    ],
+    "centroid": [
+      50.448383868421054,
+      -116.24996642105263
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1447441331,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 19
+  },
+  {
+    "bounds": [
+      50.4490333,
+      -116.2501751,
+      50.4514078,
+      -116.2494678
+    ],
+    "centroid": [
+      50.45009652894737,
+      -116.24974024736842
+    ],
+    "golf": "path",
+    "handicap": null,
+    "id": 1447441332,
+    "name": null,
+    "par": null,
+    "ref": null,
+    "surface": null,
+    "type": "way",
+    "vertex_count": 38
+  }
+]

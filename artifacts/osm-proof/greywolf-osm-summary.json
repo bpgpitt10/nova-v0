@@ -1,0 +1,61 @@
+{
+  "bbox": [
+    50.414,
+    -116.295,
+    50.493,
+    -116.194
+  ],
+  "closed_geometry_parts_by_tag": {
+    "bunker": 67,
+    "clubhouse": 1,
+    "fairway": 20,
+    "green": 19,
+    "lateral_water_hazard": 7,
+    "rough": 48,
+    "tee": 80
+  },
+  "counts_by_golf_tag": {
+    "bunker": 67,
+    "clubhouse": 1,
+    "fairway": 20,
+    "green": 19,
+    "hole": 18,
+    "lateral_water_hazard": 7,
+    "path": 8,
+    "rough": 48,
+    "tee": 80
+  },
+  "geometry_vertices_by_tag": {
+    "bunker": 1666,
+    "clubhouse": 5,
+    "fairway": 1515,
+    "green": 513,
+    "hole": 50,
+    "lateral_water_hazard": 235,
+    "path": 282,
+    "rough": 1857,
+    "tee": 948
+  },
+  "hole_refs": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18"
+  ],
+  "raw_element_count": 268,
+  "source": "https://overpass.kumi.systems/api/interpreter"
+}
