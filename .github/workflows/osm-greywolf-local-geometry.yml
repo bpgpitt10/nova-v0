@@ -6,6 +6,7 @@ on:
       - hazard-field-lab-v0
     paths:
       - tools/minimap_probe/experimental/osm_geometry_poc.py
+      - tools/minimap_probe/experimental/osm_geometry_cleanup.py
       - .github/workflows/osm-greywolf-local-geometry.yml
   workflow_dispatch:
 
@@ -66,8 +67,21 @@ jobs:
             --tee-targets-json seed/greywolf-gspro-tee-targets.json \
             --out-dir artifacts/osm-proof/local-geometry \
             --course-name "Greywolf Golf Course"
+
+      - name: Restrict geometry to selected tee forward window
+        shell: bash
+        run: |
+          python tools/minimap_probe/experimental/osm_geometry_cleanup.py \
+            --out-dir artifacts/osm-proof/local-geometry
           test "$(find artifacts/osm-proof/local-geometry -name 'greywolf-hole-*.json' | wc -l)" -eq 18
           test "$(find artifacts/osm-proof/local-geometry -name 'greywolf-hole-*.svg' | wc -l)" -eq 18
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('artifacts/osm-proof/local-geometry/manifest.json').read_text())
+          assert manifest['all_holes_static_geometry_ready'] is True
+          assert manifest['feature_totals_in_play_window']['green'] == 18
+          PY
 
       - name: Persist proof outputs
         shell: bash
@@ -78,7 +92,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Local geometry proof outputs unchanged"
           else
-            git commit -m "test(strategy): record Greywolf OSM local geometry proof"
+            git commit -m "test(strategy): record cleaned Greywolf OSM local geometry proof"
             git push
           fi
 
