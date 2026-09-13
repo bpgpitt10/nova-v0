@@ -18,6 +18,8 @@ if ($LASTEXITCODE -ne 0) { throw "White boundary geometry tests failed." }
 if ($LASTEXITCODE -ne 0) { throw "Screenshot strategy geometry v2 tests failed." }
 & $Python "tools\minimap_probe\test_strategy_risk_v0.py"
 if ($LASTEXITCODE -ne 0) { throw "Strategy risk v0 tests failed." }
+& $Python "tools\minimap_probe\test_strategy_risk_overlay_v0.py"
+if ($LASTEXITCODE -ne 0) { throw "Strategy risk overlay v0 tests failed." }
 
 $ArgsList = @(
   "tools\minimap_probe\screenshot_strategy_geometry_v2.py",
