@@ -20,10 +20,10 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          import time
           import urllib.parse
           import urllib.request
           from collections import Counter, defaultdict
+          from pathlib import Path
 
           bbox = (50.414, -116.295, 50.493, -116.194)
           south, west, north, east = bbox
@@ -98,11 +98,21 @@ jobs:
               'geometry_vertices_by_tag': dict(sorted(geometry_vertices.items())),
               'closed_geometry_parts_by_tag': dict(sorted(closed_polygons.items())),
           }
+          Path('greywolf-osm.json').write_text(json.dumps(payload), encoding='utf-8')
+          Path('greywolf-osm-summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True), encoding='utf-8')
           print('GREYWOLF_OSM_PROOF_JSON_START')
           print(json.dumps(summary, indent=2, sort_keys=True))
           print('GREYWOLF_OSM_PROOF_JSON_END')
 
-          # Fail only if the base semantic course model is plainly absent.
           if counts['green'] < 15 or counts['fairway'] < 15:
               raise SystemExit(f'Coverage too incomplete for OSM-first proof: greens={counts["green"]}, fairways={counts["fairway"]}')
           PY
+
+      - name: Upload OSM proof payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-osm-proof
+          path: |
+            greywolf-osm.json
+            greywolf-osm-summary.json
+          retention-days: 7
