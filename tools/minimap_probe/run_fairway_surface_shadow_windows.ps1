@@ -65,6 +65,9 @@ function Invoke-PythonChecked {
 $PythonVersion = (& $Python -c "import sys; print(sys.version.split()[0])").Trim()
 Write-Host "Fairway runtime preflight"
 Write-Host "  python=$PythonVersion"
+if ($PythonVersion -eq "3.14.1") {
+  throw "Python 3.14.1 is explicitly excluded by current torchvision wheels. Update Python to another 3.14 patch (or 3.13), then recreate tools\minimap_probe\.venv."
+}
 
 Write-Host "Checking base probe dependencies..."
 $BaseReady = Test-PythonImport "import cv2, numpy"
@@ -83,12 +86,15 @@ $SamReady = Test-PythonImport "import torch, torchvision; from transformers impo
 if (-not $SamReady) {
   Write-Host "Installing/repairing matched SAM2 runtime (torch 2.14.0 + torchvision 0.29.0)..."
   Invoke-PythonChecked -Arguments @(
-    "-m", "pip", "install", "--disable-pip-version-check", "--upgrade",
+    "-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "--force-reinstall",
     "-r", "tools\minimap_probe\requirements_sam2.txt"
   ) -FailureMessage "SAM2 field-lab dependency installation failed."
   $SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; assert torch.__version__.split('+')[0] == '2.14.0'; assert torchvision.__version__.split('+')[0] == '0.29.0'"
   if (-not $SamReady) { throw "SAM2 dependencies installed but the matched runtime import check still fails." }
 }
+
+Write-Host "Checking isolated environment consistency..."
+Invoke-PythonChecked -Arguments @("-m", "pip", "check") -FailureMessage "Python dependency consistency check failed."
 
 Invoke-PythonChecked -Arguments @(
   "-c",
