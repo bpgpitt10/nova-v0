@@ -24,6 +24,10 @@ if ($LASTEXITCODE -ne 0) { throw "Strategy risk overlay v0 tests failed." }
 if ($LASTEXITCODE -ne 0) { throw "Strategy risk overlay v1 tests failed." }
 & $Python "tools\minimap_probe\test_strategy_fairway_section_v0.py"
 if ($LASTEXITCODE -ne 0) { throw "Strategy fairway section v0 tests failed." }
+& $Python "tools\minimap_probe\test_strategy_fairway_risk_overlay_v0.py"
+if ($LASTEXITCODE -ne 0) { throw "Strategy fairway risk overlay v0 tests failed." }
+& $Python "tools\minimap_probe\test_geometry_review_strategy_fixture_v0.py"
+if ($LASTEXITCODE -ne 0) { throw "Archived Geometry Review strategy fixture tests failed." }
 
 $ArgsList = @(
   "tools\minimap_probe\screenshot_strategy_geometry_v2.py",
