@@ -1,0 +1,1987 @@
+{
+  "anchors": {
+    "green_endpoint_gap_yards": 2.2,
+    "gspro_distance_residual_yards": -20.4,
+    "selected_tee_latlon": [
+      50.45174230769231,
+      -116.25079121538462
+    ],
+    "selected_tee_osm_id": 1212602837,
+    "target_green_latlon": [
+      50.448258894999995,
+      -116.25077065999999
+    ],
+    "target_green_osm_id": 1212602840,
+    "tee_candidates": [
+      {
+        "green_distance_yards": 423.6,
+        "start_gap_yards": 102.8,
+        "target_residual_yards": -20.4,
+        "tee_id": 1212602837
+      },
+      {
+        "green_distance_yards": 491.0,
+        "start_gap_yards": 17.3,
+        "target_residual_yards": 47.0,
+        "tee_id": 1209190741
+      },
+      {
+        "green_distance_yards": 363.9,
+        "start_gap_yards": 176.7,
+        "target_residual_yards": -80.1,
+        "tee_id": 1212602845
+      }
+    ],
+    "tee_to_green_centroid_yards": 423.6
+  },
+  "bounds": {
+    "max_forward_yards": 449.1,
+    "max_right_yards": 81.6,
+    "min_forward_yards": -92.4,
+    "min_right_yards": -99.2
+  },
+  "checks": {
+    "bunker_count": 5,
+    "fairway_count": 1,
+    "fairway_route_gap_yards": 0.0,
+    "rough_count": 2,
+    "selected_tee_present": true,
+    "static_geometry_ready": true,
+    "target_green_present": true,
+    "water_count": 0
+  },
+  "course": "Greywolf Golf Course",
+  "features": {
+    "bunker": [
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 12.23,
+        "centroid": {
+          "forward_yards": 377.346,
+          "right_yards": -27.482
+        },
+        "golf": "bunker",
+        "name": null,
+        "osm_id": 1209190746,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 365.598,
+            "right_yards": -26.781
+          },
+          {
+            "forward_yards": 367.152,
+            "right_yards": -26.008
+          },
+          {
+            "forward_yards": 371.008,
+            "right_yards": -26.397
+          },
+          {
+            "forward_yards": 375.761,
+            "right_yards": -25.814
+          },
+          {
+            "forward_yards": 379.876,
+            "right_yards": -23.862
+          },
+          {
+            "forward_yards": 383.539,
+            "right_yards": -21.363
+          },
+          {
+            "forward_yards": 386.806,
+            "right_yards": -20.275
+          },
+          {
+            "forward_yards": 389.834,
+            "right_yards": -20.163
+          },
+          {
+            "forward_yards": 391.564,
+            "right_yards": -21.147
+          },
+          {
+            "forward_yards": 392.373,
+            "right_yards": -22.801
+          },
+          {
+            "forward_yards": 391.762,
+            "right_yards": -25.343
+          },
+          {
+            "forward_yards": 390.481,
+            "right_yards": -27.299
+          },
+          {
+            "forward_yards": 386.838,
+            "right_yards": -28.691
+          },
+          {
+            "forward_yards": 382.267,
+            "right_yards": -29.049
+          },
+          {
+            "forward_yards": 375.686,
+            "right_yards": -31.698
+          },
+          {
+            "forward_yards": 372.146,
+            "right_yards": -34.762
+          },
+          {
+            "forward_yards": 370.155,
+            "right_yards": -35.521
+          },
+          {
+            "forward_yards": 368.161,
+            "right_yards": -35.598
+          },
+          {
+            "forward_yards": 366.039,
+            "right_yards": -33.88
+          },
+          {
+            "forward_yards": 364.646,
+            "right_yards": -32.228
+          },
+          {
+            "forward_yards": 364.318,
+            "right_yards": -29.14
+          },
+          {
+            "forward_yards": 365.598,
+            "right_yards": -26.781
+          }
+        ],
+        "ref": null
+      },
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 5.58,
+        "centroid": {
+          "forward_yards": 406.698,
+          "right_yards": -17.049
+        },
+        "golf": "bunker",
+        "name": null,
+        "osm_id": 1212602841,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 399.964,
+            "right_yards": -20.202
+          },
+          {
+            "forward_yards": 405.676,
+            "right_yards": -22.728
+          },
+          {
+            "forward_yards": 411.98,
+            "right_yards": -23.912
+          },
+          {
+            "forward_yards": 414.786,
+            "right_yards": -22.965
+          },
+          {
+            "forward_yards": 416.322,
+            "right_yards": -20.814
+          },
+          {
+            "forward_yards": 416.376,
+            "right_yards": -18.932
+          },
+          {
+            "forward_yards": 416.042,
+            "right_yards": -17.462
+          },
+          {
+            "forward_yards": 414.968,
+            "right_yards": -16.592
+          },
+          {
+            "forward_yards": 414.153,
+            "right_yards": -16.331
+          },
+          {
+            "forward_yards": 408.134,
+            "right_yards": -16.617
+          },
+          {
+            "forward_yards": 406.05,
+            "right_yards": -15.285
+          },
+          {
+            "forward_yards": 405.238,
+            "right_yards": -12.88
+          },
+          {
+            "forward_yards": 403.616,
+            "right_yards": -11.679
+          },
+          {
+            "forward_yards": 401.741,
+            "right_yards": -11.082
+          },
+          {
+            "forward_yards": 399.87,
+            "right_yards": -11.491
+          },
+          {
+            "forward_yards": 398.124,
+            "right_yards": -12.838
+          },
+          {
+            "forward_yards": 397.06,
+            "right_yards": -14.584
+          },
+          {
+            "forward_yards": 397.205,
+            "right_yards": -17.332
+          },
+          {
+            "forward_yards": 399.964,
+            "right_yards": -20.202
+          }
+        ],
+        "ref": null
+      },
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 8.03,
+        "centroid": {
+          "forward_yards": 340.301,
+          "right_yards": -40.187
+        },
+        "golf": "bunker",
+        "name": null,
+        "osm_id": 1212602842,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 319.498,
+            "right_yards": -39.869
+          },
+          {
+            "forward_yards": 322.53,
+            "right_yards": -44.016
+          },
+          {
+            "forward_yards": 327.704,
+            "right_yards": -48.751
+          },
+          {
+            "forward_yards": 333.003,
+            "right_yards": -51.278
+          },
+          {
+            "forward_yards": 336.095,
+            "right_yards": -52.273
+          },
+          {
+            "forward_yards": 338.174,
+            "right_yards": -52.064
+          },
+          {
+            "forward_yards": 339.703,
+            "right_yards": -51.253
+          },
+          {
+            "forward_yards": 342.917,
+            "right_yards": -49.026
+          },
+          {
+            "forward_yards": 346.735,
+            "right_yards": -48.749
+          },
+          {
+            "forward_yards": 351.562,
+            "right_yards": -48.591
+          },
+          {
+            "forward_yards": 359.869,
+            "right_yards": -48.901
+          },
+          {
+            "forward_yards": 364.086,
+            "right_yards": -48.281
+          },
+          {
+            "forward_yards": 365.818,
+            "right_yards": -46.393
+          },
+          {
+            "forward_yards": 366.42,
+            "right_yards": -44.788
+          },
+          {
+            "forward_yards": 366.011,
+            "right_yards": -42.776
+          },
+          {
+            "forward_yards": 364.535,
+            "right_yards": -41.442
+          },
+          {
+            "forward_yards": 362.05,
+            "right_yards": -40.383
+          },
+          {
+            "forward_yards": 360.03,
+            "right_yards": -40.05
+          },
+          {
+            "forward_yards": 357.758,
+            "right_yards": -40.601
+          },
+          {
+            "forward_yards": 353.413,
+            "right_yards": -42.955
+          },
+          {
+            "forward_yards": 348.527,
+            "right_yards": -43.516
+          },
+          {
+            "forward_yards": 342.895,
+            "right_yards": -43.064
+          },
+          {
+            "forward_yards": 339.473,
+            "right_yards": -41.668
+          },
+          {
+            "forward_yards": 338.459,
+            "right_yards": -40.472
+          },
+          {
+            "forward_yards": 339.256,
+            "right_yards": -38.928
+          },
+          {
+            "forward_yards": 338.923,
+            "right_yards": -37.721
+          },
+          {
+            "forward_yards": 338.382,
+            "right_yards": -36.113
+          },
+          {
+            "forward_yards": 336.966,
+            "right_yards": -34.779
+          },
+          {
+            "forward_yards": 333.609,
+            "right_yards": -34.52
+          },
+          {
+            "forward_yards": 331.804,
+            "right_yards": -33.187
+          },
+          {
+            "forward_yards": 332.733,
+            "right_yards": -31.109
+          },
+          {
+            "forward_yards": 332.652,
+            "right_yards": -29.034
+          },
+          {
+            "forward_yards": 331.576,
+            "right_yards": -27.427
+          },
+          {
+            "forward_yards": 329.564,
+            "right_yards": -26.026
+          },
+          {
+            "forward_yards": 325.199,
+            "right_yards": -26.182
+          },
+          {
+            "forward_yards": 321.115,
+            "right_yards": -26.801
+          },
+          {
+            "forward_yards": 318.642,
+            "right_yards": -28.754
+          },
+          {
+            "forward_yards": 317.447,
+            "right_yards": -31.035
+          },
+          {
+            "forward_yards": 317.4,
+            "right_yards": -34.852
+          },
+          {
+            "forward_yards": 319.498,
+            "right_yards": -39.869
+          }
+        ],
+        "ref": null
+      },
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 0.31,
+        "centroid": {
+          "forward_yards": 93.552,
+          "right_yards": -11.012
+        },
+        "golf": "bunker",
+        "name": null,
+        "osm_id": 1212602843,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 87.151,
+            "right_yards": -11.768
+          },
+          {
+            "forward_yards": 91.542,
+            "right_yards": -15.259
+          },
+          {
+            "forward_yards": 95.594,
+            "right_yards": -19.139
+          },
+          {
+            "forward_yards": 96.739,
+            "right_yards": -19.793
+          },
+          {
+            "forward_yards": 98.407,
+            "right_yards": -20.228
+          },
+          {
+            "forward_yards": 100.898,
+            "right_yards": -19.607
+          },
+          {
+            "forward_yards": 102.427,
+            "right_yards": -18.765
+          },
+          {
+            "forward_yards": 103.918,
+            "right_yards": -17.574
+          },
+          {
+            "forward_yards": 105.137,
+            "right_yards": -15.208
+          },
+          {
+            "forward_yards": 105.083,
+            "right_yards": -13.799
+          },
+          {
+            "forward_yards": 104.069,
+            "right_yards": -12.487
+          },
+          {
+            "forward_yards": 102.362,
+            "right_yards": -11.223
+          },
+          {
+            "forward_yards": 100.254,
+            "right_yards": -10.178
+          },
+          {
+            "forward_yards": 96.955,
+            "right_yards": -9.145
+          },
+          {
+            "forward_yards": 92.173,
+            "right_yards": -8.544
+          },
+          {
+            "forward_yards": 90.815,
+            "right_yards": -6.226
+          },
+          {
+            "forward_yards": 89.884,
+            "right_yards": -4.387
+          },
+          {
+            "forward_yards": 88.737,
+            "right_yards": -3.299
+          },
+          {
+            "forward_yards": 87.64,
+            "right_yards": -2.73
+          },
+          {
+            "forward_yards": 86.241,
+            "right_yards": -2.604
+          },
+          {
+            "forward_yards": 84.578,
+            "right_yards": -3.268
+          },
+          {
+            "forward_yards": 83.525,
+            "right_yards": -4.674
+          },
+          {
+            "forward_yards": 83.094,
+            "right_yards": -6.433
+          },
+          {
+            "forward_yards": 83.588,
+            "right_yards": -8.444
+          },
+          {
+            "forward_yards": 84.383,
+            "right_yards": -9.758
+          },
+          {
+            "forward_yards": 87.151,
+            "right_yards": -11.768
+          }
+        ],
+        "ref": null
+      },
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 9.78,
+        "centroid": {
+          "forward_yards": 54.83,
+          "right_yards": 22.444
+        },
+        "golf": "bunker",
+        "name": null,
+        "osm_id": 1212602844,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 59.918,
+            "right_yards": 18.977
+          },
+          {
+            "forward_yards": 59.169,
+            "right_yards": 17.457
+          },
+          {
+            "forward_yards": 57.07,
+            "right_yards": 16.233
+          },
+          {
+            "forward_yards": 55.213,
+            "right_yards": 15.406
+          },
+          {
+            "forward_yards": 53.877,
+            "right_yards": 14.882
+          },
+          {
+            "forward_yards": 52.134,
+            "right_yards": 15.921
+          },
+          {
+            "forward_yards": 50.378,
+            "right_yards": 17.137
+          },
+          {
+            "forward_yards": 49.684,
+            "right_yards": 17.599
+          },
+          {
+            "forward_yards": 49.678,
+            "right_yards": 19.171
+          },
+          {
+            "forward_yards": 49.836,
+            "right_yards": 22.253
+          },
+          {
+            "forward_yards": 49.592,
+            "right_yards": 25.745
+          },
+          {
+            "forward_yards": 50.688,
+            "right_yards": 28.598
+          },
+          {
+            "forward_yards": 52.372,
+            "right_yards": 30.347
+          },
+          {
+            "forward_yards": 54.229,
+            "right_yards": 31.229
+          },
+          {
+            "forward_yards": 55.908,
+            "right_yards": 31.003
+          },
+          {
+            "forward_yards": 57.078,
+            "right_yards": 30.194
+          },
+          {
+            "forward_yards": 57.959,
+            "right_yards": 28.912
+          },
+          {
+            "forward_yards": 57.734,
+            "right_yards": 27.347
+          },
+          {
+            "forward_yards": 56.811,
+            "right_yards": 23.79
+          },
+          {
+            "forward_yards": 57.4,
+            "right_yards": 22.22
+          },
+          {
+            "forward_yards": 59.62,
+            "right_yards": 20.37
+          },
+          {
+            "forward_yards": 59.918,
+            "right_yards": 18.977
+          }
+        ],
+        "ref": null
+      }
+    ],
+    "fairway": [
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 0.0,
+        "centroid": {
+          "forward_yards": 242.634,
+          "right_yards": -10.662
+        },
+        "golf": "fairway",
+        "name": null,
+        "osm_id": 1212602839,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 61.279,
+            "right_yards": -23.054
+          },
+          {
+            "forward_yards": 66.117,
+            "right_yards": -25.591
+          },
+          {
+            "forward_yards": 72.122,
+            "right_yards": -28.395
+          },
+          {
+            "forward_yards": 81.636,
+            "right_yards": -29.605
+          },
+          {
+            "forward_yards": 90.259,
+            "right_yards": -32.941
+          },
+          {
+            "forward_yards": 96.531,
+            "right_yards": -35.426
+          },
+          {
+            "forward_yards": 104.215,
+            "right_yards": -38.371
+          },
+          {
+            "forward_yards": 108.923,
+            "right_yards": -42.263
+          },
+          {
+            "forward_yards": 114.256,
+            "right_yards": -47.098
+          },
+          {
+            "forward_yards": 117.559,
+            "right_yards": -49.277
+          },
+          {
+            "forward_yards": 123.351,
+            "right_yards": -50.192
+          },
+          {
+            "forward_yards": 134.64,
+            "right_yards": -54.377
+          },
+          {
+            "forward_yards": 144.524,
+            "right_yards": -60.132
+          },
+          {
+            "forward_yards": 153.928,
+            "right_yards": -64.479
+          },
+          {
+            "forward_yards": 164.746,
+            "right_yards": -69.758
+          },
+          {
+            "forward_yards": 183.558,
+            "right_yards": -76.106
+          },
+          {
+            "forward_yards": 199.842,
+            "right_yards": -79.645
+          },
+          {
+            "forward_yards": 205.484,
+            "right_yards": -79.314
+          },
+          {
+            "forward_yards": 221.764,
+            "right_yards": -78.781
+          },
+          {
+            "forward_yards": 237.097,
+            "right_yards": -78.406
+          },
+          {
+            "forward_yards": 253.837,
+            "right_yards": -76.934
+          },
+          {
+            "forward_yards": 267.436,
+            "right_yards": -71.408
+          },
+          {
+            "forward_yards": 284.458,
+            "right_yards": -60.86
+          },
+          {
+            "forward_yards": 296.63,
+            "right_yards": -50.95
+          },
+          {
+            "forward_yards": 308.168,
+            "right_yards": -37.605
+          },
+          {
+            "forward_yards": 311.888,
+            "right_yards": -27.416
+          },
+          {
+            "forward_yards": 315.769,
+            "right_yards": -21.61
+          },
+          {
+            "forward_yards": 322.331,
+            "right_yards": -16.885
+          },
+          {
+            "forward_yards": 328.748,
+            "right_yards": -16.079
+          },
+          {
+            "forward_yards": 335.024,
+            "right_yards": -19.501
+          },
+          {
+            "forward_yards": 340.992,
+            "right_yards": -25.271
+          },
+          {
+            "forward_yards": 343.67,
+            "right_yards": -29.333
+          },
+          {
+            "forward_yards": 347.283,
+            "right_yards": -32.92
+          },
+          {
+            "forward_yards": 351.043,
+            "right_yards": -33.525
+          },
+          {
+            "forward_yards": 354.639,
+            "right_yards": -32.42
+          },
+          {
+            "forward_yards": 356.656,
+            "right_yards": -28.967
+          },
+          {
+            "forward_yards": 358.519,
+            "right_yards": -23.013
+          },
+          {
+            "forward_yards": 361.467,
+            "right_yards": -17.993
+          },
+          {
+            "forward_yards": 365.53,
+            "right_yards": -15.159
+          },
+          {
+            "forward_yards": 378.982,
+            "right_yards": -12.453
+          },
+          {
+            "forward_yards": 384.668,
+            "right_yards": -11.099
+          },
+          {
+            "forward_yards": 389.983,
+            "right_yards": -8.06
+          },
+          {
+            "forward_yards": 394.335,
+            "right_yards": -4.575
+          },
+          {
+            "forward_yards": 398.416,
+            "right_yards": -3.135
+          },
+          {
+            "forward_yards": 402.868,
+            "right_yards": -3.389
+          },
+          {
+            "forward_yards": 407.444,
+            "right_yards": -7.708
+          },
+          {
+            "forward_yards": 410.824,
+            "right_yards": -10.87
+          },
+          {
+            "forward_yards": 415.238,
+            "right_yards": -13.857
+          },
+          {
+            "forward_yards": 420.016,
+            "right_yards": -16.836
+          },
+          {
+            "forward_yards": 424.155,
+            "right_yards": -18.005
+          },
+          {
+            "forward_yards": 428.023,
+            "right_yards": -18.409
+          },
+          {
+            "forward_yards": 433.08,
+            "right_yards": -17.793
+          },
+          {
+            "forward_yards": 437.054,
+            "right_yards": -17.205
+          },
+          {
+            "forward_yards": 441.033,
+            "right_yards": -14.728
+          },
+          {
+            "forward_yards": 442.905,
+            "right_yards": -11.229
+          },
+          {
+            "forward_yards": 443.906,
+            "right_yards": -5.844
+          },
+          {
+            "forward_yards": 443.788,
+            "right_yards": -0.161
+          },
+          {
+            "forward_yards": 442.266,
+            "right_yards": 3.496
+          },
+          {
+            "forward_yards": 440.745,
+            "right_yards": 7.152
+          },
+          {
+            "forward_yards": 436.81,
+            "right_yards": 12.07
+          },
+          {
+            "forward_yards": 433.732,
+            "right_yards": 15.759
+          },
+          {
+            "forward_yards": 432.026,
+            "right_yards": 20.019
+          },
+          {
+            "forward_yards": 428.198,
+            "right_yards": 22.583
+          },
+          {
+            "forward_yards": 423.207,
+            "right_yards": 23.896
+          },
+          {
+            "forward_yards": 418.855,
+            "right_yards": 23.609
+          },
+          {
+            "forward_yards": 414.856,
+            "right_yards": 22.889
+          },
+          {
+            "forward_yards": 412.731,
+            "right_yards": 22.254
+          },
+          {
+            "forward_yards": 410.413,
+            "right_yards": 20.914
+          },
+          {
+            "forward_yards": 407.322,
+            "right_yards": 18.409
+          },
+          {
+            "forward_yards": 403.062,
+            "right_yards": 15.993
+          },
+          {
+            "forward_yards": 399.854,
+            "right_yards": 15.454
+          },
+          {
+            "forward_yards": 395.417,
+            "right_yards": 15.081
+          },
+          {
+            "forward_yards": 391.151,
+            "right_yards": 14.531
+          },
+          {
+            "forward_yards": 387.694,
+            "right_yards": 12.203
+          },
+          {
+            "forward_yards": 384.237,
+            "right_yards": 9.611
+          },
+          {
+            "forward_yards": 378.552,
+            "right_yards": 8.173
+          },
+          {
+            "forward_yards": 374.106,
+            "right_yards": 6.817
+          },
+          {
+            "forward_yards": 367.536,
+            "right_yards": 4.57
+          },
+          {
+            "forward_yards": 359.802,
+            "right_yards": 4.456
+          },
+          {
+            "forward_yards": 354.551,
+            "right_yards": 3.809
+          },
+          {
+            "forward_yards": 345.124,
+            "right_yards": 4.486
+          },
+          {
+            "forward_yards": 337.922,
+            "right_yards": 5.442
+          },
+          {
+            "forward_yards": 332.145,
+            "right_yards": 5.42
+          },
+          {
+            "forward_yards": 325.039,
+            "right_yards": 3.52
+          },
+          {
+            "forward_yards": 316.222,
+            "right_yards": 0.42
+          },
+          {
+            "forward_yards": 303.872,
+            "right_yards": -4.249
+          },
+          {
+            "forward_yards": 293.292,
+            "right_yards": -7.277
+          },
+          {
+            "forward_yards": 286.638,
+            "right_yards": -10.151
+          },
+          {
+            "forward_yards": 274.162,
+            "right_yards": -16.726
+          },
+          {
+            "forward_yards": 260.055,
+            "right_yards": -22.888
+          },
+          {
+            "forward_yards": 247.017,
+            "right_yards": -25.794
+          },
+          {
+            "forward_yards": 232.481,
+            "right_yards": -24.625
+          },
+          {
+            "forward_yards": 217.806,
+            "right_yards": -25.362
+          },
+          {
+            "forward_yards": 197.43,
+            "right_yards": -26.793
+          },
+          {
+            "forward_yards": 175.536,
+            "right_yards": -25.25
+          },
+          {
+            "forward_yards": 160.042,
+            "right_yards": -21.769
+          },
+          {
+            "forward_yards": 149.143,
+            "right_yards": -14.338
+          },
+          {
+            "forward_yards": 138.779,
+            "right_yards": -6.905
+          },
+          {
+            "forward_yards": 132.65,
+            "right_yards": -3.8
+          },
+          {
+            "forward_yards": 127.353,
+            "right_yards": -1.784
+          },
+          {
+            "forward_yards": 115.112,
+            "right_yards": 0.075
+          },
+          {
+            "forward_yards": 106.808,
+            "right_yards": 2.893
+          },
+          {
+            "forward_yards": 100.205,
+            "right_yards": 6.051
+          },
+          {
+            "forward_yards": 88.507,
+            "right_yards": 9.151
+          },
+          {
+            "forward_yards": 80.416,
+            "right_yards": 10.344
+          },
+          {
+            "forward_yards": 70.476,
+            "right_yards": 11.646
+          },
+          {
+            "forward_yards": 54.81,
+            "right_yards": 12.47
+          },
+          {
+            "forward_yards": 51.332,
+            "right_yards": 12.666
+          },
+          {
+            "forward_yards": 47.348,
+            "right_yards": 14.602
+          },
+          {
+            "forward_yards": 45.399,
+            "right_yards": 18.551
+          },
+          {
+            "forward_yards": 44.569,
+            "right_yards": 22.752
+          },
+          {
+            "forward_yards": 42.941,
+            "right_yards": 28.708
+          },
+          {
+            "forward_yards": 41.477,
+            "right_yards": 33.294
+          },
+          {
+            "forward_yards": 38.864,
+            "right_yards": 36.103
+          },
+          {
+            "forward_yards": 33.71,
+            "right_yards": 38.786
+          },
+          {
+            "forward_yards": 29.67,
+            "right_yards": 39.654
+          },
+          {
+            "forward_yards": 24.029,
+            "right_yards": 39.237
+          },
+          {
+            "forward_yards": 19.32,
+            "right_yards": 36.696
+          },
+          {
+            "forward_yards": 16.395,
+            "right_yards": 31.969
+          },
+          {
+            "forward_yards": 14.47,
+            "right_yards": 26.464
+          },
+          {
+            "forward_yards": 14.483,
+            "right_yards": 22.918
+          },
+          {
+            "forward_yards": 15.153,
+            "right_yards": 19.374
+          },
+          {
+            "forward_yards": 20.036,
+            "right_yards": 7.902
+          },
+          {
+            "forward_yards": 23.645,
+            "right_yards": 2.163
+          },
+          {
+            "forward_yards": 28.956,
+            "right_yards": -3.532
+          },
+          {
+            "forward_yards": 33.366,
+            "right_yards": -8.749
+          },
+          {
+            "forward_yards": 36.939,
+            "right_yards": -11.399
+          },
+          {
+            "forward_yards": 41.524,
+            "right_yards": -14.874
+          },
+          {
+            "forward_yards": 46.205,
+            "right_yards": -17.753
+          },
+          {
+            "forward_yards": 50.432,
+            "right_yards": -19.85
+          },
+          {
+            "forward_yards": 57.37,
+            "right_yards": -21.543
+          },
+          {
+            "forward_yards": 61.279,
+            "right_yards": -23.054
+          }
+        ],
+        "ref": null
+      }
+    ],
+    "green": [
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 0.0,
+        "centroid": {
+          "forward_yards": 423.601,
+          "right_yards": -0.0
+        },
+        "golf": "green",
+        "name": null,
+        "osm_id": 1212602840,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 410.161,
+            "right_yards": 10.212
+          },
+          {
+            "forward_yards": 415.305,
+            "right_yards": 13.522
+          },
+          {
+            "forward_yards": 420.639,
+            "right_yards": 14.611
+          },
+          {
+            "forward_yards": 426.77,
+            "right_yards": 14.099
+          },
+          {
+            "forward_yards": 432.458,
+            "right_yards": 11.891
+          },
+          {
+            "forward_yards": 437.251,
+            "right_yards": 7.991
+          },
+          {
+            "forward_yards": 440.601,
+            "right_yards": 3.396
+          },
+          {
+            "forward_yards": 441.408,
+            "right_yards": -1.138
+          },
+          {
+            "forward_yards": 441.792,
+            "right_yards": -6.293
+          },
+          {
+            "forward_yards": 440.119,
+            "right_yards": -10.922
+          },
+          {
+            "forward_yards": 436.751,
+            "right_yards": -14.311
+          },
+          {
+            "forward_yards": 432.939,
+            "right_yards": -15.928
+          },
+          {
+            "forward_yards": 425.826,
+            "right_yards": -16.218
+          },
+          {
+            "forward_yards": 419.055,
+            "right_yards": -13.665
+          },
+          {
+            "forward_yards": 411.656,
+            "right_yards": -8.985
+          },
+          {
+            "forward_yards": 408.07,
+            "right_yards": -5.901
+          },
+          {
+            "forward_yards": 406.475,
+            "right_yards": -2.136
+          },
+          {
+            "forward_yards": 406.541,
+            "right_yards": 2.734
+          },
+          {
+            "forward_yards": 408.046,
+            "right_yards": 6.828
+          },
+          {
+            "forward_yards": 410.161,
+            "right_yards": 10.212
+          }
+        ],
+        "ref": null
+      }
+    ],
+    "rough": [
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 0.0,
+        "centroid": {
+          "forward_yards": -60.45,
+          "right_yards": 60.851
+        },
+        "golf": "rough",
+        "name": null,
+        "osm_id": 1446806459,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": -47.22,
+            "right_yards": 45.675
+          },
+          {
+            "forward_yards": -41.281,
+            "right_yards": 44.575
+          },
+          {
+            "forward_yards": -33.755,
+            "right_yards": 47.971
+          },
+          {
+            "forward_yards": -31.204,
+            "right_yards": 52.154
+          },
+          {
+            "forward_yards": -29.944,
+            "right_yards": 59.701
+          },
+          {
+            "forward_yards": -34.47,
+            "right_yards": 66.737
+          },
+          {
+            "forward_yards": -44.767,
+            "right_yards": 75.851
+          },
+          {
+            "forward_yards": -51.684,
+            "right_yards": 81.593
+          },
+          {
+            "forward_yards": -59.868,
+            "right_yards": 81.563
+          },
+          {
+            "forward_yards": -71.894,
+            "right_yards": 78.149
+          },
+          {
+            "forward_yards": -82.63,
+            "right_yards": 74.586
+          },
+          {
+            "forward_yards": -89.51,
+            "right_yards": 70.541
+          },
+          {
+            "forward_yards": -92.059,
+            "right_yards": 66.041
+          },
+          {
+            "forward_yards": -92.353,
+            "right_yards": 60.109
+          },
+          {
+            "forward_yards": -88.493,
+            "right_yards": 55.47
+          },
+          {
+            "forward_yards": -83.027,
+            "right_yards": 54.042
+          },
+          {
+            "forward_yards": -73.413,
+            "right_yards": 55.201
+          },
+          {
+            "forward_yards": -61.523,
+            "right_yards": 52.838
+          },
+          {
+            "forward_yards": -52.691,
+            "right_yards": 48.543
+          },
+          {
+            "forward_yards": -47.22,
+            "right_yards": 45.675
+          }
+        ],
+        "ref": null
+      },
+      {
+        "assigned_hole": 14,
+        "association_distance_yards": 0.0,
+        "centroid": {
+          "forward_yards": 214.795,
+          "right_yards": -17.434
+        },
+        "golf": "rough",
+        "name": null,
+        "osm_id": 1446806460,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": 447.02,
+            "right_yards": 10.219
+          },
+          {
+            "forward_yards": 443.002,
+            "right_yards": 17.939
+          },
+          {
+            "forward_yards": 436.493,
+            "right_yards": 25.394
+          },
+          {
+            "forward_yards": 429.743,
+            "right_yards": 28.861
+          },
+          {
+            "forward_yards": 419.138,
+            "right_yards": 29.069
+          },
+          {
+            "forward_yards": 413.41,
+            "right_yards": 29.171
+          },
+          {
+            "forward_yards": 408.058,
+            "right_yards": 26.286
+          },
+          {
+            "forward_yards": 401.713,
+            "right_yards": 22.399
+          },
+          {
+            "forward_yards": 393.491,
+            "right_yards": 19.371
+          },
+          {
+            "forward_yards": 383.779,
+            "right_yards": 15.099
+          },
+          {
+            "forward_yards": 374.938,
+            "right_yards": 11.946
+          },
+          {
+            "forward_yards": 362.842,
+            "right_yards": 10.901
+          },
+          {
+            "forward_yards": 353.11,
+            "right_yards": 11.988
+          },
+          {
+            "forward_yards": 344.25,
+            "right_yards": 13.704
+          },
+          {
+            "forward_yards": 336.521,
+            "right_yards": 15.665
+          },
+          {
+            "forward_yards": 331.026,
+            "right_yards": 15.397
+          },
+          {
+            "forward_yards": 318.819,
+            "right_yards": 11.611
+          },
+          {
+            "forward_yards": 304.385,
+            "right_yards": 4.82
+          },
+          {
+            "forward_yards": 290.069,
+            "right_yards": -0.715
+          },
+          {
+            "forward_yards": 265.537,
+            "right_yards": -12.53
+          },
+          {
+            "forward_yards": 256.448,
+            "right_yards": -14.438
+          },
+          {
+            "forward_yards": 239.743,
+            "right_yards": -15.368
+          },
+          {
+            "forward_yards": 227.145,
+            "right_yards": -15.54
+          },
+          {
+            "forward_yards": 207.449,
+            "right_yards": -16.612
+          },
+          {
+            "forward_yards": 194.349,
+            "right_yards": -15.918
+          },
+          {
+            "forward_yards": 176.512,
+            "right_yards": -13.113
+          },
+          {
+            "forward_yards": 161.023,
+            "right_yards": -7.557
+          },
+          {
+            "forward_yards": 148.914,
+            "right_yards": -1.997
+          },
+          {
+            "forward_yards": 140.539,
+            "right_yards": 3.585
+          },
+          {
+            "forward_yards": 132.038,
+            "right_yards": 6.922
+          },
+          {
+            "forward_yards": 123.933,
+            "right_yards": 8.509
+          },
+          {
+            "forward_yards": 116.074,
+            "right_yards": 9.603
+          },
+          {
+            "forward_yards": 107.955,
+            "right_yards": 11.694
+          },
+          {
+            "forward_yards": 96.212,
+            "right_yards": 16.884
+          },
+          {
+            "forward_yards": 83.842,
+            "right_yards": 24.317
+          },
+          {
+            "forward_yards": 71.857,
+            "right_yards": 29.39
+          },
+          {
+            "forward_yards": 62.371,
+            "right_yards": 32.591
+          },
+          {
+            "forward_yards": 53.752,
+            "right_yards": 35.183
+          },
+          {
+            "forward_yards": 44.637,
+            "right_yards": 36.891
+          },
+          {
+            "forward_yards": 34.532,
+            "right_yards": 40.222
+          },
+          {
+            "forward_yards": 22.92,
+            "right_yards": 42.919
+          },
+          {
+            "forward_yards": 12.666,
+            "right_yards": 43.701
+          },
+          {
+            "forward_yards": 6.089,
+            "right_yards": 43.196
+          },
+          {
+            "forward_yards": 0.957,
+            "right_yards": 39.971
+          },
+          {
+            "forward_yards": -0.144,
+            "right_yards": 35.469
+          },
+          {
+            "forward_yards": -0.753,
+            "right_yards": 26.005
+          },
+          {
+            "forward_yards": 3.127,
+            "right_yards": 19.12
+          },
+          {
+            "forward_yards": 7.801,
+            "right_yards": 14.802
+          },
+          {
+            "forward_yards": 11.343,
+            "right_yards": 10.649
+          },
+          {
+            "forward_yards": 14.084,
+            "right_yards": 6.161
+          },
+          {
+            "forward_yards": 15.061,
+            "right_yards": 1.836
+          },
+          {
+            "forward_yards": 14.92,
+            "right_yards": -2.818
+          },
+          {
+            "forward_yards": 11.07,
+            "right_yards": -3.955
+          },
+          {
+            "forward_yards": 8.83,
+            "right_yards": -3.321
+          },
+          {
+            "forward_yards": 7.522,
+            "right_yards": 1.808
+          },
+          {
+            "forward_yards": 4.627,
+            "right_yards": 5.003
+          },
+          {
+            "forward_yards": 0.925,
+            "right_yards": 6.599
+          },
+          {
+            "forward_yards": -5.008,
+            "right_yards": 6.252
+          },
+          {
+            "forward_yards": -8.851,
+            "right_yards": 3.032
+          },
+          {
+            "forward_yards": -8.189,
+            "right_yards": -1.619
+          },
+          {
+            "forward_yards": -6.413,
+            "right_yards": -4.981
+          },
+          {
+            "forward_yards": 5.161,
+            "right_yards": -10.876
+          },
+          {
+            "forward_yards": 16.738,
+            "right_yards": -17.406
+          },
+          {
+            "forward_yards": 25.103,
+            "right_yards": -23.476
+          },
+          {
+            "forward_yards": 36.68,
+            "right_yards": -29.852
+          },
+          {
+            "forward_yards": 44.88,
+            "right_yards": -34.149
+          },
+          {
+            "forward_yards": 48.592,
+            "right_yards": -38.309
+          },
+          {
+            "forward_yards": 52.609,
+            "right_yards": -42.622
+          },
+          {
+            "forward_yards": 56.475,
+            "right_yards": -45.341
+          },
+          {
+            "forward_yards": 60.656,
+            "right_yards": -48.051
+          },
+          {
+            "forward_yards": 65.785,
+            "right_yards": -47.389
+          },
+          {
+            "forward_yards": 75.085,
+            "right_yards": -46.711
+          },
+          {
+            "forward_yards": 88.582,
+            "right_yards": -49.548
+          },
+          {
+            "forward_yards": 98.378,
+            "right_yards": -51.44
+          },
+          {
+            "forward_yards": 111.387,
+            "right_yards": -57.004
+          },
+          {
+            "forward_yards": 121.347,
+            "right_yards": -60.498
+          },
+          {
+            "forward_yards": 129.08,
+            "right_yards": -66.562
+          },
+          {
+            "forward_yards": 135.19,
+            "right_yards": -71.356
+          },
+          {
+            "forward_yards": 145.803,
+            "right_yards": -77.092
+          },
+          {
+            "forward_yards": 162.659,
+            "right_yards": -80.559
+          },
+          {
+            "forward_yards": 178.254,
+            "right_yards": -88.522
+          },
+          {
+            "forward_yards": 189.657,
+            "right_yards": -90.88
+          },
+          {
+            "forward_yards": 202.177,
+            "right_yards": -92.443
+          },
+          {
+            "forward_yards": 217.425,
+            "right_yards": -95.429
+          },
+          {
+            "forward_yards": 234.764,
+            "right_yards": -98.097
+          },
+          {
+            "forward_yards": 244.715,
+            "right_yards": -99.183
+          },
+          {
+            "forward_yards": 256.738,
+            "right_yards": -94.801
+          },
+          {
+            "forward_yards": 270.178,
+            "right_yards": -85.924
+          },
+          {
+            "forward_yards": 281.374,
+            "right_yards": -78.348
+          },
+          {
+            "forward_yards": 295.158,
+            "right_yards": -73.643
+          },
+          {
+            "forward_yards": 306.392,
+            "right_yards": -72.958
+          },
+          {
+            "forward_yards": 312.635,
+            "right_yards": -71.006
+          },
+          {
+            "forward_yards": 318.229,
+            "right_yards": -64.412
+          },
+          {
+            "forward_yards": 321.572,
+            "right_yards": -57.817
+          },
+          {
+            "forward_yards": 326.056,
+            "right_yards": -53.627
+          },
+          {
+            "forward_yards": 331.828,
+            "right_yards": -52.467
+          },
+          {
+            "forward_yards": 344.693,
+            "right_yards": -52.419
+          },
+          {
+            "forward_yards": 360.19,
+            "right_yards": -50.278
+          },
+          {
+            "forward_yards": 365.462,
+            "right_yards": -48.826
+          },
+          {
+            "forward_yards": 367.764,
+            "right_yards": -46.51
+          },
+          {
+            "forward_yards": 368.626,
+            "right_yards": -42.875
+          },
+          {
+            "forward_yards": 368.173,
+            "right_yards": -38.92
+          },
+          {
+            "forward_yards": 370.804,
+            "right_yards": -36.603
+          },
+          {
+            "forward_yards": 381.236,
+            "right_yards": -32.94
+          },
+          {
+            "forward_yards": 392.546,
+            "right_yards": -29.924
+          },
+          {
+            "forward_yards": 398.266,
+            "right_yards": -31.226
+          },
+          {
+            "forward_yards": 404.429,
+            "right_yards": -33.728
+          },
+          {
+            "forward_yards": 412.231,
+            "right_yards": -32.49
+          },
+          {
+            "forward_yards": 416.725,
+            "right_yards": -27.75
+          },
+          {
+            "forward_yards": 419.118,
+            "right_yards": -23.893
+          },
+          {
+            "forward_yards": 422.092,
+            "right_yards": -22.558
+          },
+          {
+            "forward_yards": 424.841,
+            "right_yards": -22.656
+          },
+          {
+            "forward_yards": 428.91,
+            "right_yards": -24.623
+          },
+          {
+            "forward_yards": 434.953,
+            "right_yards": -24.383
+          },
+          {
+            "forward_yards": 441.003,
+            "right_yards": -22.82
+          },
+          {
+            "forward_yards": 444.508,
+            "right_yards": -20.391
+          },
+          {
+            "forward_yards": 447.345,
+            "right_yards": -14.883
+          },
+          {
+            "forward_yards": 449.077,
+            "right_yards": -6.521
+          },
+          {
+            "forward_yards": 448.818,
+            "right_yards": 1.066
+          },
+          {
+            "forward_yards": 447.02,
+            "right_yards": 10.219
+          }
+        ],
+        "ref": null
+      }
+    ],
+    "tee": [
+      {
+        "assigned_hole": null,
+        "association_distance_yards": 21.63,
+        "centroid": {
+          "forward_yards": 0.0,
+          "right_yards": -0.0
+        },
+        "golf": "tee",
+        "name": null,
+        "osm_id": 1212602837,
+        "osm_type": "way",
+        "polygon": [
+          {
+            "forward_yards": -5.516,
+            "right_yards": 2.309
+          },
+          {
+            "forward_yards": -5.433,
+            "right_yards": -0.455
+          },
+          {
+            "forward_yards": -3.625,
+            "right_yards": -2.609
+          },
+          {
+            "forward_yards": -0.605,
+            "right_yards": -3.844
+          },
+          {
+            "forward_yards": 2.111,
+            "right_yards": -4.778
+          },
+          {
+            "forward_yards": 4.589,
+            "right_yards": -4.235
+          },
+          {
+            "forward_yards": 6.456,
+            "right_yards": -2.718
+          },
+          {
+            "forward_yards": 6.009,
+            "right_yards": -0.141
+          },
+          {
+            "forward_yards": 4.663,
+            "right_yards": 1.991
+          },
+          {
+            "forward_yards": 1.775,
+            "right_yards": 3.707
+          },
+          {
+            "forward_yards": -0.953,
+            "right_yards": 4.672
+          },
+          {
+            "forward_yards": -3.953,
+            "right_yards": 3.793
+          },
+          {
+            "forward_yards": -5.516,
+            "right_yards": 2.309
+          }
+        ],
+        "ref": null
+      }
+    ]
+  },
+  "hole": 14,
+  "input": {
+    "gspro_tee_to_pin_yards": 444.0
+  },
+  "osm_metadata": {
+    "route_osm_id": 1209190749,
+    "route_par": "5"
+  },
+  "route": [
+    {
+      "forward_yards": -80.463,
+      "right_yards": 64.025
+    },
+    {
+      "forward_yards": 163.29,
+      "right_yards": -44.568
+    },
+    {
+      "forward_yards": 425.078,
+      "right_yards": -1.594
+    }
+  ],
+  "schema": "looper.osm_hole_geometry.v0",
+  "source": {
+    "license": "ODbL 1.0",
+    "provider": "OpenStreetMap",
+    "role": "static_geometry_candidate"
+  },
+  "transform": {
+    "heading_degrees_true": 179.78,
+    "origin": "selected_tee_centroid",
+    "positive_forward": "selected_tee_to_target_green_centroid",
+    "positive_right": "golfer_right",
+    "units": "yards"
+  }
+}
