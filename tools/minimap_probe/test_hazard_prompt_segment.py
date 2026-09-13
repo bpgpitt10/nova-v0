@@ -23,7 +23,10 @@ class FakeBackend:
         self.masks = masks
 
     def predict(self, image_rgb, boxes_xyxy):
-        return [[seg.RawMaskPrediction(mask=m.copy(), model_score=0.93)] for m in group] for group in self.masks]
+        return [
+            [seg.RawMaskPrediction(mask=m.copy(), model_score=0.93) for m in group]
+            for group in self.masks
+        ]
 
 
 def hazard(box=(0.2, 0.2, 0.5, 0.5), cls="bunker"):
