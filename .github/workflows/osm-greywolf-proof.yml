@@ -1,0 +1,108 @@
+name: Greywolf OSM coverage proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/osm-greywolf-proof.yml
+
+permissions:
+  contents: read
+
+jobs:
+  greywolf-osm-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query Overpass and report golf coverage
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.parse
+          import urllib.request
+          from collections import Counter, defaultdict
+
+          bbox = (50.414, -116.295, 50.493, -116.194)
+          south, west, north, east = bbox
+          query = f'''[out:json][timeout:30];
+          (
+            way["golf"]({south},{west},{north},{east});
+            relation["golf"]({south},{west},{north},{east});
+          );
+          out tags geom;'''
+          endpoints = [
+              'https://overpass-api.de/api/interpreter',
+              'https://overpass.kumi.systems/api/interpreter',
+              'https://overpass.nchc.org.tw/api/interpreter',
+          ]
+
+          payload = None
+          used = None
+          errors = []
+          for endpoint in endpoints:
+              try:
+                  data = urllib.parse.urlencode({'data': query}).encode('utf-8')
+                  req = urllib.request.Request(
+                      endpoint,
+                      data=data,
+                      method='POST',
+                      headers={
+                          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                          'User-Agent': 'Looper-Greywolf-OSM-Proof/0.1',
+                      },
+                  )
+                  with urllib.request.urlopen(req, timeout=40) as response:
+                      payload = json.loads(response.read().decode('utf-8'))
+                  used = endpoint
+                  break
+              except Exception as exc:
+                  errors.append(f'{endpoint}: {exc}')
+
+          if payload is None:
+              raise SystemExit('All Overpass endpoints failed: ' + ' | '.join(errors))
+
+          elements = payload.get('elements', [])
+          counts = Counter()
+          refs = defaultdict(list)
+          geometry_vertices = Counter()
+          closed_polygons = Counter()
+          for element in elements:
+              tags = element.get('tags') or {}
+              golf = tags.get('golf')
+              if not golf:
+                  continue
+              counts[golf] += 1
+              if tags.get('ref'):
+                  refs[golf].append(tags['ref'])
+              geometries = []
+              if element.get('geometry'):
+                  geometries.append(element['geometry'])
+              for member in element.get('members', []):
+                  if member.get('geometry'):
+                      geometries.append(member['geometry'])
+              for geom in geometries:
+                  geometry_vertices[golf] += len(geom)
+                  if len(geom) >= 4 and geom[0].get('lat') == geom[-1].get('lat') and geom[0].get('lon') == geom[-1].get('lon'):
+                      closed_polygons[golf] += 1
+
+          hole_refs = sorted(refs.get('hole', []), key=lambda x: (not str(x).isdigit(), str(x)))
+          summary = {
+              'source': used,
+              'bbox': bbox,
+              'raw_element_count': len(elements),
+              'counts_by_golf_tag': dict(sorted(counts.items())),
+              'hole_refs': hole_refs,
+              'geometry_vertices_by_tag': dict(sorted(geometry_vertices.items())),
+              'closed_geometry_parts_by_tag': dict(sorted(closed_polygons.items())),
+          }
+          print('GREYWOLF_OSM_PROOF_JSON_START')
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          print('GREYWOLF_OSM_PROOF_JSON_END')
+
+          # Fail only if the base semantic course model is plainly absent.
+          if counts['green'] < 15 or counts['fairway'] < 15:
+              raise SystemExit(f'Coverage too incomplete for OSM-first proof: greens={counts["green"]}, fairways={counts["fairway"]}')
+          PY
