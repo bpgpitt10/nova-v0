@@ -1,10 +1,4 @@
 {
-  "bbox": [
-    50.414,
-    -116.295,
-    50.493,
-    -116.194
-  ],
   "closed_geometry_parts_by_tag": {
     "bunker": 67,
     "clubhouse": 1,
@@ -57,5 +51,5 @@
     "18"
   ],
   "raw_element_count": 268,
-  "source": "https://overpass.kumi.systems/api/interpreter"
+  "source_snapshot_run": 34788665457
 }

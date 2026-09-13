@@ -1,0 +1,290 @@
+[
+  {
+    "bearing_deg": 195.5,
+    "direct_yards": 390.6,
+    "end": [
+      50.4436217,
+      -116.248524
+    ],
+    "hole": "1",
+    "par": "4",
+    "route_yards": 408.4,
+    "start": [
+      50.4467178,
+      -116.24718
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 164.9,
+    "direct_yards": 396.5,
+    "end": [
+      50.4402697,
+      -116.24786
+    ],
+    "hole": "2",
+    "par": "4",
+    "route_yards": 396.8,
+    "start": [
+      50.4434185,
+      -116.249191
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 175.5,
+    "direct_yards": 487.2,
+    "end": [
+      50.4364269,
+      -116.2458337
+    ],
+    "hole": "3",
+    "par": "5",
+    "route_yards": 504.8,
+    "start": [
+      50.4404212,
+      -116.2463292
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 343.6,
+    "direct_yards": 485.1,
+    "end": [
+      50.4400076,
+      -116.249045
+    ],
+    "hole": "4",
+    "par": "4",
+    "route_yards": 485.9,
+    "start": [
+      50.4361805,
+      -116.2472796
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 348.9,
+    "direct_yards": 538.7,
+    "end": [
+      50.4447366,
+      -116.2505517
+    ],
+    "hole": "5",
+    "par": "5",
+    "route_yards": 542.2,
+    "start": [
+      50.4403892,
+      -116.249214
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 307.2,
+    "direct_yards": 198.9,
+    "end": [
+      50.4456622,
+      -116.2538181
+    ],
+    "hole": "6",
+    "par": "6",
+    "route_yards": 198.9,
+    "start": [
+      50.4446734,
+      -116.251772
+    ],
+    "vertices": 2
+  },
+  {
+    "bearing_deg": 2.7,
+    "direct_yards": 413.7,
+    "end": [
+      50.4494963,
+      -116.2531004
+    ],
+    "hole": "7",
+    "par": "4",
+    "route_yards": 415.1,
+    "start": [
+      50.4460977,
+      -116.253348
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 180.0,
+    "direct_yards": 445.3,
+    "end": [
+      50.4463113,
+      -116.2524023
+    ],
+    "hole": "8",
+    "par": "4",
+    "route_yards": 453.8,
+    "start": [
+      50.4499731,
+      -116.2524023
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 55.4,
+    "direct_yards": 180.9,
+    "end": [
+      50.4461206,
+      -116.248872
+    ],
+    "hole": "9",
+    "par": "3",
+    "route_yards": 180.9,
+    "start": [
+      50.445275,
+      -116.2507945
+    ],
+    "vertices": 2
+  },
+  {
+    "bearing_deg": 20.5,
+    "direct_yards": 573.4,
+    "end": [
+      50.4520137,
+      -116.2437213
+    ],
+    "hole": "10",
+    "par": "5",
+    "route_yards": 578.6,
+    "start": [
+      50.4475969,
+      -116.2463151
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 21.2,
+    "direct_yards": 349.7,
+    "end": [
+      50.4552282,
+      -116.2421526
+    ],
+    "hole": "11",
+    "par": "4",
+    "route_yards": 350.7,
+    "start": [
+      50.4525472,
+      -116.2437856
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 291.6,
+    "direct_yards": 182.4,
+    "end": [
+      50.4565863,
+      -116.2471839
+    ],
+    "hole": "12",
+    "par": "3",
+    "route_yards": 182.4,
+    "start": [
+      50.4560348,
+      -116.2449928
+    ],
+    "vertices": 2
+  },
+  {
+    "bearing_deg": 217.8,
+    "direct_yards": 426.3,
+    "end": [
+      50.4534073,
+      -116.2525212
+    ],
+    "hole": "13",
+    "par": "4",
+    "route_yards": 443.3,
+    "start": [
+      50.4561791,
+      -116.24915
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 172.4,
+    "direct_yards": 509.8,
+    "end": [
+      50.4482468,
+      -116.25075
+    ],
+    "hole": "14",
+    "par": "5",
+    "route_yards": 532.1,
+    "start": [
+      50.452402,
+      -116.251622
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 25.7,
+    "direct_yards": 170.0,
+    "end": [
+      50.4493145,
+      -116.2491788
+    ],
+    "hole": "15",
+    "par": null,
+    "route_yards": 170.0,
+    "start": [
+      50.4480547,
+      -116.2501309
+    ],
+    "vertices": 2
+  },
+  {
+    "bearing_deg": 356.1,
+    "direct_yards": 382.7,
+    "end": [
+      50.4531638,
+      -116.2493735
+    ],
+    "hole": "16",
+    "par": "4",
+    "route_yards": 393.4,
+    "start": [
+      50.4500238,
+      -116.2490401
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 160.1,
+    "direct_yards": 413.1,
+    "end": [
+      50.4507978,
+      -116.2468589
+    ],
+    "hole": "17",
+    "par": "4",
+    "route_yards": 438.5,
+    "start": [
+      50.4539921,
+      -116.248676
+    ],
+    "vertices": 3
+  },
+  {
+    "bearing_deg": 204.7,
+    "direct_yards": 430.9,
+    "end": [
+      50.4475078,
+      -116.2473095
+    ],
+    "hole": "18",
+    "par": "4",
+    "route_yards": 431.0,
+    "start": [
+      50.4507273,
+      -116.244986
+    ],
+    "vertices": 3
+  }
+]
