@@ -34,8 +34,7 @@ def test_preserves_scoped_elevation_and_sign():
     assert aim["elevation"]["delta_ft"] == -9.0
     assert aim["elevation"]["delta_yds"] == -3.0
     assert aim["elevation"]["sign_direction_consistency_ok"] is True
-    assert out["elevation_contract"]["candidate_specific_elevation_available"] is False
-    assert out["application"]["applied_to_distribution"] is False
+    assert out["application"]["elevation_adjustment_model_applied"] is False
 
 
 def test_does_not_invent_confidence():
@@ -78,12 +77,26 @@ def test_supplemental_context_stays_separate():
     assert out["elevation_contract"]["scope"] == gc.ELEVATION_SCOPE
 
 
+def test_v1_elevation_policy_is_locked_and_not_a_blocker():
+    out = gc.build_gameplay_context({"capture_mode": "tee", "pin": None, "aim": None})
+    policy = out["elevation_contract"]
+    assert policy["policy_version"] == "looper-elevation-policy-v1"
+    assert policy["tee"]["preferred_source"] == "gspro_aim"
+    assert policy["approach_to_green"]["preferred_source"] == "pin"
+    assert policy["other_post_tee"]["preferred_source"] == "gspro_aim"
+    assert policy["candidate_specific_terrain_elevation_required"] is False
+    assert policy["candidate_specific_terrain_elevation_deferred"] is True
+    assert policy["strategy_blocker"] is False
+    assert out["application"]["shot_level_elevation_policy_locked"] is True
+
+
 if __name__ == "__main__":
     tests = [
         test_preserves_scoped_elevation_and_sign,
         test_does_not_invent_confidence,
         test_flags_inconsistent_units_without_rewriting,
         test_supplemental_context_stays_separate,
+        test_v1_elevation_policy_is_locked_and_not_a_blocker,
     ]
     for fn in tests:
         fn()
