@@ -1,0 +1,90 @@
+name: Greywolf OSM tee matching proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/osm-greywolf-tee-match.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  tee-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download preserved Greywolf OSM snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf seed && mkdir seed
+          gh run download 34788665457 -R bpgpitt10/nova-v0 -n greywolf-osm-proof --dir seed
+      - name: Match mapped tee polygons to captured GSPro tee distances
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          gspro = {1:350,2:355,3:439,4:397,5:524,6:147,7:362,8:396,9:131,10:544,11:289,12:127,13:326,14:444,15:126,16:345,17:373,18:361}
+          payload=json.loads(Path('seed/greywolf-osm.json').read_text())
+
+          def geoms(e):
+              out=[]
+              if e.get('geometry'): out.append(e['geometry'])
+              for m in e.get('members',[]):
+                  if m.get('geometry'): out.append(m['geometry'])
+              return out
+          def pts(e): return [p for g in geoms(e) for p in g if 'lat' in p and 'lon' in p]
+          def hav(a,b):
+              r=6371008.8
+              la1,lo1,la2,lo2=map(math.radians,[a[0],a[1],b[0],b[1]])
+              dlat=la2-la1; dlon=lo2-lo1
+              h=math.sin(dlat/2)**2+math.cos(la1)*math.cos(la2)*math.sin(dlon/2)**2
+              return 2*r*math.asin(math.sqrt(h))*1.0936133
+          def centroid(ps): return (sum(p['lat'] for p in ps)/len(ps),sum(p['lon'] for p in ps)/len(ps))
+
+          holes={}
+          tees=[]
+          greens=[]
+          for e in payload.get('elements',[]):
+              t=e.get('tags') or {}; g=t.get('golf'); p=pts(e)
+              if not p: continue
+              if g=='hole' and str(t.get('ref','')).isdigit():
+                  holes[int(t['ref'])]={'start':(p[0]['lat'],p[0]['lon']),'end':(p[-1]['lat'],p[-1]['lon']),'par':t.get('par')}
+              elif g=='tee': tees.append({'id':e['id'],'c':centroid(p)})
+              elif g=='green': greens.append({'id':e['id'],'c':centroid(p)})
+
+          rows=[]
+          for n in range(1,19):
+              h=holes[n]
+              # Associate target green by nearest green centroid to the golf=hole endpoint.
+              green=min(greens,key=lambda x:hav(x['c'],h['end']))
+              # Tee candidates are polygons close to the golf=hole start; 180 yd allows forward tee sets.
+              cand=[]
+              for t in tees:
+                  start_gap=hav(t['c'],h['start'])
+                  if start_gap<=180:
+                      dist=hav(t['c'],green['c'])
+                      cand.append({'tee_id':t['id'],'start_gap_yards':round(start_gap,1),'green_distance_yards':round(dist,1),'gspro_diff_yards':round(dist-gspro[n],1),'centroid':list(t['c'])})
+              cand.sort(key=lambda x:(abs(x['gspro_diff_yards']),x['start_gap_yards']))
+              best=cand[0] if cand else None
+              rows.append({'hole':n,'gspro_tee_pin_yards':gspro[n],'osm_par':h['par'],'green_id':green['id'],'green_endpoint_gap_yards':round(hav(green['c'],h['end']),1),'candidate_tees':len(cand),'best':best,'top_candidates':cand[:4]})
+
+          absdiff=[abs(r['best']['gspro_diff_yards']) for r in rows if r['best']]
+          summary={'holes_matched':len(absdiff),'mean_abs_diff_yards':round(sum(absdiff)/len(absdiff),1),'median_abs_diff_yards':round(sorted(absdiff)[len(absdiff)//2],1),'within_10_yards':sum(x<=10 for x in absdiff),'within_20_yards':sum(x<=20 for x in absdiff)}
+          out={'summary':summary,'holes':rows}
+          Path('artifacts/osm-proof').mkdir(parents=True,exist_ok=True)
+          Path('artifacts/osm-proof/greywolf-osm-tee-match.json').write_text(json.dumps(out,indent=2,sort_keys=True))
+          print(json.dumps(out,indent=2,sort_keys=True))
+          PY
+      - name: Persist match proof
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/greywolf-osm-tee-match.json
+          git commit -m "test(strategy): record Greywolf OSM tee match proof"
+          git push
