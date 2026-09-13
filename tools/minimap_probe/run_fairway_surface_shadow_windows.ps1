@@ -12,6 +12,10 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $RepoRoot
 
+# Hugging Face falls back safely when Windows symlinks are unavailable. Suppress
+# that noisy warning because it is not an execution failure.
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
+
 $VenvRoot = Join-Path $PSScriptRoot ".venv"
 $Python = Join-Path $VenvRoot "Scripts\python.exe"
 if (-not (Test-Path $Python)) {
@@ -30,6 +34,8 @@ function Test-PythonImport {
   param([Parameter(Mandatory=$true)][string]$Code)
   $PreviousPreference = $ErrorActionPreference
   try {
+    # A failed first-run import is expected and should not become a PowerShell
+    # NativeCommandError before we can inspect the Python exit code.
     $ErrorActionPreference = "SilentlyContinue"
     & $Python -c $Code 2>$null
     return ($LASTEXITCODE -eq 0)
@@ -38,25 +44,92 @@ function Test-PythonImport {
   }
 }
 
-Write-Host "Checking fairway runtime dependencies..."
+function Invoke-PythonChecked {
+  param(
+    [Parameter(Mandatory=$true)][string[]]$Arguments,
+    [Parameter(Mandatory=$true)][string]$FailureMessage
+  )
+  $PreviousPreference = $ErrorActionPreference
+  try {
+    # Python/pip/Transformers legitimately write progress and warnings to stderr.
+    # Let the process exit code, not PowerShell's stderr promotion, decide success.
+    $ErrorActionPreference = "Continue"
+    & $Python @Arguments
+    $Code = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $PreviousPreference
+  }
+  if ($Code -ne 0) { throw $FailureMessage }
+}
+
+$PythonVersion = (& $Python -c "import sys; print(sys.version.split()[0])").Trim()
+Write-Host "Fairway runtime preflight"
+Write-Host "  python=$PythonVersion"
+
+Write-Host "Checking base probe dependencies..."
 $BaseReady = Test-PythonImport "import cv2, numpy"
 if (-not $BaseReady) {
-  & $Python -m pip install --disable-pip-version-check -r "tools\minimap_probe\requirements.txt"
-  if ($LASTEXITCODE -ne 0) { throw "Base minimap-probe dependency installation failed." }
+  Invoke-PythonChecked -Arguments @(
+    "-m", "pip", "install", "--disable-pip-version-check",
+    "-r", "tools\minimap_probe\requirements.txt"
+  ) -FailureMessage "Base minimap-probe dependency installation failed."
 }
 
-$SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
+# Current Windows/Python 3.14 pair verified for this field lab:
+# torch 2.14.0 <-> torchvision 0.29.0. Import both explicitly because
+# Sam2Processor can import successfully even when torchvision is absent and then
+# fail only when the image processor is instantiated.
+$SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; assert torch.__version__.split('+')[0] == '2.14.0'; assert torchvision.__version__.split('+')[0] == '0.29.0'"
 if (-not $SamReady) {
-  Write-Host "Installing/updating SAM2 + torchvision field-lab dependencies..."
-  & $Python -m pip install --disable-pip-version-check -r "tools\minimap_probe\requirements_sam2.txt"
-  if ($LASTEXITCODE -ne 0) { throw "SAM2 field-lab dependency installation failed." }
-  $SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; from PIL import Image"
-  if (-not $SamReady) { throw "SAM2 dependencies installed but the import check still fails." }
+  Write-Host "Installing/repairing matched SAM2 runtime (torch 2.14.0 + torchvision 0.29.0)..."
+  Invoke-PythonChecked -Arguments @(
+    "-m", "pip", "install", "--disable-pip-version-check", "--upgrade",
+    "-r", "tools\minimap_probe\requirements_sam2.txt"
+  ) -FailureMessage "SAM2 field-lab dependency installation failed."
+  $SamReady = Test-PythonImport "import torch, torchvision; from transformers import Sam2Model, Sam2Processor; assert torch.__version__.split('+')[0] == '2.14.0'; assert torchvision.__version__.split('+')[0] == '0.29.0'"
+  if (-not $SamReady) { throw "SAM2 dependencies installed but the matched runtime import check still fails." }
 }
 
-Write-Host "Segmentation runtime:"
-& $Python -c "import torch, torchvision; print('  torch=' + torch.__version__); print('  torchvision=' + torchvision.__version__); print('  cuda=' + str(torch.cuda.is_available())); print('  gpu=' + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU fallback'))"
-if ($LASTEXITCODE -ne 0) { throw "Could not inspect segmentation runtime." }
+Invoke-PythonChecked -Arguments @(
+  "-c",
+  "import torch, torchvision; print('  torch=' + torch.__version__); print('  torchvision=' + torchvision.__version__); print('  cuda=' + str(torch.cuda.is_available())); print('  gpu=' + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU fallback'))"
+) -FailureMessage "Could not inspect segmentation runtime."
+
+Write-Host "Running local fairway regression tests before any API calls..."
+Push-Location $PSScriptRoot
+try {
+  Invoke-PythonChecked -Arguments @(
+    "-m", "unittest", "test_fairway_surface_shadow", "test_fairway_semantic_provider", "-v"
+  ) -FailureMessage "Fairway regression tests failed; no semantic API calls were made."
+} finally {
+  Pop-Location
+}
+
+Write-Host "Running one end-to-end SAM2 box-prompt preflight before any API calls..."
+$SamPreflight = @"
+import numpy as np
+import torch
+from PIL import Image
+from transformers import Sam2Model, Sam2Processor
+mid = '$SamModel'
+device = 'cuda' if torch.cuda.is_available() and '$Device' != 'cpu' else 'cpu'
+processor = Sam2Processor.from_pretrained(mid)
+model = Sam2Model.from_pretrained(mid).to(device)
+model.eval()
+image = Image.fromarray(np.zeros((64, 64, 3), dtype=np.uint8), mode='RGB')
+inputs = processor(images=image, input_boxes=[[[8.0, 8.0, 56.0, 56.0]]], return_tensors='pt').to(device)
+with torch.no_grad():
+    outputs = model(**inputs, multimask_output=True)
+masks = processor.post_process_masks(outputs.pred_masks.cpu(), inputs['original_sizes'])[0]
+assert masks.shape[-2:] == (64, 64), masks.shape
+print('  SAM2 box-prompt preflight=OK | device=' + device + ' | masks=' + str(tuple(masks.shape)))
+"@
+Invoke-PythonChecked -Arguments @("-c", $SamPreflight) -FailureMessage "SAM2 model/processor preflight failed; no semantic API calls were made."
+
+if (-not $env:OPENAI_API_KEY -and -not $env:GEMINI_API_KEY) {
+  throw "Neither OPENAI_API_KEY nor GEMINI_API_KEY is available in this PowerShell session."
+}
+Write-Host "Semantic providers: Luna=$([bool]$env:OPENAI_API_KEY) | Gemini fallback=$([bool]$env:GEMINI_API_KEY)"
 
 if (-not $CaptureRoot -and -not $CaptureDir) {
   $CaptureRoot = @((Join-Path $PSScriptRoot "output"))
@@ -76,8 +149,7 @@ if ($Force) { $ArgsList += "--force" }
 Write-Host ""
 Write-Host "Looper Fairway Surface Shadow v0"
 Write-Host "OFFLINE SAVED-CAPTURE MODE. No GSPro input. Strategy authority OFF."
-Write-Host "Luna semantic localization -> Gemini fallback -> SAM2 edge -> tee/pin topology QA."
+Write-Host "Luna semantic localization -> Gemini fallback -> shared SAM2 edge -> tee/pin topology QA."
 Write-Host "Par 3 no-fairway is an allowed result."
 Write-Host ""
-& $Python @ArgsList
-exit $LASTEXITCODE
+Invoke-PythonChecked -Arguments $ArgsList -FailureMessage "Fairway replay exited with an error."
