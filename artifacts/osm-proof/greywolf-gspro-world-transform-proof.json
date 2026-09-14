@@ -1,0 +1,62 @@
+{
+  "schema": "looper.gspro_osm_course_transform_proof.v0",
+  "course": "Greywolf Golf Course",
+  "round_id": 215,
+  "result": "course_wide_transform_supported",
+  "transform": {
+    "source": "GSPro world X/Z coordinates",
+    "target": "OSM local east/north yards",
+    "scale_yards_per_gspro_unit": 1.0936132983377078,
+    "scale_interpretation": "exact meters-to-yards conversion",
+    "rotation_degrees": 0.5319220319046369,
+    "translation_east_yards": -994.5600973,
+    "translation_north_yards": -1434.62965252
+  },
+  "tee_registration": {
+    "holes_with_gspro_tee_coordinates": 17,
+    "missing_hole": 15,
+    "candidate_selection_used_minimap": false,
+    "candidate_selection_used_screen_yardage": false,
+    "all_17_candidate_tee_boxes_identified": true,
+    "mean_residual_yards": 2.383355828977026,
+    "median_residual_yards": 2.422123912775834,
+    "rms_residual_yards": 2.523248343223315,
+    "max_residual_yards": 4.355179762162783
+  },
+  "current_round_ball_continuity": {
+    "interpretation": "previous physical shot ending_pos equals next physical shot starting_pos",
+    "median_gap_yards": 0.0002734033245157971,
+    "mean_gap_yards": 0.00030759446855495727,
+    "max_gap_yards": 0.0007578353518619627
+  },
+  "surface_validation_start_positions": {
+    "tested": 40,
+    "inside_expected_osm_surface": 38,
+    "within_3_yards_of_expected_surface": 40,
+    "tee": {"tested": 17, "inside": 17},
+    "fairway": {"tested": 7, "inside": 7},
+    "green": {"tested": 12, "inside": 12},
+    "rough": {"tested": 4, "inside": 2, "outside_distances_yards": [0.7, 2.2]}
+  },
+  "surface_validation_end_positions": {
+    "tested": 40,
+    "inside_expected_osm_surface": 38,
+    "within_3_yards_of_expected_surface": 40,
+    "fairway": {"tested": 8, "inside": 8},
+    "green": {"tested": 26, "inside": 26},
+    "rough": {"tested": 6, "inside": 4, "outside_distances_yards": [0.7, 2.2]}
+  },
+  "architecture_implication": {
+    "primary_live_ball_position": "currentRound latest ending_pos (or shot starting_pos for recorded shot)",
+    "geometry": "OSM vectors",
+    "minimap_required_for_ball_placement": false,
+    "retain_minimap_for": [
+      "GSPro red penalty boundaries",
+      "OB boundaries if not available structurally",
+      "green heatmap/slope",
+      "simulator-specific visual overrides",
+      "fallback/sanity checks"
+    ],
+    "tee_transition_caveat": "currentRound can be stale before the first shot on a new hole; use hole identity plus cached/selected OSM tee, target-card distance, or another tee-transition sensor."
+  }
+}
