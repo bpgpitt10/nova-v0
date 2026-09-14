@@ -1,4 +1,8 @@
 const BBOX = '50.43,-116.28,50.47,-116.22'
+const OSM_ATTRIBUTION = '© OpenStreetMap contributors'
+const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright'
+const ODBL_LICENSE_URL = 'https://opendatacommons.org/licenses/odbl/1-0/'
+const LOOPER_SOURCE_URL = 'https://github.com/bpgpitt10/nova-v0'
 
 function summarize(elements) {
   const golf = {}
@@ -27,21 +31,32 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Looper-Greywolf-OSM-PoC/0.1 (research proof)'
+        Accept: 'application/json',
+        'User-Agent': `The-Looper-OSM-Proof/0.1 (+${LOOPER_SOURCE_URL})`
       }
     })
     const text = await response.text()
     if (!response.ok) {
+      const retryAfter = response.headers.get('retry-after')
+      if (retryAfter) res.setHeader('Retry-After', retryAfter)
       res.status(response.status).json({ ok: false, status: response.status, body: text.slice(0, 2000) })
       return
     }
     const data = JSON.parse(text)
     const elements = data.elements || []
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600')
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
     res.status(200).json({
       ok: true,
       course: 'Greywolf Golf Course, Panorama, BC',
       bbox: BBOX,
+      osm: {
+        attribution: OSM_ATTRIBUTION,
+        sourceUrl: OSM_COPYRIGHT_URL,
+        license: 'ODbL 1.0',
+        licenseUrl: ODBL_LICENSE_URL,
+        upstreamNotice: data.osm3s?.copyright || null,
+        baseTimestamp: data.osm3s?.timestamp_osm_base || null
+      },
       osmTimestamp: data.osm3s?.timestamp_osm_base || null,
       summary: summarize(elements),
       elements: elements.map((el) => ({
