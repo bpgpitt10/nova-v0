@@ -4,6 +4,7 @@
 The compiler is offline and deterministic. It preserves all supported course-wide
 features in one fixed east/north coordinate space, builds a coarse spatial index,
 and emits per-hole views that reference (rather than duplicate) those features.
+Environmental landcover is compiled generically but activated only for configured pilot holes.
 
 Dynamic GSPro state is intentionally not embedded. In particular, wind remains an
 independent GSPro screen-OCR sensor and is only declared as an integration contract.
