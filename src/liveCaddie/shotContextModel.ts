@@ -1,3 +1,4 @@
+import { buildFlightPhysicsPrior, type FlightLaunchInput, type FlightPhysicsPrior } from './flightPhysics'
 import {
   buildCaddieModelContract,
   type CaddieModelContract,
@@ -8,6 +9,7 @@ import {
 export type ModeledShotContext = {
   baseline: PlayerBaselineInput
   rawContext: ShotContextInput
+  physicsPrior: FlightPhysicsPrior
   effectiveTargetDistanceYds: number | null
   modeledCarryYds: number | null
   modeledCarrySigmaYds: number | null
@@ -24,37 +26,50 @@ export type ModeledShotContext = {
   contract: CaddieModelContract
 }
 
+const finite = (value: number | null | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+const launchFromBaseline = (baseline: PlayerBaselineInput): FlightLaunchInput | null => {
+  if (
+    !finite(baseline.launchBallSpeedMph) ||
+    !finite(baseline.launchVlaDeg) ||
+    !finite(baseline.launchSpinRpm)
+  ) return null
+
+  return {
+    ballSpeedMph: baseline.launchBallSpeedMph,
+    vlaDeg: baseline.launchVlaDeg,
+    hlaDeg: baseline.launchHlaDeg ?? 0,
+    totalSpinRpm: baseline.launchSpinRpm,
+    spinAxisDeg: baseline.launchSpinAxisDeg ?? 0,
+  }
+}
+
 /**
  * Canonical transformation boundary for Live Caddie context.
  *
- * V0 intentionally applies zero adjustment for uncalibrated factors. This is not
- * a placeholder hidden inside the optimizer: the companion contract explicitly
- * exposes which factors are measured but not yet allowed to affect a recommendation.
+ * The physics prior is allowed to calculate reviewable wind/elevation deltas,
+ * but V1 still applies zero adjustment to the recommendation until GSPro residual
+ * calibration is validated. The companion contract makes that distinction explicit.
  */
 export const modelShotContext = (
   baseline: PlayerBaselineInput,
   context: ShotContextInput,
 ): ModeledShotContext => {
-  const stockCarry =
-    typeof baseline.stockCarryYds === 'number' && Number.isFinite(baseline.stockCarryYds)
-      ? baseline.stockCarryYds
-      : null
-  const carrySigma =
-    typeof baseline.carrySigmaYds === 'number' && Number.isFinite(baseline.carrySigmaYds)
-      ? baseline.carrySigmaYds
-      : null
-  const lateralBias =
-    typeof baseline.lateralBiasYds === 'number' && Number.isFinite(baseline.lateralBiasYds)
-      ? baseline.lateralBiasYds
-      : null
-  const lateralSigma =
-    typeof baseline.lateralSigmaYds === 'number' && Number.isFinite(baseline.lateralSigmaYds)
-      ? baseline.lateralSigmaYds
-      : null
-  const targetDistance =
-    typeof context.targetDistanceYds === 'number' && Number.isFinite(context.targetDistanceYds)
-      ? context.targetDistanceYds
-      : null
+  const stockCarry = finite(baseline.stockCarryYds) ? baseline.stockCarryYds : null
+  const carrySigma = finite(baseline.carrySigmaYds) ? baseline.carrySigmaYds : null
+  const lateralBias = finite(baseline.lateralBiasYds) ? baseline.lateralBiasYds : null
+  const lateralSigma = finite(baseline.lateralSigmaYds) ? baseline.lateralSigmaYds : null
+  const targetDistance = finite(context.targetDistanceYds) ? context.targetDistanceYds : null
+
+  const physicsPrior = buildFlightPhysicsPrior(
+    launchFromBaseline(baseline),
+    {
+      windMph: context.windMph ?? 0,
+      windRelativeDeg: context.windRelativeDeg ?? 0,
+      landingElevationDeltaFt: context.elevationDeltaFt ?? 0,
+    },
+  )
 
   const appliedAdjustments = {
     elevationYds: 0,
@@ -65,9 +80,15 @@ export const modelShotContext = (
     lieLateralYds: 0,
   }
 
+  const contractContext: ShotContextInput = {
+    ...context,
+    physicsPrior,
+  }
+
   return {
     baseline,
     rawContext: context,
+    physicsPrior,
     effectiveTargetDistanceYds:
       targetDistance == null
         ? null
@@ -88,6 +109,6 @@ export const modelShotContext = (
           appliedAdjustments.lieLateralYds,
     modeledLateralSigmaYds: lateralSigma,
     appliedAdjustments,
-    contract: buildCaddieModelContract(baseline, context),
+    contract: buildCaddieModelContract(baseline, contractContext),
   }
 }
