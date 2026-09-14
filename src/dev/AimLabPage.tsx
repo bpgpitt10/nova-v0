@@ -190,9 +190,25 @@ function AimLabPage() {
     }
   }, [holeNumber])
 
+  const targetDistance = pointDistance(ball, target)
+  const ballSurface = hole ? classifyPoint(hole, ball) : null
+  const ballTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(ball) : null
+  const targetTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(target) : null
+  const targetElevationDelta =
+    ballTerrain && targetTerrain
+      ? targetTerrain.elevationFt - ballTerrain.elevationFt
+      : null
+
   const evaluations = useMemo(
-    () => (hole ? evaluateAimLab(sessions, hole, ball, target) : []),
-    [sessions, hole, ball, target],
+    () => (hole
+      ? evaluateAimLab(sessions, hole, ball, target, {
+          windMph,
+          windRelativeDeg,
+          elevationDeltaFt: targetElevationDelta,
+          elevationSource: holeNumber === 1 ? 'Greywolf H1 LiDAR contour proxy' : 'No elevation model for this hole yet',
+        })
+      : []),
+    [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta],
   )
 
   useEffect(() => {
@@ -206,17 +222,6 @@ function AimLabPage() {
   }, [evaluations, selectedClub])
 
   const selected = evaluations.find((item) => item.club === selectedClub) ?? evaluations[0] ?? null
-  const targetDistance = pointDistance(ball, target)
-  const ballSurface = hole ? classifyPoint(hole, ball) : null
-  const ballTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(ball) : null
-  const selectedLandingTerrain =
-    holeNumber === 1 && selected?.bestCandidate
-      ? estimateGreywolfHole01Terrain(selected.bestCandidate.meanLanding)
-      : null
-  const selectedElevationDelta =
-    ballTerrain && selectedLandingTerrain
-      ? selectedLandingTerrain.elevationFt - ballTerrain.elevationFt
-      : null
 
   const resetTee = () => {
     if (!hole) return
@@ -315,7 +320,7 @@ function AimLabPage() {
                 <label>Uphill lie °<input type="number" value={uphillLieDeg} onChange={(event) => setUphillLieDeg(Number(event.target.value))} /></label>
                 <label>Sidehill lie °<input type="number" value={sidehillLieDeg} onChange={(event) => setSidehillLieDeg(Number(event.target.value))} /></label>
               </div>
-              <p className="aim-note">These manual fields are intentionally visible before the live ShotState bridge is connected. A detected value must never silently imply a modeled effect.</p>
+              <p className="aim-note">Wind is now operative through looper-flight-physics-v1. Hole 1 target elevation is also operative through the LiDAR proxy. Lie fields remain visible-only until their response model is validated.</p>
             </article>
           </section>
 
@@ -330,10 +335,10 @@ function AimLabPage() {
               <table className="aim-table factor-table">
                 <thead><tr><th>Factor</th><th>Raw value</th><th>Current model effect</th><th>Source</th><th>Status</th></tr></thead>
                 <tbody>
-                  <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Surface outcome classification</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Elevation</td><td>{selectedElevationDelta == null ? 'Unavailable' : `${selectedElevationDelta >= 0 ? '+' : ''}${selectedElevationDelta.toFixed(1)} ft to expected landing`}</td><td>Candidate-specific value displayed; not yet changing carry</td><td>{holeNumber === 1 ? 'LiDAR contour proxy' : 'LiDAR DEM bridge pending'}</td><td><b className="status review">REVIEW</b></td></tr>
-                  <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>Detected/manual only; no carry or drift adjustment yet</td><td>Manual tonight / sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
+                  <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{holeNumber === 1 ? 'LiDAR contour proxy' : 'LiDAR DEM bridge pending'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
+                  <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>{selected ? `${signedYds(selected.airborneCarryDeltaYds)} carry · ${signedYds(selected.airborneLateralDeltaYds)} lateral (combined with elevation)` : '—'}</td><td>Manual now / live sensor later</td><td><b className="status modeled">PROVISIONAL</b></td></tr>
                   <tr><td>Surface / lie</td><td>{ballSurface?.kind ?? 'unknown'}</td><td>No carry/dispersion penalty yet</td><td>Course geometry / GSPro later</td><td><b className="status pending">NOT MODELED</b></td></tr>
                   <tr><td>Uphill/downhill lie</td><td>{uphillLieDeg}°</td><td>No launch/carry change yet</td><td>Manual tonight / ShotState later</td><td><b className="status pending">NOT MODELED</b></td></tr>
                   <tr><td>Ball above/below feet</td><td>{sidehillLieDeg}°</td><td>No start-line/curvature change yet</td><td>Manual tonight / ShotState later</td><td><b className="status pending">NOT MODELED</b></td></tr>
@@ -353,7 +358,7 @@ function AimLabPage() {
             </div>
             <div className="aim-table-wrap">
               <table className="aim-table candidate-table">
-                <thead><tr><th>Club</th><th>Stock</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Score</th><th>Support</th></tr></thead>
+                <thead><tr><th>Club</th><th>Stock</th><th>Air Δ</th><th>Planned</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Score</th><th>Support</th></tr></thead>
                 <tbody>
                   {evaluations.slice(0, 8).map((item) => {
                     const best = item.bestCandidate
@@ -362,6 +367,8 @@ function AimLabPage() {
                       <tr key={item.club} className={selected?.club === item.club ? 'selected' : ''} onClick={() => setSelectedClub(item.club)}>
                         <td><strong>{item.club}</strong></td>
                         <td>{item.stockCarryYds.toFixed(1)} yd</td>
+                        <td>{signedYds(item.airborneCarryDeltaYds)}</td>
+                        <td>{item.modeledCarryYds.toFixed(1)} yd</td>
                         <td>{signedYds(item.carryGapYds)}</td>
                         <td>{signedYds(best?.aimOffsetYds)}</td>
                         <td>{pct(outcomes?.preferred)}</td>
@@ -425,11 +432,12 @@ function AimLabPage() {
                 <p><strong>This is not final golf strategy.</strong> It is a reviewable baseline so we can argue with every assumption before improving it.</p>
                 <div className="assumption-list">
                   <div><span>Aim search</span><strong>−15 to +15 yd, every 3 yd</strong></div>
-                  <div><span>Shot shape</span><strong>Stock carry/lateral bias + Gaussian σ</strong></div>
+                  <div><span>Shot shape</span><strong>Stock dispersion around physics-adjusted center</strong></div>
+                  <div><span>Wind</span><strong>looper-flight-physics-v1 · provisional</strong></div>
+                  <div><span>Elevation</span><strong>H1 LiDAR target elevation · provisional</strong></div>
                   <div><span>Smooth 90%</span><strong>Not synthesized yet</strong></div>
                   <div><span>Empirical mishit tail</span><strong>Not scored yet</strong></div>
-                  <div><span>LiDAR</span><strong>Candidate-specific display; direct DEM sampler next</strong></div>
-                  <div><span>Wind / lie / surface</span><strong>Visible but not yet modifying flight</strong></div>
+                  <div><span>Lie / surface response</span><strong>Visible but not yet modifying flight</strong></div>
                 </div>
                 {selected.notes.length > 0 && (
                   <div className="aim-warning-list">
@@ -443,7 +451,7 @@ function AimLabPage() {
           <footer className="aim-footer">
             <span>{hole.provenance.attribution}</span>
             <span>{hole.provenance.license}</span>
-            <span>Greywolf all-hole geometry · review mode</span>
+            <span>Greywolf all-hole geometry · provisional airborne physics</span>
           </footer>
         </>
       )}
