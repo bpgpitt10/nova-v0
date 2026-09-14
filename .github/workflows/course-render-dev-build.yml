@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - course-render-greywolf-h1-v0
+      - course-geometry-tactical-v0
     paths:
+      - src/courseGeometry/**
       - src/dev/CourseRenderDevPage.tsx
       - src/dev/courseRenderDev.css
       - src/dev/greywolfHole01RenderFixture.ts
