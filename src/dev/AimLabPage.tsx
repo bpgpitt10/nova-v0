@@ -295,10 +295,17 @@ function AimLabPage() {
   useEffect(() => {
     if (mode !== 'live' || !livePrepared) return
     setLiveError(null)
+    setLiveSnapshot(null)
+    setLastShotReview(null)
+    lastProcessedShotKeyRef.current = null
+
     const connection = connectToBrowserGsproCourseState({
       onStatusChange: setLiveStatus,
       onError: (error) => setLiveError(error instanceof Error ? error.message : String(error)),
       onSnapshot: (snapshot) => {
+        // Any good snapshot proves the reader recovered. Do not leave a stale red
+        // banner after a transient file-write/read race.
+        setLiveError(null)
         setLiveSnapshot(snapshot)
         if (snapshot.holeNumber && snapshot.holeNumber !== recommendationHoleRef.current) {
           setHoleNumber(snapshot.holeNumber)
@@ -362,7 +369,14 @@ function AimLabPage() {
 
   useEffect(() => {
     if (mode !== 'live' || !hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
-    const nextBall = liveSnapshot.ballLocalYds ?? hole.markers.tee
+
+    const nextBall = liveSnapshot.ballLocalYds
+      ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
+
+    // If one live read is incomplete, keep the last known position. Never teleport
+    // the golfer back to the tee merely because a sensor field was unavailable.
+    if (!nextBall) return
+
     const nextPin = estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
     setBall(nextBall)
     setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
@@ -396,18 +410,31 @@ function AimLabPage() {
       ? targetTerrain.elevationFt - ballTerrain.elevationFt
       : null
 
-  const evaluations = useMemo(
-    () => (hole
-      ? evaluateAimLab(sessions, hole, ball, target, {
+  const evaluationResult = useMemo(() => {
+    if (!hole) return { evaluations: [] as ClubAimEvaluation[], error: null as string | null }
+
+    try {
+      return {
+        evaluations: evaluateAimLab(sessions, hole, ball, target, {
           windMph,
           windRelativeDeg,
           elevationDeltaFt: targetElevationDelta,
           elevationSource: holeNumber === 1 ? 'Greywolf H1 LiDAR contour proxy' : 'No elevation model for this hole yet',
           surfaceOverride: liveMatchesHole ? liveSnapshot?.surface ?? null : null,
-        })
-      : []),
-    [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, liveSnapshot?.surface],
-  )
+        }),
+        error: null as string | null,
+      }
+    } catch (error) {
+      console.error('[Aim Lab] recommendation evaluation failed; live tracking remains active', error)
+      return {
+        evaluations: [] as ClubAimEvaluation[],
+        error: error instanceof Error ? error.message : String(error),
+      }
+    }
+  }, [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, liveSnapshot?.surface])
+
+  const evaluations = evaluationResult.evaluations
+  const evaluationError = evaluationResult.error
 
   useEffect(() => {
     if (evaluations.length === 0) {
@@ -431,6 +458,8 @@ function AimLabPage() {
     try {
       await connectBrowserGsproCourseStateFolder()
       setLivePrepared(true)
+      setLiveSnapshot(null)
+      setLastShotReview(null)
       setMode('live')
       setLiveConnectionVersion((value) => value + 1)
       lastProcessedShotKeyRef.current = null
@@ -484,6 +513,9 @@ function AimLabPage() {
         {!livePrepared && (
           <button type="button" onClick={() => void connectLiveState()}>Connect GSPro state folder</button>
         )}
+        {mode === 'live' && liveStatus === 'error' && (
+          <button type="button" onClick={() => void connectLiveState()}>Reconnect / choose folder</button>
+        )}
         <label>
           Hole
           <select value={holeNumber} disabled={mode === 'live'} onChange={(event) => setHoleNumber(Number(event.target.value))}>
@@ -506,11 +538,24 @@ function AimLabPage() {
         </div>
       </section>
 
-      {liveError && <div className="aim-alert bad">GSPro Live: {liveError}</div>}
+      {liveError && (
+        <div className="aim-alert bad">
+          GSPro Live: {liveError} · Looper will keep retrying; this does not interrupt GSPro play.
+        </div>
+      )}
       {mode === 'live' && liveSnapshot?.warnings.map((warning) => (
         <div className="aim-alert" key={warning}>{warning}</div>
       ))}
-      {loadError && <div className="aim-alert bad">{loadError}</div>}
+      {loadError && (
+        <div className="aim-alert bad">
+          Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.
+        </div>
+      )}
+      {evaluationError && (
+        <div className="aim-alert bad">
+          Recommendation engine paused for this state: {evaluationError} · live tracking and hole changes are still running.
+        </div>
+      )}
       {!hole && !loadError && <div className="aim-alert">Loading Greywolf Hole {holeNumber}…</div>}
 
       {hole && (
