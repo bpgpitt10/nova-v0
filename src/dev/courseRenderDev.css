@@ -148,3 +148,42 @@
   .course-render-grid { grid-template-columns: 1fr; }
   .course-hole-svg { max-height: none; }
 }
+
+
+.surface.grass-context {
+  fill: rgba(122, 142, 73, 0.14);
+  stroke: rgba(185, 205, 128, 0.25);
+  stroke-width: 0.8;
+}
+
+.surface.woods {
+  fill: rgba(28, 66, 39, 0.82);
+  stroke: rgba(122, 177, 99, 0.68);
+  stroke-width: 1.1;
+}
+
+.surface.scrub {
+  fill: rgba(93, 91, 45, 0.72);
+  stroke: rgba(194, 184, 101, 0.65);
+  stroke-width: 1;
+}
+
+.legend-swatch.woods { background: #274f30; border-color: #7ab163; }
+.legend-swatch.scrub { background: #5d5b2d; border-color: #c2b865; }
+.vegetation-card { border-color: rgba(122, 177, 99, 0.24); }
+.obstruction-probes { display: grid; gap: 8px; margin-top: 12px; }
+.obstruction-probe {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 3px 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+.obstruction-probe span, .obstruction-probe small { color: var(--muted); }
+.obstruction-probe small { grid-column: 1 / -1; }
+.obstruction-probe strong { font-size: 0.7rem; letter-spacing: 0.07em; }
+.obstruction-probe strong.clear { color: #8dcc88; }
+.obstruction-probe strong.blocked { color: #e6b36e; }

@@ -1,10 +1,12 @@
 import type {
+  CourseFeatureKind,
   CourseGeometryFeature,
   CourseGeometryPackage,
   CourseHole,
   CoursePoint,
   HoleRenderFeature,
   HoleRenderModel,
+  ShotObstructionAssessment,
 } from './types'
 
 const PACKAGE_URL = '/course-geometry/greywolf-v1.json'
@@ -79,7 +81,7 @@ function polygonsForFeature(feature: CourseGeometryFeature, hole: CourseHole): C
   return []
 }
 
-const renderedKinds = new Set(['rough', 'fairway', 'green', 'bunker', 'water', 'tee'])
+const renderedKinds = new Set(['rough', 'fairway', 'green', 'bunker', 'water', 'tee', 'woods', 'scrub', 'grass_context'])
 
 export function buildHoleRenderModel(
   coursePackage: CourseGeometryPackage,
@@ -94,7 +96,7 @@ export function buildHoleRenderModel(
     const feature = featureById.get(featureId)
     if (!feature || !renderedKinds.has(feature.kind)) return []
     const polygons = polygonsForFeature(feature, hole)
-    return polygons.length > 0 ? [{ id: feature.id, kind: feature.kind, polygons }] : []
+    return polygons.length > 0 ? [{ id: feature.id, kind: feature.kind, role: feature.role, polygons }] : []
   })
   const counts: HoleRenderModel['counts'] = {
     rough: 0,
@@ -115,5 +117,86 @@ export function buildHoleRenderModel(
     route: hole.route.geometry.coordinates.map((point) => toHoleLocal(point, hole)),
     features,
     counts,
+  }
+}
+
+
+function pointInRing(point: CoursePoint, ring: readonly CoursePoint[]): boolean {
+  const [x, y] = point
+  let inside = false
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const [xi, yi] = ring[index]
+    const [xj, yj] = ring[previous]
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi || Number.EPSILON) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+function featureContainsPoint(feature: HoleRenderFeature, point: CoursePoint): boolean {
+  return feature.polygons.some(
+    (polygon) =>
+      polygon.length > 0 &&
+      pointInRing(point, polygon[0]) &&
+      !polygon.slice(1).some((inner) => pointInRing(point, inner)),
+  )
+}
+
+function orientation(a: CoursePoint, b: CoursePoint, c: CoursePoint): number {
+  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+}
+
+function onSegment(a: CoursePoint, b: CoursePoint, point: CoursePoint): boolean {
+  const epsilon = 1e-8
+  return Math.abs(orientation(a, b, point)) <= epsilon &&
+    point[0] >= Math.min(a[0], b[0]) - epsilon &&
+    point[0] <= Math.max(a[0], b[0]) + epsilon &&
+    point[1] >= Math.min(a[1], b[1]) - epsilon &&
+    point[1] <= Math.max(a[1], b[1]) + epsilon
+}
+
+function segmentsIntersect(a: CoursePoint, b: CoursePoint, c: CoursePoint, d: CoursePoint): boolean {
+  const abC = orientation(a, b, c)
+  const abD = orientation(a, b, d)
+  const cdA = orientation(c, d, a)
+  const cdB = orientation(c, d, b)
+  if ((abC > 0) !== (abD > 0) && (cdA > 0) !== (cdB > 0)) return true
+  return onSegment(a, b, c) || onSegment(a, b, d) || onSegment(c, d, a) || onSegment(c, d, b)
+}
+
+function featureIntersectsLine(feature: HoleRenderFeature, start: CoursePoint, target: CoursePoint): boolean {
+  if (featureContainsPoint(feature, start) || featureContainsPoint(feature, target)) return true
+  return feature.polygons.some((polygon) =>
+    polygon.some((ring) =>
+      ring.some((point, index) => index > 0 && segmentsIntersect(start, target, ring[index - 1], point)),
+    ),
+  )
+}
+
+const liePriority: CourseFeatureKind[] = ['green', 'tee', 'bunker', 'fairway', 'rough', 'water']
+
+export function assessDirectShotObstruction(
+  model: HoleRenderModel,
+  ball: CoursePoint,
+  target: CoursePoint = model.targetGreen,
+): ShotObstructionAssessment {
+  const lieSurface =
+    liePriority.find((kind) =>
+      model.features.some(
+        (feature) =>
+          feature.role === 'surface' && feature.kind === kind && featureContainsPoint(feature, ball),
+      ),
+    ) ?? null
+  const obstructions = model.features.filter((feature) => feature.role === 'obstruction')
+  const containing = obstructions.filter((feature) => featureContainsPoint(feature, ball))
+  const blocking = obstructions.filter((feature) => featureIntersectsLine(feature, ball, target))
+  return {
+    mode: 'shadow-centerline-only',
+    lieSurface,
+    vegetationKinds: [...new Set(containing.map((feature) => feature.kind))],
+    startsInsideVegetation: containing.length > 0,
+    directLineCrossesVegetation: blocking.length > 0,
+    blockingFeatureIds: blocking.map((feature) => feature.id),
   }
 }

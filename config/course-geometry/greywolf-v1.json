@@ -15,6 +15,7 @@
   },
   "sources": {
     "osmSnapshot": "artifacts/osm-proof/context/greywolf-osm-context-selected.json",
+    "osmEnvironmentSnapshot": "artifacts/osm-proof/context/greywolf-osm-context-raw.json",
     "osmMetadata": "artifacts/osm-proof/context/greywolf-osm-context-raw.json",
     "registrationProof": "artifacts/osm-proof/greywolf-gspro-world-transform-proof.json",
     "registrationTiePoints": "artifacts/osm-proof/lidar/greywolf-lidar-vs-gspro-terrain.json"
@@ -25,7 +26,8 @@
     "minimumHalfWidthYards": 40,
     "maximumHalfWidthYards": 105,
     "sidePaddingYards": 0,
-    "spatialIndexCellYards": 100
+    "spatialIndexCellYards": 100,
+    "environmentPilotHoleNumbers": [1]
   },
   "holes": [
     {"number":1,"routeOsmId":1209190796,"gsproYards":350.0,"selectedTee":{"osmId":1209190795,"latLon":[50.446423107692304,-116.24757067692309]},"targetGreen":{"osmId":1212577098,"latLon":[50.443634984615386,-116.24856764615384]},"lockedEvidence":{"osmYards":347.7,"residualYards":-2.3,"headingDegreesTrue":192.83}},

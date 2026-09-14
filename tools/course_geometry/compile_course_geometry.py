@@ -24,7 +24,7 @@ from typing import Any, Iterable, Sequence
 EARTH_RADIUS_M = 6_371_008.8
 METERS_TO_YARDS = 1.0936133
 SCHEMA_VERSION = "looper.course_geometry_package.v1"
-GENERATOR_VERSION = "course-geometry-compiler-v1"
+GENERATOR_VERSION = "course-geometry-compiler-v1.1"
 
 GOLF_SURFACES = {
     "fairway": "fairway",
@@ -35,6 +35,7 @@ GOLF_SURFACES = {
     "lateral_water_hazard": "water",
     "water_hazard": "water",
 }
+ENVIRONMENT_KINDS = {"woods", "scrub", "grass_context"}
 
 Point = tuple[float, float]
 BBox = tuple[float, float, float, float]
@@ -54,6 +55,33 @@ def normalized_elements(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, dict) and isinstance(payload.get("elements"), list):
         return [row for row in payload["elements"] if isinstance(row, dict)]
     raise ValueError("OSM snapshot must be an element array or an Overpass object")
+
+
+def environmental_elements(payload: Any) -> list[dict[str, Any]]:
+    """Select non-golf landcover that can affect lie or line-of-play context."""
+    selected: list[dict[str, Any]] = []
+    for element in normalized_elements(payload):
+        tags = element.get("tags") or {}
+        natural = str(tags.get("natural") or "")
+        if natural in {"wood", "scrub"}:
+            selected.append(element)
+        elif not tags.get("golf") and tags.get("landuse") == "grass":
+            selected.append(element)
+    return selected
+
+
+def merge_elements(
+    primary: Sequence[dict[str, Any]], supplemental: Sequence[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Merge by OSM identity, keeping curated primary elements authoritative."""
+    merged: dict[tuple[str, int], dict[str, Any]] = {}
+    for element in supplemental:
+        if element.get("id") is not None:
+            merged[(str(element.get("type") or "unknown"), int(element["id"]))] = element
+    for element in primary:
+        if element.get("id") is not None:
+            merged[(str(element.get("type") or "unknown"), int(element["id"]))] = element
+    return [merged[key] for key in sorted(merged)]
 
 
 def latlon(point: dict[str, Any]) -> Point:
@@ -267,7 +295,14 @@ def feature_kind(tags: dict[str, Any]) -> tuple[str, str] | None:
     golf = str(tags.get("golf") or "")
     if golf in GOLF_SURFACES:
         return GOLF_SURFACES[golf], "surface"
-    if tags.get("natural") == "water" or tags.get("water"):
+    natural = str(tags.get("natural") or "")
+    if natural == "wood":
+        return "woods", "obstruction"
+    if natural == "scrub":
+        return "scrub", "obstruction"
+    if not golf and tags.get("landuse") == "grass":
+        return "grass_context", "context"
+    if natural == "water" or tags.get("water"):
         return "water_context", "context"
     if tags.get("leisure") == "golf_course":
         return "course_boundary", "context"
@@ -279,7 +314,7 @@ def feature_kind(tags: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def compact_tags(tags: dict[str, Any]) -> dict[str, Any]:
-    keep = ("golf", "natural", "water", "waterway", "leisure", "highway", "name", "ref", "par", "type")
+    keep = ("golf", "natural", "landuse", "leaf_type", "leaf_cycle", "water", "waterway", "leisure", "highway", "name", "ref", "par", "type")
     return {key: tags[key] for key in keep if tags.get(key) is not None}
 
 
@@ -485,6 +520,7 @@ def compile_holes(
 ) -> list[dict[str, Any]]:
     feature_by_osm_id = {feature["osmId"]: feature for feature in features}
     policy = config["viewPolicy"]
+    environment_pilot_holes = {int(value) for value in policy.get("environmentPilotHoleNumbers", [])}
     holes: list[dict[str, Any]] = []
     for source in config["holes"]:
         number = int(source["number"])
@@ -529,6 +565,18 @@ def compile_holes(
         max_right = max(max_right, minimum_half)
         clip_bounds = (min_right, min_forward, max_right, max_forward)
         selected = [item for item in selected if bounds_overlap(item[1], clip_bounds)]
+        if number in environment_pilot_holes:
+            selected_ids = {feature["id"] for feature, _ in selected}
+            for feature in features:
+                if feature["kind"] not in ENVIRONMENT_KINDS or feature["id"] in selected_ids:
+                    continue
+                bounds = local_bbox(feature, tee, green)
+                if bounds_overlap(bounds, clip_bounds):
+                    selected.append((feature, bounds))
+        selected.sort(key=lambda item: item[0]["id"])
+        environment_feature_count = sum(
+            feature["kind"] in ENVIRONMENT_KINDS for feature, _ in selected
+        )
 
         raw_par = route["tags"].get("par")
         try:
@@ -573,7 +621,12 @@ def compile_holes(
                 "coordinateSystem": "selected tee origin; +forward to target green; +right golfer-right; yards",
                 "clipBounds": bbox_json(clip_bounds),
                 "featureIds": [feature["id"] for feature, _ in selected],
-                "renderPolicy": "spatially associated OSM surfaces; only the locked tee and target green; clipped at render time",
+                "renderPolicy": (
+                    "approved OSM golf surfaces plus H1 environmental pilot; "
+                    "locked tee/green; original clip retained"
+                    if number in environment_pilot_holes
+                    else "spatially associated OSM surfaces; only the locked tee and target green; clipped at render time"
+                ),
             },
             "quality": {
                 "selectedTeePresent": True,
@@ -581,6 +634,8 @@ def compile_holes(
                 "staticGeometryReady": any(feature["kind"] == "fairway" for feature, _ in selected),
                 "anchorEvidenceWithinQuarterYard": abs(evidence_delta) <= 0.25,
                 "featureCount": len(selected),
+                "environmentPilotActive": number in environment_pilot_holes,
+                "environmentFeatureCount": environment_feature_count,
             },
         })
     return holes
@@ -668,12 +723,19 @@ def compile_package(config_path: Path) -> dict[str, Any]:
         key: repo_root / value
         for key, value in config["sources"].items()
     }
-    elements = normalized_elements(read_json(sources["osmSnapshot"]))
+    primary_elements = normalized_elements(read_json(sources["osmSnapshot"]))
+    supplemental_environment = environmental_elements(
+        read_json(sources["osmEnvironmentSnapshot"])
+    )
+    elements = merge_elements(primary_elements, supplemental_environment)
     metadata_payload = read_json(sources["osmMetadata"])
     origin = tuple(float(value) for value in config["coordinateSystem"]["originLatLon"])
     features, routes, warnings = compile_features(elements, origin)
     assign_nearest_holes(features, routes)
-    indexed_features = [feature for feature in features if feature["role"] == "surface"]
+    surface_features = [feature for feature in features if feature["role"] == "surface"]
+    indexed_features = [
+        feature for feature in features if feature["role"] in {"surface", "obstruction"}
+    ]
     spatial_index = build_spatial_index(
         indexed_features, float(config["viewPolicy"]["spatialIndexCellYards"])
     )
@@ -683,7 +745,7 @@ def compile_package(config_path: Path) -> dict[str, Any]:
 
     all_points = [
         point
-        for feature in indexed_features
+        for feature in surface_features
         for point in geometry_points(feature["geometry"])
     ]
     source_hashes = {key: source_digest(path) for key, path in sorted(sources.items())}
@@ -731,7 +793,13 @@ def compile_package(config_path: Path) -> dict[str, Any]:
         "compilerDiagnostics": {
             "elementCount": len(elements),
             "featureCount": len(features),
-            "spatiallyIndexedSurfaceFeatureCount": len(indexed_features),
+            "spatiallyIndexedSurfaceFeatureCount": len(surface_features),
+            "spatiallyIndexedObstructionFeatureCount": sum(
+                feature["role"] == "obstruction" for feature in indexed_features
+            ),
+            "environmentFeatureCount": sum(
+                feature["kind"] in ENVIRONMENT_KINDS for feature in features
+            ),
             "routeCount": len(routes),
             "unsupportedGeometry": warnings,
             "allHolesStaticGeometryReady": all(hole["quality"]["staticGeometryReady"] for hole in holes),
@@ -754,6 +822,14 @@ def compile_package(config_path: Path) -> dict[str, Any]:
                 "directionSemantics": "gspro-display-until-wind-from-vs-wind-toward-is-validated",
                 "failurePolicy": "unavailable-never-assume-calm",
                 "embeddedInStaticGeometry": False,
+            },
+            "obstructionAssessment": {
+                "activation": "shadow-only",
+                "groundLieAndObstructionAreSeparateDimensions": True,
+                "obstructionKinds": ["woods", "scrub"],
+                "grassContextPolicy": "context-only-never-infer-deep-rough",
+                "initialLineModel": "ball-to-target centerline polygon intersection",
+                "knownLimit": "no canopy height/density or shot-corridor width calibration yet",
             },
             "simulatorSpecificOverlays": {
                 "source": "GSPro minimap/screen sensors",

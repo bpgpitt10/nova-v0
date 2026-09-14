@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 import compile_course_geometry as compiler
@@ -44,11 +45,11 @@ class CourseGeometryCompilerTests(unittest.TestCase):
                     self.assertGreaterEqual(len(ring), 4, feature["id"])
                     self.assertEqual(ring[0], ring[-1], feature["id"])
 
-    def test_spatial_index_covers_every_surface_once_or_more(self) -> None:
+    def test_spatial_index_covers_every_strategy_queryable_feature(self) -> None:
         expected = {
             feature["id"]
             for feature in self.package["features"]
-            if feature["role"] == "surface"
+            if feature["role"] in {"surface", "obstruction"}
         }
         indexed = {
             feature_id
@@ -71,8 +72,9 @@ class CourseGeometryCompilerTests(unittest.TestCase):
         by_id = {feature["id"]: feature for feature in self.package["features"]}
         counts: dict[str, int] = {}
         for feature_id in hole["view"]["featureIds"]:
-            kind = by_id[feature_id]["kind"]
-            counts[kind] = counts.get(kind, 0) + 1
+            feature = by_id[feature_id]
+            if feature["role"] == "surface":
+                counts[feature["kind"]] = counts.get(feature["kind"], 0) + 1
         self.assertEqual(counts, {
             "bunker": 4,
             "fairway": 2,
@@ -83,6 +85,38 @@ class CourseGeometryCompilerTests(unittest.TestCase):
         })
         self.assertAlmostEqual(hole["view"]["clipBounds"]["minY"], -28.0)
         self.assertAlmostEqual(hole["view"]["clipBounds"]["maxY"], 391.726)
+
+    def test_environment_is_generic_but_only_activated_for_hole_one(self) -> None:
+        feature_by_id = {feature["id"]: feature for feature in self.package["features"]}
+        environment = [
+            feature
+            for feature in self.package["features"]
+            if feature["kind"] in {"woods", "scrub", "grass_context"}
+        ]
+        counts = Counter(feature["kind"] for feature in environment)
+        self.assertEqual(counts, Counter({"woods": 88, "grass_context": 16, "scrub": 2}))
+        self.assertTrue(all(
+            feature["role"] == ("obstruction" if feature["kind"] in {"woods", "scrub"} else "context")
+            for feature in environment
+        ))
+
+        hole_one = next(hole for hole in self.package["holes"] if hole["number"] == 1)
+        hole_one_environment = {
+            feature_id
+            for feature_id in hole_one["view"]["featureIds"]
+            if feature_by_id[feature_id]["kind"] in {"woods", "scrub", "grass_context"}
+        }
+        self.assertEqual(hole_one_environment, {"osm:way:1209222802", "osm:way:1209268500"})
+        self.assertTrue(hole_one["quality"]["environmentPilotActive"])
+        self.assertEqual(hole_one["quality"]["environmentFeatureCount"], 2)
+
+        for hole in self.package["holes"][1:]:
+            self.assertFalse(hole["quality"]["environmentPilotActive"])
+            self.assertEqual(hole["quality"]["environmentFeatureCount"], 0)
+            self.assertFalse(any(
+                feature_by_id[feature_id]["kind"] in {"woods", "scrub", "grass_context"}
+                for feature_id in hole["view"]["featureIds"]
+            ))
 
     def test_source_labels_do_not_invent_bad_osm_par_values(self) -> None:
         by_number = {hole["number"]: hole for hole in self.package["holes"]}

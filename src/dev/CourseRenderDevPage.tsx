@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  assessDirectShotObstruction,
   buildHoleRenderModel,
   loadCourseGeometryPackage,
 } from '../courseGeometry/courseGeometry'
@@ -26,6 +27,7 @@ function CourseRenderDevPage() {
   const [selectedHole, setSelectedHole] = useState(1)
   const [showContours, setShowContours] = useState(true)
   const [showShots, setShowShots] = useState(true)
+  const [showVegetation, setShowVegetation] = useState(true)
 
   useEffect(() => {
     let active = true
@@ -162,6 +164,16 @@ function CourseRenderDevPage() {
   }
 
   const hole = renderModel.hole
+  const vegetationPilotActive = hole.quality.environmentPilotActive
+  const vegetationFeatureCount = renderModel.features.filter(
+    (feature) => feature.role === 'obstruction',
+  ).length
+  const obstructionProbes = hasHoleOneEvidence
+    ? holeOneEvidence.markers.shots.map((shot) => ({
+        label: shot.label,
+        assessment: assessDirectShotObstruction(renderModel, [shot.x, shot.y]),
+      }))
+    : []
   const [teeX, teeY] = transform.point(renderModel.tee)
   const [greenX, greenY] = transform.point(renderModel.targetGreen)
   const carryDistances = Array.from(
@@ -183,7 +195,7 @@ function CourseRenderDevPage() {
           <h1>{coursePackage.course.name} · Hole {hole.number}</h1>
           <p>
             {hasHoleOneEvidence
-              ? 'Course-wide OSM surfaces + official 1 m LiDAR proof, rendered from a deterministic package.'
+              ? 'Approved OSM surfaces + OSM vegetation pilot + official 1 m LiDAR proof.'
               : 'Course-wide OSM surfaces in the fixed Greywolf coordinate system. LiDAR render detail is not yet compiled for this hole.'}
           </p>
         </div>
@@ -195,6 +207,15 @@ function CourseRenderDevPage() {
                 <option key={candidate.number} value={candidate.number}>{candidate.number}</option>
               ))}
             </select>
+          </label>
+          <label className={!vegetationPilotActive ? 'control-disabled' : undefined}>
+            <input
+              type="checkbox"
+              checked={showVegetation && vegetationPilotActive}
+              disabled={!vegetationPilotActive}
+              onChange={(event) => setShowVegetation(event.target.checked)}
+            />
+            OSM vegetation
           </label>
           <label className={!hasHoleOneEvidence ? 'control-disabled' : undefined}>
             <input
@@ -254,6 +275,14 @@ function CourseRenderDevPage() {
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} rx="24" fill="url(#courseBg)" />
 
             <g clipPath="url(#holeViewClip)">
+              {showVegetation && vegetationPilotActive && (
+                <>
+                  <g>{renderFeatures('grass_context', 'surface grass-context')}</g>
+                  <g>{renderFeatures('woods', 'surface woods')}</g>
+                  <g>{renderFeatures('scrub', 'surface scrub')}</g>
+                </>
+              )}
+
               {showContours && hasHoleOneEvidence && (
                 <g className="terrain-contours" aria-label="LiDAR elevation contours">
                   {holeOneEvidence.layers.contours.map((contour, index) => (
@@ -317,6 +346,8 @@ function CourseRenderDevPage() {
             <span><i className="legend-swatch green" />Target green</span>
             <span><i className="legend-swatch bunker" />Bunker</span>
             <span><i className="legend-swatch water" />OSM penalty / water</span>
+            {vegetationPilotActive && <span><i className="legend-swatch woods" />Woods (OSM)</span>}
+            {vegetationPilotActive && <span><i className="legend-swatch scrub" />Scrub (OSM)</span>}
           </div>
         </article>
 
@@ -333,6 +364,34 @@ function CourseRenderDevPage() {
               <div><dt>Penalty / water</dt><dd>{renderModel.counts.water}</dd></div>
             </dl>
           </section>
+
+          {vegetationPilotActive && (
+            <section className="course-data-card vegetation-card">
+              <p className="card-kicker">OSM OBSTRUCTION · SHADOW VALIDATION</p>
+              <dl className="metric-list">
+                <div><dt>Woods / scrub in view</dt><dd>{vegetationFeatureCount}</dd></div>
+                <div><dt>Deep rough inferred</dt><dd>No</dd></div>
+              </dl>
+              <div className="obstruction-probes">
+                {obstructionProbes.map(({ label, assessment }) => (
+                  <div className="obstruction-probe" key={label}>
+                    <span>{label} → green</span>
+                    <strong className={assessment.directLineCrossesVegetation ? 'blocked' : 'clear'}>
+                      {assessment.directLineCrossesVegetation ? 'CENTERLINE BLOCKED' : 'CENTERLINE CLEAR'}
+                    </strong>
+                    <small>
+                      Lie: {assessment.lieSurface ?? 'unclassified'}
+                      {assessment.startsInsideVegetation ? ' + vegetation' : ''}
+                    </small>
+                  </div>
+                ))}
+              </div>
+              <p className="proof-footnote">
+                Shadow mode only. Lie and line-of-play obstruction are separate. OSM grass is context,
+                not a deep-rough claim; canopy height/density and corridor width still need GSPro calibration.
+              </p>
+            </section>
+          )}
 
           {hasHoleOneEvidence && (
             <>

@@ -28,6 +28,9 @@ export type CourseFeatureKind =
   | 'water_context'
   | 'waterway'
   | 'path'
+  | 'woods'
+  | 'scrub'
+  | 'grass_context'
 
 export type Bounds = {
   minX: number
@@ -41,7 +44,7 @@ export type CourseGeometryFeature = {
   osmType: string
   osmId: number
   kind: CourseFeatureKind
-  role: 'surface' | 'context'
+  role: 'surface' | 'obstruction' | 'context'
   sourceTags: Record<string, string>
   geometry: CourseGeometry
   bbox: Bounds
@@ -99,6 +102,8 @@ export type CourseHole = {
     staticGeometryReady: boolean
     anchorEvidenceWithinQuarterYard: boolean
     featureCount: number
+    environmentPilotActive: boolean
+    environmentFeatureCount: number
   }
 }
 
@@ -170,6 +175,7 @@ export type CourseGeometryPackage = {
 export type HoleRenderFeature = {
   id: string
   kind: CourseFeatureKind
+  role: CourseGeometryFeature['role']
   polygons: CoursePoint[][][]
 }
 
@@ -181,4 +187,14 @@ export type HoleRenderModel = {
   route: CoursePoint[]
   features: HoleRenderFeature[]
   counts: Record<'rough' | 'fairway' | 'green' | 'bunker' | 'water' | 'tee', number>
+}
+
+
+export type ShotObstructionAssessment = {
+  mode: 'shadow-centerline-only'
+  lieSurface: CourseFeatureKind | null
+  vegetationKinds: CourseFeatureKind[]
+  startsInsideVegetation: boolean
+  directLineCrossesVegetation: boolean
+  blockingFeatureIds: string[]
 }
