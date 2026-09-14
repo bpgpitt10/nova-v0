@@ -1,3 +1,5 @@
+import type { FlightPhysicsPrior } from './flightPhysics'
+
 export type CaddieModelStatus =
   | 'modeled'
   | 'calibrating'
@@ -47,6 +49,11 @@ export type PlayerBaselineInput = {
   lateralBiasYds?: number | null
   lateralSigmaYds?: number | null
   supportShots?: number | null
+  launchBallSpeedMph?: number | null
+  launchVlaDeg?: number | null
+  launchHlaDeg?: number | null
+  launchSpinRpm?: number | null
+  launchSpinAxisDeg?: number | null
 }
 
 export type ShotContextInput = {
@@ -62,12 +69,14 @@ export type ShotContextInput = {
   lieSource?: string | null
   lieConfidence?: CaddieModelConfidence
   mishitEvidenceLabel?: string | null
+  physicsPrior?: FlightPhysicsPrior | null
 }
 
 const finite = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
 const signed = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
+const priorDelta = (value: number | null | undefined) => finite(value) ? `${signed(value)} yd prior` : 'prior unavailable'
 
 export const buildCaddieModelContract = (
   baseline: PlayerBaselineInput,
@@ -108,6 +117,34 @@ export const buildCaddieModelContract = (
     })
   }
 
+  const hasLaunchPacket =
+    finite(baseline.launchBallSpeedMph) &&
+    finite(baseline.launchVlaDeg) &&
+    finite(baseline.launchSpinRpm)
+  factors.push({
+    id: 'player-launch',
+    label: 'Representative Stock launch',
+    category: 'player',
+    rawDisplay: hasLaunchPacket
+      ? `${baseline.launchBallSpeedMph!.toFixed(1)} mph · ${baseline.launchVlaDeg!.toFixed(1)}° VLA · ${baseline.launchSpinRpm!.toFixed(0)} rpm · ${finite(baseline.launchSpinAxisDeg) ? `${signed(baseline.launchSpinAxisDeg)}° axis` : 'axis —'}`
+      : 'Incomplete launch packet',
+    source: 'Same Looper historical Stock profile as carry/dispersion',
+    sourceConfidence: hasLaunchPacket
+      ? (baseline.supportShots ?? 0) >= 10 ? 'high' : 'medium'
+      : 'unknown',
+    transformation: 'Feeds the aerodynamic physics prior. Absolute physics carry never replaces measured Stock carry; only condition deltas are considered for calibration.',
+    modeledDisplay: context.physicsPrior?.status === 'ready'
+      ? `physics baseline ${context.physicsPrior.baseline?.carryYds?.toFixed(1) ?? '—'} yd (diagnostic only)`
+      : 'Physics prior unavailable',
+    affects: ['carry-mean', 'lateral-mean'],
+    modelVersion: 'looper-flight-physics-v1',
+    status: hasLaunchPacket ? 'modeled' : 'unavailable',
+    evidenceBasis: hasLaunchPacket
+      ? 'Launch metrics are produced by the existing player-profile calculation.'
+      : 'Ball speed + VLA + total spin are required.',
+    notes: ['Physics absolute carry is diagnostic. Looper anchors recommendations to the player’s observed Stock carry.'],
+  })
+
   factors.push({
     id: 'target-distance',
     label: 'Target / landing distance',
@@ -123,6 +160,7 @@ export const buildCaddieModelContract = (
     evidenceBasis: 'Deterministic geometric distance',
   })
 
+  const elevationPrior = context.physicsPrior?.deltas.elevationCarryYds
   factors.push({
     id: 'elevation',
     label: 'Elevation to candidate landing',
@@ -130,16 +168,24 @@ export const buildCaddieModelContract = (
     rawDisplay: finite(context.elevationDeltaFt) ? `${signed(context.elevationDeltaFt)} ft` : 'Unavailable',
     source: context.elevationSource ?? 'LiDAR terrain model',
     sourceConfidence: context.elevationConfidence ?? (finite(context.elevationDeltaFt) ? 'medium' : 'unknown'),
-    transformation: 'Candidate-specific start-to-landing elevation is measured. Ball-flight response is not yet applied to carry.',
-    modeledDisplay: finite(context.elevationDeltaFt) ? '0.0 yd adjustment applied (flight response pending)' : 'Unavailable',
+    transformation: finite(elevationPrior)
+      ? `The flight prior intersects the descending trajectory with the candidate elevation and predicts ${priorDelta(elevationPrior)}. GSPro calibration is still required before application.`
+      : 'Candidate-specific start-to-landing elevation is measured; the flight prior cannot run without a representative launch packet.',
+    modeledDisplay: finite(context.elevationDeltaFt)
+      ? `${priorDelta(elevationPrior)} · 0.0 yd applied to recommendation`
+      : 'Unavailable',
     affects: ['effective-distance', 'carry-mean'],
-    modelVersion: 'elevation-response-unset-v0',
-    status: finite(context.elevationDeltaFt) ? 'review' : 'unavailable',
-    evidenceBasis: 'Terrain elevation can be measured; trajectory response still needs implementation/calibration.',
-    notes: ['Stock carry remains the player baseline; elevation should transform the shot requirement/trajectory, not rewrite the baseline profile.'],
+    modelVersion: 'looper-flight-physics-v1 + gspro-elevation-calibration-v0',
+    status: finite(context.elevationDeltaFt) ? 'calibrating' : 'unavailable',
+    evidenceBasis: finite(elevationPrior)
+      ? 'OpenFairway-derived trajectory prior is available; GSPro residual calibration is pending.'
+      : 'Terrain elevation can be measured; trajectory inputs may be incomplete.',
+    notes: ['Stock carry remains the player baseline; elevation produces a condition delta rather than rewriting the baseline profile.'],
   })
 
   const hasWind = finite(context.windMph) && finite(context.windRelativeDeg)
+  const windCarryPrior = context.physicsPrior?.deltas.windCarryYds
+  const windLateralPrior = context.physicsPrior?.deltas.windLateralYds
   factors.push({
     id: 'wind',
     label: 'Wind',
@@ -147,12 +193,19 @@ export const buildCaddieModelContract = (
     rawDisplay: hasWind ? `${context.windMph!.toFixed(1)} mph @ ${context.windRelativeDeg!.toFixed(0)}° relative` : 'Unavailable',
     source: 'Live wind sensor / manual calibration input',
     sourceConfidence: hasWind ? 'medium' : 'unknown',
-    transformation: 'Wind vector is captured, but no GSPro-calibrated carry/drift response is applied yet.',
-    modeledDisplay: hasWind ? '0.0 yd carry / 0.0 yd lateral adjustment applied' : 'Unavailable',
+    transformation: finite(windCarryPrior) && finite(windLateralPrior)
+      ? `Air-relative velocity physics predicts ${priorDelta(windCarryPrior)} carry and ${priorDelta(windLateralPrior)} lateral. GSPro residual calibration remains the gate.`
+      : 'Wind vector is captured, but the physics prior cannot run without a representative launch packet.',
+    modeledDisplay: hasWind
+      ? `${priorDelta(windCarryPrior)} carry · ${priorDelta(windLateralPrior)} lateral · 0.0 yd applied`
+      : 'Unavailable',
     affects: ['carry-mean', 'carry-dispersion', 'lateral-mean', 'lateral-dispersion'],
-    modelVersion: 'gspro-wind-calibration-v0',
+    modelVersion: 'looper-flight-physics-v1 + gspro-wind-calibration-v0',
     status: hasWind ? 'calibrating' : 'unavailable',
-    evidenceBasis: 'Controlled GSPro wind-response matrix is required before coefficients are allowed into recommendations.',
+    evidenceBasis: finite(windCarryPrior)
+      ? 'Physics prior is active for review; controlled GSPro shot-injection cases will estimate the residual correction.'
+      : 'Controlled GSPro wind-response matrix plus representative launch data are required.',
+    notes: ['0° means wind from directly ahead (headwind); 90° means wind from the player’s right.'],
   })
 
   const surface = context.surface?.trim() || null
