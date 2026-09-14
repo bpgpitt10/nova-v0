@@ -9,7 +9,7 @@ import type {
   ShotObstructionAssessment,
 } from './types'
 
-const PACKAGE_URL = '/course-geometry/greywolf-v1.json'
+const PACKAGE_URL = '/course-geometry/greywolf-v1.json?revision=environment-pilot-v1'
 
 let packagePromise: Promise<CourseGeometryPackage> | null = null
 
@@ -22,6 +22,18 @@ export function validateCourseGeometryPackage(value: unknown): asserts value is 
   }
   if (!Array.isArray(value.features) || !Array.isArray(value.holes) || value.holes.length !== 18) {
     throw new Error('Course geometry package is incomplete')
+  }
+  const holeOne = value.holes.find(
+    (candidate) => isRecord(candidate) && candidate.number === 1,
+  )
+  const holeOneQuality =
+    isRecord(holeOne) && isRecord(holeOne.quality) ? holeOne.quality : null
+  if (
+    value.generatorVersion !== 'course-geometry-compiler-v1.1' ||
+    holeOneQuality?.environmentPilotActive !== true ||
+    typeof holeOneQuality?.environmentFeatureCount !== 'number'
+  ) {
+    throw new Error('Course geometry package is stale; reload the latest preview')
   }
   const integration = isRecord(value.integrationContract) ? value.integrationContract : null
   const wind = integration && isRecord(integration.wind) ? integration.wind : null
@@ -38,7 +50,7 @@ export function validateCourseGeometryPackage(value: unknown): asserts value is 
 }
 
 export function loadCourseGeometryPackage(): Promise<CourseGeometryPackage> {
-  packagePromise ??= fetch(PACKAGE_URL, { cache: 'force-cache' }).then(async (response) => {
+  packagePromise ??= fetch(PACKAGE_URL, { cache: 'no-cache' }).then(async (response) => {
     if (!response.ok) {
       throw new Error(`Course geometry package failed to load (${response.status})`)
     }
