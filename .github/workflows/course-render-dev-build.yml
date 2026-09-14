@@ -7,8 +7,11 @@ on:
       - course-geometry-tactical-v0
     paths:
       - src/courseGeometry/**
+      - src/liveCaddie/playerGeometryOutcomes.ts
       - src/dev/CourseRenderDevPage.tsx
       - src/dev/courseRenderDev.css
+      - src/dev/CourseGeometryDevPage.tsx
+      - src/dev/courseGeometryDev.css
       - src/dev/greywolfHole01RenderFixture.ts
       - src/main.tsx
       - .github/workflows/course-render-dev-build.yml
