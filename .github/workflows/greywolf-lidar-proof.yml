@@ -1,0 +1,69 @@
+name: Greywolf LiDAR coverage proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/greywolf-lidar-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  greywolf-lidar-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query LidarBC at Greywolf
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, urllib.parse, urllib.request
+          from pathlib import Path
+          base='https://services6.arcgis.com/ubm4tcTYICKBpist/ArcGIS/rest/services/LiDAR_BC_S3_Public/FeatureServer'
+          lon,lat=-116.24857,50.4470
+          layers={
+            'dem_2500':5,
+            'dem_20000':6,
+            'point_cloud':4,
+            'dsm_2500':1,
+            'dsm_10000':2,
+            'dsm_20000':3,
+            'project_extent':0,
+          }
+          out={}
+          for name,layer in layers.items():
+            params={
+              'where':'1=1','geometry':f'{lon},{lat}','geometryType':'esriGeometryPoint',
+              'inSR':'4326','spatialRel':'esriSpatialRelIntersects','outFields':'*',
+              'returnGeometry':'false','f':'json'
+            }
+            url=f'{base}/{layer}/query?'+urllib.parse.urlencode(params)
+            with urllib.request.urlopen(url,timeout=60) as r:
+              d=json.load(r)
+            out[name]=d.get('features',[])
+          result={'query_point':{'lat':lat,'lon':lon},'layers':out}
+          p=Path('artifacts/osm-proof/lidar'); p.mkdir(parents=True,exist_ok=True)
+          (p/'greywolf-lidar-coverage.json').write_text(json.dumps(result,indent=2,sort_keys=True))
+          summary={k:[f.get('attributes',{}) for f in v] for k,v in out.items()}
+          print(json.dumps(summary,indent=2,sort_keys=True))
+          PY
+      - name: Persist proof output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/lidar/greywolf-lidar-coverage.json
+          if git diff --cached --quiet; then
+            echo unchanged
+          else
+            git commit -m "test(strategy): record Greywolf LiDAR coverage"
+            git push
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-lidar-proof
+          path: artifacts/osm-proof/lidar/greywolf-lidar-coverage.json
