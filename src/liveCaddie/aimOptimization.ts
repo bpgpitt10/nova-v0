@@ -25,6 +25,8 @@ export type AimLabEnvironment = {
   windRelativeDeg?: number
   elevationDeltaFt?: number | null
   elevationSource?: string
+  /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
+  surfaceOverride?: string | null
 }
 
 export type AimSurfaceDistribution = {
@@ -57,10 +59,13 @@ export type ClubAimEvaluation = {
   stockCarryYds: number
   modeledCarryYds: number
   airborneCarryDeltaYds: number
+  surfaceCarryDeltaYds: number
+  surfaceLabel: string
   carrySigmaYds: number | null
   lateralBiasYds: number
   modeledLateralBiasYds: number
   airborneLateralDeltaYds: number
+  surfaceLateralDeltaYds: number
   lateralSigmaYds: number | null
   targetDistanceYds: number
   carryGapYds: number
@@ -210,7 +215,8 @@ export const evaluateAimLab = (
   const nowMs = typeof environmentOrNowMs === 'number' ? environmentOrNowMs : explicitNowMs
   const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
   const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
-  const ballSurface = classifyPoint(hole, ball).kind
+  const geometrySurface = classifyPoint(hole, ball).kind
+  const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
 
   return profileSet.clubs
     .map((profile): ClubAimEvaluation => {
@@ -254,6 +260,9 @@ export const evaluateAimLab = (
       }
       if (modeled.physicsPrior.status !== 'ready' && ((environment.windMph ?? 0) !== 0 || (environment.elevationDeltaFt ?? 0) !== 0)) {
         notes.push('Airborne physics unavailable for this club; Stock baseline used for environmental response.')
+      }
+      if (environment.surfaceOverride && environment.surfaceOverride !== geometrySurface) {
+        notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
       }
 
       const candidates = AIM_OFFSETS_YDS.map((aimOffsetYds): AimCandidateEvaluation => {
@@ -306,10 +315,13 @@ export const evaluateAimLab = (
         stockCarryYds: profile.stock_carry_yds,
         modeledCarryYds,
         airborneCarryDeltaYds: modeled.appliedAdjustments.combinedAirborneCarryYds,
+        surfaceCarryDeltaYds: modeled.appliedAdjustments.surfaceCarryYds,
+        surfaceLabel: modeled.surfaceResponse.label,
         carrySigmaYds: profile.carry_sigma_yds ?? null,
         lateralBiasYds: profile.lateral_bias_yds ?? 0,
         modeledLateralBiasYds,
         airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
+        surfaceLateralDeltaYds: modeled.appliedAdjustments.surfaceLateralYds,
         lateralSigmaYds: profile.lateral_sigma_yds ?? null,
         targetDistanceYds,
         carryGapYds,
