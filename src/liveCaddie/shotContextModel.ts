@@ -19,6 +19,8 @@ export type ModeledShotContext = {
     elevationYds: number
     windCarryYds: number
     windLateralYds: number
+    combinedAirborneCarryYds: number
+    combinedAirborneLateralYds: number
     surfaceCarryYds: number
     lieCarryYds: number
     lieLateralYds: number
@@ -48,9 +50,12 @@ const launchFromBaseline = (baseline: PlayerBaselineInput): FlightLaunchInput | 
 /**
  * Canonical transformation boundary for Live Caddie context.
  *
- * The physics prior is allowed to calculate reviewable wind/elevation deltas,
- * but V1 still applies zero adjustment to the recommendation until GSPro residual
- * calibration is validated. The companion contract makes that distinction explicit.
+ * V1 treats the open airborne physics model as the provisional operative model for
+ * wind + landing elevation. Measured Stock carry remains the anchor; only the
+ * condition delta from the physics model moves the shot center. GSPro-specific
+ * residual calibration can be added later without changing that architecture.
+ *
+ * Surface and physical-lie response remain blocked until separately validated.
  */
 export const modelShotContext = (
   baseline: PlayerBaselineInput,
@@ -71,10 +76,25 @@ export const modelShotContext = (
     },
   )
 
+  const combinedAirborneCarryYds = finite(physicsPrior.deltas.combinedCarryYds)
+    ? physicsPrior.deltas.combinedCarryYds
+    : 0
+  const combinedAirborneLateralYds = finite(physicsPrior.deltas.combinedLateralYds)
+    ? physicsPrior.deltas.combinedLateralYds
+    : 0
+
   const appliedAdjustments = {
-    elevationYds: 0,
-    windCarryYds: 0,
-    windLateralYds: 0,
+    elevationYds: finite(physicsPrior.deltas.elevationCarryYds)
+      ? physicsPrior.deltas.elevationCarryYds
+      : 0,
+    windCarryYds: finite(physicsPrior.deltas.windCarryYds)
+      ? physicsPrior.deltas.windCarryYds
+      : 0,
+    windLateralYds: finite(physicsPrior.deltas.windLateralYds)
+      ? physicsPrior.deltas.windLateralYds
+      : 0,
+    combinedAirborneCarryYds,
+    combinedAirborneLateralYds,
     surfaceCarryYds: 0,
     lieCarryYds: 0,
     lieLateralYds: 0,
@@ -89,15 +109,14 @@ export const modelShotContext = (
     baseline,
     rawContext: context,
     physicsPrior,
-    effectiveTargetDistanceYds:
-      targetDistance == null
-        ? null
-        : targetDistance + appliedAdjustments.elevationYds,
+    // Elevation is already represented by the airborne trajectory delta. Keeping
+    // the geometric target unchanged prevents a second plays-like adjustment.
+    effectiveTargetDistanceYds: targetDistance,
     modeledCarryYds:
       stockCarry == null
         ? null
         : stockCarry +
-          appliedAdjustments.windCarryYds +
+          combinedAirborneCarryYds +
           appliedAdjustments.surfaceCarryYds +
           appliedAdjustments.lieCarryYds,
     modeledCarrySigmaYds: carrySigma,
@@ -105,7 +124,7 @@ export const modelShotContext = (
       lateralBias == null
         ? null
         : lateralBias +
-          appliedAdjustments.windLateralYds +
+          combinedAirborneLateralYds +
           appliedAdjustments.lieLateralYds,
     modeledLateralSigmaYds: lateralSigma,
     appliedAdjustments,
