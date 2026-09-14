@@ -165,9 +165,13 @@ function CourseRenderDevPage() {
 
   const hole = renderModel.hole
   const vegetationPilotActive = hole.quality.environmentPilotActive
-  const vegetationFeatureCount = renderModel.features.filter(
-    (feature) => feature.role === 'obstruction',
+  const woodsFeatureCount = renderModel.features.filter(
+    (feature) => feature.kind === 'woods',
   ).length
+  const scrubFeatureCount = renderModel.features.filter(
+    (feature) => feature.kind === 'scrub',
+  ).length
+  const vegetationFeatureCount = woodsFeatureCount + scrubFeatureCount
   const obstructionProbes = hasHoleOneEvidence
     ? holeOneEvidence.markers.shots.map((shot) => ({
         label: shot.label,
@@ -264,6 +268,18 @@ function CourseRenderDevPage() {
                 <stop offset="0" stopColor="#548b42" />
                 <stop offset="1" stopColor="#86b65a" />
               </linearGradient>
+              <pattern id="woodsCanopyPattern" width="22" height="22" patternUnits="userSpaceOnUse">
+                <rect width="22" height="22" fill="#173d29" fillOpacity="0.2" />
+                <circle cx="4" cy="6" r="3.8" fill="#6f9962" fillOpacity="0.16" />
+                <circle cx="14" cy="4" r="4.8" fill="#4f7a4b" fillOpacity="0.14" />
+                <circle cx="10" cy="15" r="5.2" fill="#7ba06b" fillOpacity="0.12" />
+                <circle cx="21" cy="17" r="4.1" fill="#3e6842" fillOpacity="0.16" />
+              </pattern>
+              <pattern id="scrubTexturePattern" width="18" height="18" patternUnits="userSpaceOnUse">
+                <rect width="18" height="18" fill="#4d4a2d" fillOpacity="0.16" />
+                <circle cx="4" cy="5" r="2.4" fill="#b5a967" fillOpacity="0.16" />
+                <circle cx="13" cy="12" r="2.8" fill="#8c854f" fillOpacity="0.15" />
+              </pattern>
               <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.28" />
               </filter>
@@ -346,8 +362,8 @@ function CourseRenderDevPage() {
             <span><i className="legend-swatch green" />Target green</span>
             <span><i className="legend-swatch bunker" />Bunker</span>
             <span><i className="legend-swatch water" />OSM penalty / water</span>
-            {vegetationPilotActive && <span><i className="legend-swatch woods" />Woods (OSM)</span>}
-            {vegetationPilotActive && <span><i className="legend-swatch scrub" />Scrub (OSM)</span>}
+            {woodsFeatureCount > 0 && <span><i className="legend-swatch woods" />Woodland context</span>}
+            {scrubFeatureCount > 0 && <span><i className="legend-swatch scrub" />Scrub context</span>}
           </div>
         </article>
 
@@ -369,7 +385,9 @@ function CourseRenderDevPage() {
             <section className="course-data-card vegetation-card">
               <p className="card-kicker">OSM OBSTRUCTION · SHADOW VALIDATION</p>
               <dl className="metric-list">
-                <div><dt>Woods / scrub in view</dt><dd>{vegetationFeatureCount}</dd></div>
+                <div><dt>Vegetation areas in view</dt><dd>{vegetationFeatureCount}</dd></div>
+                <div><dt>Woodland polygons</dt><dd>{woodsFeatureCount}</dd></div>
+                {scrubFeatureCount > 0 && <div><dt>Scrub polygons</dt><dd>{scrubFeatureCount}</dd></div>}
                 <div><dt>Deep rough inferred</dt><dd>No</dd></div>
               </dl>
               <div className="obstruction-probes">
