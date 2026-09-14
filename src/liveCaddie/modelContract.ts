@@ -1,4 +1,5 @@
 import type { FlightPhysicsPrior } from './flightPhysics'
+import { getSurfaceResponse } from './surfaceResponse'
 
 export type CaddieModelStatus =
   | 'modeled'
@@ -77,6 +78,7 @@ const finite = (value: number | null | undefined): value is number =>
 
 const signed = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
 const priorDelta = (value: number | null | undefined) => finite(value) ? `${signed(value)} yd` : 'unavailable'
+const pct = (factor: number) => `${Number.isInteger(factor * 100) ? (factor * 100).toFixed(0) : (factor * 100).toFixed(1)}%`
 
 export const buildCaddieModelContract = (
   baseline: PlayerBaselineInput,
@@ -216,6 +218,8 @@ export const buildCaddieModelContract = (
   })
 
   const surface = context.surface?.trim() || null
+  const surfaceResponse = getSurfaceResponse(surface)
+  const surfaceFactors = surfaceResponse.factors
   factors.push({
     id: 'surface',
     label: 'Surface / lie type',
@@ -223,20 +227,27 @@ export const buildCaddieModelContract = (
     rawDisplay: surface ?? 'Unavailable',
     source: 'GSPro lie state / course geometry',
     sourceConfidence: surface ? 'high' : 'unknown',
-    transformation: surface === 'fairway' || surface === 'tee'
-      ? 'Recognized as baseline playable surface; no extra flight penalty applied.'
-      : 'Surface is recognized, but a validated flight/dispersion modifier is not yet applied.',
-    modeledDisplay: surface === 'fairway' || surface === 'tee'
-      ? 'Baseline shot distribution'
-      : surface
-        ? '0% carry / 1.00× dispersion adjustment applied (response pending)'
-        : 'Unavailable',
-    affects: ['carry-mean', 'carry-dispersion', 'lateral-dispersion'],
-    modelVersion: 'gspro-surface-response-v0',
-    status: !surface ? 'unavailable' : surface === 'fairway' || surface === 'tee' ? 'modeled' : 'calibrating',
-    evidenceBasis: surface === 'fairway' || surface === 'tee'
-      ? 'Baseline condition'
-      : 'Lie state is observable; numerical shot-response modifier is not yet validated.',
+    transformation: !surface
+      ? 'No current surface is available.'
+      : surfaceResponse.kind === 'baseline'
+        ? 'Baseline playable surface; no launch penalty applied.'
+        : surfaceResponse.modeled
+          ? `Representative Stock launch is modified to ${pct(surfaceFactors.speed)} ball speed, ${pct(surfaceFactors.spin)} spin, and ${pct(surfaceFactors.vla)} VLA before the physics delta is calculated.`
+          : 'Surface is recognized, but no validated GSPro launch modifier is encoded for it.',
+    modeledDisplay: !surface
+      ? 'Unavailable'
+      : surfaceResponse.kind === 'baseline'
+        ? 'Baseline shot distribution'
+        : surfaceResponse.modeled
+          ? `${surfaceResponse.label}: ${pct(surfaceFactors.speed)} speed · ${pct(surfaceFactors.spin)} spin · ${pct(surfaceFactors.vla)} VLA`
+          : '0 yd surface adjustment applied',
+    affects: ['carry-mean', 'lateral-mean'],
+    modelVersion: 'gspro-surface-response-v1',
+    status: !surface ? 'unavailable' : surfaceResponse.modeled ? 'modeled' : 'calibrating',
+    evidenceBasis: surfaceResponse.evidence,
+    notes: surfaceResponse.modeled && surfaceResponse.kind !== 'baseline'
+      ? ['Surface modifies the launch packet; Stock carry remains the anchor and only the resulting physics delta is applied. No empirical dispersion widening is applied yet.']
+      : undefined,
   })
 
   const hasLie = finite(context.lieUpDownDeg) || finite(context.lieLeftRightDeg)
