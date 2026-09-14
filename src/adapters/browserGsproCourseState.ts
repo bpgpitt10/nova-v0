@@ -85,6 +85,11 @@ type HoleAnchorArtifact = {
   }
 }
 
+type OutputLogHoleState = {
+  holeNumber: number | null
+  terminalAfterLatestHoleMarker: boolean
+}
+
 const STATE_HANDLE_DB = 'looper-browser-gspro-course-state'
 const STATE_HANDLE_STORE = 'handles'
 const STATE_HANDLE_KEY = 'gspro-course-state-directory'
@@ -188,8 +193,6 @@ export const prepareBrowserGsproCourseStateRuntime = async () => {
   preparedStateHandle = null
   if (!isBrowserGsproAccessSupported()) return false
 
-  // The existing GSPro folder may already be the LocalLow runtime folder. Reuse it
-  // when possible so current users do not have to grant a second folder permission.
   const primaryHandle = await loadGsproDirectoryHandle().catch(() => null)
   if (primaryHandle) {
     const permission = await queryGsproDirectoryPermission(primaryHandle, 'read')
@@ -260,11 +263,23 @@ const parseRoundRecords = (text: string): RoundShotRecord[] => {
 const recordSortValue = (record: RoundShotRecord) =>
   asNumber(record.GlobalShotNumber) ?? asNumber(record.HoleShot) ?? 0
 
-const parseCurrentHoleFromLog = (text: string): number | null => {
+const parseOutputLogHoleState = (text: string): OutputLogHoleState => {
   const matches = [...text.matchAll(/currentHole\s*:\s*(\d+)/gi)]
-  if (matches.length === 0) return null
-  const raw = Number(matches[matches.length - 1][1])
-  return Number.isFinite(raw) && raw >= 0 && raw < 18 ? raw + 1 : null
+  if (matches.length === 0) {
+    return { holeNumber: null, terminalAfterLatestHoleMarker: false }
+  }
+
+  const latest = matches[matches.length - 1]
+  const raw = Number(latest[1])
+  const holeNumber = Number.isFinite(raw) && raw >= 0 && raw < 18 ? raw + 1 : null
+  const latestHoleMarkerIndex = latest.index ?? -1
+  const latestTerminalIndex = text.toLowerCase().lastIndexOf('allplayersholedout')
+
+  return {
+    holeNumber,
+    terminalAfterLatestHoleMarker:
+      holeNumber != null && latestTerminalIndex > latestHoleMarkerIndex,
+  }
 }
 
 const latLonPair = (value: unknown): readonly [number, number] | null => {
@@ -293,6 +308,11 @@ const loadHoleForwardEastNorth = (holeNumber: number) => {
       const length = Math.hypot(east, north)
       if (length <= 1e-12) throw new Error(`Greywolf H${holeNumber} tee/green bearing was degenerate.`)
       return [east / length, north / length]
+    })
+    .catch((error) => {
+      // A transient raw-artifact failure must not permanently poison this hole.
+      holeForwardCache.delete(holeNumber)
+      throw error
     })
 
   holeForwardCache.set(holeNumber, promise)
@@ -347,6 +367,7 @@ const buildShot = async (
   ])
   const roundId = asNumber(record.RoundID)
   const endingSurfaceRaw = asNumber(record.EndingSurface)
+  const distanceToPin = asNumber(record.DistanceToPin)
 
   return {
     key: `${roundId ?? 'round'}:${holeNumber}:${shotId}`,
@@ -359,9 +380,7 @@ const buildShot = async (
     endLocalYds,
     endingSurface: surfaceFromRaw(endingSurfaceRaw),
     endingSurfaceRaw,
-    distanceToPinYds: asNumber(record.DistanceToPin) == null
-      ? null
-      : asNumber(record.DistanceToPin)! * METERS_TO_YARDS,
+    distanceToPinYds: distanceToPin == null ? null : distanceToPin * METERS_TO_YARDS,
   }
 }
 
@@ -380,14 +399,53 @@ const outputLogTail = async (file: File | null) => {
   return file.slice(start).text()
 }
 
+const cachedTeeSnapshot = ({
+  courseKey,
+  roundId,
+  holeNumber,
+  latestShot,
+  warnings,
+}: {
+  courseKey: string | null
+  roundId: number | null
+  holeNumber: number
+  latestShot: BrowserGsproCourseShot | null
+  warnings: string[]
+}): BrowserGsproCourseSnapshot => ({
+  courseKey,
+  roundId,
+  holeNumber,
+  ballLocalYds: [0, 0],
+  ballSource: 'cached-tee',
+  surface: 'tee',
+  surfaceSource: 'cached-tee',
+  distanceToPinYds: null,
+  latestShot,
+  latestShotKey: latestShot?.key ?? null,
+  warnings,
+  observedAt: new Date().toISOString(),
+})
+
 const buildSnapshot = async (roundText: string, logTail: string): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
   const records = parseRoundRecords(roundText)
+  const logState = parseOutputLogHoleState(logTail)
+
   if (records.length === 0) {
+    if (logState.holeNumber != null) {
+      return cachedTeeSnapshot({
+        courseKey: null,
+        roundId: null,
+        holeNumber: logState.holeNumber,
+        latestShot: null,
+        warnings: ['Waiting for the first physical shot; using the cached tee position.'],
+      })
+    }
+
     return {
       courseKey: null,
       roundId: null,
-      holeNumber: parseCurrentHoleFromLog(logTail),
+      holeNumber: null,
       ballLocalYds: null,
       ballSource: 'unavailable',
       surface: null,
@@ -408,12 +466,31 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     : records.filter((record) => asNumber(record.RoundID) === activeRoundId)
   const latestRecord = roundRecords[roundRecords.length - 1]
   const latestShot = await buildShot(latestRecord, roundRecords)
-  const latestRecordHole = (asNumber(latestRecord.Hole) ?? -1) + 1
-  const logHole = parseCurrentHoleFromLog(logTail)
-  const holeNumber = logHole ?? (latestRecordHole >= 1 && latestRecordHole <= 18 ? latestRecordHole : null)
+  const rawLatestHole = asNumber(latestRecord.Hole)
+  const latestRecordHole = rawLatestHole == null ? null : Math.round(rawLatestHole) + 1
+  const logHole = logState.holeNumber
 
-  if (logHole && latestRecordHole >= 1 && logHole !== latestRecordHole) {
-    warnings.push(`Tee transition detected from output_log: currentRound is still on H${latestRecordHole}.`)
+  let holeNumber = latestRecordHole
+  if (logHole != null) {
+    if (latestRecordHole == null) {
+      holeNumber = logHole
+    } else if (logHole === latestRecordHole) {
+      holeNumber = logHole
+      if (logState.terminalAfterLatestHoleMarker && logHole < 18) {
+        holeNumber = logHole + 1
+        warnings.push(`Hole ${logHole} is complete; preloading Hole ${holeNumber} from the cached tee.`)
+      }
+    } else if (logHole > latestRecordHole) {
+      holeNumber = logHole
+      warnings.push(`Tee transition detected from output_log: currentRound is still on H${latestRecordHole}.`)
+    } else if (latestRecordHole === 18 && logHole === 1) {
+      holeNumber = 1
+      warnings.push('New-round Hole 1 detected while currentRound still contains the prior Hole 18.')
+    } else {
+      // currentRound has a newer physical shot than the log marker. Never move the
+      // player backward because output_log was momentarily stale or unreadable.
+      holeNumber = latestRecordHole
+    }
   }
 
   const courseKey = asString(latestRecord.CourseKey)
@@ -421,7 +498,7 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     warnings.push(`Live map registration is currently validated only for Greywolf; GSPro reports ${courseKey}.`)
   }
 
-  if (holeNumber == null) {
+  if (holeNumber == null || holeNumber < 1 || holeNumber > 18) {
     return {
       courseKey,
       roundId: activeRoundId,
@@ -438,28 +515,36 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     }
   }
 
-  const currentHoleRecords = roundRecords.filter((record) => asNumber(record.Hole) === holeNumber - 1)
-  if (currentHoleRecords.length === 0) {
-    return {
+  // If output_log has moved us to a different hole while currentRound is stale,
+  // never reuse a historical record from that hole. Start clean at its cached tee.
+  if (latestRecordHole !== holeNumber) {
+    return cachedTeeSnapshot({
       courseKey,
       roundId: activeRoundId,
       holeNumber,
-      ballLocalYds: [0, 0],
-      ballSource: 'cached-tee',
-      surface: 'tee',
-      surfaceSource: 'cached-tee',
-      distanceToPinYds: null,
       latestShot,
-      latestShotKey: latestShot?.key ?? null,
       warnings,
-      observedAt: new Date().toISOString(),
-    }
+    })
+  }
+
+  const currentHoleRecords = roundRecords.filter((record) => asNumber(record.Hole) === holeNumber - 1)
+  if (currentHoleRecords.length === 0) {
+    return cachedTeeSnapshot({
+      courseKey,
+      roundId: activeRoundId,
+      holeNumber,
+      latestShot,
+      warnings,
+    })
   }
 
   currentHoleRecords.sort((a, b) => recordSortValue(a) - recordSortValue(b))
   const currentRecord = currentHoleRecords[currentHoleRecords.length - 1]
-  const currentShot = await buildShot(currentRecord, roundRecords)
+  const currentShot = currentRecord === latestRecord
+    ? latestShot
+    : await buildShot(currentRecord, roundRecords)
   const currentSurfaceRaw = asNumber(currentRecord.EndingSurface)
+  const currentSurface = surfaceFromRaw(currentSurfaceRaw)
 
   return {
     courseKey,
@@ -467,8 +552,8 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     holeNumber,
     ballLocalYds: currentShot?.endLocalYds ?? null,
     ballSource: currentShot?.endLocalYds ? 'currentRound' : 'unavailable',
-    surface: surfaceFromRaw(currentSurfaceRaw),
-    surfaceSource: surfaceFromRaw(currentSurfaceRaw) ? 'currentRound' : 'unavailable',
+    surface: currentSurface,
+    surfaceSource: currentSurface ? 'currentRound' : 'unavailable',
     distanceToPinYds: currentShot?.distanceToPinYds ?? null,
     latestShot,
     latestShotKey: latestShot?.key ?? null,
@@ -495,22 +580,33 @@ export const connectToBrowserGsproCourseState = ({
   let errorReported = false
   let lastRoundSignature = ''
   let lastLogSignature = ''
+  let lastGoodLogTail = ''
 
   onStatusChange?.('connecting')
 
   const poll = async () => {
     const roundFile = await readOptionalFile(handle, CURRENT_ROUND_FILE)
     if (!roundFile) throw new Error('currentRound.dat is unavailable in the selected GSPro state folder.')
+
     const logFile = await readOptionalFile(handle, OUTPUT_LOG_FILE)
     const roundSignature = `${roundFile.size}:${roundFile.lastModified}`
     const logSignature = logFile ? `${logFile.size}:${logFile.lastModified}` : 'missing'
     if (roundSignature === lastRoundSignature && logSignature === lastLogSignature) return
 
+    const roundTextPromise = roundFile.text()
+    const logTailPromise = logFile
+      ? outputLogTail(logFile).then((tail) => {
+          lastGoodLogTail = tail
+          return tail
+        })
+      : Promise.resolve(lastGoodLogTail)
+
     // Do not advance signatures until parsing succeeds; a mid-write JSON failure is
     // retried on the next poll instead of silently dropping a shot.
-    const [roundText, logTail] = await Promise.all([roundFile.text(), outputLogTail(logFile)])
+    const [roundText, logTail] = await Promise.all([roundTextPromise, logTailPromise])
     const snapshot = await buildSnapshot(roundText, logTail)
     if (disconnected) return
+
     lastRoundSignature = roundSignature
     lastLogSignature = logSignature
     consecutiveFailures = 0
