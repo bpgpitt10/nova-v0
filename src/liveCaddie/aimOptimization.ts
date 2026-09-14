@@ -7,6 +7,7 @@ import type {
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import { buildLiveCaddieProfileSet } from './profileProvider'
+import { modelShotContext } from './shotContextModel'
 import type { LiveCaddieClubProfile } from './types'
 
 export const AIM_OFFSETS_YDS = [-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15] as const
@@ -18,6 +19,13 @@ export const AIM_SCORE_ASSUMPTIONS = {
   unknownWeight: -40,
   carryGapPerYard: -1.5,
 } as const
+
+export type AimLabEnvironment = {
+  windMph?: number
+  windRelativeDeg?: number
+  elevationDeltaFt?: number | null
+  elevationSource?: string
+}
 
 export type AimSurfaceDistribution = {
   bySurface: Partial<Record<CourseSurfaceClassification, number>>
@@ -47,8 +55,12 @@ export type ClubAimEvaluation = {
   club: string
   variant: 'Stock'
   stockCarryYds: number
+  modeledCarryYds: number
+  airborneCarryDeltaYds: number
   carrySigmaYds: number | null
   lateralBiasYds: number
+  modeledLateralBiasYds: number
+  airborneLateralDeltaYds: number
   lateralSigmaYds: number | null
   targetDistanceYds: number
   carryGapYds: number
@@ -100,6 +112,8 @@ const modeledDistribution = (
   profile: LiveCaddieClubProfile,
   ball: CoursePointYds,
   aimPoint: CoursePointYds,
+  carryMeanYds: number,
+  lateralMeanYds: number,
 ): { distribution: AimSurfaceDistribution; meanLanding: CoursePointYds } | null => {
   const carrySigma = profile.carry_sigma_yds
   const lateralSigma = profile.lateral_sigma_yds
@@ -122,8 +136,8 @@ const modeledDistribution = (
   for (const carryZ of Z_POINTS) {
     for (const lateralZ of Z_POINTS) {
       const weight = gaussianWeight(carryZ) * gaussianWeight(lateralZ)
-      const carry = Math.max(0, profile.stock_carry_yds + carryZ * carrySigma)
-      const offline = (profile.lateral_bias_yds ?? 0) + lateralZ * lateralSigma
+      const carry = Math.max(0, carryMeanYds + carryZ * carrySigma)
+      const offline = lateralMeanYds + lateralZ * lateralSigma
       const landing = addScaled(ball, forward, carry, right, offline)
       const kind = classifyPoint(hole, landing).kind
       weights[kind] = (weights[kind] ?? 0) + weight
@@ -154,9 +168,9 @@ const modeledDistribution = (
   const meanLanding = addScaled(
     ball,
     forward,
-    profile.stock_carry_yds,
+    carryMeanYds,
     right,
-    profile.lateral_bias_yds ?? 0,
+    lateralMeanYds,
   )
 
   return {
@@ -189,27 +203,70 @@ export const evaluateAimLab = (
   hole: CourseHoleGeometry,
   ball: CoursePointYds,
   target: CoursePointYds,
-  nowMs = Date.now(),
+  environmentOrNowMs: AimLabEnvironment | number = {},
+  explicitNowMs = Date.now(),
 ): ClubAimEvaluation[] => {
+  const environment = typeof environmentOrNowMs === 'number' ? {} : environmentOrNowMs
+  const nowMs = typeof environmentOrNowMs === 'number' ? environmentOrNowMs : explicitNowMs
   const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
   const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
+  const ballSurface = classifyPoint(hole, ball).kind
 
   return profileSet.clubs
     .map((profile): ClubAimEvaluation => {
-      const carryGapYds = profile.stock_carry_yds - targetDistanceYds
       const support = profileSet.club_support.find((item) => item.club === profile.club)
+      const launch = profile.launch_profile
+      const modeled = modelShotContext(
+        {
+          club: profile.club,
+          variant: 'Stock',
+          stockCarryYds: profile.stock_carry_yds,
+          carrySigmaYds: profile.carry_sigma_yds ?? null,
+          lateralBiasYds: profile.lateral_bias_yds ?? 0,
+          lateralSigmaYds: profile.lateral_sigma_yds ?? null,
+          supportShots: support?.included_stock_shots ?? 0,
+          launchBallSpeedMph: launch?.ball_speed_mph ?? null,
+          launchVlaDeg: launch?.vla_deg ?? null,
+          launchHlaDeg: launch?.hla_deg ?? null,
+          launchSpinRpm: launch?.total_spin_rpm ?? null,
+          launchSpinAxisDeg: launch?.spin_axis_deg ?? null,
+        },
+        {
+          targetDistanceYds,
+          surface: ballSurface,
+          windMph: environment.windMph ?? 0,
+          windRelativeDeg: environment.windRelativeDeg ?? 0,
+          elevationDeltaFt: environment.elevationDeltaFt ?? 0,
+          elevationSource: environment.elevationSource ?? 'Aim Lab target terrain',
+          elevationConfidence: environment.elevationDeltaFt == null ? 'unknown' : 'medium',
+        },
+      )
+
+      const modeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
+      const modeledLateralBiasYds = modeled.modeledLateralBiasYds ?? (profile.lateral_bias_yds ?? 0)
+      const carryGapYds = modeledCarryYds - targetDistanceYds
       const notes: string[] = []
       if (Math.abs(carryGapYds) > 35) {
-        notes.push('Stock carry is more than 35 yd from the selected landing target.')
+        notes.push('Modeled carry is more than 35 yd from the selected landing target.')
       }
       if (support && support.included_stock_shots < 5) {
         notes.push('Thin Stock support (<5 included shots).')
       }
+      if (modeled.physicsPrior.status !== 'ready' && ((environment.windMph ?? 0) !== 0 || (environment.elevationDeltaFt ?? 0) !== 0)) {
+        notes.push('Airborne physics unavailable for this club; Stock baseline used for environmental response.')
+      }
 
       const candidates = AIM_OFFSETS_YDS.map((aimOffsetYds): AimCandidateEvaluation => {
         const aimPoint = aimPointAtOffset(ball, target, aimOffsetYds)
-        const modeled = modeledDistribution(hole, profile, ball, aimPoint)
-        if (!modeled) {
+        const distribution = modeledDistribution(
+          hole,
+          profile,
+          ball,
+          aimPoint,
+          modeledCarryYds,
+          modeledLateralBiasYds,
+        )
+        if (!distribution) {
           return {
             aimOffsetYds,
             aimPoint,
@@ -219,12 +276,12 @@ export const evaluateAimLab = (
             scoreParts: null,
           }
         }
-        const scored = scoreCandidate(modeled.distribution, carryGapYds)
+        const scored = scoreCandidate(distribution.distribution, carryGapYds)
         return {
           aimOffsetYds,
           aimPoint,
-          meanLanding: modeled.meanLanding,
-          surfaceOutcomes: modeled.distribution,
+          meanLanding: distribution.meanLanding,
+          surfaceOutcomes: distribution.distribution,
           score: scored.score,
           scoreParts: scored.scoreParts,
         }
@@ -247,8 +304,12 @@ export const evaluateAimLab = (
         club: profile.club,
         variant: 'Stock',
         stockCarryYds: profile.stock_carry_yds,
+        modeledCarryYds,
+        airborneCarryDeltaYds: modeled.appliedAdjustments.combinedAirborneCarryYds,
         carrySigmaYds: profile.carry_sigma_yds ?? null,
         lateralBiasYds: profile.lateral_bias_yds ?? 0,
+        modeledLateralBiasYds,
+        airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
         lateralSigmaYds: profile.lateral_sigma_yds ?? null,
         targetDistanceYds,
         carryGapYds,
