@@ -200,3 +200,21 @@
 .obstruction-probe strong { font-size: 0.7rem; letter-spacing: 0.07em; }
 .obstruction-probe strong.clear { color: #8dcc88; }
 .obstruction-probe strong.blocked { color: #e6b36e; }
+
+.surface-evidence-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(230, 179, 110, 0.22);
+  border-radius: 8px;
+  background: rgba(230, 179, 110, 0.06);
+}
+.surface-evidence-note span {
+  color: #a9beb9;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.surface-evidence-note strong { color: #e6b36e; font-size: 0.82rem; }
+.surface-evidence-note small { color: var(--muted); line-height: 1.45; }

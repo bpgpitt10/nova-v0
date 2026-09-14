@@ -11,6 +11,7 @@ import type {
   HoleRenderFeature,
 } from '../courseGeometry/types'
 import { greywolfHole01RenderFixture as holeOneEvidence } from './greywolfHole01RenderFixture'
+import { greywolfHole01LieEvidence as holeOneLieEvidence } from './greywolfHole01LieEvidence'
 import './courseRenderDev.css'
 
 const SVG_WIDTH = 420
@@ -176,6 +177,7 @@ function CourseRenderDevPage() {
     ? holeOneEvidence.markers.shots.map((shot) => ({
         label: shot.label,
         assessment: assessDirectShotObstruction(renderModel, [shot.x, shot.y]),
+        surfaceEvidence: holeOneLieEvidence.shots.find((candidate) => candidate.label === shot.label),
       }))
     : []
   const [teeX, teeY] = transform.point(renderModel.tee)
@@ -388,25 +390,36 @@ function CourseRenderDevPage() {
                 <div><dt>Vegetation areas in view</dt><dd>{vegetationFeatureCount}</dd></div>
                 <div><dt>Woodland polygons</dt><dd>{woodsFeatureCount}</dd></div>
                 {scrubFeatureCount > 0 && <div><dt>Scrub polygons</dt><dd>{scrubFeatureCount}</dd></div>}
-                <div><dt>Deep rough inferred</dt><dd>No</dd></div>
+                <div><dt>OSM rough policy</dt><dd>Keep as rough</dd></div>
               </dl>
+              <div className="surface-evidence-note">
+                <span>GSPRO SURFACE EVIDENCE</span>
+                <strong>RAW 3 · UNMAPPED</strong>
+                <small>
+                  Both stored Hole 1 finishes use raw enum 3. Proven rough is enum 1, so enum 3 stays
+                  unnamed until a controlled GSPro label and penalty capture confirms it.
+                </small>
+              </div>
               <div className="obstruction-probes">
-                {obstructionProbes.map(({ label, assessment }) => (
+                {obstructionProbes.map(({ label, assessment, surfaceEvidence }) => (
                   <div className="obstruction-probe" key={label}>
                     <span>{label} → green</span>
                     <strong className={assessment.directLineCrossesVegetation ? 'blocked' : 'clear'}>
                       {assessment.directLineCrossesVegetation ? 'CENTERLINE BLOCKED' : 'CENTERLINE CLEAR'}
                     </strong>
                     <small>
-                      Lie: {assessment.lieSurface ?? 'unclassified'}
-                      {assessment.startsInsideVegetation ? ' + vegetation' : ''}
+                      OSM ground: {assessment.lieSurface ?? surfaceEvidence?.osmGround ?? 'unclassified'}
+                      {' · '}GSPro raw: {surfaceEvidence?.gsproSurfaceEnum ?? 'not captured'}
+                      {surfaceEvidence ? ' (unmapped)' : ''}
+                      {assessment.startsInsideVegetation ? ' · starts in vegetation' : ' · no mapped vegetation at ball'}
                     </small>
                   </div>
                 ))}
               </div>
               <p className="proof-footnote">
-                Shadow mode only. Lie and line-of-play obstruction are separate. OSM grass is context,
-                not a deep-rough claim; canopy height/density and corridor width still need GSPro calibration.
+                Shadow mode only. OSM ground, GSPro lie type, and line-of-play obstruction are separate
+                signals. “Deep rough” will be a recovery condition derived only after GSPro calibration,
+                not an invented OSM grass class.
               </p>
             </section>
           )}

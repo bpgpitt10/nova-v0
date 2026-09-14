@@ -27,6 +27,16 @@ Wind OCR failure means **unavailable**, never zero/calm. The displayed cardinal 
 
 The Greywolf proof currently resolves the 17 registration tie points with a maximum package-space residual below 0.002 yard. The broader preserved field proof remains the activation evidence: 38 of 40 tested surface endpoints were inside the expected OSM surface and all 40 were within 3 yards.
 
+## Ground surface and recovery semantics
+
+- OSM `golf=rough` remains the ground-surface label `rough`; the package does not invent a `deep rough` subtype.
+- OSM woods and scrub are separate context layers used to test whether the ball starts in vegetation and whether the direct shot line intersects mapped vegetation.
+- The field-validated GSPro surface mapping includes raw enum `1 = rough`. Both stored Hole 1 Round 215 finishes use raw enum `3`, which remains deliberately unmapped.
+- No Hole 1 GSPro surface-title or penalty-modifier capture is preserved for enum `3`, so it must not yet be called heavy/deep rough.
+- The next controlled proof is an enum `1` versus enum `3` capture containing the GSPro surface title and any speed, spin, or launch penalty modifiers.
+
+This keeps three independent facts available to strategy code: ground surface, simulator lie type, and vegetation/line-of-play obstruction.
+
 ## Rebuild and verify
 
 From the repository root:
