@@ -23,5 +23,14 @@ export const shotProfilesToLiveCaddieClubProfile = (
     lateral_bias_yds: stock.offlineMean ?? 0,
     lateral_sigma_yds: stock.dispersionVariability,
     pure_carry_yds: profiles.bestAvailable?.carry,
+    launch_profile: {
+      ball_speed_mph: stock.ballSpeed,
+      vla_deg: stock.launch,
+      hla_deg: stock.hla,
+      total_spin_rpm: stock.spin,
+      spin_axis_deg: stock.spinAxis,
+      peak_height_yds: stock.peakHeight,
+      descent_angle_deg: stock.descentAngle,
+    },
   }
 }
