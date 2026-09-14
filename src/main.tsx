@@ -13,6 +13,7 @@ import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
+import AimLabPage from './dev/AimLabPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -172,7 +173,8 @@ function RootRouter() {
 
   const showCourseRenderDev = pathname === '/dev/course-render'
   const showCourseGeometryDev = pathname === '/dev/course-geometry'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev
+  const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -192,6 +194,9 @@ function RootRouter() {
     }
     if (showCourseGeometryDev) {
       return <CourseGeometryDevPage />
+    }
+    if (showAimLab) {
+      return <AimLabPage />
     }
     if (showSignOut) {
       return <SignOutPage />
@@ -236,6 +241,7 @@ function RootRouter() {
     hasBagConfig,
     installAvailableUpdate,
     pathname,
+    showAimLab,
     showCourseGeometryDev,
     showCourseRenderDev,
     updateError,
