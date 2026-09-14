@@ -1,0 +1,301 @@
+name: Greywolf LiDAR vs GSPro terrain proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/greywolf-lidar-gspro-validation.yml
+      - artifacts/osm-proof/lidar/greywolf-gspro-lie-observations.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  terrain-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install terrain dependencies
+        run: pip install --quiet numpy rasterio pyproj shapely
+
+      - name: Reuse preserved Greywolf OSM snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf seed
+          mkdir -p seed
+          gh run download 34788665457 -R bpgpitt10/nova-v0 -n greywolf-osm-proof --dir seed
+          test -s seed/greywolf-osm.json
+
+      - name: Download official 1 m LidarBC DEM
+        run: |
+          curl -L --fail --retry 3 \
+            -o /tmp/greywolf_dem.tif \
+            https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dem/bc_082k049_xli1m_utm11_2015.tif
+          test -s /tmp/greywolf_dem.tif
+
+      - name: Compare LiDAR terrain with GSPro world and lie slopes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, math, os
+          from collections import defaultdict
+          from pathlib import Path
+
+          import numpy as np
+          import rasterio
+          from rasterio.windows import Window, from_bounds
+          from pyproj import Transformer
+          from shapely.geometry import Point, Polygon
+
+          # Course-wide transform previously proven from 17 Greywolf tee anchors.
+          ORIGIN_LAT = 50.447985228991655
+          ORIGIN_LON = -116.24851204020648
+          SCALE = 1.0000856804415208
+          R00, R01 = 0.999959220927549, 0.009030862747730647
+          R10, R11 = -0.00903086274773076, 0.9999592209275492
+          TX, TY = -921.941722811653, -1335.2548609888029
+          EARTH_R = 6371008.8
+
+          observations = json.loads(Path('artifacts/osm-proof/lidar/greywolf-gspro-lie-observations.json').read_text())
+          osm = json.loads(Path('seed/greywolf-osm.json').read_text())
+
+          def gspro_to_latlon(pos):
+              x, z = float(pos['x']), float(pos['z'])
+              east = SCALE * (R00*x + R01*z) + TX
+              north = SCALE * (R10*x + R11*z) + TY
+              lat = ORIGIN_LAT + math.degrees(north / EARTH_R)
+              lon = ORIGIN_LON + math.degrees(east / (EARTH_R * math.cos(math.radians(ORIGIN_LAT))))
+              return lat, lon
+
+          def element_geometries(element):
+              if element.get('geometry'):
+                  yield element['geometry']
+              for member in element.get('members', []):
+                  if member.get('geometry'):
+                      yield member['geometry']
+
+          out_dir = Path('artifacts/osm-proof/lidar')
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          with rasterio.open('/tmp/greywolf_dem.tif') as ds:
+              ll_to_dem = Transformer.from_crs('EPSG:4326', ds.crs, always_xy=True)
+
+              surface_polys = defaultdict(list)
+              all_golf_polys = []
+              for element in osm.get('elements', []):
+                  tags = element.get('tags') or {}
+                  golf = tags.get('golf')
+                  if not golf:
+                      continue
+                  for geom in element_geometries(element):
+                      if len(geom) < 4:
+                          continue
+                      if geom[0].get('lat') != geom[-1].get('lat') or geom[0].get('lon') != geom[-1].get('lon'):
+                          continue
+                      coords = [ll_to_dem.transform(p['lon'], p['lat']) for p in geom]
+                      poly = Polygon(coords)
+                      if not poly.is_valid:
+                          poly = poly.buffer(0)
+                      if poly.is_empty:
+                          continue
+                      surface_polys[golf].append((element.get('id'), poly))
+                      all_golf_polys.append(poly)
+
+              def classify_surface(x, y):
+                  pt = Point(x, y)
+                  priority = ['green', 'bunker', 'fairway', 'tee', 'rough', 'lateral_water_hazard', 'water_hazard']
+                  for typ in priority:
+                      for osm_id, poly in surface_polys.get(typ, []):
+                          if poly.covers(pt):
+                              return typ, osm_id, 0.0
+                  best = (None, None, float('inf'))
+                  for typ in priority:
+                      for osm_id, poly in surface_polys.get(typ, []):
+                          d = float(poly.distance(pt))
+                          if d < best[2]:
+                              best = (typ, osm_id, d)
+                  return best
+
+              def plane_sample(x, y, radius_px):
+                  row, col = ds.index(x, y)
+                  r = int(radius_px)
+                  row0 = max(0, row-r); col0 = max(0, col-r)
+                  row1 = min(ds.height, row+r+1); col1 = min(ds.width, col+r+1)
+                  win = Window(col0, row0, col1-col0, row1-row0)
+                  arr = ds.read(1, window=win, masked=True)
+                  t = ds.window_transform(win)
+                  rr, cc = np.indices(arr.shape)
+                  xs = t.c + (cc + 0.5) * t.a + (rr + 0.5) * t.b
+                  ys = t.f + (cc + 0.5) * t.d + (rr + 0.5) * t.e
+                  vals = np.asarray(arr.filled(np.nan), dtype=float)
+                  valid = np.isfinite(vals)
+                  if ds.nodata is not None:
+                      valid &= vals != ds.nodata
+                  if valid.sum() < 6:
+                      return None
+                  A = np.column_stack(((xs[valid]-x), (ys[valid]-y), np.ones(valid.sum())))
+                  coeff, *_ = np.linalg.lstsq(A, vals[valid], rcond=None)
+                  dzdx, dzdy, z_at_point = map(float, coeff)
+                  slope_deg = math.degrees(math.atan(math.hypot(dzdx, dzdy)))
+                  aspect_downhill_deg = (math.degrees(math.atan2(-dzdx, -dzdy)) + 360.0) % 360.0
+                  return {
+                      'elevation_m': z_at_point,
+                      'slope_deg': slope_deg,
+                      'dzdx': dzdx,
+                      'dzdy': dzdy,
+                      'downhill_bearing_deg_from_north': aspect_downhill_deg,
+                      'valid_cells': int(valid.sum()),
+                      'window_m_approx': int(2*r+1),
+                  }
+
+              rows = []
+              for obs in observations:
+                  lat, lon = gspro_to_latlon(obs['ending_pos'])
+                  x, y = ll_to_dem.transform(lon, lat)
+                  surf, osm_id, dist = classify_surface(x, y)
+                  samples = {str(r): plane_sample(x, y, r) for r in (1, 2, 4, 7)}
+                  row = dict(obs)
+                  row.update({
+                      'lat': lat, 'lon': lon,
+                      'dem_x': x, 'dem_y': y,
+                      'osm_surface': surf,
+                      'osm_surface_id': osm_id,
+                      'distance_to_nearest_surface_m': dist,
+                      'lidar': samples,
+                      'ocr_suspect': bool(obs['lie_total_deg'] > 20 or '\n' in (obs.get('ocr_ud') or '')),
+                  })
+                  rows.append(row)
+
+              def metrics(subset, radius='2'):
+                  pairs = [(float(r['lie_total_deg']), float(r['lidar'][radius]['slope_deg']))
+                           for r in subset if r['lidar'].get(radius)]
+                  if not pairs:
+                      return {'n': 0}
+                  g = np.array([p[0] for p in pairs]); l = np.array([p[1] for p in pairs])
+                  out = {
+                      'n': len(pairs),
+                      'mean_gspro_lie_total_deg': float(np.mean(g)),
+                      'mean_lidar_slope_deg': float(np.mean(l)),
+                      'mae_deg': float(np.mean(np.abs(g-l))),
+                      'median_abs_error_deg': float(np.median(np.abs(g-l))),
+                  }
+                  if len(pairs) >= 3 and np.std(g) > 0 and np.std(l) > 0:
+                      out['correlation_r'] = float(np.corrcoef(g,l)[0,1])
+                  return out
+
+              clean = [r for r in rows if not r['ocr_suspect']]
+              slope_comparison = {
+                  'all_raw': {f'{2*r+1}m_window': metrics(rows, str(r)) for r in (1,2,4,7)},
+                  'ocr_clean_lie_le_20deg': {f'{2*r+1}m_window': metrics(clean, str(r)) for r in (1,2,4,7)},
+                  'by_surface_clean_5m': {
+                      surf: metrics([r for r in clean if r['osm_surface']==surf], '2')
+                      for surf in sorted({r['osm_surface'] for r in clean if r['osm_surface']})
+                  },
+              }
+
+              # Compare vertical coordinates. If GSPro Y is also metric terrain height plus a course datum,
+              # the fitted slope should be near 1.0 with low residuals.
+              vertical_pairs = [(float(r['ending_pos']['y']), float(r['lidar']['2']['elevation_m']))
+                                for r in rows if r['lidar'].get('2')]
+              gy = np.array([p[0] for p in vertical_pairs]); de = np.array([p[1] for p in vertical_pairs])
+              a, b = np.polyfit(gy, de, 1)
+              pred = a*gy + b
+              res = de-pred
+              vertical_fit = {
+                  'n': len(vertical_pairs),
+                  'dem_elevation_m_equals': f'{a:.9f} * gspro_y + {b:.6f}',
+                  'scale': float(a),
+                  'offset_m': float(b),
+                  'correlation_r': float(np.corrcoef(gy,de)[0,1]),
+                  'mean_abs_residual_m': float(np.mean(np.abs(res))),
+                  'median_abs_residual_m': float(np.median(np.abs(res))),
+                  'max_abs_residual_m': float(np.max(np.abs(res))),
+              }
+
+              # Build a compact, course-only 1 m terrain raster. This is not a rendered 3D mesh;
+              # it is a cached z(x,y) field that can answer elevation/slope at any point.
+              minx = min(p.bounds[0] for p in all_golf_polys) - 50
+              miny = min(p.bounds[1] for p in all_golf_polys) - 50
+              maxx = max(p.bounds[2] for p in all_golf_polys) + 50
+              maxy = max(p.bounds[3] for p in all_golf_polys) + 50
+              win = from_bounds(minx, miny, maxx, maxy, transform=ds.transform)
+              win = win.round_offsets().round_lengths()
+              crop = ds.read(1, window=win, masked=True)
+              profile = ds.profile.copy()
+              profile.update(
+                  height=crop.shape[0], width=crop.shape[1],
+                  transform=ds.window_transform(win), count=1,
+                  compress='deflate', predictor=3, tiled=True,
+                  blockxsize=256, blockysize=256,
+              )
+              crop_path = out_dir / 'greywolf-course-dem-1m.tif'
+              with rasterio.open(crop_path, 'w', **profile) as out:
+                  out.write(crop.filled(ds.nodata if ds.nodata is not None else -9999), 1)
+              terrain_cache = {
+                  'resolution_m': [abs(float(ds.transform.a)), abs(float(ds.transform.e))],
+                  'width_px': int(crop.shape[1]),
+                  'height_px': int(crop.shape[0]),
+                  'cells': int(crop.shape[0]*crop.shape[1]),
+                  'raw_float32_mb': float(crop.shape[0]*crop.shape[1]*4/1024/1024),
+                  'compressed_geotiff_mb': float(os.path.getsize(crop_path)/1024/1024),
+                  'buffer_around_mapped_golf_geometry_m': 50,
+                  'purpose': 'course-wide elevation/slope lookup, not visual terrain rendering',
+              }
+
+              # Surface counts tell us whether the validation includes fairway/green/rough positions.
+              surface_counts = defaultdict(int)
+              for r in rows:
+                  surface_counts[r['osm_surface'] or 'unclassified'] += 1
+
+              result = {
+                  'schema': 'looper.greywolf_lidar_gspro_terrain_proof.v0',
+                  'source': {
+                      'lidar': 'LidarBC official 2015 1m DEM bc_082k049_xli1m_utm11_2015.tif',
+                      'osm': 'OpenStreetMap contributors, ODbL; preserved Greywolf snapshot',
+                      'gspro': 'Round 215 post-shot currentRound world coordinates + screen lie slope OCR',
+                  },
+                  'observations_n': len(rows),
+                  'surface_counts': dict(surface_counts),
+                  'vertical_fit': vertical_fit,
+                  'slope_comparison': slope_comparison,
+                  'terrain_cache': terrain_cache,
+                  'observations': rows,
+                  'interpretation_notes': [
+                      'GSPro lie slope is a simulator surface measurement; LiDAR is real-world terrain and exact agreement is not expected if the course designer resculpted terrain.',
+                      'Slope comparison uses total slope magnitude so it does not require knowing the GSPro lie footer orientation frame.',
+                      'The 5m LiDAR plane fit is the primary comparison; 3m/9m/15m windows are retained to show sensitivity to terrain smoothing.',
+                      'OCR values above 20 degrees or malformed multiline reads are marked suspect and excluded from the clean summary.',
+                  ],
+              }
+              (out_dir/'greywolf-lidar-vs-gspro-terrain.json').write_text(json.dumps(result, indent=2, sort_keys=True))
+              print(json.dumps({k: result[k] for k in ['observations_n','surface_counts','vertical_fit','slope_comparison','terrain_cache']}, indent=2, sort_keys=True))
+          PY
+
+      - name: Persist compact proof JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/lidar/greywolf-lidar-vs-gspro-terrain.json
+          if git diff --cached --quiet; then
+            echo unchanged
+          else
+            git commit -m "test(strategy): validate LiDAR terrain against GSPro"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-lidar-vs-gspro-terrain
+          path: |
+            artifacts/osm-proof/lidar/greywolf-lidar-vs-gspro-terrain.json
+            artifacts/osm-proof/lidar/greywolf-course-dem-1m.tif
