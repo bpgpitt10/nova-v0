@@ -4,10 +4,16 @@ on:
   push:
     branches:
       - course-render-greywolf-h1-v0
+      - course-geometry-package-v1
     paths:
       - src/dev/CourseRenderDevPage.tsx
       - src/dev/courseRenderDev.css
       - src/dev/greywolfHole01RenderFixture.ts
+      - src/courseGeometry/**
+      - config/course-geometry/**
+      - tools/course_geometry/**
+      - public/course-geometry/**
+      - artifacts/osm-proof/**
       - src/main.tsx
       - .github/workflows/course-render-dev-build.yml
   workflow_dispatch:
@@ -25,5 +31,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: npm ci
+      - run: npm run course-geometry:test
+      - run: npm run course-geometry:check
       - run: npm run build

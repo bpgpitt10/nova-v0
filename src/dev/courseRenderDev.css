@@ -38,6 +38,25 @@
   color: #d8e7e4;
   font-size: 13px;
 }
+.course-render-controls label.control-disabled { opacity: .48; }
+.course-render-controls select {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #1b3d3a;
+  color: #eff7f5;
+  font: inherit;
+  font-weight: 800;
+  padding: 4px 24px 4px 9px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #a9c1ba 50%),
+    linear-gradient(135deg, #a9c1ba 50%, transparent 50%);
+  background-position:
+    calc(100% - 11px) 50%,
+    calc(100% - 7px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
 
 .course-render-grid {
   max-width: 1180px;
@@ -69,7 +88,7 @@
 .surface.bunker { fill: #dfca9c; stroke: #f3e6c6; }
 .surface.tee { fill: #63ad4f; stroke: #b7e89f; }
 
-.distance-marker line { stroke: rgba(255,255,255,.12); stroke-dasharray: 4 5; }
+.distance-marker line, .distance-marker polyline { stroke: rgba(255,255,255,.14); stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; }
 .distance-marker rect { fill: rgba(5, 18, 19, .78); stroke: rgba(255,255,255,.12); }
 .distance-marker text { fill: #dce9e4; font-size: 11px; text-anchor: middle; font-weight: 700; }
 .tee-marker circle:first-child { fill: #071114; stroke: #dbeadf; stroke-width: 2; }
@@ -110,6 +129,17 @@
 .shot-proof-row strong { display:block; font-size: 13px; }
 .shot-proof-row small { display:block; color:#8fa7a2; margin-top:3px; }
 .proof-footnote { font-size: 11px; line-height: 1.45; margin-bottom: 0; }
+.course-loading-card {
+  width: min(560px, calc(100% - 36px));
+  margin: 12vh auto 0;
+  padding: 28px;
+  border: 1px solid #254549;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(17, 37, 39, .96), rgba(8, 24, 26, .98));
+  box-shadow: 0 24px 50px rgba(0,0,0,.28);
+}
+.course-loading-card h1 { margin: 4px 0 10px; }
+.course-loading-card p:last-child { color: #9fb6b2; }
 
 @media (max-width: 900px) {
   .course-render-dev { padding: 18px; }

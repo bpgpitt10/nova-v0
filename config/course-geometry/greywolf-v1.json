@@ -1,0 +1,50 @@
+{
+  "schema": "looper.course_geometry_build.v1",
+  "course": {
+    "id": "greywolf-golf-course-panorama-bc",
+    "name": "Greywolf Golf Course",
+    "location": "Panorama, BC",
+    "holeCount": 18
+  },
+  "coordinateSystem": {
+    "originLatLon": [50.44775, -116.24877],
+    "xAxis": "east",
+    "yAxis": "north",
+    "units": "yards",
+    "projection": "local-equirectangular-v1"
+  },
+  "sources": {
+    "osmSnapshot": "artifacts/osm-proof/context/greywolf-osm-context-selected.json",
+    "osmMetadata": "artifacts/osm-proof/context/greywolf-osm-context-raw.json",
+    "registrationProof": "artifacts/osm-proof/greywolf-gspro-world-transform-proof.json",
+    "registrationTiePoints": "artifacts/osm-proof/lidar/greywolf-lidar-vs-gspro-terrain.json"
+  },
+  "viewPolicy": {
+    "behindSelectedTeeYards": 28,
+    "pastTargetGreenYards": 44,
+    "minimumHalfWidthYards": 40,
+    "maximumHalfWidthYards": 105,
+    "sidePaddingYards": 0,
+    "spatialIndexCellYards": 100
+  },
+  "holes": [
+    {"number":1,"routeOsmId":1209190796,"gsproYards":350.0,"selectedTee":{"osmId":1209190795,"latLon":[50.446423107692304,-116.24757067692309]},"targetGreen":{"osmId":1212577098,"latLon":[50.443634984615386,-116.24856764615384]},"lockedEvidence":{"osmYards":347.7,"residualYards":-2.3,"headingDegreesTrue":192.83}},
+    {"number":2,"routeOsmId":1209268518,"gsproYards":355.0,"selectedTee":{"osmId":1209268502,"latLon":[50.44322640769231,-116.24920309230768]},"targetGreen":{"osmId":1212578887,"latLon":[50.44033083214286,-116.24789634642856]},"lockedEvidence":{"osmYards":366.4,"residualYards":11.4,"headingDegreesTrue":163.97}},
+    {"number":3,"routeOsmId":1209268536,"gsproYards":439.0,"selectedTee":{"osmId":1209268524,"latLon":[50.43978042727272,-116.24675434545453]},"targetGreen":{"osmId":1212582280,"latLon":[50.436419093103446,-116.24581563793103]},"lockedEvidence":{"osmYards":415.2,"residualYards":-23.8,"headingDegreesTrue":169.91}},
+    {"number":4,"routeOsmId":1209268544,"gsproYards":397.0,"selectedTee":{"osmId":1209268541,"latLon":[50.43699414545454,-116.24737101818182]},"targetGreen":{"osmId":1212584551,"latLon":[50.43997947083333,-116.24905765416666]},"lockedEvidence":{"osmYards":385.8,"residualYards":-11.2,"headingDegreesTrue":340.21}},
+    {"number":5,"routeOsmId":1209268513,"gsproYards":524.0,"selectedTee":{"osmId":1209268511,"latLon":[50.4405376,-116.24936657272728]},"targetGreen":{"osmId":1212586614,"latLon":[50.444703978125,-116.250551296875]},"lockedEvidence":{"osmYards":514.9,"residualYards":-9.1,"headingDegreesTrue":349.74}},
+    {"number":6,"routeOsmId":1209190784,"gsproYards":147.0,"selectedTee":{"osmId":1209190780,"latLon":[50.44472585,-116.25251108333333]},"targetGreen":{"osmId":1212589670,"latLon":[50.445646121428574,-116.25378020000001]},"lockedEvidence":{"osmYards":148.9,"residualYards":1.9,"headingDegreesTrue":318.71}},
+    {"number":7,"routeOsmId":1209190776,"gsproYards":362.0,"selectedTee":{"osmId":1209190773,"latLon":[50.446577285714284,-116.25304951428572]},"targetGreen":{"osmId":1212592440,"latLon":[50.44947869655173,-116.25312067586206]},"lockedEvidence":{"osmYards":352.9,"residualYards":-9.1,"headingDegreesTrue":359.11}},
+    {"number":8,"routeOsmId":1209190769,"gsproYards":396.0,"selectedTee":{"osmId":1209190760,"latLon":[50.44952665833333,-116.25239198333334]},"targetGreen":{"osmId":1212593307,"latLon":[50.44635184137931,-116.25239717241378]},"lockedEvidence":{"osmYards":386.1,"residualYards":-9.9,"headingDegreesTrue":180.06}},
+    {"number":9,"routeOsmId":1209190806,"gsproYards":131.0,"selectedTee":{"osmId":1212594561,"latLon":[50.44535647692308,-116.25007964615385]},"targetGreen":{"osmId":1212594562,"latLon":[50.44610552941177,-116.24891983235295]},"lockedEvidence":{"osmYards":127.9,"residualYards":-3.1,"headingDegreesTrue":44.6}},
+    {"number":10,"routeOsmId":1208932484,"gsproYards":544.0,"selectedTee":{"osmId":1208932466,"latLon":[50.44775794545455,-116.2461714]},"targetGreen":{"osmId":1212597307,"latLon":[50.4520246875,-116.24378773333332]},"lockedEvidence":{"osmYards":550.7,"residualYards":6.7,"headingDegreesTrue":19.58}},
+    {"number":11,"routeOsmId":1208932483,"gsproYards":289.0,"selectedTee":{"osmId":1212598845,"latLon":[50.45284434285714,-116.24272422857143]},"targetGreen":{"osmId":1212598847,"latLon":[50.455223399999994,-116.24216032307693]},"lockedEvidence":{"osmYards":292.6,"residualYards":3.6,"headingDegreesTrue":8.58}},
+    {"number":12,"routeOsmId":1212600753,"gsproYards":127.0,"selectedTee":{"osmId":1209183582,"latLon":[50.45624918181818,-116.24561097272726]},"targetGreen":{"osmId":1212600748,"latLon":[50.456569800000004,-116.24719676060606]},"lockedEvidence":{"osmYards":128.8,"residualYards":1.8,"headingDegreesTrue":287.62}},
+    {"number":13,"routeOsmId":1209183595,"gsproYards":326.0,"selectedTee":{"osmId":1209183589,"latLon":[50.4553650125,-116.2496866375]},"targetGreen":{"osmId":1212601668,"latLon":[50.45342418,-116.252494405]},"lockedEvidence":{"osmYards":320.9,"residualYards":-5.1,"headingDegreesTrue":222.65}},
+    {"number":14,"routeOsmId":1209190749,"gsproYards":444.0,"selectedTee":{"osmId":1212602837,"latLon":[50.45174230769231,-116.25079121538462]},"targetGreen":{"osmId":1212602840,"latLon":[50.448258894999995,-116.25077065999999]},"lockedEvidence":{"osmYards":423.6,"residualYards":-20.4,"headingDegreesTrue":179.78}},
+    {"number":15,"routeOsmId":1209190757,"gsproYards":126.0,"selectedTee":{"osmId":1209190752,"latLon":[50.44840396,-116.24989222]},"targetGreen":{"osmId":1212603724,"latLon":[50.44931125185185,-116.24916648888887]},"lockedEvidence":{"osmYards":123.8,"residualYards":-2.2,"headingDegreesTrue":26.99}},
+    {"number":16,"routeOsmId":1209190740,"gsproYards":345.0,"selectedTee":{"osmId":1209190736,"latLon":[50.45037550666667,-116.24915923333333]},"targetGreen":{"osmId":1212604633,"latLon":[50.45314451851851,-116.24939478148147]},"lockedEvidence":{"osmYards":337.2,"residualYards":-7.8,"headingDegreesTrue":356.9}},
+    {"number":17,"routeOsmId":1209183578,"gsproYards":373.0,"selectedTee":{"osmId":1212605459,"latLon":[50.45375772,-116.24873034000001]},"targetGreen":{"osmId":1212605460,"latLon":[50.450821117241375,-116.24691193793103]},"lockedEvidence":{"osmYards":383.9,"residualYards":10.9,"headingDegreesTrue":158.48}},
+    {"number":18,"routeOsmId":1209190792,"gsproYards":361.0,"selectedTee":{"osmId":1208932469,"latLon":[50.45033664166667,-116.2453743]},"targetGreen":{"osmId":1212606506,"latLon":[50.44752355,-116.24729782727273]},"lockedEvidence":{"osmYards":373.1,"residualYards":12.1,"headingDegreesTrue":203.53}}
+  ]
+}
