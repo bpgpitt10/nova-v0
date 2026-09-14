@@ -14,6 +14,7 @@ import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
 import AimLabPage from './dev/AimLabPage.tsx'
+import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -86,13 +87,9 @@ function RootRouter() {
   }, [])
 
   const installAvailableUpdate = useCallback(async () => {
-    if (!availableUpdate) {
-      return
-    }
-
+    if (!availableUpdate) return
     setUpdateStatus('installing')
     setUpdateError(null)
-
     try {
       await availableUpdate.downloadAndInstall()
       setUpdateStatus('installed')
@@ -108,47 +105,22 @@ function RootRouter() {
   }, [checkForUpdates])
 
   useEffect(() => {
-    const onPopState = () => {
-      setPathname(normalizePath(window.location.pathname))
-    }
-
+    const onPopState = () => setPathname(normalizePath(window.location.pathname))
     const onDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) {
-        return
-      }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return
-      }
-
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       const target = event.target
-      if (!(target instanceof Element)) {
-        return
-      }
-
+      if (!(target instanceof Element)) return
       const anchor = target.closest('a[href]')
-      if (!(anchor instanceof HTMLAnchorElement)) {
-        return
-      }
-      if (anchor.target && anchor.target !== '_self') {
-        return
-      }
-      if (anchor.hasAttribute('download')) {
-        return
-      }
-
+      if (!(anchor instanceof HTMLAnchorElement)) return
+      if (anchor.target && anchor.target !== '_self') return
+      if (anchor.hasAttribute('download')) return
       const rawHref = anchor.getAttribute('href')
-      if (!rawHref || !rawHref.startsWith('/')) {
-        return
-      }
-
+      if (!rawHref || !rawHref.startsWith('/')) return
       const url = new URL(rawHref, window.location.origin)
       const next = `${url.pathname}${url.search}${url.hash}`
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-
-      if (next === current) {
-        return
-      }
-
+      if (next === current) return
       event.preventDefault()
       window.history.pushState({}, '', next)
       setPathname(normalizePath(url.pathname))
@@ -174,7 +146,8 @@ function RootRouter() {
   const showCourseRenderDev = pathname === '/dev/course-render'
   const showCourseGeometryDev = pathname === '/dev/course-geometry'
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab
+  const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showCaddieInputs
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -189,42 +162,19 @@ function RootRouter() {
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'
 
-    if (showCourseRenderDev) {
-      return <CourseRenderDevPage />
-    }
-    if (showCourseGeometryDev) {
-      return <CourseGeometryDevPage />
-    }
-    if (showAimLab) {
-      return <AimLabPage />
-    }
-    if (showSignOut) {
-      return <SignOutPage />
-    }
-    if (showAdminUsers) {
-      return <AdminUsersPage />
-    }
-    if (showCloudRepair) {
-      return <CloudRepairPage />
-    }
-    if (showBagSetup || !hasBagConfig) {
-      return <BagSetupPage />
-    }
-    if (showShotVariants) {
-      return <ShotVariantsPage />
-    }
-    if (showSessionSummary) {
-      return <SessionSummaryPage />
-    }
-    if (showDataManagement) {
-      return <DataManagementPage />
-    }
-    if (showSessionIntelligence) {
-      return <SessionIntelligencePage />
-    }
-    if (showTheRead) {
-      return <TheReadPage />
-    }
+    if (showCourseRenderDev) return <CourseRenderDevPage />
+    if (showCourseGeometryDev) return <CourseGeometryDevPage />
+    if (showAimLab) return <AimLabPage />
+    if (showCaddieInputs) return <CaddieInputsPage />
+    if (showSignOut) return <SignOutPage />
+    if (showAdminUsers) return <AdminUsersPage />
+    if (showCloudRepair) return <CloudRepairPage />
+    if (showBagSetup || !hasBagConfig) return <BagSetupPage />
+    if (showShotVariants) return <ShotVariantsPage />
+    if (showSessionSummary) return <SessionSummaryPage />
+    if (showDataManagement) return <DataManagementPage />
+    if (showSessionIntelligence) return <SessionIntelligencePage />
+    if (showTheRead) return <TheReadPage />
     if (showLooperLanding) {
       return (
         <LooperLandingPage
@@ -242,6 +192,7 @@ function RootRouter() {
     installAvailableUpdate,
     pathname,
     showAimLab,
+    showCaddieInputs,
     showCourseGeometryDev,
     showCourseRenderDev,
     updateError,
