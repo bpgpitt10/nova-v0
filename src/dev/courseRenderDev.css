@@ -1,0 +1,120 @@
+.course-render-dev {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(68, 130, 93, 0.18), transparent 34rem),
+    #071114;
+  color: #eff7f5;
+  padding: 32px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.course-render-header {
+  max-width: 1180px;
+  margin: 0 auto 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.course-render-header h1 { margin: 2px 0 8px; font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.035em; }
+.course-render-header p { margin: 0; color: #9fb6b2; max-width: 760px; }
+.course-render-eyebrow, .card-kicker, .course-map-kicker { font-size: 11px; font-weight: 800; letter-spacing: .16em; color: #7d9c94; }
+
+.course-render-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.course-render-controls label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 12px;
+  background: rgba(16, 37, 39, .8);
+  border: 1px solid #244446;
+  border-radius: 999px;
+  color: #d8e7e4;
+  font-size: 13px;
+}
+
+.course-render-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(300px, 390px);
+  gap: 18px;
+  align-items: start;
+}
+
+.course-map-card, .course-data-card {
+  background: linear-gradient(180deg, rgba(17, 37, 39, .96), rgba(8, 24, 26, .98));
+  border: 1px solid #254549;
+  box-shadow: 0 24px 50px rgba(0,0,0,.28);
+}
+.course-map-card { border-radius: 22px; padding: 18px; }
+.course-data-card { border-radius: 17px; padding: 18px; }
+.course-map-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.course-map-title-row h2 { margin: 3px 0 0; font-size: 21px; }
+.truth-pill { color: #c6f6d5; background: #163a2a; border: 1px solid #2e6c4a; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .12em; padding: 7px 9px; }
+
+.course-hole-svg { width: 100%; display: block; max-height: 76vh; }
+.terrain-contours polyline { stroke: rgba(226, 244, 221, .18); stroke-width: 1; }
+.surface { vector-effect: non-scaling-stroke; stroke-width: 1.1; }
+.surface.rough { fill: rgba(47, 89, 56, .58); stroke: rgba(115, 151, 103, .42); }
+.surface.water { fill: #1473a6; stroke: #39afe7; }
+.surface.fairway { fill: url(#fairwayFill); stroke: #9ccb77; }
+.surface.green { fill: #b9db7e; stroke: #e1f4b6; }
+.surface.bunker { fill: #dfca9c; stroke: #f3e6c6; }
+.surface.tee { fill: #63ad4f; stroke: #b7e89f; }
+
+.distance-marker line { stroke: rgba(255,255,255,.12); stroke-dasharray: 4 5; }
+.distance-marker rect { fill: rgba(5, 18, 19, .78); stroke: rgba(255,255,255,.12); }
+.distance-marker text { fill: #dce9e4; font-size: 11px; text-anchor: middle; font-weight: 700; }
+.tee-marker circle:first-child { fill: #071114; stroke: #dbeadf; stroke-width: 2; }
+.tee-marker circle:nth-child(2) { fill: #e8f3ea; }
+.tee-marker text { fill: white; font-size: 11px; font-weight: 800; }
+.pin-marker line { stroke: #f4f7f4; stroke-width: 2; }
+.pin-marker path, .pin-marker circle { fill: #f04444; }
+.live-shot-marker circle:first-child { fill: rgba(255, 183, 77, .18); stroke: #ffb74d; stroke-width: 2; }
+.live-shot-marker circle:nth-child(2) { fill: #fff; }
+.live-shot-marker text { fill: #ffcf83; font-size: 12px; font-weight: 900; }
+
+.course-map-legend { display: flex; flex-wrap: wrap; gap: 10px 14px; padding: 12px 4px 0; color: #a9beb9; font-size: 12px; }
+.course-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend-swatch.tee { background:#63ad4f; }.legend-swatch.fairway{background:#76aa50}.legend-swatch.green{background:#b9db7e}.legend-swatch.bunker{background:#dfca9c}.legend-swatch.water{background:#1473a6}
+
+.course-data-column { display: grid; gap: 14px; }
+.card-kicker { margin: 0 0 14px; }
+.metric-list { margin: 0; }
+.metric-list > div { display: flex; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid rgba(126, 160, 158, .13); }
+.metric-list > div:last-child { border-bottom: 0; }
+.metric-list dt { color: #99afab; }
+.metric-list dd { margin: 0; font-weight: 750; color: #eef5f3; }
+.green-terrain-summary { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 12px; }
+.green-terrain-summary strong { font-size: 34px; color: #c5e99a; }
+.green-terrain-summary span, .terrain-note, .proof-footnote { color: #98aeaa; }
+.terrain-note { line-height: 1.5; }
+.green-high-low { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; color: #cddbd8; font-size: 12px; }
+.high-dot,.low-dot { display:inline-block; width:8px; height:8px; border-radius:50%; }.high-dot{background:#ef5350}.low-dot{background:#42a5f5;margin-left:8px}
+
+.elevation-profile { width: 100%; display: block; overflow: visible; }
+.elevation-profile text { fill: #829b96; font-size: 10px; }
+.profile-axis { stroke: #47635f; }
+.profile-line { stroke: #68c3f1; stroke-width: 3; vector-effect: non-scaling-stroke; }
+.elevation-profile .profile-climb { fill: #d8ece7; font-weight: 800; font-size: 13px; }
+.shot-proof-row { display: flex; gap: 10px; margin: 12px 0; align-items: flex-start; }
+.shot-index { width: 25px; height: 25px; display:grid; place-items:center; border-radius:50%; background:#6f5128; color:#ffd79a; font-weight:900; }
+.shot-proof-row strong { display:block; font-size: 13px; }
+.shot-proof-row small { display:block; color:#8fa7a2; margin-top:3px; }
+.proof-footnote { font-size: 11px; line-height: 1.45; margin-bottom: 0; }
+
+@media (max-width: 900px) {
+  .course-render-dev { padding: 18px; }
+  .course-render-header { align-items: flex-start; flex-direction: column; }
+  .course-render-controls { justify-content: flex-start; }
+  .course-render-grid { grid-template-columns: 1fr; }
+  .course-hole-svg { max-height: none; }
+}

@@ -11,6 +11,7 @@ import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
+import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -168,6 +169,8 @@ function RootRouter() {
     }
   }, [])
 
+  const showCourseRenderDev = pathname === '/dev/course-render'
+
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
     const showBagSetup = pathname === '/bag-setup'
@@ -181,6 +184,9 @@ function RootRouter() {
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'
 
+    if (showCourseRenderDev) {
+      return <CourseRenderDevPage />
+    }
     if (showSignOut) {
       return <SignOutPage />
     }
@@ -219,11 +225,11 @@ function RootRouter() {
       )
     }
     return <App forceDashboardRoute={showDashboardRoute} />
-  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
+  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, showCourseRenderDev, updateError, updateStatus])
 
   return (
     <LooperAuthGate>
-      <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+      {showCourseRenderDev ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
     </LooperAuthGate>
   )
 }
