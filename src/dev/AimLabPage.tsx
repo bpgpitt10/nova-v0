@@ -11,7 +11,6 @@ import type {
 import {
   AIM_SCORE_ASSUMPTIONS,
   evaluateAimLab,
-  type AimCandidateEvaluation,
   type ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
 import {
@@ -23,9 +22,6 @@ import './aimLab.css'
 
 const pct = (value: number | null | undefined) =>
   typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
-
-const yds = (value: number | null | undefined) =>
-  typeof value === 'number' ? `${value.toFixed(1)} yd` : '—'
 
 const signedYds = (value: number | null | undefined) =>
   typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value.toFixed(1)} yd` : '—'
