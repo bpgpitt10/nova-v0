@@ -1,0 +1,96 @@
+name: Greywolf green LiDAR slope proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/greywolf-green-lidar-slope-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  green-lidar-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install geo stack
+        run: pip install --quiet rasterio pyproj shapely
+      - name: Extract green terrain from official 1m LidarBC DEM
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from shapely.geometry import Point, Polygon
+
+          osm=json.loads(Path('artifacts/osm-proof/context/greywolf-osm-context-raw.json').read_text())
+          greens={e['id']:e for e in osm['elements'] if (e.get('tags') or {}).get('golf')=='green' and e.get('geometry')}
+          hole_to_green={}
+          for h in range(1,19):
+            p=Path(f'artifacts/osm-proof/local-geometry/greywolf-hole-{h:02d}.json')
+            d=json.loads(p.read_text())
+            hole_to_green[h]=d['anchors']['target_green_osm_id']
+
+          url='/vsicurl/https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dem/bc_082k049_xli1m_utm11_2015.tif'
+          results=[]
+          env={'GDAL_DISABLE_READDIR_ON_OPEN':'EMPTY_DIR','CPL_VSIL_CURL_ALLOWED_EXTENSIONS':'.tif'}
+          with rasterio.Env(**env), rasterio.open(url) as src:
+            tr=Transformer.from_crs('EPSG:4326',src.crs,always_xy=True)
+            for h,gid in hole_to_green.items():
+              g=greens[gid]
+              ll=[(p['lon'],p['lat']) for p in g['geometry']]
+              xy=[tr.transform(lon,lat) for lon,lat in ll]
+              poly=Polygon(xy)
+              minx,miny,maxx,maxy=poly.bounds
+              w=from_bounds(minx-2,miny-2,maxx+2,maxy+2,src.transform).round_offsets().round_lengths()
+              z=src.read(1,window=w,masked=True).astype('float64')
+              wt=src.window_transform(w)
+              if z.mask is np.ma.nomask:
+                valid=np.ones(z.shape,dtype=bool)
+              else:
+                valid=~np.array(z.mask,dtype=bool)
+              inside=np.zeros(z.shape,dtype=bool)
+              for r in range(z.shape[0]):
+                for c in range(z.shape[1]):
+                  x,y=rasterio.transform.xy(wt,r,c,offset='center')
+                  if valid[r,c] and poly.contains(Point(x,y)):
+                    inside[r,c]=True
+              filled=np.array(z.filled(np.nan),dtype=float)
+              # local gradients are useful where neighbors are valid; DEM pixel size is 1 m here.
+              gy,gx=np.gradient(filled,abs(wt.e),abs(wt.a))
+              slope=np.sqrt(gx*gx+gy*gy)
+              vals=slope[inside & np.isfinite(slope)]
+              elev=filled[inside & np.isfinite(filled)]
+              results.append({
+                'hole':h,'green_osm_id':gid,'dem_pixels_inside_green':int(len(elev)),
+                'elevation_min_m':round(float(np.min(elev)),3),'elevation_max_m':round(float(np.max(elev)),3),
+                'elevation_range_m':round(float(np.ptp(elev)),3),
+                'slope_percent_median':round(float(np.median(vals)*100),2),
+                'slope_percent_p90':round(float(np.percentile(vals,90)*100),2),
+                'slope_degrees_median':round(float(np.degrees(np.arctan(np.median(vals)))),2),
+                'slope_degrees_p90':round(float(np.degrees(np.arctan(np.percentile(vals,90)))),2),
+              })
+            meta={'source':'LidarBC official 2015 1m DEM','filename':'bc_082k049_xli1m_utm11_2015.tif','dem_crs':str(src.crs),'resolution_m':[abs(src.transform.a),abs(src.transform.e)],'holes':results}
+          out=Path('artifacts/osm-proof/lidar/greywolf-green-lidar-slopes.json')
+          out.write_text(json.dumps(meta,indent=2,sort_keys=True))
+          print(json.dumps(meta,indent=2,sort_keys=True))
+          PY
+      - name: Persist proof output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/lidar/greywolf-green-lidar-slopes.json
+          if git diff --cached --quiet; then echo unchanged; else git commit -m "test(strategy): derive Greywolf green slopes from LiDAR" && git push; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-green-lidar-slope-proof
+          path: artifacts/osm-proof/lidar/greywolf-green-lidar-slopes.json
