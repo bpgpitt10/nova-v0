@@ -17,6 +17,7 @@ on:
       - src/dev/aimLab.css
       - src/dev/CaddieInputsPage.tsx
       - src/dev/caddieInputs.css
+      - tools/gspro_physics_lab.py
       - src/main.tsx
       - .github/workflows/course-render-dev-build.yml
   workflow_dispatch:
@@ -34,5 +35,9 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: npm ci
       - run: npm run build
+      - run: python -m py_compile tools/gspro_physics_lab.py
