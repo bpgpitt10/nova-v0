@@ -1,0 +1,94 @@
+name: Greywolf OSM full context proof
+
+on:
+  push:
+    branches:
+      - hazard-field-lab-v0
+    paths:
+      - .github/workflows/osm-greywolf-context-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  greywolf-osm-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query full OSM context around Greywolf
+        shell: bash
+        run: |
+          cat > /tmp/query.overpass <<'EOF'
+          [out:json][timeout:120];
+          (
+            nwr["golf"](50.431,-116.260,50.462,-116.236);
+            nwr["leisure"="golf_course"](50.431,-116.260,50.462,-116.236);
+            nwr["barrier"](50.431,-116.260,50.462,-116.236);
+            nwr["boundary"](50.431,-116.260,50.462,-116.236);
+            nwr["natural"](50.431,-116.260,50.462,-116.236);
+            nwr["water"](50.431,-116.260,50.462,-116.236);
+            nwr["waterway"](50.431,-116.260,50.462,-116.236);
+            nwr["landuse"](50.431,-116.260,50.462,-116.236);
+            nwr["highway"](50.431,-116.260,50.462,-116.236);
+          );
+          out tags geom;
+          EOF
+          curl --fail --retry 4 --retry-all-errors --retry-delay 8 \
+            --data-urlencode 'data@/tmp/query.overpass' \
+            https://overpass.kumi.systems/api/interpreter \
+            -o greywolf-osm-context.json
+          test -s greywolf-osm-context.json
+
+      - name: Summarize context
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+          d=json.loads(Path('greywolf-osm-context.json').read_text())
+          els=d.get('elements',[])
+          key_counts=Counter(); pair_counts=Counter(); selected=[]
+          important={'golf','leisure','barrier','boundary','natural','water','waterway','landuse','highway','fence_type','access'}
+          for e in els:
+            t=e.get('tags') or {}
+            for k in important:
+              if k in t:
+                key_counts[k]+=1; pair_counts[(k,t[k])]+=1
+            if any(k in t for k in ['golf','barrier','boundary','water','waterway']) or t.get('leisure')=='golf_course':
+              selected.append({'type':e.get('type'),'id':e.get('id'),'tags':{k:v for k,v in t.items() if k in important or k in ['name','ref','par']},'geometry':e.get('geometry'),'members':e.get('members')})
+          summary={
+            'raw_element_count':len(els),
+            'key_counts':dict(sorted(key_counts.items())),
+            'tag_value_counts':{f'{k}={v}':n for (k,v),n in sorted(pair_counts.items())},
+            'golf_out_of_bounds_count':sum(1 for e in els if (e.get('tags') or {}).get('golf')=='out_of_bounds'),
+            'barrier_count':sum(1 for e in els if 'barrier' in (e.get('tags') or {})),
+            'course_boundary_count':sum(1 for e in els if (e.get('tags') or {}).get('leisure')=='golf_course'),
+          }
+          out=Path('artifacts/osm-proof/context'); out.mkdir(parents=True,exist_ok=True)
+          (out/'greywolf-osm-context-summary.json').write_text(json.dumps(summary,indent=2,sort_keys=True))
+          (out/'greywolf-osm-context-selected.json').write_text(json.dumps(selected,indent=2,sort_keys=True))
+          (out/'greywolf-osm-context-raw.json').write_text(json.dumps(d))
+          print(json.dumps(summary,indent=2,sort_keys=True))
+          PY
+
+      - name: Persist proof outputs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/osm-proof/context/
+          if git diff --cached --quiet; then
+            echo "Context outputs unchanged"
+          else
+            git commit -m "test(strategy): record Greywolf full OSM context"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: greywolf-osm-context-proof
+          path: artifacts/osm-proof/context/
