@@ -15,6 +15,8 @@ on:
       - src/dev/courseGeometryDev.css
       - src/dev/AimLabPage.tsx
       - src/dev/aimLab.css
+      - src/dev/CaddieInputsPage.tsx
+      - src/dev/caddieInputs.css
       - src/main.tsx
       - .github/workflows/course-render-dev-build.yml
   workflow_dispatch:
