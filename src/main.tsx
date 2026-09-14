@@ -11,6 +11,7 @@ import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
+import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -57,7 +58,6 @@ function SignOutPage() {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
-  const [bagConfigRevision, setBagConfigRevision] = useState(0)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
@@ -157,7 +157,6 @@ function RootRouter() {
     const onBagConfigUpdated = () => {
       refreshBagConfigState()
       setHasBagConfig(hasSavedBagConfig())
-      setBagConfigRevision((current) => current + 1)
     }
     window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
     window.addEventListener('storage', onBagConfigUpdated)
@@ -170,19 +169,7 @@ function RootRouter() {
     }
   }, [])
 
-  useEffect(() => {
-    if (
-      hasBagConfig ||
-      pathname === '/bag-setup' ||
-      pathname === '/admin/users' ||
-      pathname === '/cloud-repair' ||
-      pathname === '/signout'
-    ) {
-      return
-    }
-    window.history.replaceState({}, '', '/bag-setup')
-    setPathname('/bag-setup')
-  }, [bagConfigRevision, hasBagConfig, pathname])
+  const showCourseRenderDev = pathname === '/dev/course-render'
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -197,6 +184,9 @@ function RootRouter() {
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'
 
+    if (showCourseRenderDev) {
+      return <CourseRenderDevPage />
+    }
     if (showSignOut) {
       return <SignOutPage />
     }
@@ -235,11 +225,11 @@ function RootRouter() {
       )
     }
     return <App forceDashboardRoute={showDashboardRoute} />
-  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, updateError, updateStatus])
+  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, showCourseRenderDev, updateError, updateStatus])
 
   return (
     <LooperAuthGate>
-      <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>
+      {showCourseRenderDev ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
     </LooperAuthGate>
   )
 }

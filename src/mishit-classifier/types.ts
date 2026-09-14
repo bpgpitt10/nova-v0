@@ -1,0 +1,204 @@
+import type {
+  MishitEffectiveThresholds,
+  MishitPlayerCalibration,
+} from './inputs/types'
+
+export type BaselineStatus = 'insufficient' | 'provisional' | 'stable'
+
+export type MishitClass = 'unclassified' | 'normal' | 'mishit' | 'severe_mishit'
+
+export type MishitReasonCode =
+  | 'insufficient_reference'
+  | 'major_carry_loss'
+  | 'severe_carry_loss'
+  | 'extreme_offline'
+  | 'severe_offline'
+  | 'ball_speed_loss'
+  | 'severe_ball_speed_loss'
+  | 'smash_loss'
+  | 'severe_smash_loss'
+  | 'compound_failure'
+
+export type MishitMetric =
+  | 'carry'
+  | 'offline'
+  | 'ballSpeed'
+  | 'smashFactor'
+  | 'population'
+
+export type MishitShot = {
+  id: string
+  capturedAt?: string
+  carry?: number
+  total?: number
+  offline?: number
+  ballSpeed?: number
+  clubSpeed?: number
+  smashFactor?: number
+  launch?: number
+  spin?: number
+}
+
+export type MishitReason = {
+  code: MishitReasonCode
+  metric: MishitMetric
+  observed?: number
+  reference?: number
+  deviation?: number
+  deviationPct?: number
+  threshold?: number
+  severity: 'info' | 'mishit' | 'severe'
+}
+
+export type RobustMetricBaseline = {
+  center?: number
+  mad?: number
+  sampleSize: number
+}
+
+export type MishitBaseline = {
+  version: number
+  status: BaselineStatus
+  sampleSize: number
+  referenceShotCount: number
+  carry: RobustMetricBaseline
+  offline: RobustMetricBaseline
+  ballSpeed: RobustMetricBaseline
+  smashFactor: RobustMetricBaseline
+}
+
+export type MishitClassification = {
+  shotId: string
+  classification: MishitClass
+  planningEligible: boolean
+  confidence: number
+  baselineVersion: number
+  baselineStatus: BaselineStatus
+  reasons: MishitReason[]
+}
+
+export type MishitRefreshAction =
+  | 'initial_full_analysis'
+  | 'new_shots_only'
+  | 'baseline_rebuilt_new_only'
+  | 'baseline_rebuilt_full_reclass'
+  | 'no_change'
+
+export type MishitRefreshMetadata = {
+  action: MishitRefreshAction
+  newShotCount: number
+  removedShotCount: number
+  pendingNewShotIds: string[]
+  baselineChangedMaterially: boolean
+}
+
+export type MishitAnalysis = {
+  baseline: MishitBaseline
+  classifications: MishitClassification[]
+  refresh: MishitRefreshMetadata
+  inputVersion: number
+  calibrationVersion?: number
+  effectiveThresholds: MishitEffectiveThresholds
+}
+
+export type MishitConfig = {
+  version: number
+  sample: {
+    provisionalSampleSize: number
+    stableSampleSize: number
+    maturePopulationSize: number
+    maxReferenceShots: number
+  }
+  refresh: {
+    earlyEveryNewShots: number
+    matureEveryNewShots: number
+    fullReclassUntilSampleSize: number
+    baselineChange: {
+      carryCenterPct: number
+      offlineCenterYards: number
+      ballSpeedCenterPct: number
+      smashFactorAbsolute: number
+    }
+  }
+  baselineRefinement: {
+    enabled: boolean
+    maxPasses: number
+  }
+  carry: {
+    mishitLossPct: number
+    mishitLossPriorYards: number
+    severeLossPct: number
+    severeLossPriorYards: number
+  }
+  direction: {
+    mishitAbsolutePriorYards: number
+    mishitPctOfCarryCenter: number
+    severeAbsolutePriorYards: number
+    severePctOfCarryCenter: number
+    mishitDeviationPriorYards: number
+    severeDeviationPriorYards: number
+  }
+  strike: {
+    ballSpeedMishitLossPct: number
+    ballSpeedSevereLossPct: number
+    smashFactorMishitLoss: number
+    smashFactorSevereLoss: number
+  }
+  compound: {
+    mishitSignalCount: number
+    severeSignalCount: number
+  }
+  personalization: {
+    enabled: boolean
+    maturityWeight: {
+      playerWeightAtProvisional: number
+      playerWeightAtStable: number
+      playerWeightAtMature: number
+      playerWeightAtMaxReference: number
+    }
+    carryMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    directionMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    ballSpeedMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    smashFactorMadMultiplier: {
+      mishit: number
+      severe: number
+    }
+    sanityMinimums: {
+      carry: {
+        mishitLossYards: number
+        severeLossYards: number
+      }
+      direction: {
+        mishitAbsoluteYards: number
+        severeAbsoluteYards: number
+        mishitDeviationYards: number
+        severeDeviationYards: number
+      }
+      ballSpeed: {
+        mishitLossMph: number
+        severeLossMph: number
+      }
+      smashFactor: {
+        mishitLoss: number
+        severeLoss: number
+      }
+    }
+  }
+}
+
+export type RefreshMishitAnalysisArgs = {
+  shots: MishitShot[]
+  previous?: MishitAnalysis
+  config?: MishitConfig
+  calibration?: MishitPlayerCalibration
+  forceFullReclass?: boolean
+}

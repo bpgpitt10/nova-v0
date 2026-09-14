@@ -300,6 +300,12 @@
   padding: 0 8px;
 }
 
+.dm-shot-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .dm-pure-toggle {
   min-height: 24px;
   padding: 0 8px;
@@ -312,6 +318,31 @@
   border-color: rgba(124, 186, 136, 0.52);
   background: rgba(49, 92, 60, 0.58);
   color: rgba(224, 239, 226, 0.96);
+}
+
+.dm-system-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: help;
+}
+
+.dm-system-tag.is-mishit {
+  border-color: rgba(209, 138, 59, 0.46);
+  background: rgba(209, 138, 59, 0.14);
+  color: #e1b06c;
+}
+
+.dm-system-tag.is-severe {
+  border-color: rgba(200, 90, 74, 0.52);
+  background: rgba(200, 90, 74, 0.16);
+  color: #e09588;
 }
 
 .dm-return {

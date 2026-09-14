@@ -1,0 +1,29 @@
+.shot-review-validation-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.shot-review-export {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(212, 177, 90, 0.55);
+  border-radius: 10px;
+  background: rgba(212, 177, 90, 0.1);
+  color: #d4b15a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shot-review-export:hover {
+  background: rgba(212, 177, 90, 0.16);
+}
+
+.shot-review-export-help {
+  margin: 0;
+  color: #7f917f;
+  font-size: 10px;
+  line-height: 1.35;
+}

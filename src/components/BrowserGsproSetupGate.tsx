@@ -79,6 +79,13 @@ export default function BrowserGsproSetupGate({
       return
     }
 
+    // Developer/admin replay hook: useful for inspecting first-time onboarding
+    // without deleting the browser's previously saved folder handle.
+    if (new URLSearchParams(window.location.search).get('gsproSetup') === '1') {
+      setSetupState('needs-folder')
+      return
+    }
+
     let cancelled = false
 
     const restore = async () => {
@@ -190,7 +197,7 @@ export default function BrowserGsproSetupGate({
       } else {
         setError(
           message.includes('GSPro.db')
-            ? 'That folder does not contain GSPro.db. Choose the GSPro folder inside AppData\\LocalLow\\GSPro.'
+            ? 'Looper could not find GSPro.db in that folder. Copy the suggested folder location below and try again.'
             : message,
         )
         setSetupState('needs-folder')
@@ -273,24 +280,38 @@ export default function BrowserGsproSetupGate({
   return (
     <main className="gspro-setup">
       <section className="gspro-setup__card">
-        <span className="gspro-setup__eyebrow">Looper · GSPro connection</span>
+        <span className="gspro-setup__eyebrow">Looper · First-time setup</span>
 
         {setupState === 'needs-folder' ? (
           <>
             <h1>Connect GSPro</h1>
             <p className="gspro-setup__lead">
-              Looper can read GSPro directly from Chrome. No SimRead download is required.
+              Looper reads your GSPro shot data directly from this simulator PC. Nothing needs to be uploaded manually, and you should only need to choose this folder once.
             </p>
+
             <div className="gspro-setup__step">
-              <strong>Choose the folder containing GSPro.db</strong>
-              <p>GSPro normally stores it here. In the Windows folder picker, press Ctrl + L and paste this path.</p>
+              <strong>1. Copy your GSPro folder location</strong>
+              <p>
+                Windows fills in your own user profile automatically, so you do not need to know or type your Windows username.
+              </p>
               <div className="gspro-setup__path-row">
                 <code>{DEFAULT_GSPRO_PATH}</code>
                 <button type="button" className="gspro-setup__secondary" onClick={() => void copyPath()}>
-                  {copied ? 'Copied' : 'Copy path'}
+                  {copied ? 'Copied' : 'Copy folder location'}
                 </button>
               </div>
             </div>
+
+            <div className="gspro-setup__step">
+              <strong>2. Choose that folder</strong>
+              <p>
+                Click the button below. In the Windows folder picker, press <strong>Ctrl + L</strong>, paste the copied location, press <strong>Enter</strong>, then choose the <strong>GSPro</strong> folder.
+              </p>
+              <p>
+                Looper will automatically check for <strong>GSPro.db</strong>. If the wrong folder is selected, it will not be accepted.
+              </p>
+            </div>
+
             <button
               type="button"
               className="gspro-setup__primary"
@@ -315,7 +336,7 @@ export default function BrowserGsproSetupGate({
           <>
             <h1>Keep GSPro connected</h1>
             <p className="gspro-setup__lead">
-              Looper remembered your GSPro folder. One final Chrome permission makes the connection persist.
+              Looper remembered your GSPro folder. One final Chrome permission lets this browser keep using it on future visits.
             </p>
             <div className="gspro-setup__callout">
               <strong>Important:</strong> after you click below, choose <strong>Allow every time</strong> in Chrome.
@@ -333,12 +354,12 @@ export default function BrowserGsproSetupGate({
 
         {setupState === 'session-ready' ? (
           <>
-            <h1>GSPro connected</h1>
+            <h1>GSPro found</h1>
             <p className="gspro-setup__lead">
-              You are ready for this session. On a future visit Chrome may ask one more time for folder access.
+              Looper found <strong>GSPro.db</strong> and saved this folder for this browser.
             </p>
             <div className="gspro-setup__callout">
-              If that happens, Looper will show a <strong>Keep GSPro connected</strong> button. Choose <strong>Allow every time</strong> in Chrome and you should not have to do this again.
+              On a future visit Chrome may ask once more for folder access. If it does, choose <strong>Allow every time</strong> and Looper should reconnect automatically after that.
             </div>
             <button
               type="button"
@@ -346,7 +367,7 @@ export default function BrowserGsproSetupGate({
               disabled={busy}
               onClick={() => void prepareAndEnterLooper()}
             >
-              {busy ? 'Starting…' : 'Enter Looper'}
+              {busy ? 'Starting…' : 'Continue to Looper'}
             </button>
           </>
         ) : null}

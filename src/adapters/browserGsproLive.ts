@@ -1,6 +1,7 @@
 import type {
   SimReadFinalShotEvent,
   SimReadResolvedShot,
+  SimReadResolvedShotFieldSource,
 } from './simreadFinalShot'
 import {
   isBrowserGsproAccessSupported,
@@ -32,6 +33,13 @@ type ConnectToBrowserGsproOptions = {
 export type BrowserGsproLiveConnection = {
   mode: 'simread'
   disconnect: () => void
+}
+
+type AmbiguousClubField = 'clubPath' | 'clubAoa' | 'faceToTarget' | 'faceToPath'
+
+type ResolvedClubField = {
+  value?: number
+  source: SimReadResolvedShotFieldSource
 }
 
 const POLL_INTERVAL_MS = 500
@@ -81,7 +89,35 @@ const deriveTotalSpin = (shotData: ShotDataObject) => {
   }
 }
 
-const buildResolvedShot = (shotData: ShotDataObject): SimReadResolvedShot => {
+const resolveClubField = (
+  rawValue: unknown,
+  field: AmbiguousClubField,
+  knownSupportedFields: Set<AmbiguousClubField>,
+): ResolvedClubField => {
+  const value = toNumber(rawValue)
+  if (value === undefined) {
+    return { value: undefined, source: 'missing' }
+  }
+
+  if (value !== 0) {
+    knownSupportedFields.add(field)
+    return { value, source: 'gspro' }
+  }
+
+  // GSPro does not expose a separate measured/not-measured flag for these club
+  // angles. Until this exact field has produced a non-zero value in the current
+  // connection, a literal zero is preserved but marked ambiguous so OGC may fill
+  // the canonical value without destroying the raw GSPro record.
+  return {
+    value,
+    source: knownSupportedFields.has(field) ? 'gspro' : 'ambiguous',
+  }
+}
+
+const buildResolvedShot = (
+  shotData: ShotDataObject,
+  knownSupportedClubFields: Set<AmbiguousClubField>,
+): SimReadResolvedShot => {
   const carry = firstNumber(shotData.Carry, shotData.rawCarryGame, shotData.rawCarryLM)
   const totalDistance = toNumber(shotData.TotalDistance)
   const offline = toNumber(shotData.Offline)
@@ -92,6 +128,28 @@ const buildResolvedShot = (shotData: ShotDataObject): SimReadResolvedShot => {
   const peakHeight = toNumber(shotData.PeakHeight)
   const descentAngle = firstNumber(shotData.Decent, shotData.Descent)
   const totalSpin = deriveTotalSpin(shotData)
+  const clubSpeed = toNumber(shotData.ClubSpeed)
+  const smashFactor = toNumber(shotData.SmashFactor)
+  const clubPath = resolveClubField(
+    shotData.Path,
+    'clubPath',
+    knownSupportedClubFields,
+  )
+  const clubAoa = resolveClubField(
+    shotData.AoA,
+    'clubAoa',
+    knownSupportedClubFields,
+  )
+  const faceToTarget = resolveClubField(
+    shotData.FaceToTarget,
+    'faceToTarget',
+    knownSupportedClubFields,
+  )
+  const faceToPath = resolveClubField(
+    shotData.FaceToPath,
+    'faceToPath',
+    knownSupportedClubFields,
+  )
 
   return {
     club: toStringValue(shotData.club),
@@ -118,18 +176,26 @@ const buildResolvedShot = (shotData: ShotDataObject): SimReadResolvedShot => {
     descentAngleSource: descentAngle !== undefined ? 'gspro' : undefined,
     backSpin: toNumber(shotData.BackSpin),
     sideSpin: toNumber(shotData.SideSpin),
-    clubSpeed: toNumber(shotData.ClubSpeed),
-    clubPath: toNumber(shotData.Path),
-    clubAoa: toNumber(shotData.AoA),
-    faceToTarget: toNumber(shotData.FaceToTarget),
-    faceToPath: toNumber(shotData.FaceToPath),
+    clubSpeed,
+    clubSpeedSource:
+      clubSpeed !== undefined && clubSpeed > 0 ? 'gspro' : 'missing',
+    clubPath: clubPath.value,
+    clubPathSource: clubPath.source,
+    clubAoa: clubAoa.value,
+    clubAoaSource: clubAoa.source,
+    faceToTarget: faceToTarget.value,
+    faceToTargetSource: faceToTarget.source,
+    faceToPath: faceToPath.value,
+    faceToPathSource: faceToPath.source,
     clubLie: toNumber(shotData.Lie),
     clubLoft: toNumber(shotData.Loft),
     dynamicLoft: toNumber(shotData.DynamicLoft),
     closureRate: toNumber(shotData.CR),
     clubFaceHImpact: toNumber(shotData.HI),
     clubFaceVImpact: toNumber(shotData.VI),
-    smashFactor: toNumber(shotData.SmashFactor),
+    smashFactor,
+    smashFactorSource:
+      smashFactor !== undefined && smashFactor > 0 ? 'gspro' : 'missing',
     distToPin: toNumber(shotData.DistanceToPin),
     distanceToPin: toNumber(shotData.DistanceToPin),
     shotName: toStringValue(shotData.shotName),
@@ -137,12 +203,18 @@ const buildResolvedShot = (shotData: ShotDataObject): SimReadResolvedShot => {
   }
 }
 
-const buildFinalShotEvent = (latest: BrowserGsproLatestShot): SimReadFinalShotEvent => {
+const buildFinalShotEvent = (
+  latest: BrowserGsproLatestShot,
+  knownSupportedClubFields: Set<AmbiguousClubField>,
+): SimReadFinalShotEvent => {
   if (!latest.shotData || typeof latest.shotData !== 'object' || Array.isArray(latest.shotData)) {
     throw new Error('GSPro DrivingRangeShot.ShotData was not an object.')
   }
 
-  const resolvedShot = buildResolvedShot(latest.shotData as ShotDataObject)
+  const resolvedShot = buildResolvedShot(
+    latest.shotData as ShotDataObject,
+    knownSupportedClubFields,
+  )
   const ogcCandidates = {
     ballSpeed: resolvedShot.ballSpeed,
     vla: resolvedShot.vla,
@@ -245,6 +317,7 @@ export const connectToBrowserGsproEvents = ({
   let initialized = false
   let lastRowId: number | null = null
   let databaseState: { size: number; lastModified: number } | null = null
+  const knownSupportedClubFields = new Set<AmbiguousClubField>()
 
   onStatusChange?.('connecting')
 
@@ -340,7 +413,7 @@ export const connectToBrowserGsproEvents = ({
 
     lastRowId = latest.rowId
     onStatusChange?.('received-shot')
-    onFinalShot(buildFinalShotEvent(latest))
+    onFinalShot(buildFinalShotEvent(latest, knownSupportedClubFields))
     onStatusChange?.('waiting')
   }
 

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
+import { getInstalledMishitClassification } from '../lib/mishitPlanningPopulation'
 import { formatShotRank, normalizeShotRank } from '../lib/shotRank'
 import { getShotVariantLabel, resolveShotVariantId } from '../lib/shotVariants'
 import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
@@ -35,7 +36,7 @@ const formatRank = (value: number | string | undefined) => formatShotRank(value)
 const shotTableColumns = [
   'Select',
   'Delete',
-  'Pure',
+  'Tag',
   'Time',
   'Club',
   'Variant',
@@ -271,6 +272,22 @@ const descentValue = (shot: Shot) =>
     'descentAngleDegrees',
   ])
 
+const systemMishitTag = (shot: Shot): 'Mishit' | 'Severe' | undefined => {
+  const classification = getInstalledMishitClassification(shot.id)?.classification
+  if (classification === 'severe_mishit') {
+    return 'Severe'
+  }
+  if (classification === 'mishit') {
+    return 'Mishit'
+  }
+  return undefined
+}
+
+const shotTagExportValue = (shot: Shot) =>
+  [shot.feltPerfect ? 'Pure' : undefined, systemMishitTag(shot)]
+    .filter((value): value is string => Boolean(value))
+    .join(' | ')
+
 const sessionClubSummary = (session: SavedSession, shots = session.shots) => {
   const counts = new Map<Club, number>()
   shots.forEach((shot) => {
@@ -344,7 +361,7 @@ const isMockSession = (session: SavedSession) =>
 const shotTableRowValues = (shot: Shot, _systemOldExcluded: boolean) => [
   '',
   'Delete',
-  shot.feltPerfect ? '✓ Pure' : 'Pure',
+  shotTagExportValue(shot),
   new Date(shot.capturedAt).toLocaleTimeString(),
   getClubLabel(shot.club),
   getShotVariantLabel(shot.club, shot.shotVariantId),
@@ -1041,16 +1058,30 @@ function DataManagementPage() {
                                             </button>
                                           </td>
                                           <td>
-                                            <button
-                                              aria-pressed={shot.feltPerfect === true}
-                                              className={`dm-action dm-pure-toggle ${
-                                                shot.feltPerfect ? 'is-selected' : ''
-                                              }`}
-                                              onClick={() => toggleShotPure(session.id, shot.id)}
-                                              type="button"
-                                            >
-                                              {shot.feltPerfect ? '✓ Pure' : 'Pure'}
-                                            </button>
+                                            <div className="dm-shot-tags">
+                                              <button
+                                                aria-pressed={shot.feltPerfect === true}
+                                                className={`dm-action dm-pure-toggle ${
+                                                  shot.feltPerfect ? 'is-selected' : ''
+                                                }`}
+                                                onClick={() => toggleShotPure(session.id, shot.id)}
+                                                type="button"
+                                              >
+                                                {shot.feltPerfect ? '✓ Pure' : 'Pure'}
+                                              </button>
+                                              {systemMishitTag(shot) ? (
+                                                <span
+                                                  className={`dm-system-tag ${
+                                                    systemMishitTag(shot) === 'Severe'
+                                                      ? 'is-severe'
+                                                      : 'is-mishit'
+                                                  }`}
+                                                  title="Looper-derived classification; excluded from Stock and other planning calculations."
+                                                >
+                                                  {systemMishitTag(shot)}
+                                                </span>
+                                              ) : null}
+                                            </div>
                                           </td>
                                           <td>{new Date(shot.capturedAt).toLocaleTimeString()}</td>
                                           <td>{getClubLabel(shot.club)}</td>
