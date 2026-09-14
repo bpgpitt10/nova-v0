@@ -1,0 +1,99 @@
+{
+  "layers": {
+    "dem_20000": [
+      {
+        "attributes": {
+          "OBJECTID": 560,
+          "Shape__Area": 158011650.3897705,
+          "Shape__Length": 50654.16800745826,
+          "contract": "OP22BMRS029",
+          "filename": "bc_082k049_xli1m_utm11_2015.tif",
+          "grid_scale": "1:20000",
+          "maptile": "082k049",
+          "op_number": " ",
+          "oper_name": "Kootenay (Purchased LiDAR)",
+          "path": "\\082\\082k\\2015\\dem\\bc_082k049_xli1m_utm11_2015.tif",
+          "projection": "utm11",
+          "s3Hyperlink": "<a href=\"https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dem/bc_082k049_xli1m_utm11_2015.tif\" target=\"_blank\">bc_082k049_xli1m_utm11_2015.tif</a>",
+          "s3Url": "https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dem/bc_082k049_xli1m_utm11_2015.tif",
+          "spacing": "1 metre",
+          "year": 2015
+        }
+      }
+    ],
+    "dem_2500": [],
+    "dsm_10000": [],
+    "dsm_20000": [
+      {
+        "attributes": {
+          "OBJECTID": 425,
+          "Shape__Area": 158011650.3897705,
+          "Shape__Length": 50654.16800745826,
+          "contract": "OP22BMRS029",
+          "filename": "bc_082k049_xli1m_utm11_2015_dsm.tif",
+          "grid_scale": "1:20000",
+          "maptile": "082k049",
+          "op_number": null,
+          "oper_name": "Kootenay (Purchased LiDAR)",
+          "path": "\\082\\082k\\2015\\dsm\\bc_082k049_xli1m_utm11_2015_dsm.tif",
+          "projection": "utm11",
+          "s3Hyperlink": "<a href=\"https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dsm/bc_082k049_xli1m_utm11_2015_dsm.tif\" target=\"_blank\">bc_082k049_xli1m_utm11_2015_dsm.tif</a>",
+          "s3Url": "https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dsm/bc_082k049_xli1m_utm11_2015_dsm.tif",
+          "spacing": "1 metre",
+          "year": 2015
+        }
+      }
+    ],
+    "dsm_2500": [],
+    "point_cloud": [
+      {
+        "attributes": {
+          "OBJECTID": 95300,
+          "Shape__Area": 2468477.480895996,
+          "Shape__Length": 6331.456929016558,
+          "acc_rpt": null,
+          "classes": "[1, 2, 7]",
+          "contract": "OP22BMRS029",
+          "density": 6,
+          "end_time": null,
+          "filename": "bc_082k049_2_4_3_xyes_6_utm11_2015.laz",
+          "global_enc": null,
+          "info_file": null,
+          "maptile": "082k049_2_4_3",
+          "op_number": null,
+          "oper_name": "Kootenay (Purchased LiDAR)",
+          "path": "\\082\\082k\\2015\\pointcloud\\bc_082k049_2_4_3_xyes_6_utm11_2015.laz",
+          "point_form": null,
+          "projection": "utm11",
+          "s3Hyperlink": "<a href=\"https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/pointcloud/bc_082k049_2_4_3_xyes_6_utm11_2015.laz\" target=\"_blank\">bc_082k049_2_4_3_xyes_6_utm11_2015.laz</a>",
+          "s3RptHyperlink": "<a href=\"https://nrs.objectstore.gov.bc.ca/gdwuts/metadata/accuracy_rpts/2021/op22bmrs029_summary.pdf\" target=\"_blank\">op22bmrs029_summary.pdf</a>",
+          "s3RptUrl": "https://nrs.objectstore.gov.bc.ca/gdwuts/metadata/accuracy_rpts/2021/op22bmrs029_summary.pdf",
+          "s3Url": "https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/pointcloud/bc_082k049_2_4_3_xyes_6_utm11_2015.laz",
+          "start_time": null,
+          "total_point": null,
+          "version": null,
+          "vert_datum": "Canadian Geodetic Vertical Datum of 2013",
+          "x_max": null,
+          "x_min": null,
+          "y_max": null,
+          "y_min": null,
+          "year": 2015
+        }
+      }
+    ],
+    "project_extent": [
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "Shape__Area": 16737817261.92212,
+          "Shape__Length": 699485.5312418699,
+          "YEAR_": 2015
+        }
+      }
+    ]
+  },
+  "query_point": {
+    "lat": 50.447,
+    "lon": -116.24857
+  }
+}
