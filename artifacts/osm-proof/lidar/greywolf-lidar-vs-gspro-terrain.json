@@ -1,0 +1,1220 @@
+{
+  "interpretation_notes": [
+    "GSPro lie slope is a simulator surface measurement; LiDAR is real-world terrain and exact agreement is not expected if the course designer resculpted terrain.",
+    "Slope comparison uses total slope magnitude so it does not require knowing the GSPro lie footer orientation frame.",
+    "The 5m LiDAR plane fit is the primary comparison; 3m/9m/15m windows are retained to show sensitivity to terrain smoothing.",
+    "OCR values above 20 degrees or malformed multiline reads are marked suspect and excluded from the clean summary."
+  ],
+  "observations": [
+    {
+      "dem_x": 553377.4846724137,
+      "dem_y": 5588352.138749717,
+      "distance_to_nearest_surface_m": 2.4464845525505323,
+      "distance_to_pin_yds": 127.35537073490813,
+      "ending_pos": {
+        "x": 931.2283,
+        "y": 58.181797,
+        "z": 984.803
+      },
+      "ending_surface_raw": 3,
+      "hole": 1,
+      "hole_shot": 1,
+      "lat": 50.44475830420153,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 290.87832560700645,
+          "dzdx": 0.2883504231810207,
+          "dzdy": -0.10998535156454636,
+          "elevation_m": 1199.3930870459626,
+          "slope_deg": 17.15097039984606,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 285.78743121971945,
+          "dzdx": 0.3267993164061806,
+          "dzdy": -0.09239746093817303,
+          "elevation_m": 1199.3511722985716,
+          "slope_deg": 18.758010919640792,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 285.09573196690417,
+          "dzdx": 0.39090734411168515,
+          "dzdy": -0.1054436577692286,
+          "elevation_m": 1199.2279021734598,
+          "slope_deg": 22.041985986735092,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 285.7336010366081,
+          "dzdx": 0.3532473609561151,
+          "dzdy": -0.09951692127060596,
+          "elevation_m": 1199.2359142332737,
+          "slope_deg": 20.153020934966367,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 12.8,
+      "lie_total_deg": 13.317053387741428,
+      "lie_updown_deg": 3.8,
+      "lon": -116.24825468055586,
+      "ocr_lr": "12.89 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "3.89 UP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1210830330,
+      "shot_id": "15258d3f-f1c7-4c2e-9984-c6d6acdbcacc",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553342.5997850671,
+      "dem_y": 5588254.712818678,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 28.942766076115486,
+      "ending_pos": {
+        "x": 896.342163,
+        "y": 63.72555,
+        "z": 887.4258
+      },
+      "ending_surface_raw": 3,
+      "hole": 1,
+      "hole_shot": 2,
+      "lat": 50.44388536546254,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 15.30909492757462,
+          "dzdx": -0.13002522786268228,
+          "dzdy": -0.4749959309899623,
+          "elevation_m": 1204.5148301046704,
+          "slope_deg": 26.218909392406903,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 17.357044869837694,
+          "dzdx": -0.10220703124989355,
+          "dzdy": -0.3270019531246362,
+          "elevation_m": 1204.5462101178712,
+          "slope_deg": 18.91159420368013,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 8.92219687857363,
+          "dzdx": -0.028186035156210234,
+          "dzdy": -0.1795371726709618,
+          "elevation_m": 1204.6342851230515,
+          "slope_deg": 10.300299892126954,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 358.29308983575703,
+          "dzdx": 0.0039188639322967735,
+          "dzdy": -0.13150541759659973,
+          "elevation_m": 1204.7450263053508,
+          "slope_deg": 7.495004288250094,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -8.2,
+      "lie_total_deg": 44.70681872027822,
+      "lie_updown_deg": 44.4,
+      "lon": -116.24875981937878,
+      "ocr_lr": "8.2 LEFT",
+      "ocr_suspect": true,
+      "ocr_ud": "44\n4.4UP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1210830330,
+      "shot_id": "db478504-ca87-45da-82e9-951d38569e69",
+      "starting_surface": null
+    },
+    {
+      "dem_x": 553376.4073766248,
+      "dem_y": 5587934.35027714,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 98.18577701224848,
+      "ending_pos": {
+        "x": 929.7131,
+        "y": 94.22526,
+        "z": 567.059
+      },
+      "ending_surface_raw": 2,
+      "hole": 2,
+      "hole_shot": 1,
+      "lat": 50.44100140173602,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 313.10978696635465,
+          "dzdx": 0.07832845052068037,
+          "dzdy": -0.07332356770871229,
+          "elevation_m": 1234.961513967422,
+          "slope_deg": 6.123982980964527,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 314.85652770829023,
+          "dzdx": 0.07819335937471701,
+          "dzdy": -0.07780273437515461,
+          "elevation_m": 1234.962809635368,
+          "slope_deg": 6.294634488247715,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 312.50889637464724,
+          "dzdx": 0.08018482349539138,
+          "dzdy": -0.07349876121270427,
+          "elevation_m": 1234.964076406854,
+          "slope_deg": 6.2078560082785845,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 313.51620786149124,
+          "dzdx": 0.07810904366628611,
+          "dzdy": -0.07416471935493973,
+          "elevation_m": 1234.9664936710974,
+          "slope_deg": 6.14762357633241,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 1.2,
+      "lie_total_deg": 5.823323140129848,
+      "lie_updown_deg": 5.7,
+      "lon": -116.2483293653677,
+      "ocr_lr": "1.29 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "5.79 UP",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1209268517,
+      "shot_id": "cb1744b7-35a2-45b2-aab6-43ed58118f98",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553481.8861019718,
+      "dem_y": 5587560.006133015,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 181.15995625546805,
+      "ending_pos": {
+        "x": 1034.47607,
+        "y": 133.491455,
+        "z": 192.635376
+      },
+      "ending_surface_raw": 2,
+      "hole": 3,
+      "hole_shot": 1,
+      "lat": 50.43762547345661,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 344.8952882476584,
+          "dzdx": 0.028340657552588137,
+          "dzdy": -0.10500081380178017,
+          "elevation_m": 1274.3050270091749,
+          "slope_deg": 6.206994366368003,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 344.19598130895645,
+          "dzdx": 0.030795898437823495,
+          "dzdy": -0.10880126953134095,
+          "elevation_m": 1274.2760289854682,
+          "slope_deg": 6.451354991589614,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 344.9288058005775,
+          "dzdx": 0.027871365017288485,
+          "dzdy": -0.10350273980066049,
+          "elevation_m": 1274.1800207389351,
+          "slope_deg": 6.118156554268264,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 341.70334723850124,
+          "dzdx": 0.03132330031621414,
+          "dzdy": -0.09473147437643092,
+          "elevation_m": 1273.9974979847584,
+          "slope_deg": 5.697871800839313,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -0.0,
+      "lie_total_deg": 7.6,
+      "lie_updown_deg": 7.6,
+      "lon": -116.24689749362676,
+      "ocr_lr": "0.0 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "7.69 UP",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1212582276,
+      "shot_id": "533fa9c1-45a0-418b-9138-b4519de0b606",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553317.9089645589,
+      "dem_y": 5587689.104483762,
+      "distance_to_nearest_surface_m": 18.822307534396256,
+      "distance_to_pin_yds": 151.96751968503938,
+      "ending_pos": {
+        "x": 871.133,
+        "y": 122.182289,
+        "z": 321.903046
+      },
+      "ending_surface_raw": 3,
+      "hole": 4,
+      "hole_shot": 1,
+      "lat": 50.43880132340254,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 54.94594397783203,
+          "dzdx": -0.413330078125096,
+          "dzdy": -0.28999837239575754,
+          "elevation_m": 1262.4501104969893,
+          "slope_deg": 26.78996968375029,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 48.32277678998753,
+          "dzdx": -0.2879980468752067,
+          "dzdy": -0.2563916015626546,
+          "elevation_m": 1262.575227610058,
+          "slope_deg": 21.086132687126376,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 45.28479063895173,
+          "dzdx": -0.20398107458044312,
+          "dzdy": -0.20196329752616293,
+          "elevation_m": 1262.84398688503,
+          "slope_deg": 16.016102725591175,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 39.435703326624264,
+          "dzdx": -0.18290759858633293,
+          "dzdy": -0.22239266531823887,
+          "elevation_m": 1263.0523135435237,
+          "slope_deg": 16.063615915743547,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 7.0,
+      "lie_total_deg": 12.948002371057754,
+      "lie_updown_deg": -11.0,
+      "lon": -116.24918799806626,
+      "ocr_lr": "7.09 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": ".11.02DOWN",
+      "osm_surface": "rough",
+      "osm_surface_id": 1210827197,
+      "shot_id": "fcd3628c-8c4c-475b-9e84-e35677b12bab",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553230.7815090887,
+      "dem_y": 5588192.363845805,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 165.42782152230973,
+      "ending_pos": {
+        "x": 784.7857,
+        "y": 67.55346,
+        "z": 825.2055
+      },
+      "ending_surface_raw": 2,
+      "hole": 5,
+      "hole_shot": 1,
+      "lat": 50.44333484150046,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 306.43715829502355,
+          "dzdx": 0.1083577473957469,
+          "dzdy": -0.07999674479174246,
+          "elevation_m": 1208.245836229838,
+          "slope_deg": 7.6708955828414656,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 310.201916554363,
+          "dzdx": 0.09180664062489825,
+          "dzdy": -0.07758789062472715,
+          "elevation_m": 1208.2484102736767,
+          "slope_deg": 6.854140121658878,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 314.2583237443275,
+          "dzdx": 0.08407253689232506,
+          "dzdy": -0.08192364728029133,
+          "elevation_m": 1208.2302590159106,
+          "slope_deg": 6.695131726465605,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 316.4263072038396,
+          "dzdx": 0.07705764043894343,
+          "dzdy": -0.08099292573479033,
+          "elevation_m": 1208.2050788937377,
+          "slope_deg": 6.378796714815833,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -2.2,
+      "lie_total_deg": 5.366842741266272,
+      "lie_updown_deg": -4.9,
+      "lon": -116.25034333520875,
+      "ocr_lr": "2.29 OLEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "4.99 DOWN",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1209268504,
+      "shot_id": "a8f7fc6c-44b5-4166-a33c-94c6102ef183",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553027.5166521156,
+      "dem_y": 5588822.751722049,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 59.3818460192476,
+      "ending_pos": {
+        "x": 582.7407,
+        "y": 50.4244156,
+        "z": 1455.74414
+      },
+      "ending_surface_raw": 1,
+      "hole": 7,
+      "hole_shot": 1,
+      "lat": 50.44902206925835,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 81.06021587355019,
+          "dzdx": -0.11665852864587682,
+          "dzdy": -0.018351236978560337,
+          "elevation_m": 1190.893462391782,
+          "slope_deg": 6.735042872129046,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 85.72862809036587,
+          "dzdx": -0.11519287109386,
+          "dzdy": -0.008603515624827196,
+          "elevation_m": 1190.8919317254104,
+          "slope_deg": 6.589244147270358,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 85.49706492693423,
+          "dzdx": -0.11568716543693039,
+          "dzdy": -0.009110740379128401,
+          "elevation_m": 1190.8645470685676,
+          "slope_deg": 6.619302377414172,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 82.16201866513404,
+          "dzdx": -0.1316093226841524,
+          "dzdy": -0.018117123558113235,
+          "elevation_m": 1190.7578269399341,
+          "slope_deg": 7.567458149810317,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 1.0,
+      "lie_total_deg": 1.2205740563093903,
+      "lie_updown_deg": 0.7,
+      "lon": -116.25311651153122,
+      "ocr_lr": "1.09 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "0.79 UP",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1212592441,
+      "shot_id": "d3488135-9f98-42e0-9cc1-a3cf5d399094",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553019.5718121047,
+      "dem_y": 5588887.622133667,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 12.178712051618549,
+      "ending_pos": {
+        "x": 574.8825,
+        "y": 50.7702942,
+        "z": 1520.61609
+      },
+      "ending_surface_raw": 1,
+      "hole": 7,
+      "hole_shot": 2,
+      "lat": 50.449606140378066,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 238.90746714589648,
+          "dzdx": 0.10502115885475807,
+          "dzdy": 0.06333414713458296,
+          "elevation_m": 1191.2408358328285,
+          "slope_deg": 6.991860487733008,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 248.457478864544,
+          "dzdx": 0.12160400390625956,
+          "dzdy": 0.048005371093722715,
+          "elevation_m": 1191.1709970786337,
+          "slope_deg": 7.4484089160047695,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 258.4548035212597,
+          "dzdx": 0.13788972077554099,
+          "dzdy": 0.028167272497285012,
+          "elevation_m": 1191.0079094409043,
+          "slope_deg": 8.011034853645047,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 268.6208464483732,
+          "dzdx": 0.14300743466334057,
+          "dzdy": 0.003442964099576784,
+          "elevation_m": 1190.7563346979466,
+          "slope_deg": 8.140867746196685,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 3.8,
+      "lie_total_deg": 4.2025048579351125,
+      "lie_updown_deg": 1.8,
+      "lon": -116.25321922299665,
+      "ocr_lr": "3.89 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "1.89 OUP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1446738262,
+      "shot_id": "716ced1d-da3f-49a8-9e98-967903ef99de",
+      "starting_surface": "rough"
+    },
+    {
+      "dem_x": 553134.8344110639,
+      "dem_y": 5588652.2413480645,
+      "distance_to_nearest_surface_m": 1.8694806364993874,
+      "distance_to_pin_yds": 150.63548665791774,
+      "ending_pos": {
+        "x": 689.5845,
+        "y": 56.35559,
+        "z": 1285.13831
+      },
+      "ending_surface_raw": 1,
+      "hole": 8,
+      "hole_shot": 1,
+      "lat": 50.447479029189985,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 300.7943765184414,
+          "dzdx": 0.243326822916501,
+          "dzdy": -0.14501953124977263,
+          "elevation_m": 1197.1144319794548,
+          "slope_deg": 15.815527204914478,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 301.47923316255105,
+          "dzdx": 0.23159179687488443,
+          "dzdy": -0.14180419921854082,
+          "elevation_m": 1197.1165222507168,
+          "slope_deg": 15.192689261410777,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 301.24700176510805,
+          "dzdx": 0.2264081036603088,
+          "dzdy": -0.13737160011578453,
+          "elevation_m": 1197.127290269489,
+          "slope_deg": 14.832787591188689,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 296.8610728797438,
+          "dzdx": 0.24474077497209118,
+          "dzdy": -0.12395507812493634,
+          "elevation_m": 1197.2083052004132,
+          "slope_deg": 15.341134725166663,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 7.5,
+      "lie_total_deg": 8.139921805276542,
+      "lie_updown_deg": 3.2,
+      "lon": -116.25162925328848,
+      "ocr_lr": "7.59 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "3.29 OUP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1446802845,
+      "shot_id": "9ed41fb8-56c1-4d93-9ecf-f319d03934de",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553669.1548566835,
+      "dem_y": 5589085.324916384,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 91.87230971128608,
+      "ending_pos": {
+        "x": 1222.87012,
+        "y": 25.93484,
+        "z": 1717.58032
+      },
+      "ending_surface_raw": 2,
+      "hole": 10,
+      "hole_shot": 2,
+      "lat": 50.45132492761418,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 243.84381039761456,
+          "dzdx": 0.0949910481772324,
+          "dzdy": 0.04665120442768966,
+          "elevation_m": 1166.4712672076557,
+          "slope_deg": 6.041030821193103,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 243.88117790333354,
+          "dzdx": 0.10359619140626312,
+          "dzdy": 0.05079345703097715,
+          "elevation_m": 1166.464150192924,
+          "slope_deg": 6.581586103840973,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 243.64343340805564,
+          "dzdx": 0.09325674551503088,
+          "dzdy": 0.04620496961797471,
+          "elevation_m": 1166.447502729795,
+          "slope_deg": 5.941698360706466,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 249.7969424614646,
+          "dzdx": 0.07949372791108919,
+          "dzdy": 0.029252813430048263,
+          "elevation_m": 1166.4095748292832,
+          "slope_deg": 4.841695877117581,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -2.6,
+      "lie_total_deg": 4.276487580444002,
+      "lie_updown_deg": 3.4,
+      "lon": -116.24404217836934,
+      "ocr_lr": "2.6 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "3.49 LUP",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1212597308,
+      "shot_id": "3b586eb5-ba67-4aaa-84f0-842fc00e5b77",
+      "starting_surface": null
+    },
+    {
+      "dem_x": 553791.9383295982,
+      "dem_y": 5589415.098654676,
+      "distance_to_nearest_surface_m": 9.763175502026947,
+      "distance_to_pin_yds": 113.35504702537183,
+      "ending_pos": {
+        "x": 1345.69067,
+        "y": 24.41702,
+        "z": 2047.17444
+      },
+      "ending_surface_raw": 3,
+      "hole": 11,
+      "hole_shot": 1,
+      "lat": 50.454279191839014,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 293.1234894150256,
+          "dzdx": 0.616658528645406,
+          "dzdy": -0.2633260091149623,
+          "elevation_m": 1165.7059946556128,
+          "slope_deg": 33.84297512452465,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 290.2469392608728,
+          "dzdx": 0.5818066406250179,
+          "dzdy": -0.21460449218761823,
+          "elevation_m": 1165.7055676428959,
+          "slope_deg": 31.804053827660695,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 290.8145949546191,
+          "dzdx": 0.5392962420427153,
+          "dzdy": -0.20501663773166,
+          "elevation_m": 1165.7700307219877,
+          "slope_deg": 29.982832328953283,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 291.4991061497052,
+          "dzdx": 0.502367350260408,
+          "dzdy": -0.19787870861250667,
+          "elevation_m": 1165.8969091271408,
+          "slope_deg": 28.36612720583409,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -14.2,
+      "lie_total_deg": 16.052524974973878,
+      "lie_updown_deg": -7.8,
+      "lon": -116.2422654685477,
+      "ocr_lr": "14.2 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "7.89 DOWN",
+      "osm_surface": "rough",
+      "osm_surface_id": 1212598855,
+      "shot_id": "d485dc2b-5667-4d6a-9718-5a2094c40a45",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553790.0572580094,
+      "dem_y": 5589502.876120892,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 22.998087707786528,
+      "ending_pos": {
+        "x": 1343.91479,
+        "y": 17.20559,
+        "z": 2134.94482
+      },
+      "ending_surface_raw": 1,
+      "hole": 11,
+      "hole_shot": 2,
+      "lat": 50.45506870842214,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 282.8551842455681,
+          "dzdx": 0.15334065755211054,
+          "dzdy": -0.034993489583484916,
+          "elevation_m": 1157.9900470448604,
+          "slope_deg": 8.938418820986058,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 284.3123139101115,
+          "dzdx": 0.1748046875000723,
+          "dzdy": -0.04459716796873181,
+          "elevation_m": 1157.9498268387106,
+          "slope_deg": 10.226390571558236,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 283.8276400831733,
+          "dzdx": 0.19050202546298875,
+          "dzdy": -0.04688924153629159,
+          "elevation_m": 1157.893947199134,
+          "slope_deg": 11.099753000929816,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 283.11877901664747,
+          "dzdx": 0.19400216238839152,
+          "dzdy": -0.04521275111619616,
+          "elevation_m": 1157.7955472741785,
+          "slope_deg": 11.265906230839555,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -9.0,
+      "lie_total_deg": 12.69447576120442,
+      "lie_updown_deg": 9.1,
+      "lon": -116.24227935495261,
+      "ocr_lr": "9.09 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "9.19 UP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1212598855,
+      "shot_id": "c6b7d88f-d1b3-42a9-ab34-789c84bf4742",
+      "starting_surface": null
+    },
+    {
+      "dem_x": 553164.616834657,
+      "dem_y": 5589335.30660841,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 112.54580052493438,
+      "ending_pos": {
+        "x": 719.979065,
+        "y": 15.1746845,
+        "z": 1968.10034
+      },
+      "ending_surface_raw": 1,
+      "hole": 13,
+      "hole_shot": 1,
+      "lat": 50.4536188528175,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 318.6691332975645,
+          "dzdx": 0.2433268229167964,
+          "dzdy": -0.2766723632805679,
+          "elevation_m": 1155.9419340291827,
+          "slope_deg": 20.226329129963283,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 318.3055086957513,
+          "dzdx": 0.23820068359377933,
+          "dzdy": -0.26740234375006366,
+          "elevation_m": 1155.9391430690773,
+          "slope_deg": 19.70301095813204,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 318.68880629627773,
+          "dzdx": 0.21901878074367373,
+          "dzdy": -0.24920563874411528,
+          "elevation_m": 1155.9187253282885,
+          "slope_deg": 18.35440041740516,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 316.12821520916833,
+          "dzdx": 0.204031081426714,
+          "dzdy": -0.21222874232694267,
+          "elevation_m": 1155.8302153568143,
+          "slope_deg": 16.40428205244453,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 9.5,
+      "lie_total_deg": 11.900715395420477,
+      "lie_updown_deg": -7.3,
+      "lon": -116.25111285823648,
+      "ocr_lr": "9.5 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "7.39 DOWN",
+      "osm_surface": "rough",
+      "osm_surface_id": 1446806458,
+      "shot_id": "c030a50e-d9f7-4508-b4c5-7532651952f6",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553222.9957803969,
+      "dem_y": 5588860.789103924,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 142.77056867891514,
+      "ending_pos": {
+        "x": 777.7103,
+        "y": 46.42641,
+        "z": 1493.5697
+      },
+      "ending_surface_raw": 2,
+      "hole": 14,
+      "hole_shot": 1,
+      "lat": 50.44934642141181,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 56.289750798839805,
+          "dzdx": -0.039978027343763815,
+          "dzdy": -0.026672363280795253,
+          "elevation_m": 1186.9169130372875,
+          "slope_deg": 2.7514549941682906,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 57.163221156456814,
+          "dzdx": -0.04679931640633955,
+          "dzdy": -0.03020263671851353,
+          "elevation_m": 1186.9032711936652,
+          "slope_deg": 3.1880218250955314,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 77.37373546652418,
+          "dzdx": -0.05629408094614383,
+          "dzdy": -0.012610315393430938,
+          "elevation_m": 1186.909801324192,
+          "slope_deg": 3.3016881120326467,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 84.13176510796825,
+          "dzdx": -0.06147565569205532,
+          "dzdy": -0.0063184465680024005,
+          "elevation_m": 1186.948581931596,
+          "slope_deg": 3.5363534881818377,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -1.2,
+      "lie_total_deg": 1.696808224495144,
+      "lie_updown_deg": 1.2,
+      "lon": -116.25035801314392,
+      "ocr_lr": "1.29 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "1.29 UP",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1212602839,
+      "shot_id": "211f58b5-a54c-4070-af82-b0ea73453384",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553200.5329410068,
+      "dem_y": 5588717.317393728,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 17.27998687664042,
+      "ending_pos": {
+        "x": 755.1632,
+        "y": 59.4859238,
+        "z": 1350.13721
+      },
+      "ending_surface_raw": 3,
+      "hole": 14,
+      "hole_shot": 2,
+      "lat": 50.4480582772574,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 11.721410867857855,
+          "dzdx": -0.13002522786482726,
+          "dzdy": -0.6266886393229925,
+          "elevation_m": 1201.1446050693248,
+          "slope_deg": 32.62067868457137,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 10.92558033490991,
+          "dzdx": -0.10300292968759318,
+          "dzdy": -0.5336035156246908,
+          "elevation_m": 1201.0036557037179,
+          "slope_deg": 28.522048163901886,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 11.92934883432082,
+          "dzdx": -0.09411236798325424,
+          "dzdy": -0.4454641836659903,
+          "elevation_m": 1200.7152811335404,
+          "slope_deg": 24.479637881916158,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 16.016703817292637,
+          "dzdx": -0.108868669782363,
+          "dzdy": -0.3792528424944521,
+          "elevation_m": 1200.5758852606946,
+          "slope_deg": 21.532680989922262,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 4.2,
+      "lie_total_deg": 30.99011490912127,
+      "lie_updown_deg": -30.8,
+      "lon": -116.2506947547983,
+      "ocr_lr": "4.29 RIGHT",
+      "ocr_suspect": true,
+      "ocr_ud": "30.89 DOWN",
+      "osm_surface": "rough",
+      "osm_surface_id": 1446806460,
+      "shot_id": "a9e949df-3fe2-4185-8ee6-aca88ad573a3",
+      "starting_surface": "fairway"
+    },
+    {
+      "dem_x": 553241.2341449674,
+      "dem_y": 5589225.090683644,
+      "distance_to_nearest_surface_m": 0.8569746095874353,
+      "distance_to_pin_yds": 79.86646981627297,
+      "ending_pos": {
+        "x": 796.274536,
+        "y": 42.11059,
+        "z": 1857.81335
+      },
+      "ending_surface_raw": 1,
+      "hole": 16,
+      "hole_shot": 1,
+      "lat": 50.452620777953214,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 145.49054926542817,
+          "dzdx": -0.03666178385514929,
+          "dzdy": 0.05332438151140195,
+          "elevation_m": 1182.5768280558045,
+          "slope_deg": 3.702532420475412,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 134.79493246857714,
+          "dzdx": -0.0842016601561551,
+          "dzdy": 0.08360107421890461,
+          "elevation_m": 1182.4725704449002,
+          "slope_deg": 6.7668044383130805,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 128.57418572062562,
+          "dzdx": -0.12540803132228467,
+          "dzdy": 0.10001944082728187,
+          "elevation_m": 1182.2107951015262,
+          "slope_deg": 9.113127213339036,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 120.14609339555818,
+          "dzdx": -0.13378813244049967,
+          "dzdy": 0.07769813174309093,
+          "elevation_m": 1181.849807883872,
+          "slope_deg": 8.794701627103159,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": 3.3,
+      "lie_total_deg": 3.4777374309709583,
+      "lie_updown_deg": 1.1,
+      "lon": -116.25004935864223,
+      "ocr_lr": "3.39 RIGHT",
+      "ocr_suspect": false,
+      "ocr_ud": "1.19 OUP",
+      "osm_surface": "rough",
+      "osm_surface_id": 1446921225,
+      "shot_id": "e8a6c87c-06fc-4a73-99ea-a8d953dfeff9",
+      "starting_surface": "tee"
+    },
+    {
+      "dem_x": 553431.3401508539,
+      "dem_y": 5589052.161256538,
+      "distance_to_nearest_surface_m": 0.0,
+      "distance_to_pin_yds": 54.87005686789152,
+      "ending_pos": {
+        "x": 985.676,
+        "y": 34.40071,
+        "z": 1684.69226
+      },
+      "ending_surface_raw": 2,
+      "hole": 17,
+      "hole_shot": 1,
+      "lat": 50.451048411014135,
+      "lidar": {
+        "1": {
+          "downhill_bearing_deg_from_north": 99.47492853990235,
+          "dzdx": -0.0899658203129444,
+          "dzdy": 0.0150146484375,
+          "elevation_m": 1174.7615192379249,
+          "slope_deg": 5.211535544119106,
+          "valid_cells": 9,
+          "window_m_approx": 3
+        },
+        "2": {
+          "downhill_bearing_deg_from_north": 98.72513794884588,
+          "dzdx": -0.08599853515627857,
+          "dzdy": 0.013198242187172582,
+          "elevation_m": 1174.7652818335364,
+          "slope_deg": 4.972520876459952,
+          "valid_cells": 25,
+          "window_m_approx": 5
+        },
+        "4": {
+          "downhill_bearing_deg_from_north": 104.36903235370073,
+          "dzdx": -0.08457460756657117,
+          "dzdy": 0.02166635018784291,
+          "elevation_m": 1174.7848271847029,
+          "slope_deg": 4.989599593763099,
+          "valid_cells": 81,
+          "window_m_approx": 9
+        },
+        "7": {
+          "downhill_bearing_deg_from_north": 107.09674240699519,
+          "dzdx": -0.08423023042225568,
+          "dzdy": 0.025907360258543122,
+          "elevation_m": 1174.849799943654,
+          "slope_deg": 5.03615057218664,
+          "valid_cells": 225,
+          "window_m_approx": 15
+        }
+      },
+      "lie_leftright_deg": -0.6,
+      "lie_total_deg": 4.9362437055134665,
+      "lie_updown_deg": -4.9,
+      "lon": -116.24739640939976,
+      "ocr_lr": "0.6 LEFT",
+      "ocr_suspect": false,
+      "ocr_ud": "4.9 DOWN",
+      "osm_surface": "fairway",
+      "osm_surface_id": 1212605466,
+      "shot_id": "32903b05-b643-43ca-b15e-7769929dbd50",
+      "starting_surface": "tee"
+    }
+  ],
+  "observations_n": 17,
+  "schema": "looper.greywolf_lidar_gspro_terrain_proof.v0",
+  "slope_comparison": {
+    "all_raw": {
+      "15m_window": {
+        "correlation_r": 0.38307013981430516,
+        "mae_deg": 6.083119705595181,
+        "mean_gspro_lie_total_deg": 11.138244062478716,
+        "mean_lidar_slope_deg": 11.339017170338288,
+        "median_abs_error_deg": 3.9383628882615724,
+        "n": 17
+      },
+      "3m_window": {
+        "correlation_r": 0.7515029429800621,
+        "mae_deg": 5.350759014838836,
+        "mean_gspro_lie_total_deg": 11.138244062478716,
+        "mean_lidar_slope_deg": 13.70818285358559,
+        "median_abs_error_deg": 2.789355629797895,
+        "n": 17
+      },
+      "5m_window": {
+        "correlation_r": 0.6686577146704267,
+        "mae_deg": 5.515325903482454,
+        "mean_gspro_lie_total_deg": 11.138244062478716,
+        "mean_lidar_slope_deg": 12.902979205975988,
+        "median_abs_error_deg": 3.245904058069657,
+        "n": 17
+      },
+      "9m_window": {
+        "correlation_r": 0.4711676880209082,
+        "mae_deg": 6.043668805020381,
+        "mean_gspro_lie_total_deg": 11.138244062478716,
+        "mean_lidar_slope_deg": 12.006199683809367,
+        "median_abs_error_deg": 3.808529995709934,
+        "n": 17
+      }
+    },
+    "by_surface_clean_5m": {
+      "fairway": {
+        "correlation_r": 0.43351723223525385,
+        "mae_deg": 1.7583590175465242,
+        "mean_gspro_lie_total_deg": 4.4171827783083035,
+        "mean_lidar_slope_deg": 5.847357507737574,
+        "median_abs_error_deg": 1.4872973803926062,
+        "n": 7
+      },
+      "rough": {
+        "correlation_r": 0.8302212071992184,
+        "mae_deg": 6.648591996819821,
+        "mean_gspro_lie_total_deg": 10.34161699807257,
+        "mean_lidar_slope_deg": 16.373187697480844,
+        "median_abs_error_deg": 6.2468624940168,
+        "n": 8
+      }
+    },
+    "ocr_clean_lie_le_20deg": {
+      "15m_window": {
+        "correlation_r": 0.8555407768371431,
+        "mae_deg": 3.782919109592729,
+        "mean_gspro_lie_total_deg": 7.576881028849246,
+        "mean_lidar_slope_deg": 10.91570710783857,
+        "median_abs_error_deg": 3.115613544685793,
+        "n": 15
+      },
+      "3m_window": {
+        "correlation_r": 0.8473453233689767,
+        "mae_deg": 4.722962009929254,
+        "mean_gspro_lie_total_deg": 7.576881028849246,
+        "mean_lidar_slope_deg": 11.61330136226512,
+        "median_abs_error_deg": 2.789355629797895,
+        "n": 15
+      },
+      "5m_window": {
+        "correlation_r": 0.872123384822542,
+        "mae_deg": 4.366483273158949,
+        "mean_gspro_lie_total_deg": 7.576881028849246,
+        "mean_lidar_slope_deg": 11.461133608933984,
+        "median_abs_error_deg": 3.245904058069657,
+        "n": 15
+      },
+      "9m_window": {
+        "correlation_r": 0.8642355502287774,
+        "mae_deg": 4.121691588666009,
+        "mean_gspro_lie_total_deg": 7.576881028849246,
+        "mean_lidar_slope_deg": 11.288363790047741,
+        "median_abs_error_deg": 3.0681003545334207,
+        "n": 15
+      }
+    }
+  },
+  "source": {
+    "gspro": "Round 215 post-shot currentRound world coordinates + screen lie slope OCR",
+    "lidar": "LidarBC official 2015 1m DEM bc_082k049_xli1m_utm11_2015.tif",
+    "osm": "OpenStreetMap contributors, ODbL; preserved Greywolf snapshot"
+  },
+  "surface_counts": {
+    "fairway": 7,
+    "rough": 10
+  },
+  "terrain_cache": {
+    "buffer_around_mapped_golf_geometry_m": 50,
+    "cells": 2320344,
+    "compressed_geotiff_mb": 2.1136932373046875,
+    "height_px": 2412,
+    "purpose": "course-wide elevation/slope lookup, not visual terrain rendering",
+    "raw_float32_mb": 8.851409912109375,
+    "resolution_m": [
+      1.0,
+      1.0
+    ],
+    "width_px": 962
+  },
+  "vertical_fit": {
+    "correlation_r": 0.9999497844442068,
+    "dem_elevation_m_equals": "0.999517523 * gspro_y + 1140.749475",
+    "max_abs_residual_m": 0.7969576444370432,
+    "mean_abs_residual_m": 0.24644381377280458,
+    "median_abs_residual_m": 0.25021398479725576,
+    "n": 17,
+    "offset_m": 1140.749474868205,
+    "scale": 0.9995175226828348
+  }
+}
