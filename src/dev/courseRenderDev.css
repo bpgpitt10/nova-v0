@@ -118,3 +118,12 @@
   .course-render-grid { grid-template-columns: 1fr; }
   .course-hole-svg { max-height: none; }
 }
+
+.course-map-attribution {
+  margin: 10px 4px 0;
+  color: #78918c;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.course-map-attribution a { color: #91aaa5; text-decoration: underline; text-underline-offset: 2px; }
+.course-map-attribution a:hover { color: #c8d9d5; }

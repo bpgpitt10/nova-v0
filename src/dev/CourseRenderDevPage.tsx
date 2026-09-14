@@ -213,6 +213,16 @@ function CourseRenderDevPage() {
             <span><i className="legend-swatch bunker" />Bunker</span>
             <span><i className="legend-swatch water" />OSM penalty / water</span>
           </div>
+          <p className="course-map-attribution">
+            Data ©{' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+              OpenStreetMap contributors
+            </a>
+            {' '}·{' '}
+            <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">
+              ODbL 1.0
+            </a>
+          </p>
         </article>
 
         <aside className="course-data-column">
