@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getCurrentLooperUser } from '../cloud/supabaseClient'
+import { runFlightPhysicsSanityChecks } from '../liveCaddie/flightPhysics'
 import { buildLiveCaddieProfileSet } from '../liveCaddie/profileProvider'
 import { modelShotContext } from '../liveCaddie/shotContextModel'
 import type { CaddieModelFactor, CaddieModelStatus } from '../liveCaddie/modelContract'
@@ -33,6 +34,10 @@ const parseNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 const effectLabel = (factor: CaddieModelFactor) => factor.affects.join(' · ') || '—'
+const signedYards = (value: number | null | undefined) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? `${value >= 0 ? '+' : ''}${value.toFixed(1)} yd`
+    : '—'
 
 function CaddieInputsPage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
@@ -83,6 +88,11 @@ function CaddieInputsPage() {
         lateralBiasYds: profile?.lateral_bias_yds ?? null,
         lateralSigmaYds: profile?.lateral_sigma_yds ?? null,
         supportShots: support?.included_stock_shots ?? 0,
+        launchBallSpeedMph: profile?.launch_profile?.ball_speed_mph ?? null,
+        launchVlaDeg: profile?.launch_profile?.vla_deg ?? null,
+        launchHlaDeg: profile?.launch_profile?.hla_deg ?? null,
+        launchSpinRpm: profile?.launch_profile?.total_spin_rpm ?? null,
+        launchSpinAxisDeg: profile?.launch_profile?.spin_axis_deg ?? null,
       },
       {
         targetDistanceYds: targetDistance,
@@ -104,6 +114,12 @@ function CaddieInputsPage() {
 
   const readiness = useMemo(() => windCalibrationReadiness(observations), [observations])
   const observedIds = useMemo(() => new Set(observations.map((item) => item.caseId)), [observations])
+  const physicsChecks = useMemo(() => runFlightPhysicsSanityChecks(), [])
+  const combinedDelta = modeled.physicsPrior.deltas.combinedCarryYds
+  const priorPlayerCarry =
+    profile && typeof combinedDelta === 'number'
+      ? profile.stock_carry_yds + combinedDelta
+      : null
 
   const addObservation = () => {
     const baseCarry = parseNumber(baselineCarry)
@@ -111,6 +127,7 @@ function CaddieInputsPage() {
     const windCarry = parseNumber(conditionedCarry)
     const windOffline = parseNumber(conditionedOffline)
     if (baseCarry == null || baseOffline == null || windCarry == null || windOffline == null) return
+    const launch = profile?.launch_profile
     const next = [...observations, createWindCalibrationObservation({
       trajectoryClass: trajectory,
       windMph: speed,
@@ -119,6 +136,17 @@ function CaddieInputsPage() {
       baselineOfflineYds: baseOffline,
       conditionedCarryYds: windCarry,
       conditionedOfflineYds: windOffline,
+      launch: launch
+        ? {
+            ballSpeedMph: launch.ball_speed_mph,
+            vlaDeg: launch.vla_deg,
+            hlaDeg: launch.hla_deg,
+            spinRpm: launch.total_spin_rpm,
+            spinAxisDeg: launch.spin_axis_deg,
+            peakHeightFt: typeof launch.peak_height_yds === 'number' ? launch.peak_height_yds * 3 : null,
+            descentDeg: launch.descent_angle_deg,
+          }
+        : undefined,
     })]
     setObservations(next)
     saveWindCalibrationObservations(next)
@@ -154,6 +182,9 @@ function CaddieInputsPage() {
             <div><span>Lateral σ</span><strong>{profile?.lateral_sigma_yds?.toFixed(1) ?? '—'} yd</strong></div>
             <div><span>Support</span><strong>{support?.included_stock_shots ?? 0} shots</strong></div>
             <div><span>Variant</span><strong>Stock</strong></div>
+            <div><span>Ball speed</span><strong>{profile?.launch_profile?.ball_speed_mph?.toFixed(1) ?? '—'} mph</strong></div>
+            <div><span>VLA</span><strong>{profile?.launch_profile?.vla_deg?.toFixed(1) ?? '—'}°</strong></div>
+            <div><span>Spin</span><strong>{profile?.launch_profile?.total_spin_rpm?.toFixed(0) ?? '—'} rpm</strong></div>
           </div>
         </article>
 
@@ -168,7 +199,7 @@ function CaddieInputsPage() {
             <label>Lie up/down °<input type="number" step="0.1" value={lieUpDownDeg} onChange={(e) => setLieUpDownDeg(Number(e.target.value))} /></label>
             <label>Lie left/right °<input type="number" step="0.1" value={lieLeftRightDeg} onChange={(e) => setLieLeftRightDeg(Number(e.target.value))} /></label>
           </div>
-          <p className="inputs-note">Manual values are a review harness. Live sensors can replace the source later without changing the model contract.</p>
+          <p className="inputs-note">Manual values are a review harness. Wind direction is where the wind comes FROM: 0° headwind, 90° from right, 180° tailwind, 270° from left.</p>
         </article>
       </section>
 
@@ -185,6 +216,22 @@ function CaddieInputsPage() {
       </section>
 
       <section className="inputs-card">
+        <div className="inputs-card-heading"><div><span>PHYSICS PRIOR · REVIEW ONLY</span><h2>Open aerodynamics before GSPro correction</h2></div><small>{modeled.physicsPrior.modelVersion}</small></div>
+        <div className="metric-grid">
+          <div><span>Physics baseline</span><strong>{modeled.physicsPrior.baseline?.carryYds?.toFixed(1) ?? '—'} yd</strong></div>
+          <div><span>Wind carry Δ</span><strong>{signedYards(modeled.physicsPrior.deltas.windCarryYds)}</strong></div>
+          <div><span>Wind lateral Δ</span><strong>{signedYards(modeled.physicsPrior.deltas.windLateralYds)}</strong></div>
+          <div><span>Elevation carry Δ</span><strong>{signedYards(modeled.physicsPrior.deltas.elevationCarryYds)}</strong></div>
+          <div><span>Combined carry Δ</span><strong>{signedYards(modeled.physicsPrior.deltas.combinedCarryYds)}</strong></div>
+          <div><span>Stock + prior Δ</span><strong>{priorPlayerCarry?.toFixed(1) ?? '—'} yd</strong></div>
+        </div>
+        <p className="inputs-callout">The absolute physics carry is diagnostic only. Looper anchors to measured Stock carry and will eventually apply only a GSPro-calibrated condition delta. Current optimizer adjustment remains 0.0 yd.</p>
+        <div className="policy-list">
+          {physicsChecks.map((check) => <div key={check.id}><span>{check.label}</span><strong>{check.pass ? 'PASS' : 'FAIL'}{typeof check.value === 'number' ? ` · ${check.value.toFixed(1)}` : ''}</strong></div>)}
+        </div>
+      </section>
+
+      <section className="inputs-card">
         <div className="inputs-card-heading"><div><span>CANONICAL FACTOR TABLE</span><h2>Raw → source → transformation → modeled value</h2></div><small>{modeled.contract.schemaVersion}</small></div>
         <div className="inputs-table-wrap"><table className="inputs-table factor-contract-table"><thead><tr><th>Factor</th><th>Raw input</th><th>Source / confidence</th><th>Transformation</th><th>Modeled value</th><th>Affects</th><th>Version</th><th>Status</th></tr></thead><tbody>
           {modeled.contract.factors.map((factor) => <tr key={factor.id}><td><strong>{factor.label}</strong><small>{factor.evidenceBasis}</small></td><td>{factor.rawDisplay}</td><td>{factor.source}<small>{factor.sourceConfidence} confidence</small></td><td className="wrap-cell">{factor.transformation}</td><td className="wrap-cell">{factor.modeledDisplay}</td><td className="wrap-cell">{effectLabel(factor)}</td><td><code>{factor.modelVersion}</code></td><td><b className={`model-status status-${factor.status}`}>{statusLabel[factor.status]}</b></td></tr>)}
@@ -193,7 +240,7 @@ function CaddieInputsPage() {
 
       <section className="inputs-card wind-section">
         <div className="inputs-card-heading"><div><span>WIND CALIBRATION</span><h2>GSPro-specific controlled response model</h2></div><div className={`readiness readiness-${readiness.status}`}><strong>{readiness.observedCases}/{readiness.totalCases}</strong><span>{pct(readiness.coverage)} coverage</span></div></div>
-        <p className="inputs-note strong-note">Calibration pairs must use identical launch conditions in GSPro. Normal human swing pairs are not valid calibration evidence.</p>
+        <p className="inputs-note strong-note">Calibration pairs must use identical launch conditions in GSPro. Normal human swing pairs are not valid calibration evidence. New observations also retain the selected Stock launch packet when available.</p>
         <div className="wind-cal-grid">
           <div className="cal-form"><h3>Add controlled observation</h3><div className="input-form-grid compact">
             <label>Trajectory<select value={trajectory} onChange={(e) => setTrajectory(e.target.value as WindTrajectoryClass)}>{WIND_TRAJECTORY_CLASSES.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -204,12 +251,12 @@ function CaddieInputsPage() {
             <label>Wind carry<input value={conditionedCarry} onChange={(e) => setConditionedCarry(e.target.value)} /></label>
             <label>Wind offline<input value={conditionedOffline} onChange={(e) => setConditionedOffline(e.target.value)} /></label>
           </div><div className="button-row"><button type="button" onClick={addObservation}>Add observation</button><button type="button" className="secondary" onClick={exportCalibration} disabled={observations.length === 0}>Export JSON</button><button type="button" className="danger" onClick={() => { setObservations([]); saveWindCalibrationObservations([]) }} disabled={observations.length === 0}>Clear</button></div></div>
-          <div className="cal-summary"><h3>Evidence policy</h3><div className="policy-list"><div><span>Structure</span><strong>Trajectory + wind vector</strong></div><div><span>Calibration</span><strong>Carry Δ + lateral Δ</strong></div><div><span>Player history</span><strong>Not used for V1 coefficients</strong></div><div><span>Recommendation impact</span><strong>Blocked until promoted</strong></div></div></div>
+          <div className="cal-summary"><h3>Evidence policy</h3><div className="policy-list"><div><span>Prior</span><strong>Open aerodynamics</strong></div><div><span>Calibration</span><strong>GSPro residual Δ</strong></div><div><span>Player Stock</span><strong>Observed carry remains anchor</strong></div><div><span>Recommendation impact</span><strong>Blocked until promoted</strong></div></div></div>
         </div>
         <div className="inputs-table-wrap matrix-wrap"><table className="inputs-table matrix-table"><thead><tr><th>Trajectory</th>{WIND_SPEEDS.flatMap((windSpeed) => WIND_DIRECTIONS.map((windDirection) => <th key={`${windSpeed}-${windDirection}`}>{windSpeed} · {windDirection.replaceAll('-', ' ')}</th>))}</tr></thead><tbody>{WIND_TRAJECTORY_CLASSES.map((trajectoryClass) => <tr key={trajectoryClass}><td><strong>{trajectoryClass}</strong></td>{WIND_SPEEDS.flatMap((windSpeed) => WIND_DIRECTIONS.map((windDirection) => { const id = `${trajectoryClass}-${windSpeed}-${windDirection}`; return <td key={id}><span className={observedIds.has(id) ? 'matrix-cell observed' : 'matrix-cell'}>{observedIds.has(id) ? '✓' : '·'}</span></td> }))}</tr>)}</tbody></table></div>
       </section>
 
-      <section className="inputs-card provenance-card"><div className="inputs-card-heading"><div><span>RESEARCH EVIDENCE</span><h2>What prior Greywolf work actually establishes</h2></div></div><div className="research-grid"><div><strong>GSPro lie angle</strong><p>Direct up/down and left/right values were captured. Measurement exists; numerical flight-response coefficients do not.</p><b className="model-status status-modeled">MEASUREMENT PROVEN</b></div><div><strong>LiDAR terrain</strong><p>Real-world elevation and local terrain planes exist. GSPro can resculpt terrain, so provenance stays visible.</p><b className="model-status status-review">SOURCE-AWARE</b></div><div><strong>Wind response</strong><p>No coefficient set is promoted. The controlled matrix is the path to a GSPro-specific V1.</p><b className="model-status status-calibrating">CALIBRATING</b></div></div></section>
+      <section className="inputs-card provenance-card"><div className="inputs-card-heading"><div><span>RESEARCH EVIDENCE</span><h2>What prior Greywolf work actually establishes</h2></div></div><div className="research-grid"><div><strong>GSPro lie angle</strong><p>Direct up/down and left/right values were captured. Measurement exists; numerical flight-response coefficients do not.</p><b className="model-status status-modeled">MEASUREMENT PROVEN</b></div><div><strong>LiDAR terrain</strong><p>Real-world elevation and local terrain planes exist. GSPro can resculpt terrain, so provenance stays visible.</p><b className="model-status status-review">SOURCE-AWARE</b></div><div><strong>Flight physics</strong><p>OpenFairway-derived aerodynamics now generate reviewable wind/elevation deltas. GSPro residual calibration is still required.</p><b className="model-status status-calibrating">PRIOR ACTIVE</b></div></div></section>
 
       <footer className="inputs-footer">New caddie factors should register on this audit surface before they are allowed to influence recommendations.</footer>
     </main>
