@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react'
+import { getCurrentLooperUser } from '../cloud/supabaseClient'
 import { greywolfHole01Geometry as hole } from '../courseGeometry/greywolfHole01'
 import {
   greywolfHole01Regression,
@@ -5,10 +7,22 @@ import {
 } from '../courseGeometry/greywolfHole01Regression'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type { CourseSurfaceKind } from '../courseGeometry/types'
+import {
+  evaluatePlayerStockClubsOnHole,
+  type ClubGeometryOutcome,
+} from '../liveCaddie/playerGeometryOutcomes'
+import {
+  loadSavedSessions,
+  SESSION_HISTORY_UPDATED_EVENT,
+} from '../lib/sessions'
+import type { SavedSession } from '../types'
 import './courseGeometryDev.css'
 
 const percent = (value: number) => `${Math.round(value * 100)}%`
+const maybePercent = (value: number | null | undefined) =>
+  typeof value === 'number' ? percent(value) : '—'
 const yards = (value: number | null) => (value == null ? '—' : `${value.toFixed(1)} yd`)
+const signedYards = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)} yd`
 
 const surfaceOrder: readonly CourseSurfaceKind[] = [
   'tee',
@@ -21,8 +35,48 @@ const surfaceOrder: readonly CourseSurfaceKind[] = [
   'penalty',
 ]
 
+const mishitEvidenceLabel = (outcome: ClubGeometryOutcome) => {
+  const evidence = outcome.mishitEvidence
+  if (evidence.observedMishitRate == null) {
+    return `${evidence.evidence} · no rate yet`
+  }
+  return `${evidence.evidence} · ${percent(evidence.observedMishitRate)} observed`
+}
+
 function CourseGeometryDevPage() {
   const validation = greywolfHole01Regression.geometryValidation
+  const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
+  const [playerEmail, setPlayerEmail] = useState<string | null>(null)
+  const [playerError, setPlayerError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    void getCurrentLooperUser()
+      .then((user) => {
+        if (!active) return
+        setPlayerEmail(user?.email ?? null)
+      })
+      .catch((error) => {
+        if (!active) return
+        setPlayerError(error instanceof Error ? error.message : String(error))
+      })
+
+    const refresh = () => setSessions(loadSavedSessions())
+    window.addEventListener(SESSION_HISTORY_UPDATED_EVENT, refresh)
+    window.addEventListener('storage', refresh)
+
+    return () => {
+      active = false
+      window.removeEventListener(SESSION_HISTORY_UPDATED_EVENT, refresh)
+      window.removeEventListener('storage', refresh)
+    }
+  }, [])
+
+  const playerOutcomes = useMemo(
+    () => evaluatePlayerStockClubsOnHole(sessions, hole),
+    [sessions],
+  )
 
   return (
     <main className="geometry-lab">
@@ -53,10 +107,97 @@ function CourseGeometryDevPage() {
           </small>
         </article>
         <article className="geometry-card">
-          <span>COORDINATES</span>
-          <strong>Selected tee = 0,0</strong>
-          <small>+x right · +y forward · yards</small>
+          <span>PLAYER DATA</span>
+          <strong>{playerEmail ?? (playerError ? 'Unavailable' : 'Signed-in player')}</strong>
+          <small>{sessions.length} hydrated sessions · {sessions.reduce((sum, session) => sum + session.shots.length, 0)} raw shots</small>
         </article>
+      </section>
+
+      <section className="geometry-panel player-geometry-panel">
+        <div className="geometry-panel-heading">
+          <div>
+            <span>PLAYER × COURSE</span>
+            <h2>Stock club outcomes from the selected tee</h2>
+          </div>
+          <p>
+            Planning = Looper Stock distribution after mishit filtering. Empirical = all source-included Stock shots,
+            including ugly outcomes when they exist. Risk envelope uses the more conservative supported view.
+          </p>
+        </div>
+
+        {playerOutcomes.length === 0 ? (
+          <div className="geometry-empty-state">
+            No hydrated player profiles yet. Sign in and let cloud history hydrate, then this table fills automatically.
+          </div>
+        ) : (
+          <div className="geometry-table-wrap">
+            <table className="geometry-table player-outcome-table">
+              <thead>
+                <tr>
+                  <th>Club</th>
+                  <th>Stock</th>
+                  <th>Carry σ</th>
+                  <th>Lateral</th>
+                  <th>Support</th>
+                  <th>Aim @ carry</th>
+                  <th>Planning preferred</th>
+                  <th>Planning trouble</th>
+                  <th>Planning penalty</th>
+                  <th>All-shot preferred</th>
+                  <th>All-shot trouble</th>
+                  <th>All-shot penalty</th>
+                  <th>Risk envelope</th>
+                  <th>Mishit evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {playerOutcomes.map((outcome) => {
+                  const empiricalSupported = outcome.empiricalShotCount >= 5
+                  return (
+                    <tr key={outcome.club}>
+                      <td><strong>{outcome.club}</strong></td>
+                      <td>{outcome.stockCarryYds.toFixed(1)} yd</td>
+                      <td>{yards(outcome.carrySigmaYds)}</td>
+                      <td>
+                        {signedYards(outcome.lateralBiasYds)} bias · {yards(outcome.lateralSigmaYds)} σ
+                      </td>
+                      <td>{outcome.profileSupportShots} shots · {outcome.profileSupportingSessions} sess.</td>
+                      <td>{signedYards(outcome.aimRightYdsAtStockCarry)}</td>
+                      <td>{maybePercent(outcome.planningModel?.preferred)}</td>
+                      <td>{maybePercent(outcome.planningModel?.trouble)}</td>
+                      <td>{maybePercent(outcome.planningModel?.penalty)}</td>
+                      <td className={!empiricalSupported ? 'thin-data' : ''}>
+                        {maybePercent(outcome.empiricalAllShots?.preferred)} ({outcome.empiricalShotCount})
+                      </td>
+                      <td className={!empiricalSupported ? 'thin-data' : ''}>
+                        {maybePercent(outcome.empiricalAllShots?.trouble)}
+                      </td>
+                      <td className={!empiricalSupported ? 'thin-data' : ''}>
+                        {maybePercent(outcome.empiricalAllShots?.penalty)}
+                      </td>
+                      <td>
+                        <strong>{maybePercent(outcome.riskEnvelope.preferredFloor)} floor</strong>
+                        <small>
+                          {maybePercent(outcome.riskEnvelope.troubleCeiling)} trouble · {maybePercent(outcome.riskEnvelope.penaltyCeiling)} penalty
+                        </small>
+                      </td>
+                      <td>
+                        <span className={`mishit-evidence ${outcome.mishitEvidence.evidence}`}>
+                          {mishitEvidenceLabel(outcome)}
+                        </span>
+                        <small>{outcome.mishitEvidence.baselineStatus} baseline</small>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="geometry-note player-model-note">
+          This is deliberately not claiming mature total-shot probabilities yet. The normal-shot model is useful now;
+          empirical all-shot history acts as a guardrail, and mishit confidence can improve as new classified reps arrive.
+        </p>
       </section>
 
       <section className="geometry-panel">
