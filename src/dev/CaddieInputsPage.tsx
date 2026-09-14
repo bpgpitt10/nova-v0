@@ -6,6 +6,7 @@ import { modelShotContext } from '../liveCaddie/shotContextModel'
 import type { CaddieModelFactor, CaddieModelStatus } from '../liveCaddie/modelContract'
 import {
   createWindCalibrationObservation,
+  importGsproPhysicsLab,
   loadWindCalibrationObservations,
   saveWindCalibrationObservations,
   WIND_DIRECTIONS,
@@ -58,6 +59,7 @@ function CaddieInputsPage() {
   const [baselineOffline, setBaselineOffline] = useState('0')
   const [conditionedCarry, setConditionedCarry] = useState('')
   const [conditionedOffline, setConditionedOffline] = useState('0')
+  const [importMessage, setImportMessage] = useState<string | null>(null)
 
   useEffect(() => {
     void getCurrentLooperUser().then((user) => setPlayerEmail(user?.email ?? null)).catch(() => {})
@@ -115,6 +117,7 @@ function CaddieInputsPage() {
   const readiness = useMemo(() => windCalibrationReadiness(observations), [observations])
   const observedIds = useMemo(() => new Set(observations.map((item) => item.caseId)), [observations])
   const physicsChecks = useMemo(() => runFlightPhysicsSanityChecks(), [])
+  const recentObservations = useMemo(() => observations.slice(-10).reverse(), [observations])
   const combinedDelta = modeled.physicsPrior.deltas.combinedCarryYds
   const priorPlayerCarry =
     profile && typeof combinedDelta === 'number'
@@ -152,6 +155,25 @@ function CaddieInputsPage() {
     saveWindCalibrationObservations(next)
     setConditionedCarry('')
     setConditionedOffline('0')
+  }
+
+  const importPhysicsLabFile = async (file: File | null) => {
+    if (!file) return
+    setImportMessage(null)
+    try {
+      const payload = JSON.parse(await file.text()) as unknown
+      const result = importGsproPhysicsLab(payload, trajectory)
+      if (result.imported.length === 0) {
+        setImportMessage(`No paired calibration rows imported. Calm: ${result.calmShotsFound}; conditioned: ${result.conditionedShotsFound}; skipped: ${result.skipped.length}.`)
+        return
+      }
+      const next = [...observations, ...result.imported]
+      setObservations(next)
+      saveWindCalibrationObservations(next)
+      setImportMessage(`Imported ${result.imported.length} paired GSPro observation${result.imported.length === 1 ? '' : 's'} as ${trajectory}. Calm: ${result.calmShotsFound}; conditioned: ${result.conditionedShotsFound}; skipped: ${result.skipped.length}.`)
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : 'Could not import physics-lab JSON.')
+    }
   }
 
   const exportCalibration = () => {
@@ -240,9 +262,9 @@ function CaddieInputsPage() {
 
       <section className="inputs-card wind-section">
         <div className="inputs-card-heading"><div><span>WIND CALIBRATION</span><h2>GSPro-specific controlled response model</h2></div><div className={`readiness readiness-${readiness.status}`}><strong>{readiness.observedCases}/{readiness.totalCases}</strong><span>{pct(readiness.coverage)} coverage</span></div></div>
-        <p className="inputs-note strong-note">Calibration pairs must use identical launch conditions in GSPro. Normal human swing pairs are not valid calibration evidence. New observations also retain the selected Stock launch packet when available.</p>
+        <p className="inputs-note strong-note">Calibration pairs must use identical launch conditions in GSPro. Normal human swing pairs are not valid calibration evidence. The local Physics Lab can inject and capture those pairs automatically; GSPro wind itself is still changed manually between batches.</p>
         <div className="wind-cal-grid">
-          <div className="cal-form"><h3>Add controlled observation</h3><div className="input-form-grid compact">
+          <div className="cal-form"><h3>Add / import controlled observations</h3><div className="input-form-grid compact">
             <label>Trajectory<select value={trajectory} onChange={(e) => setTrajectory(e.target.value as WindTrajectoryClass)}>{WIND_TRAJECTORY_CLASSES.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label>Wind speed<select value={speed} onChange={(e) => setSpeed(Number(e.target.value) as (typeof WIND_SPEEDS)[number])}>{WIND_SPEEDS.map((item) => <option key={item} value={item}>{item} mph</option>)}</select></label>
             <label>Direction<select value={direction} onChange={(e) => setDirection(e.target.value as WindDirectionCase)}>{WIND_DIRECTIONS.map((item) => <option key={item} value={item}>{windDirectionLabel(item)}</option>)}</select></label>
@@ -250,13 +272,16 @@ function CaddieInputsPage() {
             <label>0-wind offline<input value={baselineOffline} onChange={(e) => setBaselineOffline(e.target.value)} /></label>
             <label>Wind carry<input value={conditionedCarry} onChange={(e) => setConditionedCarry(e.target.value)} /></label>
             <label>Wind offline<input value={conditionedOffline} onChange={(e) => setConditionedOffline(e.target.value)} /></label>
-          </div><div className="button-row"><button type="button" onClick={addObservation}>Add observation</button><button type="button" className="secondary" onClick={exportCalibration} disabled={observations.length === 0}>Export JSON</button><button type="button" className="danger" onClick={() => { setObservations([]); saveWindCalibrationObservations([]) }} disabled={observations.length === 0}>Clear</button></div></div>
+          </div><div className="button-row"><button type="button" onClick={addObservation}>Add observation</button><label className="secondary" style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>Import Physics Lab JSON<input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(event) => { void importPhysicsLabFile(event.target.files?.[0] ?? null); event.currentTarget.value = '' }} /></label><button type="button" className="secondary" onClick={exportCalibration} disabled={observations.length === 0}>Export JSON</button><button type="button" className="danger" onClick={() => { setObservations([]); saveWindCalibrationObservations([]); setImportMessage(null) }} disabled={observations.length === 0}>Clear</button></div>{importMessage ? <p className="inputs-note">{importMessage}</p> : null}</div>
           <div className="cal-summary"><h3>Evidence policy</h3><div className="policy-list"><div><span>Prior</span><strong>Open aerodynamics</strong></div><div><span>Calibration</span><strong>GSPro residual Δ</strong></div><div><span>Player Stock</span><strong>Observed carry remains anchor</strong></div><div><span>Recommendation impact</span><strong>Blocked until promoted</strong></div></div></div>
         </div>
+
+        {recentObservations.length > 0 ? <div className="inputs-table-wrap"><table className="inputs-table"><thead><tr><th>Case</th><th>GSPro carry Δ</th><th>Physics carry Δ</th><th>Carry residual</th><th>GSPro lateral Δ</th><th>Physics lateral Δ</th><th>Lateral residual</th></tr></thead><tbody>{recentObservations.map((observation) => <tr key={observation.id}><td><strong>{observation.trajectoryClass} · {observation.windMph} mph</strong><small>{windDirectionLabel(observation.direction)}</small></td><td>{signedYards(observation.carryDeltaYds)}</td><td>{signedYards(observation.physicsPrior?.carryDeltaYds)}</td><td>{signedYards(observation.residual?.carryDeltaYds)}</td><td>{signedYards(observation.lateralDeltaYds)}</td><td>{signedYards(observation.physicsPrior?.lateralDeltaYds)}</td><td>{signedYards(observation.residual?.lateralDeltaYds)}</td></tr>)}</tbody></table></div> : null}
+
         <div className="inputs-table-wrap matrix-wrap"><table className="inputs-table matrix-table"><thead><tr><th>Trajectory</th>{WIND_SPEEDS.flatMap((windSpeed) => WIND_DIRECTIONS.map((windDirection) => <th key={`${windSpeed}-${windDirection}`}>{windSpeed} · {windDirection.replaceAll('-', ' ')}</th>))}</tr></thead><tbody>{WIND_TRAJECTORY_CLASSES.map((trajectoryClass) => <tr key={trajectoryClass}><td><strong>{trajectoryClass}</strong></td>{WIND_SPEEDS.flatMap((windSpeed) => WIND_DIRECTIONS.map((windDirection) => { const id = `${trajectoryClass}-${windSpeed}-${windDirection}`; return <td key={id}><span className={observedIds.has(id) ? 'matrix-cell observed' : 'matrix-cell'}>{observedIds.has(id) ? '✓' : '·'}</span></td> }))}</tr>)}</tbody></table></div>
       </section>
 
-      <section className="inputs-card provenance-card"><div className="inputs-card-heading"><div><span>RESEARCH EVIDENCE</span><h2>What prior Greywolf work actually establishes</h2></div></div><div className="research-grid"><div><strong>GSPro lie angle</strong><p>Direct up/down and left/right values were captured. Measurement exists; numerical flight-response coefficients do not.</p><b className="model-status status-modeled">MEASUREMENT PROVEN</b></div><div><strong>LiDAR terrain</strong><p>Real-world elevation and local terrain planes exist. GSPro can resculpt terrain, so provenance stays visible.</p><b className="model-status status-review">SOURCE-AWARE</b></div><div><strong>Flight physics</strong><p>OpenFairway-derived aerodynamics now generate reviewable wind/elevation deltas. GSPro residual calibration is still required.</p><b className="model-status status-calibrating">PRIOR ACTIVE</b></div></div></section>
+      <section className="inputs-card provenance-card"><div className="inputs-card-heading"><div><span>RESEARCH EVIDENCE</span><h2>What prior Greywolf work actually establishes</h2></div></div><div className="research-grid"><div><strong>GSPro lie angle</strong><p>Direct up/down and left/right values were captured. Measurement exists; numerical flight-response coefficients do not.</p><b className="model-status status-modeled">MEASUREMENT PROVEN</b></div><div><strong>LiDAR terrain</strong><p>Real-world elevation and local terrain planes exist. GSPro can resculpt terrain, so provenance stays visible.</p><b className="model-status status-review">SOURCE-AWARE</b></div><div><strong>Flight physics</strong><p>OpenFairway-derived aerodynamics generate reviewable wind/elevation deltas. GSPro residual calibration is the promotion gate.</p><b className="model-status status-calibrating">PRIOR ACTIVE</b></div></div></section>
 
       <footer className="inputs-footer">New caddie factors should register on this audit surface before they are allowed to influence recommendations.</footer>
     </main>
