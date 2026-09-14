@@ -206,7 +206,9 @@ function CaddieInputsPage() {
             <div><span>Variant</span><strong>Stock</strong></div>
             <div><span>Ball speed</span><strong>{profile?.launch_profile?.ball_speed_mph?.toFixed(1) ?? '—'} mph</strong></div>
             <div><span>VLA</span><strong>{profile?.launch_profile?.vla_deg?.toFixed(1) ?? '—'}°</strong></div>
+            <div><span>HLA</span><strong>{profile?.launch_profile?.hla_deg?.toFixed(1) ?? '—'}°</strong></div>
             <div><span>Spin</span><strong>{profile?.launch_profile?.total_spin_rpm?.toFixed(0) ?? '—'} rpm</strong></div>
+            <div><span>Spin axis</span><strong>{profile?.launch_profile?.spin_axis_deg?.toFixed(1) ?? '—'}°</strong></div>
           </div>
         </article>
 
