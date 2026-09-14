@@ -36,6 +36,7 @@ const RAW_BASE =
   'https://raw.githubusercontent.com/bpgpitt10/nova-v0/hazard-field-lab-v0/artifacts/osm-proof/local-geometry'
 
 const kindOrder = ['tee', 'fairway', 'rough', 'green', 'bunker', 'water'] as const
+const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
@@ -183,6 +184,30 @@ const parseHole = (holeNumber: number, raw: RawGreywolfHole): CourseHoleGeometry
 
 const cache = new Map<number, Promise<CourseHoleGeometry>>()
 
+const wait = (delayMs: number) =>
+  delayMs <= 0 ? Promise.resolve() : new Promise<void>((resolve) => window.setTimeout(resolve, delayMs))
+
+const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
+  let lastError: unknown = null
+
+  for (const delayMs of FETCH_RETRY_DELAYS_MS) {
+    await wait(delayMs)
+    try {
+      const response = await fetch(`${RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`)
+      if (!response.ok) {
+        throw new Error(`Greywolf Hole ${holeNumber} package returned ${response.status}.`)
+      }
+      return await response.json() as RawGreywolfHole
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Greywolf Hole ${holeNumber} package could not be loaded.`)
+}
+
 export const loadGreywolfHoleGeometry = (holeNumber: number): Promise<CourseHoleGeometry> => {
   const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
   if (normalized === 1) return Promise.resolve(greywolfHole01Geometry)
@@ -190,14 +215,13 @@ export const loadGreywolfHoleGeometry = (holeNumber: number): Promise<CourseHole
   const existing = cache.get(normalized)
   if (existing) return existing
 
-  const promise = fetch(`${RAW_BASE}/greywolf-hole-${String(normalized).padStart(2, '0')}.json`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Greywolf Hole ${normalized} package returned ${response.status}.`)
-      }
-      return response.json() as Promise<RawGreywolfHole>
-    })
+  const promise = fetchRawHole(normalized)
     .then((raw) => parseHole(normalized, raw))
+    .catch((error) => {
+      // Never permanently poison one hole after a transient CDN/network failure.
+      cache.delete(normalized)
+      throw error
+    })
 
   cache.set(normalized, promise)
   return promise
