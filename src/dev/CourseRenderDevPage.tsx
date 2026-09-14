@@ -8,14 +8,25 @@ type PolygonLayer = readonly (readonly Point[])[]
 const SVG_WIDTH = 420
 const SVG_HEIGHT = 980
 const PAD = 28
+const PROFILE_TEE_OFFSET_YDS = 46.9
 
 function CourseRenderDevPage() {
   const [showContours, setShowContours] = useState(true)
   const [showShots, setShowShots] = useState(true)
 
+  const displayBounds = useMemo(
+    () => ({
+      ...hole.bounds,
+      // Keep enough terrain behind the selected tee for context, but do not let
+      // unrelated mapped water ~65 yd behind the tee dominate the live-hole crop.
+      minY: Math.max(hole.bounds.minY, -28),
+    }),
+    [],
+  )
+
   const transform = useMemo(() => {
-    const spanX = hole.bounds.maxX - hole.bounds.minX
-    const spanY = hole.bounds.maxY - hole.bounds.minY
+    const spanX = displayBounds.maxX - displayBounds.minX
+    const spanY = displayBounds.maxY - displayBounds.minY
     const scale = Math.min((SVG_WIDTH - PAD * 2) / spanX, (SVG_HEIGHT - PAD * 2) / spanY)
     const usedWidth = spanX * scale
     const usedHeight = spanY * scale
@@ -25,13 +36,13 @@ function CourseRenderDevPage() {
     return {
       point([x, y]: Point) {
         return [
-          offsetX + (x - hole.bounds.minX) * scale,
-          SVG_HEIGHT - (offsetY + (y - hole.bounds.minY) * scale),
+          offsetX + (x - displayBounds.minX) * scale,
+          SVG_HEIGHT - (offsetY + (y - displayBounds.minY) * scale),
         ] as const
       },
       scale,
     }
-  }, [])
+  }, [displayBounds])
 
   const pathFor = (points: readonly Point[]) => {
     if (points.length === 0) return ''
@@ -58,10 +69,26 @@ function CourseRenderDevPage() {
 
   const [teeX, teeY] = transform.point([hole.markers.tee.x, hole.markers.tee.y])
   const [pinX, pinY] = transform.point([hole.markers.pin.x, hole.markers.pin.y])
-  const profileMin = Math.min(...hole.elevationProfile.map((point) => point.elevationFt))
-  const profileMax = Math.max(...hole.elevationProfile.map((point) => point.elevationFt))
-  const profileDistance = Math.max(...hole.elevationProfile.map((point) => point.distanceYds))
-  const profilePoints = hole.elevationProfile
+
+  // The preserved OSM hole route begins ~46.9 yd behind the selected GSPro tee.
+  // Normalize the cached LiDAR route profile so this dev page begins at the
+  // actually selected tee rather than the back-most OSM route endpoint.
+  const selectedTeeProfile = useMemo(
+    () => [
+      { distanceYds: 0, elevationFt: hole.metrics.teeElevationFt },
+      ...hole.elevationProfile
+        .filter((point) => point.distanceYds > PROFILE_TEE_OFFSET_YDS)
+        .map((point) => ({
+          distanceYds: point.distanceYds - PROFILE_TEE_OFFSET_YDS,
+          elevationFt: point.elevationFt,
+        })),
+    ],
+    [],
+  )
+  const profileMin = Math.min(...selectedTeeProfile.map((point) => point.elevationFt))
+  const profileMax = Math.max(...selectedTeeProfile.map((point) => point.elevationFt))
+  const profileDistance = Math.max(...selectedTeeProfile.map((point) => point.distanceYds))
+  const profilePoints = selectedTeeProfile
     .map((point) => {
       const x = 16 + (point.distanceYds / profileDistance) * 288
       const y = 138 - ((point.elevationFt - profileMin) / Math.max(profileMax - profileMin, 1)) * 104
@@ -219,11 +246,11 @@ function CourseRenderDevPage() {
 
           <section className="course-data-card">
             <p className="card-kicker">ELEVATION PROFILE</p>
-            <svg className="elevation-profile" viewBox="0 0 320 160" role="img" aria-label="LiDAR elevation profile from tee to green">
+            <svg className="elevation-profile" viewBox="0 0 320 160" role="img" aria-label="LiDAR elevation profile from selected tee to green">
               <line x1="16" x2="304" y1="138" y2="138" className="profile-axis" />
               <polyline points={profilePoints} fill="none" className="profile-line" />
               <text x="16" y="154">Tee</text>
-              <text x="304" y="154" textAnchor="end">Green</text>
+              <text x="304" y="154" textAnchor="end">Green · {profileDistance.toFixed(0)} route yds</text>
               <text x="304" y="22" textAnchor="end" className="profile-climb">+{hole.metrics.climbFt} ft</text>
             </svg>
           </section>
