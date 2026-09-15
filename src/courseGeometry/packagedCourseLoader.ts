@@ -12,19 +12,12 @@ import type {
 } from './types'
 
 const SURFACE_KINDS = new Set<CourseSurfaceKind>([
-  'tee',
-  'fairway',
-  'rough',
-  'deep-rough',
-  'green',
-  'bunker',
-  'water',
-  'penalty',
+  'tee', 'fairway', 'rough', 'deep-rough', 'green', 'bunker', 'water', 'penalty',
 ])
 const CONTEXT_KINDS = new Set<CourseContextKind>(['woods', 'scrub', 'grass-context'])
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
-type RawSurface = {
+type RawLayer = {
   id?: unknown
   kind?: unknown
   polygons?: unknown
@@ -34,22 +27,12 @@ type RawSurface = {
   note?: unknown
 }
 
-type RawContextLayer = RawSurface
-
 type RawHole = {
   holeNumber?: unknown
   par?: unknown
   statedYardageYds?: unknown
-  bounds?: {
-    minX?: unknown
-    maxX?: unknown
-    minY?: unknown
-    maxY?: unknown
-  }
-  markers?: {
-    tee?: unknown
-    pin?: unknown
-  }
+  bounds?: { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
+  markers?: { tee?: unknown; pin?: unknown }
   surfaces?: unknown
   contextLayers?: unknown
   registration?: unknown
@@ -70,48 +53,47 @@ const holeCache = new Map<string, Promise<CourseHoleGeometry>>()
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
-const finiteInteger = (value: unknown): value is number =>
-  finite(value) && Number.isInteger(value)
+const finiteInteger = (value: unknown): value is number => finite(value) && Number.isInteger(value)
 
-const point = (value: unknown): CoursePointYds | null => {
-  if (!Array.isArray(value) || value.length < 2) return null
-  return finite(value[0]) && finite(value[1]) ? [value[0], value[1]] : null
-}
+const parsePoint = (value: unknown): CoursePointYds | null =>
+  Array.isArray(value) && value.length >= 2 && finite(value[0]) && finite(value[1])
+    ? [value[0], value[1]]
+    : null
 
-const polygon = (value: unknown): CoursePolygonYds | null => {
+const parsePolygon = (value: unknown): CoursePolygonYds | null => {
   if (!Array.isArray(value)) return null
   const points = value.flatMap((candidate): CoursePointYds[] => {
-    const parsed = point(candidate)
+    const parsed = parsePoint(candidate)
     return parsed ? [parsed] : []
   })
   return points.length >= 3 ? points : null
 }
 
-const polygons = (value: unknown): CoursePolygonYds[] => {
-  if (!Array.isArray(value)) return []
-  return value.flatMap((candidate): CoursePolygonYds[] => {
-    const parsed = polygon(candidate)
-    return parsed ? [parsed] : []
-  })
-}
+const parsePolygons = (value: unknown): CoursePolygonYds[] =>
+  Array.isArray(value)
+    ? value.flatMap((candidate): CoursePolygonYds[] => {
+        const parsed = parsePolygon(candidate)
+        return parsed ? [parsed] : []
+      })
+    : []
 
-const confidence = (value: unknown) =>
-  value === 'high' || value === 'medium' || value === 'low' || value === 'unknown'
-    ? value
-    : 'high'
-
-const sourceIds = (value: unknown): readonly (string | number)[] | undefined => {
+const parseSourceIds = (value: unknown): readonly (string | number)[] | undefined => {
   if (!Array.isArray(value)) return undefined
   const ids = value.filter((candidate): candidate is string | number =>
     typeof candidate === 'string' || finite(candidate),
   )
-  return ids.length > 0 ? ids : undefined
+  return ids.length ? ids : undefined
 }
 
-const parseSurface = (raw: RawSurface): CourseSurface | null => {
+const parseConfidence = (value: unknown) =>
+  value === 'high' || value === 'medium' || value === 'low' || value === 'unknown'
+    ? value
+    : 'high'
+
+const parseSurface = (raw: RawLayer): CourseSurface | null => {
   if (typeof raw.id !== 'string' || !SURFACE_KINDS.has(raw.kind as CourseSurfaceKind)) return null
-  const parsedPolygons = polygons(raw.polygons)
-  if (parsedPolygons.length === 0) return null
+  const parsedPolygons = parsePolygons(raw.polygons)
+  if (!parsedPolygons.length) return null
   const kind = raw.kind as CourseSurfaceKind
   return {
     id: raw.id,
@@ -120,17 +102,17 @@ const parseSurface = (raw: RawSurface): CourseSurface | null => {
     provenance: {
       source: 'osm',
       sourceFeature: typeof raw.sourceFeature === 'string' ? raw.sourceFeature : `golf=${kind}`,
-      sourceIds: sourceIds(raw.sourceIds),
-      confidence: confidence(raw.confidence),
+      sourceIds: parseSourceIds(raw.sourceIds),
+      confidence: parseConfidence(raw.confidence),
       note: typeof raw.note === 'string' ? raw.note : undefined,
     },
   }
 }
 
-const parseContextLayer = (raw: RawContextLayer): CourseContextLayer | null => {
+const parseContext = (raw: RawLayer): CourseContextLayer | null => {
   if (typeof raw.id !== 'string' || !CONTEXT_KINDS.has(raw.kind as CourseContextKind)) return null
-  const parsedPolygons = polygons(raw.polygons)
-  if (parsedPolygons.length === 0) return null
+  const parsedPolygons = parsePolygons(raw.polygons)
+  if (!parsedPolygons.length) return null
   const kind = raw.kind as CourseContextKind
   return {
     id: raw.id,
@@ -139,8 +121,8 @@ const parseContextLayer = (raw: RawContextLayer): CourseContextLayer | null => {
     provenance: {
       source: 'osm',
       sourceFeature: typeof raw.sourceFeature === 'string' ? raw.sourceFeature : kind,
-      sourceIds: sourceIds(raw.sourceIds),
-      confidence: confidence(raw.confidence),
+      sourceIds: parseSourceIds(raw.sourceIds),
+      confidence: parseConfidence(raw.confidence),
       note: typeof raw.note === 'string' ? raw.note : undefined,
     },
   }
@@ -157,7 +139,9 @@ const parseRegistration = (value: unknown): CourseRegistration => {
   return {
     status,
     method,
-    sourceCoordinateSystem: typeof raw.sourceCoordinateSystem === 'string' ? raw.sourceCoordinateSystem : 'cached OSM package -> selected-tee local yards',
+    sourceCoordinateSystem: typeof raw.sourceCoordinateSystem === 'string'
+      ? raw.sourceCoordinateSystem
+      : 'cached OSM package -> selected-tee local yards',
     targetCoordinateSystem: 'looper-hole-local-yards',
     note: typeof raw.note === 'string' ? raw.note : undefined,
   }
@@ -176,7 +160,9 @@ const parseProvenance = (value: unknown): CourseGeometryProvenance => {
     licenseUrl: typeof raw.licenseUrl === 'string' ? raw.licenseUrl : 'https://opendatacommons.org/licenses/odbl/1-0/',
     fetchedAt: typeof raw.fetchedAt === 'string' ? raw.fetchedAt : null,
     sourceBaseTimestamp: typeof raw.sourceBaseTimestamp === 'string' ? raw.sourceBaseTimestamp : null,
-    sourceElementIdsComplete: typeof raw.sourceElementIdsComplete === 'boolean' ? raw.sourceElementIdsComplete : undefined,
+    sourceElementIdsComplete: typeof raw.sourceElementIdsComplete === 'boolean'
+      ? raw.sourceElementIdsComplete
+      : undefined,
     note: typeof raw.note === 'string' ? raw.note : undefined,
   }
 }
@@ -227,31 +213,35 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
   const raw = (payload.holes as Record<string, RawHole>)[String(holeNumber)]
   if (!raw) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} was not packaged.`)
 
-  const bounds = raw.bounds
+  const rawBounds = raw.bounds
   if (
-    !bounds ||
-    !finite(bounds.minX) ||
-    !finite(bounds.maxX) ||
-    !finite(bounds.minY) ||
-    !finite(bounds.maxY)
+    !rawBounds ||
+    !finite(rawBounds.minX) || !finite(rawBounds.maxX) ||
+    !finite(rawBounds.minY) || !finite(rawBounds.maxY)
   ) {
     throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has invalid bounds.`)
   }
-  const tee = point(raw.markers?.tee)
-  const pin = point(raw.markers?.pin)
+  const bounds = {
+    minX: rawBounds.minX,
+    maxX: rawBounds.maxX,
+    minY: rawBounds.minY,
+    maxY: rawBounds.maxY,
+  }
+
+  const tee = parsePoint(raw.markers?.tee)
+  const pin = parsePoint(raw.markers?.pin)
   if (!tee) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has no selected tee anchor.`)
 
-  const rawSurfaces = Array.isArray(raw.surfaces) ? raw.surfaces as RawSurface[] : []
-  const surfaces = rawSurfaces.flatMap((candidate): CourseSurface[] => {
-    const parsed = parseSurface(candidate)
-    return parsed ? [parsed] : []
-  })
-  const rawContext = Array.isArray(raw.contextLayers) ? raw.contextLayers as RawContextLayer[] : []
-  const contextLayers = rawContext.flatMap((candidate): CourseContextLayer[] => {
-    const parsed = parseContextLayer(candidate)
-    return parsed ? [parsed] : []
-  })
-
+  const surfaces = (Array.isArray(raw.surfaces) ? raw.surfaces as RawLayer[] : [])
+    .flatMap((candidate): CourseSurface[] => {
+      const parsed = parseSurface(candidate)
+      return parsed ? [parsed] : []
+    })
+  const contextLayers = (Array.isArray(raw.contextLayers) ? raw.contextLayers as RawLayer[] : [])
+    .flatMap((candidate): CourseContextLayer[] => {
+      const parsed = parseContext(candidate)
+      return parsed ? [parsed] : []
+    })
   const available = (kind: CourseSurfaceKind) =>
     surfaces.some((surface) => surface.kind === kind) ? 'available' as const : 'unavailable' as const
 
@@ -270,12 +260,9 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
       yAxis: 'forward',
     },
     bounds,
-    markers: {
-      tee,
-      ...(pin ? { pin } : {}),
-    },
+    markers: { tee, ...(pin ? { pin } : {}) },
     surfaces,
-    ...(contextLayers.length > 0 ? { contextLayers } : {}),
+    ...(contextLayers.length ? { contextLayers } : {}),
     availability: {
       tee: available('tee'),
       fairway: available('fairway'),
