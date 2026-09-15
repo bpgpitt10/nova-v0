@@ -1,0 +1,43 @@
+name: Fix Greywolf Aim Sweep terrain
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - .github/workflows/fix-greywolf-aim-sweep-terrain.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-aim-sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+
+      - name: Use loaded-hole terrain in Aim Sweep
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/dev/AimLabPage.tsx')
+          text = path.read_text(encoding='utf-8')
+          before = "                        const landingTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(candidate.meanLanding) : null"
+          after = "                        const landingTerrain = hole ? estimateGreywolfTerrain(hole, candidate.meanLanding) : null"
+          if before not in text:
+              raise SystemExit('Expected Aim Sweep terrain line not found')
+          path.write_text(text.replace(before, after, 1), encoding='utf-8')
+          PY
+
+      - name: Commit one-time fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-greywolf-aim-sweep-terrain.yml
+          git add src/dev/AimLabPage.tsx
+          git commit -m "Use course-wide terrain in Aim Sweep"
+          git fetch origin course-geometry-tactical-v0
+          git rebase origin/course-geometry-tactical-v0
+          git push origin HEAD:course-geometry-tactical-v0
