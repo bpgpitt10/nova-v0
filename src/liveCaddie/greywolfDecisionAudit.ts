@@ -11,6 +11,10 @@ import type {
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import { evaluateAimLab } from './aimOptimization'
+import {
+  buildNaturalLandingClubComparisons,
+  type NaturalLandingClubComparison,
+} from './naturalLandingDiagnostics'
 
 export type GreywolfDecisionAuditScenarioKind = 'tee-strategy' | 'approach-150'
 export type GreywolfDecisionAuditStatus = 'clear' | 'review' | 'missing'
@@ -32,6 +36,11 @@ export type GreywolfDecisionAuditScenario = {
     nearestPenaltyYds: number | null
     safeSide: 'left' | 'center' | 'right' | 'unknown'
   } | null
+  /**
+   * Side-by-side natural tee-club distributions. These are deliberately not
+   * ranked against each other until a strokes-gained/value layer exists.
+   */
+  naturalClubComparisons: NaturalLandingClubComparison[]
   recommendation: {
     club: string
     modeledCarryYds: number
@@ -65,6 +74,7 @@ export type GreywolfDecisionAudit = {
     elevatedCatastropheCount: number
     highUnknownCount: number
     thinSupportCount: number
+    naturalClubComparisonCount: number
   }
 }
 
@@ -191,6 +201,9 @@ const auditScenario = (
   const station = input.kind === 'tee-strategy' && targetSurface === 'fairway'
     ? analyzeTacticalStation(hole, input.target[1], input.target[0])
     : null
+  const naturalClubComparisons = input.kind === 'tee-strategy' && targetSurface === 'fairway'
+    ? buildNaturalLandingClubComparisons(sessions, hole, input.ball, nowMs)
+    : []
   const reviewReasons: string[] = []
 
   if (!selected || !best) {
@@ -202,8 +215,8 @@ const auditScenario = (
     if (Math.abs(selected.carryGapYds) > 15) {
       reviewReasons.push(`Selected carry gap is ${selected.carryGapYds.toFixed(1)} yd.`)
     }
-    if (Math.abs(best.aimOffsetYds) >= 14.9) {
-      reviewReasons.push('Best aim hits the ±15 yd search boundary.')
+    if (Math.abs(best.aimOffsetYds) >= selected.aimSearchHalfWidthYds - 0.1) {
+      reviewReasons.push(`Best aim hits the ±${selected.aimSearchHalfWidthYds.toFixed(0)} yd search boundary.`)
     }
     if ((risk?.catastrophe ?? 0) > 0.08) {
       reviewReasons.push(`Catastrophe probability is ${((risk?.catastrophe ?? 0) * 100).toFixed(1)}%.`)
@@ -246,6 +259,7 @@ const auditScenario = (
       nearestPenaltyYds: station.nearestPenaltyYds,
       safeSide: station.safeSide,
     } : null,
+    naturalClubComparisons,
     recommendation: selected && best ? {
       club: selected.club,
       modeledCarryYds: selected.modeledCarryYds,
@@ -269,11 +283,11 @@ const auditScenario = (
 }
 
 /**
- * Course-wide neutral-condition audit. This is deliberately a broad behavior
- * sweep, not a claim that these synthetic positions reconstruct a played round.
- * Tee scenarios use the canonical tee and either the green (short holes) or a
- * fairway landing zone near 220 yd. Approach scenarios choose a canonical
- * fairway center approximately 150 yd from the green.
+ * Course-wide neutral-condition audit. This remains a broad behavior sweep,
+ * not a claim that these synthetic positions reconstruct a played round.
+ * The legacy ~220 yd tee target is retained only as a regression baseline.
+ * Long-hole tee scenarios additionally persist non-authoritative club-specific
+ * natural landing comparisons for the future strokes-gained evaluator.
  */
 export const buildGreywolfCourseDecisionAudit = async (
   sessions: SavedSession[],
@@ -297,9 +311,15 @@ export const buildGreywolfCourseDecisionAudit = async (
       clearCount: scenarios.filter((scenario) => scenario.status === 'clear').length,
       reviewCount: scenarios.filter((scenario) => scenario.status === 'review').length,
       missingCount: scenarios.filter((scenario) => scenario.status === 'missing').length,
-      boundaryAimCount: scenarios.filter((scenario) =>
-        Math.abs(scenario.recommendation?.aimOffsetYds ?? 0) >= 14.9,
-      ).length,
+      boundaryAimCount: scenarios.filter((scenario) => {
+        const recommendation = scenario.recommendation
+        if (!recommendation) return false
+        const evaluation = scenario.kind === 'tee-strategy'
+          ? scenario.naturalClubComparisons.find((item) => item.club === recommendation.club)
+          : null
+        const halfWidth = evaluation?.aimSearchHalfWidthYds ?? 15
+        return Math.abs(recommendation.aimOffsetYds) >= halfWidth - 0.1
+      }).length,
       elevatedCatastropheCount: scenarios.filter((scenario) =>
         (scenario.recommendation?.catastrophe ?? 0) > 0.08,
       ).length,
@@ -309,6 +329,10 @@ export const buildGreywolfCourseDecisionAudit = async (
       thinSupportCount: scenarios.filter((scenario) =>
         (scenario.recommendation?.supportShots ?? Number.POSITIVE_INFINITY) < 5,
       ).length,
+      naturalClubComparisonCount: scenarios.reduce(
+        (sum, scenario) => sum + scenario.naturalClubComparisons.length,
+        0,
+      ),
     },
   }
 }
