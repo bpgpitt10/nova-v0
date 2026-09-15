@@ -1,5 +1,6 @@
 import { greywolfHole01Geometry } from './greywolfHole01'
 import { loadGreywolfHoleContext } from './greywolfEnvironment'
+import { loadGreywolfHoleTerrain } from './greywolfTerrain'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -209,21 +210,34 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
     : new Error(`Greywolf Hole ${holeNumber} package could not be loaded.`)
 }
 
-const attachContext = async (
+const attachSupplementalGeometry = async (
   holeNumber: number,
   geometry: CourseHoleGeometry,
 ): Promise<CourseHoleGeometry> => {
-  const contextLayers = await loadGreywolfHoleContext(holeNumber)
-  return contextLayers.length > 0
-    ? { ...geometry, contextLayers }
-    : geometry
+  const [contextLayers, terrainData] = await Promise.all([
+    loadGreywolfHoleContext(holeNumber),
+    loadGreywolfHoleTerrain(holeNumber),
+  ])
+
+  return {
+    ...geometry,
+    ...(contextLayers.length > 0 ? { contextLayers } : {}),
+    ...(terrainData
+      ? {
+          terrain: terrainData.terrain,
+          contours: terrainData.contours.length > 0
+            ? terrainData.contours
+            : geometry.contours,
+        }
+      : {}),
+  }
 }
 
 const loadHole = async (holeNumber: number): Promise<CourseHoleGeometry> => {
   const geometry = holeNumber === 1
     ? greywolfHole01Geometry
     : parseHole(holeNumber, await fetchRawHole(holeNumber))
-  return attachContext(holeNumber, geometry)
+  return attachSupplementalGeometry(holeNumber, geometry)
 }
 
 export const loadGreywolfHoleGeometry = (holeNumber: number): Promise<CourseHoleGeometry> => {
