@@ -38,16 +38,17 @@ jobs:
 
       - name: Compile browser terrain and topo package
         run: |
+          mkdir -p public/course-geometry/greywolf
           python tools/build_greywolf_terrain.py \
             --dem /tmp/greywolf_dem.tif \
-            --output public/course-geometry/greywolf-terrain-v1.json
-          test -s public/course-geometry/greywolf-terrain-v1.json
+            --output public/course-geometry/greywolf/terrain-v1.json
+          test -s public/course-geometry/greywolf/terrain-v1.json
 
       - name: Persist generated terrain package
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/course-geometry/greywolf-terrain-v1.json
+          git add public/course-geometry/greywolf/terrain-v1.json
           if git diff --cached --quiet; then
             echo "Terrain package unchanged"
           else
