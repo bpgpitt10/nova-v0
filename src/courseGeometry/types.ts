@@ -102,6 +102,8 @@ export type CourseGeometryProvenance = {
   note?: string
 }
 
+export type CourseCoordinateOrigin = 'selected-tee' | 'osm-hole-route-start'
+
 export type CourseHoleGeometry = {
   schemaVersion: 'looper-course-geometry-v1'
   courseId: string
@@ -112,7 +114,7 @@ export type CourseHoleGeometry = {
   statedYardageYds?: number
   coordinateSystem: {
     units: 'yards'
-    origin: 'selected-tee'
+    origin: CourseCoordinateOrigin
     xAxis: 'right'
     yAxis: 'forward'
   }
