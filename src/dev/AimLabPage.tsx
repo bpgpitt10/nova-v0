@@ -27,8 +27,13 @@ import {
 import type { SavedSession } from '../types'
 import './aimLab.css'
 
-const pct = (value: number | null | undefined) =>
-  typeof value === 'number' ? `${Math.round(value * 100)}%` : '—'
+const pct = (value: number | null | undefined) => {
+  if (typeof value !== 'number') return '—'
+  const percentage = value * 100
+  if (percentage === 0) return '0%'
+  if (percentage < 5) return `${percentage.toFixed(1)}%`
+  return `${Math.round(percentage)}%`
+}
 
 const signedYds = (value: number | null | undefined) =>
   typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value.toFixed(1)} yd` : '—'
@@ -143,6 +148,8 @@ function AimMap({
   lastShot,
   editMode,
   interactive,
+  showModeledLandings,
+  showHistoricalLandings,
   onSetPoint,
 }: {
   hole: CourseHoleGeometry
@@ -153,6 +160,8 @@ function AimMap({
   lastShot: LastShotReview | null
   editMode: 'ball' | 'target'
   interactive: boolean
+  showModeledLandings: boolean
+  showHistoricalLandings: boolean
   onSetPoint: (point: CoursePointYds) => void
 }) {
   const viewSize = 100
@@ -160,9 +169,6 @@ function AimMap({
   const displayBounds = {
     minX: hole.bounds.minX,
     maxX: hole.bounds.maxX,
-    // Match the proven course renderer: retain useful terrain behind the selected
-    // tee, but do not let unrelated mapped features far behind the tee determine
-    // the live-hole framing.
     minY: Math.max(hole.bounds.minY, -28),
     maxY: hole.bounds.maxY,
   }
@@ -174,9 +180,6 @@ function AimMap({
   const offsetX = (viewSize - usedWidth) / 2
   const offsetY = (viewSize - usedHeight) / 2
 
-  // IMPORTANT: use one yards→SVG scale for both axes. The previous Aim Lab
-  // renderer normalized X and Y independently to 0–100, which made a long,
-  // narrow hole look several times wider than the canonical course render.
   const project = (point: CoursePointYds): [number, number] => [
     offsetX + (point[0] - displayBounds.minX) * scale,
     viewSize - (offsetY + (point[1] - displayBounds.minY) * scale),
@@ -195,6 +198,14 @@ function AimMap({
   const actualStartSvg = lastShot?.actualStart ? project(lastShot.actualStart) : null
   const actualLandingSvg = lastShot?.actualLanding ? project(lastShot.actualLanding) : null
   const priorExpectedSvg = lastShot?.expectedLanding ? project(lastShot.expectedLanding) : null
+  const modeledSampleSvgs = best?.modeledSamples.map((sample) => ({
+    ...sample,
+    svg: project(sample.landing),
+  })) ?? []
+  const historicalSampleSvgs = best?.empiricalAllShots?.samples.map((sample) => ({
+    ...sample,
+    svg: project(sample.landing),
+  })) ?? []
 
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
     if (!interactive) return
@@ -204,15 +215,12 @@ function AimMap({
     onSetPoint(unproject(x, y))
   }
 
-  const lateralSigma = selected?.lateralSigmaYds ?? 0
-  const carrySigma = selected?.carrySigmaYds ?? 0
-  const ellipseRx = Math.max(0.5, 2 * lateralSigma * scale)
-  const ellipseRy = Math.max(0.5, 2 * carrySigma * scale)
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
   const shotAngle = (Math.atan2(shotDy, shotDx) * 180) / Math.PI + 90
   const hasWoods = hole.contextLayers?.some((layer) => layer.kind === 'woods') ?? false
   const hasContours = (hole.contours?.length ?? 0) > 0
+  const historicalAverageWeight = historicalSampleSvgs.length > 0 ? 1 / historicalSampleSvgs.length : 1
 
   return (
     <div className="aim-map-shell">
@@ -277,14 +285,35 @@ function AimMap({
         {best && aimSvg && meanSvg && (
           <>
             <line className="aim-line candidate" x1={ballSvg[0]} y1={ballSvg[1]} x2={aimSvg[0]} y2={aimSvg[1]} />
-            <ellipse
-              className="dispersion-ellipse"
-              cx={meanSvg[0]}
-              cy={meanSvg[1]}
-              rx={ellipseRx}
-              ry={ellipseRy}
-              transform={`rotate(${shotAngle} ${meanSvg[0]} ${meanSvg[1]})`}
-            />
+            {[...best.probabilityContours].reverse().map((contour) => (
+              <ellipse
+                key={`probability-${contour.probability}`}
+                className={`probability-contour probability-${Math.round(contour.probability * 100)}`}
+                cx={meanSvg[0]}
+                cy={meanSvg[1]}
+                rx={Math.max(0.4, contour.lateralRadiusYds * scale)}
+                ry={Math.max(0.4, contour.carryRadiusYds * scale)}
+                transform={`rotate(${shotAngle} ${meanSvg[0]} ${meanSvg[1]})`}
+              />
+            ))}
+            {showModeledLandings && modeledSampleSvgs.map((sample, index) => (
+              <circle
+                key={`modeled-sample-${index}`}
+                className={`modeled-landing-sample sample-${sample.kind}`}
+                cx={sample.svg[0]}
+                cy={sample.svg[1]}
+                r="0.16"
+              />
+            ))}
+            {showHistoricalLandings && historicalSampleSvgs.map((sample, index) => (
+              <circle
+                key={`historical-sample-${index}`}
+                className={`historical-landing-sample sample-${sample.kind}`}
+                cx={sample.svg[0]}
+                cy={sample.svg[1]}
+                r={Math.max(0.25, Math.min(0.62, 0.34 * Math.sqrt(sample.weight / historicalAverageWeight)))}
+              />
+            ))}
             <circle className="mean-marker" cx={meanSvg[0]} cy={meanSvg[1]} r="1.1" />
             <circle className="aim-marker" cx={aimSvg[0]} cy={aimSvg[1]} r="0.9" />
           </>
@@ -305,6 +334,7 @@ function AimMap({
         <span><i className="legend-dot pin" /> Pin estimate</span>
         <span><i className="legend-dot aim" /> Aim point</span>
         <span><i className="legend-dot mean" /> Expected center</span>
+        {best && <span><i className="legend-line probability" /> 50 / 80 / 95% modeled cloud</span>}
         {hasWoods && <span><i className="legend-dot woods" /> Woods</span>}
         {hasContours && <span><i className="legend-line contour" /> Topo</span>}
         {lastShot?.actualLanding && <span><i className="legend-dot actual" /> Last actual</span>}
@@ -335,6 +365,8 @@ function AimLabPage() {
   const [liveError, setLiveError] = useState<string | null>(null)
   const [liveConnectionVersion, setLiveConnectionVersion] = useState(0)
   const [lastShotReview, setLastShotReview] = useState<LastShotReview | null>(null)
+  const [showModeledLandings, setShowModeledLandings] = useState(false)
+  const [showHistoricalLandings, setShowHistoricalLandings] = useState(false)
 
   const selectedRef = useRef<ClubAimEvaluation | null>(null)
   const recommendationHoleRef = useRef(1)
@@ -603,7 +635,7 @@ function AimLabPage() {
             ))}
           </select>
         </label>
-        <button type="button" onClick={resetTee} disabled={!hole || mode === 'live'}>Tee setup</button>
+        <button type="button" onClick={resetTee} disabled={!hole || mode === 'live'}>Reset to tee</button>
         <button type="button" onClick={targetGreen} disabled={!hole?.markers.pin || mode === 'live'}>Target green</button>
         <button type="button" disabled={mode === 'live'} className={editMode === 'ball' ? 'active' : ''} onClick={() => setEditMode('ball')}>
           Click map: set ball
@@ -657,11 +689,32 @@ function AimLabPage() {
                 lastShot={visibleLastShot}
                 editMode={editMode}
                 interactive={mode === 'manual'}
+                showModeledLandings={showModeledLandings}
+                showHistoricalLandings={showHistoricalLandings}
                 onSetPoint={(point) => {
                   if (editMode === 'ball') setBall(point)
                   else setTarget(point)
                 }}
               />
+              <div className="aim-map-debug-controls">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showModeledLandings}
+                    onChange={(event) => setShowModeledLandings(event.target.checked)}
+                  />
+                  Show modeled landing dots {selected ? `(${selected.modeledSampleCount.toLocaleString()})` : ''}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showHistoricalLandings}
+                    onChange={(event) => setShowHistoricalLandings(event.target.checked)}
+                  />
+                  Show observed Stock replay {selected ? `(n=${selected.empiricalShotCount})` : ''}
+                </label>
+                <small>Percentages, cloud and modeled dots use the same deterministic landing sample. Historical dots are sized by their analysis weight.</small>
+              </div>
             </article>
 
             <article className="aim-card state-card">
@@ -710,14 +763,15 @@ function AimLabPage() {
                 <thead><tr><th>Factor</th><th>Raw value</th><th>Current model effect</th><th>Source</th><th>Status</th></tr></thead>
                 <tbody>
                   <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Landing surface outcome classification</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical cloud drives map contours, percentages and score</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Every modeled landing is classified against playable surfaces + woods/scrub context</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Live ball position</td><td>{mode === 'live' ? `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F` : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole ? 'status modeled' : 'status review'}>{liveMatchesHole ? 'MODELED' : 'MANUAL'}</b></td></tr>
                   <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{ballTerrain && targetTerrain ? (ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem' ? 'LiDAR DEM' : 'LiDAR contour proxy') : 'No terrain model'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
                   <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>{selected ? `${signedYds(selected.airborneCarryDeltaYds)} carry · ${signedYds(selected.airborneLateralDeltaYds)} lateral (combined with elevation)` : '—'}</td><td>Manual now / live sensor later</td><td><b className="status modeled">PROVISIONAL</b></td></tr>
                   <tr><td>Surface</td><td>{activeSurface}</td><td>{selected ? `${selected.surfaceLabel} · ${signedYds(selected.surfaceCarryDeltaYds)} carry · ${signedYds(selected.surfaceLateralDeltaYds)} lateral` : '—'}</td><td>{surfaceSource}</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Uphill/downhill lie</td><td>{uphillLieDeg}°</td><td>No launch/carry change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
                   <tr><td>Ball above/below feet</td><td>{sidehillLieDeg}°</td><td>No start-line/curvature change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
-                  <tr><td>Mishit / all-shot tail</td><td>{selected ? `${selected.empiricalShotCount} usable Stock shots` : '—'}</td><td>Replayed at every aim beside normal model; not scored yet</td><td>Looper weighted Stock history</td><td><b className="status review">REVIEW</b></td></tr>
+                  <tr><td>Mishit / all-shot tail</td><td>{selected ? `${selected.empiricalShotCount} usable Stock shots` : '—'}</td><td>Weighted observed shots replayed at every aim beside normal model; not scored yet</td><td>Looper weighted Stock history</td><td><b className="status review">REVIEW</b></td></tr>
                 </tbody>
               </table>
             </div>
@@ -733,7 +787,7 @@ function AimLabPage() {
             </div>
             <div className="aim-table-wrap">
               <table className="aim-table candidate-table">
-                <thead><tr><th>Club</th><th>Stock</th><th>Air Δ</th><th>Surface Δ</th><th>Planned</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Score</th><th>Support</th></tr></thead>
+                <thead><tr><th>Club</th><th>Stock</th><th>Air Δ</th><th>Surface Δ</th><th>Planned</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Unknown</th><th>Score</th><th>Support</th></tr></thead>
                 <tbody>
                   {evaluations.slice(0, 8).map((item) => {
                     const best = item.bestCandidate
@@ -751,6 +805,7 @@ function AimLabPage() {
                         <td>{pct(outcomes?.rough)}</td>
                         <td>{pct(outcomes?.trouble)}</td>
                         <td>{pct(outcomes?.penalty)}</td>
+                        <td>{pct(outcomes?.unknown)}</td>
                         <td>{best?.score == null ? '—' : best.score.toFixed(1)}</td>
                         <td>{item.supportShots} shots</td>
                       </tr>
@@ -767,13 +822,13 @@ function AimLabPage() {
                 <div className="aim-card-heading">
                   <div>
                     <span>AIM SWEEP · {selected.club.toUpperCase()}</span>
-                    <h2>Modeled normal vs your actual Stock history</h2>
+                    <h2>Modeled probability vs observed Stock replay</h2>
                   </div>
-                  <small>Model-selected best is highlighted · empirical n={selected.empiricalShotCount}</small>
+                  <small>Best highlighted · modeled n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
                 </div>
                 <div className="aim-table-wrap">
                   <table className="aim-table aim-sweep-table">
-                    <thead><tr><th>Aim</th><th>Model pref.</th><th>Actual pref.</th><th>Model trouble</th><th>Actual trouble</th><th>Model penalty</th><th>Actual penalty</th><th>Δ elev</th><th>Model score</th></tr></thead>
+                    <thead><tr><th>Aim</th><th>Model pref.</th><th>Hist. pref.</th><th>Model rough</th><th>Hist. rough</th><th>Model trouble</th><th>Hist. trouble</th><th>Model penalty</th><th>Hist. penalty</th><th>Model unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>Model score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
                         const landingTerrain = hole ? estimateGreywolfTerrain(hole, candidate.meanLanding) : null
@@ -783,10 +838,14 @@ function AimLabPage() {
                             <td><strong>{signedYds(candidate.aimOffsetYds)}</strong></td>
                             <td>{pct(candidate.surfaceOutcomes?.preferred)}</td>
                             <td>{pct(candidate.empiricalAllShots?.preferred)}</td>
+                            <td>{pct(candidate.surfaceOutcomes?.rough)}</td>
+                            <td>{pct(candidate.empiricalAllShots?.rough)}</td>
                             <td>{pct(candidate.surfaceOutcomes?.trouble)}</td>
                             <td>{pct(candidate.empiricalAllShots?.trouble)}</td>
                             <td>{pct(candidate.surfaceOutcomes?.penalty)}</td>
                             <td>{pct(candidate.empiricalAllShots?.penalty)}</td>
+                            <td>{pct(candidate.surfaceOutcomes?.unknown)}</td>
+                            <td>{pct(candidate.empiricalAllShots?.unknown)}</td>
                             <td>{elevationDelta == null ? '—' : `${elevationDelta >= 0 ? '+' : ''}${elevationDelta.toFixed(1)} ft`}</td>
                             <td>{candidate.score == null ? '—' : candidate.score.toFixed(1)}</td>
                           </tr>
@@ -810,7 +869,9 @@ function AimLabPage() {
                 <p><strong>This is not final golf strategy.</strong> It is a reviewable baseline so we can argue with every assumption before improving it.</p>
                 <div className="assumption-list">
                   <div><span>Aim search</span><strong>−15 to +15 yd, every 3 yd</strong></div>
-                  <div><span>Shot shape</span><strong>Stock dispersion around physics-adjusted center</strong></div>
+                  <div><span>Shot shape</span><strong>{selected.modeledSampleCount.toLocaleString()} deterministic Stock landings</strong></div>
+                  <div><span>Outcome math</span><strong>Same landings drive cloud, table and score</strong></div>
+                  <div><span>Tactical classifier</span><strong>Playable surfaces + woods/scrub obstruction</strong></div>
                   <div><span>Wind</span><strong>looper-flight-physics-v1 · provisional</strong></div>
                   <div><span>Elevation</span><strong>H1 LiDAR target elevation · provisional</strong></div>
                   <div><span>Surface response</span><strong>GSPro launch modifiers · modeled</strong></div>
