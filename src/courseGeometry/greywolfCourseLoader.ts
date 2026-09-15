@@ -34,8 +34,7 @@ type RawGreywolfHole = {
   features?: Partial<Record<'tee' | 'fairway' | 'rough' | 'green' | 'bunker' | 'water', RawFeature[]>>
 }
 
-const RAW_BASE =
-  'https://raw.githubusercontent.com/bpgpitt10/nova-v0/hazard-field-lab-v0/artifacts/osm-proof/local-geometry'
+const RAW_BASE = '/course-geometry/greywolf/local-geometry'
 
 const kindOrder = ['tee', 'fairway', 'rough', 'green', 'bunker', 'water'] as const
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
@@ -94,7 +93,7 @@ const surfaceFromRaw = (
         feature.osm_id == null ? [] : [feature.osm_id],
       ),
       confidence: 'high',
-      note: 'Pre-generated Greywolf local-yard OSM course package.',
+      note: 'Pre-generated Greywolf local-yard OSM course package cached with the canonical course branch.',
     },
   }
 }
@@ -179,7 +178,7 @@ const parseHole = (holeNumber: number, raw: RawGreywolfHole): CourseHoleGeometry
       license: 'Open Database License (ODbL)',
       licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
       note:
-        'Aim Lab V0 loads the existing proof artifact directly for rapid Greywolf round testing; canonical packaging can replace this transport without changing the decision contract.',
+        'Runtime geometry is served from the canonical course cache; OSM is queried only during package generation/refresh.',
     },
   }
 }
@@ -195,7 +194,7 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
   for (const delayMs of FETCH_RETRY_DELAYS_MS) {
     await wait(delayMs)
     try {
-      const response = await fetch(`${RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`)
+      const response = await fetch(`${RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`, { cache: 'force-cache' })
       if (!response.ok) {
         throw new Error(`Greywolf Hole ${holeNumber} package returned ${response.status}.`)
       }
