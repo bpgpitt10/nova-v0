@@ -82,6 +82,7 @@ export type { AimSurfaceDistribution } from './aimOutcomeSampling'
 export type AimCandidateEvaluation = {
   aimOffsetYds: number
   aimPoint: CoursePointYds
+  /** Resting/final expected center after historical rollout. */
   meanLanding: CoursePointYds
   /** Probabilities and the map cloud come from this exact deterministic sample set. */
   surfaceOutcomes: AimSurfaceDistribution | null
@@ -113,11 +114,15 @@ export type ClubAimEvaluation = {
   club: string
   variant: 'Stock'
   stockCarryYds: number
+  stockTotalYds: number
   modeledCarryYds: number
+  modeledTotalYds: number
+  rolloutYds: number
   airborneCarryDeltaYds: number
   surfaceCarryDeltaYds: number
   surfaceLabel: string
   carrySigmaYds: number | null
+  totalSigmaYds: number | null
   lateralBiasYds: number
   modeledLateralBiasYds: number
   airborneLateralDeltaYds: number
@@ -245,6 +250,14 @@ export const evaluateAimLab = (
     )
 
     const modeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
+    const stockTotalYds =
+      typeof profile.stock_total_yds === 'number' && Number.isFinite(profile.stock_total_yds)
+        ? Math.max(profile.stock_carry_yds, profile.stock_total_yds)
+        : profile.stock_carry_yds
+    const rolloutYds = Math.max(0, stockTotalYds - profile.stock_carry_yds)
+    // Until destination-surface rollout physics are validated, preserve the player's
+    // observed Stock rollout and translate both carry and total by the same live carry delta.
+    const modeledTotalYds = modeledCarryYds + rolloutYds
     const baseLateralBiasYds = profile.lateral_bias_yds ?? 0
     const modeledLateralBiasYds = modeled.modeledLateralBiasYds ?? baseLateralBiasYds
     const carryGapYds = modeledCarryYds - targetDistanceYds
@@ -270,6 +283,9 @@ export const evaluateAimLab = (
     if (environment.surfaceOverride && environment.surfaceOverride !== geometrySurface) {
       notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
     }
+    if (rolloutYds > 0) {
+      notes.push(`Final-position outcomes include ${rolloutYds.toFixed(1)} yd of observed Stock rollout beyond carry.`)
+    }
 
     const candidates = aimOffsetsYds.map((aimOffsetYds): AimCandidateEvaluation => {
       const aimPoint = aimPointAtOffset(ball, planningTarget, aimOffsetYds)
@@ -286,8 +302,10 @@ export const evaluateAimLab = (
         ball,
         aimPoint,
         carryMeanYds: modeledCarryYds,
+        totalMeanYds: modeledTotalYds,
         lateralMeanYds: modeledLateralBiasYds,
         carrySigmaYds: profile.carry_sigma_yds,
+        totalSigmaYds: profile.total_sigma_yds,
         lateralSigmaYds: profile.lateral_sigma_yds,
       })
       if (!sampled) {
@@ -351,11 +369,15 @@ export const evaluateAimLab = (
       club: profile.club,
       variant: 'Stock',
       stockCarryYds: profile.stock_carry_yds,
+      stockTotalYds,
       modeledCarryYds,
+      modeledTotalYds,
+      rolloutYds,
       airborneCarryDeltaYds: modeled.appliedAdjustments.combinedAirborneCarryYds,
       surfaceCarryDeltaYds: modeled.appliedAdjustments.surfaceCarryYds,
       surfaceLabel: modeled.surfaceResponse.label,
       carrySigmaYds: profile.carry_sigma_yds ?? null,
+      totalSigmaYds: profile.total_sigma_yds ?? null,
       lateralBiasYds: baseLateralBiasYds,
       modeledLateralBiasYds,
       airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
