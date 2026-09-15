@@ -1,0 +1,69 @@
+name: One-time Aim Lab risk copy cleanup
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+
+permissions:
+  contents: write
+
+jobs:
+  patch-copy:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+      - name: Replace stale V0 copy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/dev/AimLabPage.tsx')
+          text = path.read_text()
+          replacements = {
+              '50/80% describe the normal core. Full risk adds the learned planning-excluded tail. The recommendation still uses the old V0 core score for now.':
+                  '50/80% describe the normal core. Full risk adds the learned planning-excluded tail and is authoritative for club + aim selection.',
+              'One canonical core cloud drives map contours, core percentages and V0 score':
+                  'One canonical core cloud drives map contours and core percentages; full risk drives the recommendation',
+              '<td><b className="status review">RISK ONLY</b></td>':
+                  '<td><b className="status modeled">AUTHORITATIVE</b></td>',
+              '<th>Score</th><th>Support</th>':
+                  '<th>Legacy score</th><th>Support</th>',
+              'V0-selected best highlighted · core n=':
+                  'Risk-aware best highlighted · core n=',
+              '<th>V0 score</th>':
+                  '<th>Legacy score</th>',
+              '<div className="aim-card-heading"><div><span>SCORING ASSUMPTIONS</span><h2>V0 is intentionally simple</h2></div></div>':
+                  '<div className="aim-card-heading"><div><span>DECISION POLICY</span><h2>Full risk is authoritative</h2></div></div>',
+              '<code>score = preferred×':
+                  '<code>legacy score = preferred×',
+              '<p><strong>This is not final golf strategy.</strong> Full risk is now calculated separately so we can validate it before changing the recommendation.</p>':
+                  '<p><strong>Recommendation policy:</strong> target fit and club support first, then catastrophe guardrail and success/severity. The legacy score remains visible only as a final deterministic tie-breaker and diagnostic.</p>',
+              'Core + learned planning-excluded tail · not scored yet':
+                  'Core + learned planning-excluded tail · authoritative',
+              'Inspection only · does not change V0-selected aim yet · tail ':
+                  'Authoritative aim risk · selected line highlighted · tail ',
+          }
+
+          missing = [old for old in replacements if old not in text]
+          if missing:
+              raise SystemExit('Expected stale copy not found: ' + repr(missing))
+
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+      - name: Commit cleanup
+        run: |
+          if git diff --quiet -- src/dev/AimLabPage.tsx; then
+            echo "No copy changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/dev/AimLabPage.tsx
+          git commit -m "Update Aim Lab full-risk copy"
+          git push origin HEAD:course-geometry-tactical-v0
