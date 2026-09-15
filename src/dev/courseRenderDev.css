@@ -38,6 +38,14 @@
   color: #d8e7e4;
   font-size: 13px;
 }
+.course-render-controls .hole-picker select {
+  color: #eff7f5;
+  background: #0b2526;
+  border: 1px solid #355456;
+  border-radius: 8px;
+  padding: 3px 7px;
+}
+.course-render-controls .control-disabled { opacity: .48; }
 
 .course-render-grid {
   max-width: 1180px;
@@ -48,13 +56,16 @@
   align-items: start;
 }
 
-.course-map-card, .course-data-card {
+.course-map-card, .course-data-card, .course-loading-card {
   background: linear-gradient(180deg, rgba(17, 37, 39, .96), rgba(8, 24, 26, .98));
   border: 1px solid #254549;
   box-shadow: 0 24px 50px rgba(0,0,0,.28);
 }
 .course-map-card { border-radius: 22px; padding: 18px; }
 .course-data-card { border-radius: 17px; padding: 18px; }
+.course-loading-card { max-width: 760px; margin: 60px auto; border-radius: 22px; padding: 28px; }
+.course-loading-card h1 { margin: 5px 0 8px; }
+.course-loading-card p:last-child { color: #9fb6b2; }
 .course-map-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .course-map-title-row h2 { margin: 3px 0 0; font-size: 21px; }
 .truth-pill { color: #c6f6d5; background: #163a2a; border: 1px solid #2e6c4a; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .12em; padding: 7px 9px; }
@@ -62,14 +73,18 @@
 .course-hole-svg { width: 100%; display: block; max-height: 76vh; }
 .terrain-contours polyline { stroke: rgba(226, 244, 221, .18); stroke-width: 1; }
 .surface { vector-effect: non-scaling-stroke; stroke-width: 1.1; }
+.surface.grass-context { fill: rgba(64, 92, 52, .11); stroke: rgba(122, 150, 102, .12); }
+.surface.woods { fill: url(#woodsCanopyPattern); stroke: rgba(104, 145, 93, .38); }
+.surface.scrub { fill: url(#scrubTexturePattern); stroke: rgba(166, 154, 91, .35); }
 .surface.rough { fill: rgba(47, 89, 56, .58); stroke: rgba(115, 151, 103, .42); }
 .surface.water { fill: #1473a6; stroke: #39afe7; }
+.surface.penalty { fill: rgba(177, 60, 60, .30); stroke: rgba(244, 109, 109, .75); stroke-dasharray: 5 4; }
 .surface.fairway { fill: url(#fairwayFill); stroke: #9ccb77; }
 .surface.green { fill: #b9db7e; stroke: #e1f4b6; }
 .surface.bunker { fill: #dfca9c; stroke: #f3e6c6; }
 .surface.tee { fill: #63ad4f; stroke: #b7e89f; }
 
-.distance-marker line { stroke: rgba(255,255,255,.12); stroke-dasharray: 4 5; }
+.distance-marker line, .distance-marker polyline { stroke: rgba(255,255,255,.13); stroke-dasharray: 4 5; fill: none; }
 .distance-marker rect { fill: rgba(5, 18, 19, .78); stroke: rgba(255,255,255,.12); }
 .distance-marker text { fill: #dce9e4; font-size: 11px; text-anchor: middle; font-weight: 700; }
 .tee-marker circle:first-child { fill: #071114; stroke: #dbeadf; stroke-width: 2; }
@@ -84,7 +99,12 @@
 .course-map-legend { display: flex; flex-wrap: wrap; gap: 10px 14px; padding: 12px 4px 0; color: #a9beb9; font-size: 12px; }
 .course-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.legend-swatch.tee { background:#63ad4f; }.legend-swatch.fairway{background:#76aa50}.legend-swatch.green{background:#b9db7e}.legend-swatch.bunker{background:#dfca9c}.legend-swatch.water{background:#1473a6}
+.legend-swatch.tee { background:#63ad4f; }
+.legend-swatch.fairway{background:#76aa50}
+.legend-swatch.green{background:#b9db7e}
+.legend-swatch.bunker{background:#dfca9c}
+.legend-swatch.water{background:#1473a6}
+.legend-swatch.woods{background:#315c3c; border:1px solid #6f9962}
 
 .course-data-column { display: grid; gap: 14px; }
 .card-kicker { margin: 0 0 14px; }
@@ -92,32 +112,29 @@
 .metric-list > div { display: flex; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid rgba(126, 160, 158, .13); }
 .metric-list > div:last-child { border-bottom: 0; }
 .metric-list dt { color: #99afab; }
-.metric-list dd { margin: 0; font-weight: 750; color: #eef5f3; }
-.green-terrain-summary { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 12px; }
-.green-terrain-summary strong { font-size: 34px; color: #c5e99a; }
-.green-terrain-summary span, .terrain-note, .proof-footnote { color: #98aeaa; }
-.terrain-note { line-height: 1.5; }
-.green-high-low { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; color: #cddbd8; font-size: 12px; }
-.high-dot,.low-dot { display:inline-block; width:8px; height:8px; border-radius:50%; }.high-dot{background:#ef5350}.low-dot{background:#42a5f5;margin-left:8px}
+.metric-list dd { margin: 0; font-weight: 750; color: #eef5f3; text-align: right; }
+.compact-metrics > div { padding: 6px 0; }
 
-.elevation-profile { width: 100%; display: block; overflow: visible; }
-.elevation-profile text { fill: #829b96; font-size: 10px; }
-.profile-axis { stroke: #47635f; }
-.profile-line { stroke: #68c3f1; stroke-width: 3; vector-effect: non-scaling-stroke; }
-.elevation-profile .profile-climb { fill: #d8ece7; font-weight: 800; font-size: 13px; }
+.proof-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 13px;
+}
+.proof-stat-grid > div {
+  padding: 11px;
+  border-radius: 11px;
+  background: rgba(114, 158, 134, .08);
+  border: 1px solid rgba(114, 158, 134, .18);
+}
+.proof-stat-grid strong { display: block; color: #dff0e4; font-size: 19px; }
+.proof-stat-grid span { display: block; color: #8fa8a1; font-size: 10px; margin-top: 3px; text-transform: uppercase; letter-spacing: .06em; }
+
 .shot-proof-row { display: flex; gap: 10px; margin: 12px 0; align-items: flex-start; }
 .shot-index { width: 25px; height: 25px; display:grid; place-items:center; border-radius:50%; background:#6f5128; color:#ffd79a; font-weight:900; }
 .shot-proof-row strong { display:block; font-size: 13px; }
 .shot-proof-row small { display:block; color:#8fa7a2; margin-top:3px; }
-.proof-footnote { font-size: 11px; line-height: 1.45; margin-bottom: 0; }
-
-@media (max-width: 900px) {
-  .course-render-dev { padding: 18px; }
-  .course-render-header { align-items: flex-start; flex-direction: column; }
-  .course-render-controls { justify-content: flex-start; }
-  .course-render-grid { grid-template-columns: 1fr; }
-  .course-hole-svg { max-height: none; }
-}
+.proof-footnote { color: #98aeaa; font-size: 11px; line-height: 1.45; margin-bottom: 0; }
 
 .course-map-attribution {
   margin: 10px 4px 0;
@@ -127,3 +144,11 @@
 }
 .course-map-attribution a { color: #91aaa5; text-decoration: underline; text-underline-offset: 2px; }
 .course-map-attribution a:hover { color: #c8d9d5; }
+
+@media (max-width: 900px) {
+  .course-render-dev { padding: 18px; }
+  .course-render-header { align-items: flex-start; flex-direction: column; }
+  .course-render-controls { justify-content: flex-start; }
+  .course-render-grid { grid-template-columns: 1fr; }
+  .course-hole-svg { max-height: none; }
+}
