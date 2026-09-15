@@ -1,5 +1,5 @@
 import { greywolfHole01Geometry } from './greywolfHole01'
-import { loadGreywolfHoleOneContext } from './greywolfEnvironment'
+import { loadGreywolfHoleContext } from './greywolfEnvironment'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -209,22 +209,29 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
     : new Error(`Greywolf Hole ${holeNumber} package could not be loaded.`)
 }
 
-const loadHoleOne = async (): Promise<CourseHoleGeometry> => {
-  const contextLayers = await loadGreywolfHoleOneContext()
+const attachContext = async (
+  holeNumber: number,
+  geometry: CourseHoleGeometry,
+): Promise<CourseHoleGeometry> => {
+  const contextLayers = await loadGreywolfHoleContext(holeNumber)
   return contextLayers.length > 0
-    ? { ...greywolfHole01Geometry, contextLayers }
-    : greywolfHole01Geometry
+    ? { ...geometry, contextLayers }
+    : geometry
+}
+
+const loadHole = async (holeNumber: number): Promise<CourseHoleGeometry> => {
+  const geometry = holeNumber === 1
+    ? greywolfHole01Geometry
+    : parseHole(holeNumber, await fetchRawHole(holeNumber))
+  return attachContext(holeNumber, geometry)
 }
 
 export const loadGreywolfHoleGeometry = (holeNumber: number): Promise<CourseHoleGeometry> => {
   const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
-  if (normalized === 1) return loadHoleOne()
-
   const existing = cache.get(normalized)
   if (existing) return existing
 
-  const promise = fetchRawHole(normalized)
-    .then((raw) => parseHole(normalized, raw))
+  const promise = loadHole(normalized)
     .catch((error) => {
       // Never permanently poison one hole after a transient CDN/network failure.
       cache.delete(normalized)
