@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { loadSavedSessionsFromCloud } from '../cloud/cloudPersistence'
+import {
+  loadSavedSessionsFromCloud,
+  writeDiagnosticEventToCloud,
+} from '../cloud/cloudPersistence'
 import {
   buildGreywolfCourseDecisionAudit,
   type GreywolfDecisionAudit,
@@ -21,6 +24,7 @@ function DecisionAuditDevPage() {
   const [shotCount, setShotCount] = useState<number | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [cloudSaveStatus, setCloudSaveStatus] = useState<string>('not run')
   const [runVersion, setRunVersion] = useState(0)
   const [filter, setFilter] = useState<'all' | 'review' | 'missing'>('all')
 
@@ -28,20 +32,46 @@ function DecisionAuditDevPage() {
     let cancelled = false
     setStatus('loading')
     setError(null)
+    setCloudSaveStatus('pending')
     void loadSavedSessionsFromCloud()
       .then(async (sessions) => {
         if (cancelled) return
+        const totalShots = sessions.reduce((sum, session) => sum + session.shots.length, 0)
         setSessionCount(sessions.length)
-        setShotCount(sessions.reduce((sum, session) => sum + session.shots.length, 0))
+        setShotCount(totalShots)
         const result = await buildGreywolfCourseDecisionAudit(sessions)
         if (cancelled) return
         setAudit(result)
         setStatus('ready')
+
+        const persisted = await writeDiagnosticEventToCloud({
+          courseKey: 'greywolf-panorama-bc',
+          component: 'decision-course-audit',
+          modelVersion: 'full-risk-v1-support-guardrail-v1',
+          result: result.summary.missingCount > 0 ? 'completed-with-missing' : 'completed',
+          reason: `${result.summary.clearCount} clear · ${result.summary.reviewCount} review · ${result.summary.missingCount} missing`,
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            sessionCount: sessions.length,
+            shotCount: totalShots,
+            summary: result.summary,
+            scenarios: result.scenarios,
+          },
+        })
+        if (cancelled) return
+        setCloudSaveStatus(
+          persisted.status === 'synced'
+            ? 'saved to diagnostics'
+            : persisted.status === 'failed'
+              ? `save failed: ${persisted.error}`
+              : `not saved: ${persisted.reason}`,
+        )
       })
       .catch((cause) => {
         if (cancelled) return
         setError(cause instanceof Error ? cause.message : String(cause))
         setStatus('error')
+        setCloudSaveStatus('not saved')
       })
     return () => {
       cancelled = true
@@ -77,6 +107,7 @@ function DecisionAuditDevPage() {
           {status === 'loading' ? 'Running course audit…' : 'Run again'}
         </button>
         <span style={{ color: '#9fb09f' }}>Cloud history: {sessionCount ?? '—'} sessions · {shotCount ?? '—'} shots</span>
+        <span style={{ color: cloudSaveStatus.startsWith('save failed') ? '#c85a4a' : '#9fb09f' }}>Audit record: {cloudSaveStatus}</span>
         <label style={{ marginLeft: 'auto', color: '#9fb09f' }}>
           Show{' '}
           <select value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>
