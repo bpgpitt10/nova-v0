@@ -1,3 +1,4 @@
+import { greywolfHole01Geometry } from './greywolfHole01'
 import type {
   CourseContourLine,
   CourseHoleGeometry,
@@ -91,3 +92,12 @@ export const estimateGreywolfTerrain = (
     note: 'Inverse-distance estimate from LiDAR-derived contours; review aid only until direct DEM sampling is wired.',
   }
 }
+
+/**
+ * Temporary compatibility wrapper for the existing Aim Lab call site. New code
+ * should call estimateGreywolfTerrain(hole, point) so terrain coverage follows
+ * the loaded hole package rather than a hard-coded hole number.
+ */
+export const estimateGreywolfHole01Terrain = (
+  point: CoursePointYds,
+): TerrainEstimate | null => estimateGreywolfTerrain(greywolfHole01Geometry, point)
