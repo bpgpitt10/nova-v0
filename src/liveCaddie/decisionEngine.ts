@@ -17,6 +17,7 @@ import {
 import type { SavedSession, Shot } from '../types'
 import { classifyPoint } from '../courseGeometry/geometry'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
+import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -38,6 +39,8 @@ export type DecisionPlayerSample = {
   shotId: string
   capturedAt: string
   carryYds: number
+  /** Observed resting distance. Falls back to carry when unavailable. */
+  totalYds?: number
   offlineYds: number
   weight: number
   quality: DecisionShotQuality
@@ -120,7 +123,10 @@ export type DecisionEvaluationSlice = {
   surface: DecisionSurfaceDistribution
   quality: DecisionQualityDistribution
   averageProximityYds: number | null
+  /** Mean resting/final position. */
   meanLanding: CoursePointYds | null
+  /** Mean airborne touchdown position before observed rollout. */
+  meanCarryLanding: CoursePointYds | null
   disasterFromMishits: number
   disasterFromSevereMishits: number
 }
@@ -279,6 +285,7 @@ export const buildDecisionPlayerModels = (
       shotId: shot.id,
       capturedAt: shot.capturedAt,
       carryYds: shot.carryYards!,
+      totalYds: finite(shot.totalYards) ? shot.totalYards : undefined,
       offlineYds: shot.offlineYards!,
       weight,
       ...qualityForShot(shot.id, mishitState),
@@ -352,6 +359,8 @@ export const outcomeTierForSurface = (
 type WeightedLanding = {
   sample: DecisionPlayerSample
   weight: number
+  carryLanding: CoursePointYds
+  /** Resting/final position after observed rollout. */
   landing: CoursePointYds
   surface: CourseSurfaceClassification
   tier: DecisionOutcomeTier
@@ -378,6 +387,8 @@ const evaluateSlice = (landings: WeightedLanding[]): DecisionEvaluationSlice | n
   let proximity = 0
   let meanRight = 0
   let meanForward = 0
+  let meanCarryRight = 0
+  let meanCarryForward = 0
   let disasterFromMishits = 0
   let disasterFromSevereMishits = 0
 
@@ -388,6 +399,8 @@ const evaluateSlice = (landings: WeightedLanding[]): DecisionEvaluationSlice | n
     proximity += item.proximityYds * fraction
     meanRight += item.landing[0] * fraction
     meanForward += item.landing[1] * fraction
+    meanCarryRight += item.carryLanding[0] * fraction
+    meanCarryForward += item.carryLanding[1] * fraction
     severity += TACTICAL_SURFACE_SEMANTICS[item.surface].severity * fraction
 
     if (item.tier === 'success') success += fraction
@@ -417,6 +430,7 @@ const evaluateSlice = (landings: WeightedLanding[]): DecisionEvaluationSlice | n
     quality: qualityWeight,
     averageProximityYds: proximity,
     meanLanding: [meanRight, meanForward],
+    meanCarryLanding: [meanCarryRight, meanCarryForward],
     disasterFromMishits,
     disasterFromSevereMishits,
   }
@@ -436,13 +450,22 @@ export const evaluateDecisionCandidate = (
   const right = rightOf(forward)
   const landings: WeightedLanding[] = player.samples.map((sample) => {
     const carry = Math.max(0, sample.carryYds + live.carryDeltaYds)
+    // Preserve the player's observed carry-to-total rollout gap while applying
+    // the same airborne condition translation. Ground-condition physics is not
+    // modeled here yet; missing total data deliberately falls back to carry.
+    const finalDistance = Math.max(
+      0,
+      (finite(sample.totalYds) ? sample.totalYds : sample.carryYds) + live.carryDeltaYds,
+    )
     const offline = sample.offlineYds + live.lateralDeltaYds
-    const landing = addScaled(course.ball, forward, carry, right, offline)
-    const surface = classifyPoint(course.hole, landing).kind
+    const carryLanding = addScaled(course.ball, forward, carry, right, offline)
+    const landing = addScaled(course.ball, forward, finalDistance, right, offline)
+    const surface = classifyTacticalLandingPoint(course.hole, landing).kind
     const tier = outcomeTierForSurface(surface, course.goal)
     return {
       sample,
       weight: sample.weight,
+      carryLanding,
       landing,
       surface,
       tier,
@@ -461,11 +484,15 @@ export const evaluateDecisionCandidate = (
     landings.filter((item) => !item.sample.planningEligible),
   )
   const notes: string[] = []
+  const carryOnlySamples = player.samples.filter((sample) => !finite(sample.totalYds)).length
 
   if (player.samples.length < 5) notes.push('Thin empirical support (<5 usable Stock shots).')
+  if (carryOnlySamples > 0) {
+    notes.push(`${carryOnlySamples} historical shot${carryOnlySamples === 1 ? '' : 's'} lack total distance; final position falls back to carry for those samples.`)
+  }
   if (!mishitTail) notes.push('No classified mishit tail is available yet; all-shot risk may be under-resolved.')
   if (allShots && allShots.surface.unknown > 0.05) {
-    notes.push('More than 5% of weighted outcomes land on unmapped geometry.')
+    notes.push('More than 5% of weighted outcomes finish on unmapped geometry.')
   }
 
   return {
