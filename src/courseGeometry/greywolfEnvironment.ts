@@ -11,17 +11,7 @@ const ENVIRONMENT_KINDS = new Set(['woods', 'scrub', 'grass_context'])
 
 type RawPoint = readonly [number, number]
 
-type RawPolygonGeometry = {
-  type: 'Polygon'
-  coordinates: RawPoint[][]
-}
-
-type RawMultiPolygonGeometry = {
-  type: 'MultiPolygon'
-  coordinates: RawPoint[][][]
-}
-
-type RawGeometry = RawPolygonGeometry | RawMultiPolygonGeometry | {
+type RawGeometry = {
   type: string
   coordinates?: unknown
 }
@@ -53,8 +43,13 @@ type RawPackage = {
 
 let environmentPromise: Promise<readonly CourseContextLayer[]> | null = null
 
-const isFinitePoint = (value: RawPoint): value is RawPoint =>
-  Number.isFinite(value[0]) && Number.isFinite(value[1])
+const isRawPoint = (value: unknown): value is RawPoint =>
+  Array.isArray(value) &&
+  value.length >= 2 &&
+  typeof value[0] === 'number' &&
+  Number.isFinite(value[0]) &&
+  typeof value[1] === 'number' &&
+  Number.isFinite(value[1])
 
 const toHoleLocal = (point: RawPoint, hole: RawHole): CoursePointYds => {
   const tee = hole.anchors.selectedTee.coursePoint
@@ -73,22 +68,22 @@ const toHoleLocal = (point: RawPoint, hole: RawHole): CoursePointYds => {
   return [x * rightX + y * rightY, x * forwardX + y * forwardY]
 }
 
-const ringsToPolygon = (rings: RawPoint[][], hole: RawHole): CoursePolygonYds | null => {
-  const outer = rings[0]
-  if (!outer) return null
-  const points = outer
-    .filter(isFinitePoint)
+const ringsToPolygon = (rings: unknown, hole: RawHole): CoursePolygonYds | null => {
+  if (!Array.isArray(rings) || !Array.isArray(rings[0])) return null
+  const points = rings[0]
+    .filter(isRawPoint)
     .map((point) => toHoleLocal(point, hole))
   return points.length >= 3 ? points : null
 }
 
 const polygonsForFeature = (feature: RawFeature, hole: RawHole): CoursePolygonYds[] => {
+  const coordinates = feature.geometry.coordinates
   if (feature.geometry.type === 'Polygon') {
-    const polygon = ringsToPolygon(feature.geometry.coordinates, hole)
+    const polygon = ringsToPolygon(coordinates, hole)
     return polygon ? [polygon] : []
   }
-  if (feature.geometry.type === 'MultiPolygon') {
-    return feature.geometry.coordinates.flatMap((rings) => {
+  if (feature.geometry.type === 'MultiPolygon' && Array.isArray(coordinates)) {
+    return coordinates.flatMap((rings) => {
       const polygon = ringsToPolygon(rings, hole)
       return polygon ? [polygon] : []
     })
