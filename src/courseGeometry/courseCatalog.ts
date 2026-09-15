@@ -1,5 +1,6 @@
 export const GREYWOLF_COURSE_ID = 'greywolf-panorama-bc' as const
 export const TOBACCO_ROAD_COURSE_ID = 'tobacco-road-sanford-nc' as const
+export const UNSELECTED_COURSE_ID = '__no-course-selected__' as const
 
 export type CourseCacheStatus = 'cached' | 'missing' | 'unknown'
 export type CoursePackageStatus = 'ready' | 'validation' | 'missing'
@@ -144,24 +145,42 @@ export const courseRegistry = [
   },
 ] as const satisfies readonly CourseCatalogEntry[]
 
-export type CourseId = (typeof courseRegistry)[number]['id']
+export type RegisteredCourseId = (typeof courseRegistry)[number]['id']
+export type CourseId = RegisteredCourseId | typeof UNSELECTED_COURSE_ID
+
+const unselectedCourseEntry = {
+  id: UNSELECTED_COURSE_ID,
+  name: 'Choose a course',
+  location: '—',
+  slug: 'no-course-selected',
+  gsproAliases: [] as const,
+  status: 'validation',
+  packageStatus: 'missing',
+  packageVersion: null,
+  packageCacheStatus: 'missing',
+  osmCacheStatus: 'unknown',
+  lidarCacheStatus: 'unknown',
+} as const satisfies CourseCatalogEntry
 
 /**
- * Runtime/player-facing catalog. Planned rows stay internal until a package
- * exists, so registering the pilot queue cannot create dead course choices.
+ * Runtime/player-facing catalog. The explicit unselected row is a UI state,
+ * not a real course and never enters the internal ingestion/build registry.
  */
-export const courseCatalog = courseRegistry.filter(
-  (entry) => entry.packageStatus !== 'missing',
-)
+export const courseCatalog = [
+  unselectedCourseEntry,
+  ...courseRegistry.filter((entry) => entry.packageStatus !== 'missing'),
+]
 
 export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
+  if (courseId === UNSELECTED_COURSE_ID) return unselectedCourseEntry
   const entry = courseRegistry.find((candidate) => candidate.id === courseId)
   if (!entry) throw new Error(`Unknown Looper course id: ${courseId}`)
   return entry
 }
 
 export const isCourseId = (value: string | null | undefined): value is CourseId =>
-  value != null && courseRegistry.some((entry) => entry.id === value)
+  value === UNSELECTED_COURSE_ID ||
+  (value != null && courseRegistry.some((entry) => entry.id === value))
 
 const normalizeCourseName = (value: string) =>
   value
@@ -177,7 +196,7 @@ const normalizeCourseName = (value: string) =>
  * real-world mapping is proven. Location/geometry-assisted discovery belongs
  * in the package-generation workflow, not this deterministic runtime resolver.
  */
-export const resolveCourseIdFromGsproName = (gsproName: string): CourseId | null => {
+export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCourseId | null => {
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
