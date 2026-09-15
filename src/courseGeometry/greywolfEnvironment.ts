@@ -40,7 +40,7 @@ type RawPackage = {
   holes: RawHole[]
 }
 
-let packagePromise: Promise<RawPackage | null> | null = null
+let packagePromise: Promise<RawPackage> | null = null
 const environmentByHole = new Map<number, Promise<readonly CourseContextLayer[]>>()
 
 const isRawPoint = (value: unknown): value is RawPoint =>
@@ -98,37 +98,41 @@ const contextKind = (kind: string): CourseContextLayer['kind'] | null => {
   return null
 }
 
-const fetchEnvironmentPackage = async (): Promise<RawPackage | null> => {
-  try {
-    const response = await fetch(ENVIRONMENT_PACKAGE_URL, { cache: 'force-cache' })
-    if (!response.ok) {
-      throw new Error(`Greywolf environment package returned ${response.status}.`)
-    }
-
-    const payload = await response.json() as RawPackage
-    if (!Array.isArray(payload.features) || !Array.isArray(payload.holes)) {
-      throw new Error('Greywolf environment package did not contain features and holes arrays.')
-    }
-    return payload
-  } catch (error) {
-    // Allow a later attempt to recover from a transient CDN/network failure.
-    packagePromise = null
-    console.warn('[Greywolf geometry] vegetation context unavailable; continuing with playable surfaces only.', error)
-    return null
+const fetchEnvironmentPackage = async (): Promise<RawPackage> => {
+  const response = await fetch(ENVIRONMENT_PACKAGE_URL, { cache: 'force-cache' })
+  if (!response.ok) {
+    throw new Error(`Greywolf environment package returned ${response.status}.`)
   }
+
+  const payload = await response.json() as RawPackage
+  if (!Array.isArray(payload.features) || !Array.isArray(payload.holes)) {
+    throw new Error('Greywolf environment package did not contain features and holes arrays.')
+  }
+  return payload
 }
 
-const loadEnvironmentPackage = (): Promise<RawPackage | null> => {
-  packagePromise ??= fetchEnvironmentPackage()
+const loadEnvironmentPackage = (): Promise<RawPackage> => {
+  if (!packagePromise) {
+    packagePromise = fetchEnvironmentPackage().catch((error) => {
+      // Never preserve a failed fetch as a successful empty package. The next
+      // caller gets a fresh attempt, while this caller sees the real failure.
+      packagePromise = null
+      console.warn('[Greywolf geometry] vegetation context package failed to load.', error)
+      throw error
+    })
+  }
   return packagePromise
 }
 
 const loadEnvironment = async (holeNumber: number): Promise<readonly CourseContextLayer[]> => {
   const payload = await loadEnvironmentPackage()
-  if (!payload) return []
-
   const hole = payload.holes.find((candidate) => candidate.number === holeNumber)
-  if (!hole || !Array.isArray(hole.view?.featureIds)) return []
+  if (!hole) {
+    throw new Error(`Greywolf environment package is missing Hole ${holeNumber}.`)
+  }
+  if (!Array.isArray(hole.view?.featureIds)) {
+    throw new Error(`Greywolf environment package Hole ${holeNumber} is missing view.featureIds.`)
+  }
 
   const requestedIds = new Set(hole.view.featureIds)
   return payload.features.flatMap((feature): CourseContextLayer[] => {
@@ -158,7 +162,12 @@ export const loadGreywolfHoleContext = (holeNumber: number): Promise<readonly Co
   const existing = environmentByHole.get(normalized)
   if (existing) return existing
 
-  const promise = loadEnvironment(normalized)
+  const promise = loadEnvironment(normalized).catch((error) => {
+    // A failed context load must not poison the per-hole cache. The canonical
+    // course adapter will also drop its hole cache and retry cleanly.
+    environmentByHole.delete(normalized)
+    throw error
+  })
   environmentByHole.set(normalized, promise)
   return promise
 }
