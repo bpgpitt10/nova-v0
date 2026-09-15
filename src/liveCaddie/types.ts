@@ -1,10 +1,15 @@
 export type LiveCaddieClubProfile = {
   club: string
   stock_carry_yds: number
+  /** Historical resting distance. Kept separate from carry so course outcomes can model rollout. */
+  stock_total_yds?: number
   carry_sigma_yds?: number
+  /** Historical variability of resting distance. */
+  total_sigma_yds?: number
   lateral_bias_yds?: number
   lateral_sigma_yds?: number
   pure_carry_yds?: number
+  pure_total_yds?: number
   /** Representative Stock launch packet from the same historical profile calculation. */
   launch_profile?: {
     ball_speed_mph?: number
