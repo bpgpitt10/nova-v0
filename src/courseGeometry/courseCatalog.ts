@@ -28,7 +28,11 @@ const plannedCourseDefaults = {
   lidarCacheStatus: 'unknown',
 } as const
 
-export const courseCatalog = [
+/**
+ * Complete internal course registry, including planned pilot courses that do
+ * not have runtime packages yet. Build/ingestion tooling should use this list.
+ */
+export const courseRegistry = [
   {
     id: GREYWOLF_COURSE_ID,
     name: 'Greywolf Golf Course',
@@ -140,24 +144,24 @@ export const courseCatalog = [
   },
 ] as const satisfies readonly CourseCatalogEntry[]
 
-export type CourseId = (typeof courseCatalog)[number]['id']
+export type CourseId = (typeof courseRegistry)[number]['id']
 
 /**
- * Courses visible to players. Planned catalog rows stay internal until a
- * package exists, so registering the pilot queue cannot create dead choices.
+ * Runtime/player-facing catalog. Planned rows stay internal until a package
+ * exists, so registering the pilot queue cannot create dead course choices.
  */
-export const selectableCourseCatalog = courseCatalog.filter(
+export const courseCatalog = courseRegistry.filter(
   (entry) => entry.packageStatus !== 'missing',
 )
 
 export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
-  const entry = courseCatalog.find((candidate) => candidate.id === courseId)
+  const entry = courseRegistry.find((candidate) => candidate.id === courseId)
   if (!entry) throw new Error(`Unknown Looper course id: ${courseId}`)
   return entry
 }
 
 export const isCourseId = (value: string | null | undefined): value is CourseId =>
-  value != null && courseCatalog.some((entry) => entry.id === value)
+  value != null && courseRegistry.some((entry) => entry.id === value)
 
 const normalizeCourseName = (value: string) =>
   value
@@ -177,7 +181,7 @@ export const resolveCourseIdFromGsproName = (gsproName: string): CourseId | null
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
-  for (const entry of courseCatalog) {
+  for (const entry of courseRegistry) {
     if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) {
       return entry.id
     }
