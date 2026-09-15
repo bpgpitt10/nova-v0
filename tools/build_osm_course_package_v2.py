@@ -80,6 +80,22 @@ def nearby_features(
     ]
 
 
+def raw_context_source_counts(payload: dict[str, Any]) -> Counter[str]:
+    """Count context tags that are not already explicit golf surfaces."""
+    counts: Counter[str] = Counter()
+    for element in payload.get("elements", []):
+        tags = element.get("tags") or {}
+        if tags.get("golf"):
+            continue
+        natural = tags.get("natural")
+        landuse = tags.get("landuse")
+        if natural in {"wood", "scrub"}:
+            counts[f"natural={natural}"] += 1
+        if landuse in {"forest", "grass", "meadow"}:
+            counts[f"landuse={landuse}"] += 1
+    return counts
+
+
 def build_hole(
     hole_number: int,
     hole_config: dict[str, Any],
@@ -216,6 +232,12 @@ def build_hole(
         "holeNumber": hole_number,
         "par": par,
         "statedYardageYds": target_yards,
+        "coordinateSystem": {
+            "origin": "osm-hole-route-start",
+            "units": "yards",
+            "xAxis": "right",
+            "yAxis": "forward",
+        },
         "bounds": {
             "minX": round(min(point[0] for point in bounds_points), 1),
             "maxX": round(max(point[0] for point in bounds_points), 1),
@@ -345,6 +367,7 @@ def main() -> int:
 
     ready_holes = [item["hole"] for item in diagnostics if item["ready"]]
     source_counts = Counter(f"{feature['role']}:{feature['kind']}" for feature in features)
+    source_context_counts = raw_context_source_counts(payload)
     osm3s = payload.get("osm3s") or {}
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -370,6 +393,7 @@ def main() -> int:
         "holes": holes,
     }
 
+    context_source_status = "available" if source_context_counts else "unavailable-in-osm-snapshot"
     manifest = {
         "schemaVersion": "looper-course-package-validation-v1",
         "courseId": config["courseId"],
@@ -380,6 +404,14 @@ def main() -> int:
         "compiler": "build_osm_course_package_v2",
         "osmHoleRoutes": len(hole_routes),
         "normalizedFeatureCounts": dict(sorted(source_counts.items())),
+        "contextSourceStatus": context_source_status,
+        "contextSourceTagCounts": dict(sorted(source_context_counts.items())),
+        "contextSourceNote": (
+            "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot; "
+            "landuse=grass objects tagged as golf surfaces are intentionally not duplicated as context."
+            if not source_context_counts
+            else "Standalone OSM context features were present and eligible for corridor filtering."
+        ),
         "readyHoleCount": len(ready_holes),
         "readyHoles": ready_holes,
         "allHolesStaticGeometryReady": len(ready_holes) == 18,
@@ -399,6 +431,7 @@ def main() -> int:
         "course": config["courseName"],
         "hole_routes": len(hole_routes),
         "features": dict(sorted(source_counts.items())),
+        "context_source_status": context_source_status,
         "ready_holes": ready_holes,
         "all_ready": len(ready_holes) == 18,
         "warnings": sum(len(item["warnings"]) for item in diagnostics),
