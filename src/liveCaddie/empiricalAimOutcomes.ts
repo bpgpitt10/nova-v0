@@ -17,14 +17,17 @@ import {
   STOCK_SHOT_VARIANT_ID,
 } from '../lib/shotVariants'
 import type { SavedSession, Shot } from '../types'
+import type { AimSurfaceDistribution } from './aimOutcomeSampling'
 
-export type EmpiricalAimSurfaceDistribution = {
-  bySurface: Partial<Record<CourseSurfaceClassification, number>>
-  preferred: number
-  rough: number
-  trouble: number
-  penalty: number
-  unknown: number
+export type EmpiricalAimLandingSample = {
+  landing: CoursePointYds
+  kind: CourseSurfaceClassification
+  /** Normalized historical weight. All sample weights sum to 1. */
+  weight: number
+}
+
+export type EmpiricalAimSurfaceDistribution = AimSurfaceDistribution & {
+  samples: EmpiricalAimLandingSample[]
 }
 
 export type WeightedEmpiricalStockShot = {
@@ -107,6 +110,7 @@ export const evaluateEmpiricalAimDistribution = (
   const forward = unit(vector(ball, aimPoint))
   const right = rightOf(forward)
   const weights: Partial<Record<CourseSurfaceClassification, number>> = {}
+  const rawSamples: Array<Omit<EmpiricalAimLandingSample, 'weight'> & { rawWeight: number }> = []
   let totalWeight = 0
 
   weightedShots.forEach(({ shot, weight }) => {
@@ -126,6 +130,7 @@ export const evaluateEmpiricalAimDistribution = (
     const landing = addScaled(ball, forward, carry, right, offline)
     const kind = classifyTacticalLandingPoint(hole, landing).kind
     weights[kind] = (weights[kind] ?? 0) + weight
+    rawSamples.push({ landing, kind, rawWeight: weight })
     totalWeight += weight
   })
 
@@ -151,5 +156,11 @@ export const evaluateEmpiricalAimDistribution = (
     if (typedKind === 'unknown') unknown += fraction
   })
 
-  return { bySurface, preferred, rough, trouble, penalty, unknown }
+  const samples = rawSamples.map(({ landing, kind, rawWeight }) => ({
+    landing,
+    kind,
+    weight: rawWeight / totalWeight,
+  }))
+
+  return { bySurface, preferred, rough, trouble, penalty, unknown, samples }
 }
