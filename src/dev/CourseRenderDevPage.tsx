@@ -1,119 +1,212 @@
-import { useMemo, useState } from 'react'
-import { greywolfHole01RenderFixture as hole } from './greywolfHole01RenderFixture'
+import { useEffect, useMemo, useState } from 'react'
+import { loadGreywolfHoleGeometry } from '../courseGeometry/greywolfCourseLoader'
+import type {
+  CourseContextKind,
+  CourseHoleGeometry,
+  CoursePointYds,
+  CoursePolygonYds,
+  CourseSurfaceKind,
+} from '../courseGeometry/types'
+import { greywolfHole01RenderFixture as holeOneEvidence } from './greywolfHole01RenderFixture'
 import './courseRenderDev.css'
-
-type Point = readonly [number, number]
-type PolygonLayer = readonly (readonly Point[])[]
 
 const SVG_WIDTH = 420
 const SVG_HEIGHT = 980
 const PAD = 28
-const PROFILE_TEE_OFFSET_YDS = 46.9
+
+const signed = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
 
 function CourseRenderDevPage() {
+  const [selectedHole, setSelectedHole] = useState(1)
+  const [geometry, setGeometry] = useState<CourseHoleGeometry | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [showContours, setShowContours] = useState(true)
+  const [showVegetation, setShowVegetation] = useState(true)
   const [showShots, setShowShots] = useState(true)
 
-  const displayBounds = useMemo(
-    () => ({
-      ...hole.bounds,
-      // Keep enough terrain behind the selected tee for context, but do not let
-      // unrelated mapped water ~65 yd behind the tee dominate the live-hole crop.
-      minY: Math.max(hole.bounds.minY, -28),
-    }),
-    [],
-  )
+  useEffect(() => {
+    let active = true
+    setGeometry(null)
+    setLoadError(null)
+    loadGreywolfHoleGeometry(selectedHole)
+      .then((payload) => {
+        if (active) setGeometry(payload)
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(error instanceof Error ? error.message : String(error))
+      })
+    return () => {
+      active = false
+    }
+  }, [selectedHole])
+
+  const displayBounds = useMemo(() => {
+    if (!geometry) return null
+    return {
+      minX: geometry.bounds.minX,
+      maxX: geometry.bounds.maxX,
+      minY: Math.max(geometry.bounds.minY, selectedHole === 1 ? -28 : geometry.bounds.minY),
+      maxY: geometry.bounds.maxY,
+    }
+  }, [geometry, selectedHole])
 
   const transform = useMemo(() => {
-    const spanX = displayBounds.maxX - displayBounds.minX
-    const spanY = displayBounds.maxY - displayBounds.minY
+    if (!displayBounds) return null
+    const spanX = Math.max(displayBounds.maxX - displayBounds.minX, 1)
+    const spanY = Math.max(displayBounds.maxY - displayBounds.minY, 1)
     const scale = Math.min((SVG_WIDTH - PAD * 2) / spanX, (SVG_HEIGHT - PAD * 2) / spanY)
     const usedWidth = spanX * scale
     const usedHeight = spanY * scale
     const offsetX = (SVG_WIDTH - usedWidth) / 2
     const offsetY = (SVG_HEIGHT - usedHeight) / 2
-
     return {
-      point([x, y]: Point) {
+      point([x, y]: CoursePointYds) {
         return [
           offsetX + (x - displayBounds.minX) * scale,
           SVG_HEIGHT - (offsetY + (y - displayBounds.minY) * scale),
         ] as const
       },
-      scale,
     }
   }, [displayBounds])
 
-  const pathFor = (points: readonly Point[]) => {
-    if (points.length === 0) return ''
-    return points
+  const pathFor = (points: CoursePolygonYds) => {
+    if (!transform || points.length === 0) return ''
+    return `${points
       .map((point, index) => {
         const [x, y] = transform.point(point)
         return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
       })
-      .join(' ') + ' Z'
+      .join(' ')} Z`
   }
 
-  const polylineFor = (points: readonly Point[]) =>
-    points
+  const polylineFor = (points: readonly CoursePointYds[]) => {
+    if (!transform) return ''
+    return points
       .map((point) => {
         const [x, y] = transform.point(point)
         return `${x.toFixed(2)},${y.toFixed(2)}`
       })
       .join(' ')
+  }
 
-  const renderPolygons = (layer: PolygonLayer, className: string) =>
-    layer.map((points, index) => (
-      <path key={`${className}-${index}`} d={pathFor(points)} className={className} />
-    ))
+  const renderSurfaces = (kind: CourseSurfaceKind, className: string) =>
+    geometry?.surfaces
+      .filter((surface) => surface.kind === kind)
+      .flatMap((surface) =>
+        surface.polygons.map((polygon, index) => (
+          <path key={`${surface.id}-${index}`} d={pathFor(polygon)} className={className} />
+        )),
+      )
 
-  const [teeX, teeY] = transform.point([hole.markers.tee.x, hole.markers.tee.y])
-  const [pinX, pinY] = transform.point([hole.markers.pin.x, hole.markers.pin.y])
+  const renderContext = (kind: CourseContextKind, className: string) =>
+    geometry?.contextLayers
+      ?.filter((layer) => layer.kind === kind)
+      .flatMap((layer) =>
+        layer.polygons.map((polygon, index) => (
+          <path key={`${layer.id}-${index}`} d={pathFor(polygon)} className={className} />
+        )),
+      )
 
-  // The preserved OSM hole route begins ~46.9 yd behind the selected GSPro tee.
-  // Normalize the cached LiDAR route profile so this dev page begins at the
-  // actually selected tee rather than the back-most OSM route endpoint.
-  const selectedTeeProfile = useMemo(
-    () => [
-      { distanceYds: 0, elevationFt: hole.metrics.teeElevationFt },
-      ...hole.elevationProfile
-        .filter((point) => point.distanceYds > PROFILE_TEE_OFFSET_YDS)
-        .map((point) => ({
-          distanceYds: point.distanceYds - PROFILE_TEE_OFFSET_YDS,
-          elevationFt: point.elevationFt,
-        })),
-    ],
-    [],
+  if (loadError) {
+    return (
+      <main className="course-render-dev">
+        <section className="course-loading-card" role="alert">
+          <p className="course-render-eyebrow">LOOPER · COURSE RENDER</p>
+          <h1>Greywolf Hole {selectedHole} could not load</h1>
+          <p>{loadError}</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (!geometry || !transform) {
+    return (
+      <main className="course-render-dev">
+        <section className="course-loading-card" aria-live="polite">
+          <p className="course-render-eyebrow">LOOPER · COURSE RENDER</p>
+          <h1>Loading Greywolf Hole {selectedHole}…</h1>
+        </section>
+      </main>
+    )
+  }
+
+  const pin = geometry.markers.pin
+  const [teeX, teeY] = transform.point(geometry.markers.tee)
+  const [pinX, pinY] = transform.point(pin ?? [0, geometry.statedYardageYds ?? geometry.bounds.maxY])
+  const forwardDistance = Math.max(pin?.[1] ?? geometry.statedYardageYds ?? geometry.bounds.maxY, 0)
+  const carryDistances = Array.from(
+    { length: Math.floor((forwardDistance - 1) / 100) },
+    (_, index) => (index + 1) * 100,
   )
-  const profileMin = Math.min(...selectedTeeProfile.map((point) => point.elevationFt))
-  const profileMax = Math.max(...selectedTeeProfile.map((point) => point.elevationFt))
-  const profileDistance = Math.max(...selectedTeeProfile.map((point) => point.distanceYds))
-  const profilePoints = selectedTeeProfile
-    .map((point) => {
-      const x = 16 + (point.distanceYds / profileDistance) * 288
-      const y = 138 - ((point.elevationFt - profileMin) / Math.max(profileMax - profileMin, 1)) * 104
-      return `${x.toFixed(1)},${y.toFixed(1)}`
+  const carryArc = (distance: number) =>
+    Array.from({ length: 81 }, (_, index) => {
+      const angle = -Math.PI / 2 + (Math.PI * index) / 80
+      return [Math.sin(angle) * distance, Math.cos(angle) * distance] as const
     })
-    .join(' ')
+
+  const surfaceCounts = geometry.surfaces.reduce<Record<string, number>>((counts, surface) => {
+    counts[surface.kind] = (counts[surface.kind] ?? 0) + surface.polygons.length
+    return counts
+  }, {})
+  const contextCounts = (geometry.contextLayers ?? []).reduce<Record<string, number>>((counts, layer) => {
+    counts[layer.kind] = (counts[layer.kind] ?? 0) + layer.polygons.length
+    return counts
+  }, {})
+  const contours = geometry.contours ?? []
+  const contourElevations = contours.map((contour) => contour.elevationFt)
+  const contourRange = contourElevations.length > 0
+    ? `${Math.min(...contourElevations).toFixed(0)}–${Math.max(...contourElevations).toFixed(0)} ft`
+    : 'Unavailable'
+  const hasHoleOneEvidence = selectedHole === 1
+  const exactMatches = geometry.registration.validation?.exactSurfaceMatches
+  const testedEndpoints = geometry.registration.validation?.testedEndpoints
+  const within2m = geometry.registration.validation?.endpointsWithin2m
 
   return (
     <main className="course-render-dev">
       <header className="course-render-header">
         <div>
-          <p className="course-render-eyebrow">LOOPER · COURSE RENDER V0</p>
-          <h1>{hole.course} · Hole {hole.hole}</h1>
+          <p className="course-render-eyebrow">LOOPER · CANONICAL COURSE RENDER</p>
+          <h1>{geometry.courseName} · Hole {geometry.holeNumber}</h1>
           <p>
-            Real OSM surfaces + official 1 m LiDAR. This page is intentionally deterministic—no generated imagery.
+            The same course-wide OSM geometry, vegetation context, LiDAR terrain and local-yard coordinate system used by Looper strategy.
           </p>
         </div>
         <div className="course-render-controls" aria-label="Render controls">
-          <label>
-            <input type="checkbox" checked={showContours} onChange={(event) => setShowContours(event.target.checked)} />
+          <label className="hole-picker">
+            Hole
+            <select value={selectedHole} onChange={(event) => setSelectedHole(Number(event.target.value))}>
+              {Array.from({ length: 18 }, (_, index) => index + 1).map((hole) => (
+                <option key={hole} value={hole}>{hole}</option>
+              ))}
+            </select>
+          </label>
+          <label className={!geometry.contextLayers?.length ? 'control-disabled' : undefined}>
+            <input
+              type="checkbox"
+              checked={showVegetation && Boolean(geometry.contextLayers?.length)}
+              disabled={!geometry.contextLayers?.length}
+              onChange={(event) => setShowVegetation(event.target.checked)}
+            />
+            OSM vegetation
+          </label>
+          <label className={!contours.length ? 'control-disabled' : undefined}>
+            <input
+              type="checkbox"
+              checked={showContours && Boolean(contours.length)}
+              disabled={!contours.length}
+              onChange={(event) => setShowContours(event.target.checked)}
+            />
             LiDAR contours
           </label>
-          <label>
-            <input type="checkbox" checked={showShots} onChange={(event) => setShowShots(event.target.checked)} />
-            Round 215 shots
+          <label className={!hasHoleOneEvidence ? 'control-disabled' : undefined}>
+            <input
+              type="checkbox"
+              checked={showShots && hasHoleOneEvidence}
+              disabled={!hasHoleOneEvidence}
+              onChange={(event) => setShowShots(event.target.checked)}
+            />
+            Round 215 proof
           </label>
         </div>
       </header>
@@ -122,18 +215,21 @@ function CourseRenderDevPage() {
         <article className="course-map-card">
           <div className="course-map-title-row">
             <div>
-              <span className="course-map-kicker">{hole.location}</span>
-              <h2>Par {hole.par} · {hole.yardage} yds</h2>
+              <span className="course-map-kicker">{geometry.location ?? 'Panorama, BC'}</span>
+              <h2>
+                {geometry.par ? `Par ${geometry.par} · ` : ''}
+                {geometry.statedYardageYds ? `${geometry.statedYardageYds.toFixed(0)} yd geometry` : 'Course geometry'}
+              </h2>
             </div>
-            <span className="truth-pill">REAL DATA</span>
+            <span className="truth-pill">OSM + LIDAR</span>
           </div>
 
           <svg
             className="course-hole-svg"
             viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
             role="img"
-            aria-label={`Data driven rendering of ${hole.course} hole ${hole.hole}`}
-            data-testid="greywolf-hole-1-render"
+            aria-label={`Data-driven rendering of ${geometry.courseName} hole ${geometry.holeNumber}`}
+            data-testid={`greywolf-hole-${geometry.holeNumber}-render`}
           >
             <defs>
               <linearGradient id="courseBg" x1="0" y1="1" x2="0" y2="0">
@@ -144,66 +240,93 @@ function CourseRenderDevPage() {
                 <stop offset="0" stopColor="#548b42" />
                 <stop offset="1" stopColor="#86b65a" />
               </linearGradient>
+              <pattern id="woodsCanopyPattern" width="22" height="22" patternUnits="userSpaceOnUse">
+                <rect width="22" height="22" fill="#173d29" fillOpacity="0.22" />
+                <circle cx="4" cy="6" r="3.8" fill="#6f9962" fillOpacity="0.18" />
+                <circle cx="14" cy="4" r="4.8" fill="#4f7a4b" fillOpacity="0.16" />
+                <circle cx="10" cy="15" r="5.2" fill="#7ba06b" fillOpacity="0.14" />
+              </pattern>
+              <pattern id="scrubTexturePattern" width="18" height="18" patternUnits="userSpaceOnUse">
+                <rect width="18" height="18" fill="#4d4a2d" fillOpacity="0.18" />
+                <circle cx="4" cy="5" r="2.4" fill="#b5a967" fillOpacity="0.18" />
+                <circle cx="13" cy="12" r="2.8" fill="#8c854f" fillOpacity="0.16" />
+              </pattern>
               <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.28" />
               </filter>
+              <clipPath id="holeViewClip">
+                <rect width={SVG_WIDTH} height={SVG_HEIGHT} rx="24" />
+              </clipPath>
             </defs>
 
             <rect width={SVG_WIDTH} height={SVG_HEIGHT} rx="24" fill="url(#courseBg)" />
+            <g clipPath="url(#holeViewClip)">
+              {showVegetation && (
+                <>
+                  <g>{renderContext('grass-context', 'surface grass-context')}</g>
+                  <g>{renderContext('woods', 'surface woods')}</g>
+                  <g>{renderContext('scrub', 'surface scrub')}</g>
+                </>
+              )}
 
-            {showContours && (
-              <g className="terrain-contours" aria-label="LiDAR elevation contours">
-                {hole.layers.contours.map((contour, index) => (
-                  <polyline
-                    key={`contour-${index}`}
-                    points={polylineFor(contour.points)}
-                    fill="none"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
+              {showContours && contours.length > 0 && (
+                <g className="terrain-contours" aria-label="LiDAR elevation contours">
+                  {contours.map((contour, index) => (
+                    <polyline
+                      key={`${contour.elevationFt}-${index}`}
+                      points={polylineFor(contour.points)}
+                      fill="none"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                </g>
+              )}
+
+              <g filter="url(#softShadow)">{renderSurfaces('rough', 'surface rough')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('water', 'surface water')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('penalty', 'surface penalty')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('fairway', 'surface fairway')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('green', 'surface green')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('bunker', 'surface bunker')}</g>
+              <g filter="url(#softShadow)">{renderSurfaces('tee', 'surface tee')}</g>
+
+              {carryDistances.map((distance) => {
+                const [, labelY] = transform.point([0, distance])
+                return (
+                  <g key={distance} className="distance-marker carry-marker">
+                    <polyline points={polylineFor(carryArc(distance))} fill="none" />
+                    <rect x="184" y={labelY - 13} width="52" height="24" rx="12" />
+                    <text x="210" y={labelY + 4}>{distance}</text>
+                  </g>
+                )
+              })}
+
+              <g className="tee-marker">
+                <circle cx={teeX} cy={teeY} r="8" />
+                <circle cx={teeX} cy={teeY} r="3" />
+                <text x={teeX + 13} y={teeY + 4}>TEE</text>
               </g>
-            )}
 
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.rough, 'surface rough')}</g>
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.water, 'surface water')}</g>
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.fairway, 'surface fairway')}</g>
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.green, 'surface green')}</g>
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.bunker, 'surface bunker')}</g>
-            <g filter="url(#softShadow)">{renderPolygons(hole.layers.tee, 'surface tee')}</g>
-
-            {[100, 200, 300].map((distance) => {
-              const [, y] = transform.point([0, distance])
-              return (
-                <g key={distance} className="distance-marker">
-                  <line x1="110" x2="310" y1={y} y2={y} />
-                  <rect x="184" y={y - 13} width="52" height="24" rx="12" />
-                  <text x="210" y={y + 4}>{distance}</text>
+              {pin && (
+                <g className="pin-marker">
+                  <title>OSM green centroid. Live GSPro pin remains a separate dynamic input.</title>
+                  <line x1={pinX} x2={pinX} y1={pinY + 18} y2={pinY - 10} />
+                  <path d={`M ${pinX} ${pinY - 10} l 17 6 l -17 7 Z`} />
+                  <circle cx={pinX} cy={pinY + 18} r="4" />
                 </g>
-              )
-            })}
+              )}
 
-            <g className="tee-marker">
-              <circle cx={teeX} cy={teeY} r="8" />
-              <circle cx={teeX} cy={teeY} r="3" />
-              <text x={teeX + 13} y={teeY + 4}>TEE</text>
+              {showShots && hasHoleOneEvidence && holeOneEvidence.markers.shots.map((shot, index) => {
+                const [x, y] = transform.point([shot.x, shot.y])
+                return (
+                  <g key={shot.label} className="live-shot-marker" data-shot-index={index + 1}>
+                    <circle cx={x} cy={y} r="8" />
+                    <circle cx={x} cy={y} r="3" />
+                    <text x={x + 12} y={y - 10}>{index + 1}</text>
+                  </g>
+                )
+              })}
             </g>
-
-            <g className="pin-marker">
-              <line x1={pinX} x2={pinX} y1={pinY + 18} y2={pinY - 10} />
-              <path d={`M ${pinX} ${pinY - 10} l 17 6 l -17 7 Z`} />
-              <circle cx={pinX} cy={pinY + 18} r="4" />
-            </g>
-
-            {showShots && hole.markers.shots.map((shot, index) => {
-              const [x, y] = transform.point([shot.x, shot.y])
-              return (
-                <g key={shot.label} className="live-shot-marker" data-shot-index={index + 1}>
-                  <circle cx={x} cy={y} r="8" />
-                  <circle cx={x} cy={y} r="3" />
-                  <text x={x + 12} y={y - 10}>{index + 1}</text>
-                </g>
-              )
-            })}
           </svg>
 
           <div className="course-map-legend">
@@ -211,73 +334,72 @@ function CourseRenderDevPage() {
             <span><i className="legend-swatch fairway" />Fairway</span>
             <span><i className="legend-swatch green" />Green</span>
             <span><i className="legend-swatch bunker" />Bunker</span>
-            <span><i className="legend-swatch water" />OSM penalty / water</span>
+            <span><i className="legend-swatch water" />Water / penalty</span>
+            <span><i className="legend-swatch woods" />Woods / obstruction</span>
           </div>
           <p className="course-map-attribution">
             Data ©{' '}
-            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+            <a href={geometry.provenance.copyrightUrl ?? 'https://www.openstreetmap.org/copyright'} target="_blank" rel="noreferrer">
               OpenStreetMap contributors
             </a>
-            {' '}·{' '}
-            <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">
-              ODbL 1.0
-            </a>
+            {' '}· {geometry.provenance.license ?? 'ODbL'} · LiDAR terrain from the compiled Greywolf terrain package.
           </p>
         </article>
 
         <aside className="course-data-column">
           <section className="course-data-card">
-            <p className="card-kicker">HOLE OVERVIEW</p>
+            <p className="card-kicker">STRATEGY READINESS</p>
             <dl className="metric-list">
-              <div><dt>Tee → green</dt><dd>{hole.yardage} yds</dd></div>
-              <div><dt>Tee elevation</dt><dd>{hole.metrics.teeElevationFt.toLocaleString()} ft</dd></div>
-              <div><dt>Green elevation</dt><dd>{hole.metrics.greenElevationFt.toLocaleString()} ft</dd></div>
-              <div><dt>Climb</dt><dd>+{hole.metrics.climbFt} ft</dd></div>
-              <div><dt>Avg. fairway width</dt><dd>{hole.metrics.averageFairwayWidthYds} yds</dd></div>
-              <div><dt>Bunkers</dt><dd>{hole.metrics.bunkerCount}</dd></div>
-              <div><dt>Water polygons</dt><dd>{hole.metrics.waterPolygonCount}</dd></div>
+              <div><dt>Registration</dt><dd>{geometry.registration.status.toUpperCase()}</dd></div>
+              <div><dt>OSM surfaces</dt><dd>{geometry.surfaces.length} layers</dd></div>
+              <div><dt>Vegetation</dt><dd>{(geometry.contextLayers ?? []).length} layers</dd></div>
+              <div><dt>LiDAR terrain</dt><dd>{geometry.terrain ? 'DEM ACTIVE' : contours.length ? 'CONTOURS' : 'UNAVAILABLE'}</dd></div>
+              <div><dt>Contour range</dt><dd>{contourRange}</dd></div>
+              <div><dt>Coordinate frame</dt><dd>TEE LOCAL YARDS</dd></div>
             </dl>
           </section>
 
           <section className="course-data-card">
-            <p className="card-kicker">GREEN TERRAIN</p>
-            <div className="green-terrain-summary">
-              <strong>{hole.metrics.greenElevationRangeFt} ft</strong>
-              <span>low-to-high range</span>
-            </div>
-            <p className="terrain-note">
-              Back quarter averages <strong>+{hole.metrics.greenBackVsFrontFt} ft</strong> versus the front quarter.
-            </p>
-            <div className="green-high-low">
-              <span className="high-dot" /> High {hole.markers.greenHigh.elevationFt.toFixed(1)} ft
-              <span className="low-dot" /> Low {hole.markers.greenLow.elevationFt.toFixed(1)} ft
-            </div>
-          </section>
-
-          <section className="course-data-card">
-            <p className="card-kicker">ELEVATION PROFILE</p>
-            <svg className="elevation-profile" viewBox="0 0 320 160" role="img" aria-label="LiDAR elevation profile from selected tee to green">
-              <line x1="16" x2="304" y1="138" y2="138" className="profile-axis" />
-              <polyline points={profilePoints} fill="none" className="profile-line" />
-              <text x="16" y="154">Tee</text>
-              <text x="304" y="154" textAnchor="end">Green · {profileDistance.toFixed(0)} route yds</text>
-              <text x="304" y="22" textAnchor="end" className="profile-climb">+{hole.metrics.climbFt} ft</text>
-            </svg>
+            <p className="card-kicker">SURFACE INVENTORY</p>
+            <dl className="metric-list compact-metrics">
+              <div><dt>Fairway polygons</dt><dd>{surfaceCounts.fairway ?? 0}</dd></div>
+              <div><dt>Rough polygons</dt><dd>{surfaceCounts.rough ?? 0}</dd></div>
+              <div><dt>Green polygons</dt><dd>{surfaceCounts.green ?? 0}</dd></div>
+              <div><dt>Bunkers</dt><dd>{surfaceCounts.bunker ?? 0}</dd></div>
+              <div><dt>Water</dt><dd>{surfaceCounts.water ?? 0}</dd></div>
+              <div><dt>Woods</dt><dd>{contextCounts.woods ?? 0}</dd></div>
+              <div><dt>Scrub</dt><dd>{contextCounts.scrub ?? 0}</dd></div>
+            </dl>
           </section>
 
           <section className="course-data-card proof-card">
-            <p className="card-kicker">LIVE COORDINATE CHECK</p>
-            {hole.markers.shots.map((shot, index) => (
-              <div key={shot.label} className="shot-proof-row">
-                <span className="shot-index">{index + 1}</span>
-                <div>
-                  <strong>{shot.label}</strong>
-                  <small>{shot.x.toFixed(1)} yd right · {shot.y.toFixed(1)} yd forward · {shot.surface}</small>
-                </div>
-              </div>
-            ))}
-            <p className="proof-footnote">These are real Round 215 GSPro endpoints transformed into the same course coordinate system as the SVG.</p>
+            <p className="card-kicker">GEOMETRY PROOF</p>
+            <div className="proof-stat-grid">
+              <div><strong>{exactMatches ?? '—'}</strong><span>exact matches</span></div>
+              <div><strong>{testedEndpoints ?? '—'}</strong><span>tested endpoints</span></div>
+              <div><strong>{within2m ?? '—'}</strong><span>within 2 m</span></div>
+              <div><strong>{geometry.registration.residualsMeters?.mean?.toFixed(2) ?? '—'} m</strong><span>mean residual</span></div>
+            </div>
+            <p className="proof-footnote">
+              Course-wide similarity registration. This is the same local-yard frame used for ball position and strategy calculations.
+            </p>
           </section>
+
+          {hasHoleOneEvidence && (
+            <section className="course-data-card proof-card">
+              <p className="card-kicker">ROUND 215 LIVE CHECK</p>
+              {holeOneEvidence.markers.shots.map((shot, index) => (
+                <div key={shot.label} className="shot-proof-row">
+                  <span className="shot-index">{index + 1}</span>
+                  <div>
+                    <strong>{shot.label}</strong>
+                    <small>{signed(shot.x)} yd right · {signed(shot.y)} yd forward · {shot.surface}</small>
+                  </div>
+                </div>
+              ))}
+              <p className="proof-footnote">Real GSPro endpoints plotted in the same coordinate frame as the rendered OSM geometry.</p>
+            </section>
+          )}
         </aside>
       </section>
     </main>
