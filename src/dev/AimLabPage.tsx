@@ -7,9 +7,18 @@ import {
   type BrowserGsproCourseStatus,
 } from '../adapters/browserGsproCourseState'
 import { getCurrentLooperUser } from '../cloud/supabaseClient'
+import {
+  courseCatalog,
+  getCourseCatalogEntry,
+  type CourseId,
+} from '../courseGeometry/courseCatalog'
+import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import {
+  loadLastSelectedCourseId,
+  saveLastSelectedCourseId,
+} from '../courseGeometry/courseSelection'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
-import { loadGreywolfHoleGeometry } from '../courseGeometry/greywolfCourseLoader'
-import { estimateGreywolfTerrain } from '../courseGeometry/lidar'
+import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -368,6 +377,7 @@ function AimMap({
 function AimLabPage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [playerEmail, setPlayerEmail] = useState<string | null>(null)
+  const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -391,6 +401,7 @@ function AimLabPage() {
   const [showModeledLandings, setShowModeledLandings] = useState(false)
   const [showHistoricalLandings, setShowHistoricalLandings] = useState(false)
 
+  const selectedCourse = getCourseCatalogEntry(courseId)
   const selectedRef = useRef<ClubAimEvaluation | null>(null)
   const recommendationHoleRef = useRef(1)
   const lastProcessedShotKeyRef = useRef<string | null>(null)
@@ -409,6 +420,10 @@ function AimLabPage() {
   useEffect(() => {
     saveAimLabMode(mode)
   }, [mode])
+
+  useEffect(() => {
+    saveLastSelectedCourseId(courseId)
+  }, [courseId])
 
   useEffect(() => {
     let active = true
@@ -477,13 +492,13 @@ function AimLabPage() {
       },
     })
     return () => connection.disconnect()
-  }, [mode, livePrepared, liveConnectionVersion])
+  }, [mode, livePrepared, liveConnectionVersion, courseId])
 
   useEffect(() => {
     let active = true
     setLoadError(null)
     setHole(null)
-    void loadGreywolfHoleGeometry(holeNumber)
+    void loadCourseHoleGeometry(courseId, holeNumber)
       .then((loaded) => {
         if (!active) return
         setHole(loaded)
@@ -498,7 +513,7 @@ function AimLabPage() {
     return () => {
       active = false
     }
-  }, [holeNumber])
+  }, [courseId, holeNumber])
 
   useEffect(() => {
     if (mode !== 'live' || !hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
@@ -514,6 +529,11 @@ function AimLabPage() {
   const targetDistance = pointDistance(ball, target)
   const mapBallSurface = hole ? classifyPoint(hole, ball) : null
   const liveMatchesHole = mode === 'live' && liveSnapshot?.holeNumber === holeNumber
+  const livePositionUnavailable = Boolean(
+    liveMatchesHole
+    && liveSnapshot?.latestShot
+    && liveSnapshot.ballSource === 'unavailable',
+  )
   const activeSurface = liveMatchesHole && liveSnapshot?.surface
     ? liveSnapshot.surface
     : mapBallSurface?.kind ?? 'unknown'
@@ -531,8 +551,8 @@ function AimLabPage() {
     ? 'GSPro distance + cached green direction'
     : 'Cached green centroid'
 
-  const ballTerrain = hole ? estimateGreywolfTerrain(hole, ball) : null
-  const targetTerrain = hole ? estimateGreywolfTerrain(hole, target) : null
+  const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
+  const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const targetElevationDelta =
     ballTerrain && targetTerrain
       ? targetTerrain.elevationFt - ballTerrain.elevationFt
@@ -540,6 +560,12 @@ function AimLabPage() {
 
   const evaluationResult = useMemo(() => {
     if (!hole) return { evaluations: [] as ClubAimEvaluation[], error: null as string | null }
+    if (livePositionUnavailable) {
+      return {
+        evaluations: [] as ClubAimEvaluation[],
+        error: `Live ball coordinates are not registered for ${selectedCourse.name} yet. Shot ingestion remains active, but Looper will not issue a recommendation from a stale ball position.`,
+      }
+    }
     try {
       return {
         evaluations: evaluateAimLab(sessions, hole, ball, target, {
@@ -548,8 +574,8 @@ function AimLabPage() {
           elevationDeltaFt: targetElevationDelta,
           elevationSource: ballTerrain && targetTerrain
             ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
-              ? 'Greywolf direct 1 m LiDAR DEM'
-              : 'Greywolf LiDAR contour proxy'
+              ? `${selectedCourse.name} direct LiDAR DEM`
+              : `${selectedCourse.name} LiDAR contour proxy`
             : 'No elevation model for this hole yet',
           surfaceOverride: liveMatchesHole ? liveSnapshot?.surface ?? null : null,
         }),
@@ -562,7 +588,7 @@ function AimLabPage() {
         error: error instanceof Error ? error.message : String(error),
       }
     }
-  }, [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, liveSnapshot?.surface])
+  }, [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, livePositionUnavailable, liveSnapshot?.surface, selectedCourse.name])
 
   const evaluations = evaluationResult.evaluations
   const evaluationError = evaluationResult.error
@@ -600,6 +626,15 @@ function AimLabPage() {
     }
   }
 
+  const selectCourse = (nextCourseId: CourseId) => {
+    if (nextCourseId === courseId) return
+    setCourseId(nextCourseId)
+    setHoleNumber(1)
+    setLiveSnapshot(null)
+    setLastShotReview(null)
+    lastProcessedShotKeyRef.current = null
+  }
+
   const resetTee = () => {
     if (!hole || mode === 'live') return
     setBall(hole.markers.tee)
@@ -620,7 +655,7 @@ function AimLabPage() {
       <header className="aim-lab-header">
         <div>
           <p className="aim-eyebrow">LOOPER · PLAYABLE CADDIE SANDBOX</p>
-          <h1>Greywolf decision inspector</h1>
+          <h1>{selectedCourse.name} decision inspector</h1>
           <p>Cached course geometry + live GSPro state + player-specific shot model.</p>
         </div>
         <div className="aim-round-status">
@@ -631,6 +666,17 @@ function AimLabPage() {
       </header>
 
       <section className="aim-toolbar">
+        <label>
+          Playing
+          <select
+            value={courseId}
+            onChange={(event) => selectCourse(event.target.value as CourseId)}
+          >
+            {courseCatalog.map((entry) => (
+              <option value={entry.id} key={entry.id}>{entry.name} · {entry.location}</option>
+            ))}
+          </select>
+        </label>
         <button type="button" className={mode === 'manual' ? 'active' : ''} onClick={() => setMode('manual')}>Manual</button>
         <button
           type="button"
@@ -657,9 +703,9 @@ function AimLabPage() {
 
       {liveError && <div className="aim-alert bad">GSPro Live: {liveError} · Looper will keep retrying; this does not interrupt GSPro play.</div>}
       {mode === 'live' && liveSnapshot?.warnings.map((warning) => <div className="aim-alert" key={warning}>{warning}</div>)}
-      {loadError && <div className="aim-alert bad">Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.</div>}
+      {loadError && <div className="aim-alert bad">{selectedCourse.name} Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.</div>}
       {evaluationError && <div className="aim-alert bad">Recommendation engine paused for this state: {evaluationError} · live tracking and hole changes are still running.</div>}
-      {!hole && !loadError && <div className="aim-alert">Loading Greywolf Hole {holeNumber}…</div>}
+      {!hole && !loadError && <div className="aim-alert">Loading {selectedCourse.name} Hole {holeNumber}…</div>}
 
       {hole && (
         <>
@@ -667,7 +713,7 @@ function AimLabPage() {
             <article className="aim-card map-card">
               <div className="aim-card-heading">
                 <div><span>COURSE</span><h2>Hole {hole.holeNumber} geometry</h2></div>
-                <small>{mode === 'live' ? 'Ball follows GSPro automatically' : editMode === 'ball' ? 'Click to move ball' : 'Click to move landing target'}</small>
+                <small>{mode === 'live' ? (livePositionUnavailable ? 'GSPro shot received · live ball registration unavailable' : 'Ball follows GSPro automatically') : editMode === 'ball' ? 'Click to move ball' : 'Click to move landing target'}</small>
               </div>
               <AimMap
                 hole={hole}
@@ -740,8 +786,8 @@ function AimLabPage() {
                 <tbody>
                   <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical core cloud drives map contours, core percentages and V0 score</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Live ball position</td><td>{mode === 'live' ? `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F` : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole ? 'status modeled' : 'status review'}>{liveMatchesHole ? 'MODELED' : 'MANUAL'}</b></td></tr>
+                  <tr><td>Course geometry</td><td>{selectedCourse.name} H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Canonical cached course package</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Live ball position</td><td>{mode === 'live' ? (livePositionUnavailable ? 'Unavailable' : `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F`) : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole && !livePositionUnavailable ? 'status modeled' : 'status review'}>{liveMatchesHole && !livePositionUnavailable ? 'MODELED' : mode === 'live' ? 'UNAVAILABLE' : 'MANUAL'}</b></td></tr>
                   <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{ballTerrain && targetTerrain ? (ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem' ? 'LiDAR DEM' : 'LiDAR contour proxy') : 'No terrain model'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
                   <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>{selected ? `${signedYds(selected.airborneCarryDeltaYds)} carry · ${signedYds(selected.airborneLateralDeltaYds)} lateral (combined with elevation)` : '—'}</td><td>Manual now / live sensor later</td><td><b className="status modeled">PROVISIONAL</b></td></tr>
                   <tr><td>Surface</td><td>{activeSurface}</td><td>{selected ? `${selected.surfaceLabel} · ${signedYds(selected.surfaceCarryDeltaYds)} carry · ${signedYds(selected.surfaceLateralDeltaYds)} lateral` : '—'}</td><td>{surfaceSource}</td><td><b className="status modeled">MODELED</b></td></tr>
@@ -807,7 +853,7 @@ function AimLabPage() {
                     <thead><tr><th>Aim</th><th>Core pref.</th><th>Hist. pref.</th><th>Core rough</th><th>Hist. rough</th><th>Core trouble</th><th>Hist. trouble</th><th>Core penalty</th><th>Hist. penalty</th><th>Core unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>V0 score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
-                        const landingTerrain = estimateGreywolfTerrain(hole, candidate.meanLanding)
+                        const landingTerrain = estimateCourseTerrain(hole, candidate.meanLanding)
                         const elevationDelta = ballTerrain && landingTerrain ? landingTerrain.elevationFt - ballTerrain.elevationFt : null
                         return (
                           <tr key={candidate.aimOffsetYds} className={candidate === selected.bestCandidate ? 'best' : ''}>
@@ -890,7 +936,7 @@ function AimLabPage() {
           <footer className="aim-footer">
             <span>{hole.provenance.attribution}</span>
             <span>{hole.provenance.license}</span>
-            <span>Greywolf cached geometry · GSPro live ball state · provisional airborne physics</span>
+            <span>{selectedCourse.name} cached geometry · GSPro live state · provisional airborne physics</span>
           </footer>
         </>
       )}

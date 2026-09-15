@@ -1,3 +1,10 @@
+import {
+  GREYWOLF_COURSE_ID,
+  getCourseCatalogEntry,
+  resolveCourseIdFromGsproName,
+  type CourseId,
+} from '../courseGeometry/courseCatalog'
+import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
   isBrowserGsproAccessSupported,
@@ -140,9 +147,6 @@ const asBoolean = (value: unknown) => {
   }
   return false
 }
-
-const isGreywolfCourseKey = (value: string | null) =>
-  value != null && /^greywolf_gsp$/i.test(value)
 
 const vec3 = (value: unknown): { x: number; y: number; z: number } | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
@@ -401,6 +405,7 @@ const worldPointToHoleLocal = async (
 const buildShot = async (
   record: RoundShotRecord,
   roundRecords: RoundShotRecord[],
+  coordinateCourseId: CourseId | null,
 ): Promise<BrowserGsproCourseShot | null> => {
   const holeIndex = asNumber(record.Hole)
   const shotId = asString(record.ShotID)
@@ -408,18 +413,23 @@ const buildShot = async (
   const holeNumber = Math.round(holeIndex) + 1
   if (holeNumber < 1 || holeNumber > 18) return null
 
-  const sameHole = roundRecords
-    .filter((item) => asNumber(item.Hole) === holeIndex)
-    .sort((a, b) => recordSortValue(a) - recordSortValue(b))
-  const firstStart = vec3(sameHole[0]?.StartingPOS)
-  const start = vec3(record.StartingPOS)
-  const end = vec3(record.EndingPOS)
-  if (!firstStart || !start || !end) return null
+  let startLocalYds: CoursePointYds | null = null
+  let endLocalYds: CoursePointYds | null = null
+  if (coordinateCourseId === GREYWOLF_COURSE_ID) {
+    const sameHole = roundRecords
+      .filter((item) => asNumber(item.Hole) === holeIndex)
+      .sort((a, b) => recordSortValue(a) - recordSortValue(b))
+    const firstStart = vec3(sameHole[0]?.StartingPOS)
+    const start = vec3(record.StartingPOS)
+    const end = vec3(record.EndingPOS)
+    if (firstStart && start && end) {
+      ;[startLocalYds, endLocalYds] = await Promise.all([
+        worldPointToHoleLocal(start, firstStart, holeNumber),
+        worldPointToHoleLocal(end, firstStart, holeNumber),
+      ])
+    }
+  }
 
-  const [startLocalYds, endLocalYds] = await Promise.all([
-    worldPointToHoleLocal(start, firstStart, holeNumber),
-    worldPointToHoleLocal(end, firstStart, holeNumber),
-  ])
   const roundId = asNumber(record.RoundID)
   const endingSurfaceRaw = asNumber(record.EndingSurface)
   const distanceToPin = asNumber(record.DistanceToPin)
@@ -470,7 +480,7 @@ const cachedTeeSnapshot = ({
   courseKey,
   roundId,
   holeNumber,
-  ballLocalYds: [0, 0],
+  ballLocalYds: null,
   ballSource: 'cached-tee',
   surface: 'tee',
   surfaceSource: 'cached-tee',
@@ -481,7 +491,11 @@ const cachedTeeSnapshot = ({
   observedAt: new Date().toISOString(),
 })
 
-const buildSnapshot = async (roundText: string, logTail: string): Promise<BrowserGsproCourseSnapshot> => {
+const buildSnapshot = async (
+  roundText: string,
+  logTail: string,
+  selectedCourseId: CourseId,
+): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
   const records = parseRoundRecords(roundText)
   const logState = parseOutputLogHoleState(logTail)
@@ -493,7 +507,7 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
         roundId: null,
         holeNumber: logState.holeNumber,
         latestShot: null,
-        warnings: ['Waiting for the first physical shot; using the cached tee position.'],
+        warnings: ['Waiting for the first physical shot; using the selected course tee position.'],
       })
     }
 
@@ -521,40 +535,33 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     : records.filter((record) => asNumber(record.RoundID) === activeRoundId)
   const latestRecord = roundRecords[roundRecords.length - 1]
   const courseKey = asString(latestRecord.CourseKey)
+  const observedCourseId = courseKey ? resolveCourseIdFromGsproName(courseKey) : null
+  const selectedCourse = getCourseCatalogEntry(selectedCourseId)
   const rawLatestHole = asNumber(latestRecord.Hole)
   const latestRecordHole = rawLatestHole == null ? null : Math.round(rawLatestHole) + 1
   const terminalHole = latestTerminalHoleForRound(roundText, activeRoundId)
   const logHole = logState.holeNumber
 
-  if (courseKey != null && !isGreywolfCourseKey(courseKey)) {
-    const warning = `Ignoring stale ${courseKey} currentRound state; waiting for a Greywolf shot.`
-    if (logHole != null) {
-      return cachedTeeSnapshot({
-        courseKey,
-        roundId: activeRoundId,
-        holeNumber: logHole,
-        latestShot: null,
-        warnings: [warning],
-      })
-    }
-
-    return {
-      courseKey,
-      roundId: activeRoundId,
-      holeNumber: null,
-      ballLocalYds: null,
-      ballSource: 'unavailable',
-      surface: null,
-      surfaceSource: 'unavailable',
-      distanceToPinYds: null,
-      latestShot: null,
-      latestShotKey: null,
-      warnings: [warning],
-      observedAt: new Date().toISOString(),
-    }
+  let coordinateCourseId: CourseId | null = null
+  if (observedCourseId === selectedCourseId) {
+    coordinateCourseId = selectedCourseId
+  } else if (courseKey && observedCourseId && observedCourseId !== selectedCourseId) {
+    warnings.push(
+      `Selected ${selectedCourse.name}, but GSPro reports ${courseKey}. Keeping the user-selected course until confirmed.`,
+    )
+  } else if (courseKey && !observedCourseId) {
+    warnings.push(
+      `GSPro reports ${courseKey}, which is not a reviewed Looper alias yet. Keeping the user-selected ${selectedCourse.name}.`,
+    )
   }
 
-  const latestShot = await buildShot(latestRecord, roundRecords)
+  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+    warnings.push(
+      `${selectedCourse.name} is selected and validated, but GSPro-world shot coordinates are not registered for this course yet. Shot ingestion continues without live ball placement.`,
+    )
+  }
+
+  const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
 
   let holeNumber = latestRecordHole
   if (logHole != null) {
@@ -564,7 +571,7 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
       holeNumber = logHole
       if (logState.terminalAfterLatestHoleMarker && logHole < 18) {
         holeNumber = logHole + 1
-        warnings.push(`Hole ${logHole} is complete; preloading Hole ${holeNumber} from the cached tee.`)
+        warnings.push(`Hole ${logHole} is complete; preloading Hole ${holeNumber} from the selected course tee.`)
       }
     } else if (logHole > latestRecordHole) {
       holeNumber = logHole
@@ -585,7 +592,7 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
   ) {
     holeNumber = latestRecordHole + 1
     warnings.push(
-      `Hole ${latestRecordHole} terminal state detected in currentRound; preloading Hole ${holeNumber} from the cached tee.`,
+      `Hole ${latestRecordHole} terminal state detected in currentRound; preloading Hole ${holeNumber} from the selected course tee.`,
     )
   }
 
@@ -631,7 +638,7 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
   const currentRecord = currentHoleRecords[currentHoleRecords.length - 1]
   const currentShot = currentRecord === latestRecord
     ? latestShot
-    : await buildShot(currentRecord, roundRecords)
+    : await buildShot(currentRecord, roundRecords, coordinateCourseId)
   const currentSurfaceRaw = asNumber(currentRecord.EndingSurface)
   const currentSurface = surfaceFromRaw(currentSurfaceRaw)
 
@@ -691,7 +698,7 @@ export const connectToBrowserGsproCourseState = ({
       : Promise.resolve(lastGoodLogTail)
 
     const [roundText, logTail] = await Promise.all([roundTextPromise, logTailPromise])
-    const snapshot = await buildSnapshot(roundText, logTail)
+    const snapshot = await buildSnapshot(roundText, logTail, loadLastSelectedCourseId())
     if (disconnected) return
 
     lastRoundSignature = roundSignature
