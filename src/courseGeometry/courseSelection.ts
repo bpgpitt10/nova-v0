@@ -1,17 +1,18 @@
 import {
+  UNSELECTED_COURSE_ID,
   isCourseId,
   type CourseId,
 } from './courseCatalog'
 
 const LAST_SELECTED_COURSE_STORAGE_KEY = 'looper.course-selection.last.v1'
 
-export const loadLastSelectedCourseId = (): CourseId | null => {
-  if (typeof window === 'undefined') return null
+export const loadLastSelectedCourseId = (): CourseId => {
+  if (typeof window === 'undefined') return UNSELECTED_COURSE_ID
   try {
     const stored = window.localStorage.getItem(LAST_SELECTED_COURSE_STORAGE_KEY)
-    return isCourseId(stored) ? stored : null
+    return isCourseId(stored) ? stored : UNSELECTED_COURSE_ID
   } catch {
-    return null
+    return UNSELECTED_COURSE_ID
   }
 }
 
