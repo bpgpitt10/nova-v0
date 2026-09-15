@@ -71,6 +71,9 @@ const addScaled = (
   origin[1] + forward[1] * forwardYds + right[1] * rightYds,
 ]
 
+const distance = (a: CoursePointYds, b: CoursePointYds) =>
+  Math.hypot(b[0] - a[0], b[1] - a[1])
+
 /**
  * Outcome severity is intentionally separate from shot-quality labels.
  * A mishit that finishes in ordinary rough can still be manageable; a normal
@@ -214,6 +217,16 @@ export const buildDecisionRiskProfile = ({
     })
   }
 
+  // Tail records historically store carry but not a dedicated final-position vector.
+  // Inherit the core model's observed Stock rollout distance so the mishit tail is
+  // evaluated at a resting position too, rather than silently reverting to carry.
+  const coreRolloutYds = coreSamples.length > 0
+    ? coreSamples.reduce(
+        (sum, sample) => sum + distance(sample.carryLanding, sample.landing),
+        0,
+      ) / coreSamples.length
+    : 0
+
   const tailLandings: DecisionRiskTailLanding[] = []
   if (tailWeight > 0 && tailProbability > 0) {
     const forward = unit(vector(ball, aimPoint))
@@ -221,8 +234,9 @@ export const buildDecisionRiskProfile = ({
 
     tailSamples.forEach((sample) => {
       const carry = Math.max(0, sample.carryYds + carryAdjustmentYds)
+      const finalDistance = carry + coreRolloutYds
       const offline = sample.offlineYds + lateralAdjustmentYds
-      const landing = addScaled(ball, forward, carry, right, offline)
+      const landing = addScaled(ball, forward, finalDistance, right, offline)
       const kind = classifyTacticalLandingPoint(hole, landing).kind
       const tier = decisionRiskTierForSurface(kind, goal)
       // Normalize inside the empirical tail, then allocate only the learned tail mass.
