@@ -73,6 +73,7 @@ export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
     (candidate): candidate is T & { riskProfile: DecisionRiskProfile } =>
       candidate.riskProfile != null,
   )
+  const unavailable = candidates.filter((candidate) => candidate.riskProfile == null)
 
   if (usable.length === 0) {
     return [...candidates]
@@ -98,8 +99,11 @@ export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
       const catastropheDelta = a.riskProfile.catastrophe - b.riskProfile.catastrophe
       return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareRiskUtility(a, b)
     })
+  unavailable.sort(
+    (a, b) => (b.score ?? Number.NEGATIVE_INFINITY) - (a.score ?? Number.NEGATIVE_INFINITY),
+  )
 
-  return [...safe, ...outside].map((candidate, index) => ({
+  const rankedUsable: RankedAimChoice<T>[] = [...safe, ...outside].map((candidate, index) => ({
     candidate,
     rank: index + 1,
     withinCatastropheGuardrail: candidate.riskProfile.catastrophe <= guardrail + 1e-9,
@@ -109,6 +113,14 @@ export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
         ? 'Rejected by the catastrophe guardrail before success/severity comparison.'
         : 'Safe-set alternative with a weaker success/severity profile.',
   }))
+  const unavailableRows: RankedAimChoice<T>[] = unavailable.map((candidate, index) => ({
+    candidate,
+    rank: rankedUsable.length + index + 1,
+    withinCatastropheGuardrail: false,
+    decisionReason: 'Full-risk profile unavailable for this aim; not eligible ahead of modeled choices.',
+  }))
+
+  return [...rankedUsable, ...unavailableRows]
 }
 
 export type ClubAimChoice<T extends RiskRankableAim> = {
@@ -142,6 +154,7 @@ export const rankRiskAwareClubChoices = <
     (evaluation): evaluation is C & { bestCandidate: T & { riskProfile: DecisionRiskProfile } } =>
       evaluation.bestCandidate?.riskProfile != null,
   )
+  const unavailable = evaluations.filter((evaluation) => evaluation.bestCandidate?.riskProfile == null)
 
   if (usable.length === 0) {
     return [...evaluations]
@@ -204,8 +217,8 @@ export const rankRiskAwareClubChoices = <
     })
   nonTargetFit.sort((a, b) => carryGap(a) - carryGap(b))
 
-  const ranked = [...safe, ...catastropheRejected, ...nonTargetFit]
-  return ranked.map((evaluation, index) => {
+  const rankedUsable = [...safe, ...catastropheRejected, ...nonTargetFit]
+  const usableRows: RankedClubAimChoice<T, C>[] = rankedUsable.map((evaluation, index) => {
     const isTargetFit = carryGap(evaluation) <= carryGuardrail + 1e-9
     const withinCatastropheGuardrail = isTargetFit &&
       evaluation.bestCandidate.riskProfile.catastrophe <= catastropheGuardrail + 1e-9
@@ -223,4 +236,19 @@ export const rankRiskAwareClubChoices = <
             : 'Target-fit safe-set alternative with a weaker success/severity profile.',
     }
   })
+
+  unavailable.sort(
+    (a, b) =>
+      (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
+      (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY),
+  )
+  const unavailableRows: RankedClubAimChoice<T, C>[] = unavailable.map((evaluation, index) => ({
+    evaluation,
+    rank: usableRows.length + index + 1,
+    targetFit: false,
+    withinCatastropheGuardrail: false,
+    decisionReason: 'Full-risk profile unavailable for this club; not eligible ahead of modeled choices.',
+  }))
+
+  return [...usableRows, ...unavailableRows]
 }
