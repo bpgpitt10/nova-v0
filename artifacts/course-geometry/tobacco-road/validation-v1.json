@@ -6,7 +6,7 @@
   "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-15T16:33:00.228679Z",
+  "generatedAt": "2026-09-15T16:42:25.206165Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -67,6 +67,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785362265,
+      "viewBounds": {
+        "maxX": 120.1,
+        "maxY": 580.6,
+        "minX": -110.4,
+        "minY": -35.0
+      },
       "warnings": [
         "No mapped tee polygon within 60 yd of the OSM hole start; nominal route start retained."
       ]
@@ -130,6 +136,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785369104,
+      "viewBounds": {
+        "maxX": 111.4,
+        "maxY": 430.7,
+        "minX": -127.4,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -191,6 +203,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785371481,
+      "viewBounds": {
+        "maxX": 112.9,
+        "maxY": 202.0,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -252,6 +270,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785380534,
+      "viewBounds": {
+        "maxX": 259.6,
+        "maxY": 454.0,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -313,6 +337,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785385006,
+      "viewBounds": {
+        "maxX": 186.5,
+        "maxY": 324.4,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -374,6 +404,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785390011,
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 178.6,
+        "minX": -114.2,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -435,6 +471,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785397552,
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 460.0,
+        "minX": -121.3,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -496,6 +538,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785401246,
+      "viewBounds": {
+        "maxX": 113.3,
+        "maxY": 235.3,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -557,6 +605,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785405461,
+      "viewBounds": {
+        "maxX": 133.4,
+        "maxY": 458.9,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -618,6 +672,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785415086,
+      "viewBounds": {
+        "maxX": 114.9,
+        "maxY": 412.7,
+        "minX": -175.6,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -679,6 +739,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785419449,
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 423.0,
+        "minX": -252.7,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -740,6 +806,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785421901,
+      "viewBounds": {
+        "maxX": 182.0,
+        "maxY": 390.9,
+        "minX": -112.2,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -801,6 +873,12 @@
         "water": 1
       },
       "targetGreenOsmId": 785429786,
+      "viewBounds": {
+        "maxX": 110.1,
+        "maxY": 503.9,
+        "minX": -227.6,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -862,6 +940,12 @@
         "water": 1
       },
       "targetGreenOsmId": 785434049,
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 233.6,
+        "minX": -110.9,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -923,6 +1007,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785447680,
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 404.0,
+        "minX": -148.3,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -984,6 +1074,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785451302,
+      "viewBounds": {
+        "maxX": 168.2,
+        "maxY": 289.8,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -1045,6 +1141,12 @@
         "water": 0
       },
       "targetGreenOsmId": 785455536,
+      "viewBounds": {
+        "maxX": 116.4,
+        "maxY": 182.0,
+        "minX": -110.0,
+        "minY": -35.0
+      },
       "warnings": []
     },
     {
@@ -1106,6 +1208,12 @@
         "water": 1
       },
       "targetGreenOsmId": 785456824,
+      "viewBounds": {
+        "maxX": 166.3,
+        "maxY": 424.3,
+        "minX": -112.3,
+        "minY": -35.0
+      },
       "warnings": []
     }
   ],
@@ -1143,5 +1251,5 @@
   "registrationNote": "Static OSM geometry is packaged in an OSM-hole-start frame. GSPro registration remains unverified until live evidence.",
   "registrationStatus": "approximate",
   "schemaVersion": "looper-course-package-validation-v1",
-  "sourceBaseTimestamp": "2026-09-15T16:31:41Z"
+  "sourceBaseTimestamp": "2026-09-15T16:40:51Z"
 }

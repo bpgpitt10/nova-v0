@@ -1,7 +1,7 @@
 {
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-15T16:33:00.228679Z",
+  "generatedAt": "2026-09-15T16:42:25.206165Z",
   "holes": {
     "1": {
       "bounds": {
@@ -10282,7 +10282,13 @@
             1192691126
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 120.1,
+        "maxY": 580.6,
+        "minX": -110.4,
+        "minY": -35.0
+      }
     },
     "10": {
       "bounds": {
@@ -16070,7 +16076,13 @@
             785410722
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 114.9,
+        "maxY": 412.7,
+        "minX": -175.6,
+        "minY": -35.0
+      }
     },
     "11": {
       "bounds": {
@@ -24597,7 +24609,13 @@
             785416488
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 423.0,
+        "minX": -252.7,
+        "minY": -35.0
+      }
     },
     "12": {
       "bounds": {
@@ -28566,7 +28584,13 @@
             785419452
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 182.0,
+        "maxY": 390.9,
+        "minX": -112.2,
+        "minY": -35.0
+      }
     },
     "13": {
       "bounds": {
@@ -34075,7 +34099,13 @@
             785426529
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.1,
+        "maxY": 503.9,
+        "minX": -227.6,
+        "minY": -35.0
+      }
     },
     "14": {
       "bounds": {
@@ -38586,7 +38616,13 @@
             785434043
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 233.6,
+        "minX": -110.9,
+        "minY": -35.0
+      }
     },
     "15": {
       "bounds": {
@@ -44473,7 +44509,13 @@
             785441371
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 404.0,
+        "minX": -148.3,
+        "minY": -35.0
+      }
     },
     "16": {
       "bounds": {
@@ -52825,7 +52867,13 @@
             785448828
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 168.2,
+        "maxY": 289.8,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "17": {
       "bounds": {
@@ -58140,7 +58188,13 @@
             785454836
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 116.4,
+        "maxY": 182.0,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "18": {
       "bounds": {
@@ -67919,7 +67973,13 @@
             785456822
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 166.3,
+        "maxY": 424.3,
+        "minX": -112.3,
+        "minY": -35.0
+      }
     },
     "2": {
       "bounds": {
@@ -78273,7 +78333,13 @@
             785369097
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 111.4,
+        "maxY": 430.7,
+        "minX": -127.4,
+        "minY": -35.0
+      }
     },
     "3": {
       "bounds": {
@@ -82901,7 +82967,13 @@
             785416487
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 112.9,
+        "maxY": 202.0,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "4": {
       "bounds": {
@@ -90604,7 +90676,13 @@
             683325565
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 259.6,
+        "maxY": 454.0,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "5": {
       "bounds": {
@@ -97689,7 +97767,13 @@
             785381806
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 186.5,
+        "maxY": 324.4,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "6": {
       "bounds": {
@@ -103802,7 +103886,13 @@
             785390014
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 178.6,
+        "minX": -114.2,
+        "minY": -35.0
+      }
     },
     "7": {
       "bounds": {
@@ -112736,7 +112826,13 @@
             785390656
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 110.0,
+        "maxY": 460.0,
+        "minX": -121.3,
+        "minY": -35.0
+      }
     },
     "8": {
       "bounds": {
@@ -115631,7 +115727,13 @@
             785401251
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 113.3,
+        "maxY": 235.3,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     },
     "9": {
       "bounds": {
@@ -128412,19 +128514,25 @@
             785403935
           ]
         }
-      ]
+      ],
+      "viewBounds": {
+        "maxX": 133.4,
+        "maxY": 458.9,
+        "minX": -110.0,
+        "minY": -35.0
+      }
     }
   },
   "location": "Sanford, NC",
   "provenance": {
     "attribution": "\u00a9 OpenStreetMap contributors",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-15T16:33:00.228679Z",
+    "fetchedAt": "2026-09-15T16:42:25.206165Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
     "note": "Static geometry is generated ahead of play; no live OSM query is required during a round.",
-    "sourceBaseTimestamp": "2026-09-15T16:31:41Z",
+    "sourceBaseTimestamp": "2026-09-15T16:40:51Z",
     "sourceElementIdsComplete": true,
     "sourceUrl": "https://www.openstreetmap.org/way/430227508"
   },
