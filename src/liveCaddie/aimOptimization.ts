@@ -34,6 +34,21 @@ import { modelShotContext } from './shotContextModel'
 export const AIM_OFFSETS_YDS = [-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15] as const
 
 /**
+ * Expand the lateral search for wider player patterns while keeping the old
+ * ±15 yd sweep as the floor. This is search-space plumbing, not strategy: the
+ * ranking policy still decides whether an extreme line is worthwhile.
+ */
+export const buildAimOffsetsYds = (lateralSigmaYds: number | null | undefined) => {
+  const sigma = typeof lateralSigmaYds === 'number' && Number.isFinite(lateralSigmaYds)
+    ? Math.max(0, lateralSigmaYds)
+    : 0
+  const halfWidth = Math.max(15, Math.min(36, Math.ceil((sigma * 1.5) / 3) * 3))
+  const offsets: number[] = []
+  for (let offset = -halfWidth; offset <= halfWidth + 1e-9; offset += 3) offsets.push(offset)
+  return offsets
+}
+
+/**
  * Legacy V0 utility remains visible for diagnostics and as a final tie-breaker.
  * It is no longer the authoritative recommendation policy when full-risk data
  * is available.
@@ -53,6 +68,13 @@ export type AimLabEnvironment = {
   elevationSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
+  /**
+   * Optional per-club strategic target. Used by off-sim natural-landing
+   * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
+   * their own natural carry rather than sharing an arbitrary fixed distance.
+   * Default/live behavior remains unchanged when omitted.
+   */
+  clubTargets?: Readonly<Record<string, CoursePointYds | undefined>>
 }
 
 export type { AimSurfaceDistribution } from './aimOutcomeSampling'
@@ -101,8 +123,10 @@ export type ClubAimEvaluation = {
   airborneLateralDeltaYds: number
   surfaceLateralDeltaYds: number
   lateralSigmaYds: number | null
+  planningTarget: CoursePointYds
   targetDistanceYds: number
   carryGapYds: number
+  aimSearchHalfWidthYds: number
   supportShots: number
   supportingSessions: number
   modeledSampleCount: number
@@ -180,14 +204,19 @@ export const evaluateAimLab = (
   const nowMs = typeof environmentOrNowMs === 'number' ? environmentOrNowMs : explicitNowMs
   const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
   const decisionPlayers = buildDecisionPlayerModels(sessions, nowMs)
-  const decisionGoal = inferDecisionShotGoal(hole, target)
-  const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
   const geometrySurface = classifyPoint(hole, ball).kind
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
 
   const evaluations = profileSet.clubs.map((profile): ClubAimEvaluation => {
     const support = profileSet.club_support.find((item) => item.club === profile.club)
     const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null
+    const planningTarget = environment.clubTargets?.[profile.club] ?? target
+    const decisionGoal = inferDecisionShotGoal(hole, planningTarget)
+    const targetDistanceYds = Math.hypot(
+      planningTarget[0] - ball[0],
+      planningTarget[1] - ball[1],
+    )
+    const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)
     const launch = profile.launch_profile
     const modeled = modelShotContext(
       {
@@ -242,8 +271,8 @@ export const evaluateAimLab = (
       notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
     }
 
-    const candidates = AIM_OFFSETS_YDS.map((aimOffsetYds): AimCandidateEvaluation => {
-      const aimPoint = aimPointAtOffset(ball, target, aimOffsetYds)
+    const candidates = aimOffsetsYds.map((aimOffsetYds): AimCandidateEvaluation => {
+      const aimPoint = aimPointAtOffset(ball, planningTarget, aimOffsetYds)
       const empiricalAllShots = evaluateEmpiricalAimDistribution(
         hole,
         empiricalShots,
@@ -332,8 +361,10 @@ export const evaluateAimLab = (
       airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
       surfaceLateralDeltaYds: modeled.appliedAdjustments.surfaceLateralYds,
       lateralSigmaYds: profile.lateral_sigma_yds ?? null,
+      planningTarget,
       targetDistanceYds,
       carryGapYds,
+      aimSearchHalfWidthYds: Math.max(...aimOffsetsYds.map((offset) => Math.abs(offset))),
       supportShots: support?.included_stock_shots ?? 0,
       supportingSessions: support?.sessions ?? 0,
       modeledSampleCount: MODELED_AIM_SAMPLE_COUNT,
