@@ -9,7 +9,7 @@ import {
 import { getCurrentLooperUser } from '../cloud/supabaseClient'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { loadGreywolfHoleGeometry } from '../courseGeometry/greywolfCourseLoader'
-import { estimateGreywolfHole01Terrain } from '../courseGeometry/lidar'
+import { estimateGreywolfTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -452,8 +452,8 @@ function AimLabPage() {
     ? 'GSPro distance + cached green direction'
     : 'Cached green centroid'
 
-  const ballTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(ball) : null
-  const targetTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(target) : null
+  const ballTerrain = hole ? estimateGreywolfTerrain(hole, ball) : null
+  const targetTerrain = hole ? estimateGreywolfTerrain(hole, target) : null
   const targetElevationDelta =
     ballTerrain && targetTerrain
       ? targetTerrain.elevationFt - ballTerrain.elevationFt
@@ -468,7 +468,11 @@ function AimLabPage() {
           windMph,
           windRelativeDeg,
           elevationDeltaFt: targetElevationDelta,
-          elevationSource: holeNumber === 1 ? 'Greywolf H1 LiDAR contour proxy' : 'No elevation model for this hole yet',
+          elevationSource: ballTerrain && targetTerrain
+            ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
+              ? 'Greywolf direct 1 m LiDAR DEM'
+              : 'Greywolf LiDAR contour proxy'
+            : 'No elevation model for this hole yet',
           surfaceOverride: liveMatchesHole ? liveSnapshot?.surface ?? null : null,
         }),
         error: null as string | null,
