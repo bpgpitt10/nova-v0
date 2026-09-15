@@ -64,7 +64,6 @@ const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
   if (!pin) return [0, Math.min(220, hole.bounds.maxY)]
   const pinDistance = Math.hypot(pin[0], pin[1])
   if (pinDistance <= 260) return pin
-
   const landingY = Math.min(220, pinDistance * 0.65)
   const corridor = fairwayCorridorAtForwardY(hole, landingY)
   return [corridor?.centerRightYds ?? 0, landingY]
@@ -95,7 +94,6 @@ const chooseLiveLandingTarget = (
   if (!pin) return defaultTarget(hole)
   const distanceToPin = pointDistance(ball, pin)
   if (distanceToPin <= 260) return pin
-
   const landingDistance = Math.min(220, distanceToPin * 0.65)
   const forward = unitFromTo(ball, pin)
   const rawTarget: CoursePointYds = [
@@ -118,7 +116,6 @@ type LastShotReview = {
 }
 
 type AimLabMode = 'manual' | 'live'
-
 const AIM_LAB_MODE_STORAGE_KEY = 'looper.aim-lab.mode.v1'
 
 const loadAimLabMode = (): AimLabMode => {
@@ -135,7 +132,7 @@ const saveAimLabMode = (mode: AimLabMode) => {
   try {
     window.localStorage.setItem(AIM_LAB_MODE_STORAGE_KEY, mode)
   } catch {
-    // Storage can be unavailable in hardened/private browser contexts. Mode still works for this mount.
+    // Storage can be unavailable in hardened/private browser contexts.
   }
 }
 
@@ -148,6 +145,8 @@ function AimMap({
   lastShot,
   editMode,
   interactive,
+  show95Core,
+  showFullRisk,
   showModeledLandings,
   showHistoricalLandings,
   onSetPoint,
@@ -160,6 +159,8 @@ function AimMap({
   lastShot: LastShotReview | null
   editMode: 'ball' | 'target'
   interactive: boolean
+  show95Core: boolean
+  showFullRisk: boolean
   showModeledLandings: boolean
   showHistoricalLandings: boolean
   onSetPoint: (point: CoursePointYds) => void
@@ -206,6 +207,10 @@ function AimMap({
     ...sample,
     svg: project(sample.landing),
   })) ?? []
+  const riskTailSvgs = best?.riskProfile?.tailLandings.map((sample) => ({
+    ...sample,
+    svg: project(sample.landing),
+  })) ?? []
 
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
     if (!interactive) return
@@ -221,6 +226,12 @@ function AimMap({
   const hasWoods = hole.contextLayers?.some((layer) => layer.kind === 'woods') ?? false
   const hasContours = (hole.contours?.length ?? 0) > 0
   const historicalAverageWeight = historicalSampleSvgs.length > 0 ? 1 / historicalSampleSvgs.length : 1
+  const tailAverageWeight = best?.riskProfile && riskTailSvgs.length > 0
+    ? best.riskProfile.tailProbability / riskTailSvgs.length
+    : 1
+  const visibleProbabilityContours = best?.probabilityContours.filter(
+    (contour) => contour.probability !== 0.95 || show95Core,
+  ) ?? []
 
   return (
     <div className="aim-map-shell">
@@ -285,7 +296,7 @@ function AimMap({
         {best && aimSvg && meanSvg && (
           <>
             <line className="aim-line candidate" x1={ballSvg[0]} y1={ballSvg[1]} x2={aimSvg[0]} y2={aimSvg[1]} />
-            {[...best.probabilityContours].reverse().map((contour) => (
+            {[...visibleProbabilityContours].reverse().map((contour) => (
               <ellipse
                 key={`probability-${contour.probability}`}
                 className={`probability-contour probability-${Math.round(contour.probability * 100)}`}
@@ -294,6 +305,15 @@ function AimMap({
                 rx={Math.max(0.4, contour.lateralRadiusYds * scale)}
                 ry={Math.max(0.4, contour.carryRadiusYds * scale)}
                 transform={`rotate(${shotAngle} ${meanSvg[0]} ${meanSvg[1]})`}
+              />
+            ))}
+            {showFullRisk && riskTailSvgs.map((sample, index) => (
+              <circle
+                key={`risk-tail-${index}`}
+                className={`risk-tail-landing risk-${sample.tier}`}
+                cx={sample.svg[0]}
+                cy={sample.svg[1]}
+                r={Math.max(0.28, Math.min(0.72, 0.38 * Math.sqrt(sample.weight / Math.max(1e-9, tailAverageWeight))))}
               />
             ))}
             {showModeledLandings && modeledSampleSvgs.map((sample, index) => (
@@ -334,7 +354,8 @@ function AimMap({
         <span><i className="legend-dot pin" /> Pin estimate</span>
         <span><i className="legend-dot aim" /> Aim point</span>
         <span><i className="legend-dot mean" /> Expected center</span>
-        {best && <span><i className="legend-line probability" /> 50 / 80 / 95% modeled cloud</span>}
+        {best && <span><i className="legend-line probability" /> 50 / 80% core{show95Core ? ' / 95%' : ''}</span>}
+        {showFullRisk && riskTailSvgs.length > 0 && <span><i className="legend-dot risk-tail" /> Full-risk tail</span>}
         {hasWoods && <span><i className="legend-dot woods" /> Woods</span>}
         {hasContours && <span><i className="legend-line contour" /> Topo</span>}
         {lastShot?.actualLanding && <span><i className="legend-dot actual" /> Last actual</span>}
@@ -365,6 +386,8 @@ function AimLabPage() {
   const [liveError, setLiveError] = useState<string | null>(null)
   const [liveConnectionVersion, setLiveConnectionVersion] = useState(0)
   const [lastShotReview, setLastShotReview] = useState<LastShotReview | null>(null)
+  const [show95Core, setShow95Core] = useState(false)
+  const [showFullRisk, setShowFullRisk] = useState(false)
   const [showModeledLandings, setShowModeledLandings] = useState(false)
   const [showHistoricalLandings, setShowHistoricalLandings] = useState(false)
 
@@ -479,11 +502,9 @@ function AimLabPage() {
 
   useEffect(() => {
     if (mode !== 'live' || !hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
-
     const nextBall = liveSnapshot.ballLocalYds
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
-
     const nextPin = estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
     setBall(nextBall)
     setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
@@ -519,7 +540,6 @@ function AimLabPage() {
 
   const evaluationResult = useMemo(() => {
     if (!hole) return { evaluations: [] as ClubAimEvaluation[], error: null as string | null }
-
     try {
       return {
         evaluations: evaluateAimLab(sessions, hole, ball, target, {
@@ -558,6 +578,7 @@ function AimLabPage() {
   }, [evaluations, selectedClub])
 
   const selected = evaluations.find((item) => item.club === selectedClub) ?? evaluations[0] ?? null
+  const selectedRisk = selected?.bestCandidate?.riskProfile ?? null
 
   useEffect(() => {
     selectedRef.current = selected
@@ -618,55 +639,26 @@ function AimLabPage() {
             if (livePrepared) setMode('live')
             else void connectLiveState()
           }}
-        >
-          GSPro Live
-        </button>
-        {!livePrepared && (
-          <button type="button" onClick={() => void connectLiveState()}>Connect GSPro state folder</button>
-        )}
-        {mode === 'live' && liveStatus === 'error' && (
-          <button type="button" onClick={() => void connectLiveState()}>Reconnect / choose folder</button>
-        )}
+        >GSPro Live</button>
+        {!livePrepared && <button type="button" onClick={() => void connectLiveState()}>Connect GSPro state folder</button>}
+        {mode === 'live' && liveStatus === 'error' && <button type="button" onClick={() => void connectLiveState()}>Reconnect / choose folder</button>}
         <label>
           Hole
           <select value={holeNumber} disabled={mode === 'live'} onChange={(event) => setHoleNumber(Number(event.target.value))}>
-            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-              <option value={number} key={number}>#{number}</option>
-            ))}
+            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => <option value={number} key={number}>#{number}</option>)}
           </select>
         </label>
         <button type="button" onClick={resetTee} disabled={!hole || mode === 'live'}>Reset to tee</button>
         <button type="button" onClick={targetGreen} disabled={!hole?.markers.pin || mode === 'live'}>Target green</button>
-        <button type="button" disabled={mode === 'live'} className={editMode === 'ball' ? 'active' : ''} onClick={() => setEditMode('ball')}>
-          Click map: set ball
-        </button>
-        <button type="button" disabled={mode === 'live'} className={editMode === 'target' ? 'active' : ''} onClick={() => setEditMode('target')}>
-          Click map: set target
-        </button>
-        <div className="aim-toolbar-reading">
-          <span>Selected landing distance</span>
-          <strong>{targetDistance.toFixed(1)} yd</strong>
-        </div>
+        <button type="button" disabled={mode === 'live'} className={editMode === 'ball' ? 'active' : ''} onClick={() => setEditMode('ball')}>Click map: set ball</button>
+        <button type="button" disabled={mode === 'live'} className={editMode === 'target' ? 'active' : ''} onClick={() => setEditMode('target')}>Click map: set target</button>
+        <div className="aim-toolbar-reading"><span>Selected landing distance</span><strong>{targetDistance.toFixed(1)} yd</strong></div>
       </section>
 
-      {liveError && (
-        <div className="aim-alert bad">
-          GSPro Live: {liveError} · Looper will keep retrying; this does not interrupt GSPro play.
-        </div>
-      )}
-      {mode === 'live' && liveSnapshot?.warnings.map((warning) => (
-        <div className="aim-alert" key={warning}>{warning}</div>
-      ))}
-      {loadError && (
-        <div className="aim-alert bad">
-          Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.
-        </div>
-      )}
-      {evaluationError && (
-        <div className="aim-alert bad">
-          Recommendation engine paused for this state: {evaluationError} · live tracking and hole changes are still running.
-        </div>
-      )}
+      {liveError && <div className="aim-alert bad">GSPro Live: {liveError} · Looper will keep retrying; this does not interrupt GSPro play.</div>}
+      {mode === 'live' && liveSnapshot?.warnings.map((warning) => <div className="aim-alert" key={warning}>{warning}</div>)}
+      {loadError && <div className="aim-alert bad">Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.</div>}
+      {evaluationError && <div className="aim-alert bad">Recommendation engine paused for this state: {evaluationError} · live tracking and hole changes are still running.</div>}
       {!hole && !loadError && <div className="aim-alert">Loading Greywolf Hole {holeNumber}…</div>}
 
       {hole && (
@@ -674,10 +666,7 @@ function AimLabPage() {
           <section className="aim-top-grid">
             <article className="aim-card map-card">
               <div className="aim-card-heading">
-                <div>
-                  <span>COURSE</span>
-                  <h2>Hole {hole.holeNumber} geometry</h2>
-                </div>
+                <div><span>COURSE</span><h2>Hole {hole.holeNumber} geometry</h2></div>
                 <small>{mode === 'live' ? 'Ball follows GSPro automatically' : editMode === 'ball' ? 'Click to move ball' : 'Click to move landing target'}</small>
               </div>
               <AimMap
@@ -689,6 +678,8 @@ function AimLabPage() {
                 lastShot={visibleLastShot}
                 editMode={editMode}
                 interactive={mode === 'manual'}
+                show95Core={show95Core}
+                showFullRisk={showFullRisk}
                 showModeledLandings={showModeledLandings}
                 showHistoricalLandings={showHistoricalLandings}
                 onSetPoint={(point) => {
@@ -697,33 +688,25 @@ function AimLabPage() {
                 }}
               />
               <div className="aim-map-debug-controls">
+                <label><input type="checkbox" checked={show95Core} onChange={(event) => setShow95Core(event.target.checked)} />Show 95% core contour</label>
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={showModeledLandings}
-                    onChange={(event) => setShowModeledLandings(event.target.checked)}
-                  />
+                  <input type="checkbox" checked={showFullRisk} onChange={(event) => setShowFullRisk(event.target.checked)} />
+                  Show full-risk tail {selectedRisk ? `(${pct(selectedRisk.tailProbability)}, n=${selectedRisk.tailSampleCount})` : ''}
+                </label>
+                <label>
+                  <input type="checkbox" checked={showModeledLandings} onChange={(event) => setShowModeledLandings(event.target.checked)} />
                   Show modeled landing dots {selected ? `(${selected.modeledSampleCount.toLocaleString()})` : ''}
                 </label>
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={showHistoricalLandings}
-                    onChange={(event) => setShowHistoricalLandings(event.target.checked)}
-                  />
+                  <input type="checkbox" checked={showHistoricalLandings} onChange={(event) => setShowHistoricalLandings(event.target.checked)} />
                   Show observed Stock replay {selected ? `(n=${selected.empiricalShotCount})` : ''}
                 </label>
-                <small>Percentages, cloud and modeled dots use the same deterministic landing sample. Historical dots are sized by their analysis weight.</small>
+                <small>50/80% describe the normal core. Full risk adds the learned planning-excluded tail. The recommendation still uses the old V0 core score for now.</small>
               </div>
             </article>
 
             <article className="aim-card state-card">
-              <div className="aim-card-heading">
-                <div>
-                  <span>SHOT STATE</span>
-                  <h2>What Looper knows right now</h2>
-                </div>
-              </div>
+              <div className="aim-card-heading"><div><span>SHOT STATE</span><h2>What Looper knows right now</h2></div></div>
               <div className="state-grid">
                 <div><span>Ball</span><strong>{ball[0].toFixed(1)} R / {ball[1].toFixed(1)} F</strong><small>{liveMatchesHole ? liveSnapshot?.ballSource : 'manual'}</small></div>
                 <div><span>Landing target</span><strong>{target[0].toFixed(1)} R / {target[1].toFixed(1)} F</strong><small>{mode === 'live' ? 'auto tactical target' : 'manual'}</small></div>
@@ -732,7 +715,6 @@ function AimLabPage() {
                 <div><span>Pin estimate</span><strong>{pinEstimate ? `${pointDistance(ball, pinEstimate).toFixed(1)} yd` : '—'}</strong><small>{pinSource}</small></div>
                 <div><span>Live shot</span><strong>{liveMatchesHole ? liveSnapshot?.latestShot?.holeShot ?? 'tee' : '—'}</strong><small>{liveMatchesHole ? liveSnapshot?.latestShotKey ?? 'waiting for first shot' : 'manual'}</small></div>
               </div>
-
               <div className="manual-context-grid">
                 <label>Wind mph<input type="number" value={windMph} onChange={(event) => setWindMph(Number(event.target.value))} /></label>
                 <label>Wind relative °<input type="number" value={windRelativeDeg} onChange={(event) => setWindRelativeDeg(Number(event.target.value))} /></label>
@@ -740,7 +722,6 @@ function AimLabPage() {
                 <label>Sidehill lie °<input type="number" value={sidehillLieDeg} onChange={(event) => setSidehillLieDeg(Number(event.target.value))} /></label>
               </div>
               <p className="aim-note">Wind, elevation and supported GSPro surface penalties are operative. Physical lie angles remain visible-only until the controlled identical-launch-packet test establishes GSPro’s slope response.</p>
-
               {visibleLastShot && (
                 <div className="last-shot-card">
                   <span>LAST SHOT</span>
@@ -752,26 +733,27 @@ function AimLabPage() {
           </section>
 
           <section className="aim-card">
-            <div className="aim-card-heading">
-              <div>
-                <span>FACTOR STACK</span>
-                <h2>Value → effect → source → confidence</h2>
-              </div>
-            </div>
+            <div className="aim-card-heading"><div><span>FACTOR STACK</span><h2>Value → effect → source → confidence</h2></div></div>
             <div className="aim-table-wrap">
               <table className="aim-table factor-table">
                 <thead><tr><th>Factor</th><th>Raw value</th><th>Current model effect</th><th>Source</th><th>Status</th></tr></thead>
                 <tbody>
                   <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical cloud drives map contours, percentages and score</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Every modeled landing is classified against playable surfaces + woods/scrub context</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical core cloud drives map contours, core percentages and V0 score</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Course geometry</td><td>Greywolf H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Cached OSM package</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Live ball position</td><td>{mode === 'live' ? `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F` : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole ? 'status modeled' : 'status review'}>{liveMatchesHole ? 'MODELED' : 'MANUAL'}</b></td></tr>
                   <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{ballTerrain && targetTerrain ? (ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem' ? 'LiDAR DEM' : 'LiDAR contour proxy') : 'No terrain model'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
                   <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>{selected ? `${signedYds(selected.airborneCarryDeltaYds)} carry · ${signedYds(selected.airborneLateralDeltaYds)} lateral (combined with elevation)` : '—'}</td><td>Manual now / live sensor later</td><td><b className="status modeled">PROVISIONAL</b></td></tr>
                   <tr><td>Surface</td><td>{activeSurface}</td><td>{selected ? `${selected.surfaceLabel} · ${signedYds(selected.surfaceCarryDeltaYds)} carry · ${signedYds(selected.surfaceLateralDeltaYds)} lateral` : '—'}</td><td>{surfaceSource}</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Uphill/downhill lie</td><td>{uphillLieDeg}°</td><td>No launch/carry change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
                   <tr><td>Ball above/below feet</td><td>{sidehillLieDeg}°</td><td>No start-line/curvature change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
-                  <tr><td>Mishit / all-shot tail</td><td>{selected ? `${selected.empiricalShotCount} usable Stock shots` : '—'}</td><td>Weighted observed shots replayed at every aim beside normal model; not scored yet</td><td>Looper weighted Stock history</td><td><b className="status review">REVIEW</b></td></tr>
+                  <tr>
+                    <td>Mishit / tail frequency</td>
+                    <td>{selectedRisk ? `${pct(selectedRisk.mishitProbability)} mishit · ${pct(selectedRisk.tailProbability)} planning-excluded tail` : '—'}</td>
+                    <td>Tail is mixed into the full-risk outcome profile; shot quality itself is not an outcome penalty</td>
+                    <td>Looper weighted Stock history</td>
+                    <td><b className="status review">RISK ONLY</b></td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -779,10 +761,7 @@ function AimLabPage() {
 
           <section className="aim-card">
             <div className="aim-card-heading">
-              <div>
-                <span>SHOT CANDIDATES</span>
-                <h2>Your profile against this landing target</h2>
-              </div>
+              <div><span>SHOT CANDIDATES</span><h2>Your profile against this landing target</h2></div>
               <small>Click a club to inspect all 11 lateral aim candidates.</small>
             </div>
             <div className="aim-table-wrap">
@@ -820,18 +799,15 @@ function AimLabPage() {
             <section className="aim-two-column">
               <article className="aim-card">
                 <div className="aim-card-heading">
-                  <div>
-                    <span>AIM SWEEP · {selected.club.toUpperCase()}</span>
-                    <h2>Modeled probability vs observed Stock replay</h2>
-                  </div>
-                  <small>Best highlighted · modeled n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
+                  <div><span>AIM SWEEP · {selected.club.toUpperCase()}</span><h2>Core probability vs observed Stock replay</h2></div>
+                  <small>V0-selected best highlighted · core n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
                 </div>
                 <div className="aim-table-wrap">
                   <table className="aim-table aim-sweep-table">
-                    <thead><tr><th>Aim</th><th>Model pref.</th><th>Hist. pref.</th><th>Model rough</th><th>Hist. rough</th><th>Model trouble</th><th>Hist. trouble</th><th>Model penalty</th><th>Hist. penalty</th><th>Model unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>Model score</th></tr></thead>
+                    <thead><tr><th>Aim</th><th>Core pref.</th><th>Hist. pref.</th><th>Core rough</th><th>Hist. rough</th><th>Core trouble</th><th>Hist. trouble</th><th>Core penalty</th><th>Hist. penalty</th><th>Core unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>V0 score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
-                        const landingTerrain = hole ? estimateGreywolfTerrain(hole, candidate.meanLanding) : null
+                        const landingTerrain = estimateGreywolfTerrain(hole, candidate.meanLanding)
                         const elevationDelta = ballTerrain && landingTerrain ? landingTerrain.elevationFt - ballTerrain.elevationFt : null
                         return (
                           <tr key={candidate.aimOffsetYds} className={candidate === selected.bestCandidate ? 'best' : ''}>
@@ -857,34 +833,57 @@ function AimLabPage() {
               </article>
 
               <article className="aim-card assumptions-card">
-                <div className="aim-card-heading">
-                  <div>
-                    <span>SCORING ASSUMPTIONS</span>
-                    <h2>V0 is intentionally simple</h2>
-                  </div>
-                </div>
+                <div className="aim-card-heading"><div><span>SCORING ASSUMPTIONS</span><h2>V0 is intentionally simple</h2></div></div>
                 <div className="score-formula">
                   <code>score = preferred×{AIM_SCORE_ASSUMPTIONS.preferredWeight} + non-penalty-trouble×({AIM_SCORE_ASSUMPTIONS.nonPenaltyTroubleWeight}) + penalty×({AIM_SCORE_ASSUMPTIONS.penaltyWeight}) + unknown×({AIM_SCORE_ASSUMPTIONS.unknownWeight}) + |carry gap|×({AIM_SCORE_ASSUMPTIONS.carryGapPerYard})</code>
                 </div>
-                <p><strong>This is not final golf strategy.</strong> It is a reviewable baseline so we can argue with every assumption before improving it.</p>
+                <p><strong>This is not final golf strategy.</strong> Full risk is now calculated separately so we can validate it before changing the recommendation.</p>
                 <div className="assumption-list">
                   <div><span>Aim search</span><strong>−15 to +15 yd, every 3 yd</strong></div>
-                  <div><span>Shot shape</span><strong>{selected.modeledSampleCount.toLocaleString()} deterministic Stock landings</strong></div>
-                  <div><span>Outcome math</span><strong>Same landings drive cloud, table and score</strong></div>
-                  <div><span>Tactical classifier</span><strong>Playable surfaces + woods/scrub obstruction</strong></div>
+                  <div><span>Core shape</span><strong>{selected.modeledSampleCount.toLocaleString()} deterministic Stock landings</strong></div>
+                  <div><span>Default visual</span><strong>50 / 80% normal-core contours</strong></div>
+                  <div><span>Full risk</span><strong>Core + learned planning-excluded tail · not scored yet</strong></div>
+                  <div><span>Tactical outcome</span><strong>Success / manageable / serious trouble / catastrophe</strong></div>
                   <div><span>Wind</span><strong>looper-flight-physics-v1 · provisional</strong></div>
-                  <div><span>Elevation</span><strong>H1 LiDAR target elevation · provisional</strong></div>
+                  <div><span>Elevation</span><strong>LiDAR target elevation · provisional</strong></div>
                   <div><span>Surface response</span><strong>GSPro launch modifiers · modeled</strong></div>
                   <div><span>Physical lie response</span><strong>0 effect pending controlled test</strong></div>
                   <div><span>Smooth 90%</span><strong>Not synthesized yet</strong></div>
-                  <div><span>Empirical all-shot tail</span><strong>Visible beside model · not scored yet · {selected.empiricalShotCount} shots</strong></div>
                 </div>
-                {selected.notes.length > 0 && (
-                  <div className="aim-warning-list">
-                    {selected.notes.map((note) => <p key={note}>{note}</p>)}
-                  </div>
-                )}
+                {selected.notes.length > 0 && <div className="aim-warning-list">{selected.notes.map((note) => <p key={note}>{note}</p>)}</div>}
               </article>
+            </section>
+          )}
+
+          {selected && (
+            <section className="aim-card risk-sweep-card">
+              <div className="aim-card-heading">
+                <div><span>FULL RISK · {selected.club.toUpperCase()}</span><h2>Outcome severity by aim</h2></div>
+                <small>Inspection only · does not change V0-selected aim yet · tail {pct(selectedRisk?.tailProbability)}</small>
+              </div>
+              <div className="aim-table-wrap">
+                <table className="aim-table risk-sweep-table">
+                  <thead><tr><th>Aim</th><th>Success</th><th>Manageable</th><th>Serious trouble</th><th>Catastrophe</th><th>Unknown</th><th>Expected severity</th><th>Tail n</th></tr></thead>
+                  <tbody>
+                    {selected.candidates.map((candidate) => {
+                      const risk = candidate.riskProfile
+                      return (
+                        <tr key={`risk-${candidate.aimOffsetYds}`} className={candidate === selected.bestCandidate ? 'best' : ''}>
+                          <td><strong>{signedYds(candidate.aimOffsetYds)}</strong></td>
+                          <td>{pct(risk?.success)}</td>
+                          <td>{pct(risk?.manageable)}</td>
+                          <td className="risk-serious-cell">{pct(risk?.seriousTrouble)}</td>
+                          <td className="risk-catastrophe-cell">{pct(risk?.catastrophe)}</td>
+                          <td>{pct(risk?.unknown)}</td>
+                          <td>{risk ? risk.expectedSeverity.toFixed(2) : '—'}</td>
+                          <td>{risk?.tailSampleCount ?? '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="aim-note">Mishit is a shot-quality label, not a risk bucket. A short/straight mishit can remain manageable; a tail shot only becomes serious or catastrophic when its modeled landing reaches serious trouble or a penalty surface.</p>
             </section>
           )}
 
