@@ -58,6 +58,10 @@ export const greywolfHole01Geometry: CourseHoleGeometry = {
     osmSurface('water', source.layers.water, 'natural=water / waterway'),
     osmSurface('tee', source.layers.tee, 'golf=tee'),
   ],
+  contours: source.layers.contours.map((contour) => ({
+    elevationFt: contour.elevationFt,
+    points: contour.points,
+  })),
   availability: {
     tee: 'available',
     fairway: 'available',
