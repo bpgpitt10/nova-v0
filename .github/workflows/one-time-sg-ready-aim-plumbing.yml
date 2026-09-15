@@ -1,0 +1,52 @@
+name: One-time SG-ready aim plumbing
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+
+permissions:
+  contents: write
+
+jobs:
+  patch-aim:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+      - name: Patch aim plumbing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/liveCaddie/aimOptimization.ts')
+          text = path.read_text()
+
+          replacements = {
+            "export const AIM_OFFSETS_YDS = [-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15] as const\n": """export const AIM_OFFSETS_YDS = [-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15] as const\n\n/**\n * Expand the lateral search for wider player patterns while keeping the old\n * ±15 yd sweep as the floor. This is search-space plumbing, not strategy: the\n * ranking policy still decides whether an extreme line is worthwhile.\n */\nexport const buildAimOffsetsYds = (lateralSigmaYds: number | null | undefined) => {\n  const sigma = typeof lateralSigmaYds === 'number' && Number.isFinite(lateralSigmaYds)\n    ? Math.max(0, lateralSigmaYds)\n    : 0\n  const halfWidth = Math.max(15, Math.min(36, Math.ceil((sigma * 1.5) / 3) * 3))\n  const offsets: number[] = []\n  for (let offset = -halfWidth; offset <= halfWidth + 1e-9; offset += 3) offsets.push(offset)\n  return offsets\n}\n""",
+            "  surfaceOverride?: string | null\n}\n": """  surfaceOverride?: string | null\n  /**\n   * Optional per-club strategic target. Used by off-sim natural-landing\n   * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at\n   * their own natural carry rather than sharing an arbitrary fixed distance.\n   * Default/live behavior remains unchanged when omitted.\n   */\n  clubTargets?: Readonly<Record<string, CoursePointYds | undefined>>\n}\n""",
+            "  targetDistanceYds: number\n  carryGapYds: number\n": """  planningTarget: CoursePointYds\n  targetDistanceYds: number\n  carryGapYds: number\n  aimSearchHalfWidthYds: number\n""",
+            "  const decisionGoal = inferDecisionShotGoal(hole, target)\n  const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])\n": "",
+            "    const support = profileSet.club_support.find((item) => item.club === profile.club)\n    const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null\n": """    const support = profileSet.club_support.find((item) => item.club === profile.club)\n    const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null\n    const planningTarget = environment.clubTargets?.[profile.club] ?? target\n    const decisionGoal = inferDecisionShotGoal(hole, planningTarget)\n    const targetDistanceYds = Math.hypot(\n      planningTarget[0] - ball[0],\n      planningTarget[1] - ball[1],\n    )\n    const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)\n""",
+            "    const candidates = AIM_OFFSETS_YDS.map((aimOffsetYds): AimCandidateEvaluation => {\n      const aimPoint = aimPointAtOffset(ball, target, aimOffsetYds)\n": """    const candidates = aimOffsetsYds.map((aimOffsetYds): AimCandidateEvaluation => {\n      const aimPoint = aimPointAtOffset(ball, planningTarget, aimOffsetYds)\n""",
+            "      targetDistanceYds,\n      carryGapYds,\n": """      planningTarget,\n      targetDistanceYds,\n      carryGapYds,\n      aimSearchHalfWidthYds: Math.max(...aimOffsetsYds.map((offset) => Math.abs(offset))),\n""",
+          }
+
+          missing = [old for old in replacements if old not in text]
+          if missing:
+            raise SystemExit('Expected aimOptimization text not found: ' + repr(missing))
+          for old, new in replacements.items():
+            text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Build
+        run: npm run build
+      - name: Commit plumbing
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/liveCaddie/aimOptimization.ts
+          git commit -m "Add SG-ready natural target and dynamic aim plumbing"
+          git push origin HEAD:course-geometry-tactical-v0
