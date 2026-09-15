@@ -19,7 +19,20 @@ export type CourseCatalogEntry = {
   lidarCacheStatus: CourseCacheStatus
 }
 
-export const courseCatalog = [
+const plannedCourseDefaults = {
+  status: 'validation',
+  packageStatus: 'missing',
+  packageVersion: null,
+  packageCacheStatus: 'missing',
+  osmCacheStatus: 'unknown',
+  lidarCacheStatus: 'unknown',
+} as const
+
+/**
+ * Complete internal course registry, including planned pilot courses that do
+ * not have runtime packages yet. Build/ingestion tooling should use this list.
+ */
+export const courseRegistry = [
   {
     id: GREYWOLF_COURSE_ID,
     name: 'Greywolf Golf Course',
@@ -57,18 +70,98 @@ export const courseCatalog = [
     osmCacheStatus: 'cached',
     lidarCacheStatus: 'unknown',
   },
+  {
+    id: 'royal-new-kent-providence-forge-va',
+    name: 'Royal New Kent Golf Club',
+    location: 'Providence Forge, VA',
+    slug: 'royal-new-kent',
+    gsproAliases: ['Royal New Kent', 'Royal New Kent Golf Club'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'arcadia-bluffs-arcadia-mi',
+    name: 'Arcadia Bluffs — The Bluffs Course',
+    location: 'Arcadia, MI',
+    slug: 'arcadia-bluffs',
+    gsproAliases: ['Arcadia Bluffs', 'The Bluffs Course', 'Arcadia Bluffs — The Bluffs Course'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'shaftesbury-glen-conway-sc',
+    name: 'Shaftesbury Glen Golf & Fish Club',
+    location: 'Conway, SC',
+    slug: 'shaftesbury-glen',
+    gsproAliases: ['Shaftesbury Glen', 'Shaftesbury Glen Golf & Fish Club'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'valhalla-louisville-ky',
+    name: 'Valhalla Golf Club',
+    location: 'Louisville, KY',
+    slug: 'valhalla',
+    gsproAliases: ['Valhalla', 'Valhalla Golf Club'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'muirfield-village-dublin-oh',
+    name: 'Muirfield Village Golf Club',
+    location: 'Dublin, OH',
+    slug: 'muirfield-village',
+    gsproAliases: ['Muirfield Village', 'Muirfield Village Golf Club'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'cabot-cliffs-inverness-ns',
+    name: 'Cabot Cliffs',
+    location: 'Inverness, NS',
+    slug: 'cabot-cliffs',
+    gsproAliases: ['Cabot Cliffs'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'greywalls-marquette-mi',
+    name: 'Greywalls at Marquette Golf Club',
+    location: 'Marquette, MI',
+    slug: 'greywalls',
+    gsproAliases: ['Ashen Cliffs', 'Greywalls', 'Greywalls at Marquette Golf Club'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'paynes-valley-hollister-mo',
+    name: "Payne's Valley",
+    location: 'Hollister, MO',
+    slug: 'paynes-valley',
+    gsproAliases: ["Payne's Valley", 'Paynes Valley'],
+    ...plannedCourseDefaults,
+  },
+  {
+    id: 'pebble-beach-pebble-beach-ca',
+    name: 'Pebble Beach Golf Links',
+    location: 'Pebble Beach, CA',
+    slug: 'pebble-beach',
+    gsproAliases: ['DPC Pebble', 'Pebble Beach', 'Pebble Beach Golf Links'],
+    ...plannedCourseDefaults,
+  },
 ] as const satisfies readonly CourseCatalogEntry[]
 
-export type CourseId = (typeof courseCatalog)[number]['id']
+export type CourseId = (typeof courseRegistry)[number]['id']
+
+/**
+ * Runtime/player-facing catalog. Planned rows stay internal until a package
+ * exists, so registering the pilot queue cannot create dead course choices.
+ */
+export const courseCatalog = courseRegistry.filter(
+  (entry) => entry.packageStatus !== 'missing',
+)
 
 export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
-  const entry = courseCatalog.find((candidate) => candidate.id === courseId)
+  const entry = courseRegistry.find((candidate) => candidate.id === courseId)
   if (!entry) throw new Error(`Unknown Looper course id: ${courseId}`)
   return entry
 }
 
 export const isCourseId = (value: string | null | undefined): value is CourseId =>
-  value != null && courseCatalog.some((entry) => entry.id === value)
+  value != null && courseRegistry.some((entry) => entry.id === value)
 
 const normalizeCourseName = (value: string) =>
   value
@@ -88,7 +181,7 @@ export const resolveCourseIdFromGsproName = (gsproName: string): CourseId | null
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
-  for (const entry of courseCatalog) {
+  for (const entry of courseRegistry) {
     if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) {
       return entry.id
     }
