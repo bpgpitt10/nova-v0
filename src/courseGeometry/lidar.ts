@@ -3,15 +3,24 @@ import type {
   CourseContourLine,
   CourseHoleGeometry,
   CoursePointYds,
+  CourseTerrainGrid,
 } from './types'
 
-export type TerrainEstimate = {
-  elevationFt: number
-  source: 'lidar-contour-proxy'
-  confidence: 'medium'
-  nearestContourDistanceYds: number
-  note: string
-}
+export type TerrainEstimate =
+  | {
+      elevationFt: number
+      source: 'lidar-dem'
+      confidence: 'high'
+      gridSpacingYds: number
+      note: string
+    }
+  | {
+      elevationFt: number
+      source: 'lidar-contour-proxy'
+      confidence: 'medium'
+      nearestContourDistanceYds: number
+      note: string
+    }
 
 const pointSegmentDistance = (
   point: CoursePointYds,
@@ -40,23 +49,66 @@ const distanceToContour = (point: CoursePointYds, contour: CourseContourLine) =>
   return best
 }
 
-/**
- * Estimate local elevation from the LiDAR-derived contour lines supplied by a
- * CourseHoleGeometry package. The sampler is deliberately hole-agnostic: once a
- * hole has real contours, Live Caddie receives elevation without any new UI or
- * aim-model wiring.
- *
- * This remains a contour proxy rather than raw DEM sampling. Direct DEM sampling
- * can replace this implementation later while preserving the TerrainEstimate
- * contract used by the caddie model.
- */
-export const estimateGreywolfTerrain = (
-  hole: CourseHoleGeometry,
+const encodedElevation = (
+  terrain: CourseTerrainGrid,
+  row: number,
+  column: number,
+): number | null => {
+  const encoded = terrain.values[row * terrain.width + column]
+  if (encoded == null || encoded === terrain.nodata) return null
+  return terrain.elevationOffsetFt + encoded / 10
+}
+
+const estimateFromGrid = (
+  terrain: CourseTerrainGrid,
   point: CoursePointYds,
 ): TerrainEstimate | null => {
-  const contours = hole.contours ?? []
-  if (contours.length === 0) return null
+  if (
+    terrain.width < 2 ||
+    terrain.height < 2 ||
+    terrain.runtimeSpacingYds <= 0 ||
+    terrain.values.length !== terrain.width * terrain.height
+  ) {
+    return null
+  }
 
+  const gridX = (point[0] - terrain.minX) / terrain.runtimeSpacingYds
+  const gridY = (point[1] - terrain.minY) / terrain.runtimeSpacingYds
+  if (
+    gridX < 0 ||
+    gridY < 0 ||
+    gridX > terrain.width - 1 ||
+    gridY > terrain.height - 1
+  ) {
+    return null
+  }
+
+  const column0 = Math.min(Math.floor(gridX), terrain.width - 2)
+  const row0 = Math.min(Math.floor(gridY), terrain.height - 2)
+  const dx = gridX - column0
+  const dy = gridY - row0
+
+  const z00 = encodedElevation(terrain, row0, column0)
+  const z10 = encodedElevation(terrain, row0, column0 + 1)
+  const z01 = encodedElevation(terrain, row0 + 1, column0)
+  const z11 = encodedElevation(terrain, row0 + 1, column0 + 1)
+  if (z00 == null || z10 == null || z01 == null || z11 == null) return null
+
+  const top = z00 * (1 - dx) + z10 * dx
+  const bottom = z01 * (1 - dx) + z11 * dx
+  return {
+    elevationFt: top * (1 - dy) + bottom * dy,
+    source: 'lidar-dem',
+    confidence: 'high',
+    gridSpacingYds: terrain.runtimeSpacingYds,
+    note: `Bilinear sample from browser terrain grid derived from the ${terrain.sourceResolutionMeters} m BC bare-earth LiDAR DEM.`,
+  }
+}
+
+const estimateFromContours = (
+  contours: readonly CourseContourLine[],
+  point: CoursePointYds,
+): TerrainEstimate | null => {
   const nearest = contours
     .map((contour) => ({ contour, distance: distanceToContour(point, contour) }))
     .filter((item) => Number.isFinite(item.distance))
@@ -72,7 +124,7 @@ export const estimateGreywolfTerrain = (
       source: 'lidar-contour-proxy',
       confidence: 'medium',
       nearestContourDistanceYds: first.distance,
-      note: 'Point lies effectively on a LiDAR-derived contour. Production target is direct DEM sampling.',
+      note: 'Point lies effectively on a LiDAR-derived contour.',
     }
   }
 
@@ -89,14 +141,29 @@ export const estimateGreywolfTerrain = (
     source: 'lidar-contour-proxy',
     confidence: 'medium',
     nearestContourDistanceYds: first.distance,
-    note: 'Inverse-distance estimate from LiDAR-derived contours; review aid only until direct DEM sampling is wired.',
+    note: 'Inverse-distance estimate from LiDAR-derived contours used because a direct DEM grid sample was unavailable.',
   }
 }
 
 /**
- * Temporary compatibility wrapper for the existing Aim Lab call site. New code
- * should call estimateGreywolfTerrain(hole, point) so terrain coverage follows
- * the loaded hole package rather than a hard-coded hole number.
+ * Greywolf terrain sampler used by the live caddie. Direct DEM-derived runtime
+ * terrain is authoritative. Contours remain a fail-soft fallback and a visual
+ * layer; they are no longer the preferred elevation source.
+ */
+export const estimateGreywolfTerrain = (
+  hole: CourseHoleGeometry,
+  point: CoursePointYds,
+): TerrainEstimate | null => {
+  if (hole.terrain) {
+    const direct = estimateFromGrid(hole.terrain, point)
+    if (direct) return direct
+  }
+  return estimateFromContours(hole.contours ?? [], point)
+}
+
+/**
+ * Temporary compatibility wrapper for older Hole 1 proof call sites. New code
+ * should call estimateGreywolfTerrain(hole, point) against the loaded geometry.
  */
 export const estimateGreywolfHole01Terrain = (
   point: CoursePointYds,
