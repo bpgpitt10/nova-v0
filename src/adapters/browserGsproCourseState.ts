@@ -121,6 +121,9 @@ const asNumber = (value: unknown): number | null => {
 const asString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null
 
+const isGreywolfCourseKey = (value: string | null) =>
+  value != null && /^greywolf_gsp$/i.test(value)
+
 const vec3 = (value: unknown): { x: number; y: number; z: number } | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const candidate = value as Vec3
@@ -465,10 +468,44 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     ? records
     : records.filter((record) => asNumber(record.RoundID) === activeRoundId)
   const latestRecord = roundRecords[roundRecords.length - 1]
-  const latestShot = await buildShot(latestRecord, roundRecords)
+  const courseKey = asString(latestRecord.CourseKey)
   const rawLatestHole = asNumber(latestRecord.Hole)
   const latestRecordHole = rawLatestHole == null ? null : Math.round(rawLatestHole) + 1
   const logHole = logState.holeNumber
+
+  // currentRound.dat commonly retains the most recent range/practice record until
+  // the first on-course shot is completed. Never project another course's world
+  // coordinates onto Greywolf. Stay on the cached tee until a GreyWolf_gsp shot
+  // arrives, using output_log only for the current hole when available.
+  if (courseKey != null && !isGreywolfCourseKey(courseKey)) {
+    const warning = `Ignoring stale ${courseKey} currentRound state; waiting for a Greywolf shot.`
+    if (logHole != null) {
+      return cachedTeeSnapshot({
+        courseKey,
+        roundId: activeRoundId,
+        holeNumber: logHole,
+        latestShot: null,
+        warnings: [warning],
+      })
+    }
+
+    return {
+      courseKey,
+      roundId: activeRoundId,
+      holeNumber: null,
+      ballLocalYds: null,
+      ballSource: 'unavailable',
+      surface: null,
+      surfaceSource: 'unavailable',
+      distanceToPinYds: null,
+      latestShot: null,
+      latestShotKey: null,
+      warnings: [warning],
+      observedAt: new Date().toISOString(),
+    }
+  }
+
+  const latestShot = await buildShot(latestRecord, roundRecords)
 
   let holeNumber = latestRecordHole
   if (logHole != null) {
@@ -491,11 +528,6 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
       // player backward because output_log was momentarily stale or unreadable.
       holeNumber = latestRecordHole
     }
-  }
-
-  const courseKey = asString(latestRecord.CourseKey)
-  if (courseKey && !/grey\s*wolf|greywolf/i.test(courseKey)) {
-    warnings.push(`Live map registration is currently validated only for Greywolf; GSPro reports ${courseKey}.`)
   }
 
   if (holeNumber == null || holeNumber < 1 || holeNumber > 18) {
