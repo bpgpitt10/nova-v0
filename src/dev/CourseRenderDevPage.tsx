@@ -49,12 +49,13 @@ function CourseRenderDevPage() {
 
   const displayBounds = useMemo(() => {
     if (!geometry) return null
+    const baseBounds = geometry.viewBounds ?? geometry.bounds
     const clampGreywolfHoleOne = selectedCourseId === GREYWOLF_COURSE_ID && selectedHole === 1
     return {
-      minX: geometry.bounds.minX,
-      maxX: geometry.bounds.maxX,
-      minY: Math.max(geometry.bounds.minY, clampGreywolfHoleOne ? -28 : geometry.bounds.minY),
-      maxY: geometry.bounds.maxY,
+      minX: baseBounds.minX,
+      maxX: baseBounds.maxX,
+      minY: Math.max(baseBounds.minY, clampGreywolfHoleOne ? -28 : baseBounds.minY),
+      maxY: baseBounds.maxY,
     }
   }, [geometry, selectedCourseId, selectedHole])
 
