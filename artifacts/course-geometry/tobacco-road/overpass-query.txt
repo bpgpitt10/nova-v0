@@ -1,0 +1,11 @@
+[out:json][timeout:120];
+way(430227508);
+map_to_area -> .courseArea;
+(
+  nwr(area.courseArea)["golf"];
+  nwr(area.courseArea)["natural"="water"];
+  nwr(area.courseArea)["landuse"="reservoir"];
+  nwr(around:1600,35.39859,-79.21386)["natural"~"^(wood|scrub)$"];
+  nwr(around:1600,35.39859,-79.21386)["landuse"~"^(forest|grass|meadow)$"];
+);
+out body geom;
