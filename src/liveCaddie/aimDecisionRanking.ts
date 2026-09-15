@@ -12,11 +12,19 @@ export type AimDecisionPolicy = {
    * within this many yards of the best carry fit in the bag.
    */
   carryGapToleranceAboveBestYds: number
+  /**
+   * Thin player samples remain visible and can still win when no adequately
+   * supported club fits the intended distance. When a supported target-fit
+   * alternative exists, clubs below this threshold are provisional and cannot
+   * outrank it on a tiny sample.
+   */
+  minimumAuthoritativeSupportShots: number
 }
 
 export const DEFAULT_AIM_DECISION_POLICY: AimDecisionPolicy = {
   catastropheToleranceAboveBest: 0.02,
   carryGapToleranceAboveBestYds: 12,
+  minimumAuthoritativeSupportShots: 5,
 }
 
 export type RiskRankableAim = {
@@ -127,6 +135,7 @@ export type ClubAimChoice<T extends RiskRankableAim> = {
   club: string
   modeledCarryYds: number
   targetDistanceYds: number
+  supportShots: number
   bestCandidate: T | null
 }
 
@@ -139,9 +148,18 @@ export type RankedClubAimChoice<T extends RiskRankableAim, C extends ClubAimChoi
 }
 
 /**
- * Rank club + aim recommendations without allowing a short layup to win merely
- * because it is safest. First establish the set of clubs that can perform the
- * intended shot, then apply the same catastrophe guardrail used for aim.
+ * Rank club + aim recommendations without allowing either a short layup or an
+ * under-supported club to win for the wrong reason.
+ *
+ * 1) Establish the clubs that can reasonably perform the intended distance.
+ * 2) If that set contains adequately supported clubs, thin-sample clubs become
+ *    provisional and rank behind the supported target-fit set.
+ * 3) Apply the catastrophe guardrail inside the authoritative comparison set.
+ * 4) Choose on success/severity inside the safe set.
+ *
+ * A thin club can still win when it is the only reasonable distance fit. That
+ * keeps cold-start bags usable without allowing two lucky 3W shots to overrule
+ * a well-supported Driver that also fits the target.
  */
 export const rankRiskAwareClubChoices = <
   T extends RiskRankableAim,
@@ -150,6 +168,8 @@ export const rankRiskAwareClubChoices = <
   evaluations: readonly C[],
   policy: AimDecisionPolicy = DEFAULT_AIM_DECISION_POLICY,
 ): RankedClubAimChoice<T, C>[] => {
+  const supportAdequate = (evaluation: C) =>
+    evaluation.supportShots >= policy.minimumAuthoritativeSupportShots
   const usable = evaluations.filter(
     (evaluation): evaluation is C & { bestCandidate: T & { riskProfile: DecisionRiskProfile } } =>
       evaluation.bestCandidate?.riskProfile != null,
@@ -158,17 +178,21 @@ export const rankRiskAwareClubChoices = <
 
   if (usable.length === 0) {
     return [...evaluations]
-      .sort((a, b) =>
-        (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
-        (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY),
-      )
+      .sort((a, b) => {
+        const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
+        if (supportDelta !== 0) return supportDelta
+        return (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
+          (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY)
+      })
       .map((evaluation, index) => ({
         evaluation,
         rank: index + 1,
         targetFit: true,
         withinCatastropheGuardrail: true,
         decisionReason: index === 0
-          ? 'Full-risk profile unavailable; fell back to the legacy V0 utility score.'
+          ? supportAdequate(evaluation)
+            ? 'Full-risk profile unavailable; fell back to the legacy V0 utility score among adequately supported clubs.'
+            : `Full-risk profile unavailable and support is thin (${evaluation.supportShots} shots); provisional legacy V0 fallback.`
           : 'Full-risk profile unavailable; legacy V0 utility fallback.',
       }))
   }
@@ -179,9 +203,14 @@ export const rankRiskAwareClubChoices = <
   const carryGuardrail = bestCarryGap + policy.carryGapToleranceAboveBestYds
   const targetFit = usable.filter((evaluation) => carryGap(evaluation) <= carryGuardrail + 1e-9)
   const nonTargetFit = usable.filter((evaluation) => carryGap(evaluation) > carryGuardrail + 1e-9)
+  const supportedTargetFit = targetFit.filter(supportAdequate)
+  const comparisonPool = supportedTargetFit.length > 0 ? supportedTargetFit : targetFit
+  const provisionalTargetFit = supportedTargetFit.length > 0
+    ? targetFit.filter((evaluation) => !supportAdequate(evaluation))
+    : []
 
   const minCatastrophe = Math.min(
-    ...targetFit.map((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe),
+    ...comparisonPool.map((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe),
   )
   const catastropheGuardrail = minCatastrophe + policy.catastropheToleranceAboveBest
 
@@ -205,43 +234,65 @@ export const rankRiskAwareClubChoices = <
       (a.bestCandidate.score ?? Number.NEGATIVE_INFINITY)
   }
 
-  const safe = targetFit
+  const safe = comparisonPool
     .filter((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe <= catastropheGuardrail + 1e-9)
     .sort(compareClub)
-  const catastropheRejected = targetFit
+  const catastropheRejected = comparisonPool
     .filter((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe > catastropheGuardrail + 1e-9)
     .sort((a, b) => {
       const catastropheDelta =
         a.bestCandidate.riskProfile.catastrophe - b.bestCandidate.riskProfile.catastrophe
       return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClub(a, b)
     })
-  nonTargetFit.sort((a, b) => carryGap(a) - carryGap(b))
+  provisionalTargetFit.sort((a, b) => {
+    const catastropheDelta =
+      a.bestCandidate.riskProfile.catastrophe - b.bestCandidate.riskProfile.catastrophe
+    return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClub(a, b)
+  })
+  nonTargetFit.sort((a, b) => {
+    const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
+    if (supportDelta !== 0) return supportDelta
+    return carryGap(a) - carryGap(b)
+  })
 
-  const rankedUsable = [...safe, ...catastropheRejected, ...nonTargetFit]
+  const rankedUsable = [...safe, ...catastropheRejected, ...provisionalTargetFit, ...nonTargetFit]
   const usableRows: RankedClubAimChoice<T, C>[] = rankedUsable.map((evaluation, index) => {
     const isTargetFit = carryGap(evaluation) <= carryGuardrail + 1e-9
+    const isSupported = supportAdequate(evaluation)
+    const thinDeprioritized = isTargetFit && supportedTargetFit.length > 0 && !isSupported
     const withinCatastropheGuardrail = isTargetFit &&
       evaluation.bestCandidate.riskProfile.catastrophe <= catastropheGuardrail + 1e-9
+
+    let decisionReason: string
+    if (index === 0) {
+      decisionReason = isSupported
+        ? `Target-fit club; adequately supported (${evaluation.supportShots} shots); within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; best success/severity profile in the safe set.`
+        : `No adequately supported target-fit alternative; provisional selection from ${evaluation.supportShots} Stock shots within the catastrophe guardrail.`
+    } else if (!isTargetFit) {
+      decisionReason = `Outside the target-fit carry guardrail (best gap + ${policy.carryGapToleranceAboveBestYds} yd).`
+    } else if (thinDeprioritized) {
+      decisionReason = `Target-fit but provisional: ${evaluation.supportShots} Stock shots is below the ${policy.minimumAuthoritativeSupportShots}-shot support guardrail; supported target-fit clubs rank ahead.`
+    } else if (!withinCatastropheGuardrail) {
+      decisionReason = 'Target-fit, but rejected by the catastrophe guardrail.'
+    } else {
+      decisionReason = 'Target-fit safe-set alternative with a weaker success/severity profile.'
+    }
+
     return {
       evaluation,
       rank: index + 1,
       targetFit: isTargetFit,
       withinCatastropheGuardrail,
-      decisionReason: index === 0
-        ? `Target-fit club; within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; best success/severity profile in the safe set.`
-        : !isTargetFit
-          ? `Outside the target-fit carry guardrail (best gap + ${policy.carryGapToleranceAboveBestYds} yd).`
-          : !withinCatastropheGuardrail
-            ? 'Target-fit, but rejected by the catastrophe guardrail.'
-            : 'Target-fit safe-set alternative with a weaker success/severity profile.',
+      decisionReason,
     }
   })
 
-  unavailable.sort(
-    (a, b) =>
-      (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
-      (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY),
-  )
+  unavailable.sort((a, b) => {
+    const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
+    if (supportDelta !== 0) return supportDelta
+    return (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
+      (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY)
+  })
   const unavailableRows: RankedClubAimChoice<T, C>[] = unavailable.map((evaluation, index) => ({
     evaluation,
     rank: usableRows.length + index + 1,
