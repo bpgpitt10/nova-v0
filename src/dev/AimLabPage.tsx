@@ -747,7 +747,7 @@ function AimLabPage() {
                   <input type="checkbox" checked={showHistoricalLandings} onChange={(event) => setShowHistoricalLandings(event.target.checked)} />
                   Show observed Stock replay {selected ? `(n=${selected.empiricalShotCount})` : ''}
                 </label>
-                <small>50/80% describe the normal core. Full risk adds the learned planning-excluded tail. The recommendation still uses the old V0 core score for now.</small>
+                <small>50/80% describe the normal core. Full risk adds the learned planning-excluded tail and is authoritative for club + aim selection.</small>
               </div>
             </article>
 
@@ -785,7 +785,7 @@ function AimLabPage() {
                 <thead><tr><th>Factor</th><th>Raw value</th><th>Current model effect</th><th>Source</th><th>Status</th></tr></thead>
                 <tbody>
                   <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical core cloud drives map contours, core percentages and V0 score</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical core cloud drives map contours and core percentages; full risk drives the recommendation</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Course geometry</td><td>{selectedCourse.name} H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Canonical cached course package</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Live ball position</td><td>{mode === 'live' ? (livePositionUnavailable ? 'Unavailable' : `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F`) : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole && !livePositionUnavailable ? 'status modeled' : 'status review'}>{liveMatchesHole && !livePositionUnavailable ? 'MODELED' : mode === 'live' ? 'UNAVAILABLE' : 'MANUAL'}</b></td></tr>
                   <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{ballTerrain && targetTerrain ? (ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem' ? 'LiDAR DEM' : 'LiDAR contour proxy') : 'No terrain model'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
@@ -798,7 +798,7 @@ function AimLabPage() {
                     <td>{selectedRisk ? `${pct(selectedRisk.mishitProbability)} mishit · ${pct(selectedRisk.tailProbability)} planning-excluded tail` : '—'}</td>
                     <td>Tail is mixed into the full-risk outcome profile; shot quality itself is not an outcome penalty</td>
                     <td>Looper weighted Stock history</td>
-                    <td><b className="status review">RISK ONLY</b></td>
+                    <td><b className="status modeled">AUTHORITATIVE</b></td>
                   </tr>
                 </tbody>
               </table>
@@ -812,7 +812,7 @@ function AimLabPage() {
             </div>
             <div className="aim-table-wrap">
               <table className="aim-table candidate-table">
-                <thead><tr><th>Club</th><th>Stock</th><th>Air Δ</th><th>Surface Δ</th><th>Planned</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Unknown</th><th>Score</th><th>Support</th></tr></thead>
+                <thead><tr><th>Club</th><th>Stock</th><th>Air Δ</th><th>Surface Δ</th><th>Planned</th><th>Carry gap</th><th>Best aim</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Unknown</th><th>Legacy score</th><th>Support</th></tr></thead>
                 <tbody>
                   {evaluations.slice(0, 8).map((item) => {
                     const best = item.bestCandidate
@@ -846,11 +846,11 @@ function AimLabPage() {
               <article className="aim-card">
                 <div className="aim-card-heading">
                   <div><span>AIM SWEEP · {selected.club.toUpperCase()}</span><h2>Core probability vs observed Stock replay</h2></div>
-                  <small>V0-selected best highlighted · core n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
+                  <small>Risk-aware best highlighted · core n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
                 </div>
                 <div className="aim-table-wrap">
                   <table className="aim-table aim-sweep-table">
-                    <thead><tr><th>Aim</th><th>Core pref.</th><th>Hist. pref.</th><th>Core rough</th><th>Hist. rough</th><th>Core trouble</th><th>Hist. trouble</th><th>Core penalty</th><th>Hist. penalty</th><th>Core unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>V0 score</th></tr></thead>
+                    <thead><tr><th>Aim</th><th>Core pref.</th><th>Hist. pref.</th><th>Core rough</th><th>Hist. rough</th><th>Core trouble</th><th>Hist. trouble</th><th>Core penalty</th><th>Hist. penalty</th><th>Core unknown</th><th>Hist. unknown</th><th>Δ elev</th><th>Legacy score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
                         const landingTerrain = estimateCourseTerrain(hole, candidate.meanLanding)
@@ -879,16 +879,16 @@ function AimLabPage() {
               </article>
 
               <article className="aim-card assumptions-card">
-                <div className="aim-card-heading"><div><span>SCORING ASSUMPTIONS</span><h2>V0 is intentionally simple</h2></div></div>
+                <div className="aim-card-heading"><div><span>DECISION POLICY</span><h2>Full risk is authoritative</h2></div></div>
                 <div className="score-formula">
-                  <code>score = preferred×{AIM_SCORE_ASSUMPTIONS.preferredWeight} + non-penalty-trouble×({AIM_SCORE_ASSUMPTIONS.nonPenaltyTroubleWeight}) + penalty×({AIM_SCORE_ASSUMPTIONS.penaltyWeight}) + unknown×({AIM_SCORE_ASSUMPTIONS.unknownWeight}) + |carry gap|×({AIM_SCORE_ASSUMPTIONS.carryGapPerYard})</code>
+                  <code>legacy score = preferred×{AIM_SCORE_ASSUMPTIONS.preferredWeight} + non-penalty-trouble×({AIM_SCORE_ASSUMPTIONS.nonPenaltyTroubleWeight}) + penalty×({AIM_SCORE_ASSUMPTIONS.penaltyWeight}) + unknown×({AIM_SCORE_ASSUMPTIONS.unknownWeight}) + |carry gap|×({AIM_SCORE_ASSUMPTIONS.carryGapPerYard})</code>
                 </div>
-                <p><strong>This is not final golf strategy.</strong> Full risk is now calculated separately so we can validate it before changing the recommendation.</p>
+                <p><strong>Recommendation policy:</strong> target fit and club support first, then catastrophe guardrail and success/severity. The legacy score remains visible only as a final deterministic tie-breaker and diagnostic.</p>
                 <div className="assumption-list">
                   <div><span>Aim search</span><strong>−15 to +15 yd, every 3 yd</strong></div>
                   <div><span>Core shape</span><strong>{selected.modeledSampleCount.toLocaleString()} deterministic Stock landings</strong></div>
                   <div><span>Default visual</span><strong>50 / 80% normal-core contours</strong></div>
-                  <div><span>Full risk</span><strong>Core + learned planning-excluded tail · not scored yet</strong></div>
+                  <div><span>Full risk</span><strong>Core + learned planning-excluded tail · authoritative</strong></div>
                   <div><span>Tactical outcome</span><strong>Success / manageable / serious trouble / catastrophe</strong></div>
                   <div><span>Wind</span><strong>looper-flight-physics-v1 · provisional</strong></div>
                   <div><span>Elevation</span><strong>LiDAR target elevation · provisional</strong></div>
@@ -905,7 +905,7 @@ function AimLabPage() {
             <section className="aim-card risk-sweep-card">
               <div className="aim-card-heading">
                 <div><span>FULL RISK · {selected.club.toUpperCase()}</span><h2>Outcome severity by aim</h2></div>
-                <small>Inspection only · does not change V0-selected aim yet · tail {pct(selectedRisk?.tailProbability)}</small>
+                <small>Authoritative aim risk · selected line highlighted · tail {pct(selectedRisk?.tailProbability)}</small>
               </div>
               <div className="aim-table-wrap">
                 <table className="aim-table risk-sweep-table">
