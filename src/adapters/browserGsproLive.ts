@@ -43,6 +43,7 @@ type ResolvedClubField = {
 }
 
 const POLL_INTERVAL_MS = 500
+const FORCED_ROW_CHECK_INTERVAL_MS = 2000
 const ERROR_REPORT_THRESHOLD = 5
 
 let preparedDirectoryHandle: BrowserDirectoryHandle | null = null
@@ -317,6 +318,7 @@ export const connectToBrowserGsproEvents = ({
   let initialized = false
   let lastRowId: number | null = null
   let databaseState: { size: number; lastModified: number } | null = null
+  let lastRowCheckAt = 0
   const knownSupportedClubFields = new Set<AmbiguousClubField>()
 
   onStatusChange?.('connecting')
@@ -360,6 +362,7 @@ export const connectToBrowserGsproEvents = ({
           lastModified: latest.databaseLastModified,
         }
       : await readGsproDatabaseState(directoryHandle)
+    lastRowCheckAt = Date.now()
     initialized = true
     handleRecovery()
     onStatusChange?.('connected')
@@ -377,21 +380,25 @@ export const connectToBrowserGsproEvents = ({
       return
     }
 
-    if (
-      nextState.size === databaseState.size &&
-      nextState.lastModified === databaseState.lastModified
-    ) {
+    const metadataChanged =
+      nextState.size !== databaseState.size ||
+      nextState.lastModified !== databaseState.lastModified
+    const forcedRowCheckDue = Date.now() - lastRowCheckAt >= FORCED_ROW_CHECK_INTERVAL_MS
+
+    if (!metadataChanged && !forcedRowCheckDue) {
       handleRecovery()
       return
     }
 
-    // Advance databaseState only after the SQLite read succeeds. If GSPro is mid-write,
-    // the next poll retries the same change instead of silently missing the shot.
+    // File metadata is only an optimization. On some Windows/GSPro writes the
+    // SQLite row can advance without a visible size/mtime change, so force a
+    // direct latest-row check periodically rather than treating metadata as truth.
     const latest = await readLatestGsproRangeShot(directoryHandle)
     if (disconnected) {
       return
     }
 
+    lastRowCheckAt = Date.now()
     databaseState = {
       size: latest?.databaseSizeBytes ?? nextState.size,
       lastModified: latest?.databaseLastModified ?? nextState.lastModified,
