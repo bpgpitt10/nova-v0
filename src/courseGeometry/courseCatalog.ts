@@ -5,6 +5,9 @@ export type CourseId =
   | typeof GREYWOLF_COURSE_ID
   | typeof TOBACCO_ROAD_COURSE_ID
 
+export type CourseCacheStatus = 'cached' | 'missing' | 'unknown'
+export type CoursePackageStatus = 'ready' | 'validation' | 'missing'
+
 export type CourseCatalogEntry = {
   id: CourseId
   name: string
@@ -13,6 +16,11 @@ export type CourseCatalogEntry = {
   gsproAliases: readonly string[]
   staticPackageUrl?: string
   status: 'validated' | 'validation'
+  packageStatus: CoursePackageStatus
+  packageVersion: string | null
+  packageCacheStatus: CourseCacheStatus
+  osmCacheStatus: CourseCacheStatus
+  lidarCacheStatus: CourseCacheStatus
 }
 
 const entries: readonly CourseCatalogEntry[] = [
@@ -21,17 +29,37 @@ const entries: readonly CourseCatalogEntry[] = [
     name: 'Greywolf Golf Course',
     location: 'Panorama, BC',
     slug: 'greywolf',
-    gsproAliases: ['Greywolf', 'Greywolf Golf Course'],
+    gsproAliases: [
+      'Greywolf',
+      'Greywolf Golf Course',
+      'Greywolf_gsp',
+      'greywolf_gsp',
+    ],
     status: 'validated',
+    packageStatus: 'ready',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'cached',
   },
   {
     id: TOBACCO_ROAD_COURSE_ID,
     name: 'Tobacco Road Golf Club',
     location: 'Sanford, NC',
     slug: 'tobacco-road',
-    gsproAliases: ['Tobacco Road', 'Tobacco Road Golf Club'],
+    gsproAliases: [
+      'Tobacco Road',
+      'Tobacco Road Golf Club',
+      'Tobacco_Road_gsp',
+      'tobacco_road_gsp',
+    ],
     staticPackageUrl: '/course-geometry/tobacco-road/course-v1.json',
     status: 'validation',
+    packageStatus: 'validation',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'unknown',
   },
 ]
 
@@ -42,6 +70,9 @@ export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry =>
   if (!entry) throw new Error(`Unknown Looper course id: ${courseId}`)
   return entry
 }
+
+export const isCourseId = (value: string | null | undefined): value is CourseId =>
+  value != null && entries.some((entry) => entry.id === value)
 
 const normalizeCourseName = (value: string) =>
   value
