@@ -41,6 +41,8 @@ jobs:
             text = text.replace(old, new, 1)
           path.write_text(text)
           PY
+      - name: Install dependencies
+        run: npm ci
       - name: Build
         run: npm run build
       - name: Commit plumbing
@@ -50,5 +52,3 @@ jobs:
           git add src/liveCaddie/aimOptimization.ts
           git commit -m "Add SG-ready natural target and dynamic aim plumbing"
           git push origin HEAD:course-geometry-tactical-v0
-
-# Triggered after workflow file existed on branch.
