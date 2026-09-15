@@ -1,15 +1,11 @@
 export const GREYWOLF_COURSE_ID = 'greywolf-panorama-bc' as const
 export const TOBACCO_ROAD_COURSE_ID = 'tobacco-road-sanford-nc' as const
 
-export type CourseId =
-  | typeof GREYWOLF_COURSE_ID
-  | typeof TOBACCO_ROAD_COURSE_ID
-
 export type CourseCacheStatus = 'cached' | 'missing' | 'unknown'
 export type CoursePackageStatus = 'ready' | 'validation' | 'missing'
 
 export type CourseCatalogEntry = {
-  id: CourseId
+  id: string
   name: string
   location: string
   slug: string
@@ -23,7 +19,7 @@ export type CourseCatalogEntry = {
   lidarCacheStatus: CourseCacheStatus
 }
 
-const entries: readonly CourseCatalogEntry[] = [
+export const courseCatalog = [
   {
     id: GREYWOLF_COURSE_ID,
     name: 'Greywolf Golf Course',
@@ -61,18 +57,18 @@ const entries: readonly CourseCatalogEntry[] = [
     osmCacheStatus: 'cached',
     lidarCacheStatus: 'unknown',
   },
-]
+] as const satisfies readonly CourseCatalogEntry[]
 
-export const courseCatalog = entries
+export type CourseId = (typeof courseCatalog)[number]['id']
 
-export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry => {
-  const entry = entries.find((candidate) => candidate.id === courseId)
+export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
+  const entry = courseCatalog.find((candidate) => candidate.id === courseId)
   if (!entry) throw new Error(`Unknown Looper course id: ${courseId}`)
   return entry
 }
 
 export const isCourseId = (value: string | null | undefined): value is CourseId =>
-  value != null && entries.some((entry) => entry.id === value)
+  value != null && courseCatalog.some((entry) => entry.id === value)
 
 const normalizeCourseName = (value: string) =>
   value
@@ -92,7 +88,7 @@ export const resolveCourseIdFromGsproName = (gsproName: string): CourseId | null
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
-  for (const entry of entries) {
+  for (const entry of courseCatalog) {
     if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) {
       return entry.id
     }
