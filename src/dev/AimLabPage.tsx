@@ -717,7 +717,7 @@ function AimLabPage() {
                   <tr><td>Surface</td><td>{activeSurface}</td><td>{selected ? `${selected.surfaceLabel} · ${signedYds(selected.surfaceCarryDeltaYds)} carry · ${signedYds(selected.surfaceLateralDeltaYds)} lateral` : '—'}</td><td>{surfaceSource}</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Uphill/downhill lie</td><td>{uphillLieDeg}°</td><td>No launch/carry change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
                   <tr><td>Ball above/below feet</td><td>{sidehillLieDeg}°</td><td>No start-line/curvature change yet</td><td>Manual / live lie sensor later</td><td><b className="status pending">NOT MODELED</b></td></tr>
-                  <tr><td>Mishit tail</td><td>Immature historical support</td><td>Not included in aim score yet</td><td>Looper classifier</td><td><b className="status review">LOW EVIDENCE</b></td></tr>
+                  <tr><td>Mishit / all-shot tail</td><td>{selected ? `${selected.empiricalShotCount} usable Stock shots` : '—'}</td><td>Replayed at every aim beside normal model; not scored yet</td><td>Looper weighted Stock history</td><td><b className="status review">REVIEW</b></td></tr>
                 </tbody>
               </table>
             </div>
@@ -767,12 +767,13 @@ function AimLabPage() {
                 <div className="aim-card-heading">
                   <div>
                     <span>AIM SWEEP · {selected.club.toUpperCase()}</span>
-                    <h2>Why one target beats another</h2>
+                    <h2>Modeled normal vs your actual Stock history</h2>
                   </div>
+                  <small>Model-selected best is highlighted · empirical n={selected.empiricalShotCount}</small>
                 </div>
                 <div className="aim-table-wrap">
                   <table className="aim-table aim-sweep-table">
-                    <thead><tr><th>Aim offset</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Unknown</th><th>Δ elev</th><th>Score</th></tr></thead>
+                    <thead><tr><th>Aim</th><th>Model pref.</th><th>Actual pref.</th><th>Model trouble</th><th>Actual trouble</th><th>Model penalty</th><th>Actual penalty</th><th>Δ elev</th><th>Model score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
                         const landingTerrain = hole ? estimateGreywolfTerrain(hole, candidate.meanLanding) : null
@@ -781,10 +782,11 @@ function AimLabPage() {
                           <tr key={candidate.aimOffsetYds} className={candidate === selected.bestCandidate ? 'best' : ''}>
                             <td><strong>{signedYds(candidate.aimOffsetYds)}</strong></td>
                             <td>{pct(candidate.surfaceOutcomes?.preferred)}</td>
-                            <td>{pct(candidate.surfaceOutcomes?.rough)}</td>
+                            <td>{pct(candidate.empiricalAllShots?.preferred)}</td>
                             <td>{pct(candidate.surfaceOutcomes?.trouble)}</td>
+                            <td>{pct(candidate.empiricalAllShots?.trouble)}</td>
                             <td>{pct(candidate.surfaceOutcomes?.penalty)}</td>
-                            <td>{pct(candidate.surfaceOutcomes?.unknown)}</td>
+                            <td>{pct(candidate.empiricalAllShots?.penalty)}</td>
                             <td>{elevationDelta == null ? '—' : `${elevationDelta >= 0 ? '+' : ''}${elevationDelta.toFixed(1)} ft`}</td>
                             <td>{candidate.score == null ? '—' : candidate.score.toFixed(1)}</td>
                           </tr>
@@ -814,7 +816,7 @@ function AimLabPage() {
                   <div><span>Surface response</span><strong>GSPro launch modifiers · modeled</strong></div>
                   <div><span>Physical lie response</span><strong>0 effect pending controlled test</strong></div>
                   <div><span>Smooth 90%</span><strong>Not synthesized yet</strong></div>
-                  <div><span>Empirical mishit tail</span><strong>Not scored yet</strong></div>
+                  <div><span>Empirical all-shot tail</span><strong>Visible beside model · not scored yet · {selected.empiricalShotCount} shots</strong></div>
                 </div>
                 {selected.notes.length > 0 && (
                   <div className="aim-warning-list">
