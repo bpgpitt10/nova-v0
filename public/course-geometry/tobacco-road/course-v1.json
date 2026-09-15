@@ -1,7 +1,7 @@
 {
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-15T16:24:22.343802Z",
+  "generatedAt": "2026-09-15T16:33:00.228679Z",
   "holes": {
     "1": {
       "bounds": {
@@ -11,6 +11,12 @@
         "minY": -7.3
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 1,
       "markers": {
         "pin": [
@@ -10286,6 +10292,12 @@
         "minY": -49.5
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 10,
       "markers": {
         "pin": [
@@ -16068,6 +16080,12 @@
         "minY": -126.5
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 11,
       "markers": {
         "pin": [
@@ -24589,6 +24607,12 @@
         "minY": -7.0
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 12,
       "markers": {
         "pin": [
@@ -28552,6 +28576,12 @@
         "minY": -124.0
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 13,
       "markers": {
         "pin": [
@@ -34055,6 +34085,12 @@
         "minY": -4.7
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 14,
       "markers": {
         "pin": [
@@ -38560,6 +38596,12 @@
         "minY": -6.4
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 15,
       "markers": {
         "pin": [
@@ -44441,6 +44483,12 @@
         "minY": -100.0
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 16,
       "markers": {
         "pin": [
@@ -52787,6 +52835,12 @@
         "minY": -39.7
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 17,
       "markers": {
         "pin": [
@@ -58096,6 +58150,12 @@
         "minY": -154.8
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 18,
       "markers": {
         "pin": [
@@ -67869,6 +67929,12 @@
         "minY": -81.0
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 2,
       "markers": {
         "pin": [
@@ -78217,6 +78283,12 @@
         "minY": -206.9
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 3,
       "markers": {
         "pin": [
@@ -82839,6 +82911,12 @@
         "minY": -132.1
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 4,
       "markers": {
         "pin": [
@@ -90536,6 +90614,12 @@
         "minY": -233.2
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 5,
       "markers": {
         "pin": [
@@ -97615,6 +97699,12 @@
         "minY": -329.1
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 6,
       "markers": {
         "pin": [
@@ -103722,6 +103812,12 @@
         "minY": -72.0
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 7,
       "markers": {
         "pin": [
@@ -112650,6 +112746,12 @@
         "minY": -5.4
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 8,
       "markers": {
         "pin": [
@@ -115539,6 +115641,12 @@
         "minY": -366.2
       },
       "contextLayers": [],
+      "coordinateSystem": {
+        "origin": "osm-hole-route-start",
+        "units": "yards",
+        "xAxis": "right",
+        "yAxis": "forward"
+      },
       "holeNumber": 9,
       "markers": {
         "pin": [
@@ -128311,12 +128419,12 @@
   "provenance": {
     "attribution": "\u00a9 OpenStreetMap contributors",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-15T16:24:22.343802Z",
+    "fetchedAt": "2026-09-15T16:33:00.228679Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
     "note": "Static geometry is generated ahead of play; no live OSM query is required during a round.",
-    "sourceBaseTimestamp": "2026-09-15T16:22:21Z",
+    "sourceBaseTimestamp": "2026-09-15T16:31:41Z",
     "sourceElementIdsComplete": true,
     "sourceUrl": "https://www.openstreetmap.org/way/430227508"
   },

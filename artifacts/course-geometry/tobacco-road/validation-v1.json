@@ -1,9 +1,12 @@
 {
   "allHolesStaticGeometryReady": true,
   "compiler": "build_osm_course_package_v2",
+  "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot; landuse=grass objects tagged as golf surfaces are intentionally not duplicated as context.",
+  "contextSourceStatus": "unavailable-in-osm-snapshot",
+  "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-15T16:24:22.343802Z",
+  "generatedAt": "2026-09-15T16:33:00.228679Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -1140,5 +1143,5 @@
   "registrationNote": "Static OSM geometry is packaged in an OSM-hole-start frame. GSPro registration remains unverified until live evidence.",
   "registrationStatus": "approximate",
   "schemaVersion": "looper-course-package-validation-v1",
-  "sourceBaseTimestamp": "2026-09-15T16:22:21Z"
+  "sourceBaseTimestamp": "2026-09-15T16:31:41Z"
 }
