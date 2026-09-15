@@ -45,6 +45,21 @@ export type CourseContourLine = {
   points: readonly CoursePointYds[]
 }
 
+export type CourseTerrainGrid = {
+  source: 'lidar-dem'
+  sourceResolutionMeters: number
+  runtimeSpacingYds: number
+  interpolation: 'bilinear'
+  minX: number
+  minY: number
+  width: number
+  height: number
+  elevationOffsetFt: number
+  nodata: number
+  values: Uint16Array
+  note?: string
+}
+
 export type CourseGeometryBounds = {
   minX: number
   maxX: number
@@ -109,6 +124,7 @@ export type CourseHoleGeometry = {
   surfaces: readonly CourseSurface[]
   contextLayers?: readonly CourseContextLayer[]
   contours?: readonly CourseContourLine[]
+  terrain?: CourseTerrainGrid
   availability: Readonly<Record<CourseSurfaceKind, GeometryAvailability>>
   registration: CourseRegistration
   provenance: CourseGeometryProvenance
