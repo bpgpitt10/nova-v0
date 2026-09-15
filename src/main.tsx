@@ -17,6 +17,7 @@ import AimLabPage from './dev/AimLabPage.tsx'
 import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
 import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
 import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
+import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -151,7 +152,8 @@ function RootRouter() {
   const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
   const showGsproReplay = pathname === '/dev/gspro-replay'
   const showDecisionReplay = pathname === '/dev/decision-replay'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showCaddieInputs || showGsproReplay || showDecisionReplay
+  const showDecisionAudit = pathname === '/dev/decision-audit'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -172,6 +174,7 @@ function RootRouter() {
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
+    if (showDecisionAudit) return <DecisionAuditDevPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
@@ -201,6 +204,7 @@ function RootRouter() {
     showCaddieInputs,
     showCourseGeometryDev,
     showCourseRenderDev,
+    showDecisionAudit,
     showDecisionReplay,
     showGsproReplay,
     updateError,
