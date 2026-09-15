@@ -209,6 +209,27 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
     : new Error(`Greywolf Hole ${holeNumber} package could not be loaded.`)
 }
 
+const boundsIncludingContext = (
+  geometry: CourseHoleGeometry,
+  contextLayers: Awaited<ReturnType<typeof loadGreywolfHoleContext>>,
+) => {
+  let { minX, maxX, minY, maxY } = geometry.bounds
+
+  for (const layer of contextLayers) {
+    for (const polygon of layer.polygons) {
+      for (const [x, y] of polygon) {
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+    }
+  }
+
+  return { minX, maxX, minY, maxY }
+}
+
 const attachSupplementalGeometry = async (
   holeNumber: number,
   geometry: CourseHoleGeometry,
@@ -217,9 +238,17 @@ const attachSupplementalGeometry = async (
     loadGreywolfHoleContext(holeNumber),
     loadGreywolfHoleTerrain(holeNumber),
   ])
+  const displayBounds = contextLayers.length > 0
+    ? boundsIncludingContext(geometry, contextLayers)
+    : geometry.bounds
 
   return {
     ...geometry,
+    // Greywolf's raw hole bounds describe the playable golf surfaces. The
+    // curated environment package deliberately includes broader woods/scrub
+    // needed by the tactical map, so expose the full context extent to views
+    // that use CourseHoleGeometry.bounds for framing.
+    bounds: displayBounds,
     ...(contextLayers.length > 0 ? { contextLayers } : {}),
     ...(terrainData
       ? {
