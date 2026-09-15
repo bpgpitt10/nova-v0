@@ -114,6 +114,7 @@ def build_hole(
     tee_surface_distance = float(selection.get("teeSurfaceStartDistanceYards", 60))
     behind_tolerance = float(selection.get("behindTeeToleranceYards", 35))
     past_tolerance = float(selection.get("pastGreenToleranceYards", 50))
+    view_lateral_margin = float(selection.get("viewLateralMarginYards", context_distance))
 
     greens = [feature for feature in features if feature["kind"] == "green"]
     tees = [feature for feature in features if feature["kind"] == "tee"]
@@ -228,6 +229,15 @@ def build_hole(
     if not bounds_points:
         raise ValueError(f"Hole {hole_number} produced no geometry bounds")
 
+    route_x = [point[0] for point in route_local]
+    route_y = [point[1] for point in route_local]
+    view_bounds = {
+        "minX": round(min(route_x) - view_lateral_margin, 1),
+        "maxX": round(max(route_x) + view_lateral_margin, 1),
+        "minY": round(min(route_y) - behind_tolerance, 1),
+        "maxY": round(max(route_y) + past_tolerance, 1),
+    }
+
     model = {
         "holeNumber": hole_number,
         "par": par,
@@ -238,12 +248,16 @@ def build_hole(
             "xAxis": "right",
             "yAxis": "forward",
         },
+        # Full geometry extents remain available for outcome evaluation. The
+        # tactical viewport is deliberately route-derived so giant connected
+        # waste/fairway polygons do not shrink the actual hole in the renderer.
         "bounds": {
             "minX": round(min(point[0] for point in bounds_points), 1),
             "maxX": round(max(point[0] for point in bounds_points), 1),
             "minY": round(min(point[1] for point in bounds_points), 1),
             "maxY": round(max(point[1] for point in bounds_points), 1),
         },
+        "viewBounds": view_bounds,
         "markers": {
             "tee": [0.0, 0.0],
             "pin": [round(pin[0], 3), round(pin[1], 3)],
@@ -312,6 +326,7 @@ def build_hole(
         ],
         "surfacePolygons": surface_counts,
         "contextPolygons": context_counts,
+        "viewBounds": view_bounds,
         "fairwayRequired": requires_fairway,
         "ready": ready,
         "warnings": warnings,
