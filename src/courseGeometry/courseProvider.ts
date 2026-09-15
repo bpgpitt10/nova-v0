@@ -3,7 +3,7 @@ import {
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
-import { loadGreywolfHoleGeometry } from './greywolfCourseLoader'
+import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
 import { loadPackagedCourseHoleGeometry } from './packagedCourseLoader'
 import type { CourseHoleGeometry } from './types'
 
@@ -21,7 +21,7 @@ export const loadCourseHoleGeometry = (
 ): Promise<CourseHoleGeometry> => {
   getCourseCatalogEntry(courseId)
   if (courseId === GREYWOLF_COURSE_ID) {
-    return loadGreywolfHoleGeometry(holeNumber)
+    return loadGreywolfHoleGeometryAdapter(holeNumber)
   }
   return loadPackagedCourseHoleGeometry(courseId, holeNumber)
 }
