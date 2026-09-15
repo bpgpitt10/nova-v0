@@ -1,0 +1,56 @@
+name: Greywolf course-wide terrain package
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - tools/build_greywolf_terrain.py
+      - .github/workflows/greywolf-coursewide-terrain.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-terrain:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install terrain compiler dependencies
+        run: pip install --quiet numpy rasterio pyproj scikit-image
+
+      - name: Download official 1 m LidarBC DEM
+        run: |
+          curl -L --fail --retry 3 \
+            -o /tmp/greywolf_dem.tif \
+            https://nrs.objectstore.gov.bc.ca/gdwuts/082/082k/2015/dem/bc_082k049_xli1m_utm11_2015.tif
+          test -s /tmp/greywolf_dem.tif
+
+      - name: Compile browser terrain and topo package
+        run: |
+          python tools/build_greywolf_terrain.py \
+            --dem /tmp/greywolf_dem.tif \
+            --output public/course-geometry/greywolf-terrain-v1.json
+          test -s public/course-geometry/greywolf-terrain-v1.json
+
+      - name: Persist generated terrain package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/course-geometry/greywolf-terrain-v1.json
+          if git diff --cached --quiet; then
+            echo "Terrain package unchanged"
+          else
+            git commit -m "Build Greywolf course-wide LiDAR terrain package"
+            git push origin HEAD:course-geometry-tactical-v0
+          fi
