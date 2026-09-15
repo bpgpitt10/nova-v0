@@ -3,7 +3,6 @@ import {
   connectToBrowserGsproCourseState as connectReliableGsproCourseState,
   prepareBrowserGsproCourseStateRuntime,
   type BrowserGsproCourseConnection,
-  type BrowserGsproCourseShot,
   type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from './reliableBrowserGsproCourseState'
