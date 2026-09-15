@@ -41,7 +41,8 @@ type RawPackage = {
   holes: RawHole[]
 }
 
-let environmentPromise: Promise<readonly CourseContextLayer[]> | null = null
+let packagePromise: Promise<RawPackage | null> | null = null
+const environmentByHole = new Map<number, Promise<readonly CourseContextLayer[]>>()
 
 const isRawPoint = (value: unknown): value is RawPoint =>
   Array.isArray(value) &&
@@ -98,45 +99,71 @@ const contextKind = (kind: string): CourseContextLayer['kind'] | null => {
   return null
 }
 
-const loadEnvironment = async (): Promise<readonly CourseContextLayer[]> => {
+const fetchEnvironmentPackage = async (): Promise<RawPackage | null> => {
   try {
     const response = await fetch(ENVIRONMENT_PACKAGE_URL, { cache: 'force-cache' })
-    if (!response.ok) return []
+    if (!response.ok) {
+      throw new Error(`Greywolf environment package returned ${response.status}.`)
+    }
 
     const payload = await response.json() as RawPackage
-    if (!Array.isArray(payload.features) || !Array.isArray(payload.holes)) return []
-
-    const hole = payload.holes.find((candidate) => candidate.number === 1)
-    if (!hole || !Array.isArray(hole.view?.featureIds)) return []
-
-    const requestedIds = new Set(hole.view.featureIds)
-    return payload.features.flatMap((feature): CourseContextLayer[] => {
-      if (!requestedIds.has(feature.id) || !ENVIRONMENT_KINDS.has(feature.kind)) return []
-      const kind = contextKind(feature.kind)
-      if (!kind) return []
-      const polygons = polygonsForFeature(feature, hole)
-      if (polygons.length === 0) return []
-
-      return [{
-        id: feature.id,
-        kind,
-        polygons,
-        provenance: {
-          source: 'osm',
-          sourceFeature: feature.kind,
-          sourceIds: feature.osmId == null ? undefined : [feature.osmId],
-          confidence: 'high',
-          note: 'Approved Greywolf environment pilot geometry from course-geometry-package-v1.',
-        },
-      }]
-    })
+    if (!Array.isArray(payload.features) || !Array.isArray(payload.holes)) {
+      throw new Error('Greywolf environment package did not contain features and holes arrays.')
+    }
+    return payload
   } catch (error) {
+    // Allow a later attempt to recover from a transient CDN/network failure.
+    packagePromise = null
     console.warn('[Greywolf geometry] vegetation context unavailable; continuing with playable surfaces only.', error)
-    return []
+    return null
   }
 }
 
-export const loadGreywolfHoleOneContext = (): Promise<readonly CourseContextLayer[]> => {
-  environmentPromise ??= loadEnvironment()
-  return environmentPromise
+const loadEnvironmentPackage = (): Promise<RawPackage | null> => {
+  packagePromise ??= fetchEnvironmentPackage()
+  return packagePromise
 }
+
+const loadEnvironment = async (holeNumber: number): Promise<readonly CourseContextLayer[]> => {
+  const payload = await loadEnvironmentPackage()
+  if (!payload) return []
+
+  const hole = payload.holes.find((candidate) => candidate.number === holeNumber)
+  if (!hole || !Array.isArray(hole.view?.featureIds)) return []
+
+  const requestedIds = new Set(hole.view.featureIds)
+  return payload.features.flatMap((feature): CourseContextLayer[] => {
+    if (!requestedIds.has(feature.id) || !ENVIRONMENT_KINDS.has(feature.kind)) return []
+    const kind = contextKind(feature.kind)
+    if (!kind) return []
+    const polygons = polygonsForFeature(feature, hole)
+    if (polygons.length === 0) return []
+
+    return [{
+      id: feature.id,
+      kind,
+      polygons,
+      provenance: {
+        source: 'osm',
+        sourceFeature: feature.kind,
+        sourceIds: feature.osmId == null ? undefined : [feature.osmId],
+        confidence: 'high',
+        note: 'Greywolf environment geometry from course-geometry-package-v1.',
+      },
+    }]
+  })
+}
+
+export const loadGreywolfHoleContext = (holeNumber: number): Promise<readonly CourseContextLayer[]> => {
+  const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
+  const existing = environmentByHole.get(normalized)
+  if (existing) return existing
+
+  const promise = loadEnvironment(normalized)
+  environmentByHole.set(normalized, promise)
+  return promise
+}
+
+// Compatibility alias while older proof screens still refer to the Hole 1-specific name.
+export const loadGreywolfHoleOneContext = (): Promise<readonly CourseContextLayer[]> =>
+  loadGreywolfHoleContext(1)
