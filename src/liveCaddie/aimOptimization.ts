@@ -12,6 +12,14 @@ import {
   type ModeledAimSample,
 } from './aimOutcomeSampling'
 import {
+  buildDecisionPlayerModels,
+  inferDecisionShotGoal,
+} from './decisionEngine'
+import {
+  buildDecisionRiskProfile,
+  type DecisionRiskProfile,
+} from './decisionRiskProfile'
+import {
   buildWeightedEmpiricalStockShots,
   evaluateEmpiricalAimDistribution,
   type EmpiricalAimSurfaceDistribution,
@@ -48,6 +56,11 @@ export type AimCandidateEvaluation = {
   surfaceOutcomes: AimSurfaceDistribution | null
   modeledSamples: ModeledAimSample[]
   probabilityContours: AimProbabilityContour[]
+  /**
+   * Full tactical risk = normal/core probability mass plus the empirically learned
+   * planning-excluded tail. This is inspection-only for now and does not change V0 scoring.
+   */
+  riskProfile: DecisionRiskProfile | null
   /** Weighted historical Stock shots, including the observed mishit tail, replayed at this aim. */
   empiricalAllShots: EmpiricalAimSurfaceDistribution | null
   empiricalShotCount: number
@@ -149,6 +162,8 @@ export const evaluateAimLab = (
   const environment = typeof environmentOrNowMs === 'number' ? {} : environmentOrNowMs
   const nowMs = typeof environmentOrNowMs === 'number' ? environmentOrNowMs : explicitNowMs
   const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
+  const decisionPlayers = buildDecisionPlayerModels(sessions, nowMs)
+  const decisionGoal = inferDecisionShotGoal(hole, target)
   const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
   const geometrySurface = classifyPoint(hole, ball).kind
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
@@ -156,6 +171,7 @@ export const evaluateAimLab = (
   return profileSet.clubs
     .map((profile): ClubAimEvaluation => {
       const support = profileSet.club_support.find((item) => item.club === profile.club)
+      const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null
       const launch = profile.launch_profile
       const modeled = modelShotContext(
         {
@@ -200,6 +216,9 @@ export const evaluateAimLab = (
       if (empiricalShots.length < 5) {
         notes.push('Empirical all-shot aim outcomes are under-supported (<5 usable Stock shots).')
       }
+      if (!decisionPlayer) {
+        notes.push('No decision-tail population is available for this club yet.')
+      }
       if (modeled.physicsPrior.status !== 'ready' && ((environment.windMph ?? 0) !== 0 || (environment.elevationDeltaFt ?? 0) !== 0)) {
         notes.push('Airborne physics unavailable for this club; Stock baseline used for environmental response.')
       }
@@ -234,12 +253,23 @@ export const evaluateAimLab = (
             surfaceOutcomes: null,
             modeledSamples: [],
             probabilityContours: [],
+            riskProfile: null,
             empiricalAllShots,
             empiricalShotCount: empiricalShots.length,
             score: null,
             scoreParts: null,
           }
         }
+        const riskProfile = buildDecisionRiskProfile({
+          hole,
+          ball,
+          aimPoint,
+          goal: decisionGoal,
+          coreSamples: sampled.samples,
+          player: decisionPlayer,
+          carryAdjustmentYds: empiricalCarryAdjustmentYds,
+          lateralAdjustmentYds: empiricalLateralAdjustmentYds,
+        })
         const scored = scoreCandidate(sampled.distribution, carryGapYds)
         return {
           aimOffsetYds,
@@ -248,6 +278,7 @@ export const evaluateAimLab = (
           surfaceOutcomes: sampled.distribution,
           modeledSamples: sampled.samples,
           probabilityContours: sampled.probabilityContours,
+          riskProfile,
           empiricalAllShots,
           empiricalShotCount: empiricalShots.length,
           score: scored.score,
