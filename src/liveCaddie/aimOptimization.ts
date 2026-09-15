@@ -6,6 +6,10 @@ import type {
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
+import {
+  buildWeightedEmpiricalStockShots,
+  evaluateEmpiricalAimDistribution,
+} from './empiricalAimOutcomes'
 import { buildLiveCaddieProfileSet } from './profileProvider'
 import { modelShotContext } from './shotContextModel'
 import type { LiveCaddieClubProfile } from './types'
@@ -43,6 +47,9 @@ export type AimCandidateEvaluation = {
   aimPoint: CoursePointYds
   meanLanding: CoursePointYds
   surfaceOutcomes: AimSurfaceDistribution | null
+  /** Weighted historical Stock shots, including the observed mishit tail, replayed at this aim. */
+  empiricalAllShots: AimSurfaceDistribution | null
+  empiricalShotCount: number
   score: number | null
   scoreParts: {
     preferred: number
@@ -71,6 +78,7 @@ export type ClubAimEvaluation = {
   carryGapYds: number
   supportShots: number
   supportingSessions: number
+  empiricalShotCount: number
   candidates: AimCandidateEvaluation[]
   bestCandidate: AimCandidateEvaluation | null
   notes: string[]
@@ -249,14 +257,21 @@ export const evaluateAimLab = (
       )
 
       const modeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
-      const modeledLateralBiasYds = modeled.modeledLateralBiasYds ?? (profile.lateral_bias_yds ?? 0)
+      const baseLateralBiasYds = profile.lateral_bias_yds ?? 0
+      const modeledLateralBiasYds = modeled.modeledLateralBiasYds ?? baseLateralBiasYds
       const carryGapYds = modeledCarryYds - targetDistanceYds
+      const empiricalShots = buildWeightedEmpiricalStockShots(sessions, profile.club, nowMs)
+      const empiricalCarryAdjustmentYds = modeledCarryYds - profile.stock_carry_yds
+      const empiricalLateralAdjustmentYds = modeledLateralBiasYds - baseLateralBiasYds
       const notes: string[] = []
       if (Math.abs(carryGapYds) > 35) {
         notes.push('Modeled carry is more than 35 yd from the selected landing target.')
       }
       if (support && support.included_stock_shots < 5) {
         notes.push('Thin Stock support (<5 included shots).')
+      }
+      if (empiricalShots.length < 5) {
+        notes.push('Empirical all-shot aim outcomes are under-supported (<5 usable Stock shots).')
       }
       if (modeled.physicsPrior.status !== 'ready' && ((environment.windMph ?? 0) !== 0 || (environment.elevationDeltaFt ?? 0) !== 0)) {
         notes.push('Airborne physics unavailable for this club; Stock baseline used for environmental response.')
@@ -267,6 +282,14 @@ export const evaluateAimLab = (
 
       const candidates = AIM_OFFSETS_YDS.map((aimOffsetYds): AimCandidateEvaluation => {
         const aimPoint = aimPointAtOffset(ball, target, aimOffsetYds)
+        const empiricalAllShots = evaluateEmpiricalAimDistribution(
+          hole,
+          empiricalShots,
+          ball,
+          aimPoint,
+          empiricalCarryAdjustmentYds,
+          empiricalLateralAdjustmentYds,
+        )
         const distribution = modeledDistribution(
           hole,
           profile,
@@ -281,6 +304,8 @@ export const evaluateAimLab = (
             aimPoint,
             meanLanding: aimPoint,
             surfaceOutcomes: null,
+            empiricalAllShots,
+            empiricalShotCount: empiricalShots.length,
             score: null,
             scoreParts: null,
           }
@@ -291,6 +316,8 @@ export const evaluateAimLab = (
           aimPoint,
           meanLanding: distribution.meanLanding,
           surfaceOutcomes: distribution.distribution,
+          empiricalAllShots,
+          empiricalShotCount: empiricalShots.length,
           score: scored.score,
           scoreParts: scored.scoreParts,
         }
@@ -318,7 +345,7 @@ export const evaluateAimLab = (
         surfaceCarryDeltaYds: modeled.appliedAdjustments.surfaceCarryYds,
         surfaceLabel: modeled.surfaceResponse.label,
         carrySigmaYds: profile.carry_sigma_yds ?? null,
-        lateralBiasYds: profile.lateral_bias_yds ?? 0,
+        lateralBiasYds: baseLateralBiasYds,
         modeledLateralBiasYds,
         airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
         surfaceLateralDeltaYds: modeled.appliedAdjustments.surfaceLateralYds,
@@ -327,6 +354,7 @@ export const evaluateAimLab = (
         carryGapYds,
         supportShots: support?.included_stock_shots ?? 0,
         supportingSessions: support?.sessions ?? 0,
+        empiricalShotCount: empiricalShots.length,
         candidates,
         bestCandidate,
         notes,
