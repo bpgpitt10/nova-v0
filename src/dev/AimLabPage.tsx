@@ -749,7 +749,7 @@ function AimLabPage() {
                     <thead><tr><th>Aim offset</th><th>Preferred</th><th>Rough</th><th>Trouble</th><th>Penalty</th><th>Unknown</th><th>Δ elev</th><th>Score</th></tr></thead>
                     <tbody>
                       {selected.candidates.map((candidate) => {
-                        const landingTerrain = holeNumber === 1 ? estimateGreywolfHole01Terrain(candidate.meanLanding) : null
+                        const landingTerrain = hole ? estimateGreywolfTerrain(hole, candidate.meanLanding) : null
                         const elevationDelta = ballTerrain && landingTerrain ? landingTerrain.elevationFt - ballTerrain.elevationFt : null
                         return (
                           <tr key={candidate.aimOffsetYds} className={candidate === selected.bestCandidate ? 'best' : ''}>
