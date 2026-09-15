@@ -50,3 +50,5 @@ jobs:
           git add src/liveCaddie/aimOptimization.ts
           git commit -m "Add SG-ready natural target and dynamic aim plumbing"
           git push origin HEAD:course-geometry-tactical-v0
+
+# Triggered after workflow file existed on branch.
