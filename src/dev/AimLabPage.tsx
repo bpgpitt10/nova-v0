@@ -125,6 +125,7 @@ type LastShotReview = {
 }
 
 type AimLabMode = 'manual' | 'live'
+type AimCandidate = ClubAimEvaluation['candidates'][number]
 const AIM_LAB_MODE_STORAGE_KEY = 'looper.aim-lab.mode.v1'
 
 const loadAimLabMode = (): AimLabMode => {
@@ -151,6 +152,7 @@ function AimMap({
   target,
   pinEstimate,
   selected,
+  inspectedCandidate,
   lastShot,
   editMode,
   interactive,
@@ -165,6 +167,7 @@ function AimMap({
   target: CoursePointYds
   pinEstimate: CoursePointYds | null
   selected: ClubAimEvaluation | null
+  inspectedCandidate: AimCandidate | null
   lastShot: LastShotReview | null
   editMode: 'ball' | 'target'
   interactive: boolean
@@ -202,21 +205,21 @@ function AimMap({
   const ballSvg = project(ball)
   const targetSvg = project(target)
   const pinSvg = pinEstimate ? project(pinEstimate) : null
-  const best = selected?.bestCandidate ?? null
-  const aimSvg = best ? project(best.aimPoint) : null
-  const meanSvg = best ? project(best.meanLanding) : null
+  const viewed = inspectedCandidate ?? selected?.bestCandidate ?? null
+  const aimSvg = viewed ? project(viewed.aimPoint) : null
+  const meanSvg = viewed ? project(viewed.meanLanding) : null
   const actualStartSvg = lastShot?.actualStart ? project(lastShot.actualStart) : null
   const actualLandingSvg = lastShot?.actualLanding ? project(lastShot.actualLanding) : null
   const priorExpectedSvg = lastShot?.expectedLanding ? project(lastShot.expectedLanding) : null
-  const modeledSampleSvgs = best?.modeledSamples.map((sample) => ({
+  const modeledSampleSvgs = viewed?.modeledSamples.map((sample) => ({
     ...sample,
     svg: project(sample.landing),
   })) ?? []
-  const historicalSampleSvgs = best?.empiricalAllShots?.samples.map((sample) => ({
+  const historicalSampleSvgs = viewed?.empiricalAllShots?.samples.map((sample) => ({
     ...sample,
     svg: project(sample.landing),
   })) ?? []
-  const riskTailSvgs = best?.riskProfile?.tailLandings.map((sample) => ({
+  const riskTailSvgs = viewed?.riskProfile?.tailLandings.map((sample) => ({
     ...sample,
     svg: project(sample.landing),
   })) ?? []
@@ -235,10 +238,10 @@ function AimMap({
   const hasWoods = hole.contextLayers?.some((layer) => layer.kind === 'woods') ?? false
   const hasContours = (hole.contours?.length ?? 0) > 0
   const historicalAverageWeight = historicalSampleSvgs.length > 0 ? 1 / historicalSampleSvgs.length : 1
-  const tailAverageWeight = best?.riskProfile && riskTailSvgs.length > 0
-    ? best.riskProfile.tailProbability / riskTailSvgs.length
+  const tailAverageWeight = viewed?.riskProfile && riskTailSvgs.length > 0
+    ? viewed.riskProfile.tailProbability / riskTailSvgs.length
     : 1
-  const visibleProbabilityContours = best?.probabilityContours.filter(
+  const visibleProbabilityContours = viewed?.probabilityContours.filter(
     (contour) => contour.probability !== 0.95 || show95Core,
   ) ?? []
 
@@ -302,7 +305,7 @@ function AimMap({
           />
         )}
         <line className="aim-line" x1={ballSvg[0]} y1={ballSvg[1]} x2={targetSvg[0]} y2={targetSvg[1]} />
-        {best && aimSvg && meanSvg && (
+        {viewed && aimSvg && meanSvg && (
           <>
             <line className="aim-line candidate" x1={ballSvg[0]} y1={ballSvg[1]} x2={aimSvg[0]} y2={aimSvg[1]} />
             {[...visibleProbabilityContours].reverse().map((contour) => (
@@ -363,7 +366,7 @@ function AimMap({
         <span><i className="legend-dot pin" /> Pin estimate</span>
         <span><i className="legend-dot aim" /> Aim point</span>
         <span><i className="legend-dot mean" /> Expected center</span>
-        {best && <span><i className="legend-line probability" /> 50 / 80% core{show95Core ? ' / 95%' : ''}</span>}
+        {viewed && <span><i className="legend-line probability" /> 50 / 80% core{show95Core ? ' / 95%' : ''}</span>}
         {showFullRisk && riskTailSvgs.length > 0 && <span><i className="legend-dot risk-tail" /> Full-risk tail</span>}
         {hasWoods && <span><i className="legend-dot woods" /> Woods</span>}
         {hasContours && <span><i className="legend-line contour" /> Topo</span>}
@@ -385,6 +388,7 @@ function AimLabPage() {
   const [target, setTarget] = useState<CoursePointYds>([0, 220])
   const [editMode, setEditMode] = useState<'ball' | 'target'>('target')
   const [selectedClub, setSelectedClub] = useState<string | null>(null)
+  const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [windMph, setWindMph] = useState(0)
   const [windRelativeDeg, setWindRelativeDeg] = useState(0)
   const [uphillLieDeg, setUphillLieDeg] = useState(0)
@@ -603,8 +607,17 @@ function AimLabPage() {
     }
   }, [evaluations, selectedClub])
 
+  useEffect(() => {
+    setInspectedAimOffset(null)
+  }, [selectedClub, holeNumber, courseId])
+
   const selected = evaluations.find((item) => item.club === selectedClub) ?? evaluations[0] ?? null
-  const selectedRisk = selected?.bestCandidate?.riskProfile ?? null
+  const inspectedCandidate = selected
+    ? selected.candidates.find((candidate) => candidate.aimOffsetYds === inspectedAimOffset)
+      ?? selected.bestCandidate
+      ?? null
+    : null
+  const selectedRisk = inspectedCandidate?.riskProfile ?? null
 
   useEffect(() => {
     selectedRef.current = selected
@@ -713,7 +726,7 @@ function AimLabPage() {
             <article className="aim-card map-card">
               <div className="aim-card-heading">
                 <div><span>COURSE</span><h2>Hole {hole.holeNumber} geometry</h2></div>
-                <small>{mode === 'live' ? (livePositionUnavailable ? 'GSPro shot received · live ball registration unavailable' : 'Ball follows GSPro automatically') : editMode === 'ball' ? 'Click to move ball' : 'Click to move landing target'}</small>
+                <small>{inspectedCandidate && selected && inspectedCandidate !== selected.bestCandidate ? `Inspecting ${selected.club} aim ${signedYds(inspectedCandidate.aimOffsetYds)} · recommendation unchanged` : mode === 'live' ? (livePositionUnavailable ? 'GSPro shot received · live ball registration unavailable' : 'Ball follows GSPro automatically') : editMode === 'ball' ? 'Click to move ball' : 'Click to move landing target'}</small>
               </div>
               <AimMap
                 hole={hole}
@@ -721,6 +734,7 @@ function AimLabPage() {
                 target={target}
                 pinEstimate={pinEstimate}
                 selected={selected}
+                inspectedCandidate={inspectedCandidate}
                 lastShot={visibleLastShot}
                 editMode={editMode}
                 interactive={mode === 'manual'}
@@ -808,7 +822,7 @@ function AimLabPage() {
           <section className="aim-card">
             <div className="aim-card-heading">
               <div><span>SHOT CANDIDATES</span><h2>Your profile against this landing target</h2></div>
-              <small>Click a club to inspect all 11 lateral aim candidates.</small>
+              <small>Click a club, then click any aim row below to inspect it.</small>
             </div>
             <div className="aim-table-wrap">
               <table className="aim-table candidate-table">
@@ -846,7 +860,7 @@ function AimLabPage() {
               <article className="aim-card">
                 <div className="aim-card-heading">
                   <div><span>AIM SWEEP · {selected.club.toUpperCase()}</span><h2>Core probability vs observed Stock replay</h2></div>
-                  <small>Risk-aware best highlighted · core n={selected.modeledSampleCount.toLocaleString()} · history n={selected.empiricalShotCount}</small>
+                  <small>Click a row to inspect · recommended aim stays {signedYds(selected.bestCandidate?.aimOffsetYds)}</small>
                 </div>
                 <div className="aim-table-wrap">
                   <table className="aim-table aim-sweep-table">
@@ -855,9 +869,16 @@ function AimLabPage() {
                       {selected.candidates.map((candidate) => {
                         const landingTerrain = estimateCourseTerrain(hole, candidate.meanLanding)
                         const elevationDelta = ballTerrain && landingTerrain ? landingTerrain.elevationFt - ballTerrain.elevationFt : null
+                        const isRecommended = candidate === selected.bestCandidate
+                        const isInspected = candidate === inspectedCandidate
                         return (
-                          <tr key={candidate.aimOffsetYds} className={candidate === selected.bestCandidate ? 'best' : ''}>
-                            <td><strong>{signedYds(candidate.aimOffsetYds)}</strong></td>
+                          <tr
+                            key={candidate.aimOffsetYds}
+                            className={`${isRecommended ? 'best ' : ''}${isInspected ? 'selected' : ''}`.trim()}
+                            onClick={() => setInspectedAimOffset(candidate.aimOffsetYds)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <td><strong>{signedYds(candidate.aimOffsetYds)}{isRecommended ? ' · recommended' : ''}{isInspected && !isRecommended ? ' · viewing' : ''}</strong></td>
                             <td>{pct(candidate.surfaceOutcomes?.preferred)}</td>
                             <td>{pct(candidate.empiricalAllShots?.preferred)}</td>
                             <td>{pct(candidate.surfaceOutcomes?.rough)}</td>
@@ -905,7 +926,7 @@ function AimLabPage() {
             <section className="aim-card risk-sweep-card">
               <div className="aim-card-heading">
                 <div><span>FULL RISK · {selected.club.toUpperCase()}</span><h2>Outcome severity by aim</h2></div>
-                <small>Authoritative aim risk · selected line highlighted · tail {pct(selectedRisk?.tailProbability)}</small>
+                <small>Click a row to inspect · recommendation remains independently ranked</small>
               </div>
               <div className="aim-table-wrap">
                 <table className="aim-table risk-sweep-table">
@@ -913,9 +934,16 @@ function AimLabPage() {
                   <tbody>
                     {selected.candidates.map((candidate) => {
                       const risk = candidate.riskProfile
+                      const isRecommended = candidate === selected.bestCandidate
+                      const isInspected = candidate === inspectedCandidate
                       return (
-                        <tr key={`risk-${candidate.aimOffsetYds}`} className={candidate === selected.bestCandidate ? 'best' : ''}>
-                          <td><strong>{signedYds(candidate.aimOffsetYds)}</strong></td>
+                        <tr
+                          key={`risk-${candidate.aimOffsetYds}`}
+                          className={`${isRecommended ? 'best ' : ''}${isInspected ? 'selected' : ''}`.trim()}
+                          onClick={() => setInspectedAimOffset(candidate.aimOffsetYds)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <td><strong>{signedYds(candidate.aimOffsetYds)}{isRecommended ? ' · recommended' : ''}{isInspected && !isRecommended ? ' · viewing' : ''}</strong></td>
                           <td>{pct(risk?.success)}</td>
                           <td>{pct(risk?.manageable)}</td>
                           <td className="risk-serious-cell">{pct(risk?.seriousTrouble)}</td>
