@@ -19,10 +19,13 @@ export const shotProfilesToLiveCaddieClubProfile = (
   return {
     club: String(club),
     stock_carry_yds: stock.carry,
+    stock_total_yds: stock.total,
     carry_sigma_yds: stock.carryVariability,
+    total_sigma_yds: stock.totalVariability,
     lateral_bias_yds: stock.offlineMean ?? 0,
     lateral_sigma_yds: stock.dispersionVariability,
     pure_carry_yds: profiles.bestAvailable?.carry,
+    pure_total_yds: profiles.bestAvailable?.total,
     launch_profile: {
       ball_speed_mph: stock.ballSpeed,
       vla_deg: stock.launch,
