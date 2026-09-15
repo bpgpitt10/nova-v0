@@ -1,5 +1,8 @@
-import { greywolfHole01RenderFixture } from '../dev/greywolfHole01RenderFixture'
-import type { CoursePointYds } from './types'
+import type {
+  CourseContourLine,
+  CourseHoleGeometry,
+  CoursePointYds,
+} from './types'
 
 export type TerrainEstimate = {
   elevationFt: number
@@ -9,15 +12,10 @@ export type TerrainEstimate = {
   note: string
 }
 
-type Contour = {
-  elevationFt: number
-  points: readonly (readonly [number, number])[]
-}
-
 const pointSegmentDistance = (
   point: CoursePointYds,
-  a: readonly [number, number],
-  b: readonly [number, number],
+  a: CoursePointYds,
+  b: CoursePointYds,
 ) => {
   const vx = b[0] - a[0]
   const vy = b[1] - a[1]
@@ -30,7 +28,7 @@ const pointSegmentDistance = (
   return Math.hypot(dx, dy)
 }
 
-const distanceToContour = (point: CoursePointYds, contour: Contour) => {
+const distanceToContour = (point: CoursePointYds, contour: CourseContourLine) => {
   let best = Number.POSITIVE_INFINITY
   for (let index = 1; index < contour.points.length; index += 1) {
     best = Math.min(
@@ -42,17 +40,22 @@ const distanceToContour = (point: CoursePointYds, contour: Contour) => {
 }
 
 /**
- * Review/prototype terrain sampler for Greywolf Hole 1.
+ * Estimate local elevation from the LiDAR-derived contour lines supplied by a
+ * CourseHoleGeometry package. The sampler is deliberately hole-agnostic: once a
+ * hole has real contours, Live Caddie receives elevation without any new UI or
+ * aim-model wiring.
  *
- * This intentionally does NOT pretend the rendered 10-ft contours are the raw DEM.
- * It estimates local elevation from the three nearest LiDAR-derived contour lines so
- * Aim Lab can prove candidate-specific terrain flow now. Runtime production should
- * replace this with direct DEM sampling while keeping the same TerrainEstimate contract.
+ * This remains a contour proxy rather than raw DEM sampling. Direct DEM sampling
+ * can replace this implementation later while preserving the TerrainEstimate
+ * contract used by the caddie model.
  */
-export const estimateGreywolfHole01Terrain = (
+export const estimateGreywolfTerrain = (
+  hole: CourseHoleGeometry,
   point: CoursePointYds,
 ): TerrainEstimate | null => {
-  const contours = greywolfHole01RenderFixture.layers.contours as readonly Contour[]
+  const contours = hole.contours ?? []
+  if (contours.length === 0) return null
+
   const nearest = contours
     .map((contour) => ({ contour, distance: distanceToContour(point, contour) }))
     .filter((item) => Number.isFinite(item.distance))
