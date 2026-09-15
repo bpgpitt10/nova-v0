@@ -80,7 +80,14 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
   return undefined
 }
 
-export const toMishitPlanningShot = (shot: Shot): MishitShot => {
+type MishitPlanningShotOptions = {
+  includeSmashFactor?: boolean
+}
+
+export const toMishitPlanningShot = (
+  shot: Shot,
+  options: MishitPlanningShotOptions = {},
+): MishitShot => {
   const ballSpeed =
     positiveFiniteNumber(shot.ballSpeedMph) ??
     (typeof shot.ballSpeedMetersPerSecond === 'number' && shot.ballSpeedMetersPerSecond > 0
@@ -120,10 +127,12 @@ export const toMishitPlanningShot = (shot: Shot): MishitShot => {
         payloadNumber(shot.openGolfCoach, ['club_speed_mph', 'clubSpeedMph']),
       ),
     smashFactor:
-      positiveFiniteNumber(shot.smashFactor) ??
-      positiveFiniteNumber(
-        payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor', 'smash']),
-      ),
+      options.includeSmashFactor === false
+        ? undefined
+        : positiveFiniteNumber(shot.smashFactor) ??
+          positiveFiniteNumber(
+            payloadNumber(shot.openGolfCoach, ['smash_factor', 'smashFactor', 'smash']),
+          ),
     launch:
       finiteNumber(shot.verticalLaunchAngleDegrees) ??
       finiteNumber(shot.launchAngleDeg) ??
@@ -173,10 +182,19 @@ export const buildMishitPlanningState = (
   const excludedMishitShotIds = new Set<string>()
 
   groupedShots.forEach((shots, populationKey) => {
+    // Smash factor is derived from ball speed / club speed and can shift
+    // materially when club-speed measurement changes between launch-monitor
+    // pipelines. Until Looper persists an explicit launch-monitor measurement
+    // provenance key, shot.source is the narrowest available compatibility
+    // boundary. In a mixed-source population we keep carry/offline/ball-speed
+    // mishit evidence but do not let smash alone create false mishits.
+    const measurementSources = new Set(shots.map((shot) => shot.source))
+    const includeSmashFactor = measurementSources.size <= 1
+
     // No human labels or manual per-player overrides are passed to the
     // classifier. Personalization comes from the player's own robust sample.
     const analysis = analyzeShotPopulation(
-      shots.map(toMishitPlanningShot),
+      shots.map((shot) => toMishitPlanningShot(shot, { includeSmashFactor })),
       DEFAULT_MISHIT_CONFIG,
     )
     populations.set(populationKey, { populationKey, analysis })
