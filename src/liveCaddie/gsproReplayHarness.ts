@@ -201,7 +201,6 @@ export const runGsproReplayFixture = (fixture: GsproReplayFixture): GsproReplayR
     if (connection === 'disconnected') connected = false
     if (connection === 'connected' || connection === 'reconnected') connected = true
 
-    const roundSize = sourceSize(frame.currentRound)
     const logSize = sourceSize(frame.outputLog)
     const roundSignature = sourceSignature(frame.currentRound)
 
