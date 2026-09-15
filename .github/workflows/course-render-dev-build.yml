@@ -17,6 +17,9 @@ on:
       - src/dev/aimLab.css
       - src/dev/CaddieInputsPage.tsx
       - src/dev/caddieInputs.css
+      - config/course-geometry/**
+      - public/course-geometry/**
+      - tools/build_osm_course_package.py
       - tools/gspro_physics_lab.py
       - src/main.tsx
       - .github/workflows/course-render-dev-build.yml
@@ -40,4 +43,4 @@ jobs:
           python-version: '3.12'
       - run: npm ci
       - run: npm run build
-      - run: python -m py_compile tools/gspro_physics_lab.py
+      - run: python -m py_compile tools/build_osm_course_package.py tools/gspro_physics_lab.py
