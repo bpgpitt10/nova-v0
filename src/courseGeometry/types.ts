@@ -119,6 +119,7 @@ export type CourseHoleGeometry = {
     yAxis: 'forward'
   }
   bounds: CourseGeometryBounds
+  viewBounds?: CourseGeometryBounds
   markers: {
     tee: CoursePointYds
     pin?: CoursePointYds
