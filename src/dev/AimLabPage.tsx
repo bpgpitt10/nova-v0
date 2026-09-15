@@ -189,6 +189,8 @@ function AimMap({
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
   const shotAngle = (Math.atan2(shotDy, shotDx) * 180) / Math.PI + 90
+  const hasWoods = hole.contextLayers?.some((layer) => layer.kind === 'woods') ?? false
+  const hasContours = (hole.contours?.length ?? 0) > 0
 
   return (
     <div className="aim-map-shell">
@@ -197,6 +199,36 @@ function AimMap({
         viewBox={`0 0 ${viewSize} ${viewSize}`}
         onClick={onClick}
       >
+        <defs>
+          <pattern id="aimWoodsCanopyPattern" width="5.2" height="5.2" patternUnits="userSpaceOnUse">
+            <rect width="5.2" height="5.2" fill="#173d29" fillOpacity="0.2" />
+            <circle cx="1" cy="1.4" r="0.9" fill="#6f9962" fillOpacity="0.16" />
+            <circle cx="3.4" cy="1" r="1.15" fill="#4f7a4b" fillOpacity="0.14" />
+            <circle cx="2.5" cy="3.7" r="1.25" fill="#7ba06b" fillOpacity="0.12" />
+            <circle cx="5" cy="4" r="1" fill="#3e6842" fillOpacity="0.16" />
+          </pattern>
+          <pattern id="aimScrubTexturePattern" width="4.4" height="4.4" patternUnits="userSpaceOnUse">
+            <rect width="4.4" height="4.4" fill="#4d4a2d" fillOpacity="0.16" />
+            <circle cx="1" cy="1.2" r="0.58" fill="#b5a967" fillOpacity="0.16" />
+            <circle cx="3.2" cy="3" r="0.68" fill="#8c854f" fillOpacity="0.15" />
+          </pattern>
+        </defs>
+        {hole.contextLayers?.flatMap((layer) =>
+          layer.polygons.map((polygon, index) => (
+            <polygon
+              key={`${layer.id}-${index}`}
+              className={`aim-context context-${layer.kind}`}
+              points={polygon.map((point) => project(point).join(',')).join(' ')}
+            />
+          )),
+        )}
+        {hole.contours?.map((contour, index) => (
+          <polyline
+            key={`terrain-contour-${contour.elevationFt}-${index}`}
+            className="terrain-contour"
+            points={contour.points.map((point) => project(point).join(',')).join(' ')}
+          />
+        ))}
         {surfaceOrder.flatMap((kind) =>
           hole.surfaces
             .filter((surface) => surface.kind === kind)
@@ -251,6 +283,8 @@ function AimMap({
         <span><i className="legend-dot pin" /> Pin estimate</span>
         <span><i className="legend-dot aim" /> Aim point</span>
         <span><i className="legend-dot mean" /> Expected center</span>
+        {hasWoods && <span><i className="legend-dot woods" /> Woods</span>}
+        {hasContours && <span><i className="legend-line contour" /> Topo</span>}
         {lastShot?.actualLanding && <span><i className="legend-dot actual" /> Last actual</span>}
         {lastShot?.expectedLanding && <span><i className="legend-dot prior" /> Last expected</span>}
       </div>
