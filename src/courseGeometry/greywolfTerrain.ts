@@ -4,7 +4,7 @@ import type {
   CourseTerrainGrid,
 } from './types'
 
-const TERRAIN_PACKAGE_URL = '/course-geometry/greywolf-terrain-v1.json'
+const TERRAIN_PACKAGE_URL = '/course-geometry/greywolf/terrain-v1.json'
 
 type RawTerrainGrid = {
   minX?: unknown
