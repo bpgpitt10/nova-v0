@@ -2,6 +2,7 @@ import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
 import type {
   CourseContextKind,
   CourseContextLayer,
+  CourseContourLine,
   CourseCoordinateOrigin,
   CourseGeometryBounds,
   CourseGeometryProvenance,
@@ -11,6 +12,7 @@ import type {
   CourseRegistration,
   CourseSurface,
   CourseSurfaceKind,
+  CourseTerrainGrid,
 } from './types'
 
 const SURFACE_KINDS = new Set<CourseSurfaceKind>([
@@ -31,6 +33,27 @@ type RawLayer = {
   note?: unknown
 }
 
+type RawContour = {
+  elevationFt?: unknown
+  points?: unknown
+}
+
+type RawTerrain = {
+  source?: unknown
+  sourceResolutionMeters?: unknown
+  runtimeSpacingYds?: unknown
+  interpolation?: unknown
+  minX?: unknown
+  minY?: unknown
+  width?: unknown
+  height?: unknown
+  elevationOffsetFt?: unknown
+  nodata?: unknown
+  compression?: unknown
+  valuesBase64?: unknown
+  note?: unknown
+}
+
 type RawHole = {
   holeNumber?: unknown
   par?: unknown
@@ -41,6 +64,8 @@ type RawHole = {
   markers?: { tee?: unknown; pin?: unknown }
   surfaces?: unknown
   contextLayers?: unknown
+  contours?: unknown
+  terrain?: RawTerrain
   registration?: unknown
 }
 
@@ -50,6 +75,7 @@ type RawPackage = {
   courseName?: unknown
   location?: unknown
   provenance?: unknown
+  terrainProvenance?: unknown
   holes?: unknown
 }
 
@@ -60,6 +86,7 @@ const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
 const finiteInteger = (value: unknown): value is number => finite(value) && Number.isInteger(value)
+const positiveInteger = (value: unknown): value is number => finiteInteger(value) && value > 0
 
 const parsePoint = (value: unknown): CoursePointYds | null =>
   Array.isArray(value) && value.length >= 2 && finite(value[0]) && finite(value[1])
@@ -151,6 +178,136 @@ const parseContext = (raw: RawLayer): CourseContextLayer | null => {
   }
 }
 
+const parseContours = (value: unknown, courseName: string, holeNumber: number): CourseContourLine[] => {
+  if (value == null) return []
+  if (!Array.isArray(value)) {
+    throw new Error(`${courseName} Hole ${holeNumber} contours were present but malformed.`)
+  }
+
+  return value.map((candidate, index): CourseContourLine => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      throw new Error(`${courseName} Hole ${holeNumber} contour ${index + 1} was malformed.`)
+    }
+    const raw = candidate as RawContour
+    if (!finite(raw.elevationFt) || !Array.isArray(raw.points)) {
+      throw new Error(`${courseName} Hole ${holeNumber} contour ${index + 1} was incomplete.`)
+    }
+    const points = raw.points.map((point, pointIndex) => {
+      const parsed = parsePoint(point)
+      if (!parsed) {
+        throw new Error(
+          `${courseName} Hole ${holeNumber} contour ${index + 1} point ${pointIndex + 1} was invalid.`,
+        )
+      }
+      return parsed
+    })
+    if (points.length < 2) {
+      throw new Error(`${courseName} Hole ${holeNumber} contour ${index + 1} had fewer than two points.`)
+    }
+    return { elevationFt: raw.elevationFt, points }
+  })
+}
+
+const decodeDeflateUint16 = async (
+  valuesBase64: string,
+  expectedValues: number,
+  courseName: string,
+  holeNumber: number,
+): Promise<Uint16Array> => {
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error(
+      `This browser does not support DecompressionStream required for ${courseName} Hole ${holeNumber} LiDAR terrain.`,
+    )
+  }
+
+  let binary: string
+  try {
+    binary = atob(valuesBase64)
+  } catch {
+    throw new Error(`${courseName} Hole ${holeNumber} terrain values were not valid base64.`)
+  }
+
+  const compressed = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    compressed[index] = binary.charCodeAt(index)
+  }
+
+  let buffer: ArrayBuffer
+  try {
+    const stream = new Blob([compressed])
+      .stream()
+      .pipeThrough(new DecompressionStream('deflate'))
+    buffer = await new Response(stream).arrayBuffer()
+  } catch {
+    throw new Error(`${courseName} Hole ${holeNumber} terrain grid could not be decompressed.`)
+  }
+
+  if (buffer.byteLength !== expectedValues * 2) {
+    throw new Error(
+      `${courseName} Hole ${holeNumber} terrain decoded ${buffer.byteLength} bytes; expected ${expectedValues * 2}.`,
+    )
+  }
+
+  // Static-package terrain uses the same proven wire format as Greywolf:
+  // deflated little-endian uint16 values, decoded explicitly for portability.
+  const view = new DataView(buffer)
+  const values = new Uint16Array(expectedValues)
+  for (let index = 0; index < expectedValues; index += 1) {
+    values[index] = view.getUint16(index * 2, true)
+  }
+  return values
+}
+
+const parseTerrain = async (
+  raw: RawTerrain | undefined,
+  courseName: string,
+  holeNumber: number,
+): Promise<CourseTerrainGrid | null> => {
+  if (raw == null) return null
+
+  if (
+    raw.source !== 'lidar-dem'
+    || !finite(raw.sourceResolutionMeters)
+    || raw.sourceResolutionMeters <= 0
+    || !finite(raw.runtimeSpacingYds)
+    || raw.runtimeSpacingYds <= 0
+    || raw.interpolation !== 'bilinear'
+    || !finite(raw.minX)
+    || !finite(raw.minY)
+    || !positiveInteger(raw.width)
+    || !positiveInteger(raw.height)
+    || !finite(raw.elevationOffsetFt)
+    || !finite(raw.nodata)
+    || raw.compression !== 'deflate'
+    || typeof raw.valuesBase64 !== 'string'
+    || raw.valuesBase64.length === 0
+  ) {
+    throw new Error(`${courseName} Hole ${holeNumber} LiDAR terrain was present but incomplete or invalid.`)
+  }
+
+  const values = await decodeDeflateUint16(
+    raw.valuesBase64,
+    raw.width * raw.height,
+    courseName,
+    holeNumber,
+  )
+
+  return {
+    source: 'lidar-dem',
+    sourceResolutionMeters: raw.sourceResolutionMeters,
+    runtimeSpacingYds: raw.runtimeSpacingYds,
+    interpolation: 'bilinear',
+    minX: raw.minX,
+    minY: raw.minY,
+    width: raw.width,
+    height: raw.height,
+    elevationOffsetFt: raw.elevationOffsetFt,
+    nodata: raw.nodata,
+    values,
+    note: typeof raw.note === 'string' ? raw.note : undefined,
+  }
+}
+
 const parseRegistration = (value: unknown): CourseRegistration => {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   const status = raw.status === 'verified' || raw.status === 'approximate' || raw.status === 'unavailable'
@@ -229,22 +386,29 @@ const loadPackage = (courseId: CourseId) => {
   return promise
 }
 
-const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number): CourseHoleGeometry => {
+const parseHole = async (
+  courseId: CourseId,
+  payload: RawPackage,
+  holeNumber: number,
+): Promise<CourseHoleGeometry> => {
   if (!payload.holes || typeof payload.holes !== 'object') {
     throw new Error(`${String(payload.courseName ?? courseId)} package did not include holes.`)
   }
   const raw = (payload.holes as Record<string, RawHole>)[String(holeNumber)]
-  if (!raw) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} was not packaged.`)
+  const courseName = typeof payload.courseName === 'string'
+    ? payload.courseName
+    : getCourseCatalogEntry(courseId).name
+  if (!raw) throw new Error(`${courseName} Hole ${holeNumber} was not packaged.`)
 
   const bounds = parseBounds(raw.bounds)
   if (!bounds) {
-    throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has invalid bounds.`)
+    throw new Error(`${courseName} Hole ${holeNumber} has invalid bounds.`)
   }
   const viewBounds = parseBounds(raw.viewBounds)
 
   const tee = parsePoint(raw.markers?.tee)
   const pin = parsePoint(raw.markers?.pin)
-  if (!tee) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has no tee/origin anchor.`)
+  if (!tee) throw new Error(`${courseName} Hole ${holeNumber} has no tee/origin anchor.`)
 
   const surfaces = (Array.isArray(raw.surfaces) ? raw.surfaces as RawLayer[] : [])
     .flatMap((candidate): CourseSurface[] => {
@@ -256,13 +420,15 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
       const parsed = parseContext(candidate)
       return parsed ? [parsed] : []
     })
+  const contours = parseContours(raw.contours, courseName, holeNumber)
+  const terrain = await parseTerrain(raw.terrain, courseName, holeNumber)
   const available = (kind: CourseSurfaceKind) =>
     surfaces.some((surface) => surface.kind === kind) ? 'available' as const : 'unavailable' as const
 
   return {
     schemaVersion: 'looper-course-geometry-v1',
     courseId,
-    courseName: typeof payload.courseName === 'string' ? payload.courseName : getCourseCatalogEntry(courseId).name,
+    courseName,
     location: typeof payload.location === 'string' ? payload.location : getCourseCatalogEntry(courseId).location,
     holeNumber: finiteInteger(raw.holeNumber) ? raw.holeNumber : holeNumber,
     par: finiteInteger(raw.par) ? raw.par : undefined,
@@ -278,6 +444,8 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
     markers: { tee, ...(pin ? { pin } : {}) },
     surfaces,
     ...(contextLayers.length ? { contextLayers } : {}),
+    ...(contours.length ? { contours } : {}),
+    ...(terrain ? { terrain } : {}),
     availability: {
       tee: available('tee'),
       fairway: available('fairway'),
