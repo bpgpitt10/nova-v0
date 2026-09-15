@@ -20,6 +20,8 @@ import type { SavedSession, Shot } from '../types'
 import type { AimSurfaceDistribution } from './aimOutcomeSampling'
 
 export type EmpiricalAimLandingSample = {
+  carryLanding: CoursePointYds
+  /** Resting/final position; falls back to carry when historical total is unavailable. */
   landing: CoursePointYds
   kind: CourseSurfaceClassification
   /** Normalized historical weight. All sample weights sum to 1. */
@@ -123,14 +125,21 @@ export const evaluateEmpiricalAimDistribution = (
       return
     }
 
-    // Preserve the observed all-shot shape, including mishits, while applying the
-    // current context as a simple translation of the historical shot cloud.
+    // Preserve the observed all-shot shape, including mishits. Live wind/elevation
+    // translates the airborne distance; historical carry-to-total rollout remains
+    // attached to the shot until destination-surface rollout physics are validated.
     const carry = Math.max(0, shot.carryYards + carryAdjustmentYds)
+    const observedTotal =
+      typeof shot.totalYards === 'number' && Number.isFinite(shot.totalYards)
+        ? Math.max(shot.carryYards, shot.totalYards)
+        : shot.carryYards
+    const total = Math.max(carry, observedTotal + carryAdjustmentYds)
     const offline = shot.offlineYards + lateralAdjustmentYds
-    const landing = addScaled(ball, forward, carry, right, offline)
+    const carryLanding = addScaled(ball, forward, carry, right, offline)
+    const landing = addScaled(ball, forward, total, right, offline)
     const kind = classifyTacticalLandingPoint(hole, landing).kind
     weights[kind] = (weights[kind] ?? 0) + weight
-    rawSamples.push({ landing, kind, rawWeight: weight })
+    rawSamples.push({ carryLanding, landing, kind, rawWeight: weight })
     totalWeight += weight
   })
 
@@ -156,7 +165,8 @@ export const evaluateEmpiricalAimDistribution = (
     if (typedKind === 'unknown') unknown += fraction
   })
 
-  const samples = rawSamples.map(({ landing, kind, rawWeight }) => ({
+  const samples = rawSamples.map(({ carryLanding, landing, kind, rawWeight }) => ({
+    carryLanding,
     landing,
     kind,
     weight: rawWeight / totalWeight,
