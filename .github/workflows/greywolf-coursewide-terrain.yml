@@ -52,5 +52,7 @@ jobs:
             echo "Terrain package unchanged"
           else
             git commit -m "Build Greywolf course-wide LiDAR terrain package"
+            git fetch origin course-geometry-tactical-v0
+            git rebase origin/course-geometry-tactical-v0
             git push origin HEAD:course-geometry-tactical-v0
           fi
