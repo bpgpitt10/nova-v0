@@ -94,6 +94,38 @@ jobs:
           print(json.dumps(manifest, indent=2))
           PY
 
+      - name: Diagnose incomplete fairway assignment
+        if: failure()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, 'tools')
+          import build_osm_course_package as builder
+
+          payload = json.loads(Path('artifacts/course-geometry/tobacco-road/osm-snapshot.json').read_text())
+          features, hole_routes = builder.normalize_osm(payload)
+          origin = builder.course_projection_origin(hole_routes, features)
+          route_candidates = builder.assign_nearest_holes(features, hole_routes, origin)
+
+          for hole in (6, 16):
+              fairways = []
+              for distance, feature in route_candidates[hole]:
+                  if feature['role'] != 'surface' or feature['kind'] != 'fairway':
+                      continue
+                  fairways.append({
+                      'osmId': feature.get('osm_id'),
+                      'distanceToHoleRouteYards': round(distance, 2),
+                      'assignedHole': feature.get('assigned_hole'),
+                      'assignedRouteDistanceYards': round(float(feature.get('assigned_route_distance_yards', 0.0)), 2),
+                  })
+              fairways.sort(key=lambda item: item['distanceToHoleRouteYards'])
+              print(json.dumps({'hole': hole, 'nearestFairways': fairways[:8]}, indent=2))
+          PY
+
       - name: Persist cached course package and source proof
         shell: bash
         run: |
@@ -122,5 +154,7 @@ jobs:
           path: |
             artifacts/course-geometry/tobacco-road/validation-v1.json
             artifacts/course-geometry/tobacco-road/overpass-query.txt
+            artifacts/course-geometry/tobacco-road/osm-snapshot.json
+            public/course-geometry/tobacco-road/course-v1.json
           if-no-files-found: ignore
           retention-days: 14
