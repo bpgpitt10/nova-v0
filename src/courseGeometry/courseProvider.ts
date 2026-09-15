@@ -1,5 +1,6 @@
 import {
   GREYWOLF_COURSE_ID,
+  UNSELECTED_COURSE_ID,
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
@@ -19,6 +20,9 @@ export const loadCourseHoleGeometry = (
   courseId: CourseId,
   holeNumber: number,
 ): Promise<CourseHoleGeometry> => {
+  if (courseId === UNSELECTED_COURSE_ID) {
+    return Promise.reject(new Error('Choose a course before loading hole geometry.'))
+  }
   getCourseCatalogEntry(courseId)
   if (courseId === GREYWOLF_COURSE_ID) {
     return loadGreywolfHoleGeometryAdapter(holeNumber)
