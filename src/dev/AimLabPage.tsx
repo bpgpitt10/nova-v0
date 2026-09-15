@@ -112,6 +112,28 @@ type LastShotReview = {
   expectedLanding: CoursePointYds | null
 }
 
+type AimLabMode = 'manual' | 'live'
+
+const AIM_LAB_MODE_STORAGE_KEY = 'looper.aim-lab.mode.v1'
+
+const loadAimLabMode = (): AimLabMode => {
+  if (typeof window === 'undefined') return 'manual'
+  try {
+    return window.localStorage.getItem(AIM_LAB_MODE_STORAGE_KEY) === 'live' ? 'live' : 'manual'
+  } catch {
+    return 'manual'
+  }
+}
+
+const saveAimLabMode = (mode: AimLabMode) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(AIM_LAB_MODE_STORAGE_KEY, mode)
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts. Mode still works for this mount.
+  }
+}
+
 function AimMap({
   hole,
   ball,
@@ -306,7 +328,7 @@ function AimLabPage() {
   const [windRelativeDeg, setWindRelativeDeg] = useState(0)
   const [uphillLieDeg, setUphillLieDeg] = useState(0)
   const [sidehillLieDeg, setSidehillLieDeg] = useState(0)
-  const [mode, setMode] = useState<'manual' | 'live'>('manual')
+  const [mode, setMode] = useState<AimLabMode>(() => loadAimLabMode())
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
@@ -328,6 +350,10 @@ function AimLabPage() {
       window.removeEventListener('storage', refresh)
     }
   }, [])
+
+  useEffect(() => {
+    saveAimLabMode(mode)
+  }, [mode])
 
   useEffect(() => {
     let active = true
