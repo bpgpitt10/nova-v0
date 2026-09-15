@@ -3,6 +3,7 @@ import type {
   CourseContextKind,
   CourseContextLayer,
   CourseCoordinateOrigin,
+  CourseGeometryBounds,
   CourseGeometryProvenance,
   CourseHoleGeometry,
   CoursePointYds,
@@ -17,6 +18,8 @@ const SURFACE_KINDS = new Set<CourseSurfaceKind>([
 ])
 const CONTEXT_KINDS = new Set<CourseContextKind>(['woods', 'scrub', 'grass-context'])
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
+
+type RawBounds = { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
 
 type RawLayer = {
   id?: unknown
@@ -33,7 +36,8 @@ type RawHole = {
   par?: unknown
   statedYardageYds?: unknown
   coordinateSystem?: { origin?: unknown }
-  bounds?: { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
+  bounds?: RawBounds
+  viewBounds?: RawBounds
   markers?: { tee?: unknown; pin?: unknown }
   surfaces?: unknown
   contextLayers?: unknown
@@ -61,6 +65,20 @@ const parsePoint = (value: unknown): CoursePointYds | null =>
   Array.isArray(value) && value.length >= 2 && finite(value[0]) && finite(value[1])
     ? [value[0], value[1]]
     : null
+
+const parseBounds = (value: RawBounds | undefined): CourseGeometryBounds | null => {
+  if (
+    !value ||
+    !finite(value.minX) || !finite(value.maxX) ||
+    !finite(value.minY) || !finite(value.maxY)
+  ) return null
+  return {
+    minX: value.minX,
+    maxX: value.maxX,
+    minY: value.minY,
+    maxY: value.maxY,
+  }
+}
 
 const parsePolygon = (value: unknown): CoursePolygonYds | null => {
   if (!Array.isArray(value)) return null
@@ -218,20 +236,11 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
   const raw = (payload.holes as Record<string, RawHole>)[String(holeNumber)]
   if (!raw) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} was not packaged.`)
 
-  const rawBounds = raw.bounds
-  if (
-    !rawBounds ||
-    !finite(rawBounds.minX) || !finite(rawBounds.maxX) ||
-    !finite(rawBounds.minY) || !finite(rawBounds.maxY)
-  ) {
+  const bounds = parseBounds(raw.bounds)
+  if (!bounds) {
     throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has invalid bounds.`)
   }
-  const bounds = {
-    minX: rawBounds.minX,
-    maxX: rawBounds.maxX,
-    minY: rawBounds.minY,
-    maxY: rawBounds.maxY,
-  }
+  const viewBounds = parseBounds(raw.viewBounds)
 
   const tee = parsePoint(raw.markers?.tee)
   const pin = parsePoint(raw.markers?.pin)
@@ -265,6 +274,7 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
       yAxis: 'forward',
     },
     bounds,
+    ...(viewBounds ? { viewBounds } : {}),
     markers: { tee, ...(pin ? { pin } : {}) },
     surfaces,
     ...(contextLayers.length ? { contextLayers } : {}),
