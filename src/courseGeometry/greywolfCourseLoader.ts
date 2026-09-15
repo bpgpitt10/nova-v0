@@ -1,4 +1,5 @@
 import { greywolfHole01Geometry } from './greywolfHole01'
+import { loadGreywolfHoleOneContext } from './greywolfEnvironment'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -208,9 +209,16 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
     : new Error(`Greywolf Hole ${holeNumber} package could not be loaded.`)
 }
 
+const loadHoleOne = async (): Promise<CourseHoleGeometry> => {
+  const contextLayers = await loadGreywolfHoleOneContext()
+  return contextLayers.length > 0
+    ? { ...greywolfHole01Geometry, contextLayers }
+    : greywolfHole01Geometry
+}
+
 export const loadGreywolfHoleGeometry = (holeNumber: number): Promise<CourseHoleGeometry> => {
   const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
-  if (normalized === 1) return Promise.resolve(greywolfHole01Geometry)
+  if (normalized === 1) return loadHoleOne()
 
   const existing = cache.get(normalized)
   if (existing) return existing
