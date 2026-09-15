@@ -62,6 +62,15 @@ type Vec3 = {
   z?: unknown
 }
 
+type RoundShotData = {
+  isHoled?: unknown
+  isGimme?: unknown
+}
+
+type ActiveShot = {
+  sd?: RoundShotData
+}
+
 type RoundShotRecord = {
   ShotID?: unknown
   RoundID?: unknown
@@ -76,6 +85,7 @@ type RoundShotRecord = {
   TotalDistance?: unknown
   StartingPOS?: Vec3
   EndingPOS?: Vec3
+  activeShot?: ActiveShot
 }
 
 type HoleAnchorArtifact = {
@@ -120,6 +130,16 @@ const asNumber = (value: unknown): number | null => {
 
 const asString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null
+
+const asBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return normalized === 'true' || normalized === '1'
+  }
+  return false
+}
 
 const isGreywolfCourseKey = (value: string | null) =>
   value != null && /^greywolf_gsp$/i.test(value)
@@ -241,7 +261,7 @@ const surfaceFromRaw = (value: number | null) => {
   }
 }
 
-const parseRoundRecords = (text: string): RoundShotRecord[] => {
+const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   const parsed = JSON.parse(text) as unknown
   const candidates: unknown[] = Array.isArray(parsed)
     ? parsed
@@ -249,10 +269,16 @@ const parseRoundRecords = (text: string): RoundShotRecord[] => {
       ? Object.values(parsed as Record<string, unknown>).flatMap((value) => Array.isArray(value) ? value : [])
       : []
 
-  const seen = new Set<string>()
   return candidates.flatMap((candidate): RoundShotRecord[] => {
     if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return []
-    const record = candidate as RoundShotRecord
+    return [candidate as RoundShotRecord]
+  })
+}
+
+const parseRoundRecords = (text: string): RoundShotRecord[] => {
+  const candidates = parseRoundCandidates(text)
+  const seen = new Set<string>()
+  return candidates.flatMap((record): RoundShotRecord[] => {
     const shotId = asString(record.ShotID)
     if (!shotId || seen.has(shotId) || !vec3(record.StartingPOS) || !vec3(record.EndingPOS)) return []
     const ballSpeed = asNumber(record.BallSpeed) ?? 0
@@ -266,17 +292,44 @@ const parseRoundRecords = (text: string): RoundShotRecord[] => {
 const recordSortValue = (record: RoundShotRecord) =>
   asNumber(record.GlobalShotNumber) ?? asNumber(record.HoleShot) ?? 0
 
-const parseOutputLogHoleState = (text: string): OutputLogHoleState => {
-  const matches = [...text.matchAll(/currentHole\s*:\s*(\d+)/gi)]
-  if (matches.length === 0) {
-    return { holeNumber: null, terminalAfterLatestHoleMarker: false }
-  }
+const recordIsTerminal = (record: RoundShotRecord) => {
+  const activeShot = record.activeShot
+  if (!activeShot || typeof activeShot !== 'object' || Array.isArray(activeShot)) return false
+  const sd = activeShot.sd
+  if (!sd || typeof sd !== 'object' || Array.isArray(sd)) return false
+  return asBoolean(sd.isHoled) || asBoolean(sd.isGimme)
+}
 
-  const latest = matches[matches.length - 1]
-  const raw = Number(latest[1])
-  const holeNumber = Number.isFinite(raw) && raw >= 0 && raw < 18 ? raw + 1 : null
-  const latestHoleMarkerIndex = latest.index ?? -1
-  const latestTerminalIndex = text.toLowerCase().lastIndexOf('allplayersholedout')
+const latestTerminalHoleForRound = (text: string, roundId: number | null) => {
+  const candidates = parseRoundCandidates(text)
+    .filter((record) => roundId == null || asNumber(record.RoundID) === roundId)
+    .sort((a, b) => recordSortValue(a) - recordSortValue(b))
+
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    const record = candidates[index]
+    if (!recordIsTerminal(record)) continue
+    const rawHole = asNumber(record.Hole)
+    if (rawHole == null) return null
+    const holeNumber = Math.round(rawHole) + 1
+    return holeNumber >= 1 && holeNumber <= 18 ? holeNumber : null
+  }
+  return null
+}
+
+const parseOutputLogHoleState = (text: string): OutputLogHoleState => {
+  const holeMatches = [...text.matchAll(/currentHole\s*:\s*(-?\d+)/gi)]
+  const validHoleMatches = holeMatches.filter((match) => {
+    const raw = Number(match[1])
+    return Number.isFinite(raw) && raw >= 0 && raw < 18
+  })
+
+  const latestValidHole = validHoleMatches[validHoleMatches.length - 1]
+  const holeNumber = latestValidHole ? Number(latestValidHole[1]) + 1 : null
+  const latestHoleMarkerIndex = latestValidHole?.index ?? -1
+  const terminalMatches = [...text.matchAll(/AllPlayersHoledOut\s*:\s*1\b/gi)]
+  const latestTerminalIndex = terminalMatches.length > 0
+    ? terminalMatches[terminalMatches.length - 1].index ?? -1
+    : -1
 
   return {
     holeNumber,
@@ -313,7 +366,6 @@ const loadHoleForwardEastNorth = (holeNumber: number) => {
       return [east / length, north / length]
     })
     .catch((error) => {
-      // A transient raw-artifact failure must not permanently poison this hole.
       holeForwardCache.delete(holeNumber)
       throw error
     })
@@ -471,12 +523,9 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
   const courseKey = asString(latestRecord.CourseKey)
   const rawLatestHole = asNumber(latestRecord.Hole)
   const latestRecordHole = rawLatestHole == null ? null : Math.round(rawLatestHole) + 1
+  const terminalHole = latestTerminalHoleForRound(roundText, activeRoundId)
   const logHole = logState.holeNumber
 
-  // currentRound.dat commonly retains the most recent range/practice record until
-  // the first on-course shot is completed. Never project another course's world
-  // coordinates onto Greywolf. Stay on the cached tee until a GreyWolf_gsp shot
-  // arrives, using output_log only for the current hole when available.
   if (courseKey != null && !isGreywolfCourseKey(courseKey)) {
     const warning = `Ignoring stale ${courseKey} currentRound state; waiting for a Greywolf shot.`
     if (logHole != null) {
@@ -524,10 +573,20 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
       holeNumber = 1
       warnings.push('New-round Hole 1 detected while currentRound still contains the prior Hole 18.')
     } else {
-      // currentRound has a newer physical shot than the log marker. Never move the
-      // player backward because output_log was momentarily stale or unreadable.
       holeNumber = latestRecordHole
     }
+  }
+
+  if (
+    latestRecordHole != null
+    && latestRecordHole < 18
+    && terminalHole === latestRecordHole
+    && holeNumber === latestRecordHole
+  ) {
+    holeNumber = latestRecordHole + 1
+    warnings.push(
+      `Hole ${latestRecordHole} terminal state detected in currentRound; preloading Hole ${holeNumber} from the cached tee.`,
+    )
   }
 
   if (holeNumber == null || holeNumber < 1 || holeNumber > 18) {
@@ -547,8 +606,6 @@ const buildSnapshot = async (roundText: string, logTail: string): Promise<Browse
     }
   }
 
-  // If output_log has moved us to a different hole while currentRound is stale,
-  // never reuse a historical record from that hole. Start clean at its cached tee.
   if (latestRecordHole !== holeNumber) {
     return cachedTeeSnapshot({
       courseKey,
@@ -633,8 +690,6 @@ export const connectToBrowserGsproCourseState = ({
         })
       : Promise.resolve(lastGoodLogTail)
 
-    // Do not advance signatures until parsing succeeds; a mid-write JSON failure is
-    // retried on the next poll instead of silently dropping a shot.
     const [roundText, logTail] = await Promise.all([roundTextPromise, logTailPromise])
     const snapshot = await buildSnapshot(roundText, logTail)
     if (disconnected) return
