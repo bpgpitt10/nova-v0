@@ -22,6 +22,9 @@ export type AimSurfaceDistribution = {
 }
 
 export type ModeledAimSample = {
+  /** Airborne touchdown point. */
+  carryLanding: CoursePointYds
+  /** Resting/final position after historical rollout. */
   landing: CoursePointYds
   kind: CourseSurfaceClassification
   /** Exact geometric state retained for later SG/value evaluation. */
@@ -151,19 +154,26 @@ export const sampleModeledAimDistribution = ({
   ball,
   aimPoint,
   carryMeanYds,
+  totalMeanYds,
   lateralMeanYds,
   carrySigmaYds,
+  totalSigmaYds,
   lateralSigmaYds,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
   aimPoint: CoursePointYds
   carryMeanYds: number
+  /** Resting-distance mean. Falls back to carry when total is unavailable. */
+  totalMeanYds?: number | null
   lateralMeanYds: number
   carrySigmaYds: number | null | undefined
+  /** Resting-distance variability. Falls back to carry sigma when unavailable. */
+  totalSigmaYds?: number | null
   lateralSigmaYds: number | null | undefined
 }): {
   distribution: AimSurfaceDistribution
+  meanCarryLanding: CoursePointYds
   meanLanding: CoursePointYds
   samples: ModeledAimSample[]
   probabilityContours: AimProbabilityContour[]
@@ -181,14 +191,28 @@ export const sampleModeledAimDistribution = ({
 
   const forward = unit(vector(ball, aimPoint))
   const right = rightOf(forward)
-  const meanLanding = addScaled(ball, forward, carryMeanYds, right, lateralMeanYds)
+  const resolvedTotalMean =
+    typeof totalMeanYds === 'number' && Number.isFinite(totalMeanYds)
+      ? Math.max(carryMeanYds, totalMeanYds)
+      : carryMeanYds
+  const resolvedTotalSigma =
+    typeof totalSigmaYds === 'number' && Number.isFinite(totalSigmaYds) && totalSigmaYds > 0
+      ? totalSigmaYds
+      : carrySigmaYds
+  const meanCarryLanding = addScaled(ball, forward, carryMeanYds, right, lateralMeanYds)
+  const meanLanding = addScaled(ball, forward, resolvedTotalMean, right, lateralMeanYds)
 
   const samples = STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }): ModeledAimSample => {
     const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
+    // Use the same longitudinal quantile for carry and total so the modeled
+    // rollout does not invent an independent second source of shot-length noise.
+    const total = Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma)
     const offline = lateralMeanYds + lateralZ * lateralSigmaYds
-    const landing = addScaled(ball, forward, carry, right, offline)
+    const carryLanding = addScaled(ball, forward, carry, right, offline)
+    const landing = addScaled(ball, forward, total, right, offline)
     const classification = classifyTacticalLandingPoint(hole, landing)
     return {
+      carryLanding,
       landing,
       kind: classification.kind,
       state: buildDecisionLandingState(hole, landing, classification),
@@ -200,7 +224,7 @@ export const sampleModeledAimDistribution = ({
       const radius = CONTOUR_RADII[probability as keyof typeof CONTOUR_RADII]
       return {
         probability: probability as AimProbabilityContour['probability'],
-        carryRadiusYds: radius * carrySigmaYds,
+        carryRadiusYds: radius * resolvedTotalSigma,
         lateralRadiusYds: radius * lateralSigmaYds,
       }
     },
@@ -208,6 +232,7 @@ export const sampleModeledAimDistribution = ({
 
   return {
     distribution: summarizeSurfaceKinds(samples),
+    meanCarryLanding,
     meanLanding,
     samples,
     probabilityContours,
