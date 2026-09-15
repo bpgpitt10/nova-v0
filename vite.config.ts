@@ -6,6 +6,9 @@ const loopermanAsset = fileURLToPath(new URL('./src/assets/looperman.PNG', impor
 const looperLogoWhiteAsset = fileURLToPath(
   new URL('./src/assets/LooperLogoWhite.png', import.meta.url),
 )
+const reliableGsproCourseState = fileURLToPath(
+  new URL('./src/adapters/reliableBrowserGsproCourseState.ts', import.meta.url),
+)
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
@@ -19,6 +22,12 @@ export default defineConfig(({ command }) => ({
     : {}),
   resolve: {
     alias: [
+      // Aim Lab historically imports this adapter relatively. Route that import through
+      // the reliability guard without disturbing the core parser it wraps.
+      {
+        find: /^\.\.\/adapters\/browserGsproCourseState$/,
+        replacement: reliableGsproCourseState,
+      },
       { find: /(?:\.\.\/|\.\/)assets\/looperman\.png$/, replacement: loopermanAsset },
       {
         find: /(?:\.\.\/|\.\/)assets\/looperlogowhite\.png$/,
