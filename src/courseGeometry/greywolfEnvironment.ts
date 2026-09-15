@@ -4,8 +4,7 @@ import type {
   CoursePolygonYds,
 } from './types'
 
-const ENVIRONMENT_PACKAGE_URL =
-  'https://raw.githubusercontent.com/bpgpitt10/nova-v0/course-geometry-package-v1/public/course-geometry/greywolf-v1.json'
+const ENVIRONMENT_PACKAGE_URL = '/course-geometry/greywolf/environment-v1.json'
 
 const ENVIRONMENT_KINDS = new Set(['woods', 'scrub', 'grass_context'])
 
@@ -148,7 +147,7 @@ const loadEnvironment = async (holeNumber: number): Promise<readonly CourseConte
         sourceFeature: feature.kind,
         sourceIds: feature.osmId == null ? undefined : [feature.osmId],
         confidence: 'high',
-        note: 'Greywolf environment geometry from course-geometry-package-v1.',
+        note: 'Greywolf environment geometry cached with the canonical course branch.',
       },
     }]
   })
