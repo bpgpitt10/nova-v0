@@ -11,6 +11,8 @@ export type CourseSurfaceKind =
   | 'water'
   | 'penalty'
 
+export type CourseContextKind = 'woods' | 'scrub' | 'grass-context'
+
 export type CourseSurfaceClassification = CourseSurfaceKind | 'unknown'
 
 export type GeometryAvailability = 'available' | 'partial' | 'unavailable'
@@ -29,6 +31,18 @@ export type CourseSurface = {
   kind: CourseSurfaceKind
   polygons: readonly CoursePolygonYds[]
   provenance: CourseSurfaceProvenance
+}
+
+export type CourseContextLayer = {
+  id: string
+  kind: CourseContextKind
+  polygons: readonly CoursePolygonYds[]
+  provenance: CourseSurfaceProvenance
+}
+
+export type CourseContourLine = {
+  elevationFt: number
+  points: readonly CoursePointYds[]
 }
 
 export type CourseGeometryBounds = {
@@ -93,6 +107,8 @@ export type CourseHoleGeometry = {
     pin?: CoursePointYds
   }
   surfaces: readonly CourseSurface[]
+  contextLayers?: readonly CourseContextLayer[]
+  contours?: readonly CourseContourLine[]
   availability: Readonly<Record<CourseSurfaceKind, GeometryAvailability>>
   registration: CourseRegistration
   provenance: CourseGeometryProvenance
