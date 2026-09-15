@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { loadGreywolfHoleGeometry } from '../courseGeometry/greywolfCourseLoader'
+import {
+  courseCatalog,
+  GREYWOLF_COURSE_ID,
+  type CourseId,
+} from '../courseGeometry/courseCatalog'
+import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import type {
   CourseContextKind,
   CourseHoleGeometry,
@@ -17,18 +22,20 @@ const PAD = 28
 const signed = (value: number, digits = 1) => `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
 
 function CourseRenderDevPage() {
+  const [selectedCourseId, setSelectedCourseId] = useState<CourseId>(GREYWOLF_COURSE_ID)
   const [selectedHole, setSelectedHole] = useState(1)
   const [geometry, setGeometry] = useState<CourseHoleGeometry | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showContours, setShowContours] = useState(true)
   const [showVegetation, setShowVegetation] = useState(true)
   const [showShots, setShowShots] = useState(true)
+  const selectedCourse = courseCatalog.find((course) => course.id === selectedCourseId)
 
   useEffect(() => {
     let active = true
     setGeometry(null)
     setLoadError(null)
-    loadGreywolfHoleGeometry(selectedHole)
+    loadCourseHoleGeometry(selectedCourseId, selectedHole)
       .then((payload) => {
         if (active) setGeometry(payload)
       })
@@ -38,17 +45,18 @@ function CourseRenderDevPage() {
     return () => {
       active = false
     }
-  }, [selectedHole])
+  }, [selectedCourseId, selectedHole])
 
   const displayBounds = useMemo(() => {
     if (!geometry) return null
+    const clampGreywolfHoleOne = selectedCourseId === GREYWOLF_COURSE_ID && selectedHole === 1
     return {
       minX: geometry.bounds.minX,
       maxX: geometry.bounds.maxX,
-      minY: Math.max(geometry.bounds.minY, selectedHole === 1 ? -28 : geometry.bounds.minY),
+      minY: Math.max(geometry.bounds.minY, clampGreywolfHoleOne ? -28 : geometry.bounds.minY),
       maxY: geometry.bounds.maxY,
     }
-  }, [geometry, selectedHole])
+  }, [geometry, selectedCourseId, selectedHole])
 
   const transform = useMemo(() => {
     if (!displayBounds) return null
@@ -112,7 +120,7 @@ function CourseRenderDevPage() {
       <main className="course-render-dev">
         <section className="course-loading-card" role="alert">
           <p className="course-render-eyebrow">LOOPER · COURSE RENDER</p>
-          <h1>Greywolf Hole {selectedHole} could not load</h1>
+          <h1>{selectedCourse?.name ?? selectedCourseId} Hole {selectedHole} could not load</h1>
           <p>{loadError}</p>
         </section>
       </main>
@@ -124,7 +132,7 @@ function CourseRenderDevPage() {
       <main className="course-render-dev">
         <section className="course-loading-card" aria-live="polite">
           <p className="course-render-eyebrow">LOOPER · COURSE RENDER</p>
-          <h1>Loading Greywolf Hole {selectedHole}…</h1>
+          <h1>Loading {selectedCourse?.name ?? selectedCourseId} Hole {selectedHole}…</h1>
         </section>
       </main>
     )
@@ -157,10 +165,14 @@ function CourseRenderDevPage() {
   const contourRange = contourElevations.length > 0
     ? `${Math.min(...contourElevations).toFixed(0)}–${Math.max(...contourElevations).toFixed(0)} ft`
     : 'Unavailable'
-  const hasHoleOneEvidence = selectedHole === 1
+  const hasHoleOneEvidence = selectedCourseId === GREYWOLF_COURSE_ID && selectedHole === 1
+  const hasLidar = Boolean(geometry.terrain || contours.length)
   const exactMatches = geometry.registration.validation?.exactSurfaceMatches
   const testedEndpoints = geometry.registration.validation?.testedEndpoints
   const within2m = geometry.registration.validation?.endpointsWithin2m
+  const coordinateFrameLabel = geometry.coordinateSystem.origin === 'osm-hole-route-start'
+    ? 'OSM HOLE START LOCAL YARDS'
+    : 'SELECTED TEE LOCAL YARDS'
 
   return (
     <main className="course-render-dev">
@@ -169,10 +181,21 @@ function CourseRenderDevPage() {
           <p className="course-render-eyebrow">LOOPER · CANONICAL COURSE RENDER</p>
           <h1>{geometry.courseName} · Hole {geometry.holeNumber}</h1>
           <p>
-            The same course-wide OSM geometry, vegetation context, LiDAR terrain and local-yard coordinate system used by Looper strategy.
+            Canonical course geometry loaded through the same provider contract used by Looper strategy. OSM context and LiDAR terrain appear when the source package provides them.
           </p>
         </div>
         <div className="course-render-controls" aria-label="Render controls">
+          <label className="hole-picker">
+            Course
+            <select
+              value={selectedCourseId}
+              onChange={(event) => setSelectedCourseId(event.target.value as CourseId)}
+            >
+              {courseCatalog.map((course) => (
+                <option key={course.id} value={course.id}>{course.name}</option>
+              ))}
+            </select>
+          </label>
           <label className="hole-picker">
             Hole
             <select value={selectedHole} onChange={(event) => setSelectedHole(Number(event.target.value))}>
@@ -215,13 +238,13 @@ function CourseRenderDevPage() {
         <article className="course-map-card">
           <div className="course-map-title-row">
             <div>
-              <span className="course-map-kicker">{geometry.location ?? 'Panorama, BC'}</span>
+              <span className="course-map-kicker">{geometry.location ?? selectedCourse?.location ?? 'Unknown location'}</span>
               <h2>
                 {geometry.par ? `Par ${geometry.par} · ` : ''}
                 {geometry.statedYardageYds ? `${geometry.statedYardageYds.toFixed(0)} yd geometry` : 'Course geometry'}
               </h2>
             </div>
-            <span className="truth-pill">OSM + LIDAR</span>
+            <span className="truth-pill">{hasLidar ? 'OSM + LIDAR' : 'OSM'}</span>
           </div>
 
           <svg
@@ -229,7 +252,7 @@ function CourseRenderDevPage() {
             viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
             role="img"
             aria-label={`Data-driven rendering of ${geometry.courseName} hole ${geometry.holeNumber}`}
-            data-testid={`greywolf-hole-${geometry.holeNumber}-render`}
+            data-testid={`${geometry.courseId}-hole-${geometry.holeNumber}-render`}
           >
             <defs>
               <linearGradient id="courseBg" x1="0" y1="1" x2="0" y2="0">
@@ -342,7 +365,8 @@ function CourseRenderDevPage() {
             <a href={geometry.provenance.copyrightUrl ?? 'https://www.openstreetmap.org/copyright'} target="_blank" rel="noreferrer">
               OpenStreetMap contributors
             </a>
-            {' '}· {geometry.provenance.license ?? 'ODbL'} · LiDAR terrain from the compiled Greywolf terrain package.
+            {' '}· {geometry.provenance.license ?? 'ODbL'}
+            {hasLidar ? ' · LiDAR terrain from the compiled course package.' : ''}
           </p>
         </article>
 
@@ -355,7 +379,7 @@ function CourseRenderDevPage() {
               <div><dt>Vegetation</dt><dd>{(geometry.contextLayers ?? []).length} layers</dd></div>
               <div><dt>LiDAR terrain</dt><dd>{geometry.terrain ? 'DEM ACTIVE' : contours.length ? 'CONTOURS' : 'UNAVAILABLE'}</dd></div>
               <div><dt>Contour range</dt><dd>{contourRange}</dd></div>
-              <div><dt>Coordinate frame</dt><dd>TEE LOCAL YARDS</dd></div>
+              <div><dt>Coordinate frame</dt><dd>{coordinateFrameLabel}</dd></div>
             </dl>
           </section>
 
@@ -381,7 +405,7 @@ function CourseRenderDevPage() {
               <div><strong>{geometry.registration.residualsMeters?.mean?.toFixed(2) ?? '—'} m</strong><span>mean residual</span></div>
             </div>
             <p className="proof-footnote">
-              Course-wide similarity registration. This is the same local-yard frame used for ball position and strategy calculations.
+              {geometry.registration.note ?? 'Static course registration evidence has not yet been attached to this package.'}
             </p>
           </section>
 
