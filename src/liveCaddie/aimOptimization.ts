@@ -1,18 +1,23 @@
 import { classifyPoint } from '../courseGeometry/geometry'
-import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
-  CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import {
+  MODELED_AIM_SAMPLE_COUNT,
+  sampleModeledAimDistribution,
+  type AimProbabilityContour,
+  type AimSurfaceDistribution,
+  type ModeledAimSample,
+} from './aimOutcomeSampling'
+import {
   buildWeightedEmpiricalStockShots,
   evaluateEmpiricalAimDistribution,
+  type EmpiricalAimSurfaceDistribution,
 } from './empiricalAimOutcomes'
 import { buildLiveCaddieProfileSet } from './profileProvider'
 import { modelShotContext } from './shotContextModel'
-import type { LiveCaddieClubProfile } from './types'
 
 export const AIM_OFFSETS_YDS = [-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15] as const
 
@@ -33,22 +38,18 @@ export type AimLabEnvironment = {
   surfaceOverride?: string | null
 }
 
-export type AimSurfaceDistribution = {
-  bySurface: Partial<Record<CourseSurfaceClassification, number>>
-  preferred: number
-  rough: number
-  trouble: number
-  penalty: number
-  unknown: number
-}
+export type { AimSurfaceDistribution } from './aimOutcomeSampling'
 
 export type AimCandidateEvaluation = {
   aimOffsetYds: number
   aimPoint: CoursePointYds
   meanLanding: CoursePointYds
+  /** Probabilities and the map cloud come from this exact deterministic sample set. */
   surfaceOutcomes: AimSurfaceDistribution | null
+  modeledSamples: ModeledAimSample[]
+  probabilityContours: AimProbabilityContour[]
   /** Weighted historical Stock shots, including the observed mishit tail, replayed at this aim. */
-  empiricalAllShots: AimSurfaceDistribution | null
+  empiricalAllShots: EmpiricalAimSurfaceDistribution | null
   empiricalShotCount: number
   score: number | null
   scoreParts: {
@@ -78,14 +79,12 @@ export type ClubAimEvaluation = {
   carryGapYds: number
   supportShots: number
   supportingSessions: number
+  modeledSampleCount: number
   empiricalShotCount: number
   candidates: AimCandidateEvaluation[]
   bestCandidate: AimCandidateEvaluation | null
   notes: string[]
 }
-
-const Z_POINTS = [-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3] as const
-const gaussianWeight = (z: number) => Math.exp(-0.5 * z * z)
 
 const vector = (from: CoursePointYds, to: CoursePointYds): CoursePointYds => [
   to[0] - from[0],
@@ -118,78 +117,6 @@ const aimPointAtOffset = (
   const baseForward = unit(vector(ball, target))
   const baseRight = rightOf(baseForward)
   return addScaled(target, baseForward, 0, baseRight, aimOffsetYds)
-}
-
-const modeledDistribution = (
-  hole: CourseHoleGeometry,
-  profile: LiveCaddieClubProfile,
-  ball: CoursePointYds,
-  aimPoint: CoursePointYds,
-  carryMeanYds: number,
-  lateralMeanYds: number,
-): { distribution: AimSurfaceDistribution; meanLanding: CoursePointYds } | null => {
-  const carrySigma = profile.carry_sigma_yds
-  const lateralSigma = profile.lateral_sigma_yds
-  if (
-    typeof carrySigma !== 'number' ||
-    !Number.isFinite(carrySigma) ||
-    carrySigma <= 0 ||
-    typeof lateralSigma !== 'number' ||
-    !Number.isFinite(lateralSigma) ||
-    lateralSigma <= 0
-  ) {
-    return null
-  }
-
-  const forward = unit(vector(ball, aimPoint))
-  const right = rightOf(forward)
-  const weights: Partial<Record<CourseSurfaceClassification, number>> = {}
-  let totalWeight = 0
-
-  for (const carryZ of Z_POINTS) {
-    for (const lateralZ of Z_POINTS) {
-      const weight = gaussianWeight(carryZ) * gaussianWeight(lateralZ)
-      const carry = Math.max(0, carryMeanYds + carryZ * carrySigma)
-      const offline = lateralMeanYds + lateralZ * lateralSigma
-      const landing = addScaled(ball, forward, carry, right, offline)
-      const kind = classifyPoint(hole, landing).kind
-      weights[kind] = (weights[kind] ?? 0) + weight
-      totalWeight += weight
-    }
-  }
-
-  const bySurface: Partial<Record<CourseSurfaceClassification, number>> = {}
-  Object.entries(weights).forEach(([kind, weight]) => {
-    bySurface[kind as CourseSurfaceClassification] = weight / totalWeight
-  })
-
-  let preferred = 0
-  let rough = 0
-  let trouble = 0
-  let penalty = 0
-  let unknown = 0
-  Object.entries(bySurface).forEach(([kind, fraction]) => {
-    const typedKind = kind as CourseSurfaceClassification
-    const semantics = TACTICAL_SURFACE_SEMANTICS[typedKind]
-    if (semantics.preferred) preferred += fraction
-    if (typedKind === 'rough') rough += fraction
-    if (semantics.countsAsTrouble) trouble += fraction
-    if (semantics.countsAsPenalty) penalty += fraction
-    if (typedKind === 'unknown') unknown += fraction
-  })
-
-  const meanLanding = addScaled(
-    ball,
-    forward,
-    carryMeanYds,
-    right,
-    lateralMeanYds,
-  )
-
-  return {
-    distribution: { bySurface, preferred, rough, trouble, penalty, unknown },
-    meanLanding,
-  }
 }
 
 const scoreCandidate = (
@@ -290,32 +217,37 @@ export const evaluateAimLab = (
           empiricalCarryAdjustmentYds,
           empiricalLateralAdjustmentYds,
         )
-        const distribution = modeledDistribution(
+        const sampled = sampleModeledAimDistribution({
           hole,
-          profile,
           ball,
           aimPoint,
-          modeledCarryYds,
-          modeledLateralBiasYds,
-        )
-        if (!distribution) {
+          carryMeanYds: modeledCarryYds,
+          lateralMeanYds: modeledLateralBiasYds,
+          carrySigmaYds: profile.carry_sigma_yds,
+          lateralSigmaYds: profile.lateral_sigma_yds,
+        })
+        if (!sampled) {
           return {
             aimOffsetYds,
             aimPoint,
             meanLanding: aimPoint,
             surfaceOutcomes: null,
+            modeledSamples: [],
+            probabilityContours: [],
             empiricalAllShots,
             empiricalShotCount: empiricalShots.length,
             score: null,
             scoreParts: null,
           }
         }
-        const scored = scoreCandidate(distribution.distribution, carryGapYds)
+        const scored = scoreCandidate(sampled.distribution, carryGapYds)
         return {
           aimOffsetYds,
           aimPoint,
-          meanLanding: distribution.meanLanding,
-          surfaceOutcomes: distribution.distribution,
+          meanLanding: sampled.meanLanding,
+          surfaceOutcomes: sampled.distribution,
+          modeledSamples: sampled.samples,
+          probabilityContours: sampled.probabilityContours,
           empiricalAllShots,
           empiricalShotCount: empiricalShots.length,
           score: scored.score,
@@ -354,6 +286,7 @@ export const evaluateAimLab = (
         carryGapYds,
         supportShots: support?.included_stock_shots ?? 0,
         supportingSessions: support?.sessions ?? 0,
+        modeledSampleCount: MODELED_AIM_SAMPLE_COUNT,
         empiricalShotCount: empiricalShots.length,
         candidates,
         bestCandidate,
