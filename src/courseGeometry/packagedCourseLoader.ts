@@ -2,6 +2,7 @@ import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
 import type {
   CourseContextKind,
   CourseContextLayer,
+  CourseCoordinateOrigin,
   CourseGeometryProvenance,
   CourseHoleGeometry,
   CoursePointYds,
@@ -31,6 +32,7 @@ type RawHole = {
   holeNumber?: unknown
   par?: unknown
   statedYardageYds?: unknown
+  coordinateSystem?: { origin?: unknown }
   bounds?: { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
   markers?: { tee?: unknown; pin?: unknown }
   surfaces?: unknown
@@ -90,6 +92,9 @@ const parseConfidence = (value: unknown) =>
     ? value
     : 'high'
 
+const parseCoordinateOrigin = (value: unknown): CourseCoordinateOrigin =>
+  value === 'osm-hole-route-start' ? value : 'selected-tee'
+
 const parseSurface = (raw: RawLayer): CourseSurface | null => {
   if (typeof raw.id !== 'string' || !SURFACE_KINDS.has(raw.kind as CourseSurfaceKind)) return null
   const parsedPolygons = parsePolygons(raw.polygons)
@@ -141,7 +146,7 @@ const parseRegistration = (value: unknown): CourseRegistration => {
     method,
     sourceCoordinateSystem: typeof raw.sourceCoordinateSystem === 'string'
       ? raw.sourceCoordinateSystem
-      : 'cached OSM package -> selected-tee local yards',
+      : 'cached OSM package -> local yards',
     targetCoordinateSystem: 'looper-hole-local-yards',
     note: typeof raw.note === 'string' ? raw.note : undefined,
   }
@@ -230,7 +235,7 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
 
   const tee = parsePoint(raw.markers?.tee)
   const pin = parsePoint(raw.markers?.pin)
-  if (!tee) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has no selected tee anchor.`)
+  if (!tee) throw new Error(`${String(payload.courseName ?? courseId)} Hole ${holeNumber} has no tee/origin anchor.`)
 
   const surfaces = (Array.isArray(raw.surfaces) ? raw.surfaces as RawLayer[] : [])
     .flatMap((candidate): CourseSurface[] => {
@@ -255,7 +260,7 @@ const parseHole = (courseId: CourseId, payload: RawPackage, holeNumber: number):
     statedYardageYds: finite(raw.statedYardageYds) ? raw.statedYardageYds : undefined,
     coordinateSystem: {
       units: 'yards',
-      origin: 'selected-tee',
+      origin: parseCoordinateOrigin(raw.coordinateSystem?.origin),
       xAxis: 'right',
       yAxis: 'forward',
     },
