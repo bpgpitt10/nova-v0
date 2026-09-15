@@ -133,15 +133,35 @@ function AimMap({
   interactive: boolean
   onSetPoint: (point: CoursePointYds) => void
 }) {
-  const spanX = Math.max(1, hole.bounds.maxX - hole.bounds.minX)
-  const spanY = Math.max(1, hole.bounds.maxY - hole.bounds.minY)
+  const viewSize = 100
+  const pad = 4
+  const displayBounds = {
+    minX: hole.bounds.minX,
+    maxX: hole.bounds.maxX,
+    // Match the proven course renderer: retain useful terrain behind the selected
+    // tee, but do not let unrelated mapped features far behind the tee determine
+    // the live-hole framing.
+    minY: Math.max(hole.bounds.minY, -28),
+    maxY: hole.bounds.maxY,
+  }
+  const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
+  const spanY = Math.max(1, displayBounds.maxY - displayBounds.minY)
+  const scale = Math.min((viewSize - pad * 2) / spanX, (viewSize - pad * 2) / spanY)
+  const usedWidth = spanX * scale
+  const usedHeight = spanY * scale
+  const offsetX = (viewSize - usedWidth) / 2
+  const offsetY = (viewSize - usedHeight) / 2
+
+  // IMPORTANT: use one yards→SVG scale for both axes. The previous Aim Lab
+  // renderer normalized X and Y independently to 0–100, which made a long,
+  // narrow hole look several times wider than the canonical course render.
   const project = (point: CoursePointYds): [number, number] => [
-    ((point[0] - hole.bounds.minX) / spanX) * 100,
-    ((hole.bounds.maxY - point[1]) / spanY) * 100,
+    offsetX + (point[0] - displayBounds.minX) * scale,
+    viewSize - (offsetY + (point[1] - displayBounds.minY) * scale),
   ]
   const unproject = (x: number, y: number): CoursePointYds => [
-    hole.bounds.minX + (x / 100) * spanX,
-    hole.bounds.maxY - (y / 100) * spanY,
+    displayBounds.minX + (x - offsetX) / scale,
+    displayBounds.minY + (viewSize - y - offsetY) / scale,
   ]
 
   const ballSvg = project(ball)
@@ -157,15 +177,15 @@ function AimMap({
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
     if (!interactive) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) / rect.width) * 100
-    const y = ((event.clientY - rect.top) / rect.height) * 100
+    const x = ((event.clientX - rect.left) / rect.width) * viewSize
+    const y = ((event.clientY - rect.top) / rect.height) * viewSize
     onSetPoint(unproject(x, y))
   }
 
   const lateralSigma = selected?.lateralSigmaYds ?? 0
   const carrySigma = selected?.carrySigmaYds ?? 0
-  const ellipseRx = Math.max(0.5, (2 * lateralSigma / spanX) * 100)
-  const ellipseRy = Math.max(0.5, (2 * carrySigma / spanY) * 100)
+  const ellipseRx = Math.max(0.5, 2 * lateralSigma * scale)
+  const ellipseRy = Math.max(0.5, 2 * carrySigma * scale)
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
   const shotAngle = (Math.atan2(shotDy, shotDx) * 180) / Math.PI + 90
@@ -174,7 +194,7 @@ function AimMap({
     <div className="aim-map-shell">
       <svg
         className={`aim-map edit-${editMode}${interactive ? '' : ' live-locked'}`}
-        viewBox="0 0 100 100"
+        viewBox={`0 0 ${viewSize} ${viewSize}`}
         onClick={onClick}
       >
         {surfaceOrder.flatMap((kind) =>
@@ -303,8 +323,6 @@ function AimLabPage() {
       onStatusChange: setLiveStatus,
       onError: (error) => setLiveError(error instanceof Error ? error.message : String(error)),
       onSnapshot: (snapshot) => {
-        // Any good snapshot proves the reader recovered. Do not leave a stale red
-        // banner after a transient file-write/read race.
         setLiveError(null)
         setLiveSnapshot(snapshot)
         if (snapshot.holeNumber && snapshot.holeNumber !== recommendationHoleRef.current) {
@@ -372,9 +390,6 @@ function AimLabPage() {
 
     const nextBall = liveSnapshot.ballLocalYds
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
-
-    // If one live read is incomplete, keep the last known position. Never teleport
-    // the golfer back to the tee merely because a sensor field was unavailable.
     if (!nextBall) return
 
     const nextPin = estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
