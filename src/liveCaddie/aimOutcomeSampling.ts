@@ -5,6 +5,10 @@ import type {
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
+import {
+  buildDecisionLandingState,
+  type DecisionLandingState,
+} from './decisionLandingState'
 
 export const MODELED_AIM_SAMPLE_COUNT = 2048
 
@@ -20,6 +24,8 @@ export type AimSurfaceDistribution = {
 export type ModeledAimSample = {
   landing: CoursePointYds
   kind: CourseSurfaceClassification
+  /** Exact geometric state retained for later SG/value evaluation. */
+  state: DecisionLandingState
 }
 
 export type AimProbabilityContour = {
@@ -181,9 +187,11 @@ export const sampleModeledAimDistribution = ({
     const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
     const offline = lateralMeanYds + lateralZ * lateralSigmaYds
     const landing = addScaled(ball, forward, carry, right, offline)
+    const classification = classifyTacticalLandingPoint(hole, landing)
     return {
       landing,
-      kind: classifyTacticalLandingPoint(hole, landing).kind,
+      kind: classification.kind,
+      state: buildDecisionLandingState(hole, landing, classification),
     }
   })
 
