@@ -1,22 +1,22 @@
+import type { ModeledAimSample } from './aimOutcomeSampling'
 import type { DecisionRiskProfile } from './decisionRiskProfile'
+import {
+  evaluateCandidateNextStateValue,
+  type CandidateNextStateValue,
+} from './nextStateValue'
 
 export type AimDecisionPolicy = {
   /**
-   * Aim points within this absolute catastrophe-probability margin of the
-   * safest aim are allowed to compete on success and severity.
+   * Candidates within this absolute catastrophe-probability margin of the
+   * safest authoritative choice may compete on expected future strokes.
    */
   catastropheToleranceAboveBest: number
-  /**
-   * Club selection first establishes which clubs can actually perform the
-   * intended shot. A club is target-fit when its absolute modeled carry gap is
-   * within this many yards of the best carry fit in the bag.
-   */
+  /** @deprecated Next-state value replaces target-fit carry gating. Retained for API compatibility. */
   carryGapToleranceAboveBestYds: number
   /**
-   * Thin player samples remain visible and can still win when no adequately
-   * supported club fits the intended distance. When a supported target-fit
-   * alternative exists, clubs below this threshold are provisional and cannot
-   * outrank it on a tiny sample.
+   * Thin player samples remain visible. When an adequately supported option
+   * exists, under-supported clubs remain provisional rather than overruling a
+   * mature player model on a tiny sample.
    */
   minimumAuthoritativeSupportShots: number
 }
@@ -30,7 +30,11 @@ export const DEFAULT_AIM_DECISION_POLICY: AimDecisionPolicy = {
 export type RiskRankableAim = {
   aimOffsetYds: number
   riskProfile: DecisionRiskProfile | null
-  /** Legacy V0 utility remains a final deterministic tie-breaker only. */
+  /** Canonical deterministic core cloud. Used to compute next-shot state value. */
+  modeledSamples?: readonly ModeledAimSample[]
+  /** Optional precomputed value, useful for proofs and diagnostics. */
+  stateValue?: CandidateNextStateValue | null
+  /** Legacy V0 utility is diagnostic only and is never used for authoritative ranking. */
   score: number | null
 }
 
@@ -41,91 +45,101 @@ export type RankedAimChoice<T extends RiskRankableAim> = {
   decisionReason: string
 }
 
-const compareRiskUtility = <T extends RiskRankableAim>(a: T, b: T) => {
-  const aRisk = a.riskProfile!
-  const bRisk = b.riskProfile!
+export const nextStateValueForAimCandidate = (candidate: RiskRankableAim): CandidateNextStateValue | null => {
+  if (typeof candidate.stateValue !== 'undefined') return candidate.stateValue
+  if (!candidate.riskProfile || !candidate.modeledSamples) return null
+  return evaluateCandidateNextStateValue(candidate.modeledSamples, candidate.riskProfile)
+}
 
-  if (Math.abs(aRisk.success - bRisk.success) > 1e-9) {
-    return bRisk.success - aRisk.success
+const compareAimValue = <T extends RiskRankableAim>(
+  a: { candidate: T; stateValue: CandidateNextStateValue; risk: DecisionRiskProfile },
+  b: { candidate: T; stateValue: CandidateNextStateValue; risk: DecisionRiskProfile },
+) => {
+  const aValue = a.stateValue.expectedFutureStrokes!
+  const bValue = b.stateValue.expectedFutureStrokes!
+  if (Math.abs(aValue - bValue) > 1e-9) return aValue - bValue
+  if (Math.abs(a.risk.catastrophe - b.risk.catastrophe) > 1e-9) {
+    return a.risk.catastrophe - b.risk.catastrophe
   }
-  if (Math.abs(aRisk.seriousTrouble - bRisk.seriousTrouble) > 1e-9) {
-    return aRisk.seriousTrouble - bRisk.seriousTrouble
-  }
-  if (Math.abs(aRisk.unknown - bRisk.unknown) > 1e-9) {
-    return aRisk.unknown - bRisk.unknown
-  }
-  if (Math.abs(aRisk.expectedSeverity - bRisk.expectedSeverity) > 1e-9) {
-    return aRisk.expectedSeverity - bRisk.expectedSeverity
-  }
-
-  const aScore = a.score ?? Number.NEGATIVE_INFINITY
-  const bScore = b.score ?? Number.NEGATIVE_INFINITY
-  if (Math.abs(aScore - bScore) > 1e-9) return bScore - aScore
-
-  return Math.abs(a.aimOffsetYds) - Math.abs(b.aimOffsetYds)
+  if (Math.abs(a.risk.unknown - b.risk.unknown) > 1e-9) return a.risk.unknown - b.risk.unknown
+  return Math.abs(a.candidate.aimOffsetYds) - Math.abs(b.candidate.aimOffsetYds)
 }
 
 /**
  * Rank lateral aims for a single club.
  *
- * Catastrophe is a guardrail rather than a weighted term. Once an aim is close
- * enough to the safest catastrophe rate, the engine chooses the best golf
- * outcome inside that safe set: success first, then serious trouble, unknown
- * geometry, expected severity and finally the legacy V0 utility score.
+ * Catastrophe remains a policy guardrail, not an additive score. Inside the
+ * safe set, the authoritative objective is now expected future strokes from
+ * the exact distribution of next-shot states. Success/severity and the legacy
+ * V0 utility remain diagnostics only.
  */
 export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
   candidates: readonly T[],
   policy: AimDecisionPolicy = DEFAULT_AIM_DECISION_POLICY,
 ): RankedAimChoice<T>[] => {
-  const usable = candidates.filter(
-    (candidate): candidate is T & { riskProfile: DecisionRiskProfile } =>
-      candidate.riskProfile != null,
+  const evaluated = candidates.map((candidate) => ({
+    candidate,
+    risk: candidate.riskProfile,
+    stateValue: nextStateValueForAimCandidate(candidate),
+  }))
+  const usable = evaluated.filter(
+    (row): row is {
+      candidate: T
+      risk: DecisionRiskProfile
+      stateValue: CandidateNextStateValue & { expectedFutureStrokes: number }
+    } => row.risk != null && row.stateValue?.expectedFutureStrokes != null,
   )
-  const unavailable = candidates.filter((candidate) => candidate.riskProfile == null)
+  const unavailable = evaluated.filter(
+    (row) => row.risk == null || row.stateValue?.expectedFutureStrokes == null,
+  )
 
   if (usable.length === 0) {
-    return [...candidates]
-      .sort((a, b) => (b.score ?? Number.NEGATIVE_INFINITY) - (a.score ?? Number.NEGATIVE_INFINITY))
-      .map((candidate, index) => ({
-        candidate,
+    return [...evaluated]
+      .sort((a, b) => {
+        const aCat = a.risk?.catastrophe ?? Number.POSITIVE_INFINITY
+        const bCat = b.risk?.catastrophe ?? Number.POSITIVE_INFINITY
+        if (Math.abs(aCat - bCat) > 1e-9) return aCat - bCat
+        const aUnknown = a.risk?.unknown ?? Number.POSITIVE_INFINITY
+        const bUnknown = b.risk?.unknown ?? Number.POSITIVE_INFINITY
+        if (Math.abs(aUnknown - bUnknown) > 1e-9) return aUnknown - bUnknown
+        return Math.abs(a.candidate.aimOffsetYds) - Math.abs(b.candidate.aimOffsetYds)
+      })
+      .map((row, index) => ({
+        candidate: row.candidate,
         rank: index + 1,
-        withinCatastropheGuardrail: true,
-        decisionReason: index === 0
-          ? 'Full-risk profile unavailable; fell back to the legacy V0 utility score.'
-          : 'Full-risk profile unavailable; legacy V0 utility fallback.',
+        withinCatastropheGuardrail: false,
+        decisionReason: 'Next-state value unavailable; diagnostic risk ordering only. Recommendation is not authoritative.',
       }))
   }
 
-  const minCatastrophe = Math.min(...usable.map((candidate) => candidate.riskProfile.catastrophe))
+  const minCatastrophe = Math.min(...usable.map((row) => row.risk.catastrophe))
   const guardrail = minCatastrophe + policy.catastropheToleranceAboveBest
   const safe = usable
-    .filter((candidate) => candidate.riskProfile.catastrophe <= guardrail + 1e-9)
-    .sort(compareRiskUtility)
+    .filter((row) => row.risk.catastrophe <= guardrail + 1e-9)
+    .sort(compareAimValue)
   const outside = usable
-    .filter((candidate) => candidate.riskProfile.catastrophe > guardrail + 1e-9)
+    .filter((row) => row.risk.catastrophe > guardrail + 1e-9)
     .sort((a, b) => {
-      const catastropheDelta = a.riskProfile.catastrophe - b.riskProfile.catastrophe
-      return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareRiskUtility(a, b)
+      const catastropheDelta = a.risk.catastrophe - b.risk.catastrophe
+      return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareAimValue(a, b)
     })
-  unavailable.sort(
-    (a, b) => (b.score ?? Number.NEGATIVE_INFINITY) - (a.score ?? Number.NEGATIVE_INFINITY),
-  )
 
-  const rankedUsable: RankedAimChoice<T>[] = [...safe, ...outside].map((candidate, index) => ({
-    candidate,
+  const rankedUsable: RankedAimChoice<T>[] = [...safe, ...outside].map((row, index) => ({
+    candidate: row.candidate,
     rank: index + 1,
-    withinCatastropheGuardrail: candidate.riskProfile.catastrophe <= guardrail + 1e-9,
+    withinCatastropheGuardrail: row.risk.catastrophe <= guardrail + 1e-9,
     decisionReason: index === 0
-      ? `Within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; best success/severity profile inside that guardrail.`
-      : candidate.riskProfile.catastrophe > guardrail + 1e-9
-        ? 'Rejected by the catastrophe guardrail before success/severity comparison.'
-        : 'Safe-set alternative with a weaker success/severity profile.',
+      ? `Within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; lowest expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}) in the safe set.`
+      : row.risk.catastrophe > guardrail + 1e-9
+        ? 'Rejected by the catastrophe guardrail before next-state value comparison.'
+        : `Safe-set alternative with higher expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`,
   }))
-  const unavailableRows: RankedAimChoice<T>[] = unavailable.map((candidate, index) => ({
-    candidate,
+
+  const unavailableRows: RankedAimChoice<T>[] = unavailable.map((row, index) => ({
+    candidate: row.candidate,
     rank: rankedUsable.length + index + 1,
     withinCatastropheGuardrail: false,
-    decisionReason: 'Full-risk profile unavailable for this aim; not eligible ahead of modeled choices.',
+    decisionReason: 'Next-state value unavailable for this aim; not eligible ahead of value-ready choices.',
   }))
 
   return [...rankedUsable, ...unavailableRows]
@@ -133,7 +147,9 @@ export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
 
 export type ClubAimChoice<T extends RiskRankableAim> = {
   club: string
+  /** Retained for diagnostics; no longer a strategic ranking gate. */
   modeledCarryYds: number
+  /** Retained for diagnostics; no longer a strategic ranking gate. */
   targetDistanceYds: number
   supportShots: number
   bestCandidate: T | null
@@ -142,24 +158,24 @@ export type ClubAimChoice<T extends RiskRankableAim> = {
 export type RankedClubAimChoice<T extends RiskRankableAim, C extends ClubAimChoice<T>> = {
   evaluation: C
   rank: number
+  /** Compatibility field. Next-state V1 does not use target-fit gating. */
   targetFit: boolean
   withinCatastropheGuardrail: boolean
   decisionReason: string
 }
 
 /**
- * Rank club + aim recommendations without allowing either a short layup or an
- * under-supported club to win for the wrong reason.
+ * Rank club + aim recommendations on the value of where the full shot
+ * distribution leaves the player next.
  *
- * 1) Establish the clubs that can reasonably perform the intended distance.
- * 2) If that set contains adequately supported clubs, thin-sample clubs become
- *    provisional and rank behind the supported target-fit set.
- * 3) Apply the catastrophe guardrail inside the authoritative comparison set.
- * 4) Choose on success/severity inside the safe set.
+ * 1) Prefer adequately supported club models when available.
+ * 2) Apply the catastrophe guardrail across those choices.
+ * 3) Inside the safe set, minimize expected future strokes.
  *
- * A thin club can still win when it is the only reasonable distance fit. That
- * keeps cold-start bags usable without allowing two lucky 3W shots to overrule
- * a well-supported Driver that also fits the target.
+ * There is intentionally no carry-gap/target-fit gate here. A Driver leaving
+ * 175 yards and a 3W leaving 200 yards must be allowed to compete directly;
+ * the next-state value function prices that difference instead of an arbitrary
+ * distance-target heuristic.
  */
 export const rankRiskAwareClubChoices = <
   T extends RiskRankableAim,
@@ -170,135 +186,114 @@ export const rankRiskAwareClubChoices = <
 ): RankedClubAimChoice<T, C>[] => {
   const supportAdequate = (evaluation: C) =>
     evaluation.supportShots >= policy.minimumAuthoritativeSupportShots
-  const usable = evaluations.filter(
-    (evaluation): evaluation is C & { bestCandidate: T & { riskProfile: DecisionRiskProfile } } =>
-      evaluation.bestCandidate?.riskProfile != null,
+
+  const evaluated = evaluations.map((evaluation) => {
+    const candidate = evaluation.bestCandidate
+    return {
+      evaluation,
+      candidate,
+      risk: candidate?.riskProfile ?? null,
+      stateValue: candidate ? nextStateValueForAimCandidate(candidate) : null,
+    }
+  })
+  const usable = evaluated.filter(
+    (row): row is {
+      evaluation: C
+      candidate: T
+      risk: DecisionRiskProfile
+      stateValue: CandidateNextStateValue & { expectedFutureStrokes: number }
+    } => row.candidate != null && row.risk != null && row.stateValue?.expectedFutureStrokes != null,
   )
-  const unavailable = evaluations.filter((evaluation) => evaluation.bestCandidate?.riskProfile == null)
+  const unavailable = evaluated.filter(
+    (row) => row.candidate == null || row.risk == null || row.stateValue?.expectedFutureStrokes == null,
+  )
 
   if (usable.length === 0) {
-    return [...evaluations]
-      .sort((a, b) => {
-        const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
-        if (supportDelta !== 0) return supportDelta
-        return (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
-          (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY)
-      })
-      .map((evaluation, index) => ({
-        evaluation,
+    return [...evaluated]
+      .sort((a, b) => Number(supportAdequate(b.evaluation)) - Number(supportAdequate(a.evaluation)))
+      .map((row, index) => ({
+        evaluation: row.evaluation,
         rank: index + 1,
-        targetFit: true,
-        withinCatastropheGuardrail: true,
-        decisionReason: index === 0
-          ? supportAdequate(evaluation)
-            ? 'Full-risk profile unavailable; fell back to the legacy V0 utility score among adequately supported clubs.'
-            : `Full-risk profile unavailable and support is thin (${evaluation.supportShots} shots); provisional legacy V0 fallback.`
-          : 'Full-risk profile unavailable; legacy V0 utility fallback.',
+        targetFit: false,
+        withinCatastropheGuardrail: false,
+        decisionReason: 'Next-state value unavailable; no authoritative club recommendation.',
       }))
   }
 
-  const carryGap = (evaluation: C) =>
-    Math.abs(evaluation.modeledCarryYds - evaluation.targetDistanceYds)
-  const bestCarryGap = Math.min(...usable.map(carryGap))
-  const carryGuardrail = bestCarryGap + policy.carryGapToleranceAboveBestYds
-  const targetFit = usable.filter((evaluation) => carryGap(evaluation) <= carryGuardrail + 1e-9)
-  const nonTargetFit = usable.filter((evaluation) => carryGap(evaluation) > carryGuardrail + 1e-9)
-  const supportedTargetFit = targetFit.filter(supportAdequate)
-  const comparisonPool = supportedTargetFit.length > 0 ? supportedTargetFit : targetFit
-  const provisionalTargetFit = supportedTargetFit.length > 0
-    ? targetFit.filter((evaluation) => !supportAdequate(evaluation))
+  const supported = usable.filter((row) => supportAdequate(row.evaluation))
+  const comparisonPool = supported.length > 0 ? supported : usable
+  const provisional = supported.length > 0
+    ? usable.filter((row) => !supportAdequate(row.evaluation))
     : []
 
-  const minCatastrophe = Math.min(
-    ...comparisonPool.map((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe),
-  )
+  const minCatastrophe = Math.min(...comparisonPool.map((row) => row.risk.catastrophe))
   const catastropheGuardrail = minCatastrophe + policy.catastropheToleranceAboveBest
 
-  const compareClub = (
-    a: C & { bestCandidate: T & { riskProfile: DecisionRiskProfile } },
-    b: C & { bestCandidate: T & { riskProfile: DecisionRiskProfile } },
+  const compareClubValue = (
+    a: (typeof usable)[number],
+    b: (typeof usable)[number],
   ) => {
-    const aRisk = a.bestCandidate.riskProfile
-    const bRisk = b.bestCandidate.riskProfile
-    if (Math.abs(aRisk.success - bRisk.success) > 1e-9) return bRisk.success - aRisk.success
-    if (Math.abs(aRisk.seriousTrouble - bRisk.seriousTrouble) > 1e-9) {
-      return aRisk.seriousTrouble - bRisk.seriousTrouble
-    }
-    if (Math.abs(aRisk.unknown - bRisk.unknown) > 1e-9) return aRisk.unknown - bRisk.unknown
-    if (Math.abs(aRisk.expectedSeverity - bRisk.expectedSeverity) > 1e-9) {
-      return aRisk.expectedSeverity - bRisk.expectedSeverity
-    }
-    const carryDelta = carryGap(a) - carryGap(b)
-    if (Math.abs(carryDelta) > 1e-9) return carryDelta
-    return (b.bestCandidate.score ?? Number.NEGATIVE_INFINITY) -
-      (a.bestCandidate.score ?? Number.NEGATIVE_INFINITY)
+    const valueDelta = a.stateValue.expectedFutureStrokes - b.stateValue.expectedFutureStrokes
+    if (Math.abs(valueDelta) > 1e-9) return valueDelta
+    const catastropheDelta = a.risk.catastrophe - b.risk.catastrophe
+    if (Math.abs(catastropheDelta) > 1e-9) return catastropheDelta
+    const unknownDelta = a.risk.unknown - b.risk.unknown
+    if (Math.abs(unknownDelta) > 1e-9) return unknownDelta
+    return b.evaluation.supportShots - a.evaluation.supportShots
   }
 
   const safe = comparisonPool
-    .filter((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe <= catastropheGuardrail + 1e-9)
-    .sort(compareClub)
+    .filter((row) => row.risk.catastrophe <= catastropheGuardrail + 1e-9)
+    .sort(compareClubValue)
   const catastropheRejected = comparisonPool
-    .filter((evaluation) => evaluation.bestCandidate.riskProfile.catastrophe > catastropheGuardrail + 1e-9)
+    .filter((row) => row.risk.catastrophe > catastropheGuardrail + 1e-9)
     .sort((a, b) => {
-      const catastropheDelta =
-        a.bestCandidate.riskProfile.catastrophe - b.bestCandidate.riskProfile.catastrophe
-      return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClub(a, b)
+      const catastropheDelta = a.risk.catastrophe - b.risk.catastrophe
+      return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClubValue(a, b)
     })
-  provisionalTargetFit.sort((a, b) => {
-    const catastropheDelta =
-      a.bestCandidate.riskProfile.catastrophe - b.bestCandidate.riskProfile.catastrophe
-    return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClub(a, b)
-  })
-  nonTargetFit.sort((a, b) => {
-    const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
-    if (supportDelta !== 0) return supportDelta
-    return carryGap(a) - carryGap(b)
+  provisional.sort((a, b) => {
+    const catastropheDelta = a.risk.catastrophe - b.risk.catastrophe
+    return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : compareClubValue(a, b)
   })
 
-  const rankedUsable = [...safe, ...catastropheRejected, ...provisionalTargetFit, ...nonTargetFit]
-  const usableRows: RankedClubAimChoice<T, C>[] = rankedUsable.map((evaluation, index) => {
-    const isTargetFit = carryGap(evaluation) <= carryGuardrail + 1e-9
-    const isSupported = supportAdequate(evaluation)
-    const thinDeprioritized = isTargetFit && supportedTargetFit.length > 0 && !isSupported
-    const withinCatastropheGuardrail = isTargetFit &&
-      evaluation.bestCandidate.riskProfile.catastrophe <= catastropheGuardrail + 1e-9
+  const rankedUsable = [...safe, ...catastropheRejected, ...provisional]
+  const usableRows: RankedClubAimChoice<T, C>[] = rankedUsable.map((row, index) => {
+    const isSupported = supportAdequate(row.evaluation)
+    const thinDeprioritized = supported.length > 0 && !isSupported
+    const withinCatastropheGuardrail =
+      !thinDeprioritized && row.risk.catastrophe <= catastropheGuardrail + 1e-9
 
     let decisionReason: string
     if (index === 0) {
       decisionReason = isSupported
-        ? `Target-fit club; adequately supported (${evaluation.supportShots} shots); within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; best success/severity profile in the safe set.`
-        : `No adequately supported target-fit alternative; provisional selection from ${evaluation.supportShots} Stock shots within the catastrophe guardrail.`
-    } else if (!isTargetFit) {
-      decisionReason = `Outside the target-fit carry guardrail (best gap + ${policy.carryGapToleranceAboveBestYds} yd).`
+        ? `Adequately supported (${row.evaluation.supportShots} shots); inside the catastrophe guardrail; lowest expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`
+        : `No adequately supported alternative; provisional selection from ${row.evaluation.supportShots} Stock shots with lowest safe expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`
     } else if (thinDeprioritized) {
-      decisionReason = `Target-fit but provisional: ${evaluation.supportShots} Stock shots is below the ${policy.minimumAuthoritativeSupportShots}-shot support guardrail; supported target-fit clubs rank ahead.`
+      decisionReason = `Provisional: ${row.evaluation.supportShots} Stock shots is below the ${policy.minimumAuthoritativeSupportShots}-shot support guardrail; supported value-ready clubs rank ahead.`
     } else if (!withinCatastropheGuardrail) {
-      decisionReason = 'Target-fit, but rejected by the catastrophe guardrail.'
+      decisionReason = 'Rejected by the catastrophe guardrail before expected-future-strokes comparison.'
     } else {
-      decisionReason = 'Target-fit safe-set alternative with a weaker success/severity profile.'
+      decisionReason = `Safe-set alternative with higher expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`
     }
 
     return {
-      evaluation,
+      evaluation: row.evaluation,
       rank: index + 1,
-      targetFit: isTargetFit,
+      targetFit: true,
       withinCatastropheGuardrail,
       decisionReason,
     }
   })
 
-  unavailable.sort((a, b) => {
-    const supportDelta = Number(supportAdequate(b)) - Number(supportAdequate(a))
-    if (supportDelta !== 0) return supportDelta
-    return (b.bestCandidate?.score ?? Number.NEGATIVE_INFINITY) -
-      (a.bestCandidate?.score ?? Number.NEGATIVE_INFINITY)
-  })
-  const unavailableRows: RankedClubAimChoice<T, C>[] = unavailable.map((evaluation, index) => ({
-    evaluation,
+  unavailable.sort(
+    (a, b) => Number(supportAdequate(b.evaluation)) - Number(supportAdequate(a.evaluation)),
+  )
+  const unavailableRows: RankedClubAimChoice<T, C>[] = unavailable.map((row, index) => ({
+    evaluation: row.evaluation,
     rank: usableRows.length + index + 1,
     targetFit: false,
     withinCatastropheGuardrail: false,
-    decisionReason: 'Full-risk profile unavailable for this club; not eligible ahead of modeled choices.',
+    decisionReason: 'Next-state value unavailable for this club; not eligible ahead of value-ready choices.',
   }))
 
   return [...usableRows, ...unavailableRows]

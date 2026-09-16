@@ -10,6 +10,10 @@ import type {
   DecisionShotQuality,
 } from './decisionEngine'
 import type { ModeledAimSample } from './aimOutcomeSampling'
+import {
+  buildDecisionLandingState,
+  type DecisionLandingState,
+} from './decisionLandingState'
 
 export type DecisionRiskTier =
   | 'success'
@@ -23,6 +27,8 @@ export type DecisionRiskTailLanding = {
   kind: CourseSurfaceClassification
   tier: DecisionRiskTier
   quality: DecisionShotQuality
+  /** Exact geometric next-shot state used by the state-value model. */
+  state: DecisionLandingState
   /** Overall probability mass contributed by this observed tail shot. */
   weight: number
 }
@@ -237,8 +243,10 @@ export const buildDecisionRiskProfile = ({
       const finalDistance = carry + coreRolloutYds
       const offline = sample.offlineYds + lateralAdjustmentYds
       const landing = addScaled(ball, forward, finalDistance, right, offline)
-      const kind = classifyTacticalLandingPoint(hole, landing).kind
+      const classification = classifyTacticalLandingPoint(hole, landing)
+      const kind = classification.kind
       const tier = decisionRiskTierForSurface(kind, goal)
+      const state = buildDecisionLandingState(hole, landing, classification)
       // Normalize inside the empirical tail, then allocate only the learned tail mass.
       const weight = (Math.max(0, sample.weight) / tailWeight) * tailProbability
       const tailLanding: DecisionRiskTailLanding = {
@@ -246,6 +254,7 @@ export const buildDecisionRiskProfile = ({
         kind,
         tier,
         quality: sample.quality,
+        state,
         weight,
       }
       tailLandings.push(tailLanding)

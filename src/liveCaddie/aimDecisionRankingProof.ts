@@ -1,4 +1,5 @@
 import type { DecisionRiskProfile } from './decisionRiskProfile'
+import type { CandidateNextStateValue } from './nextStateValue'
 import {
   rankRiskAwareAimCandidates,
   rankRiskAwareClubChoices,
@@ -36,14 +37,32 @@ const risk = ({
   tailLandings: [],
 })
 
+const value = (expectedFutureStrokes: number): CandidateNextStateValue => ({
+  modelId: 'broadie-2012-next-state-v1',
+  expectedFutureStrokes,
+  valuedProbability: 1,
+  unresolvedProbability: 0,
+  provisionalProbability: 0,
+  meanDistanceToPinYds: null,
+  coreContribution: expectedFutureStrokes,
+  tailContribution: 0,
+  byCondition: {},
+})
+
 type ProofAim = RiskRankableAim & { id: string }
 
 const aim = (
   id: string,
   aimOffsetYds: number,
   profile: DecisionRiskProfile,
-  score = 0,
-): ProofAim => ({ id, aimOffsetYds, riskProfile: profile, score })
+  expectedFutureStrokes: number,
+): ProofAim => ({
+  id,
+  aimOffsetYds,
+  riskProfile: profile,
+  stateValue: value(expectedFutureStrokes),
+  score: 0,
+})
 
 export type AimDecisionRankingProofResult = {
   id: string
@@ -55,127 +74,103 @@ export type AimDecisionRankingProofResult = {
 
 export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] => {
   const openFairway = rankRiskAwareAimCandidates([
-    aim('left', -6, risk({ success: 0.8, seriousTrouble: 0.03 }), 70),
-    aim('center', 0, risk({ success: 0.84, seriousTrouble: 0.03 }), 72),
-    aim('right', 6, risk({ success: 0.79, seriousTrouble: 0.03 }), 69),
+    aim('left', -6, risk({ success: 0.8, seriousTrouble: 0.03 }), 3.20),
+    aim('center', 0, risk({ success: 0.84, seriousTrouble: 0.03 }), 3.12),
+    aim('right', 6, risk({ success: 0.79, seriousTrouble: 0.03 }), 3.18),
   ])[0]?.candidate.id ?? null
 
   const hazardEdge = rankRiskAwareAimCandidates([
-    aim('attack', 0, risk({ success: 0.9, catastrophe: 0.08 }), 88),
-    aim('safe-left', -9, risk({ success: 0.78, catastrophe: 0.01 }), 70),
-    aim('balanced-left', -6, risk({ success: 0.82, catastrophe: 0.03 }), 79),
+    aim('attack', 0, risk({ success: 0.9, catastrophe: 0.08 }), 2.95),
+    aim('safe-left', -9, risk({ success: 0.78, catastrophe: 0.01 }), 3.20),
+    aim('balanced-left', -6, risk({ success: 0.82, catastrophe: 0.03 }), 3.10),
   ])[0]?.candidate.id ?? null
 
-  const targetFit = rankRiskAwareClubChoices([
+  const driverBeatsThreeWoodOnLeave = rankRiskAwareClubChoices([
     {
-      club: '7i-short',
-      modeledCarryYds: 160,
-      targetDistanceYds: 215,
-      supportShots: 20,
-      bestCandidate: aim('7i-center', 0, risk({ success: 0.96, catastrophe: 0 }), 92),
+      club: 'Driver',
+      modeledCarryYds: 250,
+      targetDistanceYds: 220,
+      supportShots: 25,
+      bestCandidate: aim('driver-center', 0, risk({ success: 0.72, catastrophe: 0.02 }), 3.05),
     },
     {
-      club: '3H-fit',
-      modeledCarryYds: 210,
-      targetDistanceYds: 215,
-      supportShots: 10,
-      bestCandidate: aim('3h-center', 0, risk({ success: 0.76, catastrophe: 0.02 }), 73),
+      club: '3W',
+      modeledCarryYds: 225,
+      targetDistanceYds: 220,
+      supportShots: 20,
+      bestCandidate: aim('3w-center', 0, risk({ success: 0.84, catastrophe: 0.01 }), 3.19),
     },
   ])[0]?.evaluation.club ?? null
 
-  const catastropheBeatsSmallCarryGain = rankRiskAwareClubChoices([
+  const catastropheStillWins = rankRiskAwareClubChoices([
     {
-      club: '8i-attack',
-      modeledCarryYds: 151,
-      targetDistanceYds: 151,
-      supportShots: 20,
-      bestCandidate: aim('8i-center', 0, risk({ success: 0.9, catastrophe: 0.06 }), 87),
+      club: 'Driver',
+      modeledCarryYds: 250,
+      targetDistanceYds: 220,
+      supportShots: 25,
+      bestCandidate: aim('driver-center', 0, risk({ success: 0.8, catastrophe: 0.06 }), 2.98),
     },
     {
-      club: '7i-safe',
-      modeledCarryYds: 159,
-      targetDistanceYds: 151,
+      club: '3W',
+      modeledCarryYds: 225,
+      targetDistanceYds: 220,
       supportShots: 20,
-      bestCandidate: aim('7i-left', -6, risk({ success: 0.76, catastrophe: 0.01 }), 72),
+      bestCandidate: aim('3w-center', 0, risk({ success: 0.76, catastrophe: 0.01 }), 3.19),
     },
   ])[0]?.evaluation.club ?? null
 
   const supportedClubBeatsThinLuckySample = rankRiskAwareClubChoices([
     {
       club: '3W-thin',
-      modeledCarryYds: 221,
+      modeledCarryYds: 225,
       targetDistanceYds: 220,
       supportShots: 2,
-      bestCandidate: aim('3w-center', 0, risk({ success: 0.93, catastrophe: 0 }), 94),
+      bestCandidate: aim('3w-center', 0, risk({ success: 0.93, catastrophe: 0 }), 2.95),
     },
     {
       club: 'Driver-supported',
-      modeledCarryYds: 228,
+      modeledCarryYds: 245,
       targetDistanceYds: 220,
       supportShots: 27,
-      bestCandidate: aim('driver-left', -3, risk({ success: 0.78, catastrophe: 0.02 }), 73),
-    },
-  ])[0]?.evaluation.club ?? null
-
-  const thinClubCanWinWhenOnlyDistanceFit = rankRiskAwareClubChoices([
-    {
-      club: '3H-thin',
-      modeledCarryYds: 200,
-      targetDistanceYds: 200,
-      supportShots: 4,
-      bestCandidate: aim('3h-center', 0, risk({ success: 0.76, catastrophe: 0.02 }), 74),
-    },
-    {
-      club: '5i-supported-but-short',
-      modeledCarryYds: 180,
-      targetDistanceYds: 200,
-      supportShots: 15,
-      bestCandidate: aim('5i-center', 0, risk({ success: 0.95, catastrophe: 0 }), 92),
+      bestCandidate: aim('driver-left', -3, risk({ success: 0.78, catastrophe: 0.02 }), 3.05),
     },
   ])[0]?.evaluation.club ?? null
 
   return [
     {
-      id: 'open-fairway-prefers-success',
-      description: 'With equivalent catastrophe risk, choose the aim with the strongest success profile.',
+      id: 'open-fairway-prefers-lower-next-state-cost',
+      description: 'Inside the catastrophe guardrail, lowest expected future strokes wins.',
       expectedWinner: 'center',
       actualWinner: openFairway,
       passed: openFairway === 'center',
     },
     {
       id: 'hazard-rejects-attack-line',
-      description: 'A higher-success attack line cannot buy a materially larger catastrophe tail.',
+      description: 'A lower expected-strokes line cannot buy a materially larger catastrophe tail.',
       expectedWinner: 'balanced-left',
       actualWinner: hazardEdge,
       passed: hazardEdge === 'balanced-left',
     },
     {
-      id: 'short-club-cannot-game-safety',
-      description: 'A very short club cannot win merely because its landing pattern is safe.',
-      expectedWinner: '3H-fit',
-      actualWinner: targetFit,
-      passed: targetFit === '3H-fit',
+      id: 'driver-beats-three-wood-on-next-state-value',
+      description: 'A longer safe club can beat a more accurate shorter club because its resulting next shot is easier.',
+      expectedWinner: 'Driver',
+      actualWinner: driverBeatsThreeWoodOnLeave,
+      passed: driverBeatsThreeWoodOnLeave === 'Driver',
     },
     {
-      id: 'catastrophe-beats-small-carry-gain',
-      description: 'Among target-fit clubs, a small carry/proximity gain cannot buy a materially larger catastrophe rate.',
-      expectedWinner: '7i-safe',
-      actualWinner: catastropheBeatsSmallCarryGain,
-      passed: catastropheBeatsSmallCarryGain === '7i-safe',
+      id: 'catastrophe-guardrail-still-overrides-ev',
+      description: 'Catastrophe remains a hard policy guardrail rather than an additive score term.',
+      expectedWinner: '3W',
+      actualWinner: catastropheStillWins,
+      passed: catastropheStillWins === '3W',
     },
     {
-      id: 'supported-target-fit-beats-thin-lucky-sample',
-      description: 'A two-shot club cannot outrank an adequately supported club when both reasonably fit the intended distance.',
+      id: 'supported-model-beats-thin-lucky-sample',
+      description: 'Thin samples remain provisional when a mature value-ready club model exists.',
       expectedWinner: 'Driver-supported',
       actualWinner: supportedClubBeatsThinLuckySample,
       passed: supportedClubBeatsThinLuckySample === 'Driver-supported',
-    },
-    {
-      id: 'thin-club-remains-usable-when-only-distance-fit',
-      description: 'Cold-start support does not make a club unusable when no adequately supported alternative fits the shot.',
-      expectedWinner: '3H-thin',
-      actualWinner: thinClubCanWinWhenOnlyDistanceFit,
-      passed: thinClubCanWinWhenOnlyDistanceFit === '3H-thin',
     },
   ]
 }
