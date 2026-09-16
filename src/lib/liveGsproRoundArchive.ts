@@ -32,7 +32,7 @@ export type LiveGsproRoundArchiveState = {
   rounds: ArchivedGsproRound[]
 }
 
-const MAX_ARCHIVED_ROUNDS = 50
+const MAX_ARCHIVED_ROUNDS = 20
 const ARCHIVE_POLL_INTERVAL_MS = 3000
 
 const emptyArchive = (): LiveGsproRoundArchiveState => ({
@@ -82,8 +82,14 @@ export const loadLiveGsproRoundArchive = (): LiveGsproRoundArchiveState => {
 const saveLiveGsproRoundArchive = (state: LiveGsproRoundArchiveState) => {
   if (typeof window === 'undefined') return
   const serialized = JSON.stringify(state)
-  window.localStorage.setItem(LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY, serialized)
-  persistWorkingCacheValueForActiveUser(LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY, serialized)
+  try {
+    window.localStorage.setItem(LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY, serialized)
+    persistWorkingCacheValueForActiveUser(LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY, serialized)
+  } catch (error) {
+    // The cloud archive is authoritative long-term. A browser quota failure must
+    // not prevent the current round from continuing to sync to Supabase.
+    console.warn('[GSPro course archive] local safety cache could not be updated.', error)
+  }
 }
 
 export const upsertLiveGsproRoundArchive = ({
