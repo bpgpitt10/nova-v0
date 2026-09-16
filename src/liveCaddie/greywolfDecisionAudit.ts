@@ -10,6 +10,7 @@ import type {
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
+import { nextStateValueForAimCandidate } from './aimDecisionRanking'
 import { evaluateAimLab } from './aimOptimization'
 import {
   buildNaturalLandingClubComparisons,
@@ -36,10 +37,7 @@ export type GreywolfDecisionAuditScenario = {
     nearestPenaltyYds: number | null
     safeSide: 'left' | 'center' | 'right' | 'unknown'
   } | null
-  /**
-   * Side-by-side natural tee-club distributions. These are deliberately not
-   * ranked against each other until a strokes-gained/value layer exists.
-   */
+  /** Side-by-side natural tee-club distributions retained for geometry/debug context. */
   naturalClubComparisons: NaturalLandingClubComparison[]
   recommendation: {
     club: string
@@ -49,6 +47,10 @@ export type GreywolfDecisionAuditScenario = {
     aimOffsetYds: number
     targetFit: boolean | null
     withinCatastropheGuardrail: boolean | null
+    expectedFutureStrokes: number | null
+    valuedProbability: number | null
+    provisionalProbability: number | null
+    meanDistanceToPinYds: number | null
     success: number | null
     manageable: number | null
     seriousTrouble: number | null
@@ -70,6 +72,8 @@ export type GreywolfDecisionAudit = {
     clearCount: number
     reviewCount: number
     missingCount: number
+    missingValueCount: number
+    provisionalValueCount: number
     boundaryAimCount: number
     elevatedCatastropheCount: number
     highUnknownCount: number
@@ -155,7 +159,7 @@ const buildScenarioInputs = (hole: CourseHoleGeometry) => {
     if (landing) {
       scenarios.push({
         kind: 'tee-strategy',
-        label: 'Tee → ~220 yd fairway landing zone',
+        label: 'Tee → ~220 yd fairway reference line',
         ball: tee,
         target: landing,
       })
@@ -196,6 +200,7 @@ const auditScenario = (
   const selected = evaluations[0] ?? null
   const best = selected?.bestCandidate ?? null
   const risk = best?.riskProfile ?? null
+  const stateValue = best ? nextStateValueForAimCandidate(best) : null
   const ballSurface = classifyPoint(hole, input.ball).kind
   const targetSurface = classifyPoint(hole, input.target).kind
   const station = input.kind === 'tee-strategy' && targetSurface === 'fairway'
@@ -209,11 +214,8 @@ const auditScenario = (
   if (!selected || !best) {
     reviewReasons.push('No usable club + aim recommendation.')
   } else {
-    if (selected.targetFit === false) {
-      reviewReasons.push('Selected club is outside the target-fit carry guardrail.')
-    }
-    if (Math.abs(selected.carryGapYds) > 15) {
-      reviewReasons.push(`Selected carry gap is ${selected.carryGapYds.toFixed(1)} yd.`)
+    if (stateValue?.expectedFutureStrokes == null) {
+      reviewReasons.push('Next-state value is unavailable; recommendation is not authoritative.')
     }
     if (Math.abs(best.aimOffsetYds) >= selected.aimSearchHalfWidthYds - 0.1) {
       reviewReasons.push(`Best aim hits the ±${selected.aimSearchHalfWidthYds.toFixed(0)} yd search boundary.`)
@@ -236,7 +238,8 @@ const auditScenario = (
     reviewReasons.push(`Synthetic approach origin classified as ${ballSurface}, not fairway.`)
   }
 
-  const status: GreywolfDecisionAuditStatus = !selected || !best
+  const authoritative = selected && best && stateValue?.expectedFutureStrokes != null
+  const status: GreywolfDecisionAuditStatus = !authoritative
     ? 'missing'
     : reviewReasons.length > 0
       ? 'review'
@@ -268,6 +271,10 @@ const auditScenario = (
       aimOffsetYds: best.aimOffsetYds,
       targetFit: selected.targetFit,
       withinCatastropheGuardrail: selected.withinCatastropheGuardrail,
+      expectedFutureStrokes: stateValue?.expectedFutureStrokes ?? null,
+      valuedProbability: stateValue?.valuedProbability ?? null,
+      provisionalProbability: stateValue?.provisionalProbability ?? null,
+      meanDistanceToPinYds: stateValue?.meanDistanceToPinYds ?? null,
       success: risk?.success ?? null,
       manageable: risk?.manageable ?? null,
       seriousTrouble: risk?.seriousTrouble ?? null,
@@ -285,9 +292,9 @@ const auditScenario = (
 /**
  * Course-wide neutral-condition audit. This remains a broad behavior sweep,
  * not a claim that these synthetic positions reconstruct a played round.
- * The legacy ~220 yd tee target is retained only as a regression baseline.
- * Long-hole tee scenarios additionally persist non-authoritative club-specific
- * natural landing comparisons for the future strokes-gained evaluator.
+ * The ~220 yd tee point is now a reference line for aim direction only; club
+ * ranking is authoritative next-state value plus the catastrophe guardrail,
+ * not proximity to that arbitrary tee target.
  */
 export const buildGreywolfCourseDecisionAudit = async (
   sessions: SavedSession[],
@@ -311,6 +318,12 @@ export const buildGreywolfCourseDecisionAudit = async (
       clearCount: scenarios.filter((scenario) => scenario.status === 'clear').length,
       reviewCount: scenarios.filter((scenario) => scenario.status === 'review').length,
       missingCount: scenarios.filter((scenario) => scenario.status === 'missing').length,
+      missingValueCount: scenarios.filter((scenario) =>
+        scenario.recommendation?.expectedFutureStrokes == null,
+      ).length,
+      provisionalValueCount: scenarios.filter((scenario) =>
+        (scenario.recommendation?.provisionalProbability ?? 0) > 1e-6,
+      ).length,
       boundaryAimCount: scenarios.filter((scenario) => {
         const recommendation = scenario.recommendation
         if (!recommendation) return false
