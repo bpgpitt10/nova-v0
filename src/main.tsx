@@ -26,6 +26,7 @@ import {
   hasSavedBagConfig,
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
+import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -59,6 +60,11 @@ function SignOutPage() {
       <p>{error ? `Could not sign out: ${error}` : 'Signing you out…'}</p>
     </main>
   )
+}
+
+function LiveGsproRoundArchiveBridge() {
+  useEffect(() => startLiveGsproCourseRoundArchiver(), [])
+  return null
 }
 
 function RootRouter() {
@@ -213,6 +219,7 @@ function RootRouter() {
 
   return (
     <LooperAuthGate>
+      <LiveGsproRoundArchiveBridge />
       {showDevPage ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
     </LooperAuthGate>
   )
