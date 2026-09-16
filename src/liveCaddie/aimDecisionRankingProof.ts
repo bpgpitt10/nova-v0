@@ -91,6 +91,7 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 250,
       targetDistanceYds: 220,
       supportShots: 25,
+      supportingSessions: 3,
       bestCandidate: aim('driver-center', 0, risk({ success: 0.72, catastrophe: 0.02 }), 3.05),
     },
     {
@@ -98,6 +99,7 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 225,
       targetDistanceYds: 220,
       supportShots: 20,
+      supportingSessions: 3,
       bestCandidate: aim('3w-center', 0, risk({ success: 0.84, catastrophe: 0.01 }), 3.19),
     },
   ])[0]?.evaluation.club ?? null
@@ -108,6 +110,7 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 250,
       targetDistanceYds: 220,
       supportShots: 25,
+      supportingSessions: 3,
       bestCandidate: aim('driver-center', 0, risk({ success: 0.8, catastrophe: 0.06 }), 2.98),
     },
     {
@@ -115,6 +118,7 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 225,
       targetDistanceYds: 220,
       supportShots: 20,
+      supportingSessions: 3,
       bestCandidate: aim('3w-center', 0, risk({ success: 0.76, catastrophe: 0.01 }), 3.19),
     },
   ])[0]?.evaluation.club ?? null
@@ -125,6 +129,7 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 225,
       targetDistanceYds: 220,
       supportShots: 2,
+      supportingSessions: 1,
       bestCandidate: aim('3w-center', 0, risk({ success: 0.93, catastrophe: 0 }), 2.95),
     },
     {
@@ -132,7 +137,67 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       modeledCarryYds: 245,
       targetDistanceYds: 220,
       supportShots: 27,
+      supportingSessions: 3,
       bestCandidate: aim('driver-left', -3, risk({ success: 0.78, catastrophe: 0.02 }), 3.05),
+    },
+  ])[0]?.evaluation.club ?? null
+
+  const fiveShotTinyEdgeDoesNotCreateFalsePrecision = rankRiskAwareClubChoices([
+    {
+      club: '3W-five-shot',
+      modeledCarryYds: 225,
+      targetDistanceYds: 220,
+      supportShots: 5,
+      supportingSessions: 2,
+      bestCandidate: aim('3w-center', 0, risk({ success: 0.82, catastrophe: 0 }), 2.993),
+    },
+    {
+      club: 'Driver-mature',
+      modeledCarryYds: 245,
+      targetDistanceYds: 220,
+      supportShots: 23,
+      supportingSessions: 2,
+      bestCandidate: aim('driver-center', 0, risk({ success: 0.74, catastrophe: 0 }), 3.000),
+    },
+  ])
+  const fiveShotTinyEdgeWinner = fiveShotTinyEdgeDoesNotCreateFalsePrecision[0]?.evaluation.club ?? null
+  const fiveShotTinyEdgeStrength = fiveShotTinyEdgeDoesNotCreateFalsePrecision[0]?.decisionStrength ?? null
+
+  const fiveShotMaterialEdgeStillWins = rankRiskAwareClubChoices([
+    {
+      club: '3W-five-shot',
+      modeledCarryYds: 225,
+      targetDistanceYds: 220,
+      supportShots: 5,
+      supportingSessions: 2,
+      bestCandidate: aim('3w-center', 0, risk({ success: 0.82, catastrophe: 0 }), 2.900),
+    },
+    {
+      club: 'Driver-mature',
+      modeledCarryYds: 245,
+      targetDistanceYds: 220,
+      supportShots: 23,
+      supportingSessions: 2,
+      bestCandidate: aim('driver-center', 0, risk({ success: 0.74, catastrophe: 0 }), 3.000),
+    },
+  ])[0]?.evaluation.club ?? null
+
+  const fourShotModelHasNoFiveShotCliff = rankRiskAwareClubChoices([
+    {
+      club: '3H-four-shot',
+      modeledCarryYds: 205,
+      targetDistanceYds: 220,
+      supportShots: 4,
+      supportingSessions: 1,
+      bestCandidate: aim('3h-center', 0, risk({ success: 0.88, catastrophe: 0 }), 2.880),
+    },
+    {
+      club: 'Driver-mature',
+      modeledCarryYds: 245,
+      targetDistanceYds: 220,
+      supportShots: 23,
+      supportingSessions: 2,
+      bestCandidate: aim('driver-center', 0, risk({ success: 0.74, catastrophe: 0 }), 3.000),
     },
   ])[0]?.evaluation.club ?? null
 
@@ -166,11 +231,32 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       passed: catastropheStillWins === '3W',
     },
     {
-      id: 'supported-model-beats-thin-lucky-sample',
-      description: 'Thin samples remain provisional when a mature value-ready club model exists.',
+      id: 'cold-start-model-cannot-beat-ready-model-on-lucky-ev',
+      description: 'A truly cold-start two-shot model remains provisional rather than overruling usable evidence.',
       expectedWinner: 'Driver-supported',
       actualWinner: supportedClubBeatsThinLuckySample,
       passed: supportedClubBeatsThinLuckySample === 'Driver-supported',
+    },
+    {
+      id: 'five-shot-tiny-edge-is-a-toss-up',
+      description: 'A five-shot club does not become fully authoritative at an arbitrary cliff when its EV edge is tiny.',
+      expectedWinner: 'Driver-mature / toss-up',
+      actualWinner: `${fiveShotTinyEdgeWinner ?? 'null'} / ${fiveShotTinyEdgeStrength ?? 'null'}`,
+      passed: fiveShotTinyEdgeWinner === 'Driver-mature' && fiveShotTinyEdgeStrength === 'toss-up',
+    },
+    {
+      id: 'five-shot-material-edge-can-still-win',
+      description: 'Confidence does not suppress real value: a sparse club can win when its EV advantage is material.',
+      expectedWinner: '3W-five-shot',
+      actualWinner: fiveShotMaterialEdgeStillWins,
+      passed: fiveShotMaterialEdgeStillWins === '3W-five-shot',
+    },
+    {
+      id: 'four-to-five-shots-has-no-authority-cliff',
+      description: 'A four-shot model can compete when the modeled advantage is large enough; support confidence is graduated.',
+      expectedWinner: '3H-four-shot',
+      actualWinner: fourShotModelHasNoFiveShotCliff,
+      passed: fourShotModelHasNoFiveShotCliff === '3H-four-shot',
     },
   ]
 }
