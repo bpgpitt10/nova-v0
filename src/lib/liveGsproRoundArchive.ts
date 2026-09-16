@@ -1,7 +1,7 @@
-import type {
-  BrowserGsproCourseArchiveShot,
-  BrowserGsproCourseSnapshot,
-} from '../adapters/browserGsproCourseState'
+import {
+  readBrowserGsproCourseRoundArchive,
+  type BrowserGsproCourseArchiveShot,
+} from '../adapters/browserGsproCourseArchive'
 import {
   getAllowedUserRecord,
   getCurrentLooperUser,
@@ -48,7 +48,12 @@ const shotOrder = (left: ArchivedGsproCourseShot, right: ArchivedGsproCourseShot
   return (left.holeShot ?? Number.MAX_SAFE_INTEGER) - (right.holeShot ?? Number.MAX_SAFE_INTEGER)
 }
 
-const shotPayloadFingerprint = (shot: BrowserGsproCourseArchiveShot) => JSON.stringify(shot)
+const shotPayloadFingerprint = (
+  shot: BrowserGsproCourseArchiveShot | ArchivedGsproCourseShot,
+) => {
+  const { observedAt: _observedAt, ...payload } = shot as ArchivedGsproCourseShot
+  return JSON.stringify(payload)
+}
 
 export const loadLiveGsproRoundArchive = (): LiveGsproRoundArchiveState => {
   if (typeof window === 'undefined') return emptyArchive()
@@ -198,16 +203,19 @@ const syncRoundToCloud = async (round: ArchivedGsproRound) => {
   if (shotResult.error) throw new Error(shotResult.error.message)
 }
 
-export const persistLiveGsproCourseSnapshot = (snapshot: BrowserGsproCourseSnapshot) => {
+export const captureAndPersistLiveGsproCourseRound = async (observedAt: string) => {
+  const currentRound = await readBrowserGsproCourseRoundArchive()
+  if (!currentRound) return null
+
   const result = upsertLiveGsproRoundArchive({
-    roundId: snapshot.roundId,
-    courseKey: snapshot.courseKey,
-    shots: snapshot.archiveShots,
-    observedAt: snapshot.observedAt,
+    roundId: currentRound.roundId,
+    courseKey: currentRound.courseKey,
+    shots: currentRound.shots,
+    observedAt,
   })
 
   if (result.changed && result.round) {
-    void syncRoundToCloud(result.round).catch((error) => {
+    await syncRoundToCloud(result.round).catch((error) => {
       console.warn('[GSPro course archive] cloud sync failed; local archive retained.', error)
     })
   }
