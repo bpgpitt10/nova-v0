@@ -3,11 +3,41 @@ import {
   loadSavedSessionsFromCloud,
   writeDiagnosticEventToCloud,
 } from '../cloud/cloudPersistence'
-import {
-  buildGreywolfCourseDecisionAudit,
-  type GreywolfDecisionAudit,
-  type GreywolfDecisionAuditScenario,
+import type {
+  GreywolfDecisionAudit,
+  GreywolfDecisionAuditScenario,
 } from '../liveCaddie/greywolfDecisionAudit'
+import type { SavedSession } from '../types'
+
+type AuditWorkerMessage =
+  | { type: 'success'; result: GreywolfDecisionAudit }
+  | { type: 'error'; error: string }
+
+const runDecisionAuditInWorker = (sessions: SavedSession[]) =>
+  new Promise<GreywolfDecisionAudit>((resolve, reject) => {
+    const worker = new Worker(new URL('./DecisionAuditWorker.ts', import.meta.url), {
+      type: 'module',
+    })
+
+    const finish = () => worker.terminate()
+
+    worker.onmessage = (event: MessageEvent<AuditWorkerMessage>) => {
+      const message = event.data
+      finish()
+      if (message.type === 'success') {
+        resolve(message.result)
+      } else {
+        reject(new Error(message.error))
+      }
+    }
+
+    worker.onerror = (event) => {
+      finish()
+      reject(new Error(event.message || 'Decision audit worker failed.'))
+    }
+
+    worker.postMessage({ sessions })
+  })
 
 const pct = (value: number | null | undefined) =>
   typeof value === 'number' ? `${(value * 100).toFixed(value < 0.05 ? 1 : 0)}%` : '—'
@@ -42,7 +72,7 @@ function DecisionAuditDevPage() {
         const totalShots = sessions.reduce((sum, session) => sum + session.shots.length, 0)
         setSessionCount(sessions.length)
         setShotCount(totalShots)
-        const result = await buildGreywolfCourseDecisionAudit(sessions)
+        const result = await runDecisionAuditInWorker(sessions)
         if (cancelled) return
         setAudit(result)
         setStatus('ready')
@@ -129,7 +159,7 @@ function DecisionAuditDevPage() {
 
       {status === 'loading' && (
         <section style={{ padding: 16, border: '1px solid #314233', borderRadius: 12, background: '#142118' }}>
-          Loading synced player history, 18 canonical hole packages, deterministic outcome distributions, and next-state values…
+          Loading synced player history, 18 canonical hole packages, deterministic outcome distributions, and next-state values in a background worker…
         </section>
       )}
 
