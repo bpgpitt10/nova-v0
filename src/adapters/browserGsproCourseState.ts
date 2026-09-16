@@ -468,13 +468,11 @@ const cachedTeeSnapshot = ({
   courseKey,
   roundId,
   holeNumber,
-  latestShot,
   warnings,
 }: {
   courseKey: string | null
   roundId: number | null
   holeNumber: number
-  latestShot: BrowserGsproCourseShot | null
   warnings: string[]
 }): BrowserGsproCourseSnapshot => ({
   courseKey,
@@ -485,8 +483,8 @@ const cachedTeeSnapshot = ({
   surface: 'tee',
   surfaceSource: 'cached-tee',
   distanceToPinYds: null,
-  latestShot,
-  latestShotKey: latestShot?.key ?? null,
+  latestShot: null,
+  latestShotKey: null,
   warnings,
   observedAt: new Date().toISOString(),
 })
@@ -506,7 +504,6 @@ const buildSnapshot = async (
         courseKey: null,
         roundId: null,
         holeNumber: logState.holeNumber,
-        latestShot: null,
         warnings: ['Waiting for the first physical shot; using the selected course tee position.'],
       })
     }
@@ -618,7 +615,6 @@ const buildSnapshot = async (
       courseKey,
       roundId: activeRoundId,
       holeNumber,
-      latestShot,
       warnings,
     })
   }
@@ -629,7 +625,6 @@ const buildSnapshot = async (
       courseKey,
       roundId: activeRoundId,
       holeNumber,
-      latestShot,
       warnings,
     })
   }
