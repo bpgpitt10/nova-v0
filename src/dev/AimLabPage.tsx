@@ -380,7 +380,7 @@ function AimMap({
 function AimLabPage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [playerEmail, setPlayerEmail] = useState<string | null>(null)
-  const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
+  const [courseId, setCourseId] = useState<CourseId | null>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -405,7 +405,7 @@ function AimLabPage() {
   const [showModeledLandings, setShowModeledLandings] = useState(false)
   const [showHistoricalLandings, setShowHistoricalLandings] = useState(false)
 
-  const selectedCourse = getCourseCatalogEntry(courseId)
+  const selectedCourse = courseId ? getCourseCatalogEntry(courseId) : null
   const selectedRef = useRef<ClubAimEvaluation | null>(null)
   const recommendationHoleRef = useRef(1)
   const lastProcessedShotKeyRef = useRef<string | null>(null)
@@ -426,7 +426,7 @@ function AimLabPage() {
   }, [mode])
 
   useEffect(() => {
-    saveLastSelectedCourseId(courseId)
+    if (courseId) saveLastSelectedCourseId(courseId)
   }, [courseId])
 
   useEffect(() => {
@@ -502,6 +502,11 @@ function AimLabPage() {
     let active = true
     setLoadError(null)
     setHole(null)
+    if (!courseId) {
+      return () => {
+        active = false
+      }
+    }
     void loadCourseHoleGeometry(courseId, holeNumber)
       .then((loaded) => {
         if (!active) return
@@ -561,13 +566,14 @@ function AimLabPage() {
     ballTerrain && targetTerrain
       ? targetTerrain.elevationFt - ballTerrain.elevationFt
       : null
+  const selectedCourseName = selectedCourse?.name ?? 'Selected course'
 
   const evaluationResult = useMemo(() => {
     if (!hole) return { evaluations: [] as ClubAimEvaluation[], error: null as string | null }
     if (livePositionUnavailable) {
       return {
         evaluations: [] as ClubAimEvaluation[],
-        error: `Live ball coordinates are not registered for ${selectedCourse.name} yet. Shot ingestion remains active, but Looper will not issue a recommendation from a stale ball position.`,
+        error: `Live ball coordinates are not registered for ${selectedCourseName} yet. Shot ingestion remains active, but Looper will not issue a recommendation from a stale ball position.`,
       }
     }
     try {
@@ -578,8 +584,8 @@ function AimLabPage() {
           elevationDeltaFt: targetElevationDelta,
           elevationSource: ballTerrain && targetTerrain
             ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
-              ? `${selectedCourse.name} direct LiDAR DEM`
-              : `${selectedCourse.name} LiDAR contour proxy`
+              ? `${selectedCourseName} direct LiDAR DEM`
+              : `${selectedCourseName} LiDAR contour proxy`
             : 'No elevation model for this hole yet',
           surfaceOverride: liveMatchesHole ? liveSnapshot?.surface ?? null : null,
         }),
@@ -592,7 +598,7 @@ function AimLabPage() {
         error: error instanceof Error ? error.message : String(error),
       }
     }
-  }, [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, livePositionUnavailable, liveSnapshot?.surface, selectedCourse.name])
+  }, [sessions, hole, holeNumber, ball, target, windMph, windRelativeDeg, targetElevationDelta, liveMatchesHole, livePositionUnavailable, liveSnapshot?.surface, selectedCourseName])
 
   const evaluations = evaluationResult.evaluations
   const evaluationError = evaluationResult.error
@@ -668,7 +674,7 @@ function AimLabPage() {
       <header className="aim-lab-header">
         <div>
           <p className="aim-eyebrow">LOOPER · PLAYABLE CADDIE SANDBOX</p>
-          <h1>{selectedCourse.name} decision inspector</h1>
+          <h1>{selectedCourse ? `${selectedCourse.name} decision inspector` : 'Select a course to begin'}</h1>
           <p>Cached course geometry + live GSPro state + player-specific shot model.</p>
         </div>
         <div className="aim-round-status">
@@ -682,9 +688,10 @@ function AimLabPage() {
         <label>
           Playing
           <select
-            value={courseId}
+            value={courseId ?? ''}
             onChange={(event) => selectCourse(event.target.value as CourseId)}
           >
+            <option value="" disabled>Select course…</option>
             {courseCatalog.map((entry) => (
               <option value={entry.id} key={entry.id}>{entry.name} · {entry.location}</option>
             ))}
@@ -703,22 +710,23 @@ function AimLabPage() {
         {mode === 'live' && liveStatus === 'error' && <button type="button" onClick={() => void connectLiveState()}>Reconnect / choose folder</button>}
         <label>
           Hole
-          <select value={holeNumber} disabled={mode === 'live'} onChange={(event) => setHoleNumber(Number(event.target.value))}>
+          <select value={holeNumber} disabled={mode === 'live' || !courseId} onChange={(event) => setHoleNumber(Number(event.target.value))}>
             {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => <option value={number} key={number}>#{number}</option>)}
           </select>
         </label>
         <button type="button" onClick={resetTee} disabled={!hole || mode === 'live'}>Reset to tee</button>
         <button type="button" onClick={targetGreen} disabled={!hole?.markers.pin || mode === 'live'}>Target green</button>
-        <button type="button" disabled={mode === 'live'} className={editMode === 'ball' ? 'active' : ''} onClick={() => setEditMode('ball')}>Click map: set ball</button>
-        <button type="button" disabled={mode === 'live'} className={editMode === 'target' ? 'active' : ''} onClick={() => setEditMode('target')}>Click map: set target</button>
-        <div className="aim-toolbar-reading"><span>Selected landing distance</span><strong>{targetDistance.toFixed(1)} yd</strong></div>
+        <button type="button" disabled={mode === 'live' || !courseId} className={editMode === 'ball' ? 'active' : ''} onClick={() => setEditMode('ball')}>Click map: set ball</button>
+        <button type="button" disabled={mode === 'live' || !courseId} className={editMode === 'target' ? 'active' : ''} onClick={() => setEditMode('target')}>Click map: set target</button>
+        <div className="aim-toolbar-reading"><span>Selected landing distance</span><strong>{hole ? `${targetDistance.toFixed(1)} yd` : '—'}</strong></div>
       </section>
 
       {liveError && <div className="aim-alert bad">GSPro Live: {liveError} · Looper will keep retrying; this does not interrupt GSPro play.</div>}
       {mode === 'live' && liveSnapshot?.warnings.map((warning) => <div className="aim-alert" key={warning}>{warning}</div>)}
-      {loadError && <div className="aim-alert bad">{selectedCourse.name} Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.</div>}
+      {!courseId && <div className="aim-alert">Select a course before Looper loads geometry or issues a recommendation.</div>}
+      {loadError && <div className="aim-alert bad">{selectedCourseName} Hole {holeNumber} map unavailable: {loadError} · live tracking stays connected and the next hole can load independently.</div>}
       {evaluationError && <div className="aim-alert bad">Recommendation engine paused for this state: {evaluationError} · live tracking and hole changes are still running.</div>}
-      {!hole && !loadError && <div className="aim-alert">Loading {selectedCourse.name} Hole {holeNumber}…</div>}
+      {courseId && !hole && !loadError && <div className="aim-alert">Loading {selectedCourseName} Hole {holeNumber}…</div>}
 
       {hole && (
         <>
@@ -800,7 +808,7 @@ function AimLabPage() {
                 <tbody>
                   <tr><td>Player Stock</td><td>{selected ? `${selected.club} · ${selected.stockCarryYds.toFixed(1)} yd` : '—'}</td><td>Measured baseline carry + 2D dispersion</td><td>Looper history</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Modeled landing sample</td><td>{selected ? selected.modeledSampleCount.toLocaleString() : '—'} deterministic landings</td><td>One canonical core cloud drives map contours and core percentages; full risk drives the recommendation</td><td>Player Stock distribution × current context</td><td><b className="status modeled">MODELED</b></td></tr>
-                  <tr><td>Course geometry</td><td>{selectedCourse.name} H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Canonical cached course package</td><td><b className="status modeled">MODELED</b></td></tr>
+                  <tr><td>Course geometry</td><td>{selectedCourseName} H{holeNumber}</td><td>Every landing is classified against playable surfaces + woods/scrub context</td><td>Canonical cached course package</td><td><b className="status modeled">MODELED</b></td></tr>
                   <tr><td>Live ball position</td><td>{mode === 'live' ? (livePositionUnavailable ? 'Unavailable' : `${ball[0].toFixed(1)} R / ${ball[1].toFixed(1)} F`) : 'Manual'}</td><td>Moves shot origin and recalculates every candidate</td><td>{liveMatchesHole ? liveSnapshot?.ballSource ?? 'unavailable' : 'manual'}</td><td><b className={liveMatchesHole && !livePositionUnavailable ? 'status modeled' : 'status review'}>{liveMatchesHole && !livePositionUnavailable ? 'MODELED' : mode === 'live' ? 'UNAVAILABLE' : 'MANUAL'}</b></td></tr>
                   <tr><td>Elevation</td><td>{targetElevationDelta == null ? 'Unavailable' : `${targetElevationDelta >= 0 ? '+' : ''}${targetElevationDelta.toFixed(1)} ft to selected target`}</td><td>{targetElevationDelta == null ? 'No flight adjustment' : `${signedYds(selected?.airborneCarryDeltaYds)} combined wind/elevation carry delta`}</td><td>{ballTerrain && targetTerrain ? (ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem' ? 'LiDAR DEM' : 'LiDAR contour proxy') : 'No terrain model'}</td><td>{targetElevationDelta == null ? <b className="status review">UNAVAILABLE</b> : <b className="status modeled">PROVISIONAL</b>}</td></tr>
                   <tr><td>Wind</td><td>{windMph} mph @ {windRelativeDeg}°</td><td>{selected ? `${signedYds(selected.airborneCarryDeltaYds)} carry · ${signedYds(selected.airborneLateralDeltaYds)} lateral (combined with elevation)` : '—'}</td><td>Manual now / live sensor later</td><td><b className="status modeled">PROVISIONAL</b></td></tr>
@@ -964,7 +972,7 @@ function AimLabPage() {
           <footer className="aim-footer">
             <span>{hole.provenance.attribution}</span>
             <span>{hole.provenance.license}</span>
-            <span>{selectedCourse.name} cached geometry · GSPro live state · provisional airborne physics</span>
+            <span>{selectedCourseName} cached geometry · GSPro live state · provisional airborne physics</span>
           </footer>
         </>
       )}
