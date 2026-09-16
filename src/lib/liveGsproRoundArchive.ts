@@ -33,6 +33,7 @@ export type LiveGsproRoundArchiveState = {
 }
 
 const MAX_ARCHIVED_ROUNDS = 50
+const ARCHIVE_POLL_INTERVAL_MS = 3000
 
 const emptyArchive = (): LiveGsproRoundArchiveState => ({
   version: 1,
@@ -203,7 +204,9 @@ const syncRoundToCloud = async (round: ArchivedGsproRound) => {
   if (shotResult.error) throw new Error(shotResult.error.message)
 }
 
-export const captureAndPersistLiveGsproCourseRound = async (observedAt: string) => {
+export const captureAndPersistLiveGsproCourseRound = async (
+  observedAt = new Date().toISOString(),
+) => {
   const currentRound = await readBrowserGsproCourseRoundArchive()
   if (!currentRound) return null
 
@@ -221,4 +224,30 @@ export const captureAndPersistLiveGsproCourseRound = async (observedAt: string) 
   }
 
   return result.round
+}
+
+export const startLiveGsproCourseRoundArchiver = () => {
+  let stopped = false
+  let busy = false
+
+  const poll = () => {
+    if (stopped || busy) return
+    busy = true
+    void captureAndPersistLiveGsproCourseRound()
+      .catch((error) => {
+        console.warn('[GSPro course archive] capture attempt failed; will retry.', error)
+      })
+      .finally(() => {
+        busy = false
+      })
+  }
+
+  poll()
+  const timer = window.setInterval(poll, ARCHIVE_POLL_INTERVAL_MS)
+
+  return () => {
+    if (stopped) return
+    stopped = true
+    window.clearInterval(timer)
+  }
 }
