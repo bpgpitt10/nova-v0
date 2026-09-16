@@ -15,6 +15,9 @@ const pct = (value: number | null | undefined) =>
 const signed = (value: number | null | undefined, unit = ' yd') =>
   typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value.toFixed(1)}${unit}` : '—'
 
+const fixed = (value: number | null | undefined, digits = 3) =>
+  typeof value === 'number' ? value.toFixed(digits) : '—'
+
 const statusColor = (status: GreywolfDecisionAuditScenario['status']) =>
   status === 'clear' ? '#76d39b' : status === 'review' ? '#d18a3b' : '#c85a4a'
 
@@ -47,7 +50,7 @@ function DecisionAuditDevPage() {
         const persisted = await writeDiagnosticEventToCloud({
           courseKey: 'greywolf-panorama-bc',
           component: 'decision-course-audit',
-          modelVersion: 'full-risk-v1-support-guardrail-v1',
+          modelVersion: 'broadie-2012-next-state-v1',
           result: result.summary.missingCount > 0 ? 'completed-with-missing' : 'completed',
           reason: `${result.summary.clearCount} clear · ${result.summary.reviewCount} review · ${result.summary.missingCount} missing`,
           metadata: {
@@ -85,15 +88,15 @@ function DecisionAuditDevPage() {
   }, [audit, filter])
 
   return (
-    <main style={{ maxWidth: 1700, margin: '0 auto', padding: 28, color: '#e8eee6', background: '#0e1710', minHeight: '100vh' }}>
+    <main style={{ maxWidth: 1850, margin: '0 auto', padding: 28, color: '#e8eee6', background: '#0e1710', minHeight: '100vh' }}>
       <header style={{ marginBottom: 20 }}>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: '#d4b15a' }}>
           LOOPER DEV · AIM & DECISION ENGINE
         </p>
-        <h1 style={{ margin: '6px 0', color: '#fff' }}>Greywolf course-wide decision audit</h1>
-        <p style={{ margin: 0, maxWidth: 1050, color: '#9fb09f' }}>
-          Neutral-condition behavior sweep across all 18 holes. Tee tests use the canonical tee and a green or ~220 yd fairway target;
-          par-4/5 holes also get a synthetic fairway approach near 150 yd. Review flags are investigation prompts, not automatic strategy failures.
+        <h1 style={{ margin: '6px 0', color: '#fff' }}>Greywolf next-state decision audit</h1>
+        <p style={{ margin: 0, maxWidth: 1120, color: '#9fb09f' }}>
+          Neutral-condition behavior sweep across all 18 holes. The tee ~220 yd point is only an aim-direction reference;
+          club selection now minimizes expected future strokes inside the catastrophe guardrail. Future EV includes the modeled core cloud and empirical mishit tail.
         </p>
       </header>
 
@@ -126,7 +129,7 @@ function DecisionAuditDevPage() {
 
       {status === 'loading' && (
         <section style={{ padding: 16, border: '1px solid #314233', borderRadius: 12, background: '#142118' }}>
-          Loading synced player history, 18 canonical hole packages, and deterministic outcome distributions…
+          Loading synced player history, 18 canonical hole packages, deterministic outcome distributions, and next-state values…
         </section>
       )}
 
@@ -139,6 +142,8 @@ function DecisionAuditDevPage() {
               ['Clear', audit.summary.clearCount],
               ['Review', audit.summary.reviewCount],
               ['Missing', audit.summary.missingCount],
+              ['Missing EV', audit.summary.missingValueCount],
+              ['Provisional EV', audit.summary.provisionalValueCount],
               ['Aim boundary', audit.summary.boundaryAimCount],
               ['Catastrophe >8%', audit.summary.elevatedCatastropheCount],
               ['Unknown >8%', audit.summary.highUnknownCount],
@@ -157,8 +162,9 @@ function DecisionAuditDevPage() {
                 <thead>
                   <tr style={{ textAlign: 'left', color: '#9fb09f', background: '#172419' }}>
                     {[
-                      'Status', 'Hole', 'Scenario', 'Distance', 'Ball → target', 'Club', 'Carry gap', 'Aim', 'Success',
-                      'Serious', 'Catastrophe', 'Unknown', 'Support', 'Fairway width', 'Penalty dist', 'Safe side', 'Review',
+                      'Status', 'Hole', 'Scenario', 'Reference dist', 'Ball → target', 'Club', 'Future EV', 'Mean leave',
+                      'Valued', 'Provisional', 'Carry gap', 'Aim', 'Success', 'Serious', 'Catastrophe', 'Unknown', 'Support',
+                      'Fairway width', 'Penalty dist', 'Safe side', 'Review',
                     ].map((heading) => (
                       <th key={heading} style={{ padding: '9px 7px', borderBottom: '1px solid #314233', whiteSpace: 'nowrap' }}>{heading}</th>
                     ))}
@@ -175,6 +181,10 @@ function DecisionAuditDevPage() {
                         <td style={{ padding: 7 }}>{scenario.targetDistanceYds.toFixed(1)} yd</td>
                         <td style={{ padding: 7 }}>{scenario.ballSurface} → {scenario.targetSurface}</td>
                         <td style={{ padding: 7, color: '#fff', fontWeight: 700 }}>{recommendation?.club ?? '—'}</td>
+                        <td style={{ padding: 7, color: '#fff', fontWeight: 800 }}>{fixed(recommendation?.expectedFutureStrokes)}</td>
+                        <td style={{ padding: 7 }}>{recommendation?.meanDistanceToPinYds == null ? '—' : `${recommendation.meanDistanceToPinYds.toFixed(1)} yd`}</td>
+                        <td style={{ padding: 7 }}>{pct(recommendation?.valuedProbability)}</td>
+                        <td style={{ padding: 7 }}>{pct(recommendation?.provisionalProbability)}</td>
                         <td style={{ padding: 7 }}>{signed(recommendation?.carryGapYds)}</td>
                         <td style={{ padding: 7 }}>{signed(recommendation?.aimOffsetYds)}</td>
                         <td style={{ padding: 7 }}>{pct(recommendation?.success)}</td>
@@ -195,8 +205,8 @@ function DecisionAuditDevPage() {
           </section>
 
           <footer style={{ color: '#9fb09f', fontSize: 12, marginTop: 16 }}>
-            Thresholds are intentionally conservative diagnostics: ±15 yd aim boundary, &gt;8% catastrophe, &gt;8% unknown geometry,
-            &gt;15 yd carry gap, or &lt;5 Stock support. A difficult hole can legitimately trigger a risk flag; the audit exists to identify cases worth inspecting.
+            Authoritative ranking = lowest Future EV inside the catastrophe guardrail. Carry gap is diagnostic only. Review flags cover missing value,
+            aim-search boundaries, &gt;8% catastrophe, &gt;8% unknown geometry, or &lt;5 Stock support. “Provisional” means the EV used an explicit V1 assumption such as unknown-as-rough or approximate penalty relief.
           </footer>
         </>
       )}
