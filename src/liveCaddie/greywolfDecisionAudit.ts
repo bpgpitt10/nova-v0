@@ -20,6 +20,24 @@ import {
 export type GreywolfDecisionAuditScenarioKind = 'tee-strategy' | 'approach-150'
 export type GreywolfDecisionAuditStatus = 'clear' | 'review' | 'missing'
 
+export type GreywolfDecisionAuditClubAlternative = {
+  rank: number | null
+  club: string
+  modeledCarryYds: number
+  supportShots: number
+  aimOffsetYds: number | null
+  withinCatastropheGuardrail: boolean | null
+  expectedFutureStrokes: number | null
+  valuedProbability: number | null
+  provisionalProbability: number | null
+  meanDistanceToPinYds: number | null
+  success: number | null
+  seriousTrouble: number | null
+  catastrophe: number | null
+  unknown: number | null
+  decisionReason: string | null
+}
+
 export type GreywolfDecisionAuditScenario = {
   id: string
   holeNumber: number
@@ -39,6 +57,12 @@ export type GreywolfDecisionAuditScenario = {
   } | null
   /** Side-by-side natural tee-club distributions retained for geometry/debug context. */
   naturalClubComparisons: NaturalLandingClubComparison[]
+  /**
+   * The actual club-ranking comparison set, including next-state EV. Persisted
+   * so a saved audit can explain why Driver, 3W, iron, etc. won without having
+   * to rerun the player/course model.
+   */
+  clubAlternatives: GreywolfDecisionAuditClubAlternative[]
   recommendation: {
     club: string
     modeledCarryYds: number
@@ -74,6 +98,7 @@ export type GreywolfDecisionAudit = {
     missingCount: number
     missingValueCount: number
     provisionalValueCount: number
+    highProvisionalValueCount: number
     boundaryAimCount: number
     elevatedCatastropheCount: number
     highUnknownCount: number
@@ -209,6 +234,28 @@ const auditScenario = (
   const naturalClubComparisons = input.kind === 'tee-strategy' && targetSurface === 'fairway'
     ? buildNaturalLandingClubComparisons(sessions, hole, input.ball, nowMs)
     : []
+  const clubAlternatives: GreywolfDecisionAuditClubAlternative[] = evaluations.map((evaluation) => {
+    const candidate = evaluation.bestCandidate
+    const candidateRisk = candidate?.riskProfile ?? null
+    const candidateValue = candidate ? nextStateValueForAimCandidate(candidate) : null
+    return {
+      rank: evaluation.decisionRank,
+      club: evaluation.club,
+      modeledCarryYds: evaluation.modeledCarryYds,
+      supportShots: evaluation.supportShots,
+      aimOffsetYds: candidate?.aimOffsetYds ?? null,
+      withinCatastropheGuardrail: evaluation.withinCatastropheGuardrail,
+      expectedFutureStrokes: candidateValue?.expectedFutureStrokes ?? null,
+      valuedProbability: candidateValue?.valuedProbability ?? null,
+      provisionalProbability: candidateValue?.provisionalProbability ?? null,
+      meanDistanceToPinYds: candidateValue?.meanDistanceToPinYds ?? null,
+      success: candidateRisk?.success ?? null,
+      seriousTrouble: candidateRisk?.seriousTrouble ?? null,
+      catastrophe: candidateRisk?.catastrophe ?? null,
+      unknown: candidateRisk?.unknown ?? null,
+      decisionReason: evaluation.decisionReason,
+    }
+  })
   const reviewReasons: string[] = []
 
   if (!selected || !best) {
@@ -225,6 +272,11 @@ const auditScenario = (
     }
     if ((risk?.unknown ?? 0) > 0.08) {
       reviewReasons.push(`Unknown-geometry probability is ${((risk?.unknown ?? 0) * 100).toFixed(1)}%.`)
+    }
+    if ((stateValue?.provisionalProbability ?? 0) > 0.08) {
+      reviewReasons.push(
+        `Next-state EV is ${((stateValue?.provisionalProbability ?? 0) * 100).toFixed(1)}% provisional.`,
+      )
     }
     if (selected.supportShots < 5) {
       reviewReasons.push(`Selected club has thin Stock support (${selected.supportShots} shots).`)
@@ -263,6 +315,7 @@ const auditScenario = (
       safeSide: station.safeSide,
     } : null,
     naturalClubComparisons,
+    clubAlternatives,
     recommendation: selected && best ? {
       club: selected.club,
       modeledCarryYds: selected.modeledCarryYds,
@@ -323,6 +376,9 @@ export const buildGreywolfCourseDecisionAudit = async (
       ).length,
       provisionalValueCount: scenarios.filter((scenario) =>
         (scenario.recommendation?.provisionalProbability ?? 0) > 1e-6,
+      ).length,
+      highProvisionalValueCount: scenarios.filter((scenario) =>
+        (scenario.recommendation?.provisionalProbability ?? 0) > 0.08,
       ).length,
       boundaryAimCount: scenarios.filter((scenario) => {
         const recommendation = scenario.recommendation
