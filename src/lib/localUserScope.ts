@@ -1,6 +1,7 @@
 export const SESSION_HISTORY_STORAGE_KEY = 'nova-validation-sessions'
 export const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
 export const BAG_CONFIG_STORAGE_KEY = 'nova-validation-bag-config'
+export const LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY = 'looper-live-gspro-round-archive-v1'
 
 const ACTIVE_LOCAL_USER_KEY = 'looper-active-local-user-v1'
 const LEGACY_BACKUP_PREFIX = 'looper-unscoped-legacy-backup-v1:'
@@ -12,6 +13,7 @@ const managedKeys = [
   SESSION_HISTORY_STORAGE_KEY,
   ACTIVE_SESSION_STORAGE_KEY,
   BAG_CONFIG_STORAGE_KEY,
+  LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY,
 ] as const
 
 const dispatchLocalDataChanged = () => {
