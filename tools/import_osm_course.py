@@ -6,15 +6,18 @@ Runtime never talks to OpenStreetMap. This tool:
 2. refreshes or reuses the cached OSM snapshot,
 3. fills any missing per-hole reference metadata from OSM routes,
 4. runs the topology-safe generic package compiler,
-5. validates the resulting package before it can be published.
+5. validates the resulting package before it can be published,
+6. records durable cache/freshness metadata without expiring usable data.
 
-It intentionally preserves the source query/snapshot/validation proof beside the
-generated package so cached geometry remains attributable and reproducible.
+A cached OSM snapshot is reused indefinitely by default. Age only changes its
+refresh eligibility; it never makes a validated package unavailable and never
+causes an implicit upstream fetch.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -24,6 +27,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -33,9 +37,18 @@ OVERPASS_ENDPOINTS = (
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 )
-USER_AGENT = "LooperCoursePackage/0.2 (+https://github.com/bpgpitt10/nova-v0)"
+USER_AGENT = "LooperCoursePackage/0.3 (+https://github.com/bpgpitt10/nova-v0)"
 DEFAULT_CONTEXT_RADIUS_METERS = 1600
 DEFAULT_MIN_ELEMENTS = 50
+CACHE_SCHEMA_VERSION = "looper-course-cache-v1"
+BUILDER_VERSION = "build_osm_course_package_v3"
+REFRESH_ELIGIBLE_AFTER_DAYS = 365
+STALE_REVIEW_AFTER_DAYS = 1095
+BUILDER_FILES = (
+    "tools/build_osm_course_package.py",
+    "tools/build_osm_course_package_v2.py",
+    "tools/build_osm_course_package_v3.py",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--refresh-osm",
         action="store_true",
-        help="Fetch a fresh OSM snapshot even when a cached snapshot exists.",
+        help="Explicitly fetch a fresh OSM snapshot even when a cached snapshot exists.",
     )
     parser.add_argument(
         "--offline",
@@ -57,6 +70,49 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1],
     )
     return parser.parse_args()
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def iso_z(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def parse_iso(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def builder_fingerprint(repo_root: Path) -> str:
+    digest = hashlib.sha256()
+    for relative_path in BUILDER_FILES:
+        path = repo_root / relative_path
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def load_json_if_present(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload if isinstance(payload, dict) else None
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -157,6 +213,14 @@ def validate_snapshot(payload: dict[str, Any], config: dict[str, Any]) -> None:
         )
 
 
+def source_base_timestamp(payload: dict[str, Any]) -> str | None:
+    osm3s = payload.get("osm3s")
+    if not isinstance(osm3s, dict):
+        return None
+    value = osm3s.get("timestamp_osm_base")
+    return value if isinstance(value, str) and value else None
+
+
 def route_length_yards(route: dict[str, Any]) -> float:
     points = route["geometry"]
     return sum(base.haversine_yards(a, b) for a, b in zip(points, points[1:]))
@@ -169,9 +233,8 @@ def effective_config(
     """Fill missing hole metadata from OSM without overriding reviewed config."""
     resolved = deepcopy(config)
 
-    # The current v2 compiler predates relation-backed course configs and still
-    # expects this legacy field while writing its metadata. Supply it only as an
-    # internal compatibility bridge; normalize the emitted provenance afterward.
+    # The v2 package core still writes a legacy way-only metadata field. Supply
+    # it internally; normalize emitted provenance after V3 completes.
     _element_type, element_id = osm_course_element(resolved)
     resolved.setdefault("osmCourseWayId", element_id)
 
@@ -241,8 +304,10 @@ def normalize_source_metadata(
     config: dict[str, Any],
     output_path: Path,
     manifest_path: Path,
+    snapshot_sha256: str,
+    builder_sha256: str,
 ) -> None:
-    """Replace the compiler's legacy way-only metadata with generic OSM identity."""
+    """Normalize generic OSM identity and record the actual V3 build provenance."""
     element_type, element_id = osm_course_element(config)
     source_element = {"type": element_type, "id": element_id}
     source_url = f"https://www.openstreetmap.org/{element_type}/{element_id}"
@@ -251,10 +316,16 @@ def normalize_source_metadata(
     provenance = package.setdefault("provenance", {})
     provenance["sourceUrl"] = source_url
     provenance["sourceElement"] = source_element
+    provenance["sourceSnapshotSha256"] = snapshot_sha256
+    provenance["builderVersion"] = BUILDER_VERSION
+    provenance["builderFingerprintSha256"] = builder_sha256
     output_path.write_text(json.dumps(package, indent=2, sort_keys=True), encoding="utf-8")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["compiler"] = BUILDER_VERSION
     manifest["osmCourseElement"] = source_element
+    manifest["sourceSnapshotSha256"] = snapshot_sha256
+    manifest["builderFingerprintSha256"] = builder_sha256
     if element_type == "relation":
         manifest.pop("osmCourseWayId", None)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
@@ -272,6 +343,111 @@ def validate_manifest(manifest_path: Path) -> dict[str, Any]:
     if manifest.get("allHolesStaticGeometryReady") is not True:
         raise SystemExit("Static geometry validation did not pass for all 18 holes")
     return manifest
+
+
+def freshness_status(fetched_at: str | None, evaluated_at: datetime) -> tuple[str, float | None]:
+    fetched = parse_iso(fetched_at)
+    if fetched is None:
+        return "unknown", None
+    age_days = max(0.0, (evaluated_at - fetched).total_seconds() / 86400.0)
+    if age_days < REFRESH_ELIGIBLE_AFTER_DAYS:
+        return "current", age_days
+    if age_days < STALE_REVIEW_AFTER_DAYS:
+        return "refresh-eligible", age_days
+    return "stale-review", age_days
+
+
+def write_cache_metadata(
+    *,
+    repo_root: Path,
+    config_path: Path,
+    config: dict[str, Any],
+    payload: dict[str, Any],
+    snapshot_path: Path,
+    output_path: Path,
+    cache_path: Path,
+    fetched_upstream: bool,
+    build_started_at: datetime,
+    snapshot_sha256: str,
+    builder_sha256: str,
+) -> dict[str, Any]:
+    previous = load_json_if_present(cache_path) or {}
+    previous_source = previous.get("source") if isinstance(previous.get("source"), dict) else {}
+    now = utc_now()
+    upstream_base = source_base_timestamp(payload)
+
+    if fetched_upstream:
+        fetched_at = iso_z(build_started_at)
+        fetched_at_basis = "upstream-fetch"
+        last_checked_at = fetched_at
+    else:
+        fetched_at = previous_source.get("fetchedAt")
+        fetched_at_basis = previous_source.get("fetchedAtBasis")
+        last_checked_at = previous_source.get("lastCheckedAt")
+        if not isinstance(fetched_at, str) or not fetched_at:
+            # First cache-manifest build for an already-preserved snapshot.
+            # OSM's base timestamp is the best conservative bootstrap available;
+            # future explicit refreshes will record the exact fetch time.
+            fetched_at = upstream_base
+            fetched_at_basis = "osm-base-timestamp-bootstrap" if upstream_base else "unknown"
+
+    status, age_days = freshness_status(fetched_at, now)
+    package_payload = json.loads(output_path.read_text(encoding="utf-8"))
+    element_type, element_id = osm_course_element(config)
+
+    cache = {
+        "schemaVersion": CACHE_SCHEMA_VERSION,
+        "courseId": config["courseId"],
+        "courseName": config["courseName"],
+        "source": {
+            "provider": "openstreetmap-overpass",
+            "element": {"type": element_type, "id": element_id},
+            "snapshotPath": str(snapshot_path.relative_to(repo_root)),
+            "snapshotSha256": snapshot_sha256,
+            "sourceBaseTimestamp": upstream_base,
+            "fetchedAt": fetched_at,
+            "fetchedAtBasis": fetched_at_basis,
+            "lastCheckedAt": last_checked_at,
+        },
+        "package": {
+            "path": str(output_path.relative_to(repo_root)),
+            "schemaVersion": package_payload.get("schemaVersion"),
+            "sha256": sha256_file(output_path),
+            "builtAt": iso_z(now),
+            "builderVersion": BUILDER_VERSION,
+            "builderFingerprintSha256": builder_sha256,
+            "configPath": str(config_path.relative_to(repo_root)),
+            "configSha256": sha256_file(config_path),
+        },
+        "freshness": {
+            "status": status,
+            "evaluatedAt": iso_z(now),
+            "ageDays": round(age_days, 2) if age_days is not None else None,
+        },
+        "refreshPolicy": {
+            "serveCachedRegardlessOfAge": True,
+            "deleteOnAge": False,
+            "implicitRefreshOnBuild": False,
+            "refreshEligibleAfterDays": REFRESH_ELIGIBLE_AFTER_DAYS,
+            "staleReviewAfterDays": STALE_REVIEW_AFTER_DAYS,
+            "refreshTriggers": [
+                "explicit-refresh",
+                "reported-geometry-error",
+                "known-course-renovation",
+                "source-age-eligible-and-course-used",
+            ],
+            "localRebuildTriggers": [
+                "package-schema-change",
+                "builder-fingerprint-change",
+            ],
+        },
+        "lastBuild": {
+            "reason": "source-refresh" if fetched_upstream else "cached-source-rebuild",
+            "usedNetworkForOsm": fetched_upstream,
+        },
+    }
+    cache_path.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
+    return cache
 
 
 def topology_diagnostics(payload: dict[str, Any]) -> dict[str, int]:
@@ -309,6 +485,7 @@ def main() -> int:
     snapshot_path = artifact_dir / "osm-snapshot.json"
     query_path = artifact_dir / "overpass-query.txt"
     manifest_path = artifact_dir / "validation-v1.json"
+    cache_path = artifact_dir / "cache-v1.json"
     output_path = public_dir / "course-v1.json"
 
     query = build_overpass_query(config)
@@ -317,7 +494,10 @@ def main() -> int:
     if args.offline and args.refresh_osm:
         raise SystemExit("--offline and --refresh-osm cannot be used together")
 
+    # Deliberately NO age check here. Existing source data stays usable forever
+    # unless an explicit refresh is requested. Freshness is advisory metadata.
     should_fetch = args.refresh_osm or not snapshot_path.exists()
+    build_started_at = utc_now()
     if should_fetch:
         if args.offline:
             raise SystemExit(f"No cached OSM snapshot at {snapshot_path}")
@@ -327,6 +507,8 @@ def main() -> int:
         payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
 
     validate_snapshot(payload, config)
+    snapshot_sha256 = sha256_file(snapshot_path)
+    builder_sha256 = builder_fingerprint(repo_root)
     resolved_config, inferred_holes = effective_config(config, payload)
     run_compiler(
         repo_root=repo_root,
@@ -339,8 +521,23 @@ def main() -> int:
         config=config,
         output_path=output_path,
         manifest_path=manifest_path,
+        snapshot_sha256=snapshot_sha256,
+        builder_sha256=builder_sha256,
     )
     manifest = validate_manifest(manifest_path)
+    cache = write_cache_metadata(
+        repo_root=repo_root,
+        config_path=config_path,
+        config=config,
+        payload=payload,
+        snapshot_path=snapshot_path,
+        output_path=output_path,
+        cache_path=cache_path,
+        fetched_upstream=should_fetch,
+        build_started_at=build_started_at,
+        snapshot_sha256=snapshot_sha256,
+        builder_sha256=builder_sha256,
+    )
 
     element_type, element_id = osm_course_element(config)
     summary = {
@@ -350,6 +547,9 @@ def main() -> int:
         "snapshot": str(snapshot_path.relative_to(repo_root)),
         "package": str(output_path.relative_to(repo_root)),
         "manifest": str(manifest_path.relative_to(repo_root)),
+        "cacheMetadata": str(cache_path.relative_to(repo_root)),
+        "cacheStatus": cache["freshness"]["status"],
+        "usedNetworkForOsm": should_fetch,
         "inferredReferenceYardageHoles": inferred_holes,
         "topology": topology_diagnostics(payload),
         "readyHoleCount": manifest.get("readyHoleCount"),
