@@ -11,6 +11,8 @@ on:
       - tools/audit_osm_topology.py
       - tools/build_osm_course_package.py
       - tools/build_osm_course_package_v2.py
+      - tools/build_osm_course_package_v3.py
+      - tools/requirements-course-importer.txt
       - .github/workflows/osm-course-package.yml
   workflow_dispatch:
     inputs:
@@ -46,6 +48,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Install course importer dependencies
+        run: pip install -r tools/requirements-course-importer.txt
 
       - name: Import and validate course package(s)
         shell: bash
