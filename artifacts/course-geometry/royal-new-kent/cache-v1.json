@@ -1,0 +1,54 @@
+{
+  "courseId": "royal-new-kent-providence-forge-va",
+  "courseName": "Royal New Kent Golf Club",
+  "freshness": {
+    "ageDays": 0.23,
+    "evaluatedAt": "2026-09-17T23:44:58.777865Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-17T23:44:58.777865Z",
+    "configPath": "config/course-geometry/royal-new-kent-v1.json",
+    "configSha256": "d33bf36772b9d69838daf4792f6c0a6c72edf719ccae79bcf18cc8de346f6c5e",
+    "path": "public/course-geometry/royal-new-kent/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "ab9f184b7bbf24f3b5d863cb73248dd456546f143fbd6bbfc709f039ce44ae8d"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 6209148,
+      "type": "relation"
+    },
+    "fetchedAt": "2026-09-17T18:20:35Z",
+    "fetchedAtBasis": "osm-base-timestamp-bootstrap",
+    "lastCheckedAt": null,
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/royal-new-kent/osm-snapshot.json",
+    "snapshotSha256": "3def71ede549334840b1a728511ef5cb2a3eae91743713f2929cd66f23627e71",
+    "sourceBaseTimestamp": "2026-09-17T18:20:35Z"
+  }
+}
