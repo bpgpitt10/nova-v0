@@ -6,7 +6,7 @@
   "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-17T18:19:28.699319Z",
+  "generatedAt": "2026-09-17T18:21:33.636352Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -1224,6 +1224,10 @@
     "surface:rough": 1,
     "surface:tee": 68,
     "surface:water": 1
+  },
+  "osmCourseElement": {
+    "id": 430227508,
+    "type": "way"
   },
   "osmCourseWayId": 430227508,
   "osmHoleRoutes": 18,
