@@ -1,0 +1,145 @@
+name: Generic OSM course packages
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+      - course-importer-cache-v1
+    paths:
+      - config/course-geometry/**
+      - tools/import_osm_course.py
+      - tools/build_osm_course_package.py
+      - tools/build_osm_course_package_v2.py
+      - .github/workflows/osm-course-package.yml
+  workflow_dispatch:
+    inputs:
+      config_path:
+        description: Optional single course config path; blank imports every configured course
+        required: false
+        default: ''
+        type: string
+      refresh_osm:
+        description: Force a fresh OSM snapshot instead of using the cached snapshot
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: osm-course-package-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-course-packages:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Import and validate course package(s)
+        shell: bash
+        env:
+          INPUT_CONFIG_PATH: ${{ inputs.config_path }}
+          INPUT_REFRESH_OSM: ${{ inputs.refresh_osm }}
+        run: |
+          set -euo pipefail
+
+          configs=()
+          if [[ -n "${INPUT_CONFIG_PATH:-}" ]]; then
+            configs+=("$INPUT_CONFIG_PATH")
+          else
+            while IFS= read -r config; do
+              configs+=("$config")
+            done < <(find config/course-geometry -maxdepth 1 -type f -name '*-v1.json' | sort)
+          fi
+
+          if [[ "${#configs[@]}" -eq 0 ]]; then
+            echo "No course build configs found" >&2
+            exit 1
+          fi
+
+          for config in "${configs[@]}"; do
+            if [[ ! -f "$config" ]]; then
+              echo "Course config not found: $config" >&2
+              exit 1
+            fi
+            echo "Importing $config"
+            args=(--config "$config")
+            if [[ "${INPUT_REFRESH_OSM:-false}" == "true" ]]; then
+              args+=(--refresh-osm)
+            fi
+            python tools/import_osm_course.py "${args[@]}"
+          done
+
+      - name: Verify generated package inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          configs = sorted(Path('config/course-geometry').glob('*-v1.json'))
+          failures = []
+          rows = []
+          for path in configs:
+              config = json.loads(path.read_text())
+              slug = config.get('slug') or path.stem.rsplit('-v1', 1)[0]
+              package = Path('public/course-geometry') / slug / 'course-v1.json'
+              manifest = Path('artifacts/course-geometry') / slug / 'validation-v1.json'
+              snapshot = Path('artifacts/course-geometry') / slug / 'osm-snapshot.json'
+              ok = package.exists() and manifest.exists() and snapshot.exists()
+              if ok:
+                  proof = json.loads(manifest.read_text())
+                  ok = (
+                      proof.get('osmHoleRoutes') == 18
+                      and proof.get('readyHoleCount') == 18
+                      and proof.get('allHolesStaticGeometryReady') is True
+                  )
+              rows.append({'course': config.get('courseId'), 'slug': slug, 'ready': ok})
+              if not ok:
+                  failures.append(slug)
+          print(json.dumps(rows, indent=2))
+          if failures:
+              raise SystemExit(f"Course package validation failed: {failures}")
+          PY
+
+      - name: Persist cached packages and source proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/course-geometry artifacts/course-geometry
+          if git diff --cached --quiet; then
+            echo "Course package cache unchanged"
+            exit 0
+          fi
+
+          branch="${GITHUB_REF_NAME}"
+          git commit -m "Build cached OSM course packages"
+          git fetch origin "$branch"
+          git rebase "origin/$branch"
+          git push origin "HEAD:$branch"
+
+      - name: Upload validation proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osm-course-package-proof-${{ github.run_id }}
+          path: |
+            artifacts/course-geometry/**/validation-v1.json
+            artifacts/course-geometry/**/overpass-query.txt
+            public/course-geometry/**/course-v1.json
+          if-no-files-found: ignore
+          retention-days: 14
