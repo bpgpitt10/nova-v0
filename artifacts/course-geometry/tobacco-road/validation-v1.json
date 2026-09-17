@@ -6,7 +6,7 @@
   "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-17T18:27:15.882931Z",
+  "generatedAt": "2026-09-17T20:39:59.587200Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -60,7 +60,7 @@
       "straightTeeToGreenYards": 530.0,
       "surfacePolygons": {
         "bunker": 41,
-        "fairway": 6,
+        "fairway": 406,
         "green": 1,
         "rough": 0,
         "tee": 0,
@@ -128,8 +128,8 @@
       "routeLengthYards": 382.9,
       "straightTeeToGreenYards": 380.5,
       "surfacePolygons": {
-        "bunker": 12,
-        "fairway": 2,
+        "bunker": 510,
+        "fairway": 399,
         "green": 1,
         "rough": 0,
         "tee": 3,
@@ -196,7 +196,7 @@
       "straightTeeToGreenYards": 144.7,
       "surfacePolygons": {
         "bunker": 5,
-        "fairway": 1,
+        "fairway": 111,
         "green": 1,
         "rough": 0,
         "tee": 5,
@@ -262,8 +262,8 @@
       "routeLengthYards": 526.0,
       "straightTeeToGreenYards": 407.3,
       "surfacePolygons": {
-        "bunker": 8,
-        "fairway": 2,
+        "bunker": 1241,
+        "fairway": 265,
         "green": 1,
         "rough": 0,
         "tee": 6,
@@ -329,8 +329,8 @@
       "routeLengthYards": 318.0,
       "straightTeeToGreenYards": 274.4,
       "surfacePolygons": {
-        "bunker": 10,
-        "fairway": 2,
+        "bunker": 1857,
+        "fairway": 300,
         "green": 1,
         "rough": 0,
         "tee": 2,
@@ -396,7 +396,7 @@
       "routeLengthYards": 128.7,
       "straightTeeToGreenYards": 132.1,
       "surfacePolygons": {
-        "bunker": 8,
+        "bunker": 1855,
         "fairway": 0,
         "green": 1,
         "rough": 0,
@@ -463,8 +463,8 @@
       "routeLengthYards": 410.2,
       "straightTeeToGreenYards": 401.1,
       "surfacePolygons": {
-        "bunker": 15,
-        "fairway": 3,
+        "bunker": 1862,
+        "fairway": 227,
         "green": 1,
         "rough": 0,
         "tee": 3,
@@ -531,7 +531,7 @@
       "straightTeeToGreenYards": 174.3,
       "surfacePolygons": {
         "bunker": 8,
-        "fairway": 1,
+        "fairway": 88,
         "green": 1,
         "rough": 0,
         "tee": 3,
@@ -597,8 +597,8 @@
       "routeLengthYards": 411.5,
       "straightTeeToGreenYards": 393.5,
       "surfacePolygons": {
-        "bunker": 37,
-        "fairway": 3,
+        "bunker": 976,
+        "fairway": 490,
         "green": 1,
         "rough": 0,
         "tee": 2,
@@ -665,7 +665,7 @@
       "straightTeeToGreenYards": 365.5,
       "surfacePolygons": {
         "bunker": 14,
-        "fairway": 4,
+        "fairway": 143,
         "green": 1,
         "rough": 0,
         "tee": 1,
@@ -731,8 +731,8 @@
       "routeLengthYards": 493.3,
       "straightTeeToGreenYards": 353.5,
       "surfacePolygons": {
-        "bunker": 8,
-        "fairway": 2,
+        "bunker": 506,
+        "fairway": 394,
         "green": 1,
         "rough": 0,
         "tee": 2,
@@ -799,7 +799,7 @@
       "straightTeeToGreenYards": 339.2,
       "surfacePolygons": {
         "bunker": 11,
-        "fairway": 1,
+        "fairway": 135,
         "green": 1,
         "rough": 0,
         "tee": 2,
@@ -866,7 +866,7 @@
       "straightTeeToGreenYards": 454.7,
       "surfacePolygons": {
         "bunker": 14,
-        "fairway": 2,
+        "fairway": 386,
         "green": 1,
         "rough": 0,
         "tee": 4,
@@ -933,7 +933,7 @@
       "straightTeeToGreenYards": 191.8,
       "surfacePolygons": {
         "bunker": 9,
-        "fairway": 1,
+        "fairway": 91,
         "green": 1,
         "rough": 0,
         "tee": 4,
@@ -999,10 +999,10 @@
       "routeLengthYards": 362.7,
       "straightTeeToGreenYards": 347.6,
       "surfacePolygons": {
-        "bunker": 10,
-        "fairway": 1,
+        "bunker": 233,
+        "fairway": 443,
         "green": 1,
-        "rough": 1,
+        "rough": 118,
         "tee": 3,
         "water": 0
       },
@@ -1066,10 +1066,10 @@
       "routeLengthYards": 270.1,
       "straightTeeToGreenYards": 239.9,
       "surfacePolygons": {
-        "bunker": 20,
-        "fairway": 1,
+        "bunker": 63,
+        "fairway": 443,
         "green": 1,
-        "rough": 1,
+        "rough": 118,
         "tee": 4,
         "water": 0
       },
@@ -1133,8 +1133,8 @@
       "routeLengthYards": 132.2,
       "straightTeeToGreenYards": 129.8,
       "surfacePolygons": {
-        "bunker": 14,
-        "fairway": 1,
+        "bunker": 57,
+        "fairway": 134,
         "green": 1,
         "rough": 0,
         "tee": 5,
@@ -1200,8 +1200,8 @@
       "routeLengthYards": 393.7,
       "straightTeeToGreenYards": 372.7,
       "surfacePolygons": {
-        "bunker": 23,
-        "fairway": 2,
+        "bunker": 66,
+        "fairway": 620,
         "green": 1,
         "rough": 0,
         "tee": 5,

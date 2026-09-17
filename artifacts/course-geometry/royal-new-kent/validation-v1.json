@@ -6,7 +6,7 @@
   "contextSourceTagCounts": {},
   "courseId": "royal-new-kent-providence-forge-va",
   "courseName": "Royal New Kent Golf Club",
-  "generatedAt": "2026-09-17T18:27:14.932422Z",
+  "generatedAt": "2026-09-17T20:39:55.848566Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -60,7 +60,7 @@
       "straightTeeToGreenYards": 328.6,
       "surfacePolygons": {
         "bunker": 1,
-        "fairway": 2,
+        "fairway": 179,
         "green": 1,
         "rough": 6,
         "tee": 4,
@@ -127,7 +127,7 @@
       "straightTeeToGreenYards": 351.2,
       "surfacePolygons": {
         "bunker": 2,
-        "fairway": 1,
+        "fairway": 144,
         "green": 1,
         "rough": 4,
         "tee": 3,
@@ -194,7 +194,7 @@
       "straightTeeToGreenYards": 175.8,
       "surfacePolygons": {
         "bunker": 0,
-        "fairway": 1,
+        "fairway": 61,
         "green": 1,
         "rough": 3,
         "tee": 5,
@@ -261,7 +261,7 @@
       "straightTeeToGreenYards": 443.4,
       "surfacePolygons": {
         "bunker": 7,
-        "fairway": 2,
+        "fairway": 219,
         "green": 1,
         "rough": 7,
         "tee": 4,
@@ -328,7 +328,7 @@
       "straightTeeToGreenYards": 559.9,
       "surfacePolygons": {
         "bunker": 16,
-        "fairway": 2,
+        "fairway": 163,
         "green": 1,
         "rough": 4,
         "tee": 3,
@@ -395,7 +395,7 @@
       "straightTeeToGreenYards": 418.3,
       "surfacePolygons": {
         "bunker": 7,
-        "fairway": 1,
+        "fairway": 130,
         "green": 1,
         "rough": 1,
         "tee": 5,
@@ -462,7 +462,7 @@
       "straightTeeToGreenYards": 194.1,
       "surfacePolygons": {
         "bunker": 5,
-        "fairway": 1,
+        "fairway": 76,
         "green": 1,
         "rough": 6,
         "tee": 3,
@@ -529,7 +529,7 @@
       "straightTeeToGreenYards": 379.1,
       "surfacePolygons": {
         "bunker": 12,
-        "fairway": 3,
+        "fairway": 178,
         "green": 1,
         "rough": 6,
         "tee": 2,
@@ -596,7 +596,7 @@
       "straightTeeToGreenYards": 376.7,
       "surfacePolygons": {
         "bunker": 3,
-        "fairway": 1,
+        "fairway": 98,
         "green": 1,
         "rough": 5,
         "tee": 2,
@@ -663,7 +663,7 @@
       "straightTeeToGreenYards": 524.8,
       "surfacePolygons": {
         "bunker": 10,
-        "fairway": 2,
+        "fairway": 61,
         "green": 1,
         "rough": 7,
         "tee": 3,
@@ -730,7 +730,7 @@
       "straightTeeToGreenYards": 401.1,
       "surfacePolygons": {
         "bunker": 12,
-        "fairway": 1,
+        "fairway": 110,
         "green": 1,
         "rough": 4,
         "tee": 3,
@@ -797,7 +797,7 @@
       "straightTeeToGreenYards": 217.1,
       "surfacePolygons": {
         "bunker": 7,
-        "fairway": 1,
+        "fairway": 89,
         "green": 1,
         "rough": 1,
         "tee": 4,
@@ -864,7 +864,7 @@
       "straightTeeToGreenYards": 359.3,
       "surfacePolygons": {
         "bunker": 10,
-        "fairway": 2,
+        "fairway": 205,
         "green": 1,
         "rough": 3,
         "tee": 3,
@@ -998,7 +998,7 @@
       "straightTeeToGreenYards": 248.2,
       "surfacePolygons": {
         "bunker": 9,
-        "fairway": 2,
+        "fairway": 76,
         "green": 1,
         "rough": 4,
         "tee": 3,
@@ -1065,7 +1065,7 @@
       "straightTeeToGreenYards": 450.2,
       "surfacePolygons": {
         "bunker": 9,
-        "fairway": 4,
+        "fairway": 154,
         "green": 1,
         "rough": 7,
         "tee": 4,
@@ -1132,7 +1132,7 @@
       "straightTeeToGreenYards": 519.8,
       "surfacePolygons": {
         "bunker": 7,
-        "fairway": 3,
+        "fairway": 58,
         "green": 1,
         "rough": 5,
         "tee": 3,
@@ -1199,7 +1199,7 @@
       "straightTeeToGreenYards": 468.3,
       "surfacePolygons": {
         "bunker": 4,
-        "fairway": 3,
+        "fairway": 50,
         "green": 1,
         "rough": 5,
         "tee": 3,
