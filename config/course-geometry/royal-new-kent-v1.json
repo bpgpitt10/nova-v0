@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "royal-new-kent-providence-forge-va",
+  "courseName": "Royal New Kent Golf Club",
+  "location": "Providence Forge, VA",
+  "slug": "royal-new-kent",
+  "osmCourseElement": {
+    "type": "relation",
+    "id": 6209148
+  },
+  "osmCenter": [37.47411, -77.01649],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}
