@@ -1,7 +1,7 @@
 {
   "courseId": "royal-new-kent-providence-forge-va",
   "courseName": "Royal New Kent Golf Club",
-  "generatedAt": "2026-09-17T18:21:32.570004Z",
+  "generatedAt": "2026-09-17T18:27:14.932422Z",
   "holes": {
     "1": {
       "bounds": {
@@ -60613,7 +60613,7 @@
   "provenance": {
     "attribution": "\u00a9 OpenStreetMap contributors",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-17T18:21:32.570004Z",
+    "fetchedAt": "2026-09-17T18:27:14.932422Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
