@@ -117,20 +117,36 @@ jobs:
               manifest = Path('artifacts/course-geometry') / slug / 'validation-v1.json'
               snapshot = Path('artifacts/course-geometry') / slug / 'osm-snapshot.json'
               topology = Path('artifacts/course-geometry') / slug / 'topology-audit-v1.json'
-              ok = package.exists() and manifest.exists() and snapshot.exists() and topology.exists()
+              cache = Path('artifacts/course-geometry') / slug / 'cache-v1.json'
+              ok = package.exists() and manifest.exists() and snapshot.exists() and topology.exists() and cache.exists()
+              cache_status = None
+              used_network = None
               if ok:
                   proof = json.loads(manifest.read_text())
+                  cache_proof = json.loads(cache.read_text())
+                  cache_status = (cache_proof.get('freshness') or {}).get('status')
+                  used_network = (cache_proof.get('lastBuild') or {}).get('usedNetworkForOsm')
                   ok = (
                       proof.get('osmHoleRoutes') == 18
                       and proof.get('readyHoleCount') == 18
                       and proof.get('allHolesStaticGeometryReady') is True
+                      and proof.get('compiler') == 'build_osm_course_package_v3'
+                      and cache_proof.get('schemaVersion') == 'looper-course-cache-v1'
+                      and (cache_proof.get('refreshPolicy') or {}).get('serveCachedRegardlessOfAge') is True
+                      and (cache_proof.get('refreshPolicy') or {}).get('deleteOnAge') is False
                   )
-              rows.append({'course': config.get('courseId'), 'slug': slug, 'ready': ok})
+              rows.append({
+                  'course': config.get('courseId'),
+                  'slug': slug,
+                  'ready': ok,
+                  'cacheStatus': cache_status,
+                  'usedNetworkForOsm': used_network,
+              })
               if not ok:
                   failures.append(slug)
           print(json.dumps(rows, indent=2))
           if failures:
-              raise SystemExit(f"Course package validation failed: {failures}")
+              raise SystemExit(f"Course package/cache validation failed: {failures}")
           PY
 
       - name: Persist cached packages and source proof
@@ -158,6 +174,7 @@ jobs:
           name: osm-course-package-proof-${{ github.run_id }}
           path: |
             artifacts/course-geometry/**/validation-v1.json
+            artifacts/course-geometry/**/cache-v1.json
             artifacts/course-geometry/**/topology-audit-v1.json
             artifacts/course-geometry/**/overpass-query.txt
             public/course-geometry/**/course-v1.json
