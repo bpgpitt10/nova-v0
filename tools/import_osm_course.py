@@ -5,7 +5,7 @@ Runtime never talks to OpenStreetMap. This tool:
 1. builds a bounded Overpass query from course config,
 2. refreshes or reuses the cached OSM snapshot,
 3. fills any missing per-hole reference metadata from OSM routes,
-4. runs the generic v2 package compiler,
+4. runs the topology-safe generic package compiler,
 5. validates the resulting package before it can be published.
 
 It intentionally preserves the source query/snapshot/validation proof beside the
@@ -221,7 +221,7 @@ def run_compiler(
     try:
         command = [
             sys.executable,
-            str(repo_root / "tools" / "build_osm_course_package_v2.py"),
+            str(repo_root / "tools" / "build_osm_course_package_v3.py"),
             "--osm",
             str(snapshot_path),
             "--config",
@@ -242,7 +242,7 @@ def normalize_source_metadata(
     output_path: Path,
     manifest_path: Path,
 ) -> None:
-    """Replace the v2 compiler's legacy way-only metadata with generic OSM identity."""
+    """Replace the compiler's legacy way-only metadata with generic OSM identity."""
     element_type, element_id = osm_course_element(config)
     source_element = {"type": element_type, "id": element_id}
     source_url = f"https://www.openstreetmap.org/{element_type}/{element_id}"
