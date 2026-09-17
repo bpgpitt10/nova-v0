@@ -8,6 +8,7 @@ on:
     paths:
       - config/course-geometry/**
       - tools/import_osm_course.py
+      - tools/audit_osm_topology.py
       - tools/build_osm_course_package.py
       - tools/build_osm_course_package_v2.py
       - .github/workflows/osm-course-package.yml
@@ -79,6 +80,18 @@ jobs:
               args+=(--refresh-osm)
             fi
             python tools/import_osm_course.py "${args[@]}"
+
+            slug=$(python - "$config" <<'PY'
+          import json, re, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          config = json.loads(path.read_text())
+          print(config.get('slug') or re.sub(r'-v\d+$', '', path.stem))
+          PY
+            )
+            python tools/audit_osm_topology.py \
+              --osm "artifacts/course-geometry/$slug/osm-snapshot.json" \
+              --output "artifacts/course-geometry/$slug/topology-audit-v1.json"
           done
 
       - name: Verify generated package inventory
@@ -98,7 +111,8 @@ jobs:
               package = Path('public/course-geometry') / slug / 'course-v1.json'
               manifest = Path('artifacts/course-geometry') / slug / 'validation-v1.json'
               snapshot = Path('artifacts/course-geometry') / slug / 'osm-snapshot.json'
-              ok = package.exists() and manifest.exists() and snapshot.exists()
+              topology = Path('artifacts/course-geometry') / slug / 'topology-audit-v1.json'
+              ok = package.exists() and manifest.exists() and snapshot.exists() and topology.exists()
               if ok:
                   proof = json.loads(manifest.read_text())
                   ok = (
@@ -139,6 +153,7 @@ jobs:
           name: osm-course-package-proof-${{ github.run_id }}
           path: |
             artifacts/course-geometry/**/validation-v1.json
+            artifacts/course-geometry/**/topology-audit-v1.json
             artifacts/course-geometry/**/overpass-query.txt
             public/course-geometry/**/course-v1.json
           if-no-files-found: ignore
