@@ -168,6 +168,13 @@ def effective_config(
 ) -> tuple[dict[str, Any], list[int]]:
     """Fill missing hole metadata from OSM without overriding reviewed config."""
     resolved = deepcopy(config)
+
+    # The current v2 compiler predates relation-backed course configs and still
+    # expects this legacy field while writing its metadata. Supply it only as an
+    # internal compatibility bridge; normalize the emitted provenance afterward.
+    _element_type, element_id = osm_course_element(resolved)
+    resolved.setdefault("osmCourseWayId", element_id)
+
     _features, hole_routes = base.normalize_osm(payload)
     missing_routes = sorted(set(range(1, 19)) - set(hole_routes))
     if missing_routes:
@@ -227,6 +234,30 @@ def run_compiler(
         subprocess.run(command, cwd=repo_root, check=True)
     finally:
         effective_path.unlink(missing_ok=True)
+
+
+def normalize_source_metadata(
+    *,
+    config: dict[str, Any],
+    output_path: Path,
+    manifest_path: Path,
+) -> None:
+    """Replace the v2 compiler's legacy way-only metadata with generic OSM identity."""
+    element_type, element_id = osm_course_element(config)
+    source_element = {"type": element_type, "id": element_id}
+    source_url = f"https://www.openstreetmap.org/{element_type}/{element_id}"
+
+    package = json.loads(output_path.read_text(encoding="utf-8"))
+    provenance = package.setdefault("provenance", {})
+    provenance["sourceUrl"] = source_url
+    provenance["sourceElement"] = source_element
+    output_path.write_text(json.dumps(package, indent=2, sort_keys=True), encoding="utf-8")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["osmCourseElement"] = source_element
+    if element_type == "relation":
+        manifest.pop("osmCourseWayId", None)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def validate_manifest(manifest_path: Path) -> dict[str, Any]:
@@ -301,6 +332,11 @@ def main() -> int:
         repo_root=repo_root,
         config=resolved_config,
         snapshot_path=snapshot_path,
+        output_path=output_path,
+        manifest_path=manifest_path,
+    )
+    normalize_source_metadata(
+        config=config,
         output_path=output_path,
         manifest_path=manifest_path,
     )
