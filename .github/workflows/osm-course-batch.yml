@@ -44,32 +44,37 @@ jobs:
           python tools/batch_prepare_osm_courses.py \
             --seed-file config/course-import-seeds/planned-courses-v1.json
 
-      - name: Recover unresolved courses from location anchor
+      - name: Revalidate and recover location-anchor identities
         run: |
           python tools/recover_course_discovery_from_location.py \
             --seed-file config/course-import-seeds/planned-courses-v1.json
 
-      - name: Re-run batch after location recovery
+      - name: Re-import only identity-recovered courses
         shell: bash
         run: |
           set -euo pipefail
-          recovered="$(python - <<'PY'
+          mapfile -t recovered_slugs < <(python - <<'PY'
           import json
           from pathlib import Path
           path = Path('artifacts/course-geometry/location-anchor-recovery-v1.json')
           payload = json.loads(path.read_text()) if path.exists() else {}
-          print(int(payload.get('recoveredCount') or 0))
+          for row in payload.get('results') or []:
+              if row.get('status') == 'recovered' and row.get('slug'):
+                  print(row['slug'])
           PY
-          )"
-          if [ "$recovered" -gt 0 ]; then
-            echo "Recovered $recovered course config(s); rebuilding planned batch"
-            python tools/batch_prepare_osm_courses.py \
-              --seed-file config/course-import-seeds/planned-courses-v1.json
-          else
-            echo "No course configs recovered; keeping first-pass batch result"
+          )
+          if [ "${#recovered_slugs[@]}" -eq 0 ]; then
+            echo "No course identities recovered; no targeted re-import needed"
+            exit 0
           fi
+          for slug in "${recovered_slugs[@]}"; do
+            echo "=== Re-importing identity-verified course: $slug ==="
+            python tools/timed_import_osm_course.py \
+              --config "config/course-geometry/$slug-v1.json"
+          done
 
       - name: Apply generic terrain defaults
+        if: always()
         run: |
           python tools/apply_course_terrain_defaults.py \
             --seed-file config/course-import-seeds/planned-courses-v1.json
@@ -119,6 +124,18 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
+          recovery_path = Path('artifacts/course-geometry/location-anchor-recovery-v1.json')
+          if not recovery_path.exists():
+              raise SystemExit('Location-anchor identity recovery did not produce a summary')
+          recovery = json.loads(recovery_path.read_text())
+          identity_failures = [
+              row.get('courseId')
+              for row in recovery.get('results') or []
+              if row.get('status') == 'failed'
+          ]
+          if identity_failures:
+              raise SystemExit(f'Identity-safe course discovery failures: {identity_failures}')
 
           path = Path('artifacts/course-geometry/batch-planned-courses-v1.json')
           if not path.exists():
