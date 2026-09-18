@@ -69,10 +69,17 @@ for (const promoted of manifest.courses) {
 
   requireValue(coursePackage.schemaVersion === 'looper-static-course-package-v1', `${courseId}: runtime package schema is invalid`)
   requireValue(coursePackage.courseId === courseId, `${courseId}: runtime package courseId does not match`)
-  requireValue(Array.isArray(coursePackage.holes) && coursePackage.holes.length === 18, `${courseId}: runtime package must contain 18 holes`)
-
-  const packageHoleNumbers = coursePackage.holes.map((hole) => hole?.holeNumber).sort((a, b) => a - b)
-  requireValue(packageHoleNumbers.every((hole, index) => hole === index + 1), `${courseId}: runtime package hole numbers are not exactly 1-18`)
+  requireValue(
+    coursePackage.holes && typeof coursePackage.holes === 'object' && !Array.isArray(coursePackage.holes),
+    `${courseId}: runtime package holes must use the canonical keyed-hole object`,
+  )
+  const packageHoleNumbers = Object.keys(coursePackage.holes).map(Number).sort((a, b) => a - b)
+  requireValue(packageHoleNumbers.length === 18, `${courseId}: runtime package must contain 18 holes`)
+  requireValue(packageHoleNumbers.every((hole, index) => hole === index + 1), `${courseId}: runtime package hole keys are not exactly 1-18`)
+  requireValue(
+    packageHoleNumbers.every((holeNumber) => coursePackage.holes[String(holeNumber)]?.holeNumber === holeNumber),
+    `${courseId}: one or more runtime holeNumber values do not match their package keys`,
+  )
 
   const idNeedle = `id: '${courseId}'`
   const catalogStart = catalogSource.indexOf(idNeedle)
