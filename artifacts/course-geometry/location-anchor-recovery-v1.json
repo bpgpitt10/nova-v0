@@ -1,20 +1,14 @@
 {
-  "completedAt": "2026-09-18T14:07:47.967259Z",
-  "failedCount": 1,
+  "completedAt": "2026-09-18T15:03:00.660081Z",
+  "failedCount": 0,
   "identityAlgorithmVersion": "distinctive-token-coverage-v1",
   "radiusMeters": 30000,
-  "recoveredCount": 1,
+  "recoveredCount": 0,
   "results": [
     {
       "courseId": "royal-new-kent-providence-forge-va",
       "slug": "royal-new-kent",
       "status": "preserved"
-    },
-    {
-      "courseId": "shaftesbury-glen-conway-sc",
-      "error": "RuntimeError: identity guard rejected top boundary 'Dunes Golf & Beach Club': distinctive-token coverage 0.00 < 0.50",
-      "slug": "shaftesbury-glen",
-      "status": "failed"
     },
     {
       "courseId": "valhalla-louisville-ky",
@@ -28,12 +22,8 @@
     },
     {
       "courseId": "greywalls-marquette-mi",
-      "name": "Marquette Golf Club Greywalls",
-      "osmId": 281399420,
-      "osmType": "way",
       "slug": "greywalls",
-      "source": "cached-boundary-candidates",
-      "status": "recovered"
+      "status": "preserved"
     },
     {
       "courseId": "paynes-valley-hollister-mo",

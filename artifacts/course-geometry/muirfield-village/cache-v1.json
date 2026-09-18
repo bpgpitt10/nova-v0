@@ -2,8 +2,8 @@
   "courseId": "muirfield-village-dublin-oh",
   "courseName": "Muirfield Village Golf Club",
   "freshness": {
-    "ageDays": 0.55,
-    "evaluatedAt": "2026-09-18T14:07:40.917091Z",
+    "ageDays": 0.59,
+    "evaluatedAt": "2026-09-18T15:02:55.928957Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T14:07:40.917091Z",
+    "builtAt": "2026-09-18T15:02:55.928957Z",
     "configPath": "config/course-geometry/muirfield-village-v1.json",
     "configSha256": "ec888c2cd80a5c19c796f471fd2de4a4f2910cd9d0b895ddcb3699b4cbee2eaf",
     "path": "public/course-geometry/muirfield-village/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "6f2c6040be558cbc660c83954174be6b611662c399ddb14707b9dd13a2a93f0c"
+    "sha256": "b8b7ae1b3dcf62c23137a0b84af7f4c5d319c7d57e0933bd572c0151cdc6d151"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

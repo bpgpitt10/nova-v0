@@ -2,8 +2,8 @@
   "courseId": "paynes-valley-hollister-mo",
   "courseName": "Payne's Valley",
   "freshness": {
-    "ageDays": 0.55,
-    "evaluatedAt": "2026-09-18T14:07:44.475470Z",
+    "ageDays": 0.59,
+    "evaluatedAt": "2026-09-18T15:03:00.472359Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T14:07:44.475470Z",
+    "builtAt": "2026-09-18T15:03:00.472359Z",
     "configPath": "config/course-geometry/paynes-valley-v1.json",
     "configSha256": "2617654bca210a47141399dbbadf8cd7e30b538b18d82414d3653f08fdbb55c8",
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "f296e274562cab4f571fa9122bff07054d0a9b91cb3c74efaed60a457656bffa"
+    "sha256": "7279b5142a21f5695128f22b515afeb616ecea69a695fb00ee007ffdb0683bea"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

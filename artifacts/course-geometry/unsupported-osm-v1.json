@@ -1,0 +1,33 @@
+{
+  "count": 1,
+  "courses": [
+    {
+      "countryCode": "us",
+      "courseId": "shaftesbury-glen-conway-sc",
+      "courseName": "Shaftesbury Glen Golf & Fish Club",
+      "evidence": {
+        "availableGolfFeatures": {
+          "cartpath": 15,
+          "lateral_water_hazard": 6,
+          "path": 1,
+          "water_hazard": 3
+        },
+        "note": "Verified OSM coverage contains partial course features but no golf_course boundary and no golf=hole routes, so the canonical 18-hole importer cannot build a trustworthy package.",
+        "osmGolfCourseBoundaries": 0,
+        "osmGolfHoleRoutes": 0,
+        "osmTaggedObjectCount": 152,
+        "probeCenter": [
+          33.88958,
+          -78.90363
+        ],
+        "verifiedAt": "2026-09-18T14:18:35Z"
+      },
+      "location": "Conway, SC",
+      "reason": "missing-course-geometry",
+      "slug": "shaftesbury-glen",
+      "status": "unsupported-osm"
+    }
+  ],
+  "generatedAt": "2026-09-18T15:03:00.750990Z",
+  "schemaVersion": "looper-unsupported-osm-v1"
+}

@@ -1,5 +1,5 @@
 {
-  "courseCount": 6,
+  "courseCount": 5,
   "courses": [
     {
       "courseId": "royal-new-kent-providence-forge-va",
@@ -9,24 +9,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1702.7,
+        "packageImporter": 1858.0,
         "sourceFetch": null,
-        "topologyAudit": 55.1,
-        "total": 1829.2
-      }
-    },
-    {
-      "courseId": "shaftesbury-glen-conway-sc",
-      "error": null,
-      "slug": "shaftesbury-glen",
-      "success": true,
-      "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 0.0,
-        "packageImporter": 1057.0,
-        "sourceFetch": null,
-        "topologyAudit": 49.1,
-        "total": 1177.3
+        "topologyAudit": 55.6,
+        "total": 1984.8
       }
     },
     {
@@ -37,10 +23,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1434.0,
+        "packageImporter": 1437.1,
         "sourceFetch": null,
-        "topologyAudit": 51.9,
-        "total": 1557.6
+        "topologyAudit": 50.3,
+        "total": 1569.0
       }
     },
     {
@@ -51,10 +37,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1698.8,
+        "packageImporter": 1685.5,
         "sourceFetch": null,
-        "topologyAudit": 57.5,
-        "total": 1828.4
+        "topologyAudit": 55.4,
+        "total": 1815.1
       }
     },
     {
@@ -65,10 +51,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1713.8,
+        "packageImporter": 2679.1,
         "sourceFetch": null,
-        "topologyAudit": 54.2,
-        "total": 1840.1
+        "topologyAudit": 51.6,
+        "total": 2802.1
       }
     },
     {
@@ -79,18 +65,18 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1592.0,
+        "packageImporter": 1613.2,
         "sourceFetch": null,
-        "topologyAudit": 53.9,
-        "total": 1717.0
+        "topologyAudit": 55.5,
+        "total": 1744.1
       }
     }
   ],
-  "endedAt": "2026-09-18T14:07:44.563980Z",
+  "endedAt": "2026-09-18T15:03:00.563073Z",
   "failedCourseIds": [],
   "failureCount": 0,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T14:07:34.613034Z",
-  "successCount": 6
+  "startedAt": "2026-09-18T15:02:50.646935Z",
+  "successCount": 5
 }
