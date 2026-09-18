@@ -1,0 +1,61 @@
+/* Live Caddie map readability overrides.
+ * Keep the playing surface focused on the four player-facing markers:
+ * ball, optimized aim, expected finish and pin. The planning target remains
+ * a construction input, not a peer marker.
+ */
+
+.live-target-marker {
+  display: none;
+}
+
+.live-target-line {
+  stroke: rgba(111, 129, 113, 0.22);
+  stroke-width: 0.13;
+  stroke-dasharray: 0.55 0.9;
+}
+
+/* Probability hierarchy: 50% is the primary read, 80% secondary, 95% faint. */
+.live-probability.probability-50 {
+  fill: rgba(118, 211, 155, 0.022);
+  stroke: rgba(205, 221, 205, 0.86);
+  stroke-width: 0.35;
+  stroke-dasharray: none;
+}
+
+.live-probability.probability-80 {
+  fill: rgba(118, 211, 155, 0.012);
+  stroke: rgba(140, 166, 143, 0.62);
+  stroke-width: 0.24;
+  stroke-dasharray: 0.72 0.42;
+}
+
+.live-probability.probability-95 {
+  fill: rgba(255, 255, 255, 0.004);
+  stroke: rgba(91, 115, 95, 0.46);
+  stroke-width: 0.17;
+  stroke-dasharray: 0.42 0.58;
+}
+
+/* In the Live playing surface the final map toggle shows a compact sampled
+ * version of the same full-risk landing distribution used for the percentages.
+ */
+.live-map-toggles button:last-child {
+  font-size: 0;
+}
+
+.live-map-toggles button:last-child::after {
+  content: 'Outcome dots';
+  font-size: 10px;
+}
+
+.live-risk-dot {
+  opacity: 0.72;
+  stroke: rgba(7, 13, 9, 0.9);
+  stroke-width: 0.1;
+}
+
+.live-map-card:has(.live-map-toggles button:last-child.active) .live-map-legend::after {
+  content: 'Outcome dots: green success · white manageable · gold trouble · red penalty';
+  color: #8fa08f;
+  font-size: 9px;
+}
