@@ -28,6 +28,7 @@ import type { SavedSession, Shot } from '../types'
 export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   observedAt: string
   actualClub: Club | null
+  recommendedClub: Club | null
   clubSource: 'user' | null
   includeInAnalysis: boolean
   attributedAt: string | null
@@ -100,6 +101,7 @@ const shotPayloadFingerprint = (
 const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCourseShot => ({
   ...shot,
   actualClub: typeof shot.actualClub === 'string' ? shot.actualClub as Club : null,
+  recommendedClub: typeof shot.recommendedClub === 'string' ? shot.recommendedClub as Club : null,
   clubSource: shot.clubSource === 'user' ? 'user' : null,
   includeInAnalysis: shot.includeInAnalysis === true,
   attributedAt: typeof shot.attributedAt === 'string' ? shot.attributedAt : null,
@@ -156,6 +158,7 @@ const archivedFromIncoming = (
   ...incoming,
   observedAt: prior?.observedAt ?? observedAt,
   actualClub: prior?.actualClub ?? null,
+  recommendedClub: prior?.recommendedClub ?? null,
   clubSource: prior?.clubSource ?? null,
   includeInAnalysis: prior?.includeInAnalysis ?? false,
   attributedAt: prior?.attributedAt ?? null,
@@ -263,6 +266,7 @@ const toPlayerModelShot = (round: ArchivedGsproRound, shot: ArchivedGsproCourseS
         hole_number: shot.holeNumber,
         hole_shot: shot.holeShot,
         club_source: shot.clubSource,
+        recommended_club: shot.recommendedClub,
         inferred_club: shot.clubInference?.predictedClub ?? null,
         inference_confidence: shot.clubInference?.confidence ?? null,
         inference_model_version: shot.clubInference?.modelVersion ?? null,
@@ -341,6 +345,7 @@ const annotateNewShots = ({
       clubInference: inference,
       ...(shouldApplyArm ? {
         actualClub: usableArmed.club,
+        recommendedClub: usableArmed.recommendedClub,
         clubSource: 'user' as const,
         includeInAnalysis: true,
         attributedAt: observedAt,
@@ -406,6 +411,7 @@ const syncRoundToCloud = async (round: ArchivedGsproRound) => {
       gspro_club_index: shot.gsproClubIndex,
       raw_metrics: shot.rawMetrics,
       actual_club: shot.actualClub,
+      recommended_club: shot.recommendedClub,
       club_source: shot.clubSource,
       include_in_analysis: shot.includeInAnalysis,
       attributed_at: shot.attributedAt,
