@@ -45,6 +45,18 @@ const courses = [
     name: 'Pebble Beach',
     courseId: 'pebble-beach-pebble-beach-ca',
   },
+  {
+    name: 'Augusta National',
+    courseId: 'augusta-national-augusta-ga',
+  },
+  {
+    name: 'Oakmont',
+    courseId: 'oakmont-country-club-oakmont-pa',
+  },
+  {
+    name: 'Erin Hills',
+    courseId: 'erin-hills-erin-wi',
+  },
 ]
 
 const server = await createServer({

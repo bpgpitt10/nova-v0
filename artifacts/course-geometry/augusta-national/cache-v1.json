@@ -1,0 +1,66 @@
+{
+  "courseId": "augusta-national-augusta-ga",
+  "courseName": "Augusta National Golf Club",
+  "freshness": {
+    "ageDays": 0.04,
+    "evaluatedAt": "2026-09-18T12:07:14.889887Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T12:07:14.889887Z",
+    "configPath": "config/course-geometry/augusta-national-v1.json",
+    "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
+    "path": "public/course-geometry/augusta-national/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "8170df101f5a63773fb8ad027e51cd22c33a1b97b267a60c48491c49dfdc67b2",
+    "terrainComposerVersion": "compose_course_package_v1"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 871993734,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T11:13:42.160498Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T11:13:42.160498Z",
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/augusta-national/osm-snapshot.json",
+    "snapshotSha256": "daf03fcf9819bf10ef25b893b69a2103f05a081ccbb839357958da1c6b1de44d",
+    "sourceBaseTimestamp": "2026-09-18T11:11:44Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T12:32:50.508618Z",
+    "sourceManifestPath": "artifacts/course-geometry/augusta-national/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/augusta-national/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/augusta-national/terrain-v1.json",
+    "terrainPackageSha256": "1622fdc1d2ef956f9be5295002f361523632e974a9a9057cb2c10062ba3f42c9",
+    "validationPath": "artifacts/course-geometry/augusta-national/terrain-validation-v1.json"
+  }
+}
