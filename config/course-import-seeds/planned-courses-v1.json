@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "looper-course-import-seeds-v1",
+  "courses": [
+    {
+      "courseId": "shaftesbury-glen-conway-sc",
+      "courseName": "Shaftesbury Glen Golf & Fish Club",
+      "location": "Conway, SC",
+      "countryCode": "us",
+      "slug": "shaftesbury-glen"
+    },
+    {
+      "courseId": "valhalla-louisville-ky",
+      "courseName": "Valhalla Golf Club",
+      "location": "Louisville, KY",
+      "countryCode": "us",
+      "slug": "valhalla"
+    },
+    {
+      "courseId": "muirfield-village-dublin-oh",
+      "courseName": "Muirfield Village Golf Club",
+      "location": "Dublin, OH",
+      "countryCode": "us",
+      "slug": "muirfield-village"
+    },
+    {
+      "courseId": "cabot-cliffs-inverness-ns",
+      "courseName": "Cabot Cliffs",
+      "location": "Inverness, NS",
+      "countryCode": "ca",
+      "slug": "cabot-cliffs"
+    },
+    {
+      "courseId": "greywalls-marquette-mi",
+      "courseName": "Greywalls at Marquette Golf Club",
+      "location": "Marquette, MI",
+      "countryCode": "us",
+      "slug": "greywalls"
+    },
+    {
+      "courseId": "paynes-valley-hollister-mo",
+      "courseName": "Payne's Valley",
+      "location": "Hollister, MO",
+      "countryCode": "us",
+      "slug": "paynes-valley"
+    },
+    {
+      "courseId": "pebble-beach-pebble-beach-ca",
+      "courseName": "Pebble Beach Golf Links",
+      "location": "Pebble Beach, CA",
+      "countryCode": "us",
+      "slug": "pebble-beach"
+    }
+  ]
+}
