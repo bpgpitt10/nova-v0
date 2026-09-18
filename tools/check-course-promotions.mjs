@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 
 const root = new URL('../', import.meta.url)
 const readText = (path) => readFileSync(new URL(path, root), 'utf8')
@@ -11,41 +11,58 @@ const requireValue = (condition, message) => {
   if (!condition) fail(message)
 }
 const sha256 = (path) => createHash('sha256').update(readFileSync(new URL(path, root))).digest('hex')
-
-const manifest = readJson('config/course-promotions-v1.json')
-requireValue(manifest.schemaVersion === 'looper-course-promotions-v1', 'promotion manifest schema is invalid')
-requireValue(Array.isArray(manifest.courses) && manifest.courses.length > 0, 'promotion manifest has no courses')
+const fileExists = (path) => existsSync(new URL(path, root))
 
 const catalogSource = readText('src/courseGeometry/courseCatalog.ts')
+const artifactRoot = new URL('artifacts/course-geometry/', root)
+
+const promoted = readdirSync(artifactRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => {
+    const slug = entry.name
+    const cachePath = `artifacts/course-geometry/${slug}/cache-v1.json`
+    if (!fileExists(cachePath)) return null
+
+    const cache = readJson(cachePath)
+    if (cache.package?.builderVersion !== 'build_osm_course_package_v3') return null
+
+    return { slug, cachePath, cache }
+  })
+  .filter(Boolean)
+  .sort((a, b) => a.slug.localeCompare(b.slug))
+
+requireValue(promoted.length > 0, 'no promoted V3 automated course packages were discovered')
+
 const seenCourseIds = new Set()
 const seenPackagePaths = new Set()
 
-for (const promoted of manifest.courses) {
-  const {
-    courseId,
-    slug,
-    status,
-    staticPackageUrl,
-    packagePath,
-    configPath,
-    validationPath,
-    cachePath,
-  } = promoted
+for (const promotedCourse of promoted) {
+  const { slug, cachePath, cache } = promotedCourse
+  const courseId = cache.courseId
+  const packagePath = cache.package?.path
+  const configPath = cache.package?.configPath
+  const validationPath = `artifacts/course-geometry/${slug}/validation-v1.json`
+  const staticPackageUrl = `/course-geometry/${slug}/course-v1.json`
 
-  requireValue(typeof courseId === 'string' && courseId.length > 0, 'courseId is required')
-  requireValue(typeof slug === 'string' && slug.length > 0, `${courseId}: slug is required`)
-  requireValue(status === 'validation', `${courseId}: automated promotion must remain in validation status`)
-  requireValue(!seenCourseIds.has(courseId), `${courseId}: duplicate course id in promotion manifest`)
-  requireValue(!seenPackagePaths.has(packagePath), `${courseId}: duplicate package path in promotion manifest`)
+  requireValue(typeof courseId === 'string' && courseId.length > 0, `${slug}: cache metadata courseId is required`)
+  requireValue(!seenCourseIds.has(courseId), `${courseId}: duplicate course id among promoted V3 packages`)
+  requireValue(typeof packagePath === 'string' && packagePath.length > 0, `${courseId}: cached package path is required`)
+  requireValue(!seenPackagePaths.has(packagePath), `${courseId}: duplicate package path among promoted V3 packages`)
   seenCourseIds.add(courseId)
   seenPackagePaths.add(packagePath)
 
+  requireValue(packagePath === `public/course-geometry/${slug}/course-v1.json`, `${courseId}: package path does not match promoted slug`)
+  requireValue(typeof configPath === 'string' && configPath.length > 0, `${courseId}: cached config path is required`)
+  requireValue(fileExists(configPath), `${courseId}: promoted build config is missing at ${configPath}`)
+  requireValue(fileExists(validationPath), `${courseId}: promoted geometry validation is missing at ${validationPath}`)
+  requireValue(fileExists(packagePath), `${courseId}: promoted runtime package is missing at ${packagePath}`)
+
   const config = readJson(configPath)
   const validation = readJson(validationPath)
-  const cache = readJson(cachePath)
   const coursePackage = readJson(packagePath)
 
   requireValue(config.courseId === courseId, `${courseId}: build config courseId does not match`)
+  requireValue(config.slug === slug, `${courseId}: build config slug does not match promoted directory`)
   requireValue(validation.courseId === courseId, `${courseId}: validation courseId does not match`)
   requireValue(validation.compiler === 'build_osm_course_package_v3', `${courseId}: validation was not produced by the topology-safe V3 compiler`)
   requireValue(validation.allHolesStaticGeometryReady === true, `${courseId}: validation does not mark all holes ready`)
@@ -56,9 +73,7 @@ for (const promoted of manifest.courses) {
   requireValue(validationHoleNumbers.every((hole, index) => hole === index + 1), `${courseId}: validation hole numbers are not exactly 1-18`)
 
   requireValue(cache.schemaVersion === 'looper-course-cache-v1', `${courseId}: cache metadata schema is invalid`)
-  requireValue(cache.courseId === courseId, `${courseId}: cache metadata courseId does not match`)
   requireValue(cache.package?.schemaVersion === 'looper-static-course-package-v1', `${courseId}: cached package schema is invalid`)
-  requireValue(cache.package?.builderVersion === 'build_osm_course_package_v3', `${courseId}: cache metadata was not built by V3`)
   requireValue(cache.package?.path === packagePath, `${courseId}: cache metadata points at a different package path`)
   requireValue(cache.package?.configPath === configPath, `${courseId}: cache metadata points at a different config path`)
   requireValue(cache.source?.provider === 'openstreetmap-overpass', `${courseId}: OSM source provenance is missing or unexpected`)
@@ -84,19 +99,34 @@ for (const promoted of manifest.courses) {
     `${courseId}: one or more present runtime holeNumber values do not match their package keys`,
   )
 
+  if (cache.terrain?.status === 'cached') {
+    requireValue(
+      typeof cache.terrain?.terrainPackageSha256 === 'string' && cache.terrain.terrainPackageSha256.length === 64,
+      `${courseId}: cached terrain package hash is missing`,
+    )
+    requireValue(coursePackage.terrainProvenance, `${courseId}: cached terrain is not represented in the runtime package`)
+  }
+
   const idNeedle = `id: '${courseId}'`
   const catalogStart = catalogSource.indexOf(idNeedle)
   requireValue(catalogStart >= 0, `${courseId}: course is missing from the runtime registry`)
   const catalogEnd = catalogSource.indexOf('\n  },', catalogStart)
   requireValue(catalogEnd > catalogStart, `${courseId}: could not isolate runtime catalog entry`)
   const catalogEntry = catalogSource.slice(catalogStart, catalogEnd)
-  requireValue(catalogEntry.includes(`staticPackageUrl: '${staticPackageUrl}'`), `${courseId}: runtime staticPackageUrl does not match promotion manifest`)
+  requireValue(catalogEntry.includes(`slug: '${slug}'`), `${courseId}: runtime slug does not match promoted directory`)
+  requireValue(catalogEntry.includes(`staticPackageUrl: '${staticPackageUrl}'`), `${courseId}: runtime staticPackageUrl does not match promoted package`)
   requireValue(catalogEntry.includes("status: 'validation'"), `${courseId}: runtime status must remain validation until visual acceptance`)
   requireValue(catalogEntry.includes("packageStatus: 'validation'"), `${courseId}: runtime packageStatus must remain validation until visual acceptance`)
   requireValue(catalogEntry.includes("packageVersion: 'v1'"), `${courseId}: runtime packageVersion must be v1`)
   requireValue(catalogEntry.includes("packageCacheStatus: 'cached'"), `${courseId}: runtime package cache must be marked cached`)
   requireValue(catalogEntry.includes("osmCacheStatus: 'cached'"), `${courseId}: runtime OSM cache must be marked cached`)
-  requireValue(catalogEntry.includes("lidarCacheStatus: 'unknown'"), `${courseId}: LiDAR must not be claimed until generalized LiDAR ingestion is proven`)
+
+  const catalogMarksLidarCached = catalogEntry.includes("lidarCacheStatus: 'cached'")
+  const catalogMarksLidarUnknown = catalogEntry.includes("lidarCacheStatus: 'unknown'")
+  requireValue(catalogMarksLidarCached || catalogMarksLidarUnknown, `${courseId}: runtime LiDAR cache status must be cached or unknown`)
+  if (catalogMarksLidarCached) {
+    requireValue(cache.terrain?.status === 'cached', `${courseId}: runtime catalog claims cached LiDAR without cached terrain metadata`)
+  }
 
   const warningCount = validation.holes.reduce(
     (total, hole) => total + (Array.isArray(hole?.warnings) ? hole.warnings.length : 0),
@@ -105,4 +135,4 @@ for (const promoted of manifest.courses) {
   console.log(`[course-promotion] ${courseId}: PASS (18/18 ready, ${warningCount} validation warnings, ${actualPackageSha.slice(0, 12)}…)`)
 }
 
-console.log(`[course-promotion] ${manifest.courses.length} promoted course packages passed structural/cache/runtime gates.`)
+console.log(`[course-promotion] ${promoted.length} promoted V3 course packages passed structural/cache/runtime gates.`)
