@@ -4,6 +4,7 @@ import type {
   CoursePointYds,
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
+import { buildAirAltitudeAdjustment } from './airAltitudeAdjustment'
 import {
   rankRiskAwareAimCandidates,
   rankRiskAwareClubChoices,
@@ -66,6 +67,9 @@ export type AimLabEnvironment = {
   windRelativeDeg?: number
   elevationDeltaFt?: number | null
   elevationSource?: string
+  /** Absolute ball elevation above sea level used for air-density flight adjustment. */
+  airAltitudeFt?: number | null
+  airAltitudeSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
   /**
@@ -118,6 +122,9 @@ export type ClubAimEvaluation = {
   modeledCarryYds: number
   modeledTotalYds: number
   rolloutYds: number
+  airAltitudeFt: number | null
+  altitudeCarryDeltaYds: number
+  altitudeLateralDeltaYds: number
   airborneCarryDeltaYds: number
   surfaceCarryDeltaYds: number
   surfaceLabel: string
@@ -249,7 +256,26 @@ export const evaluateAimLab = (
       },
     )
 
-    const modeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
+    const altitudeLaunch =
+      launch &&
+      typeof launch.ball_speed_mph === 'number' && Number.isFinite(launch.ball_speed_mph) &&
+      typeof launch.vla_deg === 'number' && Number.isFinite(launch.vla_deg) &&
+      typeof launch.total_spin_rpm === 'number' && Number.isFinite(launch.total_spin_rpm)
+        ? {
+            ballSpeedMph: launch.ball_speed_mph,
+            vlaDeg: launch.vla_deg,
+            hlaDeg: launch.hla_deg ?? 0,
+            totalSpinRpm: launch.total_spin_rpm,
+            spinAxisDeg: launch.spin_axis_deg ?? 0,
+          }
+        : null
+    const altitudeAdjustment = buildAirAltitudeAdjustment(
+      altitudeLaunch,
+      environment.airAltitudeFt,
+    )
+
+    const baseModeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
+    const modeledCarryYds = baseModeledCarryYds + altitudeAdjustment.carryDeltaYds
     const stockTotalYds =
       typeof profile.stock_total_yds === 'number' && Number.isFinite(profile.stock_total_yds)
         ? Math.max(profile.stock_carry_yds, profile.stock_total_yds)
@@ -259,7 +285,8 @@ export const evaluateAimLab = (
     // observed Stock rollout and translate both carry and total by the same live carry delta.
     const modeledTotalYds = modeledCarryYds + rolloutYds
     const baseLateralBiasYds = profile.lateral_bias_yds ?? 0
-    const modeledLateralBiasYds = modeled.modeledLateralBiasYds ?? baseLateralBiasYds
+    const baseModeledLateralBiasYds = modeled.modeledLateralBiasYds ?? baseLateralBiasYds
+    const modeledLateralBiasYds = baseModeledLateralBiasYds + altitudeAdjustment.lateralDeltaYds
     const carryGapYds = modeledCarryYds - targetDistanceYds
     const empiricalShots = buildWeightedEmpiricalStockShots(sessions, profile.club, nowMs)
     const empiricalCarryAdjustmentYds = modeledCarryYds - profile.stock_carry_yds
@@ -279,6 +306,18 @@ export const evaluateAimLab = (
     }
     if (modeled.physicsPrior.status !== 'ready' && ((environment.windMph ?? 0) !== 0 || (environment.elevationDeltaFt ?? 0) !== 0)) {
       notes.push('Airborne physics unavailable for this club; Stock baseline used for environmental response.')
+    }
+    if (altitudeAdjustment.status === 'ready' && Math.abs(altitudeAdjustment.carryDeltaYds) >= 0.25) {
+      notes.push(
+        `Base altitude ${Math.round(altitudeAdjustment.altitudeFt ?? 0)} ft adjusts carry by ${altitudeAdjustment.carryDeltaYds >= 0 ? '+' : ''}${altitudeAdjustment.carryDeltaYds.toFixed(1)} yd from air density.`,
+      )
+    } else if (
+      typeof environment.airAltitudeFt === 'number' &&
+      Number.isFinite(environment.airAltitudeFt) &&
+      Math.abs(environment.airAltitudeFt) >= 500 &&
+      altitudeAdjustment.status !== 'ready'
+    ) {
+      notes.push('Base altitude is known but representative launch data are insufficient for the air-density adjustment.')
     }
     if (environment.surfaceOverride && environment.surfaceOverride !== geometrySurface) {
       notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
@@ -373,6 +412,9 @@ export const evaluateAimLab = (
       modeledCarryYds,
       modeledTotalYds,
       rolloutYds,
+      airAltitudeFt: altitudeAdjustment.altitudeFt,
+      altitudeCarryDeltaYds: altitudeAdjustment.carryDeltaYds,
+      altitudeLateralDeltaYds: altitudeAdjustment.lateralDeltaYds,
       airborneCarryDeltaYds: modeled.appliedAdjustments.combinedAirborneCarryYds,
       surfaceCarryDeltaYds: modeled.appliedAdjustments.surfaceCarryYds,
       surfaceLabel: modeled.surfaceResponse.label,
@@ -380,7 +422,8 @@ export const evaluateAimLab = (
       totalSigmaYds: profile.total_sigma_yds ?? null,
       lateralBiasYds: baseLateralBiasYds,
       modeledLateralBiasYds,
-      airborneLateralDeltaYds: modeled.appliedAdjustments.combinedAirborneLateralYds,
+      airborneLateralDeltaYds:
+        modeled.appliedAdjustments.combinedAirborneLateralYds + altitudeAdjustment.lateralDeltaYds,
       surfaceLateralDeltaYds: modeled.appliedAdjustments.surfaceLateralYds,
       lateralSigmaYds: profile.lateral_sigma_yds ?? null,
       planningTarget,
