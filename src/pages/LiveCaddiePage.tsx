@@ -139,6 +139,91 @@ const sortedAimOptions = (evaluation: ClubAimEvaluation | null) => {
     .slice(0, 4)
 }
 
+const buildTacticalMapBounds = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  target: CoursePointYds,
+  pinEstimate: CoursePointYds | null,
+  candidate: AimCandidateEvaluation | null,
+) => {
+  const pinDistance = pinEstimate ? pointDistance(ball, pinEstimate) : Number.POSITIVE_INFINITY
+  const includePin = Boolean(pinEstimate && pinDistance <= 285)
+  const focusPoints: CoursePointYds[] = [ball, target]
+  if (candidate) focusPoints.push(candidate.aimPoint, candidate.meanLanding)
+  if (includePin && pinEstimate) focusPoints.push(pinEstimate)
+
+  const maxCarryRadius = candidate?.probabilityContours.reduce(
+    (maximum, contour) => Math.max(maximum, contour.carryRadiusYds),
+    0,
+  ) ?? 0
+  const maxLateralRadius = candidate?.probabilityContours.reduce(
+    (maximum, contour) => Math.max(maximum, contour.lateralRadiusYds),
+    0,
+  ) ?? 0
+
+  // Live Caddie is a shot-decision surface, not a whole-hole atlas. Keep the
+  // current ball near the bottom of frame and show the modeled landing area
+  // plus enough course beyond it to understand the next state. Long par 4/5
+  // greens therefore stay off-screen until they become tactically relevant.
+  const minY = ball[1] - 24
+  const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
+  const desiredMaxY = furthestFocusY + Math.max(52, maxCarryRadius + 34)
+  const minimumForwardSpan = pinDistance < 180
+    ? Math.max(120, pinDistance + 55)
+    : 175
+  const maxY = Math.max(
+    minY + minimumForwardSpan,
+    Math.min(desiredMaxY, ball[1] + 315),
+  )
+
+  let referenceMinX = Math.min(...focusPoints.map((point) => point[0])) - maxLateralRadius
+  let referenceMaxX = Math.max(...focusPoints.map((point) => point[0])) + maxLateralRadius
+  const surfaceWindowMinX = referenceMinX - 72
+  const surfaceWindowMaxX = referenceMaxX + 72
+  const surfaceWindowMinY = minY - 12
+  const surfaceWindowMaxY = maxY + 12
+  const framingKinds = new Set<CourseSurfaceKind>([
+    'tee',
+    'fairway',
+    'green',
+    'bunker',
+    'water',
+    'penalty',
+  ])
+
+  // Let nearby playable/hazard geometry widen the frame, but do not allow a
+  // remote rough/context polygon to dictate the camera. Woods/scrub still draw
+  // normally wherever they intersect this tactical window.
+  for (const surface of hole.surfaces) {
+    if (!framingKinds.has(surface.kind)) continue
+    for (const polygon of surface.polygons) {
+      for (const [x, y] of polygon) {
+        if (
+          y < surfaceWindowMinY ||
+          y > surfaceWindowMaxY ||
+          x < surfaceWindowMinX ||
+          x > surfaceWindowMaxX
+        ) continue
+        referenceMinX = Math.min(referenceMinX, x)
+        referenceMaxX = Math.max(referenceMaxX, x)
+      }
+    }
+  }
+
+  const centerX = (referenceMinX + referenceMaxX) / 2
+  const halfWidth = Math.min(
+    96,
+    Math.max(58, (referenceMaxX - referenceMinX) / 2 + 20),
+  )
+
+  return {
+    minX: centerX - halfWidth,
+    maxX: centerX + halfWidth,
+    minY,
+    maxY,
+  }
+}
+
 function LiveCaddieMap({
   hole,
   ball,
@@ -160,13 +245,7 @@ function LiveCaddieMap({
 }) {
   const viewSize = 100
   const pad = 4
-  const bounds = hole.viewBounds ?? hole.bounds
-  const displayBounds = {
-    minX: bounds.minX,
-    maxX: bounds.maxX,
-    minY: Math.max(bounds.minY, -28),
-    maxY: bounds.maxY,
-  }
+  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate)
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
   const spanY = Math.max(1, displayBounds.maxY - displayBounds.minY)
   const scale = Math.min((viewSize - pad * 2) / spanX, (viewSize - pad * 2) / spanY)
