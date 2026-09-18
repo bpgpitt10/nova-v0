@@ -1,13 +1,13 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
+  "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
   "compiler": "build_osm_course_package_v3",
   "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot; landuse=grass objects tagged as golf surfaces are intentionally not duplicated as context.",
   "contextSourceStatus": "unavailable-in-osm-snapshot",
   "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-18T01:07:08.127217Z",
+  "generatedAt": "2026-09-18T01:08:35.314498Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -17,8 +17,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 0.7,
-      "headingDegreesTrue": 11.19,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 11.15,
       "hole": 1,
       "nearbyTeeCandidates": [
         {
@@ -61,21 +61,21 @@
       "straightTeeToGreenYards": 530.0,
       "surfacePolygons": {
         "bunker": 41,
-        "fairway": 406,
-        "green": 1,
+        "fairway": 682,
+        "green": 4,
         "rough": 0,
-        "tee": 0,
+        "tee": 5,
         "water": 0
       },
       "targetGreenOsmId": 785362265,
       "viewBounds": {
-        "maxX": 120.1,
-        "maxY": 580.6,
-        "minX": -110.4,
-        "minY": -35.0
+        "maxX": 375.8,
+        "maxY": 571.1,
+        "minX": -172.7,
+        "minY": -51.8
       },
       "warnings": [
-        "No mapped tee polygon within 60 yd of the OSM hole start; nominal route start retained."
+        "No mapped tee surface is close to the OSM hole start; route start remains the canonical anchor"
       ]
     },
     {
@@ -86,8 +86,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 1.4,
-      "headingDegreesTrue": 116.72,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 116.93,
       "hole": 2,
       "nearbyTeeCandidates": [
         {
@@ -130,18 +130,18 @@
       "straightTeeToGreenYards": 380.5,
       "surfacePolygons": {
         "bunker": 510,
-        "fairway": 399,
-        "green": 1,
+        "fairway": 875,
+        "green": 2,
         "rough": 0,
-        "tee": 3,
+        "tee": 13,
         "water": 0
       },
       "targetGreenOsmId": 785369104,
       "viewBounds": {
-        "maxX": 111.4,
-        "maxY": 430.7,
-        "minX": -127.4,
-        "minY": -35.0
+        "maxX": 473.0,
+        "maxY": 575.5,
+        "minX": -192.7,
+        "minY": -105.9
       },
       "warnings": []
     },
@@ -153,8 +153,8 @@
         "woods": 0
       },
       "fairwayRequired": false,
-      "greenEndpointGapYards": 7.8,
-      "headingDegreesTrue": 84.07,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 85.16,
       "hole": 3,
       "nearbyTeeCandidates": [
         {
@@ -197,18 +197,18 @@
       "straightTeeToGreenYards": 144.7,
       "surfacePolygons": {
         "bunker": 5,
-        "fairway": 111,
-        "green": 1,
+        "fairway": 280,
+        "green": 2,
         "rough": 0,
-        "tee": 5,
+        "tee": 8,
         "water": 0
       },
       "targetGreenOsmId": 785371481,
       "viewBounds": {
-        "maxX": 112.9,
-        "maxY": 202.0,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 136.3,
+        "maxY": 221.0,
+        "minX": -117.5,
+        "minY": -243.0
       },
       "warnings": []
     },
@@ -220,7 +220,7 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 3.2,
+      "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 303.72,
       "hole": 4,
       "nearbyTeeCandidates": [
@@ -264,18 +264,18 @@
       "straightTeeToGreenYards": 407.3,
       "surfacePolygons": {
         "bunker": 1241,
-        "fairway": 265,
+        "fairway": 434,
         "green": 1,
         "rough": 0,
-        "tee": 6,
+        "tee": 8,
         "water": 0
       },
       "targetGreenOsmId": 785380534,
       "viewBounds": {
-        "maxX": 259.6,
-        "maxY": 454.0,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 233.0,
+        "maxY": 698.4,
+        "minX": -210.5,
+        "minY": -157.1
       },
       "warnings": []
     },
@@ -287,8 +287,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 0.9,
-      "headingDegreesTrue": 340.03,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 340.21,
       "hole": 5,
       "nearbyTeeCandidates": [
         {
@@ -315,11 +315,6 @@
           "osmId": 785369095,
           "startCentroidGapYards": 223.2,
           "startPolygonGapYards": 217.0
-        },
-        {
-          "osmId": 785369096,
-          "startCentroidGapYards": 254.7,
-          "startPolygonGapYards": 235.6
         }
       ],
       "nearestMappedTeeSurfaceYards": 0.0,
@@ -331,18 +326,18 @@
       "straightTeeToGreenYards": 274.4,
       "surfacePolygons": {
         "bunker": 1857,
-        "fairway": 300,
+        "fairway": 301,
         "green": 1,
         "rough": 0,
-        "tee": 2,
+        "tee": 4,
         "water": 0
       },
       "targetGreenOsmId": 785385006,
       "viewBounds": {
-        "maxX": 186.5,
-        "maxY": 324.4,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 257.3,
+        "maxY": 455.7,
+        "minX": -207.2,
+        "minY": -257.6
       },
       "warnings": []
     },
@@ -354,8 +349,8 @@
         "woods": 0
       },
       "fairwayRequired": false,
-      "greenEndpointGapYards": 5.5,
-      "headingDegreesTrue": 293.75,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 291.86,
       "hole": 6,
       "nearbyTeeCandidates": [
         {
@@ -366,7 +361,7 @@
         {
           "osmId": 785390013,
           "startCentroidGapYards": 14.5,
-          "startPolygonGapYards": 8.2
+          "startPolygonGapYards": 8.6
         },
         {
           "osmId": 785390014,
@@ -398,18 +393,18 @@
       "straightTeeToGreenYards": 132.1,
       "surfacePolygons": {
         "bunker": 1855,
-        "fairway": 0,
-        "green": 1,
+        "fairway": 147,
+        "green": 2,
         "rough": 0,
-        "tee": 3,
+        "tee": 6,
         "water": 0
       },
       "targetGreenOsmId": 785390011,
       "viewBounds": {
-        "maxX": 110.0,
-        "maxY": 178.6,
-        "minX": -114.2,
-        "minY": -35.0
+        "maxX": 137.9,
+        "maxY": 198.7,
+        "minX": -399.9,
+        "minY": -344.5
       },
       "warnings": []
     },
@@ -421,8 +416,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 14.4,
-      "headingDegreesTrue": 193.7,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 192.12,
       "hole": 7,
       "nearbyTeeCandidates": [
         {
@@ -464,19 +459,19 @@
       "routeLengthYards": 410.2,
       "straightTeeToGreenYards": 401.1,
       "surfacePolygons": {
-        "bunker": 1862,
-        "fairway": 227,
-        "green": 1,
+        "bunker": 1863,
+        "fairway": 315,
+        "green": 3,
         "rough": 0,
-        "tee": 3,
+        "tee": 6,
         "water": 0
       },
       "targetGreenOsmId": 785397552,
       "viewBounds": {
-        "maxX": 110.0,
-        "maxY": 460.0,
-        "minX": -121.3,
-        "minY": -35.0
+        "maxX": 136.8,
+        "maxY": 566.4,
+        "minX": -440.5,
+        "minY": -94.9
       },
       "warnings": []
     },
@@ -488,8 +483,8 @@
         "woods": 0
       },
       "fairwayRequired": false,
-      "greenEndpointGapYards": 11.5,
-      "headingDegreesTrue": 132.07,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 133.09,
       "hole": 8,
       "nearbyTeeCandidates": [
         {
@@ -516,11 +511,6 @@
           "osmId": 785403935,
           "startCentroidGapYards": 215.7,
           "startPolygonGapYards": 212.8
-        },
-        {
-          "osmId": 785403936,
-          "startCentroidGapYards": 227.4,
-          "startPolygonGapYards": 221.8
         }
       ],
       "nearestMappedTeeSurfaceYards": 0.0,
@@ -532,18 +522,18 @@
       "straightTeeToGreenYards": 174.3,
       "surfacePolygons": {
         "bunker": 8,
-        "fairway": 88,
-        "green": 1,
+        "fairway": 168,
+        "green": 2,
         "rough": 0,
-        "tee": 3,
+        "tee": 6,
         "water": 0
       },
       "targetGreenOsmId": 785401246,
       "viewBounds": {
-        "maxX": 113.3,
-        "maxY": 235.3,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 109.1,
+        "maxY": 252.0,
+        "minX": -122.8,
+        "minY": -30.2
       },
       "warnings": []
     },
@@ -555,8 +545,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 15.4,
-      "headingDegreesTrue": 178.8,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 178.95,
       "hole": 9,
       "nearbyTeeCandidates": [
         {
@@ -599,18 +589,18 @@
       "straightTeeToGreenYards": 393.5,
       "surfacePolygons": {
         "bunker": 976,
-        "fairway": 490,
-        "green": 1,
+        "fairway": 1073,
+        "green": 3,
         "rough": 0,
-        "tee": 2,
+        "tee": 3,
         "water": 0
       },
       "targetGreenOsmId": 785405461,
       "viewBounds": {
-        "maxX": 133.4,
-        "maxY": 458.9,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 339.9,
+        "maxY": 621.4,
+        "minX": -436.1,
+        "minY": -391.3
       },
       "warnings": []
     },
@@ -622,8 +612,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 5.7,
-      "headingDegreesTrue": 37.46,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 38.24,
       "hole": 10,
       "nearbyTeeCandidates": [
         {
@@ -645,16 +635,6 @@
           "osmId": 785419452,
           "startCentroidGapYards": 219.9,
           "startPolygonGapYards": 212.9
-        },
-        {
-          "osmId": 785419451,
-          "startCentroidGapYards": 252.1,
-          "startPolygonGapYards": 244.1
-        },
-        {
-          "osmId": 785454838,
-          "startCentroidGapYards": 262.3,
-          "startPolygonGapYards": 247.5
         }
       ],
       "nearestMappedTeeSurfaceYards": 15.2,
@@ -665,19 +645,19 @@
       "routeLengthYards": 389.7,
       "straightTeeToGreenYards": 365.5,
       "surfacePolygons": {
-        "bunker": 14,
-        "fairway": 143,
-        "green": 1,
+        "bunker": 15,
+        "fairway": 543,
+        "green": 2,
         "rough": 0,
-        "tee": 1,
+        "tee": 4,
         "water": 0
       },
       "targetGreenOsmId": 785415086,
       "viewBounds": {
-        "maxX": 114.9,
-        "maxY": 412.7,
-        "minX": -175.6,
-        "minY": -35.0
+        "maxX": 164.6,
+        "maxY": 602.6,
+        "minX": -345.6,
+        "minY": -97.3
       },
       "warnings": []
     },
@@ -689,8 +669,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 11.7,
-      "headingDegreesTrue": 191.77,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 190.17,
       "hole": 11,
       "nearbyTeeCandidates": [
         {
@@ -733,18 +713,18 @@
       "straightTeeToGreenYards": 353.5,
       "surfacePolygons": {
         "bunker": 506,
-        "fairway": 394,
-        "green": 1,
+        "fairway": 534,
+        "green": 3,
         "rough": 0,
-        "tee": 2,
+        "tee": 3,
         "water": 0
       },
       "targetGreenOsmId": 785419449,
       "viewBounds": {
-        "maxX": 110.0,
-        "maxY": 423.0,
-        "minX": -252.7,
-        "minY": -35.0
+        "maxX": 329.4,
+        "maxY": 421.9,
+        "minX": -208.9,
+        "minY": -152.6
       },
       "warnings": []
     },
@@ -756,8 +736,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 2.7,
-      "headingDegreesTrue": 208.62,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 208.25,
       "hole": 12,
       "nearbyTeeCandidates": [
         {
@@ -774,21 +754,6 @@
           "osmId": 785419453,
           "startCentroidGapYards": 101.4,
           "startPolygonGapYards": 98.1
-        },
-        {
-          "osmId": 785410722,
-          "startCentroidGapYards": 254.0,
-          "startPolygonGapYards": 249.9
-        },
-        {
-          "osmId": 785416489,
-          "startCentroidGapYards": 318.7,
-          "startPolygonGapYards": 315.2
-        },
-        {
-          "osmId": 785426526,
-          "startCentroidGapYards": 351.7,
-          "startPolygonGapYards": 345.2
         }
       ],
       "nearestMappedTeeSurfaceYards": 0.0,
@@ -800,18 +765,18 @@
       "straightTeeToGreenYards": 339.2,
       "surfacePolygons": {
         "bunker": 11,
-        "fairway": 135,
-        "green": 1,
+        "fairway": 312,
+        "green": 2,
         "rough": 0,
-        "tee": 2,
+        "tee": 3,
         "water": 0
       },
       "targetGreenOsmId": 785421901,
       "viewBounds": {
-        "maxX": 182.0,
-        "maxY": 390.9,
-        "minX": -112.2,
-        "minY": -35.0
+        "maxX": 375.7,
+        "maxY": 418.3,
+        "minX": -65.0,
+        "minY": -32.0
       },
       "warnings": []
     },
@@ -823,8 +788,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 0.8,
-      "headingDegreesTrue": 273.15,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 273.17,
       "hole": 13,
       "nearbyTeeCandidates": [
         {
@@ -870,15 +835,15 @@
         "fairway": 386,
         "green": 1,
         "rough": 0,
-        "tee": 4,
+        "tee": 17,
         "water": 1
       },
       "targetGreenOsmId": 785429786,
       "viewBounds": {
-        "maxX": 110.1,
-        "maxY": 503.9,
-        "minX": -227.6,
-        "minY": -35.0
+        "maxX": 156.7,
+        "maxY": 488.0,
+        "minX": -197.5,
+        "minY": -149.0
       },
       "warnings": []
     },
@@ -890,8 +855,8 @@
         "woods": 0
       },
       "fairwayRequired": false,
-      "greenEndpointGapYards": 8.3,
-      "headingDegreesTrue": 76.94,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 76.65,
       "hole": 14,
       "nearbyTeeCandidates": [
         {
@@ -934,18 +899,18 @@
       "straightTeeToGreenYards": 191.8,
       "surfacePolygons": {
         "bunker": 9,
-        "fairway": 91,
-        "green": 1,
+        "fairway": 300,
+        "green": 2,
         "rough": 0,
-        "tee": 4,
+        "tee": 10,
         "water": 1
       },
       "targetGreenOsmId": 785434049,
       "viewBounds": {
-        "maxX": 110.0,
-        "maxY": 233.6,
-        "minX": -110.9,
-        "minY": -35.0
+        "maxX": 310.4,
+        "maxY": 361.6,
+        "minX": -135.0,
+        "minY": -50.7
       },
       "warnings": []
     },
@@ -957,8 +922,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 6.4,
-      "headingDegreesTrue": 48.85,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 48.72,
       "hole": 15,
       "nearbyTeeCandidates": [
         {
@@ -1000,19 +965,19 @@
       "routeLengthYards": 362.7,
       "straightTeeToGreenYards": 347.6,
       "surfacePolygons": {
-        "bunker": 233,
-        "fairway": 443,
+        "bunker": 234,
+        "fairway": 615,
         "green": 1,
         "rough": 118,
-        "tee": 3,
+        "tee": 7,
         "water": 0
       },
       "targetGreenOsmId": 785447680,
       "viewBounds": {
-        "maxX": 110.0,
-        "maxY": 404.0,
-        "minX": -148.3,
-        "minY": -35.0
+        "maxX": 224.5,
+        "maxY": 606.2,
+        "minX": -109.4,
+        "minY": -31.4
       },
       "warnings": []
     },
@@ -1024,8 +989,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 0.3,
-      "headingDegreesTrue": 213.38,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 213.45,
       "hole": 16,
       "nearbyTeeCandidates": [
         {
@@ -1071,17 +1036,19 @@
         "fairway": 443,
         "green": 1,
         "rough": 118,
-        "tee": 4,
+        "tee": 13,
         "water": 0
       },
       "targetGreenOsmId": 785451302,
       "viewBounds": {
-        "maxX": 168.2,
-        "maxY": 289.8,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 211.5,
+        "maxY": 339.6,
+        "minX": -223.5,
+        "minY": -124.9
       },
-      "warnings": []
+      "warnings": [
+        "OSM hole route length differs from configured reference by -56 yd"
+      ]
     },
     {
       "anchorMethod": "osm-hole-route-start",
@@ -1091,8 +1058,8 @@
         "woods": 0
       },
       "fairwayRequired": false,
-      "greenEndpointGapYards": 6.8,
-      "headingDegreesTrue": 73.3,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 76.09,
       "hole": 17,
       "nearbyTeeCandidates": [
         {
@@ -1134,19 +1101,19 @@
       "routeLengthYards": 132.2,
       "straightTeeToGreenYards": 129.8,
       "surfacePolygons": {
-        "bunker": 57,
-        "fairway": 134,
-        "green": 1,
+        "bunker": 56,
+        "fairway": 577,
+        "green": 2,
         "rough": 0,
-        "tee": 5,
+        "tee": 9,
         "water": 0
       },
       "targetGreenOsmId": 785455536,
       "viewBounds": {
-        "maxX": 116.4,
-        "maxY": 182.0,
-        "minX": -110.0,
-        "minY": -35.0
+        "maxX": 175.4,
+        "maxY": 210.7,
+        "minX": -339.0,
+        "minY": -71.6
       },
       "warnings": []
     },
@@ -1158,8 +1125,8 @@
         "woods": 0
       },
       "fairwayRequired": true,
-      "greenEndpointGapYards": 2.7,
-      "headingDegreesTrue": 111.09,
+      "greenEndpointGapYards": 0.0,
+      "headingDegreesTrue": 110.74,
       "hole": 18,
       "nearbyTeeCandidates": [
         {
@@ -1201,23 +1168,25 @@
       "routeLengthYards": 393.7,
       "straightTeeToGreenYards": 372.7,
       "surfacePolygons": {
-        "bunker": 66,
-        "fairway": 620,
-        "green": 1,
+        "bunker": 68,
+        "fairway": 981,
+        "green": 5,
         "rough": 0,
-        "tee": 5,
+        "tee": 11,
         "water": 1
       },
       "targetGreenOsmId": 785456824,
       "viewBounds": {
-        "maxX": 166.3,
-        "maxY": 424.3,
-        "minX": -112.3,
-        "minY": -35.0
+        "maxX": 267.7,
+        "maxY": 602.3,
+        "minX": -403.7,
+        "minY": -178.3
       },
       "warnings": []
     }
   ],
+  "normalizationWarningCount": 0,
+  "normalizationWarnings": [],
   "normalizedFeatureCounts": {
     "surface:bunker": 128,
     "surface:fairway": 23,

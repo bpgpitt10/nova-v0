@@ -3,7 +3,7 @@
   "courseName": "Pebble Beach Golf Links",
   "freshness": {
     "ageDays": 0.01,
-    "evaluatedAt": "2026-09-18T01:07:02.435481Z",
+    "evaluatedAt": "2026-09-18T01:08:28.733903Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": false
   },
   "package": {
-    "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
+    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T01:07:02.435481Z",
+    "builtAt": "2026-09-18T01:08:28.733903Z",
     "configPath": "config/course-geometry/pebble-beach-v1.json",
     "configSha256": "7cadb3a58e667e0b5ece09372b5f390509291a082707bd8a74eaaee2635da676",
     "path": "public/course-geometry/pebble-beach/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "762a2ec9245a392bd79c6c5a45a7780f4bba3d6c47731e6d839242f00cb19756"
+    "sha256": "e8884c0f444bdd09150c7098a836a40af30d87e22b1fa3475da66014a5578c81"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

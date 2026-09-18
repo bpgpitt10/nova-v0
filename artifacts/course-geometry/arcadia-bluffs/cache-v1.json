@@ -3,7 +3,7 @@
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
   "freshness": {
     "ageDays": 0.01,
-    "evaluatedAt": "2026-09-18T01:06:51.324744Z",
+    "evaluatedAt": "2026-09-18T01:08:15.404805Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": false
   },
   "package": {
-    "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
+    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T01:06:51.324744Z",
+    "builtAt": "2026-09-18T01:08:15.404805Z",
     "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
     "configSha256": "530d9f2800b37fa413bdd7f01331bd6c828b7d59e99fdb17f88091663bb1d998",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "be1d1bbb4599757ca9b3121e1b3b46cd7e956d02ab71e4ac139345f6e7772050"
+    "sha256": "f95f2a92b453c5509770f27e59360930cf8cd4d0a754cb67ff99bca1a010ff1a"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
