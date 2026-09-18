@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import './LiveCaddieMapPolish.css'
+import './LiveCaddieIA.css'
 
 type ConditionsMathPanelProps = {
   evaluation: ClubAimEvaluation | null
@@ -40,153 +40,43 @@ const lateralSummary = (value: number | null | undefined) => {
 }
 
 const baselineLateral = (value: number | null | undefined) => {
-  if (!finite(value) || Math.abs(value) < 0.05) return 'center'
+  if (!finite(value) || Math.abs(value) < 0.05) return 'Center'
   return `${Math.abs(value).toFixed(1)} yd ${value > 0 ? 'right' : 'left'}`
 }
 
-const shellStyle: CSSProperties = {
-  display: 'grid',
-  gap: 8,
-  marginTop: 2,
+const pct = (value: number | null | undefined) => {
+  if (!finite(value)) return '—'
+  const percentage = value * 100
+  if (percentage > 0 && percentage < 1) return '<1%'
+  return `${Math.round(percentage)}%`
 }
 
-const summaryStyle: CSSProperties = {
-  display: 'grid',
-  gap: 2,
-  padding: '10px 11px',
-  border: '1px solid rgba(234, 179, 8, 0.3)',
-  borderRadius: 10,
-  background: 'rgba(234, 179, 8, 0.075)',
-}
-
-const summaryLabelStyle: CSSProperties = {
-  color: '#eab308',
-  fontSize: 9,
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-}
-
-const summaryValueStyle: CSSProperties = {
-  color: '#ffffff',
-  fontSize: 16,
-  fontWeight: 600,
-}
-
-const columnsStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 7,
-}
-
-const columnStyle: CSSProperties = {
-  minWidth: 0,
-  overflow: 'hidden',
-  border: '1px solid rgba(49, 66, 51, 0.72)',
-  borderRadius: 10,
-  background: 'rgba(23, 36, 25, 0.64)',
-}
-
-const columnHeaderStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  minHeight: 18,
-  padding: '9px 10px 8px',
-  borderBottom: '1px solid rgba(49, 66, 51, 0.55)',
-}
-
-const eyebrowStyle: CSSProperties = {
-  color: '#eab308',
-  fontSize: 9,
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  lineHeight: 1.2,
-  textTransform: 'uppercase',
-}
-
-const rowsStyle: CSSProperties = {
-  display: 'grid',
-}
-
-const rowStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto',
-  columnGap: 8,
-  rowGap: 1,
-  padding: '7px 10px',
-  borderBottom: '1px solid rgba(49, 66, 51, 0.38)',
-}
-
-const rowLabelStyle: CSSProperties = {
-  color: '#cfd8cd',
-  fontSize: 10,
-  fontWeight: 500,
-}
-
-const rowValueStyle: CSSProperties = {
-  color: '#ffffff',
-  fontSize: 11,
-  fontWeight: 600,
-  whiteSpace: 'nowrap',
-}
-
-const rowDetailStyle: CSSProperties = {
-  gridColumn: '1 / -1',
-  overflow: 'hidden',
-  color: '#7f907f',
-  fontSize: 8,
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-}
-
-const totalStyle: CSSProperties = {
-  display: 'grid',
-  gap: 2,
-  padding: '9px 10px',
-  background: 'rgba(14, 23, 16, 0.42)',
-}
-
-const totalLineStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'baseline',
-  justifyContent: 'space-between',
-  gap: 8,
-}
-
-const totalLabelStyle: CSSProperties = {
-  color: '#eab308',
-  fontSize: 8,
-  fontWeight: 700,
-  letterSpacing: '0.07em',
-  textTransform: 'uppercase',
-}
-
-const totalValueStyle: CSSProperties = {
-  color: '#ffffff',
-  fontSize: 15,
-  fontWeight: 650,
-  whiteSpace: 'nowrap',
-}
-
-const totalDetailStyle: CSSProperties = {
-  color: '#8fa08f',
-  fontSize: 8,
+const combinedAdjustment = (
+  carry: number | null | undefined,
+  lateral: number | null | undefined,
+) => {
+  const parts: string[] = []
+  if (finite(carry) && Math.abs(carry) >= 0.05) parts.push(signedYards(carry))
+  if (finite(lateral) && Math.abs(lateral) >= 0.05) parts.push(lateralYards(lateral))
+  return parts.length > 0 ? parts.join(' · ') : '0.0 yd'
 }
 
 function AdjustmentRow({
   label,
   value,
   detail,
+  muted = false,
 }: {
   label: string
   value: string
   detail: string
+  muted?: boolean
 }) {
   return (
-    <div style={rowStyle}>
-      <span style={rowLabelStyle}>{label}</span>
-      <strong style={rowValueStyle}>{value}</strong>
-      <small style={rowDetailStyle}>{detail}</small>
+    <div className={`live-condition-row${muted ? ' muted' : ''}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
     </div>
   )
 }
@@ -210,112 +100,125 @@ export default function ConditionsMathPanel({
   const modeledLandingElevationDeltaFt = finite(elevationAware?.landingElevationDeltaFt)
     ? elevationAware.landingElevationDeltaFt
     : elevationDeltaFt
+  const risk = evaluation?.bestCandidate?.riskProfile ?? null
 
   const windDetail = hasLiveWind
     ? `${windMph.toFixed(1)} mph @ ${windRelativeDeg.toFixed(0)}° relative`
-    : 'no live wind input · model assumes calm'
+    : 'No live wind input · model assumes calm'
   const elevationDetail = finite(modeledLandingElevationDeltaFt)
     ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing`
-    : 'no terrain elevation available'
+    : 'No terrain elevation available'
   const altitudeDetail = evaluation?.airAltitudeFt != null
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
-    : 'base altitude unavailable'
+    : 'Base altitude unavailable'
+  const lieDetail = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
+    ? 'Measured lie · flight effect not yet modeled'
+    : 'Lie angle not captured yet'
+  const lieValue = [
+    finite(lieUpDownDeg) ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}° up/down` : null,
+    finite(lieLeftRightDeg) ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}° left/right` : null,
+  ].filter(Boolean).join(' · ') || '—'
+
+  const outcomeDetails = risk ? [
+    ['Bunker', risk.bySurface.bunker ?? 0],
+    ['Woods', risk.bySurface['deep-rough'] ?? 0],
+    ['Water', risk.bySurface.water ?? 0],
+    ['Penalty', risk.bySurface.penalty ?? 0],
+  ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
 
   return (
-    <div style={shellStyle}>
-      <div style={summaryStyle}>
-        <span style={summaryLabelStyle}>Modeled conditions</span>
-        <strong style={summaryValueStyle}>
-          {evaluation
-            ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}`
-            : 'Waiting for shot model'}
-        </strong>
-      </div>
+    <div className="live-conditions-shell">
+      <section className="live-expected-shot-block">
+        <div className="live-expected-shot-heading">
+          <span>EXPECTED SHOT</span>
+          <strong>{evaluation ? `${Math.round(evaluation.modeledCarryYds)} carry · ${Math.round(evaluation.modeledTotalYds)} total` : 'Waiting for shot model'}</strong>
+        </div>
 
-      <div style={columnsStyle}>
-        <section style={columnStyle}>
-          <div style={columnHeaderStyle}>
-            <span style={eyebrowStyle}>Distance adjustment</span>
+        <div className="live-shot-stat-grid">
+          <div>
+            <span>Carry</span>
+            <strong>{evaluation ? `${Math.round(evaluation.modeledCarryYds)} yd` : '—'}</strong>
           </div>
-          <div style={rowsStyle}>
-            <AdjustmentRow
-              label="Base altitude"
-              value={evaluation ? signedYards(evaluation.altitudeCarryDeltaYds) : '—'}
-              detail={altitudeDetail}
-            />
-            <AdjustmentRow
-              label="Wind"
-              value={evaluation && hasLiveWind ? signedYards(evaluation.windCarryDeltaYds ?? 0) : '—'}
-              detail={windDetail}
-            />
-            <AdjustmentRow
-              label="Elevation"
-              value={evaluation ? signedYards(evaluation.elevationCarryDeltaYds ?? 0) : '—'}
-              detail={elevationDetail}
-            />
-            <AdjustmentRow
-              label="Surface"
-              value={evaluation ? signedYards(evaluation.surfaceCarryDeltaYds) : '—'}
-              detail={evaluation?.surfaceLabel ?? 'surface unavailable'}
-            />
-            <AdjustmentRow
-              label="Lie up / down"
-              value={finite(lieUpDownDeg) ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}°` : '—'}
-              detail={finite(lieUpDownDeg) ? 'measured · flight effect not yet modeled' : 'lie angle not captured yet'}
-            />
+          <div>
+            <span>Total</span>
+            <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
           </div>
-          <div style={totalStyle}>
-            <div style={totalLineStyle}>
-              <span style={totalLabelStyle}>Net adjustment</span>
-              <strong style={totalValueStyle}>{evaluation ? signedYards(carryDelta) : '—'}</strong>
-            </div>
-            <span style={totalDetailStyle}>
-              {evaluation
-                ? `Stock ${Math.round(evaluation.stockCarryYds)} → ${Math.round(evaluation.modeledCarryYds)} yd carry`
-                : 'Stock → modeled carry'}
-            </span>
+          <div>
+            <span>Shot center</span>
+            <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
           </div>
-        </section>
+        </div>
 
-        <section style={columnStyle}>
-          <div style={columnHeaderStyle}>
-            <span style={eyebrowStyle}>Lateral adjustment</span>
+        <div className="live-hero-outcomes">
+          <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
+          <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
+          <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Trouble</span></div>
+          <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
+        </div>
+
+        {outcomeDetails.length > 0 ? (
+          <div className="live-hero-outcome-detail">
+            {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
           </div>
-          <div style={rowsStyle}>
-            <AdjustmentRow
-              label="Base altitude"
-              value={evaluation ? lateralYards(evaluation.altitudeLateralDeltaYds) : '—'}
-              detail={altitudeDetail}
-            />
-            <AdjustmentRow
-              label="Wind"
-              value={evaluation && hasLiveWind ? lateralYards(evaluation.windLateralDeltaYds ?? 0) : '—'}
-              detail={windDetail}
-            />
-            <AdjustmentRow
-              label="Surface"
-              value={evaluation ? lateralYards(evaluation.surfaceLateralDeltaYds) : '—'}
-              detail={evaluation?.surfaceLabel ?? 'surface unavailable'}
-            />
-            <AdjustmentRow
-              label="Lie left / right"
-              value={finite(lieLeftRightDeg) ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}°` : '—'}
-              detail={finite(lieLeftRightDeg) ? 'measured · flight effect not yet modeled' : 'lie angle not captured yet'}
-            />
-          </div>
-          <div style={totalStyle}>
-            <div style={totalLineStyle}>
-              <span style={totalLabelStyle}>Net adjustment</span>
-              <strong style={totalValueStyle}>{evaluation ? lateralYards(lateralDelta) : '—'}</strong>
-            </div>
-            <span style={totalDetailStyle}>
-              {evaluation
-                ? `Stock bias ${baselineLateral(evaluation.lateralBiasYds)} → ${baselineLateral(evaluation.modeledLateralBiasYds)}`
-                : 'Stock bias → modeled shot center'}
-            </span>
-          </div>
-        </section>
-      </div>
+        ) : null}
+      </section>
+
+      <section className="live-conditions-panel">
+        <div className="live-conditions-heading">
+          <span>WHY THIS SHOT</span>
+          <strong>
+            {evaluation
+              ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}`
+              : 'Waiting for shot model'}
+          </strong>
+        </div>
+
+        <div className="live-condition-rows">
+          <AdjustmentRow
+            label="Base altitude"
+            value={evaluation
+              ? combinedAdjustment(evaluation.altitudeCarryDeltaYds, evaluation.altitudeLateralDeltaYds)
+              : '—'}
+            detail={altitudeDetail}
+          />
+          <AdjustmentRow
+            label="Elevation"
+            value={evaluation ? signedYards(evaluation.elevationCarryDeltaYds ?? 0) : '—'}
+            detail={elevationDetail}
+          />
+          <AdjustmentRow
+            label="Wind"
+            value={evaluation && hasLiveWind
+              ? combinedAdjustment(evaluation.windCarryDeltaYds ?? 0, evaluation.windLateralDeltaYds ?? 0)
+              : '—'}
+            detail={windDetail}
+            muted={!hasLiveWind}
+          />
+          <AdjustmentRow
+            label="Surface"
+            value={evaluation
+              ? combinedAdjustment(evaluation.surfaceCarryDeltaYds, evaluation.surfaceLateralDeltaYds)
+              : '—'}
+            detail={evaluation?.surfaceLabel ?? 'Surface unavailable'}
+          />
+          <AdjustmentRow
+            label="Lie"
+            value={lieValue}
+            detail={lieDetail}
+            muted={!finite(lieUpDownDeg) && !finite(lieLeftRightDeg)}
+          />
+        </div>
+
+        <div className="live-condition-net">
+          <span>NET ADJUSTMENT</span>
+          <strong>{evaluation ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}` : '—'}</strong>
+          <small>
+            {evaluation
+              ? `Stock ${Math.round(evaluation.stockCarryYds)} → ${Math.round(evaluation.modeledCarryYds)} yd carry · stock center ${baselineLateral(evaluation.lateralBiasYds)} → ${baselineLateral(evaluation.modeledLateralBiasYds)}`
+              : 'Stock → modeled shot'}
+          </small>
+        </div>
+      </section>
     </div>
   )
 }
