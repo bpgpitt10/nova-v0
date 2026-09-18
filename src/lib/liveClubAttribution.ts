@@ -1,6 +1,7 @@
 import type { BrowserGsproCourseArchiveShot } from '../adapters/browserGsproCourseArchive'
 import type { SavedSession, Shot } from '../types'
 import {
+  activeBagClubIds,
   loadBagConfig,
   type Club,
 } from './bagConfig'
@@ -39,10 +40,11 @@ export type ClubInferenceResult = {
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
-const isClub = (value: unknown): value is Club => {
-  const configured = loadBagConfig()?.selectedClubs ?? []
-  return typeof value === 'string' && configured.includes(value as Club)
-}
+const configuredClubs = (): Club[] =>
+  loadBagConfig()?.selectedClubs ?? [...activeBagClubIds]
+
+const isClub = (value: unknown): value is Club =>
+  typeof value === 'string' && configuredClubs().includes(value as Club)
 
 export const loadArmedLiveClub = (): ArmedLiveClub | null => {
   if (typeof window === 'undefined') return null
@@ -137,8 +139,7 @@ export const inferClubForGsproShot = (
   shot: BrowserGsproCourseArchiveShot,
   evaluatedAt = new Date().toISOString(),
 ): ClubInferenceResult => {
-  const configuredClubs = loadBagConfig()?.selectedClubs ?? []
-  const candidates = configuredClubs.flatMap((club) => {
+  const candidates = configuredClubs().flatMap((club) => {
     const historicalShots = sessionShotsForClub(sessions, club)
     if (historicalShots.length < 3) return []
 
@@ -240,17 +241,42 @@ export const inferClubForGsproShot = (
   }
 }
 
+const syncVisibleArmedClubState = () => {
+  if (typeof document === 'undefined') return
+  const armed = loadArmedLiveClub()
+
+  document.querySelectorAll<HTMLButtonElement>('.live-club-strip button').forEach((button) => {
+    const clubText = button.querySelector('strong')?.textContent?.trim()
+    const isArmed = Boolean(armed && clubText === armed.club)
+    button.classList.toggle('armed', isArmed)
+    button.setAttribute('aria-pressed', isArmed ? 'true' : 'false')
+  })
+
+  const heading = document.querySelector<HTMLElement>('.live-club-strip-heading strong')
+  if (heading) {
+    heading.textContent = armed
+      ? `${armed.club} armed for the next physical shot`
+      : 'Tap the club you are actually hitting'
+  }
+}
+
+const scheduleVisibleArmedClubSync = () => {
+  if (typeof window === 'undefined') return
+  window.setTimeout(syncVisibleArmedClubState, 0)
+}
+
 /**
  * Transitional UI bridge: Live Caddie already owns the visible armed state.
- * Capture those existing clicks into the durable attribution state without
- * forcing the playing component to depend on archive internals. The component
- * can move to these helpers directly when its UI contract settles.
+ * Capture those existing clicks into the durable attribution state while also
+ * keeping the strip visibly synchronized with the persisted armed selection.
  */
 const installLiveCaddieClubClickBridge = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   const bridgedWindow = window as Window & { __looperLiveClubClickBridge?: boolean }
   if (bridgedWindow.__looperLiveClubClickBridge) return
   bridgedWindow.__looperLiveClubClickBridge = true
+
+  window.addEventListener(LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT, scheduleVisibleArmedClubSync)
 
   document.addEventListener('click', (event) => {
     const target = event.target
@@ -260,6 +286,7 @@ const installLiveCaddieClubClickBridge = () => {
 
     if (button.closest('.live-club-strip-heading') && button.textContent?.trim() === 'Clear') {
       clearArmedLiveClub()
+      scheduleVisibleArmedClubSync()
       return
     }
 
@@ -268,14 +295,24 @@ const installLiveCaddieClubClickBridge = () => {
 
     if (button.closest('.live-club-strip')) {
       const clubText = button.querySelector('strong')?.textContent?.trim()
-      if (isClub(clubText)) armLiveClub(clubText, recommendedClub)
+      if (isClub(clubText)) {
+        armLiveClub(clubText, recommendedClub)
+        scheduleVisibleArmedClubSync()
+      }
       return
     }
 
     if (button.classList.contains('live-arm-recommendation') && recommendedClub) {
       armLiveClub(recommendedClub, recommendedClub)
+      scheduleVisibleArmedClubSync()
     }
   })
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleVisibleArmedClubSync, { once: true })
+  } else {
+    scheduleVisibleArmedClubSync()
+  }
 }
 
 installLiveCaddieClubClickBridge()
