@@ -8,9 +8,9 @@ on:
       - tools/import_course_terrain.py
       - tools/import_course_terrain_v2.py
       - tools/compose_course_package.py
-      - config/course-geometry/arcadia-bluffs-v1.json
-      - config/course-geometry/cabot-cliffs-v1.json
-      - config/course-geometry/pebble-beach-v1.json
+      - config/course-geometry/augusta-national-v1.json
+      - config/course-geometry/oakmont-country-club-v1.json
+      - config/course-geometry/erin-hills-v1.json
       - .github/workflows/course-terrain-package.yml
   workflow_dispatch:
 
@@ -38,14 +38,14 @@ jobs:
       - name: Install terrain dependencies
         run: pip install --quiet numpy rasterio pyproj
 
-      - name: Build Arcadia LiDAR terrain
-        run: python tools/import_course_terrain_v2.py --config config/course-geometry/arcadia-bluffs-v1.json
+      - name: Build Augusta National LiDAR terrain
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/augusta-national-v1.json
 
-      - name: Build Cabot LiDAR terrain
-        run: python tools/import_course_terrain_v2.py --config config/course-geometry/cabot-cliffs-v1.json
+      - name: Build Oakmont LiDAR terrain
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/oakmont-country-club-v1.json
 
-      - name: Build Pebble LiDAR terrain
-        run: python tools/import_course_terrain_v2.py --config config/course-geometry/pebble-beach-v1.json
+      - name: Build Erin Hills LiDAR terrain
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/erin-hills-v1.json
 
       - name: Validate source terrain and composed runtime packages
         run: |
@@ -55,9 +55,9 @@ jobs:
           from pathlib import Path
 
           courses = [
-              ('arcadia-bluffs', 1.1),
-              ('cabot-cliffs', 2.1),
-              ('pebble-beach', 1.1),
+              ('augusta-national', 1.1),
+              ('oakmont-country-club', 1.1),
+              ('erin-hills', 1.1),
           ]
 
           def sha(path: Path) -> str:
@@ -100,13 +100,13 @@ jobs:
 
       - name: Prove cached rebuild avoids terrain source network
         run: |
-          python tools/import_course_terrain_v2.py --config config/course-geometry/arcadia-bluffs-v1.json
-          python tools/import_course_terrain_v2.py --config config/course-geometry/cabot-cliffs-v1.json
-          python tools/import_course_terrain_v2.py --config config/course-geometry/pebble-beach-v1.json
+          python tools/import_course_terrain_v2.py --config config/course-geometry/augusta-national-v1.json
+          python tools/import_course_terrain_v2.py --config config/course-geometry/oakmont-country-club-v1.json
+          python tools/import_course_terrain_v2.py --config config/course-geometry/erin-hills-v1.json
           python - <<'PY'
           import json
           from pathlib import Path
-          for slug in ('arcadia-bluffs', 'cabot-cliffs', 'pebble-beach'):
+          for slug in ('augusta-national', 'oakmont-country-club', 'erin-hills'):
               cache = json.loads((Path('artifacts/course-geometry') / slug / 'terrain-cache-v1.json').read_text())
               assert cache['allHolesTerrainReady'] is True, (slug, cache)
               assert cache['usedNetworkForTerrainSource'] is False, (slug, cache)
@@ -117,7 +117,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for slug in arcadia-bluffs cabot-cliffs pebble-beach; do
+          for slug in augusta-national oakmont-country-club erin-hills; do
             git add "public/course-geometry/$slug/course-v1.json"
             git add "artifacts/course-geometry/$slug/cache-v1.json"
             git add "artifacts/course-geometry/$slug/terrain-v1.json"
