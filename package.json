@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "courses:validate-promotions": "node tools/check-course-promotions.mjs",
+    "build": "npm run courses:validate-promotions && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",

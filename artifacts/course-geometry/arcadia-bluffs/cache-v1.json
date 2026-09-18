@@ -1,0 +1,54 @@
+{
+  "courseId": "arcadia-bluffs-arcadia-mi",
+  "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
+  "freshness": {
+    "ageDays": 0.01,
+    "evaluatedAt": "2026-09-18T01:08:15.404805Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T01:08:15.404805Z",
+    "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
+    "configSha256": "530d9f2800b37fa413bdd7f01331bd6c828b7d59e99fdb17f88091663bb1d998",
+    "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "f95f2a92b453c5509770f27e59360930cf8cd4d0a754cb67ff99bca1a010ff1a"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 293247442,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T00:47:12.749963Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T00:47:12.749963Z",
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
+    "snapshotSha256": "b25d26c387e20f1758ae522033cabd2f28c3b2803cfa775cea24d06cd8f6e1ba",
+    "sourceBaseTimestamp": "2026-09-18T00:46:11Z"
+  }
+}

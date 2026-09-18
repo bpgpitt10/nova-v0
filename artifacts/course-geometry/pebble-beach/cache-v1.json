@@ -1,0 +1,54 @@
+{
+  "courseId": "pebble-beach-pebble-beach-ca",
+  "courseName": "Pebble Beach Golf Links",
+  "freshness": {
+    "ageDays": 0.01,
+    "evaluatedAt": "2026-09-18T01:08:28.733903Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T01:08:28.733903Z",
+    "configPath": "config/course-geometry/pebble-beach-v1.json",
+    "configSha256": "7cadb3a58e667e0b5ece09372b5f390509291a082707bd8a74eaaee2635da676",
+    "path": "public/course-geometry/pebble-beach/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "e8884c0f444bdd09150c7098a836a40af30d87e22b1fa3475da66014a5578c81"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 3741806,
+      "type": "relation"
+    },
+    "fetchedAt": "2026-09-18T00:58:34Z",
+    "fetchedAtBasis": "osm-base-timestamp-bootstrap",
+    "lastCheckedAt": null,
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/pebble-beach/osm-snapshot.json",
+    "snapshotSha256": "bb3c6658ed5caea86a4d1e314af06397a06f109e44649b765a0d3d68e0049122",
+    "sourceBaseTimestamp": "2026-09-18T00:58:34Z"
+  }
+}
