@@ -3,7 +3,7 @@
   "courseName": "Payne's Valley",
   "freshness": {
     "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T00:55:58.531632Z",
+    "evaluatedAt": "2026-09-18T00:57:54.188000Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:55:58.531632Z",
+    "builtAt": "2026-09-18T00:57:54.188000Z",
     "configPath": "config/course-geometry/paynes-valley-v1.json",
     "configSha256": "291c52e2a6696d11ea20914f40a4665202d337cfc1e07baf82ed82f1b03935df",
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "ffaef4344f6e68fda7faa16fef861b6a698e17da80cb617a62dfdabffdfdee01"
+    "sha256": "2ef683213bd9afff13ec757dcba268a16faf50e8f8474eb814ecebfa7fb312e0"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
