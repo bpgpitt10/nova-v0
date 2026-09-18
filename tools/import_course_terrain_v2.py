@@ -7,6 +7,7 @@ is window-read to the course bbox instead of downloading whole project rasters.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.parse
 from pathlib import Path
@@ -18,6 +19,20 @@ from rasterio.warp import transform_bounds
 import import_course_terrain as core
 
 ORIGINAL_ACQUIRE = core.acquire
+ORIGINAL_BUILDER_SHA = core.builder_sha
+core.VERSION = "import_course_terrain_v2"
+
+
+def builder_sha(root: Path) -> str:
+    """Include this provider adapter in the cache invalidation fingerprint."""
+    digest = hashlib.sha256()
+    digest.update(ORIGINAL_BUILDER_SHA(root).encode("ascii"))
+    digest.update(b"\0tools/import_course_terrain_v2.py\0")
+    digest.update((root / "tools/import_course_terrain_v2.py").read_bytes())
+    return digest.hexdigest()
+
+
+core.builder_sha = builder_sha
 
 
 def discover_nrcan(bbox: tuple[float, float, float, float]):
