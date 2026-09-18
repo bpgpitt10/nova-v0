@@ -161,19 +161,19 @@ const buildTacticalMapBounds = (
     0,
   ) ?? 0
 
-  // Live Caddie is a shot-decision surface, not a whole-hole atlas. Keep the
-  // current ball near the bottom of frame and show the modeled landing area
-  // plus enough course beyond it to understand the next state. Long par 4/5
-  // greens therefore stay off-screen until they become tactically relevant.
+  // Tee-shot framing should preserve enough of the hole to understand what the
+  // current shot is setting up, while still keeping the landing zone readable.
+  // A later-shot/manual zoom mode can tighten this further once the live ball
+  // has advanced on long holes; do not force that tighter camera here.
   const minY = ball[1] - 24
   const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
-  const desiredMaxY = furthestFocusY + Math.max(52, maxCarryRadius + 34)
+  const desiredMaxY = furthestFocusY + Math.max(115, maxCarryRadius + 70)
   const minimumForwardSpan = pinDistance < 180
-    ? Math.max(120, pinDistance + 55)
-    : 175
+    ? Math.max(130, pinDistance + 60)
+    : 260
   const maxY = Math.max(
     minY + minimumForwardSpan,
-    Math.min(desiredMaxY, ball[1] + 315),
+    Math.min(desiredMaxY, ball[1] + 390),
   )
 
   let referenceMinX = Math.min(...focusPoints.map((point) => point[0])) - maxLateralRadius
@@ -359,7 +359,7 @@ function LiveCaddieMap({
                   className={`live-practice-dot sample-${sample.kind}`}
                   cx={point[0]}
                   cy={point[1]}
-                  r={Math.max(0.25, Math.min(0.62, 0.34 * Math.sqrt(sample.weight / historicalAverageWeight)))}
+                  r={Math.max(0.25, Math.min(0.62, 0.34 * Math.sqrt(sample.weight / historicalAverageWeight))) }
                 />
               )
             })}
