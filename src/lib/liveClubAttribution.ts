@@ -239,3 +239,43 @@ export const inferClubForGsproShot = (
     metricsUsed: top?.metricsUsed ?? [],
   }
 }
+
+/**
+ * Transitional UI bridge: Live Caddie already owns the visible armed state.
+ * Capture those existing clicks into the durable attribution state without
+ * forcing the playing component to depend on archive internals. The component
+ * can move to these helpers directly when its UI contract settles.
+ */
+const installLiveCaddieClubClickBridge = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const bridgedWindow = window as Window & { __looperLiveClubClickBridge?: boolean }
+  if (bridgedWindow.__looperLiveClubClickBridge) return
+  bridgedWindow.__looperLiveClubClickBridge = true
+
+  document.addEventListener('click', (event) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const button = target.closest('button')
+    if (!(button instanceof HTMLButtonElement)) return
+
+    if (button.closest('.live-club-strip-heading') && button.textContent?.trim() === 'Clear') {
+      clearArmedLiveClub()
+      return
+    }
+
+    const recommendationText = document.querySelector('.live-club-hero')?.textContent?.trim()
+    const recommendedClub = isClub(recommendationText) ? recommendationText : null
+
+    if (button.closest('.live-club-strip')) {
+      const clubText = button.querySelector('strong')?.textContent?.trim()
+      if (isClub(clubText)) armLiveClub(clubText, recommendedClub)
+      return
+    }
+
+    if (button.classList.contains('live-arm-recommendation') && recommendedClub) {
+      armLiveClub(recommendedClub, recommendedClub)
+    }
+  })
+}
+
+installLiveCaddieClubClickBridge()
