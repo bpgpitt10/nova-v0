@@ -1,0 +1,32 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-82.0297274%2C33.4910388%2C-82.0126294%2C33.5066050&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 351111254,
+      "downloadSha256": "044ec25a77cf316f221b81c1ac067ccaccb3ffe0355d9dc0d91a7f3d5dfd7205",
+      "id": "629ae9b1d34ec53d276f4ec2",
+      "title": "USGS 1 Meter 17 x40y371 GA_Statewide_2018_B18_DRRA",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/GA_Statewide_2018_B18_DRRA/TIFF/USGS_1M_17_x40y371_GA_Statewide_2018_B18_DRRA.tif"
+    },
+    {
+      "downloadBytes": 51447251,
+      "downloadSha256": "92737e17af76a093c75ddbfbc416bfab2df49304915824fa4d2de3ce811d1fa5",
+      "id": "6279f493d34e8d45aa6e4343",
+      "title": "USGS 1 Meter 17 x40y371 SC_SavannahPeeDee_2019_B19",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/SC_SavannahPeeDee_2019_B19/TIFF/USGS_1M_17_x40y371_SC_SavannahPeeDee_2019_B19.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T12:32:15.874490Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -82.0297274,
+    33.4910388,
+    -82.0126294,
+    33.506605
+  ],
+  "sourceResolutionMeters": 1.0
+}

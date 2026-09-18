@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+  "builderVersion": "import_course_terrain_v2",
+  "builtAt": "2026-09-18T12:32:51.397634Z",
+  "courseId": "erin-hills-erin-wi",
+  "geometrySourceSha256": "0255d5c15949338282d4b7c387e6e90bf8ebaa94d9d1642a49a757295dd7e7ab",
+  "osmSnapshotSha256": "a0565fa22641c6e31acb264db6a1c977bf7dc4d8a55170151651139eac79a7ac",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "a5ca7079043260b73e567e1e9d42138ce800ba5a2eee3ef2a6eafd2d7fd740c6",
+  "sourceProvider": "usgs-3dep-1m",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "659d5e19cdd01baeed8178cf553de893a7232cd32e2b1c88e00b2c3ae51446fc",
+  "usedNetworkForTerrainSource": false
+}

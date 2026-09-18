@@ -18,7 +18,8 @@
     "configSha256": "5f5db33b6964219905cf7a605eb17f8ecc7dd1d2de40085aca2373d1e06a42b4",
     "path": "public/course-geometry/oakmont-country-club/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "029c9ac435d3c828db74b20286c355550095fe1056d2101de06bdff63da0e6b6"
+    "sha256": "27a3aa476fa8ce4bc7c6210390e6779be8a94c055d319d4db296bd70846657ff",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/oakmont-country-club/osm-snapshot.json",
     "snapshotSha256": "09a905405fbb86e00b6eca209c4b3bb7fe3d1f8e0d24025f0f3c1bae3852e9d5",
     "sourceBaseTimestamp": "2026-09-18T11:12:47Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T12:32:50.854998Z",
+    "sourceManifestPath": "artifacts/course-geometry/oakmont-country-club/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/oakmont-country-club/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/oakmont-country-club/terrain-v1.json",
+    "terrainPackageSha256": "d94badf3b2d631cf15c1306083fdd0650698ffc6e8a99d0767a29a0571e5df70",
+    "validationPath": "artifacts/course-geometry/oakmont-country-club/terrain-validation-v1.json"
   }
 }

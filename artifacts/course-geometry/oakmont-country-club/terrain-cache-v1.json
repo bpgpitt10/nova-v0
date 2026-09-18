@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+  "builderVersion": "import_course_terrain_v2",
+  "builtAt": "2026-09-18T12:32:50.853499Z",
+  "courseId": "oakmont-country-club-oakmont-pa",
+  "geometrySourceSha256": "50737aaf300cbe5aca531946e2f76e6e2b2452ac64b8dd23636f96846a33f352",
+  "osmSnapshotSha256": "09a905405fbb86e00b6eca209c4b3bb7fe3d1f8e0d24025f0f3c1bae3852e9d5",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "3b82d1341ecf01ea344231299da39cacea8eb50fc78d9f23e1abb57f30dd3e52",
+  "sourceProvider": "usgs-3dep-1m",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "d94badf3b2d631cf15c1306083fdd0650698ffc6e8a99d0767a29a0571e5df70",
+  "usedNetworkForTerrainSource": false
+}

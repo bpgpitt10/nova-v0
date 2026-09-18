@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+  "builderVersion": "import_course_terrain_v2",
+  "builtAt": "2026-09-18T12:32:50.505714Z",
+  "courseId": "augusta-national-augusta-ga",
+  "geometrySourceSha256": "c4c999c38649ee73745a62b7b48cd6c50f9e2c6fc7e40847aed63c3b9424d9a0",
+  "osmSnapshotSha256": "daf03fcf9819bf10ef25b893b69a2103f05a081ccbb839357958da1c6b1de44d",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "bd8e1ee87827d71b7f682009ef7c9362c4cb5abeb9b4609b4f15f286adbf8cc6",
+  "sourceProvider": "usgs-3dep-1m",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "1622fdc1d2ef956f9be5295002f361523632e974a9a9057cb2c10062ba3f42c9",
+  "usedNetworkForTerrainSource": false
+}

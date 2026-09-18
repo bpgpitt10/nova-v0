@@ -9617,9 +9617,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 241.7,
+        "height": 40,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -110.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -31577,9 +31587,19 @@
         "water": []
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 179.3,
+        "height": 71,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -80.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 35
       },
       "viewBounds": {
         "maxX": 194.6,
@@ -43701,9 +43721,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 152.5,
+        "height": 80,
+        "interpolation": "bilinear",
+        "minX": -170.0,
+        "minY": -120.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNotlweYjdcWhlf5Y5AgehcliBKid6INg2CY6Fwt2sjoYYzeRW/hRq+JEkQnRE2ilwii1xASQvREue85z332s/9znPnX2mt961vf2qpZE2thjayCVbK21t0G2Ze23nbZr2Ze1+N8i+/2o37dX3jGoFjwUdAh6B0ksON5Ng0aBzmtpJWyD0ztoGa32tbLFtj3dtXe9OLe0Ef6Bjwc9t/8lWcLSgTRQcugSxAbxAU9+V49qBpEWCpLZy90o6ayatbASttw22T3LL0X8+be32f5Zv/Zb7kFubCPDGoEzYIGQT0+Cwclg7LBPX2hj3WY5rXxtsHu2FabRPT3LJ+X9pae4HM4/6jf8H88Q1A8KBjkx0sZdm7s0wZJgqN6QTvpVu1vp62YV/aqXsAzuHgRj/L23sdH+2o/hf1dTxmkDtIH+fCQH9sMgQeP/I6v0rHaRvPZUivoFby61wK1j7ySlyX7WO8djuBnf+oPWMmCVEGaICUrVfDS/wTVU/6J5te92s4iiPdD7KO8jtfmWd1beDdWH5/o3/l5v4L9U7Kw8Ll/+E2/7Bd9l2fVz7Uk1SrsZbxi2ENNVlW+ReKhtbcjhvG+0Lf6L3i5iN0NP+n7/Yif9u2+wuN0vJah1kW9FPFXwEdFYi/Dv4ryrY7XowqxPspn+lrfhsVOPK3x5b7EF/ts/8LX6mmNtOOW19+nYkX9A8/n73l+djbP7eVA4kNvRBy98THV5/o8n+HTfYDH+yAf4/38urrVsxuW0jP5O6xMnhH803taT+pvelbP5QWJphxxdMTHQB/sQ/DW3Ft5W1YLf6LZbKI9sWcmbh74Gx7BU/ylPbZH9sISe2pP4zm9JJVpARrtvSlZlQWjKHZlzwb7D9llu243Yc/f+HkMey7ZLfZFePynPQWdJJ49jEek1+BZxHOQa3kYntcLwbf9eDhuJ7G4Y7/zPGzrbAtdsMsO2Cm7ho/HloiMQogUYGf25OE8MxJZc1tha2wzbx+kilftAr7W2Qy6cDmc2mh7+fd5u4vn5+ZgktjfIs8n0CCxu7+ywZw/yxbD/Z/sF047YjtsivW1yaAyxRbaWv5yAusT9jN/vwDSt8j0pt0mpjt2zjpbfzpnPmfush/JZAffe1sr+riTxdlI/HxpO4ntW+L8GmXYbXs46QD7CHsPb/a3qUS6inN28OYaG8Nvjdi17WPrSiRjwpFMwtcIG4W3+bYSXytsCXutdbPPbS6el9pX+FjF5zCLtjoWaSVQpChrbLHWwXrYp6hTK2vPtyE2lj2S51yUYiy239oym4fuLLQ5YDEAPpVHR7JZTitoFa2mVbZaPMvyayQK05KoOpD3cCL4CuS2g/IKEB9PdIM5vQdvFba0lsQiLIXltqysvHhLaxkskxW3qlYXpepI1gs5ey+YbcXPOOza8mtb/Jeyd+yR/qE39L6aPUehXqJR9/WpBpaeqHIQXRzRT7dvwHwf1V/J6bHhKGuwc1lyO62H9Lj+qr/oKT3HuoC3v1XMiCuTleG0BWQ9A95sJf51NpuKVbH3iDevJbPH+qNu0nW6BWXbpIf1DJ5+00f6WpNbastiRcByeDjXFWHkv6YqCeSdHu9q9/W8fqULdLLO1++I4oIe1OsaYfnQ+lpEWIrPStQ4VOUJ1G+UjeYZy+9v2D29qGd1rU7TEVqBtQcc7upDTUc9a4H6Z9aPN9vzPcpi+GwBSxoygxpTqSR2g1i/1506VYdqrL7Dc4/+Rd5vk1VF3u8Lh0bYUDCeAjMnU/n85JyeCZLGnqFEG3SxLtFlOlM7aHn9j07Ufdj/q0ksO5g1Ic4JYbsf7Ax9LajFTWJ7oFdAaAcZT9Qh6PkA9kj9VDvqJOK5jofXmtnKceowEF8M+x9gm8pT0MXLdBcYfcuZ47WXttPWnNxAu2lvvPTR6WHsz+sdfRN0OsHa+fTIbUuGSkX42yjCUP1Cx5FnH22rNbWq1tHSWpZna3yM1NUgf5Lq39Qc1o7eOYDO3LO3PRmKlAwdye+1tSt51tOKmptVjKzTaFoto5U1mgrs4+yrrOeaB9RO2RW6/yVa9MKShPWokL+UzJpeRVVTamItoCW1mjbBYwdN0P8ylY/BmkeamOr1gann8HAN3XjBfM6MOr/nW+SY3JAnckkmyDNJrgclD7kk6GjYMxsWbeb05FSvCTeLNbD9iB3DwyNiSO/p0MIDckFOyxBZK7ckm2Yi7r5wZ64u1TW6mx74VZ9pSrBvi84shOk7iOApShhB/JnQ387ylQyVxXJNUmjIvoX2J+61zNTjeomeeaKpQb4S5/ej7kvQ5n9R0iecn4X88/ho+Ub2kIFocpArpJ9QiwV0zZFwxzygf3OhH42sPvjH22r0PSWsec68Tsb5+XyJnJKbZP5K3gTBj2DAWPLegf1ZvQa3ktr7ML0JitYK5m6BOer37KG94vMtENwBcn/JY3kNdvlgQCt4Mxc+7aPyF/RPeFMEJa1l1a0p7NvCpDrLvm33w1t9v/wu/8ojzn8DDtQn/346BfTW0vvHwV6tALUrhfo1BIHl1HA3c+acHYVJN0HiLOfflAdkEAF3qurH2h4PE3URldsPBn+DXzZUpTyqOpCum4fmHkIzN7Ovkcc42SF35L78jYdMWpj61YWRg8BgAzU4AYavNQXdWRTV7A4HJ6NUw5gjs1GvncTQX+bKbnK4SwxvaFYtorWpwQDsV+v2cAR36d8AzawNgp2YF115DkGpp4SnVg/5XFbLZXK4JLclr1bRRtoZ+6m6QrfBoP1U4S44Jqf/I6lEI2uOjrTFz2do1lJrJ8NllqyCxSclqb5PBT6hjxPo/GW6Hgy+p/8u6WX9R7Ogf2XAsioKGI2fluA53epJZ/g3TpbJIWpQjt7pofE6HATn6de6Eg/H9Cj7N9RfLCXqn5/bclnu2zFkMsYi5WPpJvH4CMVQhLtkXzRoFGoyQ+fQPxv0JxRmG3w4ib7d0URgmQVOFkHtmzKpq0gUHppKF5ki62FRJXRjqI5hjSOGJXTRRubASviwGS09A6MjmC6pqGgpONXGakmkVGM3kpGyQH6QgPr1JIIheBmMh9no00w6aq5+wyQ5preYZC9gdQbyKMc0rSu1sK9GFJ9JgsyQ/fCoLtrZg9UdJg1nDWVPwMciMjkHmvfoqtRoQjkiiJJyUlaqS+VwHgOp5l7qUIs+aAmXO2oct/M4cooHkTnhWXYJLF9qMpAMZVBHSrPK/T+GxtKbap6X9zSKVQc2N2Y1xVscUUwFjX1M1CvwwZgIRbFvLmWkpFSUSsRQRWpIR+kJo1OiwaW1FGyqBqNDWtoWRR/DdNlFZ59kPYTVueiKatiVJ/oPw+dXlxjpJcvlueTUgppLi7LepyuqwspYMF3GrDgEHw7rbSJIB6NCpxaWYuQQqkJNPHSQSXI8rCdvaUY0LYvmIZIoWJ2A/UbO/xEPs6hkIu4kNbAvS/QVeFahFlHSmgzWyEW48BRZT6rJ8FGIHNqCwGKUZRvzdSdcuAAjE1k0la/Ers8zUqJZdaSHDJNtch1NvY42BcyTTFoCFAehKxuowSa4tJUc7hBDCsksRaQuqzpn16SGMdKEOs6lH34Kd9UDSaRJ9F1q2hllWkxfr0ebNoHDZe42KSUIr0LUriFnt5JPsP8szMblskU2y1m0JYRGUarQCXWdhY91rB3k8J22ombFwx5yyEd0QTf6sSsIxMtomSrzZDZ8uiV/4CMDU7FhuI7T4PSXqPxSVkdOjJF6klUyikomfNUlkvZ46U1HjZUxshFlucx6JllRyHraDC6FJtww+DBee0t3TutI7I3hgOMjQvJIVWnHasoaAKMPUI39ci7soQScagCz25NLP7x0hC99JA77tlT+Y3kX+1SSnQg6SDNpThSDZalskO1U4y41zQyvyqJS9cmlPR3WhmrF46E1Fl14vxkYppa0sLqNdOLfbWSETKYntjPj7smfzLk0YV5WQmdjYPen0o9q9Za+YdQ68PyUKmZkNUOTmuN7LPZj5Vs5Si2PguQzSY2HAlqcXApp6O9jOX8wXsaT63h89ZNcIJkPZFrIRNg8FT5NpxYrmPI/yG94SAyjcmp2uD2bCn3BG3OY4SvRwIUyE3/jQKMamMSjKF/AhQS8jyOLxXg4CCvvw8rkMDtC1/PLKti6kSl+As5t5dtK3htJLtGwehr+JmEfj85PxNdCWSc/yhX48ISpeV8OE9Fe0PmB7G5T5V/kZ/6+XTZxYsg+Gss4MOnDv0fiaabM57ydvH2GyX8Cbl1Bb45j+YT1is7/C5x/h/mLwDSaHDrA6K5UOR6MPifTWeQ0mw4Nxb0OtXzN9H8IJk/5nhpEkpBXUv2dXEbAh0Z0Q3fO7w6uCeEcplOPENIDuTVN4baVCSRec7ZoOuqST3Nwn4vQB7BunLTEujE+ehJBd+IZxG9T8DCV5yx6dL58yMTNjc4k4ux34WZJ/QAv6fQfEJkhsXRHCzzEwPCQhxCK47CfFs5hEUg30xrc8ktQy3fRuSp0SDk+8+pTkNzEmyFWhTQhBjbGgmICXJhABtPkS+zXSi9Y3Ih7U0W6M5LOqI3SlcbXW3qVe8ESOLOC7GPAMeQhLozCsDAnZ2G/WsbTQz24dTVH6xuh9Q3ojCrwMpnekKuw9Q+6NzacQQOencM5DATZUCUXMbW/Zs6OwUd3bGvSU82ZO9VBITeql49qZNSH1G6E/IcIQlrZhRj60hljwfC/4LcLJVrMZBmFh5YoQ5x2QSMq018VwaU0kWTQvuEe6Q2b6tNRXYhhMDhOAsEFcoZ73g5m6xxuzKF7wxBUoQlxxDCzmpJLRf4XtA0tm4ASdSKLaPq8l/Sn9hM5f7k8ZBqeQ0uXEcV0HcjtdzQ3mG58DgypA6pbgI6/zNtjZBRVrEcePdHXkC6NQ1n+ByRk4iI=",
+        "width": 32
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -57507,9 +57537,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 152.5,
+        "height": 45,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNotlgt4jmUYx+//IylG15IOo1QKKcmhorLLElIO28xIhtmIHRzWDq0dxMZmzjspYzmV0FYNa1M5U6lVJKLIOZFyJkX9vvfquq/3fb/ve7//87+f//1/nvuZpKmaqTl6S++pQh9rpRaqTB9pnb7XCV3UX7rJNXSPuM6uhxvsxrpMl+3yXLFb4LKUqynKU45KVKq5yleh5muJlmuT9mm/TqmW83ctXUfXzQW7aJfkYl2am+hyXILeULpeUzL3bGUpQ5mMNEdvq1JfgjykS/pXAa61e86FuJddhIt0MW6US3BBGqVYjVY0z/E8RytGSYw2Syv0iXZ5vGdVz93vOrgXXC/XB3w4Iwx256yz+hMhGqAInuFElBLgLdEaWL/Rdzqqy6rvmjLb1u5puLu57sQGq6eO6qouelY9eAZyhcH8GrpVMdev9DXYdF3V7e42F+Aau7auHfNu4fLtkD2sTmqtR9VBbdRST4AdoDFovkJrwW4FXa1juo5WtVwd50fUcXVdulXbDbpDt+pONVNTNdFDelK9mHsW+lYw12q418H7u/4g7+PECR3mirci22cX7Gb9YzfJT/VBP0jOwzRB72g1CvuuKnh/ocLbVcPMv2UGOxVtY22F1djv9pudsHPmYPeHtw+s+ajk463WKn2qbeS+hmstn6u1Xr1sjKXbMvvadtuP9j342qoN8+Ngo5SmaaAX4y+fN5ZyX+Z9LiVCLcySbKq9z3wrrcp22XG7QvYN1U4vaAhVTsNf2Vw5msE4BSrSbCKbbCNsiKXaFCu0ElvECHvtKHHWbkXp7upNjaMUhz/i8FkGiAl8GoEOcRZnsTbeEuEtsFybaZvA7SJ3X94PkHWQXqRK/TUI9Eju4cwjUE+pi4XYABtuI220DbJIy7DptsO22Od22E7bjQrQfWqvpz32UEYJxDctqeDtktW1e+0xMFH2EtgUy7L5ttQ+tSP2B4pfNz81ptLtqHJ7Pay71UhOF+yiNbU61tAagYu0YR7rZJtNVNgB3FVjB0E7/t2YzO/l7qdLaPiz7beBhL/dyQh90XgwkQtums2z5ahVBvcOO2V/4bNb1EB1dBUVvrVysoq2eHsFzsZEAjrngSsg44koVmilVPpjsAfR+ioZniaT7ThnrX3Hf3Lhmm73WCu0Ggmq2GZQpWR7w8OW2GIYNttOMtzHGJuo+zLbRh5LeFdMdrkwhoFNtjmWz3iv2us2CWy+vcU/3gZdaR/BVsa7D3HbNdDVtsZW8m2WxVgw0Z8xYvFksqWRcx7YIkabSWQwXho5bIbfT3vQ7wf7hhE+h3kcrGE2gpnHg0/E0VnkXkDkE8XUaxHMW+wkLrli53HpZby63zZaDkqHE/GsoDGMkwzPFNiKmHEhei8i3ypYjlsDlG5CjfxUS+f5ZS41HehFKJ7y5ZyCUj5sPsi5thDkBtbVAXsQXHO1oML+uoZ27/HPYayAcHIOJ+cYuFPgzfIcXWgLQFZQk9/gDGT36Qy2OavyAPm+iwqZns5h8EbBPI6qZaKzT6t5jO1bj8dwRsf/XdwWD/9J1VbbO/YJKoRaP9TqBzYWXp/Ok6l6EdjFeOOI1WWvDGG37OGtgH/Idy9uOcMIMTbBhnr4AXyOQ+dMqjub6pbZZ2hbXy+z3oKJIFgbotd9zLwJY6Qwsyz4gkGH2ChyTmWsGai0FM6DOLG7+rFnDFVPWDuxjjqyZtuyKnJRdLrnTJ+zQpl9KpFH3eYxl62s/XB2hnEaC/5F0CFep+jGPvIvHs3yfJMDbwhrdxg7RyquSoJ1LT5KoHdls78M12D2ikQ6ygi9BO9D7H+n7AMYiqloBNhgZvwKWY9Hr3JbZQX0nkSv+73KfRrfktjveoMN0EVGLkXt1bguwvPlUFZ+tL2JVnNtuYo1mZ7n67gL2UULNInsh4C8Q+fQeCvOPGZ7qEciGfcjInFYPN826kMtYDdeyg5cTg+aB+t48n1CtzHXy9StLkofZTX61ns6a6qArAdR4330yFX6gH1/vTbwqRTkaPTq4NXmb2uFu/5mVS3BdYW4pIbftuCsYDtJX6qh3/ygvXSc9XShXOYZrGfoi/7U5ymceYGst+PzMp7+ep4dsJYq7Kyu6IxO64LO6wg9qpxTxgT25FB6Q08c1hVvXLZfcc1u9DppIbzNRf+udNPargERwNnlGp1uG72rRNNROF6RYAPpijfqOjM+Q6drxJjL6KmVxD1g7nYPcAZoxenlEueJL9DMh81UCs4MIre7yLseGRo5zNJm+nAV56Y2nBpaufYuyHVxzdwp/ak92ohi88kpgy7SA9bHQPvREdpR+ZWosRNdytXMteGU9CynlFDOHUf57SfebOBNPvkO0UByDkbnTjg6nEy2MKPdoCvVgrOG72QW5Ua4MHeefv6Vd5ap4lyWip9TuPv82Bdfj6HaX1CLPSj5mbqQZU9y7c7JbDinpd3aAXYdKhRR2Zncp+KqePii9TrqbINzv5fvf5iwkPA=",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -73170,9 +73210,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 152.4,
+        "height": 72,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -110.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 42
       },
       "viewBounds": {
         "maxX": 266.9,
@@ -84772,9 +84822,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 172.9,
+        "height": 71,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 32
       },
       "viewBounds": {
         "maxX": 165.4,
@@ -111962,9 +112022,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 171.4,
+        "height": 82,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -120.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.8,
@@ -131419,9 +131489,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 185.4,
+        "height": 46,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -130.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -164064,9 +164144,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 204.4,
+        "height": 74,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 30
       },
       "viewBounds": {
         "maxX": 146.9,
@@ -191858,9 +191948,19 @@
         "water": []
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 204.3,
+        "height": 68,
+        "interpolation": "bilinear",
+        "minX": -190.0,
+        "minY": -100.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 34
       },
       "viewBounds": {
         "maxX": 134.6,
@@ -204279,9 +204379,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 249.2,
+        "height": 39,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNptlAuUj3Uax5/vlzJHk1Sym0120dbZjTMIqWxErRDKLRvL6CKXFaYoRu4sMwaDcVxmZrWrcRnSYJimCzPbRbsnre6dNG20h7Nawm7LCX3+f51OMec57+///t/3+T7f5/J93qmRFikhrobRKrrF2JgXM2N0DI+hMT8+iFWR8yP7IurqV7pP6fosFkXPuDk6Rp8YE7lRFAXY6siLxbEh3j0Pl7ADUVs36S7V1oHYFhMjE881sT2ei/WxEVsfz0dZvF8NckWcjFS1VDOlqCpej5fjb/F2vBkVsSte4azk3BmfxMJqsHviVFypLmqsy1VPZ+JgVMWn5PduvAfiw+/ttQtqzYn/w9pHPbDbdL1S9TVPvo7j8VUcI2pN1dRx4n0G+oXzkPlxsUboAdCd1Y6ONdCVqkP2qbqI+i/nXjoB9nPQ57NWRpbGa7QGaQDMndRWN+hGqm+j1kRqTKzLyOTT2F1NnzarQAuVo2makIzQDxuhDA0nUnv6V1cnqf/CLr0Xh/V3VWiHNqlQuZqjLM3TUi3RMo1RT92qaxXaUA2yKur7hA7pBPaa1mixsslgsVYSZYSmqL+u0DvV4HLiRDRxY59VDV/qKu3URq2Cr4BzhiZrIvUeqRa3J/4brZ3mlq7jVH+jfdqtV1WiZ7VaC2AcoIYqrxa5P2qplzu5g3/rpk7xUe0n8/fBb9MKWHvTn9xqcG8z9/rK8DD3dR/f45/7Ip9S+KQ+11+1SI+pI1M951sSy3+APMi+tFYuqD94sB/yb3wDWV/mmj5Ot8frHmZ77LvZHSC/o/Fl8l8F+rqO2a/2fViGR3q47/WtvsY/odsFTCQNFexJ+m5FRV/E2VCyX1URxGyvQi/zDE/3Ux4Hb2+3cSNf7TzeNGKSHyeRa2NffBM10OSZWBb/JEJTdVCRC7zUM0EmsI+Avdb1XKZuxK2hw7E3tpDrkbgEJdbTxToFdx02u4tKvQlsoRd5Kjmn+3e+zTX8OkpMQ/+n41D8D99a+gU7kaZr0FRTfjugzTf8std5pRd6njM9wv3d05f4HZR8t5rDkgJPA3x7oueEGjvxOwRtjVSJ33Kp/+Q8sNNgHeLubuB9qOhR3alfw9BILdjDx5nvOBQ5CX3mY0u01uv9pFc5H+xS/5Hp3u1W3q8teA5Wd2baQr00V8+wA8u5XkQnb+kD9DLOv/cL3uJieF/BHndXd3T4TVif1jB0dK/m4/8PZlysSv1Hx3VEqa7tLh7oHSDXwrvVm53Nk/bMZZ/K2btsZcJToYM6po+0F9RZ1fJpXYpilsFSDmu+i+jws5zd0EMr/xu/cpXBspcNFByHdFinubsKrVzn5q70LlfQo4XOoc5C/xkltnFbPP+lD/WlUlzLdf1TZnxKZ1Tfv2S3bvFNbudXwVbQpTmoYRXTyfYo3+zWbsHGHiK3q9iEn7FJDdnDK3h6u+9MXl28G9wul3mBJ6LdB+ltH563JWozuMJN2INm9Lu5r0cjXamlO3vVF61X0M9Eh/Kd5SfQ0GDQg9jZW8iqGVcT30isvr4Llt7uAWIA03iYvu6iO2Uu8RpyneXx8A7zUN53Zuva0atEZr3czw+gkfs509nJhKUnkTu8zRu9mg7NQhWPocFBbNztfCvugL0ruIF4DmUfHmUXM7Ax/Fb6Jb/ohO7Xo4UF7NuTHovHEPx7oOFu5JpOHqPgGQsigymO5hzKLLfDWUqlm5hlPrOZRq8y8EwH2xfu+6lqpCfQhUxP8aTkV+AR3m6lxlJsG3fFKKmQyc7GJ5H1g/RiYLIfY/n/NF+ALM/l/VTqGYXetoIqTSrvOa4iP4Ou5vL2KfJK1Dwymd1kJr4IW8A1n2/AeD8P5hzjZrq0BfTaZJ9zYJgM9yR8JnA33Uvo4HI2Kg9kJpETnNvp70vkug7dJrDrkhrOhWUGNg3UbPLIB7fSK7DZSSuHbzvnG9Rb7A3gSohWnNR+Hrll863IIoN8/4WvTgFnEZw51PMt7ic8DQ==",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -216663,9 +216773,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 250.2,
+        "height": 40,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -225051,9 +225171,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 263.3,
+        "height": 35,
+        "interpolation": "bilinear",
+        "minX": -130.0,
+        "minY": -120.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNp1lHmQz3Ucxp/n61hGqF2VGDVSMZP6R9OUrLAT61gby26udTdLrsixjo2sK23sDoslRy3JLsZZco11tFHO3CN23UeSsUJpelnMJGs+8/t9f7P7fX2e9/t5P5/PdV/1Of/lEsFt33SBL/mkj/uAd3q9V3qpMz3L853lRV7B38OC0KBMUDkICa76ovN494ov+DLUKR/1fu/2z97oxf7Cn3kC35n+2gshb7hS8GRQMSgbXObNw6xfYU+x4xHv815v9xb/4Dme7hHu5p4e4BkoZnuTQ4LqwZtBleCcj7H7EZ/xWXQPeZe3QayGW4pOqkfDNXG04/25l3iV97hM8FJQPsinl+2w+T7NZ69/hFhOTzOd4U+d7GFu7Bp+zfXdnl1WO4fKrvlPutnN70MoHvNBdljvtZ7mUR5bSPXwW67g4g51VYe7C5Wv450TePELz3Wo76GvXH6tw7tk93Gix7ivGznMx5SnC7quUNdxAg5t8Q7UdnkrfufyvQ2l5Xg43Z+4O1X1c1fXdJ7Waqs2aafO6AlHsl+Wf0It1xvoN4f61vHMxrd+7u8OjnBzOivvHGVqkWZrCXyeqrgdPczn/Ryv8TcoLYPK9BS0hrqXG7iaq9NTgVZpkkbrY43XVK3UCdV1itOcznRXeQHaC+h5Jnv18iDcqIlSiG9qn+ZrrD5UN/XQYKVpofIVThLGUN1Sz/NsVqqTPNK9/a7ruZxPUlW+cjRZA9RdzVldNUJztVnP+X0PpK9FTCuDHYbT10c4+KpL+IQ20s+39JWkjqous1rALaSCqo5jraDCDE+mum448YIf9w0d0feaoVmao1Sqa6kXC7nSStYyncLV10lBtufS5Ti4OHJR2ofRWaYpGqmhGs6nrzpAunAl6jtdVClXdhVynkFnyR7MbJ7xZW3XchwcpnjeHsjqTX2xeqyQ68+Ov+mWSvppPEn3RNxPxI1Qn6XvpRqDShPei+OZwK/7evH4clS/65rKkvnJqCXBRfh5nycbK5ShIWpd+Gaxe8TdVYueL8JdUjnUJuHkEFISwaQLtF9r9BUza/cAcXdFKp207eVzW6nkfggT6E2qqrmYj2sbXSQXycXReRZeb6CqFE7MIFKS4Da4dEtntQNuNF48zMUzwTRmOlvTNIGMDGN2Xd0Rf4v5iNaT5KR7/T242pKdcSR1pEbpzokeQMo7ML9nyeRR+ptaOO3/UyUVo/bqop7Qg5WIIwmOhYohB4EPoJeKn3FF6MVCtuI/bRSlBHd2W7fk5ol2U/rbz8lJ49x0LYKrxSyj1IyMN1Jb8t/43mrofzhhGzRdE0lMmSLI+xU3VytHcQYaktR3SEyYrzCHufiVojceyVk1FAsXCdGAudfjPNzmpKxGMU2d2PdRXEXFuRlqUejVh6sNd0oHmEQKs0rEh6K5MPSawtXlngyHq+NSeHMGT9Mhh+NPR1UogquNXhSdhaMUjmIdMhPC3ZdLur/k3I5nUn3U9KGKm+FnNL68DRUBH+FXXJZ0H6XWzdwVS7gZUql4MHn9Lxut9m5FpRGQkfCRsE+heJVaT3Jf7NMW5rKYqlPJbDt8vEPVZIqdyXMM3tyhGhd6W9OVuM+Kc88U6LxO67gOUnc2pysdp96jxhhWN3eCbE1iYqFbUHWEX+bGrcws79B/c9b+0LnCuypL82CH0vEH+hcF2q+N",
+        "width": 28
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -232725,9 +232855,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 241.0,
+        "height": 45,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -242011,9 +242151,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 241.1,
+        "height": 41,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -100.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -249420,9 +249570,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 241.0,
+        "height": 36,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNqNVQt0znUYfp/nvyupYccZpiUyu8RumEmO29qp2XHJWGxmCJ22XA9OWUjNtRi57hhyOkwdiS5TWEsSooV0wtpiIiO5DDF6vo+Osy6Hvef7vu3b//k/7/s8z/v7J7AzwxnMJvSisRKH8DnewRyMQirSkIg/LApx+uyFvhiJmViJ1cjT+1p0YBgfZiN68ybO4nt8gQLMQxZ6qKJQZn/Xo2gndAay8Tpm685LEczGrEPyIipQgi91t6n6fxJaocLKatSv9gg6I0XMGRiBHDSgL6/gDI7gG3UwD5PxPLqCKLP/KgePowu6ow9GgzyHMuzHBixSD9m6X8f/Qd2txuiE4TiJcuwU23zxj0ZP+NwTV2Z1xDoEB7EdH2INFqv3eNS7J67S+uBZTTsWG7EeHyAXA9H+PtjKLF64/mLMkTfLpMoQdd78vpAh0q83hkmRqXplyem28uHfnbVCQI1vfXVdlKbsJQcyMU6f7cQYgrAaV12wUMTIhZp3jEGkrotBP322QFNcsvN2w4J03d1rAuDK3VNIQDdl8J8995DnV63cimyJLdf7LQvDQ270Zf0WJ0yG0vuCJguuwRysO56wPVZoc2yY9bRRttnOyedQhIs9RGzJmmYKZmEBJkj97vq+XLjauk8ctlm+TbM0a26hFm3p+uuQXVXK/N2zDMYkvC3fSuT5YmVsnFIbjyeVwBTMsgnCRZq3KtDaWLbtEK8H6iNWjBl4TfkqxG7s1WuHEjNb2FQMVRKSLdHamZdwXvagPW259rVVmcmNaG1MhvrcjtPavgM4ilLlu0DMrwi/GN0sVhhX+VqYDbYCO6hufREoZRORjhU4rE06J/RFQDtcjo+wCXtwAoFuNi+rYwHW1sYLeUy6Eg2lUZI6W6pT4pSwVbiFIMYwStscwVi9fMxTbLXF19LibYptsQq75va2tTiH4C0U4bjqAmoxUidPX2bxJabr3dNc5WUtrKmFW6q03WfV5o0g5ay3cjlX50upNvgawtmVyRzEFzmOi7iGjt0uD+EDrJu03SqF/OVYRyk/RltUgmPq1oeh7MQUZnI2V3Ej11MHnuo2spZcSbc8K7V6aCnXUpSCAulZiRtoqBkTmMo3xPYxt7DoDpLujn2siQ2wGbbbPNFGU2aKsRA/w3Q6xvIZDuBELuM2fsVd3K9uofJ0J8HbGlkXm2Sf2hXroE6nI1/uVyKESUyTKtO4hJ+JbSe/5Q9Cun587lSgdbcxVixXesvtXJ2hB+RjDBOlzFi+yw0s5F6hSllJuHv1VbmQra2/LbSb2swUpWSlXP8J1YgWMpMLuEK47SzhLzzFP91z+gvjykNTS5Kjxy1aT4KxYnwfxTob/dieGZzKN1kgVZeJ8wwv8CZdfEHC1LVHrI/UOWhxGIRXdfquwmb8iEsI1YxjOF0zbmUx9/AkL/MW/RzHGtzJT472FOiA8TrT1uA9Jf2IEhchRYdrxpmachtP8yKrWE0fJ9AJ01Ym20idCYeUuAzpko8tUvSw0urwCT7H/up1MvO4SW4c5W8y38Op64Q6WXK+0A7oHAlVSnOxXHtcKj2r8YC8T2M/qTqRs5gvxv3S9Hch/Z1GTjNnhxJzw9roGZOt59Fa7NKz0E9P0wgOE9dQJTuHczmfC6XMEXlxTRM+5oSroD1M0B5OFFuREuooL5012Qi+rKRly4slwi3iOlbwrKakEyBUmBPpNNMzMQ0zsE7nxXltUnvlZaD2aLJY8rhaTmyWi8VStIqXXC469Z0WQkY4XXSmzFGuvxOunvYhQWwz3d2tlSafSJV9PCwfrgt1XW54OH5OQydYnH8BpzQVNQ==",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -253058,9 +253218,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 211.7,
+        "height": 36,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -90.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "eNptVQlwjWcU/c+5fypqy1K1VNskCC8hQlRTeyyllgaxR1RJVRixB1OliGUoiqDWohmdhFJrpZbYyqBD7WoXprWmpUaVqp73ZNrOkG/e/ybzvnPPvefee/4Yt4brcUPcUm6QG+AWc71/T+yh/WwHLMsW2Xxrb1FmdpKrOZ0TOIid+DZjGU2PcKFuWbekGyycv3B+7mN7YDftoK21hTbbulg1C7br/J7LOJlDCrD1GOJ6Tzk3UCgT2yP7w+7abbtkh2yzsJMtwWpbafuNp7ie8ziO/ZnEBDZgOeX5qltajF7ELbtqeUKdt3N21HbbSvvEOltdIe/wBHdwKSdyIN9jM3EGuiXcm3badtoFPU/ZSTtm+22fct1u2TbFEi1e2b5ot8TpRaYp11ZsSA+fiCnHtiizHbqbo+8c22SZtsqW2KfW05oJV8b8VOcxfiOFUtmEtRjKAObbRdtlG2y17i61DFtgX9gsm2bjLM1SrIPFWqi9YDeUaw5nC5fIOIYwmH68ZMfFs1y3x9sYG2uTpMlg6yVdmluM2ALtAc/xANeqJ8PYQfVV5UsszJs4YluFmy4lPhYu2WpZtEXqVLJCyvACjzOX2ZzL0UxmG8awDIvzL5zCRuxUlvOFTLfu1tgqWHErrL4/Yj4P8VtuEdcSTuUIdmMLsZXifVzFfqzAZKyVGtNtqDWycuZvd3lZGh7nYe7UWa8MO6ouD0uqrse4iX04iEwMRCKqI1uV9VVVoWK6yIPcpex2cBVn8gN1rZIy+xHbsRUbsBTZmIPPEY9yuOP85KTbaEu1elIiX7of5ldScAx78C0+VPxNWIIBaIseaIMOSEYqmiLP+dqZ5gxzxtso6RJmsGPiyuVnHMzW6tcBTNe9eNRGA7yLVqiBSqiGdngda52uTrRTxElUr2M0I9eV5yau4XjWocttmIJeaIFIVNGnIeKE855YhCPLaeEUdRynpoVYkN2TKuu4mFPYXt06jXnoiyZCVUWUmCJ9qMo6EeLOcwY6dZwGThnxQdp85+tZL2kfxMOYie5CVC04FcXkRXoUow4CsMlZ6GQ4hYz2kNt9u9eHbbV5gTyBDKkR5cu1ijDhwlYu4IxEXfziXHMuOf7qxmX1O4MjtT3xrK0pOSX1uyFatyLEE+47T5EeRWqGMLwGwt+K2hmu1BYMZDtNZQRf4wUsx4c+pKdAmae5ej/RaCmly+NlBFoRVblMNfb2+Ut5IfOxWh1pIiU9BVyVChg96lIiktSnKARrRg9whjY2STNTTRsUqBnYhnT1sjla+25X/rfKWHRUNn3QGfVxg6c1n5PU/0Q2ErIsSyjbZRiHxpqdplLWq5MX/6aYeiMNI3RS0AV7tOkLpOtHcqXaDBMyX4wT0UldqS7UU31j9H9/5TFVEzJbezIeQ7CRy6XOOLlhE9ZkBRbjeSxAV92O8mkbqe+WqnqGdsR7srASizFfMWZpK0ZzALvLB6P5Cu8gF8OkfISPr4YyTlX8TO3LbuzFZdzGWazRWYmR6mOycAmau3htfRSvY6F0qKcKW2AQJij+MnnAFdwAWZpFpd9RRd+MPup/Vzlha+2uH/2FragZmiRsL4xVX9djHU7gd/jJ7arqt4q69SuO4QckaFITCnBPT1s5227MlWPk4ozyeyRcCUaqmjj5UJh+Lcx7yFesIL7xP5wfC4k3RHEv4k8U0eYU1zzGKnpHOXSc+hYqNQL4BH589sSxpTyhDuv7nrU0IUlM4fvsovzq+6YliH8/F+kntRLYU/6apm6lSPkxHMW+Pmw864ozUjU/H5kg/xqhN1cmV2imF3KOdn64sKnsp/nupz1u9FxcuPjS5bNZ8rNsbpTP5PBLbX6WokzStA0VtsszqHfEli6WPXLCI9zPi7wiD76qZ57eLbvkOBPEPlx1/IcJUF9HcBoXKfZeOe9JnpXT3+Njmt5Jj3mf13iUWzXl83VnFv8B4Ja5HA==",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -255711,9 +255881,19 @@
         ]
       },
       "terrain": {
-        "available": false,
-        "reason": "No terrain source configured for this course package.",
-        "source": null
+        "compression": "deflate",
+        "elevationOffsetFt": 208.6,
+        "height": 42,
+        "interpolation": "bilinear",
+        "minX": -140.0,
+        "minY": -140.0,
+        "nodata": 65535,
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+        "runtimeSpacingYds": 10.0,
+        "source": "lidar-dem",
+        "sourceResolutionMeters": 1.0,
+        "valuesBase64": "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",
+        "width": 29
       },
       "viewBounds": {
         "maxX": 135.0,
@@ -255744,5 +255924,27 @@
     "sourceUrl": "https://www.openstreetmap.org/way/871993734"
   },
   "schemaVersion": "looper-static-course-package-v1",
-  "teeReference": null
+  "teeReference": null,
+  "terrainProvenance": {
+    "courseCoordinateSystem": {
+      "projection": "per-hole-osm-route-frame-v1",
+      "units": "yards"
+    },
+    "runtimeTerrain": {
+      "encoding": "uint16 deci-feet above per-hole offset",
+      "interpolation": "bilinear",
+      "nodata": 65535,
+      "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation.",
+      "spacingYds": 10.0
+    },
+    "schemaVersion": "looper-course-terrain-v1",
+    "source": {
+      "dataset": "Digital Elevation Model (DEM) 1 meter",
+      "license": "U.S. public domain",
+      "lidarDerived": true,
+      "provider": "usgs-3dep-1m",
+      "sourceManifestSha256": "bd8e1ee87827d71b7f682009ef7c9362c4cb5abeb9b4609b4f15f286adbf8cc6",
+      "sourceResolutionMeters": 1.0
+    }
+  }
 }

@@ -18,7 +18,8 @@
     "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
     "path": "public/course-geometry/augusta-national/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "fa9e2cc66e34c6e73eb6518407adbc7b7904332abe07530a30a1b90ab244c262"
+    "sha256": "8170df101f5a63773fb8ad027e51cd22c33a1b97b267a60c48491c49dfdc67b2",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/augusta-national/osm-snapshot.json",
     "snapshotSha256": "daf03fcf9819bf10ef25b893b69a2103f05a081ccbb839357958da1c6b1de44d",
     "sourceBaseTimestamp": "2026-09-18T11:11:44Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T12:32:50.508618Z",
+    "sourceManifestPath": "artifacts/course-geometry/augusta-national/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/augusta-national/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/augusta-national/terrain-v1.json",
+    "terrainPackageSha256": "1622fdc1d2ef956f9be5295002f361523632e974a9a9057cb2c10062ba3f42c9",
+    "validationPath": "artifacts/course-geometry/augusta-national/terrain-validation-v1.json"
   }
 }
