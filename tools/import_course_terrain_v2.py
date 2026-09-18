@@ -17,6 +17,8 @@ from rasterio.warp import transform_bounds
 
 import import_course_terrain as core
 
+ORIGINAL_ACQUIRE = core.acquire
+
 
 def discover_nrcan(bbox: tuple[float, float, float, float]):
     query = urllib.parse.urlencode({
@@ -113,7 +115,7 @@ def clip_remote_cog(url: str, bbox: tuple[float, float, float, float], output: P
 
 def acquire(provider, bbox, tmp):
     if provider != "nrcan-hrdem-lidar":
-        return core.acquire(provider, bbox, tmp)
+        return ORIGINAL_ACQUIRE(provider, bbox, tmp)
 
     meta, products = discover_nrcan(bbox)
     rasters = []
