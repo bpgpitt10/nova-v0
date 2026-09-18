@@ -2,8 +2,8 @@
   "courseId": "cabot-cliffs-inverness-ns",
   "courseName": "Cabot Cliffs",
   "freshness": {
-    "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T00:59:26.159436Z",
+    "ageDays": 0.01,
+    "evaluatedAt": "2026-09-18T01:06:56.957990Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": false
   },
   "package": {
-    "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+    "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:59:26.159436Z",
+    "builtAt": "2026-09-18T01:06:56.957990Z",
     "configPath": "config/course-geometry/cabot-cliffs-v1.json",
     "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
     "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "499194abd9ecc0a6bb8e565a1c6c77aac444ec1baf4b333f99a48fa471eb5811"
+    "sha256": "17819e364324aeac86b61513fa5c04292f9a588071e1ed824d7bf4519472b303"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

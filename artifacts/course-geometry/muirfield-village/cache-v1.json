@@ -3,7 +3,7 @@
   "courseName": "Muirfield Village Golf Club",
   "freshness": {
     "ageDays": 0.01,
-    "evaluatedAt": "2026-09-18T00:59:21.448743Z",
+    "evaluatedAt": "2026-09-18T01:06:58.553085Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": false
   },
   "package": {
-    "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+    "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:59:21.448743Z",
+    "builtAt": "2026-09-18T01:06:58.553085Z",
     "configPath": "config/course-geometry/muirfield-village-v1.json",
     "configSha256": "e72e1e72e5a6f48c001d9096b6c5706f208e411a8444820b6ce59064bb240eaf",
     "path": "public/course-geometry/muirfield-village/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "86adcc64b5dd76d94e435d3bf710cf20348f3c74d5e862a16ef7114c609ddf8a"
+    "sha256": "94f2681a7fa6e15c7e8ae9a0a7b896b3c3f7596910b1c90a19efb073de4cb27f"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

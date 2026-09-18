@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+  "builderFingerprintSha256": "65b21d7ddece36f2d5f4e4862178dca30904e50377193b957bc8052e2ed45c2a",
   "compiler": "build_osm_course_package_v3",
   "contextSourceNote": "Standalone OSM context features were present and eligible for corridor filtering.",
   "contextSourceStatus": "available",
@@ -10,7 +10,7 @@
   },
   "courseId": "muirfield-village-dublin-oh",
   "courseName": "Muirfield Village Golf Club",
-  "generatedAt": "2026-09-18T00:59:21.352426Z",
+  "generatedAt": "2026-09-18T01:06:58.443788Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
