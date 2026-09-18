@@ -7,6 +7,7 @@ on:
     paths:
       - tools/build_course_terrain.py
       - tools/verify_course_terrain_source.py
+      - tools/bind_course_terrain_proof.py
       - tools/requirements-course-terrain.txt
       - config/course-geometry/arcadia-bluffs-v1.json
       - config/course-geometry/cabot-cliffs-v1.json
@@ -35,7 +36,7 @@ jobs:
         run: pip install --quiet -r tools/requirements-course-terrain.txt
 
       - name: Syntax-check terrain tooling
-        run: python -m py_compile tools/build_course_terrain.py tools/verify_course_terrain_source.py
+        run: python -m py_compile tools/build_course_terrain.py tools/verify_course_terrain_source.py tools/bind_course_terrain_proof.py
 
       - name: Verify source-quality coverage
         id: source_proof
@@ -59,7 +60,7 @@ jobs:
           done
           exit "$source_status"
 
-      - name: Build Arcadia, Cabot, and Pebble terrain caches
+      - name: Build and bind Arcadia, Cabot, and Pebble terrain caches
         if: steps.source_proof.outcome == 'success'
         shell: bash
         run: |
@@ -78,22 +79,41 @@ jobs:
               --output "public/course-geometry/$slug/terrain-v1.json" \
               --validation "artifacts/course-geometry/$slug/terrain-validation-v1.json" \
               --cache "artifacts/course-geometry/$slug/terrain-cache-v1.json"
+            python tools/bind_course_terrain_proof.py \
+              --config "$config" \
+              --proof "artifacts/course-geometry/$slug/terrain-source-proof-v1.json" \
+              --validation "artifacts/course-geometry/$slug/terrain-validation-v1.json" \
+              --package "public/course-geometry/$slug/terrain-v1.json" \
+              --cache "artifacts/course-geometry/$slug/terrain-cache-v1.json"
           done
 
       - name: Verify all three terrain packages passed
         if: steps.source_proof.outcome == 'success'
         run: |
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
+          def sha(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
           for slug in ('arcadia-bluffs', 'cabot-cliffs', 'pebble-beach'):
               root = Path('artifacts/course-geometry') / slug
-              proof = json.loads((root / 'terrain-source-proof-v1.json').read_text())
-              data = json.loads((root / 'terrain-validation-v1.json').read_text())
+              proof_path = root / 'terrain-source-proof-v1.json'
+              validation_path = root / 'terrain-validation-v1.json'
+              cache_path = root / 'terrain-cache-v1.json'
+              package_path = Path('public/course-geometry') / slug / 'terrain-v1.json'
+              proof = json.loads(proof_path.read_text())
+              data = json.loads(validation_path.read_text())
+              cache = json.loads(cache_path.read_text())
               assert proof['passed'] is True, (slug, 'source proof failed')
               assert data['allHolesTerrainReady'] is True, (slug, data['readyHoles'])
               assert data['readyHoleCount'] == 18, (slug, data['readyHoleCount'])
-              print(f"{slug}: PASS source + 18/18 terrain; provider={data['provider']}")
+              assert cache['sourceProofSha256'] == sha(proof_path), (slug, 'proof hash mismatch')
+              assert cache['validationSha256'] == sha(validation_path), (slug, 'validation hash mismatch')
+              assert cache['terrainPackageSha256'] == sha(package_path), (slug, 'package hash mismatch')
+              assert cache['qualityGate']['sourceProofPassed'] is True
+              assert cache['qualityGate']['allHolesTerrainReady'] is True
+              print(f"{slug}: PASS source + 18/18 terrain + bound cache; provider={data['provider']}")
           PY
 
       - name: Persist normalized terrain caches
