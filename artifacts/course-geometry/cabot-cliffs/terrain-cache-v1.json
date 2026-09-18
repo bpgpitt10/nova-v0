@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "207279e17011dfeed3f80f8210d614bff71ba1ec4f4033b89404b439fa841722",
+  "builderVersion": "import_course_terrain_v1",
+  "builtAt": "2026-09-18T03:21:20.385177Z",
+  "courseId": "cabot-cliffs-inverness-ns",
+  "geometrySourceSha256": "3de6ddc3cc4733fb2b1d7ec62043b792cd326f67ecf0b98b15a33142cbf2edf5",
+  "osmSnapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "480c13cd89bb7553b4c46d11b2705609013d16457a751e2d127e899e87b5857b",
+  "sourceProvider": "nrcan-hrdem-lidar",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "00d56bd9471cc63a46bc60e86bfb3dd5c0e0befa0677ee76c299564a48c36039",
+  "usedNetworkForTerrainSource": true
+}

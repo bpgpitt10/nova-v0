@@ -1,0 +1,25 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-121.9529995%2C36.5551603%2C-121.9256450%2C36.5733039&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 228644383,
+      "downloadSha256": "cf78a1699a3ad4f91d407f5c6f9a21c82a376356cd4924ad2104131967356059",
+      "id": "60d16fe7d34e86b938ac0ef0",
+      "title": "USGS 1 Meter 10 x59y405 CA_AZ_FEMA_R9_Lidar_2017_D18",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_AZ_FEMA_R9_Lidar_2017_D18/TIFF/USGS_1M_10_x59y405_CA_AZ_FEMA_R9_Lidar_2017_D18.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T03:21:29.823505Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -121.9529995,
+    36.5551603,
+    -121.925645,
+    36.5733039
+  ],
+  "sourceResolutionMeters": 1.0
+}
