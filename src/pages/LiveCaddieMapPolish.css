@@ -161,3 +161,135 @@
     }
   }
 }
+
+/* Compact transitional header.
+ * Course / hole are still manually selectable for validation today, but they
+ * share the same header band as the round context instead of consuming a
+ * second setup row. The eventual round-load flow can remove these controls
+ * without changing the playing surface below.
+ */
+@media (min-width: 1160px) {
+  .live-caddie-header {
+    position: relative;
+    grid-template-columns: 200px minmax(0, 1fr) auto;
+    gap: 16px;
+    min-height: 70px;
+    padding: 0 4px 8px;
+  }
+
+  .live-caddie-logo {
+    width: 170px;
+  }
+
+  .live-caddie-course-context {
+    position: absolute;
+    top: 7px;
+    left: 208px;
+    z-index: 4;
+    display: block;
+  }
+
+  .live-caddie-course-context strong,
+  .live-caddie-course-context > span {
+    display: none;
+  }
+
+  .live-caddie-setup-row {
+    position: absolute;
+    top: 34px;
+    left: 204px;
+    right: 236px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: minmax(190px, 250px) 82px auto minmax(0, 1fr);
+    gap: 7px;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .live-caddie-setup-row select,
+  .live-caddie-setup-row button {
+    min-height: 30px;
+  }
+
+  .live-caddie-setup-row select:first-of-type {
+    width: 100%;
+    max-width: 250px;
+    padding-left: 0;
+    border-color: transparent;
+    background: transparent;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .live-caddie-setup-row select:first-of-type:hover,
+  .live-caddie-setup-row select:first-of-type:focus {
+    border-color: rgba(79, 96, 79, 0.82);
+    background: rgba(23, 36, 25, 0.5);
+  }
+
+  .live-caddie-setup-row select:nth-of-type(2) {
+    width: 82px;
+    padding-left: 5px;
+    border-color: transparent;
+    background: transparent;
+    color: #cfd8cd;
+    font-size: 13px;
+  }
+
+  .live-caddie-setup-row select:nth-of-type(2):hover,
+  .live-caddie-setup-row select:nth-of-type(2):focus {
+    border-color: rgba(79, 96, 79, 0.82);
+    background: rgba(23, 36, 25, 0.5);
+  }
+
+  .live-caddie-setup-row > button {
+    min-width: 92px;
+    padding: 0 9px;
+    white-space: nowrap;
+  }
+
+  .live-caddie-secondary-context {
+    min-width: 0;
+    margin-left: 4px;
+    justify-content: flex-end;
+    gap: 9px;
+    overflow: hidden;
+    font-size: 10px;
+  }
+
+  .live-caddie-secondary-context span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .live-caddie-secondary-context span + span::before {
+    padding-right: 9px;
+  }
+
+  .live-caddie-header-actions {
+    position: relative;
+    z-index: 5;
+    gap: 9px;
+  }
+
+  .live-caddie-shell:has(.live-caddie-setup-row > button) .live-connection-state.state-offline {
+    display: none;
+  }
+
+  .live-caddie-main-grid {
+    margin-top: 10px;
+  }
+}
+
+@media (min-width: 1160px) and (max-width: 1320px) {
+  .live-caddie-setup-row {
+    right: 188px;
+    grid-template-columns: minmax(175px, 220px) 76px auto minmax(0, 1fr);
+  }
+
+  .live-caddie-secondary-context span:first-child {
+    display: none;
+  }
+}
