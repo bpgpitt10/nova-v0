@@ -12,6 +12,11 @@ type ConditionsMathPanelProps = {
   lieLeftRightDeg?: number | null
 }
 
+type LandingElevationAwareEvaluation = ClubAimEvaluation & {
+  landingElevationDeltaFt?: number | null
+  landingElevationSource?: string | null
+}
+
 const finite = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
@@ -201,12 +206,16 @@ export default function ConditionsMathPanel({
   const lateralDelta = evaluation
     ? evaluation.modeledLateralBiasYds - evaluation.lateralBiasYds
     : null
+  const elevationAware = evaluation as LandingElevationAwareEvaluation | null
+  const modeledLandingElevationDeltaFt = finite(elevationAware?.landingElevationDeltaFt)
+    ? elevationAware.landingElevationDeltaFt
+    : elevationDeltaFt
 
   const windDetail = hasLiveWind
     ? `${windMph.toFixed(1)} mph @ ${windRelativeDeg.toFixed(0)}° relative`
     : 'no live wind input · model assumes calm'
-  const elevationDetail = finite(elevationDeltaFt)
-    ? `${elevationDeltaFt >= 0 ? '+' : ''}${elevationDeltaFt.toFixed(0)} ft to landing target`
+  const elevationDetail = finite(modeledLandingElevationDeltaFt)
+    ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing`
     : 'no terrain elevation available'
   const altitudeDetail = evaluation?.airAltitudeFt != null
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
