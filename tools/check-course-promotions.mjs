@@ -26,6 +26,21 @@ const promoted = readdirSync(artifactRoot, { withFileTypes: true })
     const cache = readJson(cachePath)
     if (cache.package?.builderVersion !== 'build_osm_course_package_v3') return null
 
+    const packagePath = cache.package?.path
+    const configPath = cache.package?.configPath
+    const validationPath = `artifacts/course-geometry/${slug}/validation-v1.json`
+    const completePromotion =
+      typeof packagePath === 'string' &&
+      typeof configPath === 'string' &&
+      fileExists(packagePath) &&
+      fileExists(configPath) &&
+      fileExists(validationPath)
+
+    if (!completePromotion) {
+      console.warn(`[course-promotion] ${cache.courseId ?? slug}: cached build is incomplete; leaving it unpromoted`)
+      return null
+    }
+
     return { slug, cachePath, cache }
   })
   .filter(Boolean)
