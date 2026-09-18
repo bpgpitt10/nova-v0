@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "label": "driver-neutral-example",
+      "ballSpeedMph": 150.0,
+      "vlaDeg": 14.0,
+      "hlaDeg": 0.0,
+      "spinRpm": 2400.0,
+      "spinAxisDeg": 0.0
+    },
+    {
+      "label": "mid-iron-neutral-example",
+      "ballSpeedMph": 118.0,
+      "vlaDeg": 18.0,
+      "hlaDeg": 0.0,
+      "spinRpm": 5800.0,
+      "spinAxisDeg": 0.0
+    },
+    {
+      "label": "wedge-neutral-example",
+      "ballSpeedMph": 85.0,
+      "vlaDeg": 30.0,
+      "hlaDeg": 0.0,
+      "spinRpm": 9000.0,
+      "spinAxisDeg": 0.0
+    }
+  ]
+}
