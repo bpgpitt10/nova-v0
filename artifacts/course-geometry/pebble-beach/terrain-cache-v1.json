@@ -2,9 +2,9 @@
   "allHolesTerrainReady": true,
   "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
   "builderVersion": "import_course_terrain_v2",
-  "builtAt": "2026-09-18T09:41:16.053609Z",
+  "builtAt": "2026-09-18T10:14:11.505683Z",
   "courseId": "pebble-beach-pebble-beach-ca",
-  "geometrySourceSha256": "7fb27b961c998cf555eb2ac2b55cfb766ffc60689a46dffee66352570ef25530",
+  "geometrySourceSha256": "9785a8c813f6600bc9716813b09a553e6f04b306d8805497ed8ac49161a96da8",
   "osmSnapshotSha256": "bb3c6658ed5caea86a4d1e314af06397a06f109e44649b765a0d3d68e0049122",
   "refreshPolicy": {
     "implicitRefresh": false,
@@ -21,9 +21,9 @@
     "serveDerivedTerrainRegardlessOfAge": true
   },
   "schemaVersion": "looper-course-terrain-cache-v1",
-  "sourceManifestSha256": "2c21eecccc75d4c198bf898ab9c354a539572a4f1c122d36efb94ed56e22c5bc",
+  "sourceManifestSha256": "c94cacc8dc5aede44cf5090d3914ecbe694df8b8e196545748f42f0fd1a4ca44",
   "sourceProvider": "usgs-3dep-1m",
   "sourceResolutionMeters": 1.0,
-  "terrainPackageSha256": "d438f4dcc13bf6c40e8fcb010925437058ab45c3396a74072d5c00def8fe02d8",
+  "terrainPackageSha256": "921af6a68554fd0f710be09e7437f2564ee02ad43694b5837abd906b8c564637",
   "usedNetworkForTerrainSource": false
 }

@@ -18,7 +18,8 @@
     "configSha256": "043f4b894ccf6cfb17cf37d4a467bc460ccbfbd8f121d347fd5a67cb37d06d6c",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "b2debf6dedc13bb86077cc21d58d4768ce9c0a1140f1a46c3490b265a82a3b9d"
+    "sha256": "f21a704f8d916ed2576b62862dfd3e35c90f655ad623a217321a5e42df721399",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
     "snapshotSha256": "b25d26c387e20f1758ae522033cabd2f28c3b2803cfa775cea24d06cd8f6e1ba",
     "sourceBaseTimestamp": "2026-09-18T00:46:11Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T10:14:10.462894Z",
+    "sourceManifestPath": "artifacts/course-geometry/arcadia-bluffs/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/arcadia-bluffs/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/arcadia-bluffs/terrain-v1.json",
+    "terrainPackageSha256": "30b0633119e2a358c2477d30bdb68fb480b87e9f9cf507e9aaf94a13c1b913c5",
+    "validationPath": "artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json"
   }
 }

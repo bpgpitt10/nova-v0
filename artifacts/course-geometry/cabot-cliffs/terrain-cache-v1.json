@@ -2,9 +2,9 @@
   "allHolesTerrainReady": true,
   "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
   "builderVersion": "import_course_terrain_v2",
-  "builtAt": "2026-09-18T09:41:15.545421Z",
+  "builtAt": "2026-09-18T10:14:11.000071Z",
   "courseId": "cabot-cliffs-inverness-ns",
-  "geometrySourceSha256": "3de6ddc3cc4733fb2b1d7ec62043b792cd326f67ecf0b98b15a33142cbf2edf5",
+  "geometrySourceSha256": "2b07f60e352a77ef5c26d5896a3fae5a60be70bb427030cd4043fd40e2ee9723",
   "osmSnapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
   "refreshPolicy": {
     "implicitRefresh": false,
@@ -21,9 +21,9 @@
     "serveDerivedTerrainRegardlessOfAge": true
   },
   "schemaVersion": "looper-course-terrain-cache-v1",
-  "sourceManifestSha256": "00377be8dc7f933c7cef5ff9c5a3cc74e570b6c9e3c55b2a43ed7be473694028",
+  "sourceManifestSha256": "5572bcb1b573722b2c8e3631de7fc1806776f13d1956eeb44c6823e8af616d74",
   "sourceProvider": "nrcan-hrdem-lidar",
   "sourceResolutionMeters": 1.0,
-  "terrainPackageSha256": "cee538bacd97c3830b7db99b1e60175bdc2b97cf7c9ef8b0b75facf74314972b",
+  "terrainPackageSha256": "bff0613e90a0fc0e86970f4caa701dfd5c89d0acbee70067aeca15a791ccf138",
   "usedNetworkForTerrainSource": false
 }

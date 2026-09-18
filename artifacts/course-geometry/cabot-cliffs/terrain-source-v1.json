@@ -51,7 +51,7 @@
   ],
   "provider": "nrcan-hrdem-lidar",
   "rejectedProducts": [],
-  "retrievedAt": "2026-09-18T09:40:48.496864Z",
+  "retrievedAt": "2026-09-18T10:13:26.829298Z",
   "schemaVersion": "looper-course-terrain-source-v1",
   "sourceBoundsWgs84": [
     -61.2986567,

@@ -361,7 +361,7 @@
     "license": "U.S. public domain",
     "lidarDerived": true,
     "provider": "usgs-3dep-1m",
-    "sourceManifestSha256": "2c21eecccc75d4c198bf898ab9c354a539572a4f1c122d36efb94ed56e22c5bc",
+    "sourceManifestSha256": "c94cacc8dc5aede44cf5090d3914ecbe694df8b8e196545748f42f0fd1a4ca44",
     "sourceResolutionMeters": 1.0
   }
 }
