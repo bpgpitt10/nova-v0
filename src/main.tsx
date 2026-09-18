@@ -5,6 +5,7 @@ import App from './App.tsx'
 import LooperLandingPage from './pages/LooperLandingPage.tsx'
 import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
+import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
@@ -155,11 +156,13 @@ function RootRouter() {
   const showCourseRenderDev = pathname === '/dev/course-render'
   const showCourseGeometryDev = pathname === '/dev/course-geometry'
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
+  const showLiveCaddie = pathname === '/live-caddie' || pathname === '/caddie' || pathname === '/dev/live-caddie'
+  const showDevLiveCaddie = pathname === '/dev/live-caddie'
   const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
   const showGsproReplay = pathname === '/dev/gspro-replay'
   const showDecisionReplay = pathname === '/dev/decision-replay'
   const showDecisionAudit = pathname === '/dev/decision-audit'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -177,6 +180,7 @@ function RootRouter() {
     if (showCourseRenderDev) return <CourseRenderDevPage />
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
     if (showAimLab) return <AimLabPage />
+    if (showLiveCaddie) return <LiveCaddiePage />
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
@@ -213,6 +217,7 @@ function RootRouter() {
     showDecisionAudit,
     showDecisionReplay,
     showGsproReplay,
+    showLiveCaddie,
     updateError,
     updateStatus,
   ])
