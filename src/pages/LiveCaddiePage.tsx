@@ -459,6 +459,12 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
+  const airAltitudeFt = ballTerrain?.elevationFt ?? null
+  const airAltitudeSource = ballTerrain
+    ? ballTerrain.source === 'lidar-dem'
+      ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
+      : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+    : 'No absolute terrain elevation'
   const surfaceOverride = liveMatchesHole ? liveSnapshot?.surface ?? null : null
 
   useEffect(() => {
@@ -509,6 +515,8 @@ export default function LiveCaddiePage() {
         windRelativeDeg,
         elevationDeltaFt,
         elevationSource,
+        airAltitudeFt,
+        airAltitudeSource,
         surfaceOverride,
       },
       nowMs: Date.now(),
@@ -527,6 +535,8 @@ export default function LiveCaddiePage() {
     windRelativeDeg,
     elevationDeltaFt,
     elevationSource,
+    airAltitudeFt,
+    airAltitudeSource,
     surfaceOverride,
   ])
 
@@ -626,6 +636,9 @@ export default function LiveCaddiePage() {
             <span>{surface}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
             {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft elevation</span> : null}
+            {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
+              ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
+              : null}
           </div>
         </section>
 
@@ -684,10 +697,19 @@ export default function LiveCaddiePage() {
                   </p>
 
                   <div className="live-adjustment-stack">
+                    {viewedEvaluation &&
+                    viewedEvaluation.airAltitudeFt != null &&
+                    Math.abs(viewedEvaluation.altitudeCarryDeltaYds) >= 0.25 ? (
+                      <div>
+                        <span>Base altitude</span>
+                        <strong>{signed(viewedEvaluation.altitudeCarryDeltaYds)} yd</strong>
+                        <small>{Math.round(viewedEvaluation.airAltitudeFt).toLocaleString()} ft ASL · air density</small>
+                      </div>
+                    ) : null}
                     <div>
-                      <span>Air / conditions</span>
+                      <span>Wind / elevation</span>
                       <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneCarryDeltaYds)} yd` : '—'}</strong>
-                      <small>{windMph ? `${windMph} mph wind` : 'wind + elevation response'}</small>
+                      <small>{windMph ? `${windMph} mph wind · ${signed(elevationDeltaFt, 0)} ft` : `${signed(elevationDeltaFt, 0)} ft slope response`}</small>
                     </div>
                     <div>
                       <span>Lie / surface</span>
@@ -697,7 +719,7 @@ export default function LiveCaddiePage() {
                     <div>
                       <span>Lateral shift</span>
                       <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneLateralDeltaYds + viewedEvaluation.surfaceLateralDeltaYds)} yd` : '—'}</strong>
-                      <small>conditions + lie</small>
+                      <small>air + conditions + lie</small>
                     </div>
                     <div>
                       <span>Modeled carry</span>
