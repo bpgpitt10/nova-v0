@@ -2,8 +2,8 @@
   "courseId": "paynes-valley-hollister-mo",
   "courseName": "Payne's Valley",
   "freshness": {
-    "ageDays": 0.54,
-    "evaluatedAt": "2026-09-18T13:53:53.769402Z",
+    "ageDays": 0.55,
+    "evaluatedAt": "2026-09-18T14:07:44.475470Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,13 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T13:53:53.769402Z",
+    "builtAt": "2026-09-18T14:07:44.475470Z",
     "configPath": "config/course-geometry/paynes-valley-v1.json",
     "configSha256": "2617654bca210a47141399dbbadf8cd7e30b538b18d82414d3653f08fdbb55c8",
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "0d029808df4325068e733270fb82609c3df81300444839df34ccbca6fdd7d17f",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "f296e274562cab4f571fa9122bff07054d0a9b91cb3c74efaed60a457656bffa"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -51,16 +50,5 @@
     "snapshotPath": "artifacts/course-geometry/paynes-valley/osm-snapshot.json",
     "snapshotSha256": "6eddf2f6ac5da32ae92bfe19d554cfe3b2439ddfe96cf3be07291bf8e7218796",
     "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
-  },
-  "terrain": {
-    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
-    "builderVersion": "import_course_terrain_v2",
-    "composedAt": "2026-09-18T13:58:00.261362Z",
-    "sourceManifestPath": "artifacts/course-geometry/paynes-valley/terrain-source-v1.json",
-    "status": "cached",
-    "terrainCachePath": "artifacts/course-geometry/paynes-valley/terrain-cache-v1.json",
-    "terrainPackagePath": "artifacts/course-geometry/paynes-valley/terrain-v1.json",
-    "terrainPackageSha256": "77f620cdd3fd25266898dd181f42c61bd48a69f0642d394a6f3622cb79365425",
-    "validationPath": "artifacts/course-geometry/paynes-valley/terrain-validation-v1.json"
   }
 }

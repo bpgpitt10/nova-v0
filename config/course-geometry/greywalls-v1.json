@@ -6,11 +6,11 @@
   "slug": "greywalls",
   "osmCourseElement": {
     "type": "way",
-    "id": 45729609
+    "id": 281399420
   },
   "osmCenter": [
-    46.5360888,
-    -87.4239324
+    46.5258147,
+    -87.4264189
   ],
   "selection": {
     "teeStartRadiusYards": 220,

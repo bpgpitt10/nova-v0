@@ -3,7 +3,7 @@
   "courseName": "Greywalls at Marquette Golf Club",
   "freshness": {
     "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T13:53:52.547604Z",
+    "evaluatedAt": "2026-09-18T14:07:54.541399Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,13 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T13:53:52.547604Z",
+    "builtAt": "2026-09-18T14:07:54.541399Z",
     "configPath": "config/course-geometry/greywalls-v1.json",
-    "configSha256": "f31ce54226c726fb57df312746f4d81fb2190ed04b4a364d81a0e0b17069748f",
+    "configSha256": "6c9880759bc72755501050d781d4a903a207c39364baea365ade56f33a0f7af7",
     "path": "public/course-geometry/greywalls/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "9dbf2a1b2a8c79e60476bf88dacf043edd2697f5748a56c360dfe4adca4dc66a",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "40472192bd9c057d13093bbf3668d18c13266bce0956e65f251ba1a4f35a16f2"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -41,27 +40,16 @@
   "schemaVersion": "looper-course-cache-v1",
   "source": {
     "element": {
-      "id": 45729609,
+      "id": 281399420,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T13:53:52.565953Z",
+    "fetchedAt": "2026-09-18T14:07:54.576181Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T13:53:52.565953Z",
+    "lastCheckedAt": "2026-09-18T14:07:54.576181Z",
     "provider": "openstreetmap-overpass",
-    "providerEndpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
     "snapshotPath": "artifacts/course-geometry/greywalls/osm-snapshot.json",
-    "snapshotSha256": "0bd385320dcbd14b1c6f0c94bf20c69054f6fdc17bfab28198e49343bb6d8839",
-    "sourceBaseTimestamp": "2026-09-18T13:52:05Z"
-  },
-  "terrain": {
-    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
-    "builderVersion": "import_course_terrain_v2",
-    "composedAt": "2026-09-18T13:57:59.800762Z",
-    "sourceManifestPath": "artifacts/course-geometry/greywalls/terrain-source-v1.json",
-    "status": "cached",
-    "terrainCachePath": "artifacts/course-geometry/greywalls/terrain-cache-v1.json",
-    "terrainPackagePath": "artifacts/course-geometry/greywalls/terrain-v1.json",
-    "terrainPackageSha256": "e90083691632474d02994471f2ba3fb35cca646d0940b4f79a77e861b091c8c0",
-    "validationPath": "artifacts/course-geometry/greywalls/terrain-validation-v1.json"
+    "snapshotSha256": "31fe0f0fad09489304916bebfae4f58e0357fafe5d5d6b0111fdeec46ed00f84",
+    "sourceBaseTimestamp": "2026-09-18T14:06:21Z"
   }
 }

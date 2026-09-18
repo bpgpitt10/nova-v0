@@ -9,10 +9,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1211.9,
+        "packageImporter": 1702.7,
         "sourceFetch": null,
-        "topologyAudit": 43.7,
-        "total": 1312.2
+        "topologyAudit": 55.1,
+        "total": 1829.2
       }
     },
     {
@@ -23,10 +23,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 755.7,
-        "sourceFetch": 2790.6,
-        "topologyAudit": 37.2,
-        "total": 3642.1
+        "packageImporter": 1057.0,
+        "sourceFetch": null,
+        "topologyAudit": 49.1,
+        "total": 1177.3
       }
     },
     {
@@ -37,10 +37,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1022.6,
+        "packageImporter": 1434.0,
         "sourceFetch": null,
-        "topologyAudit": 38.7,
-        "total": 1118.0
+        "topologyAudit": 51.9,
+        "total": 1557.6
       }
     },
     {
@@ -51,10 +51,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1175.7,
+        "packageImporter": 1698.8,
         "sourceFetch": null,
-        "topologyAudit": 42.1,
-        "total": 1273.2
+        "topologyAudit": 57.5,
+        "total": 1828.4
       }
     },
     {
@@ -65,10 +65,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1190.6,
-        "sourceFetch": 24641.0,
-        "topologyAudit": 41.5,
-        "total": 25931.3
+        "packageImporter": 1713.8,
+        "sourceFetch": null,
+        "topologyAudit": 54.2,
+        "total": 1840.1
       }
     },
     {
@@ -79,18 +79,18 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1124.7,
+        "packageImporter": 1592.0,
         "sourceFetch": null,
-        "topologyAudit": 41.2,
-        "total": 1221.7
+        "topologyAudit": 53.9,
+        "total": 1717.0
       }
     }
   ],
-  "endedAt": "2026-09-18T13:53:53.840781Z",
+  "endedAt": "2026-09-18T14:07:44.563980Z",
   "failedCourseIds": [],
   "failureCount": 0,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T13:53:19.341051Z",
+  "startedAt": "2026-09-18T14:07:34.613034Z",
   "successCount": 6
 }

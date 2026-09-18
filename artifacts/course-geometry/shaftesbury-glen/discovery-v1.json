@@ -15,19 +15,8 @@
     "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
     "rawCandidates": []
   },
-  "chosen": {
-    "discoveryMethod": "nominatim-location-anchor-expanded-overpass-boundary",
-    "displayName": "Dunes Golf & Beach Club",
-    "lat": 33.7632482,
-    "locationOverlap": 1.0,
-    "lon": -78.7992628,
-    "name": "Dunes Golf & Beach Club",
-    "nameRatio": 0.6,
-    "osmId": 793663795,
-    "osmType": "way",
-    "score": 65.0
-  },
-  "completedAt": "2026-09-18T13:52:57.323150Z",
+  "chosen": null,
+  "completedAt": "2026-09-18T14:07:47.964385Z",
   "courseId": "shaftesbury-glen-conway-sc",
   "courseName": "Shaftesbury Glen Golf & Fish Club",
   "direct": {
@@ -48,7 +37,29 @@
     "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
     "rawCandidates": []
   },
-  "error": null,
+  "error": "RuntimeError: identity guard rejected top boundary 'Dunes Golf & Beach Club': distinctive-token coverage 0.00 < 0.50",
+  "identityVerification": {
+    "algorithmVersion": "distinctive-token-coverage-v1",
+    "candidateName": "Dunes Golf & Beach Club",
+    "candidateTokens": [
+      "beach",
+      "dunes"
+    ],
+    "coverage": 0.0,
+    "error": "identity guard rejected top boundary 'Dunes Golf & Beach Club': distinctive-token coverage 0.00 < 0.50",
+    "minimumCoverage": 0.5,
+    "minimumNameRatio": 0.45,
+    "nameRatio": 0.6,
+    "overlapTokens": [],
+    "requestedCourseName": "Shaftesbury Glen Golf & Fish Club",
+    "requestedTokens": [
+      "fish",
+      "glen",
+      "shaftesbury"
+    ],
+    "schemaVersion": "looper-course-identity-verification-v1",
+    "status": "failed"
+  },
   "location": "Conway, SC",
   "locationAnchorRecovery": {
     "batchThrottleMs": 0.0,
@@ -56,6 +67,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Dunes Golf & Beach Club",
+        "identityCandidateTokens": [
+          "beach",
+          "dunes"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7632482,
         "locationOverlap": 1.0,
         "lon": -78.7992628,
@@ -68,6 +92,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Legends Golf and Resort",
+        "identityCandidateTokens": [
+          "legends"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7459046,
         "locationOverlap": 1.0,
         "lon": -79.0074298,
@@ -80,6 +116,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Pine Lakes Golf Club",
+        "identityCandidateTokens": [
+          "lakes",
+          "pine"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7347596,
         "locationOverlap": 1.0,
         "lon": -78.8465711,
@@ -92,6 +141,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Myrtlewood Golf Club",
+        "identityCandidateTokens": [
+          "myrtlewood"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7314725,
         "locationOverlap": 1.0,
         "lon": -78.871503,
@@ -104,6 +165,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Arcadian Shores Golf Club",
+        "identityCandidateTokens": [
+          "arcadian",
+          "shores"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7774747,
         "locationOverlap": 1.0,
         "lon": -78.7801586,
@@ -116,6 +190,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Blackmoor Golf Club",
+        "identityCandidateTokens": [
+          "blackmoor"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.6014571,
         "locationOverlap": 1.0,
         "lon": -79.0720873,
@@ -128,6 +214,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Heathland Golf Course",
+        "identityCandidateTokens": [
+          "heathland"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.741648,
         "locationOverlap": 1.0,
         "lon": -79.0120462,
@@ -140,6 +238,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Indigo Creek Golf Club",
+        "identityCandidateTokens": [
+          "creek",
+          "indigo"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.6067816,
         "locationOverlap": 1.0,
         "lon": -79.029057,
@@ -152,6 +263,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Parkland Golf Course",
+        "identityCandidateTokens": [
+          "parkland"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7522574,
         "locationOverlap": 1.0,
         "lon": -79.003723,
@@ -164,6 +287,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "World Tour Golf Links",
+        "identityCandidateTokens": [
+          "tour",
+          "world"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "fish",
+          "glen",
+          "shaftesbury"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 33.7353532,
         "locationOverlap": 1.0,
         "lon": -78.909576,
@@ -352,6 +488,6 @@
   },
   "requestedAt": "2026-09-18T13:52:49.569686Z",
   "schemaVersion": "looper-course-discovery-v2",
-  "success": true,
+  "success": false,
   "timingMs": 1400.6
 }

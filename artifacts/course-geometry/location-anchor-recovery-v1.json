@@ -1,39 +1,45 @@
 {
-  "completedAt": "2026-09-18T13:53:19.232942Z",
-  "failedCount": 0,
+  "completedAt": "2026-09-18T14:07:47.967259Z",
+  "failedCount": 1,
+  "identityAlgorithmVersion": "distinctive-token-coverage-v1",
   "radiusMeters": 30000,
-  "recoveredCount": 2,
+  "recoveredCount": 1,
   "results": [
     {
       "courseId": "royal-new-kent-providence-forge-va",
+      "slug": "royal-new-kent",
       "status": "preserved"
     },
     {
       "courseId": "shaftesbury-glen-conway-sc",
-      "name": "Dunes Golf & Beach Club",
-      "osmId": 793663795,
-      "osmType": "way",
-      "status": "recovered"
+      "error": "RuntimeError: identity guard rejected top boundary 'Dunes Golf & Beach Club': distinctive-token coverage 0.00 < 0.50",
+      "slug": "shaftesbury-glen",
+      "status": "failed"
     },
     {
       "courseId": "valhalla-louisville-ky",
+      "slug": "valhalla",
       "status": "preserved"
     },
     {
       "courseId": "muirfield-village-dublin-oh",
+      "slug": "muirfield-village",
       "status": "preserved"
     },
     {
       "courseId": "greywalls-marquette-mi",
-      "name": "Marquette Golf Club",
-      "osmId": 45729609,
+      "name": "Marquette Golf Club Greywalls",
+      "osmId": 281399420,
       "osmType": "way",
+      "slug": "greywalls",
+      "source": "cached-boundary-candidates",
       "status": "recovered"
     },
     {
       "courseId": "paynes-valley-hollister-mo",
+      "slug": "paynes-valley",
       "status": "preserved"
     }
   ],
-  "schemaVersion": "looper-location-anchor-recovery-v1"
+  "schemaVersion": "looper-location-anchor-recovery-v2"
 }

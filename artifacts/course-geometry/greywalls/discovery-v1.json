@@ -17,17 +17,32 @@
   },
   "chosen": {
     "discoveryMethod": "nominatim-location-anchor-expanded-overpass-boundary",
-    "displayName": "Marquette Golf Club",
-    "lat": 46.5360888,
+    "displayName": "Marquette Golf Club Greywalls",
+    "identityCandidateTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "identityOverlapCount": 2,
+    "identityOverlapTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "identityRequestedTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "identityTokenCoverage": 1.0,
+    "identityTokenPrecision": 1.0,
+    "lat": 46.5258147,
     "locationOverlap": 1.0,
-    "lon": -87.4239324,
-    "name": "Marquette Golf Club",
-    "nameRatio": 0.7451,
-    "osmId": 45729609,
+    "lon": -87.4264189,
+    "name": "Marquette Golf Club Greywalls",
+    "nameRatio": 0.623,
+    "osmId": 281399420,
     "osmType": "way",
-    "score": 99.51
+    "score": 77.295
   },
-  "completedAt": "2026-09-18T13:53:19.231661Z",
+  "completedAt": "2026-09-18T14:07:47.966667Z",
   "courseId": "greywalls-marquette-mi",
   "courseName": "Greywalls at Marquette Golf Club",
   "direct": {
@@ -49,25 +64,52 @@
     "rawCandidates": []
   },
   "error": null,
+  "identityVerification": {
+    "algorithmVersion": "distinctive-token-coverage-v1",
+    "candidateName": "Marquette Golf Club Greywalls",
+    "candidateTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "coverage": 1.0,
+    "error": null,
+    "minimumCoverage": 0.5,
+    "minimumNameRatio": 0.45,
+    "nameRatio": 0.623,
+    "overlapTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "requestedCourseName": "Greywalls at Marquette Golf Club",
+    "requestedTokens": [
+      "greywalls",
+      "marquette"
+    ],
+    "schemaVersion": "looper-course-identity-verification-v1",
+    "status": "pass"
+  },
   "location": "Marquette, MI",
   "locationAnchorRecovery": {
     "batchThrottleMs": 4757.2,
     "boundaryCandidates": [
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
-        "displayName": "Marquette Golf Club",
-        "lat": 46.5360888,
-        "locationOverlap": 1.0,
-        "lon": -87.4239324,
-        "name": "Marquette Golf Club",
-        "nameRatio": 0.7451,
-        "osmId": 45729609,
-        "osmType": "way",
-        "score": 99.51
-      },
-      {
-        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Marquette Golf Club Greywalls",
+        "identityCandidateTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityOverlapCount": 2,
+        "identityOverlapTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 1.0,
+        "identityTokenPrecision": 1.0,
         "lat": 46.5258147,
         "locationOverlap": 1.0,
         "lon": -87.4264189,
@@ -79,7 +121,44 @@
       },
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Marquette Golf Club",
+        "identityCandidateTokens": [
+          "marquette"
+        ],
+        "identityOverlapCount": 1,
+        "identityOverlapTokens": [
+          "marquette"
+        ],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.5,
+        "identityTokenPrecision": 1.0,
+        "lat": 46.5360888,
+        "locationOverlap": 1.0,
+        "lon": -87.4239324,
+        "name": "Marquette Golf Club",
+        "nameRatio": 0.7451,
+        "osmId": 45729609,
+        "osmType": "way",
+        "score": 99.51
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Gentz's Homestead Golf Course",
+        "identityCandidateTokens": [
+          "gentz",
+          "homestead"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 46.4558789,
         "locationOverlap": 1.0,
         "lon": -87.3397999,
@@ -92,6 +171,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Northern Michigan University Golf Course",
+        "identityCandidateTokens": [
+          "michigan",
+          "northern",
+          "university"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 46.4813832,
         "locationOverlap": 1.0,
         "lon": -87.2921348,
@@ -104,6 +196,17 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Wawonowin Golf Course",
+        "identityCandidateTokens": [
+          "wawonowin"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 46.4819301,
         "locationOverlap": 1.0,
         "lon": -87.7689027,
@@ -116,6 +219,19 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Red Fox Run",
+        "identityCandidateTokens": [
+          "fox",
+          "red",
+          "run"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 46.3466328,
         "locationOverlap": 1.0,
         "lon": -87.3706935,
@@ -128,6 +244,18 @@
       {
         "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
         "displayName": "Driving Range",
+        "identityCandidateTokens": [
+          "driving",
+          "range"
+        ],
+        "identityOverlapCount": 0,
+        "identityOverlapTokens": [],
+        "identityRequestedTokens": [
+          "greywalls",
+          "marquette"
+        ],
+        "identityTokenCoverage": 0.0,
+        "identityTokenPrecision": 0.0,
         "lat": 46.457531,
         "locationOverlap": 1.0,
         "lon": -87.3376898,
@@ -187,7 +315,8 @@
     ],
     "providerEndpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "query": "Marquette, MI, Marquette, MI",
-    "radiusMeters": 30000
+    "radiusMeters": 30000,
+    "recoverySource": "cached-boundary-candidates"
   },
   "nearbyBoundaryFallback": {
     "attempts": [],
