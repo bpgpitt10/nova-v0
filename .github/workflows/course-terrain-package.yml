@@ -3,7 +3,7 @@ name: Generic course LiDAR terrain
 on:
   push:
     branches:
-      - generic-lidar-ingestion-v1
+      - course-importer-cache-v1
     paths:
       - tools/import_course_terrain.py
       - tools/import_course_terrain_v2.py
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: generic-lidar-ingestion-v1
+          ref: course-importer-cache-v1
 
       - uses: actions/setup-python@v5
         with:
@@ -130,7 +130,7 @@ jobs:
             echo "Terrain packages unchanged"
           else
             git commit -m "Build cached LiDAR terrain packages"
-            git fetch origin generic-lidar-ingestion-v1
-            git rebase origin/generic-lidar-ingestion-v1
-            git push origin HEAD:generic-lidar-ingestion-v1
+            git fetch origin course-importer-cache-v1
+            git rebase origin/course-importer-cache-v1
+            git push origin HEAD:course-importer-cache-v1
           fi
