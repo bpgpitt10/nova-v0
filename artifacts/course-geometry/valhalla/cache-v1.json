@@ -2,8 +2,8 @@
   "courseId": "valhalla-louisville-ky",
   "courseName": "Valhalla Golf Club",
   "freshness": {
-    "ageDays": 0.01,
-    "evaluatedAt": "2026-09-18T01:08:37.690953Z",
+    "ageDays": 0.06,
+    "evaluatedAt": "2026-09-18T02:23:45.796329Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": false
   },
   "package": {
-    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T01:08:37.690953Z",
+    "builtAt": "2026-09-18T02:23:45.796329Z",
     "configPath": "config/course-geometry/valhalla-v1.json",
     "configSha256": "41a57ece4e2bb3a1679efd2dc5b96bb4b38e7b9deb64e26d3b66e9a0f0974d19",
     "path": "public/course-geometry/valhalla/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "47e8a666422d50b6f3b6022dbfa1c08b4fba81b54cafb09d8e6daaf1e5d26268"
+    "sha256": "3ea5ac0e00531898e3540e21768f66a7a5b32a3b1cb1b5d1372aca6a3258b4cc"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
