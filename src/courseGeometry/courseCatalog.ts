@@ -12,6 +12,7 @@ export type CourseCatalogEntry = {
   slug: string
   gsproAliases: readonly string[]
   staticPackageUrl?: string
+  staticTerrainUrl?: string
   status: 'validated' | 'validation'
   packageStatus: CoursePackageStatus
   packageVersion: string | null
@@ -86,12 +87,13 @@ export const courseRegistry = [
     slug: 'arcadia-bluffs',
     gsproAliases: ['Arcadia Bluffs', 'The Bluffs Course', 'Arcadia Bluffs — The Bluffs Course'],
     staticPackageUrl: '/course-geometry/arcadia-bluffs/course-v1.json',
+    staticTerrainUrl: '/course-geometry/arcadia-bluffs/terrain-v1.json',
     status: 'validation',
     packageStatus: 'validation',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
   {
     id: 'shaftesbury-glen-conway-sc',
@@ -124,12 +126,13 @@ export const courseRegistry = [
     slug: 'cabot-cliffs',
     gsproAliases: ['Cabot Cliffs'],
     staticPackageUrl: '/course-geometry/cabot-cliffs/course-v1.json',
+    staticTerrainUrl: '/course-geometry/cabot-cliffs/terrain-v1.json',
     status: 'validation',
     packageStatus: 'validation',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
   {
     id: 'greywalls-marquette-mi',
@@ -154,12 +157,13 @@ export const courseRegistry = [
     slug: 'pebble-beach',
     gsproAliases: ['DPC Pebble', 'Pebble Beach', 'Pebble Beach Golf Links'],
     staticPackageUrl: '/course-geometry/pebble-beach/course-v1.json',
+    staticTerrainUrl: '/course-geometry/pebble-beach/terrain-v1.json',
     status: 'validation',
     packageStatus: 'validation',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
 ] as const satisfies readonly CourseCatalogEntry[]
 
