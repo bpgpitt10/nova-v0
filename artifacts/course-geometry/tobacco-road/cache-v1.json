@@ -2,8 +2,8 @@
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
   "freshness": {
-    "ageDays": 2.41,
-    "evaluatedAt": "2026-09-18T02:26:03.615482Z",
+    "ageDays": 2.71,
+    "evaluatedAt": "2026-09-18T09:44:27.509088Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T02:26:03.615482Z",
+    "builtAt": "2026-09-18T09:44:27.509088Z",
     "configPath": "config/course-geometry/tobacco-road-v1.json",
     "configSha256": "c06838133d6a11d7abff91a6014e5a09fcc77df22c5bf22f7aecbf31d9702e94",
     "path": "public/course-geometry/tobacco-road/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "06a47698925de21d1e307d760af53e9c7e164b57b96725ef433bad7ffe2faa2e"
+    "sha256": "2fcf82d3243c6d7417cc05866bee30ec092c7c4ead8fd1336f8580a6407db0a7"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

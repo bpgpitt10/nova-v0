@@ -2,8 +2,8 @@
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
   "freshness": {
-    "ageDays": 0.07,
-    "evaluatedAt": "2026-09-18T02:25:54.084601Z",
+    "ageDays": 0.37,
+    "evaluatedAt": "2026-09-18T09:44:14.488832Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,13 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T02:25:54.084601Z",
+    "builtAt": "2026-09-18T09:44:14.488832Z",
     "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
-    "configSha256": "530d9f2800b37fa413bdd7f01331bd6c828b7d59e99fdb17f88091663bb1d998",
+    "configSha256": "043f4b894ccf6cfb17cf37d4a467bc460ccbfbd8f121d347fd5a67cb37d06d6c",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "68d0abbbc6ef24c42485a2b92f5513aff59bace59c55d1aa1a32dc3cce810103",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "b2debf6dedc13bb86077cc21d58d4768ce9c0a1140f1a46c3490b265a82a3b9d"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -51,16 +50,5 @@
     "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
     "snapshotSha256": "b25d26c387e20f1758ae522033cabd2f28c3b2803cfa775cea24d06cd8f6e1ba",
     "sourceBaseTimestamp": "2026-09-18T00:46:11Z"
-  },
-  "terrain": {
-    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
-    "builderVersion": "import_course_terrain_v2",
-    "composedAt": "2026-09-18T09:41:15.007865Z",
-    "sourceManifestPath": "artifacts/course-geometry/arcadia-bluffs/terrain-source-v1.json",
-    "status": "cached",
-    "terrainCachePath": "artifacts/course-geometry/arcadia-bluffs/terrain-cache-v1.json",
-    "terrainPackagePath": "artifacts/course-geometry/arcadia-bluffs/terrain-v1.json",
-    "terrainPackageSha256": "3374c79a9af07c3695da9e3d96934cec86efb394f33b1253f27c6ca1e73e7113",
-    "validationPath": "artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json"
   }
 }
