@@ -41,6 +41,7 @@ import {
   SESSION_HISTORY_UPDATED_EVENT,
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
+import ConditionsMathPanel from './ConditionsMathPanel'
 import './LiveCaddiePage.css'
 
 const surfaceOrder: CourseSurfaceKind[] = [
@@ -552,7 +553,6 @@ export default function LiveCaddiePage() {
     : null
   const risk = inspectedCandidate?.riskProfile ?? null
   const aimOptions = sortedAimOptions(viewedEvaluation)
-  const targetDistance = pointDistance(ball, target)
   const displayedClub = armedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
     armedClub && recommendation?.club && armedClub !== recommendation.club,
@@ -696,37 +696,13 @@ export default function LiveCaddiePage() {
                           : 'Looper is waiting for enough player data to rank this shot.')}
                   </p>
 
-                  <div className="live-adjustment-stack">
-                    {viewedEvaluation &&
-                    viewedEvaluation.airAltitudeFt != null &&
-                    Math.abs(viewedEvaluation.altitudeCarryDeltaYds) >= 0.25 ? (
-                      <div>
-                        <span>Base altitude</span>
-                        <strong>{signed(viewedEvaluation.altitudeCarryDeltaYds)} yd</strong>
-                        <small>{Math.round(viewedEvaluation.airAltitudeFt).toLocaleString()} ft ASL · air density</small>
-                      </div>
-                    ) : null}
-                    <div>
-                      <span>Wind / elevation</span>
-                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneCarryDeltaYds)} yd` : '—'}</strong>
-                      <small>{windMph ? `${windMph} mph wind · ${signed(elevationDeltaFt, 0)} ft` : `${signed(elevationDeltaFt, 0)} ft slope response`}</small>
-                    </div>
-                    <div>
-                      <span>Lie / surface</span>
-                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.surfaceCarryDeltaYds)} yd` : '—'}</strong>
-                      <small>{viewedEvaluation?.surfaceLabel ?? surface}</small>
-                    </div>
-                    <div>
-                      <span>Lateral shift</span>
-                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneLateralDeltaYds + viewedEvaluation.surfaceLateralDeltaYds)} yd` : '—'}</strong>
-                      <small>air + conditions + lie</small>
-                    </div>
-                    <div>
-                      <span>Modeled carry</span>
-                      <strong>{viewedEvaluation ? `${Math.round(viewedEvaluation.modeledCarryYds)} yd` : '—'}</strong>
-                      <small>{viewedEvaluation ? `stock ${Math.round(viewedEvaluation.stockCarryYds)}` : `${Math.round(targetDistance)} yd target`}</small>
-                    </div>
-                  </div>
+                  <ConditionsMathPanel
+                    evaluation={viewedEvaluation}
+                    windMph={windMph}
+                    windRelativeDeg={windRelativeDeg}
+                    hasLiveWind={false}
+                    elevationDeltaFt={elevationDeltaFt}
+                  />
 
                   <button
                     type="button"
