@@ -10,6 +10,12 @@ This compiler preserves relation topology during normalization and, only at
 serialization time, decomposes polygons-with-holes into ordinary hole-free
 polygons using Shapely. The browser/runtime therefore needs no special negative
 polygon semantics and every existing geometry consumer sees the correct shape.
+
+A malformed standalone surface/context multipolygon is allowed to be skipped
+only for the specific orphan-inner-ring defect seen in real OSM extracts. Golf
+hole routes remain strict, arbitrary topology errors remain fatal, and the V2
+readiness checks still determine whether losing that feature makes any hole
+unusable. Every tolerated skip is recorded in the validation manifest.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ except ImportError as exc:
     ) from exc
 
 MIN_AREA_YDS2 = 1e-6
+TOLERATED_FEATURE_TOPOLOGY_ERROR = "inner ring not contained by an outer ring"
 
 
 def polygon_parts(geometry: Any) -> list[Polygon]:
@@ -86,16 +93,21 @@ def normalize_osm_with_topology(
 ) -> tuple[list[dict[str, Any]], dict[int, dict[str, Any]]]:
     features: list[dict[str, Any]] = []
     hole_routes: dict[int, dict[str, Any]] = {}
+    diagnostics: list[dict[str, Any]] = []
+    # V2 reads this after normalization and persists it into validation proof.
+    base.NORMALIZATION_DIAGNOSTICS = diagnostics
 
     for element in payload.get("elements", []):
         tags = element.get("tags") or {}
-        parts = element_polygon_parts(element)
-        geometries = [part["outer"] for part in parts]
-        points = [point for geometry in geometries for point in geometry]
-        if not points:
-            continue
 
+        # Hole routes are decision-critical and stay strict. A malformed hole
+        # relation must fail the course rather than be silently omitted.
         if tags.get("golf") == "hole" and str(tags.get("ref", "")).isdigit():
+            parts = element_polygon_parts(element)
+            geometries = [part["outer"] for part in parts]
+            points = [point for geometry in geometries for point in geometry]
+            if not points:
+                continue
             hole = int(tags["ref"])
             route = max(geometries, key=len)
             hole_routes[hole] = {
@@ -107,10 +119,40 @@ def normalize_osm_with_topology(
             }
             continue
 
+        # Ignore unrelated OSM objects before attempting polygon assembly. This
+        # prevents a malformed building/administrative/etc multipolygon inside
+        # the bounded snapshot from poisoning the whole golf package.
         classified = base.classify_element(tags)
         if not classified:
             continue
         role, kind = classified
+
+        try:
+            parts = element_polygon_parts(element)
+        except ValueError as exc:
+            message = str(exc)
+            if TOLERATED_FEATURE_TOPOLOGY_ERROR not in message:
+                raise
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "action": "skipped-feature",
+                    "reason": "orphan-multipolygon-inner-ring",
+                    "osmType": element.get("type"),
+                    "osmId": element.get("id"),
+                    "role": role,
+                    "kind": kind,
+                    "sourceFeature": base.source_feature(tags, kind),
+                    "name": tags.get("name"),
+                    "error": message,
+                }
+            )
+            continue
+
+        geometries = [part["outer"] for part in parts]
+        points = [point for geometry in geometries for point in geometry]
+        if not points:
+            continue
         features.append(
             {
                 "role": role,
