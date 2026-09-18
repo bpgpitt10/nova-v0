@@ -36,6 +36,28 @@
   stroke-dasharray: 0.42 0.58;
 }
 
+/* 50 / 80 are always-on reference contours, not an interactive control. */
+.live-map-toggles button.always-on {
+  min-height: 0;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #cfd8cd;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: default;
+  pointer-events: none;
+}
+
+.live-map-toggles button.always-on::before {
+  content: 'Dispersion ';
+  color: #758675;
+  font-weight: 600;
+}
+
 /* In the Live playing surface the final map toggle shows a compact sampled
  * version of the same full-risk landing distribution used for the percentages.
  */
