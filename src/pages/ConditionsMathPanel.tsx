@@ -83,24 +83,20 @@ const columnStyle: CSSProperties = {
 }
 
 const columnHeaderStyle: CSSProperties = {
-  display: 'grid',
-  gap: 1,
-  padding: '8px 10px 7px',
+  display: 'flex',
+  alignItems: 'center',
+  minHeight: 18,
+  padding: '9px 10px 8px',
   borderBottom: '1px solid rgba(49, 66, 51, 0.55)',
 }
 
 const eyebrowStyle: CSSProperties = {
   color: '#eab308',
-  fontSize: 8,
+  fontSize: 9,
   fontWeight: 700,
   letterSpacing: '0.08em',
+  lineHeight: 1.2,
   textTransform: 'uppercase',
-}
-
-const columnTitleStyle: CSSProperties = {
-  color: '#ffffff',
-  fontSize: 12,
-  fontWeight: 600,
 }
 
 const rowsStyle: CSSProperties = {
@@ -231,7 +227,6 @@ export default function ConditionsMathPanel({
         <section style={columnStyle}>
           <div style={columnHeaderStyle}>
             <span style={eyebrowStyle}>Distance adjustment</span>
-            <strong style={columnTitleStyle}>Carry</strong>
           </div>
           <div style={rowsStyle}>
             <AdjustmentRow
@@ -276,7 +271,6 @@ export default function ConditionsMathPanel({
         <section style={columnStyle}>
           <div style={columnHeaderStyle}>
             <span style={eyebrowStyle}>Lateral adjustment</span>
-            <strong style={columnTitleStyle}>Direction</strong>
           </div>
           <div style={rowsStyle}>
             <AdjustmentRow
