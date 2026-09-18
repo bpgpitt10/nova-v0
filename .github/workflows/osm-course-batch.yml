@@ -7,6 +7,7 @@ on:
     paths:
       - config/course-import-seeds/**
       - tools/batch_prepare_osm_courses.py
+      - tools/apply_course_terrain_defaults.py
       - .github/workflows/osm-course-batch.yml
   workflow_dispatch:
 
@@ -40,6 +41,11 @@ jobs:
         continue-on-error: true
         run: |
           python tools/batch_prepare_osm_courses.py \
+            --seed-file config/course-import-seeds/planned-courses-v1.json
+
+      - name: Apply generic terrain defaults
+        run: |
+          python tools/apply_course_terrain_defaults.py \
             --seed-file config/course-import-seeds/planned-courses-v1.json
 
       - name: Persist generated configs, caches, packages, and timing history
