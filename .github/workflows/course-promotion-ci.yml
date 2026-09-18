@@ -1,0 +1,37 @@
+name: Course Promotion CI
+
+on:
+  push:
+    branches:
+      - course-promotion-bridge-v1
+  pull_request:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - 'config/course-promotions-v1.json'
+      - 'config/course-geometry/**'
+      - 'artifacts/course-geometry/**'
+      - 'public/course-geometry/**'
+      - 'src/courseGeometry/courseCatalog.ts'
+      - 'tools/check-course-promotions.mjs'
+      - 'package.json'
+      - '.github/workflows/course-promotion-ci.yml'
+
+jobs:
+  promotion-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate promoted course packages and build web app
+        run: npm run build
