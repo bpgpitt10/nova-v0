@@ -8,12 +8,7 @@ on:
       - tools/import_course_terrain.py
       - tools/import_course_terrain_v2.py
       - tools/compose_course_package.py
-      - config/course-geometry/royal-new-kent-v1.json
-      - config/course-geometry/shaftesbury-glen-v1.json
-      - config/course-geometry/valhalla-v1.json
-      - config/course-geometry/muirfield-village-v1.json
-      - config/course-geometry/greywalls-v1.json
-      - config/course-geometry/paynes-valley-v1.json
+      - config/course-geometry/**
       - .github/workflows/course-terrain-package.yml
   workflow_dispatch:
 
@@ -42,11 +37,31 @@ jobs:
         run: pip install --quiet numpy rasterio pyproj
 
       - name: Build planned-course LiDAR terrain
+        shell: bash
         run: |
           set -euo pipefail
-          for slug in royal-new-kent shaftesbury-glen valhalla muirfield-village greywalls paynes-valley; do
+          mapfile -t slugs < <(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('config/course-import-seeds/planned-courses-v1.json').read_text())
+          for row in payload.get('courses') or []:
+              slug = row.get('slug') if isinstance(row, dict) else None
+              if slug:
+                  print(slug)
+          PY
+          )
+          if [ "${#slugs[@]}" -eq 0 ]; then
+            echo "No active supported courses in planned-course registry" >&2
+            exit 1
+          fi
+          for slug in "${slugs[@]}"; do
+            config="config/course-geometry/$slug-v1.json"
+            if [ ! -f "$config" ]; then
+              echo "Active supported course is missing generated config: $slug" >&2
+              exit 1
+            fi
             echo "=== Building terrain: $slug ==="
-            python tools/import_course_terrain_v2.py --config "config/course-geometry/$slug-v1.json"
+            python tools/import_course_terrain_v2.py --config "$config"
           done
 
       - name: Validate source terrain and composed runtime packages
@@ -56,14 +71,13 @@ jobs:
           import json
           from pathlib import Path
 
-          slugs = (
-              'royal-new-kent',
-              'shaftesbury-glen',
-              'valhalla',
-              'muirfield-village',
-              'greywalls',
-              'paynes-valley',
-          )
+          seed = json.loads(Path('config/course-import-seeds/planned-courses-v1.json').read_text())
+          slugs = [
+              row['slug']
+              for row in seed.get('courses') or []
+              if isinstance(row, dict) and row.get('slug')
+          ]
+          assert slugs, 'planned-course registry has no active supported courses'
 
           def sha(path: Path) -> str:
               return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -106,15 +120,32 @@ jobs:
           PY
 
       - name: Prove cached rebuild avoids terrain source network
+        shell: bash
         run: |
           set -euo pipefail
-          for slug in royal-new-kent shaftesbury-glen valhalla muirfield-village greywalls paynes-valley; do
+          mapfile -t slugs < <(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('config/course-import-seeds/planned-courses-v1.json').read_text())
+          for row in payload.get('courses') or []:
+              slug = row.get('slug') if isinstance(row, dict) else None
+              if slug:
+                  print(slug)
+          PY
+          )
+          for slug in "${slugs[@]}"; do
             python tools/import_course_terrain_v2.py --config "config/course-geometry/$slug-v1.json"
           done
           python - <<'PY'
           import json
           from pathlib import Path
-          for slug in ('royal-new-kent', 'shaftesbury-glen', 'valhalla', 'muirfield-village', 'greywalls', 'paynes-valley'):
+          seed = json.loads(Path('config/course-import-seeds/planned-courses-v1.json').read_text())
+          slugs = [
+              row['slug']
+              for row in seed.get('courses') or []
+              if isinstance(row, dict) and row.get('slug')
+          ]
+          for slug in slugs:
               cache = json.loads((Path('artifacts/course-geometry') / slug / 'terrain-cache-v1.json').read_text())
               assert cache['allHolesTerrainReady'] is True, (slug, cache)
               assert cache['usedNetworkForTerrainSource'] is False, (slug, cache)
@@ -122,10 +153,22 @@ jobs:
           PY
 
       - name: Persist derived terrain cache
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for slug in royal-new-kent shaftesbury-glen valhalla muirfield-village greywalls paynes-valley; do
+          mapfile -t slugs < <(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('config/course-import-seeds/planned-courses-v1.json').read_text())
+          for row in payload.get('courses') or []:
+              slug = row.get('slug') if isinstance(row, dict) else None
+              if slug:
+                  print(slug)
+          PY
+          )
+          for slug in "${slugs[@]}"; do
             git add "public/course-geometry/$slug/course-v1.json"
             git add "artifacts/course-geometry/$slug/cache-v1.json"
             git add "artifacts/course-geometry/$slug/terrain-v1.json"
