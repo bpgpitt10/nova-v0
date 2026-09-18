@@ -1,5 +1,5 @@
 {
-  "cachedAt": "2026-09-18T02:51:11.697967Z",
+  "cachedAt": "2026-09-18T03:02:27.124264Z",
   "courseId": "arcadia-bluffs-arcadia-mi",
   "provider": "usgs-3dep",
   "refreshPolicy": {
@@ -15,6 +15,6 @@
   "schemaVersion": "looper-course-terrain-cache-v1",
   "sourceSha256": "3cc637cd98b4b24a27f6ae7c8318ba3e9c836ccf64cc8c692ac2c8b2f5efd06c",
   "terrainPackagePath": "public/course-geometry/arcadia-bluffs/terrain-v1.json",
-  "terrainPackageSha256": "04da446ba2608d33605d3d0aa7611d593d42e4e00c76fb8c28d7d49661ccdf82",
+  "terrainPackageSha256": "8dc4a15fcf0f83b4e196352406bd9e848cc8076b90268e23c7dcd2df3bd4a129",
   "validationPath": "artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json"
 }
