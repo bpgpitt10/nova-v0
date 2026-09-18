@@ -237,7 +237,7 @@ const sessionsForClub = (sessions: SavedSession[], club: string): SavedSession[]
 const rerankCorrectedClubs = (
   evaluations: LandingElevationAwareEvaluation[],
 ): LandingElevationAwareEvaluation[] => {
-  const reset = evaluations.map((evaluation) => ({
+  const reset: LandingElevationAwareEvaluation[] = evaluations.map((evaluation) => ({
     ...evaluation,
     decisionRank: null,
     targetFit: null,
