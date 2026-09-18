@@ -77,8 +77,11 @@ for (const promoted of manifest.courses) {
   requireValue(packageHoleNumbers.length === 18, `${courseId}: runtime package must contain 18 holes`)
   requireValue(packageHoleNumbers.every((hole, index) => hole === index + 1), `${courseId}: runtime package hole keys are not exactly 1-18`)
   requireValue(
-    packageHoleNumbers.every((holeNumber) => coursePackage.holes[String(holeNumber)]?.holeNumber === holeNumber),
-    `${courseId}: one or more runtime holeNumber values do not match their package keys`,
+    packageHoleNumbers.every((holeNumber) => {
+      const packagedHoleNumber = coursePackage.holes[String(holeNumber)]?.holeNumber
+      return packagedHoleNumber == null || packagedHoleNumber === holeNumber
+    }),
+    `${courseId}: one or more present runtime holeNumber values do not match their package keys`,
   )
 
   const idNeedle = `id: '${courseId}'`
