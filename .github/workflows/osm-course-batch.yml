@@ -7,6 +7,7 @@ on:
     paths:
       - config/course-import-seeds/**
       - tools/batch_prepare_osm_courses.py
+      - tools/recover_course_discovery_from_location.py
       - tools/apply_course_terrain_defaults.py
       - .github/workflows/osm-course-batch.yml
   workflow_dispatch:
@@ -43,6 +44,31 @@ jobs:
           python tools/batch_prepare_osm_courses.py \
             --seed-file config/course-import-seeds/planned-courses-v1.json
 
+      - name: Recover unresolved courses from location anchor
+        run: |
+          python tools/recover_course_discovery_from_location.py \
+            --seed-file config/course-import-seeds/planned-courses-v1.json
+
+      - name: Re-run batch after location recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          recovered="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('artifacts/course-geometry/location-anchor-recovery-v1.json')
+          payload = json.loads(path.read_text()) if path.exists() else {}
+          print(int(payload.get('recoveredCount') or 0))
+          PY
+          )"
+          if [ "$recovered" -gt 0 ]; then
+            echo "Recovered $recovered course config(s); rebuilding planned batch"
+            python tools/batch_prepare_osm_courses.py \
+              --seed-file config/course-import-seeds/planned-courses-v1.json
+          else
+            echo "No course configs recovered; keeping first-pass batch result"
+          fi
+
       - name: Apply generic terrain defaults
         run: |
           python tools/apply_course_terrain_defaults.py \
@@ -74,6 +100,7 @@ jobs:
           name: osm-course-batch-proof-${{ github.run_id }}
           path: |
             artifacts/course-geometry/batch-planned-courses-v1.json
+            artifacts/course-geometry/location-anchor-recovery-v1.json
             artifacts/course-geometry/**/discovery-v1.json
             artifacts/course-geometry/**/prepare-timings.ndjson
             artifacts/course-geometry/**/import-timings.ndjson
