@@ -1,0 +1,54 @@
+{
+  "courseId": "cabot-cliffs-inverness-ns",
+  "courseName": "Cabot Cliffs",
+  "freshness": {
+    "ageDays": 0.01,
+    "evaluatedAt": "2026-09-18T01:08:21.743568Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T01:08:21.743568Z",
+    "configPath": "config/course-geometry/cabot-cliffs-v1.json",
+    "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
+    "path": "public/course-geometry/cabot-cliffs/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "9a9aab251f115bf4ef4195343c8410a2389b98ce7b713826c311ddee534cfd6b"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 676091202,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T00:55:56.308915Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T00:55:56.308915Z",
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
+    "snapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
+    "sourceBaseTimestamp": "2026-09-18T00:54:28Z"
+  }
+}

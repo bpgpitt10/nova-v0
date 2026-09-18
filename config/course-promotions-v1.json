@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "looper-course-promotions-v1",
+  "courses": [
+    {
+      "courseId": "arcadia-bluffs-arcadia-mi",
+      "slug": "arcadia-bluffs",
+      "status": "validation",
+      "staticPackageUrl": "/course-geometry/arcadia-bluffs/course-v1.json",
+      "packagePath": "public/course-geometry/arcadia-bluffs/course-v1.json",
+      "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
+      "validationPath": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json",
+      "cachePath": "artifacts/course-geometry/arcadia-bluffs/cache-v1.json"
+    },
+    {
+      "courseId": "cabot-cliffs-inverness-ns",
+      "slug": "cabot-cliffs",
+      "status": "validation",
+      "staticPackageUrl": "/course-geometry/cabot-cliffs/course-v1.json",
+      "packagePath": "public/course-geometry/cabot-cliffs/course-v1.json",
+      "configPath": "config/course-geometry/cabot-cliffs-v1.json",
+      "validationPath": "artifacts/course-geometry/cabot-cliffs/validation-v1.json",
+      "cachePath": "artifacts/course-geometry/cabot-cliffs/cache-v1.json"
+    },
+    {
+      "courseId": "pebble-beach-pebble-beach-ca",
+      "slug": "pebble-beach",
+      "status": "validation",
+      "staticPackageUrl": "/course-geometry/pebble-beach/course-v1.json",
+      "packagePath": "public/course-geometry/pebble-beach/course-v1.json",
+      "configPath": "config/course-geometry/pebble-beach-v1.json",
+      "validationPath": "artifacts/course-geometry/pebble-beach/validation-v1.json",
+      "cachePath": "artifacts/course-geometry/pebble-beach/cache-v1.json"
+    }
+  ]
+}
