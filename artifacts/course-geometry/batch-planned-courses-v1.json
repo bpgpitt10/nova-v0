@@ -8,11 +8,11 @@
       "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 471.3,
-        "packageImporter": 3580.1,
-        "sourceFetch": 3386.8,
-        "topologyAudit": 65.4,
-        "total": 7587.0
+        "discovery": 0.0,
+        "packageImporter": 3945.1,
+        "sourceFetch": null,
+        "topologyAudit": 65.8,
+        "total": 4081.8
       }
     },
     {
@@ -22,35 +22,33 @@
       "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 434.9,
-        "packageImporter": 1231.0,
-        "sourceFetch": 3592.9,
-        "topologyAudit": 51.3,
-        "total": 5388.2
+        "discovery": 0.0,
+        "packageImporter": 1325.2,
+        "sourceFetch": null,
+        "topologyAudit": 48.7,
+        "total": 1445.6
       }
     },
     {
       "courseId": "erin-hills-erin-wi",
-      "error": "timed_import_osm_course.py exited 1",
+      "error": null,
       "slug": "erin-hills",
-      "success": false,
+      "success": true,
       "timingMs": {
-        "batchThrottle": 577.7,
-        "discovery": 468.8,
-        "packageImporter": null,
-        "sourceFetch": 35601.1,
-        "topologyAudit": null,
-        "total": 36726.6
+        "batchThrottle": 0.0,
+        "discovery": 0.0,
+        "packageImporter": 2852.0,
+        "sourceFetch": 3992.5,
+        "topologyAudit": 57.7,
+        "total": 6976.7
       }
     }
   ],
-  "endedAt": "2026-09-18T11:14:24.355749Z",
-  "failedCourseIds": [
-    "erin-hills-erin-wi"
-  ],
-  "failureCount": 1,
+  "endedAt": "2026-09-18T11:15:11.106684Z",
+  "failedCourseIds": [],
+  "failureCount": 0,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T11:13:34.653121Z",
-  "successCount": 2
+  "startedAt": "2026-09-18T11:14:58.601482Z",
+  "successCount": 3
 }
