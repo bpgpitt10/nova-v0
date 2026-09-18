@@ -2,25 +2,46 @@
   "schemaVersion": "looper-course-import-seeds-v1",
   "courses": [
     {
-      "courseId": "augusta-national-augusta-ga",
-      "courseName": "Augusta National Golf Club",
-      "location": "Augusta, GA",
+      "courseId": "royal-new-kent-providence-forge-va",
+      "courseName": "Royal New Kent Golf Club",
+      "location": "Providence Forge, VA",
       "countryCode": "us",
-      "slug": "augusta-national"
+      "slug": "royal-new-kent"
     },
     {
-      "courseId": "oakmont-country-club-oakmont-pa",
-      "courseName": "Oakmont Country Club",
-      "location": "Oakmont, PA",
+      "courseId": "shaftesbury-glen-conway-sc",
+      "courseName": "Shaftesbury Glen Golf & Fish Club",
+      "location": "Conway, SC",
       "countryCode": "us",
-      "slug": "oakmont-country-club"
+      "slug": "shaftesbury-glen"
     },
     {
-      "courseId": "erin-hills-erin-wi",
-      "courseName": "Erin Hills",
-      "location": "Erin, WI",
+      "courseId": "valhalla-louisville-ky",
+      "courseName": "Valhalla Golf Club",
+      "location": "Louisville, KY",
       "countryCode": "us",
-      "slug": "erin-hills"
+      "slug": "valhalla"
+    },
+    {
+      "courseId": "muirfield-village-dublin-oh",
+      "courseName": "Muirfield Village Golf Club",
+      "location": "Dublin, OH",
+      "countryCode": "us",
+      "slug": "muirfield-village"
+    },
+    {
+      "courseId": "greywalls-marquette-mi",
+      "courseName": "Greywalls at Marquette Golf Club",
+      "location": "Marquette, MI",
+      "countryCode": "us",
+      "slug": "greywalls"
+    },
+    {
+      "courseId": "paynes-valley-hollister-mo",
+      "courseName": "Payne's Valley",
+      "location": "Hollister, MO",
+      "countryCode": "us",
+      "slug": "paynes-valley"
     }
   ]
 }
