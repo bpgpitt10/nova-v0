@@ -59,7 +59,7 @@ jobs:
           INPUT_CONFIG_PATH: ${{ inputs.config_path }}
           INPUT_REFRESH_OSM: ${{ inputs.refresh_osm }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
           configs=()
           if [[ -n "${INPUT_CONFIG_PATH:-}" ]]; then
@@ -75,10 +75,11 @@ jobs:
             exit 1
           fi
 
+          failures=()
           for config in "${configs[@]}"; do
             if [[ ! -f "$config" ]]; then
-              echo "Course config not found: $config" >&2
-              exit 1
+              failures+=("$config:missing")
+              continue
             fi
             echo "Timed import: $config"
             args=(--config "$config")
@@ -86,7 +87,32 @@ jobs:
               args+=(--refresh-osm)
             fi
             python tools/timed_import_osm_course.py "${args[@]}"
+            status=$?
+            if [[ "$status" -ne 0 ]]; then
+              failures+=("$config:$status")
+            fi
           done
+
+          if [[ "${#failures[@]}" -gt 0 ]]; then
+            printf 'Course import failures:\n' >&2
+            printf '  %s\n' "${failures[@]}" >&2
+            exit 1
+          fi
+
+      - name: Persist timing history even when an import fails
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/course-geometry/*/import-timings.ndjson 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No new course timing rows"
+            exit 0
+          fi
+          git commit -m "Record OSM course import timings"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Verify generated package inventory
         shell: bash
@@ -154,7 +180,7 @@ jobs:
               raise SystemExit(f"Course package/cache/timing validation failed: {failures}")
           PY
 
-      - name: Persist cached packages, timing history, and source proof
+      - name: Persist cached packages and source proof
         shell: bash
         run: |
           set -euo pipefail
@@ -167,9 +193,7 @@ jobs:
           fi
 
           branch="${GITHUB_REF_NAME}"
-          git commit -m "Build and time cached OSM course packages"
-          git fetch origin "$branch"
-          git rebase "origin/$branch"
+          git commit -m "Build cached OSM course packages"
           git push origin "HEAD:$branch"
 
       - name: Upload validation proof and timing logs
