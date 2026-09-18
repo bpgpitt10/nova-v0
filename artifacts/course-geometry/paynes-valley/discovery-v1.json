@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "displayName": "Payne's Valley Golf Course, 1250, Golf Club Drive, Hollister, Taney County, Missouri, 65672, United States",
+      "lat": "36.5646859",
+      "locationOverlap": 0.5,
+      "lon": "-93.2010533",
+      "name": "Payne's Valley Golf Course",
+      "nameRatio": 0.7,
+      "osmId": 891038975,
+      "osmType": "way",
+      "score": 90.0
+    }
+  ],
+  "chosen": {
+    "displayName": "Payne's Valley Golf Course, 1250, Golf Club Drive, Hollister, Taney County, Missouri, 65672, United States",
+    "lat": "36.5646859",
+    "locationOverlap": 0.5,
+    "lon": "-93.2010533",
+    "name": "Payne's Valley Golf Course",
+    "nameRatio": 0.7,
+    "osmId": 891038975,
+    "osmType": "way",
+    "score": 90.0
+  },
+  "completedAt": "2026-09-18T00:52:00.580681Z",
+  "courseId": "paynes-valley-hollister-mo",
+  "courseName": "Payne's Valley",
+  "error": null,
+  "location": "Hollister, MO",
+  "provider": "nominatim",
+  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+  "query": "Payne's Valley, Hollister, MO",
+  "requestedAt": "2026-09-18T00:52:00.296662Z",
+  "schemaVersion": "looper-course-discovery-v1",
+  "success": true,
+  "timingMs": 284.0
+}

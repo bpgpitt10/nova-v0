@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "displayName": "Cabot Cliffs, 6018 Road, Inverside, Municipality of the County of Inverness, Inverness County, Nova Scotia, B0E 1N0, Canada",
+      "lat": "46.2526965",
+      "locationOverlap": 0.5,
+      "lon": "-61.2848988",
+      "name": "Cabot Cliffs",
+      "nameRatio": 1.0,
+      "osmId": 676091202,
+      "osmType": "way",
+      "score": 120.0
+    }
+  ],
+  "chosen": {
+    "displayName": "Cabot Cliffs, 6018 Road, Inverside, Municipality of the County of Inverness, Inverness County, Nova Scotia, B0E 1N0, Canada",
+    "lat": "46.2526965",
+    "locationOverlap": 0.5,
+    "lon": "-61.2848988",
+    "name": "Cabot Cliffs",
+    "nameRatio": 1.0,
+    "osmId": 676091202,
+    "osmType": "way",
+    "score": 120.0
+  },
+  "completedAt": "2026-09-18T00:51:24.250614Z",
+  "courseId": "cabot-cliffs-inverness-ns",
+  "courseName": "Cabot Cliffs",
+  "error": null,
+  "location": "Inverness, NS",
+  "provider": "nominatim",
+  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+  "query": "Cabot Cliffs, Inverness, NS",
+  "requestedAt": "2026-09-18T00:51:23.893577Z",
+  "schemaVersion": "looper-course-discovery-v1",
+  "success": true,
+  "timingMs": 357.0
+}

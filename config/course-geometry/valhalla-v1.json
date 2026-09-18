@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "valhalla-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "location": "Louisville, KY",
+  "slug": "valhalla",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 59737644
+  },
+  "osmCenter": [
+    38.242317,
+    -85.4706879
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

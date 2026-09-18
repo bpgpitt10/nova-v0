@@ -1,0 +1,108 @@
+{
+  "courseCount": 7,
+  "courses": [
+    {
+      "courseId": "shaftesbury-glen-conway-sc",
+      "error": "no way/relation leisure=golf_course candidates",
+      "slug": "shaftesbury-glen",
+      "success": false,
+      "timingMs": {
+        "discovery": 582.2,
+        "packageImporter": null,
+        "sourceFetch": null,
+        "topologyAudit": null,
+        "total": 582.6
+      }
+    },
+    {
+      "courseId": "valhalla-louisville-ky",
+      "error": null,
+      "slug": "valhalla",
+      "success": true,
+      "timingMs": {
+        "discovery": 412.0,
+        "packageImporter": 1175.1,
+        "sourceFetch": 2896.7,
+        "topologyAudit": 54.9,
+        "total": 5153.5
+      }
+    },
+    {
+      "courseId": "muirfield-village-dublin-oh",
+      "error": null,
+      "slug": "muirfield-village",
+      "success": true,
+      "timingMs": {
+        "discovery": 277.5,
+        "packageImporter": 1379.4,
+        "sourceFetch": 3298.2,
+        "topologyAudit": 57.7,
+        "total": 5094.9
+      }
+    },
+    {
+      "courseId": "cabot-cliffs-inverness-ns",
+      "error": "timed_import_osm_course.py exited 1",
+      "slug": "cabot-cliffs",
+      "success": false,
+      "timingMs": {
+        "discovery": 357.0,
+        "packageImporter": null,
+        "sourceFetch": 34864.7,
+        "topologyAudit": null,
+        "total": 35302.7
+      }
+    },
+    {
+      "courseId": "greywalls-marquette-mi",
+      "error": "no way/relation leisure=golf_course candidates",
+      "slug": "greywalls",
+      "success": false,
+      "timingMs": {
+        "discovery": 395.1,
+        "packageImporter": null,
+        "sourceFetch": null,
+        "topologyAudit": null,
+        "total": 395.5
+      }
+    },
+    {
+      "courseId": "paynes-valley-hollister-mo",
+      "error": null,
+      "slug": "paynes-valley",
+      "success": true,
+      "timingMs": {
+        "discovery": 284.0,
+        "packageImporter": 2100.5,
+        "sourceFetch": 2641.8,
+        "topologyAudit": 57.8,
+        "total": 5870.3
+      }
+    },
+    {
+      "courseId": "pebble-beach-pebble-beach-ca",
+      "error": "no way/relation leisure=golf_course candidates",
+      "slug": "pebble-beach",
+      "success": false,
+      "timingMs": {
+        "discovery": 637.7,
+        "packageImporter": null,
+        "sourceFetch": null,
+        "topologyAudit": null,
+        "total": 638.1
+      }
+    }
+  ],
+  "endedAt": "2026-09-18T00:52:06.101163Z",
+  "failedCourseIds": [
+    "shaftesbury-glen-conway-sc",
+    "cabot-cliffs-inverness-ns",
+    "greywalls-marquette-mi",
+    "pebble-beach-pebble-beach-ca"
+  ],
+  "failureCount": 4,
+  "schemaVersion": "looper-course-batch-prepare-v1",
+  "seedFile": "config/course-import-seeds/planned-courses-v1.json",
+  "startedAt": "2026-09-18T00:51:13.061791Z",
+  "successCount": 3
+}

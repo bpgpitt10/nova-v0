@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "displayName": "Valhalla Golf Club, 15503, Shelbyville Road, Louisville, Jefferson County, Kentucky, 40245, United States",
+      "lat": "38.2423170",
+      "locationOverlap": 0.5,
+      "lon": "-85.4706879",
+      "name": "Valhalla Golf Club",
+      "nameRatio": 1.0,
+      "osmId": 59737644,
+      "osmType": "way",
+      "score": 121.57
+    }
+  ],
+  "chosen": {
+    "displayName": "Valhalla Golf Club, 15503, Shelbyville Road, Louisville, Jefferson County, Kentucky, 40245, United States",
+    "lat": "38.2423170",
+    "locationOverlap": 0.5,
+    "lon": "-85.4706879",
+    "name": "Valhalla Golf Club",
+    "nameRatio": 1.0,
+    "osmId": 59737644,
+    "osmType": "way",
+    "score": 121.57
+  },
+  "completedAt": "2026-09-18T00:51:14.574104Z",
+  "courseId": "valhalla-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "error": null,
+  "location": "Louisville, KY",
+  "provider": "nominatim",
+  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+  "query": "Valhalla Golf Club, Louisville, KY",
+  "requestedAt": "2026-09-18T00:51:14.162064Z",
+  "schemaVersion": "looper-course-discovery-v1",
+  "success": true,
+  "timingMs": 412.0
+}

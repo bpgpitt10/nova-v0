@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "displayName": "Muirfield Village Golf Club, 5750, Memorial Drive, Dublin, Washington Township, Franklin County, Ohio, 43017, United States",
+      "lat": "40.1442555",
+      "locationOverlap": 0.5,
+      "lon": "-83.1500922",
+      "name": "Muirfield Village Golf Club",
+      "nameRatio": 1.0,
+      "osmId": 337418,
+      "osmType": "relation",
+      "score": 120.0
+    }
+  ],
+  "chosen": {
+    "displayName": "Muirfield Village Golf Club, 5750, Memorial Drive, Dublin, Washington Township, Franklin County, Ohio, 43017, United States",
+    "lat": "40.1442555",
+    "locationOverlap": 0.5,
+    "lon": "-83.1500922",
+    "name": "Muirfield Village Golf Club",
+    "nameRatio": 1.0,
+    "osmId": 337418,
+    "osmType": "relation",
+    "score": 120.0
+  },
+  "completedAt": "2026-09-18T00:51:19.075871Z",
+  "courseId": "muirfield-village-dublin-oh",
+  "courseName": "Muirfield Village Golf Club",
+  "error": null,
+  "location": "Dublin, OH",
+  "provider": "nominatim",
+  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+  "query": "Muirfield Village Golf Club, Dublin, OH",
+  "requestedAt": "2026-09-18T00:51:18.798415Z",
+  "schemaVersion": "looper-course-discovery-v1",
+  "success": true,
+  "timingMs": 277.5
+}

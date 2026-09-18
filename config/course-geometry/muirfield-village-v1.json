@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "muirfield-village-dublin-oh",
+  "courseName": "Muirfield Village Golf Club",
+  "location": "Dublin, OH",
+  "slug": "muirfield-village",
+  "osmCourseElement": {
+    "type": "relation",
+    "id": 337418
+  },
+  "osmCenter": [
+    40.1442555,
+    -83.1500922
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

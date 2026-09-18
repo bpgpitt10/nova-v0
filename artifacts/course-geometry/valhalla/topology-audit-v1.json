@@ -1,0 +1,74 @@
+{
+  "innerRingCount": 3,
+  "innerRingsByParentClassification": {
+    "surface:fairway": 2,
+    "surface:rough": 1
+  },
+  "innerRingsWithStandaloneTags": 2,
+  "innerRingsWithoutStandaloneTags": 1,
+  "multipolygonRelationsWithInnerRings": 3,
+  "relations": [
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1284762543,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 17612850,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 813966336,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 18958887,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:rough",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 737952796,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19362463,
+      "tags": {
+        "golf": "rough",
+        "type": "multipolygon"
+      }
+    }
+  ],
+  "schemaVersion": "looper-osm-topology-audit-v1"
+}

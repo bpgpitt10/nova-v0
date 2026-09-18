@@ -1,0 +1,55 @@
+{
+  "courseId": "valhalla-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "freshness": {
+    "ageDays": 0.0,
+    "evaluatedAt": "2026-09-18T00:51:18.699340Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T00:51:18.699340Z",
+    "configPath": "config/course-geometry/valhalla-v1.json",
+    "configSha256": "41a57ece4e2bb3a1679efd2dc5b96bb4b38e7b9deb64e26d3b66e9a0f0974d19",
+    "path": "public/course-geometry/valhalla/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "44ae12e175a50a49269299c9aa8a9425c3b94027ceb73cde00fb8d030f6326d3"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 59737644,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T00:51:18.727635Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T00:51:18.727635Z",
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
+    "snapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
+    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  }
+}

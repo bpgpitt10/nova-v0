@@ -1,0 +1,55 @@
+{
+  "courseId": "muirfield-village-dublin-oh",
+  "courseName": "Muirfield Village Golf Club",
+  "freshness": {
+    "ageDays": 0.0,
+    "evaluatedAt": "2026-09-18T00:51:23.799379Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T00:51:23.799379Z",
+    "configPath": "config/course-geometry/muirfield-village-v1.json",
+    "configSha256": "e72e1e72e5a6f48c001d9096b6c5706f208e411a8444820b6ce59064bb240eaf",
+    "path": "public/course-geometry/muirfield-village/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "a29c13c49c36377c964c267dc14d474ed04cefa3078582dfa60eda3cfc31bf1e"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 337418,
+      "type": "relation"
+    },
+    "fetchedAt": "2026-09-18T00:51:23.819816Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T00:51:23.819816Z",
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/muirfield-village/osm-snapshot.json",
+    "snapshotSha256": "bc414ec548e6d43ac5d87f55930ebd22dc56bfc15d6a29dce9a7c6b5120d330e",
+    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  }
+}

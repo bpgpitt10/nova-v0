@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "paynes-valley-hollister-mo",
+  "courseName": "Payne's Valley",
+  "location": "Hollister, MO",
+  "slug": "paynes-valley",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 891038975
+  },
+  "osmCenter": [
+    36.5646859,
+    -93.2010533
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}
