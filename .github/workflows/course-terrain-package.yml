@@ -47,30 +47,70 @@ jobs:
       - name: Build Pebble LiDAR terrain
         run: python tools/import_course_terrain_v2.py --config config/course-geometry/pebble-beach-v1.json
 
-      - name: Validate all three terrain packages
+      - name: Validate source terrain and composed runtime packages
         run: |
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
+
           courses = [
               ('arcadia-bluffs', 1.1),
               ('cabot-cliffs', 2.1),
               ('pebble-beach', 1.1),
           ]
+
+          def sha(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
           for slug, max_resolution in courses:
               root = Path('artifacts/course-geometry') / slug
+              public_path = Path('public/course-geometry') / slug / 'course-v1.json'
               validation = json.loads((root / 'terrain-validation-v1.json').read_text())
-              cache = json.loads((root / 'terrain-cache-v1.json').read_text())
+              terrain_cache = json.loads((root / 'terrain-cache-v1.json').read_text())
               source = json.loads((root / 'terrain-source-v1.json').read_text())
+              course_cache = json.loads((root / 'cache-v1.json').read_text())
+              package = json.loads(public_path.read_text())
+
               assert validation['allHolesTerrainReady'] is True, (slug, validation)
               assert validation['readyHoleCount'] == 18, (slug, validation['readyHoleCount'])
               assert len(validation['holes']) == 18, (slug, len(validation['holes']))
               assert validation['sourceResolutionMeters'] <= max_resolution + 0.05, (slug, validation['sourceResolutionMeters'])
+              assert all(hole['routeNoDataFraction'] == 0 for hole in validation['holes']), (slug, 'route gaps')
               assert source['lidarDerived'] is True, (slug, source)
               assert source['products'], (slug, 'no source products')
+              assert terrain_cache['allHolesTerrainReady'] is True, (slug, terrain_cache)
+              assert terrain_cache['terrainPackageSha256'], (slug, terrain_cache)
+
+              holes = package.get('holes') or {}
+              assert len(holes) == 18, (slug, 'composed package hole count')
+              for hole_number in range(1, 19):
+                  terrain = (holes[str(hole_number)] or {}).get('terrain') or {}
+                  assert terrain.get('source') == 'lidar-dem', (slug, hole_number, terrain)
+                  assert terrain.get('sourceResolutionMeters', 999) <= max_resolution + 0.05, (slug, hole_number)
+                  assert terrain.get('compression') == 'deflate', (slug, hole_number)
+                  assert terrain.get('width', 0) > 0 and terrain.get('height', 0) > 0, (slug, hole_number)
+                  assert terrain.get('valuesBase64'), (slug, hole_number, 'missing terrain payload')
+
+              assert package.get('terrainProvenance'), (slug, 'missing terrain provenance')
+              assert course_cache['package']['sha256'] == sha(public_path), (slug, 'composed package hash mismatch')
+              assert course_cache['terrain']['status'] == 'cached', (slug, course_cache.get('terrain'))
+              print(slug, validation['sourceResolutionMeters'], 'm', len(source['products']), 'source products; composed runtime PASS')
+          PY
+
+      - name: Prove cached rebuild avoids terrain source network
+        run: |
+          python tools/import_course_terrain_v2.py --config config/course-geometry/arcadia-bluffs-v1.json
+          python tools/import_course_terrain_v2.py --config config/course-geometry/cabot-cliffs-v1.json
+          python tools/import_course_terrain_v2.py --config config/course-geometry/pebble-beach-v1.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for slug in ('arcadia-bluffs', 'cabot-cliffs', 'pebble-beach'):
+              cache = json.loads((Path('artifacts/course-geometry') / slug / 'terrain-cache-v1.json').read_text())
               assert cache['allHolesTerrainReady'] is True, (slug, cache)
-              assert cache['terrainPackageSha256'], (slug, cache)
-              print(slug, validation['sourceResolutionMeters'], 'm', len(source['products']), 'source products')
+              assert cache['usedNetworkForTerrainSource'] is False, (slug, cache)
+              print(slug, 'cached rebuild PASS; usedNetworkForTerrainSource=false')
           PY
 
       - name: Persist derived terrain cache
