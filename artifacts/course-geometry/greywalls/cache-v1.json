@@ -1,0 +1,55 @@
+{
+  "courseId": "greywalls-marquette-mi",
+  "courseName": "Greywalls at Marquette Golf Club",
+  "freshness": {
+    "ageDays": 0.0,
+    "evaluatedAt": "2026-09-18T13:53:52.547604Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T13:53:52.547604Z",
+    "configPath": "config/course-geometry/greywalls-v1.json",
+    "configSha256": "f31ce54226c726fb57df312746f4d81fb2190ed04b4a364d81a0e0b17069748f",
+    "path": "public/course-geometry/greywalls/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "2347af003bde83caf0fc0dda267bfdb411aa99d44111f9e56c55cab6dbccfe2a"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 45729609,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T13:53:52.565953Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T13:53:52.565953Z",
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/greywalls/osm-snapshot.json",
+    "snapshotSha256": "0bd385320dcbd14b1c6f0c94bf20c69054f6fdc17bfab28198e49343bb6d8839",
+    "sourceBaseTimestamp": "2026-09-18T13:52:05Z"
+  }
+}

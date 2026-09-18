@@ -3,7 +3,7 @@
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 178.4,
+        "durationMs": 300.4,
         "error": null,
         "status": 200,
         "success": true
@@ -15,15 +15,26 @@
     "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
     "rawCandidates": []
   },
-  "chosen": null,
-  "completedAt": "2026-09-18T13:39:07.368030Z",
+  "chosen": {
+    "discoveryMethod": "nominatim-location-anchor-expanded-overpass-boundary",
+    "displayName": "Dunes Golf & Beach Club",
+    "lat": 33.7632482,
+    "locationOverlap": 1.0,
+    "lon": -78.7992628,
+    "name": "Dunes Golf & Beach Club",
+    "nameRatio": 0.6,
+    "osmId": 793663795,
+    "osmType": "way",
+    "score": 65.0
+  },
+  "completedAt": "2026-09-18T13:52:57.323150Z",
   "courseId": "shaftesbury-glen-conway-sc",
   "courseName": "Shaftesbury Glen Golf & Fish Club",
   "direct": {
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 419.3,
+        "durationMs": 526.9,
         "error": null,
         "status": 200,
         "success": true
@@ -37,8 +48,300 @@
     "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
     "rawCandidates": []
   },
-  "error": "unfiltered Nominatim search returned no usable anchor",
+  "error": null,
   "location": "Conway, SC",
+  "locationAnchorRecovery": {
+    "batchThrottleMs": 0.0,
+    "boundaryCandidates": [
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Dunes Golf & Beach Club",
+        "lat": 33.7632482,
+        "locationOverlap": 1.0,
+        "lon": -78.7992628,
+        "name": "Dunes Golf & Beach Club",
+        "nameRatio": 0.6,
+        "osmId": 793663795,
+        "osmType": "way",
+        "score": 65.0
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Legends Golf and Resort",
+        "lat": 33.7459046,
+        "locationOverlap": 1.0,
+        "lon": -79.0074298,
+        "name": "Legends Golf and Resort",
+        "nameRatio": 0.4828,
+        "osmId": 4084654,
+        "osmType": "relation",
+        "score": 53.276
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Pine Lakes Golf Club",
+        "lat": 33.7347596,
+        "locationOverlap": 1.0,
+        "lon": -78.8465711,
+        "name": "Pine Lakes Golf Club",
+        "nameRatio": 0.4727,
+        "osmId": 31246141,
+        "osmType": "way",
+        "score": 52.273
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Myrtlewood Golf Club",
+        "lat": 33.7314725,
+        "locationOverlap": 1.0,
+        "lon": -78.871503,
+        "name": "Myrtlewood Golf Club",
+        "nameRatio": 0.4727,
+        "osmId": 18885507,
+        "osmType": "relation",
+        "score": 52.273
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Arcadian Shores Golf Club",
+        "lat": 33.7774747,
+        "locationOverlap": 1.0,
+        "lon": -78.7801586,
+        "name": "Arcadian Shores Golf Club",
+        "nameRatio": 0.4667,
+        "osmId": 479391650,
+        "osmType": "way",
+        "score": 51.667
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Blackmoor Golf Club",
+        "lat": 33.6014571,
+        "locationOverlap": 1.0,
+        "lon": -79.0720873,
+        "name": "Blackmoor Golf Club",
+        "nameRatio": 0.4444,
+        "osmId": 4854436,
+        "osmType": "relation",
+        "score": 49.444
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Heathland Golf Course",
+        "lat": 33.741648,
+        "locationOverlap": 1.0,
+        "lon": -79.0120462,
+        "name": "Heathland Golf Course",
+        "nameRatio": 0.4286,
+        "osmId": 1519743912,
+        "osmType": "way",
+        "score": 47.857
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Indigo Creek Golf Club",
+        "lat": 33.6067816,
+        "locationOverlap": 1.0,
+        "lon": -79.029057,
+        "name": "Indigo Creek Golf Club",
+        "nameRatio": 0.4211,
+        "osmId": 4854545,
+        "osmType": "relation",
+        "score": 47.105
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Parkland Golf Course",
+        "lat": 33.7522574,
+        "locationOverlap": 1.0,
+        "lon": -79.003723,
+        "name": "Parkland Golf Course",
+        "nameRatio": 0.4,
+        "osmId": 1519743913,
+        "osmType": "way",
+        "score": 45.0
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "World Tour Golf Links",
+        "lat": 33.7353532,
+        "locationOverlap": 1.0,
+        "lon": -78.909576,
+        "name": "World Tour Golf Links",
+        "nameRatio": 0.3929,
+        "osmId": 449459652,
+        "osmType": "way",
+        "score": 44.286
+      }
+    ],
+    "locationAttempts": [
+      {
+        "attempt": 1,
+        "durationMs": 353.8,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "locationCandidates": [
+      {
+        "displayName": "Conway High School, Church Street, Elmhurst, Conway, Horry County, South Carolina, 29526, United States",
+        "lat": 33.8510485,
+        "locationOverlap": 0.5,
+        "lon": -79.0781072,
+        "name": "Conway High School",
+        "nameRatio": 0.6667,
+        "osmId": 447713209,
+        "osmType": "way",
+        "primaryCategory": "amenity",
+        "primaryType": "school",
+        "score": 77.866
+      },
+      {
+        "displayName": "Conway Dog Park, Conway, Horry County, South Carolina, United States",
+        "lat": 33.828626,
+        "locationOverlap": 0.5,
+        "lon": -79.0580939,
+        "name": "Conway Dog Park",
+        "nameRatio": 0.5833,
+        "osmId": 606550494,
+        "osmType": "way",
+        "primaryCategory": "leisure",
+        "primaryType": "park",
+        "score": 68.734
+      },
+      {
+        "displayName": "South Conway, Conway, Horry County, South Carolina, 29527, United States",
+        "lat": 33.8190861,
+        "locationOverlap": 0.5,
+        "lon": -79.0778189,
+        "name": "South Conway",
+        "nameRatio": 0.5714,
+        "osmId": 7045141391,
+        "osmType": "node",
+        "primaryCategory": "place",
+        "primaryType": "hamlet",
+        "score": 67.81
+      },
+      {
+        "displayName": "North Conway, Conway, Horry County, South Carolina, 29562, United States",
+        "lat": 33.8543735,
+        "locationOverlap": 0.5,
+        "lon": -79.0495191,
+        "name": "North Conway",
+        "nameRatio": 0.5714,
+        "osmId": 158244898,
+        "osmType": "node",
+        "primaryCategory": "place",
+        "primaryType": "hamlet",
+        "score": 67.81
+      },
+      {
+        "displayName": "Historic Conway Post Office, 428, Main Street, Conway, Horry County, South Carolina, 29526, United States",
+        "lat": 33.8374836,
+        "locationOverlap": 0.5,
+        "lon": -79.0471775,
+        "name": "Historic Conway Post Office",
+        "nameRatio": 0.5,
+        "osmId": 93157625,
+        "osmType": "way",
+        "primaryCategory": "building",
+        "primaryType": "yes",
+        "score": 60.527
+      },
+      {
+        "displayName": "Conway Methodist Garden, Conway, Horry County, South Carolina, 29528, United States",
+        "lat": 33.8367905,
+        "locationOverlap": 0.5,
+        "lon": -79.0481838,
+        "name": "Conway Methodist Garden",
+        "nameRatio": 0.5,
+        "osmId": 1079934820,
+        "osmType": "node",
+        "primaryCategory": "leisure",
+        "primaryType": "garden",
+        "score": 60.334
+      },
+      {
+        "displayName": "Conway Recreation Complex, Conway, Horry County, South Carolina, United States",
+        "lat": 33.8448924,
+        "locationOverlap": 0.5,
+        "lon": -79.0684594,
+        "name": "Conway Recreation Complex",
+        "nameRatio": 0.4706,
+        "osmId": 447713210,
+        "osmType": "way",
+        "primaryCategory": "leisure",
+        "primaryType": "park",
+        "score": 57.459
+      },
+      {
+        "displayName": "Conway-Horry County Airport, 1700, Airport Road, Cedar Grove, Conway, Horry County, South Carolina, 29527, United States",
+        "lat": 33.8300601,
+        "locationOverlap": 0.5,
+        "lon": -79.1216275,
+        "name": "Conway-Horry County Airport",
+        "nameRatio": 0.4444,
+        "osmId": 424782218,
+        "osmType": "way",
+        "primaryCategory": "aeroway",
+        "primaryType": "aerodrome",
+        "score": 55.589
+      },
+      {
+        "displayName": "Highway 90, Conway, Horry County, South Carolina, 29526, United States",
+        "lat": 33.8219757,
+        "locationOverlap": 0.5,
+        "lon": -79.0149032,
+        "name": "Highway 90",
+        "nameRatio": 0.4211,
+        "osmId": 12429447,
+        "osmType": "way",
+        "primaryCategory": "highway",
+        "primaryType": "secondary",
+        "score": 52.372
+      },
+      {
+        "displayName": "SC 905, Conway, Horry County, South Carolina, 29526, United States",
+        "lat": 33.8376232,
+        "locationOverlap": 1.0,
+        "lon": -79.0430482,
+        "name": "SC 905",
+        "nameRatio": 0.2667,
+        "osmId": 1250551148,
+        "osmType": "way",
+        "primaryCategory": "highway",
+        "primaryType": "secondary",
+        "score": 46.934
+      }
+    ],
+    "overpassAttempts": [
+      {
+        "durationMs": 964.3,
+        "elementCount": null,
+        "endpoint": "https://overpass.private.coffee/api/interpreter",
+        "error": "abandoned-after-winner",
+        "success": false
+      },
+      {
+        "durationMs": 964.3,
+        "elementCount": null,
+        "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "error": "abandoned-after-winner",
+        "success": false
+      },
+      {
+        "durationMs": 963.3,
+        "elementCount": 36,
+        "endpoint": "https://overpass-api.de/api/interpreter",
+        "error": null,
+        "success": true
+      }
+    ],
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "query": "Conway, SC, Conway, SC",
+    "radiusMeters": 30000
+  },
   "nearbyBoundaryFallback": {
     "attempts": [],
     "batchThrottleMs": 0.0,
@@ -47,8 +350,8 @@
     "providerEndpoint": null,
     "radiusMeters": 5000
   },
-  "requestedAt": "2026-09-18T13:39:06.089365Z",
+  "requestedAt": "2026-09-18T13:52:49.569686Z",
   "schemaVersion": "looper-course-discovery-v2",
-  "success": false,
-  "timingMs": 1278.7
+  "success": true,
+  "timingMs": 1400.6
 }

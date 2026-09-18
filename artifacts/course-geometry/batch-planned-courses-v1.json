@@ -9,24 +9,24 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1686.6,
+        "packageImporter": 1211.9,
         "sourceFetch": null,
-        "topologyAudit": 57.4,
-        "total": 1814.9
+        "topologyAudit": 43.7,
+        "total": 1312.2
       }
     },
     {
       "courseId": "shaftesbury-glen-conway-sc",
-      "error": "unfiltered Nominatim search returned no usable anchor",
+      "error": null,
       "slug": "shaftesbury-glen",
-      "success": false,
+      "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 1278.7,
-        "packageImporter": null,
-        "sourceFetch": null,
-        "topologyAudit": null,
-        "total": 1279.3
+        "discovery": 0.0,
+        "packageImporter": 755.7,
+        "sourceFetch": 2790.6,
+        "topologyAudit": 37.2,
+        "total": 3642.1
       }
     },
     {
@@ -37,10 +37,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1440.4,
+        "packageImporter": 1022.6,
         "sourceFetch": null,
-        "topologyAudit": 53.6,
-        "total": 1567.1
+        "topologyAudit": 38.7,
+        "total": 1118.0
       }
     },
     {
@@ -51,24 +51,24 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1687.7,
+        "packageImporter": 1175.7,
         "sourceFetch": null,
-        "topologyAudit": 57.2,
-        "total": 1818.4
+        "topologyAudit": 42.1,
+        "total": 1273.2
       }
     },
     {
       "courseId": "greywalls-marquette-mi",
-      "error": "unfiltered Nominatim search returned no usable anchor",
+      "error": null,
       "slug": "greywalls",
-      "success": false,
+      "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 1255.0,
-        "packageImporter": null,
-        "sourceFetch": null,
-        "topologyAudit": null,
-        "total": 1255.6
+        "discovery": 0.0,
+        "packageImporter": 1190.6,
+        "sourceFetch": 24641.0,
+        "topologyAudit": 41.5,
+        "total": 25931.3
       }
     },
     {
@@ -79,21 +79,18 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1602.4,
+        "packageImporter": 1124.7,
         "sourceFetch": null,
-        "topologyAudit": 55.1,
-        "total": 1735.4
+        "topologyAudit": 41.2,
+        "total": 1221.7
       }
     }
   ],
-  "endedAt": "2026-09-18T13:39:13.746005Z",
-  "failedCourseIds": [
-    "shaftesbury-glen-conway-sc",
-    "greywalls-marquette-mi"
-  ],
-  "failureCount": 2,
+  "endedAt": "2026-09-18T13:53:53.840781Z",
+  "failedCourseIds": [],
+  "failureCount": 0,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T13:39:04.274013Z",
-  "successCount": 4
+  "startedAt": "2026-09-18T13:53:19.341051Z",
+  "successCount": 6
 }

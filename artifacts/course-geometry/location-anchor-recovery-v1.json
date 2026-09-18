@@ -1,0 +1,39 @@
+{
+  "completedAt": "2026-09-18T13:53:19.232942Z",
+  "failedCount": 0,
+  "radiusMeters": 30000,
+  "recoveredCount": 2,
+  "results": [
+    {
+      "courseId": "royal-new-kent-providence-forge-va",
+      "status": "preserved"
+    },
+    {
+      "courseId": "shaftesbury-glen-conway-sc",
+      "name": "Dunes Golf & Beach Club",
+      "osmId": 793663795,
+      "osmType": "way",
+      "status": "recovered"
+    },
+    {
+      "courseId": "valhalla-louisville-ky",
+      "status": "preserved"
+    },
+    {
+      "courseId": "muirfield-village-dublin-oh",
+      "status": "preserved"
+    },
+    {
+      "courseId": "greywalls-marquette-mi",
+      "name": "Marquette Golf Club",
+      "osmId": 45729609,
+      "osmType": "way",
+      "status": "recovered"
+    },
+    {
+      "courseId": "paynes-valley-hollister-mo",
+      "status": "preserved"
+    }
+  ],
+  "schemaVersion": "looper-location-anchor-recovery-v1"
+}

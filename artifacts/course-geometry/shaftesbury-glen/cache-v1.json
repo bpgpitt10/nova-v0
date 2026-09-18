@@ -1,0 +1,55 @@
+{
+  "courseId": "shaftesbury-glen-conway-sc",
+  "courseName": "Shaftesbury Glen Golf & Fish Club",
+  "freshness": {
+    "ageDays": 0.0,
+    "evaluatedAt": "2026-09-18T13:53:24.228668Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T13:53:24.228668Z",
+    "configPath": "config/course-geometry/shaftesbury-glen-v1.json",
+    "configSha256": "1456713c95dcd95084687fa6509f59194bbe788f290de47c521f957b35e4a487",
+    "path": "public/course-geometry/shaftesbury-glen/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "51469e4c4b9c5d8504f1afcab09beaf3ccc786afec00bb969441c60fe5b0e204"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 793663795,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T13:53:24.246923Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T13:53:24.246923Z",
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/shaftesbury-glen/osm-snapshot.json",
+    "snapshotSha256": "54f4fca830c7166337342b3705126b60f812026d96a35ca6132bb18bd7f256d6",
+    "sourceBaseTimestamp": "2026-09-18T13:52:05Z"
+  }
+}

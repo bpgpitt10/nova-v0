@@ -3,7 +3,7 @@
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 154.8,
+        "durationMs": 221.3,
         "error": null,
         "status": 200,
         "success": true
@@ -15,15 +15,26 @@
     "query": "Greywalls at Marquette Golf Club, Marquette, MI",
     "rawCandidates": []
   },
-  "chosen": null,
-  "completedAt": "2026-09-18T13:39:12.009800Z",
+  "chosen": {
+    "discoveryMethod": "nominatim-location-anchor-expanded-overpass-boundary",
+    "displayName": "Marquette Golf Club",
+    "lat": 46.5360888,
+    "locationOverlap": 1.0,
+    "lon": -87.4239324,
+    "name": "Marquette Golf Club",
+    "nameRatio": 0.7451,
+    "osmId": 45729609,
+    "osmType": "way",
+    "score": 99.51
+  },
+  "completedAt": "2026-09-18T13:53:19.231661Z",
   "courseId": "greywalls-marquette-mi",
   "courseName": "Greywalls at Marquette Golf Club",
   "direct": {
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 205.4,
+        "durationMs": 324.5,
         "error": null,
         "status": 200,
         "success": true
@@ -37,8 +48,147 @@
     "query": "Greywalls at Marquette Golf Club, Marquette, MI",
     "rawCandidates": []
   },
-  "error": "unfiltered Nominatim search returned no usable anchor",
+  "error": null,
   "location": "Marquette, MI",
+  "locationAnchorRecovery": {
+    "batchThrottleMs": 4757.2,
+    "boundaryCandidates": [
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Marquette Golf Club",
+        "lat": 46.5360888,
+        "locationOverlap": 1.0,
+        "lon": -87.4239324,
+        "name": "Marquette Golf Club",
+        "nameRatio": 0.7451,
+        "osmId": 45729609,
+        "osmType": "way",
+        "score": 99.51
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Marquette Golf Club Greywalls",
+        "lat": 46.5258147,
+        "locationOverlap": 1.0,
+        "lon": -87.4264189,
+        "name": "Marquette Golf Club Greywalls",
+        "nameRatio": 0.623,
+        "osmId": 281399420,
+        "osmType": "way",
+        "score": 77.295
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Gentz's Homestead Golf Course",
+        "lat": 46.4558789,
+        "locationOverlap": 1.0,
+        "lon": -87.3397999,
+        "name": "Gentz's Homestead Golf Course",
+        "nameRatio": 0.5246,
+        "osmId": 292927535,
+        "osmType": "way",
+        "score": 57.459
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Northern Michigan University Golf Course",
+        "lat": 46.4813832,
+        "locationOverlap": 1.0,
+        "lon": -87.2921348,
+        "name": "Northern Michigan University Golf Course",
+        "nameRatio": 0.4167,
+        "osmId": 292927542,
+        "osmType": "way",
+        "score": 46.667
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Wawonowin Golf Course",
+        "lat": 46.4819301,
+        "locationOverlap": 1.0,
+        "lon": -87.7689027,
+        "name": "Wawonowin Golf Course",
+        "nameRatio": 0.3774,
+        "osmId": 280885631,
+        "osmType": "way",
+        "score": 42.736
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Red Fox Run",
+        "lat": 46.3466328,
+        "locationOverlap": 1.0,
+        "lon": -87.3706935,
+        "name": "Red Fox Run",
+        "nameRatio": 0.2791,
+        "osmId": 274840974,
+        "osmType": "way",
+        "score": 32.907
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Driving Range",
+        "lat": 46.457531,
+        "locationOverlap": 1.0,
+        "lon": -87.3376898,
+        "name": "Driving Range",
+        "nameRatio": 0.1333,
+        "osmId": 1314716906,
+        "osmType": "way",
+        "score": 18.333
+      }
+    ],
+    "locationAttempts": [
+      {
+        "attempt": 1,
+        "durationMs": 275.9,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "locationCandidates": [
+      {
+        "displayName": "Marquette, Marquette County, Michigan, United States",
+        "lat": 46.5434914,
+        "locationOverlap": 0.5,
+        "lon": -87.396433,
+        "name": "Marquette",
+        "nameRatio": 0.8571,
+        "osmId": 134503,
+        "osmType": "relation",
+        "primaryCategory": "boundary",
+        "primaryType": "administrative",
+        "score": 108.332
+      }
+    ],
+    "overpassAttempts": [
+      {
+        "durationMs": 16873.7,
+        "elementCount": null,
+        "endpoint": "https://overpass.private.coffee/api/interpreter",
+        "error": "abandoned-after-winner",
+        "success": false
+      },
+      {
+        "durationMs": 16872.9,
+        "elementCount": 7,
+        "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "error": null,
+        "success": true
+      },
+      {
+        "durationMs": 8971.5,
+        "elementCount": null,
+        "endpoint": "https://overpass-api.de/api/interpreter",
+        "error": "HTTPError: HTTP Error 504: Gateway Timeout",
+        "success": false
+      }
+    ],
+    "providerEndpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "query": "Marquette, MI, Marquette, MI",
+    "radiusMeters": 30000
+  },
   "nearbyBoundaryFallback": {
     "attempts": [],
     "batchThrottleMs": 0.0,
@@ -47,8 +197,8 @@
     "providerEndpoint": null,
     "radiusMeters": 5000
   },
-  "requestedAt": "2026-09-18T13:39:10.754749Z",
+  "requestedAt": "2026-09-18T13:52:53.375551Z",
   "schemaVersion": "looper-course-discovery-v2",
-  "success": false,
-  "timingMs": 1255.0
+  "success": true,
+  "timingMs": 1321.5
 }
