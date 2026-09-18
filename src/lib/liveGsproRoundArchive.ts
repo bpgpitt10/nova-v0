@@ -8,13 +8,30 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import type { Club } from './bagConfig'
+import {
+  clearArmedLiveClub,
+  inferClubForGsproShot,
+  loadArmedLiveClub,
+  type ClubInferenceResult,
+} from './liveClubAttribution'
 import {
   LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
+import {
+  loadSavedSessions,
+  saveSessionHistory,
+} from './sessions'
+import type { SavedSession, Shot } from '../types'
 
 export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   observedAt: string
+  actualClub: Club | null
+  clubSource: 'user' | null
+  includeInAnalysis: boolean
+  attributedAt: string | null
+  clubInference: ClubInferenceResult | null
 }
 
 export type ArchivedGsproRound = {
@@ -34,13 +51,14 @@ export type LiveGsproRoundArchiveState = {
 
 const MAX_ARCHIVED_ROUNDS = 20
 const ARCHIVE_POLL_INTERVAL_MS = 3000
+const ARMED_CLUB_MAX_AGE_MS = 30 * 60 * 1000
 
 const emptyArchive = (): LiveGsproRoundArchiveState => ({
   version: 1,
   rounds: [],
 })
 
-const shotOrder = (left: ArchivedGsproCourseShot, right: ArchivedGsproCourseShot) => {
+const shotOrder = (left: BrowserGsproCourseArchiveShot, right: BrowserGsproCourseArchiveShot) => {
   const globalDelta = (left.globalShotNumber ?? Number.MAX_SAFE_INTEGER)
     - (right.globalShotNumber ?? Number.MAX_SAFE_INTEGER)
   if (globalDelta !== 0) return globalDelta
@@ -49,12 +67,46 @@ const shotOrder = (left: ArchivedGsproCourseShot, right: ArchivedGsproCourseShot
   return (left.holeShot ?? Number.MAX_SAFE_INTEGER) - (right.holeShot ?? Number.MAX_SAFE_INTEGER)
 }
 
+const rawShotPayload = (
+  shot: BrowserGsproCourseArchiveShot | ArchivedGsproCourseShot,
+): BrowserGsproCourseArchiveShot => ({
+  key: shot.key,
+  roundId: shot.roundId,
+  holeNumber: shot.holeNumber,
+  holeShot: shot.holeShot,
+  globalShotNumber: shot.globalShotNumber,
+  shotId: shot.shotId,
+  courseKey: shot.courseKey,
+  startingSurfaceRaw: shot.startingSurfaceRaw,
+  endingSurfaceRaw: shot.endingSurfaceRaw,
+  distanceToPinYds: shot.distanceToPinYds,
+  ballSpeedMph: shot.ballSpeedMph,
+  carryYards: shot.carryYards,
+  totalYards: shot.totalYards,
+  verticalLaunchAngleDegrees: shot.verticalLaunchAngleDegrees,
+  horizontalLaunchAngleDegrees: shot.horizontalLaunchAngleDegrees,
+  totalSpinRpm: shot.totalSpinRpm,
+  spinAxisDegrees: shot.spinAxisDegrees,
+  backSpinRpm: shot.backSpinRpm,
+  sideSpinRpm: shot.sideSpinRpm,
+  gsproClubIndex: shot.gsproClubIndex,
+  rawMetrics: shot.rawMetrics,
+})
+
 const shotPayloadFingerprint = (
   shot: BrowserGsproCourseArchiveShot | ArchivedGsproCourseShot,
-) => {
-  const { observedAt: _observedAt, ...payload } = shot as ArchivedGsproCourseShot
-  return JSON.stringify(payload)
-}
+) => JSON.stringify(rawShotPayload(shot))
+
+const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCourseShot => ({
+  ...shot,
+  actualClub: typeof shot.actualClub === 'string' ? shot.actualClub as Club : null,
+  clubSource: shot.clubSource === 'user' ? 'user' : null,
+  includeInAnalysis: shot.includeInAnalysis === true,
+  attributedAt: typeof shot.attributedAt === 'string' ? shot.attributedAt : null,
+  clubInference: shot.clubInference && typeof shot.clubInference === 'object'
+    ? shot.clubInference
+    : null,
+})
 
 export const loadLiveGsproRoundArchive = (): LiveGsproRoundArchiveState => {
   if (typeof window === 'undefined') return emptyArchive()
@@ -72,6 +124,10 @@ export const loadLiveGsproRoundArchive = (): LiveGsproRoundArchiveState => {
           && Number.isFinite(round.roundId)
           && Array.isArray(round.shots)
         ))
+        .map((round) => ({
+          ...round,
+          shots: round.shots.map(normalizeArchivedShot),
+        }))
         .slice(0, MAX_ARCHIVED_ROUNDS),
     }
   } catch {
@@ -91,6 +147,20 @@ const saveLiveGsproRoundArchive = (state: LiveGsproRoundArchiveState) => {
     console.warn('[GSPro course archive] local safety cache could not be updated.', error)
   }
 }
+
+const archivedFromIncoming = (
+  incoming: BrowserGsproCourseArchiveShot,
+  observedAt: string,
+  prior: ArchivedGsproCourseShot | undefined,
+): ArchivedGsproCourseShot => ({
+  ...incoming,
+  observedAt: prior?.observedAt ?? observedAt,
+  actualClub: prior?.actualClub ?? null,
+  clubSource: prior?.clubSource ?? null,
+  includeInAnalysis: prior?.includeInAnalysis ?? false,
+  attributedAt: prior?.attributedAt ?? null,
+  clubInference: prior?.clubInference ?? null,
+})
 
 export const upsertLiveGsproRoundArchive = ({
   roundId,
@@ -116,10 +186,7 @@ export const upsertLiveGsproRoundArchive = ({
   for (const incoming of shots) {
     const prior = existingByKey.get(incoming.key)
     if (!prior || shotPayloadFingerprint(prior) !== shotPayloadFingerprint(incoming)) {
-      existingByKey.set(incoming.key, {
-        ...incoming,
-        observedAt: prior?.observedAt ?? observedAt,
-      })
+      existingByKey.set(incoming.key, archivedFromIncoming(incoming, observedAt, prior))
       changed = true
     }
   }
@@ -149,6 +216,144 @@ export const upsertLiveGsproRoundArchive = ({
   })
 
   return { round, changed: true }
+}
+
+const replaceRoundInArchive = (round: ArchivedGsproRound) => {
+  const state = loadLiveGsproRoundArchive()
+  const existingIndex = state.rounds.findIndex((candidate) => candidate.roundId === round.roundId)
+  const rounds = existingIndex >= 0
+    ? state.rounds.map((candidate, index) => index === existingIndex ? round : candidate)
+    : [round, ...state.rounds]
+  rounds.sort((left, right) => right.lastObservedAt.localeCompare(left.lastObservedAt))
+  saveLiveGsproRoundArchive({
+    version: 1,
+    rounds: rounds.slice(0, MAX_ARCHIVED_ROUNDS),
+  })
+}
+
+const isFreshArmedSelection = (armedAt: string, observedAt: string) => {
+  const armedMs = Date.parse(armedAt)
+  const observedMs = Date.parse(observedAt)
+  if (!Number.isFinite(armedMs) || !Number.isFinite(observedMs)) return false
+  return observedMs >= armedMs && observedMs - armedMs <= ARMED_CLUB_MAX_AGE_MS
+}
+
+const toPlayerModelShot = (round: ArchivedGsproRound, shot: ArchivedGsproCourseShot): Shot | null => {
+  if (!shot.actualClub || !shot.includeInAnalysis) return null
+  return {
+    id: `gspro-live:${round.roundId}:${shot.shotId}`,
+    club: shot.actualClub,
+    included: true,
+    capturedAt: shot.observedAt,
+    enrichmentStatus: 'enriched',
+    ballSpeedMph: shot.ballSpeedMph ?? undefined,
+    carryYards: shot.carryYards ?? undefined,
+    totalYards: shot.totalYards ?? undefined,
+    verticalLaunchAngleDegrees: shot.verticalLaunchAngleDegrees ?? undefined,
+    horizontalLaunchAngleDegrees: shot.horizontalLaunchAngleDegrees ?? undefined,
+    totalSpinRpm: shot.totalSpinRpm ?? undefined,
+    spinAxisDegrees: shot.spinAxisDegrees ?? undefined,
+    backSpin: shot.backSpinRpm ?? undefined,
+    sideSpin: shot.sideSpinRpm ?? undefined,
+    openGolfCoach: {
+      live_course_archive: {
+        gspro_round_id: round.roundId,
+        shot_id: shot.shotId,
+        course_key: shot.courseKey ?? round.courseKey,
+        hole_number: shot.holeNumber,
+        hole_shot: shot.holeShot,
+        club_source: shot.clubSource,
+        inferred_club: shot.clubInference?.predictedClub ?? null,
+        inference_confidence: shot.clubInference?.confidence ?? null,
+        inference_model_version: shot.clubInference?.modelVersion ?? null,
+      },
+    },
+    source: 'simread',
+  }
+}
+
+const promoteAttributedRoundToPlayerHistory = (round: ArchivedGsproRound) => {
+  const promotedShots = round.shots.flatMap((shot) => {
+    const promoted = toPlayerModelShot(round, shot)
+    return promoted ? [promoted] : []
+  })
+  if (promotedShots.length === 0) return
+
+  const sessions = loadSavedSessions()
+  const sessionId = `gspro-live-round-${round.roundId}`
+  const existingIndex = sessions.findIndex((session) => session.id === sessionId)
+  const existing = existingIndex >= 0 ? sessions[existingIndex] : null
+  const byId = new Map(existing?.shots.map((shot) => [shot.id, shot]) ?? [])
+  promotedShots.forEach((shot) => byId.set(shot.id, shot))
+
+  const nextSession: SavedSession = {
+    id: sessionId,
+    startedAt: existing?.startedAt ?? round.firstObservedAt,
+    endedAt: round.lastObservedAt,
+    shots: [...byId.values()].sort((left, right) => left.capturedAt.localeCompare(right.capturedAt)),
+    metadata: {
+      app: 'nova-validation',
+      schemaVersion: 1,
+      source: 'gspro',
+      includeInAnalysis: true,
+    },
+  }
+
+  const nextSessions = existingIndex >= 0
+    ? sessions.map((session, index) => index === existingIndex ? nextSession : session)
+    : [nextSession, ...sessions]
+  saveSessionHistory(nextSessions)
+}
+
+const annotateNewShots = ({
+  round,
+  newShots,
+  observedAt,
+}: {
+  round: ArchivedGsproRound
+  newShots: readonly BrowserGsproCourseArchiveShot[]
+  observedAt: string
+}): { round: ArchivedGsproRound; changed: boolean; consumedArmedClub: boolean } => {
+  if (newShots.length === 0) return { round, changed: false, consumedArmedClub: false }
+
+  const sessions = loadSavedSessions()
+  const armed = loadArmedLiveClub()
+  const usableArmed = armed && isFreshArmedSelection(armed.armedAt, observedAt) ? armed : null
+  if (armed && !usableArmed) clearArmedLiveClub()
+
+  const orderedNewKeys = new Set([...newShots].sort(shotOrder).map((shot) => shot.key))
+  let mayConsumeArm = Boolean(usableArmed)
+  let consumedArmedClub = false
+  let changed = false
+
+  const shots = round.shots.map((archived) => {
+    if (!orderedNewKeys.has(archived.key)) return archived
+    const raw = rawShotPayload(archived)
+    const inference = inferClubForGsproShot(sessions, raw, observedAt)
+    const shouldApplyArm = mayConsumeArm && usableArmed != null
+    if (shouldApplyArm) {
+      mayConsumeArm = false
+      consumedArmedClub = true
+    }
+
+    const next: ArchivedGsproCourseShot = {
+      ...archived,
+      clubInference: inference,
+      ...(shouldApplyArm ? {
+        actualClub: usableArmed.club,
+        clubSource: 'user' as const,
+        includeInAnalysis: true,
+        attributedAt: observedAt,
+      } : {}),
+    }
+    if (JSON.stringify(next) !== JSON.stringify(archived)) changed = true
+    return next
+  })
+
+  const annotated = changed ? { ...round, shots } : round
+  if (changed) replaceRoundInArchive(annotated)
+  if (consumedArmedClub) clearArmedLiveClub()
+  return { round: annotated, changed, consumedArmedClub }
 }
 
 const syncRoundToCloud = async (round: ArchivedGsproRound) => {
@@ -200,9 +405,15 @@ const syncRoundToCloud = async (round: ArchivedGsproRound) => {
       side_spin_rpm: shot.sideSpinRpm,
       gspro_club_index: shot.gsproClubIndex,
       raw_metrics: shot.rawMetrics,
-      actual_club: null,
-      club_source: null,
-      include_in_analysis: false,
+      actual_club: shot.actualClub,
+      club_source: shot.clubSource,
+      include_in_analysis: shot.includeInAnalysis,
+      attributed_at: shot.attributedAt,
+      inferred_club: shot.clubInference?.predictedClub ?? null,
+      inference_confidence: shot.clubInference?.confidence ?? null,
+      inference_alternatives: shot.clubInference?.alternatives ?? [],
+      inference_model_version: shot.clubInference?.modelVersion ?? null,
+      inference_evaluated_at: shot.clubInference?.evaluatedAt ?? null,
       updated_at: new Date().toISOString(),
     })),
     { onConflict: 'user_id,gspro_round_id,shot_id' },
@@ -216,20 +427,38 @@ export const captureAndPersistLiveGsproCourseRound = async (
   const currentRound = await readBrowserGsproCourseRoundArchive()
   if (!currentRound) return null
 
+  const before = loadLiveGsproRoundArchive().rounds.find(
+    (round) => round.roundId === currentRound.roundId,
+  )
+  const knownKeys = new Set(before?.shots.map((shot) => shot.key) ?? [])
+  const newShots = currentRound.shots.filter((shot) => !knownKeys.has(shot.key))
+
   const result = upsertLiveGsproRoundArchive({
     roundId: currentRound.roundId,
     courseKey: currentRound.courseKey,
     shots: currentRound.shots,
     observedAt,
   })
+  if (!result.round) return null
 
-  if (result.changed && result.round) {
-    await syncRoundToCloud(result.round).catch((error) => {
+  const annotated = annotateNewShots({
+    round: result.round,
+    newShots,
+    observedAt,
+  })
+  const finalRound = annotated.round
+
+  if (annotated.consumedArmedClub) {
+    promoteAttributedRoundToPlayerHistory(finalRound)
+  }
+
+  if (result.changed || annotated.changed) {
+    await syncRoundToCloud(finalRound).catch((error) => {
       console.warn('[GSPro course archive] cloud sync failed; local archive retained.', error)
     })
   }
 
-  return result.round
+  return finalRound
 }
 
 export const startLiveGsproCourseRoundArchiver = () => {
