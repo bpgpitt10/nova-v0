@@ -1,0 +1,436 @@
+/* Live Caddie decision-first information architecture.
+ * This file is intentionally presentation-only: no recommendation, ranking,
+ * terrain, or shot-model behavior belongs here.
+ */
+
+/* The playing surface now carries outcomes inside the hero recommendation.
+ * Same-club micro aim variants remain available to engineering surfaces but are
+ * intentionally removed from the in-round caddie UI.
+ */
+.live-outcomes-card,
+.live-compare-card {
+  display: none !important;
+}
+
+.live-caddie-header {
+  border-bottom: 0 !important;
+}
+
+.live-caddie-secondary-context {
+  color: #cfd8cd !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.live-caddie-secondary-context span:first-child {
+  color: #9fb09f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.live-caddie-secondary-context span:nth-child(2) {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.live-caddie-secondary-context span:nth-child(3) {
+  color: #d9e2d7;
+  font-weight: 650;
+}
+
+.live-conditions-shell {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.live-expected-shot-block,
+.live-conditions-panel {
+  box-sizing: border-box;
+  border: 1px solid rgba(49, 66, 51, 0.72);
+  border-radius: 11px;
+  background: rgba(18, 31, 22, 0.56);
+}
+
+.live-expected-shot-block {
+  padding: 11px;
+}
+
+.live-expected-shot-heading,
+.live-conditions-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.live-expected-shot-heading > span,
+.live-conditions-heading > span,
+.live-condition-net > span {
+  color: #eab308;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.live-expected-shot-heading > strong {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.live-shot-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.live-shot-stat-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 7px 6px;
+  border-radius: 7px;
+  background: rgba(11, 20, 14, 0.46);
+}
+
+.live-shot-stat-grid span {
+  color: #819181;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.live-shot-stat-grid strong {
+  overflow: hidden;
+  color: #f3f5f2;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-hero-outcomes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 9px;
+  border: 1px solid rgba(49, 66, 51, 0.66);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.live-hero-outcomes > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 7px 3px;
+  text-align: center;
+  background: rgba(11, 20, 14, 0.32);
+}
+
+.live-hero-outcomes > div + div {
+  border-left: 1px solid rgba(49, 66, 51, 0.55);
+}
+
+.live-hero-outcomes strong {
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.live-hero-outcomes span {
+  color: #839283;
+  font-size: 7px;
+  font-weight: 650;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.live-hero-outcomes .outcome-success strong { color: #76d39b; }
+.live-hero-outcomes .outcome-trouble strong { color: #e2b85f; }
+.live-hero-outcomes .outcome-catastrophe strong { color: #e48678; }
+
+.live-hero-outcome-detail {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  color: #839283;
+  font-size: 8px;
+}
+
+.live-hero-outcome-detail span + span::before {
+  content: '•';
+  padding-right: 7px;
+  color: #4f604f;
+}
+
+.live-conditions-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.live-conditions-heading {
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(49, 66, 51, 0.55);
+  background: rgba(234, 179, 8, 0.055);
+}
+
+.live-conditions-heading > strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.live-condition-rows {
+  display: grid;
+  align-content: stretch;
+  grid-auto-rows: minmax(54px, 1fr);
+}
+
+.live-condition-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-content: center;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(49, 66, 51, 0.4);
+}
+
+.live-condition-row > span {
+  color: #cfd8cd;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.live-condition-row > strong {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.live-condition-row > small {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #7f907f;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-condition-row.muted > strong,
+.live-condition-row.muted > small {
+  color: #657565;
+}
+
+.live-condition-net {
+  display: grid;
+  gap: 3px;
+  padding: 11px 12px 12px;
+  background: rgba(9, 17, 12, 0.5);
+}
+
+.live-condition-net > strong {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.live-condition-net > small {
+  color: #849484;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+@media (min-width: 1260px) {
+  /* Reserve a small strip for the manual actual-club override, then give the
+   * decision object enough width for recommendation + conditions side-by-side.
+   */
+  .live-caddie-main-grid {
+    grid-template-columns: minmax(500px, 0.86fr) minmax(0, 1.55fr) !important;
+    gap: 14px !important;
+    margin-left: 82px !important;
+  }
+
+  .live-decision-column {
+    display: block !important;
+    min-width: 0;
+  }
+
+  .live-decision-card {
+    anchor-name: --live-decision-card;
+    display: grid !important;
+    grid-template-columns: minmax(255px, 1.1fr) minmax(215px, 0.9fr);
+    grid-template-areas:
+      'label conditions'
+      'club conditions'
+      'aim conditions'
+      'reason conditions'
+      'shot conditions'
+      'arm conditions';
+    column-gap: 13px;
+    align-items: start;
+    padding: 16px !important;
+  }
+
+  .live-decision-card > .live-decision-label-row { grid-area: label; }
+  .live-decision-card > .live-club-hero { grid-area: club; }
+  .live-decision-card > .live-aim-hero { grid-area: aim; }
+  .live-decision-card > .live-decision-reason { grid-area: reason; }
+  .live-decision-card > .live-arm-recommendation { grid-area: arm; }
+
+  .live-decision-card .live-club-hero {
+    font-size: clamp(58px, 5vw, 78px) !important;
+  }
+
+  .live-decision-card .live-aim-hero {
+    font-size: clamp(21px, 1.8vw, 27px) !important;
+  }
+
+  .live-decision-card .live-decision-reason {
+    min-height: 0;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+
+  .live-conditions-shell {
+    display: contents;
+  }
+
+  .live-expected-shot-block {
+    grid-area: shot;
+    margin-top: 0;
+  }
+
+  .live-conditions-panel {
+    grid-area: conditions;
+    align-self: stretch;
+  }
+
+  .live-arm-recommendation {
+    align-self: end;
+    margin-top: 10px !important;
+  }
+
+  /* The map is no longer the anchor for the club rail. The rail is an override
+   * control for the recommendation, so visually attach it to that card instead.
+   */
+  .live-map-card {
+    margin-left: 0 !important;
+  }
+
+  .live-club-strip-card {
+    position: absolute !important;
+    position-anchor: --live-decision-card !important;
+    top: anchor(top) !important;
+    right: anchor(left) !important;
+    width: 72px !important;
+    height: anchor-size(height) !important;
+    margin: 0 !important;
+    padding: 9px 6px 7px !important;
+    transform: translateX(-10px) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 6px !important;
+    overflow: hidden;
+    z-index: 3;
+  }
+
+  .live-club-strip-heading {
+    display: block !important;
+  }
+
+  .live-club-strip-heading > div {
+    display: block !important;
+  }
+
+  .live-club-strip-heading .live-kicker {
+    display: block;
+    overflow: hidden;
+    font-size: 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .live-club-strip-heading > div > strong,
+  .live-club-strip-heading > button,
+  .live-club-strip-card > p {
+    display: none !important;
+  }
+
+  .live-club-strip {
+    min-height: 0;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: minmax(34px, 1fr) !important;
+    gap: 4px !important;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .live-club-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .live-club-strip button {
+    min-height: 34px !important;
+    padding: 2px !important;
+    border-radius: 7px !important;
+    background: rgba(18, 30, 21, 0.68) !important;
+  }
+
+  .live-club-strip button strong {
+    font-size: 11px !important;
+  }
+
+  .live-club-strip button span {
+    font-size: 6px !important;
+  }
+
+  .live-club-strip button.recommended {
+    border-color: rgba(234, 179, 8, 0.6) !important;
+  }
+
+  .live-club-strip button.armed {
+    border-color: #eab308 !important;
+    background: rgba(234, 179, 8, 0.18) !important;
+    color: #ffffff !important;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-main-grid {
+    grid-template-columns: minmax(470px, 0.9fr) minmax(0, 1.35fr) !important;
+    margin-left: 74px !important;
+  }
+
+  .live-decision-card {
+    grid-template-columns: minmax(235px, 1.08fr) minmax(200px, 0.92fr);
+    column-gap: 10px;
+  }
+
+  .live-club-strip-card {
+    width: 66px !important;
+  }
+
+  .live-shot-stat-grid strong {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1259px) {
+  .live-conditions-panel {
+    min-height: 0;
+  }
+}
