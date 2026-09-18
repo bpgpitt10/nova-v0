@@ -1,0 +1,66 @@
+{
+  "courseId": "valhalla-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "freshness": {
+    "ageDays": 0.59,
+    "evaluatedAt": "2026-09-18T15:02:54.114905Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
+  },
+  "package": {
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T15:02:54.114905Z",
+    "configPath": "config/course-geometry/valhalla-v1.json",
+    "configSha256": "6fc078c7369bcfe4c5985065bd5b324215d4764ad9ac905d8f94bb3ea0480120",
+    "path": "public/course-geometry/valhalla/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "648c44f3b442f5921d8bf0a8cf8d18d3fe6ca22b2364d8b5cf5174be832f5436",
+    "terrainComposerVersion": "compose_course_package_v1"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 59737644,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T00:51:18.727635Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T00:51:18.727635Z",
+    "provider": "openstreetmap-overpass",
+    "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
+    "snapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
+    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:44.295047Z",
+    "sourceManifestPath": "artifacts/course-geometry/valhalla/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/valhalla/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/valhalla/terrain-v1.json",
+    "terrainPackageSha256": "d3c8f8caf1dbe3bb0b425b04059d8e545e0950c4350ff8b3b37076824b54ad07",
+    "validationPath": "artifacts/course-geometry/valhalla/terrain-validation-v1.json"
+  }
+}

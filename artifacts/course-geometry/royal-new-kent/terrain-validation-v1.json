@@ -1,0 +1,194 @@
+{
+  "allHolesTerrainReady": true,
+  "courseId": "royal-new-kent-providence-forge-va",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "generatedAt": "2026-09-18T15:05:20.524445Z",
+  "holes": [
+    {
+      "elevationRangeFt": [
+        62.2,
+        141.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 1,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        53.0,
+        123.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 2,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        51.3,
+        119.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 3,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        58.5,
+        137.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 4,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        89.3,
+        134.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 5,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        80.2,
+        141.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 6,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        92.0,
+        138.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 7,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        77.9,
+        127.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 8,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        69.8,
+        134.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 9,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        71.5,
+        141.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 10,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        78.4,
+        133.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 11,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        80.1,
+        124.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 12,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        88.7,
+        133.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 13,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        86.9,
+        138.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 14,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        91.0,
+        138.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 15,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        78.4,
+        133.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 16,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        83.9,
+        133.4
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 17,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        81.8,
+        141.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 18,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "usgs-3dep-1m",
+  "readyHoleCount": 18,
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 18
+}

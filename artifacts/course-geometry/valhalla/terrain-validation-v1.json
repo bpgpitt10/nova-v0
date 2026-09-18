@@ -1,0 +1,194 @@
+{
+  "allHolesTerrainReady": true,
+  "courseId": "valhalla-louisville-ky",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "generatedAt": "2026-09-18T15:05:39.793822Z",
+  "holes": [
+    {
+      "elevationRangeFt": [
+        580.7,
+        651.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 1,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        577.8,
+        677.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 2,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        577.8,
+        677.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 3,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        577.8,
+        685.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 4,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        575.3,
+        635.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 5,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        574.8,
+        696.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 6,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        574.8,
+        626.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 7,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        577.8,
+        613.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 8,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        580.8,
+        651.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 9,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        581.8,
+        667.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 10,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        583.2,
+        667.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 11,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        583.0,
+        665.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 12,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        584.9,
+        653.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 13,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        584.9,
+        663.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 14,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        586.9,
+        664.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 15,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        586.9,
+        657.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 16,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        586.7,
+        658.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 17,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        579.4,
+        657.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 18,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "usgs-3dep-1m",
+  "readyHoleCount": 18,
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 18
+}

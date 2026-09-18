@@ -1,0 +1,53 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-77.0324535%2C37.4647613%2C-76.9992725%2C37.4847875&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 231681266,
+      "downloadSha256": "674e464d162231aa0d8c2f8f6811765262ae08a3e7eeeaac0f3a074c00514c41",
+      "id": "60c44162d34e86b93898ff3b",
+      "title": "USGS 1 Meter 18 x31y415 VA_SouthamptonHenricoWMBG_2019_B19",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/VA_SouthamptonHenricoWMBG_2019_B19/TIFF/USGS_1M_18_x31y415_VA_SouthamptonHenricoWMBG_2019_B19.tif"
+    },
+    {
+      "downloadBytes": 192756446,
+      "downloadSha256": "3a0354941c0069abda8617446ee96aea0b677e849b3e44866d0109cb8484680d",
+      "id": "61c2bf8dd34e2ca389d9eb1a",
+      "title": "USGS 1 Meter 18 x31y415 VA_UpperMiddleNeck_2018_D18",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/VA_UpperMiddleNeck_2018_D18/TIFF/USGS_1M_18_x31y415_VA_UpperMiddleNeck_2018_D18.tif"
+    },
+    {
+      "downloadBytes": 63648428,
+      "downloadSha256": "5c8bf9ae23bcca3b24a1f536794393c3c7f6ed03908186bbc49c75e9ac90cca5",
+      "id": "60c44123d34e86b93898fe6c",
+      "title": "USGS 1 Meter 18 x32y415 VA_SouthamptonHenricoWMBG_2019_B19",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/VA_SouthamptonHenricoWMBG_2019_B19/TIFF/USGS_1M_18_x32y415_VA_SouthamptonHenricoWMBG_2019_B19.tif"
+    },
+    {
+      "downloadBytes": 361220685,
+      "downloadSha256": "bedc8ea526f63fc5237d3daaeea52393392d0296b87c271c48c28aa45dd42d97",
+      "id": "61c2bf7ed34e2ca389d9eaeb",
+      "title": "USGS 1 Meter 18 x32y415 VA_UpperMiddleNeck_2018_D18",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/VA_UpperMiddleNeck_2018_D18/TIFF/USGS_1M_18_x32y415_VA_UpperMiddleNeck_2018_D18.tif"
+    },
+    {
+      "downloadBytes": 397376944,
+      "downloadSha256": "9ce50bdee58046a318de46c5a047690204d0a695ddaa21ae0ac60422f07f1459",
+      "id": "61c2bf7ed34e2ca389d9eae9",
+      "title": "USGS 1 Meter 18 x32y416 VA_UpperMiddleNeck_2018_D18",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/VA_UpperMiddleNeck_2018_D18/TIFF/USGS_1M_18_x32y416_VA_UpperMiddleNeck_2018_D18.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T15:05:14.593538Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -77.0324535,
+    37.4647613,
+    -76.9992725,
+    37.4847875
+  ],
+  "sourceResolutionMeters": 1.0
+}
