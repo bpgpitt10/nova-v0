@@ -13,9 +13,11 @@ polygon semantics and every existing geometry consumer sees the correct shape.
 
 Selection is deliberately component-granular. Each outer ring plus its owned
 inner rings becomes one independently selectable feature component while the
-original OSM element identity is preserved. This prevents one nearby member of
-a multipart fairway/context relation from pulling every distant member into a
-hole package.
+original OSM element identity is preserved. Selected components are then
+clipped to the configured corridor around the actual OSM hole route before
+serialization. This handles both multipart relations and single connected
+relations that legitimately span multiple holes without leaking distant course
+geometry into the current hole package.
 
 A malformed standalone surface/context multipolygon is allowed to be skipped
 only for the specific orphan-inner-ring defect seen in real OSM extracts. Golf
@@ -34,7 +36,7 @@ import build_osm_course_package_v2 as v2
 
 try:
     from shapely import make_valid
-    from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
+    from shapely.geometry import GeometryCollection, LineString, MultiPolygon, Polygon
     from shapely.ops import triangulate
 except ImportError as exc:
     raise SystemExit(
@@ -211,6 +213,30 @@ def decompose_hole_free(polygon: Polygon, depth: int = 0) -> list[Polygon]:
     return pieces
 
 
+def serialize_shape_hole_free(shape: Any) -> list[list[list[float]]]:
+    source_parts = polygon_parts(make_valid(shape))
+    source_area = sum(part.area for part in source_parts)
+    serialized_area = 0.0
+    simple_parts: list[Polygon] = []
+    for valid_part in source_parts:
+        simple_parts.extend(decompose_hole_free(valid_part))
+
+    polygons: list[list[list[float]]] = []
+    for part in simple_parts:
+        coords = list(part.exterior.coords)
+        if len(coords) < 4:
+            continue
+        serialized_area += part.area
+        polygons.append([[round(float(x), 3), round(float(y), 3)] for x, y in coords])
+
+    tolerance = max(0.05, source_area * 1e-7)
+    if abs(serialized_area - source_area) > tolerance:
+        raise ValueError(
+            f"Topology decomposition changed area: source={source_area:.3f}, pieces={serialized_area:.3f}"
+        )
+    return polygons
+
+
 def serialize_polygons_topology_safe(
     feature: dict[str, Any],
     origin: tuple[float, float],
@@ -219,38 +245,28 @@ def serialize_polygons_topology_safe(
 ) -> list[list[list[float]]]:
     polygons: list[list[list[float]]] = []
     holes_by_geometry = feature.get("holes_by_geometry") or []
+    clip_geometry = feature.get("_clip_geometry")
 
     for index, geometry in enumerate(feature["geometries"]):
         outer = local_ring(geometry, origin, forward, right)
         source_holes = holes_by_geometry[index] if index < len(holes_by_geometry) else []
         holes = [local_ring(hole, origin, forward, right) for hole in source_holes if len(hole) >= 3]
-
-        if not holes:
-            if len(outer) >= 3:
-                polygons.append([[round(x, 3), round(y, 3)] for x, y in outer])
+        if len(outer) < 3:
             continue
 
         shape = make_valid(Polygon(outer, holes))
-        source_parts = polygon_parts(shape)
-        source_area = sum(part.area for part in source_parts)
-        serialized_area = 0.0
-        simple_parts: list[Polygon] = []
-        for valid_part in source_parts:
-            simple_parts.extend(decompose_hole_free(valid_part))
+        if clip_geometry is not None:
+            shape = make_valid(shape.intersection(clip_geometry))
+        if shape.is_empty:
+            continue
 
-        for part in simple_parts:
-            coords = list(part.exterior.coords)
-            if len(coords) < 4:
-                continue
-            serialized_area += part.area
-            polygons.append([[round(float(x), 3), round(float(y), 3)] for x, y in coords])
-
-        tolerance = max(0.05, source_area * 1e-7)
-        if abs(serialized_area - source_area) > tolerance:
+        try:
+            polygons.extend(serialize_shape_hole_free(shape))
+        except ValueError as exc:
             raise ValueError(
-                f"Topology decomposition changed area for OSM {feature.get('osm_type')} "
-                f"{feature.get('osm_id')}: source={source_area:.3f}, pieces={serialized_area:.3f}"
-            )
+                f"OSM {feature.get('osm_type')} {feature.get('osm_id')} component "
+                f"{feature.get('component_index', 0)}: {exc}"
+            ) from exc
 
     return polygons
 
@@ -401,6 +417,11 @@ def build_hole_component_safe(
 
     selected[selection_key(target_green)] = target_green
 
+    route_local = [base.to_hole_local(point, origin, forward, right) for point in route]
+    if len(route_local) < 2:
+        raise ValueError(f"Hole {hole_number}: route has fewer than two local points")
+    corridor = LineString(route_local).buffer(route_distance_limit)
+
     surfaces: dict[str, list[list[list[float]]]] = {
         "green": [],
         "fairway": [],
@@ -418,7 +439,9 @@ def build_hole_component_safe(
     source_ids: set[str] = set()
     for feature in selected.values():
         source_ids.add(f"{feature['osm_type']}/{feature['osm_id']}")
-        serialized = base.serialize_polygons(feature, origin, forward, right)
+        clipped_feature = dict(feature)
+        clipped_feature["_clip_geometry"] = corridor
+        serialized = base.serialize_polygons(clipped_feature, origin, forward, right)
         if feature["role"] == "surface":
             surfaces[feature["kind"]].extend(serialized)
         else:
@@ -427,7 +450,6 @@ def build_hole_component_safe(
     all_polygons = [polygon for values in surfaces.values() for polygon in values]
     all_polygons.extend(polygon for values in context.values() for polygon in values)
     geometry_points = [tuple(point) for polygon in all_polygons for point in polygon]
-    route_local = [base.to_hole_local(point, origin, forward, right) for point in route]
     flat_points = geometry_points + route_local
     if not flat_points:
         raise ValueError(f"Hole {hole_number}: no geometry after selection")
@@ -521,6 +543,7 @@ def build_hole_component_safe(
         "surfacePolygons": surface_counts,
         "contextPolygons": context_counts,
         "viewBounds": view_bounds,
+        "selectionCorridorYards": route_distance_limit,
         "geometryPlausibility": plausibility,
         "fairwayRequired": requires_fairway,
         "ready": ready,
