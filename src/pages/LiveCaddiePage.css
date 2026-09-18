@@ -229,7 +229,7 @@
   display: grid;
   grid-template-columns: minmax(300px, 0.66fr) minmax(620px, 1.6fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
   margin-top: 6px;
 }
 
