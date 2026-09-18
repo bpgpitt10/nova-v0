@@ -2,8 +2,8 @@
   "courseId": "cabot-cliffs-inverness-ns",
   "courseName": "Cabot Cliffs",
   "freshness": {
-    "ageDays": 0.06,
-    "evaluatedAt": "2026-09-18T02:25:55.633307Z",
+    "ageDays": 0.37,
+    "evaluatedAt": "2026-09-18T09:44:16.648706Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,13 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T02:25:55.633307Z",
+    "builtAt": "2026-09-18T09:44:16.648706Z",
     "configPath": "config/course-geometry/cabot-cliffs-v1.json",
-    "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
+    "configSha256": "3acf09b2440fd91ec9fd6e4726accec774dfcc9b09fe992c0bf3acaba4d23509",
     "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "a3bda3a5ba85ba27c36ed53ad8a5304388950b4dd0d0737d9dec117df14af692"
+    "sha256": "f4ce0b9398fecfd8935ce55e11c546583f6e683c042a29d88f905e8b31b6f42c",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
     "snapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
     "sourceBaseTimestamp": "2026-09-18T00:54:28Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T10:14:11.002767Z",
+    "sourceManifestPath": "artifacts/course-geometry/cabot-cliffs/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/cabot-cliffs/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/cabot-cliffs/terrain-v1.json",
+    "terrainPackageSha256": "bff0613e90a0fc0e86970f4caa701dfd5c89d0acbee70067aeca15a791ccf138",
+    "validationPath": "artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json"
   }
 }
