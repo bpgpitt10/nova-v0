@@ -1,0 +1,98 @@
+name: Planned OSM course acceptance batch
+
+on:
+  push:
+    branches:
+      - course-importer-cache-v1
+    paths:
+      - config/course-import-seeds/**
+      - tools/batch_prepare_osm_courses.py
+      - .github/workflows/osm-course-batch.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: osm-course-batch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-planned-courses:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install course importer dependencies
+        run: pip install -r tools/requirements-course-importer.txt
+
+      - name: Discover, prepare, and time planned courses
+        id: prepare
+        continue-on-error: true
+        run: |
+          python tools/batch_prepare_osm_courses.py \
+            --seed-file config/course-import-seeds/planned-courses-v1.json
+
+      - name: Persist generated configs, caches, packages, and timing history
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/course-geometry artifacts/course-geometry public/course-geometry
+          if git diff --cached --quiet; then
+            echo "Batch produced no repository changes"
+            exit 0
+          fi
+
+          branch="${GITHUB_REF_NAME}"
+          git commit -m "Prepare planned OSM course batch"
+          git fetch origin "$branch"
+          git rebase "origin/$branch"
+          git push origin "HEAD:$branch"
+
+      - name: Upload batch discovery and validation proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osm-course-batch-proof-${{ github.run_id }}
+          path: |
+            artifacts/course-geometry/batch-planned-courses-v1.json
+            artifacts/course-geometry/**/discovery-v1.json
+            artifacts/course-geometry/**/prepare-timings.ndjson
+            artifacts/course-geometry/**/import-timings.ndjson
+            artifacts/course-geometry/**/validation-v1.json
+            artifacts/course-geometry/**/cache-v1.json
+            artifacts/course-geometry/**/topology-audit-v1.json
+            public/course-geometry/**/course-v1.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Enforce batch acceptance result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('artifacts/course-geometry/batch-planned-courses-v1.json')
+          if not path.exists():
+              raise SystemExit('Batch preparation did not produce a summary')
+          summary = json.loads(path.read_text())
+          print(json.dumps(summary, indent=2))
+          failures = summary.get('failedCourseIds') or []
+          if failures:
+              raise SystemExit(f'Planned-course acceptance failures: {failures}')
+          PY
