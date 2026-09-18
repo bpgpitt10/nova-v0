@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   connectBrowserGsproCourseStateFolder,
   connectToBrowserGsproCourseState,
@@ -27,10 +27,9 @@ import type {
   CoursePointYds,
   CourseSurfaceKind,
 } from '../courseGeometry/types'
-import {
-  evaluateAimLab,
-  type AimCandidateEvaluation,
-  type ClubAimEvaluation,
+import type {
+  AimCandidateEvaluation,
+  ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
 import {
   activeBagClubIds,
@@ -54,6 +53,10 @@ const surfaceOrder: CourseSurfaceKind[] = [
   'deep-rough',
   'penalty',
 ]
+
+type LiveCaddieWorkerMessage =
+  | { type: 'success'; evaluations: ClubAimEvaluation[] }
+  | { type: 'error'; error: string }
 
 const pct = (value: number | null | undefined) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
@@ -308,6 +311,8 @@ export default function LiveCaddiePage() {
   )
   const [loadError, setLoadError] = useState<string | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
+  const [evaluationPending, setEvaluationPending] = useState(false)
+  const [evaluations, setEvaluations] = useState<ClubAimEvaluation[]>([])
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
@@ -449,28 +454,81 @@ export default function LiveCaddiePage() {
   const elevationDeltaFt = ballTerrain && targetTerrain
     ? targetTerrain.elevationFt - ballTerrain.elevationFt
     : null
+  const elevationSource = ballTerrain && targetTerrain
+    ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
+      ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
+      : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+    : 'No terrain model'
+  const surfaceOverride = liveMatchesHole ? liveSnapshot?.surface ?? null : null
 
-  const evaluations = useMemo(() => {
-    if (!hole) return [] as ClubAimEvaluation[]
-    try {
-      const result = evaluateAimLab(sessions, hole, ball, target, {
+  useEffect(() => {
+    if (!hole) {
+      setEvaluations([])
+      setEvaluationError(null)
+      setEvaluationPending(false)
+      return
+    }
+
+    let cancelled = false
+    const worker = new Worker(new URL('./LiveCaddieWorker.ts', import.meta.url), {
+      type: 'module',
+    })
+    setEvaluations([])
+    setEvaluationError(null)
+    setEvaluationPending(true)
+
+    worker.onmessage = (event: MessageEvent<LiveCaddieWorkerMessage>) => {
+      if (cancelled) return
+      const message = event.data
+      if (message.type === 'success') {
+        setEvaluations(message.evaluations)
+        setEvaluationError(null)
+      } else {
+        setEvaluations([])
+        setEvaluationError(message.error)
+      }
+      setEvaluationPending(false)
+      worker.terminate()
+    }
+
+    worker.onerror = (event) => {
+      if (cancelled) return
+      setEvaluations([])
+      setEvaluationError(event.message || 'Live Caddie decision worker failed.')
+      setEvaluationPending(false)
+      worker.terminate()
+    }
+
+    worker.postMessage({
+      sessions,
+      hole,
+      ball,
+      target,
+      environment: {
         windMph,
         windRelativeDeg,
         elevationDeltaFt,
-        elevationSource: ballTerrain && targetTerrain
-          ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
-            ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
-            : `${selectedCourse?.name ?? 'Course'} terrain proxy`
-          : 'No terrain model',
-        surfaceOverride: liveMatchesHole ? liveSnapshot?.surface ?? null : null,
-      })
-      setEvaluationError(null)
-      return result
-    } catch (error) {
-      setEvaluationError(error instanceof Error ? error.message : String(error))
-      return [] as ClubAimEvaluation[]
+        elevationSource,
+        surfaceOverride,
+      },
+      nowMs: Date.now(),
+    })
+
+    return () => {
+      cancelled = true
+      worker.terminate()
     }
-  }, [sessions, hole, ball, target, windMph, windRelativeDeg, elevationDeltaFt, ballTerrain, targetTerrain, liveMatchesHole, liveSnapshot?.surface, selectedCourse?.name])
+  }, [
+    sessions,
+    hole,
+    ball,
+    target,
+    windMph,
+    windRelativeDeg,
+    elevationDeltaFt,
+    elevationSource,
+    surfaceOverride,
+  ])
 
   const recommendation = evaluations[0] ?? null
   const recommendedCandidate = recommendation?.bestCandidate ?? null
@@ -576,7 +634,7 @@ export default function LiveCaddiePage() {
           </section>
         ) : !hole ? (
           <section className="live-empty-state">
-            <span className="live-kicker">LOADING</span>
+            <span className="live-kicker">LOADING COURSE</span>
             <h1>{selectedCourse?.name} · Hole {holeNumber}</h1>
           </section>
         ) : (
@@ -585,7 +643,7 @@ export default function LiveCaddiePage() {
               <aside className="live-decision-column">
                 <article className="live-decision-card">
                   <div className="live-decision-label-row">
-                    <span className="live-recommended-pill">RECOMMENDED</span>
+                    <span className="live-recommended-pill">{evaluationPending ? 'CALCULATING' : 'RECOMMENDED'}</span>
                     {inspectedCandidate && recommendedCandidate && inspectedCandidate !== recommendedCandidate ? (
                       <button className="live-reset-inspection" type="button" onClick={() => setInspectedAimOffset(null)}>
                         Viewing alternate · reset
@@ -596,7 +654,11 @@ export default function LiveCaddiePage() {
                   <div className="live-club-hero">{recommendation?.club ?? '—'}</div>
                   <div className="live-aim-hero">{aimLabel(inspectedCandidate?.aimOffsetYds)}</div>
                   <p className="live-decision-reason">
-                    {inspectedCandidate?.decisionReason ?? recommendation?.decisionReason ?? 'Looper is waiting for enough player data to rank this shot.'}
+                    {inspectedCandidate?.decisionReason
+                      ?? recommendation?.decisionReason
+                      ?? (evaluationPending
+                        ? 'Looper is calculating the club, aim and next-shot value in the background.'
+                        : 'Looper is waiting for enough player data to rank this shot.')}
                   </p>
 
                   <div className="live-adjustment-stack">
@@ -632,7 +694,9 @@ export default function LiveCaddiePage() {
                       ? `${recommendation?.club} ARMED FOR NEXT SHOT`
                       : recommendation
                         ? `HITTING ${recommendation.club} · TAP TO ARM`
-                        : 'WAITING FOR RECOMMENDATION'}
+                        : evaluationPending
+                          ? 'CALCULATING RECOMMENDATION…'
+                          : 'WAITING FOR RECOMMENDATION'}
                   </button>
                 </article>
 
@@ -687,7 +751,11 @@ export default function LiveCaddiePage() {
                 <div className="live-map-topbar">
                   <div>
                     <span className="live-kicker">SHOT MAP</span>
-                    <h2>{recommendation ? `${recommendation.club} · ${aimLabel(inspectedCandidate?.aimOffsetYds)}` : 'Waiting for recommendation'}</h2>
+                    <h2>{recommendation
+                      ? `${recommendation.club} · ${aimLabel(inspectedCandidate?.aimOffsetYds)}`
+                      : evaluationPending
+                        ? 'Calculating recommendation…'
+                        : 'Waiting for recommendation'}</h2>
                   </div>
                   <div className="live-map-toggles">
                     <button type="button" className="always-on">50 / 80%</button>
