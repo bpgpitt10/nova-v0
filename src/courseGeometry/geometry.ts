@@ -80,7 +80,6 @@ export type LandingEllipseCoverage = {
   /** Geometric sample coverage only; this is not a shot probability model. */
   surfaceCoverage: Partial<Record<CourseSurfaceClassification, number>>
   preferredCoverage: number
-  roughCoverage?: number
   troubleCoverage: number
   penaltyCoverage: number
   unknownCoverage: number
@@ -369,7 +368,7 @@ function nearestTroubleBySide(
         const end = polygon[(i + 1) % polygon.length]
         const edgeMinY = Math.min(start[1], end[1])
         const edgeMaxY = Math.max(start[1], end[1])
-        if (edgeMaxY < point[1] - forwardBandYds || edgeMinY > point[1] + forwardTroubleBandYds) continue
+        if (edgeMaxY < point[1] - forwardBandYds || edgeMinY > point[1] + forwardBandYds) continue
 
         const closest = closestPointOnSegment(point, start, end)
         const distance = distanceBetween(point, closest)
@@ -457,7 +456,6 @@ export function sampleLandingEllipse(
 
   const surfaceCoverage: Partial<Record<CourseSurfaceClassification, number>> = {}
   let preferredCoverage = 0
-  let roughCoverage = 0
   let troubleCoverage = 0
   let penaltyCoverage = 0
 
@@ -466,7 +464,6 @@ export function sampleLandingEllipse(
     surfaceCoverage[kind] = fraction
     const semantics = TACTICAL_SURFACE_SEMANTICS[kind]
     if (semantics.preferred) preferredCoverage += fraction
-    if (kind === 'rough') roughCoverage += fraction
     if (semantics.countsAsTrouble) troubleCoverage += fraction
     if (semantics.countsAsPenalty) penaltyCoverage += fraction
   }
@@ -478,7 +475,6 @@ export function sampleLandingEllipse(
     sampleCount,
     surfaceCoverage,
     preferredCoverage,
-    roughCoverage,
     troubleCoverage,
     penaltyCoverage,
     unknownCoverage: surfaceCoverage.unknown ?? 0,
