@@ -72,13 +72,27 @@ jobs:
               pebble-beach) config="config/course-geometry/pebble-beach-v1.json" ;;
             esac
             echo "=== terrain: $slug ==="
-            python tools/build_course_terrain.py \
-              --osm "artifacts/course-geometry/$slug/osm-snapshot.json" \
-              --config "$config" \
-              --geometry "public/course-geometry/$slug/course-v1.json" \
-              --output "public/course-geometry/$slug/terrain-v1.json" \
-              --validation "artifacts/course-geometry/$slug/terrain-validation-v1.json" \
-              --cache "artifacts/course-geometry/$slug/terrain-cache-v1.json"
+            build_ok=0
+            for attempt in 1 2 3 4; do
+              echo "terrain acquisition/build attempt $attempt/4 for $slug"
+              if python tools/build_course_terrain.py \
+                --osm "artifacts/course-geometry/$slug/osm-snapshot.json" \
+                --config "$config" \
+                --geometry "public/course-geometry/$slug/course-v1.json" \
+                --output "public/course-geometry/$slug/terrain-v1.json" \
+                --validation "artifacts/course-geometry/$slug/terrain-validation-v1.json" \
+                --cache "artifacts/course-geometry/$slug/terrain-cache-v1.json"; then
+                build_ok=1
+                break
+              fi
+              if [ "$attempt" -lt 4 ]; then
+                sleep $((attempt * 5))
+              fi
+            done
+            if [ "$build_ok" -ne 1 ]; then
+              echo "terrain acquisition/build failed after 4 attempts for $slug"
+              exit 1
+            fi
             python tools/bind_course_terrain_proof.py \
               --config "$config" \
               --proof "artifacts/course-geometry/$slug/terrain-source-proof-v1.json" \
