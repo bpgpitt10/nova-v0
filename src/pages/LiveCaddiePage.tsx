@@ -531,19 +531,27 @@ export default function LiveCaddiePage() {
   ])
 
   const recommendation = evaluations[0] ?? null
-  const recommendedCandidate = recommendation?.bestCandidate ?? null
-  const inspectedCandidate = recommendation
-    ? recommendation.candidates.find((candidate) => candidate.aimOffsetYds === inspectedAimOffset)
-      ?? recommendedCandidate
+  const viewedEvaluation = armedClub
+    ? evaluations.find((evaluation) => evaluation.club === armedClub) ?? null
+    : recommendation
+  const viewedBestCandidate = viewedEvaluation?.bestCandidate ?? null
+  const inspectedCandidate = viewedEvaluation
+    ? viewedEvaluation.candidates.find((candidate) => candidate.aimOffsetYds === inspectedAimOffset)
+      ?? viewedBestCandidate
       ?? null
     : null
   const risk = inspectedCandidate?.riskProfile ?? null
-  const aimOptions = sortedAimOptions(recommendation)
+  const aimOptions = sortedAimOptions(viewedEvaluation)
   const targetDistance = pointDistance(ball, target)
+  const displayedClub = armedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
+  const isAlternateClub = Boolean(
+    armedClub && recommendation?.club && armedClub !== recommendation.club,
+  )
+  const viewedClubRank = viewedEvaluation?.decisionRank ?? null
 
   useEffect(() => {
     setInspectedAimOffset(null)
-  }, [courseId, holeNumber, recommendation?.club])
+  }, [courseId, holeNumber, viewedEvaluation?.club])
 
   const connectGspro = async () => {
     setLiveError(null)
@@ -643,57 +651,71 @@ export default function LiveCaddiePage() {
               <aside className="live-decision-column">
                 <article className="live-decision-card">
                   <div className="live-decision-label-row">
-                    <span className="live-recommended-pill">{evaluationPending ? 'CALCULATING' : 'RECOMMENDED'}</span>
-                    {inspectedCandidate && recommendedCandidate && inspectedCandidate !== recommendedCandidate ? (
+                    <span className="live-recommended-pill">
+                      {evaluationPending
+                        ? 'CALCULATING'
+                        : isAlternateClub
+                          ? `USER SELECTED${viewedClubRank ? ` · #${viewedClubRank} CLUB` : ''}`
+                          : 'RECOMMENDED · #1 CLUB'}
+                    </span>
+                    {isAlternateClub && recommendation ? (
+                      <span style={{ color: '#9fb09f', fontSize: '10px' }}>
+                        Looper recommends {recommendation.club}
+                      </span>
+                    ) : inspectedCandidate && viewedBestCandidate && inspectedCandidate !== viewedBestCandidate ? (
                       <button className="live-reset-inspection" type="button" onClick={() => setInspectedAimOffset(null)}>
                         Viewing alternate · reset
                       </button>
                     ) : null}
                   </div>
 
-                  <div className="live-club-hero">{recommendation?.club ?? '—'}</div>
-                  <div className="live-aim-hero">{aimLabel(inspectedCandidate?.aimOffsetYds)}</div>
+                  <div className="live-club-hero">{displayedClub ?? '—'}</div>
+                  <div className="live-aim-hero">
+                    {viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line'}
+                  </div>
                   <p className="live-decision-reason">
                     {inspectedCandidate?.decisionReason
-                      ?? recommendation?.decisionReason
+                      ?? viewedEvaluation?.decisionReason
                       ?? (evaluationPending
                         ? 'Looper is calculating the club, aim and next-shot value in the background.'
-                        : 'Looper is waiting for enough player data to rank this shot.')}
+                        : displayedClub
+                          ? `Looper does not yet have enough modeled support to rank a ${displayedClub} line for this shot.`
+                          : 'Looper is waiting for enough player data to rank this shot.')}
                   </p>
 
                   <div className="live-adjustment-stack">
                     <div>
                       <span>Air / conditions</span>
-                      <strong>{recommendation ? `${signed(recommendation.airborneCarryDeltaYds)} yd` : '—'}</strong>
+                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneCarryDeltaYds)} yd` : '—'}</strong>
                       <small>{windMph ? `${windMph} mph wind` : 'wind + elevation response'}</small>
                     </div>
                     <div>
                       <span>Lie / surface</span>
-                      <strong>{recommendation ? `${signed(recommendation.surfaceCarryDeltaYds)} yd` : '—'}</strong>
-                      <small>{recommendation?.surfaceLabel ?? surface}</small>
+                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.surfaceCarryDeltaYds)} yd` : '—'}</strong>
+                      <small>{viewedEvaluation?.surfaceLabel ?? surface}</small>
                     </div>
                     <div>
                       <span>Lateral shift</span>
-                      <strong>{recommendation ? `${signed(recommendation.airborneLateralDeltaYds + recommendation.surfaceLateralDeltaYds)} yd` : '—'}</strong>
+                      <strong>{viewedEvaluation ? `${signed(viewedEvaluation.airborneLateralDeltaYds + viewedEvaluation.surfaceLateralDeltaYds)} yd` : '—'}</strong>
                       <small>conditions + lie</small>
                     </div>
                     <div>
                       <span>Modeled carry</span>
-                      <strong>{recommendation ? `${Math.round(recommendation.modeledCarryYds)} yd` : '—'}</strong>
-                      <small>{recommendation ? `stock ${Math.round(recommendation.stockCarryYds)}` : `${Math.round(targetDistance)} yd target`}</small>
+                      <strong>{viewedEvaluation ? `${Math.round(viewedEvaluation.modeledCarryYds)} yd` : '—'}</strong>
+                      <small>{viewedEvaluation ? `stock ${Math.round(viewedEvaluation.stockCarryYds)}` : `${Math.round(targetDistance)} yd target`}</small>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    className={`live-arm-recommendation${armedClub === recommendation?.club ? ' armed' : ''}`}
-                    disabled={!recommendation}
-                    onClick={() => recommendation && setArmedClub(recommendation.club)}
+                    className={`live-arm-recommendation${armedClub && armedClub === displayedClub ? ' armed' : ''}`}
+                    disabled={!displayedClub}
+                    onClick={() => displayedClub && setArmedClub(displayedClub)}
                   >
-                    {armedClub === recommendation?.club
-                      ? `${recommendation?.club} ARMED FOR NEXT SHOT`
-                      : recommendation
-                        ? `HITTING ${recommendation.club} · TAP TO ARM`
+                    {armedClub && armedClub === displayedClub
+                      ? `${displayedClub} ARMED FOR NEXT SHOT`
+                      : displayedClub
+                        ? `HITTING ${displayedClub} · TAP TO ARM`
                         : evaluationPending
                           ? 'CALCULATING RECOMMENDATION…'
                           : 'WAITING FOR RECOMMENDATION'}
@@ -724,21 +746,30 @@ export default function LiveCaddiePage() {
                 {aimOptions.length > 1 ? (
                   <article className="live-compare-card">
                     <div className="live-section-heading compact">
-                      <div><span className="live-kicker">COMPARE AIM</span><h2>Same club, different line</h2></div>
+                      <div>
+                        <span className="live-kicker">COMPARE AIM</span>
+                        <h2>{isAlternateClub && displayedClub ? `Best ${displayedClub} lines` : 'Same club, different line'}</h2>
+                      </div>
                     </div>
                     <div className="live-aim-options">
                       {aimOptions.map((candidate) => {
-                        const isRecommended = candidate === recommendedCandidate
+                        const isBestLine = candidate === viewedBestCandidate
                         const isViewed = candidate === inspectedCandidate
                         return (
                           <button
                             type="button"
-                            className={`${isViewed ? 'viewed ' : ''}${isRecommended ? 'recommended' : ''}`}
+                            className={`${isViewed ? 'viewed ' : ''}${isBestLine ? 'recommended' : ''}`}
                             key={candidate.aimOffsetYds}
                             onClick={() => setInspectedAimOffset(candidate.aimOffsetYds)}
                           >
                             <strong>{aimLabel(candidate.aimOffsetYds)}</strong>
-                            <span>{isRecommended ? 'Recommended' : `Rank ${candidate.decisionRank ?? '—'}`}</span>
+                            <span>
+                              {isBestLine
+                                ? isAlternateClub && displayedClub
+                                  ? `Best ${displayedClub} line`
+                                  : 'Recommended'
+                                : `Rank ${candidate.decisionRank ?? '—'}`}
+                            </span>
                           </button>
                         )
                       })}
@@ -751,8 +782,8 @@ export default function LiveCaddiePage() {
                 <div className="live-map-topbar">
                   <div>
                     <span className="live-kicker">SHOT MAP</span>
-                    <h2>{recommendation
-                      ? `${recommendation.club} · ${aimLabel(inspectedCandidate?.aimOffsetYds)}`
+                    <h2>{displayedClub
+                      ? `${displayedClub} · ${viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'no modeled line'}`
                       : evaluationPending
                         ? 'Calculating recommendation…'
                         : 'Waiting for recommendation'}</h2>
@@ -761,7 +792,7 @@ export default function LiveCaddiePage() {
                     <button type="button" className="always-on">50 / 80%</button>
                     <button type="button" className={show95 ? 'active' : ''} onClick={() => setShow95((value) => !value)}>95%</button>
                     <button type="button" className={showPracticeShots ? 'active' : ''} onClick={() => setShowPracticeShots((value) => !value)}>
-                      Practice shots{recommendation ? ` · ${recommendation.empiricalShotCount}` : ''}
+                      Practice shots{viewedEvaluation ? ` · ${viewedEvaluation.empiricalShotCount}` : ''}
                     </button>
                     <button type="button" className={showRiskTail ? 'active' : ''} onClick={() => setShowRiskTail((value) => !value)}>Risk tail</button>
                   </div>
@@ -798,19 +829,26 @@ export default function LiveCaddiePage() {
                 {armedClub ? <button type="button" onClick={() => setArmedClub(null)}>Clear</button> : null}
               </div>
               <div className="live-club-strip">
-                {bagClubs.map((club) => (
-                  <button
-                    type="button"
-                    key={club}
-                    className={`${armedClub === club ? 'armed ' : ''}${recommendation?.club === club ? 'recommended' : ''}`}
-                    onClick={() => setArmedClub(club)}
-                  >
-                    <strong>{club}</strong>
-                    {recommendation?.club === club ? <span>REC</span> : null}
-                  </button>
-                ))}
+                {bagClubs.map((club) => {
+                  const clubEvaluation = evaluations.find((evaluation) => evaluation.club === club) ?? null
+                  return (
+                    <button
+                      type="button"
+                      key={club}
+                      className={`${armedClub === club ? 'armed ' : ''}${recommendation?.club === club ? 'recommended' : ''}`}
+                      onClick={() => setArmedClub(club)}
+                    >
+                      <strong>{club}</strong>
+                      {recommendation?.club === club
+                        ? <span>REC</span>
+                        : armedClub === club && clubEvaluation?.decisionRank
+                          ? <span>#{clubEvaluation.decisionRank} CLUB</span>
+                          : null}
+                    </button>
+                  )
+                })}
               </div>
-              <p>Arming is UI-only in this first pass. The persistence + inference layer will attach this explicit selection to the next captured GSPro shot.</p>
+              <p>Selecting a club arms it for the next GSPro shot and switches the screen to that club's best modeled line. REC remains Looper's preferred club.</p>
             </section>
           </>
         )}
