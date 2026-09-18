@@ -9,13 +9,6 @@
       "slug": "royal-new-kent"
     },
     {
-      "courseId": "shaftesbury-glen-conway-sc",
-      "courseName": "Shaftesbury Glen Golf & Fish Club",
-      "location": "Conway, SC",
-      "countryCode": "us",
-      "slug": "shaftesbury-glen"
-    },
-    {
       "courseId": "valhalla-louisville-ky",
       "courseName": "Valhalla Golf Club",
       "location": "Louisville, KY",
@@ -42,6 +35,34 @@
       "location": "Hollister, MO",
       "countryCode": "us",
       "slug": "paynes-valley"
+    }
+  ],
+  "unsupportedCourses": [
+    {
+      "courseId": "shaftesbury-glen-conway-sc",
+      "courseName": "Shaftesbury Glen Golf & Fish Club",
+      "location": "Conway, SC",
+      "countryCode": "us",
+      "slug": "shaftesbury-glen",
+      "status": "unsupported-osm",
+      "reason": "missing-course-geometry",
+      "evidence": {
+        "verifiedAt": "2026-09-18T14:18:35Z",
+        "probeCenter": [
+          33.88958,
+          -78.90363
+        ],
+        "osmGolfCourseBoundaries": 0,
+        "osmGolfHoleRoutes": 0,
+        "osmTaggedObjectCount": 152,
+        "availableGolfFeatures": {
+          "lateral_water_hazard": 6,
+          "water_hazard": 3,
+          "cartpath": 15,
+          "path": 1
+        },
+        "note": "Verified OSM coverage contains partial course features but no golf_course boundary and no golf=hole routes, so the canonical 18-hole importer cannot build a trustworthy package."
+      }
     }
   ]
 }

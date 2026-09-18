@@ -73,6 +73,51 @@ jobs:
               --config "config/course-geometry/$slug-v1.json"
           done
 
+      - name: Record declared unsupported OSM courses
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          seed_path = Path('config/course-import-seeds/planned-courses-v1.json')
+          payload = json.loads(seed_path.read_text())
+          active = payload.get('courses') or []
+          unsupported = payload.get('unsupportedCourses') or []
+          if not isinstance(active, list) or not isinstance(unsupported, list):
+              raise SystemExit('planned course seed registry must use array courses/unsupportedCourses')
+
+          active_ids = {row.get('courseId') for row in active if isinstance(row, dict)}
+          active_slugs = {row.get('slug') for row in active if isinstance(row, dict)}
+          rows = []
+          for row in unsupported:
+              if not isinstance(row, dict):
+                  raise SystemExit('unsupportedCourses entries must be objects')
+              for key in ('courseId', 'courseName', 'location', 'slug', 'status', 'reason'):
+                  if not row.get(key):
+                      raise SystemExit(f'unsupported OSM course missing {key}: {row}')
+              if row['status'] != 'unsupported-osm':
+                  raise SystemExit(f"unsupported course {row['courseId']} has invalid status {row['status']!r}")
+              if row['courseId'] in active_ids or row['slug'] in active_slugs:
+                  raise SystemExit(f"unsupported course overlaps active course registry: {row['courseId']}")
+              evidence = row.get('evidence')
+              if not isinstance(evidence, dict):
+                  raise SystemExit(f"unsupported course {row['courseId']} requires evidence")
+              rows.append(row)
+
+          summary = {
+              'schemaVersion': 'looper-unsupported-osm-v1',
+              'generatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              'count': len(rows),
+              'courses': rows,
+          }
+          out = Path('artifacts/course-geometry/unsupported-osm-v1.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
+          print(json.dumps(summary, indent=2))
+          PY
+
       - name: Apply generic terrain defaults
         if: always()
         run: |
@@ -106,6 +151,7 @@ jobs:
           path: |
             artifacts/course-geometry/batch-planned-courses-v1.json
             artifacts/course-geometry/location-anchor-recovery-v1.json
+            artifacts/course-geometry/unsupported-osm-v1.json
             artifacts/course-geometry/**/discovery-v1.json
             artifacts/course-geometry/**/prepare-timings.ndjson
             artifacts/course-geometry/**/import-timings.ndjson
@@ -124,6 +170,12 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
+          unsupported_path = Path('artifacts/course-geometry/unsupported-osm-v1.json')
+          if not unsupported_path.exists():
+              raise SystemExit('Unsupported-OSM registry proof did not produce a summary')
+          unsupported = json.loads(unsupported_path.read_text())
+          print(json.dumps(unsupported, indent=2))
 
           recovery_path = Path('artifacts/course-geometry/location-anchor-recovery-v1.json')
           if not recovery_path.exists():
