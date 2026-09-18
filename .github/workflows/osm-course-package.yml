@@ -9,6 +9,7 @@ on:
       - config/course-geometry/**
       - tools/import_osm_course.py
       - tools/timed_import_osm_course.py
+      - tools/fetch_osm_course_snapshot.py
       - tools/audit_osm_topology.py
       - tools/build_osm_course_package.py
       - tools/build_osm_course_package_v2.py
