@@ -361,7 +361,7 @@
     "license": "Open Government Licence - Canada",
     "lidarDerived": true,
     "provider": "nrcan-hrdem-lidar",
-    "sourceManifestSha256": "480c13cd89bb7553b4c46d11b2705609013d16457a751e2d127e899e87b5857b",
+    "sourceManifestSha256": "00377be8dc7f933c7cef5ff9c5a3cc74e570b6c9e3c55b2a43ed7be473694028",
     "sourceResolutionMeters": 1.0
   }
 }

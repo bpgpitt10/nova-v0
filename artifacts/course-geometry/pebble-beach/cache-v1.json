@@ -18,7 +18,7 @@
     "configSha256": "7cadb3a58e667e0b5ece09372b5f390509291a082707bd8a74eaaee2635da676",
     "path": "public/course-geometry/pebble-beach/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "c2f8fb60fad1b660ddbaa798ccc81ec43f553ef8b1fd9ab334a2d33e378fc131",
+    "sha256": "a68a2c5df84b38fc025346b16c5c6c2c7a69cd505068106aa4d0ad2cee7c8ede",
     "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
@@ -53,14 +53,14 @@
     "sourceBaseTimestamp": "2026-09-18T00:58:34Z"
   },
   "terrain": {
-    "builderFingerprintSha256": "207279e17011dfeed3f80f8210d614bff71ba1ec4f4033b89404b439fa841722",
-    "builderVersion": "import_course_terrain_v1",
-    "composedAt": "2026-09-18T03:21:32.050754Z",
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T09:41:16.055780Z",
     "sourceManifestPath": "artifacts/course-geometry/pebble-beach/terrain-source-v1.json",
     "status": "cached",
     "terrainCachePath": "artifacts/course-geometry/pebble-beach/terrain-cache-v1.json",
     "terrainPackagePath": "artifacts/course-geometry/pebble-beach/terrain-v1.json",
-    "terrainPackageSha256": "fd4b59b605a6f3d4ebe72a8c07b83d14cc0f5c66530f79cda07cb47a81d53b80",
+    "terrainPackageSha256": "d438f4dcc13bf6c40e8fcb010925437058ab45c3396a74072d5c00def8fe02d8",
     "validationPath": "artifacts/course-geometry/pebble-beach/terrain-validation-v1.json"
   }
 }
