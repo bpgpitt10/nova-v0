@@ -1,0 +1,140 @@
+{
+  "innerRingCount": 13,
+  "innerRingsByParentClassification": {
+    "surface:bunker": 12,
+    "surface:fairway": 1
+  },
+  "innerRingsWithStandaloneTags": 12,
+  "innerRingsWithoutStandaloneTags": 1,
+  "multipolygonRelationsWithInnerRings": 2,
+  "relations": [
+    {
+      "classification": "surface:bunker",
+      "innerMembers": 12,
+      "inners": [
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611550,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611549,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611547,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611548,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611546,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611545,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611544,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611543,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611542,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611541,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611540,
+          "tags": {
+            "golf": "rough"
+          }
+        },
+        {
+          "classification": "surface:rough",
+          "memberType": "way",
+          "ref": 1377611539,
+          "tags": {
+            "golf": "rough"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 18991933,
+      "tags": {
+        "golf": "bunker",
+        "name": "Church Pews",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1457219016,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19938801,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    }
+  ],
+  "schemaVersion": "looper-osm-topology-audit-v1"
+}

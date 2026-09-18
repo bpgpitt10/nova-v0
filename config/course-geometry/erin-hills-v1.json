@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "erin-hills-erin-wi",
+  "courseName": "Erin Hills",
+  "location": "Erin, WI",
+  "slug": "erin-hills",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 172725497
+  },
+  "osmCenter": [
+    43.2449514,
+    -88.4018099
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

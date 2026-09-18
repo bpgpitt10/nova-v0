@@ -1,0 +1,55 @@
+{
+  "courseId": "augusta-national-augusta-ga",
+  "courseName": "Augusta National Golf Club",
+  "freshness": {
+    "ageDays": 0.0,
+    "evaluatedAt": "2026-09-18T11:13:42.112464Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
+    "builderVersion": "build_osm_course_package_v3",
+    "builtAt": "2026-09-18T11:13:42.112464Z",
+    "configPath": "config/course-geometry/augusta-national-v1.json",
+    "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
+    "path": "public/course-geometry/augusta-national/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "1255982b31893ee99b5a207db699add98240686b96c22a8f7f8c4418d6508d45"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 871993734,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-18T11:13:42.160498Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-18T11:13:42.160498Z",
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/augusta-national/osm-snapshot.json",
+    "snapshotSha256": "daf03fcf9819bf10ef25b893b69a2103f05a081ccbb839357958da1c6b1de44d",
+    "sourceBaseTimestamp": "2026-09-18T11:11:44Z"
+  }
+}

@@ -1,0 +1,1543 @@
+{
+  "innerRingCount": 135,
+  "innerRingsByParentClassification": {
+    "context:grass-context": 2,
+    "surface:fairway": 133
+  },
+  "innerRingsWithStandaloneTags": 96,
+  "innerRingsWithoutStandaloneTags": 39,
+  "multipolygonRelationsWithInnerRings": 36,
+  "relations": [
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519391,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 13949539,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380127170,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381249779,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003891,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380039990,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380039991,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380039992,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381016958,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003892,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 3,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380479077,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380479078,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381289043,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003893,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 930478521,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380397880,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380397881,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381257293,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003895,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "context:grass-context",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 856580300,
+          "tags": {}
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 856580301,
+          "tags": {
+            "golf": "green",
+            "name": "Green 38"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003897,
+      "tags": {
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863519356,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003898,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 3,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116607,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116608,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381032393,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003899,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 927280474,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381277116,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003900,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 5,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380480225,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380480226,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380480227,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380480228,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381289719,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003901,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541916,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541918,
+          "tags": {}
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863541919,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541920,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003902,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 13,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519424,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519425,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519426,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519428,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519429,
+          "tags": {}
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863519430,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863519985,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519986,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519987,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519988,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541921,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541922,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541923,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003904,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 5,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863519414,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519415,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519416,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519417,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519418,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003905,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863519991,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519992,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519993,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863519994,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003906,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 930470826,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380039988,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380039989,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381014610,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003907,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116609,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116610,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116611,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381032394,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003908,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541875,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541876,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541877,
+          "tags": {}
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863541878,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003910,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 10,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541862,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541863,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541864,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541865,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541866,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541867,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541868,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541869,
+          "tags": {}
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 863541870,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 863541871,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 14003911,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 930486860,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 870798504,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 855657865,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380430551,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 18818358,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381255369,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 854949689,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026092,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 930491137,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380479076,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026093,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 5,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116605,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116604,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116603,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380116602,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381017712,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026094,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380397879,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381255370,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026095,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 4,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381293272,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1381293273,
+          "tags": {
+            "golf": "bunker"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1381293274,
+          "tags": {
+            "golf": "bunker"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1502786457,
+          "tags": {
+            "golf": "bunker"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026096,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "name": "Members Short Game Area",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 3,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 930486859,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 855188619,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380430550,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026097,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381274335,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026098,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 3,
+      "inners": [
+        {
+          "classification": "surface:tee",
+          "memberType": "way",
+          "ref": 863519412,
+          "tags": {
+            "golf": "tee",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927280483,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 927280504,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026099,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927280492,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026100,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 5,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 863541888,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541886,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541885,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541884,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 863541887,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026101,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 12,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927409861,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927409863,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927409864,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927409865,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927406789,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927406786,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927406787,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927406788,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927406793,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 927406790,
+          "tags": {
+            "golf": "green",
+            "landuse": "grass"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927406794,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 927406795,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        }
+      ],
+      "outerMembers": 2,
+      "relationId": 19026106,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380477437,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381280718,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19026108,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1380430552,
+          "tags": {
+            "golf": "bunker",
+            "natural": "sand"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1381269202,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 20040621,
+      "tags": {
+        "golf": "fairway",
+        "landuse": "grass",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 8,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 921449618,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1481448301,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1481448314,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1481448303,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1481448304,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1481456015,
+          "tags": {
+            "golf": "bunker"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1481456014,
+          "tags": {
+            "golf": "bunker"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 1481448310,
+          "tags": {
+            "golf": "bunker"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 20247253,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 1481448309,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 20351657,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 921449594,
+          "tags": {
+            "golf": "green"
+          }
+        },
+        {
+          "classification": "surface:bunker",
+          "memberType": "way",
+          "ref": 921449596,
+          "tags": {
+            "golf": "bunker"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 20351658,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": "surface:green",
+          "memberType": "way",
+          "ref": 921449620,
+          "tags": {
+            "golf": "green"
+          }
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 20577121,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    }
+  ],
+  "schemaVersion": "looper-osm-topology-audit-v1"
+}

@@ -1,0 +1,86 @@
+{
+  "anchorFallback": {
+    "attempts": [],
+    "candidates": [],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": null,
+    "rawCandidates": []
+  },
+  "chosen": {
+    "discoveryMethod": "nominatim-direct-golf-category",
+    "displayName": "Augusta National Golf Club, 2604, Washington Road, Windsor Court, National Hills, Augusta, Richmond County, Georgia, 30904, United States",
+    "lat": "33.5005580",
+    "locationOverlap": 0.5,
+    "lon": "-82.0225816",
+    "name": "Augusta National Golf Club",
+    "nameRatio": 1.0,
+    "osmId": 871993734,
+    "osmType": "way",
+    "primaryCategory": "leisure",
+    "primaryType": "golf_course",
+    "score": 127.324
+  },
+  "completedAt": "2026-09-18T11:13:35.124500Z",
+  "courseId": "augusta-national-augusta-ga",
+  "courseName": "Augusta National Golf Club",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 470.7,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [
+      {
+        "discoveryMethod": "nominatim-direct-golf-category",
+        "displayName": "Augusta National Golf Club, 2604, Washington Road, Windsor Court, National Hills, Augusta, Richmond County, Georgia, 30904, United States",
+        "lat": "33.5005580",
+        "locationOverlap": 0.5,
+        "lon": "-82.0225816",
+        "name": "Augusta National Golf Club",
+        "nameRatio": 1.0,
+        "osmId": 871993734,
+        "osmType": "way",
+        "primaryCategory": "leisure",
+        "primaryType": "golf_course",
+        "score": 127.324
+      }
+    ],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": null,
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Augusta National Golf Club, Augusta, GA",
+    "rawCandidates": [
+      {
+        "category": "leisure",
+        "displayName": "Augusta National Golf Club, 2604, Washington Road, Windsor Court, National Hills, Augusta, Richmond County, Georgia, 30904, United States",
+        "importance": 0.46487641213353065,
+        "lat": "33.5005580",
+        "lon": "-82.0225816",
+        "name": "Augusta National Golf Club",
+        "osmId": 871993734,
+        "osmType": "way",
+        "type": "golf_course"
+      }
+    ]
+  },
+  "error": null,
+  "location": "Augusta, GA",
+  "nearbyBoundaryFallback": {
+    "attempts": [],
+    "batchThrottleMs": 0.0,
+    "candidates": [],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": null,
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T11:13:34.653232Z",
+  "schemaVersion": "looper-course-discovery-v2",
+  "success": true,
+  "timingMs": 471.3
+}

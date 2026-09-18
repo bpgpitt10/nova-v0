@@ -1,0 +1,86 @@
+{
+  "anchorFallback": {
+    "attempts": [],
+    "candidates": [],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": null,
+    "rawCandidates": []
+  },
+  "chosen": {
+    "discoveryMethod": "nominatim-direct-golf-category",
+    "displayName": "Oakmont Country Club, Hulton Road, East Oakmont, Plum, Allegheny County, Pennsylvania, 15147, United States",
+    "lat": "40.5289164",
+    "locationOverlap": 0.5,
+    "lon": "-79.8260486",
+    "name": "Oakmont Country Club",
+    "nameRatio": 1.0,
+    "osmId": 6174192,
+    "osmType": "relation",
+    "primaryCategory": "leisure",
+    "primaryType": "golf_course",
+    "score": 126.784
+  },
+  "completedAt": "2026-09-18T11:13:42.675394Z",
+  "courseId": "oakmont-country-club-oakmont-pa",
+  "courseName": "Oakmont Country Club",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 434.5,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [
+      {
+        "discoveryMethod": "nominatim-direct-golf-category",
+        "displayName": "Oakmont Country Club, Hulton Road, East Oakmont, Plum, Allegheny County, Pennsylvania, 15147, United States",
+        "lat": "40.5289164",
+        "locationOverlap": 0.5,
+        "lon": "-79.8260486",
+        "name": "Oakmont Country Club",
+        "nameRatio": 1.0,
+        "osmId": 6174192,
+        "osmType": "relation",
+        "primaryCategory": "leisure",
+        "primaryType": "golf_course",
+        "score": 126.784
+      }
+    ],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": null,
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Oakmont Country Club, Oakmont, PA",
+    "rawCandidates": [
+      {
+        "category": "leisure",
+        "displayName": "Oakmont Country Club, Hulton Road, East Oakmont, Plum, Allegheny County, Pennsylvania, 15147, United States",
+        "importance": 0.3567097398182398,
+        "lat": "40.5289164",
+        "lon": "-79.8260486",
+        "name": "Oakmont Country Club",
+        "osmId": 6174192,
+        "osmType": "relation",
+        "type": "golf_course"
+      }
+    ]
+  },
+  "error": null,
+  "location": "Oakmont, PA",
+  "nearbyBoundaryFallback": {
+    "attempts": [],
+    "batchThrottleMs": 0.0,
+    "candidates": [],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": null,
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T11:13:42.240446Z",
+  "schemaVersion": "looper-course-discovery-v2",
+  "success": true,
+  "timingMs": 434.9
+}

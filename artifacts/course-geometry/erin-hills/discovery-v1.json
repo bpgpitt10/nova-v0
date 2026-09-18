@@ -1,0 +1,86 @@
+{
+  "anchorFallback": {
+    "attempts": [],
+    "candidates": [],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": null,
+    "rawCandidates": []
+  },
+  "chosen": {
+    "discoveryMethod": "nominatim-direct-golf-category",
+    "displayName": "Erin Hills, 7169, County Road O, Thompson, Town of Erin, Washington County, Wisconsin, 53027, United States",
+    "lat": "43.2449514",
+    "locationOverlap": 0.5,
+    "lon": "-88.4018099",
+    "name": "Erin Hills",
+    "nameRatio": 1.0,
+    "osmId": 172725497,
+    "osmType": "way",
+    "primaryCategory": "leisure",
+    "primaryType": "golf_course",
+    "score": 126.491
+  },
+  "completedAt": "2026-09-18T11:13:48.097780Z",
+  "courseId": "erin-hills-erin-wi",
+  "courseName": "Erin Hills",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 468.4,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [
+      {
+        "discoveryMethod": "nominatim-direct-golf-category",
+        "displayName": "Erin Hills, 7169, County Road O, Thompson, Town of Erin, Washington County, Wisconsin, 53027, United States",
+        "lat": "43.2449514",
+        "locationOverlap": 0.5,
+        "lon": "-88.4018099",
+        "name": "Erin Hills",
+        "nameRatio": 1.0,
+        "osmId": 172725497,
+        "osmType": "way",
+        "primaryCategory": "leisure",
+        "primaryType": "golf_course",
+        "score": 126.491
+      }
+    ],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": null,
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Erin Hills, Erin, WI",
+    "rawCandidates": [
+      {
+        "category": "leisure",
+        "displayName": "Erin Hills, 7169, County Road O, Thompson, Town of Erin, Washington County, Wisconsin, 53027, United States",
+        "importance": 0.29823583006172555,
+        "lat": "43.2449514",
+        "lon": "-88.4018099",
+        "name": "Erin Hills",
+        "osmId": 172725497,
+        "osmType": "way",
+        "type": "golf_course"
+      }
+    ]
+  },
+  "error": null,
+  "location": "Erin, WI",
+  "nearbyBoundaryFallback": {
+    "attempts": [],
+    "batchThrottleMs": 0.0,
+    "candidates": [],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": null,
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T11:13:47.628942Z",
+  "schemaVersion": "looper-course-discovery-v2",
+  "success": true,
+  "timingMs": 468.8
+}

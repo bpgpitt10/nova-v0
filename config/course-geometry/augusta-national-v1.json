@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "augusta-national-augusta-ga",
+  "courseName": "Augusta National Golf Club",
+  "location": "Augusta, GA",
+  "slug": "augusta-national",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 871993734
+  },
+  "osmCenter": [
+    33.500558,
+    -82.0225816
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

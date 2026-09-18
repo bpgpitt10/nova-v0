@@ -1,114 +1,56 @@
 {
-  "courseCount": 7,
+  "courseCount": 3,
   "courses": [
     {
-      "courseId": "shaftesbury-glen-conway-sc",
-      "error": "unfiltered Nominatim search returned no usable anchor",
-      "slug": "shaftesbury-glen",
-      "success": false,
-      "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 1814.9,
-        "packageImporter": null,
-        "sourceFetch": null,
-        "topologyAudit": null,
-        "total": 1815.6
-      }
-    },
-    {
-      "courseId": "valhalla-louisville-ky",
+      "courseId": "augusta-national-augusta-ga",
       "error": null,
-      "slug": "valhalla",
+      "slug": "augusta-national",
       "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 0.0,
-        "packageImporter": 1021.7,
-        "sourceFetch": null,
-        "topologyAudit": 47.1,
-        "total": 1136.5
+        "discovery": 471.3,
+        "packageImporter": 3580.1,
+        "sourceFetch": 3386.8,
+        "topologyAudit": 65.4,
+        "total": 7587.0
       }
     },
     {
-      "courseId": "muirfield-village-dublin-oh",
+      "courseId": "oakmont-country-club-oakmont-pa",
       "error": null,
-      "slug": "muirfield-village",
+      "slug": "oakmont-country-club",
       "success": true,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 0.0,
-        "packageImporter": 1193.9,
-        "sourceFetch": null,
-        "topologyAudit": 51.0,
-        "total": 1314.8
+        "discovery": 434.9,
+        "packageImporter": 1231.0,
+        "sourceFetch": 3592.9,
+        "topologyAudit": 51.3,
+        "total": 5388.2
       }
     },
     {
-      "courseId": "cabot-cliffs-inverness-ns",
-      "error": null,
-      "slug": "cabot-cliffs",
-      "success": true,
-      "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 0.0,
-        "packageImporter": 4642.3,
-        "sourceFetch": null,
-        "topologyAudit": 47.7,
-        "total": 4756.6
-      }
-    },
-    {
-      "courseId": "greywalls-marquette-mi",
-      "error": "unfiltered Nominatim search returned no usable anchor",
-      "slug": "greywalls",
-      "success": false,
-      "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 1588.8,
-        "packageImporter": null,
-        "sourceFetch": null,
-        "topologyAudit": null,
-        "total": 1589.5
-      }
-    },
-    {
-      "courseId": "paynes-valley-hollister-mo",
-      "error": null,
-      "slug": "paynes-valley",
-      "success": true,
-      "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 0.0,
-        "packageImporter": 1867.6,
-        "sourceFetch": null,
-        "topologyAudit": 52.2,
-        "total": 1986.7
-      }
-    },
-    {
-      "courseId": "pebble-beach-pebble-beach-ca",
+      "courseId": "erin-hills-erin-wi",
       "error": "timed_import_osm_course.py exited 1",
-      "slug": "pebble-beach",
+      "slug": "erin-hills",
       "success": false,
       "timingMs": {
-        "batchThrottle": 5142.8,
-        "discovery": 21302.7,
-        "packageImporter": 276.4,
-        "sourceFetch": 3177.7,
+        "batchThrottle": 577.7,
+        "discovery": 468.8,
+        "packageImporter": null,
+        "sourceFetch": 35601.1,
         "topologyAudit": null,
-        "total": 29972.7
+        "total": 36726.6
       }
     }
   ],
-  "endedAt": "2026-09-18T00:59:59.836455Z",
+  "endedAt": "2026-09-18T11:14:24.355749Z",
   "failedCourseIds": [
-    "shaftesbury-glen-conway-sc",
-    "greywalls-marquette-mi",
-    "pebble-beach-pebble-beach-ca"
+    "erin-hills-erin-wi"
   ],
-  "failureCount": 3,
+  "failureCount": 1,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T00:59:17.262515Z",
-  "successCount": 4
+  "startedAt": "2026-09-18T11:13:34.653121Z",
+  "successCount": 2
 }
