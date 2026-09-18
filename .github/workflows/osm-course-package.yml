@@ -8,6 +8,7 @@ on:
     paths:
       - config/course-geometry/**
       - tools/import_osm_course.py
+      - tools/timed_import_osm_course.py
       - tools/audit_osm_topology.py
       - tools/build_osm_course_package.py
       - tools/build_osm_course_package_v2.py
@@ -52,7 +53,7 @@ jobs:
       - name: Install course importer dependencies
         run: pip install -r tools/requirements-course-importer.txt
 
-      - name: Import and validate course package(s)
+      - name: Import, audit, and time course package(s)
         shell: bash
         env:
           INPUT_CONFIG_PATH: ${{ inputs.config_path }}
@@ -79,24 +80,12 @@ jobs:
               echo "Course config not found: $config" >&2
               exit 1
             fi
-            echo "Importing $config"
+            echo "Timed import: $config"
             args=(--config "$config")
             if [[ "${INPUT_REFRESH_OSM:-false}" == "true" ]]; then
               args+=(--refresh-osm)
             fi
-            python tools/import_osm_course.py "${args[@]}"
-
-            slug=$(python - "$config" <<'PY'
-          import json, re, sys
-          from pathlib import Path
-          path = Path(sys.argv[1])
-          config = json.loads(path.read_text())
-          print(config.get('slug') or re.sub(r'-v\d+$', '', path.stem))
-          PY
-            )
-            python tools/audit_osm_topology.py \
-              --osm "artifacts/course-geometry/$slug/osm-snapshot.json" \
-              --output "artifacts/course-geometry/$slug/topology-audit-v1.json"
+            python tools/timed_import_osm_course.py "${args[@]}"
           done
 
       - name: Verify generated package inventory
@@ -113,19 +102,31 @@ jobs:
           for path in configs:
               config = json.loads(path.read_text())
               slug = config.get('slug') or path.stem.rsplit('-v1', 1)[0]
+              root = Path('artifacts/course-geometry') / slug
               package = Path('public/course-geometry') / slug / 'course-v1.json'
-              manifest = Path('artifacts/course-geometry') / slug / 'validation-v1.json'
-              snapshot = Path('artifacts/course-geometry') / slug / 'osm-snapshot.json'
-              topology = Path('artifacts/course-geometry') / slug / 'topology-audit-v1.json'
-              cache = Path('artifacts/course-geometry') / slug / 'cache-v1.json'
-              ok = package.exists() and manifest.exists() and snapshot.exists() and topology.exists() and cache.exists()
+              manifest = root / 'validation-v1.json'
+              snapshot = root / 'osm-snapshot.json'
+              topology = root / 'topology-audit-v1.json'
+              cache = root / 'cache-v1.json'
+              timings = root / 'import-timings.ndjson'
+              ok = all(candidate.exists() for candidate in (package, manifest, snapshot, topology, cache, timings))
               cache_status = None
               used_network = None
+              total_ms = None
+              timing_runs = 0
               if ok:
                   proof = json.loads(manifest.read_text())
                   cache_proof = json.loads(cache.read_text())
+                  timing_rows = [
+                      json.loads(line)
+                      for line in timings.read_text().splitlines()
+                      if line.strip()
+                  ]
+                  timing_runs = len(timing_rows)
+                  latest_timing = timing_rows[-1] if timing_rows else {}
                   cache_status = (cache_proof.get('freshness') or {}).get('status')
                   used_network = (cache_proof.get('lastBuild') or {}).get('usedNetworkForOsm')
+                  total_ms = (latest_timing.get('timingMs') or {}).get('total')
                   ok = (
                       proof.get('osmHoleRoutes') == 18
                       and proof.get('readyHoleCount') == 18
@@ -134,6 +135,8 @@ jobs:
                       and cache_proof.get('schemaVersion') == 'looper-course-cache-v1'
                       and (cache_proof.get('refreshPolicy') or {}).get('serveCachedRegardlessOfAge') is True
                       and (cache_proof.get('refreshPolicy') or {}).get('deleteOnAge') is False
+                      and latest_timing.get('success') is True
+                      and isinstance(total_ms, (int, float))
                   )
               rows.append({
                   'course': config.get('courseId'),
@@ -141,15 +144,17 @@ jobs:
                   'ready': ok,
                   'cacheStatus': cache_status,
                   'usedNetworkForOsm': used_network,
+                  'timingRuns': timing_runs,
+                  'latestTotalMs': total_ms,
               })
               if not ok:
                   failures.append(slug)
           print(json.dumps(rows, indent=2))
           if failures:
-              raise SystemExit(f"Course package/cache validation failed: {failures}")
+              raise SystemExit(f"Course package/cache/timing validation failed: {failures}")
           PY
 
-      - name: Persist cached packages and source proof
+      - name: Persist cached packages, timing history, and source proof
         shell: bash
         run: |
           set -euo pipefail
@@ -162,12 +167,12 @@ jobs:
           fi
 
           branch="${GITHUB_REF_NAME}"
-          git commit -m "Build cached OSM course packages"
+          git commit -m "Build and time cached OSM course packages"
           git fetch origin "$branch"
           git rebase "origin/$branch"
           git push origin "HEAD:$branch"
 
-      - name: Upload validation proof
+      - name: Upload validation proof and timing logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -176,6 +181,7 @@ jobs:
             artifacts/course-geometry/**/validation-v1.json
             artifacts/course-geometry/**/cache-v1.json
             artifacts/course-geometry/**/topology-audit-v1.json
+            artifacts/course-geometry/**/import-timings.ndjson
             artifacts/course-geometry/**/overpass-query.txt
             public/course-geometry/**/course-v1.json
           if-no-files-found: ignore
