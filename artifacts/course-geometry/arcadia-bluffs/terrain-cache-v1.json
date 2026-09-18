@@ -1,7 +1,12 @@
 {
-  "cachedAt": "2026-09-18T03:02:27.124264Z",
+  "cachedAt": "2026-09-18T09:36:35.181744Z",
   "courseId": "arcadia-bluffs-arcadia-mi",
   "provider": "usgs-3dep",
+  "qualityGate": {
+    "allHolesTerrainReady": true,
+    "readyHoleCount": 18,
+    "sourceProofPassed": true
+  },
   "refreshPolicy": {
     "implicitRefresh": false,
     "refreshTriggers": [
@@ -13,8 +18,13 @@
   },
   "runtimeNetworkDependency": false,
   "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceProofPath": "artifacts/course-geometry/arcadia-bluffs/terrain-source-proof-v1.json",
+  "sourceProofSchemaVersion": "looper-course-terrain-source-proof-v1",
+  "sourceProofSha256": "06358d777070027773dddfa790ec053ddb35d6ff386e49196ac573a5fa321563",
+  "sourceProofVerifiedAt": "2026-09-18T09:36:31.770937Z",
   "sourceSha256": "3cc637cd98b4b24a27f6ae7c8318ba3e9c836ccf64cc8c692ac2c8b2f5efd06c",
   "terrainPackagePath": "public/course-geometry/arcadia-bluffs/terrain-v1.json",
-  "terrainPackageSha256": "8dc4a15fcf0f83b4e196352406bd9e848cc8076b90268e23c7dcd2df3bd4a129",
-  "validationPath": "artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json"
+  "terrainPackageSha256": "30cd8ed19d18018b3c111f625e0397ad5beae781a8e7c5e1e9696e1afa818315",
+  "validationPath": "artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json",
+  "validationSha256": "e222a03d51a5f913fe2de4c4c79cd954895354bfdfe27ef68e8a0804ae043a39"
 }

@@ -1,7 +1,12 @@
 {
-  "cachedAt": "2026-09-18T03:02:31.957166Z",
+  "cachedAt": "2026-09-18T09:36:40.337309Z",
   "courseId": "pebble-beach-pebble-beach-ca",
   "provider": "usgs-3dep",
+  "qualityGate": {
+    "allHolesTerrainReady": true,
+    "readyHoleCount": 18,
+    "sourceProofPassed": true
+  },
   "refreshPolicy": {
     "implicitRefresh": false,
     "refreshTriggers": [
@@ -13,8 +18,13 @@
   },
   "runtimeNetworkDependency": false,
   "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceProofPath": "artifacts/course-geometry/pebble-beach/terrain-source-proof-v1.json",
+  "sourceProofSchemaVersion": "looper-course-terrain-source-proof-v1",
+  "sourceProofSha256": "9e67da1a7ae2d4e0a74b034ace222cdb3f97ea689a548fe7a120f9565a01ab76",
+  "sourceProofVerifiedAt": "2026-09-18T09:36:34.627252Z",
   "sourceSha256": "69011d73511da049322655ebdb4656023945ddad143d61dc3f956ffb9026e696",
   "terrainPackagePath": "public/course-geometry/pebble-beach/terrain-v1.json",
-  "terrainPackageSha256": "f60d83a2678e37f85bc8bb6e8b94f2db6bd6a33ae55884a2c3d8189847f124d7",
-  "validationPath": "artifacts/course-geometry/pebble-beach/terrain-validation-v1.json"
+  "terrainPackageSha256": "99c2dbbbddf2471101aa153aeaeb8c71e93caca5fd0a1d5311a444d3a0d0a7a6",
+  "validationPath": "artifacts/course-geometry/pebble-beach/terrain-validation-v1.json",
+  "validationSha256": "d72095e754cec345db52b8b6b2ab819379ee411cb798142a66a8873ae36b679f"
 }

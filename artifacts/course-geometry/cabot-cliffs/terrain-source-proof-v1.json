@@ -5,5 +5,5 @@
   "qualityBasis": "Configured HRDEM DTM is a high-resolution bare-earth terrain source; exact footprint coverage is proven by subsequent raster/grid validation.",
   "qualityContract": "Natural Resources Canada HRDEM Mosaic DTM",
   "schemaVersion": "looper-course-terrain-source-proof-v1",
-  "verifiedAt": "2026-09-18T03:02:23.449757Z"
+  "verifiedAt": "2026-09-18T09:36:32.006794Z"
 }

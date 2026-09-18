@@ -1,7 +1,12 @@
 {
-  "cachedAt": "2026-09-18T03:02:31.438847Z",
+  "cachedAt": "2026-09-18T09:36:39.816541Z",
   "courseId": "cabot-cliffs-inverness-ns",
   "provider": "nrcan-hrdem",
+  "qualityGate": {
+    "allHolesTerrainReady": true,
+    "readyHoleCount": 18,
+    "sourceProofPassed": true
+  },
   "refreshPolicy": {
     "implicitRefresh": false,
     "refreshTriggers": [
@@ -13,8 +18,13 @@
   },
   "runtimeNetworkDependency": false,
   "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceProofPath": "artifacts/course-geometry/cabot-cliffs/terrain-source-proof-v1.json",
+  "sourceProofSchemaVersion": "looper-course-terrain-source-proof-v1",
+  "sourceProofSha256": "4560a8bce5fb1b154fcb70676a70e73960a18d08395dc2252d013734295524e0",
+  "sourceProofVerifiedAt": "2026-09-18T09:36:32.006794Z",
   "sourceSha256": "495df6e1214834c150dbff10e2a6b55f5b41cb0516dc5a8ee52c7d62c9cd1d33",
   "terrainPackagePath": "public/course-geometry/cabot-cliffs/terrain-v1.json",
-  "terrainPackageSha256": "e4551ed72c2cc6b641a7349f972396729db68bd7ad238ebe0fbf1b55d7c3565c",
-  "validationPath": "artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json"
+  "terrainPackageSha256": "0c6038adfe3ab13d9099313f9364fb8db734c268987e026213209447781046e2",
+  "validationPath": "artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json",
+  "validationSha256": "8ab037a14f376c8ea5c3dfea4e223886d975163aa734ac69b5d330db086ca306"
 }
