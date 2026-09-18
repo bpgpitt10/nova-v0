@@ -3,7 +3,7 @@
   "courseName": "Royal New Kent Golf Club",
   "freshness": {
     "ageDays": 0.25,
-    "evaluatedAt": "2026-09-18T00:17:22.933086Z",
+    "evaluatedAt": "2026-09-18T00:18:40.784529Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:17:22.933086Z",
+    "builtAt": "2026-09-18T00:18:40.784529Z",
     "configPath": "config/course-geometry/royal-new-kent-v1.json",
     "configSha256": "d33bf36772b9d69838daf4792f6c0a6c72edf719ccae79bcf18cc8de346f6c5e",
     "path": "public/course-geometry/royal-new-kent/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "347e2378fd82f382ec53eb6606e3faefed0e2f6625b1b53175bd7ec906eb9b88"
+    "sha256": "2722183e87e43a1f95d2fdb6a6c2364e1dfbd11de6e18ef270a412c748170f8d"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
