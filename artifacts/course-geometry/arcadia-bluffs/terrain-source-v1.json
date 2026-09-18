@@ -1,0 +1,32 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-86.2543729%2C44.4499510%2C-86.2295805%2C44.4632796&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 11896063,
+      "downloadSha256": "08f7cb50cb647a6ba9f43c5c50c43f09087a3379318e38c6cb2ebafa12e2c4d0",
+      "id": "6375d18bd34ed907bf6d6ce8",
+      "title": "USGS 1 Meter 16 x55y493 MI_13County_2015_C16",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/MI_13County_2015_C16/TIFF/USGS_1M_16_x55y493_MI_13County_2015_C16.tif"
+    },
+    {
+      "downloadBytes": 313395330,
+      "downloadSha256": "9f09bb3013e5c34318ce2a2622babd90554a698ad7654aa03e4cb748c8b73ec8",
+      "id": "6375d171d34ed907bf6d6cab",
+      "title": "USGS 1 Meter 16 x56y493 MI_13County_2015_C16",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/MI_13County_2015_C16/TIFF/USGS_1M_16_x56y493_MI_13County_2015_C16.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T09:40:35.528862Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -86.2543729,
+    44.449951,
+    -86.2295805,
+    44.4632796
+  ],
+  "sourceResolutionMeters": 1.0
+}

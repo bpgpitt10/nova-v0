@@ -18,7 +18,8 @@
     "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
     "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "a3bda3a5ba85ba27c36ed53ad8a5304388950b4dd0d0737d9dec117df14af692"
+    "sha256": "abb5559f41ab00c69b7172cc2db08fd3d58036e8f3c53a278111a4e73bc34967",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
     "snapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
     "sourceBaseTimestamp": "2026-09-18T00:54:28Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T09:41:15.548065Z",
+    "sourceManifestPath": "artifacts/course-geometry/cabot-cliffs/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/cabot-cliffs/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/cabot-cliffs/terrain-v1.json",
+    "terrainPackageSha256": "cee538bacd97c3830b7db99b1e60175bdc2b97cf7c9ef8b0b75facf74314972b",
+    "validationPath": "artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json"
   }
 }

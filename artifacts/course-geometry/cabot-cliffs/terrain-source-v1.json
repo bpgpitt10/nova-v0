@@ -1,0 +1,63 @@
+{
+  "catalogQueryUrl": "https://datacube.services.geo.ca/stac/api/search?collections=hrdem-lidar&bbox=-61.2986567%2C46.2417420%2C-61.2737355%2C46.2635622&limit=100",
+  "dataset": "NRCan HRDEM LiDAR DTM",
+  "license": "Open Government Licence - Canada",
+  "lidarDerived": true,
+  "products": [
+    {
+      "accessMode": "cloud-optimized-geotiff-course-window",
+      "assetKey": "dtm",
+      "courseWindowBytes": 58474,
+      "courseWindowSha256": "fe7cb0befe1183cb889815925323924330b869aaf40bd59eefbaf5cb0e945377",
+      "datetime": "2020-09-01T12:00:00Z",
+      "id": "NS-NSDNR_2020-1m:dtm",
+      "itemId": "NS-NSDNR_2020-1m",
+      "title": "Digital Terrain Model (COG) / Mod\u00e8le num\u00e9rique de terrain (COG)",
+      "url": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/NS-NSDNR_2020-1m-dtm.tif"
+    },
+    {
+      "accessMode": "cloud-optimized-geotiff-course-window",
+      "assetKey": "dtm",
+      "courseWindowBytes": 58474,
+      "courseWindowSha256": "fe7cb0befe1183cb889815925323924330b869aaf40bd59eefbaf5cb0e945377",
+      "datetime": "2018-09-15T12:00:00Z",
+      "id": "NS-NSDNR_2018-1m:dtm",
+      "itemId": "NS-NSDNR_2018-1m",
+      "title": "Digital Terrain Model (COG) / Mod\u00e8le num\u00e9rique de terrain (COG)",
+      "url": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/NS-NSDNR_2018-1m-dtm.tif"
+    },
+    {
+      "accessMode": "cloud-optimized-geotiff-course-window",
+      "assetKey": "dtm",
+      "courseWindowBytes": 58474,
+      "courseWindowSha256": "fe7cb0befe1183cb889815925323924330b869aaf40bd59eefbaf5cb0e945377",
+      "datetime": "2017-10-07T12:00:00Z",
+      "id": "NS-NSDNR_2017_2-1m:dtm",
+      "itemId": "NS-NSDNR_2017_2-1m",
+      "title": "Digital Terrain Model (COG) / Mod\u00e8le num\u00e9rique de terrain (COG)",
+      "url": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/NS-NSDNR_2017_2-1m-dtm.tif"
+    },
+    {
+      "accessMode": "cloud-optimized-geotiff-course-window",
+      "assetKey": "dtm",
+      "courseWindowBytes": 24146247,
+      "courseWindowSha256": "3efb2fea820b6b07be51faf8e067777e42955f0e84467700c4636647e7efad65",
+      "datetime": "2017-10-01T12:00:00Z",
+      "id": "NS-NSDNR_2017-1m:dtm",
+      "itemId": "NS-NSDNR_2017-1m",
+      "title": "Digital Terrain Model (COG) / Mod\u00e8le num\u00e9rique de terrain (COG)",
+      "url": "https://canelevation-dem.s3.ca-central-1.amazonaws.com/hrdem-lidar/NS-NSDNR_2017-1m-dtm.tif"
+    }
+  ],
+  "provider": "nrcan-hrdem-lidar",
+  "rejectedProducts": [],
+  "retrievedAt": "2026-09-18T09:40:48.496864Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -61.2986567,
+    46.241742,
+    -61.2737355,
+    46.2635622
+  ],
+  "sourceResolutionMeters": 1.0
+}

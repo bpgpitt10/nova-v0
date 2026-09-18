@@ -1,0 +1,194 @@
+{
+  "allHolesTerrainReady": true,
+  "courseId": "cabot-cliffs-inverness-ns",
+  "dataset": "NRCan HRDEM LiDAR DTM",
+  "generatedAt": "2026-09-18T09:41:01.712883Z",
+  "holes": [
+    {
+      "elevationRangeFt": [
+        -2.0,
+        77.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 1,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.3,
+        66.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 2,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -0.1,
+        74.8
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 3,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -0.1,
+        80.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 4,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -0.2,
+        61.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 5,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -0.1,
+        51.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 6,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        0.3,
+        108.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 7,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        4.0,
+        129.8
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 8,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.5,
+        75.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 9,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -1.2,
+        76.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 10,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -3.0,
+        135.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 11,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.7,
+        142.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 12,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.8,
+        155.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 13,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        94.0,
+        155.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 14,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -3.2,
+        150.9
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 15,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.8,
+        119.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 16,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -3.1,
+        134.8
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 17,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        -2.5,
+        130.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 18,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "nrcan-hrdem-lidar",
+  "readyHoleCount": 18,
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 18
+}
