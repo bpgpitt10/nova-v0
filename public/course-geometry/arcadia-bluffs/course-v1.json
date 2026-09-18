@@ -1,7 +1,7 @@
 {
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-18T00:45:38.943052Z",
+  "generatedAt": "2026-09-18T00:47:12.503211Z",
   "holes": {
     "1": {
       "bounds": {
@@ -104990,18 +104990,18 @@
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-18T00:45:38.943052Z",
+    "fetchedAt": "2026-09-18T00:47:12.503211Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
     "note": "Static geometry is generated ahead of play; no live OSM query is required during a round.",
-    "sourceBaseTimestamp": "2026-09-18T00:26:50Z",
+    "sourceBaseTimestamp": "2026-09-18T00:46:11Z",
     "sourceElement": {
       "id": 293247442,
       "type": "way"
     },
     "sourceElementIdsComplete": true,
-    "sourceSnapshotSha256": "8bec6224be6351d1e1ec4bb00788f30ab479f657beae6b6d46320f250eb9efde",
+    "sourceSnapshotSha256": "b25d26c387e20f1758ae522033cabd2f28c3b2803cfa775cea24d06cd8f6e1ba",
     "sourceUrl": "https://www.openstreetmap.org/way/293247442"
   },
   "schemaVersion": "looper-static-course-package-v1",

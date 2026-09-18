@@ -3,7 +3,7 @@
   "courseName": "Tobacco Road Golf Club",
   "freshness": {
     "ageDays": 2.34,
-    "evaluatedAt": "2026-09-18T00:45:43.576943Z",
+    "evaluatedAt": "2026-09-18T00:47:18.983843Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:45:43.576943Z",
+    "builtAt": "2026-09-18T00:47:18.983843Z",
     "configPath": "config/course-geometry/tobacco-road-v1.json",
     "configSha256": "c06838133d6a11d7abff91a6014e5a09fcc77df22c5bf22f7aecbf31d9702e94",
     "path": "public/course-geometry/tobacco-road/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "a4dd68d37be5d3831140b766d24ba1d2c29d254745d510a476d6f19620d739fd"
+    "sha256": "e199e52fcd20c58c831fef8cd95a38d10a905017170d2762ee5a306cb85299e1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

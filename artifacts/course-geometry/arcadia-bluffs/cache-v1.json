@@ -3,22 +3,22 @@
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
   "freshness": {
     "ageDays": 0.01,
-    "evaluatedAt": "2026-09-18T00:45:39.099235Z",
+    "evaluatedAt": "2026-09-18T00:47:12.722605Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
   },
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:45:39.099235Z",
+    "builtAt": "2026-09-18T00:47:12.722605Z",
     "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
-    "configSha256": "c62baad0cfb2610313f036fcb781af599624e7267a79cab3da3349e82b4b9da8",
+    "configSha256": "530d9f2800b37fa413bdd7f01331bd6c828b7d59e99fdb17f88091663bb1d998",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "87ea8e8b3eb66655c8e5dc8eeaae5eefb8642f5b8fbeda7bf9e7fc651e1b41d2"
+    "sha256": "79ce1f44a74e605b7d98c160a12a5642e0d900272f616ba97206c4c3239a5ede"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -43,12 +43,13 @@
       "id": 293247442,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T00:27:56.791638Z",
+    "fetchedAt": "2026-09-18T00:47:12.749963Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T00:27:56.791638Z",
+    "lastCheckedAt": "2026-09-18T00:47:12.749963Z",
     "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
     "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
-    "snapshotSha256": "8bec6224be6351d1e1ec4bb00788f30ab479f657beae6b6d46320f250eb9efde",
-    "sourceBaseTimestamp": "2026-09-18T00:26:50Z"
+    "snapshotSha256": "b25d26c387e20f1758ae522033cabd2f28c3b2803cfa775cea24d06cd8f6e1ba",
+    "sourceBaseTimestamp": "2026-09-18T00:46:11Z"
   }
 }
