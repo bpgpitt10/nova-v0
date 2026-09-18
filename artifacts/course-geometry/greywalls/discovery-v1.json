@@ -3,7 +3,7 @@
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 409.0,
+        "durationMs": 154.8,
         "error": null,
         "status": 200,
         "success": true
@@ -16,14 +16,14 @@
     "rawCandidates": []
   },
   "chosen": null,
-  "completedAt": "2026-09-18T13:38:24.260894Z",
+  "completedAt": "2026-09-18T13:39:12.009800Z",
   "courseId": "greywalls-marquette-mi",
   "courseName": "Greywalls at Marquette Golf Club",
   "direct": {
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 258.8,
+        "durationMs": 205.4,
         "error": null,
         "status": 200,
         "success": true
@@ -47,8 +47,8 @@
     "providerEndpoint": null,
     "radiusMeters": 5000
   },
-  "requestedAt": "2026-09-18T13:38:22.751709Z",
+  "requestedAt": "2026-09-18T13:39:10.754749Z",
   "schemaVersion": "looper-course-discovery-v2",
   "success": false,
-  "timingMs": 1509.2
+  "timingMs": 1255.0
 }

@@ -3,7 +3,7 @@
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 223.6,
+        "durationMs": 178.4,
         "error": null,
         "status": 200,
         "success": true
@@ -16,14 +16,14 @@
     "rawCandidates": []
   },
   "chosen": null,
-  "completedAt": "2026-09-18T13:38:20.935524Z",
+  "completedAt": "2026-09-18T13:39:07.368030Z",
   "courseId": "shaftesbury-glen-conway-sc",
   "courseName": "Shaftesbury Glen Golf & Fish Club",
   "direct": {
     "attempts": [
       {
         "attempt": 1,
-        "durationMs": 646.4,
+        "durationMs": 419.3,
         "error": null,
         "status": 200,
         "success": true
@@ -47,8 +47,8 @@
     "providerEndpoint": null,
     "radiusMeters": 5000
   },
-  "requestedAt": "2026-09-18T13:38:19.611798Z",
+  "requestedAt": "2026-09-18T13:39:06.089365Z",
   "schemaVersion": "looper-course-discovery-v2",
   "success": false,
-  "timingMs": 1323.7
+  "timingMs": 1278.7
 }

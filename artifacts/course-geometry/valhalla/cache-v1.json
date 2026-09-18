@@ -3,7 +3,7 @@
   "courseName": "Valhalla Golf Club",
   "freshness": {
     "ageDays": 0.53,
-    "evaluatedAt": "2026-09-18T13:38:21.720241Z",
+    "evaluatedAt": "2026-09-18T13:39:08.844950Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T13:38:21.720241Z",
+    "builtAt": "2026-09-18T13:39:08.844950Z",
     "configPath": "config/course-geometry/valhalla-v1.json",
-    "configSha256": "41a57ece4e2bb3a1679efd2dc5b96bb4b38e7b9deb64e26d3b66e9a0f0974d19",
+    "configSha256": "6fc078c7369bcfe4c5985065bd5b324215d4764ad9ac905d8f94bb3ea0480120",
     "path": "public/course-geometry/valhalla/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "58af3c5834b3e7323d13593687936295796845311bdf4130ed3a509723cc1f8f"
+    "sha256": "43fffa24f947e0d9ab3761b84492fed262d3ee51631a452ef2d923e25b6c5d84"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
