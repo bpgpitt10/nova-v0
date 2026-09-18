@@ -2,8 +2,8 @@
   "courseId": "augusta-national-augusta-ga",
   "courseName": "Augusta National Golf Club",
   "freshness": {
-    "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T11:15:02.554315Z",
+    "ageDays": 0.04,
+    "evaluatedAt": "2026-09-18T12:07:14.889887Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T11:15:02.554315Z",
+    "builtAt": "2026-09-18T12:07:14.889887Z",
     "configPath": "config/course-geometry/augusta-national-v1.json",
     "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
     "path": "public/course-geometry/augusta-national/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "909a63f09a3c6de7a6201259ebd08c182b3220fb4c853e13b76d32e3288605ab"
+    "sha256": "fa9e2cc66e34c6e73eb6518407adbc7b7904332abe07530a30a1b90ab244c262"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

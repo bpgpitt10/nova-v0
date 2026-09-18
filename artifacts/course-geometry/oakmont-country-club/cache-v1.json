@@ -2,8 +2,8 @@
   "courseId": "oakmont-country-club-oakmont-pa",
   "courseName": "Oakmont Country Club",
   "freshness": {
-    "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T11:15:04.045524Z",
+    "ageDays": 0.04,
+    "evaluatedAt": "2026-09-18T12:07:16.353090Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T11:15:04.045524Z",
+    "builtAt": "2026-09-18T12:07:16.353090Z",
     "configPath": "config/course-geometry/oakmont-country-club-v1.json",
     "configSha256": "5f5db33b6964219905cf7a605eb17f8ecc7dd1d2de40085aca2373d1e06a42b4",
     "path": "public/course-geometry/oakmont-country-club/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "ae44b7185cfbbea708395ab951f77f2edd10547ed2f12dbe810d9c3745b264c5"
+    "sha256": "029c9ac435d3c828db74b20286c355550095fe1056d2101de06bdff63da0e6b6"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

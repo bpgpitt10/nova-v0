@@ -9,10 +9,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 3945.1,
+        "packageImporter": 3927.3,
         "sourceFetch": null,
-        "topologyAudit": 65.8,
-        "total": 4081.8
+        "topologyAudit": 63.6,
+        "total": 4061.8
       }
     },
     {
@@ -23,10 +23,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1325.2,
+        "packageImporter": 1311.3,
         "sourceFetch": null,
-        "topologyAudit": 48.7,
-        "total": 1445.6
+        "topologyAudit": 48.3,
+        "total": 1429.7
       }
     },
     {
@@ -37,18 +37,18 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 2852.0,
-        "sourceFetch": 3992.5,
-        "topologyAudit": 57.7,
-        "total": 6976.7
+        "packageImporter": 2898.0,
+        "sourceFetch": null,
+        "topologyAudit": 59.2,
+        "total": 3029.0
       }
     }
   ],
-  "endedAt": "2026-09-18T11:15:11.106684Z",
+  "endedAt": "2026-09-18T12:07:19.470429Z",
   "failedCourseIds": [],
   "failureCount": 0,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T11:14:58.601482Z",
+  "startedAt": "2026-09-18T12:07:10.949167Z",
   "successCount": 3
 }

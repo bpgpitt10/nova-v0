@@ -2,23 +2,23 @@
   "courseId": "erin-hills-erin-wi",
   "courseName": "Erin Hills",
   "freshness": {
-    "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T11:15:10.993755Z",
+    "ageDays": 0.04,
+    "evaluatedAt": "2026-09-18T12:07:19.358670Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cold-source-fetch-build",
-    "usedNetworkForOsm": true
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
   },
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T11:15:10.993755Z",
+    "builtAt": "2026-09-18T12:07:19.358670Z",
     "configPath": "config/course-geometry/erin-hills-v1.json",
     "configSha256": "3a2a06599d866c4f073e87ccca8e9f2fa7e94243b6f25aa569006768ee90f197",
     "path": "public/course-geometry/erin-hills/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "34e9f4349e2d0a0406779ca981ebd7cc2cee6ebfe1414b2b08879d338aaf3961"
+    "sha256": "53281b799de4b4ed463be5bc82a618ed916e5a6dedcf5ffdfb472a0a666f7662"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -47,7 +47,6 @@
     "fetchedAtBasis": "source-provider-fetch",
     "lastCheckedAt": "2026-09-18T11:15:11.034656Z",
     "provider": "openstreetmap-overpass",
-    "providerEndpoint": "https://overpass-api.de/api/interpreter",
     "snapshotPath": "artifacts/course-geometry/erin-hills/osm-snapshot.json",
     "snapshotSha256": "a0565fa22641c6e31acb264db6a1c977bf7dc4d8a55170151651139eac79a7ac",
     "sourceBaseTimestamp": "2026-09-18T11:13:43Z"
