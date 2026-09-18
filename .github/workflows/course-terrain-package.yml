@@ -6,12 +6,17 @@ on:
       - generic-lidar-ingestion-v1
     paths:
       - tools/import_course_terrain.py
+      - tools/import_course_terrain_v2.py
       - tools/compose_course_package.py
       - config/course-geometry/arcadia-bluffs-v1.json
       - config/course-geometry/cabot-cliffs-v1.json
       - config/course-geometry/pebble-beach-v1.json
       - .github/workflows/course-terrain-package.yml
   workflow_dispatch:
+
+concurrency:
+  group: generic-course-lidar-terrain
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -20,7 +25,7 @@ jobs:
   build-terrain:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,13 +39,13 @@ jobs:
         run: pip install --quiet numpy rasterio pyproj
 
       - name: Build Arcadia LiDAR terrain
-        run: python tools/import_course_terrain.py --config config/course-geometry/arcadia-bluffs-v1.json
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/arcadia-bluffs-v1.json
 
       - name: Build Cabot LiDAR terrain
-        run: python tools/import_course_terrain.py --config config/course-geometry/cabot-cliffs-v1.json
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/cabot-cliffs-v1.json
 
       - name: Build Pebble LiDAR terrain
-        run: python tools/import_course_terrain.py --config config/course-geometry/pebble-beach-v1.json
+        run: python tools/import_course_terrain_v2.py --config config/course-geometry/pebble-beach-v1.json
 
       - name: Validate all three terrain packages
         run: |
