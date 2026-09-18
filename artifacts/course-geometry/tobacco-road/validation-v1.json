@@ -1,13 +1,13 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "611765adc6b70c8468af3172fbc9d2e378818121ed8dd2c0009fdbea78b649ce",
+  "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
   "compiler": "build_osm_course_package_v3",
   "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot; landuse=grass objects tagged as golf surfaces are intentionally not duplicated as context.",
   "contextSourceStatus": "unavailable-in-osm-snapshot",
   "contextSourceTagCounts": {},
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-18T01:08:35.314498Z",
+  "generatedAt": "2026-09-18T02:23:43.752785Z",
   "holes": [
     {
       "anchorMethod": "osm-hole-route-start",
@@ -17,6 +17,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 120.2,
+          "maxY": 546.1,
+          "minX": -109.9,
+          "minY": -26.8
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 26.8,
+          "left": 109.9,
+          "past": 15.5,
+          "right": 109.9,
+          "totalLateral": 219.9,
+          "totalLongitudinal": 42.2
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 10.3,
+          "maxY": 530.6,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 11.15,
       "hole": 1,
@@ -58,10 +87,11 @@
       "referenceYards": 558.0,
       "routeLengthResidualYards": -27.0,
       "routeLengthYards": 531.0,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 530.0,
       "surfacePolygons": {
         "bunker": 41,
-        "fairway": 682,
+        "fairway": 382,
         "green": 4,
         "rough": 0,
         "tee": 5,
@@ -69,9 +99,9 @@
       },
       "targetGreenOsmId": 785362265,
       "viewBounds": {
-        "maxX": 375.8,
+        "maxX": 145.2,
         "maxY": 571.1,
-        "minX": -172.7,
+        "minX": -134.9,
         "minY": -51.8
       },
       "warnings": [
@@ -86,6 +116,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 109.9,
+          "maxY": 452.5,
+          "minX": -128.2,
+          "minY": -80.9
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 80.9,
+          "left": 109.8,
+          "past": 71.7,
+          "right": 109.9,
+          "totalLateral": 219.8,
+          "totalLongitudinal": 152.6
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": -0.0,
+          "maxY": 380.7,
+          "minX": -18.4,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 116.93,
       "hole": 2,
@@ -127,10 +186,11 @@
       "referenceYards": 392.0,
       "routeLengthResidualYards": -9.1,
       "routeLengthYards": 382.9,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 380.5,
       "surfacePolygons": {
-        "bunker": 510,
-        "fairway": 875,
+        "bunker": 13,
+        "fairway": 272,
         "green": 2,
         "rough": 0,
         "tee": 13,
@@ -138,9 +198,9 @@
       },
       "targetGreenOsmId": 785369104,
       "viewBounds": {
-        "maxX": 473.0,
-        "maxY": 575.5,
-        "minX": -192.7,
+        "maxX": 134.9,
+        "maxY": 477.5,
+        "minX": -153.2,
         "minY": -105.9
       },
       "warnings": []
@@ -153,6 +213,35 @@
         "woods": 0
       },
       "fairwayRequired": false,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 110.0,
+          "maxY": 196.0,
+          "minX": -92.5,
+          "minY": -110.0
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 110.0,
+          "left": 92.5,
+          "past": 44.0,
+          "right": 110.0,
+          "totalLateral": 202.5,
+          "totalLongitudinal": 154.0
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 152.0,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 85.16,
       "hole": 3,
@@ -194,10 +283,11 @@
       "referenceYards": 152.0,
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 152.0,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 144.7,
       "surfacePolygons": {
         "bunker": 5,
-        "fairway": 280,
+        "fairway": 251,
         "green": 2,
         "rough": 0,
         "tee": 8,
@@ -205,10 +295,10 @@
       },
       "targetGreenOsmId": 785371481,
       "viewBounds": {
-        "maxX": 136.3,
+        "maxX": 135.0,
         "maxY": 221.0,
         "minX": -117.5,
-        "minY": -243.0
+        "minY": -135.0
       },
       "warnings": []
     },
@@ -220,6 +310,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 189.3,
+          "maxY": 508.3,
+          "minX": -109.4,
+          "minY": -105.9
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 105.9,
+          "left": 109.4,
+          "past": 104.2,
+          "right": 39.8,
+          "totalLateral": 149.2,
+          "totalLongitudinal": 210.1
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 149.5,
+          "maxY": 404.0,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 303.72,
       "hole": 4,
@@ -261,10 +380,11 @@
       "referenceYards": 535.0,
       "routeLengthResidualYards": -9.0,
       "routeLengthYards": 526.0,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 407.3,
       "surfacePolygons": {
-        "bunker": 1241,
-        "fairway": 434,
+        "bunker": 306,
+        "fairway": 253,
         "green": 1,
         "rough": 0,
         "tee": 8,
@@ -272,10 +392,10 @@
       },
       "targetGreenOsmId": 785380534,
       "viewBounds": {
-        "maxX": 233.0,
-        "maxY": 698.4,
-        "minX": -210.5,
-        "minY": -157.1
+        "maxX": 214.3,
+        "maxY": 533.3,
+        "minX": -134.4,
+        "minY": -130.9
       },
       "warnings": []
     },
@@ -287,6 +407,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 135.8,
+          "maxY": 378.6,
+          "minX": -109.9,
+          "minY": -107.7
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 107.7,
+          "left": 109.9,
+          "past": 104.2,
+          "right": 60.0,
+          "totalLateral": 169.9,
+          "totalLongitudinal": 211.8
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 75.9,
+          "maxY": 274.4,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 340.21,
       "hole": 5,
@@ -323,10 +472,11 @@
       "referenceYards": 333.0,
       "routeLengthResidualYards": -15.0,
       "routeLengthYards": 318.0,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 274.4,
       "surfacePolygons": {
-        "bunker": 1857,
-        "fairway": 301,
+        "bunker": 1403,
+        "fairway": 233,
         "green": 1,
         "rough": 0,
         "tee": 4,
@@ -334,10 +484,10 @@
       },
       "targetGreenOsmId": 785385006,
       "viewBounds": {
-        "maxX": 257.3,
-        "maxY": 455.7,
-        "minX": -207.2,
-        "minY": -257.6
+        "maxX": 160.8,
+        "maxY": 403.6,
+        "minX": -134.9,
+        "minY": -132.7
       },
       "warnings": []
     },
@@ -349,6 +499,35 @@
         "woods": 0
       },
       "fairwayRequired": false,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 110.0,
+          "maxY": 173.7,
+          "minX": -110.0,
+          "minY": -73.9
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 73.9,
+          "left": 110.0,
+          "past": 45.1,
+          "right": 110.0,
+          "totalLateral": 220.0,
+          "totalLongitudinal": 119.0
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 128.7,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 291.86,
       "hole": 6,
@@ -390,10 +569,11 @@
       "referenceYards": 148.0,
       "routeLengthResidualYards": -19.3,
       "routeLengthYards": 128.7,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 132.1,
       "surfacePolygons": {
-        "bunker": 1855,
-        "fairway": 147,
+        "bunker": 891,
+        "fairway": 113,
         "green": 2,
         "rough": 0,
         "tee": 6,
@@ -401,10 +581,10 @@
       },
       "targetGreenOsmId": 785390011,
       "viewBounds": {
-        "maxX": 137.9,
+        "maxX": 135.0,
         "maxY": 198.7,
-        "minX": -399.9,
-        "minY": -344.5
+        "minX": -135.0,
+        "minY": -98.9
       },
       "warnings": []
     },
@@ -416,6 +596,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 108.9,
+          "maxY": 508.2,
+          "minX": -110.9,
+          "minY": -69.9
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 69.9,
+          "left": 110.0,
+          "past": 98.1,
+          "right": 108.9,
+          "totalLateral": 218.9,
+          "totalLongitudinal": 167.9
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 410.2,
+          "minX": -0.9,
+          "minY": -0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 192.12,
       "hole": 7,
@@ -457,10 +666,11 @@
       "referenceYards": 411.0,
       "routeLengthResidualYards": -0.8,
       "routeLengthYards": 410.2,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 401.1,
       "surfacePolygons": {
-        "bunker": 1863,
-        "fairway": 315,
+        "bunker": 911,
+        "fairway": 151,
         "green": 3,
         "rough": 0,
         "tee": 6,
@@ -468,9 +678,9 @@
       },
       "targetGreenOsmId": 785397552,
       "viewBounds": {
-        "maxX": 136.8,
-        "maxY": 566.4,
-        "minX": -440.5,
+        "maxX": 133.9,
+        "maxY": 533.2,
+        "minX": -135.9,
         "minY": -94.9
       },
       "warnings": []
@@ -483,6 +693,35 @@
         "woods": 0
       },
       "fairwayRequired": false,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 84.1,
+          "maxY": 227.0,
+          "minX": -97.8,
+          "minY": -5.2
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 5.2,
+          "left": 97.8,
+          "past": 41.6,
+          "right": 84.1,
+          "totalLateral": 181.9,
+          "totalLongitudinal": 46.9
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": -0.0,
+          "maxY": 185.3,
+          "minX": -0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 133.09,
       "hole": 8,
@@ -519,6 +758,7 @@
       "referenceYards": 178.0,
       "routeLengthResidualYards": 7.3,
       "routeLengthYards": 185.3,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 174.3,
       "surfacePolygons": {
         "bunker": 8,
@@ -545,6 +785,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 132.8,
+          "maxY": 518.9,
+          "minX": -110.0,
+          "minY": -55.4
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 55.4,
+          "left": 110.0,
+          "past": 110.0,
+          "right": 110.0,
+          "totalLateral": 220.0,
+          "totalLongitudinal": 165.4
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 22.8,
+          "maxY": 408.9,
+          "minX": -0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 178.95,
       "hole": 9,
@@ -586,10 +855,11 @@
       "referenceYards": 427.0,
       "routeLengthResidualYards": -15.5,
       "routeLengthYards": 411.5,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 393.5,
       "surfacePolygons": {
-        "bunker": 976,
-        "fairway": 1073,
+        "bunker": 43,
+        "fairway": 263,
         "green": 3,
         "rough": 0,
         "tee": 3,
@@ -597,10 +867,10 @@
       },
       "targetGreenOsmId": 785405461,
       "viewBounds": {
-        "maxX": 339.9,
-        "maxY": 621.4,
-        "minX": -436.1,
-        "minY": -391.3
+        "maxX": 157.8,
+        "maxY": 543.9,
+        "minX": -135.0,
+        "minY": -80.4
       },
       "warnings": []
     },
@@ -612,6 +882,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 71.5,
+          "maxY": 472.7,
+          "minX": -178.7,
+          "minY": -72.3
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 72.3,
+          "left": 110.0,
+          "past": 109.9,
+          "right": 71.5,
+          "totalLateral": 181.5,
+          "totalLongitudinal": 182.2
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 362.7,
+          "minX": -68.7,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 38.24,
       "hole": 10,
@@ -643,10 +942,11 @@
       "referenceYards": 441.0,
       "routeLengthResidualYards": -51.3,
       "routeLengthYards": 389.7,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 365.5,
       "surfacePolygons": {
         "bunker": 15,
-        "fairway": 543,
+        "fairway": 146,
         "green": 2,
         "rough": 0,
         "tee": 4,
@@ -654,9 +954,9 @@
       },
       "targetGreenOsmId": 785415086,
       "viewBounds": {
-        "maxX": 164.6,
-        "maxY": 602.6,
-        "minX": -345.6,
+        "maxX": 96.5,
+        "maxY": 497.7,
+        "minX": -203.7,
         "minY": -97.3
       },
       "warnings": []
@@ -669,6 +969,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 110.0,
+          "maxY": 396.9,
+          "minX": -183.9,
+          "minY": -104.0
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 104.0,
+          "left": 47.8,
+          "past": 22.0,
+          "right": 110.0,
+          "totalLateral": 157.7,
+          "totalLongitudinal": 126.0
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 374.9,
+          "minX": -136.1,
+          "minY": -0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 190.17,
       "hole": 11,
@@ -710,10 +1039,11 @@
       "referenceYards": 531.0,
       "routeLengthResidualYards": -37.7,
       "routeLengthYards": 493.3,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 353.5,
       "surfacePolygons": {
         "bunker": 506,
-        "fairway": 534,
+        "fairway": 374,
         "green": 3,
         "rough": 0,
         "tee": 3,
@@ -721,10 +1051,10 @@
       },
       "targetGreenOsmId": 785419449,
       "viewBounds": {
-        "maxX": 329.4,
+        "maxX": 135.0,
         "maxY": 421.9,
         "minX": -208.9,
-        "minY": -152.6
+        "minY": -129.0
       },
       "warnings": []
     },
@@ -736,6 +1066,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 183.1,
+          "maxY": 393.3,
+          "minX": -40.0,
+          "minY": -7.0
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 7.0,
+          "left": 40.0,
+          "past": 52.4,
+          "right": 109.9,
+          "totalLateral": 149.9,
+          "totalLongitudinal": 59.4
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 73.2,
+          "maxY": 340.9,
+          "minX": 0.0,
+          "minY": -0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 208.25,
       "hole": 12,
@@ -762,10 +1121,11 @@
       "referenceYards": 419.0,
       "routeLengthResidualYards": -47.3,
       "routeLengthYards": 371.7,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 339.2,
       "surfacePolygons": {
         "bunker": 11,
-        "fairway": 312,
+        "fairway": 226,
         "green": 2,
         "rough": 0,
         "tee": 3,
@@ -773,7 +1133,7 @@
       },
       "targetGreenOsmId": 785421901,
       "viewBounds": {
-        "maxX": 375.7,
+        "maxX": 208.1,
         "maxY": 418.3,
         "minX": -65.0,
         "minY": -32.0
@@ -788,6 +1148,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 103.3,
+          "maxY": 463.0,
+          "minX": -172.5,
+          "minY": -68.8
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 68.8,
+          "left": 54.9,
+          "past": 9.1,
+          "right": 103.3,
+          "totalLateral": 158.3,
+          "totalLongitudinal": 77.8
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 453.9,
+          "minX": -117.6,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 273.17,
       "hole": 13,
@@ -829,10 +1218,11 @@
       "referenceYards": 573.0,
       "routeLengthResidualYards": -41.8,
       "routeLengthYards": 531.2,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 454.7,
       "surfacePolygons": {
         "bunker": 14,
-        "fairway": 386,
+        "fairway": 210,
         "green": 1,
         "rough": 0,
         "tee": 17,
@@ -840,10 +1230,10 @@
       },
       "targetGreenOsmId": 785429786,
       "viewBounds": {
-        "maxX": 156.7,
+        "maxX": 128.3,
         "maxY": 488.0,
         "minX": -197.5,
-        "minY": -149.0
+        "minY": -93.8
       },
       "warnings": []
     },
@@ -855,6 +1245,35 @@
         "woods": 0
       },
       "fairwayRequired": false,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 110.0,
+          "maxY": 293.6,
+          "minX": -101.1,
+          "minY": -25.7
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 25.7,
+          "left": 101.1,
+          "past": 110.0,
+          "right": 110.0,
+          "totalLateral": 211.1,
+          "totalLongitudinal": 135.7
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 183.6,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 76.65,
       "hole": 14,
@@ -896,10 +1315,11 @@
       "referenceYards": 194.0,
       "routeLengthResidualYards": -10.4,
       "routeLengthYards": 183.6,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 191.8,
       "surfacePolygons": {
-        "bunker": 9,
-        "fairway": 300,
+        "bunker": 10,
+        "fairway": 223,
         "green": 2,
         "rough": 0,
         "tee": 10,
@@ -907,9 +1327,9 @@
       },
       "targetGreenOsmId": 785434049,
       "viewBounds": {
-        "maxX": 310.4,
-        "maxY": 361.6,
-        "minX": -135.0,
+        "maxX": 135.0,
+        "maxY": 318.6,
+        "minX": -126.1,
         "minY": -50.7
       },
       "warnings": []
@@ -922,6 +1342,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 99.0,
+          "maxY": 462.8,
+          "minX": -84.4,
+          "minY": -6.4
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 6.4,
+          "left": 46.6,
+          "past": 108.8,
+          "right": 99.0,
+          "totalLateral": 145.6,
+          "totalLongitudinal": 115.1
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 354.0,
+          "minX": -37.8,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 48.72,
       "hole": 15,
@@ -963,10 +1412,11 @@
       "referenceYards": 365.0,
       "routeLengthResidualYards": -2.3,
       "routeLengthYards": 362.7,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 347.6,
       "surfacePolygons": {
         "bunker": 234,
-        "fairway": 615,
+        "fairway": 337,
         "green": 1,
         "rough": 118,
         "tee": 7,
@@ -974,8 +1424,8 @@
       },
       "targetGreenOsmId": 785447680,
       "viewBounds": {
-        "maxX": 224.5,
-        "maxY": 606.2,
+        "maxX": 124.0,
+        "maxY": 487.8,
         "minX": -109.4,
         "minY": -31.4
       },
@@ -989,6 +1439,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 160.7,
+          "maxY": 298.8,
+          "minX": -109.7,
+          "minY": -93.9
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 93.9,
+          "left": 109.7,
+          "past": 59.0,
+          "right": 102.7,
+          "totalLateral": 212.5,
+          "totalLongitudinal": 152.9
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 58.0,
+          "maxY": 239.8,
+          "minX": -0.0,
+          "minY": -0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 213.45,
       "hole": 16,
@@ -1030,10 +1509,11 @@
       "referenceYards": 326.0,
       "routeLengthResidualYards": -55.9,
       "routeLengthYards": 270.1,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 239.9,
       "surfacePolygons": {
-        "bunker": 63,
-        "fairway": 443,
+        "bunker": 65,
+        "fairway": 392,
         "green": 1,
         "rough": 118,
         "tee": 13,
@@ -1041,10 +1521,10 @@
       },
       "targetGreenOsmId": 785451302,
       "viewBounds": {
-        "maxX": 211.5,
-        "maxY": 339.6,
-        "minX": -223.5,
-        "minY": -124.9
+        "maxX": 185.7,
+        "maxY": 323.8,
+        "minX": -134.7,
+        "minY": -118.9
       },
       "warnings": [
         "OSM hole route length differs from configured reference by -56 yd"
@@ -1058,6 +1538,35 @@
         "woods": 0
       },
       "fairwayRequired": false,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 110.0,
+          "maxY": 151.2,
+          "minX": -110.0,
+          "minY": -46.6
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 46.6,
+          "left": 110.0,
+          "past": 19.0,
+          "right": 110.0,
+          "totalLateral": 220.0,
+          "totalLongitudinal": 65.6
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 0.0,
+          "maxY": 132.2,
+          "minX": 0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 76.09,
       "hole": 17,
@@ -1099,10 +1608,11 @@
       "referenceYards": 142.0,
       "routeLengthResidualYards": -9.8,
       "routeLengthYards": 132.2,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 129.8,
       "surfacePolygons": {
         "bunker": 56,
-        "fairway": 577,
+        "fairway": 250,
         "green": 2,
         "rough": 0,
         "tee": 9,
@@ -1110,9 +1620,9 @@
       },
       "targetGreenOsmId": 785455536,
       "viewBounds": {
-        "maxX": 175.4,
-        "maxY": 210.7,
-        "minX": -339.0,
+        "maxX": 135.0,
+        "maxY": 176.2,
+        "minX": -135.0,
         "minY": -71.6
       },
       "warnings": []
@@ -1125,6 +1635,35 @@
         "woods": 0
       },
       "fairwayRequired": true,
+      "geometryPlausibility": {
+        "geometryBounds": {
+          "maxX": 160.6,
+          "maxY": 484.2,
+          "minX": -104.2,
+          "minY": -77.8
+        },
+        "limitsYards": {
+          "perSideLateral": 350.0,
+          "perSideLongitudinal": 300.0,
+          "totalLateral": 600.0,
+          "totalLongitudinal": 500.0
+        },
+        "overhangYards": {
+          "behind": 77.8,
+          "left": 104.2,
+          "past": 110.0,
+          "right": 102.8,
+          "totalLateral": 207.0,
+          "totalLongitudinal": 187.7
+        },
+        "passed": true,
+        "routeBounds": {
+          "maxX": 57.9,
+          "maxY": 374.3,
+          "minX": -0.0,
+          "minY": 0.0
+        }
+      },
       "greenEndpointGapYards": 0.0,
       "headingDegreesTrue": 110.74,
       "hole": 18,
@@ -1166,10 +1705,11 @@
       "referenceYards": 432.0,
       "routeLengthResidualYards": -38.3,
       "routeLengthYards": 393.7,
+      "selectionCorridorYards": 110.0,
       "straightTeeToGreenYards": 372.7,
       "surfacePolygons": {
         "bunker": 68,
-        "fairway": 981,
+        "fairway": 278,
         "green": 5,
         "rough": 0,
         "tee": 11,
@@ -1177,10 +1717,10 @@
       },
       "targetGreenOsmId": 785456824,
       "viewBounds": {
-        "maxX": 267.7,
-        "maxY": 602.3,
-        "minX": -403.7,
-        "minY": -178.3
+        "maxX": 185.6,
+        "maxY": 509.2,
+        "minX": -129.2,
+        "minY": -102.8
       },
       "warnings": []
     }
