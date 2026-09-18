@@ -12,6 +12,36 @@ import type {
 
 const EPSILON = 1e-9
 
+type PolygonBounds = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+const polygonBoundsCache = new WeakMap<CoursePolygonYds, PolygonBounds>()
+
+const polygonBounds = (polygon: CoursePolygonYds): PolygonBounds => {
+  const cached = polygonBoundsCache.get(polygon)
+  if (cached) return cached
+
+  let minX = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const [x, y] of polygon) {
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minY = Math.min(minY, y)
+    maxY = Math.max(maxY, y)
+  }
+
+  const bounds = { minX, maxX, minY, maxY }
+  polygonBoundsCache.set(polygon, bounds)
+  return bounds
+}
+
 export type SurfaceClassificationResult = {
   kind: CourseSurfaceClassification
   surfaceId: string | null
@@ -50,6 +80,7 @@ export type LandingEllipseCoverage = {
   /** Geometric sample coverage only; this is not a shot probability model. */
   surfaceCoverage: Partial<Record<CourseSurfaceClassification, number>>
   preferredCoverage: number
+  roughCoverage?: number
   troubleCoverage: number
   penaltyCoverage: number
   unknownCoverage: number
@@ -101,6 +132,16 @@ function pointOnSegment(
 
 export function pointInPolygon(point: CoursePointYds, polygon: CoursePolygonYds) {
   if (polygon.length < 3) return false
+
+  const bounds = polygonBounds(polygon)
+  if (
+    point[0] < bounds.minX - EPSILON ||
+    point[0] > bounds.maxX + EPSILON ||
+    point[1] < bounds.minY - EPSILON ||
+    point[1] > bounds.maxY + EPSILON
+  ) {
+    return false
+  }
 
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -328,7 +369,7 @@ function nearestTroubleBySide(
         const end = polygon[(i + 1) % polygon.length]
         const edgeMinY = Math.min(start[1], end[1])
         const edgeMaxY = Math.max(start[1], end[1])
-        if (edgeMaxY < point[1] - forwardBandYds || edgeMinY > point[1] + forwardBandYds) continue
+        if (edgeMaxY < point[1] - forwardBandYds || edgeMinY > point[1] + forwardTroubleBandYds) continue
 
         const closest = closestPointOnSegment(point, start, end)
         const distance = distanceBetween(point, closest)
@@ -416,6 +457,7 @@ export function sampleLandingEllipse(
 
   const surfaceCoverage: Partial<Record<CourseSurfaceClassification, number>> = {}
   let preferredCoverage = 0
+  let roughCoverage = 0
   let troubleCoverage = 0
   let penaltyCoverage = 0
 
@@ -424,6 +466,7 @@ export function sampleLandingEllipse(
     surfaceCoverage[kind] = fraction
     const semantics = TACTICAL_SURFACE_SEMANTICS[kind]
     if (semantics.preferred) preferredCoverage += fraction
+    if (kind === 'rough') roughCoverage += fraction
     if (semantics.countsAsTrouble) troubleCoverage += fraction
     if (semantics.countsAsPenalty) penaltyCoverage += fraction
   }
@@ -435,6 +478,7 @@ export function sampleLandingEllipse(
     sampleCount,
     surfaceCoverage,
     preferredCoverage,
+    roughCoverage,
     troubleCoverage,
     penaltyCoverage,
     unknownCoverage: surfaceCoverage.unknown ?? 0,
