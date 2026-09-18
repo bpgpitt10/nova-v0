@@ -17,5 +17,14 @@
     "contextRouteDistanceYards": 110,
     "behindTeeToleranceYards": 35,
     "pastGreenToleranceYards": 50
+  },
+  "terrain": {
+    "provider": "nrcan-hrdem-lidar",
+    "maxSourceResolutionMeters": 2.1,
+    "sourceMarginMeters": 300,
+    "runtimeSpacingYards": 10,
+    "gridPaddingYards": 0,
+    "routeProbeSpacingYards": 10,
+    "maxGridNoDataFraction": 0.45
   }
 }
