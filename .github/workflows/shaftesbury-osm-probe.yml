@@ -27,50 +27,59 @@ jobs:
           from fetch_osm_course_snapshot import fetch_overpass_query
 
           lat, lon = 33.88958, -78.90363
-          radius = 3000
-          query = f'''[out:json][timeout:60];
+
+          def fetch(label, query):
+              raced = fetch_overpass_query(query)
+              print(f'=== {label} endpoint={raced["endpoint"]} ===')
+              return raced['payload'].get('elements') or []
+
+          identity = fetch('IDENTITY', f'''[out:json][timeout:40];
           (
-            nwr(around:{radius},{lat},{lon})["leisure"="golf_course"];
-            nwr(around:{radius},{lat},{lon})["golf"];
-            nwr(around:{radius},{lat},{lon})["name"~"Shaftesbury",i];
+            node(around:2500,{lat},{lon})["leisure"="golf_course"];
+            way(around:2500,{lat},{lon})["leisure"="golf_course"];
+            rel(around:2500,{lat},{lon})["leisure"="golf_course"];
+            node(around:2500,{lat},{lon})["name"~"Shaftesbury",i];
+            way(around:2500,{lat},{lon})["name"~"Shaftesbury",i];
+            rel(around:2500,{lat},{lon})["name"~"Shaftesbury",i];
           );
           out tags center;
-          '''
-          raced = fetch_overpass_query(query)
-          elements = raced['payload'].get('elements') or []
-          holes = []
-          golf_counts = {}
-          named = []
-          course_objects = []
-          for el in elements:
+          ''')
+
+          holes_raw = fetch('HOLES', f'''[out:json][timeout:40];
+          (
+            way(around:2200,{lat},{lon})["golf"="hole"];
+            rel(around:2200,{lat},{lon})["golf"="hole"];
+          );
+          out tags center;
+          ''')
+
+          surfaces_raw = fetch('SURFACES', f'''[out:json][timeout:40];
+          (
+            way(around:2200,{lat},{lon})["golf"~"^(tee|fairway|green|bunker|rough)$"];
+            rel(around:2200,{lat},{lon})["golf"~"^(tee|fairway|green|bunker|rough)$"];
+          );
+          out tags center;
+          ''')
+
+          def slim(el):
               tags = el.get('tags') or {}
-              golf = tags.get('golf')
-              if golf:
-                  golf_counts[golf] = golf_counts.get(golf, 0) + 1
-              if golf == 'hole':
-                  holes.append({
-                      'type': el.get('type'), 'id': el.get('id'),
-                      'ref': tags.get('ref'), 'par': tags.get('par'),
-                      'name': tags.get('name')
-                  })
-              if tags.get('leisure') == 'golf_course':
-                  course_objects.append({
-                      'type': el.get('type'), 'id': el.get('id'),
-                      'name': tags.get('name'), 'center': el.get('center')
-                  })
-              if 'shaftesbury' in str(tags.get('name') or '').lower():
-                  named.append({
-                      'type': el.get('type'), 'id': el.get('id'),
-                      'name': tags.get('name'), 'tags': tags, 'center': el.get('center')
-                  })
+              return {
+                  'type': el.get('type'), 'id': el.get('id'),
+                  'name': tags.get('name'), 'leisure': tags.get('leisure'),
+                  'golf': tags.get('golf'), 'ref': tags.get('ref'),
+                  'par': tags.get('par'), 'center': el.get('center'),
+              }
+
+          holes = [slim(el) for el in holes_raw]
           holes.sort(key=lambda x: (int(x['ref']) if str(x.get('ref') or '').isdigit() else 999, str(x.get('ref'))))
+          counts = {}
+          for el in surfaces_raw:
+              golf = (el.get('tags') or {}).get('golf')
+              counts[golf] = counts.get(golf, 0) + 1
           print(json.dumps({
-              'endpoint': raced['endpoint'],
-              'elementCount': len(elements),
-              'golfCounts': golf_counts,
+              'identityObjects': [slim(el) for el in identity],
               'holeCount': len(holes),
               'holes': holes,
-              'golfCourseObjects': course_objects,
-              'shaftesburyNamedObjects': named,
+              'surfaceCounts': counts,
           }, indent=2))
           PY
