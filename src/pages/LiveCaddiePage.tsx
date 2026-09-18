@@ -297,9 +297,15 @@ export default function LiveCaddiePage() {
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
-  const [hole, setHole] = useState<CourseHoleGeometry | null>(null)
-  const [ball, setBall] = useState<CoursePointYds>([0, 0])
-  const [target, setTarget] = useState<CoursePointYds>([0, 220])
+  const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
+    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
+  )
+  const [ball, setBall] = useState<CoursePointYds>(() =>
+    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry.markers.tee : [0, 0],
+  )
+  const [target, setTarget] = useState<CoursePointYds>(() =>
+    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? defaultTarget(greywolfHole01Geometry) : [0, 220],
+  )
   const [loadError, setLoadError] = useState<string | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
   const [livePrepared, setLivePrepared] = useState(false)
