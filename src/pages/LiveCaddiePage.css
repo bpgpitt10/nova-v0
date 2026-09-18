@@ -1,0 +1,893 @@
+.live-caddie-page {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
+  color: #ffffff;
+  background: #0e1710;
+}
+
+.live-caddie-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(9, 15, 12, 0.88) 0%,
+      rgba(11, 19, 14, 0.76) 34%,
+      rgba(10, 18, 14, 0.58) 66%,
+      rgba(8, 14, 11, 0.7) 100%
+    ),
+    linear-gradient(180deg, rgba(15, 22, 18, 0.18) 0%, rgba(8, 13, 10, 0.52) 100%),
+    url('../assets/Backgrounds/golfscene1.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.live-caddie-shell {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(1500px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 20px 0 24px;
+}
+
+.live-caddie-header {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  min-height: 66px;
+  padding: 0 4px 16px;
+  border-bottom: 1px solid rgba(49, 66, 51, 0.62);
+}
+
+.live-caddie-logo-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+}
+
+.live-caddie-logo {
+  display: block;
+  width: 176px;
+  max-width: 100%;
+  height: auto;
+}
+
+.live-caddie-course-context {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  min-width: 0;
+}
+
+.live-caddie-course-context > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.live-caddie-course-context strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-caddie-course-context > span {
+  padding-bottom: 2px;
+  color: #cfd8cd;
+  font-size: 13px;
+}
+
+.live-kicker {
+  color: #eab308;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.live-caddie-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.live-connection-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #9fb09f;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.live-connection-state i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #687568;
+  box-shadow: 0 0 0 3px rgba(104, 117, 104, 0.08);
+}
+
+.live-connection-state.state-waiting i,
+.live-connection-state.state-received-state i {
+  background: #76d39b;
+  box-shadow: 0 0 0 3px rgba(118, 211, 155, 0.09);
+}
+
+.live-connection-state.state-error i {
+  background: #c85a4a;
+}
+
+.live-diagnostics-link {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(49, 66, 51, 0.76);
+  border-radius: 8px;
+  color: #cfd8cd;
+  background: rgba(23, 36, 25, 0.7);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.live-diagnostics-link:hover {
+  background: #1e3123;
+}
+
+.live-caddie-setup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 4px 6px;
+}
+
+.live-caddie-setup-row select,
+.live-caddie-setup-row button {
+  min-height: 32px;
+  border: 1px solid rgba(49, 66, 51, 0.86);
+  border-radius: 8px;
+  background: rgba(23, 36, 25, 0.84);
+  color: #cfd8cd;
+  font-size: 12px;
+}
+
+.live-caddie-setup-row select {
+  max-width: 230px;
+  padding: 0 8px;
+}
+
+.live-caddie-setup-row button {
+  padding: 0 11px;
+}
+
+.live-caddie-secondary-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  color: #9fb09f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.live-caddie-secondary-context span + span::before {
+  content: '•';
+  padding-right: 12px;
+  color: #526255;
+}
+
+.live-caddie-alert {
+  margin: 4px 4px 8px;
+  padding: 8px 11px;
+  border: 1px solid rgba(234, 179, 8, 0.22);
+  border-radius: 9px;
+  background: rgba(52, 46, 20, 0.38);
+  color: #d9d2b0;
+  font-size: 11px;
+}
+
+.live-caddie-alert.bad {
+  border-color: rgba(200, 90, 74, 0.34);
+  background: rgba(93, 28, 28, 0.26);
+  color: #f2cac4;
+}
+
+.live-empty-state {
+  display: grid;
+  gap: 10px;
+  min-height: 420px;
+  place-content: center;
+  max-width: 760px;
+  margin: 48px auto;
+  padding: 40px;
+  text-align: center;
+}
+
+.live-empty-state h1 {
+  font-size: clamp(28px, 4vw, 48px);
+}
+
+.live-empty-state p {
+  max-width: 620px;
+  color: #9fb09f;
+}
+
+.live-caddie-main-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.66fr) minmax(620px, 1.6fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-top: 6px;
+}
+
+.live-decision-column {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.live-decision-card,
+.live-outcomes-card,
+.live-compare-card,
+.live-map-card,
+.live-club-strip-card {
+  box-sizing: border-box;
+  border: 1px solid rgba(49, 66, 51, 0.82);
+  background:
+    linear-gradient(180deg, rgba(30, 49, 35, 0.9) 0%, rgba(20, 33, 24, 0.93) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 20px 60px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(7px);
+}
+
+.live-decision-card {
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.live-decision-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-recommended-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgba(234, 179, 8, 0.42);
+  border-radius: 999px;
+  color: #f7d762;
+  background: rgba(234, 179, 8, 0.11);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.live-reset-inspection {
+  min-height: 25px;
+  padding: 0 7px;
+  border: 0;
+  color: #9fb09f;
+  background: transparent;
+  font-size: 10px;
+}
+
+.live-club-hero {
+  margin-top: 12px;
+  color: #ffffff;
+  font-size: clamp(60px, 7vw, 96px);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+}
+
+.live-aim-hero {
+  margin-top: 9px;
+  color: #eab308;
+  font-size: clamp(22px, 2.1vw, 32px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.live-decision-reason {
+  min-height: 38px;
+  margin: 7px 0 15px;
+  color: #cfd8cd;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.live-adjustment-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.live-adjustment-stack > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 1px solid rgba(49, 66, 51, 0.72);
+  border-radius: 9px;
+  background: rgba(23, 36, 25, 0.64);
+}
+
+.live-adjustment-stack span {
+  color: #9fb09f;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.live-adjustment-stack strong {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.live-adjustment-stack small {
+  overflow: hidden;
+  color: #8fa08f;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-arm-recommendation {
+  width: 100%;
+  min-height: 43px;
+  margin-top: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.46);
+  border-radius: 10px;
+  background: rgba(234, 179, 8, 0.12);
+  color: #f8dc70;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.live-arm-recommendation:hover,
+.live-arm-recommendation.armed {
+  background: #eab308;
+  color: #12180f;
+}
+
+.live-arm-recommendation:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.live-outcomes-card,
+.live-compare-card {
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.live-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.live-section-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.live-section-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.live-section-heading small {
+  color: #8fa08f;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.live-section-heading.compact {
+  margin-bottom: 8px;
+}
+
+.live-outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid rgba(49, 66, 51, 0.7);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.live-outcome-grid > div {
+  display: grid;
+  gap: 1px;
+  padding: 9px 5px;
+  text-align: center;
+  background: rgba(18, 31, 22, 0.58);
+}
+
+.live-outcome-grid > div + div {
+  border-left: 1px solid rgba(49, 66, 51, 0.62);
+}
+
+.live-outcome-grid strong {
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.live-outcome-grid span {
+  color: #9fb09f;
+  font-size: 8px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.live-outcome-grid .outcome-success strong {
+  color: #76d39b;
+}
+
+.live-outcome-grid .outcome-trouble strong {
+  color: #e2b85f;
+}
+
+.live-outcome-grid .outcome-catastrophe strong {
+  color: #e48678;
+}
+
+.live-outcome-details {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: #8fa08f;
+  font-size: 9px;
+}
+
+.live-outcome-details span + span::before {
+  content: '•';
+  padding-right: 9px;
+  color: #4f604f;
+}
+
+.live-aim-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.live-aim-options button {
+  display: grid;
+  gap: 2px;
+  min-height: 42px;
+  padding: 7px 9px;
+  border: 1px solid rgba(49, 66, 51, 0.76);
+  border-radius: 8px;
+  background: rgba(23, 36, 25, 0.64);
+  color: #cfd8cd;
+  text-align: left;
+}
+
+.live-aim-options button strong {
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.live-aim-options button span {
+  color: #8fa08f;
+  font-size: 9px;
+}
+
+.live-aim-options button.viewed {
+  border-color: rgba(234, 179, 8, 0.6);
+  background: rgba(42, 67, 48, 0.9);
+}
+
+.live-aim-options button.recommended span {
+  color: #eab308;
+}
+
+.live-map-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.live-map-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  padding: 0 2px 10px;
+}
+
+.live-map-topbar > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.live-map-topbar h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.live-map-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.live-map-toggles button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(49, 66, 51, 0.78);
+  border-radius: 999px;
+  background: rgba(23, 36, 25, 0.7);
+  color: #9fb09f;
+  font-size: 10px;
+}
+
+.live-map-toggles button.active,
+.live-map-toggles button.always-on {
+  border-color: rgba(234, 179, 8, 0.52);
+  color: #f4d15d;
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.live-map-toggles button.always-on {
+  cursor: default;
+}
+
+.live-map-shell {
+  min-height: 0;
+  display: grid;
+}
+
+.live-map {
+  width: 100%;
+  height: min(68vh, 720px);
+  min-height: 540px;
+  border: 1px solid rgba(49, 66, 51, 0.72);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.16), transparent 42%),
+    #0b130d;
+}
+
+.live-context,
+.live-terrain-contour,
+.live-probability,
+.live-practice-dot,
+.live-risk-dot {
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.live-context.context-grass-context {
+  fill: rgba(122, 142, 73, 0.07);
+  stroke: none;
+}
+
+.live-context.context-woods {
+  fill: url(#liveWoodsPattern);
+  stroke: rgba(131, 173, 115, 0.34);
+  stroke-width: 0.12;
+}
+
+.live-context.context-scrub {
+  fill: url(#liveScrubPattern);
+  stroke: rgba(194, 184, 101, 0.3);
+  stroke-width: 0.11;
+}
+
+.live-terrain-contour {
+  fill: none;
+  stroke: rgba(226, 244, 221, 0.19);
+  stroke-width: 0.12;
+}
+
+.live-surface {
+  stroke-width: 0.18;
+}
+
+.live-map .surface-rough { fill: #263d2a; stroke: #38523b; }
+.live-map .surface-fairway { fill: #53774e; stroke: #779671; }
+.live-map .surface-green { fill: #719666; stroke: #a9c59e; }
+.live-map .surface-bunker { fill: #9d8a62; stroke: #cbb98d; }
+.live-map .surface-water { fill: #31596a; stroke: #56849a; }
+.live-map .surface-tee { fill: #66825d; stroke: #a0bb95; }
+.live-map .surface-deep-rough { fill: #19301e; stroke: #315437; }
+.live-map .surface-penalty { fill: #5b2928; stroke: #9b4b48; }
+
+.live-target-line {
+  stroke: rgba(207, 216, 205, 0.42);
+  stroke-width: 0.22;
+  stroke-dasharray: 1 1;
+}
+
+.live-aim-line {
+  stroke: #eab308;
+  stroke-width: 0.34;
+  stroke-dasharray: 1.1 0.58;
+  opacity: 0.96;
+}
+
+.live-probability.probability-95 {
+  fill: rgba(255, 255, 255, 0.012);
+  stroke: rgba(255, 255, 255, 0.47);
+  stroke-width: 0.23;
+  stroke-dasharray: 0.65 0.55;
+}
+
+.live-probability.probability-80 {
+  fill: rgba(118, 211, 155, 0.025);
+  stroke: rgba(205, 238, 212, 0.8);
+  stroke-width: 0.29;
+  stroke-dasharray: 0.8 0.34;
+}
+
+.live-probability.probability-50 {
+  fill: rgba(118, 211, 155, 0.06);
+  stroke: rgba(237, 249, 239, 0.96);
+  stroke-width: 0.36;
+}
+
+.live-ball-marker {
+  fill: #ffffff;
+  stroke: #0b130d;
+  stroke-width: 0.3;
+}
+
+.live-target-marker,
+.live-aim-marker {
+  fill: #eab308;
+  stroke: #0b130d;
+  stroke-width: 0.25;
+}
+
+.live-mean-marker {
+  fill: #76d39b;
+  stroke: #0b130d;
+  stroke-width: 0.25;
+}
+
+.live-pin-marker {
+  fill: #ef6461;
+  stroke: #ffffff;
+  stroke-width: 0.2;
+}
+
+.live-practice-dot {
+  opacity: 0.88;
+  stroke: #0b130d;
+  stroke-width: 0.12;
+}
+
+.live-risk-dot {
+  opacity: 0.92;
+  stroke: #0b130d;
+  stroke-width: 0.14;
+}
+
+.live-map .sample-fairway,
+.live-map .sample-green,
+.live-map .sample-tee,
+.live-map .risk-success { fill: #76d39b; }
+.live-map .sample-rough,
+.live-map .risk-manageable { fill: #d5ddd3; }
+.live-map .sample-bunker,
+.live-map .sample-deep-rough,
+.live-map .risk-serious_trouble { fill: #eab308; }
+.live-map .sample-water,
+.live-map .sample-penalty,
+.live-map .risk-catastrophe { fill: #ef6461; }
+.live-map .sample-unknown,
+.live-map .risk-unknown { fill: #c995ff; }
+
+.live-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-wrap: wrap;
+  min-height: 32px;
+  padding: 8px 2px 0;
+  color: #8fa08f;
+  font-size: 9px;
+}
+
+.live-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.live-map-legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.live-map-legend i.ball { background: #ffffff; }
+.live-map-legend i.aim { background: #eab308; }
+.live-map-legend i.mean { background: #76d39b; }
+.live-map-legend i.pin { background: #ef6461; }
+.live-map-legend i.practice { background: #cfd8cd; }
+.live-map-legend i.core {
+  width: 12px;
+  height: 0;
+  border-top: 1px solid #dceadd;
+  border-radius: 0;
+}
+
+.live-club-strip-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px 10px;
+  border-radius: 14px;
+}
+
+.live-club-strip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.live-club-strip-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.live-club-strip-heading strong {
+  color: #cfd8cd;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.live-club-strip-heading button {
+  min-height: 28px;
+  border: 1px solid rgba(49, 66, 51, 0.76);
+  border-radius: 8px;
+  background: rgba(23, 36, 25, 0.7);
+  color: #9fb09f;
+  font-size: 10px;
+}
+
+.live-club-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+  gap: 6px;
+}
+
+.live-club-strip button {
+  position: relative;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding: 5px;
+  border: 1px solid rgba(49, 66, 51, 0.82);
+  border-radius: 9px;
+  background: rgba(23, 36, 25, 0.78);
+  color: #cfd8cd;
+}
+
+.live-club-strip button strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.live-club-strip button span {
+  color: #eab308;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.live-club-strip button.recommended {
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.live-club-strip button.armed {
+  border-color: #eab308;
+  background: #eab308;
+  color: #11170f;
+}
+
+.live-club-strip button.armed span {
+  color: #263011;
+}
+
+.live-club-strip-card > p {
+  margin: 0;
+  color: #728072;
+  font-size: 9px;
+}
+
+@media (max-width: 1120px) {
+  .live-caddie-shell {
+    width: min(100% - 28px, 1500px);
+  }
+
+  .live-caddie-main-grid {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+
+  .live-map {
+    min-height: 480px;
+  }
+
+  .live-map-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .live-map-toggles {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 860px) {
+  .live-caddie-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .live-caddie-course-context {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .live-caddie-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-map-card {
+    grid-row: 1;
+  }
+
+  .live-map {
+    min-height: 430px;
+    height: 60vh;
+  }
+
+  .live-caddie-secondary-context {
+    width: 100%;
+    margin-left: 0;
+    order: 5;
+  }
+
+  .live-caddie-setup-row {
+    flex-wrap: wrap;
+  }
+}
