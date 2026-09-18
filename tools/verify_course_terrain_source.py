@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Verify that configured terrain sources meet Looper's source-quality contract.
 
-For USGS courses, use the official 3DEP Elevation Index source-data layers as
-our primary proof. The source DEM layer exposes lidar work-unit metadata,
-including quality level, source DEM ground spacing, publication status, and
-source links. A course passes only when its padded footprint is covered by a
-high-resolution source DEM (<=2 m) or the standard 1-meter product. LPC-only
-coverage is diagnostic until we add point-cloud-to-DTM compilation.
+For USGS courses, use the official 3DEP Elevation Index source-data layers.
+Proof is route-aware: it samples tee, middle, and green-route positions for all
+18 holes instead of rectangular course-bounds corners, which can legitimately
+fall in oceans/lakes at coastal courses. A US course passes only when every
+playable-route sample is covered by a published high-resolution source DEM
+(<=2 m) or the standard 1-meter product. LPC-only coverage remains diagnostic.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import math
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,28 +21,17 @@ from typing import Any
 import requests
 
 import build_osm_course_package_v3 as v3
-from build_course_terrain import course_latlon_bounds
 
 INDEX_BASE = "https://index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer"
 LAYER_1M = 1
 LAYER_LPC = 8
 LAYER_SOURCE_DEM = 11
 MAX_SOURCE_DEM_GSD_M = 2.0
+ROUTE_SAMPLE_POSITIONS = ("tee", "middle", "green")
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def expanded_wgs84_bounds(
-    bounds: tuple[float, float, float, float],
-    padding_m: float,
-) -> tuple[float, float, float, float]:
-    min_lon, min_lat, max_lon, max_lat = bounds
-    mid_lat = (min_lat + max_lat) / 2.0
-    lat_pad = padding_m / 111_320.0
-    lon_pad = padding_m / (111_320.0 * max(0.05, math.cos(math.radians(mid_lat))))
-    return min_lon - lon_pad, min_lat - lat_pad, max_lon + lon_pad, max_lat + lat_pad
 
 
 def request_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -58,7 +47,7 @@ def request_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
         except Exception as exc:
             last_error = exc
             if attempt < 2:
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(1.0 * (attempt + 1))
     raise RuntimeError(f"3DEP source-index query failed after retries: {last_error}")
 
 
@@ -80,123 +69,119 @@ def index_features_at_point(layer_id: int, lon: float, lat: float) -> list[dict[
 
 def compact_source_feature(attrs: dict[str, Any]) -> dict[str, Any]:
     keep = (
-        "workunit",
-        "workunit_id",
-        "project",
-        "project_id",
-        "collect_start",
-        "collect_end",
-        "ql",
-        "spec",
-        "p_method",
-        "dem_gsd_meters",
-        "horiz_crs",
-        "vert_crs",
-        "geoid",
-        "lpc_pub_date",
-        "lpc_category",
-        "sourcedem_pub_date",
-        "sourcedem_category",
-        "onemeter_category",
-        "onemeter_reason",
-        "seamless_category",
-        "seamless_reason",
-        "lpc_link",
-        "sourcedem_link",
-        "metadata_link",
+        "workunit", "workunit_id", "project", "project_id", "collect_start", "collect_end",
+        "ql", "spec", "p_method", "dem_gsd_meters", "horiz_crs", "vert_crs", "geoid",
+        "lpc_pub_date", "lpc_category", "sourcedem_pub_date", "sourcedem_category",
+        "onemeter_category", "onemeter_reason", "seamless_category", "seamless_reason",
+        "lpc_link", "sourcedem_link", "metadata_link",
     )
     return {key: attrs.get(key) for key in keep if attrs.get(key) is not None}
 
 
-def compact_product_feature(attrs: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in attrs.items() if value is not None and key not in {"SHAPE", "Shape"}}
-
-
-def point_contract(lon: float, lat: float) -> dict[str, Any]:
-    one_m = index_features_at_point(LAYER_1M, lon, lat)
-    source_dem = index_features_at_point(LAYER_SOURCE_DEM, lon, lat)
-    lpc = index_features_at_point(LAYER_LPC, lon, lat)
-
-    high_res_source = []
+def high_res_source_dems(source_dem: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    accepted: list[dict[str, Any]] = []
     for attrs in source_dem:
         try:
             gsd = float(attrs.get("dem_gsd_meters"))
         except (TypeError, ValueError):
             continue
         category = str(attrs.get("sourcedem_category") or "").strip().lower()
-        # The source-index layer can include planned/unavailable work units.
-        # Require a usable source link or a category indicating availability.
         available = bool(attrs.get("sourcedem_link")) or category in {"available", "published", "production"}
         if gsd <= MAX_SOURCE_DEM_GSD_M and available:
-            high_res_source.append(attrs)
+            accepted.append(attrs)
+    return accepted
+
+
+def point_contract(label: str, hole: int, position: str, lat: float, lon: float) -> dict[str, Any]:
+    source_dem = index_features_at_point(LAYER_SOURCE_DEM, lon, lat)
+    high_res_source = high_res_source_dems(source_dem)
+    if high_res_source:
+        one_m: list[dict[str, Any]] = []
+        lpc: list[dict[str, Any]] = []
+        accepted = True
+        reason = "high-resolution-source-dem"
+    else:
+        one_m = index_features_at_point(LAYER_1M, lon, lat)
+        accepted = bool(one_m)
+        reason = "standard-one-meter" if accepted else None
+        lpc = [] if accepted else index_features_at_point(LAYER_LPC, lon, lat)
 
     return {
+        "label": label,
+        "hole": hole,
+        "position": position,
+        "lat": round(lat, 7),
+        "lon": round(lon, 7),
+        "accepted": accepted,
+        "acceptedBy": reason,
         "standardOneMeterCovered": bool(one_m),
         "highResolutionSourceDemCovered": bool(high_res_source),
         "lidarPointCloudCovered": bool(lpc),
-        "oneMeterProducts": [compact_product_feature(item) for item in one_m],
         "sourceDemWorkUnits": [compact_source_feature(item) for item in high_res_source],
-        "allSourceDemWorkUnits": [compact_source_feature(item) for item in source_dem],
         "lidarWorkUnits": [compact_source_feature(item) for item in lpc],
     }
 
 
-def usgs_source_proof(
-    course_id: str,
-    bounds: tuple[float, float, float, float],
-    padding_m: float,
-) -> dict[str, Any]:
-    padded = expanded_wgs84_bounds(bounds, padding_m)
-    min_lon, min_lat, max_lon, max_lat = padded
-    points = {
-        "southwest": (min_lon, min_lat),
-        "northwest": (min_lon, max_lat),
-        "southeast": (max_lon, min_lat),
-        "northeast": (max_lon, max_lat),
-        "center": ((min_lon + max_lon) / 2.0, (min_lat + max_lat) / 2.0),
-    }
+def route_samples(hole_routes: dict[int, dict[str, Any]]) -> list[tuple[str, int, str, float, float]]:
+    samples: list[tuple[str, int, str, float, float]] = []
+    for hole in range(1, 19):
+        route = hole_routes[hole]["geometry"]
+        if len(route) < 2:
+            raise ValueError(f"Hole {hole} route is too short for source verification")
+        indices = (0, len(route) // 2, len(route) - 1)
+        for position, index in zip(ROUTE_SAMPLE_POSITIONS, indices):
+            lat, lon = route[index]
+            samples.append((f"h{hole}-{position}", hole, position, float(lat), float(lon)))
+    return samples
 
-    checks: list[dict[str, Any]] = []
+
+def usgs_source_proof(course_id: str, hole_routes: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    samples = route_samples(hole_routes)
+    checks_by_label: dict[str, dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        futures = {
+            pool.submit(point_contract, label, hole, position, lat, lon): label
+            for label, hole, position, lat, lon in samples
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            checks_by_label[result["label"]] = result
+
+    checks = [checks_by_label[label] for label, *_ in samples]
     unique_source_workunits: dict[str, dict[str, Any]] = {}
     unique_lpc_workunits: dict[str, dict[str, Any]] = {}
-    for label, (lon, lat) in points.items():
-        contract = point_contract(lon, lat)
-        accepted = contract["standardOneMeterCovered"] or contract["highResolutionSourceDemCovered"]
-        checks.append({
-            "point": label,
-            "lon": round(lon, 7),
-            "lat": round(lat, 7),
-            "accepted": accepted,
-            **contract,
-        })
-        for item in contract["sourceDemWorkUnits"]:
+    for check in checks:
+        for item in check["sourceDemWorkUnits"]:
             key = str(item.get("workunit_id") or item.get("workunit") or item.get("sourcedem_link"))
             unique_source_workunits[key] = item
-        for item in contract["lidarWorkUnits"]:
+        for item in check["lidarWorkUnits"]:
             key = str(item.get("workunit_id") or item.get("workunit") or item.get("lpc_link"))
             unique_lpc_workunits[key] = item
 
-    passed = all(item["accepted"] for item in checks)
-    source_workunits = list(unique_source_workunits.values())
-    method = None
-    if passed:
-        method = "3dep-standard-1m-or-high-resolution-source-dem"
-
+    failed = [item["label"] for item in checks if not item["accepted"]]
+    passed = not failed
+    gsd_values = [
+        float(unit["dem_gsd_meters"])
+        for unit in unique_source_workunits.values()
+        if unit.get("dem_gsd_meters") is not None
+    ]
     return {
         "schemaVersion": "looper-course-terrain-source-proof-v1",
         "courseId": course_id,
         "provider": "usgs-3dep",
         "verifiedAt": utc_now(),
-        "qualityContract": "Official USGS 3DEP 1-meter product or <=2 m published source DEM across the padded course footprint",
-        "qualityBasis": "3DEP source DEM/LPC work units are lidar-source products in CONUS; the proof records work-unit quality level, source DEM ground spacing, publication/link status, and metadata links.",
+        "qualityContract": "Official USGS 3DEP <=2 m published source DEM or standard 1-meter product at tee/mid-route/green samples for all 18 holes",
+        "qualityBasis": "3DEP source DEM/LPC work units are lidar-source products in CONUS. Route-aware sampling avoids requiring land LiDAR outside the playable course footprint at coastal courses.",
         "indexService": INDEX_BASE,
-        "paddedBoundsWgs84": [round(value, 7) for value in padded],
-        "paddingMeters": padding_m,
+        "sampleStrategy": "tee, middle OSM route vertex, and final OSM route vertex for each of 18 holes",
+        "sampleCount": len(checks),
         "maximumAcceptedSourceDemGsdMeters": MAX_SOURCE_DEM_GSD_M,
-        "selectionMethod": method,
+        "failedSamples": failed,
         "sampleChecks": checks,
-        "sourceDemWorkUnits": source_workunits,
+        "sourceDemWorkUnits": list(unique_source_workunits.values()),
         "lidarWorkUnits": list(unique_lpc_workunits.values()),
+        "minimumObservedSourceDemGsdMeters": min(gsd_values) if gsd_values else None,
+        "maximumObservedSourceDemGsdMeters": max(gsd_values) if gsd_values else None,
         "passed": passed,
     }
 
@@ -215,11 +200,9 @@ def main() -> int:
     _, hole_routes = v3.normalize_osm_with_topology(osm)
     if sorted(hole_routes) != list(range(1, 19)):
         raise SystemExit(f"Expected OSM routes 1-18; got {sorted(hole_routes)}")
-    bounds = course_latlon_bounds(hole_routes)
-    padding = float(terrain.get("sourcePaddingMeters", 300.0))
 
     if provider == "usgs-3dep":
-        proof = usgs_source_proof(config["courseId"], bounds, padding)
+        proof = usgs_source_proof(config["courseId"], hole_routes)
     elif provider == "nrcan-hrdem":
         proof = {
             "schemaVersion": "looper-course-terrain-source-proof-v1",
@@ -239,28 +222,19 @@ def main() -> int:
         "courseId": proof["courseId"],
         "provider": proof["provider"],
         "passed": proof["passed"],
-        "selectionMethod": proof.get("selectionMethod"),
-        "sampleChecks": [
-            {
-                "point": item["point"],
-                "accepted": item["accepted"],
-                "standard1m": item["standardOneMeterCovered"],
-                "sourceDem": item["highResolutionSourceDemCovered"],
-                "lpc": item["lidarPointCloudCovered"],
-                "sourceWorkUnits": [
-                    {
-                        "workunit": unit.get("workunit"),
-                        "project": unit.get("project"),
-                        "ql": unit.get("ql"),
-                        "dem_gsd_meters": unit.get("dem_gsd_meters"),
-                    }
-                    for unit in item["sourceDemWorkUnits"]
-                ],
-            }
-            for item in proof.get("sampleChecks") or []
-        ],
+        "sampleCount": proof.get("sampleCount"),
+        "failedSamples": proof.get("failedSamples"),
         "sourceDemWorkUnitCount": len(proof.get("sourceDemWorkUnits") or []),
-        "lidarWorkUnitCount": len(proof.get("lidarWorkUnits") or []),
+        "sourceDemGsdMeters": [proof.get("minimumObservedSourceDemGsdMeters"), proof.get("maximumObservedSourceDemGsdMeters")],
+        "workUnits": [
+            {
+                "workunit": unit.get("workunit"),
+                "project": unit.get("project"),
+                "ql": unit.get("ql"),
+                "dem_gsd_meters": unit.get("dem_gsd_meters"),
+            }
+            for unit in proof.get("sourceDemWorkUnits") or []
+        ],
     }, indent=2))
     if not proof["passed"]:
         raise SystemExit("Terrain source quality gate failed")
