@@ -91,7 +91,7 @@ export const courseRegistry = [
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
   {
     id: 'shaftesbury-glen-conway-sc',
@@ -129,7 +129,7 @@ export const courseRegistry = [
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
   {
     id: 'greywalls-marquette-mi',
@@ -159,7 +159,7 @@ export const courseRegistry = [
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
+    lidarCacheStatus: 'cached',
   },
   {
     id: 'augusta-national-augusta-ga',
