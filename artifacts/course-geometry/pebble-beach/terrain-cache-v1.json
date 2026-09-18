@@ -1,0 +1,20 @@
+{
+  "cachedAt": "2026-09-18T02:51:17.229816Z",
+  "courseId": "pebble-beach-pebble-beach-ca",
+  "provider": "usgs-3dep",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "provider-dataset-update",
+      "course-renovation"
+    ],
+    "serveCachedRegardlessOfAge": true
+  },
+  "runtimeNetworkDependency": false,
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceSha256": "69011d73511da049322655ebdb4656023945ddad143d61dc3f956ffb9026e696",
+  "terrainPackagePath": "public/course-geometry/pebble-beach/terrain-v1.json",
+  "terrainPackageSha256": "df9b420c4c1ef55d945abb7b2d593c73c8df578819f0c37f7d568d524d295046",
+  "validationPath": "artifacts/course-geometry/pebble-beach/terrain-validation-v1.json"
+}

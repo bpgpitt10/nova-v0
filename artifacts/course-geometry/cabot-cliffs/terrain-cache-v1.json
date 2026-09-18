@@ -1,0 +1,20 @@
+{
+  "cachedAt": "2026-09-18T02:51:15.640238Z",
+  "courseId": "cabot-cliffs-inverness-ns",
+  "provider": "nrcan-hrdem",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "provider-dataset-update",
+      "course-renovation"
+    ],
+    "serveCachedRegardlessOfAge": true
+  },
+  "runtimeNetworkDependency": false,
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceSha256": "495df6e1214834c150dbff10e2a6b55f5b41cb0516dc5a8ee52c7d62c9cd1d33",
+  "terrainPackagePath": "public/course-geometry/cabot-cliffs/terrain-v1.json",
+  "terrainPackageSha256": "b7b9b31a456365d567a035f249caf5aeea0c2a2b882e8e3efa413718a9e89357",
+  "validationPath": "artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json"
+}

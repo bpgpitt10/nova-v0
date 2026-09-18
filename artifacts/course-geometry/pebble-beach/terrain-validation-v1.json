@@ -1,0 +1,308 @@
+{
+  "allHolesTerrainReady": true,
+  "courseId": "pebble-beach-pebble-beach-ca",
+  "generatedAt": "2026-09-18T02:51:17.229816Z",
+  "holes": [
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 54,
+        "spacingYds": 10.0,
+        "width": 28
+      },
+      "hole": 1,
+      "ready": true,
+      "reliefFt": 130.2,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1512,
+      "validSamples": 1512
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 80,
+        "spacingYds": 10.0,
+        "width": 25
+      },
+      "hole": 2,
+      "ready": true,
+      "reliefFt": 76.2,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2000,
+      "validSamples": 2000
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 64,
+        "spacingYds": 10.0,
+        "width": 34
+      },
+      "hole": 3,
+      "ready": true,
+      "reliefFt": 105.6,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2176,
+      "validSamples": 2176
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 60,
+        "spacingYds": 10.0,
+        "width": 29
+      },
+      "hole": 4,
+      "ready": true,
+      "reliefFt": 72.6,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1740,
+      "validSamples": 1740
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 49,
+        "spacingYds": 10.0,
+        "width": 29
+      },
+      "hole": 5,
+      "ready": true,
+      "reliefFt": 81.1,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1421,
+      "validSamples": 1421
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 81,
+        "spacingYds": 10.0,
+        "width": 29
+      },
+      "hole": 6,
+      "ready": true,
+      "reliefFt": 175.3,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2349,
+      "validSamples": 2349
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 27,
+        "spacingYds": 10.0,
+        "width": 19
+      },
+      "hole": 7,
+      "ready": true,
+      "reliefFt": 69.2,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 513,
+      "validSamples": 513
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 62,
+        "spacingYds": 10.0,
+        "width": 32
+      },
+      "hole": 8,
+      "ready": true,
+      "reliefFt": 128.3,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1984,
+      "validSamples": 1984
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 81,
+        "spacingYds": 10.0,
+        "width": 31
+      },
+      "hole": 9,
+      "ready": true,
+      "reliefFt": 152.3,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2511,
+      "validSamples": 2511
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 71,
+        "spacingYds": 10.0,
+        "width": 31
+      },
+      "hole": 10,
+      "ready": true,
+      "reliefFt": 114.4,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2201,
+      "validSamples": 2201
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 54,
+        "spacingYds": 10.0,
+        "width": 24
+      },
+      "hole": 11,
+      "ready": true,
+      "reliefFt": 142.5,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1296,
+      "validSamples": 1296
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 39,
+        "spacingYds": 10.0,
+        "width": 25
+      },
+      "hole": 12,
+      "ready": true,
+      "reliefFt": 131.1,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 975,
+      "validSamples": 975
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 73,
+        "spacingYds": 10.0,
+        "width": 28
+      },
+      "hole": 13,
+      "ready": true,
+      "reliefFt": 157.3,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 2044,
+      "validSamples": 2044
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 78,
+        "spacingYds": 10.0,
+        "width": 40
+      },
+      "hole": 14,
+      "ready": true,
+      "reliefFt": 218.2,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 3120,
+      "validSamples": 3120
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 61,
+        "spacingYds": 10.0,
+        "width": 24
+      },
+      "hole": 15,
+      "ready": true,
+      "reliefFt": 153.6,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1464,
+      "validSamples": 1464
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 59,
+        "spacingYds": 10.0,
+        "width": 30
+      },
+      "hole": 16,
+      "ready": true,
+      "reliefFt": 122.0,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1770,
+      "validSamples": 1770
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 42,
+        "spacingYds": 10.0,
+        "width": 29
+      },
+      "hole": 17,
+      "ready": true,
+      "reliefFt": 55.1,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1218,
+      "validSamples": 1218
+    },
+    {
+      "coveragePct": 100.0,
+      "grid": {
+        "height": 72,
+        "spacingYds": 10.0,
+        "width": 24
+      },
+      "hole": 18,
+      "ready": true,
+      "reliefFt": 55.7,
+      "routeEndSampleAvailable": true,
+      "teeSampleAvailable": true,
+      "totalSamples": 1728,
+      "validSamples": 1728
+    }
+  ],
+  "minimumHoleGridCoveragePct": 50.0,
+  "provider": "usgs-3dep",
+  "readyHoleCount": 18,
+  "readyHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceRaster": {
+    "crs": "EPSG:3857",
+    "height": 1184,
+    "nodata": null,
+    "width": 1449
+  },
+  "sourceSha256": "69011d73511da049322655ebdb4656023945ddad143d61dc3f956ffb9026e696"
+}
