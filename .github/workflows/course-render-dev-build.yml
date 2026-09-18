@@ -19,6 +19,7 @@ on:
       - src/dev/caddieInputs.css
       - config/course-geometry/**
       - public/course-geometry/**
+      - artifacts/course-geometry/**
       - tools/build_osm_course_package.py
       - tools/build_osm_course_package_v2.py
       - tools/gspro_physics_lab.py
