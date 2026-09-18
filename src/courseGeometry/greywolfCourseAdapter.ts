@@ -2,6 +2,7 @@ import { greywolfHole01Geometry } from './greywolfHole01'
 import { loadGreywolfHoleContext } from './greywolfEnvironment'
 import { loadGreywolfHoleTerrain } from './greywolfTerrain'
 import type {
+  CourseGeometryBounds,
   CourseHoleGeometry,
   CoursePointYds,
   CoursePolygonYds,
@@ -38,6 +39,8 @@ const RAW_BASE = '/course-geometry/greywolf/local-geometry'
 
 const kindOrder = ['tee', 'fairway', 'rough', 'green', 'bunker', 'water'] as const
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
+const TACTICAL_VIEW_LATERAL_PAD_YDS = 18
+const TACTICAL_VIEW_LONGITUDINAL_PAD_YDS = 12
 
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
@@ -230,6 +233,13 @@ const boundsIncludingContext = (
   return { minX, maxX, minY, maxY }
 }
 
+const tacticalViewBounds = (bounds: CourseGeometryBounds): CourseGeometryBounds => ({
+  minX: bounds.minX - TACTICAL_VIEW_LATERAL_PAD_YDS,
+  maxX: bounds.maxX + TACTICAL_VIEW_LATERAL_PAD_YDS,
+  minY: bounds.minY - TACTICAL_VIEW_LONGITUDINAL_PAD_YDS,
+  maxY: bounds.maxY + TACTICAL_VIEW_LONGITUDINAL_PAD_YDS,
+})
+
 const attachSupplementalGeometry = async (
   holeNumber: number,
   geometry: CourseHoleGeometry,
@@ -241,14 +251,15 @@ const attachSupplementalGeometry = async (
   const displayBounds = contextLayers.length > 0
     ? boundsIncludingContext(geometry, contextLayers)
     : geometry.bounds
+  const viewBounds = geometry.viewBounds ?? tacticalViewBounds(geometry.bounds)
 
   return {
     ...geometry,
-    // Greywolf's raw hole bounds describe the playable golf surfaces. The
-    // curated environment package deliberately includes broader woods/scrub
-    // needed by the tactical map, so expose the full context extent to views
-    // that use CourseHoleGeometry.bounds for framing.
+    // Keep the full woods/scrub extent available to the model, but frame the
+    // playing map around a padded tactical envelope based on playable surfaces.
+    // This prevents remote context polygons from shrinking the hole on screen.
     bounds: displayBounds,
+    viewBounds,
     ...(contextLayers.length > 0 ? { contextLayers } : {}),
     ...(terrainData
       ? {
