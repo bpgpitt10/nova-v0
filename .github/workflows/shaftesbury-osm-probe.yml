@@ -1,0 +1,76 @@
+name: Shaftesbury OSM structure probe
+
+on:
+  push:
+    branches:
+      - course-importer-cache-v1
+    paths:
+      - .github/workflows/shaftesbury-osm-probe.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: course-importer-cache-v1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe OSM structure near verified Shaftesbury location
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          sys.path.insert(0, 'tools')
+          from fetch_osm_course_snapshot import fetch_overpass_query
+
+          lat, lon = 33.88958, -78.90363
+          radius = 3000
+          query = f'''[out:json][timeout:60];
+          (
+            nwr(around:{radius},{lat},{lon})["leisure"="golf_course"];
+            nwr(around:{radius},{lat},{lon})["golf"];
+            nwr(around:{radius},{lat},{lon})["name"~"Shaftesbury",i];
+          );
+          out tags center;
+          '''
+          raced = fetch_overpass_query(query)
+          elements = raced['payload'].get('elements') or []
+          holes = []
+          golf_counts = {}
+          named = []
+          course_objects = []
+          for el in elements:
+              tags = el.get('tags') or {}
+              golf = tags.get('golf')
+              if golf:
+                  golf_counts[golf] = golf_counts.get(golf, 0) + 1
+              if golf == 'hole':
+                  holes.append({
+                      'type': el.get('type'), 'id': el.get('id'),
+                      'ref': tags.get('ref'), 'par': tags.get('par'),
+                      'name': tags.get('name')
+                  })
+              if tags.get('leisure') == 'golf_course':
+                  course_objects.append({
+                      'type': el.get('type'), 'id': el.get('id'),
+                      'name': tags.get('name'), 'center': el.get('center')
+                  })
+              if 'shaftesbury' in str(tags.get('name') or '').lower():
+                  named.append({
+                      'type': el.get('type'), 'id': el.get('id'),
+                      'name': tags.get('name'), 'tags': tags, 'center': el.get('center')
+                  })
+          holes.sort(key=lambda x: (int(x['ref']) if str(x.get('ref') or '').isdigit() else 999, str(x.get('ref'))))
+          print(json.dumps({
+              'endpoint': raced['endpoint'],
+              'elementCount': len(elements),
+              'golfCounts': golf_counts,
+              'holeCount': len(holes),
+              'holes': holes,
+              'golfCourseObjects': course_objects,
+              'shaftesburyNamedObjects': named,
+          }, indent=2))
+          PY
