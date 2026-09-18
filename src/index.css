@@ -74,3 +74,12 @@ p {
     ),
     linear-gradient(180deg, rgba(15, 22, 18, 0.12) 0%, rgba(8, 13, 10, 0.34) 100%);
 }
+
+/* The optimizer keeps a shared strategic planning target internally so clubs can
+   be ranked against the same future state. It is not a player-facing shot point.
+   Do not draw that fixed target/line on Live Caddie; the visible gold aim marker
+   is now projected at the selected club's modeled carry distance instead. */
+.live-caddie-page .live-target-line,
+.live-caddie-page .live-target-marker {
+  display: none;
+}
