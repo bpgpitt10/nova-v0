@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "arcadia-bluffs-arcadia-mi",
+  "courseName": "Arcadia Bluffs — The Bluffs Course",
+  "location": "Arcadia, MI",
+  "slug": "arcadia-bluffs",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 293247442
+  },
+  "osmCenter": [44.45663, -86.24196],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}
