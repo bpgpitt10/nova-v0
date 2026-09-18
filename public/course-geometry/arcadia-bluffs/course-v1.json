@@ -1,7 +1,7 @@
 {
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-18T02:23:31.212284Z",
+  "generatedAt": "2026-09-18T02:25:53.924563Z",
   "holes": {
     "1": {
       "context": {
@@ -101090,7 +101090,7 @@
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-18T02:23:31.212284Z",
+    "fetchedAt": "2026-09-18T02:25:53.924563Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",

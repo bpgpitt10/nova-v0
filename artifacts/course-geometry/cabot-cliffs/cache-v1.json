@@ -3,7 +3,7 @@
   "courseName": "Cabot Cliffs",
   "freshness": {
     "ageDays": 0.06,
-    "evaluatedAt": "2026-09-18T02:23:33.484959Z",
+    "evaluatedAt": "2026-09-18T02:25:55.633307Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T02:23:33.484959Z",
+    "builtAt": "2026-09-18T02:25:55.633307Z",
     "configPath": "config/course-geometry/cabot-cliffs-v1.json",
     "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
     "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "21b07ee062b2e8c6001dc8dcfda9b90aaabf0b0072d200ae17d1b1df15c9b420"
+    "sha256": "a3bda3a5ba85ba27c36ed53ad8a5304388950b4dd0d0737d9dec117df14af692"
   },
   "refreshPolicy": {
     "deleteOnAge": false,

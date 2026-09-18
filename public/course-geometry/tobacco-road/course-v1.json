@@ -1,7 +1,7 @@
 {
   "courseId": "tobacco-road-sanford-nc",
   "courseName": "Tobacco Road Golf Club",
-  "generatedAt": "2026-09-18T02:23:43.752785Z",
+  "generatedAt": "2026-09-18T02:26:03.223256Z",
   "holes": {
     "1": {
       "context": {
@@ -247961,7 +247961,7 @@
     "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
     "builderVersion": "build_osm_course_package_v3",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-18T02:23:43.752785Z",
+    "fetchedAt": "2026-09-18T02:26:03.223256Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
