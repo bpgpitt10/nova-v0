@@ -24,6 +24,13 @@ type RawFeature = {
   sourceTags?: Record<string, string>
 }
 
+type RawClipBounds = {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
 type RawHole = {
   number: number
   anchors: {
@@ -32,6 +39,7 @@ type RawHole = {
   }
   view: {
     featureIds: string[]
+    clipBounds?: RawClipBounds
   }
 }
 
@@ -91,6 +99,27 @@ const polygonsForFeature = (feature: RawFeature, hole: RawHole): CoursePolygonYd
   return []
 }
 
+const polygonIntersectsBounds = (polygon: CoursePolygonYds, bounds: RawClipBounds) => {
+  let minX = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const [x, y] of polygon) {
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minY = Math.min(minY, y)
+    maxY = Math.max(maxY, y)
+  }
+
+  return !(
+    maxX < bounds.minX ||
+    minX > bounds.maxX ||
+    maxY < bounds.minY ||
+    minY > bounds.maxY
+  )
+}
+
 const contextKind = (kind: string): CourseContextLayer['kind'] | null => {
   if (kind === 'woods') return 'woods'
   if (kind === 'scrub') return 'scrub'
@@ -135,12 +164,24 @@ const loadEnvironment = async (holeNumber: number): Promise<readonly CourseConte
   }
 
   const requestedIds = new Set(hole.view.featureIds)
+  const clipBounds = hole.view.clipBounds
+
   return payload.features.flatMap((feature): CourseContextLayer[] => {
-    if (!requestedIds.has(feature.id) || !ENVIRONMENT_KINDS.has(feature.kind)) return []
+    if (!ENVIRONMENT_KINDS.has(feature.kind)) return []
     const kind = contextKind(feature.kind)
     if (!kind) return []
+
     const polygons = polygonsForFeature(feature, hole)
     if (polygons.length === 0) return []
+
+    // Hole 1 was the original vegetation pilot, so only its context IDs were
+    // written into view.featureIds. The package itself already contains the
+    // course-wide cached vegetation. For the remaining holes, recover the
+    // context whose transformed polygon extent intersects that hole's proven
+    // local clip bounds rather than silently returning an empty environment.
+    const selected = requestedIds.has(feature.id)
+      || Boolean(clipBounds && polygons.some((polygon) => polygonIntersectsBounds(polygon, clipBounds)))
+    if (!selected) return []
 
     return [{
       id: feature.id,
