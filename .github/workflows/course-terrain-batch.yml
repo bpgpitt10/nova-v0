@@ -6,6 +6,7 @@ on:
       - course-lidar-importer-v1
     paths:
       - tools/build_course_terrain.py
+      - tools/verify_course_terrain_source.py
       - tools/requirements-course-terrain.txt
       - config/course-geometry/arcadia-bluffs-v1.json
       - config/course-geometry/cabot-cliffs-v1.json
@@ -33,8 +34,25 @@ jobs:
       - name: Install terrain compiler dependencies
         run: pip install --quiet -r tools/requirements-course-terrain.txt
 
-      - name: Syntax-check terrain compiler
-        run: python -m py_compile tools/build_course_terrain.py
+      - name: Syntax-check terrain tooling
+        run: python -m py_compile tools/build_course_terrain.py tools/verify_course_terrain_source.py
+
+      - name: Verify source-quality coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          for slug in arcadia-bluffs cabot-cliffs pebble-beach; do
+            case "$slug" in
+              arcadia-bluffs) config="config/course-geometry/arcadia-bluffs-v1.json" ;;
+              cabot-cliffs) config="config/course-geometry/cabot-cliffs-v1.json" ;;
+              pebble-beach) config="config/course-geometry/pebble-beach-v1.json" ;;
+            esac
+            echo "=== terrain source proof: $slug ==="
+            python tools/verify_course_terrain_source.py \
+              --osm "artifacts/course-geometry/$slug/osm-snapshot.json" \
+              --config "$config" \
+              --output "artifacts/course-geometry/$slug/terrain-source-proof-v1.json"
+          done
 
       - name: Build Arcadia, Cabot, and Pebble terrain caches
         shell: bash
@@ -62,11 +80,13 @@ jobs:
           import json
           from pathlib import Path
           for slug in ('arcadia-bluffs', 'cabot-cliffs', 'pebble-beach'):
-              path = Path('artifacts/course-geometry') / slug / 'terrain-validation-v1.json'
-              data = json.loads(path.read_text())
+              root = Path('artifacts/course-geometry') / slug
+              proof = json.loads((root / 'terrain-source-proof-v1.json').read_text())
+              data = json.loads((root / 'terrain-validation-v1.json').read_text())
+              assert proof['passed'] is True, (slug, 'source proof failed')
               assert data['allHolesTerrainReady'] is True, (slug, data['readyHoles'])
               assert data['readyHoleCount'] == 18, (slug, data['readyHoleCount'])
-              print(f"{slug}: PASS 18/18 terrain ready; provider={data['provider']}")
+              print(f"{slug}: PASS source + 18/18 terrain; provider={data['provider']}")
           PY
 
       - name: Persist normalized terrain caches
@@ -77,16 +97,19 @@ jobs:
             public/course-geometry/arcadia-bluffs/terrain-v1.json \
             public/course-geometry/cabot-cliffs/terrain-v1.json \
             public/course-geometry/pebble-beach/terrain-v1.json \
+            artifacts/course-geometry/arcadia-bluffs/terrain-source-proof-v1.json \
             artifacts/course-geometry/arcadia-bluffs/terrain-validation-v1.json \
             artifacts/course-geometry/arcadia-bluffs/terrain-cache-v1.json \
+            artifacts/course-geometry/cabot-cliffs/terrain-source-proof-v1.json \
             artifacts/course-geometry/cabot-cliffs/terrain-validation-v1.json \
             artifacts/course-geometry/cabot-cliffs/terrain-cache-v1.json \
+            artifacts/course-geometry/pebble-beach/terrain-source-proof-v1.json \
             artifacts/course-geometry/pebble-beach/terrain-validation-v1.json \
             artifacts/course-geometry/pebble-beach/terrain-cache-v1.json
           if git diff --cached --quiet; then
             echo "Terrain caches unchanged"
           else
-            git commit -m "Build cached terrain for Arcadia Cabot and Pebble"
+            git commit -m "Build verified terrain for Arcadia Cabot and Pebble"
             git fetch origin course-lidar-importer-v1
             git rebase origin/course-lidar-importer-v1
             git push origin HEAD:course-lidar-importer-v1
