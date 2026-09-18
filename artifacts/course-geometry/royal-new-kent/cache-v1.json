@@ -2,8 +2,8 @@
   "courseId": "royal-new-kent-providence-forge-va",
   "courseName": "Royal New Kent Golf Club",
   "freshness": {
-    "ageDays": 0.23,
-    "evaluatedAt": "2026-09-17T23:46:11.397061Z",
+    "ageDays": 0.25,
+    "evaluatedAt": "2026-09-18T00:17:22.933086Z",
     "status": "current"
   },
   "lastBuild": {
@@ -13,12 +13,12 @@
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-17T23:46:11.397061Z",
+    "builtAt": "2026-09-18T00:17:22.933086Z",
     "configPath": "config/course-geometry/royal-new-kent-v1.json",
     "configSha256": "d33bf36772b9d69838daf4792f6c0a6c72edf719ccae79bcf18cc8de346f6c5e",
     "path": "public/course-geometry/royal-new-kent/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "415fe8741a4d8d32f0112bcd523aea6ac8dbd2947a3d37bab632677aa9242d24"
+    "sha256": "347e2378fd82f382ec53eb6606e3faefed0e2f6625b1b53175bd7ec906eb9b88"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
