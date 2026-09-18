@@ -10,6 +10,7 @@ import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import {
   courseCatalog,
   getCourseCatalogEntry,
+  GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
@@ -18,6 +19,7 @@ import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
 } from '../courseGeometry/courseSelection'
+import { greywolfHole01Geometry } from '../courseGeometry/greywolfHole01'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
@@ -380,8 +382,22 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     let active = true
     setLoadError(null)
-    setHole(null)
-    if (courseId === UNSELECTED_COURSE_ID) return () => { active = false }
+    if (courseId === UNSELECTED_COURSE_ID) {
+      setHole(null)
+      return () => { active = false }
+    }
+
+    const immediateHole = courseId === GREYWOLF_COURSE_ID && holeNumber === 1
+      ? greywolfHole01Geometry
+      : null
+    if (immediateHole) {
+      setHole(immediateHole)
+      setBall(immediateHole.markers.tee)
+      setTarget(defaultTarget(immediateHole))
+    } else {
+      setHole(null)
+    }
+
     void loadCourseHoleGeometry(courseId, holeNumber)
       .then((loaded) => {
         if (!active) return
@@ -391,7 +407,8 @@ export default function LiveCaddiePage() {
       })
       .catch((error) => {
         if (!active) return
-        setLoadError(error instanceof Error ? error.message : String(error))
+        if (!immediateHole) setLoadError(error instanceof Error ? error.message : String(error))
+        else console.warn('[Live Caddie] supplemental Greywolf geometry did not finish loading.', error)
       })
     return () => {
       active = false
