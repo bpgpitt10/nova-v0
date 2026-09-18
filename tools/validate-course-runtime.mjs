@@ -39,21 +39,6 @@ const server = await createServer({
 })
 
 try {
-  const arcadiaPackage = JSON.parse(
-    await readFile(
-      resolve(process.cwd(), 'public/course-geometry/arcadia-bluffs/course-v1.json'),
-      'utf-8',
-    ),
-  )
-  const rawHole1 = arcadiaPackage?.holes?.['1']
-  console.log('[runtime-smoke] Arcadia Hole 1 raw contract', JSON.stringify({
-    keys: rawHole1 && typeof rawHole1 === 'object' ? Object.keys(rawHole1) : null,
-    bounds: rawHole1?.bounds ?? null,
-    viewBounds: rawHole1?.viewBounds ?? null,
-    coordinateSystem: rawHole1?.coordinateSystem ?? null,
-    coordinateFrame: rawHole1?.coordinateFrame ?? null,
-  }))
-
   const { loadCourseHoleGeometry } = await server.ssrLoadModule('/src/courseGeometry/courseProvider.ts')
   const { estimateGreywolfTerrain: estimateCourseTerrain } = await server.ssrLoadModule('/src/courseGeometry/lidar.ts')
 
