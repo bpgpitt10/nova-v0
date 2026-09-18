@@ -3,22 +3,22 @@
   "courseName": "Payne's Valley",
   "freshness": {
     "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T00:52:05.356511Z",
+    "evaluatedAt": "2026-09-18T00:55:58.531632Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cold-source-fetch-build",
-    "usedNetworkForOsm": true
+    "reason": "cached-source-rebuild",
+    "usedNetworkForOsm": false
   },
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:52:05.356511Z",
+    "builtAt": "2026-09-18T00:55:58.531632Z",
     "configPath": "config/course-geometry/paynes-valley-v1.json",
     "configSha256": "291c52e2a6696d11ea20914f40a4665202d337cfc1e07baf82ed82f1b03935df",
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "1c31d2433d327d505e38758c4c52b98bde5d7dceeede1f4794c26b5d6495f74e"
+    "sha256": "ffaef4344f6e68fda7faa16fef861b6a698e17da80cb617a62dfdabffdfdee01"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -47,7 +47,6 @@
     "fetchedAtBasis": "source-provider-fetch",
     "lastCheckedAt": "2026-09-18T00:52:05.387345Z",
     "provider": "openstreetmap-overpass",
-    "providerEndpoint": "https://overpass-api.de/api/interpreter",
     "snapshotPath": "artifacts/course-geometry/paynes-valley/osm-snapshot.json",
     "snapshotSha256": "6eddf2f6ac5da32ae92bfe19d554cfe3b2439ddfe96cf3be07291bf8e7218796",
     "sourceBaseTimestamp": "2026-09-18T00:50:20Z"

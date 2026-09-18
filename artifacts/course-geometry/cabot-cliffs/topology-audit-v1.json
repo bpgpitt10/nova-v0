@@ -1,0 +1,854 @@
+{
+  "innerRingCount": 122,
+  "innerRingsByParentClassification": {
+    "context:woods": 97,
+    "surface:bunker": 3,
+    "surface:fairway": 22
+  },
+  "innerRingsWithStandaloneTags": 0,
+  "innerRingsWithoutStandaloneTags": 122,
+  "multipolygonRelationsWithInnerRings": 9,
+  "relations": [
+    {
+      "classification": "context:woods",
+      "innerMembers": 29,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663660,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664331,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117662777,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663512,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663193,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663811,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664501,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117662958,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664626,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663140,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663789,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664470,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664126,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664794,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663374,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663915,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664778,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663354,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663899,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664611,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664314,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117662760,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663497,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664110,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663612,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664271,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117664922,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663473,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117663111,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 1624493,
+      "tags": {
+        "natural": "wood",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "context:woods",
+      "innerMembers": 68,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 373748814,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 373748815,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 373748813,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 373748812,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547871,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547929,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547884,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547990,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547917,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547867,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547926,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117547880,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549817,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549659,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550251,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549895,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549710,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549541,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549948,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549796,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549627,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550209,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549841,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549680,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550303,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549920,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549728,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550281,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549911,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549719,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549549,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549966,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549760,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549591,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550124,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549632,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550219,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549854,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549685,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549525,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549925,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549733,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549563,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549917,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549725,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549555,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550002,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549766,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549596,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550142,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549801,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549701,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549533,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549933,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549743,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549576,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550078,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549782,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549613,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550053,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549774,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549604,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550168,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549809,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549640,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117550228,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549875,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 117549538,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 5556462,
+      "tags": {
+        "natural": "wood",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:bunker",
+      "innerMembers": 2,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214066,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214065,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954827,
+      "tags": {
+        "golf": "bunker",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:bunker",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214067,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954828,
+      "tags": {
+        "golf": "bunker",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 3,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214068,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1341020552,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1341041052,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954829,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214069,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954830,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 1,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1340969896,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954831,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 7,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214090,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214089,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214088,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214087,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214086,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1214552887,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214085,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954832,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    },
+    {
+      "classification": "surface:fairway",
+      "innerMembers": 10,
+      "inners": [
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1214542674,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1214542675,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1214542676,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1341020543,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214092,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214091,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1341043751,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214093,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1458214094,
+          "tags": {}
+        },
+        {
+          "classification": null,
+          "memberType": "way",
+          "ref": 1341020542,
+          "tags": {}
+        }
+      ],
+      "outerMembers": 1,
+      "relationId": 19954833,
+      "tags": {
+        "golf": "fairway",
+        "type": "multipolygon"
+      }
+    }
+  ],
+  "schemaVersion": "looper-osm-topology-audit-v1"
+}

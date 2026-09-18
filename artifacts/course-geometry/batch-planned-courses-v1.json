@@ -3,15 +3,16 @@
   "courses": [
     {
       "courseId": "shaftesbury-glen-conway-sc",
-      "error": "no way/relation leisure=golf_course candidates",
+      "error": "no way/relation golf-course candidates after category-filtered search",
       "slug": "shaftesbury-glen",
       "success": false,
       "timingMs": {
-        "discovery": 582.2,
+        "batchThrottle": 0.0,
+        "discovery": 645.1,
         "packageImporter": null,
         "sourceFetch": null,
         "topologyAudit": null,
-        "total": 582.6
+        "total": 645.4
       }
     },
     {
@@ -20,11 +21,12 @@
       "slug": "valhalla",
       "success": true,
       "timingMs": {
-        "discovery": 412.0,
-        "packageImporter": 1175.1,
-        "sourceFetch": 2896.7,
-        "topologyAudit": 54.9,
-        "total": 5153.5
+        "batchThrottle": 0.0,
+        "discovery": 0.0,
+        "packageImporter": 865.3,
+        "sourceFetch": null,
+        "topologyAudit": 40.6,
+        "total": 974.7
       }
     },
     {
@@ -33,37 +35,40 @@
       "slug": "muirfield-village",
       "success": true,
       "timingMs": {
-        "discovery": 277.5,
-        "packageImporter": 1379.4,
-        "sourceFetch": 3298.2,
-        "topologyAudit": 57.7,
-        "total": 5094.9
+        "batchThrottle": 0.0,
+        "discovery": 0.0,
+        "packageImporter": 1012.4,
+        "sourceFetch": null,
+        "topologyAudit": 42.0,
+        "total": 1110.9
       }
     },
     {
       "courseId": "cabot-cliffs-inverness-ns",
-      "error": "timed_import_osm_course.py exited 1",
+      "error": null,
       "slug": "cabot-cliffs",
-      "success": false,
+      "success": true,
       "timingMs": {
-        "discovery": 357.0,
-        "packageImporter": null,
-        "sourceFetch": 34864.7,
-        "topologyAudit": null,
-        "total": 35302.7
+        "batchThrottle": 0.0,
+        "discovery": 0.0,
+        "packageImporter": 3893.3,
+        "sourceFetch": 2689.5,
+        "topologyAudit": 39.5,
+        "total": 6681.1
       }
     },
     {
       "courseId": "greywalls-marquette-mi",
-      "error": "no way/relation leisure=golf_course candidates",
+      "error": "no way/relation golf-course candidates after category-filtered search",
       "slug": "greywalls",
       "success": false,
       "timingMs": {
-        "discovery": 395.1,
+        "batchThrottle": 0.0,
+        "discovery": 579.1,
         "packageImporter": null,
         "sourceFetch": null,
         "topologyAudit": null,
-        "total": 395.5
+        "total": 579.5
       }
     },
     {
@@ -72,37 +77,38 @@
       "slug": "paynes-valley",
       "success": true,
       "timingMs": {
-        "discovery": 284.0,
-        "packageImporter": 2100.5,
-        "sourceFetch": 2641.8,
-        "topologyAudit": 57.8,
-        "total": 5870.3
+        "batchThrottle": 0.0,
+        "discovery": 0.0,
+        "packageImporter": 1570.6,
+        "sourceFetch": null,
+        "topologyAudit": 42.4,
+        "total": 1670.4
       }
     },
     {
       "courseId": "pebble-beach-pebble-beach-ca",
-      "error": "no way/relation leisure=golf_course candidates",
+      "error": "HTTPError: HTTP Error 503: Service Unavailable",
       "slug": "pebble-beach",
       "success": false,
       "timingMs": {
-        "discovery": 637.7,
+        "batchThrottle": 0.0,
+        "discovery": 11451.1,
         "packageImporter": null,
         "sourceFetch": null,
         "topologyAudit": null,
-        "total": 638.1
+        "total": 11451.6
       }
     }
   ],
-  "endedAt": "2026-09-18T00:52:06.101163Z",
+  "endedAt": "2026-09-18T00:56:10.062468Z",
   "failedCourseIds": [
     "shaftesbury-glen-conway-sc",
-    "cabot-cliffs-inverness-ns",
     "greywalls-marquette-mi",
     "pebble-beach-pebble-beach-ca"
   ],
-  "failureCount": 4,
+  "failureCount": 3,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T00:51:13.061791Z",
-  "successCount": 3
+  "startedAt": "2026-09-18T00:55:46.947434Z",
+  "successCount": 4
 }

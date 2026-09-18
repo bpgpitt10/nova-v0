@@ -1,24 +1,24 @@
 {
-  "courseId": "valhalla-louisville-ky",
-  "courseName": "Valhalla Golf Club",
+  "courseId": "cabot-cliffs-inverness-ns",
+  "courseName": "Cabot Cliffs",
   "freshness": {
     "ageDays": 0.0,
-    "evaluatedAt": "2026-09-18T00:55:48.494494Z",
+    "evaluatedAt": "2026-09-18T00:55:56.253356Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "cold-source-fetch-build",
+    "usedNetworkForOsm": true
   },
   "package": {
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T00:55:48.494494Z",
-    "configPath": "config/course-geometry/valhalla-v1.json",
-    "configSha256": "41a57ece4e2bb3a1679efd2dc5b96bb4b38e7b9deb64e26d3b66e9a0f0974d19",
-    "path": "public/course-geometry/valhalla/course-v1.json",
+    "builtAt": "2026-09-18T00:55:56.253356Z",
+    "configPath": "config/course-geometry/cabot-cliffs-v1.json",
+    "configSha256": "93bfdacc324ce26c4a11bc875487547097d15f06e14826617ea85ddbcb4fa060",
+    "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "f99614d87be06a15288d650034390b7e14a92726e0d3f930298650e66c77faec"
+    "sha256": "c1cc85ed43293966aac5dc54dfcf8ccf3e0a287fc35585ee75b62138d42a88ac"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -40,15 +40,16 @@
   "schemaVersion": "looper-course-cache-v1",
   "source": {
     "element": {
-      "id": 59737644,
+      "id": 676091202,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T00:51:18.727635Z",
+    "fetchedAt": "2026-09-18T00:55:56.308915Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T00:51:18.727635Z",
+    "lastCheckedAt": "2026-09-18T00:55:56.308915Z",
     "provider": "openstreetmap-overpass",
-    "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
-    "snapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
-    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "snapshotPath": "artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
+    "snapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
+    "sourceBaseTimestamp": "2026-09-18T00:54:28Z"
   }
 }

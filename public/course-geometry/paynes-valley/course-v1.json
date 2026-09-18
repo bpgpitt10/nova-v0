@@ -1,7 +1,7 @@
 {
   "courseId": "paynes-valley-hollister-mo",
   "courseName": "Payne's Valley",
-  "generatedAt": "2026-09-18T00:52:05.075802Z",
+  "generatedAt": "2026-09-18T00:55:58.334891Z",
   "holes": {
     "1": {
       "bounds": {
@@ -136465,7 +136465,7 @@
     "builderFingerprintSha256": "85db1f83c9d2d19732e4ab16aaa261b97b32ecc7f293de47f4a874cb0cc18efe",
     "builderVersion": "build_osm_course_package_v3",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-18T00:52:05.075802Z",
+    "fetchedAt": "2026-09-18T00:55:58.334891Z",
     "geometrySource": "Cached OpenStreetMap/Overpass static course geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",

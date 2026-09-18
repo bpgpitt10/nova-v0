@@ -1,16 +1,18 @@
 {
   "candidates": [],
+  "categoryFilter": "osm.leisure.golf_course",
   "chosen": null,
-  "completedAt": "2026-09-18T00:52:06.100562Z",
+  "completedAt": "2026-09-18T00:56:10.061845Z",
   "courseId": "pebble-beach-pebble-beach-ca",
   "courseName": "Pebble Beach Golf Links",
-  "error": "no way/relation leisure=golf_course candidates",
+  "error": "HTTPError: HTTP Error 503: Service Unavailable",
   "location": "Pebble Beach, CA",
   "provider": "nominatim",
   "providerEndpoint": "https://nominatim.openstreetmap.org/search",
-  "query": "Pebble Beach Golf Links, Pebble Beach, CA",
-  "requestedAt": "2026-09-18T00:52:05.462828Z",
+  "query": null,
+  "rawCandidates": [],
+  "requestedAt": "2026-09-18T00:55:58.610686Z",
   "schemaVersion": "looper-course-discovery-v1",
   "success": false,
-  "timingMs": 637.7
+  "timingMs": 11451.1
 }

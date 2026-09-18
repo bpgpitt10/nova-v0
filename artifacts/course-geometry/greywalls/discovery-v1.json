@@ -1,16 +1,18 @@
 {
   "candidates": [],
+  "categoryFilter": "osm.leisure.golf_course",
   "chosen": null,
-  "completedAt": "2026-09-18T00:51:59.591678Z",
+  "completedAt": "2026-09-18T00:55:56.939708Z",
   "courseId": "greywalls-marquette-mi",
   "courseName": "Greywalls at Marquette Golf Club",
-  "error": "no way/relation leisure=golf_course candidates",
+  "error": "no way/relation golf-course candidates after category-filtered search",
   "location": "Marquette, MI",
   "provider": "nominatim",
   "providerEndpoint": "https://nominatim.openstreetmap.org/search",
   "query": "Greywalls at Marquette Golf Club, Marquette, MI",
-  "requestedAt": "2026-09-18T00:51:59.196521Z",
+  "rawCandidates": [],
+  "requestedAt": "2026-09-18T00:55:56.360580Z",
   "schemaVersion": "looper-course-discovery-v1",
   "success": false,
-  "timingMs": 395.1
+  "timingMs": 579.1
 }

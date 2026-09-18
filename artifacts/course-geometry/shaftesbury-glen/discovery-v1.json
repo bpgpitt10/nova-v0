@@ -1,16 +1,18 @@
 {
   "candidates": [],
+  "categoryFilter": "osm.leisure.golf_course",
   "chosen": null,
-  "completedAt": "2026-09-18T00:51:13.644101Z",
+  "completedAt": "2026-09-18T00:55:47.592640Z",
   "courseId": "shaftesbury-glen-conway-sc",
   "courseName": "Shaftesbury Glen Golf & Fish Club",
-  "error": "no way/relation leisure=golf_course candidates",
+  "error": "no way/relation golf-course candidates after category-filtered search",
   "location": "Conway, SC",
   "provider": "nominatim",
   "providerEndpoint": "https://nominatim.openstreetmap.org/search",
   "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
-  "requestedAt": "2026-09-18T00:51:13.061893Z",
+  "rawCandidates": [],
+  "requestedAt": "2026-09-18T00:55:46.947541Z",
   "schemaVersion": "looper-course-discovery-v1",
   "success": false,
-  "timingMs": 582.2
+  "timingMs": 645.1
 }
