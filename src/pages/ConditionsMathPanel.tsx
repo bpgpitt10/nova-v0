@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
+import './LiveCaddieMapPolish.css'
 
 type ConditionsMathPanelProps = {
   evaluation: ClubAimEvaluation | null
