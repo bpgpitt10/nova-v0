@@ -25,7 +25,14 @@ type LiveCaddieWorkerResponse =
   | { type: 'success'; evaluations: ClubAimEvaluation[] }
   | { type: 'error'; error: string }
 
+type CachedEvaluationPayload = {
+  cachedAt: number
+  evaluations: ClubAimEvaluation[]
+}
+
 const DISPLAY_OUTCOME_DOT_COUNT = 256
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v1'
+const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const displayTierForSurface = (
   kind: CourseSurfaceClassification,
@@ -151,21 +158,233 @@ const stripHeavySamples = (evaluations: ClubAimEvaluation[]): ClubAimEvaluation[
     }
   })
 
-self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
-  try {
-    const { sessions, hole, ball, target, environment, nowMs } = event.data
-    const evaluations = stripHeavySamples(
-      evaluateAimLab(sessions, hole, ball, target, environment, nowMs),
-    )
-    const response: LiveCaddieWorkerResponse = { type: 'success', evaluations }
-    self.postMessage(response)
-  } catch (cause) {
-    const response: LiveCaddieWorkerResponse = {
-      type: 'error',
-      error: cause instanceof Error ? cause.message : String(cause),
+const pointUnit = (from: CoursePointYds, to: CoursePointYds): CoursePointYds => {
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const length = Math.hypot(dx, dy)
+  return length > 1e-9 ? [dx / length, dy / length] : [0, 1]
+}
+
+/**
+ * The engine's aim point is intentionally anchored at a shared strategic target
+ * so clubs can be ranked against the same state. That point is useful for the
+ * optimizer but misleading on the playing map: a 6i should not draw an aim dot
+ * out at Driver depth.
+ *
+ * After ranking is complete, preserve the exact aim ANGLE but move the visible
+ * aim point to this club's modeled carry distance. The displayed right/left
+ * number is recomputed at that same distance. No ranking, sampling or risk math
+ * is changed by this presentation transform.
+ */
+const makePlayerFacingAimGeometry = (
+  evaluations: ClubAimEvaluation[],
+  ball: CoursePointYds,
+): ClubAimEvaluation[] =>
+  evaluations.map((evaluation) => {
+    const baseForward = pointUnit(ball, evaluation.planningTarget)
+    const baseRight: CoursePointYds = [baseForward[1], -baseForward[0]]
+    const displayDistanceYds = Math.max(1, evaluation.modeledCarryYds)
+    const bestRank = evaluation.bestCandidate?.decisionRank ?? null
+
+    const candidates = evaluation.candidates.map((candidate) => {
+      const aimForward = pointUnit(ball, candidate.aimPoint)
+      const displayAimPoint: CoursePointYds = [
+        ball[0] + aimForward[0] * displayDistanceYds,
+        ball[1] + aimForward[1] * displayDistanceYds,
+      ]
+      const displayRightYds =
+        (displayAimPoint[0] - ball[0]) * baseRight[0]
+        + (displayAimPoint[1] - ball[1]) * baseRight[1]
+
+      return {
+        ...candidate,
+        aimPoint: displayAimPoint,
+        aimOffsetYds: displayRightYds,
+      }
+    })
+
+    const bestCandidate = bestRank == null
+      ? null
+      : candidates.find((candidate) => candidate.decisionRank === bestRank) ?? null
+
+    return {
+      ...evaluation,
+      candidates,
+      bestCandidate,
     }
-    self.postMessage(response)
+  })
+
+const finiteKeyNumber = (value: number | null | undefined) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.round(value * 100) / 100
+    : null
+
+const hashString = (value: string) => {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
   }
+  return (hash >>> 0).toString(36)
+}
+
+const buildEvaluationCacheKey = ({
+  sessions,
+  hole,
+  ball,
+  target,
+  environment,
+}: LiveCaddieWorkerRequest) => {
+  const playerSignature = sessions.map((session) => ({
+    id: session.id,
+    endedAt: session.endedAt,
+    includeInAnalysis: session.metadata?.includeInAnalysis ?? null,
+    shots: session.shots.map((shot) => [
+      shot.id,
+      shot.club,
+      shot.included,
+      shot.capturedAt,
+      shot.shotVariantId ?? null,
+      shot.feltPerfect ?? null,
+      shot.carryYards ?? null,
+      shot.totalYards ?? null,
+      shot.offlineYards ?? null,
+      shot.ballSpeedMph ?? null,
+      shot.launchAngleDeg ?? null,
+      shot.spinRpm ?? null,
+      shot.spinAxisDegrees ?? null,
+      shot.clubPathDeg ?? shot.clubPathDegrees ?? null,
+      shot.clubAoa ?? null,
+    ]),
+  }))
+
+  const geometrySignature = {
+    courseId: hole.courseId,
+    holeNumber: hole.holeNumber,
+    bounds: hole.bounds,
+    surfaces: hole.surfaces.map((surface) => [
+      surface.id,
+      surface.kind,
+      surface.polygons.length,
+    ]),
+    context: hole.contextLayers?.map((layer) => [layer.id, layer.kind, layer.polygons.length]) ?? [],
+    terrain: hole.terrain
+      ? [
+          hole.terrain.width,
+          hole.terrain.height,
+          hole.terrain.runtimeSpacingYds,
+          hole.terrain.elevationOffsetFt,
+        ]
+      : null,
+    sourceBaseTimestamp: hole.provenance.sourceBaseTimestamp ?? null,
+    fetchedAt: hole.provenance.fetchedAt ?? null,
+  }
+
+  const stateSignature = JSON.stringify({
+    playerSignature,
+    geometrySignature,
+    ball: [finiteKeyNumber(ball[0]), finiteKeyNumber(ball[1])],
+    target: [finiteKeyNumber(target[0]), finiteKeyNumber(target[1])],
+    environment: {
+      windMph: finiteKeyNumber(environment.windMph),
+      windRelativeDeg: finiteKeyNumber(environment.windRelativeDeg),
+      elevationDeltaFt: finiteKeyNumber(environment.elevationDeltaFt),
+      airAltitudeFt: finiteKeyNumber(environment.airAltitudeFt),
+      surfaceOverride: environment.surfaceOverride ?? null,
+    },
+  })
+
+  return hashString(stateSignature)
+}
+
+const cacheStorage = () => (
+  globalThis as unknown as {
+    caches?: {
+      open: (name: string) => Promise<{
+        match: (request: Request) => Promise<Response | undefined>
+        put: (request: Request, response: Response) => Promise<void>
+      }>
+    }
+  }
+).caches
+
+const cacheRequestForKey = (key: string) =>
+  new Request(`https://looper.local/live-caddie-evaluation/${key}`)
+
+const readCachedEvaluations = async (key: string): Promise<ClubAimEvaluation[] | null> => {
+  const storage = cacheStorage()
+  if (!storage) return null
+  try {
+    const cache = await storage.open(EVALUATION_CACHE_NAME)
+    const response = await cache.match(cacheRequestForKey(key))
+    if (!response) return null
+    const payload = await response.json() as CachedEvaluationPayload
+    if (
+      typeof payload.cachedAt !== 'number'
+      || Date.now() - payload.cachedAt > EVALUATION_CACHE_TTL_MS
+      || !Array.isArray(payload.evaluations)
+    ) {
+      return null
+    }
+    return payload.evaluations
+  } catch {
+    return null
+  }
+}
+
+const writeCachedEvaluations = async (
+  key: string,
+  evaluations: ClubAimEvaluation[],
+) => {
+  const storage = cacheStorage()
+  if (!storage) return
+  try {
+    const cache = await storage.open(EVALUATION_CACHE_NAME)
+    const payload: CachedEvaluationPayload = {
+      cachedAt: Date.now(),
+      evaluations,
+    }
+    await cache.put(
+      cacheRequestForKey(key),
+      new Response(JSON.stringify(payload), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+  } catch {
+    // Evaluation remains fully functional if browser cache storage is unavailable.
+  }
+}
+
+self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
+  void (async () => {
+    try {
+      const request = event.data
+      const cacheKey = buildEvaluationCacheKey(request)
+      const cached = await readCachedEvaluations(cacheKey)
+      if (cached) {
+        const response: LiveCaddieWorkerResponse = { type: 'success', evaluations: cached }
+        self.postMessage(response)
+        return
+      }
+
+      const { sessions, hole, ball, target, environment, nowMs } = request
+      const evaluations = makePlayerFacingAimGeometry(
+        stripHeavySamples(
+          evaluateAimLab(sessions, hole, ball, target, environment, nowMs),
+        ),
+        ball,
+      )
+      await writeCachedEvaluations(cacheKey, evaluations)
+      const response: LiveCaddieWorkerResponse = { type: 'success', evaluations }
+      self.postMessage(response)
+    } catch (cause) {
+      const response: LiveCaddieWorkerResponse = {
+        type: 'error',
+        error: cause instanceof Error ? cause.message : String(cause),
+      }
+      self.postMessage(response)
+    }
+  })()
 }
 
 export {}
