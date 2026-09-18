@@ -18,7 +18,8 @@
     "configSha256": "054c6b09f70cecc8995979dfe7ba3f66557731d2afe911ab3723674240643595",
     "path": "public/course-geometry/greywalls/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "31034ef8656dc210e221ff5025a754b25b2e0170b03d2aed90885528e796dc4d"
+    "sha256": "80b7f8d2e23ce6ef861d1fe57f41a9bdda6aceaa324b4cdd9bc1022e72ae8444",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/greywalls/osm-snapshot.json",
     "snapshotSha256": "31fe0f0fad09489304916bebfae4f58e0357fafe5d5d6b0111fdeec46ed00f84",
     "sourceBaseTimestamp": "2026-09-18T14:06:21Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:45.325797Z",
+    "sourceManifestPath": "artifacts/course-geometry/greywalls/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/greywalls/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/greywalls/terrain-v1.json",
+    "terrainPackageSha256": "63e7fbb9fc8f4f134f1e10d0782a2181d899045be98adc99fce84bc7c1a1c95e",
+    "validationPath": "artifacts/course-geometry/greywalls/terrain-validation-v1.json"
   }
 }

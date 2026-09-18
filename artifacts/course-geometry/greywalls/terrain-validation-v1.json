@@ -1,13 +1,13 @@
 {
   "allHolesTerrainReady": true,
-  "courseId": "muirfield-village-dublin-oh",
+  "courseId": "greywalls-marquette-mi",
   "dataset": "Digital Elevation Model (DEM) 1 meter",
-  "generatedAt": "2026-09-18T15:06:08.590433Z",
+  "generatedAt": "2026-09-18T15:06:25.322292Z",
   "holes": [
     {
       "elevationRangeFt": [
-        864.7,
-        939.5
+        811.7,
+        981.1
       ],
       "gridNoDataFraction": 0.0,
       "hole": 1,
@@ -16,8 +16,8 @@
     },
     {
       "elevationRangeFt": [
-        842.0,
-        900.8
+        824.0,
+        900.5
       ],
       "gridNoDataFraction": 0.0,
       "hole": 2,
@@ -26,8 +26,8 @@
     },
     {
       "elevationRangeFt": [
-        833.0,
-        884.7
+        831.1,
+        958.8
       ],
       "gridNoDataFraction": 0.0,
       "hole": 3,
@@ -36,8 +36,8 @@
     },
     {
       "elevationRangeFt": [
-        832.6,
-        885.5
+        864.5,
+        980.1
       ],
       "gridNoDataFraction": 0.0,
       "hole": 4,
@@ -46,8 +46,8 @@
     },
     {
       "elevationRangeFt": [
-        839.8,
-        898.1
+        878.6,
+        1021.5
       ],
       "gridNoDataFraction": 0.0,
       "hole": 5,
@@ -56,8 +56,8 @@
     },
     {
       "elevationRangeFt": [
-        858.0,
-        901.4
+        933.9,
+        1025.9
       ],
       "gridNoDataFraction": 0.0,
       "hole": 6,
@@ -66,8 +66,8 @@
     },
     {
       "elevationRangeFt": [
-        868.0,
-        918.5
+        827.6,
+        1015.1
       ],
       "gridNoDataFraction": 0.0,
       "hole": 7,
@@ -76,8 +76,8 @@
     },
     {
       "elevationRangeFt": [
-        874.6,
-        918.6
+        843.5,
+        1015.6
       ],
       "gridNoDataFraction": 0.0,
       "hole": 8,
@@ -86,8 +86,8 @@
     },
     {
       "elevationRangeFt": [
-        874.6,
-        919.3
+        875.8,
+        1023.4
       ],
       "gridNoDataFraction": 0.0,
       "hole": 9,
@@ -96,8 +96,8 @@
     },
     {
       "elevationRangeFt": [
-        881.0,
-        946.4
+        874.4,
+        998.7
       ],
       "gridNoDataFraction": 0.0,
       "hole": 10,
@@ -106,8 +106,8 @@
     },
     {
       "elevationRangeFt": [
-        899.0,
-        955.6
+        882.1,
+        991.6
       ],
       "gridNoDataFraction": 0.0,
       "hole": 11,
@@ -116,8 +116,8 @@
     },
     {
       "elevationRangeFt": [
-        911.0,
-        959.1
+        862.9,
+        973.5
       ],
       "gridNoDataFraction": 0.0,
       "hole": 12,
@@ -126,8 +126,8 @@
     },
     {
       "elevationRangeFt": [
-        909.5,
-        962.0
+        859.0,
+        964.3
       ],
       "gridNoDataFraction": 0.0,
       "hole": 13,
@@ -136,8 +136,8 @@
     },
     {
       "elevationRangeFt": [
-        896.4,
-        947.1
+        855.3,
+        967.7
       ],
       "gridNoDataFraction": 0.0,
       "hole": 14,
@@ -146,8 +146,8 @@
     },
     {
       "elevationRangeFt": [
-        896.7,
-        964.0
+        844.3,
+        902.7
       ],
       "gridNoDataFraction": 0.0,
       "hole": 15,
@@ -156,8 +156,8 @@
     },
     {
       "elevationRangeFt": [
-        912.1,
-        963.7
+        847.3,
+        969.5
       ],
       "gridNoDataFraction": 0.0,
       "hole": 16,
@@ -166,8 +166,8 @@
     },
     {
       "elevationRangeFt": [
-        901.3,
-        959.3
+        876.6,
+        996.5
       ],
       "gridNoDataFraction": 0.0,
       "hole": 17,
@@ -176,8 +176,8 @@
     },
     {
       "elevationRangeFt": [
-        884.5,
-        943.9
+        848.1,
+        998.9
       ],
       "gridNoDataFraction": 0.0,
       "hole": 18,

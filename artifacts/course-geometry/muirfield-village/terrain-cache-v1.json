@@ -2,9 +2,9 @@
   "allHolesTerrainReady": true,
   "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
   "builderVersion": "import_course_terrain_v2",
-  "builtAt": "2026-09-18T13:57:59.362693Z",
+  "builtAt": "2026-09-18T15:06:44.732954Z",
   "courseId": "muirfield-village-dublin-oh",
-  "geometrySourceSha256": "e090359157406511ebf7e5fa9f2d2d0a9687f6dfbcbede7bc27f31b303c772fe",
+  "geometrySourceSha256": "fe2e114c4eab91568683e86978e5b59e0255db2ec99afe5dbf433bc26dda23b7",
   "osmSnapshotSha256": "bc414ec548e6d43ac5d87f55930ebd22dc56bfc15d6a29dce9a7c6b5120d330e",
   "refreshPolicy": {
     "implicitRefresh": false,
@@ -21,9 +21,9 @@
     "serveDerivedTerrainRegardlessOfAge": true
   },
   "schemaVersion": "looper-course-terrain-cache-v1",
-  "sourceManifestSha256": "3c718675b0a797118418c329bbd2a373a1e0d50b9ad658d652007922ccc93386",
+  "sourceManifestSha256": "fd56feecdc715bfb8798a297611bc5f19f95588072f9bcbbc3966483e31be526",
   "sourceProvider": "usgs-3dep-1m",
   "sourceResolutionMeters": 1.0,
-  "terrainPackageSha256": "92aa5cc58b3889327185cf2a0b46cc2dbbd1cccdd6ca4f7da73cb24e8cb94ec4",
+  "terrainPackageSha256": "4339793ef7408af71efb26f0897c79dbc09877301c44c51fcc4e9825794ac030",
   "usedNetworkForTerrainSource": false
 }

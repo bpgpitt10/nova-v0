@@ -2,9 +2,9 @@
   "allHolesTerrainReady": true,
   "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
   "builderVersion": "import_course_terrain_v2",
-  "builtAt": "2026-09-18T13:58:00.259498Z",
+  "builtAt": "2026-09-18T15:06:45.794032Z",
   "courseId": "paynes-valley-hollister-mo",
-  "geometrySourceSha256": "b065c326dee8f73805529c1717de7563b32bbfb422262948d32d220b021d805f",
+  "geometrySourceSha256": "4adc9fcf0553ef779cd4fb20254a77a6838e4c1933dc960246ca3a205e45f6d5",
   "osmSnapshotSha256": "6eddf2f6ac5da32ae92bfe19d554cfe3b2439ddfe96cf3be07291bf8e7218796",
   "refreshPolicy": {
     "implicitRefresh": false,
@@ -21,9 +21,9 @@
     "serveDerivedTerrainRegardlessOfAge": true
   },
   "schemaVersion": "looper-course-terrain-cache-v1",
-  "sourceManifestSha256": "acbb4c79744eb5c4418c36edb03190facfa8eb06292bcae19e999d1ce605ee94",
+  "sourceManifestSha256": "32e7fb00fdb4ec468729101d214fa2d501ded9f2570a311851380964fed9d9eb",
   "sourceProvider": "usgs-3dep-1m",
   "sourceResolutionMeters": 1.0,
-  "terrainPackageSha256": "77f620cdd3fd25266898dd181f42c61bd48a69f0642d394a6f3622cb79365425",
+  "terrainPackageSha256": "e805190c8c89f84b2ec51f2aa5d50bbd15611ea0620dab9b71368164f516e0a8",
   "usedNetworkForTerrainSource": false
 }

@@ -18,7 +18,8 @@
     "configSha256": "2617654bca210a47141399dbbadf8cd7e30b538b18d82414d3653f08fdbb55c8",
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "7279b5142a21f5695128f22b515afeb616ecea69a695fb00ee007ffdb0683bea"
+    "sha256": "22c64d92e5fde1151b0d49cd738bccfb4b5eb669e9cb80ee9846e7efac6f51f2",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/paynes-valley/osm-snapshot.json",
     "snapshotSha256": "6eddf2f6ac5da32ae92bfe19d554cfe3b2439ddfe96cf3be07291bf8e7218796",
     "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:45.795761Z",
+    "sourceManifestPath": "artifacts/course-geometry/paynes-valley/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/paynes-valley/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/paynes-valley/terrain-v1.json",
+    "terrainPackageSha256": "e805190c8c89f84b2ec51f2aa5d50bbd15611ea0620dab9b71368164f516e0a8",
+    "validationPath": "artifacts/course-geometry/paynes-valley/terrain-validation-v1.json"
   }
 }

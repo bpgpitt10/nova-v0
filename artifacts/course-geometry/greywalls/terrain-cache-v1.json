@@ -2,10 +2,10 @@
   "allHolesTerrainReady": true,
   "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
   "builderVersion": "import_course_terrain_v2",
-  "builtAt": "2026-09-18T15:06:43.805080Z",
-  "courseId": "royal-new-kent-providence-forge-va",
-  "geometrySourceSha256": "39341c5b6c823dd7924a77900eaa0cebe2ba93512d553213b4100fe56619e3e6",
-  "osmSnapshotSha256": "3def71ede549334840b1a728511ef5cb2a3eae91743713f2929cd66f23627e71",
+  "builtAt": "2026-09-18T15:06:45.323273Z",
+  "courseId": "greywalls-marquette-mi",
+  "geometrySourceSha256": "10bfb7f4ad831eb4dc58f5b4347614d1795fd21c6d70c0cb4bea27820c35a1a6",
+  "osmSnapshotSha256": "31fe0f0fad09489304916bebfae4f58e0357fafe5d5d6b0111fdeec46ed00f84",
   "refreshPolicy": {
     "implicitRefresh": false,
     "localRebuildTriggers": [
@@ -21,9 +21,9 @@
     "serveDerivedTerrainRegardlessOfAge": true
   },
   "schemaVersion": "looper-course-terrain-cache-v1",
-  "sourceManifestSha256": "e996d04d35b38cf425d8646a01e3d2960e293dc4e99e801c6b26c02e6b2a4b00",
+  "sourceManifestSha256": "eebe21d9d5415a8ada92fc0c805dcdb04d08894f34f14c59fc2c56b05a40d7ca",
   "sourceProvider": "usgs-3dep-1m",
   "sourceResolutionMeters": 1.0,
-  "terrainPackageSha256": "a4373a8ac9c50106a9519edbba27266e7019946439a5f1333e8aef8d3f39691b",
+  "terrainPackageSha256": "63e7fbb9fc8f4f134f1e10d0782a2181d899045be98adc99fce84bc7c1a1c95e",
   "usedNetworkForTerrainSource": false
 }

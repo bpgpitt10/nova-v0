@@ -13,7 +13,7 @@
     }
   ],
   "provider": "usgs-3dep-1m",
-  "retrievedAt": "2026-09-18T13:57:54.902871Z",
+  "retrievedAt": "2026-09-18T15:06:40.670634Z",
   "schemaVersion": "looper-course-terrain-source-v1",
   "sourceBoundsWgs84": [
     -93.2050959,

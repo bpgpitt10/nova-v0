@@ -18,7 +18,8 @@
     "configSha256": "ec888c2cd80a5c19c796f471fd2de4a4f2910cd9d0b895ddcb3699b4cbee2eaf",
     "path": "public/course-geometry/muirfield-village/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "b8b7ae1b3dcf62c23137a0b84af7f4c5d319c7d57e0933bd572c0151cdc6d151"
+    "sha256": "501f84271fe61094b6becc166b3c90fc60cfd51e45cb27c28f87f38ada577954",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/muirfield-village/osm-snapshot.json",
     "snapshotSha256": "bc414ec548e6d43ac5d87f55930ebd22dc56bfc15d6a29dce9a7c6b5120d330e",
     "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:44.734422Z",
+    "sourceManifestPath": "artifacts/course-geometry/muirfield-village/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/muirfield-village/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/muirfield-village/terrain-v1.json",
+    "terrainPackageSha256": "4339793ef7408af71efb26f0897c79dbc09877301c44c51fcc4e9825794ac030",
+    "validationPath": "artifacts/course-geometry/muirfield-village/terrain-validation-v1.json"
   }
 }

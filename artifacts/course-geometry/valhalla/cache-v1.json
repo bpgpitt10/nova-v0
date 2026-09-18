@@ -18,7 +18,8 @@
     "configSha256": "6fc078c7369bcfe4c5985065bd5b324215d4764ad9ac905d8f94bb3ea0480120",
     "path": "public/course-geometry/valhalla/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "739ebc6d81cb744a68cdb453fabefde8da7f12f95de146a40aca6a512be349b7"
+    "sha256": "648c44f3b442f5921d8bf0a8cf8d18d3fe6ca22b2364d8b5cf5174be832f5436",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
     "snapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
     "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:44.295047Z",
+    "sourceManifestPath": "artifacts/course-geometry/valhalla/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/valhalla/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/valhalla/terrain-v1.json",
+    "terrainPackageSha256": "d3c8f8caf1dbe3bb0b425b04059d8e545e0950c4350ff8b3b37076824b54ad07",
+    "validationPath": "artifacts/course-geometry/valhalla/terrain-validation-v1.json"
   }
 }

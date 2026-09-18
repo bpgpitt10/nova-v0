@@ -18,7 +18,8 @@
     "configSha256": "c6a6869a370dc77c820d4743563f5788c10844e0698b1878947a294d7b8df900",
     "path": "public/course-geometry/royal-new-kent/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "1e3e32f30f1838ccc33b84ba19ab6c16a8f3aff4ebff00206e8aaeb715e090b5"
+    "sha256": "8231eacd9884223c79f2b1665189984ecd28a7b281624c20df0d0994daf6991e",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,5 +51,16 @@
     "snapshotPath": "artifacts/course-geometry/royal-new-kent/osm-snapshot.json",
     "snapshotSha256": "3def71ede549334840b1a728511ef5cb2a3eae91743713f2929cd66f23627e71",
     "sourceBaseTimestamp": "2026-09-17T18:20:35Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T15:06:43.806892Z",
+    "sourceManifestPath": "artifacts/course-geometry/royal-new-kent/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/royal-new-kent/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/royal-new-kent/terrain-v1.json",
+    "terrainPackageSha256": "a4373a8ac9c50106a9519edbba27266e7019946439a5f1333e8aef8d3f39691b",
+    "validationPath": "artifacts/course-geometry/royal-new-kent/terrain-validation-v1.json"
   }
 }
