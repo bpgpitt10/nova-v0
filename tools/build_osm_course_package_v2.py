@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
-"""Second-course validation compiler for Looper static course packages.
+"""Build a course-wide OSM package using per-hole OSM route orientation.
 
-This deliberately reuses the OSM parsing/geometry primitives from the first
-compiler while replacing the Greywolf-shaped assumptions Tobacco Road exposed:
-
-- the OSM golf=hole start is the nominal static tee anchor;
-- a mapped tee polygon is evidence/context, not required to define that anchor;
-- physical fairways/hazards may be relevant to more than one hole;
-- par-3 holes do not require a fairway;
-- golf=rough remains regular rough and no deep rough is invented.
-
-Once the second-course validation is closed, these rules can replace the first
-compiler implementation rather than preserving two production pipelines.
+V2 makes the OSM `golf=hole` route the canonical hole frame. The route start
+is the tee-side anchor and route direction supplies the downrange axis; nearby
+mapped tee surfaces are diagnostics rather than something that can silently
+replace the hole origin.
 """
 
 from __future__ import annotations
@@ -27,276 +20,255 @@ from typing import Any
 import build_osm_course_package as base
 
 
-def feature_distance_to_point_yards(
-    feature: dict[str, Any],
-    point_latlon: tuple[float, float],
-) -> float:
-    point_xy = (0.0, 0.0)
-    best = float("inf")
-    for geometry in feature["geometries"]:
-        polygon_xy = [base.local_east_north_yards(point, point_latlon) for point in geometry]
-        if len(polygon_xy) < 3:
-            continue
-        if base.point_in_polygon(point_xy, polygon_xy):
-            return 0.0
-        for a, b in zip(polygon_xy, polygon_xy[1:]):
-            best = min(best, base.point_segment_distance(point_xy, a, b))
-    return best
-
-
-def route_length_yards(route: dict[str, Any]) -> float:
-    points = route["geometry"]
-    return sum(base.haversine_yards(a, b) for a, b in zip(points, points[1:]))
-
-
-def basis_for_route_start(
-    route: dict[str, Any],
-    green: dict[str, Any],
-) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float], float]:
-    origin = route["geometry"][0]
-    gx, gy = base.local_east_north_yards(green["centroid"], origin)
-    length = math.hypot(gx, gy)
-    if length <= 1e-9:
-        raise ValueError("Nominal tee and green anchors collapse to the same point")
-    forward = (gx / length, gy / length)
-    right = (forward[1], -forward[0])
-    heading = (math.degrees(math.atan2(gx, gy)) + 360.0) % 360.0
-    return origin, forward, right, heading
-
-
-def nearby_features(
-    route_candidates: list[tuple[float, dict[str, Any]]],
-    *,
-    role: str,
-    kind: str,
-    max_route_distance_yards: float,
-) -> list[dict[str, Any]]:
-    return [
-        feature
-        for distance, feature in route_candidates
-        if feature["role"] == role
-        and feature["kind"] == kind
-        and distance <= max_route_distance_yards
-    ]
-
-
 def raw_context_source_counts(payload: dict[str, Any]) -> Counter[str]:
-    """Count context tags that are not already explicit golf surfaces."""
     counts: Counter[str] = Counter()
     for element in payload.get("elements", []):
         tags = element.get("tags") or {}
-        if tags.get("golf"):
+        # Golf surface tags win in classify_element; do not describe a
+        # landuse=grass golf surface as standalone context in provenance.
+        if tags.get("golf") in base.SURFACE_GOLF:
             continue
-        natural = tags.get("natural")
-        landuse = tags.get("landuse")
-        if natural in {"wood", "scrub"}:
-            counts[f"natural={natural}"] += 1
-        if landuse in {"forest", "grass", "meadow"}:
-            counts[f"landuse={landuse}"] += 1
+        classified = base.classify_element(tags)
+        if not classified:
+            continue
+        role, kind = classified
+        if role == "context":
+            counts[base.source_feature(tags, kind)] += 1
     return counts
+
+
+def route_basis(
+    route: list[tuple[float, float]],
+) -> tuple[
+    tuple[float, float],
+    tuple[float, float],
+    tuple[float, float],
+    float,
+]:
+    if len(route) < 2:
+        raise ValueError("OSM hole route has fewer than two points")
+    origin = route[0]
+    east, north = base.local_east_north_yards(route[-1], origin)
+    magnitude = math.hypot(east, north)
+    if magnitude <= 1e-9:
+        raise ValueError("OSM hole route start/end are coincident")
+    forward = (east / magnitude, north / magnitude)
+    right = (forward[1], -forward[0])
+    heading = (math.degrees(math.atan2(east, north)) + 360.0) % 360.0
+    return origin, forward, right, heading
+
+
+def tee_diagnostics(
+    features: list[dict[str, Any]],
+    route: list[tuple[float, float]],
+    projection_origin: tuple[float, float],
+    limit_yards: float,
+) -> list[dict[str, Any]]:
+    start_xy = base.course_xy(route[0], projection_origin)
+    candidates: list[dict[str, Any]] = []
+    for feature in features:
+        if feature["role"] != "surface" or feature["kind"] != "tee":
+            continue
+        polygon_gap = base.feature_distance_to_route(
+            [
+                [base.course_xy(point, projection_origin) for point in geometry]
+                for geometry in feature["geometries"]
+            ],
+            [start_xy],
+        )
+        centroid_gap = base.haversine_yards(feature["centroid"], route[0])
+        if polygon_gap > limit_yards and centroid_gap > limit_yards:
+            continue
+        candidates.append(
+            {
+                "osmId": feature.get("osm_id"),
+                "startPolygonGapYards": polygon_gap,
+                "startCentroidGapYards": centroid_gap,
+            }
+        )
+    candidates.sort(key=lambda item: (item["startPolygonGapYards"], item["startCentroidGapYards"]))
+    return candidates
+
+
+def feature_course_xy(
+    feature: dict[str, Any],
+    projection_origin: tuple[float, float],
+) -> list[list[tuple[float, float]]]:
+    return [
+        [base.course_xy(point, projection_origin) for point in geometry]
+        for geometry in feature["geometries"]
+    ]
+
+
+def green_for_route_endpoint(
+    features: list[dict[str, Any]],
+    route: list[tuple[float, float]],
+    projection_origin: tuple[float, float],
+) -> tuple[dict[str, Any] | None, float]:
+    endpoint_xy = base.course_xy(route[-1], projection_origin)
+    best: tuple[float, dict[str, Any]] | None = None
+    for feature in features:
+        if feature["role"] != "surface" or feature["kind"] != "green":
+            continue
+        distance = base.feature_distance_to_route(
+            feature_course_xy(feature, projection_origin),
+            [endpoint_xy],
+        )
+        if best is None or distance < best[0]:
+            best = (distance, feature)
+    if best is None:
+        return None, float("inf")
+    return best[1], best[0]
+
+
+def feature_downrange_extent(
+    feature: dict[str, Any],
+    origin: tuple[float, float],
+    forward: tuple[float, float],
+    right: tuple[float, float],
+) -> tuple[float, float]:
+    downranges = [
+        base.to_hole_local(point, origin, forward, right)[1]
+        for geometry in feature["geometries"]
+        for point in geometry
+    ]
+    if not downranges:
+        return float("inf"), float("-inf")
+    return min(downranges), max(downranges)
 
 
 def build_hole(
     hole_number: int,
     hole_config: dict[str, Any],
-    config: dict[str, Any],
+    course_config: dict[str, Any],
     features: list[dict[str, Any]],
     hole_routes: dict[int, dict[str, Any]],
     route_candidates: dict[int, list[tuple[float, dict[str, Any]]]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    route = hole_routes[hole_number]
-    par = int(hole_config.get("par") or route.get("par") or 0) or None
-    target_yards = float(hole_config["targetYards"])
-    selection = config.get("selection") or {}
-    context_distance = float(selection.get("contextRouteDistanceYards", 110))
-    fairway_distance = float(selection.get("fairwayRouteDistanceYards", 45))
-    hazard_distance = float(selection.get("hazardRouteDistanceYards", context_distance))
-    tee_surface_distance = float(selection.get("teeSurfaceStartDistanceYards", 60))
-    behind_tolerance = float(selection.get("behindTeeToleranceYards", 35))
-    past_tolerance = float(selection.get("pastGreenToleranceYards", 50))
-    view_lateral_margin = float(selection.get("viewLateralMarginYards", context_distance))
+    route_record = hole_routes[hole_number]
+    route = route_record["geometry"]
+    route_yards = sum(base.haversine_yards(a, b) for a, b in zip(route, route[1:]))
+    par = int(hole_config.get("par") or route_record.get("par") or 4)
+    target_yards = float(hole_config.get("targetYards") or route_yards)
+    origin, forward, right, heading = route_basis(route)
+    projection_origin = base.course_projection_origin(hole_routes, features)
 
-    greens = [feature for feature in features if feature["kind"] == "green"]
-    tees = [feature for feature in features if feature["kind"] == "tee"]
-    target_green, green_endpoint_gap = base.select_target_green(route, greens)
-    origin, forward, right, heading = basis_for_route_start(route, target_green)
-    pin = base.to_hole_local(target_green["centroid"], origin, forward, right)
-    straight_to_green = math.hypot(pin[0], pin[1])
-    route_yards = route_length_yards(route)
+    start_radius = float((course_config.get("selection") or {}).get("teeStartRadiusYards", 220.0))
+    route_distance_limit = float((course_config.get("selection") or {}).get("contextRouteDistanceYards", 110.0))
+    behind_tolerance = float((course_config.get("selection") or {}).get("behindTeeToleranceYards", 35.0))
+    past_green_tolerance = float((course_config.get("selection") or {}).get("pastGreenToleranceYards", 50.0))
 
-    # The hole-line start is the nominal static origin. Tee polygons are kept
-    # only when they are genuinely close to that start. This prevents published
-    # yardage from selecting a neighboring tee complex on tightly packed courses.
-    tee_candidates = sorted(
-        (
-            {
-                "feature": tee,
-                "osmId": tee.get("osm_id"),
-                "startPolygonGapYards": feature_distance_to_point_yards(tee, origin),
-                "startCentroidGapYards": base.haversine_yards(tee["centroid"], origin),
-            }
-            for tee in tees
-        ),
-        key=lambda candidate: (
-            candidate["startPolygonGapYards"],
-            candidate["startCentroidGapYards"],
-        ),
+    target_green, green_endpoint_gap = green_for_route_endpoint(
+        features,
+        route,
+        projection_origin,
     )
-    tee_features = [
-        candidate["feature"]
-        for candidate in tee_candidates
-        if candidate["startPolygonGapYards"] <= tee_surface_distance
-    ]
+    if target_green is None:
+        raise ValueError(f"Hole {hole_number}: no mapped green available")
 
-    # Physical surfaces do not belong exclusively to one hole. Tobacco Road
-    # proves this: Hole 16's route intersects a fairway polygon whose nearest
-    # route is Hole 15. If the polygon is in the playable corridor, it matters
-    # to strategy regardless of which hole is mathematically closest.
-    fairway_limit = 8.0 if par == 3 else fairway_distance
-    surface_features: dict[str, list[dict[str, Any]]] = {
-        "tee": tee_features,
-        "green": [target_green],
-        "fairway": nearby_features(
-            route_candidates[hole_number],
-            role="surface",
-            kind="fairway",
-            max_route_distance_yards=fairway_limit,
-        ),
-        "rough": nearby_features(
-            route_candidates[hole_number],
-            role="surface",
-            kind="rough",
-            max_route_distance_yards=context_distance,
-        ),
-        "bunker": nearby_features(
-            route_candidates[hole_number],
-            role="surface",
-            kind="bunker",
-            max_route_distance_yards=hazard_distance,
-        ),
-        "water": nearby_features(
-            route_candidates[hole_number],
-            role="surface",
-            kind="water",
-            max_route_distance_yards=hazard_distance,
-        ),
+    tee_candidates = tee_diagnostics(features, route, projection_origin, start_radius)
+    nearest_tee_gap = tee_candidates[0]["startPolygonGapYards"] if tee_candidates else float("inf")
+
+    selected: dict[tuple[str, str, int], dict[str, Any]] = {}
+    route_xy = [base.course_xy(point, projection_origin) for point in route]
+    green_max_downrange = feature_downrange_extent(target_green, origin, forward, right)[1]
+
+    for distance, feature in route_candidates.get(hole_number, []):
+        min_downrange, max_downrange = feature_downrange_extent(feature, origin, forward, right)
+        if max_downrange < -behind_tolerance:
+            continue
+        if min_downrange > green_max_downrange + past_green_tolerance:
+            continue
+        if distance > route_distance_limit:
+            continue
+        key = (feature["role"], feature["kind"], int(feature["osm_id"] or 0))
+        selected[key] = feature
+
+    for feature in (target_green,):
+        key = (feature["role"], feature["kind"], int(feature["osm_id"] or 0))
+        selected[key] = feature
+
+    surfaces: dict[str, list[list[list[float]]]] = {
+        "green": [],
+        "fairway": [],
+        "rough": [],
+        "bunker": [],
+        "water": [],
+        "tee": [],
+    }
+    context: dict[str, list[list[list[float]]]] = {
+        "woods": [],
+        "scrub": [],
+        "grass-context": [],
     }
 
-    surfaces: list[dict[str, Any]] = []
-    for kind in ("rough", "water", "fairway", "green", "bunker", "tee"):
-        layer = base.grouped_layer(
-            hole_number,
-            "surface",
-            kind,
-            surface_features[kind],
-            origin,
-            forward,
-            right,
-            straight_to_green,
-            behind_tolerance,
-            past_tolerance,
-        )
-        if layer:
-            surfaces.append(layer)
+    source_ids: set[str] = set()
+    for feature in selected.values():
+        source_ids.add(f"{feature['osm_type']}/{feature['osm_id']}")
+        serialized = base.serialize_polygons(feature, origin, forward, right)
+        if feature["role"] == "surface":
+            surfaces[feature["kind"]].extend(serialized)
+        else:
+            context[feature["kind"]].extend(serialized)
 
-    context_layers: list[dict[str, Any]] = []
-    for kind in ("grass-context", "woods", "scrub"):
-        layer = base.grouped_layer(
-            hole_number,
-            "context",
-            kind,
-            nearby_features(
-                route_candidates[hole_number],
-                role="context",
-                kind=kind,
-                max_route_distance_yards=context_distance,
-            ),
-            origin,
-            forward,
-            right,
-            straight_to_green,
-            behind_tolerance,
-            past_tolerance,
-        )
-        if layer:
-            context_layers.append(layer)
+    all_polygons = [polygon for values in surfaces.values() for polygon in values]
+    all_polygons.extend(polygon for values in context.values() for polygon in values)
+    flat_points = [tuple(point) for polygon in all_polygons for point in polygon]
+    route_local = [base.to_hole_local(point, origin, forward, right) for point in route]
+    flat_points.extend(route_local)
+    if not flat_points:
+        raise ValueError(f"Hole {hole_number}: no geometry after selection")
 
-    route_local = [base.to_hole_local(point, origin, forward, right) for point in route["geometry"]]
-    bounds_points = route_local[:]
-    for layer in surfaces:
-        for polygon in layer["polygons"]:
-            bounds_points.extend((point[0], point[1]) for point in polygon)
-    if not bounds_points:
-        raise ValueError(f"Hole {hole_number} produced no geometry bounds")
-
-    route_x = [point[0] for point in route_local]
-    route_y = [point[1] for point in route_local]
+    min_x = min(point[0] for point in flat_points)
+    max_x = max(point[0] for point in flat_points)
+    min_y = min(point[1] for point in flat_points)
+    max_y = max(point[1] for point in flat_points)
+    pad = 25.0
     view_bounds = {
-        "minX": round(min(route_x) - view_lateral_margin, 1),
-        "maxX": round(max(route_x) + view_lateral_margin, 1),
-        "minY": round(min(route_y) - behind_tolerance, 1),
-        "maxY": round(max(route_y) + past_tolerance, 1),
+        "minX": round(min_x - pad, 1),
+        "maxX": round(max_x + pad, 1),
+        "minY": round(min_y - pad, 1),
+        "maxY": round(max_y + pad, 1),
     }
+
+    route_residual = route_yards - target_yards
+    straight_to_green = base.haversine_yards(route[0], target_green["centroid"])
+    warnings: list[str] = []
+    if abs(route_residual) > 55:
+        warnings.append(
+            f"OSM hole route length differs from configured reference by {route_residual:+.0f} yd"
+        )
+    if green_endpoint_gap > 55:
+        warnings.append(f"OSM route endpoint is {green_endpoint_gap:.0f} yd from selected green")
+    if nearest_tee_gap > 80:
+        warnings.append(
+            "No mapped tee surface is close to the OSM hole start; route start remains the canonical anchor"
+        )
+
+    surface_counts = {kind: len(polygons) for kind, polygons in surfaces.items()}
+    context_counts = {kind: len(polygons) for kind, polygons in context.items()}
 
     model = {
-        "holeNumber": hole_number,
+        "courseId": course_config["courseId"],
+        "hole": hole_number,
         "par": par,
-        "statedYardageYds": target_yards,
-        "coordinateSystem": {
+        "headingDegreesTrue": round(heading, 3),
+        "referenceYards": target_yards,
+        "coordinateFrame": {
             "origin": "osm-hole-route-start",
-            "units": "yards",
-            "xAxis": "right",
-            "yAxis": "forward",
-        },
-        # Full geometry extents remain available for outcome evaluation. The
-        # tactical viewport is deliberately route-derived so giant connected
-        # waste/fairway polygons do not shrink the actual hole in the renderer.
-        "bounds": {
-            "minX": round(min(point[0] for point in bounds_points), 1),
-            "maxX": round(max(point[0] for point in bounds_points), 1),
-            "minY": round(min(point[1] for point in bounds_points), 1),
-            "maxY": round(max(point[1] for point in bounds_points), 1),
+            "xAxis": "yards-right-of-osm-hole-route-heading",
+            "yAxis": "yards-downrange-from-osm-hole-route-start",
         },
         "viewBounds": view_bounds,
-        "markers": {
-            "tee": [0.0, 0.0],
-            "pin": [round(pin[0], 3), round(pin[1], 3)],
+        "terrain": {
+            "available": False,
+            "source": None,
+            "reason": "No terrain source configured for this course package.",
         },
         "surfaces": surfaces,
-        "contextLayers": context_layers,
-        "registration": {
-            "status": "approximate",
-            "method": "hole-local",
-            "sourceCoordinateSystem": "OSM golf=hole start -> target green local yards",
-            "note": (
-                "The OSM hole-line start is the nominal static tee anchor. "
-                "GSPro registration remains intentionally unverified until live round evidence is available."
-            ),
-        },
+        "context": context,
+        "sourceElementIds": sorted(source_ids),
     }
-
-    surface_counts = {
-        kind: sum(len(layer["polygons"]) for layer in surfaces if layer["kind"] == kind)
-        for kind in ("tee", "fairway", "rough", "green", "bunker", "water")
-    }
-    context_counts = {
-        kind: sum(len(layer["polygons"]) for layer in context_layers if layer["kind"] == kind)
-        for kind in ("woods", "scrub", "grass-context")
-    }
-
-    warnings: list[str] = []
-    nearest_tee_gap = tee_candidates[0]["startPolygonGapYards"] if tee_candidates else float("inf")
-    if not tee_features:
-        warnings.append(
-            f"No mapped tee polygon within {tee_surface_distance:.0f} yd of the OSM hole start; nominal route start retained."
-        )
-    if green_endpoint_gap > 30:
-        warnings.append(f"Target green centroid is {green_endpoint_gap:.1f} yd from the OSM hole endpoint.")
-    route_residual = route_yards - target_yards
-    if abs(route_residual) > 80:
-        warnings.append(
-            f"OSM hole-line length differs from provisional reference yardage by {route_residual:+.1f} yd."
-        )
 
     requires_fairway = par != 3
     ready = (
@@ -359,6 +331,7 @@ def main() -> int:
         raise SystemExit(f"Expected config for holes 1-18; got {sorted(hole_configs)}")
 
     features, hole_routes = base.normalize_osm(payload)
+    normalization_diagnostics = list(getattr(base, "NORMALIZATION_DIAGNOSTICS", []) or [])
     missing_routes = sorted(set(hole_configs) - set(hole_routes))
     if missing_routes:
         raise SystemExit(f"Missing OSM golf=hole routes: {missing_routes}")
@@ -419,6 +392,8 @@ def main() -> int:
         "compiler": "build_osm_course_package_v2",
         "osmHoleRoutes": len(hole_routes),
         "normalizedFeatureCounts": dict(sorted(source_counts.items())),
+        "normalizationWarningCount": len(normalization_diagnostics),
+        "normalizationWarnings": normalization_diagnostics,
         "contextSourceStatus": context_source_status,
         "contextSourceTagCounts": dict(sorted(source_context_counts.items())),
         "contextSourceNote": (
@@ -446,6 +421,7 @@ def main() -> int:
         "course": config["courseName"],
         "hole_routes": len(hole_routes),
         "features": dict(sorted(source_counts.items())),
+        "normalization_warnings": len(normalization_diagnostics),
         "context_source_status": context_source_status,
         "ready_holes": ready_holes,
         "all_ready": len(ready_holes) == 18,
