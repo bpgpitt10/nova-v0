@@ -1,8 +1,10 @@
+import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
+import { rankRiskAwareClubChoices } from '../liveCaddie/aimDecisionRanking'
 import {
   evaluateAimLab,
   type AimCandidateEvaluation,
@@ -21,6 +23,11 @@ type LiveCaddieWorkerRequest = {
   nowMs: number
 }
 
+type LandingElevationAwareEvaluation = ClubAimEvaluation & {
+  landingElevationDeltaFt?: number | null
+  landingElevationSource?: string | null
+}
+
 type LiveCaddieWorkerResponse =
   | { type: 'success'; evaluations: ClubAimEvaluation[] }
   | { type: 'error'; error: string }
@@ -30,8 +37,14 @@ type CachedEvaluationPayload = {
   evaluations: ClubAimEvaluation[]
 }
 
+type LandingElevationResolution = {
+  deltaFt: number | null
+  source: string | null
+  fromTerrain: boolean
+}
+
 const DISPLAY_OUTCOME_DOT_COUNT = 256
-const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v1'
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v2'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const displayTierForSurface = (
@@ -163,6 +176,155 @@ const pointUnit = (from: CoursePointYds, to: CoursePointYds): CoursePointYds => 
   const dy = to[1] - from[1]
   const length = Math.hypot(dx, dy)
   return length > 1e-9 ? [dx / length, dy / length] : [0, 1]
+}
+
+const modeledCarryLandingPoint = (
+  evaluation: ClubAimEvaluation,
+  ball: CoursePointYds,
+): CoursePointYds => {
+  const aimPoint = evaluation.bestCandidate?.aimPoint ?? evaluation.planningTarget
+  const forward = pointUnit(ball, aimPoint)
+  const right: CoursePointYds = [forward[1], -forward[0]]
+  return [
+    ball[0]
+      + forward[0] * evaluation.modeledCarryYds
+      + right[0] * evaluation.modeledLateralBiasYds,
+    ball[1]
+      + forward[1] * evaluation.modeledCarryYds
+      + right[1] * evaluation.modeledLateralBiasYds,
+  ]
+}
+
+const resolveLandingElevation = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  evaluation: ClubAimEvaluation,
+  environment: AimLabEnvironment,
+): LandingElevationResolution => {
+  const fallbackDelta =
+    typeof environment.elevationDeltaFt === 'number' && Number.isFinite(environment.elevationDeltaFt)
+      ? environment.elevationDeltaFt
+      : null
+  const fallback: LandingElevationResolution = {
+    deltaFt: fallbackDelta,
+    source: environment.elevationSource ?? null,
+    fromTerrain: false,
+  }
+
+  const ballTerrain = estimateCourseTerrain(hole, ball)
+  if (!ballTerrain) return fallback
+
+  const landing = modeledCarryLandingPoint(evaluation, ball)
+  const landingTerrain = estimateCourseTerrain(hole, landing)
+  if (!landingTerrain) return fallback
+
+  return {
+    deltaFt: landingTerrain.elevationFt - ballTerrain.elevationFt,
+    source:
+      ballTerrain.source === 'lidar-dem' && landingTerrain.source === 'lidar-dem'
+        ? 'modeled carry landing · direct LiDAR DEM'
+        : 'modeled carry landing · terrain proxy',
+    fromTerrain: true,
+  }
+}
+
+const sessionsForClub = (sessions: SavedSession[], club: string): SavedSession[] =>
+  sessions.map((session) => ({
+    ...session,
+    shots: session.shots.filter((shot) => shot.club === club),
+  }))
+
+const rerankCorrectedClubs = (
+  evaluations: LandingElevationAwareEvaluation[],
+): LandingElevationAwareEvaluation[] => {
+  const reset = evaluations.map((evaluation) => ({
+    ...evaluation,
+    decisionRank: null,
+    targetFit: null,
+    withinCatastropheGuardrail: null,
+    decisionReason: null,
+  }))
+  const ranked = rankRiskAwareClubChoices(reset)
+  ranked.forEach((row) => {
+    row.evaluation.decisionRank = row.rank
+    row.evaluation.targetFit = row.targetFit
+    row.evaluation.withinCatastropheGuardrail = row.withinCatastropheGuardrail
+    row.evaluation.decisionReason = row.decisionReason
+  })
+  return ranked.map((row) => row.evaluation)
+}
+
+/**
+ * Elevation belongs to the modeled shot, not the shared strategic planning target.
+ * Start with the canonical evaluation so we know each club's aim/carry, sample the
+ * terrain at that club's modeled carry landing, then rerun only that club with the
+ * resolved landing elevation. If the corrected carry moves onto meaningfully
+ * different terrain, sample and rerun once more. The normal club ranking is then
+ * recomputed across the corrected evaluations.
+ */
+const resolveClubLandingElevations = (
+  sessions: SavedSession[],
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  target: CoursePointYds,
+  environment: AimLabEnvironment,
+  nowMs: number,
+): LandingElevationAwareEvaluation[] => {
+  const baseline = evaluateAimLab(sessions, hole, ball, target, environment, nowMs)
+
+  const corrected = baseline.map((baselineEvaluation): LandingElevationAwareEvaluation => {
+    let current = baselineEvaluation
+    let resolution = resolveLandingElevation(hole, ball, current, environment)
+
+    if (!resolution.fromTerrain) {
+      return {
+        ...current,
+        landingElevationDeltaFt: resolution.deltaFt,
+        landingElevationSource: resolution.source,
+      }
+    }
+
+    const clubSessions = sessionsForClub(sessions, current.club)
+    let appliedResolution = resolution
+
+    for (let iteration = 0; iteration < 2; iteration += 1) {
+      appliedResolution = resolution
+      const reevaluated = evaluateAimLab(
+        clubSessions,
+        hole,
+        ball,
+        target,
+        {
+          ...environment,
+          elevationDeltaFt: appliedResolution.deltaFt,
+          elevationSource: appliedResolution.source ?? environment.elevationSource,
+        },
+        nowMs,
+      ).find((evaluation) => evaluation.club === current.club)
+
+      if (!reevaluated) break
+      current = reevaluated
+
+      const nextResolution = resolveLandingElevation(hole, ball, current, environment)
+      if (
+        !nextResolution.fromTerrain
+        || nextResolution.deltaFt == null
+        || appliedResolution.deltaFt == null
+        || Math.abs(nextResolution.deltaFt - appliedResolution.deltaFt) < 1
+      ) {
+        break
+      }
+      resolution = nextResolution
+    }
+
+    return {
+      ...current,
+      landingElevationDeltaFt: appliedResolution.deltaFt,
+      landingElevationSource: appliedResolution.source,
+    }
+  })
+
+  return rerankCorrectedClubs(corrected)
 }
 
 /**
@@ -370,7 +532,7 @@ self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
       const { sessions, hole, ball, target, environment, nowMs } = request
       const evaluations = makePlayerFacingAimGeometry(
         stripHeavySamples(
-          evaluateAimLab(sessions, hole, ball, target, environment, nowMs),
+          resolveClubLandingElevations(sessions, hole, ball, target, environment, nowMs),
         ),
         ball,
       )
