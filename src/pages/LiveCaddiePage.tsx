@@ -245,9 +245,9 @@ function LiveCaddieMap({
             ),
         )}
 
-        <line className="live-target-line" x1={ballSvg[0]} y1={ballSvg[1]} x2={targetSvg[0]} y2={targetSvg[1]} />
         {candidate && aimSvg && meanSvg ? (
           <>
+            <line className="live-target-line" x1={ballSvg[0]} y1={ballSvg[1]} x2={meanSvg[0]} y2={meanSvg[1]} />
             <line className="live-aim-line" x1={ballSvg[0]} y1={ballSvg[1]} x2={aimSvg[0]} y2={aimSvg[1]} />
             {[...visibleContours].reverse().map((contour) => (
               <ellipse
@@ -289,7 +289,6 @@ function LiveCaddieMap({
           </>
         ) : null}
         {pinSvg ? <circle className="live-pin-marker" cx={pinSvg[0]} cy={pinSvg[1]} r="0.78" /> : null}
-        <circle className="live-target-marker" cx={targetSvg[0]} cy={targetSvg[1]} r="1.1" />
         <circle className="live-ball-marker" cx={ballSvg[0]} cy={ballSvg[1]} r="1.2" />
       </svg>
     </div>
