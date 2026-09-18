@@ -32,7 +32,11 @@ NOMINATIM_ENDPOINT = os.environ.get(
 )
 NOMINATIM_MIN_INTERVAL_SECONDS = 1.1
 NOMINATIM_TIMEOUT_SECONDS = 30
-USER_AGENT = "LooperCourseDiscovery/0.1 (+https://github.com/bpgpitt10/nova-v0)"
+# Bulk/bootstrap imports deliberately pace *cold* source requests. Cached builds
+# are not delayed, and single-course/on-demand preparation does not use this
+# batch-only gate.
+OVERPASS_BATCH_MIN_INTERVAL_SECONDS = 6.0
+USER_AGENT = "LooperCourseDiscovery/0.2 (+https://github.com/bpgpitt10/nova-v0)"
 
 DEFAULT_SELECTION = {
     "teeStartRadiusYards": 220,
@@ -122,13 +126,27 @@ def candidate_name(candidate: dict[str, Any]) -> str:
     return ""
 
 
+def summarize_raw_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "osmType": candidate.get("osm_type"),
+        "osmId": candidate.get("osm_id"),
+        "name": candidate_name(candidate),
+        "displayName": candidate.get("display_name"),
+        "category": candidate.get("category") or candidate.get("class"),
+        "type": candidate.get("type"),
+        "lat": candidate.get("lat"),
+        "lon": candidate.get("lon"),
+        "importance": candidate.get("importance"),
+    }
+
+
 def score_candidate(seed: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any] | None:
+    # The Nominatim request itself is filtered to the osm.leisure.golf_course
+    # category. Its category/type output is only the place's *primary*
+    # classification and can legitimately be something else, so do not reject
+    # a valid category-filtered result on that basis.
     osm_type = candidate.get("osm_type")
     if osm_type not in {"way", "relation"}:
-        return None
-    category = candidate.get("category") or candidate.get("class")
-    place_type = candidate.get("type")
-    if category != "leisure" or place_type != "golf_course":
         return None
 
     wanted_name = normalize(str(seed["courseName"]))
@@ -150,14 +168,26 @@ def score_candidate(seed: dict[str, Any], candidate: dict[str, Any]) -> dict[str
         else 0.0
     )
     containment_bonus = 10.0 if wanted_name in display or found_name in wanted_name else 0.0
+    category = candidate.get("category") or candidate.get("class")
+    place_type = candidate.get("type")
+    primary_golf_bonus = 5.0 if category == "leisure" and place_type == "golf_course" else 0.0
     importance = candidate.get("importance")
     importance_value = float(importance) if isinstance(importance, (int, float)) else 0.0
-    score = round(name_ratio * 100.0 + location_overlap * 20.0 + containment_bonus + importance_value * 5.0, 3)
+    score = round(
+        name_ratio * 100.0
+        + location_overlap * 20.0
+        + containment_bonus
+        + primary_golf_bonus
+        + importance_value * 5.0,
+        3,
+    )
 
     return {
         "score": score,
         "nameRatio": round(name_ratio, 4),
         "locationOverlap": round(location_overlap, 4),
+        "primaryCategory": category,
+        "primaryType": place_type,
         "osmType": osm_type,
         "osmId": candidate.get("osm_id"),
         "lat": candidate.get("lat"),
@@ -172,10 +202,14 @@ def fetch_discovery_candidates(seed: dict[str, Any]) -> tuple[str, list[dict[str
     params = {
         "q": query,
         "format": "jsonv2",
-        "limit": "10",
+        "limit": "20",
         "addressdetails": "1",
         "namedetails": "1",
         "extratags": "1",
+        # Newer Nominatim versions expose category filtering independently of
+        # the result's single primary class/type. This avoids rejecting golf
+        # courses whose primary classification is not leisure=golf_course.
+        "include": "osm.leisure.golf_course",
     }
     country_code = seed.get("countryCode")
     if isinstance(country_code, str) and country_code.strip():
@@ -204,7 +238,7 @@ def choose_candidate(seed: dict[str, Any], raw_candidates: list[dict[str, Any]])
     ]
     scored.sort(key=lambda item: item["score"], reverse=True)
     if not scored:
-        return None, scored, "no way/relation leisure=golf_course candidates"
+        return None, scored, "no way/relation golf-course candidates after category-filtered search"
 
     top = scored[0]
     if top["nameRatio"] < 0.45:
@@ -244,7 +278,6 @@ def config_from_choice(seed: dict[str, Any], choice: dict[str, Any]) -> dict[str
 def discover_or_reuse(
     seed: dict[str, Any],
     *,
-    repo_root: Path,
     config_path: Path,
     discovery_path: Path,
     request_gate: dict[str, float],
@@ -267,6 +300,7 @@ def discover_or_reuse(
     requested_at = iso_now()
     query: str | None = None
     scored: list[dict[str, Any]] = []
+    raw_candidates: list[dict[str, Any]] = []
     try:
         request_gate["lastRequestAt"] = time.perf_counter()
         query, raw_candidates = fetch_discovery_candidates(seed)
@@ -280,12 +314,14 @@ def discover_or_reuse(
             "provider": "nominatim",
             "providerEndpoint": NOMINATIM_ENDPOINT,
             "query": query,
+            "categoryFilter": "osm.leisure.golf_course",
             "requestedAt": requested_at,
             "completedAt": iso_now(),
             "timingMs": discovery_ms,
             "success": error is None and choice is not None,
             "chosen": choice,
-            "candidates": scored[:5],
+            "candidates": scored[:10],
+            "rawCandidates": [summarize_raw_candidate(candidate) for candidate in raw_candidates[:20]],
             "error": error,
         }
         discovery_path.parent.mkdir(parents=True, exist_ok=True)
@@ -307,17 +343,34 @@ def discover_or_reuse(
             "provider": "nominatim",
             "providerEndpoint": NOMINATIM_ENDPOINT,
             "query": query,
+            "categoryFilter": "osm.leisure.golf_course",
             "requestedAt": requested_at,
             "completedAt": iso_now(),
             "timingMs": discovery_ms,
             "success": False,
             "chosen": None,
-            "candidates": scored[:5],
+            "candidates": scored[:10],
+            "rawCandidates": [summarize_raw_candidate(candidate) for candidate in raw_candidates[:20]],
             "error": error,
         }
         discovery_path.parent.mkdir(parents=True, exist_ok=True)
         discovery_path.write_text(json.dumps(discovery, indent=2, sort_keys=True), encoding="utf-8")
         return True, discovery_ms, error
+
+
+def batch_throttle_cold_import(snapshot_path: Path, import_gate: dict[str, float]) -> float:
+    if snapshot_path.exists():
+        return 0.0
+    previous = import_gate.get("lastColdImportStartedAt", 0.0)
+    if previous <= 0.0:
+        import_gate["lastColdImportStartedAt"] = time.perf_counter()
+        return 0.0
+    since_last = time.perf_counter() - previous
+    wait_seconds = max(0.0, OVERPASS_BATCH_MIN_INTERVAL_SECONDS - since_last)
+    if wait_seconds > 0:
+        time.sleep(wait_seconds)
+    import_gate["lastColdImportStartedAt"] = time.perf_counter()
+    return round(wait_seconds * 1000.0, 1)
 
 
 def main() -> int:
@@ -326,6 +379,7 @@ def main() -> int:
     seed_file = args.seed_file.resolve()
     seeds = load_seeds(seed_file)
     request_gate: dict[str, float] = {"lastRequestAt": 0.0}
+    import_gate: dict[str, float] = {"lastColdImportStartedAt": 0.0}
     batch_started = iso_now()
     rows: list[dict[str, Any]] = []
 
@@ -338,10 +392,10 @@ def main() -> int:
         discovery_path = artifact_dir / "discovery-v1.json"
         prepare_timing_path = artifact_dir / "prepare-timings.ndjson"
         import_timing_path = artifact_dir / "import-timings.ndjson"
+        snapshot_path = artifact_dir / "osm-snapshot.json"
 
         discovery_used_network, discovery_ms, discovery_error = discover_or_reuse(
             seed,
-            repo_root=repo_root,
             config_path=config_path,
             discovery_path=discovery_path,
             request_gate=request_gate,
@@ -349,8 +403,10 @@ def main() -> int:
 
         import_return_code: int | None = None
         import_timing: dict[str, Any] | None = None
+        batch_throttle_ms = 0.0
         error: str | None = discovery_error
         if discovery_error is None and config_path.exists():
+            batch_throttle_ms = batch_throttle_cold_import(snapshot_path, import_gate)
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -383,6 +439,7 @@ def main() -> int:
             "import": import_timing,
             "timingMs": {
                 "discovery": discovery_ms,
+                "batchThrottle": batch_throttle_ms,
                 "sourceFetch": ((import_timing or {}).get("timingMs") or {}).get("sourceFetch"),
                 "packageImporter": ((import_timing or {}).get("timingMs") or {}).get("importer"),
                 "topologyAudit": ((import_timing or {}).get("timingMs") or {}).get("topologyAudit"),
