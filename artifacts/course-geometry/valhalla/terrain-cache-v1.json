@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+  "builderVersion": "import_course_terrain_v2",
+  "builtAt": "2026-09-18T13:57:58.939455Z",
+  "courseId": "valhalla-louisville-ky",
+  "geometrySourceSha256": "60a9adbda0490f959e079c7197b3d327fa825c4db330de16b2c5bf16178ad474",
+  "osmSnapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "9128c84ebe40764f5e68f0a3b5c8c0c1a47d9a879fd0fade45b39b9c7799daeb",
+  "sourceProvider": "usgs-3dep-1m",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "18fc0a269234208e954f530af9038951fc5a580dc937830a9b7c57a5be9a662c",
+  "usedNetworkForTerrainSource": false
+}

@@ -1,0 +1,29 @@
+{
+  "allHolesTerrainReady": true,
+  "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+  "builderVersion": "import_course_terrain_v2",
+  "builtAt": "2026-09-18T13:57:58.019689Z",
+  "courseId": "royal-new-kent-providence-forge-va",
+  "geometrySourceSha256": "300e59d932e8e35db3c0b18863f8fbf5d866b6615b59deba9e3710ff8ccae91f",
+  "osmSnapshotSha256": "3def71ede549334840b1a728511ef5cb2a3eae91743713f2929cd66f23627e71",
+  "refreshPolicy": {
+    "implicitRefresh": false,
+    "localRebuildTriggers": [
+      "terrain-builder-fingerprint-change",
+      "osm-registration-change",
+      "geometry-package-change"
+    ],
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-terrain-error",
+      "known-new-elevation-survey"
+    ],
+    "serveDerivedTerrainRegardlessOfAge": true
+  },
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceManifestSha256": "acc4dcfcf3bbbe9c5f87618738fb2af8d7a5b40b8b18932fd4786d50371b0a1b",
+  "sourceProvider": "usgs-3dep-1m",
+  "sourceResolutionMeters": 1.0,
+  "terrainPackageSha256": "4012345a4149bc3ad525f3c7807b8e9b3152dbc51f05ce39f815239a1bf51c2e",
+  "usedNetworkForTerrainSource": false
+}

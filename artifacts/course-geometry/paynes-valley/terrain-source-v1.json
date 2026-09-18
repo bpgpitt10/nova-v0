@@ -1,0 +1,25 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-93.2050959%2C36.5529726%2C-93.1899381%2C36.5717316&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 343779899,
+      "downloadSha256": "1bed80aaa7fd83aae5c17736352e244112e3a79729c85fbbb40a09994e8f130e",
+      "id": "63daa42fd34e9fa19a97ddc1",
+      "title": "USGS 1 Meter 15 x48y405 MO_FEMANRCS_2020_D20",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/MO_FEMANRCS_2020_D20/TIFF/USGS_1M_15_x48y405_MO_FEMANRCS_2020_D20.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T13:57:54.902871Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -93.2050959,
+    36.5529726,
+    -93.1899381,
+    36.5717316
+  ],
+  "sourceResolutionMeters": 1.0
+}

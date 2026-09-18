@@ -1,0 +1,194 @@
+{
+  "allHolesTerrainReady": true,
+  "courseId": "greywalls-marquette-mi",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "generatedAt": "2026-09-18T13:57:41.191410Z",
+  "holes": [
+    {
+      "elevationRangeFt": [
+        868.0,
+        936.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 1,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        810.8,
+        901.8
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 2,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        847.1,
+        895.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 3,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        800.2,
+        894.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 4,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        805.8,
+        889.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 5,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        806.3,
+        893.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 6,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        826.5,
+        890.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 7,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        832.0,
+        895.5
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 8,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        852.2,
+        930.8
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 9,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        877.9,
+        939.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 10,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        806.5,
+        909.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 11,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        806.7,
+        925.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 12,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        886.0,
+        992.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 13,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        889.1,
+        946.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 14,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        821.4,
+        931.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 15,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        823.7,
+        935.6
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 16,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        821.1,
+        931.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 17,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    },
+    {
+      "elevationRangeFt": [
+        815.8,
+        924.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "hole": 18,
+      "ready": true,
+      "routeNoDataFraction": 0.0
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "usgs-3dep-1m",
+  "readyHoleCount": 18,
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 18
+}

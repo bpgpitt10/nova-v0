@@ -18,7 +18,8 @@
     "configSha256": "1456713c95dcd95084687fa6509f59194bbe788f290de47c521f957b35e4a487",
     "path": "public/course-geometry/shaftesbury-glen/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "51469e4c4b9c5d8504f1afcab09beaf3ccc786afec00bb969441c60fe5b0e204"
+    "sha256": "e80118c0bc04dd4941be0b24d8ad9f968cdd7a599bd2de22fb0f9b6ea999a86a",
+    "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -51,5 +52,16 @@
     "snapshotPath": "artifacts/course-geometry/shaftesbury-glen/osm-snapshot.json",
     "snapshotSha256": "54f4fca830c7166337342b3705126b60f812026d96a35ca6132bb18bd7f256d6",
     "sourceBaseTimestamp": "2026-09-18T13:52:05Z"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T13:57:58.462989Z",
+    "sourceManifestPath": "artifacts/course-geometry/shaftesbury-glen/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/shaftesbury-glen/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/shaftesbury-glen/terrain-v1.json",
+    "terrainPackageSha256": "8c7dcc531a110d82ab260529359df0833e811287c34f368316c0db84fa83a4dc",
+    "validationPath": "artifacts/course-geometry/shaftesbury-glen/terrain-validation-v1.json"
   }
 }
