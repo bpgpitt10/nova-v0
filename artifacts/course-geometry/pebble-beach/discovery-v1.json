@@ -1,18 +1,217 @@
 {
-  "candidates": [],
-  "categoryFilter": "osm.leisure.golf_course",
-  "chosen": null,
-  "completedAt": "2026-09-18T00:56:10.061845Z",
+  "anchorFallback": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 343.8,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [
+      {
+        "displayName": "Pebble Beach Golf Links, 1700, 17 Mile Drive, Pebble Beach, Del Monte Forest, Monterey County, California, 93953, United States",
+        "lat": 36.5696646,
+        "locationOverlap": 0.6667,
+        "lon": -121.9497413,
+        "name": "Pebble Beach Golf Links",
+        "nameRatio": 1.0,
+        "osmId": 686560759,
+        "osmType": "way",
+        "primaryCategory": "amenity",
+        "primaryType": "restaurant",
+        "score": 123.334
+      }
+    ],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Pebble Beach Golf Links, Pebble Beach, CA",
+    "rawCandidates": [
+      {
+        "category": "amenity",
+        "displayName": "Pebble Beach Golf Links, 1700, 17 Mile Drive, Pebble Beach, Del Monte Forest, Monterey County, California, 93953, United States",
+        "importance": 4.636377508197173e-05,
+        "lat": "36.5696646",
+        "lon": "-121.9497413",
+        "name": "Pebble Beach Golf Links",
+        "osmId": 686560759,
+        "osmType": "way",
+        "type": "restaurant"
+      }
+    ]
+  },
+  "chosen": {
+    "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+    "displayName": "Pebble Beach Golf Course",
+    "lat": 36.5642591,
+    "locationOverlap": 1.0,
+    "lon": -121.9394359,
+    "name": "Pebble Beach Golf Course",
+    "nameRatio": 0.8085,
+    "osmId": 3741806,
+    "osmType": "relation",
+    "score": 99.184
+  },
+  "completedAt": "2026-09-18T00:59:51.166185Z",
   "courseId": "pebble-beach-pebble-beach-ca",
   "courseName": "Pebble Beach Golf Links",
-  "error": "HTTPError: HTTP Error 503: Service Unavailable",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 11216.8,
+        "error": "HTTPError: HTTP Error 503: Service Unavailable",
+        "status": 503,
+        "success": false
+      },
+      {
+        "attempt": 2,
+        "durationMs": 6384.5,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": "no way/relation golf-course candidates after category-filtered search",
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Pebble Beach Golf Links, Pebble Beach, CA",
+    "rawCandidates": []
+  },
+  "error": null,
   "location": "Pebble Beach, CA",
-  "provider": "nominatim",
-  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
-  "query": null,
-  "rawCandidates": [],
-  "requestedAt": "2026-09-18T00:55:58.610686Z",
-  "schemaVersion": "looper-course-discovery-v1",
-  "success": false,
-  "timingMs": 11451.1
+  "nearbyBoundaryFallback": {
+    "attempts": [
+      {
+        "durationMs": 855.7,
+        "elementCount": null,
+        "endpoint": "https://overpass.private.coffee/api/interpreter",
+        "error": "abandoned-after-winner",
+        "success": false
+      },
+      {
+        "durationMs": 855.7,
+        "elementCount": null,
+        "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "error": "abandoned-after-winner",
+        "success": false
+      },
+      {
+        "durationMs": 854.7,
+        "elementCount": 8,
+        "endpoint": "https://overpass-api.de/api/interpreter",
+        "error": null,
+        "success": true
+      }
+    ],
+    "batchThrottleMs": 0.0,
+    "candidates": [
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Pebble Beach Golf Course",
+        "lat": 36.5642591,
+        "locationOverlap": 1.0,
+        "lon": -121.9394359,
+        "name": "Pebble Beach Golf Course",
+        "nameRatio": 0.8085,
+        "osmId": 3741806,
+        "osmType": "relation",
+        "score": 99.184
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Spyglass Hill Golf Course",
+        "lat": 36.5850742,
+        "locationOverlap": 1.0,
+        "lon": -121.9553205,
+        "name": "Spyglass Hill Golf Course",
+        "nameRatio": 0.4583,
+        "osmId": 281477606,
+        "osmType": "way",
+        "score": 50.833
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Cypress Point Golf Course",
+        "lat": 36.5788074,
+        "locationOverlap": 1.0,
+        "lon": -121.967712,
+        "name": "Cypress Point Golf Course",
+        "nameRatio": 0.4167,
+        "osmId": 36435651,
+        "osmType": "way",
+        "score": 46.667
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Poppy Hills Golf Course",
+        "lat": 36.5847987,
+        "locationOverlap": 1.0,
+        "lon": -121.9400424,
+        "name": "Poppy Hills Golf Course",
+        "nameRatio": 0.3913,
+        "osmId": 11841797,
+        "osmType": "relation",
+        "score": 44.13
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "The Links at Spanish Bay",
+        "lat": 36.6111944,
+        "locationOverlap": 1.0,
+        "lon": -121.9418323,
+        "name": "The Links at Spanish Bay",
+        "nameRatio": 0.2979,
+        "osmId": 4073921,
+        "osmType": "relation",
+        "score": 34.787
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "The Hay",
+        "lat": 36.5718394,
+        "locationOverlap": 1.0,
+        "lon": -121.9500942,
+        "name": "The Hay",
+        "nameRatio": 0.2,
+        "osmId": 1065983050,
+        "osmType": "way",
+        "score": 25.0
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Monterey Peninsula Country Club - Shore Course",
+        "lat": 36.5980261,
+        "locationOverlap": 1.0,
+        "lon": -121.9555946,
+        "name": "Monterey Peninsula Country Club - Shore Course",
+        "nameRatio": 0.1791,
+        "osmId": 397895551,
+        "osmType": "way",
+        "score": 22.91
+      },
+      {
+        "discoveryMethod": "nominatim-anchor-nearby-overpass-boundary",
+        "displayName": "Monterey Peninsula Country Club - Dunes Course",
+        "lat": 36.6016846,
+        "locationOverlap": 1.0,
+        "lon": -121.9477402,
+        "name": "Monterey Peninsula Country Club - Dunes Course",
+        "nameRatio": 0.1493,
+        "osmId": 238036734,
+        "osmType": "way",
+        "score": 19.925
+      }
+    ],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": "https://overpass-api.de/api/interpreter",
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T00:59:29.863518Z",
+  "schemaVersion": "looper-course-discovery-v2",
+  "success": true,
+  "timingMs": 21302.7
 }

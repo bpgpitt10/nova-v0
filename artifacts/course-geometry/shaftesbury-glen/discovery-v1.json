@@ -1,18 +1,54 @@
 {
-  "candidates": [],
-  "categoryFilter": "osm.leisure.golf_course",
+  "anchorFallback": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 714.7,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
+    "rawCandidates": []
+  },
   "chosen": null,
-  "completedAt": "2026-09-18T00:55:47.592640Z",
+  "completedAt": "2026-09-18T00:59:19.077573Z",
   "courseId": "shaftesbury-glen-conway-sc",
   "courseName": "Shaftesbury Glen Golf & Fish Club",
-  "error": "no way/relation golf-course candidates after category-filtered search",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 638.1,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": "no way/relation golf-course candidates after category-filtered search",
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
+    "rawCandidates": []
+  },
+  "error": "unfiltered Nominatim search returned no usable anchor",
   "location": "Conway, SC",
-  "provider": "nominatim",
-  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
-  "query": "Shaftesbury Glen Golf & Fish Club, Conway, SC",
-  "rawCandidates": [],
-  "requestedAt": "2026-09-18T00:55:46.947541Z",
-  "schemaVersion": "looper-course-discovery-v1",
+  "nearbyBoundaryFallback": {
+    "attempts": [],
+    "batchThrottleMs": 0.0,
+    "candidates": [],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": null,
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T00:59:17.262629Z",
+  "schemaVersion": "looper-course-discovery-v2",
   "success": false,
-  "timingMs": 645.1
+  "timingMs": 1814.9
 }

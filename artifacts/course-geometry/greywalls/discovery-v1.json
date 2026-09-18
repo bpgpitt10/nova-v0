@@ -1,18 +1,54 @@
 {
-  "candidates": [],
-  "categoryFilter": "osm.leisure.golf_course",
+  "anchorFallback": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 488.6,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [],
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Greywalls at Marquette Golf Club, Marquette, MI",
+    "rawCandidates": []
+  },
   "chosen": null,
-  "completedAt": "2026-09-18T00:55:56.939708Z",
+  "completedAt": "2026-09-18T00:59:27.875830Z",
   "courseId": "greywalls-marquette-mi",
   "courseName": "Greywalls at Marquette Golf Club",
-  "error": "no way/relation golf-course candidates after category-filtered search",
+  "direct": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "durationMs": 525.4,
+        "error": null,
+        "status": 200,
+        "success": true
+      }
+    ],
+    "candidates": [],
+    "categoryFilter": "osm.leisure.golf_course",
+    "error": "no way/relation golf-course candidates after category-filtered search",
+    "provider": "nominatim",
+    "providerEndpoint": "https://nominatim.openstreetmap.org/search",
+    "query": "Greywalls at Marquette Golf Club, Marquette, MI",
+    "rawCandidates": []
+  },
+  "error": "unfiltered Nominatim search returned no usable anchor",
   "location": "Marquette, MI",
-  "provider": "nominatim",
-  "providerEndpoint": "https://nominatim.openstreetmap.org/search",
-  "query": "Greywalls at Marquette Golf Club, Marquette, MI",
-  "rawCandidates": [],
-  "requestedAt": "2026-09-18T00:55:56.360580Z",
-  "schemaVersion": "looper-course-discovery-v1",
+  "nearbyBoundaryFallback": {
+    "attempts": [],
+    "batchThrottleMs": 0.0,
+    "candidates": [],
+    "provider": "openstreetmap-overpass",
+    "providerEndpoint": null,
+    "radiusMeters": 5000
+  },
+  "requestedAt": "2026-09-18T00:59:26.286993Z",
+  "schemaVersion": "looper-course-discovery-v2",
   "success": false,
-  "timingMs": 579.1
+  "timingMs": 1588.8
 }

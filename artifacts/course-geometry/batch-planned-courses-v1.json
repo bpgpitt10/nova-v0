@@ -3,16 +3,16 @@
   "courses": [
     {
       "courseId": "shaftesbury-glen-conway-sc",
-      "error": "no way/relation golf-course candidates after category-filtered search",
+      "error": "unfiltered Nominatim search returned no usable anchor",
       "slug": "shaftesbury-glen",
       "success": false,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 645.1,
+        "discovery": 1814.9,
         "packageImporter": null,
         "sourceFetch": null,
         "topologyAudit": null,
-        "total": 645.4
+        "total": 1815.6
       }
     },
     {
@@ -23,10 +23,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 865.3,
+        "packageImporter": 1021.7,
         "sourceFetch": null,
-        "topologyAudit": 40.6,
-        "total": 974.7
+        "topologyAudit": 47.1,
+        "total": 1136.5
       }
     },
     {
@@ -37,10 +37,10 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1012.4,
+        "packageImporter": 1193.9,
         "sourceFetch": null,
-        "topologyAudit": 42.0,
-        "total": 1110.9
+        "topologyAudit": 51.0,
+        "total": 1314.8
       }
     },
     {
@@ -51,24 +51,24 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 3893.3,
-        "sourceFetch": 2689.5,
-        "topologyAudit": 39.5,
-        "total": 6681.1
+        "packageImporter": 4642.3,
+        "sourceFetch": null,
+        "topologyAudit": 47.7,
+        "total": 4756.6
       }
     },
     {
       "courseId": "greywalls-marquette-mi",
-      "error": "no way/relation golf-course candidates after category-filtered search",
+      "error": "unfiltered Nominatim search returned no usable anchor",
       "slug": "greywalls",
       "success": false,
       "timingMs": {
         "batchThrottle": 0.0,
-        "discovery": 579.1,
+        "discovery": 1588.8,
         "packageImporter": null,
         "sourceFetch": null,
         "topologyAudit": null,
-        "total": 579.5
+        "total": 1589.5
       }
     },
     {
@@ -79,28 +79,28 @@
       "timingMs": {
         "batchThrottle": 0.0,
         "discovery": 0.0,
-        "packageImporter": 1570.6,
+        "packageImporter": 1867.6,
         "sourceFetch": null,
-        "topologyAudit": 42.4,
-        "total": 1670.4
+        "topologyAudit": 52.2,
+        "total": 1986.7
       }
     },
     {
       "courseId": "pebble-beach-pebble-beach-ca",
-      "error": "HTTPError: HTTP Error 503: Service Unavailable",
+      "error": "timed_import_osm_course.py exited 1",
       "slug": "pebble-beach",
       "success": false,
       "timingMs": {
-        "batchThrottle": 0.0,
-        "discovery": 11451.1,
-        "packageImporter": null,
-        "sourceFetch": null,
+        "batchThrottle": 5142.8,
+        "discovery": 21302.7,
+        "packageImporter": 276.4,
+        "sourceFetch": 3177.7,
         "topologyAudit": null,
-        "total": 11451.6
+        "total": 29972.7
       }
     }
   ],
-  "endedAt": "2026-09-18T00:56:10.062468Z",
+  "endedAt": "2026-09-18T00:59:59.836455Z",
   "failedCourseIds": [
     "shaftesbury-glen-conway-sc",
     "greywalls-marquette-mi",
@@ -109,6 +109,6 @@
   "failureCount": 3,
   "schemaVersion": "looper-course-batch-prepare-v1",
   "seedFile": "config/course-import-seeds/planned-courses-v1.json",
-  "startedAt": "2026-09-18T00:55:46.947434Z",
+  "startedAt": "2026-09-18T00:59:17.262515Z",
   "successCount": 4
 }
