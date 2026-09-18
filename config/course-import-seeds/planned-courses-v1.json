@@ -2,53 +2,25 @@
   "schemaVersion": "looper-course-import-seeds-v1",
   "courses": [
     {
-      "courseId": "shaftesbury-glen-conway-sc",
-      "courseName": "Shaftesbury Glen Golf & Fish Club",
-      "location": "Conway, SC",
+      "courseId": "augusta-national-augusta-ga",
+      "courseName": "Augusta National Golf Club",
+      "location": "Augusta, GA",
       "countryCode": "us",
-      "slug": "shaftesbury-glen"
+      "slug": "augusta-national"
     },
     {
-      "courseId": "valhalla-louisville-ky",
-      "courseName": "Valhalla Golf Club",
-      "location": "Louisville, KY",
+      "courseId": "oakmont-country-club-oakmont-pa",
+      "courseName": "Oakmont Country Club",
+      "location": "Oakmont, PA",
       "countryCode": "us",
-      "slug": "valhalla"
+      "slug": "oakmont-country-club"
     },
     {
-      "courseId": "muirfield-village-dublin-oh",
-      "courseName": "Muirfield Village Golf Club",
-      "location": "Dublin, OH",
+      "courseId": "erin-hills-erin-wi",
+      "courseName": "Erin Hills",
+      "location": "Erin, WI",
       "countryCode": "us",
-      "slug": "muirfield-village"
-    },
-    {
-      "courseId": "cabot-cliffs-inverness-ns",
-      "courseName": "Cabot Cliffs",
-      "location": "Inverness, NS",
-      "countryCode": "ca",
-      "slug": "cabot-cliffs"
-    },
-    {
-      "courseId": "greywalls-marquette-mi",
-      "courseName": "Greywalls at Marquette Golf Club",
-      "location": "Marquette, MI",
-      "countryCode": "us",
-      "slug": "greywalls"
-    },
-    {
-      "courseId": "paynes-valley-hollister-mo",
-      "courseName": "Payne's Valley",
-      "location": "Hollister, MO",
-      "countryCode": "us",
-      "slug": "paynes-valley"
-    },
-    {
-      "courseId": "pebble-beach-pebble-beach-ca",
-      "courseName": "Pebble Beach Golf Links",
-      "location": "Pebble Beach, CA",
-      "countryCode": "us",
-      "slug": "pebble-beach"
+      "slug": "erin-hills"
     }
   ]
 }
