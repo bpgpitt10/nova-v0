@@ -5,6 +5,7 @@ on:
     branches:
       - course-geometry-tactical-v0
       - course-importer-cache-v1
+      - course-component-selection-v1
     paths:
       - config/course-geometry/**
       - tools/import_osm_course.py
