@@ -17,5 +17,11 @@
     "contextRouteDistanceYards": 110,
     "behindTeeToleranceYards": 35,
     "pastGreenToleranceYards": 50
+  },
+  "terrain": {
+    "provider": "nrcan-hrdem",
+    "sourceResolutionMeters": 2,
+    "runtimeSpacingYards": 10,
+    "sourcePaddingMeters": 300
   }
 }
