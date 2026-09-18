@@ -126,6 +126,12 @@ export type ClubAimEvaluation = {
   altitudeCarryDeltaYds: number
   altitudeLateralDeltaYds: number
   airborneCarryDeltaYds: number
+  /** Individual airborne components are exposed for the player-facing condition math. */
+  elevationCarryDeltaYds?: number
+  windCarryDeltaYds?: number
+  windLateralDeltaYds?: number
+  lieCarryDeltaYds?: number
+  lieLateralDeltaYds?: number
   surfaceCarryDeltaYds: number
   surfaceLabel: string
   carrySigmaYds: number | null
@@ -416,6 +422,11 @@ export const evaluateAimLab = (
       altitudeCarryDeltaYds: altitudeAdjustment.carryDeltaYds,
       altitudeLateralDeltaYds: altitudeAdjustment.lateralDeltaYds,
       airborneCarryDeltaYds: modeled.appliedAdjustments.combinedAirborneCarryYds,
+      elevationCarryDeltaYds: modeled.appliedAdjustments.elevationYds,
+      windCarryDeltaYds: modeled.appliedAdjustments.windCarryYds,
+      windLateralDeltaYds: modeled.appliedAdjustments.windLateralYds,
+      lieCarryDeltaYds: modeled.appliedAdjustments.lieCarryYds,
+      lieLateralDeltaYds: modeled.appliedAdjustments.lieLateralYds,
       surfaceCarryDeltaYds: modeled.appliedAdjustments.surfaceCarryYds,
       surfaceLabel: modeled.surfaceResponse.label,
       carrySigmaYds: profile.carry_sigma_yds ?? null,
