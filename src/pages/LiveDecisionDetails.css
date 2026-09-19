@@ -1,4 +1,6 @@
 .live-decision-details {
+  min-width: 0;
+  max-width: 100%;
   margin-top: 12px;
   border: 1px solid rgba(49, 66, 51, 0.82);
   border-radius: 14px;
@@ -57,10 +59,14 @@
 }
 
 .live-decision-details-body {
+  min-width: 0;
+  max-width: 100%;
   display: grid;
 }
 
 .live-decision-table-section {
+  min-width: 0;
+  max-width: 100%;
   padding: 15px 16px 17px;
 }
 
@@ -130,7 +136,13 @@
 }
 
 .live-decision-table-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
 }
 
 .live-decision-table {
