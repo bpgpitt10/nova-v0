@@ -82,9 +82,8 @@
   font-size: 9px;
 }
 
-/* Club selection should stay visible on the wide playing surface without
- * consuming another full row below the map. Keep the existing horizontal
- * strip as the fallback and for narrower / half-screen layouts. */
+/* Club selection sizing fallback for narrower layouts. Wide-screen placement is
+ * owned by LiveCaddieIA.css; do not reserve map space for the club rail here. */
 .live-club-strip-card {
   gap: 7px;
   padding-top: 9px;
@@ -95,71 +94,6 @@
   min-height: 42px;
   padding-top: 3px;
   padding-bottom: 3px;
-}
-
-@supports (anchor-name: --live-shot-map) {
-  @media (min-width: 1260px) {
-    .live-map-card {
-      anchor-name: --live-shot-map;
-      margin-left: 154px;
-    }
-
-    .live-club-strip-card {
-      position: absolute;
-      position-anchor: --live-shot-map;
-      top: anchor(top);
-      right: anchor(left);
-      width: 140px;
-      height: anchor-size(height);
-      margin: 0;
-      padding: 10px 8px 8px;
-      transform: translateX(-10px);
-      grid-template-rows: auto minmax(0, 1fr);
-      align-content: stretch;
-      overflow: hidden;
-      z-index: 2;
-    }
-
-    .live-club-strip-heading {
-      align-items: flex-start;
-      gap: 6px;
-    }
-
-    .live-club-strip-heading > div {
-      gap: 0;
-    }
-
-    .live-club-strip-heading > div > strong {
-      display: none;
-    }
-
-    .live-club-strip-heading button {
-      min-height: 24px;
-      padding: 0 6px;
-    }
-
-    .live-club-strip {
-      min-height: 0;
-      grid-template-columns: 1fr;
-      grid-auto-rows: minmax(36px, 1fr);
-      gap: 5px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
-
-    .live-club-strip button {
-      min-height: 36px;
-      padding: 3px 6px;
-    }
-
-    .live-club-strip button strong {
-      font-size: 12px;
-    }
-
-    .live-club-strip-card > p {
-      display: none;
-    }
-  }
 }
 
 /* Compact transitional header.
