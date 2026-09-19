@@ -3,7 +3,7 @@
   "courseName": "Erin Hills",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-09-19T13:12:08.394186Z",
+    "evaluatedAt": "2026-09-19T18:09:17.576771Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "c99239f2624ac7790d82687fa75970a38f0ef81dd9c0e878811acdabc57f2c12",
+    "builderFingerprintSha256": "e270979e86021d396948772d685f597bb2a9ed127a513721a1d2c785d4ed4b4e",
     "builderVersion": "build_osm_course_package_v5",
-    "builtAt": "2026-09-19T13:12:08.394186Z",
+    "builtAt": "2026-09-19T18:09:17.576771Z",
     "configPath": "config/course-geometry/erin-hills-v1.json",
     "configSha256": "54a792b80d8bddcfd1c9e6158a5bfbf054bfd447f852884e88475dd8fde80842",
     "path": "public/course-geometry/erin-hills/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "09e23b05eb7e3b751393aa01e9f219a765f00791f502f7dafea17f9748c9edb0",
+    "sha256": "dda3217a27abd453b07cbcb1c9c14a96b270c2ff84b35517e0dfcb4ec737b055",
     "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
   },
   "refreshPolicy": {
@@ -44,9 +44,9 @@
       "id": 172725497,
       "type": "way"
     },
-    "fetchedAt": "2026-09-19T13:12:08.394186Z",
+    "fetchedAt": "2026-09-19T18:09:17.576771Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-19T13:12:08.394186Z",
+    "lastCheckedAt": "2026-09-19T18:09:17.576771Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/erin-hills/osm-snapshot.json",
     "snapshotSha256": "83a461c0cf5377129354a25c1f793e4681a645208d2ca065bfde49fd4262ff54"

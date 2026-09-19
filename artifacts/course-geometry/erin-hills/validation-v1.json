@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "c99239f2624ac7790d82687fa75970a38f0ef81dd9c0e878811acdabc57f2c12",
+  "builderFingerprintSha256": "e270979e86021d396948772d685f597bb2a9ed127a513721a1d2c785d4ed4b4e",
   "compiler": "build_osm_course_package_v5",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -9,7 +9,7 @@
   },
   "courseId": "erin-hills-erin-wi",
   "courseName": "Erin Hills",
-  "generatedAt": "2026-09-19T13:12:08.394186Z",
+  "generatedAt": "2026-09-19T18:09:17.576771Z",
   "holes": [
     {
       "anchorMethod": "route-start-virtual-tee",
@@ -18,6 +18,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 41,
+        "rough": 36
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 4.5,
@@ -90,6 +94,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 539.3,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 16,
+        "rough": 5
+      },
       "selectedTeeOffsetFromRouteStartYds": [
         0.0,
         0.0
@@ -99,9 +107,9 @@
       "straightTeeToGreenYards": 500.7,
       "surfacePolygons": {
         "bunker": 6,
-        "fairway": 7,
+        "fairway": 6,
         "green": 1,
-        "rough": 7,
+        "rough": 4,
         "tee": 0,
         "water": 1
       },
@@ -117,6 +125,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 52,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 3.2,
@@ -162,6 +174,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 363.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 5,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 2,
       "selectedTeeOffsetFromRouteStartYds": [
         -0.4,
@@ -173,9 +189,9 @@
       "straightTeeToGreenYards": 357.4,
       "surfacePolygons": {
         "bunker": 5,
-        "fairway": 3,
+        "fairway": 2,
         "green": 1,
-        "rough": 5,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -189,6 +205,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 56,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 11.5,
@@ -252,6 +272,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 517.0,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 3,
       "selectedTeeOffsetFromRouteStartYds": [
         -0.0,
@@ -263,9 +287,9 @@
       "straightTeeToGreenYards": 510.5,
       "surfacePolygons": {
         "bunker": 11,
-        "fairway": 2,
+        "fairway": 1,
         "green": 1,
-        "rough": 8,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -279,6 +303,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 55,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 2.4,
@@ -351,6 +379,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 444.0,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 2,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 4,
       "selectedTeeOffsetFromRouteStartYds": [
         0.3,
@@ -362,9 +394,9 @@
       "straightTeeToGreenYards": 440.6,
       "surfacePolygons": {
         "bunker": 9,
-        "fairway": 4,
+        "fairway": 2,
         "green": 1,
-        "rough": 11,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -378,6 +410,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 56,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 8.0,
@@ -459,6 +495,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 498.6,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 5,
       "selectedTeeOffsetFromRouteStartYds": [
         0.6,
@@ -470,9 +510,9 @@
       "straightTeeToGreenYards": 497.3,
       "surfacePolygons": {
         "bunker": 23,
-        "fairway": 4,
+        "fairway": 1,
         "green": 1,
-        "rough": 8,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -486,6 +526,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 56,
+        "rough": 37
       },
       "fairwayRequired": false,
       "greenEndpointGapYards": 3.2,
@@ -576,6 +620,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 240.1,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 4
+      },
       "selectedTeeNearestRouteHole": 6,
       "selectedTeeOffsetFromRouteStartYds": [
         1.5,
@@ -587,9 +635,9 @@
       "straightTeeToGreenYards": 234.3,
       "surfacePolygons": {
         "bunker": 10,
-        "fairway": 3,
+        "fairway": 1,
         "green": 1,
-        "rough": 7,
+        "rough": 4,
         "tee": 1,
         "water": 0
       },
@@ -603,6 +651,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 55,
+        "rough": 38
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 12.1,
@@ -693,6 +745,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 611.8,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 2,
+        "rough": 3
+      },
       "selectedTeeNearestRouteHole": 7,
       "selectedTeeOffsetFromRouteStartYds": [
         0.4,
@@ -704,9 +760,9 @@
       "straightTeeToGreenYards": 609.3,
       "surfacePolygons": {
         "bunker": 26,
-        "fairway": 6,
+        "fairway": 2,
         "green": 1,
-        "rough": 12,
+        "rough": 3,
         "tee": 1,
         "water": 0
       },
@@ -720,6 +776,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 7.4,
@@ -810,6 +870,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 503.5,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 8,
       "selectedTeeOffsetFromRouteStartYds": [
         0.2,
@@ -821,9 +885,9 @@
       "straightTeeToGreenYards": 484.4,
       "surfacePolygons": {
         "bunker": 12,
-        "fairway": 12,
+        "fairway": 3,
         "green": 1,
-        "rough": 10,
+        "rough": 2,
         "tee": 1,
         "water": 1
       },
@@ -837,6 +901,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": false,
       "greenEndpointGapYards": 3.3,
@@ -909,6 +977,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 165.9,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeOffsetFromRouteStartYds": [
         0.0,
         0.0
@@ -918,9 +990,9 @@
       "straightTeeToGreenYards": 162.8,
       "surfacePolygons": {
         "bunker": 17,
-        "fairway": 5,
+        "fairway": 3,
         "green": 1,
-        "rough": 5,
+        "rough": 2,
         "tee": 0,
         "water": 1
       },
@@ -936,6 +1008,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 56,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 2.3,
@@ -1008,6 +1084,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 521.7,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 10,
       "selectedTeeOffsetFromRouteStartYds": [
         0.2,
@@ -1019,9 +1099,9 @@
       "straightTeeToGreenYards": 520.4,
       "surfacePolygons": {
         "bunker": 30,
-        "fairway": 5,
+        "fairway": 1,
         "green": 1,
-        "rough": 10,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -1035,6 +1115,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 52,
+        "rough": 40
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 1.4,
@@ -1089,6 +1173,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 469.6,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 5,
+        "rough": 1
+      },
       "selectedTeeNearestRouteHole": 11,
       "selectedTeeOffsetFromRouteStartYds": [
         4.4,
@@ -1100,9 +1188,9 @@
       "straightTeeToGreenYards": 400.4,
       "surfacePolygons": {
         "bunker": 12,
-        "fairway": 8,
+        "fairway": 5,
         "green": 1,
-        "rough": 6,
+        "rough": 1,
         "tee": 1,
         "water": 1
       },
@@ -1116,6 +1204,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 56,
+        "rough": 38
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 2.2,
@@ -1197,6 +1289,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 498.3,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 3
+      },
       "selectedTeeNearestRouteHole": 12,
       "selectedTeeOffsetFromRouteStartYds": [
         -1.3,
@@ -1208,9 +1304,9 @@
       "straightTeeToGreenYards": 476.1,
       "surfacePolygons": {
         "bunker": 2,
-        "fairway": 6,
+        "fairway": 1,
         "green": 1,
-        "rough": 8,
+        "rough": 3,
         "tee": 1,
         "water": 2
       },
@@ -1224,6 +1320,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": false,
       "greenEndpointGapYards": 11.3,
@@ -1314,6 +1414,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 224.5,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeOffsetFromRouteStartYds": [
         0.0,
         0.0
@@ -1323,9 +1427,9 @@
       "straightTeeToGreenYards": 213.5,
       "surfacePolygons": {
         "bunker": 4,
-        "fairway": 5,
+        "fairway": 3,
         "green": 1,
-        "rough": 5,
+        "rough": 2,
         "tee": 0,
         "water": 2
       },
@@ -1341,6 +1445,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 7.2,
@@ -1395,6 +1503,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 620.7,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 14,
       "selectedTeeOffsetFromRouteStartYds": [
         -0.6,
@@ -1406,9 +1518,9 @@
       "straightTeeToGreenYards": 616.9,
       "surfacePolygons": {
         "bunker": 11,
-        "fairway": 6,
+        "fairway": 3,
         "green": 1,
-        "rough": 6,
+        "rough": 2,
         "tee": 1,
         "water": 4
       },
@@ -1422,6 +1534,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 8.8,
@@ -1494,6 +1610,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 379.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 15,
       "selectedTeeOffsetFromRouteStartYds": [
         30.7,
@@ -1505,9 +1625,9 @@
       "straightTeeToGreenYards": 245.0,
       "surfacePolygons": {
         "bunker": 26,
-        "fairway": 9,
+        "fairway": 3,
         "green": 1,
-        "rough": 8,
+        "rough": 2,
         "tee": 1,
         "water": 0
       },
@@ -1521,6 +1641,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 54,
+        "rough": 39
       },
       "fairwayRequired": false,
       "greenEndpointGapYards": 3.8,
@@ -1548,6 +1672,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 190.1,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 2
+      },
       "selectedTeeOffsetFromRouteStartYds": [
         0.0,
         0.0
@@ -1557,9 +1685,9 @@
       "straightTeeToGreenYards": 186.3,
       "surfacePolygons": {
         "bunker": 22,
-        "fairway": 5,
+        "fairway": 3,
         "green": 1,
-        "rough": 4,
+        "rough": 2,
         "tee": 0,
         "water": 0
       },
@@ -1575,6 +1703,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 53,
+        "rough": 36
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 4.1,
@@ -1638,6 +1770,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 515.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 4,
+        "rough": 5
+      },
       "selectedTeeNearestRouteHole": 17,
       "selectedTeeOffsetFromRouteStartYds": [
         17.2,
@@ -1649,9 +1785,9 @@
       "straightTeeToGreenYards": 508.3,
       "surfacePolygons": {
         "bunker": 17,
-        "fairway": 7,
+        "fairway": 4,
         "green": 1,
-        "rough": 12,
+        "rough": 5,
         "tee": 1,
         "water": 2
       },
@@ -1665,6 +1801,10 @@
         "grass-context": 0,
         "scrub": 0,
         "woods": 0
+      },
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 55,
+        "rough": 39
       },
       "fairwayRequired": true,
       "greenEndpointGapYards": 2.7,
@@ -1755,6 +1895,10 @@
       },
       "routeLengthResidualYards": 0.0,
       "routeLengthYards": 640.9,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 2,
+        "rough": 2
+      },
       "selectedTeeNearestRouteHole": 18,
       "selectedTeeOffsetFromRouteStartYds": [
         0.9,
@@ -1766,9 +1910,9 @@
       "straightTeeToGreenYards": 641.8,
       "surfacePolygons": {
         "bunker": 41,
-        "fairway": 5,
+        "fairway": 2,
         "green": 1,
-        "rough": 9,
+        "rough": 2,
         "tee": 1,
         "water": 1
       },
