@@ -176,7 +176,7 @@ export default function ConditionsMathPanel({
 
         <div className="live-condition-rows">
           <AdjustmentRow
-            label="Base altitude"
+            label="Altitude"
             distance={evaluation ? signedYards(evaluation.altitudeCarryDeltaYds) : '—'}
             lateral={evaluation ? lateralYards(evaluation.altitudeLateralDeltaYds) : '—'}
             detail={altitudeDetail}
@@ -213,11 +213,6 @@ export default function ConditionsMathPanel({
           <span>NET ADJUSTMENT</span>
           <strong>{evaluation ? signedYards(carryDelta) : '—'}</strong>
           <strong>{evaluation ? lateralYards(lateralDelta) : '—'}</strong>
-          <small>
-            {evaluation
-              ? `Stock ${Math.round(evaluation.stockCarryYds)} → ${Math.round(evaluation.modeledCarryYds)} yd carry · stock center ${baselineLateral(evaluation.lateralBiasYds)} → ${baselineLateral(evaluation.modeledLateralBiasYds)}`
-              : 'Stock → modeled shot'}
-          </small>
         </div>
       </section>
     </div>
