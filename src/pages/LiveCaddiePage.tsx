@@ -660,9 +660,11 @@ export default function LiveCaddiePage() {
     lastShotKeyRef.current = null
   }
 
+  const playerFacingTrouble = risk ? risk.seriousTrouble + risk.unknown : null
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
+    ['Unmapped', risk.unknown],
     ['Water', risk.bySurface.water ?? 0],
     ['Penalty', risk.bySurface.penalty ?? 0],
   ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
@@ -809,14 +811,14 @@ export default function LiveCaddiePage() {
                   <div className="live-outcome-grid">
                     <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
                     <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
-                    <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Serious trouble</span></div>
+                    <div className="outcome-trouble"><strong>{pct(playerFacingTrouble)}</strong><span>Trouble</span></div>
                     <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
                   </div>
                   {outcomeDetails.length ? (
                     <div className="live-outcome-details">
                       {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
                     </div>
-                  ) : <div className="live-outcome-details"><span>No material bunker / woods / penalty probability in the current model.</span></div>}
+                  ) : <div className="live-outcome-details"><span>No material bunker / woods / unmapped / penalty probability in the current model.</span></div>}
                 </article>
               </aside>
 
