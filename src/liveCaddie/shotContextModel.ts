@@ -1,5 +1,9 @@
 import { buildFlightPhysicsPrior, type FlightLaunchInput, type FlightPhysicsPrior } from './flightPhysics'
 import {
+  buildSidehillLieResponse,
+  type SidehillLieResponse,
+} from './lieResponse'
+import {
   buildCaddieModelContract,
   type CaddieModelContract,
   type PlayerBaselineInput,
@@ -16,6 +20,7 @@ export type ModeledShotContext = {
   rawContext: ShotContextInput
   physicsPrior: FlightPhysicsPrior
   surfaceResponse: SurfaceResponse
+  sidehillLieResponse: SidehillLieResponse
   effectiveTargetDistanceYds: number | null
   modeledCarryYds: number | null
   modeledCarrySigmaYds: number | null
@@ -66,7 +71,9 @@ const launchFromBaseline = (baseline: PlayerBaselineInput): FlightLaunchInput | 
  * are applied to the representative Stock launch packet and converted into a
  * physics delta, so measured Stock carry still remains authoritative.
  *
- * Physical-lie angle response remains blocked until separately validated.
+ * Sidehill physical lie uses a conservative loft-aware geometric prior at 50% of
+ * the raw geometric effect. The coefficient is explicitly versioned/calibratable.
+ * Up/down lie remains measurement-only until its carry/VLA response is validated.
  */
 export const modelShotContext = (
   baseline: PlayerBaselineInput,
@@ -117,6 +124,18 @@ export const modelShotContext = (
       ? surfacePhysics.combined.offlineYds - physicsPrior.combined.offlineYds
       : 0
 
+  // Apply sidehill at the already-conditioned carry distance so the angular
+  // tendency becomes the correct lateral-center shift for this particular shot.
+  // Lie itself does not modify carry in V0.
+  const preLieCarryYds = stockCarry == null
+    ? null
+    : stockCarry + combinedAirborneCarryYds + surfaceCarryYds
+  const sidehillLieResponse = buildSidehillLieResponse({
+    club: baseline.club,
+    lieLeftRightDeg: context.lieLeftRightDeg,
+    carryYds: preLieCarryYds,
+  })
+
   const appliedAdjustments = {
     elevationYds: finite(physicsPrior.deltas.elevationCarryYds)
       ? physicsPrior.deltas.elevationCarryYds
@@ -132,7 +151,9 @@ export const modelShotContext = (
     surfaceCarryYds,
     surfaceLateralYds,
     lieCarryYds: 0,
-    lieLateralYds: 0,
+    lieLateralYds: sidehillLieResponse.status === 'ready'
+      ? sidehillLieResponse.lateralDeltaYds
+      : 0,
   }
 
   const contractContext: ShotContextInput = {
@@ -145,6 +166,7 @@ export const modelShotContext = (
     rawContext: context,
     physicsPrior,
     surfaceResponse,
+    sidehillLieResponse,
     // Elevation is already represented by the airborne trajectory delta. Keeping
     // the geometric target unchanged prevents a second plays-like adjustment.
     effectiveTargetDistanceYds: targetDistance,
