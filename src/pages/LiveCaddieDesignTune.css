@@ -253,3 +253,35 @@
 .live-map {
   border: 0 !important;
 }
+
+/* Align current-shot context with the map now that the map card is visually gone. */
+@media (min-width: 1260px) {
+  .live-caddie-secondary-context {
+    box-sizing: border-box;
+    flex: 0 0 clamp(620px, 42vw, 730px);
+    width: clamp(620px, 42vw, 730px);
+    margin-left: auto !important;
+    padding-left: 8px;
+    justify-content: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .live-caddie-secondary-context span:first-child {
+    font-size: 13px !important;
+  }
+
+  .live-caddie-secondary-context span:nth-child(2) {
+    font-size: 17px !important;
+  }
+
+  .live-caddie-secondary-context span:nth-child(3) {
+    font-size: 14px !important;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-secondary-context {
+    flex-basis: clamp(560px, 42vw, 620px);
+    width: clamp(560px, 42vw, 620px);
+  }
+}
