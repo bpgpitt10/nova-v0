@@ -6,6 +6,7 @@ import {
   type CourseId,
 } from './courseCatalog'
 import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
+import { normalizeRouteCourseGeometry } from './normalizeRouteCourseGeometry'
 import { loadPackagedCourseHoleGeometry } from './packagedCourseLoader'
 import { loadRoutePackagedCourseHoleGeometry } from './routePackagedCourseLoader'
 import type { CourseHoleGeometry } from './types'
@@ -13,9 +14,10 @@ import type { CourseHoleGeometry } from './types'
 /**
  * Canonical runtime entry point for static course geometry.
  *
- * Greywolf remains a compatibility adapter while its proven V1 assets are
- * frozen. Tobacco Road still uses the earlier generic package shape. Courses
- * produced by the automated OSM-route importer use the route-package adapter.
+ * Greywolf remains the proven compatibility control. Tobacco Road still uses
+ * the earlier generic package shape. Courses produced by the automated
+ * OSM-route importer are normalized to the same selected-tee runtime contract
+ * before any UI or decision logic consumes them.
  */
 export const loadCourseHoleGeometry = (
   courseId: CourseId,
@@ -32,4 +34,5 @@ export const loadCourseHoleGeometry = (
     return loadPackagedCourseHoleGeometry(courseId, holeNumber)
   }
   return loadRoutePackagedCourseHoleGeometry(courseId, holeNumber)
+    .then(normalizeRouteCourseGeometry)
 }
