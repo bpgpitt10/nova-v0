@@ -8,7 +8,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const strict = process.argv.includes('--strict')
 
 const LIMITS = {
-  maxTeeGapYds: 140,
+  maxRouteStartTeeGapYds: 140,
   maxFairwayPolygons: 120,
   maxRoughPolygons: 160,
   maxBunkerPolygons: 120,
@@ -54,17 +54,32 @@ const issuesForHole = (hole) => {
   if (surfaceCount(hole, 'green') < 1) issues.push('no green polygon')
   if (hole.fairwayRequired && surfaceCount(hole, 'fairway') < 1) issues.push('no fairway polygon')
 
-  const routeAnchored = hole.anchorMethod === 'osm-hole-route-start'
+  const anchorMethod = String(hole.anchorMethod ?? '')
+  const routeAnchored = anchorMethod === 'osm-hole-route-start'
+  const selectedTeeAnchored = anchorMethod.startsWith('selected-tee')
   const teePolygons = surfaceCount(hole, 'tee')
+
   if (routeAnchored && teePolygons < 1) {
     issues.push('route-start package has no tee polygon to rebase to the selected-tee runtime contract')
   }
+  if (selectedTeeAnchored && teePolygons < 1) {
+    issues.push('selected-tee package has no selected tee polygon')
+  }
+  if (selectedTeeAnchored && hole.selectedTeeOsmId == null) {
+    issues.push('selected-tee package has no selected tee OSM id')
+  }
 
+  // A large tee gap is a contract failure only while the route start itself is
+  // pretending to be the runtime origin. V5 deliberately allows an OSM route
+  // to begin inside the hole and records that gap while placing runtime [0,0]
+  // on the evidence-selected mapped tee.
   const teeGap = Number(hole.nearestMappedTeeSurfaceYards)
-  if (!Number.isFinite(teeGap)) {
-    issues.push('no mapped tee gap available')
-  } else if (teeGap > LIMITS.maxTeeGapYds) {
-    issues.push(`nearest mapped tee is ${teeGap.toFixed(1)} yd from route origin`)
+  if (routeAnchored) {
+    if (!Number.isFinite(teeGap)) {
+      issues.push('route-start package has no mapped tee gap available')
+    } else if (teeGap > LIMITS.maxRouteStartTeeGapYds) {
+      issues.push(`nearest mapped tee is ${teeGap.toFixed(1)} yd from route origin`)
+    }
   }
 
   const fairways = surfaceCount(hole, 'fairway')
@@ -78,7 +93,7 @@ const issuesForHole = (hole) => {
     issues.push(`rough fragmentation ${rough} > ${LIMITS.maxRoughPolygons}`)
   }
   if (bunkers > LIMITS.maxBunkerPolygons) {
-    issues.push(`bunker fragmentation ${bunkers} > ${LIMITS.maxBunkerPolygons}`)
+    issues.push(`bunker fragmentation ${bunkers} > ${LIMITS.maxBunkerPolYGONS}`)
   }
   if (total > LIMITS.maxPlayablePolygons) {
     issues.push(`playable polygon count ${total} > ${LIMITS.maxPlayablePolygons}`)
