@@ -1,6 +1,7 @@
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import './LiveCaddieMapPolish.css'
 import './LiveCaddieIA.css'
+import './LiveCaddieDesignTune.css'
 
 type ConditionsMathPanelProps = {
   evaluation: ClubAimEvaluation | null
