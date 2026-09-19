@@ -14,6 +14,7 @@ on:
       - 'tools/build_osm_course_package_canonical.py'
       - 'tools/carry_forward_embedded_terrain.py'
       - 'tools/update_course_cache_after_rebuild.py'
+      - 'tools/check-course-promotions.mjs'
       - 'requirements-course-geometry.txt'
 
 concurrency:
