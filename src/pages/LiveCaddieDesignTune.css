@@ -105,6 +105,7 @@
  */
 @media (min-width: 1260px) {
   .live-caddie-shell {
+    --live-map-width: clamp(620px, 42vw, 730px);
     width: min(1700px, calc(100vw - 20px)) !important;
   }
 
@@ -130,9 +131,9 @@
   }
 
   .live-map-card {
-    flex: 0 0 clamp(620px, 42vw, 730px) !important;
-    width: clamp(620px, 42vw, 730px) !important;
-    max-width: clamp(620px, 42vw, 730px) !important;
+    flex: 0 0 var(--live-map-width) !important;
+    width: var(--live-map-width) !important;
+    max-width: var(--live-map-width) !important;
   }
 
   .live-conditions-panel,
@@ -155,10 +156,8 @@
 }
 
 @media (min-width: 1260px) and (max-width: 1399px) {
-  .live-map-card {
-    flex-basis: clamp(560px, 42vw, 620px) !important;
-    width: clamp(560px, 42vw, 620px) !important;
-    max-width: clamp(560px, 42vw, 620px) !important;
+  .live-caddie-shell {
+    --live-map-width: clamp(560px, 42vw, 620px);
   }
 
   .live-decision-card {
@@ -254,16 +253,27 @@
   border: 0 !important;
 }
 
-/* Align current-shot context with the map now that the map card is visually gone. */
+/*
+ * Current-shot context belongs to the map column. Anchor it to the actual visible
+ * map edge (map-card edge + its 14px inset) instead of letting the setup-row flex
+ * layout place it immediately after Connect GSPro.
+ */
 @media (min-width: 1260px) {
+  .live-caddie-setup-row {
+    position: relative;
+  }
+
   .live-caddie-secondary-context {
-    box-sizing: border-box;
-    flex: 0 0 clamp(620px, 42vw, 730px);
-    width: clamp(620px, 42vw, 730px);
-    margin-left: auto !important;
-    padding-left: 8px;
+    position: absolute !important;
+    left: calc(100% - var(--live-map-width) + 14px);
+    width: calc(var(--live-map-width) - 28px);
+    margin-left: 0 !important;
+    padding-left: 0;
+    display: flex;
     justify-content: flex-start !important;
     gap: 14px !important;
+    color: #9fb09f;
+    white-space: nowrap;
   }
 
   .live-caddie-secondary-context span:first-child {
@@ -276,12 +286,5 @@
 
   .live-caddie-secondary-context span:nth-child(3) {
     font-size: 14px !important;
-  }
-}
-
-@media (min-width: 1260px) and (max-width: 1399px) {
-  .live-caddie-secondary-context {
-    flex-basis: clamp(560px, 42vw, 620px);
-    width: clamp(560px, 42vw, 620px);
   }
 }
