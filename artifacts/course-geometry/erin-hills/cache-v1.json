@@ -2,24 +2,24 @@
   "courseId": "erin-hills-erin-wi",
   "courseName": "Erin Hills",
   "freshness": {
-    "ageDays": 0.04,
-    "evaluatedAt": "2026-09-18T12:07:19.358670Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-09-19T13:12:08.394186Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "reported-geometry-error",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T12:07:19.358670Z",
+    "builderFingerprintSha256": "c99239f2624ac7790d82687fa75970a38f0ef81dd9c0e878811acdabc57f2c12",
+    "builderVersion": "build_osm_course_package_v5",
+    "builtAt": "2026-09-19T13:12:08.394186Z",
     "configPath": "config/course-geometry/erin-hills-v1.json",
-    "configSha256": "3a2a06599d866c4f073e87ccca8e9f2fa7e94243b6f25aa569006768ee90f197",
+    "configSha256": "54a792b80d8bddcfd1c9e6158a5bfbf054bfd447f852884e88475dd8fde80842",
     "path": "public/course-geometry/erin-hills/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "a3acbd520b260f2388cc66c7d80947c7555efc291c09c18cd99e254e87203f5b",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "09e23b05eb7e3b751393aa01e9f219a765f00791f502f7dafea17f9748c9edb0",
+    "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -44,13 +44,12 @@
       "id": 172725497,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T11:15:11.034656Z",
+    "fetchedAt": "2026-09-19T13:12:08.394186Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T11:15:11.034656Z",
-    "provider": "openstreetmap-overpass",
+    "lastCheckedAt": "2026-09-19T13:12:08.394186Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/erin-hills/osm-snapshot.json",
-    "snapshotSha256": "a0565fa22641c6e31acb264db6a1c977bf7dc4d8a55170151651139eac79a7ac",
-    "sourceBaseTimestamp": "2026-09-18T11:13:43Z"
+    "snapshotSha256": "83a461c0cf5377129354a25c1f793e4681a645208d2ca065bfde49fd4262ff54"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
