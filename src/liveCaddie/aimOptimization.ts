@@ -72,6 +72,11 @@ export type AimLabEnvironment = {
   airAltitudeSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
+  /** Positive = GSPro Up. Retained for later validation; no V0 flight effect is applied. */
+  lieUpDownDeg?: number | null
+  /** Positive = GSPro Left / ball above feet. V0 applies a conservative sidehill prior. */
+  lieLeftRightDeg?: number | null
+  lieSource?: string
   /**
    * Optional per-club strategic target. Used by off-sim natural-landing
    * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
@@ -236,6 +241,9 @@ export const evaluateAimLab = (
     )
     const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)
     const launch = profile.launch_profile
+    const hasLieMeasurement =
+      (typeof environment.lieUpDownDeg === 'number' && Number.isFinite(environment.lieUpDownDeg)) ||
+      (typeof environment.lieLeftRightDeg === 'number' && Number.isFinite(environment.lieLeftRightDeg))
     const modeled = modelShotContext(
       {
         club: profile.club,
@@ -259,6 +267,10 @@ export const evaluateAimLab = (
         elevationDeltaFt: environment.elevationDeltaFt ?? 0,
         elevationSource: environment.elevationSource ?? 'Aim Lab target terrain',
         elevationConfidence: environment.elevationDeltaFt == null ? 'unknown' : 'medium',
+        lieUpDownDeg: environment.lieUpDownDeg ?? null,
+        lieLeftRightDeg: environment.lieLeftRightDeg ?? null,
+        lieSource: environment.lieSource ?? 'GSPro lie state',
+        lieConfidence: hasLieMeasurement ? 'high' : 'unknown',
       },
     )
 
@@ -324,6 +336,19 @@ export const evaluateAimLab = (
       altitudeAdjustment.status !== 'ready'
     ) {
       notes.push('Base altitude is known but representative launch data are insufficient for the air-density adjustment.')
+    }
+    if (modeled.sidehillLieResponse.status === 'ready' && Math.abs(modeled.sidehillLieResponse.lateralDeltaYds) >= 0.05) {
+      const response = modeled.sidehillLieResponse
+      notes.push(
+        `Sidehill lie prior (${(response.gain * 100).toFixed(0)}% geometry, ${response.clubLoftDeg?.toFixed(1) ?? '—'}° nominal loft) shifts the expected center ${Math.abs(response.lateralDeltaYds).toFixed(1)} yd ${response.lateralDeltaYds < 0 ? 'left' : 'right'}.`,
+      )
+    }
+    if (
+      typeof environment.lieUpDownDeg === 'number' &&
+      Number.isFinite(environment.lieUpDownDeg) &&
+      Math.abs(environment.lieUpDownDeg) >= 0.05
+    ) {
+      notes.push('Up/down lie angle is retained but still applies 0.0 yd in V0 pending GSPro validation.')
     }
     if (environment.surfaceOverride && environment.surfaceOverride !== geometrySurface) {
       notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
