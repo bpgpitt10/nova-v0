@@ -12,8 +12,9 @@ on:
       - 'config/course-geometry/**'
       - 'artifacts/course-geometry/**'
       - 'public/course-geometry/**'
-      - 'src/courseGeometry/courseCatalog.ts'
+      - 'src/courseGeometry/**'
       - 'tools/check-course-promotions.mjs'
+      - 'tools/audit-course-runtime-contract.mjs'
       - 'package.json'
       - '.github/workflows/course-promotion-ci.yml'
 
@@ -32,6 +33,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit playable runtime contract
+        run: npm run courses:audit-runtime -- --strict
 
       - name: Validate promoted course packages and build web app
         run: npm run build
