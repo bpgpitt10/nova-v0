@@ -26,13 +26,12 @@ export type AimDecisionPolicy = {
   minimumComparisonSupportShots?: number
   /**
    * Even equally confident models should not flip recommendations over a few
-   * thousandths of a stroke. This is an indifference band, not an EV penalty.
+   * thousandths of a stroke. Retained as the toss-up/decision-strength band.
    */
   evIndifferenceBaseStrokes?: number
   /**
-   * Extra indifference room granted to a more confident model when the raw-EV
-   * leader is less certain. At a 100-point confidence gap this is the maximum
-   * additional stroke gap that can still be treated as statistically indifferent.
+   * Maximum uncertainty penalty, in strokes, applied to a zero-confidence club
+   * model. The penalty scales linearly to zero at 100% model confidence.
    */
   confidenceIndifferenceMaxStrokes?: number
 }
@@ -219,6 +218,24 @@ export const clubModelConfidence = (
   )
 }
 
+/**
+ * Player-facing club decision score. Lower is better.
+ *
+ * The raw next-state expected strokes remain visible and untouched. We add a
+ * linear uncertainty penalty of up to 0.100 strokes for an unsupported model,
+ * tapering to zero at 100% model confidence. This is the exact score used to
+ * order eligible clubs after the catastrophe and cold-start guardrails.
+ */
+export const confidenceAdjustedFutureStrokes = (
+  expectedFutureStrokes: number,
+  modelConfidence: number,
+  policy: AimDecisionPolicy = DEFAULT_AIM_DECISION_POLICY,
+) => {
+  const confidence = Math.min(1, Math.max(0, modelConfidence))
+  const maxPenalty = Math.max(0, policyConfidenceIndifference(policy))
+  return expectedFutureStrokes + (1 - confidence) * maxPenalty
+}
+
 type ValueReadyClubRow<T extends RiskRankableAim, C extends ClubAimChoice<T>> = {
   evaluation: C
   candidate: T
@@ -244,8 +261,8 @@ const rawValueCompare = <T extends RiskRankableAim, C extends ClubAimChoice<T>>(
 
 /**
  * How much worse a higher-confidence candidate may be on raw EV and still be
- * treated as indistinguishable from the raw-EV leader. Confidence never buys a
- * better EV; it only resolves differences too small to trust given the evidence.
+ * treated as a toss-up for decision-strength language. Ranking itself now uses
+ * the explicit confidence-adjusted-strokes score exposed in Live Caddie.
  */
 const indifferenceThresholdAgainstRawBest = <
   T extends RiskRankableAim,
@@ -268,29 +285,21 @@ const confidenceAwareSafeOrder = <
 >(
   rows: readonly ValueReadyClubRow<T, C>[],
   policy: AimDecisionPolicy,
-) => {
-  const remaining = [...rows]
-  const ordered: ValueReadyClubRow<T, C>[] = []
-
-  while (remaining.length > 0) {
-    const rawBest = [...remaining].sort(rawValueCompare)[0]
-    const rawBestValue = rawBest.stateValue.expectedFutureStrokes
-    const indistinguishable = remaining.filter((row) => {
-      const gap = row.stateValue.expectedFutureStrokes - rawBestValue
-      return gap <= indifferenceThresholdAgainstRawBest(rawBest, row, policy) + 1e-9
-    })
-    indistinguishable.sort((a, b) => {
-      const confidenceDelta = b.modelConfidence - a.modelConfidence
-      if (Math.abs(confidenceDelta) > 1e-9) return confidenceDelta
-      return rawValueCompare(a, b)
-    })
-    const chosen = indistinguishable[0] ?? rawBest
-    ordered.push(chosen)
-    remaining.splice(remaining.indexOf(chosen), 1)
-  }
-
-  return ordered
-}
+) => [...rows].sort((a, b) => {
+  const adjustedDelta =
+    confidenceAdjustedFutureStrokes(
+      a.stateValue.expectedFutureStrokes,
+      a.modelConfidence,
+      policy,
+    ) -
+    confidenceAdjustedFutureStrokes(
+      b.stateValue.expectedFutureStrokes,
+      b.modelConfidence,
+      policy,
+    )
+  if (Math.abs(adjustedDelta) > 1e-9) return adjustedDelta
+  return rawValueCompare(a, b)
+})
 
 /**
  * Rank club + aim recommendations on the value of where the full shot
@@ -298,9 +307,9 @@ const confidenceAwareSafeOrder = <
  *
  * 1) Keep only truly cold-start clubs (<4 shots by default) behind comparison-ready clubs.
  * 2) Apply the catastrophe guardrail.
- * 3) Inside the safe set, calculate exact EV for every club.
- * 4) When EVs are effectively indistinguishable, prefer the better-supported
- *    player model rather than pretending a 0.004-stroke gap is meaningful.
+ * 3) Inside the safe set, calculate exact raw EV for every club.
+ * 4) Add the graduated model-confidence uncertainty penalty and rank on the
+ *    resulting confidence-adjusted strokes. The raw EV is never overwritten.
  *
  * There is intentionally no carry-gap/target-fit gate here. A Driver leaving
  * 175 yards and a 3W leaving 200 yards must be allowed to compete directly;
@@ -371,9 +380,14 @@ export const rankRiskAwareClubChoices = <
     .filter((row) => row.risk.catastrophe > catastropheGuardrail + 1e-9)
     .sort((a, b) => {
       const catastropheDelta = a.risk.catastrophe - b.risk.catastrophe
-      return Math.abs(catastropheDelta) > 1e-9 ? catastropheDelta : rawValueCompare(a, b)
+      return Math.abs(catastropheDelta) > 1e-9
+        ? catastropheDelta
+        : confidenceAwareSafeOrder([a, b], policy)[0] === a ? -1 : 1
     })
-  coldStart.sort(rawValueCompare)
+  coldStart.sort((a, b) => {
+    const ordered = confidenceAwareSafeOrder([a, b], policy)
+    return ordered[0] === a ? -1 : 1
+  })
 
   const rankedUsable = [...safe, ...catastropheRejected, ...coldStart]
   const winner = rankedUsable[0] ?? null
@@ -401,7 +415,15 @@ export const rankRiskAwareClubChoices = <
             const nextSafe = safe.find((row) => row !== winner)
             if (!nextSafe) return 'clear'
             const gap = Math.abs(
-              nextSafe.stateValue.expectedFutureStrokes - winner.stateValue.expectedFutureStrokes,
+              confidenceAdjustedFutureStrokes(
+                nextSafe.stateValue.expectedFutureStrokes,
+                nextSafe.modelConfidence,
+                policy,
+              ) - confidenceAdjustedFutureStrokes(
+                winner.stateValue.expectedFutureStrokes,
+                winner.modelConfidence,
+                policy,
+              ),
             )
             return gap < 0.05 ? 'lean' : 'clear'
           })()
@@ -413,6 +435,11 @@ export const rankRiskAwareClubChoices = <
     const evDeltaToRawBest = rawBestValue == null
       ? null
       : row.stateValue.expectedFutureStrokes - rawBestValue
+    const adjustedStrokes = confidenceAdjustedFutureStrokes(
+      row.stateValue.expectedFutureStrokes,
+      row.modelConfidence,
+      policy,
+    )
 
     let decisionReason: string
     let decisionStrength: ClubDecisionStrength = index === 0 ? winnerStrength : 'clear'
@@ -422,34 +449,39 @@ export const rankRiskAwareClubChoices = <
       const threshold = indifferenceThresholdAgainstRawBest(rawBestSafe, row, policy)
       decisionReason =
         `Toss-up: raw EV favors ${rawBestSafe.evaluation.club} by ${rawGap.toFixed(3)} strokes, ` +
-        `inside the ${threshold.toFixed(3)} confidence-adjusted indifference band; ` +
-        `preferred the stronger player model (${(row.modelConfidence * 100).toFixed(0)}% vs ${(rawBestSafe.modelConfidence * 100).toFixed(0)}% confidence).`
+        `inside the ${threshold.toFixed(3)} confidence-aware band; ` +
+        `confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}) ` +
+        `at ${(row.modelConfidence * 100).toFixed(0)}% model confidence.`
       decisionStrength = 'toss-up'
     } else if (index === 0) {
       const nextSafe = safe.find((candidate) => candidate !== row)
       const gap = nextSafe
-        ? nextSafe.stateValue.expectedFutureStrokes - row.stateValue.expectedFutureStrokes
+        ? confidenceAdjustedFutureStrokes(
+            nextSafe.stateValue.expectedFutureStrokes,
+            nextSafe.modelConfidence,
+            policy,
+          ) - adjustedStrokes
         : null
-      const confidenceNote = `player-model confidence ${(row.modelConfidence * 100).toFixed(0)}%`
+      const confidenceNote = `model confidence ${(row.modelConfidence * 100).toFixed(0)}%`
       decisionReason = decisionStrength === 'toss-up'
-        ? `Toss-up: lowest raw EV (${row.stateValue.expectedFutureStrokes.toFixed(3)}), but another safe club falls inside the confidence-aware indifference band; ${confidenceNote}.`
+        ? `Toss-up: lowest confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); another safe club remains inside the confidence-aware band; ${confidenceNote}.`
         : decisionStrength === 'lean'
-          ? `Lean: lowest safe expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)})${gap == null ? '' : ` by ${gap.toFixed(3)}`}; ${confidenceNote}.`
-          : `Clear: lowest safe expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)})${gap == null ? '' : ` by ${gap.toFixed(3)}`}; ${confidenceNote}.`
+          ? `Lean: lowest confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)})${gap == null ? '' : ` by ${gap.toFixed(3)}`}; ${confidenceNote}.`
+          : `Clear: lowest confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)})${gap == null ? '' : ` by ${gap.toFixed(3)}`}; ${confidenceNote}.`
     } else if (isColdStart) {
       decisionReason =
         `Provisional cold start: ${row.evaluation.supportShots} Stock shots is below the ` +
         `${policyMinimumComparisonSupport(policy)}-shot comparison floor; model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
       decisionStrength = 'provisional'
     } else if (!withinCatastropheGuardrail) {
-      decisionReason = 'Rejected by the catastrophe guardrail before expected-future-strokes comparison.'
+      decisionReason = 'Rejected by the catastrophe guardrail before confidence-adjusted-strokes comparison.'
     } else if (winner && safeIndifferencePeers.includes(row)) {
       decisionReason =
-        `Toss-up alternative: expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}) fall inside the winner's confidence-aware indifference band; model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
+        `Toss-up alternative: confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
       decisionStrength = 'toss-up'
     } else {
       decisionReason =
-        `Safe-set alternative with higher expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
+        `Safe-set alternative with confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
     }
 
     return {
