@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/rebuild-erin-hills-v5.yml'
       - 'tools/fetch_osm_course_snapshot.py'
+      - 'tools/fetch_osm_course_golf_snapshot.py'
       - 'tools/diagnose_course_route_orientation.py'
       - 'tools/build_osm_course_package_v4.py'
       - 'tools/build_osm_course_package_v5.py'
@@ -45,6 +46,17 @@ jobs:
         run: |
           mkdir -p /tmp/looper-course-rebuild
           cp public/course-geometry/erin-hills/course-v1.json /tmp/looper-course-rebuild/erin-old.json
+
+      - name: Fetch golf-only exact-boundary diagnostic snapshot
+        run: |
+          python tools/fetch_osm_course_golf_snapshot.py \
+            --config config/course-geometry/erin-hills-v1.json \
+            --output /tmp/looper-course-rebuild/erin-golf-only.json
+
+      - name: Diagnose tee ownership before full fetch
+        run: |
+          python tools/diagnose_course_route_orientation.py \
+            --osm /tmp/looper-course-rebuild/erin-golf-only.json
 
       - name: Fetch exact-boundary OSM snapshot
         run: |
