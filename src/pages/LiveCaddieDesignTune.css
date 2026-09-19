@@ -30,62 +30,42 @@
   background: rgba(11, 24, 16, 0.34) !important;
 }
 
-/* The panel explains condition effects. Strategic "why this club" language will
- * live elsewhere later, so do not duplicate the net adjustment in the header. */
-.live-conditions-heading > span {
-  font-size: 0 !important;
-}
-
-.live-conditions-heading > span::after {
-  content: 'SHOT ADJUSTMENTS';
-  color: #eab308;
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-}
-
-.live-conditions-heading > strong {
+/* NET ADJUSTMENT is the panel title/result. Do not spend another row labeling
+ * the section as shot adjustments. */
+.live-conditions-heading {
   display: none !important;
 }
 
-.live-conditions-heading {
-  order: 1;
-  min-height: 44px;
-  align-content: center;
-  padding: 12px 15px !important;
-}
-
-/* Put the actionable net result first, then show the factors that produced it. */
 .live-conditions-panel {
-  grid-template-rows: auto auto auto 1fr !important;
+  grid-template-rows: auto auto 1fr !important;
 }
 
 .live-condition-net {
-  order: 2;
-  padding: 13px 15px 14px !important;
+  order: 1;
+  padding: 14px 16px 15px !important;
   border-bottom: 1px solid rgba(63, 82, 65, 0.48);
   background: rgba(234, 179, 8, 0.055) !important;
 }
 
 .live-condition-table-head {
-  order: 3;
+  order: 2;
   min-height: 38px !important;
-  padding: 0 15px !important;
+  padding: 0 16px !important;
 }
 
 .live-condition-rows {
-  order: 4;
+  order: 3;
   grid-auto-rows: minmax(66px, 1fr) !important;
 }
 
-/* Increase table legibility. There is deliberate vertical room in this panel. */
+/* Keep the factor breakdown large enough to read at simulator distance. */
 .live-condition-table-head span,
 .live-condition-table-head strong {
   font-size: 10px !important;
 }
 
 .live-condition-row {
-  padding: 12px 15px !important;
+  padding: 12px 16px !important;
 }
 
 .live-condition-factor {
@@ -117,8 +97,6 @@
 }
 
 @media (min-width: 1260px) {
-  /* Give more of the overall canvas to the map while letting the recommendation
-   * side breathe a little more inside the decision card. */
   .live-caddie-main-grid {
     grid-template-columns: minmax(610px, 0.88fr) minmax(680px, 1.12fr) !important;
   }
@@ -126,6 +104,34 @@
   .live-decision-card {
     grid-template-columns: minmax(300px, 1.06fr) minmax(290px, 0.94fr) !important;
     column-gap: 20px !important;
+  }
+}
+
+/* On the wide playing display, use the otherwise-dead horizontal band between
+ * the decision block and map. Keep the map at its current visual width and let
+ * the recommendation + table expand into that space. */
+@media (min-width: 1600px) {
+  .live-caddie-shell {
+    width: min(1700px, calc(100vw - 20px)) !important;
+  }
+
+  .live-caddie-main-grid {
+    width: calc(100% - 72px) !important;
+    grid-template-columns: minmax(820px, 1fr) 730px !important;
+    gap: 14px !important;
+    margin-left: 72px !important;
+  }
+
+  .live-decision-card {
+    grid-template-columns: minmax(360px, 0.98fr) minmax(400px, 1.02fr) !important;
+    column-gap: 22px !important;
+  }
+
+  .live-condition-table-head,
+  .live-condition-row,
+  .live-condition-net {
+    grid-template-columns: minmax(132px, 1.08fr) minmax(104px, 0.9fr) minmax(118px, 0.98fr) !important;
+    column-gap: 14px !important;
   }
 }
 
