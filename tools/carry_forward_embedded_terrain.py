@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Carry embedded LiDAR/contours from an old route-start package into V5.
 
-V5 intentionally preserves the old route-start axis orientation and changes
-only the origin. Therefore the existing DEM values need no resampling: grid
-minX/minY and contour points are translated by the selected-tee offset.
+V5 normally preserves the old route-start axis orientation and changes only the
+origin. In that case the existing DEM values need no resampling: grid minX/minY
+and contour points are translated by the selected-tee offset.
+
+If V5 had to reverse an OSM golf=hole route to put the mapped green at the end,
+translation-only carry-forward is unsafe. This tool fails that hole explicitly
+rather than silently rotating or mirroring cached terrain.
 """
 
 from __future__ import annotations
@@ -61,6 +65,13 @@ def carry(old_package: dict[str, Any], new_package: dict[str, Any]) -> dict[str,
             raise ValueError(f"Missing Hole {hole_number} in old or new package")
 
         frame = new_hole.get("coordinateFrame") or {}
+        route_direction = frame.get("routeDirection", "as-mapped")
+        if route_direction != "as-mapped":
+            raise ValueError(
+                f"V5 Hole {hole_number} changed route orientation ({route_direction}); "
+                "translation-only cached terrain carry-forward is unsafe. Rebuild terrain in the new frame."
+            )
+
         offset = finite_pair(frame.get("selectedTeeOffsetFromRouteStartYds"))
         if offset is None:
             raise ValueError(f"V5 Hole {hole_number} has no selected-tee offset metadata")
