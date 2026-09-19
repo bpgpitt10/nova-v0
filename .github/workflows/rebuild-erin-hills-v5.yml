@@ -1,0 +1,104 @@
+name: Rebuild Erin Hills V5
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - '.github/workflows/rebuild-erin-hills-v5.yml'
+      - 'tools/fetch_osm_course_snapshot.py'
+      - 'tools/build_osm_course_package_v4.py'
+      - 'tools/build_osm_course_package_v5.py'
+      - 'tools/build_osm_course_package_canonical.py'
+      - 'tools/carry_forward_embedded_terrain.py'
+      - 'tools/update_course_cache_after_rebuild.py'
+      - 'requirements-course-geometry.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout course branch
+        uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependency
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Preserve current terrain-bearing package
+        run: |
+          mkdir -p /tmp/looper-course-rebuild
+          cp public/course-geometry/erin-hills/course-v1.json /tmp/looper-course-rebuild/erin-old.json
+
+      - name: Fetch exact-boundary OSM snapshot
+        run: |
+          python tools/fetch_osm_course_snapshot.py \
+            --config config/course-geometry/erin-hills-v1.json \
+            --output artifacts/course-geometry/erin-hills/osm-snapshot.json
+
+      - name: Build canonical V5 static geometry
+        run: |
+          python tools/build_osm_course_package_canonical.py \
+            --osm artifacts/course-geometry/erin-hills/osm-snapshot.json \
+            --config config/course-geometry/erin-hills-v1.json \
+            --output /tmp/looper-course-rebuild/erin-v5-geometry.json \
+            --manifest artifacts/course-geometry/erin-hills/validation-v1.json
+
+      - name: Carry forward embedded LiDAR without resampling
+        run: |
+          python tools/carry_forward_embedded_terrain.py \
+            --old-package /tmp/looper-course-rebuild/erin-old.json \
+            --new-package /tmp/looper-course-rebuild/erin-v5-geometry.json \
+            --output public/course-geometry/erin-hills/course-v1.json
+
+      - name: Refresh cache provenance and hashes
+        run: |
+          python tools/update_course_cache_after_rebuild.py \
+            --cache artifacts/course-geometry/erin-hills/cache-v1.json \
+            --config config/course-geometry/erin-hills-v1.json \
+            --snapshot artifacts/course-geometry/erin-hills/osm-snapshot.json \
+            --package public/course-geometry/erin-hills/course-v1.json \
+            --manifest artifacts/course-geometry/erin-hills/validation-v1.json
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Validate promoted packages and web build
+        run: npm run build
+
+      - name: Print runtime audit
+        run: npm run courses:audit-runtime
+
+      - name: Commit preserved snapshot and repaired package
+        run: |
+          git add \
+            artifacts/course-geometry/erin-hills/osm-snapshot.json \
+            artifacts/course-geometry/erin-hills/validation-v1.json \
+            artifacts/course-geometry/erin-hills/cache-v1.json \
+            public/course-geometry/erin-hills/course-v1.json \
+            src/courseGeometry/generatedRouteHoleHeadings.ts
+          if git diff --cached --quiet; then
+            echo 'No course rebuild changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(course): rebuild Erin Hills with canonical V5 geometry'
+          git push origin HEAD:course-geometry-tactical-v0
