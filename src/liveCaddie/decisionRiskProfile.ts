@@ -147,6 +147,18 @@ const summarizeOutcomes = (
     else unknown += outcome.weight
   })
 
+  // The player-facing outcome buckets must represent the full probability mass.
+  // If any mass survives the core/tail construction without a tactical surface
+  // assignment, keep it conservative and explicit as unknown. The UI maps this
+  // internal unknown bucket to "Outside Map Area" and folds it into Trouble.
+  const accountedProbability = success + manageable + seriousTrouble + catastrophe + unknown
+  const residualProbability = Math.max(0, 1 - accountedProbability)
+  if (residualProbability > 1e-9) {
+    unknown += residualProbability
+    bySurface.unknown = (bySurface.unknown ?? 0) + residualProbability
+    expectedSeverity += severityForTier('unknown') * residualProbability
+  }
+
   return {
     bySurface,
     success,
