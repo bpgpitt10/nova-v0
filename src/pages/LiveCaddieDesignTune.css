@@ -191,3 +191,50 @@
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
+
+/*
+ * Second unboxed pass: Expected Shot no longer needs its own outer card. Keep
+ * its internal stat/outcome structure, while turning Net Adjustment into a
+ * compact data plane instead of stretching it to the full recommendation height.
+ */
+.live-expected-shot-block {
+  padding: 2px 0 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 1260px) {
+  .live-conditions-panel {
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-rows: auto auto auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(10, 23, 15, 0.18) !important;
+    box-shadow: none !important;
+  }
+
+  .live-condition-net {
+    padding: 10px 16px 11px !important;
+  }
+
+  .live-condition-table-head {
+    min-height: 31px !important;
+  }
+
+  .live-condition-rows {
+    align-content: start !important;
+    grid-auto-rows: minmax(54px, auto) !important;
+  }
+
+  .live-condition-row {
+    padding: 8px 16px !important;
+  }
+
+  .live-condition-row > small {
+    margin-top: 3px !important;
+  }
+}
