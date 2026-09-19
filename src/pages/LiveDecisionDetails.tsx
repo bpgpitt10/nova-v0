@@ -194,7 +194,7 @@ export default function LiveDecisionDetails({
                   <th className="numeric">Trouble</th>
                   <th className="numeric">Catastrophe</th>
                   <th className="numeric">Mishit</th>
-                  <th>Model data</th>
+                  <th>Model confidence</th>
                   <th className="numeric">Proj. strokes</th>
                   <th className="numeric">Δ to rec</th>
                 </tr>
