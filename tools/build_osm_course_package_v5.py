@@ -10,9 +10,17 @@ Anchor contract:
 - If no mapped tee can be confidently assigned to this hole, runtime [0, 0]
   remains the golf=hole route start and is explicitly labeled a virtual tee.
 
-This prevents nearby tees from the next hole from being stolen simply because
-OSM omitted a tee polygon for the current hole. It also preserves the cached
-route-axis orientation so existing LiDAR can be translated without resampling.
+Playable ownership contract:
+- Fairway and golf=rough features must be owned by the current hole route.
+- Ownership is determined against every mapped golf=hole route by polygon-to-
+  route distance, with a small tie tolerance for genuinely shared polygons.
+- Bunkers and water remain physical hazards when they intersect the tactical
+  corridor, even if another hole route is marginally closer.
+
+This prevents nearby tees and neighboring-hole playable surfaces from being
+stolen simply because they intersect a broad tactical corridor. It also
+preserves the cached route-axis orientation so existing LiDAR can be translated
+without resampling.
 """
 
 from __future__ import annotations
@@ -30,6 +38,8 @@ import build_osm_course_package_v4 as v4
 DEFAULT_TEE_SEARCH_RADIUS_YARDS = 220.0
 MAX_OWNED_TEE_ROUTE_GAP_YARDS = 35.0
 ROUTE_DIRECTION_GREEN_MARGIN_YARDS = 15.0
+ROUTE_OWNERSHIP_TIE_YARDS = 3.0
+ROUTE_OWNED_SURFACE_KINDS = ("fairway", "rough")
 
 
 def nearest_green_to_point(
@@ -77,16 +87,78 @@ def course_route_lines(
     }
 
 
-def tee_route_gap(
-    tee: dict[str, Any],
+def feature_route_gap(
+    feature: dict[str, Any],
     route_line: list[tuple[float, float]],
     course_origin: tuple[float, float],
 ) -> float:
     geometries_xy = [
         [base.course_xy(point, course_origin) for point in geometry]
-        for geometry in tee["geometries"]
+        for geometry in feature["geometries"]
     ]
     return base.feature_distance_to_route(geometries_xy, route_line)
+
+
+def route_ownership_for_feature(
+    feature: dict[str, Any],
+    hole_number: int,
+    route_lines: dict[int, list[tuple[float, float]]],
+    course_origin: tuple[float, float],
+    tie_yards: float = ROUTE_OWNERSHIP_TIE_YARDS,
+) -> dict[str, Any]:
+    route_gaps = {
+        route_hole: feature_route_gap(feature, line, course_origin)
+        for route_hole, line in route_lines.items()
+    }
+    nearest_gap = min(route_gaps.values(), default=float("inf"))
+    nearest_holes = sorted(
+        route_hole
+        for route_hole, gap in route_gaps.items()
+        if gap <= nearest_gap + tie_yards
+    )
+    current_gap = route_gaps.get(hole_number, float("inf"))
+    return {
+        "ownedByCurrentHole": current_gap <= nearest_gap + tie_yards,
+        "currentRouteGapYards": current_gap,
+        "nearestRouteGapYards": nearest_gap,
+        "nearestRouteHoles": nearest_holes,
+    }
+
+
+def route_owned_features(
+    features: list[dict[str, Any]],
+    hole_number: int,
+    route_lines: dict[int, list[tuple[float, float]]],
+    course_origin: tuple[float, float],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    owned: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    for feature in features:
+        ownership = route_ownership_for_feature(
+            feature,
+            hole_number,
+            route_lines,
+            course_origin,
+        )
+        if ownership["ownedByCurrentHole"]:
+            owned.append(feature)
+        else:
+            excluded.append({
+                "osmId": feature.get("osm_id"),
+                "kind": feature.get("kind"),
+                "currentRouteGapYards": ownership["currentRouteGapYards"],
+                "nearestRouteGapYards": ownership["nearestRouteGapYards"],
+                "nearestRouteHoles": ownership["nearestRouteHoles"],
+            })
+    return owned, excluded
+
+
+def tee_route_gap(
+    tee: dict[str, Any],
+    route_line: list[tuple[float, float]],
+    course_origin: tuple[float, float],
+) -> float:
+    return feature_route_gap(tee, route_line, course_origin)
 
 
 def tee_anchor_for_hole(
@@ -265,6 +337,19 @@ def model_for_hole(
     for feature in features:
         by_kind.setdefault(feature["kind"], []).append(feature)
 
+    course_origin, route_lines = course_route_lines(hole_routes)
+    owned_by_kind: dict[str, list[dict[str, Any]]] = {}
+    excluded_foreign_by_kind: dict[str, list[dict[str, Any]]] = {}
+    for kind in ROUTE_OWNED_SURFACE_KINDS:
+        owned, excluded = route_owned_features(
+            by_kind.get(kind, []),
+            hole_number,
+            route_lines,
+            course_origin,
+        )
+        owned_by_kind[kind] = owned
+        excluded_foreign_by_kind[kind] = excluded
+
     selected_tee_polygons: list[list[list[float]]] = []
     if selected_tee is not None:
         for polygon in feature_polygons_rebased(
@@ -281,11 +366,11 @@ def model_for_hole(
     surfaces = {
         "tee": selected_tee_polygons,
         "fairway": feature_intersections_rebased(
-            by_kind.get("fairway", []), fairway_corridor,
+            owned_by_kind.get("fairway", []), fairway_corridor,
             route_origin, forward, right, anchor_offset, simplify_yards,
         ),
         "rough": feature_intersections_rebased(
-            by_kind.get("rough", []), context_corridor,
+            owned_by_kind.get("rough", []), context_corridor,
             route_origin, forward, right, anchor_offset, simplify_yards,
         ),
         "green": target_green_polygons,
@@ -327,6 +412,8 @@ def model_for_hole(
             "No mapped tee surface was confidently owned by this hole route; "
             f"using golf=hole route start as a virtual tee anchor.{suffix}"
         )
+    if requires_fairway and not owned_by_kind.get("fairway"):
+        warnings.append("No route-owned fairway feature was found for this non-par-3 hole.")
     if surface_counts["fairway"] > v4.MAX_FAIRWAY_POLYGONS:
         warnings.append(f"Fairway fragmentation {surface_counts['fairway']} exceeds {v4.MAX_FAIRWAY_POLYGONS}.")
     if surface_counts["rough"] > v4.MAX_ROUGH_POLYGONS:
@@ -346,7 +433,9 @@ def model_for_hole(
         and surface_counts["green"] > 0
         and (not requires_fairway or surface_counts["fairway"] > 0)
         and not any(
-            "fragmentation" in warning.lower() or "polygon count" in warning.lower()
+            "fragmentation" in warning.lower()
+            or "polygon count" in warning.lower()
+            or "no route-owned fairway" in warning.lower()
             for warning in warnings
         )
     )
@@ -423,6 +512,14 @@ def model_for_hole(
             for item in tee_candidates[:8]
         ],
         "selectionCorridorYards": context_width,
+        "routeOwnedSurfaceFeatures": {
+            kind: len(owned_by_kind.get(kind, []))
+            for kind in ROUTE_OWNED_SURFACE_KINDS
+        },
+        "excludedForeignSurfaceFeatures": {
+            kind: len(excluded_foreign_by_kind.get(kind, []))
+            for kind in ROUTE_OWNED_SURFACE_KINDS
+        },
         "surfacePolygons": surface_counts,
         "contextPolygons": {
             kind: len(context.get(kind, []))
