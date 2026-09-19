@@ -19,6 +19,10 @@ const supportedBuilders = new Set([
   'build_osm_course_package_v3',
   'build_osm_course_package_v5',
 ])
+const supportedOsmProviders = new Set([
+  'openstreetmap-overpass',
+  'openstreetmap-core-map',
+])
 
 const promoted = readdirSync(artifactRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -97,7 +101,7 @@ for (const promotedCourse of promoted) {
   requireValue(cache.package?.schemaVersion === 'looper-static-course-package-v1', `${courseId}: cached package schema is invalid`)
   requireValue(cache.package?.path === packagePath, `${courseId}: cache metadata points at a different package path`)
   requireValue(cache.package?.configPath === configPath, `${courseId}: cache metadata points at a different config path`)
-  requireValue(cache.source?.provider === 'openstreetmap-overpass', `${courseId}: OSM source provenance is missing or unexpected`)
+  requireValue(supportedOsmProviders.has(cache.source?.provider), `${courseId}: OSM source provenance is missing or unexpected`)
   requireValue(typeof cache.source?.snapshotSha256 === 'string' && cache.source.snapshotSha256.length === 64, `${courseId}: source snapshot hash is missing`)
 
   if (builderVersion === 'build_osm_course_package_v5') {
