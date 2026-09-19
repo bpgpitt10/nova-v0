@@ -254,16 +254,24 @@
   border: 0 !important;
 }
 
-/* Align current-shot context with the map now that the map card is visually gone. */
+/*
+ * MapPolish owns the compact header as an absolute CSS grid whose right edge is
+ * intentionally inset for the header actions. Keep that stable layout intact.
+ * Only let the shot-context item overflow its fourth grid cell to the shell edge;
+ * its left edge then matches the map's visible 8px inset exactly.
+ */
 @media (min-width: 1260px) {
   .live-caddie-secondary-context {
     box-sizing: border-box;
-    flex: 0 0 clamp(620px, 42vw, 730px);
+    justify-self: end !important;
     width: clamp(620px, 42vw, 730px);
-    margin-left: auto !important;
+    max-width: none !important;
+    margin-left: 0 !important;
     padding-left: 8px;
+    transform: translateX(236px);
     justify-content: flex-start !important;
     gap: 14px !important;
+    overflow: visible !important;
   }
 
   .live-caddie-secondary-context span:first-child {
@@ -281,7 +289,12 @@
 
 @media (min-width: 1260px) and (max-width: 1399px) {
   .live-caddie-secondary-context {
-    flex-basis: clamp(560px, 42vw, 620px);
     width: clamp(560px, 42vw, 620px);
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1320px) {
+  .live-caddie-secondary-context {
+    transform: translateX(188px);
   }
 }
