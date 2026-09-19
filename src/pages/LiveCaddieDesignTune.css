@@ -178,3 +178,16 @@
     font-size: 9.5px !important;
   }
 }
+
+/*
+ * Unboxed experiment: keep every control and nested information surface in
+ * place, but let the two primary navigation/decision regions float directly on
+ * the golf-scene backdrop. The map is intentionally excluded from this rule.
+ */
+.live-decision-card,
+.live-club-strip-card {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
