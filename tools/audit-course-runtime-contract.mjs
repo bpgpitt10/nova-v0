@@ -93,7 +93,7 @@ const issuesForHole = (hole) => {
     issues.push(`rough fragmentation ${rough} > ${LIMITS.maxRoughPolygons}`)
   }
   if (bunkers > LIMITS.maxBunkerPolygons) {
-    issues.push(`bunker fragmentation ${bunkers} > ${LIMITS.maxBunkerPolYGONS}`)
+    issues.push(`bunker fragmentation ${bunkers} > ${LIMITS.maxBunkerPolygons}`)
   }
   if (total > LIMITS.maxPlayablePolygons) {
     issues.push(`playable polygon count ${total} > ${LIMITS.maxPlayablePolygons}`)
