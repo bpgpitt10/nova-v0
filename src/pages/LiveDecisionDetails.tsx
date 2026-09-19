@@ -205,7 +205,7 @@ export default function LiveDecisionDetails({
                   <th className="numeric">Success</th>
                   <th className="numeric">Manageable</th>
                   <th className="numeric">Known trouble</th>
-                  <th className="numeric">Unmapped</th>
+                  <th className="numeric">Outside Map Area</th>
                   <th className="numeric">Catastrophe</th>
                   <th className="numeric">Mishit</th>
                   <th>Model confidence</th>
@@ -286,7 +286,7 @@ export default function LiveDecisionDetails({
                     <th className="numeric">Rough</th>
                     <th className="numeric">Bunker</th>
                     <th className="numeric">Woods / deep rough</th>
-                    <th className="numeric">Unmapped</th>
+                    <th className="numeric">Outside Map Area</th>
                     <th className="numeric">Penalty</th>
                     <th className="numeric">Catastrophe</th>
                     <th className="numeric">Proj. strokes</th>
