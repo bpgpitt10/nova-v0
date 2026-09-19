@@ -4,7 +4,10 @@ import type {
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
-import { rankRiskAwareClubChoices } from '../liveCaddie/aimDecisionRanking'
+import {
+  nextStateValueForAimCandidate,
+  rankRiskAwareClubChoices,
+} from '../liveCaddie/aimDecisionRanking'
 import {
   evaluateAimLab,
   type AimCandidateEvaluation,
@@ -44,7 +47,7 @@ type LandingElevationResolution = {
 }
 
 const DISPLAY_OUTCOME_DOT_COUNT = 256
-const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v2'
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v3'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const displayTierForSurface = (
@@ -142,11 +145,16 @@ const buildDisplayOutcomeDots = (
 const stripHeavySamples = (evaluations: ClubAimEvaluation[]): ClubAimEvaluation[] =>
   evaluations.map((evaluation) => {
     const candidates = evaluation.candidates.map((candidate) => {
+      // Preserve the authoritative compact next-state summary BEFORE removing
+      // the 2,048-point core cloud. This keeps expected leave / projected strokes
+      // exact in the browser without transporting the heavy sample payload.
+      const stateValue = nextStateValueForAimCandidate(candidate)
       const showableOutcomeDots = (candidate.decisionRank ?? Number.POSITIVE_INFINITY) <= 4
         ? buildDisplayOutcomeDots(candidate)
         : []
       return {
         ...candidate,
+        stateValue,
         // Keep only a small full-risk display cloud for the top playable lines.
         // Sending every 2,048-point core cloud for every club/aim would make the
         // worker response unnecessarily large and expensive to structured-clone.
