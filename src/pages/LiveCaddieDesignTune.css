@@ -285,6 +285,23 @@
   .live-caddie-secondary-context span:nth-child(3) {
     font-size: 14px !important;
   }
+
+  /* Selecting a non-recommended club adds its rank label. Keep that secondary
+   * label out of the button's grid flow so the club name does not jump upward. */
+  .live-club-strip button.armed:not(.recommended) > strong {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .live-club-strip button.armed:not(.recommended) > span {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 5px;
+    text-align: center;
+  }
 }
 
 @media (min-width: 1260px) and (max-width: 1399px) {
