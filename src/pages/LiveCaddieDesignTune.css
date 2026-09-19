@@ -286,16 +286,16 @@
     font-size: 14px !important;
   }
 
-  /* Selecting a non-recommended club adds its rank label. Keep that secondary
-   * label out of the button's grid flow so the club name does not jump upward. */
-  .live-club-strip button.armed:not(.recommended) > strong {
+  /* Club labels such as REC / #5 CLUB are supporting metadata. Keep every club
+   * name fixed at the true center of its button and pin the metadata below it. */
+  .live-club-strip button > strong {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
   }
 
-  .live-club-strip button.armed:not(.recommended) > span {
+  .live-club-strip button > span {
     position: absolute;
     left: 2px;
     right: 2px;
