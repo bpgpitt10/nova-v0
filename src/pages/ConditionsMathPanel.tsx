@@ -51,31 +51,24 @@ const pct = (value: number | null | undefined) => {
   return `${Math.round(percentage)}%`
 }
 
-const combinedAdjustment = (
-  carry: number | null | undefined,
-  lateral: number | null | undefined,
-) => {
-  const parts: string[] = []
-  if (finite(carry) && Math.abs(carry) >= 0.05) parts.push(signedYards(carry))
-  if (finite(lateral) && Math.abs(lateral) >= 0.05) parts.push(lateralYards(lateral))
-  return parts.length > 0 ? parts.join(' · ') : '0.0 yd'
-}
-
 function AdjustmentRow({
   label,
-  value,
+  distance,
+  lateral,
   detail,
   muted = false,
 }: {
   label: string
-  value: string
+  distance: string
+  lateral: string
   detail: string
   muted?: boolean
 }) {
   return (
     <div className={`live-condition-row${muted ? ' muted' : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <span className="live-condition-factor">{label}</span>
+      <strong className="live-condition-distance">{distance}</strong>
+      <strong className="live-condition-lateral">{lateral}</strong>
       <small>{detail}</small>
     </div>
   )
@@ -114,10 +107,12 @@ export default function ConditionsMathPanel({
   const lieDetail = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
     ? 'Measured lie · flight effect not yet modeled'
     : 'Lie angle not captured yet'
-  const lieValue = [
-    finite(lieUpDownDeg) ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}° up/down` : null,
-    finite(lieLeftRightDeg) ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}° left/right` : null,
-  ].filter(Boolean).join(' · ') || '—'
+  const lieDistance = finite(lieUpDownDeg)
+    ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}°`
+    : '—'
+  const lieLateral = finite(lieLeftRightDeg)
+    ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}°`
+    : '—'
 
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
@@ -131,7 +126,6 @@ export default function ConditionsMathPanel({
       <section className="live-expected-shot-block">
         <div className="live-expected-shot-heading">
           <span>EXPECTED SHOT</span>
-          <strong>{evaluation ? `${Math.round(evaluation.modeledCarryYds)} carry · ${Math.round(evaluation.modeledTotalYds)} total` : 'Waiting for shot model'}</strong>
         </div>
 
         <div className="live-shot-stat-grid">
@@ -144,7 +138,7 @@ export default function ConditionsMathPanel({
             <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
           </div>
           <div>
-            <span>Shot center</span>
+            <span>Expected finish</span>
             <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
           </div>
         </div>
@@ -173,37 +167,42 @@ export default function ConditionsMathPanel({
           </strong>
         </div>
 
+        <div className="live-condition-table-head" aria-hidden="true">
+          <span>FACTOR</span>
+          <strong>DISTANCE</strong>
+          <strong>LATERAL</strong>
+        </div>
+
         <div className="live-condition-rows">
           <AdjustmentRow
             label="Base altitude"
-            value={evaluation
-              ? combinedAdjustment(evaluation.altitudeCarryDeltaYds, evaluation.altitudeLateralDeltaYds)
-              : '—'}
+            distance={evaluation ? signedYards(evaluation.altitudeCarryDeltaYds) : '—'}
+            lateral={evaluation ? lateralYards(evaluation.altitudeLateralDeltaYds) : '—'}
             detail={altitudeDetail}
           />
           <AdjustmentRow
             label="Elevation"
-            value={evaluation ? signedYards(evaluation.elevationCarryDeltaYds ?? 0) : '—'}
+            distance={evaluation ? signedYards(evaluation.elevationCarryDeltaYds ?? 0) : '—'}
+            lateral="—"
             detail={elevationDetail}
           />
           <AdjustmentRow
             label="Wind"
-            value={evaluation && hasLiveWind
-              ? combinedAdjustment(evaluation.windCarryDeltaYds ?? 0, evaluation.windLateralDeltaYds ?? 0)
-              : '—'}
+            distance={evaluation && hasLiveWind ? signedYards(evaluation.windCarryDeltaYds ?? 0) : '—'}
+            lateral={evaluation && hasLiveWind ? lateralYards(evaluation.windLateralDeltaYds ?? 0) : '—'}
             detail={windDetail}
             muted={!hasLiveWind}
           />
           <AdjustmentRow
             label="Surface"
-            value={evaluation
-              ? combinedAdjustment(evaluation.surfaceCarryDeltaYds, evaluation.surfaceLateralDeltaYds)
-              : '—'}
+            distance={evaluation ? signedYards(evaluation.surfaceCarryDeltaYds) : '—'}
+            lateral={evaluation ? lateralYards(evaluation.surfaceLateralDeltaYds) : '—'}
             detail={evaluation?.surfaceLabel ?? 'Surface unavailable'}
           />
           <AdjustmentRow
             label="Lie"
-            value={lieValue}
+            distance={lieDistance}
+            lateral={lieLateral}
             detail={lieDetail}
             muted={!finite(lieUpDownDeg) && !finite(lieLeftRightDeg)}
           />
@@ -211,7 +210,8 @@ export default function ConditionsMathPanel({
 
         <div className="live-condition-net">
           <span>NET ADJUSTMENT</span>
-          <strong>{evaluation ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}` : '—'}</strong>
+          <strong>{evaluation ? signedYards(carryDelta) : '—'}</strong>
+          <strong>{evaluation ? lateralYards(lateralDelta) : '—'}</strong>
           <small>
             {evaluation
               ? `Stock ${Math.round(evaluation.stockCarryYds)} → ${Math.round(evaluation.modeledCarryYds)} yd carry · stock center ${baselineLateral(evaluation.lateralBiasYds)} → ${baselineLateral(evaluation.modeledLateralBiasYds)}`
