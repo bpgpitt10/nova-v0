@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/rebuild-erin-hills-v5.yml'
       - 'tools/fetch_osm_course_snapshot.py'
+      - 'tools/diagnose_course_route_orientation.py'
       - 'tools/build_osm_course_package_v4.py'
       - 'tools/build_osm_course_package_v5.py'
       - 'tools/build_osm_course_package_canonical.py'
@@ -50,6 +51,11 @@ jobs:
           python tools/fetch_osm_course_snapshot.py \
             --config config/course-geometry/erin-hills-v1.json \
             --output artifacts/course-geometry/erin-hills/osm-snapshot.json
+
+      - name: Diagnose route endpoint orientation
+        run: |
+          python tools/diagnose_course_route_orientation.py \
+            --osm artifacts/course-geometry/erin-hills/osm-snapshot.json
 
       - name: Build canonical V5 static geometry
         run: |
