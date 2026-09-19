@@ -27,7 +27,7 @@ const signedYards = (value: number | null | undefined) =>
 const lateralYards = (value: number | null | undefined) => {
   if (!finite(value)) return '—'
   if (Math.abs(value) < 0.05) return '0.0 yd'
-  return `${Math.abs(value).toFixed(1)} yd ${value > 0 ? 'right' : 'left'}`
+  return `${Math.abs(value).toFixed(1)} yd ${value > 0 ? 'R' : 'L'}`
 }
 
 const carrySummary = (value: number | null | undefined) => {
