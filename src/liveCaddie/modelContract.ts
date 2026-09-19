@@ -1,4 +1,8 @@
 import type { FlightPhysicsPrior } from './flightPhysics'
+import {
+  buildSidehillLieResponse,
+  SIDEHILL_LIE_MODEL_VERSION,
+} from './lieResponse'
 import { getSurfaceResponse } from './surfaceResponse'
 
 export type CaddieModelStatus =
@@ -251,6 +255,12 @@ export const buildCaddieModelContract = (
   })
 
   const hasLie = finite(context.lieUpDownDeg) || finite(context.lieLeftRightDeg)
+  const sidehillReference = buildSidehillLieResponse({
+    club: baseline.club,
+    lieLeftRightDeg: context.lieLeftRightDeg,
+    carryYds: baseline.stockCarryYds,
+  })
+  const sidehillReady = sidehillReference.status === 'ready'
   factors.push({
     id: 'physical-lie',
     label: 'Physical lie angle',
@@ -260,12 +270,28 @@ export const buildCaddieModelContract = (
       : 'Unavailable',
     source: context.lieSource ?? 'GSPro lie footer / sensor',
     sourceConfidence: context.lieConfidence ?? (hasLie ? 'high' : 'unknown'),
-    transformation: 'GSPro lie angles can be measured directly. No validated launch/start-line/carry response is applied yet.',
-    modeledDisplay: hasLie ? 'Measurement retained; 0.0 yd flight adjustment applied' : 'Unavailable',
-    affects: ['carry-mean', 'lateral-mean', 'carry-dispersion', 'lateral-dispersion'],
-    modelVersion: 'gspro-lie-angle-response-v0',
+    transformation: !hasLie
+      ? 'No physical lie angle is available.'
+      : sidehillReady
+        ? `Sidehill uses loft-aware face geometry with a conservative ${(sidehillReference.gain * 100).toFixed(0)}% gain. Positive GSPro Left moves the modeled shot center left; Right moves it right. Up/down is retained but applies no flight adjustment yet.`
+        : 'Lie angle is retained. Sidehill cannot be applied without a supported club/carry; up/down remains measurement-only.',
+    modeledDisplay: !hasLie
+      ? 'Unavailable'
+      : sidehillReady
+        ? `${signed(sidehillReference.appliedBiasDeg, 2)}° center tendency · ${signed(sidehillReference.lateralDeltaYds)} yd lateral on Stock-carry reference · 0.0 yd up/down adjustment`
+        : 'Measurement retained; 0.0 yd lie adjustment applied',
+    affects: ['lateral-mean', 'aim', 'surface-outcomes', 'outcome-risk'],
+    modelVersion: SIDEHILL_LIE_MODEL_VERSION,
     status: hasLie ? 'calibrating' : 'unavailable',
-    evidenceBasis: 'Greywolf GSPro research validates lie-angle measurement, not a numerical ball-flight effect.',
+    evidenceBasis: sidehillReady
+      ? 'Conservative V0 prior from loft/side-slope geometry. The 0.50 gain is intentionally provisional until controlled GSPro validation can fit the coefficient.'
+      : 'Lie measurement is retained for later calibration.',
+    notes: hasLie
+      ? [
+          'Sidehill changes the modeled distribution center before aim/risk optimization; it is not a post-hoc aim instruction.',
+          'Up/down response remains zero until separately validated.',
+        ]
+      : undefined,
   })
 
   factors.push({
