@@ -27,13 +27,8 @@ def main() -> int:
     args = parse_args()
     config = json.loads(args.config.read_text(encoding="utf-8"))
 
-    source_payload, source_endpoint = fetcher.fetch_json(
-        fetcher.source_query(config, args.timeout), args.timeout
-    )
-    source_elements = source_payload.get("elements") or []
-    if len(source_elements) != 1:
-        raise ValueError(f"Expected exactly one configured course source element; got {len(source_elements)}")
-    boundary = fetcher.boundary_shape(source_elements[0])
+    source_element, source_endpoint = fetcher.fetch_source_element(config, args.timeout)
+    boundary = fetcher.boundary_shape(source_element)
 
     golf_query = fetcher.bbox_queries(boundary.bounds, args.timeout)["golf"]
     raw_payload, golf_endpoint = fetcher.fetch_json(golf_query, args.timeout)
@@ -46,7 +41,7 @@ def main() -> int:
         "courseId": config.get("courseId"),
         "courseName": config.get("courseName"),
         "courseElement": {"type": source_type, "id": osm_id},
-        "sourceOverpassEndpoint": source_endpoint,
+        "sourceEndpoint": source_endpoint,
         "golfOverpassEndpoint": golf_endpoint,
         "golfQuery": golf_query,
         "boundaryBoundsLonLat": [round(value, 8) for value in boundary.bounds],
