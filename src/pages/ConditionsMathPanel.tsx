@@ -52,6 +52,15 @@ const pct = (value: number | null | undefined) => {
   return `${Math.round(percentage)}%`
 }
 
+const lieAngleLabel = (
+  value: number | null | undefined,
+  positiveLabel: string,
+  negativeLabel: string,
+) => {
+  if (!finite(value) || Math.abs(value) < 0.05) return null
+  return `${Math.abs(value).toFixed(1)}° ${value > 0 ? positiveLabel : negativeLabel}`
+}
+
 function AdjustmentRow({
   label,
   distance,
@@ -123,15 +132,17 @@ export default function ConditionsMathPanel({
   const altitudeDetail = evaluation?.airAltitudeFt != null
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
     : 'Base altitude unavailable'
-  const lieDetail = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
-    ? 'Measured lie · flight effect not yet modeled'
+  const hasLie = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
+  const sidehillLabel = lieAngleLabel(lieLeftRightDeg, 'Left', 'Right')
+  const upDownLabel = lieAngleLabel(lieUpDownDeg, 'Up', 'Down')
+  const lieDetail = hasLie
+    ? [
+        sidehillLabel,
+        upDownLabel,
+        sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
+        upDownLabel ? 'up/down flight effect pending validation' : null,
+      ].filter(Boolean).join(' · ')
     : 'Lie angle not captured yet'
-  const lieDistance = finite(lieUpDownDeg)
-    ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}°`
-    : '—'
-  const lieLateral = finite(lieLeftRightDeg)
-    ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}°`
-    : '—'
 
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
@@ -220,10 +231,10 @@ export default function ConditionsMathPanel({
           />
           <AdjustmentRow
             label="Lie"
-            distance={lieDistance}
-            lateral={lieLateral}
+            distance={evaluation && hasLie ? signedYards(evaluation.lieCarryDeltaYds ?? 0) : '—'}
+            lateral={evaluation && hasLie ? lateralYards(evaluation.lieLateralDeltaYds ?? 0) : '—'}
             detail={lieDetail}
-            muted={!finite(lieUpDownDeg) && !finite(lieLeftRightDeg)}
+            muted={!hasLie}
           />
         </div>
 
