@@ -6,6 +6,7 @@ import type {
 } from '../liveCaddie/aimOptimization'
 import {
   clubModelConfidence,
+  confidenceAdjustedFutureStrokes,
   nextStateValueForAimCandidate,
 } from '../liveCaddie/aimDecisionRanking'
 import './LiveDecisionDetails.css'
@@ -48,6 +49,20 @@ const projectedStrokes = (candidate: AimCandidateEvaluation | null | undefined) 
   return typeof value === 'number' && Number.isFinite(value)
     ? value
     : projectedFromReason(candidate)
+}
+
+const modelConfidenceFor = (evaluation: ClubAimEvaluation) =>
+  clubModelConfidence(evaluation.supportShots, evaluation.supportingSessions)
+
+const adjustedStrokesFor = (
+  evaluation: ClubAimEvaluation | null | undefined,
+  candidate: AimCandidateEvaluation | null | undefined,
+) => {
+  if (!evaluation) return null
+  const projected = projectedStrokes(candidate)
+  return typeof projected === 'number' && Number.isFinite(projected)
+    ? confidenceAdjustedFutureStrokes(projected, modelConfidenceFor(evaluation))
+    : null
 }
 
 const formatProjected = (value: number | null) =>
@@ -103,10 +118,8 @@ const surfaceProbability = (
   0,
 )
 
-const modelDataLabel = (evaluation: ClubAimEvaluation) => {
-  const confidence = Math.round(
-    clubModelConfidence(evaluation.supportShots, evaluation.supportingSessions) * 100,
-  )
+const modelConfidenceLabel = (evaluation: ClubAimEvaluation) => {
+  const confidence = Math.round(modelConfidenceFor(evaluation) * 100)
   return `${confidence}% · ${evaluation.supportShots} shots · ${evaluation.supportingSessions} sess`
 }
 
@@ -145,7 +158,7 @@ export default function LiveDecisionDetails({
   if (rankedClubs.length === 0 || !viewedEvaluation) return null
 
   const recommendation = rankedClubs[0] ?? null
-  const recommendationProjected = projectedStrokes(recommendation?.bestCandidate)
+  const recommendationAdjusted = adjustedStrokesFor(recommendation, recommendation?.bestCandidate)
   const viewedBestProjected = projectedStrokes(viewedEvaluation.bestCandidate)
   const viewedAim = inspectedCandidate ?? viewedEvaluation.bestCandidate
 
@@ -178,7 +191,7 @@ export default function LiveDecisionDetails({
               <span className="live-kicker">CLUB OPTIONS</span>
               <h3>Club comparison</h3>
             </div>
-            <small>Lower projected strokes is better</small>
+            <small>After risk guardrails, lowest confidence-adjusted strokes wins</small>
           </div>
           <div className="live-decision-table-scroll">
             <table className="live-decision-table live-club-decision-table">
@@ -196,7 +209,8 @@ export default function LiveDecisionDetails({
                   <th className="numeric">Mishit</th>
                   <th>Model confidence</th>
                   <th className="numeric">Proj. strokes</th>
-                  <th className="numeric">Δ to rec</th>
+                  <th className="numeric decision-score">Conf.-adj. strokes</th>
+                  <th className="numeric">Adj. Δ</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,6 +219,7 @@ export default function LiveDecisionDetails({
                   const risk = candidate?.riskProfile ?? null
                   const stateValue = stateValueFor(candidate)
                   const projected = projectedStrokes(candidate)
+                  const adjusted = adjustedStrokesFor(evaluation, candidate)
                   const isRecommended = evaluation === recommendation
                   const screened = evaluation.withinCatastropheGuardrail === false
                   return (
@@ -225,9 +240,10 @@ export default function LiveDecisionDetails({
                       <td className="numeric">{pct(risk?.seriousTrouble)}</td>
                       <td className="numeric">{pct(risk?.catastrophe)}</td>
                       <td className="numeric">{pct(risk?.mishitProbability)}</td>
-                      <td className="model-data">{modelDataLabel(evaluation)}</td>
+                      <td className="model-data">{modelConfidenceLabel(evaluation)}</td>
                       <td className="numeric strong">{formatProjected(projected)}</td>
-                      <td className="numeric">{formatDelta(projected, recommendationProjected)}</td>
+                      <td className="numeric strong decision-score">{formatProjected(adjusted)}</td>
+                      <td className="numeric">{formatDelta(adjusted, recommendationAdjusted)}</td>
                     </tr>
                   )
                 })}
