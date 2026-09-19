@@ -35,6 +35,8 @@ def main() -> int:
     snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
     rebuilt_at = str(manifest.get("generatedAt") or now_iso())
     source_base = (snapshot.get("osm3s") or {}).get("timestamp_osm_base")
+    snapshot_meta = snapshot.get("looperSnapshot") or {}
+    source_provider = str(snapshot_meta.get("featureProvider") or "openstreetmap-overpass")
 
     cache["freshness"] = {
         "ageDays": 0,
@@ -55,17 +57,21 @@ def main() -> int:
     package["terrainComposerVersion"] = "carry_forward_embedded_terrain_v1"
 
     source = cache.setdefault("source", {})
+    source["provider"] = source_provider
     source["fetchedAt"] = rebuilt_at
     source["fetchedAtBasis"] = "source-provider-fetch"
     source["lastCheckedAt"] = rebuilt_at
     source["snapshotSha256"] = sha256(args.snapshot)
     if source_base:
         source["sourceBaseTimestamp"] = source_base
+    else:
+        source.pop("sourceBaseTimestamp", None)
 
     args.cache.write_text(json.dumps(cache, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({
         "courseId": cache.get("courseId"),
         "builder": package.get("builderVersion"),
+        "sourceProvider": source.get("provider"),
         "packageSha256": package.get("sha256"),
         "snapshotSha256": source.get("snapshotSha256"),
         "sourceBaseTimestamp": source.get("sourceBaseTimestamp"),
