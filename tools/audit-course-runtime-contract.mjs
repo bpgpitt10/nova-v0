@@ -17,6 +17,7 @@ const LIMITS = {
 }
 
 const promotedRouteCourses = [
+  'tobacco-road',
   'arcadia-bluffs',
   'cabot-cliffs',
   'pebble-beach',
@@ -52,6 +53,12 @@ const issuesForHole = (hole) => {
   if (hole.geometryPlausibility?.passed === false) issues.push('geometry plausibility failed')
   if (surfaceCount(hole, 'green') < 1) issues.push('no green polygon')
   if (hole.fairwayRequired && surfaceCount(hole, 'fairway') < 1) issues.push('no fairway polygon')
+
+  const routeAnchored = hole.anchorMethod === 'osm-hole-route-start'
+  const teePolygons = surfaceCount(hole, 'tee')
+  if (routeAnchored && teePolygons < 1) {
+    issues.push('route-start package has no tee polygon to rebase to the selected-tee runtime contract')
+  }
 
   const teeGap = Number(hole.nearestMappedTeeSurfaceYards)
   if (!Number.isFinite(teeGap)) {
@@ -94,6 +101,7 @@ const summaryForHole = (hole) => ({
   rough: surfaceCount(hole, 'rough'),
   bunker: surfaceCount(hole, 'bunker'),
   green: surfaceCount(hole, 'green'),
+  tee: surfaceCount(hole, 'tee'),
   totalPlayable: playableCount(hole),
   headingDegTrue: Number.isFinite(Number(hole?.headingDegreesTrue))
     ? Number(hole.headingDegreesTrue)
@@ -117,6 +125,7 @@ const greywolfControl = () => {
       rough: 'proven package',
       bunker: 'proven package',
       green: 'proven package',
+      tee: 'proven package',
       totalPlayable: 'proven package',
       headingDegTrue: 'per-hole proven anchor',
     },
