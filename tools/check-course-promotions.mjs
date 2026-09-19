@@ -15,6 +15,10 @@ const fileExists = (path) => existsSync(new URL(path, root))
 
 const catalogSource = readText('src/courseGeometry/courseCatalog.ts')
 const artifactRoot = new URL('artifacts/course-geometry/', root)
+const supportedBuilders = new Set([
+  'build_osm_course_package_v3',
+  'build_osm_course_package_v5',
+])
 
 const promoted = readdirSync(artifactRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -24,7 +28,7 @@ const promoted = readdirSync(artifactRoot, { withFileTypes: true })
     if (!fileExists(cachePath)) return null
 
     const cache = readJson(cachePath)
-    if (cache.package?.builderVersion !== 'build_osm_course_package_v3') return null
+    if (!supportedBuilders.has(cache.package?.builderVersion)) return null
 
     const packagePath = cache.package?.path
     const configPath = cache.package?.configPath
@@ -46,23 +50,25 @@ const promoted = readdirSync(artifactRoot, { withFileTypes: true })
   .filter(Boolean)
   .sort((a, b) => a.slug.localeCompare(b.slug))
 
-requireValue(promoted.length > 0, 'no promoted V3 automated course packages were discovered')
+requireValue(promoted.length > 0, 'no promoted automated course packages were discovered')
 
 const seenCourseIds = new Set()
 const seenPackagePaths = new Set()
 
 for (const promotedCourse of promoted) {
-  const { slug, cachePath, cache } = promotedCourse
+  const { slug, cache } = promotedCourse
   const courseId = cache.courseId
   const packagePath = cache.package?.path
   const configPath = cache.package?.configPath
+  const builderVersion = cache.package?.builderVersion
   const validationPath = `artifacts/course-geometry/${slug}/validation-v1.json`
   const staticPackageUrl = `/course-geometry/${slug}/course-v1.json`
 
   requireValue(typeof courseId === 'string' && courseId.length > 0, `${slug}: cache metadata courseId is required`)
-  requireValue(!seenCourseIds.has(courseId), `${courseId}: duplicate course id among promoted V3 packages`)
+  requireValue(!seenCourseIds.has(courseId), `${courseId}: duplicate course id among promoted packages`)
   requireValue(typeof packagePath === 'string' && packagePath.length > 0, `${courseId}: cached package path is required`)
-  requireValue(!seenPackagePaths.has(packagePath), `${courseId}: duplicate package path among promoted V3 packages`)
+  requireValue(!seenPackagePaths.has(packagePath), `${courseId}: duplicate package path among promoted packages`)
+  requireValue(supportedBuilders.has(builderVersion), `${courseId}: unsupported automated package builder ${builderVersion}`)
   seenCourseIds.add(courseId)
   seenPackagePaths.add(packagePath)
 
@@ -79,7 +85,7 @@ for (const promotedCourse of promoted) {
   requireValue(config.courseId === courseId, `${courseId}: build config courseId does not match`)
   requireValue(config.slug === slug, `${courseId}: build config slug does not match promoted directory`)
   requireValue(validation.courseId === courseId, `${courseId}: validation courseId does not match`)
-  requireValue(validation.compiler === 'build_osm_course_package_v3', `${courseId}: validation was not produced by the topology-safe V3 compiler`)
+  requireValue(validation.compiler === builderVersion, `${courseId}: validation compiler does not match cache builder ${builderVersion}`)
   requireValue(validation.allHolesStaticGeometryReady === true, `${courseId}: validation does not mark all holes ready`)
   requireValue(Array.isArray(validation.holes) && validation.holes.length === 18, `${courseId}: validation must contain 18 holes`)
   requireValue(validation.holes.every((hole) => hole?.ready === true), `${courseId}: at least one validation hole is not ready`)
@@ -93,6 +99,15 @@ for (const promotedCourse of promoted) {
   requireValue(cache.package?.configPath === configPath, `${courseId}: cache metadata points at a different config path`)
   requireValue(cache.source?.provider === 'openstreetmap-overpass', `${courseId}: OSM source provenance is missing or unexpected`)
   requireValue(typeof cache.source?.snapshotSha256 === 'string' && cache.source.snapshotSha256.length === 64, `${courseId}: source snapshot hash is missing`)
+
+  if (builderVersion === 'build_osm_course_package_v5') {
+    const snapshotPath = cache.source?.snapshotPath
+    requireValue(typeof snapshotPath === 'string' && snapshotPath.length > 0, `${courseId}: V5 source snapshot path is missing`)
+    requireValue(fileExists(snapshotPath), `${courseId}: V5 source snapshot is not preserved at ${snapshotPath}`)
+    requireValue(sha256(snapshotPath) === cache.source.snapshotSha256, `${courseId}: V5 source snapshot SHA-256 does not match cache metadata`)
+    requireValue(typeof validation.builderFingerprintSha256 === 'string' && validation.builderFingerprintSha256.length === 64, `${courseId}: V5 validation builder fingerprint is missing`)
+    requireValue(validation.builderFingerprintSha256 === cache.package?.builderFingerprintSha256, `${courseId}: V5 validation/cache builder fingerprints do not match`)
+  }
 
   const actualPackageSha = sha256(packagePath)
   requireValue(cache.package?.sha256 === actualPackageSha, `${courseId}: package SHA-256 does not match cache metadata`)
@@ -147,7 +162,7 @@ for (const promotedCourse of promoted) {
     (total, hole) => total + (Array.isArray(hole?.warnings) ? hole.warnings.length : 0),
     0,
   )
-  console.log(`[course-promotion] ${courseId}: PASS (18/18 ready, ${warningCount} validation warnings, ${actualPackageSha.slice(0, 12)}…)`)
+  console.log(`[course-promotion] ${courseId}: PASS (${builderVersion}, 18/18 ready, ${warningCount} validation warnings, ${actualPackageSha.slice(0, 12)}…)`)
 }
 
-console.log(`[course-promotion] ${promoted.length} promoted V3 course packages passed structural/cache/runtime gates.`)
+console.log(`[course-promotion] ${promoted.length} promoted automated course packages passed structural/cache/runtime gates.`)
