@@ -664,7 +664,7 @@ export default function LiveCaddiePage() {
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
-    ['Unmapped', risk.unknown],
+    ['Outside Map Area', risk.unknown],
     ['Water', risk.bySurface.water ?? 0],
     ['Penalty', risk.bySurface.penalty ?? 0],
   ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
@@ -818,7 +818,7 @@ export default function LiveCaddiePage() {
                     <div className="live-outcome-details">
                       {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
                     </div>
-                  ) : <div className="live-outcome-details"><span>No material bunker / woods / unmapped / penalty probability in the current model.</span></div>}
+                  ) : <div className="live-outcome-details"><span>No material bunker / woods / outside map area / penalty probability in the current model.</span></div>}
                 </article>
               </aside>
 
