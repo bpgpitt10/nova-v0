@@ -1,0 +1,33 @@
+name: Audit Erin V5 Invariants
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - '.github/workflows/audit-erin-v5-invariants.yml'
+      - 'tools/audit_course_rebuild_invariants.py'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout course branch with history
+        uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+          fetch-depth: 0
+
+      - name: Recover pre-V5 Erin package
+        run: |
+          git show 8b3fb924200af5a2528f66b3291d3bbc3d4da649:public/course-geometry/erin-hills/course-v1.json > /tmp/erin-pre-v5.json
+
+      - name: Audit V3 to V5 coordinate and terrain invariants
+        run: |
+          python tools/audit_course_rebuild_invariants.py \
+            --old-package /tmp/erin-pre-v5.json \
+            --new-package public/course-geometry/erin-hills/course-v1.json
