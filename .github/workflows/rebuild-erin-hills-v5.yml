@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/rebuild-erin-hills-v5.yml'
       - 'tools/fetch_osm_course_snapshot.py'
+      - 'tools/fetch_osm_course_snapshot_core.py'
       - 'tools/diagnose_course_route_orientation.py'
       - 'tools/build_osm_course_package_v4.py'
       - 'tools/build_osm_course_package_v5.py'
@@ -48,7 +49,7 @@ jobs:
 
       - name: Fetch exact-boundary OSM snapshot
         run: |
-          python tools/fetch_osm_course_snapshot.py \
+          python tools/fetch_osm_course_snapshot_core.py \
             --config config/course-geometry/erin-hills-v1.json \
             --output artifacts/course-geometry/erin-hills/osm-snapshot.json
 
