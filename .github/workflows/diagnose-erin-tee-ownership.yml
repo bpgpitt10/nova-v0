@@ -1,0 +1,41 @@
+name: Diagnose Erin Tee Ownership
+
+on:
+  push:
+    branches:
+      - course-geometry-tactical-v0
+    paths:
+      - '.github/workflows/diagnose-erin-tee-ownership.yml'
+      - 'tools/fetch_osm_course_snapshot.py'
+      - 'tools/fetch_osm_course_golf_snapshot.py'
+      - 'tools/diagnose_course_route_orientation.py'
+      - 'config/course-geometry/erin-hills-v1.json'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout course branch
+        uses: actions/checkout@v4
+        with:
+          ref: course-geometry-tactical-v0
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependency
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Fetch golf-only exact-boundary snapshot
+        run: |
+          python tools/fetch_osm_course_golf_snapshot.py \
+            --config config/course-geometry/erin-hills-v1.json \
+            --output /tmp/erin-golf-only.json
+
+      - name: Print tee ownership evidence
+        run: |
+          python tools/diagnose_course_route_orientation.py \
+            --osm /tmp/erin-golf-only.json
