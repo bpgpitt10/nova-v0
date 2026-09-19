@@ -45,6 +45,7 @@ export type BrowserGsproCourseSnapshot = {
   surface: string | null
   surfaceSource: 'currentRound' | 'cached-tee' | 'unavailable'
   distanceToPinYds: number | null
+  nextShotNumber: number | null
   latestShot: BrowserGsproCourseShot | null
   latestShotKey: string | null
   warnings: string[]
@@ -483,6 +484,7 @@ const cachedTeeSnapshot = ({
   surface: 'tee',
   surfaceSource: 'cached-tee',
   distanceToPinYds: null,
+  nextShotNumber: 1,
   latestShot: null,
   latestShotKey: null,
   warnings,
@@ -517,6 +519,7 @@ const buildSnapshot = async (
       surface: null,
       surfaceSource: 'unavailable',
       distanceToPinYds: null,
+      nextShotNumber: null,
       latestShot: null,
       latestShotKey: null,
       warnings: ['currentRound.dat did not contain a physical shot record yet.'],
@@ -603,6 +606,7 @@ const buildSnapshot = async (
       surface: null,
       surfaceSource: 'unavailable',
       distanceToPinYds: null,
+      nextShotNumber: null,
       latestShot,
       latestShotKey: latestShot?.key ?? null,
       warnings,
@@ -646,6 +650,7 @@ const buildSnapshot = async (
     surface: currentSurface,
     surfaceSource: currentSurface ? 'currentRound' : 'unavailable',
     distanceToPinYds: currentShot?.distanceToPinYds ?? null,
+    nextShotNumber: currentHoleRecords.length + 1,
     latestShot,
     latestShotKey: latestShot?.key ?? null,
     warnings,
