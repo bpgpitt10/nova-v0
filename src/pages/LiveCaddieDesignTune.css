@@ -268,7 +268,7 @@
     max-width: none !important;
     margin-left: 0 !important;
     padding-left: 8px;
-    transform: translateX(144px);
+    transform: translateX(190px);
     justify-content: flex-start !important;
     gap: 14px !important;
     overflow: visible !important;
@@ -295,6 +295,6 @@
 
 @media (min-width: 1260px) and (max-width: 1320px) {
   .live-caddie-secondary-context {
-    transform: translateX(96px);
+    transform: translateX(142px);
   }
 }
