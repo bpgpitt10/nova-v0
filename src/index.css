@@ -83,3 +83,12 @@ p {
 .live-caddie-page .live-target-marker {
   display: none;
 }
+
+/* Surface polygons may be split into multiple topology-safe pieces. Their
+   individual SVG strokes expose internal seams/triangulation on the live map,
+   so render the course as continuous filled surfaces instead. Aim, dispersion,
+   markers, and terrain contours keep their own independent stroke styles. */
+.live-caddie-page .live-map .live-surface {
+  stroke: none;
+  stroke-width: 0;
+}
