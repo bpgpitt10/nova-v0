@@ -14,10 +14,10 @@ import type { CourseHoleGeometry } from './types'
 /**
  * Canonical runtime entry point for static course geometry.
  *
- * Greywolf remains the proven compatibility control. Tobacco Road still uses
- * the earlier generic package shape. Courses produced by the automated
- * OSM-route importer are normalized to the same selected-tee runtime contract
- * before any UI or decision logic consumes them.
+ * Greywolf remains the proven compatibility control. Every other packaged
+ * route course is normalized to the selected-tee runtime contract before any
+ * UI or decision logic consumes it. Tobacco Road still uses the older package
+ * schema, but it goes through the same normalization when tee evidence exists.
  */
 export const loadCourseHoleGeometry = (
   courseId: CourseId,
@@ -32,6 +32,7 @@ export const loadCourseHoleGeometry = (
   }
   if (courseId === TOBACCO_ROAD_COURSE_ID) {
     return loadPackagedCourseHoleGeometry(courseId, holeNumber)
+      .then(normalizeRouteCourseGeometry)
   }
   return loadRoutePackagedCourseHoleGeometry(courseId, holeNumber)
     .then(normalizeRouteCourseGeometry)
