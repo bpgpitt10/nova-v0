@@ -204,7 +204,8 @@ export default function LiveDecisionDetails({
                   <th className="numeric">Exp. leave</th>
                   <th className="numeric">Success</th>
                   <th className="numeric">Manageable</th>
-                  <th className="numeric">Trouble</th>
+                  <th className="numeric">Known trouble</th>
+                  <th className="numeric">Unmapped</th>
                   <th className="numeric">Catastrophe</th>
                   <th className="numeric">Mishit</th>
                   <th>Model confidence</th>
@@ -238,6 +239,7 @@ export default function LiveDecisionDetails({
                       <td className="numeric">{pct(risk?.success)}</td>
                       <td className="numeric">{pct(risk?.manageable)}</td>
                       <td className="numeric">{pct(risk?.seriousTrouble)}</td>
+                      <td className="numeric">{pct(risk?.unknown)}</td>
                       <td className="numeric">{pct(risk?.catastrophe)}</td>
                       <td className="numeric">{pct(risk?.mishitProbability)}</td>
                       <td className="model-data">{modelConfidenceLabel(evaluation)}</td>
@@ -283,7 +285,8 @@ export default function LiveDecisionDetails({
                     <th className="numeric">Fairway / green</th>
                     <th className="numeric">Rough</th>
                     <th className="numeric">Bunker</th>
-                    <th className="numeric">Woods / recovery</th>
+                    <th className="numeric">Woods / deep rough</th>
+                    <th className="numeric">Unmapped</th>
                     <th className="numeric">Penalty</th>
                     <th className="numeric">Catastrophe</th>
                     <th className="numeric">Proj. strokes</th>
@@ -301,8 +304,8 @@ export default function LiveDecisionDetails({
                     const fairwayOrGreen = surfaceProbability(candidate, ['fairway', 'green', 'tee'])
                     const rough = surfaceProbability(candidate, ['rough'])
                     const bunker = surfaceProbability(candidate, ['bunker'])
-                    const recovery = stateValue?.byCondition.recovery?.probability
-                      ?? surfaceProbability(candidate, ['deep-rough'])
+                    const recovery = surfaceProbability(candidate, ['deep-rough'])
+                    const unmapped = surfaceProbability(candidate, ['unknown'])
                     const penalty = surfaceProbability(candidate, ['water', 'penalty'])
                     return (
                       <tr
@@ -330,6 +333,7 @@ export default function LiveDecisionDetails({
                         <td className="numeric">{pct(rough)}</td>
                         <td className="numeric">{pct(bunker)}</td>
                         <td className="numeric">{pct(recovery)}</td>
+                        <td className="numeric">{pct(unmapped)}</td>
                         <td className="numeric">{pct(penalty)}</td>
                         <td className="numeric">{pct(risk?.catastrophe)}</td>
                         <td className="numeric strong">{formatProjected(projected)}</td>
