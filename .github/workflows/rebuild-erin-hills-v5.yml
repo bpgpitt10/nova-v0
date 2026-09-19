@@ -14,6 +14,10 @@ on:
       - 'tools/update_course_cache_after_rebuild.py'
       - 'requirements-course-geometry.txt'
 
+concurrency:
+  group: rebuild-erin-hills-v5
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
