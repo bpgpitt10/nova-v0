@@ -42,6 +42,7 @@ import {
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
+import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 
 const surfaceOrder: CourseSurfaceKind[] = [
@@ -129,14 +130,6 @@ const chooseLiveLandingTarget = (
   ]
   const corridor = fairwayCorridorAtForwardY(hole, rawTarget[1])
   return corridor ? [corridor.centerRightYds, rawTarget[1]] : rawTarget
-}
-
-const sortedAimOptions = (evaluation: ClubAimEvaluation | null) => {
-  if (!evaluation) return []
-  return [...evaluation.candidates]
-    .filter((candidate) => candidate.decisionRank != null)
-    .sort((left, right) => (left.decisionRank ?? 999) - (right.decisionRank ?? 999))
-    .slice(0, 4)
 }
 
 const buildTacticalMapBounds = (
@@ -638,7 +631,6 @@ export default function LiveCaddiePage() {
       ?? null
     : null
   const risk = inspectedCandidate?.riskProfile ?? null
-  const aimOptions = sortedAimOptions(viewedEvaluation)
   const displayedClub = armedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
     armedClub && recommendation?.club && armedClub !== recommendation.club,
@@ -826,40 +818,6 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : <div className="live-outcome-details"><span>No material bunker / woods / penalty probability in the current model.</span></div>}
                 </article>
-
-                {aimOptions.length > 1 ? (
-                  <article className="live-compare-card">
-                    <div className="live-section-heading compact">
-                      <div>
-                        <span className="live-kicker">COMPARE AIM</span>
-                        <h2>{isAlternateClub && displayedClub ? `Best ${displayedClub} lines` : 'Same club, different line'}</h2>
-                      </div>
-                    </div>
-                    <div className="live-aim-options">
-                      {aimOptions.map((candidate) => {
-                        const isBestLine = candidate === viewedBestCandidate
-                        const isViewed = candidate === inspectedCandidate
-                        return (
-                          <button
-                            type="button"
-                            className={`${isViewed ? 'viewed ' : ''}${isBestLine ? 'recommended' : ''}`}
-                            key={candidate.aimOffsetYds}
-                            onClick={() => setInspectedAimOffset(candidate.aimOffsetYds)}
-                          >
-                            <strong>{aimLabel(candidate.aimOffsetYds)}</strong>
-                            <span>
-                              {isBestLine
-                                ? isAlternateClub && displayedClub
-                                  ? `Best ${displayedClub} line`
-                                  : 'Recommended'
-                                : `Rank ${candidate.decisionRank ?? '—'}`}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </article>
-                ) : null}
               </aside>
 
               <article className="live-map-card">
@@ -903,6 +861,15 @@ export default function LiveCaddiePage() {
                 </div>
               </article>
             </section>
+
+            <LiveDecisionDetails
+              evaluations={evaluations}
+              viewedEvaluation={viewedEvaluation}
+              inspectedCandidate={inspectedCandidate}
+              ball={ball}
+              target={target}
+              onInspectAim={(aimOffsetYds) => setInspectedAimOffset(aimOffsetYds)}
+            />
 
             <section className="live-club-strip-card">
               <div className="live-club-strip-heading">
