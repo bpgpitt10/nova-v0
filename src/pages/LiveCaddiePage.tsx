@@ -528,6 +528,14 @@ export default function LiveCaddiePage() {
     : hole
       ? classifyPoint(hole, ball).kind
       : 'unknown'
+  const nextShotNumber = liveMatchesHole
+    ? liveSnapshot?.nextShotNumber ?? (surface === 'tee' ? 1 : null)
+    : surface === 'tee'
+      ? 1
+      : null
+  const shotContext = nextShotNumber != null
+    ? `Shot ${nextShotNumber} · ${surface}`
+    : surface
   const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
   const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
@@ -711,9 +719,9 @@ export default function LiveCaddiePage() {
           {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
           {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
           <div className="live-caddie-secondary-context">
-            <span>{surface}</span>
+            <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft elevation</span> : null}
+            {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
