@@ -30,14 +30,14 @@
   background: rgba(11, 24, 16, 0.34) !important;
 }
 
-/* NET ADJUSTMENT is the panel title/result. Do not spend another row labeling
- * the section as shot adjustments. */
+/* NET ADJUSTMENT is the panel title/result. */
 .live-conditions-heading {
   display: none !important;
 }
 
 .live-conditions-panel {
   grid-template-rows: auto auto 1fr !important;
+  min-width: 0 !important;
 }
 
 .live-condition-net {
@@ -74,6 +74,7 @@
 }
 
 .live-condition-row > strong {
+  min-width: 0;
   font-size: 15px !important;
   font-weight: 750 !important;
 }
@@ -89,6 +90,7 @@
 }
 
 .live-condition-net > strong {
+  min-width: 0;
   font-size: 19px !important;
 }
 
@@ -96,59 +98,72 @@
   font-size: 10px !important;
 }
 
+/*
+ * Wide-screen layout: do not let CSS Grid intrinsic sizing create a mystery
+ * gutter or let the conditions panel overflow its card. The map keeps the size
+ * that tested well; the decision block simply receives every remaining pixel.
+ */
 @media (min-width: 1260px) {
-  .live-caddie-main-grid {
-    grid-template-columns: minmax(610px, 0.88fr) minmax(680px, 1.12fr) !important;
-  }
-
-  .live-decision-card {
-    grid-template-columns: minmax(300px, 1.06fr) minmax(290px, 0.94fr) !important;
-    column-gap: 20px !important;
-  }
-}
-
-/* On the wide playing display, use the otherwise-dead horizontal band between
- * the decision block and map. Keep the map at its current visual width and let
- * the recommendation + table expand into that space. */
-@media (min-width: 1600px) {
   .live-caddie-shell {
     width: min(1700px, calc(100vw - 20px)) !important;
   }
 
   .live-caddie-main-grid {
+    display: flex !important;
     width: calc(100% - 72px) !important;
-    grid-template-columns: minmax(820px, 1fr) 730px !important;
-    gap: 14px !important;
     margin-left: 72px !important;
+    gap: 14px !important;
+    align-items: stretch !important;
+  }
+
+  .live-decision-column {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
   }
 
   .live-decision-card {
-    grid-template-columns: minmax(360px, 0.98fr) minmax(400px, 1.02fr) !important;
-    column-gap: 22px !important;
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr) !important;
+    column-gap: 24px !important;
+  }
+
+  .live-map-card {
+    flex: 0 0 clamp(620px, 42vw, 730px) !important;
+    width: clamp(620px, 42vw, 730px) !important;
+    max-width: clamp(620px, 42vw, 730px) !important;
+  }
+
+  .live-conditions-panel,
+  .live-expected-shot-block,
+  .live-condition-table-head,
+  .live-condition-row,
+  .live-condition-net {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .live-condition-table-head,
   .live-condition-row,
   .live-condition-net {
-    grid-template-columns: minmax(132px, 1.08fr) minmax(104px, 0.9fr) minmax(118px, 0.98fr) !important;
+    grid-template-columns: minmax(0, 1.12fr) minmax(92px, 0.82fr) minmax(104px, 0.9fr) !important;
     column-gap: 14px !important;
   }
 }
 
 @media (min-width: 1260px) and (max-width: 1399px) {
-  .live-caddie-main-grid {
-    grid-template-columns: minmax(570px, 0.9fr) minmax(560px, 1.1fr) !important;
+  .live-map-card {
+    flex-basis: clamp(560px, 42vw, 620px) !important;
+    width: clamp(560px, 42vw, 620px) !important;
+    max-width: clamp(560px, 42vw, 620px) !important;
   }
 
   .live-decision-card {
-    grid-template-columns: minmax(265px, 1.03fr) minmax(275px, 0.97fr) !important;
-    column-gap: 16px !important;
-  }
-
-  .live-condition-table-head,
-  .live-condition-row,
-  .live-condition-net {
-    grid-template-columns: minmax(92px, 1fr) minmax(76px, 0.8fr) minmax(86px, 0.9fr) !important;
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr) !important;
+    column-gap: 18px !important;
   }
 
   .live-condition-factor {
