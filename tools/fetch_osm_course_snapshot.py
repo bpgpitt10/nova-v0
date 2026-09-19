@@ -3,10 +3,12 @@
 
 The course config supplies a specific OSM way/relation. We first fetch that exact
 boundary, then query only its tight bounding box and locally intersect returned
-features with the source boundary. This avoids brittle Overpass map_to_area
-materialization while still preventing nearby courses from leaking into the
-snapshot. The result is rejected unless it contains exactly one golf=hole route
-for refs 1 through 18.
+features with the source boundary. Feature acquisition is intentionally split
+into small golf/natural/landuse requests because a single compound Overpass
+query proved intermittently timeout-prone.
+
+The combined result is rejected unless it contains exactly one golf=hole route
+for refs 1 through 18. There is no broad-radius or neighboring-course fallback.
 """
 
 from __future__ import annotations
@@ -139,22 +141,73 @@ def source_query(config: dict[str, Any], timeout: int) -> str:
     return f"[out:json][timeout:{timeout}];{osm_clause}(id:{osm_id});out geom;"
 
 
-def bbox_query(bounds: tuple[float, float, float, float], timeout: int) -> str:
+def bbox_string(bounds: tuple[float, float, float, float]) -> str:
     min_lon, min_lat, max_lon, max_lat = bounds
     south = min_lat - QUERY_MARGIN_DEG
     west = min_lon - QUERY_MARGIN_DEG
     north = max_lat + QUERY_MARGIN_DEG
     east = max_lon + QUERY_MARGIN_DEG
-    bbox = f"({south:.8f},{west:.8f},{north:.8f},{east:.8f})"
-    return f"""
-[out:json][timeout:{timeout}];
-(
-  wr{bbox}["golf"];
-  wr{bbox}["natural"~"^(wood|scrub|water)$"];
-  wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];
-);
-out geom;
-""".strip()
+    return f"({south:.8f},{west:.8f},{north:.8f},{east:.8f})"
+
+
+def bbox_queries(bounds: tuple[float, float, float, float], timeout: int) -> dict[str, str]:
+    bbox = bbox_string(bounds)
+    return {
+        "golf": f'[out:json][timeout:{timeout}];wr{bbox}["golf"];out geom;',
+        "natural": (
+            f'[out:json][timeout:{timeout}];'
+            f'wr{bbox}["natural"~"^(wood|scrub|water)$"];out geom;'
+        ),
+        "landuse": (
+            f'[out:json][timeout:{timeout}];'
+            f'wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];out geom;'
+        ),
+    }
+
+
+def merge_payloads(parts: list[tuple[str, dict[str, Any], str]]) -> tuple[dict[str, Any], dict[str, str]]:
+    elements: dict[tuple[str, int], dict[str, Any]] = {}
+    endpoints: dict[str, str] = {}
+    osm3s: dict[str, Any] = {}
+    version: Any = 0.6
+    generator = "Overpass API"
+
+    for label, payload, endpoint in parts:
+        endpoints[label] = endpoint
+        version = payload.get("version", version)
+        generator = payload.get("generator", generator)
+        candidate_osm3s = payload.get("osm3s") or {}
+        if candidate_osm3s:
+            # All chunks are fetched in one run. Retaining the most recently
+            # returned metadata is sufficient provenance; each raw query is
+            # preserved below in looperSnapshot.
+            osm3s = candidate_osm3s
+        for element in payload.get("elements", []):
+            element_type = str(element.get("type"))
+            element_id = element.get("id")
+            if not isinstance(element_id, int):
+                continue
+            elements[(element_type, element_id)] = element
+
+    return {
+        "version": version,
+        "generator": generator,
+        "osm3s": osm3s,
+        "elements": list(elements.values()),
+    }, endpoints
+
+
+def fetch_bbox_features(
+    bounds: tuple[float, float, float, float],
+    timeout: int,
+) -> tuple[dict[str, Any], dict[str, str], dict[str, str]]:
+    queries = bbox_queries(bounds, timeout)
+    parts: list[tuple[str, dict[str, Any], str]] = []
+    for label in ("golf", "natural", "landuse"):
+        payload, endpoint = fetch_json(queries[label], timeout)
+        parts.append((label, payload, endpoint))
+    merged, endpoints = merge_payloads(parts)
+    return merged, endpoints, queries
 
 
 def filter_to_boundary(payload: dict[str, Any], boundary) -> dict[str, Any]:
@@ -207,8 +260,7 @@ def main() -> int:
         raise ValueError(f"Expected exactly one configured course source element; got {len(source_elements)}")
     boundary = boundary_shape(source_elements[0])
 
-    query = bbox_query(boundary.bounds, args.timeout)
-    raw_payload, feature_endpoint = fetch_json(query, args.timeout)
+    raw_payload, feature_endpoints, feature_queries = fetch_bbox_features(boundary.bounds, args.timeout)
     payload = filter_to_boundary(raw_payload, boundary)
     holes = validate_holes(payload)
 
@@ -218,9 +270,9 @@ def main() -> int:
         "courseName": config.get("courseName"),
         "courseElement": {"type": source_type, "id": osm_id},
         "sourceOverpassEndpoint": source_endpoint,
-        "featureOverpassEndpoint": feature_endpoint,
+        "featureOverpassEndpoints": feature_endpoints,
         "sourceQuery": source_query(config, args.timeout),
-        "featureQuery": query,
+        "featureQueries": feature_queries,
         "boundaryBoundsLonLat": [round(value, 8) for value in boundary.bounds],
         "rawFeatureElementCount": len(raw_payload.get("elements", [])),
         "filteredFeatureElementCount": len(payload.get("elements", [])),
@@ -236,7 +288,7 @@ def main() -> int:
     print(json.dumps({
         "course": config.get("courseName"),
         "sourceEndpoint": source_endpoint,
-        "featureEndpoint": feature_endpoint,
+        "featureEndpoints": feature_endpoints,
         "rawElements": len(raw_payload.get("elements", [])),
         "filteredElements": len(payload.get("elements", [])),
         "holeRefs": sorted(holes),
