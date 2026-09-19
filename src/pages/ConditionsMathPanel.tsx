@@ -90,6 +90,24 @@ export default function ConditionsMathPanel({
   const lateralDelta = evaluation
     ? evaluation.modeledLateralBiasYds - evaluation.lateralBiasYds
     : null
+
+  // The operative flight model applies wind + landing elevation together. For the
+  // player-facing ledger, show Wind as its isolated delta and assign the remaining
+  // airborne delta to Elevation. That residual includes any wind/elevation
+  // interaction, so the visible rows reconcile exactly to the modeled net instead
+  // of hiding part of the adjustment in the combined trajectory.
+  const windCarryDelta = evaluation ? (evaluation.windCarryDeltaYds ?? 0) : null
+  const windLateralDelta = evaluation ? (evaluation.windLateralDeltaYds ?? 0) : null
+  const elevationCarryLedgerDelta = evaluation
+    ? evaluation.airborneCarryDeltaYds - (windCarryDelta ?? 0)
+    : null
+  const combinedPhysicsLateralDelta = evaluation
+    ? evaluation.airborneLateralDeltaYds - evaluation.altitudeLateralDeltaYds
+    : null
+  const elevationLateralLedgerDelta = evaluation && finite(combinedPhysicsLateralDelta)
+    ? combinedPhysicsLateralDelta - (windLateralDelta ?? 0)
+    : null
+
   const elevationAware = evaluation as LandingElevationAwareEvaluation | null
   const modeledLandingElevationDeltaFt = finite(elevationAware?.landingElevationDeltaFt)
     ? elevationAware.landingElevationDeltaFt
@@ -100,7 +118,7 @@ export default function ConditionsMathPanel({
     ? `${windMph.toFixed(1)} mph @ ${windRelativeDeg.toFixed(0)}° relative`
     : 'No live wind input · model assumes calm'
   const elevationDetail = finite(modeledLandingElevationDeltaFt)
-    ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing`
+    ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing${hasLiveWind ? ' · includes air interaction' : ''}`
     : 'No terrain elevation available'
   const altitudeDetail = evaluation?.airAltitudeFt != null
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
@@ -183,14 +201,14 @@ export default function ConditionsMathPanel({
           />
           <AdjustmentRow
             label="Elevation"
-            distance={evaluation ? signedYards(evaluation.elevationCarryDeltaYds ?? 0) : '—'}
-            lateral="—"
+            distance={evaluation ? signedYards(elevationCarryLedgerDelta) : '—'}
+            lateral={evaluation ? lateralYards(elevationLateralLedgerDelta) : '—'}
             detail={elevationDetail}
           />
           <AdjustmentRow
             label="Wind"
-            distance={evaluation && hasLiveWind ? signedYards(evaluation.windCarryDeltaYds ?? 0) : '—'}
-            lateral={evaluation && hasLiveWind ? lateralYards(evaluation.windLateralDeltaYds ?? 0) : '—'}
+            distance={evaluation && hasLiveWind ? signedYards(windCarryDelta) : '—'}
+            lateral={evaluation && hasLiveWind ? lateralYards(windLateralDelta) : '—'}
             detail={windDetail}
             muted={!hasLiveWind}
           />
