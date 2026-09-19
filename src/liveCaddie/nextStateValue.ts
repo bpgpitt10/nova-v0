@@ -132,6 +132,8 @@ export const PGA_TOUR_PUTTING_TABLE: readonly PuttingRow[] = [
   { distanceFeet: 100, expectedPutts: 2.382 },
 ] as const
 
+export const UNKNOWN_GEOMETRY_EXPECTED_STROKES_PENALTY = 0.25
+
 const interpolate = (
   x: number,
   rows: readonly { x: number; y: number }[],
@@ -193,7 +195,7 @@ const conditionForState = (
   return {
     condition: 'rough',
     assumption: 'unknown-as-rough',
-    note: 'Unmapped non-woods geometry is provisionally valued as rough; unknown probability remains visible separately.',
+    note: `Unmapped non-woods geometry is valued as rough plus a ${UNKNOWN_GEOMETRY_EXPECTED_STROKES_PENALTY.toFixed(2)}-stroke uncertainty adjustment; unknown probability remains visible separately.`,
   }
 }
 
@@ -276,10 +278,13 @@ export const evaluateDecisionLandingStateValue = (
         : result.clamped === 'high'
           ? 'distance-clamped-high'
           : 'none'
+  const uncertaintyAdjustment = mapping.assumption === 'unknown-as-rough'
+    ? UNKNOWN_GEOMETRY_EXPECTED_STROKES_PENALTY
+    : 0
 
   return {
     modelId: 'broadie-2012-next-state-v1',
-    expectedStrokes: result.value + penaltyStrokes,
+    expectedStrokes: result.value + penaltyStrokes + uncertaintyAdjustment,
     baseExpectedStrokes: result.value,
     penaltyStrokes,
     condition: mapping.condition,
