@@ -141,7 +141,7 @@
 }
 
 .live-club-decision-table {
-  min-width: 1460px;
+  min-width: 1580px;
 }
 
 .live-aim-decision-table {
@@ -199,6 +199,21 @@
 .live-decision-table .model-data {
   color: #9baa9b;
   font-size: 10px;
+}
+
+.live-decision-table th.decision-score,
+.live-decision-table td.decision-score {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.055);
+}
+
+.live-decision-table th.decision-score {
+  color: #f0c62a;
+}
+
+.live-decision-table tbody tr.recommended td.decision-score {
+  color: #ffd84a;
+  background: rgba(234, 179, 8, 0.12);
 }
 
 .live-decision-table tbody tr.recommended {
