@@ -207,7 +207,7 @@
 
 @media (min-width: 1260px) {
   .live-conditions-panel {
-    align-self: start !important;
+    align-self: end !important;
     height: auto !important;
     min-height: 0 !important;
     grid-template-rows: auto auto auto !important;
@@ -237,4 +237,19 @@
   .live-condition-row > small {
     margin-top: 3px !important;
   }
+}
+
+/*
+ * Let the map itself be the visual surface; the surrounding card/frame no longer
+ * adds useful hierarchy in the unboxed layout.
+ */
+.live-map-card {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.live-map {
+  border: 0 !important;
 }
