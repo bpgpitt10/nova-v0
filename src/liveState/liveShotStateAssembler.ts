@@ -199,12 +199,27 @@ export const assembleLiveShotState = async ({
     ? 'round-selection'
     : 'unknown'
 
+  const coreCourseReady = Boolean(
+    ball
+    && hole
+    && target
+    && terrainPlane
+    && terrainProjection
+    && distance != null
+    && courseSurface !== 'unknown',
+  )
+
+  // READY means all inputs required by the live decision path are genuinely
+  // available. Wind-relative components are not wired yet, so a good GSPro +
+  // terrain state must remain UNAVAILABLE rather than claiming full readiness.
   const overallStatus: LiveStateStatus =
     sourceStatus === 'STALE'
       ? 'STALE'
-      : ball && hole && terrainPlane
-        ? 'READY'
-        : 'UNKNOWN'
+      : !coreCourseReady
+        ? 'UNKNOWN'
+        : !windReady
+          ? 'UNAVAILABLE'
+          : 'UNKNOWN'
 
   return {
     revision,
