@@ -18,6 +18,12 @@ export type { BrowserGsproCourseConnection, BrowserGsproCourseShot, BrowserGspro
 
 export type BrowserGsproSourceState = 'available' | 'missing' | 'invalid'
 
+export type BrowserGsproWorldPoint = {
+  x: number
+  y: number
+  z: number
+}
+
 export type BrowserGsproSourceHealth = {
   state: BrowserGsproSourceState
   modifiedAt: string | null
@@ -47,10 +53,17 @@ export type BrowserGsproLiveHealth = {
 }
 
 export type BrowserGsproCourseSnapshot = CoreBrowserGsproCourseSnapshot & {
+  ballWorld: BrowserGsproWorldPoint | null
   health: BrowserGsproLiveHealth
 }
 
 type RoundIdentity = NonNullable<BrowserGsproLiveHealth['roundIdentity']>
+
+type Vec3 = {
+  x?: unknown
+  y?: unknown
+  z?: unknown
+}
 
 type RoundRecord = {
   ShotID?: unknown
@@ -59,6 +72,7 @@ type RoundRecord = {
   HoleShot?: unknown
   GlobalShotNumber?: unknown
   CourseKey?: unknown
+  EndingPOS?: Vec3
 }
 
 const CURRENT_ROUND_FILE = 'currentRound.dat'
@@ -80,6 +94,15 @@ const asNumber = (value: unknown): number | null => {
 
 const asString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null
+
+const worldPoint = (value: unknown): BrowserGsproWorldPoint | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const candidate = value as Vec3
+  const x = asNumber(candidate.x)
+  const y = asNumber(candidate.y)
+  const z = asNumber(candidate.z)
+  return x == null || y == null || z == null ? null : { x, y, z }
+}
 
 const readOptionalFile = async (handle: BrowserDirectoryHandle, name: string) => {
   try {
@@ -120,11 +143,12 @@ const parseRoundCandidates = (text: string): RoundRecord[] => {
 const recordSortValue = (record: RoundRecord) =>
   asNumber(record.GlobalShotNumber) ?? asNumber(record.HoleShot) ?? 0
 
-const parseRoundIdentity = (text: string): RoundIdentity | null => {
-  const records = parseRoundCandidates(text)
-    .filter((record) => asString(record.ShotID) != null)
-    .sort((left, right) => recordSortValue(left) - recordSortValue(right))
+const physicalRoundRecords = (text: string) => parseRoundCandidates(text)
+  .filter((record) => asString(record.ShotID) != null)
+  .sort((left, right) => recordSortValue(left) - recordSortValue(right))
 
+const parseRoundIdentity = (text: string): RoundIdentity | null => {
+  const records = physicalRoundRecords(text)
   const latest = records[records.length - 1]
   if (!latest) return null
 
@@ -136,6 +160,12 @@ const parseRoundIdentity = (text: string): RoundIdentity | null => {
     holeNumber: holeNumber != null && holeNumber >= 1 && holeNumber <= 18 ? holeNumber : null,
     latestShotId: asString(latest.ShotID),
   }
+}
+
+const parseLatestWorldPoint = (text: string): BrowserGsproWorldPoint | null => {
+  const records = physicalRoundRecords(text)
+  const latest = records[records.length - 1]
+  return latest ? worldPoint(latest.EndingPOS) : null
 }
 
 const parseOutputLogHole = (text: string) => {
@@ -226,6 +256,7 @@ const healthFingerprint = (health: BrowserGsproLiveHealth) => JSON.stringify({
 const sanitizeSnapshot = (
   snapshot: CoreBrowserGsproCourseSnapshot,
   health: BrowserGsproLiveHealth,
+  latestWorldPoint: BrowserGsproWorldPoint | null,
 ): BrowserGsproCourseSnapshot => {
   const warnings = [...snapshot.warnings]
   const identity = health.roundIdentity
@@ -254,6 +285,7 @@ const sanitizeSnapshot = (
       ...snapshot,
       holeNumber: null,
       ballLocalYds: null,
+      ballWorld: null,
       ballSource: 'unavailable',
       surface: null,
       surfaceSource: 'unavailable',
@@ -278,6 +310,7 @@ const sanitizeSnapshot = (
       ...snapshot,
       holeNumber: identity.holeNumber,
       ballLocalYds: shotMatchesRoundHole ? snapshot.latestShot?.endLocalYds ?? null : null,
+      ballWorld: shotMatchesRoundHole ? latestWorldPoint : null,
       ballSource: shotMatchesRoundHole && snapshot.latestShot?.endLocalYds ? 'currentRound' : 'unavailable',
       surface: shotMatchesRoundHole ? snapshot.latestShot?.endingSurface ?? null : null,
       surfaceSource: shotMatchesRoundHole && snapshot.latestShot?.endingSurface ? 'currentRound' : 'unavailable',
@@ -289,6 +322,7 @@ const sanitizeSnapshot = (
 
   return {
     ...snapshot,
+    ballWorld: snapshot.ballSource === 'currentRound' ? latestWorldPoint : null,
     warnings,
     health,
   }
@@ -308,6 +342,7 @@ export const connectToBrowserGsproCourseState = ({
   let health = unknownHealth()
   let healthHandle = preparedHealthHandle
   let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
+  let latestWorldPoint: BrowserGsproWorldPoint | null = null
   let lastHealthFingerprint = healthFingerprint(health)
   let epoch = 1
   let epochReason = 'connection-start'
@@ -319,7 +354,7 @@ export const connectToBrowserGsproCourseState = ({
 
   const emit = () => {
     if (disconnected || !lastCoreSnapshot) return
-    onSnapshot(sanitizeSnapshot(lastCoreSnapshot, health))
+    onSnapshot(sanitizeSnapshot(lastCoreSnapshot, health, latestWorldPoint))
   }
 
   const advanceEpoch = (reason: string, now: number) => {
@@ -341,9 +376,12 @@ export const connectToBrowserGsproCourseState = ({
 
     let roundIdentity: RoundIdentity | null = null
     let roundState: BrowserGsproSourceState = roundFile ? 'available' : 'missing'
+    latestWorldPoint = null
     if (roundFile) {
       try {
-        roundIdentity = parseRoundIdentity(await roundFile.text())
+        const roundText = await roundFile.text()
+        roundIdentity = parseRoundIdentity(roundText)
+        latestWorldPoint = parseLatestWorldPoint(roundText)
       } catch {
         roundState = 'invalid'
       }
