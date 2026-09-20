@@ -1,6 +1,7 @@
 import type { BrowserGsproCourseSnapshot } from '../adapters/reliableBrowserGsproCourseState'
 import { GREYWOLF_COURSE_ID } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import { getRouteHoleHeadingDegreesTrue } from '../courseGeometry/generatedRouteHoleHeadings'
 import { estimateGreywolfTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
@@ -43,6 +44,8 @@ const unknown = <T>(source: string | null, note: string): LiveField<T> =>
 const isGreywolf = (courseKey: string | null) =>
   Boolean(courseKey && courseKey.toLowerCase().includes('greywolf'))
 
+const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
+
 const pointInPolygon = (point: CoursePointYds, polygon: CoursePolygonYds) => {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -83,7 +86,7 @@ const bearingFromLocal = (from: CoursePointYds, to: CoursePointYds) => {
   const dy = to[1] - from[1]
   if (Math.hypot(dx, dy) <= Number.EPSILON) return null
   const degrees = Math.atan2(dx, dy) * 180 / Math.PI
-  return (degrees + 360) % 360
+  return normalizeDegrees(degrees)
 }
 
 const terrainPlaneAt = (
@@ -154,7 +157,8 @@ export const assembleLiveShotState = async ({
   wind = null,
   roundTeeSelection = null,
 }: AssembleLiveShotStateInput): Promise<LiveShotState> => {
-  const assembledAt = new Date().toISOString()
+  const assembledAtMs = Date.now()
+  const assembledAt = new Date(assembledAtMs).toISOString()
   const sourceStatus = gsproStatus(snapshot)
   const ball = snapshot.ballLocalYds
   const holeNumber = snapshot.holeNumber
@@ -172,6 +176,12 @@ export const assembleLiveShotState = async ({
 
   const target = hole?.markers.pin ?? null
   const aimBearing = ball && target ? bearingFromLocal(ball, target) : null
+  const holeTrueHeadingDegrees = greywolf && holeNumber != null
+    ? getRouteHoleHeadingDegreesTrue(GREYWOLF_COURSE_ID, holeNumber)
+    : null
+  const aimCompassBearing = aimBearing != null && holeTrueHeadingDegrees != null
+    ? normalizeDegrees(holeTrueHeadingDegrees + aimBearing)
+    : null
   const calculatedDistance = ball && target
     ? Math.hypot(target[0] - ball[0], target[1] - ball[1])
     : null
@@ -190,7 +200,11 @@ export const assembleLiveShotState = async ({
     ?? registration?.residualsMeters?.median
     ?? null
 
-  const windProjection = projectWindObservation(wind, aimBearing)
+  const windObservedAtMs = wind ? Date.parse(wind.observedAt) : Number.NaN
+  const windAgeMs = Number.isFinite(windObservedAtMs)
+    ? Math.max(0, assembledAtMs - windObservedAtMs)
+    : null
+  const windProjection = projectWindObservation(wind, aimBearing, aimCompassBearing)
   const windReady = wind?.status === 'READY'
     && wind.speedMph != null
     && wind.directionDegrees != null
@@ -257,8 +271,16 @@ export const assembleLiveShotState = async ({
         ? field(distance, sourceStatus, snapshot.distanceToPinYds != null ? 'GSPro currentRound.dat' : 'derived local geometry', undefined, snapshot.observedAt)
         : unknown(null, 'Target distance cannot be established.'),
       aimBearingDegrees: aimBearing != null
-        ? field(aimBearing, 'READY', 'derived ball→pin local bearing', '0° is hole-local forward; positive rotates toward local right. This is not a world/compass bearing.')
+        ? field(aimBearing, 'READY', 'derived ball→pin local bearing', '0° is hole-local forward; positive rotates toward local right.')
         : unknown(null, 'Aim direction is not available; ball→pin bearing is shown only when both local points are known.'),
+      aimCompassBearingDegrees: aimCompassBearing != null
+        ? field(
+            aimCompassBearing,
+            'READY',
+            'OSM true hole heading + ball→pin local bearing',
+            `True-north bearing. Hole ${holeNumber ?? '—'} packaged heading=${holeTrueHeadingDegrees?.toFixed(2) ?? '—'}°. This is currently ball→pin, not a future decision-engine aim point.`,
+          )
+        : unavailable('course registration', 'A validated route true heading plus local ball→pin bearing are required.'),
     },
     course: {
       matchedCoordinate: ball && hole
@@ -288,20 +310,20 @@ export const assembleLiveShotState = async ({
     },
     wind: {
       speedMph: wind?.speedMph != null
-        ? field(wind.speedMph, wind.status, wind.source, wind.note, wind.observedAt)
+        ? field(wind.speedMph, wind.status, wind.source, wind.note, wind.observedAt, windAgeMs)
         : unavailable('wind observation bridge', 'No live HUD wind observation is connected; calm/0 is never assumed.'),
       directionDegrees: wind?.directionDegrees != null
-        ? field(wind.directionDegrees, wind.status, wind.source, wind.note, wind.observedAt)
+        ? field(wind.directionDegrees, wind.status, wind.source, wind.note, wind.observedAt, windAgeMs)
         : unavailable('wind observation bridge', 'Wind direction is not currently observed.'),
       directionConvention: wind?.convention
-        ? field(wind.convention, wind.status, wind.source, wind.note, wind.observedAt)
+        ? field(wind.convention, wind.status, wind.source, wind.note, wind.observedAt, windAgeMs)
         : unavailable('wind calibration', 'Wind from/toward convention is not currently established.'),
       referenceFrame: wind?.referenceFrame && wind.referenceFrame !== 'unknown'
-        ? field(wind.referenceFrame, wind.status, wind.source, wind.note, wind.observedAt)
+        ? field(wind.referenceFrame, wind.status, wind.source, wind.note, wind.observedAt, windAgeMs)
         : unavailable('wind observation bridge', 'Wind direction reference frame is not established.'),
       ocrConfidence: wind?.confidence != null
-        ? field(wind.confidence, wind.status, wind.source, wind.rawText ? `OCR raw: ${wind.rawText}` : wind.note, wind.observedAt)
-        : unavailable('wind OCR', wind ? 'Wind observation did not include OCR confidence.' : 'No HUD OCR observation is connected.'),
+        ? field(wind.confidence, wind.status, wind.source, wind.rawText ? `OCR raw: ${wind.rawText}` : wind.note, wind.observedAt, windAgeMs)
+        : unavailable('wind OCR', wind ? `OCR engine did not expose confidence.${wind.rawText ? ` Raw: ${wind.rawText}` : ''}` : 'No HUD OCR observation is connected.'),
       helpingHurtingMph: windProjection.projection
         ? field(
             windProjection.projection.helpingHurtingMph,
@@ -309,6 +331,7 @@ export const assembleLiveShotState = async ({
             'wind projection',
             windProjection.projection.note,
             wind?.observedAt,
+            windAgeMs,
           )
         : unavailable('wind projection', windProjection.unavailableReason),
       leftRightMph: windProjection.projection
@@ -318,6 +341,7 @@ export const assembleLiveShotState = async ({
             'wind projection',
             windProjection.projection.note,
             wind?.observedAt,
+            windAgeMs,
           )
         : unavailable('wind projection', windProjection.unavailableReason),
     },
@@ -357,8 +381,9 @@ export const assembleLiveShotState = async ({
             wind.source,
             [wind.note, wind.rawText ? `raw=${wind.rawText}` : null].filter(Boolean).join(' · ') || undefined,
             wind.observedAt,
+            windAgeMs,
           )
-        : unavailable('wind OCR', 'No HUD OCR/capture implementation was found on the checked repo branches; the typed observation bridge is ready for a future capture source.'),
+        : unavailable('wind OCR', 'No HUD OCR observation has been received from the bundled helper.'),
     },
     decision: {
       playerProfileId: null,
