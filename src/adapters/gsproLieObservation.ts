@@ -1,0 +1,227 @@
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import type { GsproLieObservation, LiveStateStatus } from '../liveState/types'
+
+export const GSPRO_LIE_OCR_TAURI_EVENT = 'gspro-lie-ocr'
+export const GSPRO_LIE_OCR_BROWSER_EVENT = 'looper:gspro-lie-ocr'
+
+export type GsproLieOcrPayload = {
+  status?: LiveStateStatus
+  surface?: string | null
+  upDownDegrees?: number | null
+  leftRightDegrees?: number | null
+  observedAt?: string | null
+  confidence?: number | null
+  rawText?: string | null
+  note?: string | null
+}
+
+export type GsproLieObservationConnection = {
+  disconnect: () => void
+  getLatest: () => GsproLieObservation | null
+}
+
+export type ConnectGsproLieObservationOptions = {
+  onObservation: (observation: GsproLieObservation | null) => void
+  onError?: (error: unknown) => void
+  staleAfterMs?: number
+}
+
+const HELPER_LIE_URL = 'http://127.0.0.1:8787/lie'
+const HELPER_POLL_INTERVAL_MS = 2500
+const DEFAULT_STALE_AFTER_MS = 7000
+const STALE_CHECK_INTERVAL_MS = 500
+const SOURCE = 'GSPro minimap HUD OCR'
+
+const finite = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+const validStatus = (value: unknown): value is LiveStateStatus =>
+  value === 'READY'
+  || value === 'STALE'
+  || value === 'UNKNOWN'
+  || value === 'UNAVAILABLE'
+
+const observedAtOrNow = (value: unknown) => {
+  if (typeof value === 'string' && Number.isFinite(Date.parse(value))) return value
+  return new Date().toISOString()
+}
+
+const normalizedSurface = (value: unknown) => {
+  if (typeof value !== 'string') return null
+  const surface = value.trim().toLowerCase().replace(/\s+/g, ' ')
+  return surface || null
+}
+
+export const normalizeGsproLieOcrPayload = (
+  payload: GsproLieOcrPayload | null | undefined,
+): GsproLieObservation => {
+  const observedAt = observedAtOrNow(payload?.observedAt)
+  const requestedStatus = validStatus(payload?.status) ? payload.status : 'READY'
+  const surface = normalizedSurface(payload?.surface)
+  const upDownDegrees = finite(payload?.upDownDegrees) ? payload!.upDownDegrees! : null
+  const leftRightDegrees = finite(payload?.leftRightDegrees) ? payload!.leftRightDegrees! : null
+  const confidence = finite(payload?.confidence)
+    && payload!.confidence! >= 0
+    && payload!.confidence! <= 1
+    ? payload!.confidence!
+    : null
+  const rawText = typeof payload?.rawText === 'string' ? payload.rawText : null
+  const note = typeof payload?.note === 'string' ? payload.note : undefined
+
+  if (requestedStatus === 'UNAVAILABLE' || requestedStatus === 'STALE') {
+    return {
+      surface,
+      upDownDegrees,
+      leftRightDegrees,
+      observedAt,
+      source: SOURCE,
+      status: requestedStatus,
+      confidence,
+      rawText,
+      note,
+    }
+  }
+
+  const missing: string[] = []
+  if (upDownDegrees == null) missing.push('up/down angle')
+  if (leftRightDegrees == null) missing.push('left/right angle')
+
+  return {
+    surface,
+    upDownDegrees,
+    leftRightDegrees,
+    observedAt,
+    source: SOURCE,
+    status: requestedStatus === 'UNKNOWN' || missing.length > 0 ? 'UNKNOWN' : 'READY',
+    confidence,
+    rawText,
+    note: [
+      note,
+      missing.length > 0 ? `Incomplete lie OCR observation: missing ${missing.join(', ')}.` : null,
+    ].filter(Boolean).join(' ') || undefined,
+  }
+}
+
+const staleObservation = (
+  observation: GsproLieObservation,
+  staleAfterMs: number,
+  nowMs = Date.now(),
+): GsproLieObservation => {
+  if (observation.status !== 'READY') return observation
+  const observedMs = Date.parse(observation.observedAt)
+  if (!Number.isFinite(observedMs) || nowMs - observedMs <= staleAfterMs) return observation
+  return {
+    ...observation,
+    status: 'STALE',
+    note: [
+      observation.note,
+      `No fresh HUD lie OCR observation within ${staleAfterMs} ms.`,
+    ].filter(Boolean).join(' '),
+  }
+}
+
+const isTauriRuntime = () => {
+  if (typeof window === 'undefined') return false
+  return '__TAURI_INTERNALS__' in window
+}
+
+export const dispatchGsproLieOcrObservation = (payload: GsproLieOcrPayload) => {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent<GsproLieOcrPayload>(GSPRO_LIE_OCR_BROWSER_EVENT, {
+    detail: payload,
+  }))
+}
+
+export const connectToGsproLieObservation = ({
+  onObservation,
+  onError,
+  staleAfterMs = DEFAULT_STALE_AFTER_MS,
+}: ConnectGsproLieObservationOptions): GsproLieObservationConnection => {
+  let disconnected = false
+  let latest: GsproLieObservation | null = null
+  let tauriUnlisten: UnlistenFn | null = null
+  let helperPollInFlight = false
+
+  const publish = (payload: GsproLieOcrPayload | null | undefined) => {
+    if (disconnected) return
+    latest = normalizeGsproLieOcrPayload(payload)
+    onObservation(latest)
+  }
+
+  const browserListener = (event: Event) => {
+    publish((event as CustomEvent<GsproLieOcrPayload>).detail)
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
+  }
+
+  if (isTauriRuntime()) {
+    void listen<GsproLieOcrPayload>(GSPRO_LIE_OCR_TAURI_EVENT, (event) => {
+      publish(event.payload)
+    }).then((unlisten) => {
+      if (disconnected) {
+        unlisten()
+      } else {
+        tauriUnlisten = unlisten
+      }
+    }).catch((error) => onError?.(error))
+  }
+
+  const pollHelper = async () => {
+    if (disconnected || helperPollInFlight || !isTauriRuntime()) return
+    helperPollInFlight = true
+    try {
+      const response = await fetch(HELPER_LIE_URL, { cache: 'no-store' })
+      if (!response.ok) {
+        publish({
+          status: 'UNAVAILABLE',
+          observedAt: new Date().toISOString(),
+          note: `Lie helper returned HTTP ${response.status}.`,
+        })
+        return
+      }
+      const payload = await response.json() as GsproLieOcrPayload
+      publish(payload)
+    } catch (error) {
+      publish({
+        status: 'UNAVAILABLE',
+        observedAt: new Date().toISOString(),
+        note: `Lie helper is unreachable: ${error instanceof Error ? error.message : String(error)}`,
+      })
+    } finally {
+      helperPollInFlight = false
+    }
+  }
+
+  if (isTauriRuntime()) void pollHelper()
+  const helperPollTimer = typeof window !== 'undefined' && isTauriRuntime()
+    ? window.setInterval(() => void pollHelper(), HELPER_POLL_INTERVAL_MS)
+    : null
+
+  const staleTimer = typeof window !== 'undefined'
+    ? window.setInterval(() => {
+        if (!latest || disconnected) return
+        const next = staleObservation(latest, staleAfterMs)
+        if (next.status !== latest.status) {
+          latest = next
+          onObservation(latest)
+        }
+      }, STALE_CHECK_INTERVAL_MS)
+    : null
+
+  return {
+    getLatest: () => latest,
+    disconnect: () => {
+      if (disconnected) return
+      disconnected = true
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
+        if (helperPollTimer != null) window.clearInterval(helperPollTimer)
+        if (staleTimer != null) window.clearInterval(staleTimer)
+      }
+      tauriUnlisten?.()
+      tauriUnlisten = null
+    },
+  }
+}
