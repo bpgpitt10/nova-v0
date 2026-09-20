@@ -235,10 +235,12 @@ export const assembleLiveShotState = async ({
       shotNumber: snapshot.nextShotNumber != null
         ? field(snapshot.nextShotNumber, sourceStatus, 'reliable GSPro course-state watcher', undefined, snapshot.observedAt)
         : unknown('GSPro', 'Next shot number is not established.'),
-      ballPositionWorld: unavailable(
-        'GSPro currentRound.dat',
-        'Raw StartingPOS/EndingPOS XYZ is parsed upstream but is not yet exposed by BrowserGsproCourseSnapshot. No [0,0,0] substitute is used.',
-      ),
+      ballPositionWorld: snapshot.ballWorld
+        ? field(snapshot.ballWorld, sourceStatus, 'GSPro currentRound.dat EndingPOS', undefined, snapshot.observedAt)
+        : unavailable(
+            'GSPro currentRound.dat',
+            'No trustworthy EndingPOS XYZ exists for the current pre-shot state. Cached tee positions never fabricate raw world coordinates.',
+          ),
       ballPositionLocalYds: ball
         ? field(ball, sourceStatus, `GSPro ${snapshot.ballSource}`, snapshot.ballSource === 'cached-tee' ? 'cached-tee is continuity-only and is not treated as an observed tee position.' : undefined, snapshot.observedAt)
         : unknown('GSPro', 'No trustworthy current ball coordinate is available.'),
