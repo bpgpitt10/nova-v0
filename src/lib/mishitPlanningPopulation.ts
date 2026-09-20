@@ -6,14 +6,16 @@ import {
   type MishitShot,
 } from '../mishit-classifier'
 import type { OpenGolfCoachPayload, SavedSession, Shot } from '../types'
+import { resolveMeasurementProfile } from './measurementProfiles'
 import { resolveShotVariantId } from './shotVariants'
 
 /**
  * Looper-side bridge between immutable shot history and planning truth.
  *
  * Raw shots are never mutated. Human validation labels are deliberately not
- * inputs here. The standalone classifier groups each player's shots by club +
- * variant and derives planning eligibility from the golf data only.
+ * inputs here. The standalone classifier groups each player's shots by
+ * measurement profile + club + variant and derives planning eligibility from
+ * the golf data only.
  */
 export type MishitPlanningPopulation = {
   populationKey: string
@@ -146,7 +148,8 @@ export const toMishitPlanningShot = (shot: Shot): MishitShot => {
 
 export const mishitPlanningPopulationKey = (
   shot: Pick<Shot, 'club' | 'shotVariantId'>,
-) => `${shot.club}::${resolveShotVariantId(shot.shotVariantId)}`
+  measurementProfile: string,
+) => `${measurementProfile}::${shot.club}::${resolveShotVariantId(shot.shotVariantId)}`
 
 export const buildMishitPlanningState = (
   sessions: SavedSession[],
@@ -154,13 +157,15 @@ export const buildMishitPlanningState = (
   const groupedShots = new Map<string, Shot[]>()
 
   sessions.forEach((session) => {
+    const measurementProfile = resolveMeasurementProfile(session)
+
     session.shots.forEach((shot) => {
       // Source/manual exclusion remains separate and stronger than derived
       // mishit interpretation. Excluded shots do not teach the classifier.
       if (shot.included === false) {
         return
       }
-      const populationKey = mishitPlanningPopulationKey(shot)
+      const populationKey = mishitPlanningPopulationKey(shot, measurementProfile)
       const group = groupedShots.get(populationKey) ?? []
       group.push(shot)
       groupedShots.set(populationKey, group)
