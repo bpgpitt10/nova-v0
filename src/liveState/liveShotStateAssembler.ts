@@ -160,7 +160,20 @@ export const assembleLiveShotState = async ({
   const assembledAtMs = Date.now()
   const assembledAt = new Date(assembledAtMs).toISOString()
   const sourceStatus = gsproStatus(snapshot)
-  const ball = snapshot.ballLocalYds
+  const teeSelection = roundTeeSelection
+  const observedBall = snapshot.ballSource === 'cached-tee' ? null : snapshot.ballLocalYds
+  const selectedTeeBall = snapshot.ballSource === 'cached-tee'
+    ? teeSelection?.coursePoint ?? null
+    : null
+  // Never let the watcher's continuity-only cached [0,0] stand in for an
+  // observed tee. Shot-1 course calculations require either a real GSPro ball
+  // position or an explicit tee selection with exact packaged coordinates.
+  const ball = observedBall ?? selectedTeeBall
+  const ballSource = observedBall
+    ? `GSPro ${snapshot.ballSource}`
+    : selectedTeeBall
+      ? 'round tee selection'
+      : null
   const holeNumber = snapshot.holeNumber
   const greywolf = isGreywolf(snapshot.courseKey)
 
@@ -213,8 +226,7 @@ export const assembleLiveShotState = async ({
     && wind.referenceFrame !== 'unknown'
     && windProjection.projection != null
 
-  const teeSelection = roundTeeSelection
-  const teeDetectionMethod: LiveShotState['tee']['detectionMethod'] = teeSelection
+  const teeDetectionMethod: LiveShotState['tee']['detectionMethod'] = teeSelection?.coursePoint
     ? 'round-selection'
     : 'unknown'
 
@@ -258,8 +270,21 @@ export const assembleLiveShotState = async ({
             'No trustworthy EndingPOS XYZ exists for the current pre-shot state. Cached tee positions never fabricate raw world coordinates.',
           ),
       ballPositionLocalYds: ball
-        ? field(ball, sourceStatus, `GSPro ${snapshot.ballSource}`, snapshot.ballSource === 'cached-tee' ? 'cached-tee is continuity-only and is not treated as an observed tee position.' : undefined, snapshot.observedAt)
-        : unknown('GSPro', 'No trustworthy current ball coordinate is available.'),
+        ? field(
+            ball,
+            sourceStatus,
+            ballSource,
+            selectedTeeBall
+              ? 'Shot-1 position comes from an explicit tee selection with exact packaged coordinates.'
+              : undefined,
+            snapshot.observedAt,
+          )
+        : unknown(
+            'tee resolver',
+            snapshot.ballSource === 'cached-tee'
+              ? 'GSPro has not exposed a physical shot-1 position and no exact tee selection is established. Cached [0,0] is deliberately blocked from course calculations.'
+              : 'No trustworthy current ball coordinate is available.',
+          ),
       startingSurface: snapshot.surface
         ? field(snapshot.surface, sourceStatus, `GSPro ${snapshot.surfaceSource}`, undefined, snapshot.observedAt)
         : unknown('GSPro', 'Starting surface is not currently observed.'),
@@ -284,7 +309,7 @@ export const assembleLiveShotState = async ({
     },
     course: {
       matchedCoordinate: ball && hole
-        ? field(ball, sourceStatus, 'GSPro→Looper registered hole-local coordinate', undefined, snapshot.observedAt)
+        ? field(ball, sourceStatus, ballSource ?? 'course registration', undefined, snapshot.observedAt)
         : unknown('course registration', geometryError ?? 'Ball/course registration is not ready.'),
       groundElevationFt: terrainPlane
         ? field(terrainPlane.elevationFt, 'READY', terrainPlane.source)
@@ -346,10 +371,10 @@ export const assembleLiveShotState = async ({
         : unavailable('wind projection', windProjection.unavailableReason),
     },
     tee: {
-      selection: teeSelection
+      selection: teeSelection?.coursePoint
         ? field(teeSelection, 'READY', 'round tee selection')
         : unknown('tee resolver', snapshot.ballSource === 'cached-tee'
-          ? 'cached-tee [0,0] is a continuity placeholder, not tee detection. Tee matching is not yet validated.'
+          ? 'cached-tee [0,0] is a continuity placeholder, not tee detection. An exact tee position is required before shot-1 course calculations can be READY.'
           : 'No persisted round tee selection or validated position match exists.'),
       detectionMethod: teeDetectionMethod,
     },
