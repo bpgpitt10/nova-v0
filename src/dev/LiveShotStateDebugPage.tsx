@@ -8,12 +8,17 @@ import {
   type BrowserGsproCourseStatus,
 } from '../adapters/reliableBrowserGsproCourseState'
 import {
+  connectToGsproLieObservation,
+  type GsproLieObservationConnection,
+} from '../adapters/gsproLieObservation'
+import {
   connectToGsproWindObservation,
   type GsproWindObservationConnection,
 } from '../adapters/gsproWindObservation'
 import { assembleLiveShotState } from '../liveState/liveShotStateAssembler'
 import { PreShotStateTracker, type PreShotFreezeEvent } from '../liveState/preShotTracker'
 import type {
+  GsproLieObservation,
   LiveField,
   LiveShotState,
   LiveStateStatus,
@@ -121,8 +126,10 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : S
 function LiveShotStateDebugPage() {
   const connectionRef = useRef<BrowserGsproCourseConnection | null>(null)
   const windConnectionRef = useRef<GsproWindObservationConnection | null>(null)
+  const lieConnectionRef = useRef<GsproLieObservationConnection | null>(null)
   const latestSnapshotRef = useRef<BrowserGsproCourseSnapshot | null>(null)
   const latestWindRef = useRef<WindObservation | null>(null)
+  const latestLieRef = useRef<GsproLieObservation | null>(null)
   const teeSelectionRef = useRef<TeeSelection | null>(null)
   const revisionRef = useRef(0)
   const assemblyRequestRef = useRef(0)
@@ -143,6 +150,7 @@ function LiveShotStateDebugPage() {
       snapshot,
       revision,
       wind: latestWindRef.current,
+      lie: latestLieRef.current,
       roundTeeSelection: teeSelectionRef.current,
     })
       .then((next) => {
@@ -207,6 +215,15 @@ function LiveShotStateDebugPage() {
       onError: (windError) => setError(`Wind observation bridge failed: ${errorText(windError)}`),
     })
 
+    lieConnectionRef.current = connectToGsproLieObservation({
+      onObservation: (observation) => {
+        latestLieRef.current = observation
+        const snapshot = latestSnapshotRef.current
+        if (snapshot) assembleSnapshot(snapshot)
+      },
+      onError: (lieError) => setError(`Lie observation bridge failed: ${errorText(lieError)}`),
+    })
+
     void prepareBrowserGsproCourseStateRuntime()
       .then((ready) => {
         if (!cancelled && ready) startWatcher()
@@ -221,6 +238,9 @@ function LiveShotStateDebugPage() {
       windConnectionRef.current?.disconnect()
       windConnectionRef.current = null
       latestWindRef.current = null
+      lieConnectionRef.current?.disconnect()
+      lieConnectionRef.current = null
+      latestLieRef.current = null
     }
   }, [assembleSnapshot, startWatcher, stopWatcher])
 
@@ -241,6 +261,8 @@ function LiveShotStateDebugPage() {
     ['Ball XYZ', state.game.ballPositionWorld],
     ['Ball local yd', state.game.ballPositionLocalYds],
     ['GSPro surface', state.game.startingSurface],
+    ['GSPro HUD up/down lie°', state.game.gsproLieUpDownDegrees],
+    ['GSPro HUD left/right lie°', state.game.gsproLieLeftRightDegrees],
     ['Target XYZ', state.game.targetPositionWorld],
     ['Target local yd', state.game.targetPositionLocalYds],
     ['Pin distance yd', state.game.targetDistanceYards],
@@ -254,8 +276,8 @@ function LiveShotStateDebugPage() {
     ['OSM surface', state.course.surface],
     ['Ground elevation ft', state.course.groundElevationFt],
     ['Terrain plane', state.course.terrainPlane],
-    ['Up/down lie°', state.course.uphillDownhillLieDegrees],
-    ['Left/right lie°', state.course.leftRightLieDegrees],
+    ['LiDAR up/down lie°', state.course.uphillDownhillLieDegrees],
+    ['LiDAR left/right lie°', state.course.leftRightLieDegrees],
     ['Target elevation Δ ft', state.course.targetElevationChangeFt],
   ] : []
 
@@ -279,6 +301,7 @@ function LiveShotStateDebugPage() {
     ['Course registration', state.sources.registration],
     ['LiDAR', state.sources.lidar],
     ['Wind OCR', state.sources.windOcr],
+    ['Lie OCR', state.sources.lieOcr],
   ] : []
 
   return (
@@ -350,14 +373,24 @@ function LiveShotStateDebugPage() {
           />
 
           <ValidationChain
-            title="Ball → terrain → lie validation chain"
+            title="GSPro minimap lie validation chain"
+            stages={[
+              { label: 'Minimap OCR feed', field: state.sources.lieOcr },
+              { label: 'Current surface', field: state.game.startingSurface },
+              { label: 'HUD up/down lie', field: state.game.gsproLieUpDownDegrees },
+              { label: 'HUD left/right lie', field: state.game.gsproLieLeftRightDegrees },
+            ]}
+          />
+
+          <ValidationChain
+            title="Ball → LiDAR terrain → independent lie validation chain"
             stages={[
               { label: 'Ball local coordinate', field: state.game.ballPositionLocalYds },
               { label: 'Course registration', field: state.sources.registration },
               { label: 'LiDAR sample', field: state.sources.lidar },
               { label: 'Terrain plane', field: state.course.terrainPlane },
-              { label: 'Up/down lie', field: state.course.uphillDownhillLieDegrees },
-              { label: 'Sidehill lie', field: state.course.leftRightLieDegrees },
+              { label: 'LiDAR up/down lie', field: state.course.uphillDownhillLieDegrees },
+              { label: 'LiDAR sidehill lie', field: state.course.leftRightLieDegrees },
             ]}
           />
 
