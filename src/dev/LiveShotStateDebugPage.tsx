@@ -76,9 +76,34 @@ function Section({
             </tr>
           </thead>
           <tbody>
-            {rows.map(([label, field]) => <FieldRow key={label} label={label} field={field} />)}
+            {rows.map(([label, rowField]) => <FieldRow key={label} label={label} field={rowField} />)}
           </tbody>
         </table>
+      </div>
+    </section>
+  )
+}
+
+function ValidationChain({
+  title,
+  stages,
+}: {
+  title: string
+  stages: Array<{ label: string; field: LiveField<unknown> }>
+}) {
+  return (
+    <section style={{ marginTop: 14, padding: 12, border: '1px solid #9ca3af', background: '#f3f4f6' }}>
+      <h2 style={{ margin: '0 0 10px', fontSize: 18 }}>{title}</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
+        {stages.map(({ label, field: stageField }, index) => (
+          <div key={label} style={{ padding: 10, border: '1px solid #9ca3af', background: '#e5e7eb' }}>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.08em' }}>STAGE {index + 1}</div>
+            <div style={{ marginTop: 3, fontWeight: 800 }}>{label}</div>
+            <div style={{ marginTop: 6 }}><StatusBadge status={stageField.status} /></div>
+            <div style={{ marginTop: 4, ...mono, fontSize: 11 }}>{display(stageField.value)}</div>
+            {stageField.note && <div style={{ marginTop: 5, fontSize: 11 }}>{stageField.note}</div>}
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -269,6 +294,30 @@ function LiveShotStateDebugPage() {
             <span>tee method: {state.tee.detectionMethod}</span>
           </div>
 
+          <ValidationChain
+            title="Wind validation chain"
+            stages={[
+              { label: 'HUD OCR feed', field: state.sources.windOcr },
+              { label: 'Parsed speed', field: state.wind.speedMph },
+              { label: 'Parsed compass direction', field: state.wind.directionDegrees },
+              { label: 'True shot bearing', field: state.game.aimCompassBearingDegrees },
+              { label: 'Helping / hurting', field: state.wind.helpingHurtingMph },
+              { label: 'Left / right', field: state.wind.leftRightMph },
+            ]}
+          />
+
+          <ValidationChain
+            title="Ball → terrain → lie validation chain"
+            stages={[
+              { label: 'Ball local coordinate', field: state.game.ballPositionLocalYds },
+              { label: 'Course registration', field: state.sources.registration },
+              { label: 'LiDAR sample', field: state.sources.lidar },
+              { label: 'Terrain plane', field: state.course.terrainPlane },
+              { label: 'Up/down lie', field: state.course.uphillDownhillLieDegrees },
+              { label: 'Sidehill lie', field: state.course.leftRightLieDegrees },
+            ]}
+          />
+
           <section style={{ marginTop: 14, padding: 12, border: '1px solid #9ca3af', background: '#f3f4f6' }}>
             <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Last automatic pre-shot freeze</h2>
             {lastFrozen ? (
@@ -281,7 +330,7 @@ function LiveShotStateDebugPage() {
                 <span>status: {lastFrozen.state.overallStatus}</span>
               </div>
             ) : (
-              <p style={{ margin: 0 }}>None yet. A freeze occurs only when a new physical GSPro latestShotKey arrives after this watcher observed the live pre-shot state in the same source epoch.</p>
+              <p style={{ margin: 0 }}>None yet. A freeze occurs only when a new physical GSPro latestShotKey arrives and exactly matches the last assembled pre-shot hole + shot number in the same source epoch.</p>
             )}
           </section>
 
