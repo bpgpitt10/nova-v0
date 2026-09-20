@@ -10,6 +10,7 @@ type CloudSessionRow = {
   feed_mode: string | null
   include_in_analysis: boolean
   schema_version: number
+  measurement_profile: string | null
 }
 
 type CloudShotRow = {
@@ -125,7 +126,9 @@ export const hydrateSessionsForUser = async (userId: string): Promise<SavedSessi
     (await awaitQuery<CloudSessionRow[]>(
       client
         .from<CloudSessionRow[]>('sessions')
-        .select('id, started_at, ended_at, source, feed_mode, include_in_analysis, schema_version')
+        .select(
+          'id, started_at, ended_at, source, feed_mode, include_in_analysis, schema_version, measurement_profile',
+        )
         .eq('user_id', userId),
     )) ?? []
   const shotRows =
@@ -154,6 +157,7 @@ export const hydrateSessionsForUser = async (userId: string): Promise<SavedSessi
         source: nullable(row.source) as SessionSource | undefined,
         feedMode: nullable(row.feed_mode) as 'mock' | 'real' | undefined,
         includeInAnalysis: row.include_in_analysis,
+        measurementProfile: nullable(row.measurement_profile),
       },
     }))
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
