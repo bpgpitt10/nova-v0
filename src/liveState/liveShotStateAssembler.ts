@@ -16,6 +16,7 @@ import type {
   TeeSelection,
   WindObservation,
 } from './types'
+import { projectWindObservation } from './windProjection'
 
 export type AssembleLiveShotStateInput = {
   snapshot: BrowserGsproCourseSnapshot
@@ -189,10 +190,14 @@ export const assembleLiveShotState = async ({
     ?? registration?.residualsMeters?.median
     ?? null
 
+  const windProjection = projectWindObservation(wind, aimBearing)
   const windReady = wind?.status === 'READY'
     && wind.speedMph != null
     && wind.directionDegrees != null
     && wind.convention != null
+    && wind.referenceFrame != null
+    && wind.referenceFrame !== 'unknown'
+    && windProjection.projection != null
 
   const teeSelection = roundTeeSelection
   const teeDetectionMethod: LiveShotState['tee']['detectionMethod'] = teeSelection
@@ -209,9 +214,6 @@ export const assembleLiveShotState = async ({
     && courseSurface !== 'unknown',
   )
 
-  // READY means all inputs required by the live decision path are genuinely
-  // available. Wind-relative components are not wired yet, so a good GSPro +
-  // terrain state must remain UNAVAILABLE rather than claiming full readiness.
   const overallStatus: LiveStateStatus =
     sourceStatus === 'STALE'
       ? 'STALE'
@@ -219,7 +221,7 @@ export const assembleLiveShotState = async ({
         ? 'UNKNOWN'
         : !windReady
           ? 'UNAVAILABLE'
-          : 'UNKNOWN'
+          : 'READY'
 
   return {
     revision,
@@ -287,15 +289,37 @@ export const assembleLiveShotState = async ({
     wind: {
       speedMph: wind?.speedMph != null
         ? field(wind.speedMph, wind.status, wind.source, wind.note, wind.observedAt)
-        : unavailable('wind OCR', 'Existing HUD OCR observation has not been wired into this assembler yet; calm/0 is never assumed.'),
+        : unavailable('wind observation bridge', 'No live HUD wind observation is connected; calm/0 is never assumed.'),
       directionDegrees: wind?.directionDegrees != null
         ? field(wind.directionDegrees, wind.status, wind.source, wind.note, wind.observedAt)
-        : unavailable('wind OCR', 'Wind direction is not currently observed.'),
+        : unavailable('wind observation bridge', 'Wind direction is not currently observed.'),
       directionConvention: wind?.convention
         ? field(wind.convention, wind.status, wind.source, wind.note, wind.observedAt)
         : unavailable('wind calibration', 'Wind from/toward convention is not currently established.'),
-      helpingHurtingMph: unavailable('wind projection', windReady ? 'Shot-relative projection is intentionally deferred until OCR direction and aim share a validated reference frame.' : 'Validated wind observation is required.'),
-      leftRightMph: unavailable('wind projection', windReady ? 'Shot-relative projection is intentionally deferred until OCR direction and aim share a validated reference frame.' : 'Validated wind observation is required.'),
+      referenceFrame: wind?.referenceFrame && wind.referenceFrame !== 'unknown'
+        ? field(wind.referenceFrame, wind.status, wind.source, wind.note, wind.observedAt)
+        : unavailable('wind observation bridge', 'Wind direction reference frame is not established.'),
+      ocrConfidence: wind?.confidence != null
+        ? field(wind.confidence, wind.status, wind.source, wind.rawText ? `OCR raw: ${wind.rawText}` : wind.note, wind.observedAt)
+        : unavailable('wind OCR', wind ? 'Wind observation did not include OCR confidence.' : 'No HUD OCR observation is connected.'),
+      helpingHurtingMph: windProjection.projection
+        ? field(
+            windProjection.projection.helpingHurtingMph,
+            wind?.status ?? 'UNKNOWN',
+            'wind projection',
+            windProjection.projection.note,
+            wind?.observedAt,
+          )
+        : unavailable('wind projection', windProjection.unavailableReason),
+      leftRightMph: windProjection.projection
+        ? field(
+            windProjection.projection.leftRightMph,
+            wind?.status ?? 'UNKNOWN',
+            'wind projection',
+            windProjection.projection.note,
+            wind?.observedAt,
+          )
+        : unavailable('wind projection', windProjection.unavailableReason),
     },
     tee: {
       selection: teeSelection
@@ -327,8 +351,14 @@ export const assembleLiveShotState = async ({
         ? field(terrainPlane.source, terrainPlane.source === 'lidar-dem' ? 'READY' : 'UNKNOWN', 'Greywolf terrain package')
         : unavailable('Greywolf terrain package', geometryError ?? 'No local terrain sample is available.'),
       windOcr: wind
-        ? field(wind.source, wind.status, wind.source, wind.note, wind.observedAt)
-        : unavailable('wind OCR', 'No recovered OCR observation is connected to LiveShotState yet.'),
+        ? field(
+            wind.source,
+            wind.status,
+            wind.source,
+            [wind.note, wind.rawText ? `raw=${wind.rawText}` : null].filter(Boolean).join(' · ') || undefined,
+            wind.observedAt,
+          )
+        : unavailable('wind OCR', 'No HUD OCR/capture implementation was found on the checked repo branches; the typed observation bridge is ready for a future capture source.'),
     },
     decision: {
       playerProfileId: null,
