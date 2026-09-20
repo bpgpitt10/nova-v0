@@ -17,6 +17,7 @@ import type {
   LiveField,
   LiveShotState,
   LiveStateStatus,
+  TeeSelection,
   WindObservation,
 } from '../liveState/types'
 
@@ -109,6 +110,12 @@ function ValidationChain({
   )
 }
 
+const PACKAGE_SELECTED_TEE: TeeSelection = {
+  label: 'Greywolf package-selected tee',
+  coursePoint: [0, 0],
+  confidence: 'high',
+}
+
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error)
 
 function LiveShotStateDebugPage() {
@@ -116,12 +123,14 @@ function LiveShotStateDebugPage() {
   const windConnectionRef = useRef<GsproWindObservationConnection | null>(null)
   const latestSnapshotRef = useRef<BrowserGsproCourseSnapshot | null>(null)
   const latestWindRef = useRef<WindObservation | null>(null)
+  const teeSelectionRef = useRef<TeeSelection | null>(null)
   const revisionRef = useRef(0)
   const assemblyRequestRef = useRef(0)
   const preShotTrackerRef = useRef(new PreShotStateTracker())
   const [connectionStatus, setConnectionStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [state, setState] = useState<LiveShotState | null>(null)
   const [lastFrozen, setLastFrozen] = useState<PreShotFreezeEvent | null>(null)
+  const [confirmedTee, setConfirmedTee] = useState<TeeSelection | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
 
@@ -134,6 +143,7 @@ function LiveShotStateDebugPage() {
       snapshot,
       revision,
       wind: latestWindRef.current,
+      roundTeeSelection: teeSelectionRef.current,
     })
       .then((next) => {
         if (request !== assemblyRequestRef.current) return
@@ -142,6 +152,23 @@ function LiveShotStateDebugPage() {
       })
       .catch((assemblyError) => setError(`LiveShotState assembly failed: ${errorText(assemblyError)}`))
   }, [])
+
+  const reassembleLatest = useCallback(() => {
+    const snapshot = latestSnapshotRef.current
+    if (snapshot) assembleSnapshot(snapshot)
+  }, [assembleSnapshot])
+
+  const confirmPackageTee = useCallback(() => {
+    teeSelectionRef.current = PACKAGE_SELECTED_TEE
+    setConfirmedTee(PACKAGE_SELECTED_TEE)
+    reassembleLatest()
+  }, [reassembleLatest])
+
+  const clearTeeConfirmation = useCallback(() => {
+    teeSelectionRef.current = null
+    setConfirmedTee(null)
+    reassembleLatest()
+  }, [reassembleLatest])
 
   const stopWatcher = useCallback(() => {
     connectionRef.current?.disconnect()
@@ -269,7 +296,7 @@ function LiveShotStateDebugPage() {
         <p style={{ margin: '8px 0 0', maxWidth: 1050 }}>
           Diagnostic truth surface only. UNKNOWN / UNAVAILABLE values are intentional. This page does not feed or alter Live Caddie recommendations.
         </p>
-        <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
           <button type="button" onClick={() => void chooseFolder()}>Choose / reconnect GSPro folder</button>
           <button type="button" onClick={startWatcher}>Restart watcher</button>
         </div>
@@ -293,6 +320,22 @@ function LiveShotStateDebugPage() {
             <span>assembled: {state.assembledAt}</span>
             <span>tee method: {state.tee.detectionMethod}</span>
           </div>
+
+          <section style={{ marginTop: 14, padding: 12, border: '1px solid #9ca3af', background: '#fff7ed' }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>Shot-1 tee validation</h2>
+            <p style={{ margin: '0 0 10px', maxWidth: 1100 }}>
+              Greywolf currently retains exact local geometry only for the tee selected when the package was built. Confirm it only when GSPro is using that same tee. This never auto-assumes [0,0]; alternate tees remain unresolved until their exact coordinates are retained in the package.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" onClick={confirmPackageTee} disabled={Boolean(confirmedTee)}>
+                Confirm package-selected tee [0,0]
+              </button>
+              <button type="button" onClick={clearTeeConfirmation} disabled={!confirmedTee}>
+                Clear tee confirmation
+              </button>
+              <strong style={mono}>{confirmedTee ? 'CONFIRMED FOR THIS DEV SESSION' : 'NOT CONFIRMED'}</strong>
+            </div>
+          </section>
 
           <ValidationChain
             title="Wind validation chain"
