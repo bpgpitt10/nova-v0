@@ -110,10 +110,18 @@ const normalizeOgcDerivedShotFields = (shot: Shot): Shot => {
     resolvedShot?.faceToTargetSource,
   )
 
+  // Keep the nested open_golf_coach payload intact as OGC provenance, while the
+  // root convenience aliases expose the same authoritative values used elsewhere
+  // in Looper. This prevents display/profile code from silently preferring an OGC
+  // estimate over a measured GSPro/launch-monitor club speed or smash value.
   const openGolfCoach = {
     ...root,
-    ...(typeof clubSpeedOgc === 'number' ? { club_speed_mph: clubSpeedOgc } : {}),
-    ...(typeof smashFactorOgc === 'number' ? { smash_factor: smashFactorOgc } : {}),
+    ...(typeof clubSpeed === 'number'
+      ? { club_speed_mph: clubSpeed, clubSpeedMph: clubSpeed }
+      : {}),
+    ...(typeof smashFactor === 'number'
+      ? { smash_factor: smashFactor, smashFactor }
+      : {}),
     ...(typeof clubPathOgc === 'number' ? { club_path_degrees: clubPathOgc } : {}),
     ...(typeof faceToPathOgc === 'number'
       ? { club_face_to_path_degrees: faceToPathOgc }
