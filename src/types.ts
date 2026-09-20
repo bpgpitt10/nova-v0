@@ -153,6 +153,7 @@ export type SessionMetadata = {
   source?: SessionSource
   feedMode?: 'mock' | 'real'
   includeInAnalysis?: boolean
+  measurementProfile?: string
 }
 
 export type SavedSession = {
