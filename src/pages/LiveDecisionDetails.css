@@ -1,4 +1,6 @@
 .live-decision-details {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   margin-top: 12px;
@@ -11,6 +13,7 @@
 }
 
 .live-decision-details > summary {
+  box-sizing: border-box;
   min-height: 46px;
   display: flex;
   align-items: center;
@@ -59,15 +62,20 @@
 }
 
 .live-decision-details-body {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   display: grid;
 }
 
 .live-decision-table-section {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   padding: 15px 16px 17px;
+  overflow: hidden;
 }
 
 .live-decision-table-section + .live-decision-table-section {
@@ -136,6 +144,8 @@
 }
 
 .live-decision-table-scroll {
+  box-sizing: border-box;
+  display: block;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -152,8 +162,10 @@
   table-layout: auto;
 }
 
+/* The playing shell tops out at 1500px. Keep the full audit table inside that
+   desktop width at 100% browser zoom; narrower screens still get local scroll. */
 .live-club-decision-table {
-  min-width: 1580px;
+  min-width: 1400px;
 }
 
 .live-aim-decision-table {
@@ -162,7 +174,7 @@
 
 .live-decision-table th,
 .live-decision-table td {
-  padding: 9px 10px;
+  padding: 9px 7px;
   border: 0;
   text-align: left;
   white-space: nowrap;
@@ -173,7 +185,7 @@
   color: #819183;
   font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
