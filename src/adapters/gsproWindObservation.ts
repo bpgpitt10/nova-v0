@@ -32,7 +32,9 @@ export type ConnectGsproWindObservationOptions = {
   staleAfterMs?: number
 }
 
-const DEFAULT_STALE_AFTER_MS = 3500
+const HELPER_WIND_URL = 'http://127.0.0.1:8787/wind'
+const HELPER_POLL_INTERVAL_MS = 2500
+const DEFAULT_STALE_AFTER_MS = 7000
 const STALE_CHECK_INTERVAL_MS = 500
 const SOURCE = 'GSPro HUD OCR'
 
@@ -160,6 +162,7 @@ export const connectToGsproWindObservation = ({
   let disconnected = false
   let latest: WindObservation | null = null
   let tauriUnlisten: UnlistenFn | null = null
+  let helperPollInFlight = false
 
   const publish = (payload: GsproWindOcrPayload | null | undefined) => {
     if (disconnected) return
@@ -175,6 +178,9 @@ export const connectToGsproWindObservation = ({
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
   }
 
+  // Keep the event path available for a future fully-native producer. Today the
+  // bundled localhost helper is the production source because it can use the
+  // Windows OCR engine without adding another model/runtime to Looper.
   if (isTauriRuntime()) {
     void listen<GsproWindOcrPayload>(GSPRO_WIND_OCR_TAURI_EVENT, (event) => {
       publish(event.payload)
@@ -186,6 +192,37 @@ export const connectToGsproWindObservation = ({
       }
     }).catch((error) => onError?.(error))
   }
+
+  const pollHelper = async () => {
+    if (disconnected || helperPollInFlight || !isTauriRuntime()) return
+    helperPollInFlight = true
+    try {
+      const response = await fetch(HELPER_WIND_URL, { cache: 'no-store' })
+      if (!response.ok) {
+        publish({
+          status: 'UNAVAILABLE',
+          observedAt: new Date().toISOString(),
+          note: `Wind helper returned HTTP ${response.status}.`,
+        })
+        return
+      }
+      const payload = await response.json() as GsproWindOcrPayload
+      publish(payload)
+    } catch (error) {
+      publish({
+        status: 'UNAVAILABLE',
+        observedAt: new Date().toISOString(),
+        note: `Wind helper is unreachable: ${error instanceof Error ? error.message : String(error)}`,
+      })
+    } finally {
+      helperPollInFlight = false
+    }
+  }
+
+  if (isTauriRuntime()) void pollHelper()
+  const helperPollTimer = typeof window !== 'undefined' && isTauriRuntime()
+    ? window.setInterval(() => void pollHelper(), HELPER_POLL_INTERVAL_MS)
+    : null
 
   const staleTimer = typeof window !== 'undefined'
     ? window.setInterval(() => {
@@ -205,6 +242,7 @@ export const connectToGsproWindObservation = ({
       disconnected = true
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
+        if (helperPollTimer != null) window.clearInterval(helperPollTimer)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
       tauriUnlisten?.()
