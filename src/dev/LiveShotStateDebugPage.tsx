@@ -192,7 +192,8 @@ function LiveShotStateDebugPage() {
     ['Target XYZ', state.game.targetPositionWorld],
     ['Target local yd', state.game.targetPositionLocalYds],
     ['Pin distance yd', state.game.targetDistanceYards],
-    ['Ball→pin bearing°', state.game.aimBearingDegrees],
+    ['Ball→pin local bearing°', state.game.aimBearingDegrees],
+    ['Ball→pin true bearing°', state.game.aimCompassBearingDegrees],
   ] : []
 
   const courseRows: Array<[string, LiveField<unknown>]> = state ? [
