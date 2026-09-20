@@ -32,6 +32,17 @@ const DEFAULT_STALE_AFTER_MS = 7000
 const STALE_CHECK_INTERVAL_MS = 500
 const SOURCE = 'GSPro minimap HUD OCR'
 
+const SURFACE_PATTERNS: Array<[string, RegExp]> = [
+  ['deep rough', /\bDEEP\s+ROUGH\b/],
+  ['fairway', /\bFAIRWAY\b/],
+  ['rough', /\bROUGH\b/],
+  ['green', /\bGREEN\b/],
+  ['fringe', /\bFRINGE\b/],
+  ['sand', /\bSAND\b/],
+  ['bunker', /\bBUNKER\b/],
+  ['tee', /\bTEE\b/],
+]
+
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
@@ -52,20 +63,74 @@ const normalizedSurface = (value: unknown) => {
   return surface || null
 }
 
+const parseSignedAxis = (
+  normalized: string,
+  positive: string,
+  negative: string,
+  layout: 'prefix' | 'suffix',
+): number | null => {
+  const number = '(-?\\d{1,2}(?:[\\.,]\\d+)?)'
+  const unit = '\\s*(?:°|º|DEG(?:REE)?S?|O)?\\s*'
+  const expression = layout === 'prefix'
+    ? new RegExp(`\\b(${positive}|${negative})\\b${unit}${number}`)
+    : new RegExp(`${number}${unit}\\b(${positive}|${negative})\\b`)
+  const match = normalized.match(expression)
+  if (!match) return null
+
+  const label = layout === 'prefix' ? match[1] : match[2]
+  const rawNumber = layout === 'prefix' ? match[2] : match[1]
+  const value = Math.abs(Number(rawNumber.replace(',', '.')))
+  if (!Number.isFinite(value)) return null
+  return label === positive ? value : -value
+}
+
+/**
+ * Windows OCR can flatten the two lie readouts into either
+ * "2.1 UP 0.7 RIGHT" or "UP 2.1 RIGHT 0.7". Parsing each axis independently
+ * is unsafe because the first axis's value can sit immediately beside the
+ * second axis's label. Score the whole row in both layouts and use one layout
+ * consistently for both axes.
+ */
+export const parseGsproLieRawText = (rawText: string) => {
+  const normalized = rawText.toUpperCase().replace(/\s+/g, ' ').trim()
+  const prefix = {
+    upDownDegrees: parseSignedAxis(normalized, 'UP', 'DOWN', 'prefix'),
+    leftRightDegrees: parseSignedAxis(normalized, 'RIGHT', 'LEFT', 'prefix'),
+  }
+  const suffix = {
+    upDownDegrees: parseSignedAxis(normalized, 'UP', 'DOWN', 'suffix'),
+    leftRightDegrees: parseSignedAxis(normalized, 'RIGHT', 'LEFT', 'suffix'),
+  }
+  const prefixScore = Number(prefix.upDownDegrees != null) + Number(prefix.leftRightDegrees != null)
+  const suffixScore = Number(suffix.upDownDegrees != null) + Number(suffix.leftRightDegrees != null)
+  const axes = prefixScore > suffixScore ? prefix : suffix
+  const surface = SURFACE_PATTERNS.find(([, pattern]) => pattern.test(normalized))?.[0] ?? null
+
+  return {
+    surface,
+    upDownDegrees: axes.upDownDegrees,
+    leftRightDegrees: axes.leftRightDegrees,
+  }
+}
+
 export const normalizeGsproLieOcrPayload = (
   payload: GsproLieOcrPayload | null | undefined,
 ): GsproLieObservation => {
   const observedAt = observedAtOrNow(payload?.observedAt)
   const requestedStatus = validStatus(payload?.status) ? payload.status : 'READY'
-  const surface = normalizedSurface(payload?.surface)
-  const upDownDegrees = finite(payload?.upDownDegrees) ? payload!.upDownDegrees! : null
-  const leftRightDegrees = finite(payload?.leftRightDegrees) ? payload!.leftRightDegrees! : null
+  const rawText = typeof payload?.rawText === 'string' ? payload.rawText : null
+  const reparsed = rawText ? parseGsproLieRawText(rawText) : null
+  // Prefer the deterministic client parser when raw OCR text is available. The
+  // helper still parses for diagnostics/candidate scoring, but raw text is the
+  // durable contract and protects the canonical state from helper parser drift.
+  const surface = normalizedSurface(reparsed?.surface ?? payload?.surface)
+  const upDownDegrees = reparsed?.upDownDegrees ?? (finite(payload?.upDownDegrees) ? payload!.upDownDegrees! : null)
+  const leftRightDegrees = reparsed?.leftRightDegrees ?? (finite(payload?.leftRightDegrees) ? payload!.leftRightDegrees! : null)
   const confidence = finite(payload?.confidence)
     && payload!.confidence! >= 0
     && payload!.confidence! <= 1
     ? payload!.confidence!
     : null
-  const rawText = typeof payload?.rawText === 'string' ? payload.rawText : null
   const note = typeof payload?.note === 'string' ? payload.note : undefined
 
   if (requestedStatus === 'UNAVAILABLE' || requestedStatus === 'STALE') {
@@ -92,11 +157,14 @@ export const normalizeGsproLieOcrPayload = (
     leftRightDegrees,
     observedAt,
     source: SOURCE,
-    status: requestedStatus === 'UNKNOWN' || missing.length > 0 ? 'UNKNOWN' : 'READY',
+    status: missing.length > 0 ? 'UNKNOWN' : 'READY',
     confidence,
     rawText,
     note: [
       note,
+      requestedStatus === 'UNKNOWN' && missing.length === 0
+        ? 'Raw OCR text was reparsed successfully by the canonical client parser.'
+        : null,
       missing.length > 0 ? `Incomplete lie OCR observation: missing ${missing.join(', ')}.` : null,
     ].filter(Boolean).join(' ') || undefined,
   }
