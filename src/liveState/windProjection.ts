@@ -21,8 +21,8 @@ const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
  *   degrees increase toward shot-right.
  * - hole-local: 0° is packaged hole-local forward; degrees increase toward
  *   local-right. aimBearingDegrees must use the same convention.
- * - compass: intentionally not projected yet because LiveShotState does not
- *   currently expose a validated compass bearing for the intended shot.
+ * - compass: 0° = true north, 90° = east. shotCompassBearingDegrees must be a
+ *   validated true bearing for the same intended shot.
  *
  * Output signs:
  * - helpingHurtingMph > 0 means tail/helping; < 0 means head/hurting.
@@ -32,6 +32,7 @@ const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
 export const projectWindObservation = (
   wind: WindObservation | null | undefined,
   aimBearingDegrees: number | null,
+  shotCompassBearingDegrees: number | null = null,
 ): WindProjectionResult => {
   if (!wind) {
     return { projection: null, unavailableReason: 'No wind observation is connected.' }
@@ -51,12 +52,6 @@ export const projectWindObservation = (
   if (!wind.referenceFrame || wind.referenceFrame === 'unknown') {
     return { projection: null, unavailableReason: 'Wind direction reference frame is unknown.' }
   }
-  if (wind.referenceFrame === 'compass') {
-    return {
-      projection: null,
-      unavailableReason: 'Compass wind cannot be projected until the intended shot has a validated compass bearing.',
-    }
-  }
 
   // Normalize every observation to the direction the wind is coming FROM.
   const fromDegrees = normalizeDegrees(
@@ -66,7 +61,7 @@ export const projectWindObservation = (
   let relativeFromDegrees: number
   if (wind.referenceFrame === 'shot-relative') {
     relativeFromDegrees = fromDegrees
-  } else {
+  } else if (wind.referenceFrame === 'hole-local') {
     if (aimBearingDegrees == null || !Number.isFinite(aimBearingDegrees)) {
       return {
         projection: null,
@@ -74,6 +69,14 @@ export const projectWindObservation = (
       }
     }
     relativeFromDegrees = normalizeDegrees(fromDegrees - aimBearingDegrees)
+  } else {
+    if (shotCompassBearingDegrees == null || !Number.isFinite(shotCompassBearingDegrees)) {
+      return {
+        projection: null,
+        unavailableReason: 'Compass wind requires a validated true compass bearing for the intended shot.',
+      }
+    }
+    relativeFromDegrees = normalizeDegrees(fromDegrees - shotCompassBearingDegrees)
   }
 
   const radians = relativeFromDegrees * Math.PI / 180
