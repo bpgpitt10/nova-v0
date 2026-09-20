@@ -1,4 +1,5 @@
 import type { Club } from '../lib/bagConfig'
+import { resolveMeasurementProfile } from '../lib/measurementProfiles'
 import type { SavedSession, SessionSource, Shot } from '../types'
 import {
   getAllowedUserRecord,
@@ -144,6 +145,7 @@ export const syncSavedSessionToCloud = async (
         feed_mode: session.metadata?.feedMode ?? null,
         include_in_analysis: session.metadata?.includeInAnalysis !== false,
         schema_version: session.metadata?.schemaVersion ?? 1,
+        measurement_profile: resolveMeasurementProfile(session),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' },
@@ -216,6 +218,7 @@ type CloudSessionRow = {
   feed_mode: string | null
   include_in_analysis: boolean
   schema_version: number
+  measurement_profile: string | null
 }
 
 type CloudShotRow = {
@@ -332,7 +335,7 @@ export const loadSavedSessionsFromCloud = async (): Promise<SavedSession[]> => {
   const sessionRows =
     (await awaitQuery<CloudSessionRow[]>(
       client.from<CloudSessionRow[]>('sessions').select(
-        'id, started_at, ended_at, source, feed_mode, include_in_analysis, schema_version',
+        'id, started_at, ended_at, source, feed_mode, include_in_analysis, schema_version, measurement_profile',
       ),
     )) ?? []
   const shotRows =
@@ -359,6 +362,7 @@ export const loadSavedSessionsFromCloud = async (): Promise<SavedSession[]> => {
         source: nullable(row.source) as SessionSource | undefined,
         feedMode: nullable(row.feed_mode) as 'mock' | 'real' | undefined,
         includeInAnalysis: row.include_in_analysis,
+        measurementProfile: nullable(row.measurement_profile),
       },
     }))
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
