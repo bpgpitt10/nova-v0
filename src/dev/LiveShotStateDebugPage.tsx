@@ -4,11 +4,21 @@ import {
   connectToBrowserGsproCourseState,
   prepareBrowserGsproCourseStateRuntime,
   type BrowserGsproCourseConnection,
+  type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from '../adapters/reliableBrowserGsproCourseState'
+import {
+  connectToGsproWindObservation,
+  type GsproWindObservationConnection,
+} from '../adapters/gsproWindObservation'
 import { assembleLiveShotState } from '../liveState/liveShotStateAssembler'
 import { PreShotStateTracker, type PreShotFreezeEvent } from '../liveState/preShotTracker'
-import type { LiveField, LiveShotState, LiveStateStatus } from '../liveState/types'
+import type {
+  LiveField,
+  LiveShotState,
+  LiveStateStatus,
+  WindObservation,
+} from '../liveState/types'
 
 const mono: React.CSSProperties = {
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -78,6 +88,9 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : S
 
 function LiveShotStateDebugPage() {
   const connectionRef = useRef<BrowserGsproCourseConnection | null>(null)
+  const windConnectionRef = useRef<GsproWindObservationConnection | null>(null)
+  const latestSnapshotRef = useRef<BrowserGsproCourseSnapshot | null>(null)
+  const latestWindRef = useRef<WindObservation | null>(null)
   const revisionRef = useRef(0)
   const assemblyRequestRef = useRef(0)
   const preShotTrackerRef = useRef(new PreShotStateTracker())
@@ -87,41 +100,61 @@ function LiveShotStateDebugPage() {
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
 
-  const stop = useCallback(() => {
+  const assembleSnapshot = useCallback((snapshot: BrowserGsproCourseSnapshot) => {
+    revisionRef.current += 1
+    assemblyRequestRef.current += 1
+    const request = assemblyRequestRef.current
+    const revision = revisionRef.current
+    void assembleLiveShotState({
+      snapshot,
+      revision,
+      wind: latestWindRef.current,
+    })
+      .then((next) => {
+        if (request !== assemblyRequestRef.current) return
+        preShotTrackerRef.current.acceptAssembledState(next, snapshot)
+        setState(next)
+      })
+      .catch((assemblyError) => setError(`LiveShotState assembly failed: ${errorText(assemblyError)}`))
+  }, [])
+
+  const stopWatcher = useCallback(() => {
     connectionRef.current?.disconnect()
     connectionRef.current = null
+    latestSnapshotRef.current = null
   }, [])
 
   const startWatcher = useCallback(() => {
-    stop()
+    stopWatcher()
     preShotTrackerRef.current.reset()
     setError(null)
     connectionRef.current = connectToBrowserGsproCourseState({
       onStatusChange: setConnectionStatus,
       onError: (nextError) => setError(errorText(nextError)),
       onSnapshot: (snapshot) => {
+        latestSnapshotRef.current = snapshot
         setWarnings(snapshot.warnings)
 
         const frozen = preShotTrackerRef.current.observeSnapshot(snapshot)
         if (frozen) setLastFrozen(frozen)
 
-        revisionRef.current += 1
-        assemblyRequestRef.current += 1
-        const request = assemblyRequestRef.current
-        const revision = revisionRef.current
-        void assembleLiveShotState({ snapshot, revision })
-          .then((next) => {
-            if (request !== assemblyRequestRef.current) return
-            preShotTrackerRef.current.acceptAssembledState(next, snapshot)
-            setState(next)
-          })
-          .catch((assemblyError) => setError(`LiveShotState assembly failed: ${errorText(assemblyError)}`))
+        assembleSnapshot(snapshot)
       },
     })
-  }, [stop])
+  }, [assembleSnapshot, stopWatcher])
 
   useEffect(() => {
     let cancelled = false
+
+    windConnectionRef.current = connectToGsproWindObservation({
+      onObservation: (observation) => {
+        latestWindRef.current = observation
+        const snapshot = latestSnapshotRef.current
+        if (snapshot) assembleSnapshot(snapshot)
+      },
+      onError: (windError) => setError(`Wind observation bridge failed: ${errorText(windError)}`),
+    })
+
     void prepareBrowserGsproCourseStateRuntime()
       .then((ready) => {
         if (!cancelled && ready) startWatcher()
@@ -129,11 +162,15 @@ function LiveShotStateDebugPage() {
       .catch((prepareError) => {
         if (!cancelled) setError(errorText(prepareError))
       })
+
     return () => {
       cancelled = true
-      stop()
+      stopWatcher()
+      windConnectionRef.current?.disconnect()
+      windConnectionRef.current = null
+      latestWindRef.current = null
     }
-  }, [startWatcher, stop])
+  }, [assembleSnapshot, startWatcher, stopWatcher])
 
   const chooseFolder = async () => {
     try {
