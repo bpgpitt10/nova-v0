@@ -7,6 +7,7 @@ import {
   type BrowserGsproCourseStatus,
 } from '../adapters/reliableBrowserGsproCourseState'
 import { assembleLiveShotState } from '../liveState/liveShotStateAssembler'
+import { PreShotStateTracker, type PreShotFreezeEvent } from '../liveState/preShotTracker'
 import type { LiveField, LiveShotState, LiveStateStatus } from '../liveState/types'
 
 const mono: React.CSSProperties = {
@@ -79,8 +80,10 @@ function LiveShotStateDebugPage() {
   const connectionRef = useRef<BrowserGsproCourseConnection | null>(null)
   const revisionRef = useRef(0)
   const assemblyRequestRef = useRef(0)
+  const preShotTrackerRef = useRef(new PreShotStateTracker())
   const [connectionStatus, setConnectionStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [state, setState] = useState<LiveShotState | null>(null)
+  const [lastFrozen, setLastFrozen] = useState<PreShotFreezeEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
 
@@ -91,19 +94,26 @@ function LiveShotStateDebugPage() {
 
   const startWatcher = useCallback(() => {
     stop()
+    preShotTrackerRef.current.reset()
     setError(null)
     connectionRef.current = connectToBrowserGsproCourseState({
       onStatusChange: setConnectionStatus,
       onError: (nextError) => setError(errorText(nextError)),
       onSnapshot: (snapshot) => {
         setWarnings(snapshot.warnings)
+
+        const frozen = preShotTrackerRef.current.observeSnapshot(snapshot)
+        if (frozen) setLastFrozen(frozen)
+
         revisionRef.current += 1
         assemblyRequestRef.current += 1
         const request = assemblyRequestRef.current
         const revision = revisionRef.current
         void assembleLiveShotState({ snapshot, revision })
           .then((next) => {
-            if (request === assemblyRequestRef.current) setState(next)
+            if (request !== assemblyRequestRef.current) return
+            preShotTrackerRef.current.acceptAssembledState(next, snapshot)
+            setState(next)
           })
           .catch((assemblyError) => setError(`LiveShotState assembly failed: ${errorText(assemblyError)}`))
       },
@@ -220,6 +230,23 @@ function LiveShotStateDebugPage() {
             <span>assembled: {state.assembledAt}</span>
             <span>tee method: {state.tee.detectionMethod}</span>
           </div>
+
+          <section style={{ marginTop: 14, padding: 12, border: '1px solid #9ca3af', background: '#f3f4f6' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Last automatic pre-shot freeze</h2>
+            {lastFrozen ? (
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', ...mono }}>
+                <span>trigger: {lastFrozen.triggerShotKey}</span>
+                <span>epoch: {lastFrozen.sourceEpoch}</span>
+                <span>frozen: {lastFrozen.frozenAt}</span>
+                <span>state REV: {lastFrozen.state.revision}</span>
+                <span>H{lastFrozen.state.game.hole.value ?? '—'} / shot {lastFrozen.state.game.shotNumber.value ?? '—'}</span>
+                <span>status: {lastFrozen.state.overallStatus}</span>
+              </div>
+            ) : (
+              <p style={{ margin: 0 }}>None yet. A freeze occurs only when a new physical GSPro latestShotKey arrives after this watcher observed the live pre-shot state in the same source epoch.</p>
+            )}
+          </section>
+
           <Section title="GSPro / game" rows={gameRows} />
           <Section title="Greywolf course + terrain" rows={courseRows} />
           <Section title="Wind" rows={windRows} />
