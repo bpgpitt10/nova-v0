@@ -177,6 +177,18 @@ export const assembleLiveShotState = async ({
   const holeNumber = snapshot.holeNumber
   const greywolf = isGreywolf(snapshot.courseKey)
 
+  // The health wrapper can see a newly-created/pre-impact ShotID slightly before
+  // the core watcher accepts it as a completed physical shot. Raw EndingPOS is
+  // trustworthy only when both layers agree on the same latest completed ShotID.
+  const coreLatestShotId = snapshot.latestShot?.shotId ?? null
+  const healthLatestShotId = snapshot.health.roundIdentity?.latestShotId ?? null
+  const ballWorldAligned = Boolean(
+    snapshot.ballWorld
+    && coreLatestShotId
+    && healthLatestShotId
+    && coreLatestShotId === healthLatestShotId,
+  )
+
   let hole: CourseHoleGeometry | null = null
   let geometryError: string | null = null
   if (greywolf && holeNumber != null) {
@@ -263,11 +275,13 @@ export const assembleLiveShotState = async ({
       shotNumber: snapshot.nextShotNumber != null
         ? field(snapshot.nextShotNumber, sourceStatus, 'reliable GSPro course-state watcher', undefined, snapshot.observedAt)
         : unknown('GSPro', 'Next shot number is not established.'),
-      ballPositionWorld: snapshot.ballWorld
+      ballPositionWorld: ballWorldAligned && snapshot.ballWorld
         ? field(snapshot.ballWorld, sourceStatus, 'GSPro currentRound.dat EndingPOS', undefined, snapshot.observedAt)
         : unavailable(
             'GSPro currentRound.dat',
-            'No trustworthy EndingPOS XYZ exists for the current pre-shot state. Cached tee positions never fabricate raw world coordinates.',
+            snapshot.ballWorld
+              ? 'Raw EndingPOS was withheld because the health layer latest ShotID did not match the core watcher latest completed ShotID.'
+              : 'No trustworthy EndingPOS XYZ exists for the current pre-shot state. Cached tee positions never fabricate raw world coordinates.',
           ),
       ballPositionLocalYds: ball
         ? field(
