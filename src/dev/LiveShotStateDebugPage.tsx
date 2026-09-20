@@ -163,6 +163,8 @@ function LiveShotStateDebugPage() {
     ['Wind speed mph', state.wind.speedMph],
     ['Wind direction°', state.wind.directionDegrees],
     ['Direction convention', state.wind.directionConvention],
+    ['Reference frame', state.wind.referenceFrame],
+    ['OCR confidence', state.wind.ocrConfidence],
     ['Helping / hurting mph', state.wind.helpingHurtingMph],
     ['Left / right mph', state.wind.leftRightMph],
   ] : []
