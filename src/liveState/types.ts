@@ -22,14 +22,18 @@ export type TerrainPlane = {
 }
 
 export type WindDirectionConvention = 'from' | 'toward'
+export type WindReferenceFrame = 'shot-relative' | 'hole-local' | 'compass' | 'unknown'
 
 export type WindObservation = {
   speedMph: number | null
   directionDegrees: number | null
   convention: WindDirectionConvention | null
+  referenceFrame: WindReferenceFrame | null
   observedAt: string
   source: string
   status: LiveStateStatus
+  confidence?: number | null
+  rawText?: string | null
   note?: string
 }
 
@@ -69,6 +73,8 @@ export type LiveShotState = {
     speedMph: LiveField<number>
     directionDegrees: LiveField<number>
     directionConvention: LiveField<WindDirectionConvention>
+    referenceFrame: LiveField<WindReferenceFrame>
+    ocrConfidence: LiveField<number>
     helpingHurtingMph: LiveField<number>
     leftRightMph: LiveField<number>
   }
