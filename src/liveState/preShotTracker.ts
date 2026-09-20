@@ -18,7 +18,10 @@ export type PreShotFreezeEvent = FrozenPreShotState & Readonly<{
  *   boundaries from being interpreted as impacts.
  * - STALE assembled states never replace the freeze candidate.
  * - A null -> first real shot key transition is valid only when this tracker
- *   already observed the live null baseline in the same epoch.
+ *   already observed and assembled the corresponding live pre-shot state.
+ * - A new key freezes only when the candidate hole + shot number exactly match
+ *   the newly completed physical shot. This suppresses rollback, mulligan
+ *   deletion, same-ordinal replacement, and stale prior-hole candidates.
  */
 export class PreShotStateTracker {
   private initialized = false
@@ -52,6 +55,29 @@ export class PreShotStateTracker {
     this.candidate = null
     if (!candidate) return null
 
+    const triggerHole = snapshot.latestShot?.holeNumber ?? null
+    const triggerShotNumber = snapshot.latestShot?.holeShot ?? null
+    const candidateHole = candidate.game.hole.value
+    const candidateShotNumber = candidate.game.shotNumber.value
+
+    const candidateMatchesTrigger =
+      triggerHole != null
+      && triggerShotNumber != null
+      && candidateHole === triggerHole
+      && candidateShotNumber === triggerShotNumber
+
+    if (!candidateMatchesTrigger) {
+      console.warn('[LiveShotState] suppressed pre-shot freeze because trigger did not match candidate', {
+        triggerShotKey: nextShotKey,
+        triggerHole,
+        triggerShotNumber,
+        candidateHole,
+        candidateShotNumber,
+        sourceEpoch: nextEpoch,
+      })
+      return null
+    }
+
     const frozen = freezePreShotState(candidate)
     return Object.freeze({
       ...frozen,
@@ -67,9 +93,10 @@ export class PreShotStateTracker {
     if (!this.initialized || this.epoch !== snapshot.health.epoch) return
     if (state.overallStatus === 'STALE' || snapshot.health.integrity === 'stale') return
 
-    // The state must still describe the same pre-shot revision we are tracking.
-    // If a newer physical shot already arrived while async assembly was running,
-    // the caller should discard that assembly before invoking this method.
+    // A candidate can be incomplete (UNKNOWN / UNAVAILABLE) and is still worth
+    // freezing for audit. Missing fields stay missing; they are never promoted
+    // to guessed values. Trigger matching above decides whether it belongs to
+    // the completed physical shot.
     this.candidate = state
   }
 }
