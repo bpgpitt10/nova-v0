@@ -58,6 +58,7 @@ export type LiveShotState = {
     targetPositionLocalYds: LiveField<CoursePointYds>
     targetDistanceYards: LiveField<number>
     aimBearingDegrees: LiveField<number>
+    aimCompassBearingDegrees: LiveField<number>
   }
   course: {
     matchedCoordinate: LiveField<CoursePointYds>
