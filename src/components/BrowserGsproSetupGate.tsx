@@ -28,14 +28,6 @@ type BrowserGsproSetupGateProps = {
 
 const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
 
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean(
-    (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }).__TAURI__ ||
-      (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown })
-        .__TAURI_INTERNALS__,
-  )
-
 const isWindowsBrowser = () =>
   typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
 
@@ -67,9 +59,9 @@ export default function BrowserGsproSetupGate({
   }
 
   useEffect(() => {
-    // The direct-file flow is only for the hosted Windows browser experience.
-    // Tauri keeps its existing local helper path; Mac/other devices remain normal Looper viewers.
-    if (isTauriRuntime() || !isWindowsBrowser()) {
+    // Direct local-file access is a browser capability. Non-Windows viewers can
+    // still use Looper without GSPro; Windows users get the browser folder flow.
+    if (!isWindowsBrowser()) {
       setSetupState('ready')
       return
     }
@@ -79,8 +71,6 @@ export default function BrowserGsproSetupGate({
       return
     }
 
-    // Developer/admin replay hook: useful for inspecting first-time onboarding
-    // without deleting the browser's previously saved folder handle.
     if (new URLSearchParams(window.location.search).get('gsproSetup') === '1') {
       setSetupState('needs-folder')
       return
@@ -91,9 +81,7 @@ export default function BrowserGsproSetupGate({
     const restore = async () => {
       try {
         const handle = await loadGsproDirectoryHandle()
-        if (cancelled) {
-          return
-        }
+        if (cancelled) return
         if (!handle) {
           setSetupState('needs-folder')
           return
@@ -101,9 +89,7 @@ export default function BrowserGsproSetupGate({
 
         setDirectoryHandle(handle)
         const permission = await queryGsproDirectoryPermission(handle, 'readwrite')
-        if (cancelled) {
-          return
-        }
+        if (cancelled) return
 
         if (permission === 'granted') {
           const prepared = await prepareBrowserGsproRuntime()
@@ -123,25 +109,20 @@ export default function BrowserGsproSetupGate({
     }
 
     void restore()
-
     return () => {
       cancelled = true
     }
   }, [])
 
   useEffect(() => {
-    if (setupState !== 'ready' || isTauriRuntime() || !isWindowsBrowser()) {
-      return
-    }
+    if (setupState !== 'ready' || !isWindowsBrowser()) return
 
     let cancelled = false
     let publishBusy = false
     let republishRequested = false
 
     const publishProfiles = async () => {
-      if (cancelled) {
-        return
-      }
+      if (cancelled) return
       if (publishBusy) {
         republishRequested = true
         return
@@ -170,8 +151,6 @@ export default function BrowserGsproSetupGate({
       void publishProfiles()
     }
 
-    // LooperAuthGate finishes cloud bootstrap before this gate renders, so this
-    // initial write materializes the user's current persisted history immediately.
     void publishProfiles()
     window.addEventListener(SESSION_HISTORY_UPDATED_EVENT, onSessionHistoryUpdated)
 
@@ -245,9 +224,7 @@ export default function BrowserGsproSetupGate({
     }
   }
 
-  if (setupState === 'ready') {
-    return children
-  }
+  if (setupState === 'ready') return children
 
   if (setupState === 'checking') {
     return (
@@ -266,9 +243,7 @@ export default function BrowserGsproSetupGate({
         <section className="gspro-setup__card">
           <span className="gspro-setup__eyebrow">Looper setup</span>
           <h1>Use Chrome or Edge for direct GSPro connection</h1>
-          <p>
-            Direct GSPro connection currently requires desktop Chrome or Edge on Windows.
-          </p>
+          <p>Direct GSPro connection currently requires desktop Chrome or Edge on Windows.</p>
           <button type="button" className="gspro-setup__secondary" onClick={() => setSetupState('ready')}>
             Continue without GSPro
           </button>
@@ -291,9 +266,7 @@ export default function BrowserGsproSetupGate({
 
             <div className="gspro-setup__step">
               <strong>1. Copy your GSPro folder location</strong>
-              <p>
-                Windows fills in your own user profile automatically, so you do not need to know or type your Windows username.
-              </p>
+              <p>Windows fills in your own user profile automatically, so you do not need to know or type your Windows username.</p>
               <div className="gspro-setup__path-row">
                 <code>{DEFAULT_GSPRO_PATH}</code>
                 <button type="button" className="gspro-setup__secondary" onClick={() => void copyPath()}>
@@ -307,17 +280,10 @@ export default function BrowserGsproSetupGate({
               <p>
                 Click the button below. In the Windows folder picker, press <strong>Ctrl + L</strong>, paste the copied location, press <strong>Enter</strong>, then choose the <strong>GSPro</strong> folder.
               </p>
-              <p>
-                Looper will automatically check for <strong>GSPro.db</strong>. If the wrong folder is selected, it will not be accepted.
-              </p>
+              <p>Looper will automatically check for <strong>GSPro.db</strong>. If the wrong folder is selected, it will not be accepted.</p>
             </div>
 
-            <button
-              type="button"
-              className="gspro-setup__primary"
-              disabled={busy}
-              onClick={() => void chooseFolder()}
-            >
+            <button type="button" className="gspro-setup__primary" disabled={busy} onClick={() => void chooseFolder()}>
               {busy ? 'Opening…' : 'Choose GSPro folder'}
             </button>
             <button
@@ -341,12 +307,7 @@ export default function BrowserGsproSetupGate({
             <div className="gspro-setup__callout">
               <strong>Important:</strong> after you click below, choose <strong>Allow every time</strong> in Chrome.
             </div>
-            <button
-              type="button"
-              className="gspro-setup__primary"
-              disabled={busy}
-              onClick={() => void restorePermission()}
-            >
+            <button type="button" className="gspro-setup__primary" disabled={busy} onClick={() => void restorePermission()}>
               {busy ? 'Connecting…' : 'Keep GSPro connected'}
             </button>
           </>
@@ -361,12 +322,7 @@ export default function BrowserGsproSetupGate({
             <div className="gspro-setup__callout">
               On a future visit Chrome may ask once more for folder access. If it does, choose <strong>Allow every time</strong> and Looper should reconnect automatically after that.
             </div>
-            <button
-              type="button"
-              className="gspro-setup__primary"
-              disabled={busy}
-              onClick={() => void prepareAndEnterLooper()}
-            >
+            <button type="button" className="gspro-setup__primary" disabled={busy} onClick={() => void prepareAndEnterLooper()}>
               {busy ? 'Starting…' : 'Continue to Looper'}
             </button>
           </>
