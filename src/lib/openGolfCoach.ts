@@ -19,6 +19,7 @@ export type OpenGolfCoachEnricher = {
 
 const OPEN_GOLF_COACH_LOCAL_STORAGE_KEY = 'open-golf-coach-url'
 const OPEN_GOLF_COACH_DEFAULT_URL = 'http://127.0.0.1:8787'
+const OPEN_GOLF_COACH_DEV_PROXY_URL = '/open-golf-coach'
 const ENRICHMENT_LOG_CHANNEL = 'enrichment-pipeline'
 
 const safeLocalStorageGet = (key: string) => {
@@ -30,8 +31,8 @@ const safeLocalStorageGet = (key: string) => {
   }
 }
 
-// The web app never writes native files. Diagnostics stay in the browser
-// console; a separately-run localhost helper may expose its own logs.
+// Looper is a browser application. Diagnostics stay in the browser console;
+// the separately-run localhost service owns any machine-local logging.
 const appendEnrichmentLog = async (
   event: string,
   payload?: Record<string, unknown>,
@@ -44,12 +45,21 @@ const resolveOpenGolfCoachUrl = () => {
   if (envUrl) return { url: envUrl, source: 'env' as const }
 
   const localUrl = safeLocalStorageGet(OPEN_GOLF_COACH_LOCAL_STORAGE_KEY)?.trim()
-  if (localUrl) return { url: localUrl, source: 'localStorage' as const }
+  if (localUrl) {
+    if (
+      import.meta.env.DEV &&
+      localUrl.replace(/\/+$/, '') === OPEN_GOLF_COACH_DEFAULT_URL
+    ) {
+      return { url: OPEN_GOLF_COACH_DEV_PROXY_URL, source: 'localStorage' as const }
+    }
+    return { url: localUrl, source: 'localStorage' as const }
+  }
 
-  // Looper is a browser application. GSPro/local-machine integration is an
-  // independent HTTP service, not a native application shell or sidecar.
   if (typeof window !== 'undefined') {
-    return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'localhost_fallback' as const }
+    return {
+      url: import.meta.env.DEV ? OPEN_GOLF_COACH_DEV_PROXY_URL : OPEN_GOLF_COACH_DEFAULT_URL,
+      source: 'localhost_fallback' as const,
+    }
   }
 
   return { url: undefined, source: 'unresolved' as const }
@@ -156,6 +166,20 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   },
 }
 
+export const resolveHandedOpenGolfCoachValue = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value
+  }
+
+  const handed = value as Record<string, unknown>
+  return handed.right_handed ?? handed.left_handed
+}
+
+const resolveOpenGolfCoachNumber = (value: unknown) => {
+  const resolved = resolveHandedOpenGolfCoachValue(value)
+  return typeof resolved === 'number' && Number.isFinite(resolved) ? resolved : undefined
+}
+
 export const extractOpenGolfCoachDerivedValues = (
   payload: OpenGolfCoachPayload,
 ): OpenGolfCoachDerivedValues => {
@@ -171,6 +195,8 @@ export const extractOpenGolfCoachDerivedValues = (
     !Array.isArray(coach.us_customary_units)
       ? (coach.us_customary_units as Record<string, unknown>)
       : {}
+  const resolvedShotName = resolveHandedOpenGolfCoachValue(coach.shot_name)
+  const resolvedShotRank = resolveHandedOpenGolfCoachValue(coach.shot_rank)
 
   return {
     carry_distance_yards:
@@ -185,10 +211,17 @@ export const extractOpenGolfCoachDerivedValues = (
       typeof customary.offline_distance_yards === 'number'
         ? customary.offline_distance_yards
         : undefined,
-    shot_name: typeof coach.shot_name === 'string' ? coach.shot_name : undefined,
+    club_path_degrees: resolveOpenGolfCoachNumber(coach.club_path_degrees),
+    club_face_to_path_degrees: resolveOpenGolfCoachNumber(
+      coach.club_face_to_path_degrees,
+    ),
+    club_face_to_target_degrees: resolveOpenGolfCoachNumber(
+      coach.club_face_to_target_degrees,
+    ),
+    shot_name: typeof resolvedShotName === 'string' ? resolvedShotName : undefined,
     shot_rank:
-      typeof coach.shot_rank === 'number' || typeof coach.shot_rank === 'string'
-        ? coach.shot_rank
+      typeof resolvedShotRank === 'number' || typeof resolvedShotRank === 'string'
+        ? resolvedShotRank
         : undefined,
   }
 }
