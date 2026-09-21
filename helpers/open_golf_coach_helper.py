@@ -13,7 +13,7 @@ import opengolfcoach
 HOST = os.environ.get("OPEN_GOLF_COACH_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OPEN_GOLF_COACH_PORT", "8787"))
 HELPER_SERVICE_NAME = "open-golf-coach-helper"
-HELPER_HEALTH_VERSION = "3"
+HELPER_HEALTH_VERSION = "4"
 
 WIND_CARDINAL_DEGREES = {
     "N": 0,
@@ -313,25 +313,51 @@ def parse_wind_ocr_text(raw_text: str) -> dict:
     }
 
 
-def _parse_lie_axis(normalized: str, positive: str, negative: str):
+def _parse_lie_axis_prefix(normalized: str, positive: str, negative: str):
     number = r"(-?\d{1,2}(?:[\.,]\d+)?)"
     unit = r"\s*(?:°|DEG(?:REE)?S?)?\s*"
-    suffix = re.search(rf"{number}{unit}\b({positive}|{negative})\b", normalized)
-    if suffix:
-        value = abs(float(suffix.group(1).replace(",", ".")))
-        return value if suffix.group(2) == positive else -value
+    match = re.search(rf"\b({positive}|{negative})\b{unit}{number}", normalized)
+    if not match:
+        return None
+    value = abs(float(match.group(2).replace(",", ".")))
+    return value if match.group(1) == positive else -value
 
-    prefix = re.search(rf"\b({positive}|{negative})\b{unit}{number}", normalized)
-    if prefix:
-        value = abs(float(prefix.group(2).replace(",", ".")))
-        return value if prefix.group(1) == positive else -value
-    return None
+
+def _parse_lie_axis_suffix(normalized: str, positive: str, negative: str):
+    number = r"(-?\d{1,2}(?:[\.,]\d+)?)"
+    unit = r"\s*(?:°|DEG(?:REE)?S?)?\s*"
+    match = re.search(rf"{number}{unit}\b({positive}|{negative})\b", normalized)
+    if not match:
+        return None
+    value = abs(float(match.group(1).replace(",", ".")))
+    return value if match.group(2) == positive else -value
 
 
 def parse_lie_ocr_text(raw_text: str) -> dict:
     normalized = " ".join(raw_text.upper().split())
-    up_down = _parse_lie_axis(normalized, "UP", "DOWN")
-    left_right = _parse_lie_axis(normalized, "RIGHT", "LEFT")
+
+    prefix_up_down = _parse_lie_axis_prefix(normalized, "UP", "DOWN")
+    prefix_left_right = _parse_lie_axis_prefix(normalized, "RIGHT", "LEFT")
+    suffix_up_down = _parse_lie_axis_suffix(normalized, "UP", "DOWN")
+    suffix_left_right = _parse_lie_axis_suffix(normalized, "RIGHT", "LEFT")
+
+    # Windows OCR may flatten the minimap as either label-first
+    # ('UP 2.1 RIGHT 0.7') or value-first ('2.1 UP 0.7 RIGHT'). Parse the two
+    # axes as one layout whenever possible. If each axis independently chose
+    # its first match, the value immediately before RIGHT could incorrectly be
+    # the UP value from a label-first string.
+    if prefix_up_down is not None and prefix_left_right is not None:
+        up_down = prefix_up_down
+        left_right = prefix_left_right
+        layout = "label-first"
+    elif suffix_up_down is not None and suffix_left_right is not None:
+        up_down = suffix_up_down
+        left_right = suffix_left_right
+        layout = "value-first"
+    else:
+        up_down = prefix_up_down if prefix_up_down is not None else suffix_up_down
+        left_right = prefix_left_right if prefix_left_right is not None else suffix_left_right
+        layout = "mixed/partial"
 
     surface = None
     for label, pattern in LIE_SURFACE_PATTERNS:
@@ -355,10 +381,10 @@ def parse_lie_ocr_text(raw_text: str) -> dict:
         "rawText": raw_text,
         "note": (
             "Windows OCR read the GSPro minimap current-lie HUD. Signed convention is "
-            "+UP/-DOWN and +RIGHT/-LEFT exactly as labeled by GSPro. This is kept "
-            "separate from Looper's LiDAR-derived terrain plane."
+            "+UP/-DOWN and +RIGHT/-LEFT exactly as labeled by GSPro. Parsed OCR layout: "
+            f"{layout}. This is kept separate from Looper's LiDAR-derived terrain plane."
             if not missing
-            else f"Minimap lie OCR was incomplete; missing {', '.join(missing)}."
+            else f"Minimap lie OCR was incomplete; missing {', '.join(missing)}. Parsed OCR layout: {layout}."
         ),
     }
 
