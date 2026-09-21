@@ -13,8 +13,13 @@ import {
   type BrowserGsproCourseSnapshot as CoreBrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from './browserGsproCourseState'
+import {
+  parseGsproStartingPosition,
+  type GsproStartingPositionObservation,
+} from './gsproStartingPosition'
 
 export type { BrowserGsproCourseConnection, BrowserGsproCourseShot, BrowserGsproCourseStatus }
+export type { GsproStartingPositionObservation }
 
 export type BrowserGsproSourceState = 'available' | 'missing' | 'invalid'
 
@@ -54,6 +59,7 @@ export type BrowserGsproLiveHealth = {
 
 export type BrowserGsproCourseSnapshot = CoreBrowserGsproCourseSnapshot & {
   ballWorld: BrowserGsproWorldPoint | null
+  preShotStart: GsproStartingPositionObservation | null
   health: BrowserGsproLiveHealth
 }
 
@@ -253,13 +259,33 @@ const healthFingerprint = (health: BrowserGsproLiveHealth) => JSON.stringify({
   restartBoundaryAt: health.restartBoundaryAt,
 })
 
+const matchingPreShotStart = (
+  snapshot: CoreBrowserGsproCourseSnapshot,
+  health: BrowserGsproLiveHealth,
+  observation: GsproStartingPositionObservation | null,
+) => {
+  if (!observation) return null
+  const expectedHole = snapshot.holeNumber
+    ?? health.outputLog.holeNumber
+    ?? health.roundIdentity?.holeNumber
+    ?? null
+  if (
+    expectedHole != null
+    && observation.holeNumber != null
+    && observation.holeNumber !== expectedHole
+  ) return null
+  return observation
+}
+
 const sanitizeSnapshot = (
   snapshot: CoreBrowserGsproCourseSnapshot,
   health: BrowserGsproLiveHealth,
   latestWorldPoint: BrowserGsproWorldPoint | null,
+  startingPosition: GsproStartingPositionObservation | null,
 ): BrowserGsproCourseSnapshot => {
   const warnings = [...snapshot.warnings]
   const identity = health.roundIdentity
+  const preShotStart = matchingPreShotStart(snapshot, health, startingPosition)
 
   if (health.outputLog.fallbackExpired) {
     warnings.push('output_log.txt is unavailable; expired log fallback and using currentRound.dat only.')
@@ -286,6 +312,7 @@ const sanitizeSnapshot = (
       holeNumber: null,
       ballLocalYds: null,
       ballWorld: null,
+      preShotStart: null,
       ballSource: 'unavailable',
       surface: null,
       surfaceSource: 'unavailable',
@@ -303,6 +330,7 @@ const sanitizeSnapshot = (
     && snapshot.holeNumber !== identity.holeNumber
   ) {
     const shotMatchesRoundHole = snapshot.latestShot?.holeNumber === identity.holeNumber
+    const startMatchesRoundHole = preShotStart?.holeNumber === identity.holeNumber
     warnings.push(
       `Ignoring stale output_log hole state; currentRound.dat says Hole ${identity.holeNumber}.`,
     )
@@ -310,7 +338,12 @@ const sanitizeSnapshot = (
       ...snapshot,
       holeNumber: identity.holeNumber,
       ballLocalYds: shotMatchesRoundHole ? snapshot.latestShot?.endLocalYds ?? null : null,
-      ballWorld: shotMatchesRoundHole ? latestWorldPoint : null,
+      ballWorld: shotMatchesRoundHole
+        ? latestWorldPoint
+        : snapshot.nextShotNumber === 1 && startMatchesRoundHole
+          ? preShotStart.world
+          : null,
+      preShotStart: startMatchesRoundHole ? preShotStart : null,
       ballSource: shotMatchesRoundHole && snapshot.latestShot?.endLocalYds ? 'currentRound' : 'unavailable',
       surface: shotMatchesRoundHole ? snapshot.latestShot?.endingSurface ?? null : null,
       surfaceSource: shotMatchesRoundHole && snapshot.latestShot?.endingSurface ? 'currentRound' : 'unavailable',
@@ -320,9 +353,11 @@ const sanitizeSnapshot = (
     }
   }
 
+  const shotOneStartingWorld = snapshot.nextShotNumber === 1 ? preShotStart?.world ?? null : null
   return {
     ...snapshot,
-    ballWorld: snapshot.ballSource === 'currentRound' ? latestWorldPoint : null,
+    ballWorld: snapshot.ballSource === 'currentRound' ? latestWorldPoint : shotOneStartingWorld,
+    preShotStart,
     warnings,
     health,
   }
@@ -343,6 +378,8 @@ export const connectToBrowserGsproCourseState = ({
   let healthHandle = preparedHealthHandle
   let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
   let latestWorldPoint: BrowserGsproWorldPoint | null = null
+  let latestStartingPosition: GsproStartingPositionObservation | null = null
+  let lastStartingPositionKey: string | null = null
   let lastHealthFingerprint = healthFingerprint(health)
   let epoch = 1
   let epochReason = 'connection-start'
@@ -354,7 +391,12 @@ export const connectToBrowserGsproCourseState = ({
 
   const emit = () => {
     if (disconnected || !lastCoreSnapshot) return
-    onSnapshot(sanitizeSnapshot(lastCoreSnapshot, health, latestWorldPoint))
+    onSnapshot(sanitizeSnapshot(
+      lastCoreSnapshot,
+      health,
+      latestWorldPoint,
+      latestStartingPosition,
+    ))
   }
 
   const advanceEpoch = (reason: string, now: number) => {
@@ -376,10 +418,12 @@ export const connectToBrowserGsproCourseState = ({
 
     let roundIdentity: RoundIdentity | null = null
     let roundState: BrowserGsproSourceState = roundFile ? 'available' : 'missing'
+    let roundText: string | null = null
     latestWorldPoint = null
+    latestStartingPosition = null
     if (roundFile) {
       try {
-        const roundText = await roundFile.text()
+        roundText = await roundFile.text()
         roundIdentity = parseRoundIdentity(roundText)
         latestWorldPoint = parseLatestWorldPoint(roundText)
       } catch {
@@ -394,6 +438,29 @@ export const connectToBrowserGsproCourseState = ({
         logHole = parseOutputLogHole(await outputLogTail(logFile))
       } catch {
         logState = 'invalid'
+      }
+    }
+
+    if (roundText) {
+      latestStartingPosition = parseGsproStartingPosition(
+        roundText,
+        logHole ?? roundIdentity?.holeNumber ?? null,
+      )
+      if (
+        latestStartingPosition
+        && latestStartingPosition.recordKey !== lastStartingPositionKey
+      ) {
+        lastStartingPositionKey = latestStartingPosition.recordKey
+        console.info('[GSPro Live] pre-shot StartingPOS captured', {
+          holeNumber: latestStartingPosition.holeNumber,
+          shotNumber: latestStartingPosition.shotNumber,
+          world: latestStartingPosition.world,
+          distanceToPinYds: latestStartingPosition.distanceToPinYds,
+          surface: latestStartingPosition.surface,
+          roundId: latestStartingPosition.roundId,
+          courseKey: latestStartingPosition.courseKey,
+          recordKey: latestStartingPosition.recordKey,
+        })
       }
     }
 
