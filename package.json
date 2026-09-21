@@ -4,24 +4,16 @@
   "version": "0.9.0",
   "type": "module",
   "scripts": {
+    "architecture:check": "node tools/check-web-only-architecture.mjs",
     "courses:audit-runtime": "node tools/audit-course-runtime-contract.mjs",
     "courses:generate-registration": "node tools/generate-course-registration-index.mjs",
     "courses:validate-promotions": "node tools/check-course-promotions.mjs",
-    "dev": "npm run courses:generate-registration && vite",
-    "build": "npm run courses:validate-promotions && npm run courses:generate-registration && tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:local": "npm run simread:prepare-resources:windows && tauri build --config src-tauri/tauri.local.conf.json",
-    "beta:windows": "powershell -ExecutionPolicy Bypass -File helpers/build_beta_windows_release.ps1",
-    "simread:prepare-resources:windows": "powershell -ExecutionPolicy Bypass -File helpers/prepare_simread_resources_windows.ps1",
-    "helper:build:mac": "bash helpers/build_open_golf_coach_sidecar_macos.sh",
-    "helper:build:windows": "powershell -ExecutionPolicy Bypass -File helpers/build_open_golf_coach_sidecar_windows.ps1"
+    "dev": "npm run architecture:check && npm run courses:generate-registration && vite",
+    "build": "npm run architecture:check && npm run courses:validate-promotions && npm run courses:generate-registration && tsc -b && vite build",
+    "lint": "npm run architecture:check && eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "react": "^19.2.4",
@@ -29,7 +21,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@tauri-apps/cli": "^2.0.0",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
