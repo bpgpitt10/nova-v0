@@ -35,6 +35,12 @@ type CandidateRecord = {
   DistanceToPin?: unknown
 }
 
+type Candidate = {
+  record: CandidateRecord
+  currentShot: boolean
+  order: number
+}
+
 const METERS_TO_YARDS = 1.0936132983377078
 
 const asNumber = (value: unknown): number | null => {
@@ -74,26 +80,28 @@ const asRecord = (value: unknown): CandidateRecord | null =>
     ? value as CandidateRecord
     : null
 
-const parseCandidates = (text: string): CandidateRecord[] => {
+const parseCandidates = (text: string): Candidate[] => {
   const parsed = JSON.parse(text) as unknown
   if (Array.isArray(parsed)) {
-    return parsed.flatMap((value) => {
+    return parsed.flatMap((value, order) => {
       const record = asRecord(value)
-      return record ? [record] : []
+      return record ? [{ record, currentShot: false, order }] : []
     })
   }
   if (!parsed || typeof parsed !== 'object') return []
 
   const root = parsed as Record<string, unknown>
-  const ordered: CandidateRecord[] = []
+  const ordered: Candidate[] = []
   const currentShot = asRecord(root.CurrentShot ?? root.currentShot)
-  if (currentShot) ordered.push(currentShot)
+  if (currentShot) ordered.push({ record: currentShot, currentShot: true, order: -1 })
 
+  let order = 0
   for (const value of Object.values(root)) {
     if (!Array.isArray(value)) continue
     for (const item of value) {
       const record = asRecord(item)
-      if (record) ordered.push(record)
+      if (record) ordered.push({ record, currentShot: false, order })
+      order += 1
     }
   }
   return ordered
@@ -114,15 +122,16 @@ export const parseGsproStartingPosition = (
   expectedHoleNumber: number | null = null,
 ): GsproStartingPositionObservation | null => {
   const candidates = parseCandidates(text)
-    .map((record, index) => ({ record, index, world: worldPoint(record.StartingPOS) }))
-    .filter((item): item is { record: CandidateRecord; index: number; world: GsproStartingWorldPoint } => item.world != null)
+    .map((candidate) => ({ ...candidate, world: worldPoint(candidate.record.StartingPOS) }))
+    .filter((item): item is Candidate & { world: GsproStartingWorldPoint } => item.world != null)
     .filter((item) => expectedHoleNumber == null || holeNumberFor(item.record) === expectedHoleNumber)
 
   if (candidates.length === 0) return null
 
   candidates.sort((left, right) => {
+    if (left.currentShot !== right.currentShot) return left.currentShot ? -1 : 1
     const byShot = sortValue(right.record) - sortValue(left.record)
-    return byShot !== 0 ? byShot : left.index - right.index
+    return byShot !== 0 ? byShot : left.order - right.order
   })
 
   const selected = candidates[0]
