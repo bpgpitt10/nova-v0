@@ -1,5 +1,6 @@
 import { confidenceConfig } from './confidenceConfig'
 import type { Club } from './bagConfig'
+import { isShotMeasurementEraEligible } from './measurementProfiles'
 import { MISHIT_PLANNING_INPUTS } from './mishitPlanningInputs'
 import { isShotMishitPlanningEligible } from './mishitPlanningPopulation'
 import type { SavedSession, Shot } from '../types'
@@ -37,7 +38,7 @@ export const sizeWeightForShotCount = (
 
 /**
  * Source/manual truth only. This intentionally does not know about derived
- * mishit classification.
+ * mishit classification or measurement-era rollover.
  */
 export const isShotSourceIncluded = (shot: Pick<Shot, 'included'>) =>
   shot.included !== false
@@ -45,14 +46,18 @@ export const isShotSourceIncluded = (shot: Pick<Shot, 'included'>) =>
 /**
  * Planning truth used by Looper calculations.
  *
- * Source-excluded shots are always out. When the planning-filter policy is on,
- * machine-classified mishit/severe_mishit shots are also out. Unknown and
- * unclassified shots stay in so cold start remains conservative.
+ * Source-excluded shots are always out. Once a club + variant has 8 shots from
+ * its newest real measurement profile, shots from older measurement profiles
+ * also stop contributing to planning calculations. When the planning-filter
+ * policy is on, machine-classified mishit/severe_mishit shots are additionally
+ * excluded. Unknown and unclassified mishits stay in so cold start remains
+ * conservative.
  */
 export const isShotIncludedInAnalysis = (
   shot: Pick<Shot, 'id' | 'included'>,
 ) =>
   isShotSourceIncluded(shot) &&
+  isShotMeasurementEraEligible(shot.id) &&
   (!MISHIT_PLANNING_INPUTS.filterPlanningCalculations ||
     isShotMishitPlanningEligible(shot.id))
 
