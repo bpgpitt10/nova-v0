@@ -19,12 +19,10 @@ export type OpenGolfCoachEnricher = {
 
 const OPEN_GOLF_COACH_LOCAL_STORAGE_KEY = 'open-golf-coach-url'
 const OPEN_GOLF_COACH_DEFAULT_URL = 'http://127.0.0.1:8787'
-const ENRICHMENT_LOG_FILE_CHANNEL = 'enrichment-pipeline'
+const ENRICHMENT_LOG_CHANNEL = 'enrichment-pipeline'
 
 const safeLocalStorageGet = (key: string) => {
-  if (typeof window === 'undefined') {
-    return null
-  }
+  if (typeof window === 'undefined') return null
   try {
     return window.localStorage.getItem(key)
   } catch {
@@ -32,55 +30,26 @@ const safeLocalStorageGet = (key: string) => {
   }
 }
 
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
-
-const appendEnrichmentLog = async (event: string, payload?: Record<string, unknown>) => {
-  const line = JSON.stringify({
-    ts: new Date().toISOString(),
-    channel: ENRICHMENT_LOG_FILE_CHANNEL,
-    event,
-    payload: payload ?? {},
-  })
-
-  console.info(`[OpenGolfCoach][${event}]`, payload ?? {})
-
-  if (!isTauriRuntime()) {
-    return
-  }
-
-  try {
-    const invoke = (window as any).__TAURI_INTERNALS__?.invoke
-    if (typeof invoke === 'function') {
-      await invoke('append_enrichment_log', { line })
-    }
-  } catch (error) {
-    console.error('[OpenGolfCoach] failed to append enrichment log', error)
-  }
+// The web app never writes native files. Diagnostics stay in the browser
+// console; a separately-run localhost helper may expose its own logs.
+const appendEnrichmentLog = async (
+  event: string,
+  payload?: Record<string, unknown>,
+) => {
+  console.info(`[OpenGolfCoach][${ENRICHMENT_LOG_CHANNEL}][${event}]`, payload ?? {})
 }
 
 const resolveOpenGolfCoachUrl = () => {
   const envUrl = (import.meta.env.VITE_OPEN_GOLF_COACH_URL as string | undefined)?.trim()
-  if (envUrl) {
-    return { url: envUrl, source: 'env' as const }
-  }
+  if (envUrl) return { url: envUrl, source: 'env' as const }
 
   const localUrl = safeLocalStorageGet(OPEN_GOLF_COACH_LOCAL_STORAGE_KEY)?.trim()
-  if (localUrl) {
-    return { url: localUrl, source: 'localStorage' as const }
-  }
+  if (localUrl) return { url: localUrl, source: 'localStorage' as const }
 
-  const isDesktop = isTauriRuntime()
-  if (isDesktop) {
-    return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'tauri_fallback' as const }
-  }
-
+  // Looper is a browser application. GSPro/local-machine integration is an
+  // independent HTTP service, not a native application shell or sidecar.
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname
-    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
-      return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'localhost_fallback' as const }
-    }
+    return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'localhost_fallback' as const }
   }
 
   return { url: undefined, source: 'unresolved' as const }
@@ -88,10 +57,6 @@ const resolveOpenGolfCoachUrl = () => {
 
 export const isOpenGolfCoachConfigured = Boolean(resolveOpenGolfCoachUrl().url)
 
-// Placeholder enrichment boundary.
-// Nova remains the raw live-shot source.
-// OpenGolfCoach is intended to consume normalized launch/spin inputs and return
-// derived values like carry, total, offline, shot name, and shot rank.
 export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
   async enrichShot(input) {
     const resolved = resolveOpenGolfCoachUrl()
@@ -102,17 +67,11 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       source: resolved.source,
       input,
     })
-    console.info('[OpenGolfCoach] enrichment request started', {
-      helperUrl: openGolfCoachUrl ?? 'unresolved',
-      source: resolved.source,
-    })
-    console.info('[OpenGolfCoach] enrichment request payload', input)
 
     if (!openGolfCoachUrl) {
       void appendEnrichmentLog('enrichment_skipped_not_configured', {
         source: resolved.source,
       })
-      console.warn('[OpenGolfCoach] enrichment skipped: helper URL missing')
       return {
         derivedValues: {},
         payload: null,
@@ -122,35 +81,21 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
 
     try {
       const deriveUrl = `${openGolfCoachUrl}/derive`
-      void appendEnrichmentLog('derive_request_send', {
-        url: deriveUrl,
-        input,
-      })
+      void appendEnrichmentLog('derive_request_send', { url: deriveUrl, input })
 
       const response = await fetch(deriveUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
 
-      console.info('[OpenGolfCoach] enrichment response status', response.status)
       void appendEnrichmentLog('derive_response_status', {
-        status: response.status,
-        ok: response.ok,
-      })
-      void appendEnrichmentLog('enrichment_response_status', {
         status: response.status,
         ok: response.ok,
       })
 
       if (!response.ok) {
         void appendEnrichmentLog('enrichment_failure_http', {
-          status: response.status,
-          statusText: response.statusText,
-        })
-        console.error('[OpenGolfCoach] enrichment failed: helper returned non-OK', {
           status: response.status,
           statusText: response.statusText,
         })
@@ -162,26 +107,13 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
       }
 
       const rawResponseText = await response.text()
-      console.info('[OpenGolfCoach] enrichment raw response body', rawResponseText)
-      void appendEnrichmentLog('enrichment_raw_response', {
-        rawResponseText,
-      })
-
       let payload: unknown = null
+
       try {
         payload = rawResponseText ? JSON.parse(rawResponseText) : {}
       } catch (parseError) {
-        void appendEnrichmentLog('derive_response_parse_failure', {
-          rawResponseText,
-          parseError: parseError instanceof Error ? parseError.message : String(parseError),
-        })
         void appendEnrichmentLog('enrichment_failure_parse', {
-          rawResponseText,
           parseError: parseError instanceof Error ? parseError.message : String(parseError),
-        })
-        console.error('[OpenGolfCoach] enrichment failed: response JSON parse error', {
-          parseError,
-          rawResponseText,
         })
         return {
           derivedValues: {},
@@ -189,19 +121,11 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
           status: 'failure',
         }
       }
-      console.info('[OpenGolfCoach] enrichment success payload received')
-      void appendEnrichmentLog('derive_response_parse_success', {
-        payloadKeys:
-          payload && typeof payload === 'object' && !Array.isArray(payload)
-            ? Object.keys(payload as Record<string, unknown>)
-            : [],
-      })
 
       if (!payload || typeof payload !== 'object') {
         void appendEnrichmentLog('enrichment_failure_payload_shape', {
           payloadType: typeof payload,
         })
-        console.error('[OpenGolfCoach] enrichment failed: response payload invalid')
         return {
           derivedValues: {},
           payload: null,
@@ -209,23 +133,20 @@ export const openGolfCoachEnricher: OpenGolfCoachEnricher = {
         }
       }
 
-      void appendEnrichmentLog('enrichment_success', {
-        derivedValues: extractOpenGolfCoachDerivedValues(payload as OpenGolfCoachPayload),
-      })
+      const typedPayload = payload as OpenGolfCoachPayload
+      const derivedValues = extractOpenGolfCoachDerivedValues(typedPayload)
+      void appendEnrichmentLog('enrichment_success', { derivedValues })
+
       return {
-        derivedValues: extractOpenGolfCoachDerivedValues(payload as OpenGolfCoachPayload),
-        payload: payload as OpenGolfCoachPayload,
+        derivedValues,
+        payload: typedPayload,
         status: 'success',
       }
     } catch (error) {
-      void appendEnrichmentLog('derive_fetch_failure', {
+      void appendEnrichmentLog('enrichment_failure_fetch', {
         helperUrl: openGolfCoachUrl,
         error: error instanceof Error ? error.message : String(error),
       })
-      void appendEnrichmentLog('enrichment_failure_fetch', {
-        error: error instanceof Error ? error.message : String(error),
-      })
-      console.error('[OpenGolfCoach] enrichment failure with error', error)
       return {
         derivedValues: {},
         payload: null,
@@ -288,5 +209,7 @@ export const buildOpenGolfCoachInput = (
 export const hasOpenGolfCoachInput = (input: OpenGolfCoachInput) =>
   Object.values(input).some((value) => typeof value === 'number')
 
-export const logOpenGolfCoachPipeline = (event: string, payload?: Record<string, unknown>) =>
-  void appendEnrichmentLog(event, payload)
+export const logOpenGolfCoachPipeline = (
+  event: string,
+  payload?: Record<string, unknown>,
+) => void appendEnrichmentLog(event, payload)
