@@ -29,8 +29,7 @@ import {
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
-import { checkForLooperUpdate } from './lib/updater.ts'
-import type { Update } from '@tauri-apps/plugin-updater'
+import { checkForLooperUpdate, type LooperUpdate } from './lib/updater.ts'
 
 type UpdateStatus =
   | 'idle'
@@ -73,7 +72,7 @@ function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
-  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
+  const [availableUpdate, setAvailableUpdate] = useState<LooperUpdate | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
 
   const checkForUpdates = useCallback(async () => {
