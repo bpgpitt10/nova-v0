@@ -1,5 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
-
 export type SimReadHelperStartResult = {
   ok: boolean
   status: 'already_running' | 'started' | 'failed'
@@ -10,18 +8,39 @@ export type SimReadHelperStartResult = {
   detail?: string
 }
 
-export const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
+const DEFAULT_SIMREAD_HEALTH_URL = 'http://127.0.0.1:8788/health'
 
+const resolveHealthUrl = () =>
+  (import.meta.env.VITE_SIMREAD_HEALTH_URL as string | undefined)?.trim()
+  || DEFAULT_SIMREAD_HEALTH_URL
+
+// Retained for caller compatibility: a browser cannot spawn local processes.
+// This now verifies the independently-run localhost service instead.
 export const startSimReadHelper = async (): Promise<SimReadHelperStartResult> => {
-  if (!isTauriRuntime()) {
+  const healthUrl = resolveHealthUrl()
+  try {
+    const response = await fetch(healthUrl, { cache: 'no-store' })
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: 'failed',
+        message: `SimRead local service returned HTTP ${response.status}. Start the local service separately and retry.`,
+        detail: healthUrl,
+      }
+    }
+
     return {
       ok: true,
       status: 'already_running',
-      message: 'Running outside Tauri; assuming the dev SimRead server is managed separately.',
+      message: 'SimRead local service is reachable.',
+      detail: healthUrl,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'failed',
+      message: 'SimRead local service is not reachable. Start it separately; the Looper web app does not launch local executables.',
+      detail: error instanceof Error ? error.message : String(error),
     }
   }
-
-  return invoke<SimReadHelperStartResult>('start_simread_helper')
 }
