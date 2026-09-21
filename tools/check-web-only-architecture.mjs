@@ -7,14 +7,18 @@ const violations = []
 const fail = (message) => violations.push(message)
 const rel = (p) => path.relative(root, p).replaceAll('\\', '/')
 
-// Hard path bans: these are native-shell artifacts, not web-app infrastructure.
+// Hard path bans: these are desktop-shell/bundling artifacts, not web-app infrastructure.
 const forbiddenPaths = [
   'src-tauri',
+  'helpers/.venv-open-golf-coach-sidecar-mac',
+  'helpers/build_beta_windows_release.ps1',
   'helpers/build_open_golf_coach_sidecar_windows.ps1',
+  'helpers/build_open_golf_coach_sidecar_macos.sh',
   'helpers/build_open_golf_coach_sidecar_mac.sh',
   'helpers/build_open_golf_coach_sidecar_mac_universal.sh',
   'helpers/build_open_golf_coach_sidecar_mac_cross.sh',
   'helpers/prepare_open_golf_coach_resources.ps1',
+  'helpers/prepare_simread_resources_windows.ps1',
 ]
 
 for (const forbidden of forbiddenPaths) {
@@ -23,9 +27,6 @@ for (const forbidden of forbiddenPaths) {
   }
 }
 
-// package.json is the authoritative runtime/dependency surface. Lockfiles are
-// intentionally not scanned for strings because removed packages can remain as
-// historical lock metadata until the next dependency regeneration.
 const packagePath = path.join(root, 'package.json')
 if (fs.existsSync(packagePath)) {
   const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
@@ -65,6 +66,7 @@ const forbiddenContent = [
   { label: '@tauri-apps import/package', re: /@tauri-apps\//i },
   { label: 'Tauri global/runtime', re: /__TAURI__|isTauri|tauri::|tauri_plugin/i },
   { label: 'Tauri source path', re: /src-tauri/i },
+  { label: 'Tauri CLI/runtime reference', re: /\btauri:(?:dev|build)\b|\btauri\s+(?:dev|build)\b/i },
   { label: 'Electron runtime', re: /(?:from\s+['"]electron['"]|require\(['"]electron['"]\)|electron\.app|electron\.ipc)/i },
 ]
 
@@ -100,7 +102,7 @@ for (const file of configFiles) {
 if (violations.length > 0) {
   console.error('\nWEB-ONLY ARCHITECTURE CHECK FAILED\n')
   for (const violation of [...new Set(violations)].sort()) console.error(`- ${violation}`)
-  console.error('\nLooper is a browser web app. Use a separately-run localhost HTTP/WebSocket service for Windows/GSPro integration; do not add a native desktop shell.\n')
+  console.error('\nLooper is a browser web app. Use a separately-run localhost HTTP/WebSocket/SSE service for Windows/GSPro integration; do not add a native desktop shell.\n')
   process.exit(1)
 }
 
