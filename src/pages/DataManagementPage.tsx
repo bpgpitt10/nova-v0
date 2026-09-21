@@ -659,7 +659,7 @@ function DataManagementPage() {
     )
     setSelectedShotKeys((current) => {
       const next = new Set(current)
-      next.delete(shotSelectionKey(sessionId, shot.id))
+      next.delete(shotSelectionKey(sessionId, shotId))
       return next
     })
   }

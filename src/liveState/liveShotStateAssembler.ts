@@ -26,7 +26,7 @@ export type AssembleLiveShotStateInput = {
   roundTeeSelection?: TeeSelection | null
 }
 
-const field = <T>(
+const field = <T = string>(
   value: T | null,
   status: LiveStateStatus,
   source: string | null,
