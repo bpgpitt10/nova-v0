@@ -1,0 +1,81 @@
+name: Live Shot State OCR CI
+
+on:
+  push:
+    branches:
+      - live-shot-state-gspro-ocr-v1
+  pull_request:
+    branches:
+      - live-shot-state-greywolf-v0
+    paths:
+      - 'helpers/open_golf_coach_helper.py'
+      - 'helpers/build_open_golf_coach_sidecar_windows.ps1'
+      - 'src/adapters/gsproWindObservation.ts'
+      - 'src/adapters/gsproLieObservation.ts'
+      - 'src/liveState/**'
+      - 'src/dev/LiveShotStateDebugPage.tsx'
+      - 'tests/test_gspro_hud_ocr.py'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/live-shot-state-ocr-ci.yml'
+
+jobs:
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+  hud-parser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install helper dependency
+        run: python -m pip install opengolfcoach
+
+      - name: Run HUD OCR parser tests
+        run: python -m unittest discover -s tests -p 'test_gspro_hud_ocr.py' -v
+
+      - name: Compile helper
+        run: python -m py_compile helpers/open_golf_coach_helper.py
+
+  windows-helper-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build Windows helper sidecar
+        shell: powershell
+        run: ./helpers/build_open_golf_coach_sidecar_windows.ps1
+
+      - name: Upload Windows helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-golf-coach-helper-windows
+          path: src-tauri/binaries/open-golf-coach-helper-x86_64-pc-windows-msvc.exe
+          if-no-files-found: error
