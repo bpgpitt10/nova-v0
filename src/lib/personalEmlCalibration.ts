@@ -71,5 +71,28 @@ export const installPersonalEmlCalibrationState = (sessions: SavedSession[]) => 
   return installedExcludedPreEmlShotIds
 }
 
+/**
+ * Applies the one-time migration to the working session copy. The old shots are
+ * not deleted; they remain in history but are marked out of analysis once the
+ * same club has 8 post-cutover EML shots. This makes every existing Stock/Pure
+ * code path respect the cutover without teaching the app a permanent migration
+ * feature.
+ */
+export const applyPersonalEmlCalibration = (sessions: SavedSession[]) => {
+  const excludedShotIds = installPersonalEmlCalibrationState(sessions)
+  if (excludedShotIds.size === 0) {
+    return sessions
+  }
+
+  return sessions.map((session) => ({
+    ...session,
+    shots: session.shots.map((shot) =>
+      excludedShotIds.has(shot.id) && shot.included
+        ? { ...shot, included: false }
+        : shot,
+    ),
+  }))
+}
+
 export const isShotPersonalEmlCalibrationEligible = (shotId: string) =>
   !installedExcludedPreEmlShotIds.has(shotId)
