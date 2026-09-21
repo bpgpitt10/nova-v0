@@ -10,6 +10,7 @@ import type {
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type {
+  GsproLieObservation,
   LiveField,
   LiveShotState,
   LiveStateStatus,
@@ -23,10 +24,11 @@ export type AssembleLiveShotStateInput = {
   snapshot: BrowserGsproCourseSnapshot
   revision: number
   wind?: WindObservation | null
+  lie?: GsproLieObservation | null
   roundTeeSelection?: TeeSelection | null
 }
 
-const field = <T = string>(
+const field = <T>(
   value: T | null,
   status: LiveStateStatus,
   source: string | null,
@@ -155,6 +157,7 @@ export const assembleLiveShotState = async ({
   snapshot,
   revision,
   wind = null,
+  lie = null,
   roundTeeSelection = null,
 }: AssembleLiveShotStateInput): Promise<LiveShotState> => {
   const assembledAtMs = Date.now()
@@ -238,6 +241,21 @@ export const assembleLiveShotState = async ({
     && wind.referenceFrame !== 'unknown'
     && windProjection.projection != null
 
+  const lieObservedAtMs = lie ? Date.parse(lie.observedAt) : Number.NaN
+  const lieAgeMs = Number.isFinite(lieObservedAtMs)
+    ? Math.max(0, assembledAtMs - lieObservedAtMs)
+    : null
+  const lieReady = lie?.status === 'READY'
+    && lie.upDownDegrees != null
+    && lie.leftRightDegrees != null
+  const lieSurfaceTrusted = Boolean(
+    lie?.surface
+    && (lie.status === 'READY' || lie.status === 'STALE'),
+  )
+  const surfaceMismatchNote = lie?.surface && snapshot.surface && lie.surface !== snapshot.surface
+    ? `HUD current lie (${lie.surface}) differs from currentRound surface (${snapshot.surface}); the HUD is the current pre-shot display.`
+    : lie?.note
+
   const teeDetectionMethod: LiveShotState['tee']['detectionMethod'] = teeSelection?.coursePoint
     ? 'round-selection'
     : 'unknown'
@@ -253,11 +271,11 @@ export const assembleLiveShotState = async ({
   )
 
   const overallStatus: LiveStateStatus =
-    sourceStatus === 'STALE'
+    sourceStatus === 'STALE' || wind?.status === 'STALE' || lie?.status === 'STALE'
       ? 'STALE'
       : !coreCourseReady
         ? 'UNKNOWN'
-        : !windReady
+        : !lieReady || !windReady
           ? 'UNAVAILABLE'
           : 'READY'
 
@@ -299,9 +317,33 @@ export const assembleLiveShotState = async ({
               ? 'GSPro has not exposed a physical shot-1 position and no exact tee selection is established. Cached [0,0] is deliberately blocked from course calculations.'
               : 'No trustworthy current ball coordinate is available.',
           ),
-      startingSurface: snapshot.surface
-        ? field(snapshot.surface, sourceStatus, `GSPro ${snapshot.surfaceSource}`, undefined, snapshot.observedAt)
-        : unknown('GSPro', 'Starting surface is not currently observed.'),
+      startingSurface: lieSurfaceTrusted && lie?.surface
+        ? field(lie.surface, lie.status, lie.source, surfaceMismatchNote, lie.observedAt, lieAgeMs)
+        : snapshot.surface
+          ? field(snapshot.surface, sourceStatus, `GSPro ${snapshot.surfaceSource}`, undefined, snapshot.observedAt)
+          : lie?.surface
+            ? field(lie.surface, lie.status, lie.source, lie.note, lie.observedAt, lieAgeMs)
+            : unknown('GSPro', 'Starting surface is not currently observed.'),
+      gsproLieUpDownDegrees: lie?.upDownDegrees != null
+        ? field(
+            lie.upDownDegrees,
+            lie.status,
+            lie.source,
+            [lie.note, 'Signed GSPro HUD convention: +UP / -DOWN.'].filter(Boolean).join(' '),
+            lie.observedAt,
+            lieAgeMs,
+          )
+        : unavailable('GSPro minimap HUD OCR', 'Current GSPro up/down lie angle is not observed.'),
+      gsproLieLeftRightDegrees: lie?.leftRightDegrees != null
+        ? field(
+            lie.leftRightDegrees,
+            lie.status,
+            lie.source,
+            [lie.note, 'Signed GSPro HUD convention: +RIGHT / -LEFT.'].filter(Boolean).join(' '),
+            lie.observedAt,
+            lieAgeMs,
+          )
+        : unavailable('GSPro minimap HUD OCR', 'Current GSPro left/right lie angle is not observed.'),
       targetPositionWorld: unavailable('GSPro', 'Raw target/pin XYZ is not exposed by the current browser snapshot contract.'),
       targetPositionLocalYds: target
         ? field(target, 'READY', 'Greywolf course package')
@@ -423,6 +465,16 @@ export const assembleLiveShotState = async ({
             windAgeMs,
           )
         : unavailable('wind OCR', 'No HUD OCR observation has been received from the bundled helper.'),
+      lieOcr: lie
+        ? field(
+            lie.source,
+            lie.status,
+            lie.source,
+            [lie.note, lie.rawText ? `raw=${lie.rawText}` : null].filter(Boolean).join(' · ') || undefined,
+            lie.observedAt,
+            lieAgeMs,
+          )
+        : unavailable('GSPro lie OCR', 'No minimap lie OCR observation has been received from the bundled helper.'),
     },
     decision: {
       playerProfileId: null,

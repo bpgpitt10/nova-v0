@@ -37,6 +37,20 @@ export type WindObservation = {
   note?: string
 }
 
+export type GsproLieObservation = {
+  surface: string | null
+  /** GSPro HUD convention: positive = UP, negative = DOWN. */
+  upDownDegrees: number | null
+  /** GSPro HUD convention: positive = RIGHT, negative = LEFT. */
+  leftRightDegrees: number | null
+  observedAt: string
+  source: string
+  status: LiveStateStatus
+  confidence?: number | null
+  rawText?: string | null
+  note?: string
+}
+
 export type TeeSelection = {
   label: string
   coursePoint: CoursePointYds | null
@@ -54,6 +68,8 @@ export type LiveShotState = {
     ballPositionWorld: LiveField<WorldPoint>
     ballPositionLocalYds: LiveField<CoursePointYds>
     startingSurface: LiveField<string>
+    gsproLieUpDownDegrees: LiveField<number>
+    gsproLieLeftRightDegrees: LiveField<number>
     targetPositionWorld: LiveField<WorldPoint>
     targetPositionLocalYds: LiveField<CoursePointYds>
     targetDistanceYards: LiveField<number>
@@ -89,6 +105,7 @@ export type LiveShotState = {
     registration: LiveField<string>
     lidar: LiveField<string>
     windOcr: LiveField<string>
+    lieOcr: LiveField<string>
   }
   decision: {
     playerProfileId: string | null
