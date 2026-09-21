@@ -6,6 +6,7 @@ import {
   SESSION_HISTORY_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
+import { installMeasurementEraState } from './measurementProfiles'
 import { installMishitPlanningState } from './mishitPlanningPopulation'
 import { resolveHandedOpenGolfCoachValue } from './openGolfCoach'
 
@@ -156,6 +157,7 @@ const normalizeSessions = (sessions: SavedSession[]) =>
 
 const installPlanningState = (sessions: SavedSession[]) => {
   installMishitPlanningState(sessions)
+  installMeasurementEraState(sessions)
   return sessions
 }
 
@@ -185,9 +187,10 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
   window.localStorage.setItem(SESSION_HISTORY_STORAGE_KEY, serialized)
   persistWorkingCacheValueForActiveUser(SESSION_HISTORY_STORAGE_KEY, serialized)
 
-  // Derived mishit state follows the latest raw history immediately. It is not
-  // written back into the source Shot records and does not alter human Pure tags.
-  installMishitPlanningState(normalizedSessions)
+  // Derived planning state follows the latest raw history immediately. Neither
+  // mishit classification nor measurement-era rollover is written back into
+  // source Shot records, and human Pure tags remain untouched.
+  installPlanningState(normalizedSessions)
   window.dispatchEvent(new Event(SESSION_HISTORY_UPDATED_EVENT))
 
   normalizedSessions.forEach((session) => {
