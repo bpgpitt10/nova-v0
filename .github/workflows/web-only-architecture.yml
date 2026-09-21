@@ -15,5 +15,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Reject Tauri, Electron, and native app shells
         run: node tools/check-web-only-architecture.mjs
+      - name: Install web dependencies
+        run: npm ci
+      - name: Build web app
+        run: npm run build
