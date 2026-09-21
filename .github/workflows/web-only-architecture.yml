@@ -1,0 +1,19 @@
+name: Web-only architecture
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  web-only:
+    name: web-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reject Tauri, Electron, and native app shells
+        run: node tools/check-web-only-architecture.mjs
