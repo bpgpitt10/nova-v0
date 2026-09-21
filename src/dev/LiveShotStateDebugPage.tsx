@@ -16,6 +16,7 @@ import {
   type GsproWindObservationConnection,
 } from '../adapters/gsproWindObservation'
 import { assembleLiveShotState } from '../liveState/liveShotStateAssembler'
+import { loadLastPreShotFreeze, saveLastPreShotFreeze } from '../liveState/preShotPersistence'
 import { PreShotStateTracker, type PreShotFreezeEvent } from '../liveState/preShotTracker'
 import type {
   GsproLieObservation,
@@ -136,7 +137,7 @@ function LiveShotStateDebugPage() {
   const preShotTrackerRef = useRef(new PreShotStateTracker())
   const [connectionStatus, setConnectionStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [state, setState] = useState<LiveShotState | null>(null)
-  const [lastFrozen, setLastFrozen] = useState<PreShotFreezeEvent | null>(null)
+  const [lastFrozen, setLastFrozen] = useState<PreShotFreezeEvent | null>(() => loadLastPreShotFreeze())
   const [confirmedTee, setConfirmedTee] = useState<TeeSelection | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
@@ -196,7 +197,10 @@ function LiveShotStateDebugPage() {
         setWarnings(snapshot.warnings)
 
         const frozen = preShotTrackerRef.current.observeSnapshot(snapshot)
-        if (frozen) setLastFrozen(frozen)
+        if (frozen) {
+          saveLastPreShotFreeze(frozen)
+          setLastFrozen(frozen)
+        }
 
         assembleSnapshot(snapshot)
       },
@@ -396,6 +400,9 @@ function LiveShotStateDebugPage() {
 
           <section style={{ marginTop: 14, padding: 12, border: '1px solid #9ca3af', background: '#f3f4f6' }}>
             <h2 style={{ margin: '0 0 8px', fontSize: 18 }}>Last automatic pre-shot freeze</h2>
+            <p style={{ margin: '0 0 8px' }}>
+              The last completed freeze is persisted for reload/reconnect audit only. It is never reused as the current live pre-shot candidate.
+            </p>
             {lastFrozen ? (
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', ...mono }}>
                 <span>trigger: {lastFrozen.triggerShotKey}</span>
