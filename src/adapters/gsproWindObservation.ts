@@ -1,4 +1,3 @@
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type {
   LiveStateStatus,
   WindDirectionConvention,
@@ -6,7 +5,6 @@ import type {
   WindReferenceFrame,
 } from '../liveState/types'
 
-export const GSPRO_WIND_OCR_TAURI_EVENT = 'gspro-wind-ocr'
 export const GSPRO_WIND_OCR_BROWSER_EVENT = 'looper:gspro-wind-ocr'
 
 export type GsproWindOcrPayload = {
@@ -142,11 +140,6 @@ const staleObservation = (
   }
 }
 
-const isTauriRuntime = () => {
-  if (typeof window === 'undefined') return false
-  return '__TAURI_INTERNALS__' in window
-}
-
 export const dispatchGsproWindOcrObservation = (payload: GsproWindOcrPayload) => {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent<GsproWindOcrPayload>(GSPRO_WIND_OCR_BROWSER_EVENT, {
@@ -161,7 +154,6 @@ export const connectToGsproWindObservation = ({
 }: ConnectGsproWindObservationOptions): GsproWindObservationConnection => {
   let disconnected = false
   let latest: WindObservation | null = null
-  let tauriUnlisten: UnlistenFn | null = null
   let helperPollInFlight = false
 
   const publish = (payload: GsproWindOcrPayload | null | undefined) => {
@@ -178,23 +170,10 @@ export const connectToGsproWindObservation = ({
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
   }
 
-  // Keep the event path available for a future fully-native producer. Today the
-  // bundled localhost helper is the production source because it can use the
-  // Windows OCR engine without adding another model/runtime to Looper.
-  if (isTauriRuntime()) {
-    void listen<GsproWindOcrPayload>(GSPRO_WIND_OCR_TAURI_EVENT, (event) => {
-      publish(event.payload)
-    }).then((unlisten) => {
-      if (disconnected) {
-        unlisten()
-      } else {
-        tauriUnlisten = unlisten
-      }
-    }).catch((error) => onError?.(error))
-  }
-
+  // Looper is a browser app. GSPro OCR is supplied by an independently-run
+  // localhost HTTP service; the web app never depends on a native app shell.
   const pollHelper = async () => {
-    if (disconnected || helperPollInFlight || !isTauriRuntime()) return
+    if (disconnected || helperPollInFlight || typeof window === 'undefined') return
     helperPollInFlight = true
     try {
       const response = await fetch(HELPER_WIND_URL, { cache: 'no-store' })
@@ -209,6 +188,7 @@ export const connectToGsproWindObservation = ({
       const payload = await response.json() as GsproWindOcrPayload
       publish(payload)
     } catch (error) {
+      onError?.(error)
       publish({
         status: 'UNAVAILABLE',
         observedAt: new Date().toISOString(),
@@ -219,8 +199,8 @@ export const connectToGsproWindObservation = ({
     }
   }
 
-  if (isTauriRuntime()) void pollHelper()
-  const helperPollTimer = typeof window !== 'undefined' && isTauriRuntime()
+  if (typeof window !== 'undefined') void pollHelper()
+  const helperPollTimer = typeof window !== 'undefined'
     ? window.setInterval(() => void pollHelper(), HELPER_POLL_INTERVAL_MS)
     : null
 
@@ -245,8 +225,6 @@ export const connectToGsproWindObservation = ({
         if (helperPollTimer != null) window.clearInterval(helperPollTimer)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
-      tauriUnlisten?.()
-      tauriUnlisten = null
     },
   }
 }
