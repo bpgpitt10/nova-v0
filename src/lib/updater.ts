@@ -1,19 +1,14 @@
-import { check, type Update } from '@tauri-apps/plugin-updater'
+export type LooperUpdate = {
+  version?: string
+  downloadAndInstall: () => Promise<void>
+}
 
 export type LooperUpdateCheckResult =
   | { status: 'unavailable' }
   | { status: 'up-to-date' }
-  | { status: 'available'; update: Update }
+  | { status: 'available'; update: LooperUpdate }
 
-export const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
-
-export const checkForLooperUpdate = async (): Promise<LooperUpdateCheckResult> => {
-  if (!isTauriRuntime()) {
-    return { status: 'unavailable' }
-  }
-
-  const update = await check()
-  return update ? { status: 'available', update } : { status: 'up-to-date' }
-}
+// The browser-delivered Looper app is updated by deploying the web app. There
+// is no native installer/updater lifecycle in the client.
+export const checkForLooperUpdate = async (): Promise<LooperUpdateCheckResult> =>
+  ({ status: 'unavailable' })
