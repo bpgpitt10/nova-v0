@@ -146,8 +146,8 @@ const sourceField = (
   observedAt: string,
   ageMs: number | null,
 ): LiveField<string> => {
-  if (state === 'invalid') return field(null, 'UNKNOWN', source, 'Source exists but could not be parsed.', observedAt, ageMs)
-  if (state === 'missing') return field(null, 'UNAVAILABLE', source, 'Source file is not currently available.', observedAt, ageMs)
+  if (state === 'invalid') return field<string>(null, 'UNKNOWN', source, 'Source exists but could not be parsed.', observedAt, ageMs)
+  if (state === 'missing') return field<string>(null, 'UNAVAILABLE', source, 'Source file is not currently available.', observedAt, ageMs)
   return field('available', integrity === 'stale' ? 'STALE' : 'READY', source, undefined, observedAt, ageMs)
 }
 
