@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
@@ -660,7 +659,7 @@ function DataManagementPage() {
     )
     setSelectedShotKeys((current) => {
       const next = new Set(current)
-      next.delete(shotSelectionKey(sessionId, shotId))
+      next.delete(shotSelectionKey(sessionId, shot.id))
       return next
     })
   }
@@ -782,7 +781,7 @@ function DataManagementPage() {
     })
   }
 
-  const exportShotsCsv = async () => {
+  const exportShotsCsv = () => {
     if (exportableShotCount === 0) {
       return
     }
@@ -797,7 +796,15 @@ function DataManagementPage() {
     const suggestedFilename = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
 
     try {
-      await invoke('export_shots_csv', { suggestedFilename, csv })
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = suggestedFilename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (error) {
       console.error('Failed to export CSV.', error)
       window.alert('Failed to export CSV. Please try again.')
