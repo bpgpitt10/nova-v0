@@ -73,9 +73,9 @@ jobs:
         shell: powershell
         run: ./helpers/build_open_golf_coach_sidecar_windows.ps1
 
-      - name: Upload Windows helper
-        uses: actions/upload-artifact@v4
-        with:
-          name: open-golf-coach-helper-windows
-          path: src-tauri/binaries/open-golf-coach-helper-x86_64-pc-windows-msvc.exe
-          if-no-files-found: error
+      - name: Verify Windows helper output
+        shell: powershell
+        run: |
+          $path = 'src-tauri/binaries/open-golf-coach-helper-x86_64-pc-windows-msvc.exe'
+          if (!(Test-Path $path)) { throw "Expected Windows helper was not built: $path" }
+          Get-Item $path | Select-Object FullName, Length
