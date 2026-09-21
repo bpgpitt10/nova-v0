@@ -1,34 +1,29 @@
 import type { ActiveSessionDraft, SavedSession } from '../types'
 import { isSystemOldExcludedSession } from './historicalModel'
-import { installPersonalEmlCalibrationState } from './personalEmlCalibration'
+import { applyPersonalEmlCalibration } from './personalEmlCalibration'
 
 const STORAGE_KEY = 'nova-validation-sessions'
 const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
-
-const installDerivedSessionState = (sessions: SavedSession[]) => {
-  installPersonalEmlCalibrationState(sessions)
-  return sessions
-}
 
 export const loadSavedSessions = (): SavedSession[] => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return installDerivedSessionState([])
+      return applyPersonalEmlCalibration([])
     }
 
     const parsed: unknown = JSON.parse(raw)
-    return installDerivedSessionState(
+    return applyPersonalEmlCalibration(
       Array.isArray(parsed) ? (parsed as SavedSession[]) : [],
     )
   } catch {
-    return installDerivedSessionState([])
+    return applyPersonalEmlCalibration([])
   }
 }
 
 export const saveSessionHistory = (sessions: SavedSession[]) => {
-  installDerivedSessionState(sessions)
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
+  const calibratedSessions = applyPersonalEmlCalibration(sessions)
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(calibratedSessions))
 }
 
 export const saveActiveSessionDraft = (session: ActiveSessionDraft) => {
