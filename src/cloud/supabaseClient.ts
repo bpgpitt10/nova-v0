@@ -39,6 +39,14 @@ type SupabaseAuthSession = {
   user: LooperAuthUser
 }
 
+type SupabaseAuthResult = {
+  data: {
+    user: LooperAuthUser | null
+    session: SupabaseAuthSession | null
+  }
+  error: SupabaseError | null
+}
+
 type SupabaseClientLike = {
   auth: {
     getUser(): Promise<{
@@ -56,13 +64,25 @@ type SupabaseClientLike = {
       provider: 'google'
       options?: { redirectTo?: string }
     }): Promise<{ error: SupabaseError | null }>
-    signInWithOtp(options: {
+    signInWithPassword(options: {
       email: string
-      options?: {
-        emailRedirectTo?: string
-        shouldCreateUser?: boolean
-      }
-    }): Promise<{ error: SupabaseError | null }>
+      password: string
+    }): Promise<SupabaseAuthResult>
+    signUp(options: {
+      email: string
+      password: string
+      options?: { emailRedirectTo?: string }
+    }): Promise<SupabaseAuthResult>
+    resetPasswordForEmail(
+      email: string,
+      options?: { redirectTo?: string },
+    ): Promise<{ error: SupabaseError | null }>
+    updateUser(attributes: {
+      password?: string
+    }): Promise<{
+      data: { user: LooperAuthUser | null }
+      error: SupabaseError | null
+    }>
     signOut(): Promise<{ error: SupabaseError | null }>
     onAuthStateChange(
       callback: (event: string, session: SupabaseAuthSession | null) => void,
@@ -163,9 +183,9 @@ export const getSupabaseClient = async (): Promise<SupabaseClientLike> => {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // Looper handles the implicit callback explicitly below. Doing this
-        // deterministically avoids a startup race between URL detection and the
-        // auth gate's first getUser() call on a fresh magic-link redirect.
+        // Looper handles implicit OAuth, confirmation, and recovery redirects explicitly.
+        // Doing this deterministically avoids a startup race between URL detection and
+        // the auth gate's first getUser() call on a fresh auth redirect.
         detectSessionInUrl: false,
         flowType: 'implicit',
       },
@@ -192,7 +212,7 @@ const consumeImplicitAuthRedirect = async (client: SupabaseClientLike) => {
     return
   }
   if (!accessToken || !refreshToken) {
-    throw new Error('Looper received an incomplete sign-in response. Please request a new sign-in link.')
+    throw new Error('Looper received an incomplete authentication response. Please try again.')
   }
 
   const result = await client.auth.setSession({
@@ -249,15 +269,20 @@ export const getAllowedUserRecord = async (
   return result.data
 }
 
-const currentLooperUrl = () =>
-  `${window.location.origin}${window.location.pathname}${window.location.search}`
+const looperRootUrl = () => `${window.location.origin}/`
+
+const passwordResetUrl = () => {
+  const url = new URL('/', window.location.origin)
+  url.searchParams.set('reset-password', '1')
+  return url.toString()
+}
 
 export const signInLooperWithGoogle = async () => {
   const client = await getSupabaseClient()
   const result = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: currentLooperUrl(),
+      redirectTo: looperRootUrl(),
     },
   })
   if (result.error) {
@@ -265,18 +290,53 @@ export const signInLooperWithGoogle = async () => {
   }
 }
 
-export const sendLooperMagicLink = async (email: string) => {
+export const signInLooperWithPassword = async (email: string, password: string) => {
   const client = await getSupabaseClient()
-  const result = await client.auth.signInWithOtp({
+  const result = await client.auth.signInWithPassword({
     email,
+    password,
+  })
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
+  return result.data
+}
+
+export const signUpLooperWithPassword = async (email: string, password: string) => {
+  const client = await getSupabaseClient()
+  const result = await client.auth.signUp({
+    email,
+    password,
     options: {
-      emailRedirectTo: currentLooperUrl(),
-      shouldCreateUser: true,
+      emailRedirectTo: looperRootUrl(),
     },
   })
   if (result.error) {
     throw new Error(result.error.message)
   }
+  return {
+    user: result.data.user,
+    requiresEmailConfirmation: !result.data.session,
+  }
+}
+
+export const sendLooperPasswordReset = async (email: string) => {
+  const client = await getSupabaseClient()
+  const result = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: passwordResetUrl(),
+  })
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
+}
+
+export const updateLooperPassword = async (password: string) => {
+  const client = await getSupabaseClient()
+  const result = await client.auth.updateUser({ password })
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
+  return result.data.user
 }
 
 export const signOutLooper = async () => {
