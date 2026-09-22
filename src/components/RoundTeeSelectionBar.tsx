@@ -53,9 +53,17 @@ export default function RoundTeeSelectionBar() {
 
   const save = () => {
     if (courseId === UNSELECTED_COURSE_ID) return
+    const previousNormalized = selection?.normalizedTeeSet ?? ''
     const next = saveRoundTeeSelection(courseId, draft)
     setSelection(next)
     setDraft(next?.teeSet ?? '')
+
+    // The course geometry is intentionally immutable once loaded. A changed
+    // round tee therefore gets one clean reload so Shot 1 is rebuilt from the
+    // newly selected OSM tee without teaching Live Caddie a second geometry path.
+    if (next && next.normalizedTeeSet !== previousNormalized) {
+      window.location.reload()
+    }
   }
 
   return (
