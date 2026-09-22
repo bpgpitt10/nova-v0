@@ -6,6 +6,9 @@ on:
       - course-geometry-round-tee-selection-v1
     paths:
       - 'src/courseGeometry/roundTeeSelection.ts'
+      - 'src/courseGeometry/courseSelection.ts'
+      - 'src/components/RoundTeeSelectionBar.tsx'
+      - 'src/main.tsx'
       - 'tools/test-round-tee-selection.mjs'
       - '.github/workflows/round-tee-selection-ci.yml'
 
