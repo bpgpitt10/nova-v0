@@ -124,7 +124,15 @@ export const parseGsproStartingPosition = (
   const candidates = parseCandidates(text)
     .map((candidate) => ({ ...candidate, world: worldPoint(candidate.record.StartingPOS) }))
     .filter((item): item is Candidate & { world: GsproStartingWorldPoint } => item.world != null)
-    .filter((item) => expectedHoleNumber == null || holeNumberFor(item.record) === expectedHoleNumber)
+    // An explicit CurrentShot is the freshest pre-shot evidence in currentRound.dat.
+    // The expected-hole hint comes from completed-shot/log state and can legitimately
+    // lag across a new round or hole transition, so it may constrain only historical
+    // fallback records; it must never veto CurrentShot.
+    .filter((item) => (
+      item.currentShot
+      || expectedHoleNumber == null
+      || holeNumberFor(item.record) === expectedHoleNumber
+    ))
 
   if (candidates.length === 0) return null
 
