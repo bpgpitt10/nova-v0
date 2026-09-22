@@ -10,6 +10,7 @@ on:
       - 'src/adapters/reliableBrowserGsproCourseState.ts'
       - 'tools/diagnose-gspro-preshot.mjs'
       - 'tools/diagnose-gspro-preshot.test.mjs'
+      - 'tools/gsproStartingPosition.test.ts'
       - '.github/workflows/live-shot-startingpos-audit-ci.yml'
 
 jobs:
@@ -27,5 +28,7 @@ jobs:
         run: npm ci
       - name: Run pre-shot diagnostic tests
         run: node --test tools/diagnose-gspro-preshot.test.mjs
+      - name: Run production StartingPOS parser tests
+        run: node --experimental-strip-types --test tools/gsproStartingPosition.test.ts
       - name: Build browser app
         run: npm run build
