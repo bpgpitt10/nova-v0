@@ -1,6 +1,9 @@
 export const SESSION_HISTORY_STORAGE_KEY = 'nova-validation-sessions'
 export const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
 export const BAG_CONFIG_STORAGE_KEY = 'nova-validation-bag-config'
+export const SHOT_VARIANTS_STORAGE_KEY = 'nova-shot-variants'
+export const MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY = 'looper-mishit-player-calibrations-v1'
+export const RETIRED_HUMAN_SHOT_REVIEWS_STORAGE_KEY = 'looper-human-shot-reviews-v1'
 
 const ACTIVE_LOCAL_USER_KEY = 'looper-active-local-user-v1'
 const LEGACY_BACKUP_PREFIX = 'looper-unscoped-legacy-backup-v1:'
@@ -12,11 +15,17 @@ const managedKeys = [
   SESSION_HISTORY_STORAGE_KEY,
   ACTIVE_SESSION_STORAGE_KEY,
   BAG_CONFIG_STORAGE_KEY,
+  SHOT_VARIANTS_STORAGE_KEY,
+  MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY,
 ] as const
 
 const dispatchLocalDataChanged = () => {
   window.dispatchEvent(new Event('looper-session-history-updated'))
   window.dispatchEvent(new Event('bag-config-updated'))
+}
+
+const purgeRetiredHumanShotReviews = () => {
+  window.localStorage.removeItem(RETIRED_HUMAN_SHOT_REVIEWS_STORAGE_KEY)
 }
 
 const copyWorkingCacheToScope = (userId: string) => {
@@ -69,6 +78,16 @@ const preserveUnscopedLegacyCache = () => {
   })
 }
 
+export const clearPreservedLegacyBackups = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  managedKeys.forEach((baseKey) => {
+    window.localStorage.removeItem(`${LEGACY_BACKUP_PREFIX}${baseKey}`)
+  })
+  purgeRetiredHumanShotReviews()
+}
+
 export const getActiveLocalUserId = () => {
   if (typeof window === 'undefined') {
     return null
@@ -90,6 +109,8 @@ export const activateLocalUserScope = (
   if (typeof window === 'undefined') {
     return
   }
+
+  purgeRetiredHumanShotReviews()
 
   const currentUserId = getActiveLocalUserId()
   if (currentUserId === userId) {
@@ -142,6 +163,7 @@ export const deactivateLocalUserScope = () => {
   if (typeof window === 'undefined') {
     return
   }
+  purgeRetiredHumanShotReviews()
   const userId = getActiveLocalUserId()
   if (userId) {
     copyWorkingCacheToScope(userId)
