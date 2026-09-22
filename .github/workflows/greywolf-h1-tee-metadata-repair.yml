@@ -1,4 +1,4 @@
-name: Greywolf H1 Tee Metadata Repair
+name: Greywolf H1 Tee Metadata CI
 
 on:
   push:
@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-and-validate:
+  validate:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -21,8 +21,8 @@ jobs:
       - name: Fetch preserved Greywolf source
         run: git fetch origin hazard-field-lab-v0:refs/remotes/origin/hazard-field-lab-v0
 
-      - name: Repair H1 tee metadata
-        run: python tools/repair-greywolf-h1-tee-metadata.py
+      - name: Check reproducible H1 tee metadata
+        run: python tools/repair-greywolf-h1-tee-metadata.py --check
 
       - name: Verify six concrete tees and no invented labels
         run: |
@@ -65,16 +65,3 @@ jobs:
 
       - name: Build browser app
         run: npm run build
-
-      - name: Commit repaired artifact
-        shell: bash
-        run: |
-          if git diff --quiet -- public/course-geometry/greywolf/local-geometry/greywolf-hole-01.json; then
-            echo "Greywolf H1 artifact already current."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/course-geometry/greywolf/local-geometry/greywolf-hole-01.json
-          git commit -m "fix(course): retain all Greywolf H1 tee candidates [skip ci]"
-          git push origin HEAD:course-geometry-greywolf-tee-metadata-v1
