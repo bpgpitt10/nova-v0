@@ -1,0 +1,32 @@
+name: Shot One Tee CI
+
+on:
+  push:
+    branches:
+      - course-geometry-shot1-osm-tee-v1
+    paths:
+      - 'src/courseGeometry/types.ts'
+      - 'src/courseGeometry/teeCandidateProvider.ts'
+      - 'src/courseGeometry/shotOneTeeResolver.ts'
+      - 'src/courseGeometry/courseProvider.ts'
+      - 'src/components/RoundTeeSelectionBar.tsx'
+      - 'tools/test-shot-one-tee-resolver.mjs'
+      - '.github/workflows/shot-one-tee-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Shot 1 tee regression
+        run: node --experimental-strip-types tools/test-shot-one-tee-resolver.mjs
+      - name: Build browser app
+        run: npm run build
