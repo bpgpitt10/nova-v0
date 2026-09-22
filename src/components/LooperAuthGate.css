@@ -73,6 +73,12 @@
   color: #edf0ee;
 }
 
+.looper-auth__google {
+  background: #f4f0e8;
+  color: #172126;
+  border-color: #f4f0e8 !important;
+}
+
 .looper-auth__full {
   width: 100%;
   margin-top: 12px;
@@ -95,9 +101,19 @@
   background: #29343a;
 }
 
+.looper-auth__form {
+  display: grid;
+  gap: 14px;
+}
+
+.looper-auth__field {
+  display: grid;
+  gap: 8px;
+}
+
 .looper-auth__label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   color: #e9e3d6;
   font-size: 13px;
   font-weight: 700;
@@ -120,6 +136,25 @@
 
 .looper-auth input:focus {
   border-color: #cfb36e;
+}
+
+.looper-auth__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.looper-auth__text-button {
+  min-height: 0 !important;
+  padding: 4px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #cfb36e;
+  font-size: 13px !important;
+  font-weight: 700;
 }
 
 .looper-auth__fineprint {
@@ -165,5 +200,10 @@
 
   .looper-auth__email-row {
     grid-template-columns: 1fr;
+  }
+
+  .looper-auth__actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
