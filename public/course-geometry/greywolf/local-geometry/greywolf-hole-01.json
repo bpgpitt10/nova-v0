@@ -71,7 +71,10 @@
     "static_geometry_ready": true,
     "target_green_count": 1,
     "target_green_present": true,
-    "water_count": 2
+    "water_count": 2,
+    "tee_candidate_feature_count": 6,
+    "tee_candidate_ids_complete": true,
+    "tee_identity_labels_available": false
   },
   "cleanup": {
     "policy": "selected target green only; drop polygons wholly behind selected tee or wholly beyond target green",
@@ -95,7 +98,8 @@
         "reason": "wholly_behind_selected_tee"
       }
     ],
-    "removed_feature_count": 2
+    "removed_feature_count": 2,
+    "tee_retention_policy": "retain all six H1 OSM tee candidates in the selected-tee local frame; do not infer tee-set/color labels"
   },
   "course": "Greywolf Golf Course",
   "features": {
@@ -1561,16 +1565,17 @@
     ],
     "tee": [
       {
+        "osm_id": 1209190795,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
         "assigned_hole": null,
         "association_distance_yards": 2.07,
         "centroid": {
           "forward_yards": -0.0,
           "right_yards": 0.0
         },
-        "golf": "tee",
-        "name": null,
-        "osm_id": 1209190795,
-        "osm_type": "way",
         "polygon": [
           {
             "forward_yards": -6.542,
@@ -1625,7 +1630,379 @@
             "right_yards": 4.676
           }
         ],
-        "ref": null
+        "osm_tags": {
+          "golf": "tee"
+        }
+      },
+      {
+        "osm_id": 1209190794,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
+        "assigned_hole": null,
+        "association_distance_yards": 1.49,
+        "centroid": {
+          "right_yards": -11.811,
+          "forward_yards": -20.847
+        },
+        "polygon": [
+          {
+            "right_yards": -8.836,
+            "forward_yards": -29.199
+          },
+          {
+            "right_yards": -6.616,
+            "forward_yards": -27.334
+          },
+          {
+            "right_yards": -3.244,
+            "forward_yards": -22.401
+          },
+          {
+            "right_yards": -1.695,
+            "forward_yards": -18.182
+          },
+          {
+            "right_yards": -1.472,
+            "forward_yards": -15.712
+          },
+          {
+            "right_yards": -3.417,
+            "forward_yards": -14.109
+          },
+          {
+            "right_yards": -5.882,
+            "forward_yards": -12.039
+          },
+          {
+            "right_yards": -13.374,
+            "forward_yards": -11.051
+          },
+          {
+            "right_yards": -15.866,
+            "forward_yards": -11.407
+          },
+          {
+            "right_yards": -17.272,
+            "forward_yards": -13.186
+          },
+          {
+            "right_yards": -19.498,
+            "forward_yards": -17.671
+          },
+          {
+            "right_yards": -22.323,
+            "forward_yards": -22.53
+          },
+          {
+            "right_yards": -22.041,
+            "forward_yards": -24.362
+          },
+          {
+            "right_yards": -21.745,
+            "forward_yards": -26.327
+          },
+          {
+            "right_yards": -16.163,
+            "forward_yards": -29.845
+          },
+          {
+            "right_yards": -12.508,
+            "forward_yards": -29.849
+          },
+          {
+            "right_yards": -8.836,
+            "forward_yards": -29.199
+          }
+        ],
+        "osm_tags": {
+          "golf": "tee"
+        }
+      },
+      {
+        "osm_id": 1209190793,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
+        "assigned_hole": null,
+        "association_distance_yards": 0.0,
+        "centroid": {
+          "right_yards": -21.919,
+          "forward_yards": -43.231
+        },
+        "polygon": [
+          {
+            "right_yards": -21.427,
+            "forward_yards": -51.822
+          },
+          {
+            "right_yards": -16.183,
+            "forward_yards": -44.753
+          },
+          {
+            "right_yards": -13.729,
+            "forward_yards": -38.333
+          },
+          {
+            "right_yards": -15.345,
+            "forward_yards": -34.797
+          },
+          {
+            "right_yards": -21.458,
+            "forward_yards": -33.271
+          },
+          {
+            "right_yards": -26.321,
+            "forward_yards": -36.785
+          },
+          {
+            "right_yards": -28.982,
+            "forward_yards": -42.292
+          },
+          {
+            "right_yards": -28.852,
+            "forward_yards": -47.152
+          },
+          {
+            "right_yards": -25.466,
+            "forward_yards": -51.282
+          },
+          {
+            "right_yards": -21.427,
+            "forward_yards": -51.822
+          }
+        ],
+        "osm_tags": {
+          "golf": "tee"
+        }
+      },
+      {
+        "osm_id": 1214871677,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
+        "assigned_hole": null,
+        "association_distance_yards": 118.52,
+        "centroid": {
+          "right_yards": -62.851,
+          "forward_yards": -161.149
+        },
+        "polygon": [
+          {
+            "right_yards": -62.669,
+            "forward_yards": -167.659
+          },
+          {
+            "right_yards": -60.428,
+            "forward_yards": -166.2
+          },
+          {
+            "right_yards": -58.673,
+            "forward_yards": -164.279
+          },
+          {
+            "right_yards": -57.612,
+            "forward_yards": -161.02
+          },
+          {
+            "right_yards": -57.332,
+            "forward_yards": -158.973
+          },
+          {
+            "right_yards": -57.51,
+            "forward_yards": -157.005
+          },
+          {
+            "right_yards": -58.734,
+            "forward_yards": -154.665
+          },
+          {
+            "right_yards": -60.84,
+            "forward_yards": -153.473
+          },
+          {
+            "right_yards": -63.474,
+            "forward_yards": -153.799
+          },
+          {
+            "right_yards": -65.1,
+            "forward_yards": -154.68
+          },
+          {
+            "right_yards": -66.386,
+            "forward_yards": -155.971
+          },
+          {
+            "right_yards": -67.998,
+            "forward_yards": -160.578
+          },
+          {
+            "right_yards": -68.686,
+            "forward_yards": -163.242
+          },
+          {
+            "right_yards": -67.966,
+            "forward_yards": -165.46
+          },
+          {
+            "right_yards": -66.853,
+            "forward_yards": -167.14
+          },
+          {
+            "right_yards": -65.544,
+            "forward_yards": -167.727
+          },
+          {
+            "right_yards": -62.669,
+            "forward_yards": -167.659
+          }
+        ],
+        "osm_tags": {
+          "golf": "tee"
+        }
+      },
+      {
+        "osm_id": 1208932466,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
+        "assigned_hole": null,
+        "association_distance_yards": 140.23,
+        "centroid": {
+          "right_yards": -69.613,
+          "forward_yards": -182.328
+        },
+        "polygon": [
+          {
+            "right_yards": -68.331,
+            "forward_yards": -188.728
+          },
+          {
+            "right_yards": -64.413,
+            "forward_yards": -185.217
+          },
+          {
+            "right_yards": -63.274,
+            "forward_yards": -180.243
+          },
+          {
+            "right_yards": -64.652,
+            "forward_yards": -177.052
+          },
+          {
+            "right_yards": -67.076,
+            "forward_yards": -174.287
+          },
+          {
+            "right_yards": -70.361,
+            "forward_yards": -174.337
+          },
+          {
+            "right_yards": -75.495,
+            "forward_yards": -178.96
+          },
+          {
+            "right_yards": -76.52,
+            "forward_yards": -182.723
+          },
+          {
+            "right_yards": -75.022,
+            "forward_yards": -186.236
+          },
+          {
+            "right_yards": -72.272,
+            "forward_yards": -189.102
+          },
+          {
+            "right_yards": -68.331,
+            "forward_yards": -188.728
+          }
+        ],
+        "osm_tags": {
+          "golf": "tee"
+        }
+      },
+      {
+        "osm_id": 1208932465,
+        "osm_type": "way",
+        "golf": "tee",
+        "name": null,
+        "ref": null,
+        "assigned_hole": null,
+        "association_distance_yards": 159.26,
+        "centroid": {
+          "right_yards": -79.547,
+          "forward_yards": -203.13
+        },
+        "polygon": [
+          {
+            "right_yards": -77.585,
+            "forward_yards": -212.436
+          },
+          {
+            "right_yards": -81.833,
+            "forward_yards": -213.628
+          },
+          {
+            "right_yards": -85.985,
+            "forward_yards": -212.416
+          },
+          {
+            "right_yards": -89.057,
+            "forward_yards": -208.376
+          },
+          {
+            "right_yards": -89.655,
+            "forward_yards": -202.925
+          },
+          {
+            "right_yards": -89.077,
+            "forward_yards": -199.775
+          },
+          {
+            "right_yards": -86.507,
+            "forward_yards": -195.96
+          },
+          {
+            "right_yards": -82.214,
+            "forward_yards": -193.049
+          },
+          {
+            "right_yards": -75.464,
+            "forward_yards": -191.512
+          },
+          {
+            "right_yards": -72.286,
+            "forward_yards": -193.158
+          },
+          {
+            "right_yards": -70.633,
+            "forward_yards": -196.648
+          },
+          {
+            "right_yards": -69.618,
+            "forward_yards": -199.223
+          },
+          {
+            "right_yards": -71.637,
+            "forward_yards": -205.495
+          },
+          {
+            "right_yards": -74.069,
+            "forward_yards": -209.915
+          },
+          {
+            "right_yards": -77.585,
+            "forward_yards": -212.436
+          }
+        ],
+        "osm_tags": {
+          "golf": "tee"
+        }
       }
     ]
   },
