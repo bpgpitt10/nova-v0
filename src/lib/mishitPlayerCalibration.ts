@@ -1,6 +1,8 @@
 import type { MishitPlayerCalibration } from '../mishit-classifier'
-
-const STORAGE_KEY = 'looper-mishit-player-calibrations-v1'
+import {
+  MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY,
+  persistWorkingCacheValueForActiveUser,
+} from './localUserScope'
 
 export type MishitPlayerCalibrationMap = Record<string, MishitPlayerCalibration>
 
@@ -29,7 +31,7 @@ export const loadMishitPlayerCalibrations = (): MishitPlayerCalibrationMap => {
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY)
     if (!raw) {
       return {}
     }
@@ -59,7 +61,12 @@ export const saveMishitPlayerCalibrations = (
   if (typeof window === 'undefined') {
     return
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(calibrations))
+  const serialized = JSON.stringify(calibrations)
+  window.localStorage.setItem(MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(
+    MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY,
+    serialized,
+  )
 }
 
 export const getMishitPlayerCalibration = (populationKey: string) =>
