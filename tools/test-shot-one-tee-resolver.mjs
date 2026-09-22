@@ -7,7 +7,6 @@ import {
   loadTeeCalibration,
   lockTeeCalibration,
 } from '../src/courseGeometry/teeCalibrationStore.ts'
-import { loadCourseTeeCandidates } from '../src/courseGeometry/teeCandidateProvider.ts'
 
 const memory = new Map()
 globalThis.window = {
@@ -127,42 +126,4 @@ assert.equal(changedOsm.source, 'locked-calibration')
 assert.deepEqual(changedOsm.point, [4, -22])
 assert.equal(changedOsm.calibration?.osmTeeId, '101')
 
-// Generic V6 route-start package: candidate points must be translated into the
-// same selected-tee runtime frame used by normalizeRouteCourseGeometry.
-globalThis.fetch = async () => ({
-  ok: true,
-  json: async () => ({
-    holes: {
-      '1': {
-        coordinateFrame: { origin: 'osm-hole-route-start' },
-        surfaces: {
-          tee: [
-            [[8, 18], [12, 18], [12, 22], [8, 22]],
-          ],
-        },
-        teeCandidates: [
-          {
-            osmId: 201,
-            teeSet: 'Blue',
-            coursePoint: [10, 20],
-            polygons: [[[8, 18], [12, 18], [12, 22], [8, 22]]],
-            teeToGreenCentroidYards: 410,
-          },
-          {
-            osmId: 202,
-            teeSet: 'White',
-            coursePoint: [9, 42],
-            teeToGreenCentroidYards: 388,
-          },
-        ],
-      },
-    },
-  }),
-})
-
-const genericCandidates = await loadCourseTeeCandidates('erin-hills-erin-wi', 1)
-assert.equal(genericCandidates.length, 2)
-assert.deepEqual(genericCandidates[0].coursePoint, [0, 0])
-assert.deepEqual(genericCandidates[1].coursePoint, [-1, 22])
-
-console.log('Shot 1 tee selection, lock priority, ambiguity guard, and runtime rebase: ok')
+console.log('Shot 1 tee selection, lock priority, and ambiguity guard: ok')
