@@ -1,0 +1,38 @@
+name: Course Tee Metadata CI
+
+on:
+  push:
+    branches:
+      - course-geometry-tee-metadata-v1
+    paths:
+      - 'tools/build_osm_course_package.py'
+      - 'tools/build_osm_course_package_v4.py'
+      - 'tools/build_osm_course_package_v5.py'
+      - 'tools/build_osm_course_package_v6.py'
+      - 'tools/build_osm_course_package_canonical.py'
+      - 'tools/test_osm_tee_metadata.py'
+      - '.github/workflows/course-tee-metadata-ci.yml'
+  pull_request:
+    paths:
+      - 'tools/build_osm_course_package.py'
+      - 'tools/build_osm_course_package_v4.py'
+      - 'tools/build_osm_course_package_v5.py'
+      - 'tools/build_osm_course_package_v6.py'
+      - 'tools/build_osm_course_package_canonical.py'
+      - 'tools/test_osm_tee_metadata.py'
+      - '.github/workflows/course-tee-metadata-ci.yml'
+
+jobs:
+  tee-metadata-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install geometry dependency
+        run: python -m pip install shapely
+      - name: Run tee metadata regression
+        run: python tools/test_osm_tee_metadata.py
