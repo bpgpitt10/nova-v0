@@ -1,4 +1,9 @@
+import { syncShotVariantsToCloud } from '../cloud/shotVariantCloud'
 import type { Club } from './bagConfig'
+import {
+  persistWorkingCacheValueForActiveUser,
+  SHOT_VARIANTS_STORAGE_KEY,
+} from './localUserScope'
 
 export type ShotVariant = {
   id: string
@@ -7,7 +12,6 @@ export type ShotVariant = {
 }
 
 export const STOCK_SHOT_VARIANT_ID = 'stock'
-export const SHOT_VARIANTS_STORAGE_KEY = 'nova-shot-variants'
 
 export const resolveShotVariantId = (shotVariantId?: string) =>
   shotVariantId?.trim() || STOCK_SHOT_VARIANT_ID
@@ -24,6 +28,13 @@ const isShotVariant = (variant: unknown): variant is ShotVariant => {
     candidate.name.trim() !== ''
   )
 }
+
+export const normalizeCustomShotVariants = (variants: unknown): ShotVariant[] =>
+  Array.isArray(variants)
+    ? variants
+        .filter(isShotVariant)
+        .filter((variant) => variant.id !== STOCK_SHOT_VARIANT_ID)
+    : []
 
 const stockShotVariant: ShotVariant = {
   id: STOCK_SHOT_VARIANT_ID,
@@ -44,7 +55,11 @@ const readStoredShotVariants = () => {
     if (Array.isArray(parsed)) {
       return parsed
     }
-    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { variants?: unknown }).variants)) {
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      Array.isArray((parsed as { variants?: unknown }).variants)
+    ) {
       return (parsed as { variants: unknown[] }).variants
     }
   } catch {
@@ -55,24 +70,37 @@ const readStoredShotVariants = () => {
 }
 
 export const getCustomShotVariants = () =>
-  readStoredShotVariants().filter(isShotVariant)
+  normalizeCustomShotVariants(readStoredShotVariants())
 
-export const saveCustomShotVariants = (variants: ShotVariant[]) => {
+export const saveCustomShotVariants = (
+  variants: ShotVariant[],
+  options: { syncCloud?: boolean } = {},
+) => {
   if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.setItem(
-    SHOT_VARIANTS_STORAGE_KEY,
-    JSON.stringify(variants.filter((variant) => variant.id !== STOCK_SHOT_VARIANT_ID)),
-  )
+  const normalized = normalizeCustomShotVariants(variants)
+  const serialized = JSON.stringify(normalized)
+  window.localStorage.setItem(SHOT_VARIANTS_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(SHOT_VARIANTS_STORAGE_KEY, serialized)
+
+  if (options.syncCloud === false) {
+    return
+  }
+
+  void syncShotVariantsToCloud(normalized).then((result) => {
+    if (result.status === 'failed') {
+      console.warn('[Cloud Sync] shot variant sync failed; local copy retained', {
+        error: result.error,
+      })
+    }
+  })
 }
 
 export const getShotVariantsForClub = (club: Club): ShotVariant[] => {
   const storedVariants = getCustomShotVariants().filter((variant) => {
-    return (
-      !variant.club || variant.club === club
-    )
+    return !variant.club || variant.club === club
   })
 
   return [
@@ -93,7 +121,9 @@ export const shotMatchesIdentity = (
   shot: { club: Club; shotVariantId?: string },
   club: Club,
   shotVariantId?: string,
-) => shot.club === club && resolveShotVariantId(shot.shotVariantId) === resolveShotVariantId(shotVariantId)
+) =>
+  shot.club === club &&
+  resolveShotVariantId(shot.shotVariantId) === resolveShotVariantId(shotVariantId)
 
 export const shotsForClubVariant = <T extends { club: Club; shotVariantId?: string }>(
   shots: T[],
