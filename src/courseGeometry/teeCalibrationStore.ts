@@ -51,6 +51,20 @@ export type TeeCalibrationWriteResult =
     }>
   | Readonly<{ outcome: 'invalid'; reason: string }>
 
+type NormalizedCalibrationInput = Readonly<{
+  recordKey: string
+  courseFingerprint: string
+  holeNumber: number
+  teeSet: string
+  teeLabel?: string
+  osmTeeId?: string
+  courseLocalYds: TeeCalibrationLocalPoint
+  gsproWorld?: TeeCalibrationWorldPoint
+  expectedYardageYds?: number
+  confidence?: number
+  confirmationMethod?: string
+}>
+
 const STORAGE_KEY = 'looper.tee-calibrations.v1'
 export const TEE_CALIBRATION_UPDATED_EVENT = 'looper:tee-calibration-updated'
 
@@ -96,40 +110,43 @@ export const teeCalibrationRecordKey = (
   return `${encodeURIComponent(courseFingerprint)}::${holeNumber}::${encodeURIComponent(teeSet)}`
 }
 
-const normalizedInput = (input: TeeCalibrationInput) => {
+const normalizedInput = (
+  input: TeeCalibrationInput,
+): { ok: true; value: NormalizedCalibrationInput } | { ok: false; reason: string } => {
   const courseFingerprint = normalizeFingerprint(input.courseFingerprint)
   const teeSet = normalizeTeeSet(input.teeSet)
   const recordKey = teeCalibrationRecordKey(courseFingerprint, input.holeNumber, teeSet)
-  if (!recordKey) return { ok: false as const, reason: 'Invalid course fingerprint, hole number, or tee set.' }
+  if (!recordKey) return { ok: false, reason: 'Invalid course fingerprint, hole number, or tee set.' }
   if (!validLocalPoint(input.courseLocalYds)) {
-    return { ok: false as const, reason: 'courseLocalYds must contain two finite coordinates.' }
+    return { ok: false, reason: 'courseLocalYds must contain two finite coordinates.' }
   }
   if (input.gsproWorld != null && !validWorldPoint(input.gsproWorld)) {
-    return { ok: false as const, reason: 'gsproWorld must contain finite x/y/z coordinates.' }
+    return { ok: false, reason: 'gsproWorld must contain finite x/y/z coordinates.' }
   }
   if (input.expectedYardageYds != null && !finite(input.expectedYardageYds)) {
-    return { ok: false as const, reason: 'expectedYardageYds must be finite when provided.' }
+    return { ok: false, reason: 'expectedYardageYds must be finite when provided.' }
   }
   if (input.confidence != null && !finite(input.confidence)) {
-    return { ok: false as const, reason: 'confidence must be finite when provided.' }
+    return { ok: false, reason: 'confidence must be finite when provided.' }
   }
 
+  const teeLabel = normalizeWhitespace(input.teeLabel ?? '')
+  const confirmationMethod = normalizeWhitespace(input.confirmationMethod ?? '')
+  const confidence = clampConfidence(input.confidence)
   return {
-    ok: true as const,
+    ok: true,
     value: {
       recordKey,
       courseFingerprint,
       holeNumber: input.holeNumber,
       teeSet,
-      ...(normalizeWhitespace(input.teeLabel ?? '') ? { teeLabel: normalizeWhitespace(input.teeLabel ?? '') } : {}),
+      ...(teeLabel ? { teeLabel } : {}),
       ...(input.osmTeeId != null ? { osmTeeId: String(input.osmTeeId) } : {}),
-      courseLocalYds: [input.courseLocalYds[0], input.courseLocalYds[1]] as const,
+      courseLocalYds: [input.courseLocalYds[0], input.courseLocalYds[1]],
       ...(input.gsproWorld ? { gsproWorld: { ...input.gsproWorld } } : {}),
       ...(input.expectedYardageYds != null ? { expectedYardageYds: input.expectedYardageYds } : {}),
-      ...(clampConfidence(input.confidence) != null ? { confidence: clampConfidence(input.confidence) } : {}),
-      ...(normalizeWhitespace(input.confirmationMethod ?? '')
-        ? { confirmationMethod: normalizeWhitespace(input.confirmationMethod ?? '') }
-        : {}),
+      ...(confidence != null ? { confidence } : {}),
+      ...(confirmationMethod ? { confirmationMethod } : {}),
     },
   }
 }
@@ -142,7 +159,7 @@ const worldDistance = (left: TeeCalibrationWorldPoint, right: TeeCalibrationWorl
 
 const lockedConflictFields = (
   existing: TeeCalibrationRecord,
-  incoming: ReturnType<typeof normalizedInput> extends { ok: true; value: infer T } ? T : never,
+  incoming: NormalizedCalibrationInput,
 ) => {
   const conflicts: string[] = []
   if (pointDistance(existing.courseLocalYds, incoming.courseLocalYds) > LOCAL_POINT_TOLERANCE_YDS) {
@@ -170,8 +187,11 @@ const statusRank: Record<TeeCalibrationStatus, number> = {
 const maxStatus = (left: TeeCalibrationStatus, right: TeeCalibrationStatus): TeeCalibrationStatus =>
   statusRank[left] >= statusRank[right] ? left : right
 
-const sameRecord = (left: TeeCalibrationRecord, right: TeeCalibrationRecord) =>
-  JSON.stringify(left) === JSON.stringify(right)
+const sameRecordIgnoringUpdatedAt = (left: TeeCalibrationRecord, right: TeeCalibrationRecord) => {
+  const { updatedAt: _leftUpdatedAt, ...leftRest } = left
+  const { updatedAt: _rightUpdatedAt, ...rightRest } = right
+  return JSON.stringify(leftRest) === JSON.stringify(rightRest)
+}
 
 /**
  * Pure transition used by the browser store and regression tests.
@@ -219,7 +239,7 @@ export const applyTeeCalibrationWrite = (
         : {}),
       updatedAt: nowIso,
     }
-    if (sameRecord(existing, { ...enriched, updatedAt: existing.updatedAt })) {
+    if (sameRecordIgnoringUpdatedAt(existing, enriched)) {
       return { outcome: 'unchanged', record: existing }
     }
     return { outcome: 'saved', record: enriched }
@@ -246,7 +266,7 @@ export const applyTeeCalibrationWrite = (
     ...(statusRank[status] >= statusRank.confirmed
       ? { confirmedAt: existing?.confirmedAt ?? nowIso }
       : {}),
-    ...(status === 'locked' ? { lockedAt: nowIso } : {}),
+    ...(status === 'locked' ? { lockedAt: existing?.lockedAt ?? nowIso } : {}),
   }
   return { outcome: 'saved', record }
 }
@@ -274,6 +294,12 @@ const parseStoredCalibrations = (raw: string | null): StoredCalibrations => {
         || typeof record.updatedAt !== 'string'
       ) continue
       if (record.gsproWorld != null && !validWorldPoint(record.gsproWorld)) continue
+      const expectedKey = teeCalibrationRecordKey(
+        record.courseFingerprint,
+        record.holeNumber,
+        record.teeSet,
+      )
+      if (expectedKey !== key) continue
       result[key] = record as unknown as TeeCalibrationRecord
     }
     return result
