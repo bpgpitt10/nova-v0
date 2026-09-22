@@ -21,6 +21,7 @@ import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
 import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
+import RoundTeeSelectionBar from './components/RoundTeeSelectionBar.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
@@ -180,7 +181,14 @@ function RootRouter() {
     if (showCourseRenderDev) return <CourseRenderDevPage />
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
     if (showAimLab) return <AimLabPage />
-    if (showLiveCaddie) return <LiveCaddiePage />
+    if (showLiveCaddie) {
+      return (
+        <>
+          <LiveCaddiePage />
+          <RoundTeeSelectionBar />
+        </>
+      )
+    }
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
