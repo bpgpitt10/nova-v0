@@ -225,6 +225,15 @@ function RootRouter() {
     updateStatus,
   ])
 
+  const bypassLocalLiveShotStateAuth =
+    import.meta.env.DEV
+    && showLiveShotState
+    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+  if (bypassLocalLiveShotStateAuth) {
+    return view
+  }
+
   return (
     <LooperAuthGate>
       <LiveGsproRoundArchiveBridge />
