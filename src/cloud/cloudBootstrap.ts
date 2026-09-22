@@ -1,6 +1,15 @@
 import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
-import { activateLocalUserScope } from '../lib/localUserScope'
+import {
+  activateLocalUserScope,
+  clearPreservedLegacyBackups,
+  SHOT_VARIANTS_STORAGE_KEY,
+} from '../lib/localUserScope'
 import { loadSavedSessions, saveSessionHistory } from '../lib/sessions'
+import {
+  getCustomShotVariants,
+  normalizeCustomShotVariants,
+  saveCustomShotVariants,
+} from '../lib/shotVariants'
 import type { SavedSession } from '../types'
 import {
   hydrateDefaultBagForUser,
@@ -10,6 +19,10 @@ import {
   syncBagConfigToCloud,
   syncSavedSessionToCloud,
 } from './cloudPersistence'
+import {
+  loadShotVariantsForUser,
+  syncShotVariantsToCloud,
+} from './shotVariantCloud'
 
 const BOOTSTRAP_VERSION = 3
 const bootstrapKey = (userId: string) => `looper-cloud-bootstrap-v${BOOTSTRAP_VERSION}:${userId}`
@@ -31,6 +44,7 @@ export type CloudBootstrapResult = {
   mergedSessionCount: number
   sessionHistoryChanged: boolean
   loadedCloudBag: boolean
+  loadedCloudShotVariants: boolean
   warnings: string[]
 }
 
@@ -38,7 +52,7 @@ export const bootstrapLooperCloudData = async (
   userId: string,
   options: { claimUnscopedLegacyData?: boolean } = {},
 ): Promise<CloudBootstrapResult> => {
-  // This must happen before any session or bag read. It prevents a second
+  // This must happen before any user-owned local read. It prevents a second
   // account on the same browser from seeing or uploading the first golfer's
   // local safety copy. Only an explicitly approved migration path may claim the
   // old pre-auth cache.
@@ -52,6 +66,9 @@ export const bootstrapLooperCloudData = async (
 
   const localSessions = loadSavedSessions()
   const localBag = loadBagConfig()
+  const hadLocalShotVariantCache =
+    window.localStorage.getItem(SHOT_VARIANTS_STORAGE_KEY) !== null
+  const localShotVariants = getCustomShotVariants()
   let uploadedLocalSessions = 0
 
   if (!hasBootstrapped) {
@@ -90,9 +107,34 @@ export const bootstrapLooperCloudData = async (
     loadedCloudBag = true
   }
 
+  // Shot variant definitions are account data. Cloud is canonical once a row
+  // exists; otherwise migrate this user's already-isolated browser copy once.
+  const cloudShotVariantRow = await loadShotVariantsForUser(userId)
+  let loadedCloudShotVariants = false
+  if (cloudShotVariantRow !== null) {
+    const cloudShotVariants = normalizeCustomShotVariants(cloudShotVariantRow)
+    if (
+      !hadLocalShotVariantCache ||
+      JSON.stringify(cloudShotVariants) !== JSON.stringify(localShotVariants)
+    ) {
+      saveCustomShotVariants(cloudShotVariants, { syncCloud: false })
+      loadedCloudShotVariants = true
+    }
+  } else {
+    const variantsToMigrate = hadLocalShotVariantCache ? localShotVariants : []
+    if (!hadLocalShotVariantCache) {
+      saveCustomShotVariants(variantsToMigrate, { syncCloud: false })
+    }
+    const variantResult = await syncShotVariantsToCloud(variantsToMigrate)
+    if (variantResult.status === 'failed') {
+      warnings.push(`Shot variants: ${variantResult.error}`)
+    }
+  }
+
   // Only mark the one-time migration complete when every attempted local upload
   // succeeded. A cloud read failure throws before this point, preserving retry.
   if (warnings.length === 0) {
+    clearPreservedLegacyBackups()
     window.localStorage.setItem(key, 'done')
   }
 
@@ -102,6 +144,7 @@ export const bootstrapLooperCloudData = async (
     mergedSessionCount: mergedSessions.length,
     sessionHistoryChanged,
     loadedCloudBag,
+    loadedCloudShotVariants,
     warnings,
   }
 }
