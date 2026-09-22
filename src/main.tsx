@@ -20,6 +20,7 @@ import {
   hasSavedBagConfig,
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
+import { deactivateLocalUserScope } from './lib/localUserScope.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -41,6 +42,10 @@ function SignOutPage() {
   useEffect(() => {
     void signOutLooper()
       .then(() => {
+        // Do not rely on the asynchronous auth-state callback to win the race
+        // against navigation. Explicitly preserve this golfer's scoped cache and
+        // clear the shared working cache before the next account can sign in.
+        deactivateLocalUserScope()
         window.location.replace('/')
       })
       .catch((signOutError) => {
