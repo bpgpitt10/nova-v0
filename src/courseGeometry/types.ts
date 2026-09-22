@@ -102,6 +102,24 @@ export type CourseGeometryProvenance = {
   note?: string
 }
 
+export type CourseTeeCandidate = {
+  osmId?: string | number
+  osmType?: string
+  teeSet?: string
+  name?: string
+  ref?: string
+  color?: string
+  label?: string
+  sourceTags?: Readonly<Record<string, string>>
+  sourceLatLon?: readonly [latitude: number, longitude: number]
+  coursePoint: CoursePointYds
+  teeToGreenCentroidYards?: number
+  startPolygonGapYards?: number
+  currentRouteGapYards?: number
+  selectedAnchor?: boolean
+  polygons?: readonly CoursePolygonYds[]
+}
+
 export type CourseCoordinateOrigin = 'selected-tee' | 'osm-hole-route-start'
 
 export type CourseHoleGeometry = {
@@ -124,6 +142,7 @@ export type CourseHoleGeometry = {
     tee: CoursePointYds
     pin?: CoursePointYds
   }
+  teeCandidates?: readonly CourseTeeCandidate[]
   surfaces: readonly CourseSurface[]
   contextLayers?: readonly CourseContextLayer[]
   contours?: readonly CourseContourLine[]
