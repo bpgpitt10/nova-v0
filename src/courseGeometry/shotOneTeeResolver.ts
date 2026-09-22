@@ -1,14 +1,14 @@
-import type { RoundTeeSelection } from './roundTeeSelection'
+import type { RoundTeeSelection } from './roundTeeSelection.ts'
 import {
   loadTeeCalibration,
   saveTeeCalibrationCandidate,
   type TeeCalibrationRecord,
-} from './teeCalibrationStore'
+} from './teeCalibrationStore.ts'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CourseTeeCandidate,
-} from './types'
+} from './types.ts'
 
 export type ShotOneTeeResolution = Readonly<{
   point: CoursePointYds
