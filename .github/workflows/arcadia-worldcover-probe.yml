@@ -1,0 +1,119 @@
+name: Arcadia WorldCover Probe
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v2
+    paths:
+      - '.github/workflows/arcadia-worldcover-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: web-course-importer-surface-semantics-v2
+          fetch-depth: 0
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geospatial probe dependencies
+        run: pip install rasterio==1.4.3 shapely==2.1.1 pyproj==3.7.2
+
+      - name: Probe WorldCover around Arcadia holes 2 and 9
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          import numpy as np
+          import rasterio
+          from rasterio.mask import mask
+          from pyproj import Transformer
+          from shapely.geometry import LineString, mapping
+          from shapely.ops import transform
+
+          snapshot = json.loads(Path('artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json').read_text())
+          routes = {}
+          for element in snapshot.get('elements', []):
+              tags = element.get('tags') or {}
+              if tags.get('golf') == 'hole' and str(tags.get('ref', '')).isdigit():
+                  ref = int(tags['ref'])
+                  geom = element.get('geometry') or []
+                  coords = [(float(p['lon']), float(p['lat'])) for p in geom if 'lat' in p and 'lon' in p]
+                  if len(coords) >= 2:
+                      routes[ref] = LineString(coords)
+
+          # Arcadia lies in UTM zone 16N. Buffer the route by the same 110 yd
+          # context width used by the importer, then sample only pixels in that corridor.
+          to_utm = Transformer.from_crs('EPSG:4326', 'EPSG:32616', always_xy=True).transform
+          to_wgs = Transformer.from_crs('EPSG:32616', 'EPSG:4326', always_xy=True).transform
+          buffer_m = 110 * 0.9144
+
+          url = 'https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N42W087_Map.tif'
+          classes = {
+              10: 'tree-cover',
+              20: 'shrubland',
+              30: 'grassland',
+              40: 'cropland',
+              50: 'built-up',
+              60: 'bare-sparse',
+              70: 'snow-ice',
+              80: 'permanent-water',
+              90: 'herbaceous-wetland',
+              95: 'mangroves',
+              100: 'moss-lichen',
+          }
+
+          output = {
+              'source': 'ESA WorldCover 2021 v200',
+              'resolutionMeters': 10,
+              'sourceUrl': url,
+              'holes': {},
+          }
+
+          with rasterio.open(url) as ds:
+              for hole in (2, 9):
+                  route = routes[hole]
+                  corridor_utm = transform(to_utm, route).buffer(buffer_m, cap_style=1, join_style=1)
+                  corridor_wgs = transform(to_wgs, corridor_utm)
+                  data, _ = mask(ds, [mapping(corridor_wgs)], crop=True, filled=False)
+                  band = data[0]
+                  values = band.compressed().astype(int)
+                  counts = Counter(int(v) for v in values if int(v) in classes)
+                  total = sum(counts.values())
+                  output['holes'][str(hole)] = {
+                      'samplePixels': total,
+                      'classes': [
+                          {
+                              'code': code,
+                              'class': classes[code],
+                              'pixels': counts[code],
+                              'pct': round(100 * counts[code] / total, 1) if total else 0,
+                          }
+                          for code in sorted(counts, key=lambda c: counts[c], reverse=True)
+                      ],
+                  }
+
+          out = Path('artifacts/course-geometry/arcadia-bluffs/worldcover-probe-v1.json')
+          out.write_text(json.dumps(output, indent=2) + '\n')
+          print(json.dumps(output, indent=2))
+          PY
+
+      - name: Commit probe result
+        run: |
+          git add artifacts/course-geometry/arcadia-bluffs/worldcover-probe-v1.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(course): record Arcadia WorldCover probe'
+          git push origin HEAD:web-course-importer-surface-semantics-v2
