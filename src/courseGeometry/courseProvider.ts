@@ -1,13 +1,11 @@
 import {
   GREYWOLF_COURSE_ID,
-  TOBACCO_ROAD_COURSE_ID,
   UNSELECTED_COURSE_ID,
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
 import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
 import { normalizeRouteCourseGeometry } from './normalizeRouteCourseGeometry'
-import { loadPackagedCourseHoleGeometry } from './packagedCourseLoader'
 import { loadRoundTeeSelection } from './roundTeeSelection'
 import { loadRoutePackagedCourseHoleGeometry } from './routePackagedCourseLoader'
 import { resolveShotOneTee } from './shotOneTeeResolver'
@@ -44,10 +42,9 @@ const withShotOneTee = async (
 /**
  * Canonical runtime entry point for static course geometry.
  *
- * Greywolf remains the proven compatibility control. Every other packaged
- * route course is normalized to the selected-tee runtime contract before any
- * UI or decision logic consumes it. Tobacco Road still uses the older package
- * schema, but it goes through the same normalization when tee evidence exists.
+ * Greywolf remains the proven compatibility control. Every route package is
+ * normalized to the selected-tee runtime contract before any UI or decision
+ * logic consumes it.
  *
  * Shot 1 then applies the persisted round tee selection conservatively: a
  * locked calibration wins; otherwise exactly one matching OSM tee candidate is
@@ -63,11 +60,6 @@ export const loadCourseHoleGeometry = (
   getCourseCatalogEntry(courseId)
   if (courseId === GREYWOLF_COURSE_ID) {
     return loadGreywolfHoleGeometryAdapter(holeNumber)
-      .then((geometry) => withShotOneTee(courseId, holeNumber, geometry))
-  }
-  if (courseId === TOBACCO_ROAD_COURSE_ID) {
-    return loadPackagedCourseHoleGeometry(courseId, holeNumber)
-      .then(normalizeRouteCourseGeometry)
       .then((geometry) => withShotOneTee(courseId, holeNumber, geometry))
   }
   return loadRoutePackagedCourseHoleGeometry(courseId, holeNumber)
