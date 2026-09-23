@@ -1,0 +1,33 @@
+name: Course surface semantics CI
+
+on:
+  push:
+    branches:
+      - course-importer-surface-semantics-v1
+    paths:
+      - tools/build_osm_course_package_v7.py
+      - tools/build_osm_course_package_canonical.py
+      - tools/test_course_surface_semantics_v7.py
+      - public/course-geometry/**/course-v1.json
+      - .github/workflows/course-surface-semantics-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  single-hole-semantics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependency
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Validate one real imported hole
+        run: python tools/test_course_surface_semantics_v7.py
