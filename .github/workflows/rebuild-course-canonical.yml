@@ -103,10 +103,10 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
-      - name: Validate app and current promoted-course contract
+      - name: Validate app, active runtime, and rebuild candidate
         run: |
           npm run build
-          npm run courses:audit-runtime -- --strict
+          npm run courses:audit-runtime -- --strict --candidate "$COURSE_SLUG"
 
       - name: Commit rebuilt package and provenance
         run: |
