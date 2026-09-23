@@ -3,7 +3,7 @@
   "compiler": "build_osm_course_package_v7",
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T20:07:26.017513Z",
+  "generatedAt": "2026-09-23T20:09:42.390801Z",
   "holes": {
     "1": {
       "context": {},
@@ -56055,7 +56055,7 @@
   "provenance": {
     "attribution": "\u00a9 OpenStreetMap contributors",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-23T20:07:26.017513Z",
+    "fetchedAt": "2026-09-23T20:09:42.390801Z",
     "geometrySource": "Cached OpenStreetMap/Overpass topology-safe route corridor geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
