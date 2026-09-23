@@ -8,12 +8,15 @@
     "type": "way",
     "id": 293247442
   },
-  "osmCenter": [44.45663, -86.24196],
+  "osmCenter": [
+    44.45663,
+    -86.24196
+  ],
   "selection": {
     "teeStartRadiusYards": 220,
     "contextRouteDistanceYards": 110,
     "behindTeeToleranceYards": 35,
-    "pastGreenToleranceYards": 50
+    "pastGreenToleranceYards": 50,
+    "courseGroundFallbackContextKind": "native-ground"
   }
-
 }

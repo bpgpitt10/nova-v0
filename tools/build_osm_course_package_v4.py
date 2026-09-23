@@ -41,7 +41,7 @@ MAX_FAIRWAY_POLYGONS = 120
 MAX_ROUGH_POLYGONS = 160
 MAX_BUNKER_POLYGONS = 120
 MAX_PLAYABLE_POLYGONS = 400
-CONTEXT_KINDS = ("woods", "scrub", "grass-context", "native-grass", "dune-sand")
+CONTEXT_KINDS = ("woods", "scrub", "grass-context", "native-grass", "dune-sand", "native-ground")
 
 
 def route_length_yards(route: dict[str, Any]) -> float:

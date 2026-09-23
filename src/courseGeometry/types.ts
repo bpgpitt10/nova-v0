@@ -11,7 +11,7 @@ export type CourseSurfaceKind =
   | 'water'
   | 'penalty'
 
-export type CourseContextKind = 'woods' | 'scrub' | 'grass-context' | 'native-grass' | 'dune-sand'
+export type CourseContextKind = 'woods' | 'scrub' | 'grass-context' | 'native-grass' | 'dune-sand' | 'native-ground'
 
 export type CourseSurfaceClassification = CourseSurfaceKind | 'unknown'
 

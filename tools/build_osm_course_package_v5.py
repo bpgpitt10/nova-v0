@@ -394,6 +394,17 @@ def model_for_hole(
     }
     context = {kind: polygons for kind, polygons in context.items() if polygons}
 
+    fallback_kind = str(selection.get("courseGroundFallbackContextKind") or "").strip()
+    if fallback_kind:
+        if fallback_kind not in v4.CONTEXT_KINDS:
+            raise ValueError(f"Unsupported courseGroundFallbackContextKind={fallback_kind}")
+        fallback_polygons = feature_intersections_rebased(
+            by_kind.get("course-boundary", []), context_corridor,
+            route_origin, forward, right, anchor_offset, simplify_yards,
+        )
+        if fallback_polygons:
+            context[fallback_kind] = [*fallback_polygons, *context.get(fallback_kind, [])]
+
     requires_fairway = par != 3
     surface_counts = {
         kind: len(surfaces.get(kind, []))

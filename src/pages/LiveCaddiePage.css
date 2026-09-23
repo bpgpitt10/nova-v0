@@ -598,14 +598,20 @@
 }
 
 .live-context.context-native-grass {
-  fill: rgba(153, 139, 70, 0.30);
-  stroke: rgba(205, 190, 105, 0.42);
+  fill: url(#liveNativePattern);
+  stroke: rgba(205, 190, 105, 0.48);
   stroke-width: 0.11;
-  stroke-dasharray: 0.34 0.22;
+}
+
+.live-context.context-native-ground {
+  fill: url(#liveNativePattern);
+  stroke: rgba(178, 164, 91, 0.25);
+  stroke-width: 0.08;
+  opacity: 0.68;
 }
 
 .live-context.context-dune-sand {
-  fill: rgba(181, 153, 99, 0.34);
+  fill: url(#liveDunePattern);
   stroke: rgba(224, 197, 137, 0.44);
   stroke-width: 0.11;
 }

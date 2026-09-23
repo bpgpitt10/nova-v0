@@ -288,6 +288,14 @@ function LiveCaddieMap({
             <circle cx="1" cy="1.2" r="0.58" fill="#b5a967" fillOpacity="0.16" />
             <circle cx="3.2" cy="3" r="0.68" fill="#8c854f" fillOpacity="0.15" />
           </pattern>
+          <pattern id="liveNativePattern" width="4.8" height="4.8" patternUnits="userSpaceOnUse">
+            <rect width="4.8" height="4.8" fill="#595437" fillOpacity="0.2" />
+            <path d="M1 4.8 L1.35 2.15 M2.6 4.8 L2.35 2.75 M4 4.8 L4.25 2.35" stroke="#c4b66f" strokeOpacity="0.24" strokeWidth="0.28" />
+          </pattern>
+          <pattern id="liveDunePattern" width="5.2" height="5.2" patternUnits="userSpaceOnUse">
+            <rect width="5.2" height="5.2" fill="#8b7650" fillOpacity="0.2" />
+            <path d="M0 1.5 C1.3 1 2.6 2 5.2 1.35 M0 3.8 C1.7 3.25 3.1 4.2 5.2 3.55" fill="none" stroke="#d9c18b" strokeOpacity="0.22" strokeWidth="0.24" />
+          </pattern>
         </defs>
 
         {hole.contextLayers?.flatMap((layer) =>

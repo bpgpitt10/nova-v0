@@ -16,7 +16,7 @@ import type {
 const SURFACE_KINDS: readonly CourseSurfaceKind[] = [
   'tee', 'fairway', 'rough', 'deep-rough', 'green', 'bunker', 'water', 'penalty',
 ]
-const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand']
+const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'native-ground']
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
 type RawBounds = { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }

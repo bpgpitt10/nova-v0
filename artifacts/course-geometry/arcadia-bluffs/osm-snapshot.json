@@ -55098,6 +55098,86 @@
         "type": "multipolygon"
       },
       "type": "relation"
+    },
+    {
+      "geometry": [
+        {
+          "lat": 44.4555019,
+          "lon": -86.235375
+        },
+        {
+          "lat": 44.4572289,
+          "lon": -86.2353703
+        },
+        {
+          "lat": 44.4572663,
+          "lon": -86.2325437
+        },
+        {
+          "lat": 44.4608582,
+          "lon": -86.2325731
+        },
+        {
+          "lat": 44.461033,
+          "lon": -86.2508575
+        },
+        {
+          "lat": 44.4581539,
+          "lon": -86.2513309
+        },
+        {
+          "lat": 44.4572776,
+          "lon": -86.2513764
+        },
+        {
+          "lat": 44.4522696,
+          "lon": -86.2512719
+        },
+        {
+          "lat": 44.4522349,
+          "lon": -86.2498513
+        },
+        {
+          "lat": 44.4535125,
+          "lon": -86.2477614
+        },
+        {
+          "lat": 44.4539832,
+          "lon": -86.2444419
+        },
+        {
+          "lat": 44.4537073,
+          "lon": -86.2421456
+        },
+        {
+          "lat": 44.4537884,
+          "lon": -86.2400539
+        },
+        {
+          "lat": 44.4554113,
+          "lon": -86.2396901
+        },
+        {
+          "lat": 44.4555019,
+          "lon": -86.235375
+        }
+      ],
+      "id": 293247442,
+      "tags": {
+        "addr:city": "Arcadia",
+        "addr:housenumber": "14710",
+        "addr:postcode": "49613",
+        "addr:state": "MI",
+        "addr:street": "Northwood Highway",
+        "gnis:feature_id": "2500385",
+        "leisure": "golf_course",
+        "name": "Arcadia Bluffs Golf Club",
+        "phone": "+1-800-494-8666",
+        "website": "https://arcadiabluffs.com/",
+        "wikidata": "Q4785134",
+        "wikipedia": "en:Arcadia Bluffs Golf Course"
+      },
+      "type": "way"
     }
   ],
   "generator": "OpenStreetMap core map API",
@@ -55115,7 +55195,7 @@
     "courseId": "arcadia-bluffs-arcadia-mi",
     "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
     "featureProvider": "openstreetmap-core-map",
-    "filteredFeatureElementCount": 464,
+    "filteredFeatureElementCount": 465,
     "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-86.25197640,44.45163490,-86.23194370,44.46163300",
     "rawFeatureElementCount": 12463,
     "sourceClause": "way",

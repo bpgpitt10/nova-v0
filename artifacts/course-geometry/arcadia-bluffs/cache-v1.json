@@ -3,7 +3,7 @@
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-09-23T21:08:31.031499Z",
+    "evaluatedAt": "2026-09-23T21:14:37.306393Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "57071658fcf33d3d00755f62b7e7721ab2be2771ae40e42897ccaaddec9bd917",
+    "builderFingerprintSha256": "16dd67ceb7dafa71c415778c91db3d9093043a89fe21351138c2d0e2c94699f2",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-09-23T21:08:31.031499Z",
+    "builtAt": "2026-09-23T21:14:37.306393Z",
     "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
-    "configSha256": "530d9f2800b37fa413bdd7f01331bd6c828b7d59e99fdb17f88091663bb1d998",
+    "configSha256": "08cce1e881571b1778da1c7cdf9f93bd11e276dd53d70493f8f27da6d443a561",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "c59dbb570c85a378fdddfe5b7a95244a5d81201a29e8a91379b25666a3397c0d",
+    "sha256": "c98f4f7d96827b76358d7ebd7dc480c00b2afa72b04ae5e6b545154b0c7288c8",
     "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
   },
   "refreshPolicy": {
@@ -44,12 +44,12 @@
       "id": 293247442,
       "type": "way"
     },
-    "fetchedAt": "2026-09-23T21:08:31.031499Z",
+    "fetchedAt": "2026-09-23T21:14:37.306393Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-23T21:08:31.031499Z",
+    "lastCheckedAt": "2026-09-23T21:14:37.306393Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
-    "snapshotSha256": "008e246a24f83342d7edabdc3ab8a445f6f1fab8ab295405aa4d83c37879d127"
+    "snapshotSha256": "837a3374842af282ddec06e2c604e2d0a1f7c0e439c580f9809e923e6b976d99"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",

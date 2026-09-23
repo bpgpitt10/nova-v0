@@ -198,6 +198,8 @@ def feature_distance_to_route(
 
 def classify_element(tags: dict[str, Any]) -> tuple[str, str] | None:
     golf = tags.get("golf")
+    if golf == "course" or tags.get("leisure") == "golf_course":
+        return "context", "course-boundary"
     if golf in SURFACE_GOLF:
         return "surface", SURFACE_GOLF[golf]
     if tags.get("natural") == "water" or tags.get("landuse") == "reservoir":

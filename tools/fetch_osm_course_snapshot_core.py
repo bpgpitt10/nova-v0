@@ -169,6 +169,14 @@ def main() -> int:
         args.timeout,
     )
     payload = fetcher.filter_to_boundary(raw_payload, boundary)
+    source_key = (str(source_element.get("type")), int(source_element.get("id")))
+    existing_keys = {
+        (str(element.get("type")), int(element.get("id")))
+        for element in payload.get("elements", [])
+        if isinstance(element.get("id"), int)
+    }
+    if source_key not in existing_keys:
+        payload.setdefault("elements", []).append(source_element)
     holes = fetcher.validate_holes(payload)
 
     osm_clause, source_type, osm_id = fetcher.source_clause(config)
