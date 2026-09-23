@@ -1,9 +1,9 @@
 {
-  "builderFingerprintSha256": "150a5149efbb6e446f5f6eceedd47a1b1c0567ad215f6ea15dff7566241b40aa",
+  "builderFingerprintSha256": "3e3121aa40d849990627192786054afc73afabd4e49521cb7b71ab2195814e18",
   "compiler": "build_osm_course_package_v7",
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T20:09:42.390801Z",
+  "generatedAt": "2026-09-23T21:04:16.433717Z",
   "holes": {
     "1": {
       "context": {},
@@ -41,7 +41,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -5094,10 +5095,10 @@
         "elevationOffsetFt": 800.6,
         "height": 72,
         "interpolation": "bilinear",
-        "minX": -188.978,
-        "minY": -109.776,
+        "minX": -187.95600000000002,
+        "minY": -109.55199999999999,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.022, -0.224) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.022, -0.224) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-1.022, -0.224) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -5147,7 +5148,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -7188,10 +7190,10 @@
         "elevationOffsetFt": 710.7,
         "height": 70,
         "interpolation": "bilinear",
-        "minX": -150.079,
-        "minY": -100.607,
+        "minX": -150.15800000000002,
+        "minY": -101.214,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.079, +0.607) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.079, +0.607) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.079, +0.607) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -7241,7 +7243,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -9822,10 +9825,10 @@
         "elevationOffsetFt": 578.4,
         "height": 81,
         "interpolation": "bilinear",
-        "minX": -69.832,
-        "minY": -130.865,
+        "minX": -69.66399999999999,
+        "minY": -131.73000000000002,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.168, +0.865) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.168, +0.865) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-0.168, +0.865) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -9875,7 +9878,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -12182,10 +12186,10 @@
         "elevationOffsetFt": 611.8,
         "height": 64,
         "interpolation": "bilinear",
-        "minX": -69.911,
-        "minY": -139.899,
+        "minX": -69.822,
+        "minY": -139.798,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.089, -0.101) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.089, -0.101) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-0.089, -0.101) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -12235,7 +12239,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -14342,10 +14347,10 @@
         "elevationOffsetFt": 578.4,
         "height": 46,
         "interpolation": "bilinear",
-        "minX": -138.876,
-        "minY": -90.181,
+        "minX": -137.752,
+        "minY": -90.362,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.124, +0.181) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.124, +0.181) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-1.124, +0.181) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -14395,7 +14400,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -18859,10 +18865,10 @@
         "elevationOffsetFt": 613.0,
         "height": 58,
         "interpolation": "bilinear",
-        "minX": -140.407,
-        "minY": -139.584,
+        "minX": -140.81400000000002,
+        "minY": -139.168,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.407, -0.416) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.407, -0.416) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.407, -0.416) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -18912,7 +18918,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -22831,10 +22838,10 @@
         "elevationOffsetFt": 729.8,
         "height": 78,
         "interpolation": "bilinear",
-        "minX": -140.68,
-        "minY": -140.061,
+        "minX": -141.36,
+        "minY": -140.122,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.680, +0.061) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.680, +0.061) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.680, +0.061) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -22884,7 +22891,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -26825,10 +26833,10 @@
         "elevationOffsetFt": 714.3,
         "height": 75,
         "interpolation": "bilinear",
-        "minX": -139.522,
-        "minY": -140.625,
+        "minX": -139.04399999999998,
+        "minY": -141.25,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.478, +0.625) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.478, +0.625) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-0.478, +0.625) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -26878,7 +26886,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -28441,10 +28450,10 @@
         "elevationOffsetFt": 696.0,
         "height": 37,
         "interpolation": "bilinear",
-        "minX": -130.23,
-        "minY": -40.802,
+        "minX": -130.45999999999998,
+        "minY": -41.604,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.230, +0.802) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.230, +0.802) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.230, +0.802) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -28494,7 +28503,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -31130,10 +31140,10 @@
         "elevationOffsetFt": 701.6,
         "height": 65,
         "interpolation": "bilinear",
-        "minX": -188.956,
-        "minY": -108.367,
+        "minX": -187.91199999999998,
+        "minY": -106.73400000000001,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.044, -1.633) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.044, -1.633) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-1.044, -1.633) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -31183,7 +31193,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -34937,10 +34948,10 @@
         "elevationOffsetFt": 834.3,
         "height": 38,
         "interpolation": "bilinear",
-        "minX": -139.546,
-        "minY": -69.838,
+        "minX": -139.09199999999998,
+        "minY": -69.67599999999999,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.454, -0.162) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.454, -0.162) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-0.454, -0.162) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -34990,7 +35001,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -37760,10 +37772,10 @@
         "elevationOffsetFt": 794.3,
         "height": 74,
         "interpolation": "bilinear",
-        "minX": -138.785,
-        "minY": -60.372,
+        "minX": -137.57,
+        "minY": -60.744,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.215, +0.372) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-1.215, +0.372) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-1.215, +0.372) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -37813,7 +37825,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -39972,10 +39985,10 @@
         "elevationOffsetFt": 768.4,
         "height": 62,
         "interpolation": "bilinear",
-        "minX": -169.918,
-        "minY": -110.127,
+        "minX": -169.836,
+        "minY": -110.25399999999999,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.082, +0.127) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (-0.082, +0.127) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (-0.082, +0.127) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -40025,7 +40038,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -44459,10 +44473,10 @@
         "elevationOffsetFt": 578.4,
         "height": 77,
         "interpolation": "bilinear",
-        "minX": -140.728,
-        "minY": -140.554,
+        "minX": -141.45600000000002,
+        "minY": -141.108,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.728, +0.554) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.728, +0.554) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.728, +0.554) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -44512,7 +44526,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -48017,10 +48032,10 @@
         "elevationOffsetFt": 624.4,
         "height": 47,
         "interpolation": "bilinear",
-        "minX": -140.163,
-        "minY": -139.805,
+        "minX": -140.32600000000002,
+        "minY": -139.61,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.163, -0.195) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.163, -0.195) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.163, -0.195) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -48070,7 +48085,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -51616,10 +51632,10 @@
         "elevationOffsetFt": 739.7,
         "height": 72,
         "interpolation": "bilinear",
-        "minX": -140.402,
-        "minY": -138.841,
+        "minX": -140.80399999999997,
+        "minY": -137.68200000000002,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.402, -1.159) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.402, -1.159) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.402, -1.159) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -51669,7 +51685,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -54900,10 +54917,10 @@
         "elevationOffsetFt": 782.8,
         "height": 60,
         "interpolation": "bilinear",
-        "minX": -180.074,
-        "minY": -100.528,
+        "minX": -180.14800000000002,
+        "minY": -101.05600000000001,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.074, +0.528) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.074, +0.528) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.074, +0.528) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -54953,7 +54970,8 @@
       "semanticSurfacePolicy": {
         "contextPromotedToDeepRough": [
           "woods",
-          "scrub"
+          "scrub",
+          "native-grass"
         ],
         "deepRoughBeatsOrdinaryRough": true,
         "explicitSurfacePriority": [
@@ -56033,10 +56051,10 @@
         "elevationOffsetFt": 763.0,
         "height": 42,
         "interpolation": "bilinear",
-        "minX": -140.386,
-        "minY": -80.078,
+        "minX": -140.772,
+        "minY": -80.156,
         "nodata": 65535,
-        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.386, +0.078) yd; DEM values were not rotated or resampled.",
+        "note": "Compact runtime grid derived from verified high-resolution bare-earth elevation. Rebased from cached OSM route-start frame to selected-tee frame by (+0.386, +0.078) yd; DEM values were not rotated or resampled. Rebased from cached OSM route-start frame to selected-tee frame by (+0.386, +0.078) yd; DEM values were not rotated or resampled.",
         "runtimeSpacingYds": 10.0,
         "source": "lidar-dem",
         "sourceResolutionMeters": 1.0,
@@ -56055,7 +56073,7 @@
   "provenance": {
     "attribution": "\u00a9 OpenStreetMap contributors",
     "copyrightUrl": "https://www.openstreetmap.org/copyright",
-    "fetchedAt": "2026-09-23T20:09:42.390801Z",
+    "fetchedAt": "2026-09-23T21:04:16.433717Z",
     "geometrySource": "Cached OpenStreetMap/Overpass topology-safe route corridor geometry",
     "license": "Open Database License (ODbL)",
     "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
@@ -56068,7 +56086,7 @@
   "terrainCarryForward": {
     "contourHoles": 0,
     "method": "translation-only-route-axis-preserving-v1",
-    "sourcePackageGeneratedAt": "2026-09-18T09:44:14.252311Z",
+    "sourcePackageGeneratedAt": "2026-09-23T20:09:42.390801Z",
     "terrainHoles": 18
   },
   "terrainProvenance": {

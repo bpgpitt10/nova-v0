@@ -1,0 +1,89 @@
+{
+  "holes": {
+    "1": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "10": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "11": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "12": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "13": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "14": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "15": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "16": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "17": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "18": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "2": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "3": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "4": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "5": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "6": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "7": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "8": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    },
+    "9": {
+      "contextPolygons": {},
+      "deepRoughPolygons": 0
+    }
+  },
+  "sourceTagCounts": {
+    "golf=bunker": 202,
+    "golf=cartpath": 35,
+    "golf=fairway": 21,
+    "golf=green": 24,
+    "golf=hole": 18,
+    "golf=rough": 94,
+    "golf=tee": 68,
+    "golf=water_hazard": 1,
+    "landuse=grass": 79,
+    "natural=sand": 168,
+    "natural=water": 1
+  }
+}

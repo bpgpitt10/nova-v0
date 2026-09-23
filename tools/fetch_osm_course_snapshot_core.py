@@ -23,7 +23,7 @@ from typing import Any
 import fetch_osm_course_snapshot as fetcher
 
 MAP_MARGIN_DEG = 0.0006
-NATURAL_VALUES = {"wood", "scrub", "water"}
+NATURAL_VALUES = {"wood", "scrub", "water", "grassland", "heath", "sand", "beach"}
 LANDUSE_VALUES = {"forest", "grass", "meadow", "reservoir"}
 
 

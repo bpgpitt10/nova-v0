@@ -22,7 +22,7 @@ from typing import Any
 import build_osm_course_package_v6 as v6
 
 
-TACTICAL_CONTEXT_KINDS = ("woods", "scrub")
+TACTICAL_CONTEXT_KINDS = ("woods", "scrub", "native-grass")
 EXPLICIT_SURFACE_PRIORITY = (
     "water",
     "penalty",
@@ -79,7 +79,7 @@ def model_for_hole(
     diagnostic = dict(diagnostic)
     diagnostic["tacticalDeepRoughPolygons"] = deep_rough_count
     diagnostic["tacticalSurfacePolicy"] = (
-        "woods/scrub are preserved and mirrored as deep-rough; runtime precedence "
+        "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence "
         "makes water/penalty/bunker/green/tee/fairway beat vegetation, and "
         "vegetation beat ordinary rough"
     )

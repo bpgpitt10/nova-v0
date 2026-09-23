@@ -212,7 +212,7 @@ def bbox_queries(bounds: tuple[float, float, float, float], timeout: int) -> dic
     bbox = bbox_string(bounds)
     return {
         "golf": f'[out:json][timeout:{timeout}];wr{bbox}["golf"];out geom;',
-        "natural": f'[out:json][timeout:{timeout}];wr{bbox}["natural"~"^(wood|scrub|water)$"];out geom;',
+        "natural": f'[out:json][timeout:{timeout}];wr{bbox}["natural"~"^(wood|scrub|water|grassland|heath|sand|beach)$"];out geom;',
         "landuse": f'[out:json][timeout:{timeout}];wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];out geom;',
     }
 

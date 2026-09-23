@@ -597,6 +597,19 @@
   stroke: none;
 }
 
+.live-context.context-native-grass {
+  fill: rgba(153, 139, 70, 0.30);
+  stroke: rgba(205, 190, 105, 0.42);
+  stroke-width: 0.11;
+  stroke-dasharray: 0.34 0.22;
+}
+
+.live-context.context-dune-sand {
+  fill: rgba(181, 153, 99, 0.34);
+  stroke: rgba(224, 197, 137, 0.44);
+  stroke-width: 0.11;
+}
+
 .live-context.context-woods {
   fill: url(#liveWoodsPattern);
   stroke: rgba(131, 173, 115, 0.34);
@@ -625,7 +638,7 @@
 .live-map .surface-bunker { fill: #9d8a62; stroke: #cbb98d; }
 .live-map .surface-water { fill: #31596a; stroke: #56849a; }
 .live-map .surface-tee { fill: #66825d; stroke: #a0bb95; }
-.live-map .surface-deep-rough { fill: #19301e; stroke: #315437; }
+.live-map .surface-deep-rough { fill: rgba(25, 48, 30, 0.46); stroke: #315437; }
 .live-map .surface-penalty { fill: #5b2928; stroke: #9b4b48; }
 
 .live-target-line {

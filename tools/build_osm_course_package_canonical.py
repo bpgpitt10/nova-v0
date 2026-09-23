@@ -37,6 +37,13 @@ def main() -> int:
     # selected-tee anchoring. V6 retains all confidently route-owned OSM tee
     # candidates. V7 adds deterministic tactical semantics for woods/scrub
     # without changing the underlying source context geometry.
+    base.CONTEXT_NATURAL.update({
+        "grassland": "native-grass",
+        "heath": "scrub",
+        "sand": "dune-sand",
+        "beach": "dune-sand",
+    })
+    base.CONTEXT_LANDUSE["meadow"] = "native-grass"
     base.normalize_osm = v6.normalize_osm
     v4.model_for_hole = v7.model_for_hole
     result = v4.main()
