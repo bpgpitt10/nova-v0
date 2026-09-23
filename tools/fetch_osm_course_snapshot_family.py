@@ -7,7 +7,10 @@ Course can both expose golf=hole refs 1-9. Selecting each ref independently can
 therefore create a Frankenstein course.
 
 This fetcher keeps the configured exact course boundary, then resolves one
-coherent 1-18 hole family before the compiler sees the snapshot.
+coherent 1-18 hole family before the compiler sees the snapshot. When a course
+config supplies a hole-identity fingerprint (currently par by hole), that exact
+identity is used only as a duplicate-family discriminator; spatial continuity
+still resolves the remaining ambiguity.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ import fetch_osm_course_snapshot_core as core
 EARTH_RADIUS_M = 6_371_008.8
 M_TO_YD = 1.0936133
 FOREIGN_COURSE_PENALTY_YARDS = 10_000.0
+PAR_MISMATCH_PENALTY_YARDS = 5_000.0
 DEFAULT_MIN_FAMILY_MARGIN_YARDS = 50.0
 DEFAULT_MAX_HANDOFF_YARDS = 700.0
 
@@ -120,6 +124,30 @@ def _element_identity(element: dict[str, Any]) -> tuple[str, int]:
     return str(element.get("type")), int(element.get("id"))
 
 
+def _candidate_par(element: dict[str, Any]) -> int | None:
+    raw = str((element.get("tags") or {}).get("par", "")).strip()
+    if not raw.isdigit():
+        return None
+    value = int(raw)
+    return value if 2 <= value <= 6 else None
+
+
+def expected_pars_from_config(config: dict[str, Any]) -> dict[int, int]:
+    raw = (config.get("holeIdentity") or {}).get("parByHole") or {}
+    if not isinstance(raw, dict):
+        return {}
+    output: dict[int, int] = {}
+    for raw_hole, raw_par in raw.items():
+        try:
+            hole = int(raw_hole)
+            par = int(raw_par)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= hole <= 18 and 2 <= par <= 6:
+            output[hole] = par
+    return output
+
+
 def _foreign_course_shapes(
     payload: dict[str, Any],
     source_identity: tuple[str, int],
@@ -165,6 +193,7 @@ def resolve_hole_family(
     payload: dict[str, Any],
     *,
     source_identity: tuple[str, int],
+    expected_par_by_hole: dict[int, int] | None = None,
     min_margin_yards: float = DEFAULT_MIN_FAMILY_MARGIN_YARDS,
     max_handoff_yards: float = DEFAULT_MAX_HANDOFF_YARDS,
 ) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
@@ -173,6 +202,7 @@ def resolve_hole_family(
     if missing:
         raise ValueError(f"Course snapshot is missing golf=hole refs: {missing}")
 
+    expected_par_by_hole = expected_par_by_hole or {}
     duplicate_refs = [hole for hole in range(1, 19) if len(by_ref[hole]) > 1]
     foreign_courses = _foreign_course_shapes(payload, source_identity)
     foreign_owner: dict[tuple[str, int], tuple[str, int] | None] = {}
@@ -197,12 +227,34 @@ def resolve_hole_family(
                 else 0.0
             )
 
+    # An explicit par fingerprint is deterministic course identity, not a
+    # yardage guess. Only penalize a mismatch when OSM itself supplies a par;
+    # missing OSM par metadata remains neutral.
+    par_mismatch: dict[tuple[str, int], bool] = {}
+    par_penalty: dict[tuple[str, int], float] = {}
+    for hole, candidates in by_ref.items():
+        expected_par = expected_par_by_hole.get(hole)
+        for candidate in candidates:
+            identity = _element_identity(candidate)
+            observed_par = _candidate_par(candidate)
+            mismatch = (
+                expected_par is not None
+                and observed_par is not None
+                and observed_par != expected_par
+            )
+            par_mismatch[identity] = mismatch
+            par_penalty[identity] = PAR_MISMATCH_PENALTY_YARDS if mismatch else 0.0
+
+    def identity_penalty(candidate: dict[str, Any]) -> float:
+        identity = _element_identity(candidate)
+        return foreign_penalty[identity] + par_penalty[identity]
+
     # Dynamic programming keeps the two best paths ending at each candidate.
-    # Cost is course-family continuity plus a strong nested-course penalty.
+    # Cost is course-family continuity plus strong exact-identity penalties.
     states: dict[tuple[str, int], list[tuple[float, list[dict[str, Any]], list[float]]]] = {}
     for candidate in by_ref[1]:
         identity = _element_identity(candidate)
-        states[identity] = [(foreign_penalty[identity], [candidate], [])]
+        states[identity] = [(identity_penalty(candidate), [candidate], [])]
 
     for hole in range(2, 19):
         next_states: dict[tuple[str, int], list[tuple[float, list[dict[str, Any]], list[float]]]] = {}
@@ -215,7 +267,7 @@ def resolve_hole_family(
                 if not math.isfinite(gap):
                     continue
                 options.append((
-                    previous_cost + gap + foreign_penalty[identity],
+                    previous_cost + gap + identity_penalty(candidate),
                     previous_path + [candidate],
                     previous_gaps + [gap],
                 ))
@@ -259,19 +311,36 @@ def resolve_hole_family(
     if selected_foreign:
         raise ValueError(f"Resolved family still selected nested-course holes: {selected_foreign}")
 
+    selected_par_mismatches = [
+        hole
+        for hole, element in selected.items()
+        if par_mismatch[_element_identity(element)]
+    ]
+    if selected_par_mismatches:
+        raise ValueError(
+            "Resolved family conflicts with configured course par fingerprint on holes: "
+            f"{selected_par_mismatches}"
+        )
+
     diagnostics = {
-        "method": "nested-course-exclusion+minimum-sequential-endpoint-gap-v1",
+        "method": "course-identity-fingerprint+nested-course-exclusion+minimum-sequential-endpoint-gap-v2",
         "duplicateRefs": duplicate_refs,
         "foreignCoursePolygonCount": len(foreign_courses),
+        "expectedParByHole": {
+            str(hole): par for hole, par in sorted(expected_par_by_hole.items())
+        },
         "bestCostYards": round(best_cost, 1),
         "secondBestCostYards": round(second_cost, 1) if second_cost is not None else None,
         "marginYards": round(margin, 1) if margin is not None else None,
         "maxHandoffYards": round(max_gap, 1),
+        "selectedParMismatchRefs": selected_par_mismatches,
         "selected": {
             str(hole): {
                 "type": _element_identity(element)[0],
                 "id": _element_identity(element)[1],
-                "par": (element.get("tags") or {}).get("par"),
+                "par": _candidate_par(element),
+                "expectedPar": expected_par_by_hole.get(hole),
+                "parMismatch": par_mismatch[_element_identity(element)],
                 "foreignCourse": foreign_owner[_element_identity(element)] is not None,
             }
             for hole, element in selected.items()
@@ -321,6 +390,7 @@ def main() -> int:
     selected, resolution = resolve_hole_family(
         bounded,
         source_identity=source_identity,
+        expected_par_by_hole=expected_pars_from_config(config),
         min_margin_yards=args.min_family_margin_yards,
         max_handoff_yards=args.max_handoff_yards,
     )
