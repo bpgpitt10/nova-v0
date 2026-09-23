@@ -1,4 +1,5 @@
 name: Oakmont Build-Course Preview
+# Retry marker: first untouched run failed only because both Overpass mirrors timed out.
 
 on:
   push:
@@ -76,7 +77,6 @@ jobs:
 
           slug = 'oakmont-country-club'
           root = Path(f'artifacts/course-geometry/{slug}')
-          candidate_root = Path(f'artifacts/course-build/{slug}/candidate')
           package_path = Path(f'public/course-geometry/{slug}/course-v1.json')
           validation_path = root / 'validation-v1.json'
           snapshot_path = root / 'osm-snapshot.json'
