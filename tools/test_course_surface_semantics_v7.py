@@ -1,33 +1,23 @@
 #!/usr/bin/env python3
-"""Validate V7 surface precedence on one real imported hole plus a tight fixture."""
+"""Validate V7 semantic promotion on one real imported hole plus a tight fixture."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from shapely.geometry import Point
-
 import build_osm_course_package_v7 as v7
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = ROOT / "public" / "course-geometry"
-MAX_OVERLAP_AREA_SQ_YD = 0.02
 
 
 def rect(x1: float, y1: float, x2: float, y2: float):
     return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
 
 
-def assert_no_area_overlap(deep, blocker, label: str) -> None:
-    overlap = deep.intersection(blocker).area
-    assert overlap <= MAX_OVERLAP_AREA_SQ_YD, (
-        f"deep-rough overlaps higher-priority {label}: {overlap:.4f} sq yd"
-    )
-
-
-def synthetic_precedence_test() -> None:
+def synthetic_promotion_test() -> None:
     model = {
         "hole": 1,
         "surfaces": {
@@ -40,17 +30,19 @@ def synthetic_precedence_test() -> None:
         },
         "context": {
             "woods": [rect(-32, 35, 28, 85)],
-            "scrub": [],
+            "scrub": [rect(22, 10, 34, 25)],
         },
     }
-    compiled = v7.apply_tactical_surface_semantics(model, simplify_yards=0)
+    compiled = v7.apply_tactical_surface_semantics(model)
     surfaces = compiled["surfaces"]
-    deep = v7._shape_from_serialized(surfaces.get("deep-rough", []))
 
-    assert not deep.is_empty
-    assert deep.contains(Point(25, 45)), "woods inside ordinary rough should become deep-rough"
-    for kind in ("fairway", "green", "tee", "bunker", "water"):
-        assert_no_area_overlap(deep, v7._shape_from_serialized(surfaces[kind]), kind)
+    assert surfaces["deep-rough"] == model["context"]["woods"] + model["context"]["scrub"]
+    for kind, polygons in model["surfaces"].items():
+        assert surfaces[kind] == polygons, f"V7 changed explicit {kind} geometry"
+    assert compiled["context"] == model["context"], "V7 changed source context geometry"
+    assert compiled["semanticSurfacePolicy"]["topologyStrategy"] == (
+        "preserve-source-polygons-resolve-overlap-at-runtime"
+    )
 
 
 def real_candidate():
@@ -86,31 +78,34 @@ def real_imported_hole_test() -> None:
         "the single-hole acceptance fixture needs a representative package."
     )
     package_path, hole_key, model = candidate
-    compiled = v7.apply_tactical_surface_semantics(model, simplify_yards=0.2)
+    original_surfaces = json.loads(json.dumps(model.get("surfaces") or {}))
+    original_context = json.loads(json.dumps(model.get("context") or {}))
+
+    compiled = v7.apply_tactical_surface_semantics(model)
     surfaces = compiled.get("surfaces") or {}
-    deep = v7._shape_from_serialized(surfaces.get("deep-rough", []))
-    assert not deep.is_empty, "real woods/scrub context did not produce tactical deep-rough"
+    context = compiled.get("context") or {}
+    expected_deep_rough = list(original_context.get("woods") or []) + list(original_context.get("scrub") or [])
 
-    for kind in v7.CONTEXT_BLOCKER_SURFACE_KINDS:
-        blocker = v7._shape_from_serialized(surfaces.get(kind, []))
-        if blocker.is_empty:
-            continue
-        assert_no_area_overlap(deep, blocker, kind)
+    assert expected_deep_rough, "representative hole did not actually contain tactical vegetation"
+    assert surfaces.get("deep-rough") == expected_deep_rough
+    assert context == original_context, "source context geometry changed during semantic promotion"
 
-    rough = v7._shape_from_serialized(surfaces.get("rough", []))
-    rough_overlap = deep.intersection(rough).area if not rough.is_empty else 0.0
+    for kind in ("fairway", "rough", "green", "bunker", "water", "penalty", "tee"):
+        if kind in original_surfaces:
+            assert surfaces.get(kind) == original_surfaces[kind], f"explicit {kind} geometry changed"
+
     print(
-        "Single-hole semantics acceptance:",
+        "Single-hole semantic promotion:",
         package_path.parent.name,
         f"H{hole_key}",
         f"deep-rough={len(surfaces.get('deep-rough', []))}",
         f"bunker={len(surfaces.get('bunker', []))}",
         f"water={len(surfaces.get('water', []))}",
-        f"rough/deep overlap={rough_overlap:.1f} sq yd",
+        "explicit geometry preserved",
     )
 
 
 if __name__ == "__main__":
-    synthetic_precedence_test()
+    synthetic_promotion_test()
     real_imported_hole_test()
-    print("V7 surface precedence: ok")
+    print("V7 semantic promotion: ok")
