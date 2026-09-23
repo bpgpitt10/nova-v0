@@ -13,7 +13,10 @@ try {
     GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT,
     gsproWorldToGreywolfH1Local,
   } = await vite.ssrLoadModule('/src/courseGeometry/greywolfH1StartingPositionCalibration.ts')
+  const { resolveGreywolfH1LiveTeePosition } = await vite.ssrLoadModule('/src/courseGeometry/greywolfH1LiveTeePosition.ts')
   const { listTeeCalibrations } = await vite.ssrLoadModule('/src/courseGeometry/teeCalibrationStore.ts')
+  const { saveRoundTeeSelection } = await vite.ssrLoadModule('/src/courseGeometry/roundTeeSelection.ts')
+  const { GREYWOLF_COURSE_ID } = await vite.ssrLoadModule('/src/courseGeometry/courseCatalog.ts')
   const { parseGsproStartingPosition } = await vite.ssrLoadModule('/src/adapters/gsproStartingPosition.ts')
 
   const memory = new Map()
@@ -133,7 +136,41 @@ try {
   )
   assert.equal(calibrations.filter((record) => record.osmTeeId != null).length, 1)
 
-  console.log('Greywolf H1 StartingPOS tee calibration: five tee sets ok')
+  const red = additionalTees.find((tee) => tee.teeSet === 'Red')
+  assert.ok(red)
+  saveRoundTeeSelection(GREYWOLF_COURSE_ID, 'Red')
+  const liveRed = resolveGreywolfH1LiveTeePosition(GREYWOLF_COURSE_ID, 1, {
+    world: red.world,
+    holeNumber: 1,
+    shotNumber: 1,
+    shotId: null,
+    roundId: 45,
+    courseKey: 'Greywolf_gsp',
+    distanceToPinYds: red.distanceToPinYds,
+    surface: 'tee',
+    surfaceRaw: 18,
+    recordKey: '45:1:1:red',
+  })
+  assert.ok(liveRed)
+  assert.equal(liveRed.source, 'gspro-startingpos')
+  assert.equal(liveRed.teeSet, 'Red')
+  assert.deepEqual(
+    liveRed.courseLocalYds,
+    calibrations.find((record) => record.teeSet === 'red')?.courseLocalYds,
+  )
+
+  const cachedRed = resolveGreywolfH1LiveTeePosition(GREYWOLF_COURSE_ID, 1, null)
+  assert.ok(cachedRed)
+  assert.equal(cachedRed.source, 'cached-calibration')
+  assert.deepEqual(cachedRed.courseLocalYds, liveRed.courseLocalYds)
+
+  saveRoundTeeSelection(GREYWOLF_COURSE_ID, 'Unseen')
+  const unseen = resolveGreywolfH1LiveTeePosition(GREYWOLF_COURSE_ID, 1, null)
+  assert.ok(unseen)
+  assert.equal(unseen.source, 'unresolved')
+  assert.equal(unseen.courseLocalYds, null)
+
+  console.log('Greywolf H1 StartingPOS tee calibration: five tee sets and live resolver ok')
 } finally {
   await vite.close()
 }
