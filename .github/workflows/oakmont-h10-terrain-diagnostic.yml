@@ -1,0 +1,107 @@
+name: Oakmont H10 Terrain Diagnostic
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - .github/workflows/oakmont-h10-terrain-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sample H10 terrain corridor
+        run: |
+          python - <<'PY'
+          import base64, json, math, struct, zlib
+          from pathlib import Path
+
+          package = json.loads(Path('public/course-geometry/oakmont-country-club/course-v1.json').read_text())
+          hole = package['holes']['10']
+          terrain = hole['terrain']
+          min_x = float(terrain['minX'])
+          min_y = float(terrain['minY'])
+          spacing = float(terrain['runtimeSpacingYds'])
+          width = int(terrain['width'])
+          height = int(terrain['height'])
+          offset = float(terrain['elevationOffsetFt'])
+          nodata = int(terrain['nodata'])
+          raw = zlib.decompress(base64.b64decode(terrain['valuesBase64']))
+          values = struct.unpack('<' + 'H' * (len(raw)//2), raw)
+          assert len(values) == width * height
+
+          def cell(ix, iy):
+              if ix < 0 or iy < 0 or ix >= width or iy >= height:
+                  return None
+              q = values[iy * width + ix]
+              if q == nodata:
+                  return None
+              return offset + q / 10.0
+
+          def nearest(x, y):
+              ix = round((x - min_x) / spacing)
+              iy = round((y - min_y) / spacing)
+              return cell(ix, iy)
+
+          frame = hole.get('coordinateFrame', {})
+          print('coordinateFrame=', json.dumps(frame, sort_keys=True))
+          print('referenceYards=', hole.get('referenceYards'))
+          print('terrainGrid=', json.dumps({
+              'minX': min_x, 'minY': min_y, 'spacing': spacing,
+              'width': width, 'height': height,
+              'elevationOffsetFt': offset,
+          }, sort_keys=True))
+
+          # Centerline and cross-corridor profile. The package frame's +Y axis is
+          # the authoritative tee-forward axis. Print 10-yard bins from 200-390.
+          print('PROFILE_BEGIN')
+          previous = None
+          for y in range(200, 391, 10):
+              center = nearest(0, y)
+              corridor = []
+              for x in range(-60, 61, 10):
+                  z = nearest(x, y)
+                  if z is not None:
+                      corridor.append(z)
+              if not corridor:
+                  print(json.dumps({'y': y, 'centerFt': center, 'corridor': None}))
+                  continue
+              record = {
+                  'y': y,
+                  'centerFt': None if center is None else round(center, 1),
+                  'minFt': round(min(corridor), 1),
+                  'maxFt': round(max(corridor), 1),
+                  'rangeFt': round(max(corridor)-min(corridor), 1),
+                  'centerDeltaFt': None if center is None or previous is None else round(center-previous, 1),
+              }
+              print(json.dumps(record))
+              if center is not None:
+                  previous = center
+          print('PROFILE_END')
+
+          # Identify strongest local centerline step and strongest cross-corridor relief.
+          samples = []
+          for y in range(180, 421, 5):
+              z = nearest(0, y)
+              if z is not None:
+                  samples.append((y, z))
+          steps = []
+          for (y0,z0),(y1,z1) in zip(samples, samples[1:]):
+              if y1 != y0:
+                  steps.append((abs(z1-z0), y0, y1, z1-z0))
+          if steps:
+              print('maxCenterStep=', max(steps))
+          relief = []
+          for y in range(180, 421, 5):
+              zs = [nearest(x,y) for x in range(-70,71,10)]
+              zs = [z for z in zs if z is not None]
+              if zs:
+                  relief.append((max(zs)-min(zs), y, min(zs), max(zs)))
+          if relief:
+              print('maxCrossCorridorRelief=', max(relief))
+          PY
