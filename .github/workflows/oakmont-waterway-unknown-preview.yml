@@ -1,0 +1,249 @@
+name: Oakmont Waterway + Unknown Ground Preview
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - .github/workflows/oakmont-waterway-unknown-preview.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oakmont-waterway-unknown-preview
+  cancel-in-progress: false
+
+jobs:
+  patch-build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply generic waterway + unknown-ground fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'expected patch anchor missing in {path}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              'tools/fetch_osm_course_snapshot_core.py',
+              'LANDUSE_VALUES = {"forest", "grass", "meadow", "reservoir"}\n',
+              'LANDUSE_VALUES = {"forest", "grass", "meadow", "reservoir"}\nWATERWAY_VALUES = {"river", "stream", "canal", "ditch", "drain"}\n',
+          )
+          replace(
+              'tools/fetch_osm_course_snapshot_core.py',
+              '    if tags.get("landuse") in LANDUSE_VALUES:\n        return True\n    return False\n',
+              '    if tags.get("landuse") in LANDUSE_VALUES:\n        return True\n    if tags.get("waterway") in WATERWAY_VALUES:\n        return True\n    return False\n',
+          )
+
+          replace(
+              'tools/fetch_osm_course_snapshot.py',
+              '        "landuse": f\'[out:json][timeout:{timeout}];wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];out geom;\',\n',
+              '        "landuse": f\'[out:json][timeout:{timeout}];wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];out geom;\',\n        "waterway": f\'[out:json][timeout:{timeout}];wr{bbox}["waterway"~"^(river|stream|canal|ditch|drain)$"];out geom;\',\n',
+          )
+          replace(
+              'tools/fetch_osm_course_snapshot.py',
+              '    for label in ("golf", "natural", "landuse"):\n',
+              '    for label in ("golf", "natural", "landuse", "waterway"):\n',
+          )
+
+          replace(
+              'tools/build_osm_course_package.py',
+              'CONTEXT_LANDUSE = {"forest": "woods", "grass": "grass-context", "meadow": "grass-context"}\n',
+              'CONTEXT_LANDUSE = {"forest": "woods", "grass": "grass-context", "meadow": "grass-context"}\nWATERWAY_SURFACES = {"river", "stream", "canal", "ditch", "drain"}\nDEFAULT_WATERWAY_WIDTH_YARDS = {\n    "river": 12.0,\n    "stream": 4.0,\n    "canal": 8.0,\n    "ditch": 3.0,\n    "drain": 2.0,\n}\n',
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              'def classify_element(tags: dict[str, Any]) -> tuple[str, str] | None:\n',
+              '''def waterway_width_yards(tags: dict[str, Any]) -> float:\n    waterway = str(tags.get("waterway") or "")\n    fallback = DEFAULT_WATERWAY_WIDTH_YARDS.get(waterway, 3.0)\n    raw = str(tags.get("width") or "").strip().lower()\n    if not raw:\n        return fallback\n    try:\n        if raw.endswith("ft"):\n            return max(1.0, float(raw[:-2].strip()) / 3.0)\n        if raw.endswith("m"):\n            return max(1.0, float(raw[:-1].strip()) * M_TO_YD)\n        return max(1.0, float(raw) * M_TO_YD)\n    except ValueError:\n        return fallback\n\n\ndef classify_element(tags: dict[str, Any]) -> tuple[str, str] | None:\n''',
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              '    if tags.get("natural") == "water" or tags.get("landuse") == "reservoir":\n        return "surface", "water"\n',
+              '    if tags.get("natural") == "water" or tags.get("landuse") == "reservoir":\n        return "surface", "water"\n    if tags.get("waterway") in WATERWAY_SURFACES:\n        return "surface", "water"\n',
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              '    if tags.get("landuse"):\n        return f"landuse={tags[\'landuse\']}"\n',
+              '    if tags.get("landuse"):\n        return f"landuse={tags[\'landuse\']}"\n    if tags.get("waterway"):\n        return f"waterway={tags[\'waterway\']}"\n',
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              '''        role, kind = classified\n        polygon_geometries = [geometry for geometry in geometries if len(geometry) >= 3]\n        if not polygon_geometries:\n            continue\n        features.append(\n            {\n                "role": role,\n                "kind": kind,\n                "osm_type": element.get("type"),\n                "osm_id": element.get("id"),\n                "source_feature": source_feature(tags, kind),\n                "geometries": polygon_geometries,\n                "centroid": centroid([point for geometry in polygon_geometries for point in geometry]),\n            }\n        )\n''',
+              '''        role, kind = classified\n        linear_water = kind == "water" and tags.get("waterway") in WATERWAY_SURFACES\n        usable_geometries = [\n            geometry for geometry in geometries\n            if len(geometry) >= (2 if linear_water else 3)\n        ]\n        if not usable_geometries:\n            continue\n        feature = {\n            "role": role,\n            "kind": kind,\n            "osm_type": element.get("type"),\n            "osm_id": element.get("id"),\n            "source_feature": source_feature(tags, kind),\n            "geometries": usable_geometries,\n            "centroid": centroid([point for geometry in usable_geometries for point in geometry]),\n        }\n        if linear_water:\n            feature["geometry_mode"] = "line"\n            feature["line_buffer_yards"] = waterway_width_yards(tags)\n        features.append(feature)\n''',
+          )
+
+          replace(
+              'tools/build_osm_course_package_v4.py',
+              '''    for geometry in feature["geometries"]:\n        points = [base.to_hole_local(point, origin, forward, right) for point in geometry]\n        if len(points) < 3:\n            continue\n        candidate = make_valid(Polygon(points))\n        output.extend(part for part in polygon_parts(candidate) if part.area > 0.05)\n''',
+              '''    for geometry in feature["geometries"]:\n        points = [base.to_hole_local(point, origin, forward, right) for point in geometry]\n        if feature.get("geometry_mode") == "line":\n            if len(points) < 2:\n                continue\n            full_width = max(1.0, float(feature.get("line_buffer_yards") or 2.0))\n            candidate = make_valid(\n                LineString(points).buffer(full_width / 2.0, cap_style="round", join_style="round")\n            )\n        else:\n            if len(points) < 3:\n                continue\n            candidate = make_valid(Polygon(points))\n        output.extend(part for part in polygon_parts(candidate) if part.area > 0.05)\n''',
+          )
+
+          replace(
+              'src/pages/LiveCaddiePage.css',
+              '''  background:\n    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.16), transparent 42%),\n    #0b130d;\n''',
+              '''  /* Unmapped ground is intentionally neutral rather than darker than deep rough.\n     Unknown remains unknown tactically; this is visual separation only. */\n  background:\n    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.12), transparent 42%),\n    repeating-linear-gradient(135deg, rgba(180, 194, 181, 0.018) 0 1px, transparent 1px 7px),\n    #161d18;\n''',
+          )
+          PY
+
+      - name: Install course-build dependencies
+        run: python -m pip install --upgrade shapely numpy rasterio pyproj
+
+      - name: Validate linear-water compiler behavior
+        run: |
+          PYTHONPATH=tools python - <<'PY'
+          import build_osm_course_package as base
+          import build_osm_course_package_v4 as v4
+
+          payload = {"elements": [{
+              "type": "way",
+              "id": 999,
+              "tags": {"waterway": "ditch"},
+              "geometry": [
+                  {"lat": 40.0, "lon": -80.0},
+                  {"lat": 40.0001, "lon": -80.0},
+              ],
+          }]}
+          features, holes = base.normalize_osm(payload)
+          assert holes == {}
+          assert len(features) == 1
+          feature = features[0]
+          assert feature['kind'] == 'water'
+          assert feature['geometry_mode'] == 'line'
+          assert feature['line_buffer_yards'] == 3.0
+          polygons = v4.feature_polygons_local(
+              feature,
+              (40.0, -80.0),
+              (0.0, 1.0),
+              (1.0, 0.0),
+          )
+          assert polygons and polygons[0].area > 0
+          print('linear waterway -> buffered tactical water: ok')
+          PY
+
+      - name: Verify build-course orchestration contract
+        run: PYTHONPATH=tools python tools/test_build_course_pipeline.py
+
+      - name: Rebuild Oakmont 1-18 through canonical pipeline
+        run: |
+          python tools/build_course.py \
+            --config config/course-geometry/oakmont-country-club-v1.json \
+            --terrain-mode required \
+            --terrain-holes 1-18
+
+      - name: Require H10 water and complete candidate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('artifacts/course-build/oakmont-country-club/candidate')
+          summary = json.loads((root / 'build-summary.json').read_text())
+          validation = json.loads((root / 'geometry-validation-v1.json').read_text())
+          snapshot = json.loads((root / 'osm-snapshot.json').read_text())
+          h10 = next(h for h in validation['holes'] if h['hole'] == 10)
+          waterways = [
+              e for e in snapshot['elements']
+              if (e.get('tags') or {}).get('waterway') in {'river','stream','canal','ditch','drain'}
+          ]
+          assert summary['status'] in {'PASS', 'REVIEW'}, summary
+          assert summary['geometry']['readyHoles'] == 18
+          assert summary['terrain']['readyHoles'] == list(range(1, 19))
+          assert waterways, 'Oakmont snapshot still contains no supported linear waterways'
+          assert h10['surfacePolygons']['water'] > 0, h10
+          assert h10['tacticalDeepRoughPolygons'] == 0, h10
+          print(json.dumps({
+              'status': summary['status'],
+              'waterwayFeatures': len(waterways),
+              'hole10WaterPolygons': h10['surfacePolygons']['water'],
+              'hole10DeepRoughPolygons': h10['tacticalDeepRoughPolygons'],
+          }, indent=2))
+          PY
+
+      - name: Promote Oakmont candidate to preview branch
+        run: |
+          CANDIDATE=artifacts/course-build/oakmont-country-club/candidate
+          cp "$CANDIDATE/course-v1.json" public/course-geometry/oakmont-country-club/course-v1.json
+          cp "$CANDIDATE/geometry-validation-v1.json" artifacts/course-geometry/oakmont-country-club/validation-v1.json
+          cp "$CANDIDATE/osm-snapshot.json" artifacts/course-geometry/oakmont-country-club/osm-snapshot.json
+          cp "$CANDIDATE/build-summary.json" artifacts/course-geometry/oakmont-country-club/build-course-summary-v1.json
+          cp "$CANDIDATE/terrain-validation-v1.json" artifacts/course-geometry/oakmont-country-club/build-course-terrain-validation-v1.json
+
+      - name: Sync preview cache metadata
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          slug = 'oakmont-country-club'
+          root = Path(f'artifacts/course-geometry/{slug}')
+          package_path = Path(f'public/course-geometry/{slug}/course-v1.json')
+          validation_path = root / 'validation-v1.json'
+          snapshot_path = root / 'osm-snapshot.json'
+          summary_path = root / 'build-course-summary-v1.json'
+          terrain_validation_path = root / 'build-course-terrain-validation-v1.json'
+          cache_path = root / 'cache-v1.json'
+          summary = json.loads(summary_path.read_text())
+          validation = json.loads(validation_path.read_text())
+          cache = json.loads(cache_path.read_text())
+          sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          cache['package'].update({
+              'builderFingerprintSha256': validation['builderFingerprintSha256'],
+              'builderVersion': 'build_osm_course_package_v7',
+              'builtAt': summary['buildCompletedAt'],
+              'sha256': sha(package_path),
+              'semanticCompiler': 'build_osm_course_package_v7',
+              'semanticSurfacePolicyVersion': 2,
+          })
+          cache['source'].update({
+              'provider': 'openstreetmap-core-map',
+              'snapshotPath': str(snapshot_path),
+              'snapshotSha256': sha(snapshot_path),
+          })
+          cache['lastBuild'] = {'reason': 'waterway-support-preview', 'usedNetworkForOsm': True}
+          cache['terrain'] = {
+              'status': 'complete-current-frame',
+              'builderVersion': 'import_course_terrain_v3',
+              'coordinateFrame': 'package-coordinateFrame',
+              'holes': list(range(1, 19)),
+              'validationPath': str(terrain_validation_path),
+              'validationSha256': sha(terrain_validation_path),
+          }
+          cache_path.write_text(json.dumps(cache, indent=2, sort_keys=True) + '\n')
+          PY
+
+      - name: Build web preview
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit generic fixes + Oakmont preview candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tools/fetch_osm_course_snapshot_core.py \
+            tools/fetch_osm_course_snapshot.py \
+            tools/build_osm_course_package.py \
+            tools/build_osm_course_package_v4.py \
+            src/pages/LiveCaddiePage.css \
+            public/course-geometry/oakmont-country-club/course-v1.json \
+            artifacts/course-geometry/oakmont-country-club/cache-v1.json \
+            artifacts/course-geometry/oakmont-country-club/validation-v1.json \
+            artifacts/course-geometry/oakmont-country-club/osm-snapshot.json \
+            artifacts/course-geometry/oakmont-country-club/build-course-summary-v1.json \
+            artifacts/course-geometry/oakmont-country-club/build-course-terrain-validation-v1.json
+          git commit -m "fix(course): ingest linear waterways and distinguish unmapped ground"
+          git push origin HEAD:web-course-importer-surface-semantics-v1
