@@ -153,7 +153,7 @@ const parseSurfaces = (
       polygons,
       provenance: {
         source: 'osm',
-        sourceFeature: kind === 'water' ? 'cached OSM water geometry' : `golf=${kind}`,
+        sourceFeature: kind === 'water' ? 'cached OSM water geometry' : kind === 'deep-rough' ? 'cached OSM woods/scrub context promoted to tactical deep-rough' : `golf=${kind}`,
         confidence: 'high',
         note: 'Compiled from the cached OSM golf=hole route package.',
       },

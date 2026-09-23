@@ -48,8 +48,8 @@ def main() -> int:
     manifest["registrationNote"] = (
         "Static geometry preserves cached route-axis orientation, rebases the "
         "origin to a mapped tee when confidently owned, packages true heading "
-        "metadata and route-owned OSM tee candidates, and promotes woods/scrub "
-        "to tactical deep-rough only after explicit golf surfaces are carved out."
+        "metadata and route-owned OSM tee candidates, and preserves woods/scrub as source context while mirroring them "
+        "to tactical deep-rough; runtime precedence resolves overlaps."
     )
     args.manifest.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",

@@ -45,15 +45,18 @@ import ConditionsMathPanel from './ConditionsMathPanel'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 
+// SVG uses painter's order: broad/low-priority surfaces first, then increasingly
+// specific golf surfaces and hazards. This is the reverse of tactical point
+// classification precedence so woods can never visually cover fairway/green/hazards.
 const surfaceOrder: CourseSurfaceKind[] = [
   'rough',
-  'water',
+  'deep-rough',
   'fairway',
+  'tee',
   'green',
   'bunker',
-  'tee',
-  'deep-rough',
   'penalty',
+  'water',
 ]
 
 type LiveCaddieWorkerMessage =

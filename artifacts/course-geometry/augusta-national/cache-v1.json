@@ -7,7 +7,7 @@
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
+    "reason": "cached-semantic-promotion",
     "usedNetworkForOsm": false
   },
   "package": {
@@ -18,7 +18,9 @@
     "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
     "path": "public/course-geometry/augusta-national/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "8170df101f5a63773fb8ad027e51cd22c33a1b97b267a60c48491c49dfdc67b2",
+    "semanticCompiler": "build_osm_course_package_v7",
+    "semanticSurfacePolicyVersion": 2,
+    "sha256": "d192ba40b59ed1a26ce47a55ce4a9922e3227c15f2a46632f988cb44b27805c1",
     "terrainComposerVersion": "compose_course_package_v1"
   },
   "refreshPolicy": {
