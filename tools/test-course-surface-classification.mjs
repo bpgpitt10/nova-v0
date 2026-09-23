@@ -20,7 +20,7 @@ const surface = (kind, polygon) => ({
 })
 
 const packagedSurface = (kind, polygons) => ({
-  id: `augusta-h1-${kind}`,
+  id: `augusta-probe-${kind}`,
   kind,
   polygons,
   provenance: { source: 'osm', confidence: 'high' },
@@ -112,31 +112,37 @@ try {
     new URL('../public/course-geometry/augusta-national/course-v1.json', import.meta.url),
     'utf8',
   ))
-  const rawH1 = augustaPackage.holes?.['1']
-  assert.ok(rawH1, 'Augusta National H1 must be committed for the real-hole probe')
 
-  const rawSurfaces = rawH1.surfaces ?? {}
-  const rawContext = rawH1.context ?? {}
+  // Championship H1 correctly has no water. Use H6 for the real-course
+  // all-surface probe because it contains fairway, rough, bunker, water and
+  // woods/deep-rough in the corrected championship package.
+  const probeHoleNumber = 6
+  const rawProbeHole = augustaPackage.holes?.[String(probeHoleNumber)]
+  assert.ok(rawProbeHole, `Augusta National H${probeHoleNumber} must be committed for the real-hole probe`)
+
+  const rawSurfaces = rawProbeHole.surfaces ?? {}
+  const rawContext = rawProbeHole.context ?? {}
   const deepRough = [...(rawContext.woods ?? []), ...(rawContext.scrub ?? [])]
   const realSurfaces = Object.entries(rawSurfaces)
     .filter(([, polygons]) => Array.isArray(polygons) && polygons.length > 0)
     .map(([kind, polygons]) => packagedSurface(kind, polygons))
   if (deepRough.length > 0) realSurfaces.push(packagedSurface('deep-rough', deepRough))
 
-  const augustaH1 = {
+  const augustaProbeHole = {
     ...hole,
     courseId: 'augusta-national',
     courseName: 'Augusta National',
+    holeNumber: probeHoleNumber,
     surfaces: realSurfaces,
   }
 
   const findClassifiedPoint = (kind) => {
-    const matching = augustaH1.surfaces.filter((candidate) => candidate.kind === kind)
+    const matching = augustaProbeHole.surfaces.filter((candidate) => candidate.kind === kind)
     for (const candidate of matching) {
       for (const polygon of candidate.polygons) {
         for (const point of polygonCandidates(polygon)) {
           if (!pointInPolygon(point, polygon)) continue
-          if (classifyPoint(augustaH1, point).kind === kind) return point
+          if (classifyPoint(augustaProbeHole, point).kind === kind) return point
         }
       }
     }
@@ -146,12 +152,12 @@ try {
   const probes = {}
   for (const kind of ['water', 'bunker', 'green', 'fairway', 'deep-rough']) {
     probes[kind] = findClassifiedPoint(kind)
-    assert.ok(probes[kind], `Augusta H1 has no point that resolves tactically as ${kind}`)
+    assert.ok(probes[kind], `Augusta H${probeHoleNumber} has no point that resolves tactically as ${kind}`)
   }
   probes.rough = findClassifiedPoint('rough')
 
   console.log(
-    'Augusta National H1 point probes:',
+    `Augusta National H${probeHoleNumber} point probes:`,
     Object.entries(probes).map(([kind, point]) => `${kind}=${point ? point.map((v) => v.toFixed(1)).join(',') : 'fully-overridden'}`).join(' | '),
   )
   console.log('Runtime surface precedence: explicit hazards/golf surfaces > vegetation > rough: ok')
