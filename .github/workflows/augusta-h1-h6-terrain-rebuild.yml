@@ -1,0 +1,147 @@
+name: Augusta H1 H6 Current-Frame Terrain Rebuild
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - .github/workflows/augusta-h1-h6-terrain-rebuild.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: augusta-h1-h6-current-frame-terrain
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install terrain dependencies
+        run: python -m pip install --upgrade numpy rasterio pyproj
+
+      - name: Validate current-frame math and partial composer
+        run: PYTHONPATH=tools python tools/test_current_frame_terrain.py
+
+      - name: Build Augusta H1 and H6 terrain from USGS 3DEP
+        run: |
+          python tools/import_course_terrain_v3.py \
+            --config config/course-geometry/augusta-national-v1.json \
+            --geometry public/course-geometry/augusta-national/course-v1.json \
+            --source-out artifacts/course-geometry/augusta-national/terrain-source-v1.json \
+            --terrain-out artifacts/course-geometry/augusta-national/terrain-v1.json \
+            --validation-out artifacts/course-geometry/augusta-national/terrain-validation-v1.json \
+            --cache-out artifacts/course-geometry/augusta-national/terrain-cache-v1.json \
+            --holes 1,6 \
+            --force-refresh
+
+      - name: Embed H1 and H6 terrain without rebuilding geometry
+        run: |
+          python tools/compose_course_package.py \
+            --geometry public/course-geometry/augusta-national/course-v1.json \
+            --terrain artifacts/course-geometry/augusta-national/terrain-v1.json \
+            --output /tmp/augusta-course-v1.json \
+            --report artifacts/course-geometry/augusta-national/terrain-compose-report-v1.json \
+            --allow-partial
+          mv /tmp/augusta-course-v1.json public/course-geometry/augusta-national/course-v1.json
+
+      - name: Validate Augusta championship package
+        run: node tools/test-augusta-championship-package.mjs
+
+      - name: Validate H1/H6 terrain and refresh cache metadata
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          package_path = Path('public/course-geometry/augusta-national/course-v1.json')
+          validation_path = Path('artifacts/course-geometry/augusta-national/terrain-validation-v1.json')
+          terrain_path = Path('artifacts/course-geometry/augusta-national/terrain-v1.json')
+          source_path = Path('artifacts/course-geometry/augusta-national/terrain-source-v1.json')
+          terrain_cache_path = Path('artifacts/course-geometry/augusta-national/terrain-cache-v1.json')
+          cache_path = Path('artifacts/course-geometry/augusta-national/cache-v1.json')
+
+          package = json.loads(package_path.read_text())
+          validation = json.loads(validation_path.read_text())
+          terrain = json.loads(terrain_path.read_text())
+          assert validation['requestedHoles'] == [1, 6]
+          assert validation['allRequestedHolesTerrainReady'] is True
+          assert set(terrain['holes']) == {'1', '6'}
+
+          for number in ('1', '6'):
+              hole = package['holes'][number]
+              embedded = hole.get('terrain')
+              assert embedded, f'Hole {number}: terrain missing after compose'
+              assert embedded['source'] == 'lidar-dem'
+              assert embedded['sourceResolutionMeters'] <= 1.1
+              assert embedded['width'] > 1 and embedded['height'] > 1
+              assert embedded['valuesBase64']
+
+              artifact_frame = terrain['holes'][number]['coordinateFrame']
+              geometry_frame = hole['coordinateFrame']
+              assert artifact_frame['origin'] == geometry_frame['origin']
+              assert artifact_frame['anchorLatLon'] == geometry_frame['anchorLatLon']
+              assert artifact_frame['headingDegreesTrue'] == geometry_frame['headingDegreesTrue']
+
+              diag = next(item for item in validation['holes'] if str(item['hole']) == number)
+              lo, hi = diag['elevationRangeFt']
+              assert hi > lo, f'Hole {number}: terrain has no elevation variation'
+
+          sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          cache = json.loads(cache_path.read_text())
+          cache['package']['sha256'] = sha(package_path)
+          cache['terrain'] = {
+              'status': 'partial-current-frame',
+              'holes': [1, 6],
+              'builderVersion': 'import_course_terrain_v3',
+              'sourcePath': str(source_path),
+              'sourceSha256': sha(source_path),
+              'terrainPath': str(terrain_path),
+              'terrainSha256': sha(terrain_path),
+              'terrainCachePath': str(terrain_cache_path),
+              'terrainCacheSha256': sha(terrain_cache_path),
+              'validationPath': str(validation_path),
+              'validationSha256': sha(validation_path),
+              'coordinateFrame': 'package-coordinateFrame',
+              'note': 'Augusta H1/H6 rebuilt from USGS 3DEP in corrected championship frames; remaining holes intentionally deferred.'
+          }
+          cache_path.write_text(json.dumps(cache, indent=2, sort_keys=True) + '\n')
+
+          print(json.dumps({
+              'H1': validation['holes'][0],
+              'H6': validation['holes'][1],
+              'packageSha256': cache['package']['sha256'],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Commit generated terrain
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            artifacts/course-geometry/augusta-national/cache-v1.json \
+            artifacts/course-geometry/augusta-national/terrain-source-v1.json \
+            artifacts/course-geometry/augusta-national/terrain-v1.json \
+            artifacts/course-geometry/augusta-national/terrain-validation-v1.json \
+            artifacts/course-geometry/augusta-national/terrain-cache-v1.json \
+            artifacts/course-geometry/augusta-national/terrain-compose-report-v1.json \
+            public/course-geometry/augusta-national/course-v1.json
+          if git diff --cached --quiet; then
+            echo "No generated terrain changes to commit."
+          else
+            git commit -m "build(course): rebuild Augusta H1 H6 terrain"
+            git push origin HEAD:web-course-importer-surface-semantics-v1
+          fi
