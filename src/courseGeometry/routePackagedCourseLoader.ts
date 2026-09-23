@@ -295,7 +295,10 @@ const fetchPackage = async (courseId: CourseId): Promise<RawPackage> => {
   for (const delayMs of FETCH_RETRY_DELAYS_MS) {
     await wait(delayMs)
     try {
-      const response = await fetch(entry.staticPackageUrl, { cache: 'force-cache' })
+      // Course packages can change while their public URL remains stable across
+      // deployments. Reusing the browser's cached JSON can therefore combine a
+      // new app bundle with stale geometry/terrain from an older deployment.
+      const response = await fetch(entry.staticPackageUrl, { cache: 'no-store' })
       if (!response.ok) throw new Error(`${entry.name} package returned ${response.status}.`)
       const payload = await response.json() as RawPackage
       if (payload.schemaVersion !== 'looper-static-course-package-v1') {
