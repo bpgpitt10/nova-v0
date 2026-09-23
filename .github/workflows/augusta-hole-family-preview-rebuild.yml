@@ -7,6 +7,7 @@ on:
     paths:
       - tools/fetch_osm_course_snapshot_family.py
       - tools/test_osm_hole_family.py
+      - config/course-geometry/augusta-national-v1.json
       - .github/workflows/augusta-hole-family-preview-rebuild.yml
   workflow_dispatch:
 
@@ -59,8 +60,19 @@ jobs:
           selected = resolution['selected']
           if not resolution['duplicateRefs']:
               raise SystemExit('Expected Augusta duplicate refs were not observed; review source assumptions.')
-          if any(selected[str(hole)]['foreignCourse'] for hole in range(1, 19)):
-              raise SystemExit('Resolved Augusta family still contains nested-course holes.')
+          if resolution.get('selectedParMismatchRefs'):
+              raise SystemExit(
+                  f"Resolved Augusta family conflicts with configured par identity: {resolution['selectedParMismatchRefs']}"
+              )
+          expected = resolution.get('expectedParByHole') or {}
+          if len(expected) != 18:
+              raise SystemExit(f'Expected 18 configured Augusta par fingerprints; got {len(expected)}.')
+          for hole in range(1, 19):
+              row = selected[str(hole)]
+              if row.get('expectedPar') != expected[str(hole)]:
+                  raise SystemExit(f'Augusta H{hole} expected-par diagnostic is inconsistent.')
+              if row.get('par') is not None and row.get('par') != row.get('expectedPar'):
+                  raise SystemExit(f'Augusta H{hole} selected wrong course family par: {row}.')
 
           manifest = json.loads(Path('artifacts/course-geometry/augusta-national/validation-v1.json').read_text())
           hole1 = next(item for item in manifest['holes'] if item['hole'] == 1)
@@ -88,6 +100,7 @@ jobs:
               'duplicateRefs': resolution['duplicateRefs'],
               'familyMarginYards': resolution['marginYards'],
               'maxHandoffYards': resolution['maxHandoffYards'],
+              'hole1RouteId': selected['1']['id'],
               'hole1Par': hole1['par'],
               'hole1RouteYards': hole1['routeLengthYards'],
               'hole1StraightYards': hole1['straightTeeToGreenYards'],
