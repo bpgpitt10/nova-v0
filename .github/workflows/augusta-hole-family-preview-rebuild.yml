@@ -1,0 +1,123 @@
+name: Augusta championship hole-family preview rebuild
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - tools/fetch_osm_course_snapshot_family.py
+      - tools/test_osm_hole_family.py
+      - .github/workflows/augusta-hole-family-preview-rebuild.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: web-course-importer-surface-semantics-v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependency
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Regression-test duplicate hole-family resolver
+        run: python tools/test_osm_hole_family.py
+
+      - name: Fetch Augusta with one coherent 18-hole family
+        run: |
+          python tools/fetch_osm_course_snapshot_family.py \
+            --config config/course-geometry/augusta-national-v1.json \
+            --output /tmp/augusta-resolved-osm.json
+
+      - name: Build canonical V7 Augusta geometry
+        run: |
+          python tools/build_osm_course_package_canonical.py \
+            --osm /tmp/augusta-resolved-osm.json \
+            --config config/course-geometry/augusta-national-v1.json \
+            --output public/course-geometry/augusta-national/course-v1.json \
+            --manifest artifacts/course-geometry/augusta-national/validation-v1.json
+
+      - name: Prove championship Hole 1 replaced the Par 3 impostor
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          snapshot = json.loads(Path('/tmp/augusta-resolved-osm.json').read_text())
+          resolution = snapshot['looperSnapshot']['holeRouteResolution']
+          selected = resolution['selected']
+          if not resolution['duplicateRefs']:
+              raise SystemExit('Expected Augusta duplicate refs were not observed; review source assumptions.')
+          if any(selected[str(hole)]['foreignCourse'] for hole in range(1, 19)):
+              raise SystemExit('Resolved Augusta family still contains nested-course holes.')
+
+          manifest = json.loads(Path('artifacts/course-geometry/augusta-national/validation-v1.json').read_text())
+          hole1 = next(item for item in manifest['holes'] if item['hole'] == 1)
+          if int(hole1.get('par') or 0) != 4:
+              raise SystemExit(f"Augusta H1 still has wrong par: {hole1.get('par')}")
+          if float(hole1.get('routeLengthYards') or 0) < 350:
+              raise SystemExit(f"Augusta H1 is still implausibly short: {hole1.get('routeLengthYards')} yd")
+          if float(hole1.get('straightTeeToGreenYards') or 0) < 330:
+              raise SystemExit(
+                  f"Augusta H1 tee-to-green still implausibly short: {hole1.get('straightTeeToGreenYards')} yd"
+              )
+          if int((hole1.get('surfacePolygons') or {}).get('fairway', 0)) <= 0:
+              raise SystemExit('Augusta H1 has no fairway geometry after family resolution.')
+
+          package = json.loads(Path('public/course-geometry/augusta-national/course-v1.json').read_text())
+          package_h1 = package['holes']['1']
+          if int(package_h1.get('par') or 0) != 4:
+              raise SystemExit('Runtime Augusta H1 package is not par 4.')
+          # The old embedded terrain belonged to the incorrectly selected Par 3
+          # frames. Do not silently preserve it in this geometry-validation preview.
+          if package_h1.get('terrain') is not None:
+              raise SystemExit('Corrected Augusta H1 unexpectedly retained stale terrain.')
+
+          print(json.dumps({
+              'duplicateRefs': resolution['duplicateRefs'],
+              'familyMarginYards': resolution['marginYards'],
+              'maxHandoffYards': resolution['maxHandoffYards'],
+              'hole1Par': hole1['par'],
+              'hole1RouteYards': hole1['routeLengthYards'],
+              'hole1StraightYards': hole1['straightTeeToGreenYards'],
+              'hole1Surfaces': hole1['surfacePolygons'],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Validate web build
+        run: npm run build
+
+      - name: Commit corrected Augusta preview package
+        run: |
+          git add \
+            public/course-geometry/augusta-national/course-v1.json \
+            artifacts/course-geometry/augusta-national/validation-v1.json \
+            src/courseGeometry/generatedRouteHoleHeadings.ts
+          if git diff --cached --quiet; then
+            echo 'No Augusta preview package changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(course): select Augusta championship hole family'
+          git push origin HEAD:web-course-importer-surface-semantics-v1
