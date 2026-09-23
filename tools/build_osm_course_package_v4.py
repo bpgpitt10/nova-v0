@@ -41,6 +41,7 @@ MAX_FAIRWAY_POLYGONS = 120
 MAX_ROUGH_POLYGONS = 160
 MAX_BUNKER_POLYGONS = 120
 MAX_PLAYABLE_POLYGONS = 400
+CONTEXT_KINDS = ("woods", "scrub", "grass-context", "native-grass", "dune-sand")
 
 
 def route_length_yards(route: dict[str, Any]) -> float:
@@ -216,7 +217,7 @@ def model_for_hole(
         kind: union_feature_intersections(
             by_kind.get(kind, []), context_corridor, origin, forward, right, simplify_yards
         )
-        for kind in ("woods", "scrub", "grass-context")
+        for kind in CONTEXT_KINDS
     }
     context = {kind: polygons for kind, polygons in context.items() if polygons}
 
@@ -299,7 +300,7 @@ def model_for_hole(
         ],
         "selectionCorridorYards": context_width,
         "surfacePolygons": surface_counts,
-        "contextPolygons": {kind: len(context.get(kind, [])) for kind in ("woods", "scrub", "grass-context")},
+        "contextPolygons": {kind: len(context.get(kind, [])) for kind in CONTEXT_KINDS},
         "fairwayRequired": requires_fairway,
         "ready": ready,
         "warnings": warnings,
@@ -315,7 +316,7 @@ def raw_context_source_counts(payload: dict[str, Any]) -> Counter[str]:
             continue
         natural = tags.get("natural")
         landuse = tags.get("landuse")
-        if natural in {"wood", "scrub"}:
+        if natural in {"wood", "scrub", "grassland", "heath", "sand", "beach"}:
             counts[f"natural={natural}"] += 1
         if landuse in {"forest", "grass", "meadow"}:
             counts[f"landuse={landuse}"] += 1
