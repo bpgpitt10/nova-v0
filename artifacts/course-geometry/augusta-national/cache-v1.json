@@ -3,24 +3,24 @@
   "courseName": "Augusta National Golf Club",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-09-23T15:01:58.853388Z",
+    "evaluatedAt": "2026-09-23T16:58:17.194547Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "reported-geometry-error",
+    "reason": "build-course-candidate-preview",
     "usedNetworkForOsm": true
   },
   "package": {
     "builderFingerprintSha256": "150a5149efbb6e446f5f6eceedd47a1b1c0567ad215f6ea15dff7566241b40aa",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-09-23T15:01:58.853388Z",
+    "builtAt": "2026-09-23T16:56:01.671986Z",
     "configPath": "config/course-geometry/augusta-national-v1.json",
     "configSha256": "29ebee2474fb8dc3e0c436322386350c40b70e6c1f8acf8b53edb9ce29aa14f8",
     "path": "public/course-geometry/augusta-national/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
     "semanticCompiler": "build_osm_course_package_v7",
     "semanticSurfacePolicyVersion": 2,
-    "sha256": "c6afb6f153efc565cf15b6a50970f6ea597d7f404474c13f795507f844f65cf4"
+    "sha256": "7102f01e20931971dee7585c0f3abf9bc23b7ad5ccf31c1ef169a7f2deb9da31"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -57,17 +57,27 @@
     "coordinateFrame": "package-coordinateFrame",
     "holes": [
       1,
-      6
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
     ],
-    "note": "Augusta H1/H6 rebuilt from USGS 3DEP in corrected championship frames; remaining holes intentionally deferred.",
-    "sourcePath": "artifacts/course-geometry/augusta-national/terrain-source-v1.json",
-    "sourceSha256": "f5c44f4496b63b872a9cf0003d9684bf1dbda86e8cccb8d892e5dc6c33371430",
-    "status": "partial-current-frame",
-    "terrainCachePath": "artifacts/course-geometry/augusta-national/terrain-cache-v1.json",
-    "terrainCacheSha256": "8746df220ed7a8747c1f0cefa400604edb20294b273322cf198463b9a9aab345",
-    "terrainPath": "artifacts/course-geometry/augusta-national/terrain-v1.json",
-    "terrainSha256": "2a85d790cf5691f0a883e9cd064ef396e28c3bb6249798af99828ebc15274530",
-    "validationPath": "artifacts/course-geometry/augusta-national/terrain-validation-v1.json",
-    "validationSha256": "0d959422f38f0317bf4ddf47b7eb5eab8255779395f249e3ab1699a7f15fcac3"
+    "note": "All 18 Augusta holes rebuilt through canonical build-course using USGS 3DEP 1m terrain in corrected championship coordinate frames.",
+    "status": "complete-current-frame",
+    "validationPath": "artifacts/course-geometry/augusta-national/build-course-terrain-validation-v1.json",
+    "validationSha256": "ba141305b6e0c912d3b4357448e0ed079c6d0a53dfe66a51bea9c87c4b36dab2"
   }
 }
