@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """Compose Looper static OSM geometry and LiDAR terrain into one runtime package.
 
-The final browser artifact remains ``looper-static-course-package-v1``. Terrain
-is optional for backward compatibility, but when supplied it is embedded per
-hole so runtime consumers make one package request per course rather than
-coordinating geometry and terrain sidecars.
-
-Generic terrain input schema (preferred): ``looper-course-terrain-v1``.
-The legacy Greywolf terrain schema is accepted only as an explicit migration
-input. New course builders should emit the generic schema.
+Terrain is optional for backward compatibility.  Current-frame terrain can be
+composed either as a complete 18-hole package or, with ``--allow-partial``, as a
+focused acceptance slice (for example Augusta H1/H6) without disturbing geometry
+or existing terrain on the other holes.
 """
 from __future__ import annotations
 
@@ -110,6 +106,15 @@ def embedded_terrain(
     }
 
 
+def frame_origin(hole: dict[str, Any]) -> str | None:
+    """Read both the current V5+ coordinateFrame and the legacy coordinateSystem."""
+    for key in ("coordinateFrame", "coordinateSystem"):
+        frame = hole.get(key)
+        if isinstance(frame, dict) and isinstance(frame.get("origin"), str):
+            return frame["origin"]
+    return None
+
+
 def validate_coordinate_frame(
     geometry_hole: dict[str, Any],
     terrain_hole: dict[str, Any],
@@ -119,20 +124,43 @@ def validate_coordinate_frame(
 ) -> None:
     if legacy:
         return
-    geometry_origin = (geometry_hole.get("coordinateSystem") or {}).get("origin")
-    terrain_origin = (terrain_hole.get("coordinateSystem") or {}).get("origin")
+    geometry_origin = frame_origin(geometry_hole)
+    terrain_origin = frame_origin(terrain_hole)
+    if not isinstance(geometry_origin, str):
+        raise ValueError(f"Hole {hole} geometry must declare coordinateFrame/coordinateSystem.origin")
     if not isinstance(terrain_origin, str):
-        raise ValueError(f"Hole {hole} generic terrain must declare coordinateSystem.origin")
+        raise ValueError(f"Hole {hole} generic terrain must declare coordinateFrame/coordinateSystem.origin")
     if terrain_origin != geometry_origin:
         raise ValueError(
             f"Hole {hole} terrain origin {terrain_origin!r} does not match "
             f"geometry origin {geometry_origin!r}"
         )
 
+    # For the current-frame schema, also make sure the terrain was sampled
+    # against the exact geometry anchor/heading rather than merely sharing an
+    # origin label such as "selected-tee".
+    geometry_frame = geometry_hole.get("coordinateFrame")
+    terrain_frame = terrain_hole.get("coordinateFrame")
+    if isinstance(geometry_frame, dict) and isinstance(terrain_frame, dict):
+        g_anchor = geometry_frame.get("anchorLatLon")
+        t_anchor = terrain_frame.get("anchorLatLon")
+        g_heading = geometry_frame.get("headingDegreesTrue")
+        t_heading = terrain_frame.get("headingDegreesTrue")
+        if g_anchor != t_anchor:
+            raise ValueError(
+                f"Hole {hole} terrain anchor {t_anchor!r} does not match geometry anchor {g_anchor!r}"
+            )
+        if not finite(g_heading) or not finite(t_heading) or abs(float(g_heading) - float(t_heading)) > 1e-6:
+            raise ValueError(
+                f"Hole {hole} terrain heading {t_heading!r} does not match geometry heading {g_heading!r}"
+            )
+
 
 def compose(
     geometry: dict[str, Any],
     terrain: dict[str, Any],
+    *,
+    allow_partial: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if geometry.get("schemaVersion") != STATIC_SCHEMA:
         raise ValueError(f"Geometry package must use {STATIC_SCHEMA}")
@@ -186,7 +214,7 @@ def compose(
             geometry_hole["contours"] = contours
         merged.append(hole)
 
-    if missing:
+    if missing and not allow_partial:
         raise ValueError(
             "Terrain package is incomplete; missing holes: "
             + ", ".join(str(hole) for hole in missing)
@@ -196,6 +224,8 @@ def compose(
         "schemaVersion": terrain_schema,
         "source": copy.deepcopy(terrain.get("source")),
         "runtimeTerrain": copy.deepcopy(terrain.get("runtimeTerrain")),
+        "terrainHoles": merged,
+        "partial": bool(missing),
         **(
             {"courseCoordinateSystem": copy.deepcopy(terrain.get("courseCoordinateSystem"))}
             if terrain.get("courseCoordinateSystem") is not None
@@ -209,7 +239,9 @@ def compose(
         "terrainInputSchema": terrain_schema,
         "terrainHoleCount": len(merged),
         "terrainHoles": merged,
+        "missingTerrainHoles": missing,
         "complete": len(merged) == 18,
+        "partialAllowed": allow_partial,
     }
     return output, report
 
@@ -220,6 +252,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--terrain", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--allow-partial", action="store_true")
     return parser.parse_args()
 
 
@@ -227,7 +260,7 @@ def main() -> int:
     args = parse_args()
     geometry = json.loads(args.geometry.read_text(encoding="utf-8"))
     terrain = json.loads(args.terrain.read_text(encoding="utf-8"))
-    output, report = compose(geometry, terrain)
+    output, report = compose(geometry, terrain, allow_partial=args.allow_partial)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
