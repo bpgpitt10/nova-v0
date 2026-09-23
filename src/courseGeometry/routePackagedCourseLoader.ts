@@ -6,8 +6,11 @@ import type {
   CourseGeometryBounds,
   CourseGeometryProvenance,
   CourseHoleGeometry,
+  CourseMapFeature,
+  CourseMapFeatureKind,
   CoursePointYds,
   CoursePolygonYds,
+  CoursePolylineYds,
   CourseSurface,
   CourseSurfaceKind,
   CourseTerrainGrid,
@@ -17,6 +20,7 @@ const SURFACE_KINDS: readonly CourseSurfaceKind[] = [
   'tee', 'fairway', 'rough', 'deep-rough', 'green', 'bunker', 'water', 'penalty',
 ]
 const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'landcover-grass', 'landcover-woods', 'landcover-scrub', 'landcover-bare']
+const MAP_FEATURE_KINDS: readonly CourseMapFeatureKind[] = ['cartpath', 'road', 'building', 'parking']
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
 type RawBounds = { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
@@ -44,6 +48,7 @@ type RawRouteHole = {
   viewBounds?: RawBounds
   surfaces?: unknown
   context?: unknown
+  mapFeatures?: unknown
   contours?: unknown
   terrain?: RawTerrain
 }
@@ -83,6 +88,23 @@ const parsePolygons = (value: unknown): CoursePolygonYds[] =>
     ? value.flatMap((candidate): CoursePolygonYds[] => {
         const polygon = parsePolygon(candidate)
         return polygon ? [polygon] : []
+      })
+    : []
+
+const parsePolyline = (value: unknown): CoursePolylineYds | null => {
+  if (!Array.isArray(value)) return null
+  const points = value.flatMap((candidate): CoursePointYds[] => {
+    const point = parsePoint(candidate)
+    return point ? [point] : []
+  })
+  return points.length >= 2 ? points : null
+}
+
+const parsePolylines = (value: unknown): CoursePolylineYds[] =>
+  Array.isArray(value)
+    ? value.flatMap((candidate): CoursePolylineYds[] => {
+        const line = parsePolyline(candidate)
+        return line ? [line] : []
       })
     : []
 
@@ -182,6 +204,32 @@ const parseContextLayers = (
         note: isWorldCover
           ? '10 m WorldCover context used only where explicit OSM golf/context geometry is absent; not promoted to a tactical surface.'
           : 'Compiled from the cached OSM golf=hole route package.',
+      },
+    }]
+  })
+}
+
+const parseMapFeatures = (
+  courseId: CourseId,
+  holeNumber: number,
+  value: unknown,
+): CourseMapFeature[] => {
+  const raw = parseRecord(value)
+  return MAP_FEATURE_KINDS.flatMap((kind): CourseMapFeature[] => {
+    const group = parseRecord(raw[kind])
+    const lines = parsePolylines(group.lines)
+    const polygons = parsePolygons(group.polygons)
+    if (!lines.length && !polygons.length) return []
+    return [{
+      id: `${courseId}-h${String(holeNumber).padStart(2, '0')}-map-${kind}`,
+      kind,
+      ...(lines.length ? { lines } : {}),
+      ...(polygons.length ? { polygons } : {}),
+      provenance: {
+        source: 'osm',
+        sourceFeature: kind === 'cartpath' ? 'golf=cartpath' : `osm basemap ${kind}`,
+        confidence: 'high',
+        note: 'Visual-only OSM basemap feature; excluded from tactical surface classification.',
       },
     }]
   })
@@ -342,6 +390,7 @@ const parseHole = async (
   if (!bounds) throw new Error(`${courseName} Hole ${holeNumber} could not derive playable bounds.`)
   const viewBounds = parseBounds(raw.viewBounds)
   const contextLayers = parseContextLayers(courseId, holeNumber, raw.context)
+  const mapFeatures = parseMapFeatures(courseId, holeNumber, raw.mapFeatures)
   const contours = parseContours(raw.contours, courseName, holeNumber)
   const terrain = await parseTerrain(raw.terrain, courseName, holeNumber)
   const greenPolygons = surfaces.find((surface) => surface.kind === 'green')?.polygons ?? []
@@ -368,6 +417,7 @@ const parseHole = async (
     markers: { tee: [0, 0], ...(pin ? { pin } : {}) },
     surfaces,
     ...(contextLayers.length ? { contextLayers } : {}),
+    ...(mapFeatures.length ? { mapFeatures } : {}),
     ...(contours.length ? { contours } : {}),
     ...(terrain ? { terrain } : {}),
     availability: {

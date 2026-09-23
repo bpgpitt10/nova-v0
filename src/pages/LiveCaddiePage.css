@@ -930,3 +930,17 @@
     flex-wrap: wrap;
   }
 }
+
+
+/* Visual-only OSM basemap. These features never participate in tactical classification. */
+.live-map-feature {
+  pointer-events: none;
+}
+
+.live-map-feature.map-cartpath {
+  fill: none;
+  stroke: rgba(198, 184, 146, 0.64);
+  stroke-width: 0.72;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

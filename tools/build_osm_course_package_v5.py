@@ -29,7 +29,7 @@ import math
 from typing import Any
 
 from shapely import affinity
-from shapely.geometry import LineString
+from shapely.geometry import GeometryCollection, LineString, MultiLineString, box
 
 import build_osm_course_package as base
 import build_osm_course_package_v4 as v4
@@ -271,6 +271,51 @@ def feature_intersections_rebased(
     return polygons
 
 
+def _line_parts(geometry):
+    if geometry is None or geometry.is_empty:
+        return
+    if isinstance(geometry, LineString):
+        yield geometry
+        return
+    if isinstance(geometry, MultiLineString):
+        for part in geometry.geoms:
+            yield part
+        return
+    if isinstance(geometry, GeometryCollection):
+        for part in geometry.geoms:
+            yield from _line_parts(part)
+
+
+def serialize_lines(shape, simplify_yards: float):
+    if shape is None or shape.is_empty:
+        return []
+    if simplify_yards > 0:
+        shape = shape.simplify(simplify_yards, preserve_topology=True)
+    output = []
+    for part in _line_parts(shape):
+        coordinates = list(part.coords)
+        if len(coordinates) < 2:
+            continue
+        output.append([[round(float(x), 3), round(float(y), 3)] for x, y in coordinates])
+    return output
+
+
+def feature_lines_rebased(
+    features, visual_window, route_origin, forward, right, anchor_offset, simplify_yards
+):
+    lines = []
+    for feature in features:
+        for geometry in feature.get("geometries", []):
+            points = [
+                shifted_point(base.to_hole_local(point, route_origin, forward, right), anchor_offset)
+                for point in geometry
+            ]
+            if len(points) < 2:
+                continue
+            lines.extend(serialize_lines(LineString(points).intersection(visual_window), simplify_yards))
+    return lines
+
+
 def model_for_hole(
     hole_number: int,
     config: dict[str, Any],
@@ -394,6 +439,15 @@ def model_for_hole(
     }
     context = {kind: polygons for kind, polygons in context.items() if polygons}
 
+    visual_window = box(*context_corridor.bounds)
+    cartpath_lines = feature_lines_rebased(
+        by_kind.get("cartpath", []), visual_window,
+        route_origin, forward, right, anchor_offset, simplify_yards,
+    )
+    map_features = {
+        "cartpath": {"lines": cartpath_lines},
+    } if cartpath_lines else {}
+
     fallback_kind = str(selection.get("courseGroundFallbackContextKind") or "").strip()
     if fallback_kind:
         if fallback_kind not in v4.CONTEXT_KINDS:
@@ -486,6 +540,7 @@ def model_for_hole(
         },
         "surfaces": surfaces,
         "context": context,
+        "mapFeatures": map_features,
     }
 
     nearest_start_gap = min(
@@ -537,6 +592,9 @@ def model_for_hole(
         "contextPolygons": {
             kind: len(context.get(kind, []))
             for kind in v4.CONTEXT_KINDS
+        },
+        "mapFeatureCounts": {
+            "cartpathLines": len(cartpath_lines),
         },
         "fairwayRequired": requires_fairway,
         "ready": ready,

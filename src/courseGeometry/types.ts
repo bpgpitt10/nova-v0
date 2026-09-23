@@ -1,5 +1,16 @@
 export type CoursePointYds = readonly [rightYds: number, forwardYds: number]
 export type CoursePolygonYds = readonly CoursePointYds[]
+export type CoursePolylineYds = readonly CoursePointYds[]
+
+export type CourseMapFeatureKind = 'cartpath' | 'road' | 'building' | 'parking'
+
+export type CourseMapFeature = {
+  id: string
+  kind: CourseMapFeatureKind
+  lines?: readonly CoursePolylineYds[]
+  polygons?: readonly CoursePolygonYds[]
+  provenance: CourseSurfaceProvenance
+}
 
 export type CourseSurfaceKind =
   | 'tee'
@@ -145,6 +156,7 @@ export type CourseHoleGeometry = {
   teeCandidates?: readonly CourseTeeCandidate[]
   surfaces: readonly CourseSurface[]
   contextLayers?: readonly CourseContextLayer[]
+  mapFeatures?: readonly CourseMapFeature[]
   contours?: readonly CourseContourLine[]
   terrain?: CourseTerrainGrid
   availability: Readonly<Record<CourseSurfaceKind, GeometryAvailability>>

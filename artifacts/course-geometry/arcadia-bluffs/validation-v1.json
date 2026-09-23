@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "1348b6f1f5dfd6f406f8da1a94ae574805db319f329143f6afc3b7146d07811b",
+  "builderFingerprintSha256": "2253fffe6b509e2afc53a5c2df5b3d46fb52e83d9b5e9c0c308eb7ed7e411668",
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -9,7 +9,7 @@
   },
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T21:34:00.211150Z",
+  "generatedAt": "2026-09-23T21:56:00.297525Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
@@ -29,6 +29,9 @@
       "greenEndpointGapYards": 15.4,
       "headingDegreesTrue": 82.73,
       "hole": 1,
+      "mapFeatureCounts": {
+        "cartpathLines": 9
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -194,6 +197,9 @@
       "greenEndpointGapYards": 0.7,
       "headingDegreesTrue": 319.14,
       "hole": 2,
+      "mapFeatureCounts": {
+        "cartpathLines": 3
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -314,6 +320,9 @@
       "greenEndpointGapYards": 2.8,
       "headingDegreesTrue": 257.71,
       "hole": 3,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -461,6 +470,9 @@
       "greenEndpointGapYards": 2.2,
       "headingDegreesTrue": 264.23,
       "hole": 4,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -601,6 +613,9 @@
       "greenEndpointGapYards": 1.5,
       "headingDegreesTrue": 249.75,
       "hole": 5,
+      "mapFeatureCounts": {
+        "cartpathLines": 5
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -766,6 +781,9 @@
       "greenEndpointGapYards": 3.2,
       "headingDegreesTrue": 78.02,
       "hole": 6,
+      "mapFeatureCounts": {
+        "cartpathLines": 3
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -920,6 +938,9 @@
       "greenEndpointGapYards": 3.1,
       "headingDegreesTrue": 107.47,
       "hole": 7,
+      "mapFeatureCounts": {
+        "cartpathLines": 11
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1085,6 +1106,9 @@
       "greenEndpointGapYards": 1.3,
       "headingDegreesTrue": 200.18,
       "hole": 8,
+      "mapFeatureCounts": {
+        "cartpathLines": 9
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1261,6 +1285,9 @@
       "greenEndpointGapYards": 3.0,
       "headingDegreesTrue": 62.9,
       "hole": 9,
+      "mapFeatureCounts": {
+        "cartpathLines": 6
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1426,6 +1453,9 @@
       "greenEndpointGapYards": 2.1,
       "headingDegreesTrue": 258.75,
       "hole": 10,
+      "mapFeatureCounts": {
+        "cartpathLines": 19
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1602,6 +1632,9 @@
       "greenEndpointGapYards": 2.8,
       "headingDegreesTrue": 245.79,
       "hole": 11,
+      "mapFeatureCounts": {
+        "cartpathLines": 13
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1756,6 +1789,9 @@
       "greenEndpointGapYards": 3.1,
       "headingDegreesTrue": 358.23,
       "hole": 12,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -1865,6 +1901,9 @@
       "greenEndpointGapYards": 0.4,
       "headingDegreesTrue": 320.2,
       "hole": 13,
+      "mapFeatureCounts": {
+        "cartpathLines": 7
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -2041,6 +2080,9 @@
       "greenEndpointGapYards": 3.7,
       "headingDegreesTrue": 86.65,
       "hole": 14,
+      "mapFeatureCounts": {
+        "cartpathLines": 9
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -2206,6 +2248,9 @@
       "greenEndpointGapYards": 3.1,
       "headingDegreesTrue": 113.16,
       "hole": 15,
+      "mapFeatureCounts": {
+        "cartpathLines": 12
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -2360,6 +2405,9 @@
       "greenEndpointGapYards": 0.8,
       "headingDegreesTrue": 276.72,
       "hole": 16,
+      "mapFeatureCounts": {
+        "cartpathLines": 14
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -2536,6 +2584,9 @@
       "greenEndpointGapYards": 1.0,
       "headingDegreesTrue": 209.25,
       "hole": 17,
+      "mapFeatureCounts": {
+        "cartpathLines": 9
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,
@@ -2712,6 +2763,9 @@
       "greenEndpointGapYards": 5.6,
       "headingDegreesTrue": 67.61,
       "hole": 18,
+      "mapFeatureCounts": {
+        "cartpathLines": 15
+      },
       "nearbyTeeCandidates": [
         {
           "currentRouteGapYards": 0.0,

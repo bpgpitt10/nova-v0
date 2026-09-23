@@ -298,6 +298,23 @@ function LiveCaddieMap({
           </pattern>
         </defs>
 
+        {hole.mapFeatures?.flatMap((feature) => [
+          ...(feature.polygons ?? []).map((polygon, index) => (
+            <polygon
+              key={`${feature.id}-polygon-${index}`}
+              className={`live-map-feature map-${feature.kind}`}
+              points={polygon.map((point) => project(point).join(',')).join(' ')}
+            />
+          )),
+          ...(feature.lines ?? []).map((line, index) => (
+            <polyline
+              key={`${feature.id}-line-${index}`}
+              className={`live-map-feature map-${feature.kind}`}
+              points={line.map((point) => project(point).join(',')).join(' ')}
+            />
+          )),
+        ])}
+
         {hole.contextLayers?.flatMap((layer) =>
           layer.polygons.map((polygon, index) => (
             <polygon

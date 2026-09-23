@@ -64,6 +64,9 @@ const translatePoint = (point: CoursePointYds, anchor: CoursePointYds): CoursePo
 const translatePolygon = (polygon: CoursePolygonYds, anchor: CoursePointYds): CoursePolygonYds =>
   polygon.map((point) => translatePoint(point, anchor))
 
+const translatePolyline = (line: readonly CoursePointYds[], anchor: CoursePointYds) =>
+  line.map((point) => translatePoint(point, anchor))
+
 const translateBounds = (bounds: CourseGeometryBounds, anchor: CoursePointYds): CourseGeometryBounds => ({
   minX: bounds.minX - anchor[0],
   maxX: bounds.maxX - anchor[0],
@@ -138,6 +141,13 @@ export const normalizeRouteCourseGeometry = (
       contextLayers: geometry.contextLayers.map((layer) => ({
         ...layer,
         polygons: layer.polygons.map((polygon) => translatePolygon(polygon, anchor)),
+      })),
+    } : {}),
+    ...(geometry.mapFeatures ? {
+      mapFeatures: geometry.mapFeatures.map((feature) => ({
+        ...feature,
+        ...(feature.lines ? { lines: feature.lines.map((line) => translatePolyline(line, anchor)) } : {}),
+        ...(feature.polygons ? { polygons: feature.polygons.map((polygon) => translatePolygon(polygon, anchor)) } : {}),
       })),
     } : {}),
     ...(geometry.contours ? {

@@ -35,6 +35,7 @@ SURFACE_GOLF = {
 }
 CONTEXT_NATURAL = {"wood": "woods", "scrub": "scrub"}
 CONTEXT_LANDUSE = {"forest": "woods", "grass": "grass-context", "meadow": "grass-context"}
+MAP_GOLF = {"cartpath": "cartpath"}
 
 
 def as_latlon(points: Iterable[dict[str, Any]]) -> list[tuple[float, float]]:
@@ -202,6 +203,8 @@ def classify_element(tags: dict[str, Any]) -> tuple[str, str] | None:
         return "context", "course-boundary"
     if golf in SURFACE_GOLF:
         return "surface", SURFACE_GOLF[golf]
+    if golf in MAP_GOLF:
+        return "map", MAP_GOLF[golf]
     if tags.get("natural") == "water" or tags.get("landuse") == "reservoir":
         return "surface", "water"
     natural = tags.get("natural")
@@ -250,8 +253,11 @@ def normalize_osm(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[i
         if not classified:
             continue
         role, kind = classified
-        polygon_geometries = [geometry for geometry in geometries if len(geometry) >= 3]
-        if not polygon_geometries:
+        normalized_geometries = [
+            geometry for geometry in geometries
+            if len(geometry) >= (2 if role == "map" else 3)
+        ]
+        if not normalized_geometries:
             continue
         features.append(
             {
@@ -260,8 +266,8 @@ def normalize_osm(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[i
                 "osm_type": element.get("type"),
                 "osm_id": element.get("id"),
                 "source_feature": source_feature(tags, kind),
-                "geometries": polygon_geometries,
-                "centroid": centroid([point for geometry in polygon_geometries for point in geometry]),
+                "geometries": normalized_geometries,
+                "centroid": centroid([point for geometry in normalized_geometries for point in geometry]),
             }
         )
 
