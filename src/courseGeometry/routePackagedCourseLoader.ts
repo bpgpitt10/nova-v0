@@ -16,7 +16,7 @@ import type {
 const SURFACE_KINDS: readonly CourseSurfaceKind[] = [
   'tee', 'fairway', 'rough', 'deep-rough', 'green', 'bunker', 'water', 'penalty',
 ]
-const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'native-ground']
+const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'landcover-grass', 'landcover-woods', 'landcover-scrub', 'landcover-bare']
 const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
 type RawBounds = { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
@@ -170,15 +170,18 @@ const parseContextLayers = (
   return CONTEXT_KINDS.flatMap((kind): CourseContextLayer[] => {
     const polygons = parsePolygons(raw[kind])
     if (!polygons.length) return []
+    const isWorldCover = kind.startsWith('landcover-')
     return [{
       id: `${courseId}-h${String(holeNumber).padStart(2, '0')}-${kind}`,
       kind,
       polygons,
       provenance: {
-        source: 'osm',
-        sourceFeature: `cached OSM ${kind} context`,
-        confidence: 'high',
-        note: 'Compiled from the cached OSM golf=hole route package.',
+        source: isWorldCover ? 'other' : 'osm',
+        sourceFeature: isWorldCover ? `ESA WorldCover 2021 ${kind.replace('landcover-', '')}` : `cached OSM ${kind} context`,
+        confidence: isWorldCover ? 'medium' : 'high',
+        note: isWorldCover
+          ? '10 m WorldCover context used only where explicit OSM golf/context geometry is absent; not promoted to a tactical surface.'
+          : 'Compiled from the cached OSM golf=hole route package.',
       },
     }]
   })

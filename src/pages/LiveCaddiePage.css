@@ -603,11 +603,31 @@
   stroke-width: 0.11;
 }
 
-.live-context.context-native-ground {
+.live-context.context-landcover-grass {
   fill: url(#liveNativePattern);
-  stroke: rgba(178, 164, 91, 0.25);
+  stroke: none;
+  opacity: 0.58;
+}
+
+.live-context.context-landcover-woods {
+  fill: url(#liveWoodsPattern);
+  stroke: rgba(131, 173, 115, 0.28);
   stroke-width: 0.08;
-  opacity: 0.68;
+  opacity: 0.78;
+}
+
+.live-context.context-landcover-scrub {
+  fill: url(#liveScrubPattern);
+  stroke: rgba(176, 165, 98, 0.24);
+  stroke-width: 0.08;
+  opacity: 0.74;
+}
+
+.live-context.context-landcover-bare {
+  fill: url(#liveDunePattern);
+  stroke: rgba(224, 197, 137, 0.3);
+  stroke-width: 0.08;
+  opacity: 0.78;
 }
 
 .live-context.context-dune-sand {

@@ -16,7 +16,6 @@
     "teeStartRadiusYards": 220,
     "contextRouteDistanceYards": 110,
     "behindTeeToleranceYards": 35,
-    "pastGreenToleranceYards": 50,
-    "courseGroundFallbackContextKind": "native-ground"
+    "pastGreenToleranceYards": 50
   }
 }

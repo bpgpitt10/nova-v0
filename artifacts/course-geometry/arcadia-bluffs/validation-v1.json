@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "a1d63e38700ee1de5049fb5d53aa42882f8a4dbd6decb29e73cb489edec50629",
+  "builderFingerprintSha256": "1348b6f1f5dfd6f406f8da1a94ae574805db319f329143f6afc3b7146d07811b",
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -9,7 +9,7 @@
   },
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T21:24:36.974411Z",
+  "generatedAt": "2026-09-23T21:34:00.211150Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
@@ -18,7 +18,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -184,7 +183,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -305,7 +303,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -453,7 +450,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -594,7 +590,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -760,7 +755,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -915,7 +909,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1081,7 +1074,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1258,7 +1250,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1424,7 +1415,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1601,7 +1591,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1756,7 +1745,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -1866,7 +1854,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -2043,7 +2030,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -2209,7 +2195,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -2364,7 +2349,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -2541,7 +2525,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
@@ -2718,7 +2701,6 @@
         "dune-sand": 0,
         "grass-context": 0,
         "native-grass": 0,
-        "native-ground": 1,
         "scrub": 0,
         "woods": 0
       },
