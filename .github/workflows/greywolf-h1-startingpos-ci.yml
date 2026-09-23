@@ -5,8 +5,11 @@ on:
     branches:
       - course-geometry-greywolf-h1-startingpos-v1
     paths:
+      - 'src/adapters/browserGsproCourseState.ts'
       - 'src/adapters/gsproStartingPosition.ts'
+      - 'src/courseGeometry/greywolfH1LiveTeePosition.ts'
       - 'src/courseGeometry/greywolfH1StartingPositionCalibration.ts'
+      - 'src/courseGeometry/roundTeeSelection.ts'
       - 'src/courseGeometry/teeCalibrationStore.ts'
       - 'tools/test-greywolf-h1-startingpos-calibration.mjs'
       - '.github/workflows/greywolf-h1-startingpos-ci.yml'
