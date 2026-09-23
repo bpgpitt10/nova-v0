@@ -69,16 +69,26 @@
 }
 
 .club-v2-behavior-movement {
-  padding-right: 0.55rem;
+  position: relative;
+  padding-right: 0.35rem;
+}
+
+.club-v2-behavior-movement .club-v2-behavior-label,
+.club-v2-behavior-movement .club-v2-behavior-primary {
+  position: relative;
+  z-index: 1;
+  width: 31%;
 }
 
 .club-v2-behavior-flight-svg {
-  width: calc(100% - 2.4rem);
-  height: 42px;
+  position: absolute;
+  top: -0.08rem;
+  right: 0.08rem;
+  width: 66%;
+  height: 50px;
   overflow: visible;
   display: block;
-  margin-top: -0.55rem;
-  margin-left: 2.4rem;
+  margin: 0;
 }
 
 .club-v2-behavior-target-line {
@@ -200,9 +210,16 @@
     border-left: 0;
   }
 
+  .club-v2-behavior-movement .club-v2-behavior-label,
+  .club-v2-behavior-movement .club-v2-behavior-primary {
+    width: auto;
+  }
+
   .club-v2-behavior-flight-svg {
+    position: static;
     width: 100%;
-    margin-left: 0;
+    height: 42px;
+    margin: -0.35rem 0 0;
   }
 }
 
