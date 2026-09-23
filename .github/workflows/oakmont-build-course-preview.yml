@@ -1,5 +1,4 @@
 name: Oakmont Build-Course Preview
-# Retry marker: first untouched run failed only because both Overpass mirrors timed out.
 
 on:
   push:
@@ -7,6 +6,7 @@ on:
       - web-course-importer-surface-semantics-v1
     paths:
       - .github/workflows/oakmont-build-course-preview.yml
+      - tools/fetch_osm_course_snapshot.py
 
 permissions:
   contents: write
@@ -50,6 +50,7 @@ jobs:
           from pathlib import Path
           root = Path('artifacts/course-build/oakmont-country-club/candidate')
           summary = json.loads((root / 'build-summary.json').read_text())
+          snapshot = json.loads((root / 'osm-snapshot.json').read_text())
           assert summary['status'] in {'PASS', 'REVIEW'}, summary
           assert summary['geometry']['readyHoles'] == 18, summary['geometry']
           assert summary['geometry']['allHolesReady'] is True, summary['geometry']
@@ -57,6 +58,8 @@ jobs:
           assert summary['terrain']['readyHoles'] == list(range(1, 19)), summary['terrain']
           assert summary['terrain']['allRequestedReady'] is True, summary['terrain']
           assert summary['failures'] == [], summary['failures']
+          source_endpoint = (snapshot.get('looperSnapshot') or {}).get('sourceEndpoint', '')
+          assert '/relation/6174192/full' in source_endpoint, source_endpoint
           print(json.dumps(summary, indent=2, sort_keys=True))
           PY
 
