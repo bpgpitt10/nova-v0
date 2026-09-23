@@ -13,84 +13,110 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Sample H10 terrain corridor
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install terrain dependencies
+        run: python -m pip install --upgrade numpy rasterio pyproj
+      - name: Re-sample H10 at 2-yard spacing from USGS source
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cfg = json.loads(Path('config/course-geometry/oakmont-country-club-v1.json').read_text())
+          cfg['terrain']['runtimeSpacingYards'] = 2
+          cfg['terrain']['gridPaddingYards'] = 0
+          Path('/tmp/oakmont-2yd.json').write_text(json.dumps(cfg))
+          PY
+          python tools/import_course_terrain_v3.py \
+            --config /tmp/oakmont-2yd.json \
+            --geometry public/course-geometry/oakmont-country-club/course-v1.json \
+            --source-out /tmp/source.json \
+            --terrain-out /tmp/terrain.json \
+            --validation-out /tmp/validation.json \
+            --holes 10 \
+            --force-refresh
+      - name: Inspect source metadata and ravine zone
         run: |
           python - <<'PY'
           import base64, json, struct, zlib
           from pathlib import Path
 
-          package = json.loads(Path('public/course-geometry/oakmont-country-club/course-v1.json').read_text())
-          hole = package['holes']['10']
-          terrain = hole['terrain']
-          min_x = float(terrain['minX'])
-          min_y = float(terrain['minY'])
-          spacing = float(terrain['runtimeSpacingYds'])
-          width = int(terrain['width'])
-          height = int(terrain['height'])
-          offset = float(terrain['elevationOffsetFt'])
-          nodata = int(terrain['nodata'])
-          raw = zlib.decompress(base64.b64decode(terrain['valuesBase64']))
+          source = json.loads(Path('/tmp/source.json').read_text())
+          terrain_package = json.loads(Path('/tmp/terrain.json').read_text())
+          validation = json.loads(Path('/tmp/validation.json').read_text())
+          h = terrain_package['holes']['10']
+          grid = h['grid']
+          min_x = float(grid['minX'])
+          min_y = float(grid['minY'])
+          spacing = float(grid['spacingYds'])
+          width = int(grid['width'])
+          height = int(grid['height'])
+          offset = float(grid['elevationOffsetFt'])
+          raw = zlib.decompress(base64.b64decode(grid['valuesBase64']))
           values = struct.unpack('<' + 'H' * (len(raw)//2), raw)
-          assert len(values) == width * height
-
-          def cell(ix, iy):
-              if ix < 0 or iy < 0 or ix >= width or iy >= height:
-                  return None
-              q = values[iy * width + ix]
-              return None if q == nodata else offset + q / 10.0
+          nodata = 65535
 
           def nearest(x, y):
-              ix = round((x - min_x) / spacing)
-              iy = round((y - min_y) / spacing)
-              return cell(ix, iy)
+              ix = round((x-min_x)/spacing)
+              iy = round((y-min_y)/spacing)
+              if ix < 0 or iy < 0 or ix >= width or iy >= height:
+                  return None
+              q = values[iy*width+ix]
+              return None if q == nodata else offset + q/10.0
 
-          print('coordinateFrame=', json.dumps(hole.get('coordinateFrame', {}), sort_keys=True))
-          print('referenceYards=', hole.get('referenceYards'))
-          print('terrainGrid=', json.dumps({
-              'minX': min_x, 'minY': min_y, 'spacing': spacing,
-              'width': width, 'height': height,
-              'elevationOffsetFt': offset,
-          }, sort_keys=True))
+          print('SOURCE_PROVIDER=', source.get('provider'))
+          print('SOURCE_DATASET=', source.get('dataset'))
+          print('SOURCE_BOUNDS=', source.get('sourceBoundsWgs84'))
+          for product in source.get('products', []):
+              print('SOURCE_PRODUCT=', json.dumps({
+                  'id': product.get('id'),
+                  'title': product.get('title'),
+                  'url': product.get('url'),
+                  'bytes': product.get('downloadBytes'),
+              }, sort_keys=True))
+          print('VALIDATION=', json.dumps(validation['holes'][0], sort_keys=True))
+          print('GRID=', json.dumps({'spacing': spacing, 'width': width, 'height': height, 'minX': min_x, 'minY': min_y}))
 
-          # 2-D absolute elevations around the restored-ravine zone.
-          xs = list(range(-80, 81, 10))
-          print('MATRIX_X=', xs)
-          for y in range(270, 381, 10):
-              zs = [nearest(x, y) for x in xs]
-              print('MATRIX', y, [None if z is None else round(z, 1) for z in zs])
+          # Look for a narrow local depression inside the practical fairway corridor.
+          # For each 2-yard Y station, compare each point to the average of points
+          # 8 yards before/after along the same X. A ravine crossing diagonally should
+          # create a negative residual whose X location shifts across successive Y.
+          detections = []
+          for y in range(250, 381, 2):
+              best = None
+              for x in range(-55, 56, 2):
+                  z = nearest(x,y)
+                  before = nearest(x,y-8)
+                  after = nearest(x,y+8)
+                  if None in (z,before,after):
+                      continue
+                  residual = z - (before+after)/2
+                  item = (residual, x, y, z, before, after)
+                  if best is None or item < best:
+                      best = item
+              if best:
+                  detections.append(best)
+          detections.sort()
+          print('DEEPEST_LOCAL_Y_RESIDUALS_BEGIN')
+          for residual,x,y,z,before,after in detections[:25]:
+              print(json.dumps({
+                  'x': x, 'y': y,
+                  'residualFt': round(residual,2),
+                  'zFt': round(z,1),
+                  'zMinus8Ft': round(before,1),
+                  'zPlus8Ft': round(after,1),
+              }))
+          print('DEEPEST_LOCAL_Y_RESIDUALS_END')
 
-          # Remove each row's median-ish center value so a diagonal low trough is
-          # easier to spot. Negative numbers are locally low relative to x=0.
-          print('RELATIVE_TO_CENTER_BEGIN')
-          for y in range(270, 381, 10):
-              center = nearest(0, y)
+          # Also print cross-hole 2-yard elevation slices at 300/310/320/330/340.
+          for y in (290,300,310,320,330,340,350):
               row = []
-              for x in xs:
-                  z = nearest(x, y)
-                  row.append(None if z is None or center is None else round(z-center, 1))
-              finite = [(delta, x) for delta, x in zip(row, xs) if delta is not None]
-              low = min(finite) if finite else None
-              print('REL', y, row, 'LOW', low)
-          print('RELATIVE_TO_CENTER_END')
-
-          # For each Y, report the lowest point across the corridor. A diagonal
-          # ravine should show the low-X location migrating across Y rather than a
-          # fixed side slope.
-          print('LOW_PATH_BEGIN')
-          for y in range(250, 401, 5):
-              samples = [(nearest(x, y), x) for x in range(-80, 81, 5)]
-              samples = [(z, x) for z, x in samples if z is not None]
-              if samples:
-                  z, x = min(samples)
-                  center = nearest(0, y)
-                  print(json.dumps({
-                      'y': y,
-                      'lowX': x,
-                      'lowFt': round(z, 1),
-                      'centerFt': None if center is None else round(center, 1),
-                      'lowVsCenterFt': None if center is None else round(z-center, 1),
-                  }))
-          print('LOW_PATH_END')
+              for x in range(-50,51,5):
+                  z = nearest(x,y)
+                  row.append([x, None if z is None else round(z,1)])
+              print('SLICE', y, json.dumps(row))
           PY
