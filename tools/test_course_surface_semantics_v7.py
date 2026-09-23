@@ -13,10 +13,18 @@ import build_osm_course_package_v7 as v7
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = ROOT / "public" / "course-geometry"
+MAX_OVERLAP_AREA_SQ_YD = 0.02
 
 
 def rect(x1: float, y1: float, x2: float, y2: float):
     return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+
+
+def assert_no_area_overlap(deep, blocker, label: str) -> None:
+    overlap = deep.intersection(blocker).area
+    assert overlap <= MAX_OVERLAP_AREA_SQ_YD, (
+        f"deep-rough overlaps higher-priority {label}: {overlap:.4f} sq yd"
+    )
 
 
 def synthetic_precedence_test() -> None:
@@ -41,11 +49,8 @@ def synthetic_precedence_test() -> None:
 
     assert not deep.is_empty
     assert deep.contains(Point(25, 45)), "woods inside ordinary rough should become deep-rough"
-    assert not deep.intersects(v7._shape_from_serialized(surfaces["fairway"])), "fairway must outrank woods"
-    assert not deep.intersects(v7._shape_from_serialized(surfaces["green"])), "green must outrank woods"
-    assert not deep.intersects(v7._shape_from_serialized(surfaces["tee"])), "tee must outrank woods"
-    assert not deep.intersects(v7._shape_from_serialized(surfaces["bunker"])), "bunker must outrank woods"
-    assert not deep.intersects(v7._shape_from_serialized(surfaces["water"])), "water must outrank woods"
+    for kind in ("fairway", "green", "tee", "bunker", "water"):
+        assert_no_area_overlap(deep, v7._shape_from_serialized(surfaces[kind]), kind)
 
 
 def real_candidate():
@@ -90,8 +95,7 @@ def real_imported_hole_test() -> None:
         blocker = v7._shape_from_serialized(surfaces.get(kind, []))
         if blocker.is_empty:
             continue
-        overlap = deep.intersection(blocker).area
-        assert overlap <= 0.02, f"deep-rough overlaps higher-priority {kind}: {overlap:.4f} sq yd"
+        assert_no_area_overlap(deep, blocker, kind)
 
     rough = v7._shape_from_serialized(surfaces.get("rough", []))
     rough_overlap = deep.intersection(rough).area if not rough.is_empty else 0.0
