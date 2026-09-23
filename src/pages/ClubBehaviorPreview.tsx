@@ -142,6 +142,41 @@ const directionalLabel = (value: number | undefined) => {
   return `${Math.abs(value).toFixed(1)} ${value < 0 ? 'L' : 'R'}`
 }
 
+const buildFlightScale = (startOffset: number | undefined, finishOffset: number | undefined) => {
+  const plotLeft = 12
+  const plotRight = 168
+  const definedStart = typeof startOffset === 'number' ? startOffset : 0
+  const definedFinish = typeof finishOffset === 'number' ? finishOffset : 0
+  const rawMin = Math.min(0, definedStart, definedFinish)
+  const rawMax = Math.max(0, definedStart, definedFinish)
+  const rawSpan = Math.max(rawMax - rawMin, 1)
+  const padding = Math.max(1.2, rawSpan * 0.28)
+  const domainMin = rawMin - padding
+  const domainMax = rawMax + padding
+  const domainSpan = Math.max(domainMax - domainMin, 1)
+
+  const xFor = (value: number | undefined) => {
+    const resolved = typeof value === 'number' ? value : 0
+    return plotLeft + ((resolved - domainMin) / domainSpan) * (plotRight - plotLeft)
+  }
+
+  return {
+    startX: xFor(startOffset),
+    finishX: xFor(finishOffset),
+    targetX: xFor(0),
+  }
+}
+
+const markerAnchor = (x: number): 'start' | 'middle' | 'end' => {
+  if (x < 30) {
+    return 'start'
+  }
+  if (x > 150) {
+    return 'end'
+  }
+  return 'middle'
+}
+
 export default function ClubBehaviorPreview({
   clubLabel,
   selectedVariantId,
@@ -260,19 +295,10 @@ export default function ClubBehaviorPreview({
   const straightPercent = percent(summary.shapeCounts.Straight, shapeTotal)
   const fadePercent = percent(summary.shapeCounts.Fade, shapeTotal)
 
-  const visualExtent = Math.max(
-    6,
-    Math.abs(summary.startOffset ?? 0),
-    Math.abs(summary.finishOffset ?? 0),
-  ) * 1.25
-  const xFor = (value: number | undefined) => {
-    if (typeof value !== 'number') {
-      return 90
-    }
-    return 90 + (value / visualExtent) * 68
-  }
-  const startX = xFor(summary.startOffset)
-  const finishX = xFor(summary.finishOffset)
+  const { startX, finishX, targetX } = buildFlightScale(
+    summary.startOffset,
+    summary.finishOffset,
+  )
   const controlX = (startX + finishX) / 2
 
   return (
@@ -291,19 +317,37 @@ export default function ClubBehaviorPreview({
         <div className="club-v2-behavior-primary">
           {movementLabel(summary.expectedMovement)}
         </div>
-        <svg aria-hidden="true" className="club-v2-behavior-flight-svg" viewBox="0 0 180 42">
-          <line className="club-v2-behavior-target-line" x1="90" x2="90" y1="4" y2="36" />
+        <svg aria-hidden="true" className="club-v2-behavior-flight-svg" viewBox="0 0 180 50">
+          <line
+            className="club-v2-behavior-target-line"
+            x1={targetX}
+            x2={targetX}
+            y1="9"
+            y2="37"
+          />
           <path
             className="club-v2-behavior-flight-path"
-            d={`M ${startX.toFixed(1)} 31 Q ${controlX.toFixed(1)} 13 ${finishX.toFixed(1)} 8`}
+            d={`M ${startX.toFixed(1)} 32 Q ${controlX.toFixed(1)} 18 ${finishX.toFixed(1)} 14`}
           />
-          <circle className="club-v2-behavior-start-dot" cx={startX} cy="31" r="3.3" />
-          <circle className="club-v2-behavior-finish-dot" cx={finishX} cy="8" r="3.3" />
+          <circle className="club-v2-behavior-start-dot" cx={startX} cy="32" r="3.3" />
+          <circle className="club-v2-behavior-finish-dot" cx={finishX} cy="14" r="3.3" />
+          <text
+            className="club-v2-behavior-marker-label finish"
+            textAnchor={markerAnchor(finishX)}
+            x={finishX}
+            y="7"
+          >
+            Finish {directionalLabel(summary.finishOffset)}
+          </text>
+          <text
+            className="club-v2-behavior-marker-label start"
+            textAnchor={markerAnchor(startX)}
+            x={startX}
+            y="48"
+          >
+            Start {directionalLabel(summary.startOffset)}
+          </text>
         </svg>
-        <div className="club-v2-behavior-movement-read">
-          <span>Start {directionalLabel(summary.startOffset)}</span>
-          <span>Finish {directionalLabel(summary.finishOffset)}</span>
-        </div>
       </div>
 
       <div className="club-v2-behavior-cell club-v2-behavior-mix">
