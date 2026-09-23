@@ -5,8 +5,13 @@ import {
   getClubLabel,
   type Club,
 } from '../lib/bagConfig'
+import {
+  isShotIncludedInAnalysis,
+  sessionHistoricalWeightForClub,
+} from '../lib/historicalModel'
 import { getInstalledMishitClassification } from '../lib/mishitPlanningPopulation'
 import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
+import { weightedTrimmedMean } from '../lib/robustStats'
 import { isSessionEligibleForAnalysis, loadSavedSessions } from '../lib/sessions'
 import { shotMatchesIdentity } from '../lib/shotVariants'
 import type { OpenGolfCoachPayload, Shot } from '../types'
@@ -25,9 +30,6 @@ const previewEnabled = () => {
   }
   return new URLSearchParams(window.location.search).get('clubDetailPreview') === '1'
 }
-
-const average = (values: number[]) =>
-  values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : undefined
 
 const balancedPercents = (counts: number[]) => {
   const total = counts.reduce((sum, count) => sum + count, 0)
@@ -216,7 +218,10 @@ export default function ClubBehaviorPreview({
     // current user's same-origin history, so this preview uses the same derived
     // mishit truth as the rest of Looper rather than a separate rank heuristic.
     const sessions = loadSavedSessions().filter((session) => isSessionEligibleForAnalysis(session))
-    const shots = sessions
+
+    // Strike reliability stays a simple recent-frequency read: the latest 50 source-included
+    // shots for this club/variant, regardless of whether planning later filters a mishit out.
+    const recentShots = sessions
       .flatMap((session) => session.shots)
       .filter(
         (shot) =>
@@ -229,7 +234,7 @@ export default function ClubBehaviorPreview({
       )
       .slice(0, 50)
 
-    if (shots.length === 0) {
+    if (recentShots.length === 0) {
       return {
         sampleCount: 0,
         expectedShape: 'Building',
@@ -237,51 +242,85 @@ export default function ClubBehaviorPreview({
         expectedMovement: undefined,
         startOffset: undefined,
         finishOffset: undefined,
-        shapeCounts: { Draw: 0, Straight: 0, Fade: 0 } as Record<ShapeBucket, number>,
+        shapeWeights: { Draw: 0, Straight: 0, Fade: 0 } as Record<ShapeBucket, number>,
         normalPercent: 0,
         mishitPercent: 0,
         severePercent: 0,
       }
     }
 
-    const severeShots = shots.filter(
+    const severeShots = recentShots.filter(
       (shot) => getInstalledMishitClassification(shot.id)?.classification === 'severe_mishit',
     )
-    const mishitShots = shots.filter(
+    const mishitShots = recentShots.filter(
       (shot) => getInstalledMishitClassification(shot.id)?.classification === 'mishit',
     )
-    const normalShots = shots.filter((shot) => {
+    const normalShots = recentShots.filter((shot) => {
       const classification = getInstalledMishitClassification(shot.id)?.classification
       return classification !== 'mishit' && classification !== 'severe_mishit'
     })
 
-    // Shape is intentionally built from the normal/planning population. Mishits
-    // remain visible in Strike Reliability instead of teaching the expected shot.
-    const shapePopulation = normalShots.length > 0 ? normalShots : shots
-    const movementRows = shapePopulation.flatMap((shot) => {
-      const movement = movementForShot(shot)
-      if (!movement) {
+    // Expected shape now follows the same historical weighting philosophy as Stock:
+    // planning-eligible shots only, session recency/support weighting, and equal sharing
+    // of each session's total weight across that session's shots for this identity.
+    const historicalNowMs = Date.now()
+    const movementRows = sessions.flatMap((session) => {
+      const planningShots = session.shots.filter(
+        (shot) =>
+          shotMatchesIdentity(shot, club, selectedVariantId) &&
+          isShotIncludedInAnalysis(shot),
+      )
+      if (planningShots.length === 0) {
         return []
       }
-      return [{ ...movement, carry: carryValue(shot) }]
+
+      const sessionWeight = sessionHistoricalWeightForClub(
+        session,
+        club,
+        historicalNowMs,
+      )
+      const shotWeight = sessionWeight / planningShots.length
+      if (!Number.isFinite(shotWeight) || shotWeight <= 0) {
+        return []
+      }
+
+      return planningShots.flatMap((shot) => {
+        const movement = movementForShot(shot)
+        if (!movement) {
+          return []
+        }
+        return [{ ...movement, carry: carryValue(shot), weight: shotWeight }]
+      })
     })
 
-    const expectedMovement = average(movementRows.map((row) => row.movement))
-    const startOffset = average(movementRows.map((row) => row.startOffset))
-    const finishOffset = average(movementRows.map((row) => row.finishOffset))
+    const movementWeights = movementRows.map((row) => row.weight)
+    const startOffset = weightedTrimmedMean(
+      movementRows.map((row) => row.startOffset),
+      movementWeights,
+      0.1,
+    )
+    const finishOffset = weightedTrimmedMean(
+      movementRows.map((row) => row.finishOffset),
+      movementWeights,
+      0.1,
+    )
+    const expectedMovement =
+      typeof startOffset === 'number' && typeof finishOffset === 'number'
+        ? finishOffset - startOffset
+        : undefined
 
-    const shapeCounts: Record<ShapeBucket, number> = { Draw: 0, Straight: 0, Fade: 0 }
+    const shapeWeights: Record<ShapeBucket, number> = { Draw: 0, Straight: 0, Fade: 0 }
     movementRows.forEach((row) => {
-      shapeCounts[shapeBucketFromMovement(row.movement, row.carry)] += 1
+      shapeWeights[shapeBucketFromMovement(row.movement, row.carry)] += row.weight
     })
 
-    const shapeTotal = shapeCounts.Draw + shapeCounts.Straight + shapeCounts.Fade
-    const rankedShapes = (Object.entries(shapeCounts) as Array<[ShapeBucket, number]>)
+    const shapeTotal = shapeWeights.Draw + shapeWeights.Straight + shapeWeights.Fade
+    const rankedShapes = (Object.entries(shapeWeights) as Array<[ShapeBucket, number]>)
       .sort((left, right) => right[1] - left[1])
-    const [topShape, topCount] = rankedShapes[0]
-    const [, secondCount] = rankedShapes[1]
-    const topShare = shapeTotal > 0 ? topCount / shapeTotal : 0
-    const leadShare = shapeTotal > 0 ? (topCount - secondCount) / shapeTotal : 0
+    const [topShape, topWeight] = rankedShapes[0]
+    const [, secondWeight] = rankedShapes[1]
+    const topShare = shapeTotal > 0 ? topWeight / shapeTotal : 0
+    const leadShare = shapeTotal > 0 ? (topWeight - secondWeight) / shapeTotal : 0
     const hasDominantShape = topShare >= 0.6 && leadShare >= 0.15
 
     const expectedShape = (() => {
@@ -310,7 +349,7 @@ export default function ClubBehaviorPreview({
 
       const [secondShape] = rankedShapes[1]
       if (topShape === 'Straight') {
-        return leadShare < 0.08 && secondCount > 0
+        return leadShare < 0.08 && secondWeight > 0
           ? `Straight / ${secondShape.toLowerCase()} split`
           : 'Mixed pattern'
       }
@@ -326,13 +365,13 @@ export default function ClubBehaviorPreview({
     ])
 
     return {
-      sampleCount: shots.length,
+      sampleCount: recentShots.length,
       expectedShape,
       expectedDirection,
       expectedMovement,
       startOffset,
       finishOffset,
-      shapeCounts,
+      shapeWeights,
       normalPercent,
       mishitPercent,
       severePercent,
@@ -344,9 +383,9 @@ export default function ClubBehaviorPreview({
   }
 
   const [drawPercent, straightPercent, fadePercent] = balancedPercents([
-    summary.shapeCounts.Draw,
-    summary.shapeCounts.Straight,
-    summary.shapeCounts.Fade,
+    summary.shapeWeights.Draw,
+    summary.shapeWeights.Straight,
+    summary.shapeWeights.Fade,
   ])
 
   const { startX, finishX, targetX } = buildFlightScale(
