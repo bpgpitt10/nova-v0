@@ -21,30 +21,17 @@ jobs:
           ref: course-importer-surface-semantics-v1
           fetch-depth: 0
 
-      - name: Patch context selector
+      - name: Patch canonical V5 context selector
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('tools/build_osm_course_package_v4.py')
+          p = Path('tools/build_osm_course_package_v5.py')
           text = p.read_text(encoding='utf-8')
-
-          old = 'MAX_PLAYABLE_POLYGONS = 400\n'
-          new = 'MAX_PLAYABLE_POLYGONS = 400\nCONTEXT_KINDS = ("woods", "scrub", "grass-context", "native-grass", "dune-sand")\n'
-          if text.count(old) != 1:
-              raise SystemExit('Could not insert CONTEXT_KINDS exactly once')
-          text = text.replace(old, new, 1)
-
-          old_tuple = '("woods", "scrub", "grass-context")'
-          count = text.count(old_tuple)
+          old = '("woods", "scrub", "grass-context")'
+          count = text.count(old)
           if count != 2:
-              raise SystemExit(f'Expected two legacy context tuples, found {count}')
-          text = text.replace(old_tuple, 'CONTEXT_KINDS', 2)
-
-          old_counts = '''        if natural in {"wood", "scrub"}:\n            counts[f"natural={natural}"] += 1\n        if landuse in {"forest", "grass", "meadow"}:\n            counts[f"landuse={landuse}"] += 1'''
-          new_counts = '''        if natural in {"wood", "scrub", "grassland", "heath", "sand", "beach"}:\n            counts[f"natural={natural}"] += 1\n        if landuse in {"forest", "grass", "meadow"}:\n            counts[f"landuse={landuse}"] += 1'''
-          if text.count(old_counts) != 1:
-              raise SystemExit('Could not update raw context source counts')
-          text = text.replace(old_counts, new_counts, 1)
+              raise SystemExit(f'Expected two V5 legacy context tuples, found {count}')
+          text = text.replace(old, 'v4.CONTEXT_KINDS', 2)
           p.write_text(text, encoding='utf-8')
           PY
 
@@ -61,7 +48,7 @@ jobs:
           mkdir -p /tmp/arcadia-context
           cp public/course-geometry/arcadia-bluffs/course-v1.json /tmp/arcadia-context/old-package.json
 
-      - name: Rebuild Arcadia with preserved context
+      - name: Rebuild Arcadia through canonical V7 chain
         run: |
           python tools/build_osm_course_package_canonical.py \
             --osm artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json \
@@ -118,10 +105,10 @@ jobs:
           npm run build
           npm run courses:audit-runtime -- --strict --candidate arcadia-bluffs
 
-      - name: Commit selector fix and rebuilt Arcadia
+      - name: Commit V5 selector fix and rebuilt Arcadia
         run: |
           git add \
-            tools/build_osm_course_package_v4.py \
+            tools/build_osm_course_package_v5.py \
             artifacts/course-geometry/arcadia-bluffs/validation-v1.json \
             artifacts/course-geometry/arcadia-bluffs/cache-v1.json \
             artifacts/course-geometry/arcadia-bluffs/landcover-summary-v1.json \
@@ -129,5 +116,5 @@ jobs:
             src/courseGeometry/generatedRouteHoleHeadings.ts
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'fix(course): retain links context in hole packages'
+          git commit -m 'fix(course): preserve links context in canonical V5 model'
           git push origin HEAD:course-importer-surface-semantics-v1
