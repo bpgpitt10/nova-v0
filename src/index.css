@@ -92,3 +92,12 @@ p {
   stroke: none;
   stroke-width: 0;
 }
+
+/* Deep rough is a tactical classification derived from woods/scrub context.
+   Do not paint a second opaque surface over that context: the Greywolf-style
+   vegetation patterns underneath should remain visible so tree cover reads as
+   an obstruction rather than another flat grass color. */
+.live-caddie-page .live-map .surface-deep-rough {
+  fill: transparent;
+  stroke: transparent;
+}
