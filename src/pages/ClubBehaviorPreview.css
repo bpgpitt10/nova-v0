@@ -99,6 +99,12 @@
   stroke-dasharray: 2.5 2.5;
 }
 
+.club-v2-behavior-target-label {
+  fill: rgba(196, 207, 198, 0.42);
+  font-size: 6.8px;
+  font-weight: 500;
+}
+
 .club-v2-behavior-flight-path {
   fill: none;
   stroke: rgba(244, 206, 96, 0.9);
