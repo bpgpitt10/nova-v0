@@ -1,0 +1,133 @@
+name: Arcadia Context Selector Fix
+
+on:
+  push:
+    branches:
+      - course-importer-surface-semantics-v1
+    paths:
+      - '.github/workflows/arcadia-context-selector-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout canonical importer branch
+        uses: actions/checkout@v4
+        with:
+          ref: course-importer-surface-semantics-v1
+          fetch-depth: 0
+
+      - name: Patch context selector
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/build_osm_course_package_v4.py')
+          text = p.read_text(encoding='utf-8')
+
+          old = 'MAX_PLAYABLE_POLYGONS = 400\n'
+          new = 'MAX_PLAYABLE_POLYGONS = 400\nCONTEXT_KINDS = ("woods", "scrub", "grass-context", "native-grass", "dune-sand")\n'
+          if text.count(old) != 1:
+              raise SystemExit('Could not insert CONTEXT_KINDS exactly once')
+          text = text.replace(old, new, 1)
+
+          old_tuple = '("woods", "scrub", "grass-context")'
+          count = text.count(old_tuple)
+          if count != 2:
+              raise SystemExit(f'Expected two legacy context tuples, found {count}')
+          text = text.replace(old_tuple, 'CONTEXT_KINDS', 2)
+
+          old_counts = '''        if natural in {"wood", "scrub"}:\n            counts[f"natural={natural}"] += 1\n        if landuse in {"forest", "grass", "meadow"}:\n            counts[f"landuse={landuse}"] += 1'''
+          new_counts = '''        if natural in {"wood", "scrub", "grassland", "heath", "sand", "beach"}:\n            counts[f"natural={natural}"] += 1\n        if landuse in {"forest", "grass", "meadow"}:\n            counts[f"landuse={landuse}"] += 1'''
+          if text.count(old_counts) != 1:
+              raise SystemExit('Could not update raw context source counts')
+          text = text.replace(old_counts, new_counts, 1)
+          p.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependencies
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Preserve current Arcadia terrain
+        run: |
+          mkdir -p /tmp/arcadia-context
+          cp public/course-geometry/arcadia-bluffs/course-v1.json /tmp/arcadia-context/old-package.json
+
+      - name: Rebuild Arcadia with preserved context
+        run: |
+          python tools/build_osm_course_package_canonical.py \
+            --osm artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json \
+            --config config/course-geometry/arcadia-bluffs-v1.json \
+            --output /tmp/arcadia-context/geometry.json \
+            --manifest artifacts/course-geometry/arcadia-bluffs/validation-v1.json
+          python tools/carry_forward_embedded_terrain.py \
+            --old-package /tmp/arcadia-context/old-package.json \
+            --new-package /tmp/arcadia-context/geometry.json \
+            --output public/course-geometry/arcadia-bluffs/course-v1.json
+          python tools/update_course_cache_after_rebuild.py \
+            --cache artifacts/course-geometry/arcadia-bluffs/cache-v1.json \
+            --config config/course-geometry/arcadia-bluffs-v1.json \
+            --snapshot artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json \
+            --package public/course-geometry/arcadia-bluffs/course-v1.json \
+            --manifest artifacts/course-geometry/arcadia-bluffs/validation-v1.json
+
+      - name: Refresh Arcadia landcover audit
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+          snapshot = json.loads(Path('artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json').read_text())
+          package = json.loads(Path('public/course-geometry/arcadia-bluffs/course-v1.json').read_text())
+          tags = Counter()
+          for element in snapshot.get('elements', []):
+              t = element.get('tags') or {}
+              for key in ('golf', 'natural', 'landuse'):
+                  if t.get(key): tags[f'{key}={t[key]}'] += 1
+          holes = {}
+          for no, hole in sorted((package.get('holes') or {}).items(), key=lambda item: int(item[0])):
+              context = hole.get('context') or {}
+              surfaces = hole.get('surfaces') or {}
+              holes[no] = {
+                  'contextPolygons': {k: len(v) for k, v in sorted(context.items()) if isinstance(v, list)},
+                  'deepRoughPolygons': len(surfaces.get('deep-rough') or []),
+              }
+          audit = {'sourceTagCounts': dict(sorted(tags.items())), 'holes': holes}
+          Path('artifacts/course-geometry/arcadia-bluffs/landcover-summary-v1.json').write_text(json.dumps(audit, indent=2, sort_keys=True) + '\n')
+          print('HOLE 9')
+          print(json.dumps(holes.get('9'), indent=2, sort_keys=True))
+          PY
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate runtime
+        run: |
+          npm ci
+          npm run build
+          npm run courses:audit-runtime -- --strict --candidate arcadia-bluffs
+
+      - name: Commit selector fix and rebuilt Arcadia
+        run: |
+          git add \
+            tools/build_osm_course_package_v4.py \
+            artifacts/course-geometry/arcadia-bluffs/validation-v1.json \
+            artifacts/course-geometry/arcadia-bluffs/cache-v1.json \
+            artifacts/course-geometry/arcadia-bluffs/landcover-summary-v1.json \
+            public/course-geometry/arcadia-bluffs/course-v1.json \
+            src/courseGeometry/generatedRouteHoleHeadings.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(course): retain links context in hole packages'
+          git push origin HEAD:course-importer-surface-semantics-v1
