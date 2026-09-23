@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Fetch and preserve one course's OSM geometry from its exact course element.
 
-Configured course boundary ways are fetched from the core OpenStreetMap API;
-Overpass is reserved for course feature discovery. This removes an unnecessary
-Overpass dependency from the simplest lookup in the pipeline.
+Configured course boundary ways and relations are fetched from the core
+OpenStreetMap API; Overpass is reserved for course feature discovery. This
+removes an unnecessary Overpass dependency from the exact-course lookup and
+makes relation-backed courses resilient to Overpass source-query timeouts.
 
 Feature acquisition uses the exact boundary's tight bbox, split into small
 golf/natural/landuse requests, then locally intersects features with the source
@@ -78,12 +79,22 @@ def fetch_json(query: str, timeout: int) -> tuple[dict[str, Any], str]:
     raise RuntimeError(f"All Overpass endpoints failed: {last_error}")
 
 
-def fetch_osm_way_full(way_id: int, timeout: int) -> tuple[dict[str, Any], str]:
-    url = f"{OSM_API_BASE}/way/{way_id}/full"
+def tags_for_xml(element: ET.Element) -> dict[str, str]:
+    return {
+        tag.attrib.get("k", ""): tag.attrib.get("v", "")
+        for tag in element.findall("tag")
+        if tag.attrib.get("k")
+    }
+
+
+def fetch_osm_full_xml(path: str, timeout: int) -> tuple[ET.Element, str]:
+    url = f"{OSM_API_BASE}/{path}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT}, method="GET")
     with urllib.request.urlopen(request, timeout=timeout + 15) as response:
-        root = ET.fromstring(response.read())
+        return ET.fromstring(response.read()), url
 
+
+def xml_nodes(root: ET.Element) -> dict[int, tuple[float, float]]:
     nodes: dict[int, tuple[float, float]] = {}
     for node in root.findall("node"):
         try:
@@ -93,6 +104,25 @@ def fetch_osm_way_full(way_id: int, timeout: int) -> tuple[dict[str, Any], str]:
             )
         except (KeyError, TypeError, ValueError):
             continue
+    return nodes
+
+
+def xml_way_geometry(way: ET.Element, nodes: dict[int, tuple[float, float]]) -> list[dict[str, float]]:
+    geometry: list[dict[str, float]] = []
+    for nd in way.findall("nd"):
+        try:
+            ref = int(nd.attrib["ref"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        point = nodes.get(ref)
+        if point is not None:
+            geometry.append({"lat": point[0], "lon": point[1]})
+    return geometry
+
+
+def fetch_osm_way_full(way_id: int, timeout: int) -> tuple[dict[str, Any], str]:
+    root, url = fetch_osm_full_xml(f"way/{way_id}/full", timeout)
+    nodes = xml_nodes(root)
 
     target = None
     for way in root.findall("way"):
@@ -102,24 +132,108 @@ def fetch_osm_way_full(way_id: int, timeout: int) -> tuple[dict[str, Any], str]:
     if target is None:
         raise ValueError(f"OSM core API response did not contain configured way {way_id}")
 
-    geometry = []
-    for nd in target.findall("nd"):
-        try:
-            ref = int(nd.attrib["ref"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        point = nodes.get(ref)
-        if point is not None:
-            geometry.append({"lat": point[0], "lon": point[1]})
+    geometry = xml_way_geometry(target, nodes)
     if len(geometry) < 4:
         raise ValueError(f"Configured course way {way_id} did not resolve usable boundary geometry")
 
-    tags = {
-        tag.attrib.get("k", ""): tag.attrib.get("v", "")
-        for tag in target.findall("tag")
-        if tag.attrib.get("k")
-    }
-    return {"type": "way", "id": way_id, "tags": tags, "geometry": geometry}, url
+    return {
+        "type": "way",
+        "id": way_id,
+        "tags": tags_for_xml(target),
+        "geometry": geometry,
+    }, url
+
+
+def fetch_osm_relation_full(relation_id: int, timeout: int) -> tuple[dict[str, Any], str]:
+    """Resolve a relation and its boundary member geometry via the core OSM API.
+
+    `/relation/<id>/full` includes the relation, member ways and their nodes.
+    Nested member relations are flattened conservatively so multipolygon/site
+    relations still expose usable member lines to `boundary_shape` without an
+    Overpass `out geom` query.
+    """
+    root, url = fetch_osm_full_xml(f"relation/{relation_id}/full", timeout)
+    nodes = xml_nodes(root)
+
+    ways: dict[int, ET.Element] = {}
+    for way in root.findall("way"):
+        try:
+            ways[int(way.attrib["id"])] = way
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    relations: dict[int, ET.Element] = {}
+    for relation in root.findall("relation"):
+        try:
+            relations[int(relation.attrib["id"])] = relation
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    target = relations.get(relation_id)
+    if target is None:
+        raise ValueError(f"OSM core API response did not contain configured relation {relation_id}")
+
+    members: list[dict[str, Any]] = []
+    visited_relations: set[int] = set()
+
+    def append_relation_members(relation: ET.Element, inherited_role: str = "") -> None:
+        try:
+            current_id = int(relation.attrib.get("id", "-1"))
+        except ValueError:
+            current_id = -1
+        if current_id in visited_relations:
+            return
+        if current_id >= 0:
+            visited_relations.add(current_id)
+
+        for member in relation.findall("member"):
+            member_type = str(member.attrib.get("type") or "")
+            try:
+                ref = int(member.attrib["ref"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            role = str(member.attrib.get("role") or inherited_role or "")
+
+            if member_type == "way":
+                way = ways.get(ref)
+                if way is None:
+                    continue
+                geometry = xml_way_geometry(way, nodes)
+                if len(geometry) >= 2:
+                    members.append({
+                        "type": "way",
+                        "ref": ref,
+                        "role": role,
+                        "geometry": geometry,
+                    })
+                continue
+
+            if member_type == "node":
+                point = nodes.get(ref)
+                if point is not None:
+                    members.append({
+                        "type": "node",
+                        "ref": ref,
+                        "role": role,
+                        "geometry": [{"lat": point[0], "lon": point[1]}],
+                    })
+                continue
+
+            if member_type == "relation":
+                nested = relations.get(ref)
+                if nested is not None:
+                    append_relation_members(nested, role)
+
+    append_relation_members(target)
+    if not members:
+        raise ValueError(f"Configured course relation {relation_id} resolved no usable member geometry")
+
+    return {
+        "type": "relation",
+        "id": relation_id,
+        "tags": tags_for_xml(target),
+        "members": members,
+    }, url
 
 
 def source_query(config: dict[str, Any], timeout: int) -> str:
@@ -131,12 +245,7 @@ def fetch_source_element(config: dict[str, Any], timeout: int) -> tuple[dict[str
     _, source_type, source_id = source_clause(config)
     if source_type == "way":
         return fetch_osm_way_full(source_id, timeout)
-
-    payload, endpoint = fetch_json(source_query(config, timeout), timeout)
-    elements = payload.get("elements") or []
-    if len(elements) != 1:
-        raise ValueError(f"Expected exactly one configured course source element; got {len(elements)}")
-    return elements[0], endpoint
+    return fetch_osm_relation_full(source_id, timeout)
 
 
 def coords(points: Iterable[dict[str, Any]]) -> list[tuple[float, float]]:
@@ -305,7 +414,7 @@ def main() -> int:
         "courseElement": {"type": source_type, "id": osm_id},
         "sourceEndpoint": source_endpoint,
         "featureOverpassEndpoints": feature_endpoints,
-        "sourceQuery": source_query(config, args.timeout) if source_type == "relation" else None,
+        "sourceQuery": None,
         "featureQueries": feature_queries,
         "boundaryBoundsLonLat": [round(value, 8) for value in boundary.bounds],
         "rawFeatureElementCount": len(raw_payload.get("elements", [])),
