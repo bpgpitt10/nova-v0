@@ -29,8 +29,27 @@ const previewEnabled = () => {
 const average = (values: number[]) =>
   values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : undefined
 
-const percent = (count: number, total: number) =>
-  total > 0 ? Math.round((count / total) * 100) : 0
+const balancedPercents = (counts: number[]) => {
+  const total = counts.reduce((sum, count) => sum + count, 0)
+  if (total <= 0) {
+    return counts.map(() => 0)
+  }
+
+  const raw = counts.map((count) => (count / total) * 100)
+  const rounded = raw.map((value) => Math.floor(value))
+  let remainder = 100 - rounded.reduce((sum, value) => sum + value, 0)
+
+  const order = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((left, right) => right.fraction - left.fraction)
+
+  for (let cursor = 0; cursor < order.length && remainder > 0; cursor += 1) {
+    rounded[order[cursor].index] += 1
+    remainder -= 1
+  }
+
+  return rounded
+}
 
 const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
   if (!payload) {
@@ -256,20 +275,55 @@ export default function ClubBehaviorPreview({
       shapeCounts[shapeBucketFromMovement(row.movement, row.carry)] += 1
     })
 
+    const shapeTotal = shapeCounts.Draw + shapeCounts.Straight + shapeCounts.Fade
+    const rankedShapes = (Object.entries(shapeCounts) as Array<[ShapeBucket, number]>)
+      .sort((left, right) => right[1] - left[1])
+    const [topShape, topCount] = rankedShapes[0]
+    const [, secondCount] = rankedShapes[1]
+    const topShare = shapeTotal > 0 ? topCount / shapeTotal : 0
+    const leadShare = shapeTotal > 0 ? (topCount - secondCount) / shapeTotal : 0
+    const hasDominantShape = topShare >= 0.6 && leadShare >= 0.15
+
     const expectedShape = (() => {
-      if (typeof expectedMovement !== 'number' || Math.abs(expectedMovement) < 1.5) {
+      if (shapeTotal === 0 || typeof expectedMovement !== 'number') {
+        return 'Building'
+      }
+      if (!hasDominantShape) {
+        return 'Mixed'
+      }
+      if (topShape === 'Straight') {
         return 'Straight'
       }
-      const base = expectedMovement < 0 ? 'Draw' : 'Fade'
-      return Math.abs(expectedMovement) < 5 ? `Baby ${base}` : base
+      return Math.abs(expectedMovement) < 5 ? `Baby ${topShape}` : topShape
     })()
 
     const expectedDirection = (() => {
-      if (typeof expectedMovement !== 'number' || Math.abs(expectedMovement) < 1.5) {
-        return 'Minimal curve'
+      if (shapeTotal === 0 || typeof expectedMovement !== 'number') {
+        return 'Need more shots'
       }
-      return expectedMovement < 0 ? 'Right → Left' : 'Left → Right'
+      if (hasDominantShape) {
+        if (topShape === 'Straight') {
+          return 'Minimal curve'
+        }
+        return topShape === 'Draw' ? 'Right → Left' : 'Left → Right'
+      }
+
+      const [secondShape] = rankedShapes[1]
+      if (topShape === 'Straight') {
+        return leadShare < 0.08 && secondCount > 0
+          ? `Straight / ${secondShape.toLowerCase()} split`
+          : 'Mixed pattern'
+      }
+      return leadShare < 0.12
+        ? `Slight ${topShape.toLowerCase()} bias`
+        : `${topShape} bias`
     })()
+
+    const [normalPercent, mishitPercent, severePercent] = balancedPercents([
+      normalShots.length,
+      mishitShots.length,
+      severeShots.length,
+    ])
 
     return {
       sampleCount: shots.length,
@@ -279,9 +333,9 @@ export default function ClubBehaviorPreview({
       startOffset,
       finishOffset,
       shapeCounts,
-      normalPercent: percent(shots.length - mishitShots.length - severeShots.length, shots.length),
-      mishitPercent: percent(mishitShots.length, shots.length),
-      severePercent: percent(severeShots.length, shots.length),
+      normalPercent,
+      mishitPercent,
+      severePercent,
     }
   }, [clubLabel, enabled, selectedVariantId])
 
@@ -289,11 +343,11 @@ export default function ClubBehaviorPreview({
     return null
   }
 
-  const shapeTotal =
-    summary.shapeCounts.Draw + summary.shapeCounts.Straight + summary.shapeCounts.Fade
-  const drawPercent = percent(summary.shapeCounts.Draw, shapeTotal)
-  const straightPercent = percent(summary.shapeCounts.Straight, shapeTotal)
-  const fadePercent = percent(summary.shapeCounts.Fade, shapeTotal)
+  const [drawPercent, straightPercent, fadePercent] = balancedPercents([
+    summary.shapeCounts.Draw,
+    summary.shapeCounts.Straight,
+    summary.shapeCounts.Fade,
+  ])
 
   const { startX, finishX, targetX } = buildFlightScale(
     summary.startOffset,
@@ -339,6 +393,14 @@ export default function ClubBehaviorPreview({
             y1="9"
             y2="37"
           />
+          <text
+            className="club-v2-behavior-target-label"
+            textAnchor="start"
+            x={targetX + 3}
+            y="25"
+          >
+            Target
+          </text>
           <path
             className="club-v2-behavior-flight-path"
             d={`M ${startX.toFixed(1)} 32 Q ${controlX.toFixed(1)} 18 ${finishX.toFixed(1)} 14`}
