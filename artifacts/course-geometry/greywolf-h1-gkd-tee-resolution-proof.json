@@ -1,0 +1,113 @@
+{
+  "schema": "looper.gspro_tee_resolution_proof.v0",
+  "course": "Greywolf Golf Course",
+  "course_key": "GreyWolf_gsp",
+  "hole": 1,
+  "purpose": "Prove the complete Greywolf H1 GSPro tee inventory independently of incomplete/unlabeled OSM tee geometry.",
+  "sources": {
+    "gspro_gkd": {
+      "path": "C:\\GSProV1\\Core\\GSP\\Courses\\GreyWolf_gsp\\GreyWolf_gsp.GKD",
+      "format": "plain JSON",
+      "fields": [
+        "Holes[].Tees[].TeeType",
+        "Holes[].Tees[].Distance",
+        "Holes[].Tees[].Position{x,y,z}"
+      ],
+      "role": "authoritative tee-set identity and GSPro world position"
+    },
+    "osm_hole_package": {
+      "path": "public/course-geometry/greywolf/local-geometry/greywolf-hole-01.json",
+      "role": "physical tee polygon geometry when a GSPro tee anchor actually matches it"
+    },
+    "course_transform": {
+      "proof": "greywolf_gspro_osm_course_transform_proof.json",
+      "input_vector": "[gspro_x, gspro_z]",
+      "output_vector": "[osm_east_m, osm_north_m] relative to origin_latlon",
+      "origin_latlon": [
+        50.447985228991655,
+        -116.24851204020648
+      ],
+      "scale_m_per_gspro_unit": 1.0000856804415208,
+      "rotation_matrix": [
+        [0.999959220927549, 0.009030862747730647],
+        [-0.00903086274773076, 0.9999592209275492]
+      ],
+      "translation_m": [-921.941722811653, -1335.2548609888029],
+      "validation": {
+        "tee_fit_mean_residual_m": 2.3293518340982975,
+        "tee_fit_max_residual_m": 4.583575624766918,
+        "independent_physical_shot_endpoints_n": 40,
+        "independent_within_2m_n": 40
+      }
+    }
+  },
+  "local_frame": {
+    "origin": "OSM tee 1209190795 centroid",
+    "selected_tee_latlon": [50.446423107692304, -116.24757067692309],
+    "target_green_latlon": [50.443634984615386, -116.24856764615384],
+    "positive_forward": "selected tee to target green centroid",
+    "positive_right": "golfer right",
+    "units": "yards"
+  },
+  "osm_match_max_residual_yards": 6.0,
+  "positioned_gspro_tees": [
+    {
+      "tee_type": "Yellow",
+      "gkd_distance": 372.090942,
+      "gspro_position": {"x": 1008.15649, "y": 46.5151138, "z": 1204.4458},
+      "local_position": {"right_yards": -24.289, "forward_yards": -43.486},
+      "osm_match": {"status": "matched", "osm_id": 1209190793, "centroid_residual_yards": 2.383}
+    },
+    {
+      "tee_type": "Black",
+      "gkd_distance": 349.4132,
+      "gspro_position": {"x": 993.2102, "y": 46.53346, "z": 1186.54932},
+      "local_position": {"right_yards": -12.491, "forward_yards": -20.877},
+      "osm_match": {"status": "matched", "osm_id": 1209190794, "centroid_residual_yards": 0.68}
+    },
+    {
+      "tee_type": "Blue",
+      "gkd_distance": 330.1495,
+      "gspro_position": {"x": 981.0245, "y": 46.8084259, "z": 1170.985},
+      "local_position": {"right_yards": -3.099, "forward_yards": -1.404},
+      "osm_match": {"status": "matched", "osm_id": 1209190795, "centroid_residual_yards": 3.402}
+    },
+    {
+      "tee_type": "White",
+      "gkd_distance": 255.812317,
+      "gspro_position": {"x": 929.0867, "y": 50.2128, "z": 1110.63635},
+      "local_position": {"right_yards": 38.328, "forward_yards": 75.193},
+      "osm_match": {"status": "missing_osm", "osm_id": null, "nearest_osm_id": 1209190795, "nearest_osm_residual_yards": 84.398}
+    },
+    {
+      "tee_type": "Junior",
+      "gkd_distance": 188.463013,
+      "gspro_position": {"x": 906.9722, "y": 52.6513519, "z": 1047.03857},
+      "local_position": {"right_yards": 47.129, "forward_yards": 148.308},
+      "osm_match": {"status": "missing_osm", "osm_id": null, "nearest_osm_id": 1209190795, "nearest_osm_residual_yards": 155.616}
+    },
+    {
+      "tee_type": "Par3",
+      "gkd_distance": 103.419426,
+      "gspro_position": {"x": 901.912964, "y": 57.9227638, "z": 961.6089},
+      "local_position": {"right_yards": 32.615, "forward_yards": 240.774},
+      "osm_match": {"status": "missing_osm", "osm_id": null, "nearest_osm_id": 1209190795, "nearest_osm_residual_yards": 242.973}
+    }
+  ],
+  "unpositioned_gkd_tee_types": [
+    {"tee_type": "Green", "gkd_distance": 0, "position": null},
+    {"tee_type": "Red", "gkd_distance": 0, "position": null}
+  ],
+  "ignored_non_playable_gkd_entries": ["AimPoint1", "AimPoint2", "GreenCenterPoint"],
+  "osm_package_tee_reconciliation": {
+    "matched_to_h1_gspro_tee": [1209190793, 1209190794, 1209190795],
+    "not_a_plausible_h1_gspro_start": [1214871677, 1208932466, 1208932465],
+    "note": "The latter three polygons sit roughly 161-203 yards behind the selected Blue-frame origin and have no nearby positioned H1 GSPro tee. They must not be used as fallback starts for White, Junior, or Par3."
+  },
+  "conclusion": {
+    "authoritative_start_source": "GSPro .GKD tee Position keyed by TeeType",
+    "osm_role": "optional physical polygon/semantic enrichment when spatially matched",
+    "fallback_rule": "A positioned GKD tee remains a valid physical start even when OSM has no corresponding tee polygon. Never nearest-snap to an unrelated OSM tee.",
+    "h1_result": "All six positioned Greywolf H1 GSPro tee starts are resolved: Yellow/Black/Blue have OSM matches; White/Junior/Par3 are valid GKD-only starts."
+  }
+}
