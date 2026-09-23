@@ -105,7 +105,7 @@ try {
   assert.notDeepEqual(white.record.courseLocalYds, [0, 0])
 
   const repeatedWhite = captureGreywolfH1StartingPosition({
-    teeSet: ' white ',
+    teeSet: 'White',
     world: whiteWorld,
     distanceToPinYds: 268.8,
   })
