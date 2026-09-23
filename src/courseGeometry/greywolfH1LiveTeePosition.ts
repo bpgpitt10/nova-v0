@@ -103,7 +103,7 @@ export const resolveGreywolfH1LiveTeePosition = (
       courseLocalYds: null,
       source: 'unresolved',
       teeSet,
-      warning: captured.reason,
+      warning: 'reason' in captured ? captured.reason : 'Greywolf H1 physical tee could not be resolved.',
     }
   }
 
