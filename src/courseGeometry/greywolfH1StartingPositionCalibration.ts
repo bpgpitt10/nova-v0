@@ -24,6 +24,8 @@ const H1_OSM_CANDIDATE_DISTANCES_YDS = Object.freeze([
   534.6,
   556.6,
 ])
+const LOCAL_POINT_TOLERANCE_YDS = 0.25
+const WORLD_POINT_TOLERANCE = 0.05
 
 export const GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT = `${GREYWOLF_COURSE_ID}::v1`
 
@@ -70,6 +72,22 @@ const worldDeltaToEastNorthYards = (dx: number, dz: number) => {
   }
 }
 
+const localDistance = (left: CoursePointYds, right: CoursePointYds) =>
+  Math.hypot(left[0] - right[0], left[1] - right[1])
+
+const worldDistance = (left: TeeCalibrationWorldPoint, right: TeeCalibrationWorldPoint) =>
+  Math.hypot(left.x - right.x, left.y - right.y, left.z - right.z)
+
+const samePhysicalCalibration = (
+  existing: TeeCalibrationRecord | null,
+  local: CoursePointYds,
+  world: TeeCalibrationWorldPoint,
+) => Boolean(
+  existing?.gsproWorld
+  && localDistance(existing.courseLocalYds, local) <= LOCAL_POINT_TOLERANCE_YDS
+  && worldDistance(existing.gsproWorld, world) <= WORLD_POINT_TOLERANCE,
+)
+
 /**
  * Converts a GSPro world point into the fixed Greywolf H1 package frame.
  * The anchor world point must be the GSPro StartingPOS associated with OSM tee
@@ -113,12 +131,18 @@ const lockedAnchorCalibration = () =>
       && record.gsproWorld != null
     )) ?? null
 
+const unchangedResult = (record: TeeCalibrationRecord): GreywolfH1StartingPositionCaptureResult => ({
+  status: 'unchanged',
+  record,
+  write: { outcome: 'unchanged', record },
+})
+
 const mapWriteResult = (
   write: TeeCalibrationWriteResult,
   savedStatus: 'anchor-locked' | 'candidate-saved',
 ): GreywolfH1StartingPositionCaptureResult => {
   if (write.outcome === 'saved') return { status: savedStatus, record: write.record, write }
-  if (write.outcome === 'unchanged') return { status: 'unchanged', record: write.record, write }
+  if (write.outcome === 'unchanged') return unchangedResult(write.record)
   if (write.outcome === 'locked-conflict') {
     return {
       status: 'conflict',
@@ -142,7 +166,10 @@ export const captureGreywolfH1StartingPosition = (
   observation: GreywolfH1StartingPositionObservation,
 ): GreywolfH1StartingPositionCaptureResult => {
   const teeSet = observation.teeSet.trim()
-  if (!teeSet) return { status: 'invalid', reason: 'A selected tee set is required.', write: { outcome: 'invalid', reason: 'A selected tee set is required.' } }
+  if (!teeSet) {
+    const write = { outcome: 'invalid', reason: 'A selected tee set is required.' } as const
+    return { status: 'invalid', reason: write.reason, write }
+  }
 
   const existing = loadTeeCalibration(
     GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT,
@@ -151,6 +178,12 @@ export const captureGreywolfH1StartingPosition = (
   )
 
   if (uniqueAnchorDistanceMatch(observation.distanceToPinYds)) {
+    if (
+      existing?.status === 'locked'
+      && existing.osmTeeId === H1_ANCHOR_OSM_ID
+      && samePhysicalCalibration(existing, [0, 0], observation.world)
+    ) return unchangedResult(existing)
+
     const write = lockTeeCalibration({
       courseFingerprint: GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT,
       holeNumber: 1,
@@ -170,13 +203,7 @@ export const captureGreywolfH1StartingPosition = (
 
   const anchor = lockedAnchorCalibration()
   if (!anchor?.gsproWorld) {
-    if (existing?.gsproWorld) {
-      return {
-        status: 'unchanged',
-        record: existing,
-        write: { outcome: 'unchanged', record: existing },
-      }
-    }
+    if (existing?.gsproWorld) return unchangedResult(existing)
     return {
       status: 'needs-anchor',
       reason: 'Greywolf H1 needs one locked GSPro-to-OSM anchor before an unmapped tee can be placed in the package frame.',
@@ -184,6 +211,10 @@ export const captureGreywolfH1StartingPosition = (
   }
 
   const courseLocalYds = gsproWorldToGreywolfH1Local(observation.world, anchor.gsproWorld)
+  if (samePhysicalCalibration(existing, courseLocalYds, observation.world) && existing) {
+    return unchangedResult(existing)
+  }
+
   const write = saveTeeCalibrationCandidate({
     courseFingerprint: GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT,
     holeNumber: 1,
