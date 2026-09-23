@@ -16,8 +16,8 @@
 .club-v2-behavior-preview {
   grid-column: 1 / -1;
   grid-row: 2;
-  min-height: 92px;
-  padding: 0.48rem 0.92rem;
+  min-height: 82px;
+  padding: 0.36rem 0.92rem;
   display: grid;
   grid-template-columns: 0.58fr 1.68fr 1.16fr 1.28fr;
   gap: 0;
@@ -29,7 +29,7 @@
   padding: 0 1rem;
   display: grid;
   align-content: start;
-  gap: 0.2rem;
+  gap: 0.16rem;
 }
 
 .club-v2-behavior-cell:first-child {
