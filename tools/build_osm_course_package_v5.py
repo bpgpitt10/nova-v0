@@ -390,7 +390,7 @@ def model_for_hole(
             by_kind.get(kind, []), context_corridor,
             route_origin, forward, right, anchor_offset, simplify_yards,
         )
-        for kind in ("woods", "scrub", "grass-context")
+        for kind in v4.CONTEXT_KINDS
     }
     context = {kind: polygons for kind, polygons in context.items() if polygons}
 
@@ -523,7 +523,7 @@ def model_for_hole(
         "surfacePolygons": surface_counts,
         "contextPolygons": {
             kind: len(context.get(kind, []))
-            for kind in ("woods", "scrub", "grass-context")
+            for kind in v4.CONTEXT_KINDS
         },
         "fairwayRequired": requires_fairway,
         "ready": ready,

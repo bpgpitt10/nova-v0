@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "9eeda5aefbbe5efab6d8411af6432aac15f5531323cb397ca3f82a0b962f0fc1",
+  "builderFingerprintSha256": "57071658fcf33d3d00755f62b7e7721ab2be2771ae40e42897ccaaddec9bd917",
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -9,13 +9,15 @@
   },
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T21:06:40.703062Z",
+  "generatedAt": "2026-09-23T21:08:31.031499Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -178,7 +180,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -296,7 +300,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -441,7 +447,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -579,7 +587,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -742,7 +752,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -894,7 +906,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1057,7 +1071,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1231,7 +1247,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1394,7 +1412,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1568,7 +1588,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1720,7 +1742,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -1827,7 +1851,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -2001,7 +2027,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -2164,7 +2192,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -2316,7 +2346,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -2490,7 +2522,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
@@ -2664,7 +2698,9 @@
       "anchorMethod": "selected-tee-route-owned",
       "axisBasis": "osm-hole-route-start-to-target-green",
       "contextPolygons": {
+        "dune-sand": 0,
         "grass-context": 0,
+        "native-grass": 0,
         "scrub": 0,
         "woods": 0
       },
