@@ -1,0 +1,15 @@
+{
+  "builderVersion": "import_course_terrain_v3",
+  "builtAt": "2026-09-23T16:16:10.354649Z",
+  "courseId": "augusta-national-augusta-ga",
+  "geometrySha256": "3ad849ccd325e17cee92d050e3e8d7f893ebcfd1df3b394b03b3f2ba8474b5d7",
+  "holes": [
+    1,
+    6
+  ],
+  "schemaVersion": "looper-course-terrain-cache-v1",
+  "sourceSha256": "f5c44f4496b63b872a9cf0003d9684bf1dbda86e8cccb8d892e5dc6c33371430",
+  "status": "partial",
+  "terrainSha256": "2a85d790cf5691f0a883e9cd064ef396e28c3bb6249798af99828ebc15274530",
+  "validationSha256": "0d959422f38f0317bf4ddf47b7eb5eab8255779395f249e3ab1699a7f15fcac3"
+}

@@ -1,0 +1,30 @@
+{
+  "complete": false,
+  "courseId": "augusta-national-augusta-ga",
+  "missingTerrainHoles": [
+    2,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "partialAllowed": true,
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 2,
+  "terrainHoles": [
+    1,
+    6
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1"
+}

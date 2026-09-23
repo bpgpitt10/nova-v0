@@ -1,0 +1,50 @@
+{
+  "allRequestedHolesTerrainReady": true,
+  "courseId": "augusta-national-augusta-ga",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "generatedAt": "2026-09-23T16:16:10.302849Z",
+  "holes": [
+    {
+      "anchorElevationFt": 318.9,
+      "anchorLatLon": [
+        33.50244266,
+        -82.0200387
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        270.3,
+        336.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 304.742456,
+      "hole": 1,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 250.4,
+      "anchorLatLon": [
+        33.4989027,
+        -82.02728214
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        205.9,
+        260.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 14.382089,
+      "hole": 6,
+      "ready": true
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "usgs-3dep-1m",
+  "readyHoleCount": 2,
+  "requestedHoles": [
+    1,
+    6
+  ],
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 2
+}
