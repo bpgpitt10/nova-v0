@@ -81,14 +81,23 @@ export const TACTICAL_SURFACE_SEMANTICS: Readonly<
   },
 }
 
+/**
+ * Explicit golf surfaces outrank broad vegetation/context polygons. This is
+ * important for OSM landuse=forest/natural=wood polygons that may contain a
+ * fairway, green, tee or bunker as an interior feature while the serialized
+ * course package intentionally preserves each source polygon independently.
+ *
+ * Vegetation still outranks ordinary rough so a point mapped as both rough and
+ * woods is treated as recovery-risk/deep-rough for tactical decisions.
+ */
 export const SURFACE_CLASSIFICATION_PRECEDENCE: readonly CourseSurfaceKind[] = [
   'water',
   'penalty',
   'bunker',
-  'deep-rough',
   'green',
   'tee',
   'fairway',
+  'deep-rough',
   'rough',
 ]
 
