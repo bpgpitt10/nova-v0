@@ -1,0 +1,72 @@
+name: Sync Augusta Preview Cache Metadata
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - .github/workflows/sync-augusta-preview-cache.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update cache to full build-course preview package
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          cache_path = Path('artifacts/course-geometry/augusta-national/cache-v1.json')
+          package_path = Path('public/course-geometry/augusta-national/course-v1.json')
+          summary_path = Path('artifacts/course-geometry/augusta-national/build-course-summary-v1.json')
+          terrain_validation_path = Path('artifacts/course-geometry/augusta-national/build-course-terrain-validation-v1.json')
+
+          cache = json.loads(cache_path.read_text())
+          summary = json.loads(summary_path.read_text())
+          terrain_validation = json.loads(terrain_validation_path.read_text())
+          assert summary['status'] == 'PASS', summary
+          assert summary['terrain']['readyHoles'] == list(range(1, 19)), summary['terrain']
+          assert terrain_validation['allRequestedHolesTerrainReady'] is True
+
+          sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+          cache['package']['sha256'] = sha(package_path)
+          cache['package']['builtAt'] = summary['buildCompletedAt']
+          cache['lastBuild'] = {
+              'reason': 'build-course-candidate-preview',
+              'usedNetworkForOsm': True,
+          }
+          cache['freshness'] = {
+              'ageDays': 0,
+              'evaluatedAt': now,
+              'status': 'current',
+          }
+          cache['terrain'] = {
+              'status': 'complete-current-frame',
+              'builderVersion': 'import_course_terrain_v3',
+              'coordinateFrame': 'package-coordinateFrame',
+              'holes': list(range(1, 19)),
+              'validationPath': str(terrain_validation_path),
+              'validationSha256': sha(terrain_validation_path),
+              'note': 'All 18 Augusta holes rebuilt through canonical build-course using USGS 3DEP 1m terrain in corrected championship coordinate frames.'
+          }
+          cache_path.write_text(json.dumps(cache, indent=2, sort_keys=True) + '\n')
+          print('package sha256:', cache['package']['sha256'])
+          PY
+
+      - name: Commit cache metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/course-geometry/augusta-national/cache-v1.json
+          git commit -m "preview(course): sync Augusta full-build cache metadata"
+          git push origin HEAD:web-course-importer-surface-semantics-v1
