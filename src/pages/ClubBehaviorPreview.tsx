@@ -11,7 +11,6 @@ import {
 } from '../lib/historicalModel'
 import { getInstalledMishitClassification } from '../lib/mishitPlanningPopulation'
 import { resolveHandedOpenGolfCoachValue } from '../lib/openGolfCoach'
-import { weightedTrimmedMean } from '../lib/robustStats'
 import { isSessionEligibleForAnalysis, loadSavedSessions } from '../lib/sessions'
 import { shotMatchesIdentity } from '../lib/shotVariants'
 import type { OpenGolfCoachPayload, Shot } from '../types'
@@ -24,11 +23,12 @@ type ClubBehaviorPreviewProps = {
   selectedVariantId: string
 }
 
-const previewEnabled = () => {
-  if (typeof window === 'undefined') {
-    return false
-  }
-  return new URLSearchParams(window.location.search).get('clubDetailPreview') === '1'
+type WeightedMovementRow = {
+  startOffset: number
+  finishOffset: number
+  movement: number
+  carry: number
+  weight: number
 }
 
 const balancedPercents = (counts: number[]) => {
@@ -51,6 +51,71 @@ const balancedPercents = (counts: number[]) => {
   }
 
   return rounded
+}
+
+// Trim by curve movement once, then use those same adjusted row weights for
+// start, movement, and finish. That preserves finish = start + movement while
+// preventing a few extreme curves from dragging the expected flight around.
+const robustMovementWeights = (rows: WeightedMovementRow[], trimPct: number) => {
+  const originalWeights = rows.map((row) => row.weight)
+  if (rows.length < 10) {
+    return originalWeights
+  }
+
+  const boundedTrimPct = Math.min(Math.max(trimPct, 0), 0.49)
+  const sorted = rows
+    .map((row, index) => ({ index, movement: row.movement, weight: row.weight }))
+    .filter((row) => Number.isFinite(row.weight) && row.weight > 0)
+    .sort((left, right) => left.movement - right.movement)
+
+  const totalWeight = sorted.reduce((sum, row) => sum + row.weight, 0)
+  if (totalWeight <= 0) {
+    return originalWeights
+  }
+
+  const adjustedWeights = [...originalWeights]
+  const trimWeight = totalWeight * boundedTrimPct
+  let remainingLowTrim = trimWeight
+  let remainingHighTrim = trimWeight
+
+  for (const row of sorted) {
+    if (remainingLowTrim <= 0) {
+      break
+    }
+    const applied = Math.min(adjustedWeights[row.index], remainingLowTrim)
+    adjustedWeights[row.index] -= applied
+    remainingLowTrim -= applied
+  }
+
+  for (let index = sorted.length - 1; index >= 0 && remainingHighTrim > 0; index -= 1) {
+    const row = sorted[index]
+    const applied = Math.min(adjustedWeights[row.index], remainingHighTrim)
+    adjustedWeights[row.index] -= applied
+    remainingHighTrim -= applied
+  }
+
+  return adjustedWeights
+}
+
+const weightedMovementRowAverage = (
+  rows: WeightedMovementRow[],
+  weights: number[],
+  accessor: (row: WeightedMovementRow) => number,
+) => {
+  let weightedSum = 0
+  let totalWeight = 0
+
+  rows.forEach((row, index) => {
+    const weight = weights[index]
+    const value = accessor(row)
+    if (!Number.isFinite(value) || !Number.isFinite(weight) || weight <= 0) {
+      return
+    }
+    weightedSum += value * weight
+    totalWeight += weight
+  })
+
+  return totalWeight > 0 ? weightedSum / totalWeight : undefined
 }
 
 const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]) => {
@@ -124,7 +189,7 @@ const movementForShot = (shot: Shot) => {
 
   const startOffset = Math.tan((hla * Math.PI) / 180) * carry
   const movement = offline - startOffset
-  return { startOffset, finishOffset: offline, movement }
+  return { startOffset, finishOffset: offline, movement, carry }
 }
 
 const shapeBucketFromMovement = (movement: number, carry: number | undefined): ShapeBucket => {
@@ -202,25 +267,17 @@ export default function ClubBehaviorPreview({
   clubLabel,
   selectedVariantId,
 }: ClubBehaviorPreviewProps) {
-  const enabled = previewEnabled()
-
   const summary = useMemo(() => {
-    if (!enabled) {
-      return null
-    }
-
     const club = resolveClub(clubLabel)
     if (!club) {
       return null
     }
 
-    // loadSavedSessions also refreshes the installed mishit classifier from the
-    // current user's same-origin history, so this preview uses the same derived
-    // mishit truth as the rest of Looper rather than a separate rank heuristic.
+    // Loading history also refreshes the installed mishit classifier so this
+    // uses the same planning truth as the rest of Looper.
     const sessions = loadSavedSessions().filter((session) => isSessionEligibleForAnalysis(session))
 
-    // Strike reliability stays a simple recent-frequency read: the latest 50 source-included
-    // shots for this club/variant, regardless of whether planning later filters a mishit out.
+    // Strike reliability is intentionally a simple recent-frequency read.
     const recentShots = sessions
       .flatMap((session) => session.shots)
       .filter(
@@ -236,35 +293,37 @@ export default function ClubBehaviorPreview({
 
     if (recentShots.length === 0) {
       return {
-        sampleCount: 0,
         expectedShape: 'Building',
         expectedDirection: 'Need more shots',
         expectedMovement: undefined,
         startOffset: undefined,
         finishOffset: undefined,
         shapeWeights: { Draw: 0, Straight: 0, Fade: 0 } as Record<ShapeBucket, number>,
+        strikeReady: false,
         normalPercent: 0,
         mishitPercent: 0,
         severePercent: 0,
       }
     }
 
-    const severeShots = recentShots.filter(
-      (shot) => getInstalledMishitClassification(shot.id)?.classification === 'severe_mishit',
-    )
-    const mishitShots = recentShots.filter(
-      (shot) => getInstalledMishitClassification(shot.id)?.classification === 'mishit',
-    )
-    const normalShots = recentShots.filter((shot) => {
-      const classification = getInstalledMishitClassification(shot.id)?.classification
-      return classification !== 'mishit' && classification !== 'severe_mishit'
-    })
+    const classifications = recentShots.map((shot) => getInstalledMishitClassification(shot.id))
+    const severeCount = classifications.filter(
+      (classification) => classification?.classification === 'severe_mishit',
+    ).length
+    const mishitCount = classifications.filter(
+      (classification) => classification?.classification === 'mishit',
+    ).length
+    const normalCount = classifications.filter(
+      (classification) => classification?.classification === 'normal',
+    ).length
+    const unclassifiedCount = recentShots.length - severeCount - mishitCount - normalCount
+    const strikeReady = unclassifiedCount === 0
 
-    // Expected shape now follows the same historical weighting philosophy as Stock:
-    // planning-eligible shots only, session recency/support weighting, and equal sharing
-    // of each session's total weight across that session's shots for this identity.
+    // Shape follows the same historical weighting philosophy as Stock:
+    // planning-eligible shots, recency/support weighting, and equal sharing of
+    // each session's total weight across shots for this club/variant.
     const historicalNowMs = Date.now()
-    const movementRows = sessions.flatMap((session) => {
+    const movementRows: WeightedMovementRow[] = sessions.flatMap((session) => {
       const planningShots = session.shots.filter(
         (shot) =>
           shotMatchesIdentity(shot, club, selectedVariantId) &&
@@ -289,24 +348,32 @@ export default function ClubBehaviorPreview({
         if (!movement) {
           return []
         }
-        return [{ ...movement, carry: carryValue(shot), weight: shotWeight }]
+        return [{ ...movement, weight: shotWeight }]
       })
     })
 
-    const movementWeights = movementRows.map((row) => row.weight)
-    const startOffset = weightedTrimmedMean(
-      movementRows.map((row) => row.startOffset),
-      movementWeights,
-      0.1,
+    // At 10+ valid shape observations, shave 10% of weighted influence from
+    // each movement tail. The same adjusted row weights drive Start and Curve,
+    // so Finish is always exactly Start + Movement.
+    const robustWeights = robustMovementWeights(movementRows, 0.1)
+    const startOffset = weightedMovementRowAverage(
+      movementRows,
+      robustWeights,
+      (row) => row.startOffset,
     )
-    const finishOffset = weightedTrimmedMean(
-      movementRows.map((row) => row.finishOffset),
-      movementWeights,
-      0.1,
+    const expectedMovement = weightedMovementRowAverage(
+      movementRows,
+      robustWeights,
+      (row) => row.movement,
     )
-    const expectedMovement =
-      typeof startOffset === 'number' && typeof finishOffset === 'number'
-        ? finishOffset - startOffset
+    const expectedCarry = weightedMovementRowAverage(
+      movementRows,
+      robustWeights,
+      (row) => row.carry,
+    )
+    const finishOffset =
+      typeof startOffset === 'number' && typeof expectedMovement === 'number'
+        ? startOffset + expectedMovement
         : undefined
 
     const shapeWeights: Record<ShapeBucket, number> = { Draw: 0, Straight: 0, Fade: 0 }
@@ -322,12 +389,17 @@ export default function ClubBehaviorPreview({
     const topShare = shapeTotal > 0 ? topWeight / shapeTotal : 0
     const leadShare = shapeTotal > 0 ? (topWeight - secondWeight) / shapeTotal : 0
     const hasDominantShape = topShare >= 0.6 && leadShare >= 0.15
+    const expectedBucket =
+      typeof expectedMovement === 'number'
+        ? shapeBucketFromMovement(expectedMovement, expectedCarry)
+        : undefined
+    const hasCoherentDominantShape = hasDominantShape && topShape === expectedBucket
 
     const expectedShape = (() => {
       if (shapeTotal === 0 || typeof expectedMovement !== 'number') {
         return 'Building'
       }
-      if (!hasDominantShape) {
+      if (!hasCoherentDominantShape) {
         return 'Mixed'
       }
       if (topShape === 'Straight') {
@@ -340,7 +412,7 @@ export default function ClubBehaviorPreview({
       if (shapeTotal === 0 || typeof expectedMovement !== 'number') {
         return 'Need more shots'
       }
-      if (hasDominantShape) {
+      if (hasCoherentDominantShape) {
         if (topShape === 'Straight') {
           return 'Minimal curve'
         }
@@ -358,27 +430,25 @@ export default function ClubBehaviorPreview({
         : `${topShape} bias`
     })()
 
-    const [normalPercent, mishitPercent, severePercent] = balancedPercents([
-      normalShots.length,
-      mishitShots.length,
-      severeShots.length,
-    ])
+    const [normalPercent, mishitPercent, severePercent] = strikeReady
+      ? balancedPercents([normalCount, mishitCount, severeCount])
+      : [0, 0, 0]
 
     return {
-      sampleCount: recentShots.length,
       expectedShape,
       expectedDirection,
       expectedMovement,
       startOffset,
       finishOffset,
       shapeWeights,
+      strikeReady,
       normalPercent,
       mishitPercent,
       severePercent,
     }
-  }, [clubLabel, enabled, selectedVariantId])
+  }, [clubLabel, selectedVariantId])
 
-  if (!enabled || !summary) {
+  if (!summary) {
     return null
   }
 
@@ -396,7 +466,7 @@ export default function ClubBehaviorPreview({
 
   return (
     <article
-      aria-label="Expected shot shape and strike reliability preview"
+      aria-label="Expected shot shape and strike reliability"
       className="dashboard-card club-v2-behavior-preview"
     >
       <div className="club-v2-behavior-cell club-v2-behavior-shape">
@@ -487,9 +557,15 @@ export default function ClubBehaviorPreview({
           <span className="severe" style={{ width: `${summary.severePercent}%` }} />
         </div>
         <div className="club-v2-behavior-legend club-v2-behavior-strike-legend">
-          <span><b>Normal</b> {summary.normalPercent}%</span>
-          <span><b>Mishit</b> {summary.mishitPercent}%</span>
-          <span><b>Severe</b> {summary.severePercent}%</span>
+          {summary.strikeReady ? (
+            <>
+              <span><b>Normal</b> {summary.normalPercent}%</span>
+              <span><b>Mishit</b> {summary.mishitPercent}%</span>
+              <span><b>Severe</b> {summary.severePercent}%</span>
+            </>
+          ) : (
+            <span><b>Building</b></span>
+          )}
         </div>
       </div>
     </article>
