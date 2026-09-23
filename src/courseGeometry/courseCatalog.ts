@@ -1,5 +1,4 @@
 export const GREYWOLF_COURSE_ID = 'greywolf-panorama-bc' as const
-export const TOBACCO_ROAD_COURSE_ID = 'tobacco-road-sanford-nc' as const
 export const UNSELECTED_COURSE_ID = '__no-course-selected__' as const
 
 export type CourseCacheStatus = 'cached' | 'missing' | 'unknown'
@@ -20,18 +19,10 @@ export type CourseCatalogEntry = {
   lidarCacheStatus: CourseCacheStatus
 }
 
-const plannedCourseDefaults = {
-  status: 'validation',
-  packageStatus: 'missing',
-  packageVersion: null,
-  packageCacheStatus: 'missing',
-  osmCacheStatus: 'unknown',
-  lidarCacheStatus: 'unknown',
-} as const
-
 /**
- * Complete internal course registry, including planned pilot courses that do
- * not have runtime packages yet. Build/ingestion tooling should use this list.
+ * Runtime-supported course registry. Only courses that have passed the current
+ * importer/playability validation belong here. Historical importer artifacts
+ * may remain in artifacts/ without becoming selectable runtime courses.
  */
 export const courseRegistry = [
   {
@@ -53,148 +44,14 @@ export const courseRegistry = [
     lidarCacheStatus: 'cached',
   },
   {
-    id: TOBACCO_ROAD_COURSE_ID,
-    name: 'Tobacco Road Golf Club',
-    location: 'Sanford, NC',
-    slug: 'tobacco-road',
-    gsproAliases: [
-      'Tobacco Road',
-      'Tobacco Road Golf Club',
-      'Tobacco_Road_gsp',
-      'tobacco_road_gsp',
-    ],
-    staticPackageUrl: '/course-geometry/tobacco-road/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'unknown',
-  },
-  {
-    id: 'royal-new-kent-providence-forge-va',
-    name: 'Royal New Kent Golf Club',
-    location: 'Providence Forge, VA',
-    slug: 'royal-new-kent',
-    gsproAliases: ['Royal New Kent', 'Royal New Kent Golf Club'],
-    status: 'validation',
-    packageStatus: 'missing',
-    packageVersion: null,
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'arcadia-bluffs-arcadia-mi',
-    name: 'Arcadia Bluffs — The Bluffs Course',
-    location: 'Arcadia, MI',
-    slug: 'arcadia-bluffs',
-    gsproAliases: ['Arcadia Bluffs', 'The Bluffs Course', 'Arcadia Bluffs — The Bluffs Course'],
-    staticPackageUrl: '/course-geometry/arcadia-bluffs/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'shaftesbury-glen-conway-sc',
-    name: 'Shaftesbury Glen Golf & Fish Club',
-    location: 'Conway, SC',
-    slug: 'shaftesbury-glen',
-    gsproAliases: ['Shaftesbury Glen', 'Shaftesbury Glen Golf & Fish Club'],
-    ...plannedCourseDefaults,
-  },
-  {
-    id: 'valhalla-louisville-ky',
-    name: 'Valhalla Golf Club',
-    location: 'Louisville, KY',
-    slug: 'valhalla',
-    gsproAliases: ['Valhalla', 'Valhalla Golf Club'],
-    status: 'validation',
-    packageStatus: 'missing',
-    packageVersion: null,
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'muirfield-village-dublin-oh',
-    name: 'Muirfield Village Golf Club',
-    location: 'Dublin, OH',
-    slug: 'muirfield-village',
-    gsproAliases: ['Muirfield Village', 'Muirfield Village Golf Club'],
-    status: 'validation',
-    packageStatus: 'missing',
-    packageVersion: null,
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'cabot-cliffs-inverness-ns',
-    name: 'Cabot Cliffs',
-    location: 'Inverness, NS',
-    slug: 'cabot-cliffs',
-    gsproAliases: ['Cabot Cliffs'],
-    staticPackageUrl: '/course-geometry/cabot-cliffs/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'greywalls-marquette-mi',
-    name: 'Greywalls at Marquette Golf Club',
-    location: 'Marquette, MI',
-    slug: 'greywalls',
-    gsproAliases: ['Ashen Cliffs', 'Greywalls', 'Greywalls at Marquette Golf Club'],
-    status: 'validation',
-    packageStatus: 'missing',
-    packageVersion: null,
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'paynes-valley-hollister-mo',
-    name: "Payne's Valley",
-    location: 'Hollister, MO',
-    slug: 'paynes-valley',
-    gsproAliases: ["Payne's Valley", 'Paynes Valley'],
-    status: 'validation',
-    packageStatus: 'missing',
-    packageVersion: null,
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'pebble-beach-pebble-beach-ca',
-    name: 'Pebble Beach Golf Links',
-    location: 'Pebble Beach, CA',
-    slug: 'pebble-beach',
-    gsproAliases: ['DPC Pebble', 'Pebble Beach', 'Pebble Beach Golf Links'],
-    staticPackageUrl: '/course-geometry/pebble-beach/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
     id: 'augusta-national-augusta-ga',
     name: 'Augusta National Golf Club',
     location: 'Augusta, GA',
     slug: 'augusta-national',
     gsproAliases: ['Augusta National', 'Augusta National Golf Club'],
     staticPackageUrl: '/course-geometry/augusta-national/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
+    status: 'validated',
+    packageStatus: 'ready',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
@@ -207,22 +64,8 @@ export const courseRegistry = [
     slug: 'oakmont-country-club',
     gsproAliases: ['Oakmont', 'Oakmont Country Club'],
     staticPackageUrl: '/course-geometry/oakmont-country-club/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'erin-hills-erin-wi',
-    name: 'Erin Hills',
-    location: 'Erin, WI',
-    slug: 'erin-hills',
-    gsproAliases: ['Erin Hills', 'Erin Hills Golf Course'],
-    staticPackageUrl: '/course-geometry/erin-hills/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
+    status: 'validated',
+    packageStatus: 'ready',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
@@ -249,11 +92,11 @@ const unselectedCourseEntry = {
 
 /**
  * Runtime/player-facing catalog. The explicit unselected row is a UI state,
- * not a real course and never enters the internal ingestion/build registry.
+ * not a real course and never enters the runtime-supported registry.
  */
 export const courseCatalog = [
   unselectedCourseEntry,
-  ...courseRegistry.filter((entry) => entry.packageStatus !== 'missing'),
+  ...courseRegistry,
 ]
 
 export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
