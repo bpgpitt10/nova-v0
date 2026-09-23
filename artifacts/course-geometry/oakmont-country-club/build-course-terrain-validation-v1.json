@@ -1,0 +1,322 @@
+{
+  "allRequestedHolesTerrainReady": true,
+  "courseId": "oakmont-country-club-oakmont-pa",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "generatedAt": "2026-09-23T17:40:44.909765Z",
+  "holes": [
+    {
+      "anchorElevationFt": 1005.1,
+      "anchorLatLon": [
+        40.52551364,
+        -79.82654288
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        897.4,
+        1011.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 75.435759,
+      "hole": 1,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 934.4,
+      "anchorLatLon": [
+        40.52676944,
+        -79.81972899
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        897.9,
+        973.4
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 61.966414,
+      "hole": 2,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 970.4,
+      "anchorLatLon": [
+        40.5283165,
+        -79.8163617
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        924.5,
+        980.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 345.527309,
+      "hole": 3,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 980.0,
+      "anchorLatLon": [
+        40.53250937,
+        -79.81810344
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        906.1,
+        997.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 187.452006,
+      "hole": 4,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 945.5,
+      "anchorLatLon": [
+        40.52761894,
+        -79.81938411
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        898.0,
+        979.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 13.705313,
+      "hole": 5,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 944.3,
+      "anchorLatLon": [
+        40.53005921,
+        -79.81899273
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        868.3,
+        980.3
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 359.914189,
+      "hole": 6,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 937.2,
+      "anchorLatLon": [
+        40.53290907,
+        -79.8191374
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        867.2,
+        1002.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 193.531192,
+      "hole": 7,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 950.1,
+      "anchorLatLon": [
+        40.52954951,
+        -79.81969131
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        889.2,
+        956.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 182.373009,
+      "hole": 8,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 939.3,
+      "anchorLatLon": [
+        40.52705714,
+        -79.82137623
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        896.6,
+        1011.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 256.210242,
+      "hole": 9,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 1002.0,
+      "anchorLatLon": [
+        40.52664777,
+        -79.8267776
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        893.2,
+        1011.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 72.728383,
+      "hole": 10,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 929.0,
+      "anchorLatLon": [
+        40.52851382,
+        -79.82189738
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        885.5,
+        1004.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 250.0297,
+      "hole": 11,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 996.6,
+      "anchorLatLon": [
+        40.52690598,
+        -79.82658786
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        862.4,
+        1011.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 39.61758,
+      "hole": 12,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 931.3,
+      "anchorLatLon": [
+        40.53133432,
+        -79.82227426
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        853.7,
+        973.2
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 234.400677,
+      "hole": 13,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 970.7,
+      "anchorLatLon": [
+        40.53032903,
+        -79.82470212
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        928.3,
+        999.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 207.900621,
+      "hole": 14,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 984.6,
+      "anchorLatLon": [
+        40.52768451,
+        -79.82676046
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        913.8,
+        999.7
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 5.281675,
+      "hole": 15,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 970.8,
+      "anchorLatLon": [
+        40.5321071,
+        -79.82601682
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        895.2,
+        1000.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 256.582446,
+      "hole": 16,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 951.3,
+      "anchorLatLon": [
+        40.5320923,
+        -79.82996856
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        740.7,
+        1000.0
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 134.252072,
+      "hole": 17,
+      "ready": true
+    },
+    {
+      "anchorElevationFt": 999.7,
+      "anchorLatLon": [
+        40.53076461,
+        -79.82722146
+      ],
+      "coordinateFrameOrigin": "selected-tee",
+      "elevationRangeFt": [
+        957.3,
+        1011.1
+      ],
+      "gridNoDataFraction": 0.0,
+      "headingDegreesTrue": 178.503463,
+      "hole": 18,
+      "ready": true
+    }
+  ],
+  "lidarDerived": true,
+  "provider": "usgs-3dep-1m",
+  "readyHoleCount": 18,
+  "requestedHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "schemaVersion": "looper-course-terrain-validation-v1",
+  "sourceResolutionMeters": 1.0,
+  "terrainHoleCount": 18
+}
