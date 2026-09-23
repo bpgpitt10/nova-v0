@@ -27,11 +27,19 @@ assert.ok(
   Array.isArray(hole1?.context?.woods) && hole1.context.woods.length > 0,
   'Augusta championship Hole 1 must retain woods context.',
 )
-assert.equal(
-  hole1.terrain,
-  undefined,
-  'Augusta H1 terrain must stay absent until terrain is rebuilt in the corrected championship frame.',
-)
+
+// H1 terrain was deliberately removed when Augusta moved from the accidentally
+// selected Par 3 family to the championship family.  During the focused rebuild
+// it may be absent; once present it must be the new LiDAR/current-frame format.
+if (hole1.terrain !== undefined) {
+  assert.equal(hole1.terrain?.source, 'lidar-dem')
+  assert.ok(Number(hole1.terrain?.sourceResolutionMeters) <= 1.1)
+  assert.ok(Number(hole1.terrain?.runtimeSpacingYds) > 0)
+  assert.ok(Number(hole1.terrain?.width) > 1)
+  assert.ok(Number(hole1.terrain?.height) > 1)
+  assert.equal(hole1.terrain?.compression, 'deflate')
+  assert.ok(typeof hole1.terrain?.valuesBase64 === 'string' && hole1.terrain.valuesBase64.length > 0)
+}
 
 const loader = readFileSync(loaderPath, 'utf8')
 assert.ok(
@@ -43,4 +51,4 @@ assert.ok(
   'Route course package loader must not force-cache deployment-stable package URLs.',
 )
 
-console.log('Augusta championship package + fresh-fetch regression guard: ok')
+console.log('Augusta championship package + corrected-frame terrain guard: ok')
