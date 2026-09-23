@@ -18,7 +18,7 @@ jobs:
       - name: Sample H10 terrain corridor
         run: |
           python - <<'PY'
-          import base64, json, math, struct, zlib
+          import base64, json, struct, zlib
           from pathlib import Path
 
           package = json.loads(Path('public/course-geometry/oakmont-country-club/course-v1.json').read_text())
@@ -39,17 +39,14 @@ jobs:
               if ix < 0 or iy < 0 or ix >= width or iy >= height:
                   return None
               q = values[iy * width + ix]
-              if q == nodata:
-                  return None
-              return offset + q / 10.0
+              return None if q == nodata else offset + q / 10.0
 
           def nearest(x, y):
               ix = round((x - min_x) / spacing)
               iy = round((y - min_y) / spacing)
               return cell(ix, iy)
 
-          frame = hole.get('coordinateFrame', {})
-          print('coordinateFrame=', json.dumps(frame, sort_keys=True))
+          print('coordinateFrame=', json.dumps(hole.get('coordinateFrame', {}), sort_keys=True))
           print('referenceYards=', hole.get('referenceYards'))
           print('terrainGrid=', json.dumps({
               'minX': min_x, 'minY': min_y, 'spacing': spacing,
@@ -57,51 +54,43 @@ jobs:
               'elevationOffsetFt': offset,
           }, sort_keys=True))
 
-          # Centerline and cross-corridor profile. The package frame's +Y axis is
-          # the authoritative tee-forward axis. Print 10-yard bins from 200-390.
-          print('PROFILE_BEGIN')
-          previous = None
-          for y in range(200, 391, 10):
-              center = nearest(0, y)
-              corridor = []
-              for x in range(-60, 61, 10):
-                  z = nearest(x, y)
-                  if z is not None:
-                      corridor.append(z)
-              if not corridor:
-                  print(json.dumps({'y': y, 'centerFt': center, 'corridor': None}))
-                  continue
-              record = {
-                  'y': y,
-                  'centerFt': None if center is None else round(center, 1),
-                  'minFt': round(min(corridor), 1),
-                  'maxFt': round(max(corridor), 1),
-                  'rangeFt': round(max(corridor)-min(corridor), 1),
-                  'centerDeltaFt': None if center is None or previous is None else round(center-previous, 1),
-              }
-              print(json.dumps(record))
-              if center is not None:
-                  previous = center
-          print('PROFILE_END')
+          # 2-D absolute elevations around the restored-ravine zone.
+          xs = list(range(-80, 81, 10))
+          print('MATRIX_X=', xs)
+          for y in range(270, 381, 10):
+              zs = [nearest(x, y) for x in xs]
+              print('MATRIX', y, [None if z is None else round(z, 1) for z in zs])
 
-          # Identify strongest local centerline step and strongest cross-corridor relief.
-          samples = []
-          for y in range(180, 421, 5):
-              z = nearest(0, y)
-              if z is not None:
-                  samples.append((y, z))
-          steps = []
-          for (y0,z0),(y1,z1) in zip(samples, samples[1:]):
-              if y1 != y0:
-                  steps.append((abs(z1-z0), y0, y1, z1-z0))
-          if steps:
-              print('maxCenterStep=', max(steps))
-          relief = []
-          for y in range(180, 421, 5):
-              zs = [nearest(x,y) for x in range(-70,71,10)]
-              zs = [z for z in zs if z is not None]
-              if zs:
-                  relief.append((max(zs)-min(zs), y, min(zs), max(zs)))
-          if relief:
-              print('maxCrossCorridorRelief=', max(relief))
+          # Remove each row's median-ish center value so a diagonal low trough is
+          # easier to spot. Negative numbers are locally low relative to x=0.
+          print('RELATIVE_TO_CENTER_BEGIN')
+          for y in range(270, 381, 10):
+              center = nearest(0, y)
+              row = []
+              for x in xs:
+                  z = nearest(x, y)
+                  row.append(None if z is None or center is None else round(z-center, 1))
+              finite = [(delta, x) for delta, x in zip(row, xs) if delta is not None]
+              low = min(finite) if finite else None
+              print('REL', y, row, 'LOW', low)
+          print('RELATIVE_TO_CENTER_END')
+
+          # For each Y, report the lowest point across the corridor. A diagonal
+          # ravine should show the low-X location migrating across Y rather than a
+          # fixed side slope.
+          print('LOW_PATH_BEGIN')
+          for y in range(250, 401, 5):
+              samples = [(nearest(x, y), x) for x in range(-80, 81, 5)]
+              samples = [(z, x) for z, x in samples if z is not None]
+              if samples:
+                  z, x = min(samples)
+                  center = nearest(0, y)
+                  print(json.dumps({
+                      'y': y,
+                      'lowX': x,
+                      'lowFt': round(z, 1),
+                      'centerFt': None if center is None else round(center, 1),
+                      'lowVsCenterFt': None if center is None else round(z-center, 1),
+                  }))
+          print('LOW_PATH_END')
           PY
