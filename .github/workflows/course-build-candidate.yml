@@ -1,0 +1,112 @@
+name: Build Course Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      config_path:
+        description: Course build config path
+        required: true
+        default: config/course-geometry/augusta-national-v1.json
+        type: string
+      terrain_mode:
+        description: Terrain policy for this candidate
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - required
+          - off
+      terrain_holes:
+        description: Terrain holes (normally 1-18; use a slice only for importer validation)
+        required: true
+        default: 1-18
+        type: string
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v1
+    paths:
+      - tools/build_course.py
+      - tools/test_build_course_pipeline.py
+      - .github/workflows/course-build-candidate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test build-course orchestration contract
+        run: PYTHONPATH=tools python tools/test_build_course_pipeline.py
+
+      - name: Prove Augusta plan is staging-only
+        run: |
+          python tools/build_course.py \
+            --config config/course-geometry/augusta-national-v1.json \
+            --plan > /tmp/augusta-build-plan.json
+          cat /tmp/augusta-build-plan.json
+          python - <<'PY'
+          import json
+          plan = json.load(open('/tmp/augusta-build-plan.json'))
+          assert plan['publishesRuntimePackage'] is False
+          assert plan['terrain']['holes'] == list(range(1, 19))
+          assert 'public/course-geometry' not in plan['candidateDirectory']
+          print('staging-only plan guard: ok')
+          PY
+
+  build-candidate:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install course-build dependencies
+        run: python -m pip install --upgrade shapely numpy rasterio pyproj
+
+      - name: Test build-course orchestration contract
+        run: PYTHONPATH=tools python tools/test_build_course_pipeline.py
+
+      - name: Build staged course candidate
+        run: |
+          python tools/build_course.py \
+            --config "${{ inputs.config_path }}" \
+            --terrain-mode "${{ inputs.terrain_mode }}" \
+            --terrain-holes "${{ inputs.terrain_holes }}"
+
+      - name: Add candidate summary to workflow report
+        if: always()
+        run: |
+          SUMMARY=$(find artifacts/course-build -name build-summary.json -print -quit 2>/dev/null || true)
+          if [ -n "$SUMMARY" ]; then
+            echo '## Course candidate build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No build-summary.json was produced.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload staged candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-build-candidate-${{ github.run_id }}
+          path: artifacts/course-build/**
+          if-no-files-found: warn
+          retention-days: 14
