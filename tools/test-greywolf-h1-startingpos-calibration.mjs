@@ -104,6 +104,20 @@ try {
   assert.deepEqual(white.record.courseLocalYds, expectedWhiteLocal)
   assert.notDeepEqual(white.record.courseLocalYds, [0, 0])
 
+  const additionalTees = [
+    { teeSet: 'Black', world: { x: 99.6, y: 12.5, z: 165 }, distanceToPinYds: 390.0 },
+    { teeSet: 'Gold', world: { x: 100.4, y: 10.5, z: 300 }, distanceToPinYds: 240.0 },
+    { teeSet: 'Red', world: { x: 101.1, y: 9.8, z: 330 }, distanceToPinYds: 210.0 },
+  ]
+
+  for (const tee of additionalTees) {
+    const result = captureGreywolfH1StartingPosition(tee)
+    assert.equal(result.status, 'candidate-saved')
+    assert.equal(result.record.osmTeeId, undefined)
+    assert.deepEqual(result.record.gsproWorld, tee.world)
+    assert.ok(Math.hypot(...result.record.courseLocalYds) > 1)
+  }
+
   const repeatedWhite = captureGreywolfH1StartingPosition({
     teeSet: 'White',
     world: whiteWorld,
@@ -112,10 +126,14 @@ try {
   assert.equal(repeatedWhite.status, 'unchanged')
 
   const calibrations = listTeeCalibrations(GREYWOLF_H1_TEE_CALIBRATION_FINGERPRINT)
-  assert.equal(calibrations.length, 2)
-  assert.deepEqual(calibrations.map((record) => record.teeSet), ['blue', 'white'])
+  assert.equal(calibrations.length, 5)
+  assert.deepEqual(
+    calibrations.map((record) => record.teeSet),
+    ['black', 'blue', 'gold', 'red', 'white'],
+  )
+  assert.equal(calibrations.filter((record) => record.osmTeeId != null).length, 1)
 
-  console.log('Greywolf H1 StartingPOS tee calibration: ok')
+  console.log('Greywolf H1 StartingPOS tee calibration: five tee sets ok')
 } finally {
   await vite.close()
 }
