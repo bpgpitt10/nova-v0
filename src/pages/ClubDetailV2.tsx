@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ShotProfiles } from '../lib/shotProfiles'
 import type { ShotVariant } from '../lib/shotVariants'
+import ClubBehaviorPreview from './ClubBehaviorPreview'
 import './ClubDetailV2.css'
 
 type ComparisonDirection = 'up' | 'down'
@@ -714,6 +715,7 @@ export default function ClubDetailV2({
             {dispersionChart}
           </div>
         </article>
+        <ClubBehaviorPreview clubLabel={clubLabel} selectedVariantId={selectedVariantId} />
         <article className="dashboard-card club-v2-heatmap-metrics">
           <div className="club-v2-pattern-insight">
             <div className="club-v2-pattern-title">Miss Pattern</div>
