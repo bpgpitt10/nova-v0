@@ -307,13 +307,13 @@ export default function ClubBehaviorPreview({
       className="dashboard-card club-v2-behavior-preview"
     >
       <div className="club-v2-behavior-cell club-v2-behavior-shape">
-        <div className="club-v2-behavior-label">Expected Shape</div>
+        <div className="club-v2-behavior-label">Shape</div>
         <div className="club-v2-behavior-primary">{summary.expectedShape}</div>
         <div className="club-v2-behavior-secondary">{summary.expectedDirection}</div>
       </div>
 
       <div className="club-v2-behavior-cell club-v2-behavior-movement">
-        <div className="club-v2-behavior-label">Expected Movement</div>
+        <div className="club-v2-behavior-label">Movement</div>
         <div className="club-v2-behavior-primary">
           {movementLabel(summary.expectedMovement)}
         </div>
