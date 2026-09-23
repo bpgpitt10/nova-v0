@@ -12,6 +12,29 @@
     33.500558,
     -82.0225816
   ],
+  "holeIdentity": {
+    "note": "Championship-course par fingerprint used only to disambiguate duplicate OSM golf=hole refs from other courses at the facility.",
+    "parByHole": {
+      "1": 4,
+      "2": 5,
+      "3": 4,
+      "4": 3,
+      "5": 4,
+      "6": 3,
+      "7": 4,
+      "8": 5,
+      "9": 4,
+      "10": 4,
+      "11": 4,
+      "12": 3,
+      "13": 5,
+      "14": 4,
+      "15": 5,
+      "16": 3,
+      "17": 4,
+      "18": 4
+    }
+  },
   "selection": {
     "teeStartRadiusYards": 220,
     "contextRouteDistanceYards": 110,
