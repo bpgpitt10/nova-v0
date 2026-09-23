@@ -318,6 +318,20 @@ export default function ClubBehaviorPreview({
           {movementLabel(summary.expectedMovement)}
         </div>
         <svg aria-hidden="true" className="club-v2-behavior-flight-svg" viewBox="0 0 180 50">
+          <defs>
+            <marker
+              id="club-v2-behavior-flight-arrow"
+              markerHeight="6"
+              markerUnits="strokeWidth"
+              markerWidth="6"
+              orient="auto"
+              refX="5.2"
+              refY="3"
+              viewBox="0 0 6 6"
+            >
+              <path className="club-v2-behavior-flight-arrowhead" d="M 0 0 L 6 3 L 0 6 z" />
+            </marker>
+          </defs>
           <line
             className="club-v2-behavior-target-line"
             x1={targetX}
@@ -328,9 +342,9 @@ export default function ClubBehaviorPreview({
           <path
             className="club-v2-behavior-flight-path"
             d={`M ${startX.toFixed(1)} 32 Q ${controlX.toFixed(1)} 18 ${finishX.toFixed(1)} 14`}
+            markerEnd="url(#club-v2-behavior-flight-arrow)"
           />
           <circle className="club-v2-behavior-start-dot" cx={startX} cy="32" r="3.3" />
-          <circle className="club-v2-behavior-finish-dot" cx={finishX} cy="14" r="3.3" />
           <text
             className="club-v2-behavior-marker-label finish"
             textAnchor={markerAnchor(finishX)}
@@ -376,7 +390,6 @@ export default function ClubBehaviorPreview({
           <span><b>Mishit</b> {summary.mishitPercent}%</span>
           <span><b>Severe</b> {summary.severePercent}%</span>
         </div>
-        <div className="club-v2-behavior-sample">Recent {summary.sampleCount} shots</div>
       </div>
     </article>
   )
