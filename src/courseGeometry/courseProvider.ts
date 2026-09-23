@@ -6,6 +6,7 @@ import {
   type CourseId,
 } from './courseCatalog'
 import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
+import { loadGsproTeeStarts } from './gsproTeeStartProvider'
 import { normalizeRouteCourseGeometry } from './normalizeRouteCourseGeometry'
 import { loadPackagedCourseHoleGeometry } from './packagedCourseLoader'
 import { loadRoundTeeSelection } from './roundTeeSelection'
@@ -24,6 +25,15 @@ const withShotOneTee = async (
     teeCandidates = await loadCourseTeeCandidates(courseId, holeNumber)
   } catch (error) {
     console.warn('[Course geometry] tee-candidate sidecar could not be loaded; keeping package tee marker.', error)
+  }
+
+  try {
+    const gsproTeeStarts = await loadGsproTeeStarts(courseId, holeNumber)
+    if (gsproTeeStarts.length > 0) {
+      teeCandidates = [...gsproTeeStarts, ...teeCandidates]
+    }
+  } catch (error) {
+    console.warn('[Course geometry] GSPro tee-start sidecar could not be loaded; using other tee evidence.', error)
   }
 
   const enriched = teeCandidates.length > 0
@@ -49,9 +59,10 @@ const withShotOneTee = async (
  * UI or decision logic consumes it. Tobacco Road still uses the older package
  * schema, but it goes through the same normalization when tee evidence exists.
  *
- * Shot 1 then applies the persisted round tee selection conservatively: a
- * locked calibration wins; otherwise exactly one matching OSM tee candidate is
- * required. Missing/ambiguous metadata leaves the package tee marker untouched.
+ * Shot 1 then applies the persisted round tee selection conservatively. A
+ * unique GSPro .GKD tee start is authoritative when packaged; otherwise a
+ * locked calibration wins, then exactly one matching OSM tee candidate. Missing
+ * or ambiguous evidence leaves the package tee marker untouched.
  */
 export const loadCourseHoleGeometry = (
   courseId: CourseId,

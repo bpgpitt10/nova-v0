@@ -84,6 +84,28 @@ assert.ok(storedCandidate)
 assert.equal(storedCandidate.status, 'candidate')
 assert.deepEqual(storedCandidate.courseLocalYds, [4, -22])
 
+const whiteSelection = {
+  ...blueSelection,
+  teeSet: 'White',
+  normalizedTeeSet: 'white',
+}
+const whiteGkdOnly = resolveShotOneTee({
+  ...geometry,
+  teeCandidates: [
+    geometry.teeCandidates[0],
+    {
+      source: 'gspro-gkd',
+      teeSet: 'White',
+      coursePoint: [38.328, 75.193],
+      gsproWorld: { x: 929.0867, y: 50.2128, z: 1110.63635 },
+    },
+  ],
+}, whiteSelection)
+assert.equal(whiteGkdOnly.source, 'gspro-gkd')
+assert.deepEqual(whiteGkdOnly.point, [38.328, 75.193])
+assert.equal(whiteGkdOnly.candidate?.osmId, undefined)
+assert.deepEqual(whiteGkdOnly.candidate?.gsproWorld, { x: 929.0867, y: 50.2128, z: 1110.63635 })
+
 const unknown = resolveShotOneTee(geometry, {
   ...blueSelection,
   teeSet: 'Purple',
@@ -126,4 +148,18 @@ assert.equal(changedOsm.source, 'locked-calibration')
 assert.deepEqual(changedOsm.point, [4, -22])
 assert.equal(changedOsm.calibration?.osmTeeId, '101')
 
-console.log('Shot 1 tee selection, lock priority, and ambiguity guard: ok')
+const authoritativeGkd = resolveShotOneTee({
+  ...geometry,
+  teeCandidates: [{
+    source: 'gspro-gkd',
+    teeSet: 'Blue',
+    coursePoint: [-3.099, -1.404],
+    gsproWorld: { x: 981.0245, y: 46.8084259, z: 1170.985 },
+    osmId: 1209190795,
+  }],
+}, blueSelection)
+assert.equal(authoritativeGkd.source, 'gspro-gkd')
+assert.deepEqual(authoritativeGkd.point, [-3.099, -1.404])
+assert.match(authoritativeGkd.reason, /authoritative GSPro \.GKD/i)
+
+console.log('Shot 1 GKD authority, OSM fallback, lock fallback, and ambiguity guard: ok')

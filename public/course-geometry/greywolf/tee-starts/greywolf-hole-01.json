@@ -1,0 +1,52 @@
+{
+  "schema": "looper.gspro_tee_starts.v1",
+  "course": "Greywolf Golf Course",
+  "courseKey": "GreyWolf_gsp",
+  "hole": 1,
+  "source": "GreyWolf_gsp.GKD Holes[0].Tees[] transformed through the verified Greywolf GSPro-to-course registration",
+  "coordinateFrame": "existing Greywolf H1 selected-tee local-yard frame",
+  "tees": [
+    {
+      "teeSet": "Yellow",
+      "gkdDistanceYds": 372.090942,
+      "gsproWorld": { "x": 1008.15649, "y": 46.5151138, "z": 1204.4458 },
+      "coursePoint": [-24.289, -43.486],
+      "osmId": 1209190793,
+      "osmResidualYds": 2.383
+    },
+    {
+      "teeSet": "Black",
+      "gkdDistanceYds": 349.4132,
+      "gsproWorld": { "x": 993.2102, "y": 46.53346, "z": 1186.54932 },
+      "coursePoint": [-12.491, -20.877],
+      "osmId": 1209190794,
+      "osmResidualYds": 0.68
+    },
+    {
+      "teeSet": "Blue",
+      "gkdDistanceYds": 330.1495,
+      "gsproWorld": { "x": 981.0245, "y": 46.8084259, "z": 1170.985 },
+      "coursePoint": [-3.099, -1.404],
+      "osmId": 1209190795,
+      "osmResidualYds": 3.402
+    },
+    {
+      "teeSet": "White",
+      "gkdDistanceYds": 255.812317,
+      "gsproWorld": { "x": 929.0867, "y": 50.2128, "z": 1110.63635 },
+      "coursePoint": [38.328, 75.193]
+    },
+    {
+      "teeSet": "Junior",
+      "gkdDistanceYds": 188.463013,
+      "gsproWorld": { "x": 906.9722, "y": 52.6513519, "z": 1047.03857 },
+      "coursePoint": [47.129, 148.308]
+    },
+    {
+      "teeSet": "Par3",
+      "gkdDistanceYds": 103.419426,
+      "gsproWorld": { "x": 901.912964, "y": 57.9227638, "z": 961.6089 },
+      "coursePoint": [32.615, 240.774]
+    }
+  ]
+}

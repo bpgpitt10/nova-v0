@@ -103,6 +103,7 @@ export type CourseGeometryProvenance = {
 }
 
 export type CourseTeeCandidate = {
+  source?: 'osm' | 'gspro-gkd'
   osmId?: string | number
   osmType?: string
   teeSet?: string
@@ -113,6 +114,11 @@ export type CourseTeeCandidate = {
   sourceTags?: Readonly<Record<string, string>>
   sourceLatLon?: readonly [latitude: number, longitude: number]
   coursePoint: CoursePointYds
+  gsproWorld?: Readonly<{
+    x: number
+    y: number
+    z: number
+  }>
   teeToGreenCentroidYards?: number
   startPolygonGapYards?: number
   currentRouteGapYards?: number

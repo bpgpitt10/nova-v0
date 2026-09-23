@@ -12,7 +12,7 @@ import type {
 
 export type ShotOneTeeResolution = Readonly<{
   point: CoursePointYds
-  source: 'locked-calibration' | 'osm-tee-candidate' | 'fallback-marker'
+  source: 'gspro-gkd' | 'locked-calibration' | 'osm-tee-candidate' | 'fallback-marker'
   candidate: CourseTeeCandidate | null
   calibration: TeeCalibrationRecord | null
   reason: string
@@ -57,6 +57,17 @@ const fallback = (
   reason,
 })
 
+const lockedResolution = (
+  calibration: TeeCalibrationRecord,
+  reason: string,
+): ShotOneTeeResolution => ({
+  point: calibration.courseLocalYds,
+  source: 'locked-calibration',
+  candidate: null,
+  calibration,
+  reason,
+})
+
 export const resolveShotOneTee = (
   geometry: CourseHoleGeometry,
   selection: RoundTeeSelection | null,
@@ -72,33 +83,71 @@ export const resolveShotOneTee = (
     selection.normalizedTeeSet,
   )
 
-  if (calibration?.status === 'locked') {
-    return {
-      point: calibration.courseLocalYds,
-      source: 'locked-calibration',
-      candidate: null,
+  const matches = matchingTeeCandidates(geometry, selection.normalizedTeeSet)
+  const gkdMatches = matches.filter((candidate) => candidate.source === 'gspro-gkd')
+
+  if (gkdMatches.length > 1) {
+    if (calibration?.status === 'locked') {
+      return lockedResolution(
+        calibration,
+        `${gkdMatches.length} GSPro .GKD starts matched ${selection.teeSet}; preserving the locked calibration rather than guessing.`,
+      )
+    }
+    return fallback(
+      geometry,
       calibration,
-      reason: `Using locked ${selection.teeSet} tee calibration.`,
+      `${gkdMatches.length} GSPro .GKD starts matched ${selection.teeSet}; refusing to guess.`,
+    )
+  }
+
+  if (gkdMatches.length === 1) {
+    const candidate = gkdMatches[0]
+    const write = saveTeeCalibrationCandidate({
+      courseFingerprint: fingerprint,
+      holeNumber: geometry.holeNumber,
+      teeSet: selection.normalizedTeeSet,
+      teeLabel: selection.teeSet,
+      osmTeeId: candidate.osmId,
+      courseLocalYds: candidate.coursePoint,
+      gsproWorld: candidate.gsproWorld,
+      confidence: 1,
+      confirmationMethod: 'gspro-gkd-tee-position',
+    })
+
+    return {
+      point: candidate.coursePoint,
+      source: 'gspro-gkd',
+      candidate,
+      calibration: write.outcome === 'invalid' ? calibration : write.record,
+      reason: write.outcome === 'locked-conflict'
+        ? `Using authoritative GSPro .GKD ${selection.teeSet} start despite a conflicting locked calibration.`
+        : candidate.osmId != null
+          ? `Using GSPro .GKD ${selection.teeSet} start with matched OSM tee enrichment.`
+          : `Using GSPro .GKD ${selection.teeSet} start; no OSM tee is required.`,
     }
   }
 
-  const matches = matchingTeeCandidates(geometry, selection.normalizedTeeSet)
-  if (matches.length === 0) {
+  if (calibration?.status === 'locked') {
+    return lockedResolution(calibration, `Using locked ${selection.teeSet} tee calibration.`)
+  }
+
+  const osmMatches = matches.filter((candidate) => candidate.source !== 'gspro-gkd')
+  if (osmMatches.length === 0) {
     return fallback(
       geometry,
       calibration,
-      `No OSM tee candidate matched ${selection.teeSet}; keeping the package tee marker.`,
+      `No GSPro .GKD start or OSM tee candidate matched ${selection.teeSet}; keeping the package tee marker.`,
     )
   }
-  if (matches.length > 1) {
+  if (osmMatches.length > 1) {
     return fallback(
       geometry,
       calibration,
-      `${matches.length} OSM tee candidates matched ${selection.teeSet}; refusing to guess.`,
+      `${osmMatches.length} OSM tee candidates matched ${selection.teeSet}; refusing to guess.`,
     )
   }
 
-  const candidate = matches[0]
+  const candidate = osmMatches[0]
   const write = saveTeeCalibrationCandidate({
     courseFingerprint: fingerprint,
     holeNumber: geometry.holeNumber,
@@ -112,13 +161,10 @@ export const resolveShotOneTee = (
   })
 
   if (write.outcome === 'locked-conflict') {
-    return {
-      point: write.record.courseLocalYds,
-      source: 'locked-calibration',
-      candidate: null,
-      calibration: write.record,
-      reason: `OSM ${selection.teeSet} tee conflicts with the locked calibration; preserving the locked tee.`,
-    }
+    return lockedResolution(
+      write.record,
+      `OSM ${selection.teeSet} tee conflicts with the locked calibration; preserving the locked tee.`,
+    )
   }
 
   if (write.outcome === 'invalid') {
