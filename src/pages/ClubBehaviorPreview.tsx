@@ -31,13 +31,6 @@ type WeightedMovementRow = {
   weight: number
 }
 
-const previewEnabled = () => {
-  if (typeof window === 'undefined') {
-    return false
-  }
-  return new URLSearchParams(window.location.search).get('clubDetailPreview') === '1'
-}
-
 const balancedPercents = (counts: number[]) => {
   const total = counts.reduce((sum, count) => sum + count, 0)
   if (total <= 0) {
@@ -61,8 +54,8 @@ const balancedPercents = (counts: number[]) => {
 }
 
 // Trim by curve movement once, then use those same adjusted row weights for
-// start, movement, and finish. That preserves the identity finish = start + movement
-// while preventing a few extreme curves from dragging the expected flight around.
+// start, movement, and finish. That preserves finish = start + movement while
+// preventing a few extreme curves from dragging the expected flight around.
 const robustMovementWeights = (rows: WeightedMovementRow[], trimPct: number) => {
   const originalWeights = rows.map((row) => row.weight)
   if (rows.length < 10) {
@@ -274,25 +267,17 @@ export default function ClubBehaviorPreview({
   clubLabel,
   selectedVariantId,
 }: ClubBehaviorPreviewProps) {
-  const enabled = previewEnabled()
-
   const summary = useMemo(() => {
-    if (!enabled) {
-      return null
-    }
-
     const club = resolveClub(clubLabel)
     if (!club) {
       return null
     }
 
-    // loadSavedSessions also refreshes the installed mishit classifier from the
-    // current user's same-origin history, so this preview uses the same derived
-    // mishit truth as the rest of Looper rather than a separate rank heuristic.
+    // Loading history also refreshes the installed mishit classifier so this
+    // uses the same planning truth as the rest of Looper.
     const sessions = loadSavedSessions().filter((session) => isSessionEligibleForAnalysis(session))
 
-    // Strike reliability stays a simple recent-frequency read: the latest 50 source-included
-    // shots for this club/variant, regardless of whether planning later filters a mishit out.
+    // Strike reliability is intentionally a simple recent-frequency read.
     const recentShots = sessions
       .flatMap((session) => session.shots)
       .filter(
@@ -308,7 +293,6 @@ export default function ClubBehaviorPreview({
 
     if (recentShots.length === 0) {
       return {
-        sampleCount: 0,
         expectedShape: 'Building',
         expectedDirection: 'Need more shots',
         expectedMovement: undefined,
@@ -335,9 +319,9 @@ export default function ClubBehaviorPreview({
     const unclassifiedCount = recentShots.length - severeCount - mishitCount - normalCount
     const strikeReady = unclassifiedCount === 0
 
-    // Expected shape follows the same historical weighting philosophy as Stock:
-    // planning-eligible shots only, session recency/support weighting, and equal sharing
-    // of each session's total weight across that session's shots for this identity.
+    // Shape follows the same historical weighting philosophy as Stock:
+    // planning-eligible shots, recency/support weighting, and equal sharing of
+    // each session's total weight across shots for this club/variant.
     const historicalNowMs = Date.now()
     const movementRows: WeightedMovementRow[] = sessions.flatMap((session) => {
       const planningShots = session.shots.filter(
@@ -368,9 +352,9 @@ export default function ClubBehaviorPreview({
       })
     })
 
-    // At 10+ valid shape observations, shave 10% of weighted influence from each
-    // movement tail. Crucially, the same adjusted row weights drive start and curve,
-    // so the displayed finish is always exactly start + movement.
+    // At 10+ valid shape observations, shave 10% of weighted influence from
+    // each movement tail. The same adjusted row weights drive Start and Curve,
+    // so Finish is always exactly Start + Movement.
     const robustWeights = robustMovementWeights(movementRows, 0.1)
     const startOffset = weightedMovementRowAverage(
       movementRows,
@@ -451,7 +435,6 @@ export default function ClubBehaviorPreview({
       : [0, 0, 0]
 
     return {
-      sampleCount: recentShots.length,
       expectedShape,
       expectedDirection,
       expectedMovement,
@@ -463,9 +446,9 @@ export default function ClubBehaviorPreview({
       mishitPercent,
       severePercent,
     }
-  }, [clubLabel, enabled, selectedVariantId])
+  }, [clubLabel, selectedVariantId])
 
-  if (!enabled || !summary) {
+  if (!summary) {
     return null
   }
 
@@ -483,7 +466,7 @@ export default function ClubBehaviorPreview({
 
   return (
     <article
-      aria-label="Expected shot shape and strike reliability preview"
+      aria-label="Expected shot shape and strike reliability"
       className="dashboard-card club-v2-behavior-preview"
     >
       <div className="club-v2-behavior-cell club-v2-behavior-shape">
