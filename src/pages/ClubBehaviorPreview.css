@@ -57,6 +57,7 @@
   font-size: 1.08rem;
   font-weight: 620;
   line-height: 1.04;
+  margin-top: 0.22rem;
 }
 
 .club-v2-behavior-shape .club-v2-behavior-primary {
@@ -82,10 +83,10 @@
 
 .club-v2-behavior-flight-svg {
   position: absolute;
-  top: -0.08rem;
+  top: 0.42rem;
   right: 0.08rem;
   width: 66%;
-  height: 50px;
+  height: 54px;
   overflow: visible;
   display: block;
   margin: 0;
@@ -136,7 +137,7 @@
   overflow: hidden;
   background: rgba(211, 220, 212, 0.1);
   display: flex;
-  margin-top: 0.28rem;
+  margin-top: 0.52rem;
 }
 
 .club-v2-behavior-segment-bar > span {
@@ -210,6 +211,10 @@
     border-left: 0;
   }
 
+  .club-v2-behavior-primary {
+    margin-top: 0;
+  }
+
   .club-v2-behavior-movement .club-v2-behavior-label,
   .club-v2-behavior-movement .club-v2-behavior-primary {
     width: auto;
@@ -220,6 +225,10 @@
     width: 100%;
     height: 42px;
     margin: -0.35rem 0 0;
+  }
+
+  .club-v2-behavior-segment-bar {
+    margin-top: 0.28rem;
   }
 }
 
