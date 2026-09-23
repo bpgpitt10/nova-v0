@@ -1,0 +1,184 @@
+name: Augusta V7 Live Caddie Preflight
+
+on:
+  push:
+    branches:
+      - course-importer-surface-semantics-v1
+    paths:
+      - '.github/workflows/augusta-v7-live-caddie-preflight.yml'
+
+concurrency:
+  group: augusta-v7-live-caddie-preflight
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: course-importer-surface-semantics-v1
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependency
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Fix Live Caddie layering and stale V7 metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          live = Path('src/pages/LiveCaddiePage.tsx')
+          text = live.read_text(encoding='utf-8')
+          old = """const surfaceOrder: CourseSurfaceKind[] = [
+            'rough',
+            'water',
+            'fairway',
+            'green',
+            'bunker',
+            'tee',
+            'deep-rough',
+            'penalty',
+          ]"""
+          new = """// SVG uses painter's order: broad/low-priority surfaces first, then increasingly
+          // specific golf surfaces and hazards. This is the reverse of tactical point
+          // classification precedence so woods can never visually cover fairway/green/hazards.
+          const surfaceOrder: CourseSurfaceKind[] = [
+            'rough',
+            'deep-rough',
+            'fairway',
+            'tee',
+            'green',
+            'bunker',
+            'penalty',
+            'water',
+          ]"""
+          if old not in text:
+              raise SystemExit('Expected Live Caddie surfaceOrder block was not found.')
+          live.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          canonical = Path('tools/build_osm_course_package_canonical.py')
+          text = canonical.read_text(encoding='utf-8')
+          old = (
+              'and promotes woods/scrub '
+              '"\n        "to tactical deep-rough only after explicit golf surfaces are carved out."'
+          )
+          new = (
+              'and preserves woods/scrub as source context while mirroring them "\n'
+              '        "to tactical deep-rough; runtime precedence resolves overlaps."'
+          )
+          if old not in text:
+              raise SystemExit('Expected stale canonical registration note was not found.')
+          canonical.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          loader = Path('src/courseGeometry/routePackagedCourseLoader.ts')
+          text = loader.read_text(encoding='utf-8')
+          old = "sourceFeature: kind === 'water' ? 'cached OSM water geometry' : `golf=${kind}`,"
+          new = "sourceFeature: kind === 'water' ? 'cached OSM water geometry' : kind === 'deep-rough' ? 'cached OSM woods/scrub context promoted to tactical deep-rough' : `golf=${kind}`,"
+          if old not in text:
+              raise SystemExit('Expected loader provenance line was not found.')
+          loader.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Preserve current Augusta terrain-bearing package
+        run: |
+          mkdir -p /tmp/looper-course-rebuild
+          cp public/course-geometry/augusta-national/course-v1.json /tmp/looper-course-rebuild/augusta-old.json
+
+      - name: Fetch exact-boundary Augusta OSM snapshot
+        run: |
+          python tools/fetch_osm_course_snapshot_core.py \
+            --config config/course-geometry/augusta-national-v1.json \
+            --output artifacts/course-geometry/augusta-national/osm-snapshot.json
+
+      - name: Build canonical V7 static geometry
+        run: |
+          python tools/build_osm_course_package_canonical.py \
+            --osm artifacts/course-geometry/augusta-national/osm-snapshot.json \
+            --config config/course-geometry/augusta-national-v1.json \
+            --output /tmp/looper-course-rebuild/augusta-v7-geometry.json \
+            --manifest artifacts/course-geometry/augusta-national/validation-v1.json
+
+      - name: Carry forward embedded LiDAR without resampling
+        run: |
+          python tools/carry_forward_embedded_terrain.py \
+            --old-package /tmp/looper-course-rebuild/augusta-old.json \
+            --new-package /tmp/looper-course-rebuild/augusta-v7-geometry.json \
+            --output public/course-geometry/augusta-national/course-v1.json
+
+      - name: Refresh Augusta cache provenance and hashes
+        run: |
+          python tools/update_course_cache_after_rebuild.py \
+            --cache artifacts/course-geometry/augusta-national/cache-v1.json \
+            --config config/course-geometry/augusta-national-v1.json \
+            --snapshot artifacts/course-geometry/augusta-national/osm-snapshot.json \
+            --package public/course-geometry/augusta-national/course-v1.json \
+            --manifest artifacts/course-geometry/augusta-national/validation-v1.json
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Validate V7 semantics
+        run: python tools/test_course_surface_semantics_v7.py
+
+      - name: Validate runtime surface precedence
+        run: node tools/test-course-surface-classification.mjs
+
+      - name: Verify Live Caddie painter order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('src/pages/LiveCaddiePage.tsx').read_text(encoding='utf-8')
+          expected = """const surfaceOrder: CourseSurfaceKind[] = [
+            'rough',
+            'deep-rough',
+            'fairway',
+            'tee',
+            'green',
+            'bunker',
+            'penalty',
+            'water',
+          ]"""
+          if expected not in text:
+              raise SystemExit('Live Caddie painter order is not semantic-precedence-safe.')
+          print('Live Caddie painter order: broad surfaces -> vegetation -> explicit golf surfaces/hazards: ok')
+          PY
+
+      - name: Validate promoted packages and web build
+        run: npm run build
+
+      - name: Commit V7 Augusta preflight result
+        run: |
+          git add \
+            src/pages/LiveCaddiePage.tsx \
+            src/courseGeometry/routePackagedCourseLoader.ts \
+            tools/build_osm_course_package_canonical.py \
+            artifacts/course-geometry/augusta-national/osm-snapshot.json \
+            artifacts/course-geometry/augusta-national/validation-v1.json \
+            artifacts/course-geometry/augusta-national/cache-v1.json \
+            public/course-geometry/augusta-national/course-v1.json \
+            src/courseGeometry/generatedRouteHoleHeadings.ts
+          if git diff --cached --quiet; then
+            echo 'No preflight changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(course): prepare Augusta V7 Live Caddie validation'
+          git push origin HEAD:course-importer-surface-semantics-v1
