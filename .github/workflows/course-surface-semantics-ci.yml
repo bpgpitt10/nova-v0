@@ -4,13 +4,16 @@ on:
   push:
     branches:
       - course-importer-surface-semantics-v1
+      - web-course-importer-surface-semantics-v1
     paths:
       - tools/build_osm_course_package_v7.py
       - tools/build_osm_course_package_canonical.py
       - tools/test_course_surface_semantics_v7.py
       - tools/test-course-surface-classification.mjs
+      - tools/test-augusta-championship-package.mjs
       - src/courseGeometry/semantics.ts
       - src/courseGeometry/geometry.ts
+      - src/courseGeometry/routePackagedCourseLoader.ts
       - public/course-geometry/**/course-v1.json
       - .github/workflows/course-surface-semantics-ci.yml
   workflow_dispatch:
@@ -40,3 +43,6 @@ jobs:
 
       - name: Validate runtime surface precedence
         run: node tools/test-course-surface-classification.mjs
+
+      - name: Guard Augusta championship package and package freshness
+        run: node tools/test-augusta-championship-package.mjs
