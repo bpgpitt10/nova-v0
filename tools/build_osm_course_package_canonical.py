@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the canonical V6 course compiler and stamp reproducible metadata."""
+"""Run the canonical V7 course compiler and stamp reproducible metadata."""
 
 from __future__ import annotations
 
@@ -11,17 +11,20 @@ import build_osm_course_package as base
 import build_osm_course_package_v4 as v4
 import build_osm_course_package_v5 as v5
 import build_osm_course_package_v6 as v6
+import build_osm_course_package_v7 as v7
 
 
-COMPILER_NAME = "build_osm_course_package_v6"
+COMPILER_NAME = "build_osm_course_package_v7"
 
 
 def fingerprint() -> str:
     digest = hashlib.sha256()
     for source in (
+        Path(base.__file__),
         Path(v4.__file__),
         Path(v5.__file__),
         Path(v6.__file__),
+        Path(v7.__file__),
         Path(__file__),
     ):
         digest.update(source.name.encode("utf-8"))
@@ -31,10 +34,11 @@ def fingerprint() -> str:
 
 def main() -> int:
     # V5 remains authoritative for topology, ownership, route orientation and
-    # selected-tee anchoring. V6 enriches that exact model with all confidently
-    # route-owned OSM tee candidates and their source identity/geometry.
+    # selected-tee anchoring. V6 retains all confidently route-owned OSM tee
+    # candidates. V7 adds deterministic tactical semantics for woods/scrub
+    # without changing the underlying source context geometry.
     base.normalize_osm = v6.normalize_osm
-    v4.model_for_hole = v6.model_for_hole
+    v4.model_for_hole = v7.model_for_hole
     result = v4.main()
 
     args = v4.parse_args()
@@ -42,9 +46,10 @@ def main() -> int:
     manifest["compiler"] = COMPILER_NAME
     manifest["builderFingerprintSha256"] = fingerprint()
     manifest["registrationNote"] = (
-        "Static geometry preserves the cached route-axis orientation, rebases "
-        "the origin to a mapped tee when confidently owned, packages true "
-        "heading metadata, and retains every route-owned OSM tee candidate."
+        "Static geometry preserves cached route-axis orientation, rebases the "
+        "origin to a mapped tee when confidently owned, packages true heading "
+        "metadata and route-owned OSM tee candidates, and promotes woods/scrub "
+        "to tactical deep-rough only after explicit golf surfaces are carved out."
     )
     args.manifest.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
