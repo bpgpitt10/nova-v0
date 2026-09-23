@@ -1,0 +1,465 @@
+{
+  "artifacts": {
+    "candidatePackage": "artifacts/course-build/augusta-national/candidate/course-v1.json",
+    "geometry": "artifacts/course-build/augusta-national/candidate/geometry-v1.json",
+    "geometryValidation": "artifacts/course-build/augusta-national/candidate/geometry-validation-v1.json",
+    "snapshot": "artifacts/course-build/augusta-national/candidate/osm-snapshot.json",
+    "terrainValidation": "artifacts/course-build/augusta-national/candidate/terrain-validation-v1.json"
+  },
+  "buildCompletedAt": "2026-09-23T16:56:01.671986Z",
+  "buildStartedAt": "2026-09-23T16:55:37.054341Z",
+  "candidatePackage": "artifacts/course-build/augusta-national/candidate/course-v1.json",
+  "courseId": "augusta-national-augusta-ga",
+  "courseIdentity": {
+    "duplicateHoleRefs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "familyMarginYards": 1809.6,
+    "holeRouteResolutionMethod": "course-identity-fingerprint+nested-course-exclusion+minimum-sequential-endpoint-gap-v2",
+    "maxHandoffYards": 161.9,
+    "osmCourseElement": {
+      "id": 871993734,
+      "type": "way"
+    }
+  },
+  "courseName": "Augusta National Golf Club",
+  "failures": [],
+  "geometry": {
+    "allHolesReady": true,
+    "compiler": "build_osm_course_package_v7",
+    "coordinateFrameOrigins": {
+      "selected-tee": 18
+    },
+    "readyHoles": 18,
+    "virtualTeeHoles": [],
+    "warningHoles": []
+  },
+  "publishesRuntimePackage": false,
+  "reviewReasons": [],
+  "schemaVersion": "looper-course-build-summary-v1",
+  "slug": "augusta-national",
+  "status": "PASS",
+  "steps": [
+    {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.12.14/x64/bin/python",
+        "tools/fetch_osm_course_snapshot_family.py",
+        "--config",
+        "config/course-geometry/augusta-national-v1.json",
+        "--output",
+        "artifacts/course-build/augusta-national/candidate/osm-snapshot.json",
+        "--timeout",
+        "45"
+      ],
+      "elapsedSeconds": 3.69,
+      "name": "resolve-course-and-hole-family",
+      "stderrTail": "",
+      "stdoutTail": "      \"type\": \"way\"\n    },\n    \"8\": {\n      \"expectedPar\": 5,\n      \"foreignCourse\": false,\n      \"id\": 855188617,\n      \"par\": 5,\n      \"parMismatch\": false,\n      \"type\": \"way\"\n    },\n    \"9\": {\n      \"expectedPar\": 4,\n      \"foreignCourse\": false,\n      \"id\": 854913182,\n      \"par\": 4,\n      \"parMismatch\": false,\n      \"type\": \"way\"\n    }\n  }\n}"
+    },
+    {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.12.14/x64/bin/python",
+        "tools/build_osm_course_package_canonical.py",
+        "--osm",
+        "artifacts/course-build/augusta-national/candidate/osm-snapshot.json",
+        "--config",
+        "config/course-geometry/augusta-national-v1.json",
+        "--output",
+        "artifacts/course-build/augusta-national/candidate/geometry-v1.json",
+        "--manifest",
+        "artifacts/course-build/augusta-national/candidate/geometry-validation-v1.json"
+      ],
+      "elapsedSeconds": 4.23,
+      "name": "compile-canonical-v7-geometry",
+      "stderrTail": "",
+      "stdoutTail": "    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ]\n}"
+    },
+    {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.12.14/x64/bin/python",
+        "tools/import_course_terrain_v3.py",
+        "--config",
+        "config/course-geometry/augusta-national-v1.json",
+        "--geometry",
+        "artifacts/course-build/augusta-national/candidate/geometry-v1.json",
+        "--source-out",
+        "artifacts/course-build/augusta-national/candidate/terrain-source-v1.json",
+        "--terrain-out",
+        "artifacts/course-build/augusta-national/candidate/terrain-v1.json",
+        "--validation-out",
+        "artifacts/course-build/augusta-national/candidate/terrain-validation-v1.json",
+        "--cache-out",
+        "artifacts/course-build/augusta-national/candidate/terrain-cache-v1.json",
+        "--holes",
+        "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+        "--force-refresh"
+      ],
+      "elapsedSeconds": 16.55,
+      "name": "build-current-frame-terrain",
+      "stderrTail": "",
+      "stdoutTail": "    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ],\n  \"schemaVersion\": \"looper-course-terrain-validation-v1\",\n  \"sourceResolutionMeters\": 1.0,\n  \"terrainHoleCount\": 18\n}"
+    },
+    {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.12.14/x64/bin/python",
+        "tools/compose_course_package.py",
+        "--geometry",
+        "artifacts/course-build/augusta-national/candidate/geometry-v1.json",
+        "--terrain",
+        "artifacts/course-build/augusta-national/candidate/terrain-v1.json",
+        "--output",
+        "artifacts/course-build/augusta-national/candidate/course-v1.json",
+        "--report",
+        "artifacts/course-build/augusta-national/candidate/terrain-compose-report-v1.json"
+      ],
+      "elapsedSeconds": 0.12,
+      "name": "compose-geometry-and-terrain",
+      "stderrTail": "",
+      "stdoutTail": "    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ],\n  \"terrainInputSchema\": \"looper-course-terrain-v1\"\n}"
+    }
+  ],
+  "terrain": {
+    "allRequestedReady": true,
+    "enabled": true,
+    "holes": [
+      {
+        "anchorElevationFt": 318.9,
+        "anchorLatLon": [
+          33.50244266,
+          -82.0200387
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          270.3,
+          336.3
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 304.742456,
+        "hole": 1,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 329.8,
+        "anchorLatLon": [
+          33.50475504,
+          -82.02421814
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          214.5,
+          336.5
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 172.508304,
+        "hole": 2,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 241.1,
+        "anchorLatLon": [
+          33.49981315,
+          -82.02342748
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          218.1,
+          291.7
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 311.126716,
+        "hole": 3,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 271.3,
+        "anchorLatLon": [
+          33.50200712,
+          -82.02566592
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          226.2,
+          302.3
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 265.408969,
+        "hole": 4,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 249.3,
+        "anchorLatLon": [
+          33.50220186,
+          -82.02850912
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          199.4,
+          263.2
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 166.550782,
+        "hole": 5,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 250.4,
+        "anchorLatLon": [
+          33.4989027,
+          -82.02728214
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          205.9,
+          260.0
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 14.382089,
+        "hole": 6,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 233.4,
+        "anchorLatLon": [
+          33.50090154,
+          -82.0273538
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          208.0,
+          257.3
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 113.056326,
+        "hole": 7,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 255.4,
+        "anchorLatLon": [
+          33.49926484,
+          -82.02238336
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          213.5,
+          333.1
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 345.829225,
+        "hole": 8,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 327.7,
+        "anchorLatLon": [
+          33.50448506,
+          -82.0240932
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          260.6,
+          334.3
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 127.350889,
+        "hole": 9,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 318.3,
+        "anchorLatLon": [
+          33.50200392,
+          -82.01969898
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          180.8,
+          323.9
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 188.904158,
+        "hole": 10,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 228.4,
+        "anchorLatLon": [
+          33.49861612,
+          -82.01899464
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          152.6,
+          267.1
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 217.599766,
+        "hole": 11,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 176.3,
+        "anchorLatLon": [
+          33.49560892,
+          -82.0224331
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          153.8,
+          213.2
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 209.637351,
+        "hole": 12,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 188.8,
+        "anchorLatLon": [
+          33.49380816,
+          -82.02350908
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          153.2,
+          241.8
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 333.274514,
+        "hole": 13,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 197.2,
+        "anchorLatLon": [
+          33.49753552,
+          -82.02554242
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          173.4,
+          246.3
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 91.764235,
+        "hole": 14,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 224.4,
+        "anchorLatLon": [
+          33.49763182,
+          -82.02051382
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          173.9,
+          255.2
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 286.701625,
+        "hole": 15,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 208.1,
+        "anchorLatLon": [
+          33.49841482,
+          -82.0258571
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          184.9,
+          254.4
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 334.538375,
+        "hole": 16,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 219.9,
+        "anchorLatLon": [
+          33.4998529,
+          -82.02635512
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          206.2,
+          257.4
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 107.002469,
+        "hole": 17,
+        "ready": true
+      },
+      {
+        "anchorElevationFt": 244.7,
+        "anchorLatLon": [
+          33.49830663,
+          -82.02166358
+        ],
+        "coordinateFrameOrigin": "selected-tee",
+        "elevationRangeFt": [
+          207.7,
+          322.1
+        ],
+        "gridNoDataFraction": 0.0,
+        "headingDegreesTrue": 15.130755,
+        "hole": 18,
+        "ready": true
+      }
+    ],
+    "provider": "usgs-3dep-1m",
+    "readyHoles": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "requestedHoles": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "sourceResolutionMeters": 1.0
+  }
+}
