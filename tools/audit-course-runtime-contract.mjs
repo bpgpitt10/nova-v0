@@ -6,6 +6,11 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const strict = process.argv.includes('--strict')
+const candidateIndex = process.argv.indexOf('--candidate')
+const candidateSlug = candidateIndex >= 0 ? process.argv[candidateIndex + 1] : null
+if (candidateIndex >= 0 && !candidateSlug) {
+  throw new Error('[course-runtime-audit] --candidate requires a course slug')
+}
 
 const LIMITS = {
   maxRouteStartTeeGapYds: 140,
@@ -16,24 +21,27 @@ const LIMITS = {
   maxRouteResidualYds: 100,
 }
 
-const promotedRouteCourses = [
-  'tobacco-road',
-  'arcadia-bluffs',
-  'cabot-cliffs',
-  'pebble-beach',
-  'augusta-national',
-  'oakmont-country-club',
-  'erin-hills',
-]
+const catalogSource = fs.readFileSync(
+  path.join(repoRoot, 'src/courseGeometry/courseCatalog.ts'),
+  'utf8',
+)
+
+const registeredRouteCourses = [
+  ...catalogSource.matchAll(/staticPackageUrl: '\/course-geometry\/([^']+)\/course-v1\.json'/g),
+].map((match) => match[1])
+
+const auditedRouteCourses = [...registeredRouteCourses]
+if (candidateSlug && !auditedRouteCourses.includes(candidateSlug)) {
+  auditedRouteCourses.push(candidateSlug)
+}
 
 const spotlight = [
   { label: 'Greywolf H1', kind: 'greywolf' },
-  { label: 'Tobacco Road H1', slug: 'tobacco-road', hole: 1 },
-  { label: 'Erin Hills H1', slug: 'erin-hills', hole: 1 },
-  { label: 'Oakmont H1', slug: 'oakmont-country-club', hole: 1 },
-  { label: 'Cabot Cliffs H1', slug: 'cabot-cliffs', hole: 1 },
-  { label: 'Pebble Beach H4', slug: 'pebble-beach', hole: 4 },
+  ...registeredRouteCourses.map((slug) => ({ label: `${slug} H1`, slug, hole: 1 })),
 ]
+if (candidateSlug && !registeredRouteCourses.includes(candidateSlug)) {
+  spotlight.push({ label: `${candidateSlug} candidate H1`, slug: candidateSlug, hole: 1 })
+}
 
 const readJson = (relativePath) =>
   JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'))
@@ -69,10 +77,6 @@ const issuesForHole = (hole) => {
     issues.push('selected-tee package has no selected tee OSM id')
   }
 
-  // A large tee gap is a contract failure only while the route start itself is
-  // pretending to be the runtime origin. V5 deliberately allows an OSM route
-  // to begin inside the hole and records that gap while placing runtime [0,0]
-  // on the evidence-selected mapped tee.
   const teeGap = Number(hole.nearestMappedTeeSurfaceYards)
   if (routeAnchored) {
     if (!Number.isFinite(teeGap)) {
@@ -161,7 +165,7 @@ let spotlightFailures = 0
 for (const target of spotlight) {
   if (target.kind === 'greywolf') {
     const control = greywolfControl()
-    if (control.issues.length) spotlightFailures += control.issues.length
+    spotlightFailures += control.issues.length
     console.log(`${target.label}:`, control.summary)
     for (const issue of control.issues) console.log(`  ERROR: ${issue}`)
     continue
@@ -175,10 +179,10 @@ for (const target of spotlight) {
   for (const issue of issues) console.log(`  ERROR: ${issue}`)
 }
 
-console.log('\nPromoted automated-course sweep\n')
+console.log('\nActive/candidate automated-course sweep\n')
 let sweepFailures = 0
 let sweptHoles = 0
-for (const slug of promotedRouteCourses) {
+for (const slug of auditedRouteCourses) {
   const manifest = manifestFor(slug)
   const courseIssues = []
   for (const hole of manifest.holes ?? []) {
@@ -196,8 +200,8 @@ for (const slug of promotedRouteCourses) {
   }
 }
 
-console.log(`\nAudited ${sweptHoles} promoted automated holes.`)
-console.log(`Spotlight issues: ${spotlightFailures}; promoted-course issues: ${sweepFailures}.`)
+console.log(`\nAudited ${sweptHoles} active/candidate automated holes.`)
+console.log(`Spotlight issues: ${spotlightFailures}; automated-course issues: ${sweepFailures}.`)
 console.log('Greywolf remains the golden control; automated packages must converge on its selected-tee/runtime-registration semantics.')
 
 if (strict && (spotlightFailures > 0 || sweepFailures > 0)) {
