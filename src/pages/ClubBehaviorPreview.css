@@ -57,7 +57,7 @@
   font-size: 1.08rem;
   font-weight: 620;
   line-height: 1.04;
-  margin-top: 0.22rem;
+  margin-top: 0.48rem;
 }
 
 .club-v2-behavior-shape .club-v2-behavior-primary {
@@ -67,6 +67,7 @@
 .club-v2-behavior-secondary {
   color: rgba(196, 207, 198, 0.8);
   font-size: 0.69rem;
+  margin-top: 0.06rem;
 }
 
 .club-v2-behavior-movement {
@@ -83,10 +84,10 @@
 
 .club-v2-behavior-flight-svg {
   position: absolute;
-  top: 0.42rem;
+  top: 0.84rem;
   right: 0.08rem;
   width: 66%;
-  height: 54px;
+  height: 58px;
   overflow: visible;
   display: block;
   margin: 0;
@@ -137,7 +138,7 @@
   overflow: hidden;
   background: rgba(211, 220, 212, 0.1);
   display: flex;
-  margin-top: 0.52rem;
+  margin-top: 0.82rem;
 }
 
 .club-v2-behavior-segment-bar > span {
@@ -177,6 +178,7 @@
   color: rgba(202, 212, 204, 0.8);
   font-size: 0.69rem;
   line-height: 1.15;
+  margin-top: 0.08rem;
 }
 
 .club-v2-behavior-legend b {
@@ -215,6 +217,10 @@
     margin-top: 0;
   }
 
+  .club-v2-behavior-secondary {
+    margin-top: 0;
+  }
+
   .club-v2-behavior-movement .club-v2-behavior-label,
   .club-v2-behavior-movement .club-v2-behavior-primary {
     width: auto;
@@ -229,6 +235,10 @@
 
   .club-v2-behavior-segment-bar {
     margin-top: 0.28rem;
+  }
+
+  .club-v2-behavior-legend {
+    margin-top: 0;
   }
 }
 
