@@ -323,6 +323,7 @@ def bbox_queries(bounds: tuple[float, float, float, float], timeout: int) -> dic
         "golf": f'[out:json][timeout:{timeout}];wr{bbox}["golf"];out geom;',
         "natural": f'[out:json][timeout:{timeout}];wr{bbox}["natural"~"^(wood|scrub|water)$"];out geom;',
         "landuse": f'[out:json][timeout:{timeout}];wr{bbox}["landuse"~"^(forest|grass|meadow|reservoir)$"];out geom;',
+        "waterway": f'[out:json][timeout:{timeout}];wr{bbox}["waterway"~"^(river|stream|canal|ditch|drain)$"];out geom;',
     }
 
 
@@ -353,7 +354,7 @@ def merge_payloads(parts: list[tuple[str, dict[str, Any], str]]) -> tuple[dict[s
 def fetch_bbox_features(bounds: tuple[float, float, float, float], timeout: int):
     queries = bbox_queries(bounds, timeout)
     parts: list[tuple[str, dict[str, Any], str]] = []
-    for label in ("golf", "natural", "landuse"):
+    for label in ("golf", "natural", "landuse", "waterway"):
         payload, endpoint = fetch_json(queries[label], timeout)
         parts.append((label, payload, endpoint))
     merged, endpoints = merge_payloads(parts)

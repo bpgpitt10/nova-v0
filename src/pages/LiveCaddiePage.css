@@ -578,9 +578,12 @@
   min-height: 540px;
   border: 1px solid rgba(49, 66, 51, 0.72);
   border-radius: 12px;
+  /* Unmapped ground is intentionally neutral rather than darker than deep rough.
+     Unknown remains unknown tactically; this is visual separation only. */
   background:
-    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.16), transparent 42%),
-    #0b130d;
+    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.12), transparent 42%),
+    repeating-linear-gradient(135deg, rgba(180, 194, 181, 0.018) 0 1px, transparent 1px 7px),
+    #161d18;
 }
 
 .live-context,

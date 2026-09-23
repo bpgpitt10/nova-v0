@@ -89,9 +89,17 @@ def feature_polygons_local(
     output: list[Polygon] = []
     for geometry in feature["geometries"]:
         points = [base.to_hole_local(point, origin, forward, right) for point in geometry]
-        if len(points) < 3:
-            continue
-        candidate = make_valid(Polygon(points))
+        if feature.get("geometry_mode") == "line":
+            if len(points) < 2:
+                continue
+            full_width = max(1.0, float(feature.get("line_buffer_yards") or 2.0))
+            candidate = make_valid(
+                LineString(points).buffer(full_width / 2.0, cap_style="round", join_style="round")
+            )
+        else:
+            if len(points) < 3:
+                continue
+            candidate = make_valid(Polygon(points))
         output.extend(part for part in polygon_parts(candidate) if part.area > 0.05)
     return output
 

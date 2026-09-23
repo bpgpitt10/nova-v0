@@ -35,6 +35,14 @@ SURFACE_GOLF = {
 }
 CONTEXT_NATURAL = {"wood": "woods", "scrub": "scrub"}
 CONTEXT_LANDUSE = {"forest": "woods", "grass": "grass-context", "meadow": "grass-context"}
+WATERWAY_SURFACES = {"river", "stream", "canal", "ditch", "drain"}
+DEFAULT_WATERWAY_WIDTH_YARDS = {
+    "river": 12.0,
+    "stream": 4.0,
+    "canal": 8.0,
+    "ditch": 3.0,
+    "drain": 2.0,
+}
 
 
 def as_latlon(points: Iterable[dict[str, Any]]) -> list[tuple[float, float]]:
@@ -196,11 +204,29 @@ def feature_distance_to_route(
     return min(distances, default=float("inf"))
 
 
+def waterway_width_yards(tags: dict[str, Any]) -> float:
+    waterway = str(tags.get("waterway") or "")
+    fallback = DEFAULT_WATERWAY_WIDTH_YARDS.get(waterway, 3.0)
+    raw = str(tags.get("width") or "").strip().lower()
+    if not raw:
+        return fallback
+    try:
+        if raw.endswith("ft"):
+            return max(1.0, float(raw[:-2].strip()) / 3.0)
+        if raw.endswith("m"):
+            return max(1.0, float(raw[:-1].strip()) * M_TO_YD)
+        return max(1.0, float(raw) * M_TO_YD)
+    except ValueError:
+        return fallback
+
+
 def classify_element(tags: dict[str, Any]) -> tuple[str, str] | None:
     golf = tags.get("golf")
     if golf in SURFACE_GOLF:
         return "surface", SURFACE_GOLF[golf]
     if tags.get("natural") == "water" or tags.get("landuse") == "reservoir":
+        return "surface", "water"
+    if tags.get("waterway") in WATERWAY_SURFACES:
         return "surface", "water"
     natural = tags.get("natural")
     if natural in CONTEXT_NATURAL:
@@ -218,6 +244,8 @@ def source_feature(tags: dict[str, Any], kind: str) -> str:
         return f"natural={tags['natural']}"
     if tags.get("landuse"):
         return f"landuse={tags['landuse']}"
+    if tags.get("waterway"):
+        return f"waterway={tags['waterway']}"
     return f"osm={kind}"
 
 
@@ -248,20 +276,26 @@ def normalize_osm(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[i
         if not classified:
             continue
         role, kind = classified
-        polygon_geometries = [geometry for geometry in geometries if len(geometry) >= 3]
-        if not polygon_geometries:
+        linear_water = kind == "water" and tags.get("waterway") in WATERWAY_SURFACES
+        usable_geometries = [
+            geometry for geometry in geometries
+            if len(geometry) >= (2 if linear_water else 3)
+        ]
+        if not usable_geometries:
             continue
-        features.append(
-            {
-                "role": role,
-                "kind": kind,
-                "osm_type": element.get("type"),
-                "osm_id": element.get("id"),
-                "source_feature": source_feature(tags, kind),
-                "geometries": polygon_geometries,
-                "centroid": centroid([point for geometry in polygon_geometries for point in geometry]),
-            }
-        )
+        feature = {
+            "role": role,
+            "kind": kind,
+            "osm_type": element.get("type"),
+            "osm_id": element.get("id"),
+            "source_feature": source_feature(tags, kind),
+            "geometries": usable_geometries,
+            "centroid": centroid([point for geometry in usable_geometries for point in geometry]),
+        }
+        if linear_water:
+            feature["geometry_mode"] = "line"
+            feature["line_buffer_yards"] = waterway_width_yards(tags)
+        features.append(feature)
 
     return features, hole_routes
 

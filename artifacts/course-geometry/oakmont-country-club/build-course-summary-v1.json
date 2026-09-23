@@ -6,8 +6,8 @@
     "snapshot": "artifacts/course-build/oakmont-country-club/candidate/osm-snapshot.json",
     "terrainValidation": "artifacts/course-build/oakmont-country-club/candidate/terrain-validation-v1.json"
   },
-  "buildCompletedAt": "2026-09-23T17:40:45.167023Z",
-  "buildStartedAt": "2026-09-23T17:40:06.855113Z",
+  "buildCompletedAt": "2026-09-23T17:54:59.635249Z",
+  "buildStartedAt": "2026-09-23T17:54:27.039337Z",
   "candidatePackage": "artifacts/course-build/oakmont-country-club/candidate/course-v1.json",
   "courseId": "oakmont-country-club-oakmont-pa",
   "courseIdentity": {
@@ -49,7 +49,7 @@
         "--timeout",
         "45"
       ],
-      "elapsedSeconds": 2.06,
+      "elapsedSeconds": 3.08,
       "name": "resolve-course-and-hole-family",
       "stderrTail": "",
       "stdoutTail": "      \"type\": \"way\"\n    },\n    \"8\": {\n      \"expectedPar\": null,\n      \"foreignCourse\": false,\n      \"id\": 414039183,\n      \"par\": 3,\n      \"parMismatch\": false,\n      \"type\": \"way\"\n    },\n    \"9\": {\n      \"expectedPar\": null,\n      \"foreignCourse\": false,\n      \"id\": 414039185,\n      \"par\": 5,\n      \"parMismatch\": false,\n      \"type\": \"way\"\n    }\n  }\n}"
@@ -67,7 +67,7 @@
         "--manifest",
         "artifacts/course-build/oakmont-country-club/candidate/geometry-validation-v1.json"
       ],
-      "elapsedSeconds": 2.92,
+      "elapsedSeconds": 3.02,
       "name": "compile-canonical-v7-geometry",
       "stderrTail": "",
       "stdoutTail": "    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ]\n}"
@@ -92,7 +92,7 @@
         "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
         "--force-refresh"
       ],
-      "elapsedSeconds": 33.17,
+      "elapsedSeconds": 26.32,
       "name": "build-current-frame-terrain",
       "stderrTail": "",
       "stdoutTail": "    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ],\n  \"schemaVersion\": \"looper-course-terrain-validation-v1\",\n  \"sourceResolutionMeters\": 1.0,\n  \"terrainHoleCount\": 18\n}"
@@ -110,7 +110,7 @@
         "--report",
         "artifacts/course-build/oakmont-country-club/candidate/terrain-compose-report-v1.json"
       ],
-      "elapsedSeconds": 0.13,
+      "elapsedSeconds": 0.14,
       "name": "compose-geometry-and-terrain",
       "stderrTail": "",
       "stdoutTail": "    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14,\n    15,\n    16,\n    17,\n    18\n  ],\n  \"terrainInputSchema\": \"looper-course-terrain-v1\"\n}"

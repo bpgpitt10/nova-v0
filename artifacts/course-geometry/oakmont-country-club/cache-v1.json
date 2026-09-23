@@ -7,20 +7,20 @@
     "status": "current"
   },
   "lastBuild": {
-    "reason": "build-course-candidate-preview",
+    "reason": "waterway-support-preview",
     "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "150a5149efbb6e446f5f6eceedd47a1b1c0567ad215f6ea15dff7566241b40aa",
+    "builderFingerprintSha256": "03d63326ce2ff022d6b309568382fc9868697f1935d213fd7d7b3e34e3f99e8a",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-09-23T17:40:45.167023Z",
+    "builtAt": "2026-09-23T17:54:59.635249Z",
     "configPath": "config/course-geometry/oakmont-country-club-v1.json",
     "configSha256": "a66fbba3448b0405a12d05ed7edf8a4b7f961411fcc2e4c960728be9f69e3950",
     "path": "public/course-geometry/oakmont-country-club/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
     "semanticCompiler": "build_osm_course_package_v7",
     "semanticSurfacePolicyVersion": 2,
-    "sha256": "622ed74d59be5753532169c7ae9225e63221ce371f894055428df0c6d11735fe"
+    "sha256": "71c95e5258f49f4d19b40770dd660f4ee74cff80104cfb9c5d43b38879af7b26"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -50,7 +50,7 @@
     "lastCheckedAt": "2026-09-18T11:13:47.564224Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/oakmont-country-club/osm-snapshot.json",
-    "snapshotSha256": "0ed136be66b4461518e35e0b5a3f01946e80a8431004c441eb37509bc1be1824",
+    "snapshotSha256": "e124358bae7b4118c4862badb91079aac92ea3a7b587af0ff251b2085847a391",
     "sourceBaseTimestamp": "2026-09-18T11:12:47Z"
   },
   "terrain": {
@@ -76,9 +76,8 @@
       17,
       18
     ],
-    "note": "All 18 Oakmont holes built through canonical build-course using current-frame terrain.",
     "status": "complete-current-frame",
     "validationPath": "artifacts/course-geometry/oakmont-country-club/build-course-terrain-validation-v1.json",
-    "validationSha256": "d3979f05e2183673673f6f97875ea0aeab4f4de04924adb6560c643992574693"
+    "validationSha256": "497b4002c9b0fab03c23c42e80639f0b1d3c5c834376b534f09d233b686219ec"
   }
 }

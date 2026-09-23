@@ -25,6 +25,7 @@ import fetch_osm_course_snapshot as fetcher
 MAP_MARGIN_DEG = 0.0006
 NATURAL_VALUES = {"wood", "scrub", "water"}
 LANDUSE_VALUES = {"forest", "grass", "meadow", "reservoir"}
+WATERWAY_VALUES = {"river", "stream", "canal", "ditch", "drain"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,6 +50,8 @@ def include_tags(tags: dict[str, str]) -> bool:
     if tags.get("natural") in NATURAL_VALUES:
         return True
     if tags.get("landuse") in LANDUSE_VALUES:
+        return True
+    if tags.get("waterway") in WATERWAY_VALUES:
         return True
     return False
 

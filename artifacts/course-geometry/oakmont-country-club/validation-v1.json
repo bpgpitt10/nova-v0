@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "150a5149efbb6e446f5f6eceedd47a1b1c0567ad215f6ea15dff7566241b40aa",
+  "builderFingerprintSha256": "03d63326ce2ff022d6b309568382fc9868697f1935d213fd7d7b3e34e3f99e8a",
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -10,7 +10,7 @@
   },
   "courseId": "oakmont-country-club-oakmont-pa",
   "courseName": "Oakmont Country Club",
-  "generatedAt": "2026-09-23T17:40:11.704590Z",
+  "generatedAt": "2026-09-23T17:54:33.006322Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
@@ -179,7 +179,7 @@
         "green": 1,
         "rough": 1,
         "tee": 1,
-        "water": 0
+        "water": 1
       },
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -790,7 +790,7 @@
         "green": 1,
         "rough": 0,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -942,7 +942,7 @@
         "green": 1,
         "rough": 0,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1116,7 +1116,7 @@
         "green": 1,
         "rough": 0,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 2,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1290,7 +1290,7 @@
         "green": 1,
         "rough": 0,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1431,7 +1431,7 @@
         "green": 1,
         "rough": 3,
         "tee": 1,
-        "water": 0
+        "water": 4
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1583,7 +1583,7 @@
         "green": 1,
         "rough": 6,
         "tee": 1,
-        "water": 0
+        "water": 4
       },
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1737,7 +1737,7 @@
         "green": 1,
         "rough": 2,
         "tee": 1,
-        "water": 0
+        "water": 4
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -1922,7 +1922,7 @@
         "green": 1,
         "rough": 2,
         "tee": 1,
-        "water": 0
+        "water": 3
       },
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -2049,7 +2049,7 @@
         "green": 1,
         "rough": 2,
         "tee": 1,
-        "water": 1
+        "water": 3
       },
       "tacticalDeepRoughPolygons": 1,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -2136,7 +2136,7 @@
         "green": 1,
         "rough": 3,
         "tee": 1,
-        "water": 0
+        "water": 4
       },
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -2299,7 +2299,7 @@
         "green": 1,
         "rough": 2,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 2,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
@@ -2763,7 +2763,7 @@
         "green": 1,
         "rough": 3,
         "tee": 1,
-        "water": 0
+        "water": 2
       },
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
