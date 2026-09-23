@@ -1,0 +1,208 @@
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) {
+  grid-template-rows: minmax(300px, 1fr) auto;
+}
+
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-card {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 315px;
+}
+
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-metrics {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.club-v2-behavior-preview {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 118px;
+  padding: 0.74rem 0.86rem;
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr 1.15fr 1.25fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.club-v2-behavior-cell {
+  min-width: 0;
+  padding: 0 0.78rem;
+  display: grid;
+  align-content: start;
+  gap: 0.32rem;
+}
+
+.club-v2-behavior-cell:first-child {
+  padding-left: 0.08rem;
+}
+
+.club-v2-behavior-cell:last-child {
+  padding-right: 0.08rem;
+}
+
+.club-v2-behavior-cell + .club-v2-behavior-cell {
+  border-left: 1px solid rgba(205, 218, 207, 0.11);
+}
+
+.club-v2-behavior-label {
+  color: rgba(181, 196, 184, 0.75);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.club-v2-behavior-primary {
+  color: rgba(249, 252, 249, 0.98);
+  font-size: 1.08rem;
+  font-weight: 620;
+  line-height: 1.08;
+}
+
+.club-v2-behavior-secondary,
+.club-v2-behavior-movement-read,
+.club-v2-behavior-sample {
+  color: rgba(196, 207, 198, 0.8);
+  font-size: 0.71rem;
+}
+
+.club-v2-behavior-flight-svg {
+  width: 100%;
+  height: 36px;
+  overflow: visible;
+  display: block;
+  margin-top: -0.12rem;
+}
+
+.club-v2-behavior-target-line {
+  stroke: rgba(209, 220, 211, 0.24);
+  stroke-width: 1;
+  stroke-dasharray: 2.5 2.5;
+}
+
+.club-v2-behavior-flight-path {
+  fill: none;
+  stroke: rgba(244, 206, 96, 0.88);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+
+.club-v2-behavior-start-dot {
+  fill: rgba(216, 224, 217, 0.9);
+}
+
+.club-v2-behavior-finish-dot {
+  fill: rgba(244, 206, 96, 0.98);
+}
+
+.club-v2-behavior-movement-read {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-top: -0.22rem;
+  white-space: nowrap;
+}
+
+.club-v2-behavior-mix,
+.club-v2-behavior-strike {
+  grid-template-rows: auto auto auto 1fr;
+}
+
+.club-v2-behavior-segment-bar {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(211, 220, 212, 0.1);
+  display: flex;
+  margin-top: 0.32rem;
+}
+
+.club-v2-behavior-segment-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+}
+
+.club-v2-behavior-segment-bar .draw {
+  background: rgba(244, 206, 96, 0.9);
+}
+
+.club-v2-behavior-segment-bar .straight {
+  background: rgba(199, 210, 201, 0.55);
+}
+
+.club-v2-behavior-segment-bar .fade {
+  background: rgba(118, 170, 136, 0.9);
+}
+
+.club-v2-behavior-segment-bar .normal {
+  background: rgba(118, 170, 136, 0.92);
+}
+
+.club-v2-behavior-segment-bar .mishit {
+  background: rgba(244, 206, 96, 0.9);
+}
+
+.club-v2-behavior-segment-bar .severe {
+  background: rgba(224, 116, 102, 0.9);
+}
+
+.club-v2-behavior-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  color: rgba(202, 212, 204, 0.8);
+  font-size: 0.69rem;
+  line-height: 1.2;
+}
+
+.club-v2-behavior-legend b {
+  color: rgba(236, 242, 237, 0.93);
+  font-weight: 580;
+}
+
+.club-v2-behavior-sample {
+  align-self: end;
+  opacity: 0.7;
+}
+
+@media (max-width: 1200px) {
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-card,
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-metrics,
+  .club-v2-behavior-preview {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .club-v2-behavior-preview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0.8rem;
+  }
+
+  .club-v2-behavior-cell:nth-child(3) {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .club-v2-behavior-preview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.72rem;
+  }
+
+  .club-v2-behavior-cell {
+    padding: 0;
+  }
+
+  .club-v2-behavior-cell + .club-v2-behavior-cell {
+    border-left: 0;
+    border-top: 1px solid rgba(205, 218, 207, 0.11);
+    padding-top: 0.72rem;
+  }
+}
