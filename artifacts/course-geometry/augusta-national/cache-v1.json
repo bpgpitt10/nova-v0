@@ -2,26 +2,25 @@
   "courseId": "augusta-national-augusta-ga",
   "courseName": "Augusta National Golf Club",
   "freshness": {
-    "ageDays": 0.04,
-    "evaluatedAt": "2026-09-18T12:07:14.889887Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-09-23T15:01:58.853388Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-semantic-promotion",
-    "usedNetworkForOsm": false
+    "reason": "reported-geometry-error",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T12:07:14.889887Z",
+    "builderFingerprintSha256": "150a5149efbb6e446f5f6eceedd47a1b1c0567ad215f6ea15dff7566241b40aa",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-09-23T15:01:58.853388Z",
     "configPath": "config/course-geometry/augusta-national-v1.json",
-    "configSha256": "ed05cb97b432db03ac0b9703d0c93cb4fe19eb0411e10a2f006060f8794b429a",
+    "configSha256": "29ebee2474fb8dc3e0c436322386350c40b70e6c1f8acf8b53edb9ce29aa14f8",
     "path": "public/course-geometry/augusta-national/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
     "semanticCompiler": "build_osm_course_package_v7",
     "semanticSurfacePolicyVersion": 2,
-    "sha256": "d192ba40b59ed1a26ce47a55ce4a9922e3227c15f2a46632f988cb44b27805c1",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "4bcbb11033bb27431884fc0bde4044523ab4ca380f4eeb7a453d1fb6efe99b2f"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -46,23 +45,15 @@
       "id": 871993734,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T11:13:42.160498Z",
+    "fetchedAt": "2026-09-23T15:01:58.853388Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T11:13:42.160498Z",
-    "provider": "openstreetmap-overpass",
+    "lastCheckedAt": "2026-09-23T15:01:58.853388Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/augusta-national/osm-snapshot.json",
-    "snapshotSha256": "daf03fcf9819bf10ef25b893b69a2103f05a081ccbb839357958da1c6b1de44d",
-    "sourceBaseTimestamp": "2026-09-18T11:11:44Z"
+    "snapshotSha256": "02f65e42e50f69b8252dc5884fbbe4e096818eff02ba57319366d6bb2fb63292"
   },
   "terrain": {
-    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
-    "builderVersion": "import_course_terrain_v2",
-    "composedAt": "2026-09-18T12:32:50.508618Z",
-    "sourceManifestPath": "artifacts/course-geometry/augusta-national/terrain-source-v1.json",
-    "status": "cached",
-    "terrainCachePath": "artifacts/course-geometry/augusta-national/terrain-cache-v1.json",
-    "terrainPackagePath": "artifacts/course-geometry/augusta-national/terrain-v1.json",
-    "terrainPackageSha256": "1622fdc1d2ef956f9be5295002f361523632e974a9a9057cb2c10062ba3f42c9",
-    "validationPath": "artifacts/course-geometry/augusta-national/terrain-validation-v1.json"
+    "reason": "Championship hole-family correction changed the local frames for the front nine; the prior embedded terrain belonged to the incorrectly selected Par 3 holes and was intentionally dropped.",
+    "status": "needs-rebuild"
   }
 }
