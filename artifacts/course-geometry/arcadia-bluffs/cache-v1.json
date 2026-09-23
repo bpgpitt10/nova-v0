@@ -3,7 +3,7 @@
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-09-23T21:14:37.306393Z",
+    "evaluatedAt": "2026-09-23T21:24:36.974411Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,14 +11,14 @@
     "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "16dd67ceb7dafa71c415778c91db3d9093043a89fe21351138c2d0e2c94699f2",
+    "builderFingerprintSha256": "a1d63e38700ee1de5049fb5d53aa42882f8a4dbd6decb29e73cb489edec50629",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-09-23T21:14:37.306393Z",
+    "builtAt": "2026-09-23T21:24:36.974411Z",
     "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
     "configSha256": "08cce1e881571b1778da1c7cdf9f93bd11e276dd53d70493f8f27da6d443a561",
     "path": "public/course-geometry/arcadia-bluffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "c98f4f7d96827b76358d7ebd7dc480c00b2afa72b04ae5e6b545154b0c7288c8",
+    "sha256": "dae934756624efabb45b564146c7087657f420ea19aa0dc2a059047f99010687",
     "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
   },
   "refreshPolicy": {
@@ -44,9 +44,9 @@
       "id": 293247442,
       "type": "way"
     },
-    "fetchedAt": "2026-09-23T21:14:37.306393Z",
+    "fetchedAt": "2026-09-23T21:24:36.974411Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-23T21:14:37.306393Z",
+    "lastCheckedAt": "2026-09-23T21:24:36.974411Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
     "snapshotSha256": "837a3374842af282ddec06e2c604e2d0a1f7c0e439c580f9809e923e6b976d99"

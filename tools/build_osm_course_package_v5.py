@@ -398,10 +398,12 @@ def model_for_hole(
     if fallback_kind:
         if fallback_kind not in v4.CONTEXT_KINDS:
             raise ValueError(f"Unsupported courseGroundFallbackContextKind={fallback_kind}")
-        fallback_polygons = feature_intersections_rebased(
-            by_kind.get("course-boundary", []), context_corridor,
-            route_origin, forward, right, anchor_offset, simplify_yards,
-        )
+        fallback_polygons: list[list[list[float]]] = []
+        for feature in by_kind.get("course-boundary", []):
+            for polygon in feature_polygons_rebased(
+                feature, route_origin, forward, right, anchor_offset
+            ):
+                fallback_polygons.extend(v4.serialize_shape(polygon, simplify_yards))
         if fallback_polygons:
             context[fallback_kind] = [*fallback_polygons, *context.get(fallback_kind, [])]
 

@@ -1,6 +1,6 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "16dd67ceb7dafa71c415778c91db3d9093043a89fe21351138c2d0e2c94699f2",
+  "builderFingerprintSha256": "a1d63e38700ee1de5049fb5d53aa42882f8a4dbd6decb29e73cb489edec50629",
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "Standalone OSM context features were present and topology-clipped to the tactical route corridor.",
   "contextSourceStatus": "available",
@@ -9,7 +9,7 @@
   },
   "courseId": "arcadia-bluffs-arcadia-mi",
   "courseName": "Arcadia Bluffs \u2014 The Bluffs Course",
-  "generatedAt": "2026-09-23T21:14:37.306393Z",
+  "generatedAt": "2026-09-23T21:24:36.974411Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",

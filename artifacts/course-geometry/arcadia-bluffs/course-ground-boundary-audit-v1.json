@@ -1,0 +1,32 @@
+{
+  "2": {
+    "nativeGroundPolygons": 1,
+    "bounds": {
+      "minX": -1677.5,
+      "maxX": 233.2,
+      "minY": -168.7,
+      "maxY": 1219.1
+    },
+    "viewBounds": {
+      "maxX": 110.5,
+      "maxY": 300.2,
+      "minX": -110.2,
+      "minY": -109.9
+    }
+  },
+  "9": {
+    "nativeGroundPolygons": 1,
+    "bounds": {
+      "minX": -953.5,
+      "maxX": 257.9,
+      "minY": -717.2,
+      "maxY": 1203.5
+    },
+    "viewBounds": {
+      "maxX": 111.5,
+      "maxY": 311.9,
+      "minX": -110.4,
+      "minY": -110.1
+    }
+  }
+}
