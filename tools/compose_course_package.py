@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,70 @@ def finite(value: Any) -> bool:
 
 def positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def source_vintage_year(source: Any) -> int | None:
+    """Return a best-effort source vintage without using retrieval time.
+
+    Explicit source metadata wins. As a compatibility fallback, a four-digit
+    year embedded in the dataset name is treated as the dataset/source vintage.
+    """
+
+    if not isinstance(source, dict):
+        return None
+
+    for key in ("sourceVintageYear", "datasetYear", "vintageYear"):
+        value = source.get(key)
+        if isinstance(value, bool):
+            continue
+        try:
+            year = int(value)
+        except (TypeError, ValueError):
+            continue
+        if 1900 <= year <= 2100:
+            return year
+
+    dataset = source.get("dataset")
+    if isinstance(dataset, str):
+        years = re.findall(r"(?<!\d)((?:19|20)\d{2})(?!\d)", dataset)
+        if years:
+            year = int(years[-1])
+            if 1900 <= year <= 2100:
+                return year
+
+    return None
+
+
+def normalized_terrain_source(source: Any) -> Any:
+    """Preserve raw source metadata while adding normalized QA provenance."""
+
+    if not isinstance(source, dict):
+        return copy.deepcopy(source)
+
+    normalized = copy.deepcopy(source)
+    year = source_vintage_year(source)
+    if year is not None:
+        normalized["sourceVintageYear"] = year
+
+    parts: list[str] = []
+    provider = normalized.get("provider")
+    dataset = normalized.get("dataset")
+    if isinstance(provider, str) and provider.strip():
+        parts.append(provider.strip())
+    if isinstance(dataset, str) and dataset.strip():
+        parts.append(dataset.strip())
+
+    if year is not None:
+        year_text = str(year)
+        # Avoid rendering "... PA_WesternPA_2019 · 2019" while still
+        # retaining sourceVintageYear as a normalized machine-readable field.
+        if not any(year_text in part for part in parts):
+            parts.append(year_text)
+
+    if parts:
+        normalized["summary"] = "Terrain: " + " · ".join(parts)
+
+    return normalized
 
 
 def validate_contours(contours: Any, *, hole: int) -> list[dict[str, Any]]:
@@ -192,9 +257,10 @@ def compose(
             + ", ".join(str(hole) for hole in missing)
         )
 
+    source = normalized_terrain_source(terrain.get("source"))
     output["terrainProvenance"] = {
         "schemaVersion": terrain_schema,
-        "source": copy.deepcopy(terrain.get("source")),
+        "source": source,
         "runtimeTerrain": copy.deepcopy(terrain.get("runtimeTerrain")),
         **(
             {"courseCoordinateSystem": copy.deepcopy(terrain.get("courseCoordinateSystem"))}
@@ -210,6 +276,16 @@ def compose(
         "terrainHoleCount": len(merged),
         "terrainHoles": merged,
         "complete": len(merged) == 18,
+        **(
+            {"terrainSourceVintageYear": source["sourceVintageYear"]}
+            if isinstance(source, dict) and isinstance(source.get("sourceVintageYear"), int)
+            else {}
+        ),
+        **(
+            {"terrainSourceSummary": source["summary"]}
+            if isinstance(source, dict) and isinstance(source.get("summary"), str)
+            else {}
+        ),
     }
     return output, report
 
