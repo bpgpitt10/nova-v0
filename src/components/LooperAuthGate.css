@@ -73,6 +73,12 @@
   color: #edf0ee;
 }
 
+.looper-auth__google {
+  background: #f4f0e8;
+  color: #172126;
+  border-color: #f4f0e8 !important;
+}
+
 .looper-auth__full {
   width: 100%;
   margin-top: 12px;
@@ -95,9 +101,19 @@
   background: #29343a;
 }
 
+.looper-auth__form {
+  display: grid;
+  gap: 14px;
+}
+
+.looper-auth__field {
+  display: grid;
+  gap: 8px;
+}
+
 .looper-auth__label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   color: #e9e3d6;
   font-size: 13px;
   font-weight: 700;
@@ -120,6 +136,25 @@
 
 .looper-auth input:focus {
   border-color: #cfb36e;
+}
+
+.looper-auth__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.looper-auth__text-button {
+  min-height: 0 !important;
+  padding: 4px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #cfb36e;
+  font-size: 13px !important;
+  font-weight: 700;
 }
 
 .looper-auth__fineprint {
@@ -158,6 +193,109 @@
   border: 0;
 }
 
+.looper-account-control {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 1200;
+  max-width: min(360px, calc(100vw - 32px));
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.looper-account-control__details {
+  position: relative;
+}
+
+.looper-account-control__summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(151, 164, 170, 0.3);
+  border-radius: 9px;
+  background: rgba(11, 17, 21, 0.82);
+  color: #c6cfd2;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  list-style: none;
+  backdrop-filter: blur(10px);
+}
+
+.looper-account-control__summary::-webkit-details-marker {
+  display: none;
+}
+
+.looper-account-control__summary:hover {
+  border-color: rgba(207, 179, 110, 0.5);
+  color: #f4f0e8;
+}
+
+.looper-account-control__email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.looper-account-control__chevron {
+  flex: 0 0 auto;
+  color: #8f9a9f;
+  font-size: 10px;
+}
+
+.looper-account-control__details[open] .looper-account-control__chevron {
+  transform: rotate(180deg);
+}
+
+.looper-account-control__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: max-content;
+  min-width: 132px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid #314047;
+  border-radius: 10px;
+  background: #11191e;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+}
+
+.looper-account-control__logout {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #e6e9e7;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.looper-account-control__logout:hover {
+  background: #1b262c;
+}
+
+.looper-account-control__logout:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.looper-account-control__error {
+  max-width: 280px;
+  padding: 8px 10px;
+  color: #f2c2bc;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 @media (max-width: 640px) {
   .looper-auth__card {
     padding: 24px 20px;
@@ -165,5 +303,24 @@
 
   .looper-auth__email-row {
     grid-template-columns: 1fr;
+  }
+
+  .looper-auth__actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .looper-account-control {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+
+  .looper-account-control__summary {
+    max-width: min(260px, calc(100vw - 16px));
+  }
+
+  .looper-account-control__menu {
+    max-width: calc(100vw - 16px);
   }
 }

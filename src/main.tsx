@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useMemo, useState } from 'react'
+import { StrictMode, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
@@ -20,6 +20,8 @@ import {
   hasSavedBagConfig,
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
+import { deactivateLocalUserScope } from './lib/localUserScope.ts'
+import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -41,6 +43,10 @@ function SignOutPage() {
   useEffect(() => {
     void signOutLooper()
       .then(() => {
+        // Do not rely on the asynchronous auth-state callback to win the race
+        // against navigation. Explicitly preserve this golfer's scoped cache and
+        // clear the shared working cache before the next account can sign in.
+        deactivateLocalUserScope()
         window.location.replace('/')
       })
       .catch((signOutError) => {
@@ -51,6 +57,53 @@ function SignOutPage() {
   return (
     <main style={{ padding: '2rem' }}>
       <p>{error ? `Could not sign out: ${error}` : 'Signing you out…'}</p>
+    </main>
+  )
+}
+
+function InterruptedSessionGate({ children }: { children: ReactNode }) {
+  const [draft, setDraft] = useState(() => loadActiveSessionDraft())
+
+  if (!draft) {
+    return children
+  }
+
+  const latestShot = draft.shots[0]
+  const source = draft.metadata?.source ?? 'gspro'
+  const feed = source === 'mock' ? 'mock' : 'real'
+
+  const resumeSession = () => {
+    const params = new URLSearchParams({ source, feed })
+    if (latestShot?.club) {
+      params.set('club', latestShot.club)
+    }
+    params.set('variant', latestShot?.shotVariantId?.trim() || 'stock')
+    window.history.pushState({}, '', `/session-intelligence?${params.toString()}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const startFresh = () => {
+    clearActiveSessionDraft()
+    setDraft(null)
+  }
+
+  return (
+    <main className="looper-auth">
+      <section className="looper-auth__card">
+        <span className="looper-auth__eyebrow">The Looper</span>
+        <h1>Resume your range session?</h1>
+        <p className="looper-auth__lead">
+          Looper saved your interrupted session with {draft.shots.length} shot{draft.shots.length === 1 ? '' : 's'}.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button className="looper-auth__primary" onClick={resumeSession} type="button">
+            Resume Session
+          </button>
+          <button className="looper-auth__secondary" onClick={startFresh} type="button">
+            Discard &amp; Start New
+          </button>
+        </div>
+      </section>
     </main>
   )
 }
@@ -216,12 +269,14 @@ function RootRouter() {
     }
     if (showLooperLanding) {
       return (
-        <LooperLandingPage
-          installAvailableUpdate={installAvailableUpdate}
-          updateError={updateError}
-          updateStatus={updateStatus}
-          onRetryUpdateCheck={checkForUpdates}
-        />
+        <InterruptedSessionGate>
+          <LooperLandingPage
+            installAvailableUpdate={installAvailableUpdate}
+            updateError={updateError}
+            updateStatus={updateStatus}
+            onRetryUpdateCheck={checkForUpdates}
+          />
+        </InterruptedSessionGate>
       )
     }
     return <App forceDashboardRoute={showDashboardRoute} />

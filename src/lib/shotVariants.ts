@@ -1,4 +1,12 @@
+import { syncShotVariantsToCloud } from '../cloud/shotVariantCloud'
 import type { Club } from './bagConfig'
+import {
+  getActiveLocalUserId,
+  persistCacheValueForUser,
+  persistWorkingCacheValueForActiveUser,
+  SHOT_VARIANTS_DIRTY_STORAGE_KEY,
+  SHOT_VARIANTS_STORAGE_KEY,
+} from './localUserScope'
 
 export type ShotVariant = {
   id: string
@@ -7,7 +15,6 @@ export type ShotVariant = {
 }
 
 export const STOCK_SHOT_VARIANT_ID = 'stock'
-export const SHOT_VARIANTS_STORAGE_KEY = 'nova-shot-variants'
 
 export const resolveShotVariantId = (shotVariantId?: string) =>
   shotVariantId?.trim() || STOCK_SHOT_VARIANT_ID
@@ -25,10 +32,19 @@ const isShotVariant = (variant: unknown): variant is ShotVariant => {
   )
 }
 
+export const normalizeCustomShotVariants = (variants: unknown): ShotVariant[] =>
+  Array.isArray(variants)
+    ? variants
+        .filter(isShotVariant)
+        .filter((variant) => variant.id !== STOCK_SHOT_VARIANT_ID)
+    : []
+
 const stockShotVariant: ShotVariant = {
   id: STOCK_SHOT_VARIANT_ID,
   name: 'Full',
 }
+
+let pendingShotVariantSync: Promise<void> | null = null
 
 const readStoredShotVariants = () => {
   if (typeof window === 'undefined') {
@@ -44,7 +60,11 @@ const readStoredShotVariants = () => {
     if (Array.isArray(parsed)) {
       return parsed
     }
-    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { variants?: unknown }).variants)) {
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      Array.isArray((parsed as { variants?: unknown }).variants)
+    ) {
       return (parsed as { variants: unknown[] }).variants
     }
   } catch {
@@ -55,24 +75,76 @@ const readStoredShotVariants = () => {
 }
 
 export const getCustomShotVariants = () =>
-  readStoredShotVariants().filter(isShotVariant)
+  normalizeCustomShotVariants(readStoredShotVariants())
 
-export const saveCustomShotVariants = (variants: ShotVariant[]) => {
+export const flushPendingShotVariantSync = async () => {
+  await pendingShotVariantSync
+}
+
+export const saveCustomShotVariants = (
+  variants: ShotVariant[],
+  options: { syncCloud?: boolean } = {},
+) => {
   if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.setItem(
-    SHOT_VARIANTS_STORAGE_KEY,
-    JSON.stringify(variants.filter((variant) => variant.id !== STOCK_SHOT_VARIANT_ID)),
-  )
+  const normalized = normalizeCustomShotVariants(variants)
+  const serialized = JSON.stringify(normalized)
+  window.localStorage.setItem(SHOT_VARIANTS_STORAGE_KEY, serialized)
+  persistWorkingCacheValueForActiveUser(SHOT_VARIANTS_STORAGE_KEY, serialized)
+
+  if (options.syncCloud === false) {
+    return
+  }
+
+  const userId = getActiveLocalUserId()
+  if (!userId) {
+    return
+  }
+
+  // Mark the edit dirty before starting any async work. If logout wins the race,
+  // the next bootstrap for this golfer uploads this newer local copy first rather
+  // than replacing it with an older cloud row.
+  window.localStorage.setItem(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
+  persistWorkingCacheValueForActiveUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
+
+  // Serialize writes so an older request cannot finish after a newer edit and
+  // overwrite the cloud row. Only the newest queued write may clear the dirty bit.
+  const previousSync = pendingShotVariantSync ?? Promise.resolve()
+  let syncPromise: Promise<void>
+  syncPromise = previousSync.then(async () => {
+    const result = await syncShotVariantsToCloud(normalized, userId)
+    if (result.status === 'synced') {
+      if (pendingShotVariantSync === syncPromise) {
+        persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      }
+      return
+    }
+
+    if (result.status === 'failed') {
+      console.warn('[Cloud Sync] shot variant sync failed; local copy retained', {
+        error: result.error,
+      })
+      return
+    }
+
+    console.info('[Cloud Sync] shot variant sync deferred; local copy retained', {
+      reason: result.reason,
+    })
+  })
+
+  pendingShotVariantSync = syncPromise
+  void syncPromise.finally(() => {
+    if (pendingShotVariantSync === syncPromise) {
+      pendingShotVariantSync = null
+    }
+  })
 }
 
 export const getShotVariantsForClub = (club: Club): ShotVariant[] => {
   const storedVariants = getCustomShotVariants().filter((variant) => {
-    return (
-      !variant.club || variant.club === club
-    )
+    return !variant.club || variant.club === club
   })
 
   return [
@@ -93,7 +165,9 @@ export const shotMatchesIdentity = (
   shot: { club: Club; shotVariantId?: string },
   club: Club,
   shotVariantId?: string,
-) => shot.club === club && resolveShotVariantId(shot.shotVariantId) === resolveShotVariantId(shotVariantId)
+) =>
+  shot.club === club &&
+  resolveShotVariantId(shot.shotVariantId) === resolveShotVariantId(shotVariantId)
 
 export const shotsForClubVariant = <T extends { club: Club; shotVariantId?: string }>(
   shots: T[],

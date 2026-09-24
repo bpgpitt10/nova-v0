@@ -241,6 +241,17 @@ export const loadActiveSessionDraft = (): ActiveSessionDraft | null => {
 }
 
 export const clearActiveSessionDraft = () => {
+  // The shared dashboard renders the legacy App component in review mode. That
+  // component's old lifecycle still asks to clear a non-live draft on mount.
+  // An interrupted range session belongs to the golfer and must survive that
+  // read-only dashboard visit so it can be resumed after A -> logout -> B -> A.
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/'
+    if (path === '/dashboard') {
+      return
+    }
+  }
+
   window.localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY)
   persistWorkingCacheValueForActiveUser(ACTIVE_SESSION_STORAGE_KEY, null)
 }

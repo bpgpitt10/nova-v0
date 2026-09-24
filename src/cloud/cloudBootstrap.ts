@@ -1,6 +1,17 @@
 import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
-import { activateLocalUserScope } from '../lib/localUserScope'
+import {
+  activateLocalUserScope,
+  clearPreservedLegacyBackups,
+  persistCacheValueForUser,
+  SHOT_VARIANTS_DIRTY_STORAGE_KEY,
+  SHOT_VARIANTS_STORAGE_KEY,
+} from '../lib/localUserScope'
 import { loadSavedSessions, saveSessionHistory } from '../lib/sessions'
+import {
+  getCustomShotVariants,
+  normalizeCustomShotVariants,
+  saveCustomShotVariants,
+} from '../lib/shotVariants'
 import type { SavedSession } from '../types'
 import {
   hydrateDefaultBagForUser,
@@ -10,6 +21,10 @@ import {
   syncBagConfigToCloud,
   syncSavedSessionToCloud,
 } from './cloudPersistence'
+import {
+  loadShotVariantsForUser,
+  syncShotVariantsToCloud,
+} from './shotVariantCloud'
 
 const BOOTSTRAP_VERSION = 3
 const bootstrapKey = (userId: string) => `looper-cloud-bootstrap-v${BOOTSTRAP_VERSION}:${userId}`
@@ -31,6 +46,7 @@ export type CloudBootstrapResult = {
   mergedSessionCount: number
   sessionHistoryChanged: boolean
   loadedCloudBag: boolean
+  loadedCloudShotVariants: boolean
   warnings: string[]
 }
 
@@ -38,7 +54,7 @@ export const bootstrapLooperCloudData = async (
   userId: string,
   options: { claimUnscopedLegacyData?: boolean } = {},
 ): Promise<CloudBootstrapResult> => {
-  // This must happen before any session or bag read. It prevents a second
+  // This must happen before any user-owned local read. It prevents a second
   // account on the same browser from seeing or uploading the first golfer's
   // local safety copy. Only an explicitly approved migration path may claim the
   // old pre-auth cache.
@@ -52,6 +68,11 @@ export const bootstrapLooperCloudData = async (
 
   const localSessions = loadSavedSessions()
   const localBag = loadBagConfig()
+  const hadLocalShotVariantCache =
+    window.localStorage.getItem(SHOT_VARIANTS_STORAGE_KEY) !== null
+  const localShotVariantsDirty =
+    window.localStorage.getItem(SHOT_VARIANTS_DIRTY_STORAGE_KEY) === '1'
+  const localShotVariants = getCustomShotVariants()
   let uploadedLocalSessions = 0
 
   if (!hasBootstrapped) {
@@ -90,9 +111,62 @@ export const bootstrapLooperCloudData = async (
     loadedCloudBag = true
   }
 
+  let loadedCloudShotVariants = false
+  let canHydrateCloudShotVariants = true
+
+  // A dirty marker means a prior browser edit may have been interrupted by a
+  // rapid logout. Upload that isolated local copy before reading cloud state so
+  // an older cloud row cannot overwrite the newer golfer-owned edit.
+  if (localShotVariantsDirty) {
+    if (hadLocalShotVariantCache) {
+      const dirtyVariantResult = await syncShotVariantsToCloud(localShotVariants, userId)
+      if (dirtyVariantResult.status === 'synced') {
+        persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      } else {
+        canHydrateCloudShotVariants = false
+        warnings.push(
+          dirtyVariantResult.status === 'failed'
+            ? `Shot variants: ${dirtyVariantResult.error}`
+            : `Shot variants: deferred (${dirtyVariantResult.reason})`,
+        )
+      }
+    } else {
+      // A marker without a local payload cannot represent a newer edit.
+      persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+    }
+  }
+
+  if (canHydrateCloudShotVariants) {
+    // Shot variant definitions are account data. Cloud is canonical once a row
+    // exists, except when the dirty path above proved the local copy is newer.
+    const cloudShotVariantRow = await loadShotVariantsForUser(userId)
+    if (cloudShotVariantRow !== null) {
+      const cloudShotVariants = normalizeCustomShotVariants(cloudShotVariantRow)
+      if (
+        !hadLocalShotVariantCache ||
+        JSON.stringify(cloudShotVariants) !== JSON.stringify(localShotVariants)
+      ) {
+        saveCustomShotVariants(cloudShotVariants, { syncCloud: false })
+        loadedCloudShotVariants = true
+      }
+    } else {
+      const variantsToMigrate = hadLocalShotVariantCache ? localShotVariants : []
+      if (!hadLocalShotVariantCache) {
+        saveCustomShotVariants(variantsToMigrate, { syncCloud: false })
+      }
+      const variantResult = await syncShotVariantsToCloud(variantsToMigrate, userId)
+      if (variantResult.status === 'failed') {
+        warnings.push(`Shot variants: ${variantResult.error}`)
+      } else if (variantResult.status === 'skipped') {
+        warnings.push(`Shot variants: deferred (${variantResult.reason})`)
+      }
+    }
+  }
+
   // Only mark the one-time migration complete when every attempted local upload
   // succeeded. A cloud read failure throws before this point, preserving retry.
   if (warnings.length === 0) {
+    clearPreservedLegacyBackups()
     window.localStorage.setItem(key, 'done')
   }
 
@@ -102,6 +176,7 @@ export const bootstrapLooperCloudData = async (
     mergedSessionCount: mergedSessions.length,
     sessionHistoryChanged,
     loadedCloudBag,
+    loadedCloudShotVariants,
     warnings,
   }
 }

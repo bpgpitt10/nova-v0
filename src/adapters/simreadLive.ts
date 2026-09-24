@@ -39,6 +39,7 @@ export type SimReadLiveConnection = {
 }
 
 export type ConnectToSimReadEventsOptions = {
+  initialRowId?: number
   onFinalShot: (event: SimReadFinalShotEvent) => void
   onStatusChange?: (status: SimReadLiveStatus) => void
   onStructuredStatus?: (event: SimReadStructuredStatusEvent) => void
@@ -236,6 +237,7 @@ const parseStructuredStatusEvent = (data: string): SimReadStructuredStatusEvent 
 }
 
 export const connectToSimReadEvents = ({
+  initialRowId,
   onFinalShot,
   onStatusChange,
   onStructuredStatus,
@@ -266,6 +268,7 @@ export const connectToSimReadEvents = ({
   if (isBrowserGsproRuntimePrepared()) {
     logSimReadInfo('[GSPro Connection] using direct browser database transport')
     const browserConnection = connectToBrowserGsproEvents({
+      initialRowId,
       onFinalShot: handleFinalShot,
       onStatusChange,
       onError,

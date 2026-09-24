@@ -22,6 +22,7 @@ import {
   type SimReadLiveStatus,
   type SimReadStructuredStatusEvent,
 } from './adapters/simreadLive'
+import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import looperman from './assets/looperman.png'
 import './App.css'
@@ -120,6 +121,15 @@ type TimedGsproSessionAlert = GsproSessionAlert & {
 const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+const parseGsproBaselineRowId = (value: string | null | undefined) => {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined
 }
 
 const GSPRO_WAITING_ALERT_GRACE_MS = 9000
@@ -882,6 +892,9 @@ function App({
   const routeShotVariantId = resolveShotVariantId(
     sessionIntelligenceSearch?.get('variant') ?? undefined,
   )
+  const routeGsproBaselineRowId = parseGsproBaselineRowId(
+    sessionIntelligenceSearch?.get(GSPRO_SESSION_BASELINE_PARAM),
+  )
   const resumedDraft = forceSessionIntelligenceRoute ? loadActiveSessionDraft() : null
   const startedAtFallback = new Date().toISOString()
   const [sessionState, setSessionState] = useState<SessionState>(() =>
@@ -1316,6 +1329,7 @@ function App({
           }
 
           const connection = connectToSimReadEvents({
+            initialRowId: routeGsproBaselineRowId,
             onFinalShot: (event) => {
               if (!isActive) {
                 return
@@ -1693,7 +1707,7 @@ function App({
       connection.disconnect()
       connectionRef.current = null
     }
-  }, [selectedSessionSource, sessionState])
+  }, [routeGsproBaselineRowId, selectedSessionSource, sessionState])
 
   const dashboardShots = useMemo(
     () => analysisSessions.flatMap((savedSession) => savedSession.shots),

@@ -8,6 +8,7 @@ import {
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
   readGsproDatabaseState,
+  readGsproRangeShotsAfter,
   readLatestGsproRangeShot,
   type BrowserDirectoryHandle,
   type BrowserGsproLatestShot,
@@ -25,6 +26,7 @@ type BrowserGsproStatus =
   | 'disconnected'
 
 type ConnectToBrowserGsproOptions = {
+  initialRowId?: number
   onFinalShot: (event: SimReadFinalShotEvent) => void
   onStatusChange?: (status: BrowserGsproStatus) => void
   onError?: (error: unknown) => void
@@ -43,7 +45,11 @@ type ResolvedClubField = {
 }
 
 const POLL_INTERVAL_MS = 500
+const FORCED_ROW_CHECK_INTERVAL_MS = 2000
 const ERROR_REPORT_THRESHOLD = 5
+const MAX_STARTUP_CATCH_UP_ROWS = 100
+
+export const GSPRO_SESSION_BASELINE_PARAM = 'gsproBaselineRowId'
 
 let preparedDirectoryHandle: BrowserDirectoryHandle | null = null
 
@@ -296,11 +302,22 @@ export const prepareBrowserGsproRuntime = async () => {
 
 export const isBrowserGsproRuntimePrepared = () => preparedDirectoryHandle !== null
 
+export const captureBrowserGsproSessionBaseline = async () => {
+  const directoryHandle = preparedDirectoryHandle
+  if (!directoryHandle) {
+    throw new Error('Browser GSPro access was not prepared before session start.')
+  }
+
+  const latest = await readLatestGsproRangeShot(directoryHandle)
+  return latest?.rowId ?? 0
+}
+
 export const clearPreparedBrowserGsproRuntime = () => {
   preparedDirectoryHandle = null
 }
 
 export const connectToBrowserGsproEvents = ({
+  initialRowId,
   onFinalShot,
   onStatusChange,
   onError,
@@ -316,6 +333,7 @@ export const connectToBrowserGsproEvents = ({
   let errorReported = false
   let initialized = false
   let lastRowId: number | null = null
+  let lastRowCheckAt = 0
   let databaseState: { size: number; lastModified: number } | null = null
   const knownSupportedClubFields = new Set<AmbiguousClubField>()
 
@@ -347,23 +365,65 @@ export const connectToBrowserGsproEvents = ({
     }
   }
 
+  const emitUnseenShots = async () => {
+    const unseenShots = await readGsproRangeShotsAfter(directoryHandle, lastRowId ?? 0)
+    if (disconnected || unseenShots.length === 0) {
+      return null
+    }
+
+    onStatusChange?.('received-shot')
+    for (const unseenShot of unseenShots) {
+      if (unseenShot.rowId <= (lastRowId ?? 0)) {
+        continue
+      }
+
+      onFinalShot(buildFinalShotEvent(unseenShot, knownSupportedClubFields))
+      lastRowId = unseenShot.rowId
+    }
+    onStatusChange?.('waiting')
+
+    return unseenShots[unseenShots.length - 1] ?? null
+  }
+
   const initialize = async () => {
     const latest = await readLatestGsproRangeShot(directoryHandle)
     if (disconnected) {
       return
     }
 
-    lastRowId = latest?.rowId ?? null
+    const latestRowId = latest?.rowId ?? 0
+    const requestedBaseline =
+      typeof initialRowId === 'number' &&
+      Number.isSafeInteger(initialRowId) &&
+      initialRowId >= 0 &&
+      initialRowId <= latestRowId &&
+      latestRowId - initialRowId <= MAX_STARTUP_CATCH_UP_ROWS
+        ? initialRowId
+        : null
+
+    lastRowId = requestedBaseline ?? latestRowId
     databaseState = latest
       ? {
           size: latest.databaseSizeBytes,
           lastModified: latest.databaseLastModified,
         }
       : await readGsproDatabaseState(directoryHandle)
-    initialized = true
+    lastRowCheckAt = Date.now()
     handleRecovery()
     onStatusChange?.('connected')
     onStatusChange?.('waiting')
+
+    if (requestedBaseline !== null && latestRowId > requestedBaseline) {
+      const newestEmittedShot = await emitUnseenShots()
+      if (newestEmittedShot) {
+        databaseState = {
+          size: newestEmittedShot.databaseSizeBytes,
+          lastModified: newestEmittedShot.databaseLastModified,
+        }
+      }
+    }
+
+    initialized = true
   }
 
   const pollOnce = async () => {
@@ -377,44 +437,29 @@ export const connectToBrowserGsproEvents = ({
       return
     }
 
-    if (
-      nextState.size === databaseState.size &&
-      nextState.lastModified === databaseState.lastModified
-    ) {
+    const metadataChanged =
+      nextState.size !== databaseState.size ||
+      nextState.lastModified !== databaseState.lastModified
+    const forcedRowCheckDue = Date.now() - lastRowCheckAt >= FORCED_ROW_CHECK_INTERVAL_MS
+
+    if (!metadataChanged && !forcedRowCheckDue) {
       handleRecovery()
       return
     }
 
-    // Advance databaseState only after the SQLite read succeeds. If GSPro is mid-write,
-    // the next poll retries the same change instead of silently missing the shot.
-    const latest = await readLatestGsproRangeShot(directoryHandle)
+    // Read every row after the cursor. GSPro can make more than one row visible
+    // between polls, so reading only the latest row silently loses the earlier shot.
+    const newestEmittedShot = await emitUnseenShots()
     if (disconnected) {
       return
     }
 
+    lastRowCheckAt = Date.now()
     databaseState = {
-      size: latest?.databaseSizeBytes ?? nextState.size,
-      lastModified: latest?.databaseLastModified ?? nextState.lastModified,
+      size: newestEmittedShot?.databaseSizeBytes ?? nextState.size,
+      lastModified: newestEmittedShot?.databaseLastModified ?? nextState.lastModified,
     }
     handleRecovery()
-
-    if (!latest) {
-      return
-    }
-
-    if (lastRowId === null) {
-      lastRowId = latest.rowId
-      return
-    }
-
-    if (latest.rowId === lastRowId) {
-      return
-    }
-
-    lastRowId = latest.rowId
-    onStatusChange?.('received-shot')
-    onFinalShot(buildFinalShotEvent(latest, knownSupportedClubFields))
-    onStatusChange?.('waiting')
   }
 
   const runPoll = () => {
