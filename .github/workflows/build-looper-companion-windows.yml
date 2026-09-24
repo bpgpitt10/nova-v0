@@ -43,6 +43,43 @@ jobs:
             --paths helpers `
             helpers/looper_companion.py
 
+      - name: Smoke test companion executable
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath "dist/LooperCompanion.exe" -PassThru -WindowStyle Hidden
+          try {
+            $health = $null
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              Start-Sleep -Milliseconds 500
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:8787/health" -TimeoutSec 2
+                break
+              } catch {}
+            }
+            if ($null -eq $health) {
+              throw "Looper Companion never exposed /health."
+            }
+            if ($health.service -ne "open-golf-coach-helper" -or $health.status -ne "ok") {
+              throw "Unexpected companion health payload: $($health | ConvertTo-Json -Compress)"
+            }
+            if ($health.version -ne "6-looper-companion") {
+              throw "Unexpected companion version: $($health.version)"
+            }
+
+            # GSPro is intentionally absent on CI. These calls prove that the
+            # packaged wind/lie endpoints are present and fail closed instead
+            # of crashing when no GSPro window exists.
+            $wind = Invoke-RestMethod -Uri "http://127.0.0.1:8787/wind" -TimeoutSec 12
+            $lie = Invoke-RestMethod -Uri "http://127.0.0.1:8787/lie" -TimeoutSec 15
+            if ($null -eq $wind.status -or $null -eq $lie.status) {
+              throw "Packaged wind/lie endpoints did not return status payloads."
+            }
+          } finally {
+            if ($process -and !$process.HasExited) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+
       - name: Assemble install package
         shell: pwsh
         run: |
