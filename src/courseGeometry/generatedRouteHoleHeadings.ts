@@ -141,6 +141,26 @@ export const routeHoleHeadingDegreesTrue: Readonly<Record<string, readonly numbe
     213.38,
     73.3,
     111.09
+  ],
+  "greywolf-panorama-bc": [
+    192.83,
+    163.97,
+    169.91,
+    340.21,
+    349.74,
+    318.71,
+    359.11,
+    180.06,
+    44.6,
+    19.58,
+    8.58,
+    287.62,
+    222.65,
+    179.78,
+    26.99,
+    356.9,
+    158.48,
+    203.53
   ]
 }
 
