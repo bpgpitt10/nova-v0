@@ -31,6 +31,12 @@ export type ConnectGsproWindObservationOptions = {
 }
 
 const HELPER_WIND_URL = 'http://127.0.0.1:8787/wind'
+
+type LoopbackRequestInit = RequestInit & { targetAddressSpace?: 'loopback' }
+const LOOPBACK_FETCH_INIT: LoopbackRequestInit = {
+  cache: 'no-store',
+  targetAddressSpace: 'loopback',
+}
 const HELPER_POLL_INTERVAL_MS = 2500
 const DEFAULT_STALE_AFTER_MS = 7000
 const STALE_CHECK_INTERVAL_MS = 500
@@ -176,7 +182,7 @@ export const connectToGsproWindObservation = ({
     if (disconnected || helperPollInFlight || typeof window === 'undefined') return
     helperPollInFlight = true
     try {
-      const response = await fetch(HELPER_WIND_URL, { cache: 'no-store' })
+      const response = await fetch(HELPER_WIND_URL, LOOPBACK_FETCH_INIT)
       if (!response.ok) {
         publish({
           status: 'UNAVAILABLE',

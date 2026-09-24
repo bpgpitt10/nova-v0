@@ -25,6 +25,12 @@ export type ConnectGsproLieObservationOptions = {
 }
 
 const HELPER_LIE_URL = 'http://127.0.0.1:8787/lie'
+
+type LoopbackRequestInit = RequestInit & { targetAddressSpace?: 'loopback' }
+const LOOPBACK_FETCH_INIT: LoopbackRequestInit = {
+  cache: 'no-store',
+  targetAddressSpace: 'loopback',
+}
 const HELPER_POLL_INTERVAL_MS = 2500
 const DEFAULT_STALE_AFTER_MS = 7000
 const STALE_CHECK_INTERVAL_MS = 500
@@ -212,7 +218,7 @@ export const connectToGsproLieObservation = ({
     if (disconnected || helperPollInFlight || typeof window === 'undefined') return
     helperPollInFlight = true
     try {
-      const response = await fetch(HELPER_LIE_URL, { cache: 'no-store' })
+      const response = await fetch(HELPER_LIE_URL, LOOPBACK_FETCH_INIT)
       if (!response.ok) {
         publish({
           status: 'UNAVAILABLE',
