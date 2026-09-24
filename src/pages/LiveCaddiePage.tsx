@@ -6,6 +6,8 @@ import {
   type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from '../adapters/browserGsproCourseState'
+import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
+import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import {
   courseCatalog,
@@ -31,6 +33,13 @@ import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
+import {
+  loadCourseHoleHeadingDegreesTrue,
+  localShotBearingDegrees,
+  shotCompassBearingDegrees,
+} from '../liveState/courseHeading'
+import type { GsproLieObservation, WindObservation } from '../liveState/types'
+import { projectWindObservation } from '../liveState/windProjection'
 import {
   activeBagClubIds,
   BAG_CONFIG_UPDATED_EVENT,
@@ -418,8 +427,9 @@ export default function LiveCaddiePage() {
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
   const [liveError, setLiveError] = useState<string | null>(null)
   const [connectionVersion, setConnectionVersion] = useState(0)
-  const [windMph] = useState(0)
-  const [windRelativeDeg] = useState(0)
+  const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
+  const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
+  const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
   const [showPracticeShots, setShowPracticeShots] = useState(false)
@@ -450,6 +460,33 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     if (courseId !== UNSELECTED_COURSE_ID) saveLastSelectedCourseId(courseId)
   }, [courseId])
+
+  useEffect(() => {
+    const windConnection = connectToGsproWindObservation({
+      onObservation: setWindObservation,
+      onError: () => setWindObservation(null),
+    })
+    const lieConnection = connectToGsproLieObservation({
+      onObservation: setLieObservation,
+      onError: () => setLieObservation(null),
+    })
+    return () => {
+      windConnection.disconnect()
+      lieConnection.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    setHoleHeadingDegreesTrue(null)
+    if (courseId === UNSELECTED_COURSE_ID) return () => { active = false }
+    void loadCourseHoleHeadingDegreesTrue(courseId, holeNumber).then((heading) => {
+      if (active) setHoleHeadingDegreesTrue(heading)
+    })
+    return () => {
+      active = false
+    }
+  }, [courseId, holeNumber])
 
   useEffect(() => {
     let active = true
@@ -574,6 +611,35 @@ export default function LiveCaddiePage() {
       : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
   const surfaceOverride = liveMatchesHole ? liveSnapshot?.surface ?? null : null
+  const localAimBearingDeg = localShotBearingDegrees(ball, target)
+  const currentShotCompassBearingDeg = shotCompassBearingDegrees(
+    holeHeadingDegreesTrue,
+    localAimBearingDeg,
+  )
+  const projectedWind = projectWindObservation(
+    windObservation,
+    localAimBearingDeg,
+    currentShotCompassBearingDeg,
+  )
+  const hasLiveWind = projectedWind.projection !== null
+  const windMph = hasLiveWind && windObservation?.speedMph != null
+    ? windObservation.speedMph
+    : 0
+  const windRelativeDeg = projectedWind.projection?.relativeFromDegrees ?? 0
+  const hasLiveLie = lieObservation?.status === 'READY' && (
+    (typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees))
+    || (typeof lieObservation.leftRightDegrees === 'number' && Number.isFinite(lieObservation.leftRightDegrees))
+  )
+  const lieUpDownDeg = hasLiveLie
+    && typeof lieObservation?.upDownDegrees === 'number'
+    && Number.isFinite(lieObservation.upDownDegrees)
+    ? lieObservation.upDownDegrees
+    : 0
+  const lieLeftRightDeg = hasLiveLie
+    && typeof lieObservation?.leftRightDegrees === 'number'
+    && Number.isFinite(lieObservation.leftRightDegrees)
+    ? lieObservation.leftRightDegrees
+    : 0
 
   useEffect(() => {
     if (!hole) {
@@ -808,8 +874,10 @@ export default function LiveCaddiePage() {
                     evaluation={viewedEvaluation}
                     windMph={windMph}
                     windRelativeDeg={windRelativeDeg}
-                    hasLiveWind={false}
+                    hasLiveWind={hasLiveWind}
                     elevationDeltaFt={elevationDeltaFt}
+                    lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
+                    lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
                   />
 
                   <button
