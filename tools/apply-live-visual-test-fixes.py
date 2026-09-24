@@ -14,9 +14,12 @@ def replace_once(path: str, old: str, new: str) -> None:
 def regex_replace_once(path: str, pattern: str, replacement: str) -> None:
     p = Path(path)
     text = p.read_text(encoding='utf-8')
-    new_text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
-    if count != 1:
-        raise SystemExit(f'{path}: expected one regex match, found {count}: {pattern[:120]!r}')
+    compiled = re.compile(pattern, flags=re.S)
+    matches = list(compiled.finditer(text))
+    if len(matches) != 1:
+        raise SystemExit(f'{path}: expected one regex match, found {len(matches)}: {pattern[:120]!r}')
+    match = matches[0]
+    new_text = text[:match.start()] + replacement + text[match.end():]
     p.write_text(new_text, encoding='utf-8')
 
 
