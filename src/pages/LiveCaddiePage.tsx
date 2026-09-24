@@ -645,23 +645,35 @@ export default function LiveCaddiePage() {
     ? windObservation.speedMph
     : 0
   const windRelativeDeg = projectedWind.projection?.relativeFromDegrees ?? 0
-  const hasLiveLie = lieObservation?.status === 'READY' && (
+  const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
+  const isTeeSurface = typeof authoritativeGsproSurface === 'string'
+    && authoritativeGsproSurface.trim().toLowerCase() === 'tee'
+  const hasOcrLie = lieObservation?.status === 'READY' && (
     (typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees))
     || (typeof lieObservation.leftRightDegrees === 'number' && Number.isFinite(lieObservation.leftRightDegrees))
   )
-  const lieUpDownDeg = hasLiveLie
-    && typeof lieObservation?.upDownDegrees === 'number'
-    && Number.isFinite(lieObservation.upDownDegrees)
-    ? lieObservation.upDownDegrees
-    : null
-  const lieLeftRightDeg = hasLiveLie
-    && typeof lieObservation?.leftRightDegrees === 'number'
-    && Number.isFinite(lieObservation.leftRightDegrees)
-    // Helper convention is +RIGHT / -LEFT. The existing sidehill model uses
-    // +LEFT / -RIGHT, so invert once here at the LIVE Caddie integration seam.
-    ? -lieObservation.leftRightDegrees
-    : null
-  const lieSource = hasLiveLie ? lieObservation?.source ?? 'GSPro lie OCR' : undefined
+  const hasLiveLie = isTeeSurface || hasOcrLie
+  const lieUpDownDeg = isTeeSurface
+    ? 0
+    : hasOcrLie
+      && typeof lieObservation?.upDownDegrees === 'number'
+      && Number.isFinite(lieObservation.upDownDegrees)
+      ? lieObservation.upDownDegrees
+      : null
+  const lieLeftRightDeg = isTeeSurface
+    ? 0
+    : hasOcrLie
+      && typeof lieObservation?.leftRightDegrees === 'number'
+      && Number.isFinite(lieObservation.leftRightDegrees)
+      // Helper convention is +RIGHT / -LEFT. The existing sidehill model uses
+      // +LEFT / -RIGHT, so invert once here at the LIVE Caddie integration seam.
+      ? -lieObservation.leftRightDegrees
+      : null
+  const lieSource = isTeeSurface
+    ? 'GSPro tee invariant (0.0° / 0.0°)'
+    : hasOcrLie
+      ? lieObservation?.source ?? 'GSPro lie OCR'
+      : undefined
 
   useEffect(() => {
     if (!hole) {
@@ -877,7 +889,11 @@ export default function LiveCaddiePage() {
             {visualCaptureStatus === 'connected' ? (
               <>
                 <span>Visual capture connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
-                <span>Wind OCR {windObservation?.status ?? 'WAITING'} · Lie OCR {lieObservation?.status ?? 'WAITING'}</span>
+                <span>
+                  Wind OCR {windObservation?.status ?? 'WAITING'} · {isTeeSurface
+                    ? 'Lie 0/0 (TEE)'
+                    : `Lie OCR ${lieObservation?.status ?? 'WAITING'}`}
+                </span>
               </>
             ) : null}
           </div>

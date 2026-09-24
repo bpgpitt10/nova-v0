@@ -76,12 +76,24 @@ const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const OCR_INTERVAL_MS = 2500
 
-const WIND_CROP: CropSpec = {
-  x: 0.32,
+// Tight top-center crops validated against the user's live GSPro layout.
+// Speed is left of the compass arrow; cardinal text is right of it. Keeping the
+// arrow/scenery out of each OCR pass is substantially more reliable than reading
+// the entire top-center strip.
+const WIND_SPEED_CROP: CropSpec = {
+  x: 0.405,
   y: 0,
-  width: 0.36,
-  height: 0.16,
-  scale: 2.5,
+  width: 0.08,
+  height: 0.075,
+  scale: 4,
+}
+
+const WIND_DIRECTION_CROP: CropSpec = {
+  x: 0.515,
+  y: 0,
+  width: 0.075,
+  height: 0.075,
+  scale: 4,
 }
 
 // Proven minimap-footer geometry from the Windows reader. GSPro can place the
@@ -210,28 +222,41 @@ const normalizedConfidence = (value: unknown) =>
     ? Math.max(0, Math.min(1, value / 100))
     : null
 
-const parseWindText = (rawText: string, confidence: number | null): GsproWindOcrPayload => {
-  const normalized = rawText.toUpperCase().replace(/\s+/g, ' ').trim()
-  const speedMatch = normalized.match(/\b(\d{1,2}(?:[\.,]\d+)?)\s*MPH\b/)
-  const cardinalMatch = normalized.match(/\b(NE|SE|SW|NW|N|E|S|W)\b/)
-  const speedMph = speedMatch ? Number(speedMatch[1].replace(',', '.')) : null
+const parseWindComponents = (
+  speedRawText: string,
+  speedConfidence: number | null,
+  directionRawText: string,
+  directionConfidence: number | null,
+): GsproWindOcrPayload => {
+  const normalizedSpeed = speedRawText.toUpperCase().replace(/\s+/g, ' ').trim()
+  const normalizedDirection = directionRawText.toUpperCase().replace(/\s+/g, '').trim()
+  const speedMatch = normalizedSpeed.match(/(\d{1,2}(?:[\.,]\d+)?)/)
+  const parsedSpeed = speedMatch ? Number(speedMatch[1].replace(',', '.')) : null
+  const speedMph = parsedSpeed != null && Number.isFinite(parsedSpeed) && parsedSpeed >= 0 && parsedSpeed <= 50
+    ? parsedSpeed
+    : null
+  const cardinalMatch = normalizedDirection.match(/(NE|SE|SW|NW|N|E|S|W)/)
   const cardinal = cardinalMatch?.[1] ?? null
   const directionDegrees = cardinal ? WIND_CARDINAL_DEGREES[cardinal] ?? null : null
+  const confidenceValues = [speedConfidence, directionConfidence].filter(
+    (value): value is number => value != null && Number.isFinite(value),
+  )
+  const confidence = confidenceValues.length > 0 ? Math.min(...confidenceValues) : null
   const missing: string[] = []
-  if (speedMph == null || !Number.isFinite(speedMph)) missing.push('speed')
+  if (speedMph == null) missing.push('speed')
   if (directionDegrees == null) missing.push('cardinal direction')
 
   return {
     status: missing.length === 0 ? 'READY' : 'UNKNOWN',
-    speedMph: speedMph != null && Number.isFinite(speedMph) ? speedMph : null,
+    speedMph,
     directionDegrees,
     convention: 'toward',
     referenceFrame: 'compass',
     observedAt: new Date().toISOString(),
     confidence,
-    rawText,
+    rawText: `SPEED: ${speedRawText.trim()} | DIR: ${directionRawText.trim()}`,
     note: missing.length === 0
-      ? 'Browser OCR read the shared GSPro wind HUD.'
+      ? 'Browser OCR read the split GSPro wind speed and cardinal HUD labels.'
       : `Browser wind OCR was incomplete; missing ${missing.join(', ')}.`,
   }
 }
@@ -443,10 +468,21 @@ export const connectToBrowserGsproVisualCapture = async ({
       if (disconnected || ocrInFlight || !worker) return
       ocrInFlight = true
       try {
-        const windResult = await recognize(WIND_CROP, '0123456789.,MPHNSEW ')
-        dispatchGsproWindOcrObservation(parseWindText(
-          windResult.data.text ?? '',
-          normalizedConfidence(windResult.data.confidence),
+        const windSpeedResult = await recognize(
+          WIND_SPEED_CROP,
+          '0123456789.,MPH ',
+          '7',
+        )
+        const windDirectionResult = await recognize(
+          WIND_DIRECTION_CROP,
+          'NSEW ',
+          '7',
+        )
+        dispatchGsproWindOcrObservation(parseWindComponents(
+          windSpeedResult.data.text ?? '',
+          normalizedConfidence(windSpeedResult.data.confidence),
+          windDirectionResult.data.text ?? '',
+          normalizedConfidence(windDirectionResult.data.confidence),
         ))
 
         const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {

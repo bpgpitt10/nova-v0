@@ -131,12 +131,14 @@ export default function ConditionsMathPanel({
     ? `${Math.abs(lieUpDownDeg).toFixed(1)}° ${lieUpDownDeg > 0 ? 'Up' : 'Down'}`
     : null
   const lieDetail = hasLie
-    ? [
-        sidehillLabel,
-        upDownLabel,
-        sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
-        upDownLabel ? '25% VLA V0 prior · ±3° VLA / ±3% carry caps' : null,
-      ].filter(Boolean).join(' · ')
+    ? sidehillLabel || upDownLabel
+      ? [
+          sidehillLabel,
+          upDownLabel,
+          sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
+          upDownLabel ? '25% VLA V0 prior · ±3° VLA / ±3% carry caps' : null,
+        ].filter(Boolean).join(' · ')
+      : 'Flat lie · 0.0° up/down · 0.0° left/right'
     : 'Lie angle not captured yet'
 
   const outcomeDetails = risk ? [
