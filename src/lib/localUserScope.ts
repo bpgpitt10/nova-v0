@@ -2,6 +2,7 @@ export const SESSION_HISTORY_STORAGE_KEY = 'nova-validation-sessions'
 export const ACTIVE_SESSION_STORAGE_KEY = 'nova-validation-active-session'
 export const BAG_CONFIG_STORAGE_KEY = 'nova-validation-bag-config'
 export const SHOT_VARIANTS_STORAGE_KEY = 'nova-shot-variants'
+export const SHOT_VARIANTS_DIRTY_STORAGE_KEY = 'nova-shot-variants-dirty-v1'
 export const MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY = 'looper-mishit-player-calibrations-v1'
 export const RETIRED_HUMAN_SHOT_REVIEWS_STORAGE_KEY = 'looper-human-shot-reviews-v1'
 
@@ -16,6 +17,7 @@ const managedKeys = [
   ACTIVE_SESSION_STORAGE_KEY,
   BAG_CONFIG_STORAGE_KEY,
   SHOT_VARIANTS_STORAGE_KEY,
+  SHOT_VARIANTS_DIRTY_STORAGE_KEY,
   MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY,
 ] as const
 
@@ -136,6 +138,33 @@ export const activateLocalUserScope = (
   dispatchLocalDataChanged()
 }
 
+export const persistCacheValueForUser = (
+  baseKey: string,
+  userId: string,
+  value: string | null,
+) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const key = scopedKey(baseKey, userId)
+  if (value == null) {
+    window.localStorage.removeItem(key)
+  } else {
+    window.localStorage.setItem(key, value)
+  }
+
+  // Keep the generic working cache in sync only when it still belongs to the
+  // same golfer. A late async completion must never mutate the next user's view.
+  if (getActiveLocalUserId() === userId) {
+    if (value == null) {
+      window.localStorage.removeItem(baseKey)
+    } else {
+      window.localStorage.setItem(baseKey, value)
+    }
+  }
+}
+
 export const persistWorkingCacheValueForActiveUser = (
   baseKey: string,
   value: string | null,
@@ -147,12 +176,7 @@ export const persistWorkingCacheValueForActiveUser = (
   if (!userId) {
     return
   }
-  const key = scopedKey(baseKey, userId)
-  if (value == null) {
-    window.localStorage.removeItem(key)
-  } else {
-    window.localStorage.setItem(key, value)
-  }
+  persistCacheValueForUser(baseKey, userId, value)
 }
 
 /**
