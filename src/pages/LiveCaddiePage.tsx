@@ -27,12 +27,10 @@ import type {
   CoursePointYds,
   CourseSurfaceKind,
 } from '../courseGeometry/types'
-import { nextStateValueForAimCandidate } from '../liveCaddie/aimDecisionRanking'
 import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
-import { buildPlayerFacingOutcomePercentages } from '../liveCaddie/playerFacingOutcomes'
 import {
   activeBagClubIds,
   BAG_CONFIG_UPDATED_EVENT,
@@ -46,7 +44,6 @@ import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
-import './LiveCaddieHeaderRefresh.css'
 
 // SVG uses painter's order: broad/low-priority surfaces first, then increasingly
 // specific golf surfaces and hazards. This is the reverse of tactical point
@@ -72,9 +69,6 @@ const pct = (value: number | null | undefined) => {
   if (percentage > 0 && percentage < 1) return '<1%'
   return `${Math.round(percentage)}%`
 }
-
-const wholePct = (value: number | null | undefined) =>
-  typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)}%` : '—'
 
 const signed = (value: number | null | undefined, digits = 1) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
@@ -147,12 +141,12 @@ const buildTacticalMapBounds = (
   target: CoursePointYds,
   pinEstimate: CoursePointYds | null,
   candidate: AimCandidateEvaluation | null,
-  isTeeShot: boolean,
 ) => {
-  const pin = pinEstimate ?? hole.markers.pin ?? null
+  const pinDistance = pinEstimate ? pointDistance(ball, pinEstimate) : Number.POSITIVE_INFINITY
+  const includePin = Boolean(pinEstimate && pinDistance <= 285)
   const focusPoints: CoursePointYds[] = [ball, target]
   if (candidate) focusPoints.push(candidate.aimPoint, candidate.meanLanding)
-  if (pin) focusPoints.push(pin)
+  if (includePin && pinEstimate) focusPoints.push(pinEstimate)
 
   const maxCarryRadius = candidate?.probabilityContours.reduce(
     (maximum, contour) => Math.max(maximum, contour.carryRadiusYds),
@@ -163,32 +157,27 @@ const buildTacticalMapBounds = (
     0,
   ) ?? 0
 
-  // Tee shots show the complete hole from the current tee to the pin. Once the
-  // ball advances, the camera follows the ball-to-pin segment rather than keeping
-  // already-played ground in frame.
-  const verticalAnchor = pin ?? target
-  let minY = Math.min(ball[1], verticalAnchor[1]) - (isTeeShot ? 24 : 22)
-  let maxY = Math.max(ball[1], verticalAnchor[1]) + (isTeeShot ? 30 : 34)
-
-  if (!pin) {
-    const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
-    maxY = Math.max(maxY, furthestFocusY + Math.max(90, maxCarryRadius + 55))
-  }
-
-  const minimumForwardSpan = isTeeShot ? 260 : 130
-  const currentSpan = maxY - minY
-  if (currentSpan < minimumForwardSpan) {
-    const centerY = (minY + maxY) / 2
-    minY = centerY - minimumForwardSpan / 2
-    maxY = centerY + minimumForwardSpan / 2
-  }
+  // Tee-shot framing should preserve enough of the hole to understand what the
+  // current shot is setting up, while still keeping the landing zone readable.
+  // A later-shot/manual zoom mode can tighten this further once the live ball
+  // has advanced on long holes; do not force that tighter camera here.
+  const minY = ball[1] - 24
+  const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
+  const desiredMaxY = furthestFocusY + Math.max(115, maxCarryRadius + 70)
+  const minimumForwardSpan = pinDistance < 180
+    ? Math.max(130, pinDistance + 60)
+    : 260
+  const maxY = Math.max(
+    minY + minimumForwardSpan,
+    Math.min(desiredMaxY, ball[1] + 390),
+  )
 
   let referenceMinX = Math.min(...focusPoints.map((point) => point[0])) - maxLateralRadius
   let referenceMaxX = Math.max(...focusPoints.map((point) => point[0])) + maxLateralRadius
-  const surfaceWindowMinX = referenceMinX - 90
-  const surfaceWindowMaxX = referenceMaxX + 90
-  const surfaceWindowMinY = minY - 14
-  const surfaceWindowMaxY = maxY + 14
+  const surfaceWindowMinX = referenceMinX - 72
+  const surfaceWindowMaxX = referenceMaxX + 72
+  const surfaceWindowMinY = minY - 12
+  const surfaceWindowMaxY = maxY + 12
   const framingKinds = new Set<CourseSurfaceKind>([
     'tee',
     'fairway',
@@ -198,15 +187,19 @@ const buildTacticalMapBounds = (
     'penalty',
   ])
 
-  // On the tee, include every relevant hole polygon across the tee-to-pin slice
-  // so doglegs are never cropped. After the tee, ignore remote geometry that is
-  // well outside the current ball-to-pin corridor.
+  // Let nearby playable/hazard geometry widen the frame, but do not allow a
+  // remote rough/context polygon to dictate the camera. Woods/scrub still draw
+  // normally wherever they intersect this tactical window.
   for (const surface of hole.surfaces) {
     if (!framingKinds.has(surface.kind)) continue
     for (const polygon of surface.polygons) {
       for (const [x, y] of polygon) {
-        if (y < surfaceWindowMinY || y > surfaceWindowMaxY) continue
-        if (!isTeeShot && (x < surfaceWindowMinX || x > surfaceWindowMaxX)) continue
+        if (
+          y < surfaceWindowMinY ||
+          y > surfaceWindowMaxY ||
+          x < surfaceWindowMinX ||
+          x > surfaceWindowMaxX
+        ) continue
         referenceMinX = Math.min(referenceMinX, x)
         referenceMaxX = Math.max(referenceMaxX, x)
       }
@@ -215,8 +208,8 @@ const buildTacticalMapBounds = (
 
   const centerX = (referenceMinX + referenceMaxX) / 2
   const halfWidth = Math.min(
-    isTeeShot ? 130 : 105,
-    Math.max(isTeeShot ? 62 : 55, (referenceMaxX - referenceMinX) / 2 + 18),
+    96,
+    Math.max(58, (referenceMaxX - referenceMinX) / 2 + 20),
   )
 
   return {
@@ -233,7 +226,6 @@ function LiveCaddieMap({
   target,
   pinEstimate,
   candidate,
-  isTeeShot,
   show95,
   showRiskTail,
   showPracticeShots,
@@ -243,14 +235,13 @@ function LiveCaddieMap({
   target: CoursePointYds
   pinEstimate: CoursePointYds | null
   candidate: AimCandidateEvaluation | null
-  isTeeShot: boolean
   show95: boolean
   showRiskTail: boolean
   showPracticeShots: boolean
 }) {
   const viewSize = 100
   const pad = 4
-  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate, isTeeShot)
+  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate)
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
   const spanY = Math.max(1, displayBounds.maxY - displayBounds.minY)
   const scale = Math.min((viewSize - pad * 2) / spanX, (viewSize - pad * 2) / spanY)
@@ -563,10 +554,9 @@ export default function LiveCaddiePage() {
     : surface === 'tee'
       ? 1
       : null
-  const surfaceDisplay = surface === 'deep-rough'
-    ? 'Deep rough'
-    : surface.charAt(0).toUpperCase() + surface.slice(1)
-  const isTeeShot = nextShotNumber === 1 || surface === 'tee'
+  const shotContext = nextShotNumber != null
+    ? `Shot ${nextShotNumber} · ${surface}`
+    : surface
   const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
   const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
@@ -669,13 +659,6 @@ export default function LiveCaddiePage() {
       ?? null
     : null
   const risk = inspectedCandidate?.riskProfile ?? null
-  const playerFacingOutcomes = buildPlayerFacingOutcomePercentages(risk)
-  const expectedDistanceToPinYds = inspectedCandidate
-    ? nextStateValueForAimCandidate(inspectedCandidate)?.meanDistanceToPinYds ?? null
-    : null
-  const targetingPin = Boolean(
-    pinEstimate && pointDistance(target, pinEstimate) <= 2,
-  )
   const displayedClub = armedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
     armedClub && recommendation?.club && armedClub !== recommendation.club,
@@ -705,6 +688,7 @@ export default function LiveCaddiePage() {
     lastShotKeyRef.current = null
   }
 
+  const playerFacingTrouble = risk ? risk.seriousTrouble + risk.unknown : null
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
@@ -712,13 +696,6 @@ export default function LiveCaddiePage() {
     ['Water', risk.bySurface.water ?? 0],
     ['Penalty', risk.bySurface.penalty ?? 0],
   ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
-
-  const connectionState = livePrepared ? liveStatus : 'offline'
-  const connectionLabel = !livePrepared
-    ? 'Connect GSPro'
-    : liveStatus === 'error'
-      ? 'Reconnect GSPro'
-      : `GSPro ${liveStatus}`
 
   return (
     <main className="live-caddie-page">
@@ -730,55 +707,48 @@ export default function LiveCaddiePage() {
           </a>
 
           <div className="live-caddie-course-context">
-            <div className="live-caddie-primary-context">
-              <div className="live-caddie-title-row">
-                <strong className="live-caddie-title">LIVE CADDIE</strong>
-                <button
-                  type="button"
-                  className={`live-connection-beacon state-${connectionState}`}
-                  aria-label={connectionLabel}
-                  title={connectionLabel}
-                  disabled={livePrepared && liveStatus !== 'error'}
-                  onClick={() => void connectGspro()}
-                >
-                  <i />
-                </button>
-              </div>
-
-              <select
-                className="live-course-select"
-                value={courseId}
-                onChange={(event) => selectCourse(event.target.value as CourseId)}
-                aria-label="Course"
-              >
-                {courseCatalog.map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.name}</option>
-                ))}
-              </select>
-
-              <select
-                className="live-hole-select"
-                value={holeNumber}
-                disabled={livePrepared}
-                onChange={(event) => setHoleNumber(Number(event.target.value))}
-                aria-label="Hole"
-              >
-                {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-                  <option key={number} value={number}>Hole {number}</option>
-                ))}
-              </select>
-
-              <span className="live-par-context">Par {hole?.par ?? '—'}</span>
+            <div>
+              <span className="live-kicker">LIVE CADDIE</span>
+              <strong>{selectedCourse?.name ?? 'Choose a course'}</strong>
             </div>
+            {selectedCourse ? <span>Hole {holeNumber}</span> : null}
+          </div>
 
-            <div className="live-caddie-secondary-context">
-              <span>{nextShotNumber != null ? `Shot ${nextShotNumber}` : 'Shot —'}</span>
-              <span>{surfaceDisplay}</span>
-              {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : <span>— yd to pin</span>}
-              {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft elevation</span> : <span>— ft elevation</span>}
+          <div className="live-caddie-header-actions">
+            <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
+              <i />
+              <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
             </div>
+            <a href="/dev/aim-lab" className="live-diagnostics-link">Aim Lab</a>
           </div>
         </header>
+
+        <section className="live-caddie-setup-row">
+          <select value={courseId} onChange={(event) => selectCourse(event.target.value as CourseId)}>
+            {courseCatalog.map((entry) => (
+              <option key={entry.id} value={entry.id}>{entry.name}</option>
+            ))}
+          </select>
+          <select
+            value={holeNumber}
+            disabled={livePrepared}
+            onChange={(event) => setHoleNumber(Number(event.target.value))}
+          >
+            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
+              <option key={number} value={number}>Hole {number}</option>
+            ))}
+          </select>
+          {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
+          {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
+          <div className="live-caddie-secondary-context">
+            <span>{shotContext}</span>
+            {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
+            {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
+            {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
+              ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
+              : null}
+          </div>
+        </section>
 
         {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
@@ -789,7 +759,7 @@ export default function LiveCaddiePage() {
           <section className="live-empty-state">
             <span className="live-kicker">READY WHEN YOU ARE</span>
             <h1>Select the course Looper should play.</h1>
-            <p>The playing surface uses Looper's course geometry, player model and live decision engine.</p>
+            <p>The playing surface will use the same course geometry, player model and decision engine as Aim Lab.</p>
           </section>
         ) : !hole ? (
           <section className="live-empty-state">
@@ -840,8 +810,6 @@ export default function LiveCaddiePage() {
                     windRelativeDeg={windRelativeDeg}
                     hasLiveWind={false}
                     elevationDeltaFt={elevationDeltaFt}
-                    expectedDistanceToPinYds={expectedDistanceToPinYds}
-                    targetingPin={targetingPin}
                   />
 
                   <button
@@ -869,10 +837,10 @@ export default function LiveCaddiePage() {
                     {risk ? <small>full-risk distribution</small> : null}
                   </div>
                   <div className="live-outcome-grid">
-                    <div className="outcome-success"><strong>{wholePct(playerFacingOutcomes?.success)}</strong><span>Success</span></div>
-                    <div className="outcome-manageable"><strong>{wholePct(playerFacingOutcomes?.manageable)}</strong><span>Manageable</span></div>
-                    <div className="outcome-trouble"><strong>{wholePct(playerFacingOutcomes?.trouble)}</strong><span>Trouble</span></div>
-                    <div className="outcome-catastrophe"><strong>{wholePct(playerFacingOutcomes?.catastrophe)}</strong><span>Catastrophe</span></div>
+                    <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
+                    <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
+                    <div className="outcome-trouble"><strong>{pct(playerFacingTrouble)}</strong><span>Trouble</span></div>
+                    <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
                   </div>
                   {outcomeDetails.length ? (
                     <div className="live-outcome-details">
@@ -908,7 +876,6 @@ export default function LiveCaddiePage() {
                   target={target}
                   pinEstimate={pinEstimate}
                   candidate={inspectedCandidate}
-                  isTeeShot={isTeeShot}
                   show95={show95}
                   showRiskTail={showRiskTail}
                   showPracticeShots={showPracticeShots}
