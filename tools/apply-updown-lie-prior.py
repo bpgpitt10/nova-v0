@@ -125,7 +125,7 @@ export const buildUpDownLieResponse = ({
 '''
 if 'export const buildUpDownLieResponse' in text:
     raise SystemExit('lieResponse.ts: up/down model already present')
-p.write_text(text.rstrip() + append + '\n', encoding='utf-8')
+p.write_text(text.rstrip() + append.rstrip() + '\n', encoding='utf-8')
 
 # 2) Wire it into canonical shot context after surface launch conditioning.
 shot_path = 'src/liveCaddie/shotContextModel.ts'
