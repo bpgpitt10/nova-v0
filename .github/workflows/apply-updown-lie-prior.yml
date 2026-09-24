@@ -25,7 +25,13 @@ jobs:
           node-version: 20
           cache: npm
       - name: Apply guarded up/down lie patch
-        run: python tools/apply-updown-lie-prior.py
+        run: |
+          python tools/apply-updown-lie-prior.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/liveCaddie/lieResponse.ts')
+          p.write_text(p.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Build web app
