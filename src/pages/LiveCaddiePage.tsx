@@ -6,6 +6,11 @@ import {
   type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from '../adapters/browserGsproCourseState'
+import {
+  connectToBrowserGsproVisualCapture,
+  type BrowserGsproVisualCaptureConnection,
+  type BrowserGsproVisualCaptureStatus,
+} from '../adapters/browserGsproVisualCapture'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
@@ -429,6 +434,9 @@ export default function LiveCaddiePage() {
   const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
+  const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
+  const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
+  const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -436,6 +444,7 @@ export default function LiveCaddiePage() {
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const lastShotKeyRef = useRef<string | null>(null)
+  const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
 
@@ -474,6 +483,11 @@ export default function LiveCaddiePage() {
       windConnection.disconnect()
       lieConnection.disconnect()
     }
+  }, [])
+
+  useEffect(() => () => {
+    visualCaptureRef.current?.disconnect()
+    visualCaptureRef.current = null
   }, [])
 
   useEffect(() => {
@@ -760,6 +774,25 @@ export default function LiveCaddiePage() {
     }
   }
 
+  const connectGsproVisuals = async () => {
+    setVisualCaptureError(null)
+    setVisualCaptureSource(null)
+    visualCaptureRef.current?.disconnect()
+    visualCaptureRef.current = null
+    try {
+      const connection = await connectToBrowserGsproVisualCapture({
+        onStatusChange: setVisualCaptureStatus,
+        onError: (error) => setVisualCaptureError(
+          error instanceof Error ? error.message : String(error),
+        ),
+      })
+      visualCaptureRef.current = connection
+      setVisualCaptureSource(connection.sourceLabel ?? connection.displaySurface)
+    } catch (error) {
+      setVisualCaptureError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   const selectCourse = (nextCourseId: CourseId) => {
     setCourseId(nextCourseId)
     setHoleNumber(1)
@@ -820,6 +853,20 @@ export default function LiveCaddiePage() {
           </select>
           {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
           {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
+          <button
+            type="button"
+            onClick={() => void connectGsproVisuals()}
+            disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
+            title="Share the GSPro application window so Looper can read wind and lie locally in this browser."
+          >
+            {visualCaptureStatus === 'connected'
+              ? 'Reconnect GSPro Visuals'
+              : visualCaptureStatus === 'requesting'
+                ? 'Choose GSPro Window…'
+                : visualCaptureStatus === 'loading-ocr'
+                  ? 'Loading Visual OCR…'
+                  : 'Connect GSPro Visuals'}
+          </button>
           <div className="live-caddie-secondary-context">
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
@@ -827,10 +874,19 @@ export default function LiveCaddiePage() {
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
+            {visualCaptureStatus === 'connected'
+              ? <span>Visual OCR connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
+              : null}
           </div>
         </section>
 
         {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
+        {visualCaptureError ? (
+          <div className="live-caddie-alert bad">GSPro visuals: {visualCaptureError}</div>
+        ) : null}
+        {visualCaptureStatus === 'stopped' && !visualCaptureError ? (
+          <div className="live-caddie-alert">GSPro visual capture stopped. Reconnect visuals for live wind and lie.</div>
+        ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
         {liveSnapshot?.warnings.map((warning) => <div className="live-caddie-alert" key={warning}>{warning}</div>)}
