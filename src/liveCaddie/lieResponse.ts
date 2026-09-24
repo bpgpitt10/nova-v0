@@ -1,4 +1,10 @@
+import { simulateFlight, type FlightEnvironmentInput, type FlightLaunchInput } from './flightPhysics'
+
 export const SIDEHILL_LIE_MODEL_VERSION = 'looper-sidehill-lie-prior-v0.1'
+export const UPDOWN_LIE_MODEL_VERSION = 'looper-updown-lie-prior-v0.1'
+export const UPDOWN_LIE_GAIN = 0.25
+export const UPDOWN_LIE_MAX_VLA_DELTA_DEG = 3
+export const UPDOWN_LIE_MAX_CARRY_FRACTION = 0.03
 
 /**
  * Intentionally conservative starting prior. The geometric effect is physically
@@ -135,5 +141,101 @@ export const buildSidehillLieResponse = ({
     geometryBiasDeg,
     appliedBiasDeg,
     lateralDeltaYds,
+  }
+}
+
+export type UpDownLieResponse = {
+  status: 'ready' | 'unavailable'
+  modelVersion: string
+  gain: number
+  lieUpDownDeg: number | null
+  appliedVlaDeltaDeg: number
+  rawCarryDeltaYds: number
+  carryCapYds: number
+  carryDeltaYds: number
+}
+
+type UpDownLieInput = {
+  launch: FlightLaunchInput | null
+  environment?: FlightEnvironmentInput
+  lieUpDownDeg?: number | null
+  stockCarryYds?: number | null
+}
+
+/**
+ * Conservative V0 fore/aft lie prior.
+ *
+ * GSPro convention:
+ *   lieUpDownDeg > 0 = Up, which increases effective launch angle.
+ *   lieUpDownDeg < 0 = Down, which decreases effective launch angle.
+ *
+ * Only 25% of measured slope is applied to VLA, with an absolute ±3° VLA cap.
+ * The adjusted launch packet is then run through the same flight model under the
+ * current environment. The resulting carry delta is capped to ±3% of measured
+ * Stock carry so this unvalidated prior cannot dominate club selection.
+ */
+export const buildUpDownLieResponse = ({
+  launch,
+  environment = {},
+  lieUpDownDeg,
+  stockCarryYds,
+}: UpDownLieInput): UpDownLieResponse => {
+  const finiteStockCarry = finite(stockCarryYds) && stockCarryYds > 0
+    ? stockCarryYds
+    : null
+  const carryCapYds = finiteStockCarry == null
+    ? 0
+    : finiteStockCarry * UPDOWN_LIE_MAX_CARRY_FRACTION
+
+  if (!launch || !finite(lieUpDownDeg) || finiteStockCarry == null) {
+    return {
+      status: 'unavailable',
+      modelVersion: UPDOWN_LIE_MODEL_VERSION,
+      gain: UPDOWN_LIE_GAIN,
+      lieUpDownDeg: finite(lieUpDownDeg) ? lieUpDownDeg : null,
+      appliedVlaDeltaDeg: 0,
+      rawCarryDeltaYds: 0,
+      carryCapYds,
+      carryDeltaYds: 0,
+    }
+  }
+
+  const boundedLieDeg = Math.max(-25, Math.min(25, lieUpDownDeg))
+  const appliedVlaDeltaDeg = Math.max(
+    -UPDOWN_LIE_MAX_VLA_DELTA_DEG,
+    Math.min(UPDOWN_LIE_MAX_VLA_DELTA_DEG, boundedLieDeg * UPDOWN_LIE_GAIN),
+  )
+
+  const baseline = simulateFlight(launch, environment)
+  const adjusted = simulateFlight({
+    ...launch,
+    vlaDeg: launch.vlaDeg + appliedVlaDeltaDeg,
+  }, environment)
+
+  if (!baseline.ok || !adjusted.ok || !finite(baseline.carryYds) || !finite(adjusted.carryYds)) {
+    return {
+      status: 'unavailable',
+      modelVersion: UPDOWN_LIE_MODEL_VERSION,
+      gain: UPDOWN_LIE_GAIN,
+      lieUpDownDeg,
+      appliedVlaDeltaDeg,
+      rawCarryDeltaYds: 0,
+      carryCapYds,
+      carryDeltaYds: 0,
+    }
+  }
+
+  const rawCarryDeltaYds = adjusted.carryYds - baseline.carryYds
+  const carryDeltaYds = Math.max(-carryCapYds, Math.min(carryCapYds, rawCarryDeltaYds))
+
+  return {
+    status: 'ready',
+    modelVersion: UPDOWN_LIE_MODEL_VERSION,
+    gain: UPDOWN_LIE_GAIN,
+    lieUpDownDeg,
+    appliedVlaDeltaDeg,
+    rawCarryDeltaYds,
+    carryCapYds,
+    carryDeltaYds,
   }
 }

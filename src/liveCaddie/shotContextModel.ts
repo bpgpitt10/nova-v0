@@ -1,7 +1,9 @@
 import { buildFlightPhysicsPrior, type FlightLaunchInput, type FlightPhysicsPrior } from './flightPhysics'
 import {
   buildSidehillLieResponse,
+  buildUpDownLieResponse,
   type SidehillLieResponse,
+  type UpDownLieResponse,
 } from './lieResponse'
 import {
   buildCaddieModelContract,
@@ -21,6 +23,7 @@ export type ModeledShotContext = {
   physicsPrior: FlightPhysicsPrior
   surfaceResponse: SurfaceResponse
   sidehillLieResponse: SidehillLieResponse
+  upDownLieResponse: UpDownLieResponse
   effectiveTargetDistanceYds: number | null
   modeledCarryYds: number | null
   modeledCarrySigmaYds: number | null
@@ -72,8 +75,9 @@ const launchFromBaseline = (baseline: PlayerBaselineInput): FlightLaunchInput | 
  * physics delta, so measured Stock carry still remains authoritative.
  *
  * Sidehill physical lie uses the existing conservative loft-aware geometric prior
- * at 50% of the raw geometric effect. Up/down lie remains measurement-only until
- * its carry/VLA response is separately validated.
+ * at 50% of the raw geometric effect. Up/down uses a weaker provisional prior:
+ * 25% of measured slope is applied to VLA, capped at ±3°, and the resulting carry
+ * response is capped at ±3% of measured Stock carry.
  */
 export const modelShotContext = (
   baseline: PlayerBaselineInput,
@@ -135,6 +139,12 @@ export const modelShotContext = (
     lieLeftRightDeg: context.lieLeftRightDeg,
     carryYds: preLieCarryYds,
   })
+  const upDownLieResponse = buildUpDownLieResponse({
+    launch: surfaceLaunch ?? launch,
+    environment: flightEnvironment,
+    lieUpDownDeg: context.lieUpDownDeg,
+    stockCarryYds: stockCarry,
+  })
 
   const appliedAdjustments = {
     elevationYds: finite(physicsPrior.deltas.elevationCarryYds)
@@ -150,7 +160,9 @@ export const modelShotContext = (
     combinedAirborneLateralYds,
     surfaceCarryYds,
     surfaceLateralYds,
-    lieCarryYds: 0,
+    lieCarryYds: upDownLieResponse.status === 'ready'
+      ? upDownLieResponse.carryDeltaYds
+      : 0,
     lieLateralYds: sidehillLieResponse.status === 'ready'
       ? sidehillLieResponse.lateralDeltaYds
       : 0,
@@ -167,6 +179,7 @@ export const modelShotContext = (
     physicsPrior,
     surfaceResponse,
     sidehillLieResponse,
+    upDownLieResponse,
     // Elevation is already represented by the airborne trajectory delta. Keeping
     // the geometric target unchanged prevents a second plays-like adjustment.
     effectiveTargetDistanceYds: targetDistance,

@@ -1,5 +1,9 @@
 import type { FlightPhysicsPrior } from './flightPhysics'
-import { buildSidehillLieResponse, SIDEHILL_LIE_MODEL_VERSION } from './lieResponse'
+import {
+  buildSidehillLieResponse,
+  SIDEHILL_LIE_MODEL_VERSION,
+  UPDOWN_LIE_MODEL_VERSION,
+} from './lieResponse'
 import { getSurfaceResponse } from './surfaceResponse'
 
 export type CaddieModelStatus =
@@ -258,6 +262,19 @@ export const buildCaddieModelContract = (
     carryYds: baseline.stockCarryYds,
   })
   const sidehillReady = sidehillReference.status === 'ready'
+  const upDownReady = finite(context.lieUpDownDeg) && hasLaunchPacket && finite(baseline.stockCarryYds)
+  const modeledLieParts = [
+    sidehillReady
+      ? `${signed(sidehillReference.appliedBiasDeg, 2)}° sidehill center tendency · ${signed(sidehillReference.lateralDeltaYds)} yd lateral on Stock-carry reference`
+      : finite(context.lieLeftRightDeg)
+        ? 'sidehill measured; model unavailable for this club/carry'
+        : null,
+    upDownReady
+      ? 'up/down carry prior active: 25% of measured slope to VLA · ±3° VLA cap · ±3% Stock-carry cap'
+      : finite(context.lieUpDownDeg)
+        ? 'up/down measured; representative launch packet unavailable'
+        : null,
+  ].filter(Boolean).join(' · ')
   factors.push({
     id: 'physical-lie',
     label: 'Physical lie angle',
@@ -269,24 +286,16 @@ export const buildCaddieModelContract = (
     sourceConfidence: context.lieConfidence ?? (hasLie ? 'high' : 'unknown'),
     transformation: !hasLie
       ? 'No physical lie angle is available.'
-      : sidehillReady
-        ? `Sidehill uses loft-aware face geometry with a conservative ${(sidehillReference.gain * 100).toFixed(0)}% gain. Positive GSPro Left moves the modeled shot center left; Right moves it right. Up/down is retained but applies no flight adjustment yet.`
-        : 'Lie angle is retained. Sidehill cannot be applied without a supported club/carry; up/down remains measurement-only.',
-    modeledDisplay: !hasLie
-      ? 'Unavailable'
-      : sidehillReady
-        ? `${signed(sidehillReference.appliedBiasDeg, 2)}° center tendency · ${signed(sidehillReference.lateralDeltaYds)} yd lateral on Stock-carry reference · 0.0 yd up/down adjustment`
-        : 'Measurement retained; 0.0 yd lie adjustment applied',
-    affects: ['lateral-mean', 'aim', 'surface-outcomes', 'outcome-risk'],
-    modelVersion: SIDEHILL_LIE_MODEL_VERSION,
+      : 'Sidehill uses loft-aware face geometry with a conservative 50% gain. Up/down uses a weaker 25% VLA perturbation, capped at ±3° VLA and ±3% of measured Stock carry. Both are provisional V0 priors applied before aim/risk optimization.',
+    modeledDisplay: !hasLie ? 'Unavailable' : modeledLieParts || 'Measurement retained; model unavailable',
+    affects: ['carry-mean', 'lateral-mean', 'aim', 'surface-outcomes', 'outcome-risk'],
+    modelVersion: `${SIDEHILL_LIE_MODEL_VERSION} + ${UPDOWN_LIE_MODEL_VERSION}`,
     status: hasLie ? 'calibrating' : 'unavailable',
-    evidenceBasis: sidehillReady
-      ? 'Conservative V0 prior from loft/side-slope geometry. The 0.50 gain is intentionally provisional until controlled GSPro validation can fit the coefficient.'
-      : 'Lie measurement is retained for later calibration.',
+    evidenceBasis: 'Conservative V0 physical-lie priors. Sidehill is loft/side-slope geometry at 50% gain; fore/aft lie perturbs VLA at 25% gain with tight safety caps until controlled GSPro observations can fit the response.',
     notes: hasLie
       ? [
-          'Sidehill changes the modeled distribution center before aim/risk optimization; it is not a post-hoc aim instruction.',
-          'Up/down response remains zero until separately validated.',
+          'Physical lie changes the modeled distribution before aim/risk optimization; it is not a post-hoc aim instruction.',
+          'Up/down keeps ball speed and spin unchanged in V0; only VLA is perturbed, then the existing flight model determines carry direction and magnitude.',
         ]
       : undefined,
   })

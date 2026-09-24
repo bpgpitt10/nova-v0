@@ -72,7 +72,7 @@ export type AimLabEnvironment = {
   airAltitudeSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
-  /** Positive = GSPro Up. Retained for later validation; no V0 carry effect is applied. */
+  /** Positive = GSPro Up. V0 applies a conservative 25% VLA prior with tight caps. */
   lieUpDownDeg?: number | null
   /** Positive = GSPro Left / ball above feet. V0 applies the existing conservative sidehill prior. */
   lieLeftRightDeg?: number | null

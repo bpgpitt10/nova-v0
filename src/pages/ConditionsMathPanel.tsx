@@ -135,7 +135,7 @@ export default function ConditionsMathPanel({
         sidehillLabel,
         upDownLabel,
         sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
-        upDownLabel ? 'up/down flight effect pending validation' : null,
+        upDownLabel ? '25% VLA V0 prior · ±3° VLA / ±3% carry caps' : null,
       ].filter(Boolean).join(' · ')
     : 'Lie angle not captured yet'
 
