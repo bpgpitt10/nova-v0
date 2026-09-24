@@ -1,4 +1,5 @@
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
+import { buildPlayerFacingOutcomePercentages } from '../liveCaddie/playerFacingOutcomes'
 import './LiveCaddieMapPolish.css'
 import './LiveCaddieIA.css'
 import './LiveCaddieDesignTune.css'
@@ -11,6 +12,8 @@ type ConditionsMathPanelProps = {
   elevationDeltaFt: number | null
   lieUpDownDeg?: number | null
   lieLeftRightDeg?: number | null
+  expectedDistanceToPinYds?: number | null
+  targetingPin?: boolean
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -52,6 +55,9 @@ const pct = (value: number | null | undefined) => {
   return `${Math.round(percentage)}%`
 }
 
+const wholePct = (value: number | null | undefined) =>
+  finite(value) ? `${Math.round(value)}%` : '—'
+
 function AdjustmentRow({
   label,
   distance,
@@ -83,6 +89,8 @@ export default function ConditionsMathPanel({
   elevationDeltaFt,
   lieUpDownDeg = null,
   lieLeftRightDeg = null,
+  expectedDistanceToPinYds = null,
+  targetingPin = false,
 }: ConditionsMathPanelProps) {
   const carryDelta = evaluation
     ? evaluation.modeledCarryYds - evaluation.stockCarryYds
@@ -113,6 +121,7 @@ export default function ConditionsMathPanel({
     ? elevationAware.landingElevationDeltaFt
     : elevationDeltaFt
   const risk = evaluation?.bestCandidate?.riskProfile ?? null
+  const playerFacingOutcomes = buildPlayerFacingOutcomePercentages(risk)
 
   const windDetail = hasLiveWind
     ? `${windMph.toFixed(1)} mph @ ${windRelativeDeg.toFixed(0)}° relative`
@@ -133,9 +142,21 @@ export default function ConditionsMathPanel({
     ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}°`
     : '—'
 
+  const expectedResultLabel = finite(expectedDistanceToPinYds)
+    ? targetingPin ? 'Expected proximity' : 'Expected leave'
+    : 'Expected finish'
+  const expectedResultValue = finite(expectedDistanceToPinYds)
+    ? targetingPin
+      ? `${Math.round(expectedDistanceToPinYds * 3)} ft`
+      : `${Math.round(expectedDistanceToPinYds)} yd`
+    : evaluation
+      ? baselineLateral(evaluation.modeledLateralBiasYds)
+      : '—'
+
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Woods', risk.bySurface['deep-rough'] ?? 0],
+    ['Outside Map Area', risk.unknown],
     ['Water', risk.bySurface.water ?? 0],
     ['Penalty', risk.bySurface.penalty ?? 0],
   ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
@@ -157,16 +178,16 @@ export default function ConditionsMathPanel({
             <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
           </div>
           <div>
-            <span>Expected finish</span>
-            <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
+            <span>{expectedResultLabel}</span>
+            <strong>{expectedResultValue}</strong>
           </div>
         </div>
 
         <div className="live-hero-outcomes">
-          <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
-          <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
-          <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Trouble</span></div>
-          <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
+          <div className="outcome-success"><strong>{wholePct(playerFacingOutcomes?.success)}</strong><span>Success</span></div>
+          <div className="outcome-manageable"><strong>{wholePct(playerFacingOutcomes?.manageable)}</strong><span>Manageable</span></div>
+          <div className="outcome-trouble"><strong>{wholePct(playerFacingOutcomes?.trouble)}</strong><span>Trouble</span></div>
+          <div className="outcome-catastrophe"><strong>{wholePct(playerFacingOutcomes?.catastrophe)}</strong><span>Catastrophe</span></div>
         </div>
 
         {outcomeDetails.length > 0 ? (
@@ -194,23 +215,10 @@ export default function ConditionsMathPanel({
 
         <div className="live-condition-rows">
           <AdjustmentRow
-            label="Altitude"
-            distance={evaluation ? signedYards(evaluation.altitudeCarryDeltaYds) : '—'}
-            lateral={evaluation ? lateralYards(evaluation.altitudeLateralDeltaYds) : '—'}
-            detail={altitudeDetail}
-          />
-          <AdjustmentRow
             label="Elevation"
             distance={evaluation ? signedYards(elevationCarryLedgerDelta) : '—'}
             lateral={evaluation ? lateralYards(elevationLateralLedgerDelta) : '—'}
             detail={elevationDetail}
-          />
-          <AdjustmentRow
-            label="Wind"
-            distance={evaluation && hasLiveWind ? signedYards(windCarryDelta) : '—'}
-            lateral={evaluation && hasLiveWind ? lateralYards(windLateralDelta) : '—'}
-            detail={windDetail}
-            muted={!hasLiveWind}
           />
           <AdjustmentRow
             label="Surface"
@@ -224,6 +232,19 @@ export default function ConditionsMathPanel({
             lateral={lieLateral}
             detail={lieDetail}
             muted={!finite(lieUpDownDeg) && !finite(lieLeftRightDeg)}
+          />
+          <AdjustmentRow
+            label="Wind"
+            distance={evaluation && hasLiveWind ? signedYards(windCarryDelta) : '—'}
+            lateral={evaluation && hasLiveWind ? lateralYards(windLateralDelta) : '—'}
+            detail={windDetail}
+            muted={!hasLiveWind}
+          />
+          <AdjustmentRow
+            label="Air Density"
+            distance={evaluation ? signedYards(evaluation.altitudeCarryDeltaYds) : '—'}
+            lateral={evaluation ? lateralYards(evaluation.altitudeLateralDeltaYds) : '—'}
+            detail={altitudeDetail}
           />
         </div>
 
