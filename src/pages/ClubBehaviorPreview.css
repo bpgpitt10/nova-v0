@@ -1,0 +1,266 @@
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) {
+  grid-template-rows: minmax(430px, auto) auto;
+}
+
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-card {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 430px;
+}
+
+.club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-metrics {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.club-v2-behavior-preview {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 82px;
+  padding: 0.36rem 0.92rem;
+  display: grid;
+  grid-template-columns: 0.58fr 1.68fr 1.16fr 1.28fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.club-v2-behavior-cell {
+  min-width: 0;
+  padding: 0 1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.16rem;
+}
+
+.club-v2-behavior-cell:first-child {
+  padding-left: 0.08rem;
+}
+
+.club-v2-behavior-cell:last-child {
+  padding-right: 0.08rem;
+}
+
+.club-v2-behavior-cell + .club-v2-behavior-cell {
+  border-left: 1px solid rgba(205, 218, 207, 0.11);
+}
+
+.club-v2-behavior-label {
+  color: rgba(181, 196, 184, 0.75);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.club-v2-behavior-primary {
+  color: rgba(249, 252, 249, 0.98);
+  font-size: 1.08rem;
+  font-weight: 620;
+  line-height: 1.04;
+  margin-top: 0.48rem;
+}
+
+.club-v2-behavior-shape .club-v2-behavior-primary {
+  font-size: 0.96rem;
+}
+
+.club-v2-behavior-secondary {
+  color: rgba(196, 207, 198, 0.8);
+  font-size: 0.69rem;
+  margin-top: 0.06rem;
+}
+
+.club-v2-behavior-movement {
+  position: relative;
+  padding-right: 0.35rem;
+}
+
+.club-v2-behavior-movement .club-v2-behavior-label,
+.club-v2-behavior-movement .club-v2-behavior-primary {
+  position: relative;
+  z-index: 1;
+  width: 31%;
+}
+
+.club-v2-behavior-flight-svg {
+  position: absolute;
+  top: 0.70rem;
+  right: 0.08rem;
+  width: 66%;
+  height: 58px;
+  overflow: visible;
+  display: block;
+  margin: 0;
+}
+
+.club-v2-behavior-target-line {
+  stroke: rgba(209, 220, 211, 0.28);
+  stroke-width: 1;
+  stroke-dasharray: 2.5 2.5;
+}
+
+.club-v2-behavior-target-label {
+  fill: rgba(196, 207, 198, 0.42);
+  font-size: 6.8px;
+  font-weight: 500;
+}
+
+.club-v2-behavior-flight-path {
+  fill: none;
+  stroke: rgba(244, 206, 96, 0.9);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+
+.club-v2-behavior-flight-arrowhead {
+  fill: rgba(244, 206, 96, 0.96);
+}
+
+.club-v2-behavior-start-dot {
+  fill: rgba(216, 224, 217, 0.9);
+}
+
+.club-v2-behavior-marker-label {
+  fill: rgba(196, 207, 198, 0.8);
+  font-size: 8.4px;
+  font-weight: 500;
+}
+
+.club-v2-behavior-marker-label.finish {
+  fill: rgba(226, 217, 174, 0.9);
+  font-weight: 560;
+}
+
+.club-v2-behavior-mix,
+.club-v2-behavior-strike {
+  grid-template-rows: auto auto auto;
+  align-content: start;
+}
+
+.club-v2-behavior-segment-bar {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(211, 220, 212, 0.1);
+  display: flex;
+  margin-top: 0.82rem;
+}
+
+.club-v2-behavior-segment-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+}
+
+.club-v2-behavior-segment-bar .draw {
+  background: rgba(244, 206, 96, 0.9);
+}
+
+.club-v2-behavior-segment-bar .straight {
+  background: rgba(199, 210, 201, 0.55);
+}
+
+.club-v2-behavior-segment-bar .fade {
+  background: rgba(118, 170, 136, 0.9);
+}
+
+.club-v2-behavior-segment-bar .normal {
+  background: rgba(118, 170, 136, 0.92);
+}
+
+.club-v2-behavior-segment-bar .mishit {
+  background: rgba(244, 206, 96, 0.9);
+}
+
+.club-v2-behavior-segment-bar .severe {
+  background: rgba(224, 116, 102, 0.9);
+}
+
+.club-v2-behavior-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem 0.7rem;
+  color: rgba(202, 212, 204, 0.8);
+  font-size: 0.69rem;
+  line-height: 1.15;
+  margin-top: 0.08rem;
+}
+
+.club-v2-behavior-legend b {
+  color: rgba(236, 242, 237, 0.93);
+  font-weight: 580;
+}
+
+@media (max-width: 1200px) {
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+  }
+
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-card {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .club-v2-heatmap-section:has(.club-v2-behavior-preview) .club-v2-heatmap-metrics {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .club-v2-behavior-preview {
+    grid-column: 1;
+    grid-row: 3;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0.8rem;
+  }
+
+  .club-v2-behavior-cell:nth-child(3) {
+    border-left: 0;
+  }
+
+  .club-v2-behavior-primary {
+    margin-top: 0;
+  }
+
+  .club-v2-behavior-secondary {
+    margin-top: 0;
+  }
+
+  .club-v2-behavior-movement .club-v2-behavior-label,
+  .club-v2-behavior-movement .club-v2-behavior-primary {
+    width: auto;
+  }
+
+  .club-v2-behavior-flight-svg {
+    position: static;
+    width: 100%;
+    height: 42px;
+    margin: -0.35rem 0 0;
+  }
+
+  .club-v2-behavior-segment-bar {
+    margin-top: 0.28rem;
+  }
+
+  .club-v2-behavior-legend {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .club-v2-behavior-preview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.72rem;
+  }
+
+  .club-v2-behavior-cell {
+    padding: 0;
+  }
+
+  .club-v2-behavior-cell + .club-v2-behavior-cell {
+    border-left: 0;
+    border-top: 1px solid rgba(205, 218, 207, 0.11);
+    padding-top: 0.72rem;
+  }
+}
