@@ -16,6 +16,7 @@ import {
 } from '../cloud/supabaseClient'
 import { deactivateLocalUserScope } from '../lib/localUserScope'
 import { loadSavedSessions } from '../lib/sessions'
+import { flushPendingShotVariantSync } from '../lib/shotVariants'
 import './LooperAuthGate.css'
 
 type AuthState =
@@ -33,6 +34,8 @@ type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
 type Props = {
   children: ReactNode
 }
+
+const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === 'true'
 
 const isPasswordResetReturn = () =>
   typeof window !== 'undefined' &&
@@ -307,6 +310,10 @@ export default function LooperAuthGate({ children }: Props) {
     setBusy(true)
     setError(null)
     try {
+      // Let the last account-owned variant edit finish while this user's auth
+      // session is still valid. The dirty marker remains as the recovery path if
+      // the network write cannot complete.
+      await flushPendingShotVariantSync()
       await signOutLooper()
       deactivateLocalUserScope()
       setState('signed-out')
@@ -319,7 +326,32 @@ export default function LooperAuthGate({ children }: Props) {
   }
 
   if (state === 'allowed') {
-    return children
+    return (
+      <>
+        {user ? (
+          <div className="looper-account-control">
+            <details className="looper-account-control__details">
+              <summary className="looper-account-control__summary">
+                <span className="looper-account-control__email">{user.email ?? 'Account'}</span>
+                <span aria-hidden="true" className="looper-account-control__chevron">▾</span>
+              </summary>
+              <div className="looper-account-control__menu">
+                <button
+                  type="button"
+                  className="looper-account-control__logout"
+                  disabled={busy}
+                  onClick={() => void handleSignOut()}
+                >
+                  {busy ? 'Logging out…' : 'Log out'}
+                </button>
+                {error ? <div className="looper-account-control__error">{error}</div> : null}
+              </div>
+            </details>
+          </div>
+        ) : null}
+        {children}
+      </>
+    )
   }
 
   if (state === 'checking' || state === 'checking-access' || state === 'syncing-data') {
@@ -436,10 +468,12 @@ export default function LooperAuthGate({ children }: Props) {
             ? 'Enter your email and we’ll send you a secure link to choose a new password.'
             : isSignUp
               ? 'Create an account using the email address approved for Looper.'
-              : 'Sign in with Google or use your email and password.'}
+              : GOOGLE_AUTH_ENABLED
+                ? 'Sign in with Google or use your email and password.'
+                : 'Sign in with your email and password.'}
         </p>
 
-        {!isForgotPassword ? (
+        {GOOGLE_AUTH_ENABLED && !isForgotPassword ? (
           <>
             <button
               type="button"
