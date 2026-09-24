@@ -109,9 +109,16 @@ export const saveCustomShotVariants = (
   window.localStorage.setItem(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
   persistWorkingCacheValueForActiveUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
 
-  const syncPromise = syncShotVariantsToCloud(normalized, userId).then((result) => {
+  // Serialize writes so an older request cannot finish after a newer edit and
+  // overwrite the cloud row. Only the newest queued write may clear the dirty bit.
+  const previousSync = pendingShotVariantSync ?? Promise.resolve()
+  let syncPromise: Promise<void>
+  syncPromise = previousSync.then(async () => {
+    const result = await syncShotVariantsToCloud(normalized, userId)
     if (result.status === 'synced') {
-      persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      if (pendingShotVariantSync === syncPromise) {
+        persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      }
       return
     }
 
