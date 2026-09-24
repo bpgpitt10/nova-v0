@@ -8,7 +8,10 @@ import {
 } from './supabaseClient'
 
 export type ShotVariantCloudSyncResult =
-  | { status: 'skipped'; reason: 'not-configured' | 'signed-out' | 'not-allowed' }
+  | {
+      status: 'skipped'
+      reason: 'not-configured' | 'signed-out' | 'not-allowed' | 'user-changed'
+    }
   | { status: 'synced' }
   | { status: 'failed'; error: string }
 
@@ -37,6 +40,7 @@ const syncFailure = (error: unknown): ShotVariantCloudSyncResult => ({
 
 export const syncShotVariantsToCloud = async (
   variants: ShotVariant[],
+  expectedUserId?: string,
 ): Promise<ShotVariantCloudSyncResult> => {
   if (!isSupabaseConfigured()) {
     return { status: 'skipped', reason: 'not-configured' }
@@ -50,6 +54,10 @@ export const syncShotVariantsToCloud = async (
         status: 'skipped',
         reason: currentUser ? 'not-allowed' : 'signed-out',
       }
+    }
+
+    if (expectedUserId && user.id !== expectedUserId) {
+      return { status: 'skipped', reason: 'user-changed' }
     }
 
     const client = await getSupabaseClient()
