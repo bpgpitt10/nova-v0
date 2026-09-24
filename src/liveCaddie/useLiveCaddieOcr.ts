@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
+import { getRouteHoleHeadingDegreesTrue } from '../courseGeometry/generatedRouteHoleHeadings'
 import type { CoursePointYds } from '../courseGeometry/types'
 import type { GsproLieObservation, WindObservation } from '../liveState/types'
 import { projectWindObservation } from '../liveState/windProjection'
@@ -12,6 +13,18 @@ const localBearingDegrees = (from: CoursePointYds, to: CoursePointYds) => {
   const dy = to[1] - from[1]
   if (Math.hypot(dx, dy) <= Number.EPSILON) return null
   return normalizeDegrees(Math.atan2(dx, dy) * 180 / Math.PI)
+}
+
+export const resolveShotCompassBearingDegrees = (
+  courseId: string,
+  holeNumber: number,
+  ball: CoursePointYds,
+  target: CoursePointYds,
+) => {
+  const holeHeading = getRouteHoleHeadingDegreesTrue(courseId, holeNumber)
+  const localBearing = localBearingDegrees(ball, target)
+  if (holeHeading == null || localBearing == null) return null
+  return normalizeDegrees(holeHeading + localBearing)
 }
 
 const axisLabel = (
@@ -30,6 +43,7 @@ export type LiveCaddieOcrState = {
   hasLiveWind: boolean
   windMph: number
   windRelativeDeg: number
+  shotCompassBearingDeg: number | null
   surfaceOverride: string | null
   lieUpDownDeg: number | null
   /** Live Caddie convention: positive = LEFT / ball above feet. */
@@ -50,6 +64,8 @@ export type LiveCaddieOcrState = {
 export const useLiveCaddieOcr = (
   ball: CoursePointYds,
   target: CoursePointYds,
+  courseId: string,
+  holeNumber: number,
 ): LiveCaddieOcrState => {
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
@@ -57,11 +73,9 @@ export const useLiveCaddieOcr = (
   useEffect(() => {
     const windConnection = connectToGsproWindObservation({
       onObservation: setWindObservation,
-      onError: (error) => console.warn('[Live Caddie] wind OCR bridge unavailable.', error),
     })
     const lieConnection = connectToGsproLieObservation({
       onObservation: setLieObservation,
-      onError: (error) => console.warn('[Live Caddie] lie OCR bridge unavailable.', error),
     })
 
     return () => {
@@ -74,9 +88,17 @@ export const useLiveCaddieOcr = (
     () => localBearingDegrees(ball, target),
     [ball, target],
   )
+  const shotCompassBearingDeg = useMemo(
+    () => resolveShotCompassBearingDegrees(courseId, holeNumber, ball, target),
+    [courseId, holeNumber, ball, target],
+  )
   const projectedWind = useMemo(
-    () => projectWindObservation(windObservation, aimBearingDegrees),
-    [windObservation, aimBearingDegrees],
+    () => projectWindObservation(
+      windObservation,
+      aimBearingDegrees,
+      shotCompassBearingDeg,
+    ),
+    [windObservation, aimBearingDegrees, shotCompassBearingDeg],
   )
   const hasLiveWind = Boolean(
     windObservation?.status === 'READY'
@@ -100,9 +122,11 @@ export const useLiveCaddieOcr = (
 
   const windDisplay = hasLiveWind
     ? `Wind ${windMph.toFixed(windMph >= 10 ? 0 : 1)} mph · OCR`
-    : windObservation
-      ? `Wind OCR ${windObservation.status.toLowerCase()}`
-      : 'Wind OCR waiting'
+    : windObservation?.status === 'READY' && shotCompassBearingDeg == null
+      ? 'Wind OCR ready · course bearing unavailable'
+      : windObservation
+        ? `Wind OCR ${windObservation.status.toLowerCase()}`
+        : 'Wind OCR waiting'
 
   const lieAxes = [
     axisLabel(lieObservation?.upDownDegrees, 'up', 'down'),
@@ -120,6 +144,7 @@ export const useLiveCaddieOcr = (
     hasLiveWind,
     windMph,
     windRelativeDeg,
+    shotCompassBearingDeg,
     surfaceOverride,
     lieUpDownDeg,
     lieLeftRightDeg,
