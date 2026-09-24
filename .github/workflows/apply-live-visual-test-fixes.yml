@@ -1,0 +1,44 @@
+name: Apply live visual test fixes
+
+on:
+  push:
+    branches:
+      - web-live-caddie-browser-visuals-v1
+    paths:
+      - tools/apply-live-visual-test-fixes.py
+      - .github/workflows/apply-live-visual-test-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: ${{ !contains(github.event.head_commit.message, '[live-visual-test-fixes-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: web-live-caddie-browser-visuals-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply guarded fixes
+        run: python tools/apply-live-visual-test-fixes.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web app
+        run: npm run build
+      - name: Validate patch scope
+        run: |
+          git diff --check
+          git diff --name-only HEAD
+          test "$(git diff --name-only HEAD | grep '^src/' | wc -l)" -eq 3
+      - name: Commit validated fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/adapters/browserGsproVisualCapture.ts src/pages/LiveCaddiePage.tsx src/pages/ConditionsMathPanel.tsx
+          git commit -m 'fix: use tee lie invariant and tighten wind OCR [live-visual-test-fixes-applied]'
+          git push origin HEAD:web-live-caddie-browser-visuals-v1
