@@ -2,6 +2,8 @@ import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
 import {
   activateLocalUserScope,
   clearPreservedLegacyBackups,
+  persistCacheValueForUser,
+  SHOT_VARIANTS_DIRTY_STORAGE_KEY,
   SHOT_VARIANTS_STORAGE_KEY,
 } from '../lib/localUserScope'
 import { loadSavedSessions, saveSessionHistory } from '../lib/sessions'
@@ -68,6 +70,8 @@ export const bootstrapLooperCloudData = async (
   const localBag = loadBagConfig()
   const hadLocalShotVariantCache =
     window.localStorage.getItem(SHOT_VARIANTS_STORAGE_KEY) !== null
+  const localShotVariantsDirty =
+    window.localStorage.getItem(SHOT_VARIANTS_DIRTY_STORAGE_KEY) === '1'
   const localShotVariants = getCustomShotVariants()
   let uploadedLocalSessions = 0
 
@@ -107,27 +111,55 @@ export const bootstrapLooperCloudData = async (
     loadedCloudBag = true
   }
 
-  // Shot variant definitions are account data. Cloud is canonical once a row
-  // exists; otherwise migrate this user's already-isolated browser copy once.
-  const cloudShotVariantRow = await loadShotVariantsForUser(userId)
   let loadedCloudShotVariants = false
-  if (cloudShotVariantRow !== null) {
-    const cloudShotVariants = normalizeCustomShotVariants(cloudShotVariantRow)
-    if (
-      !hadLocalShotVariantCache ||
-      JSON.stringify(cloudShotVariants) !== JSON.stringify(localShotVariants)
-    ) {
-      saveCustomShotVariants(cloudShotVariants, { syncCloud: false })
-      loadedCloudShotVariants = true
+  let canHydrateCloudShotVariants = true
+
+  // A dirty marker means a prior browser edit may have been interrupted by a
+  // rapid logout. Upload that isolated local copy before reading cloud state so
+  // an older cloud row cannot overwrite the newer golfer-owned edit.
+  if (localShotVariantsDirty) {
+    if (hadLocalShotVariantCache) {
+      const dirtyVariantResult = await syncShotVariantsToCloud(localShotVariants, userId)
+      if (dirtyVariantResult.status === 'synced') {
+        persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      } else {
+        canHydrateCloudShotVariants = false
+        warnings.push(
+          dirtyVariantResult.status === 'failed'
+            ? `Shot variants: ${dirtyVariantResult.error}`
+            : `Shot variants: deferred (${dirtyVariantResult.reason})`,
+        )
+      }
+    } else {
+      // A marker without a local payload cannot represent a newer edit.
+      persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
     }
-  } else {
-    const variantsToMigrate = hadLocalShotVariantCache ? localShotVariants : []
-    if (!hadLocalShotVariantCache) {
-      saveCustomShotVariants(variantsToMigrate, { syncCloud: false })
-    }
-    const variantResult = await syncShotVariantsToCloud(variantsToMigrate)
-    if (variantResult.status === 'failed') {
-      warnings.push(`Shot variants: ${variantResult.error}`)
+  }
+
+  if (canHydrateCloudShotVariants) {
+    // Shot variant definitions are account data. Cloud is canonical once a row
+    // exists, except when the dirty path above proved the local copy is newer.
+    const cloudShotVariantRow = await loadShotVariantsForUser(userId)
+    if (cloudShotVariantRow !== null) {
+      const cloudShotVariants = normalizeCustomShotVariants(cloudShotVariantRow)
+      if (
+        !hadLocalShotVariantCache ||
+        JSON.stringify(cloudShotVariants) !== JSON.stringify(localShotVariants)
+      ) {
+        saveCustomShotVariants(cloudShotVariants, { syncCloud: false })
+        loadedCloudShotVariants = true
+      }
+    } else {
+      const variantsToMigrate = hadLocalShotVariantCache ? localShotVariants : []
+      if (!hadLocalShotVariantCache) {
+        saveCustomShotVariants(variantsToMigrate, { syncCloud: false })
+      }
+      const variantResult = await syncShotVariantsToCloud(variantsToMigrate, userId)
+      if (variantResult.status === 'failed') {
+        warnings.push(`Shot variants: ${variantResult.error}`)
+      } else if (variantResult.status === 'skipped') {
+        warnings.push(`Shot variants: deferred (${variantResult.reason})`)
+      }
     }
   }
 
