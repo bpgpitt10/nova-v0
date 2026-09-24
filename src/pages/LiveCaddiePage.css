@@ -944,3 +944,13 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* Core V1 basemap polish: cart paths are quiet background context. */
+.live-map-feature.map-cartpath {
+  fill: none;
+  stroke: rgba(116, 124, 94, 0.34);
+  stroke-width: 0.44;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
