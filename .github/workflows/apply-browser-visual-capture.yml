@@ -1,0 +1,50 @@
+name: Apply browser-native GSPro visual capture
+
+on:
+  push:
+    branches:
+      - web-live-caddie-browser-visuals-v1
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: ${{ !contains(github.event.head_commit.message, '[browser-visuals-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: web-live-caddie-browser-visuals-v1
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply guarded Live Caddie page patch
+        run: python tools/apply-browser-visual-capture.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Validate patch scope
+        run: |
+          git diff --check
+          git diff -- src/pages/LiveCaddiePage.tsx
+
+      - name: Commit validated page integration
+        run: |
+          if git diff --quiet -- src/pages/LiveCaddiePage.tsx; then
+            echo "No page changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/LiveCaddiePage.tsx
+          git commit -m "feat: connect browser-native GSPro visuals [browser-visuals-applied]"
+          git push origin HEAD:web-live-caddie-browser-visuals-v1
