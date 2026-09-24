@@ -1,0 +1,46 @@
+name: Apply LIVE Caddie loopback fetch intent
+
+on:
+  push:
+    branches:
+      - web-live-caddie-ocr-ready-v2
+    paths:
+      - '.github/workflows/apply-loopback-fetch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: web-live-caddie-ocr-ready-v2
+          fetch-depth: 0
+
+      - name: Apply guarded loopback patch
+        run: python tools/apply-loopback-fetch.py
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build browser app
+        run: npm run build
+
+      - name: Commit validated loopback integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/adapters/gsproWindObservation.ts src/adapters/gsproLieObservation.ts
+          git diff --cached --check
+          git commit -m "fix(live-caddie): declare OCR helper as loopback [lna]"
+          git push origin HEAD:web-live-caddie-ocr-ready-v2
