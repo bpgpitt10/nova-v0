@@ -303,3 +303,27 @@ export const readLatestGsproRangeShot = async (
     database.close()
   }
 }
+
+export const readGsproRangeShotsAfter = async (
+  directoryHandle: BrowserDirectoryHandle,
+  afterRowId: number,
+): Promise<BrowserGsproLatestShot[]> => {
+  if (!Number.isSafeInteger(afterRowId) || afterRowId < 0) {
+    throw new Error('GSPro range-shot cursor must be a non-negative integer.')
+  }
+
+  const databaseHandle = await directoryHandle.getFileHandle(GSPRO_DATABASE_NAME)
+  const databaseFile = await databaseHandle.getFile()
+  const bytes = new Uint8Array(await databaseFile.arrayBuffer())
+  const SQL = await loadSqlJs()
+  const database = new SQL.Database(bytes)
+
+  try {
+    const result = database.exec(
+      `SELECT ID, DateCreated, ShotData FROM DrivingRangeShot WHERE ID > ${afterRowId} ORDER BY ID ASC`,
+    )
+    return (result[0]?.values ?? []).map((row) => parseLatestRow(row, databaseFile))
+  } finally {
+    database.close()
+  }
+}

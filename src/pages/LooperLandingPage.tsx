@@ -4,6 +4,11 @@ import {
   LOCAL_NOVA_WS_URL_KEY,
   resolveNovaWebSocketEndpoint,
 } from '../adapters/nova'
+import {
+  captureBrowserGsproSessionBaseline,
+  GSPRO_SESSION_BASELINE_PARAM,
+  isBrowserGsproRuntimePrepared,
+} from '../adapters/browserGsproLive'
 import { activeBagClubIds, getClubDisplayName, type Club } from '../lib/bagConfig'
 import {
   getShotVariantsForClub,
@@ -223,6 +228,8 @@ export default function LooperLandingPage({
   const [manualUrlInput, setManualUrlInput] = useState('')
   const [manualOverrideUrl, setManualOverrideUrl] = useState<string | null>(null)
   const [connectedUrl, setConnectedUrl] = useState<string | null>(null)
+  const [isStartingSession, setIsStartingSession] = useState(false)
+  const [sessionStartError, setSessionStartError] = useState<string | null>(null)
   const devOverrideUrl = useMemo(() => resolveDevOverrideUrl(), [])
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
 
@@ -447,10 +454,13 @@ export default function LooperLandingPage({
     }
   })()
 
-  const startSession = () => {
+  const startSession = async () => {
     if (selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl)) {
       return
     }
+
+    setIsStartingSession(true)
+    setSessionStartError(null)
 
     const params = new URLSearchParams({
       [SESSION_SOURCE_PARAM]: selectedSource,
@@ -458,7 +468,21 @@ export default function LooperLandingPage({
       club: selectedClub,
       variant: resolveShotVariantId(selectedShotVariantId),
     })
-    navigateWithinApp(`/session-intelligence?${params.toString()}`)
+
+    try {
+      if (selectedSource === 'gspro' && isBrowserGsproRuntimePrepared()) {
+        const baselineRowId = await captureBrowserGsproSessionBaseline()
+        params.set(GSPRO_SESSION_BASELINE_PARAM, String(baselineRowId))
+      }
+
+      navigateWithinApp(`/session-intelligence?${params.toString()}`)
+    } catch (error) {
+      console.error('[GSPro Connection] could not capture session baseline', error)
+      setSessionStartError(
+        'Looper could not lock the GSPro starting point. Try Start again before hitting a shot.',
+      )
+      setIsStartingSession(false)
+    }
   }
 
   const applyManualUrl = () => {
@@ -606,12 +630,20 @@ export default function LooperLandingPage({
               </div>
               <button
                 className="looper-landing-action looper-landing-action-secondary looper-landing-start"
-                disabled={selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl)}
-                onClick={startSession}
+                disabled={
+                  isStartingSession ||
+                  (selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl))
+                }
+                onClick={() => void startSession()}
                 type="button"
               >
-                Start
+                {isStartingSession ? 'Starting…' : 'Start'}
               </button>
+              {sessionStartError ? (
+                <p className="looper-landing-start-error" role="alert">
+                  {sessionStartError}
+                </p>
+              ) : null}
               {selectedSource === 'nova' ? (
                 <details className="looper-landing-manual">
                   <summary>Manual Nova Connection</summary>
