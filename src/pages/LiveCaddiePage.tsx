@@ -397,7 +397,7 @@ export default function LiveCaddiePage() {
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const lastShotKeyRef = useRef<string | null>(null)
-  const ocr = useLiveCaddieOcr(ball, target)
+  const ocr = useLiveCaddieOcr(ball, target, courseId, holeNumber)
   const { windMph, windRelativeDeg } = ocr
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
