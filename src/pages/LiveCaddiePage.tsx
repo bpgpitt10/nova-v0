@@ -581,11 +581,15 @@ export default function LiveCaddiePage() {
         liveMatchesHole ? liveSnapshot?.distanceToPinYds ?? null : null,
       )
     : null
-  const surface = liveMatchesHole && liveSnapshot?.surface
-    ? liveSnapshot.surface
-    : hole
-      ? classifyPoint(hole, ball).kind
-      : 'unknown'
+  const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
+    ? lieObservation.surface.trim()
+    : null
+  const surface = liveLieSurface
+    ?? (liveMatchesHole && liveSnapshot?.surface
+      ? liveSnapshot.surface
+      : hole
+        ? classifyPoint(hole, ball).kind
+        : 'unknown')
   const nextShotNumber = liveMatchesHole
     ? liveSnapshot?.nextShotNumber ?? (surface === 'tee' ? 1 : null)
     : surface === 'tee'
@@ -610,7 +614,8 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
-  const surfaceOverride = liveMatchesHole ? liveSnapshot?.surface ?? null : null
+  const surfaceOverride = liveLieSurface
+    ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
   const localAimBearingDeg = localShotBearingDegrees(ball, target)
   const currentShotCompassBearingDeg = shotCompassBearingDegrees(
     holeHeadingDegreesTrue,
@@ -634,12 +639,15 @@ export default function LiveCaddiePage() {
     && typeof lieObservation?.upDownDegrees === 'number'
     && Number.isFinite(lieObservation.upDownDegrees)
     ? lieObservation.upDownDegrees
-    : 0
+    : null
   const lieLeftRightDeg = hasLiveLie
     && typeof lieObservation?.leftRightDegrees === 'number'
     && Number.isFinite(lieObservation.leftRightDegrees)
-    ? lieObservation.leftRightDegrees
-    : 0
+    // Helper convention is +RIGHT / -LEFT. The existing sidehill model uses
+    // +LEFT / -RIGHT, so invert once here at the LIVE Caddie integration seam.
+    ? -lieObservation.leftRightDegrees
+    : null
+  const lieSource = hasLiveLie ? lieObservation?.source ?? 'GSPro lie OCR' : undefined
 
   useEffect(() => {
     if (!hole) {
@@ -692,6 +700,9 @@ export default function LiveCaddiePage() {
         airAltitudeFt,
         airAltitudeSource,
         surfaceOverride,
+        lieUpDownDeg,
+        lieLeftRightDeg,
+        lieSource,
       },
       nowMs: Date.now(),
     })
@@ -712,6 +723,9 @@ export default function LiveCaddiePage() {
     airAltitudeFt,
     airAltitudeSource,
     surfaceOverride,
+    lieUpDownDeg,
+    lieLeftRightDeg,
+    lieSource,
   ])
 
   const recommendation = evaluations[0] ?? null

@@ -123,15 +123,21 @@ export default function ConditionsMathPanel({
   const altitudeDetail = evaluation?.airAltitudeFt != null
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
     : 'Base altitude unavailable'
-  const lieDetail = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
-    ? 'Measured lie · flight effect not yet modeled'
+  const hasLie = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
+  const sidehillLabel = finite(lieLeftRightDeg) && Math.abs(lieLeftRightDeg) >= 0.05
+    ? `${Math.abs(lieLeftRightDeg).toFixed(1)}° ${lieLeftRightDeg > 0 ? 'Left' : 'Right'}`
+    : null
+  const upDownLabel = finite(lieUpDownDeg) && Math.abs(lieUpDownDeg) >= 0.05
+    ? `${Math.abs(lieUpDownDeg).toFixed(1)}° ${lieUpDownDeg > 0 ? 'Up' : 'Down'}`
+    : null
+  const lieDetail = hasLie
+    ? [
+        sidehillLabel,
+        upDownLabel,
+        sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
+        upDownLabel ? 'up/down flight effect pending validation' : null,
+      ].filter(Boolean).join(' · ')
     : 'Lie angle not captured yet'
-  const lieDistance = finite(lieUpDownDeg)
-    ? `${lieUpDownDeg >= 0 ? '+' : ''}${lieUpDownDeg.toFixed(1)}°`
-    : '—'
-  const lieLateral = finite(lieLeftRightDeg)
-    ? `${lieLeftRightDeg >= 0 ? '+' : ''}${lieLeftRightDeg.toFixed(1)}°`
-    : '—'
 
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
@@ -220,10 +226,10 @@ export default function ConditionsMathPanel({
           />
           <AdjustmentRow
             label="Lie"
-            distance={lieDistance}
-            lateral={lieLateral}
+            distance={evaluation && hasLie ? signedYards(evaluation.lieCarryDeltaYds ?? 0) : '—'}
+            lateral={evaluation && hasLie ? lateralYards(evaluation.lieLateralDeltaYds ?? 0) : '—'}
             detail={lieDetail}
-            muted={!finite(lieUpDownDeg) && !finite(lieLeftRightDeg)}
+            muted={!hasLie}
           />
         </div>
 

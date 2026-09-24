@@ -72,6 +72,11 @@ export type AimLabEnvironment = {
   airAltitudeSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
+  /** Positive = GSPro Up. Retained for later validation; no V0 carry effect is applied. */
+  lieUpDownDeg?: number | null
+  /** Positive = GSPro Left / ball above feet. V0 applies the existing conservative sidehill prior. */
+  lieLeftRightDeg?: number | null
+  lieSource?: string
   /**
    * Optional per-club strategic target. Used by off-sim natural-landing
    * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
@@ -236,6 +241,9 @@ export const evaluateAimLab = (
     )
     const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)
     const launch = profile.launch_profile
+    const hasLieMeasurement =
+      (typeof environment.lieUpDownDeg === 'number' && Number.isFinite(environment.lieUpDownDeg)) ||
+      (typeof environment.lieLeftRightDeg === 'number' && Number.isFinite(environment.lieLeftRightDeg))
     const modeled = modelShotContext(
       {
         club: profile.club,
@@ -259,6 +267,10 @@ export const evaluateAimLab = (
         elevationDeltaFt: environment.elevationDeltaFt ?? 0,
         elevationSource: environment.elevationSource ?? 'Aim Lab target terrain',
         elevationConfidence: environment.elevationDeltaFt == null ? 'unknown' : 'medium',
+        lieUpDownDeg: environment.lieUpDownDeg ?? null,
+        lieLeftRightDeg: environment.lieLeftRightDeg ?? null,
+        lieSource: environment.lieSource ?? 'GSPro lie OCR',
+        lieConfidence: hasLieMeasurement ? 'high' : 'unknown',
       },
     )
 

@@ -47,7 +47,7 @@ type LandingElevationResolution = {
 }
 
 const DISPLAY_OUTCOME_DOT_COUNT = 256
-const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v5'
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v6'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const displayTierForSurface = (
@@ -461,6 +461,8 @@ const buildEvaluationCacheKey = ({
       elevationDeltaFt: finiteKeyNumber(environment.elevationDeltaFt),
       airAltitudeFt: finiteKeyNumber(environment.airAltitudeFt),
       surfaceOverride: environment.surfaceOverride ?? null,
+      lieUpDownDeg: finiteKeyNumber(environment.lieUpDownDeg),
+      lieLeftRightDeg: finiteKeyNumber(environment.lieLeftRightDeg),
     },
   })
 
