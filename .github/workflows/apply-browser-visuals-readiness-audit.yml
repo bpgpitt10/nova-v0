@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - name: Apply guarded readiness fixes
         run: python tools/apply-browser-visuals-readiness-audit.py
+      - name: Remove obsolete lie-parser import
+        run: sed -i '/  parseGsproLieRawText,/d' src/adapters/browserGsproVisualCapture.ts
       - name: Install dependencies
         run: npm ci
       - name: Build web app
