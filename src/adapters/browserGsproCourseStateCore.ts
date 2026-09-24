@@ -118,8 +118,7 @@ const POLL_INTERVAL_MS = 750
 const ERROR_REPORT_THRESHOLD = 5
 const METERS_TO_YARDS = 1.0936132983377078
 const WORLD_ROTATION_DEG = 0.5319220319046369
-const RAW_GEOMETRY_BASE =
-  'https://raw.githubusercontent.com/bpgpitt10/nova-v0/hazard-field-lab-v0/artifacts/osm-proof/local-geometry'
+const GREYWOLF_LOCAL_GEOMETRY_BASE = '/course-geometry/greywolf/local-geometry'
 
 let preparedStateHandle: BrowserDirectoryHandle | null = null
 const holeForwardCache = new Map<number, Promise<readonly [east: number, north: number]>>()
@@ -280,6 +279,16 @@ const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   })
 }
 
+const parseCurrentShotRecord = (text: string): RoundShotRecord | null => {
+  const parsed = JSON.parse(text) as unknown
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const root = parsed as Record<string, unknown>
+  const candidate = root.CurrentShot ?? root.currentShot
+  return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+    ? candidate as RoundShotRecord
+    : null
+}
+
 const parseRoundRecords = (text: string): RoundShotRecord[] => {
   const candidates = parseRoundCandidates(text)
   const seen = new Set<string>()
@@ -354,7 +363,7 @@ const loadHoleForwardEastNorth = (holeNumber: number) => {
   const existing = holeForwardCache.get(holeNumber)
   if (existing) return existing
 
-  const promise = fetch(`${RAW_GEOMETRY_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`)
+  const promise = fetch(`${GREYWOLF_LOCAL_GEOMETRY_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`)
     .then((response) => {
       if (!response.ok) throw new Error(`Greywolf H${holeNumber} anchor package returned ${response.status}.`)
       return response.json() as Promise<HoleAnchorArtifact>
@@ -497,29 +506,41 @@ const buildSnapshot = async (
   selectedCourseId: CourseId,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
+  const currentPreShot = parseCurrentShotRecord(roundText)
+  const preShotRoundId = asNumber(currentPreShot?.RoundID)
+  const preShotCourseKey = asString(currentPreShot?.CourseKey)
+  const rawPreShotHole = asNumber(currentPreShot?.Hole)
+  const preShotHole = rawPreShotHole == null ? null : Math.round(rawPreShotHole) + 1
+  const preShotNumber = asNumber(currentPreShot?.HoleShot)
+  const preShotSurface = surfaceFromRaw(asNumber(currentPreShot?.StartingSurface))
+  const preShotDistanceMeters = asNumber(currentPreShot?.DistanceToPin)
+  const preShotDistanceYds = preShotDistanceMeters == null
+    ? null
+    : preShotDistanceMeters * METERS_TO_YARDS
   const records = parseRoundRecords(roundText)
   const logState = parseOutputLogHoleState(logTail)
 
   if (records.length === 0) {
-    if (logState.holeNumber != null) {
+    const waitingHole = preShotHole ?? logState.holeNumber
+    if (waitingHole != null) {
       return cachedTeeSnapshot({
-        courseKey: null,
-        roundId: null,
-        holeNumber: logState.holeNumber,
+        courseKey: preShotCourseKey,
+        roundId: preShotRoundId,
+        holeNumber: waitingHole,
         warnings: ['Waiting for the first physical shot; using the selected course tee position.'],
       })
     }
 
     return {
-      courseKey: null,
-      roundId: null,
+      courseKey: preShotCourseKey,
+      roundId: preShotRoundId,
       holeNumber: null,
       ballLocalYds: null,
       ballSource: 'unavailable',
-      surface: null,
-      surfaceSource: 'unavailable',
-      distanceToPinYds: null,
-      nextShotNumber: null,
+      surface: preShotSurface,
+      surfaceSource: preShotSurface ? 'currentRound' : 'unavailable',
+      distanceToPinYds: preShotDistanceYds,
+      nextShotNumber: preShotNumber,
       latestShot: null,
       latestShotKey: null,
       warnings: ['currentRound.dat did not contain a physical shot record yet.'],
@@ -529,12 +550,25 @@ const buildSnapshot = async (
 
   records.sort((a, b) => recordSortValue(a) - recordSortValue(b))
   const newest = records[records.length - 1]
-  const activeRoundId = asNumber(newest.RoundID)
+  const activeRoundId = preShotRoundId ?? asNumber(newest.RoundID)
   const roundRecords = activeRoundId == null
     ? records
     : records.filter((record) => asNumber(record.RoundID) === activeRoundId)
-  const latestRecord = roundRecords[roundRecords.length - 1]
-  const courseKey = asString(latestRecord.CourseKey)
+
+  if (roundRecords.length === 0) {
+    const waitingHole = preShotHole ?? logState.holeNumber
+    if (waitingHole != null) {
+      return cachedTeeSnapshot({
+        courseKey: preShotCourseKey,
+        roundId: activeRoundId,
+        holeNumber: waitingHole,
+        warnings: ['Current GSPro round has no completed physical shot yet; using the selected course tee position.'],
+      })
+    }
+  }
+
+  const latestRecord = roundRecords[roundRecords.length - 1] ?? newest
+  const courseKey = preShotCourseKey ?? asString(latestRecord.CourseKey)
   const observedCourseId = courseKey ? resolveCourseIdFromGsproName(courseKey) : null
   const selectedCourse = getCourseCatalogEntry(selectedCourseId)
   const rawLatestHole = asNumber(latestRecord.Hole)
@@ -545,6 +579,14 @@ const buildSnapshot = async (
   let coordinateCourseId: CourseId | null = null
   if (observedCourseId === selectedCourseId) {
     coordinateCourseId = selectedCourseId
+  } else if (
+    selectedCourseId === GREYWOLF_COURSE_ID
+    && courseKey?.trim().toLowerCase() === 'multi_range_gsp'
+  ) {
+    coordinateCourseId = selectedCourseId
+    warnings.push(
+      'GSPro reports the generic multi_range_gsp runtime key; using the user-selected Greywolf registration for live ball placement.',
+    )
   } else if (courseKey && observedCourseId && observedCourseId !== selectedCourseId) {
     warnings.push(
       `Selected ${selectedCourse.name}, but GSPro reports ${courseKey}. Keeping the user-selected course until confirmed.`,
@@ -563,8 +605,8 @@ const buildSnapshot = async (
 
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
 
-  let holeNumber = latestRecordHole
-  if (logHole != null) {
+  let holeNumber = preShotHole ?? latestRecordHole
+  if (preShotHole == null && logHole != null) {
     if (latestRecordHole == null) {
       holeNumber = logHole
     } else if (logHole === latestRecordHole) {
@@ -585,7 +627,8 @@ const buildSnapshot = async (
   }
 
   if (
-    latestRecordHole != null
+    preShotHole == null
+    && latestRecordHole != null
     && latestRecordHole < 18
     && terminalHole === latestRecordHole
     && holeNumber === latestRecordHole
@@ -603,10 +646,10 @@ const buildSnapshot = async (
       holeNumber: null,
       ballLocalYds: null,
       ballSource: 'unavailable',
-      surface: null,
-      surfaceSource: 'unavailable',
-      distanceToPinYds: null,
-      nextShotNumber: null,
+      surface: preShotSurface,
+      surfaceSource: preShotSurface ? 'currentRound' : 'unavailable',
+      distanceToPinYds: preShotDistanceYds,
+      nextShotNumber: preShotNumber,
       latestShot,
       latestShotKey: latestShot?.key ?? null,
       warnings,
@@ -615,22 +658,36 @@ const buildSnapshot = async (
   }
 
   if (latestRecordHole !== holeNumber) {
-    return cachedTeeSnapshot({
+    const cached = cachedTeeSnapshot({
       courseKey,
       roundId: activeRoundId,
       holeNumber,
       warnings,
     })
+    return {
+      ...cached,
+      surface: preShotSurface ?? cached.surface,
+      surfaceSource: preShotSurface ? 'currentRound' : cached.surfaceSource,
+      distanceToPinYds: preShotDistanceYds,
+      nextShotNumber: preShotNumber ?? cached.nextShotNumber,
+    }
   }
 
   const currentHoleRecords = roundRecords.filter((record) => asNumber(record.Hole) === holeNumber - 1)
   if (currentHoleRecords.length === 0) {
-    return cachedTeeSnapshot({
+    const cached = cachedTeeSnapshot({
       courseKey,
       roundId: activeRoundId,
       holeNumber,
       warnings,
     })
+    return {
+      ...cached,
+      surface: preShotSurface ?? cached.surface,
+      surfaceSource: preShotSurface ? 'currentRound' : cached.surfaceSource,
+      distanceToPinYds: preShotDistanceYds,
+      nextShotNumber: preShotNumber ?? cached.nextShotNumber,
+    }
   }
 
   currentHoleRecords.sort((a, b) => recordSortValue(a) - recordSortValue(b))
@@ -640,6 +697,10 @@ const buildSnapshot = async (
     : await buildShot(currentRecord, roundRecords, coordinateCourseId)
   const currentSurfaceRaw = asNumber(currentRecord.EndingSurface)
   const currentSurface = surfaceFromRaw(currentSurfaceRaw)
+  const completedHoleShot = currentShot?.holeShot
+  const fallbackNextShotNumber = completedHoleShot != null
+    ? Math.max(1, Math.round(completedHoleShot) + 1)
+    : currentHoleRecords.length + 1
 
   return {
     courseKey,
@@ -647,10 +708,10 @@ const buildSnapshot = async (
     holeNumber,
     ballLocalYds: currentShot?.endLocalYds ?? null,
     ballSource: currentShot?.endLocalYds ? 'currentRound' : 'unavailable',
-    surface: currentSurface,
-    surfaceSource: currentSurface ? 'currentRound' : 'unavailable',
-    distanceToPinYds: currentShot?.distanceToPinYds ?? null,
-    nextShotNumber: currentHoleRecords.length + 1,
+    surface: preShotSurface ?? currentSurface,
+    surfaceSource: preShotSurface || currentSurface ? 'currentRound' : 'unavailable',
+    distanceToPinYds: preShotDistanceYds ?? currentShot?.distanceToPinYds ?? null,
+    nextShotNumber: preShotNumber ?? fallbackNextShotNumber,
     latestShot,
     latestShotKey: latestShot?.key ?? null,
     warnings,
