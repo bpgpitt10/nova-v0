@@ -24,14 +24,6 @@ export type ConnectGsproLieObservationOptions = {
   staleAfterMs?: number
 }
 
-const HELPER_LIE_URL = 'http://127.0.0.1:8787/lie'
-
-type LoopbackRequestInit = RequestInit & { targetAddressSpace?: 'loopback' }
-const LOOPBACK_FETCH_INIT: LoopbackRequestInit = {
-  cache: 'no-store',
-  targetAddressSpace: 'loopback',
-}
-const HELPER_POLL_INTERVAL_MS = 2500
 const DEFAULT_STALE_AFTER_MS = 7000
 const STALE_CHECK_INTERVAL_MS = 500
 const SOURCE = 'GSPro minimap HUD OCR'
@@ -177,7 +169,7 @@ const staleObservation = (
     status: 'STALE',
     note: [
       observation.note,
-      `No fresh HUD lie OCR observation within ${staleAfterMs} ms.`,
+      `No fresh browser HUD lie OCR observation within ${staleAfterMs} ms.`,
     ].filter(Boolean).join(' '),
   }
 }
@@ -191,12 +183,10 @@ export const dispatchGsproLieOcrObservation = (payload: GsproLieOcrPayload) => {
 
 export const connectToGsproLieObservation = ({
   onObservation,
-  onError,
   staleAfterMs = DEFAULT_STALE_AFTER_MS,
 }: ConnectGsproLieObservationOptions): GsproLieObservationConnection => {
   let disconnected = false
   let latest: GsproLieObservation | null = null
-  let helperPollInFlight = false
 
   const publish = (payload: GsproLieOcrPayload | null | undefined) => {
     if (disconnected) return
@@ -211,40 +201,6 @@ export const connectToGsproLieObservation = ({
   if (typeof window !== 'undefined') {
     window.addEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
   }
-
-  // Looper is a browser app. GSPro OCR comes from an independently-run
-  // localhost HTTP service and is consumed directly by the browser.
-  const pollHelper = async () => {
-    if (disconnected || helperPollInFlight || typeof window === 'undefined') return
-    helperPollInFlight = true
-    try {
-      const response = await fetch(HELPER_LIE_URL, LOOPBACK_FETCH_INIT)
-      if (!response.ok) {
-        publish({
-          status: 'UNAVAILABLE',
-          observedAt: new Date().toISOString(),
-          note: `Lie helper returned HTTP ${response.status}.`,
-        })
-        return
-      }
-      const payload = await response.json() as GsproLieOcrPayload
-      publish(payload)
-    } catch (error) {
-      onError?.(error)
-      publish({
-        status: 'UNAVAILABLE',
-        observedAt: new Date().toISOString(),
-        note: `Lie helper is unreachable: ${error instanceof Error ? error.message : String(error)}`,
-      })
-    } finally {
-      helperPollInFlight = false
-    }
-  }
-
-  if (typeof window !== 'undefined') void pollHelper()
-  const helperPollTimer = typeof window !== 'undefined'
-    ? window.setInterval(() => void pollHelper(), HELPER_POLL_INTERVAL_MS)
-    : null
 
   const staleTimer = typeof window !== 'undefined'
     ? window.setInterval(() => {
@@ -264,7 +220,6 @@ export const connectToGsproLieObservation = ({
       disconnected = true
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
-        if (helperPollTimer != null) window.clearInterval(helperPollTimer)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
     },
