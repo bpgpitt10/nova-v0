@@ -20,6 +20,7 @@ import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
 import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
 import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import LiveShotStateDebugPage from './dev/LiveShotStateDebugPage.tsx'
+import OcrTestPage from './dev/OcrTestPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -163,7 +164,8 @@ function RootRouter() {
   const showDecisionReplay = pathname === '/dev/decision-replay'
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showLiveShotState = pathname === '/dev/live-shot-state'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showLiveShotState
+  const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showLiveShotState || showOcrTest
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -187,6 +189,7 @@ function RootRouter() {
     if (showDecisionReplay) return <DecisionReplayDevPage />
     if (showDecisionAudit) return <DecisionAuditDevPage />
     if (showLiveShotState) return <LiveShotStateDebugPage />
+    if (showOcrTest) return <OcrTestPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
@@ -221,6 +224,7 @@ function RootRouter() {
     showGsproReplay,
     showLiveCaddie,
     showLiveShotState,
+    showOcrTest,
     updateError,
     updateStatus,
   ])
