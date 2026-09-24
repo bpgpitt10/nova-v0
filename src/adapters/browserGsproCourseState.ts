@@ -1,5 +1,11 @@
+import {
+  resolveCourseIdFromGsproName,
+  UNSELECTED_COURSE_ID,
+} from '../courseGeometry/courseCatalog'
+import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
-import { resolveGreywolfH1LiveTeePosition } from '../courseGeometry/greywolfH1LiveTeePosition'
+import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
+import type { CourseHoleGeometry } from '../courseGeometry/types'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
 import {
   connectToBrowserGsproCourseState as connectCoreCourseState,
@@ -30,7 +36,7 @@ export type BrowserGsproCourseSnapshot = Omit<
   CoreBrowserGsproCourseSnapshot,
   'ballSource' | 'surfaceSource'
 > & {
-  ballSource: CoreBrowserGsproCourseSnapshot['ballSource'] | 'gspro-startingpos'
+  ballSource: CoreBrowserGsproCourseSnapshot['ballSource'] | 'osm-tee-match'
   surfaceSource: CoreBrowserGsproCourseSnapshot['surfaceSource'] | 'gspro-startingpos'
   preShotStart: GsproStartingPositionObservation | null
 }
@@ -44,6 +50,7 @@ type ReadableDirectoryHandle = {
 }
 
 const CURRENT_ROUND_FILE = 'currentRound.dat'
+const liveTeeGeometryCache = new Map<string, Promise<CourseHoleGeometry>>()
 
 const readCurrentRoundFromHandle = async (handle: ReadableDirectoryHandle | null) => {
   if (!handle) return null
@@ -67,6 +74,42 @@ const readCurrentRoundText = async () => {
 
 const dedupeWarnings = (warnings: string[]) => [...new Set(warnings)]
 
+const loadLiveTeeGeometry = (
+  courseId: Exclude<ReturnType<typeof loadLastSelectedCourseId>, typeof UNSELECTED_COURSE_ID>,
+  holeNumber: number,
+) => {
+  const key = `${courseId}:${holeNumber}`
+  const cached = liveTeeGeometryCache.get(key)
+  if (cached) return cached
+  const pending = loadCourseHoleGeometry(courseId, holeNumber)
+    .catch((error) => {
+      liveTeeGeometryCache.delete(key)
+      throw error
+    })
+  liveTeeGeometryCache.set(key, pending)
+  return pending
+}
+
+const unavailableShotOneSnapshot = (
+  snapshot: CoreBrowserGsproCourseSnapshot,
+  preShotStart: GsproStartingPositionObservation | null,
+  holeNumber: number,
+  warning: string,
+): BrowserGsproCourseSnapshot => ({
+  ...snapshot,
+  preShotStart,
+  courseKey: preShotStart?.courseKey ?? snapshot.courseKey,
+  roundId: preShotStart?.roundId ?? snapshot.roundId,
+  holeNumber,
+  ballLocalYds: null,
+  ballSource: 'unavailable',
+  surface: preShotStart?.surface ?? 'tee',
+  surfaceSource: preShotStart ? 'gspro-startingpos' : 'cached-tee',
+  distanceToPinYds: preShotStart?.distanceToPinYds ?? snapshot.distanceToPinYds,
+  nextShotNumber: 1,
+  warnings: dedupeWarnings([...snapshot.warnings, warning]),
+})
+
 const enrichSnapshotWithStartingPosition = async (
   snapshot: CoreBrowserGsproCourseSnapshot,
 ): Promise<BrowserGsproCourseSnapshot> => {
@@ -80,59 +123,61 @@ const enrichSnapshotWithStartingPosition = async (
     preShotStart,
   }
 
-  const selectedCourseId = loadLastSelectedCourseId()
   const liveHoleNumber = preShotStart?.holeNumber ?? snapshot.holeNumber
   const preShotIsTee = Boolean(
     preShotStart
     && (preShotStart.surface === 'tee' || preShotStart.shotNumber === 1),
   )
-  const teeContext = liveHoleNumber === 1 && (
-    preShotIsTee
-    || (preShotStart == null && snapshot.nextShotNumber === 1)
-  )
-  if (!teeContext) return base
+  const teeContext = liveHoleNumber != null
+    && snapshot.nextShotNumber === 1
+    && (preShotStart == null || preShotIsTee)
+  if (!teeContext || liveHoleNumber == null) return base
 
-  const resolution = resolveGreywolfH1LiveTeePosition(
-    selectedCourseId,
-    1,
-    preShotIsTee ? preShotStart : null,
-  )
-  if (!resolution) return base
-
-  const warnings = dedupeWarnings([
-    ...snapshot.warnings,
-    ...(resolution.warning ? [resolution.warning] : []),
-  ])
-
-  if (!resolution.courseLocalYds) {
-    return {
-      ...base,
-      courseKey: preShotStart?.courseKey ?? snapshot.courseKey,
-      roundId: preShotStart?.roundId ?? snapshot.roundId,
-      holeNumber: 1,
-      ballLocalYds: null,
-      ballSource: 'unavailable',
-      surface: preShotStart?.surface ?? 'tee',
-      surfaceSource: preShotStart ? 'gspro-startingpos' : 'cached-tee',
-      distanceToPinYds: preShotStart?.distanceToPinYds ?? snapshot.distanceToPinYds,
-      nextShotNumber: 1,
-      warnings,
-    }
+  const selectedCourseId = loadLastSelectedCourseId()
+  if (selectedCourseId === UNSELECTED_COURSE_ID) {
+    return unavailableShotOneSnapshot(
+      snapshot,
+      preShotStart,
+      liveHoleNumber,
+      'Choose the Looper course before Shot 1 so the GSPro tee can be reconciled to imported OSM geometry.',
+    )
   }
 
-  const fromCurrentStartingPos = resolution.source === 'gspro-startingpos'
+  const observedCourseId = preShotStart?.courseKey
+    ? resolveCourseIdFromGsproName(preShotStart.courseKey)
+    : null
+  if (observedCourseId && observedCourseId !== selectedCourseId) {
+    return unavailableShotOneSnapshot(
+      snapshot,
+      preShotStart,
+      liveHoleNumber,
+      `GSPro reports ${preShotStart?.courseKey}; Looper is set to a different course, so Shot 1 was not reconciled.`,
+    )
+  }
+
+  const geometry = await loadLiveTeeGeometry(selectedCourseId, liveHoleNumber)
+  const resolution = resolveLiveSupportedTee(geometry, preShotStart)
+  if (resolution.status !== 'supported') {
+    return unavailableShotOneSnapshot(
+      snapshot,
+      preShotStart,
+      liveHoleNumber,
+      `Unsupported tee for Looper V1: ${resolution.reason}`,
+    )
+  }
+
   return {
     ...base,
     courseKey: preShotStart?.courseKey ?? snapshot.courseKey,
     roundId: preShotStart?.roundId ?? snapshot.roundId,
-    holeNumber: 1,
+    holeNumber: liveHoleNumber,
     ballLocalYds: resolution.courseLocalYds,
-    ballSource: fromCurrentStartingPos ? 'gspro-startingpos' : 'cached-tee',
+    ballSource: 'osm-tee-match',
     surface: preShotStart?.surface ?? 'tee',
-    surfaceSource: fromCurrentStartingPos ? 'gspro-startingpos' : 'cached-tee',
+    surfaceSource: preShotStart ? 'gspro-startingpos' : 'cached-tee',
     distanceToPinYds: preShotStart?.distanceToPinYds ?? snapshot.distanceToPinYds,
     nextShotNumber: 1,
-    warnings,
+    warnings: dedupeWarnings(snapshot.warnings),
   }
 }
 
@@ -160,13 +205,13 @@ export const connectToBrowserGsproCourseState = ({
         })
         .catch((error) => {
           if (disconnected || sequence !== snapshotSequence) return
-          console.warn('[Browser GSPro course state] StartingPOS enrichment failed; using core snapshot.', error)
+          console.warn('[Browser GSPro course state] Supported-tee reconciliation failed; using core snapshot.', error)
           onSnapshot({
             ...snapshot,
             preShotStart: null,
             warnings: dedupeWarnings([
               ...snapshot.warnings,
-              'GSPro pre-shot StartingPOS enrichment failed; live tee calibration was not applied.',
+              'GSPro Shot 1 tee reconciliation failed; supported-tee placement was not applied.',
             ]),
           })
         })
