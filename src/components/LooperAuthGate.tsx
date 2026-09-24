@@ -56,6 +56,7 @@ export default function LooperAuthGate({ children }: Props) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const bootstrapRef = useRef<{ userId: string; promise: Promise<void> } | null>(null)
   const passwordResetFlowRef = useRef(isPasswordResetReturn())
+  const authorizedUserIdRef = useRef<string | null>(null)
 
   const bootstrapUserData = async (
     nextUser: LooperAuthUser,
@@ -112,6 +113,7 @@ export default function LooperAuthGate({ children }: Props) {
     setError(null)
 
     if (!nextUser) {
+      authorizedUserIdRef.current = null
       // Keep the prior user's safety copy under its private namespace, but clear
       // the generic working cache before another account can sign in.
       deactivateLocalUserScope()
@@ -122,14 +124,22 @@ export default function LooperAuthGate({ children }: Props) {
     // Password recovery creates a temporary authenticated Supabase session. Keep
     // the app gated until the golfer has actually chosen the new password.
     if (passwordResetFlowRef.current) {
+      authorizedUserIdRef.current = null
       setState('reset-password')
       return
+    }
+
+    // A genuinely different account must pass the allowlist/bootstrap path. Same-user
+    // refresh/focus events are filtered by the auth listener before reaching here.
+    if (authorizedUserIdRef.current !== nextUser.id) {
+      authorizedUserIdRef.current = null
     }
 
     setState('checking-access')
     try {
       const allowlistRecord = await getAllowedUserRecord(nextUser)
       if (!allowlistRecord) {
+        authorizedUserIdRef.current = null
         // An uninvited signed-in identity must not inherit the previous allowed
         // user's working cache while it sees the invite-only screen.
         deactivateLocalUserScope()
@@ -139,8 +149,10 @@ export default function LooperAuthGate({ children }: Props) {
       setAllowedUser(allowlistRecord)
       setState('syncing-data')
       await bootstrapUserData(nextUser, allowlistRecord)
+      authorizedUserIdRef.current = nextUser.id
       setState('allowed')
     } catch (accessError) {
+      authorizedUserIdRef.current = null
       setError(accessError instanceof Error ? accessError.message : String(accessError))
       setState('error')
     }
@@ -160,10 +172,32 @@ export default function LooperAuthGate({ children }: Props) {
         // Subscribe first so a SIGNED_IN event emitted while an implicit OAuth,
         // confirmation, or recovery callback is being consumed cannot slip between
         // the initial session check and listener setup.
-        const stop = await subscribeToLooperAuth((nextUser) => {
-          if (!cancelled) {
-            void resolveAccess(nextUser)
+        const stop = await subscribeToLooperAuth((event, nextUser) => {
+          if (cancelled) {
+            return
           }
+
+          // getCurrentLooperUser() immediately below is the single source of truth
+          // for startup. Ignoring Supabase's initial callback avoids duplicate invite
+          // checks and bootstraps during first render.
+          if (event === 'INITIAL_SESSION') {
+            return
+          }
+
+          // Supabase may emit SIGNED_IN/TOKEN_REFRESHED again when a tab regains focus
+          // even though the golfer has not changed. Do not tear down the authenticated
+          // app for those same-user events; doing so remounts pages and loses route/view
+          // state. A real account change or sign-out still goes through resolveAccess.
+          if (
+            nextUser &&
+            authorizedUserIdRef.current === nextUser.id &&
+            !passwordResetFlowRef.current
+          ) {
+            setUser(nextUser)
+            return
+          }
+
+          void resolveAccess(nextUser)
         })
         if (cancelled) {
           stop()
@@ -177,6 +211,7 @@ export default function LooperAuthGate({ children }: Props) {
         }
       } catch (authError) {
         if (!cancelled) {
+          authorizedUserIdRef.current = null
           setError(authError instanceof Error ? authError.message : String(authError))
           setState('error')
         }
@@ -315,6 +350,7 @@ export default function LooperAuthGate({ children }: Props) {
       // the network write cannot complete.
       await flushPendingShotVariantSync()
       await signOutLooper()
+      authorizedUserIdRef.current = null
       deactivateLocalUserScope()
       setState('signed-out')
       setUser(null)

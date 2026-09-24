@@ -348,11 +348,11 @@ export const signOutLooper = async () => {
 }
 
 export const subscribeToLooperAuth = async (
-  callback: (user: LooperAuthUser | null) => void,
+  callback: (event: string, user: LooperAuthUser | null) => void,
 ) => {
   const client = await getSupabaseClient()
-  const { data } = client.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null)
+  const { data } = client.auth.onAuthStateChange((event, session) => {
+    callback(event, session?.user ?? null)
   })
   return () => data.subscription.unsubscribe()
 }
