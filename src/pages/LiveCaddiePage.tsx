@@ -31,6 +31,7 @@ import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
+import { useLiveCaddieOcr } from '../liveCaddie/useLiveCaddieOcr'
 import {
   activeBagClubIds,
   BAG_CONFIG_UPDATED_EVENT,
@@ -390,14 +391,14 @@ export default function LiveCaddiePage() {
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
   const [liveError, setLiveError] = useState<string | null>(null)
   const [connectionVersion, setConnectionVersion] = useState(0)
-  const [windMph] = useState(0)
-  const [windRelativeDeg] = useState(0)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
   const [showPracticeShots, setShowPracticeShots] = useState(false)
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const lastShotKeyRef = useRef<string | null>(null)
+  const ocr = useLiveCaddieOcr(ball, target)
+  const { windMph, windRelativeDeg } = ocr
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
 
@@ -516,11 +517,12 @@ export default function LiveCaddiePage() {
         liveMatchesHole ? liveSnapshot?.distanceToPinYds ?? null : null,
       )
     : null
-  const surface = liveMatchesHole && liveSnapshot?.surface
-    ? liveSnapshot.surface
-    : hole
-      ? classifyPoint(hole, ball).kind
-      : 'unknown'
+  const surface = ocr.surfaceOverride
+    ?? (liveMatchesHole && liveSnapshot?.surface
+      ? liveSnapshot.surface
+      : hole
+        ? classifyPoint(hole, ball).kind
+        : 'unknown')
   const nextShotNumber = liveMatchesHole
     ? liveSnapshot?.nextShotNumber ?? (surface === 'tee' ? 1 : null)
     : surface === 'tee'
@@ -545,7 +547,8 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
-  const surfaceOverride = liveMatchesHole ? liveSnapshot?.surface ?? null : null
+  const surfaceOverride = ocr.surfaceOverride
+    ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
 
   useEffect(() => {
     if (!hole) {
@@ -598,6 +601,9 @@ export default function LiveCaddiePage() {
         airAltitudeFt,
         airAltitudeSource,
         surfaceOverride,
+        lieUpDownDeg: ocr.lieUpDownDeg,
+        lieLeftRightDeg: ocr.lieLeftRightDeg,
+        lieSource: ocr.lieSource ?? undefined,
       },
       nowMs: Date.now(),
     })
@@ -618,6 +624,9 @@ export default function LiveCaddiePage() {
     airAltitudeFt,
     airAltitudeSource,
     surfaceOverride,
+    ocr.lieUpDownDeg,
+    ocr.lieLeftRightDeg,
+    ocr.lieSource,
   ])
 
   const recommendation = evaluations[0] ?? null
@@ -717,6 +726,8 @@ export default function LiveCaddiePage() {
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
+            <span>{ocr.windDisplay}</span>
+            <span>{ocr.lieDisplay}</span>
           </div>
         </section>
 
@@ -778,7 +789,7 @@ export default function LiveCaddiePage() {
                     evaluation={viewedEvaluation}
                     windMph={windMph}
                     windRelativeDeg={windRelativeDeg}
-                    hasLiveWind={false}
+                    hasLiveWind={ocr.hasLiveWind}
                     elevationDeltaFt={elevationDeltaFt}
                   />
 
