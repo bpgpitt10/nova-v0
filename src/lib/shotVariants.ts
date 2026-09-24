@@ -1,7 +1,10 @@
 import { syncShotVariantsToCloud } from '../cloud/shotVariantCloud'
 import type { Club } from './bagConfig'
 import {
+  getActiveLocalUserId,
+  persistCacheValueForUser,
   persistWorkingCacheValueForActiveUser,
+  SHOT_VARIANTS_DIRTY_STORAGE_KEY,
   SHOT_VARIANTS_STORAGE_KEY,
 } from './localUserScope'
 
@@ -41,6 +44,8 @@ const stockShotVariant: ShotVariant = {
   name: 'Full',
 }
 
+let pendingShotVariantSync: Promise<void> | null = null
+
 const readStoredShotVariants = () => {
   if (typeof window === 'undefined') {
     return []
@@ -72,6 +77,10 @@ const readStoredShotVariants = () => {
 export const getCustomShotVariants = () =>
   normalizeCustomShotVariants(readStoredShotVariants())
 
+export const flushPendingShotVariantSync = async () => {
+  await pendingShotVariantSync
+}
+
 export const saveCustomShotVariants = (
   variants: ShotVariant[],
   options: { syncCloud?: boolean } = {},
@@ -89,11 +98,39 @@ export const saveCustomShotVariants = (
     return
   }
 
-  void syncShotVariantsToCloud(normalized).then((result) => {
+  const userId = getActiveLocalUserId()
+  if (!userId) {
+    return
+  }
+
+  // Mark the edit dirty before starting any async work. If logout wins the race,
+  // the next bootstrap for this golfer uploads this newer local copy first rather
+  // than replacing it with an older cloud row.
+  window.localStorage.setItem(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
+  persistWorkingCacheValueForActiveUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, '1')
+
+  const syncPromise = syncShotVariantsToCloud(normalized, userId).then((result) => {
+    if (result.status === 'synced') {
+      persistCacheValueForUser(SHOT_VARIANTS_DIRTY_STORAGE_KEY, userId, null)
+      return
+    }
+
     if (result.status === 'failed') {
       console.warn('[Cloud Sync] shot variant sync failed; local copy retained', {
         error: result.error,
       })
+      return
+    }
+
+    console.info('[Cloud Sync] shot variant sync deferred; local copy retained', {
+      reason: result.reason,
+    })
+  })
+
+  pendingShotVariantSync = syncPromise
+  void syncPromise.finally(() => {
+    if (pendingShotVariantSync === syncPromise) {
+      pendingShotVariantSync = null
     }
   })
 }
