@@ -6,6 +6,13 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const artifactsRoot = path.join(repoRoot, 'artifacts', 'course-geometry')
+const greywolfEnvironmentPath = path.join(
+  repoRoot,
+  'public',
+  'course-geometry',
+  'greywolf',
+  'environment-v1.json',
+)
 const outputPath = path.join(repoRoot, 'src', 'courseGeometry', 'generatedRouteHoleHeadings.ts')
 
 const courses = {}
@@ -29,6 +36,25 @@ for (const entry of fs.readdirSync(artifactsRoot, { withFileTypes: true })) {
 
   if (headings.every((heading) => typeof heading === 'number')) {
     courses[manifest.courseId] = headings
+  }
+}
+
+// Greywolf predates the generic importer validation manifests, but its canonical
+// cached environment package already contains the same reviewed true-north
+// heading field for all 18 holes. Pull that source into the generated runtime
+// index so compass-referenced GSPro wind can be projected on Greywolf too.
+if (fs.existsSync(greywolfEnvironmentPath)) {
+  const greywolf = JSON.parse(fs.readFileSync(greywolfEnvironmentPath, 'utf8'))
+  const headings = Array.from({ length: 18 }, () => null)
+  for (const hole of Array.isArray(greywolf?.holes) ? greywolf.holes : []) {
+    const holeNumber = Number(hole?.number)
+    const heading = Number(hole?.headingDegreesTrue)
+    if (!Number.isInteger(holeNumber) || holeNumber < 1 || holeNumber > 18) continue
+    if (!Number.isFinite(heading)) continue
+    headings[holeNumber - 1] = heading
+  }
+  if (headings.every((heading) => typeof heading === 'number')) {
+    courses['greywolf-panorama-bc'] = headings
   }
 }
 
