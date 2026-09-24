@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -13,7 +14,7 @@ import opengolfcoach
 HOST = os.environ.get("OPEN_GOLF_COACH_HOST", "127.0.0.1")
 PORT = int(os.environ.get("OPEN_GOLF_COACH_PORT", "8787"))
 HELPER_SERVICE_NAME = "open-golf-coach-helper"
-HELPER_HEALTH_VERSION = "4"
+HELPER_HEALTH_VERSION = "5"
 
 WIND_CARDINAL_DEGREES = {
     "N": 0,
@@ -264,6 +265,54 @@ public static class LooperGsproLieWindow {
 }
 '''
 
+# Disposable corpus tester: OCR a supplied image file with the exact same
+# Windows.Media.Ocr engine used above. Historical minimap captures are already
+# cropped, so the file itself is the OCR input; production parsing is reused
+# after recognition.
+WINDOWS_FILE_OCR_SCRIPT = r'''
+$ErrorActionPreference = "Stop"
+$fileStream = $null
+try {
+  Add-Type -AssemblyName System.Runtime.WindowsRuntime
+  $imagePath = $env:LOOPER_OCR_TEST_IMAGE
+  if (-not $imagePath -or -not (Test-Path $imagePath)) {
+    throw "OCR test image was not found."
+  }
+
+  $null = [Windows.Storage.StorageFile, Windows.Storage, ContentType = WindowsRuntime]
+  $null = [Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
+  $null = [Windows.Foundation.IAsyncOperation`1, Windows.Foundation, ContentType = WindowsRuntime]
+  $null = [Windows.Graphics.Imaging.SoftwareBitmap, Windows.Foundation, ContentType = WindowsRuntime]
+  $null = [Windows.Storage.Streams.RandomAccessStream, Windows.Storage.Streams, ContentType = WindowsRuntime]
+
+  $getAwaiterBaseMethod = [WindowsRuntimeSystemExtensions].GetMember("GetAwaiter").Where({
+    $PSItem.GetParameters()[0].ParameterType.Name -eq "IAsyncOperation`1"
+  }, "First")[0]
+
+  function Await($AsyncTask, $ResultType) {
+    $getAwaiterBaseMethod.MakeGenericMethod($ResultType).Invoke($null, @($AsyncTask)).GetResult()
+  }
+
+  $ocrEngine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+  if (-not $ocrEngine) { throw "Windows OCR engine is unavailable for the current user profile." }
+
+  $storageFile = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($imagePath)) ([Windows.Storage.StorageFile])
+  $fileStream = Await ($storageFile.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+  $bitmapDecoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($fileStream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+  $softwareBitmap = Await ($bitmapDecoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+  $ocrResult = Await ($ocrEngine.RecognizeAsync($softwareBitmap)) ([Windows.Media.Ocr.OcrResult])
+
+  [PSCustomObject]@{
+    status = "ok"
+    rawText = $ocrResult.Text
+  } | ConvertTo-Json -Compress
+} catch {
+  [PSCustomObject]@{ status = "error"; note = $_.Exception.Message } | ConvertTo-Json -Compress
+} finally {
+  if ($fileStream) { try { $fileStream.Dispose() } catch {} }
+}
+'''
+
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -389,6 +438,82 @@ def parse_lie_ocr_text(raw_text: str) -> dict:
     }
 
 
+def _run_windows_ocr_script(script: str, timeout_seconds: int, env: dict | None = None) -> dict:
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        completed = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            creationflags=creation_flags,
+            check=False,
+            env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "note": "Windows OCR timed out."}
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "note": f"Windows OCR could not start: {exc}"}
+
+    output_lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if not output_lines:
+        detail = completed.stderr.strip() or f"PowerShell exit code {completed.returncode}"
+        return {"status": "error", "note": f"Windows OCR returned no payload: {detail}"}
+
+    try:
+        return json.loads(output_lines[-1])
+    except json.JSONDecodeError as exc:
+        return {
+            "status": "error",
+            "rawText": output_lines[-1],
+            "note": f"Windows OCR returned invalid JSON: {exc}",
+        }
+
+
+def read_ocr_test_image(raw_image: bytes, kind: str, content_type: str | None) -> dict:
+    if kind not in {"lie", "wind"}:
+        return {"status": "UNKNOWN", "observedAt": utc_now_iso(), "note": "Unknown OCR test kind."}
+    if os.name != "nt":
+        return {"status": "UNAVAILABLE", "observedAt": utc_now_iso(), "note": "OCR image testing is Windows only."}
+    if not raw_image:
+        return {"status": "UNKNOWN", "observedAt": utc_now_iso(), "note": "No image bytes were supplied."}
+
+    suffix = ".jpg" if content_type in {"image/jpeg", "image/jpg"} else ".png"
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="looper-ocr-test-", suffix=suffix, delete=False) as temp_file:
+            temp_file.write(raw_image)
+            temp_path = temp_file.name
+
+        env = os.environ.copy()
+        env["LOOPER_OCR_TEST_IMAGE"] = temp_path
+        capture = _run_windows_ocr_script(WINDOWS_FILE_OCR_SCRIPT, 12, env)
+        if capture.get("status") != "ok":
+            return {
+                "status": "UNAVAILABLE",
+                "observedAt": utc_now_iso(),
+                "rawText": capture.get("rawText"),
+                "note": capture.get("note") or "Image OCR failed.",
+            }
+
+        raw_text = str(capture.get("rawText") or "")
+        return parse_lie_ocr_text(raw_text) if kind == "lie" else parse_wind_ocr_text(raw_text)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
+
 def read_gspro_wind_hud() -> dict:
     if os.name != "nt":
         return {
@@ -403,56 +528,7 @@ def read_gspro_wind_hud() -> dict:
             "note": "GSPro HUD OCR is currently implemented for Windows only.",
         }
 
-    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    try:
-        completed = subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                WINDOWS_WIND_OCR_SCRIPT,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=8,
-            creationflags=creation_flags,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": "Windows HUD OCR timed out.",
-        }
-    except Exception as exc:  # noqa: BLE001
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": f"Windows HUD OCR could not start: {exc}",
-        }
-
-    output_lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    if not output_lines:
-        detail = completed.stderr.strip() or f"PowerShell exit code {completed.returncode}"
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": f"Windows HUD OCR returned no payload: {detail}",
-        }
-
-    try:
-        capture = json.loads(output_lines[-1])
-    except json.JSONDecodeError as exc:
-        return {
-            "status": "UNKNOWN",
-            "observedAt": utc_now_iso(),
-            "rawText": output_lines[-1],
-            "note": f"Windows HUD OCR returned invalid JSON: {exc}",
-        }
-
+    capture = _run_windows_ocr_script(WINDOWS_WIND_OCR_SCRIPT, 8)
     if capture.get("status") != "ok":
         return {
             "status": "UNAVAILABLE",
@@ -482,56 +558,7 @@ def read_gspro_lie_hud() -> dict:
             "note": "GSPro minimap lie OCR is currently implemented for Windows only.",
         }
 
-    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    try:
-        completed = subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                WINDOWS_LIE_OCR_SCRIPT,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=12,
-            creationflags=creation_flags,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": "Windows minimap lie OCR timed out.",
-        }
-    except Exception as exc:  # noqa: BLE001
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": f"Windows minimap lie OCR could not start: {exc}",
-        }
-
-    output_lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    if not output_lines:
-        detail = completed.stderr.strip() or f"PowerShell exit code {completed.returncode}"
-        return {
-            "status": "UNAVAILABLE",
-            "observedAt": utc_now_iso(),
-            "note": f"Windows minimap lie OCR returned no payload: {detail}",
-        }
-
-    try:
-        capture = json.loads(output_lines[-1])
-    except json.JSONDecodeError as exc:
-        return {
-            "status": "UNKNOWN",
-            "observedAt": utc_now_iso(),
-            "rawText": output_lines[-1],
-            "note": f"Windows minimap lie OCR returned invalid JSON: {exc}",
-        }
-
+    capture = _run_windows_ocr_script(WINDOWS_LIE_OCR_SCRIPT, 12)
     if capture.get("status") != "ok":
         return {
             "status": "UNAVAILABLE",
@@ -594,6 +621,7 @@ class OpenGolfCoachHandler(BaseHTTPRequestHandler):
                     "derive_endpoint": "/derive",
                     "wind_endpoint": "/wind",
                     "lie_endpoint": "/lie",
+                    "ocr_test_endpoint": "/ocr-test/{lie|wind}",
                 },
             )
             return
@@ -609,6 +637,14 @@ class OpenGolfCoachHandler(BaseHTTPRequestHandler):
         self._write_json(404, {"error": "not found"})
 
     def do_POST(self) -> None:
+        if self.path in {"/ocr-test/lie", "/ocr-test/wind"}:
+            content_length = int(self.headers.get("Content-Length", "0"))
+            raw_body = self.rfile.read(content_length)
+            kind = self.path.rsplit("/", 1)[-1]
+            payload = read_ocr_test_image(raw_body, kind, self.headers.get("Content-Type"))
+            self._write_json(200, payload)
+            return
+
         if self.path != "/derive":
             self._write_json(404, {"error": "not found"})
             return
