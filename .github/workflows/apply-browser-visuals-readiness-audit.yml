@@ -1,0 +1,44 @@
+name: Apply browser visuals readiness audit fixes
+
+on:
+  push:
+    branches:
+      - web-live-caddie-browser-visuals-v1
+    paths:
+      - tools/apply-browser-visuals-readiness-audit.py
+      - .github/workflows/apply-browser-visuals-readiness-audit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: ${{ !contains(github.event.head_commit.message, '[visual-readiness-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: web-live-caddie-browser-visuals-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply guarded readiness fixes
+        run: python tools/apply-browser-visuals-readiness-audit.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web app
+        run: npm run build
+      - name: Validate patch
+        run: |
+          git diff --check
+          test "$(git diff --name-only HEAD | grep -v '^tools/apply-browser-visuals-readiness-audit.py$' | grep -v '^.github/workflows/apply-browser-visuals-readiness-audit.yml$' | wc -l)" -eq 4
+          git diff --name-only HEAD
+      - name: Commit validated fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/adapters/browserGsproVisualCapture.ts src/liveCaddie/shotContextModel.ts src/liveCaddie/lieResponse.ts src/pages/LiveCaddiePage.tsx
+          git commit -m 'fix: harden browser GSPro visual capture for sim test [visual-readiness-applied]'
+          git push origin HEAD:web-live-caddie-browser-visuals-v1
