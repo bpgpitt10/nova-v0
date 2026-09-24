@@ -1,0 +1,58 @@
+name: Build Looper Windows Companion
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v2
+    paths:
+      - "helpers/looper_companion.py"
+      - "helpers/open_golf_coach_helper.py"
+      - "helpers/open_golf_coach_helper_lie_footer.py"
+      - "helpers/install_looper_companion.ps1"
+      - "helpers/install_looper_companion.cmd"
+      - "helpers/uninstall_looper_companion.ps1"
+      - ".github/workflows/build-looper-companion-windows.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller opengolfcoach
+
+      - name: Build Looper Companion
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --noconsole `
+            --name LooperCompanion `
+            --paths helpers `
+            helpers/looper_companion.py
+
+      - name: Assemble install package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package -Force | Out-Null
+          Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
+          Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
+          Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
+          Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
+
+      - name: Upload companion package
+        uses: actions/upload-artifact@v4
+        with:
+          name: looper-windows-companion
+          path: package/*
+          if-no-files-found: error
+          retention-days: 14
