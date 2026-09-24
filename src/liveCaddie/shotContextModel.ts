@@ -128,22 +128,24 @@ export const modelShotContext = (
       ? surfacePhysics.combined.offlineYds - physicsPrior.combined.offlineYds
       : 0
 
-  // Apply sidehill at the already-conditioned carry distance so the angular
-  // tendency becomes the correct lateral-center shift for this particular shot.
-  // Up/down lie does not modify carry in V0.
   const preLieCarryYds = stockCarry == null
     ? null
     : stockCarry + combinedAirborneCarryYds + surfaceCarryYds
-  const sidehillLieResponse = buildSidehillLieResponse({
-    club: baseline.club,
-    lieLeftRightDeg: context.lieLeftRightDeg,
-    carryYds: preLieCarryYds,
-  })
   const upDownLieResponse = buildUpDownLieResponse({
     launch: surfaceLaunch ?? launch,
     environment: flightEnvironment,
     lieUpDownDeg: context.lieUpDownDeg,
     stockCarryYds: stockCarry,
+  })
+  const physicalLieCarryYds = preLieCarryYds == null
+    ? null
+    : preLieCarryYds + (upDownLieResponse.status === 'ready' ? upDownLieResponse.carryDeltaYds : 0)
+  // Convert sidehill angle to yards at the final carry after wind, elevation,
+  // surface and the conservative fore/aft lie prior have all been applied.
+  const sidehillLieResponse = buildSidehillLieResponse({
+    club: baseline.club,
+    lieLeftRightDeg: context.lieLeftRightDeg,
+    carryYds: physicalLieCarryYds,
   })
 
   const appliedAdjustments = {

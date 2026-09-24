@@ -100,8 +100,8 @@ export const resolveSidehillClubLoftDeg = (
  * Therefore a positive GSPro Left lie creates a negative lateral shot-center
  * shift. The 0.50 gain is applied after the geometric calculation.
  *
- * Up/down lie is intentionally excluded here. It remains measurement-only until
- * we validate its carry/VLA response separately.
+ * Fore/aft lie is modeled separately below so the sidehill geometry remains
+ * isolated and independently calibratable.
  */
 export const buildSidehillLieResponse = ({
   club,

@@ -1,6 +1,5 @@
 import {
   dispatchGsproLieOcrObservation,
-  parseGsproLieRawText,
   type GsproLieOcrPayload,
 } from './gsproLieObservation'
 import {
@@ -59,7 +58,7 @@ type LooperDisplayMediaOptions = {
   audio: false
   preferCurrentTab?: boolean
   selfBrowserSurface?: 'exclude'
-  monitorTypeSurfaces?: 'exclude'
+  monitorTypeSurfaces?: 'include' | 'exclude'
   surfaceSwitching?: 'exclude'
 }
 
@@ -135,15 +134,7 @@ const loadTesseract = () => {
     const existingScript = document.querySelector<HTMLScriptElement>(
       `script[data-looper-tesseract="${TESSERACT_VERSION}"]`,
     )
-    if (existingScript) {
-      existingScript.addEventListener('load', finish, { once: true })
-      existingScript.addEventListener(
-        'error',
-        () => reject(new Error('Could not load browser OCR.')),
-        { once: true },
-      )
-      return
-    }
+    if (existingScript) existingScript.remove()
 
     const script = document.createElement('script')
     script.src = TESSERACT_SCRIPT_URL
@@ -245,24 +236,85 @@ const parseWindText = (rawText: string, confidence: number | null): GsproWindOcr
   }
 }
 
-const liePayloadFromText = (
+type LieAxisParse = {
+  value: number | null
+  canonical: string | null
+}
+
+const parseLieAxisComponent = (
   rawText: string,
-  confidence: number | null,
+  positive: 'UP' | 'RIGHT',
+  negative: 'DOWN' | 'LEFT',
+): LieAxisParse => {
+  const compact = rawText.toUpperCase().replace(/\s+/g, '').replace(',', '.')
+  const decimalMatch = compact.match(/(\d{1,2})\.(\d)/)
+  let value = decimalMatch ? Number(`${decimalMatch[1]}.${decimalMatch[2]}`) : null
+
+  // The proven Windows reader deliberately accepts a flat lie even when OCR
+  // loses the direction word. Do the same here, but never interpret a dropped
+  // decimal on a non-zero number (e.g. 3.9 -> 39) as a valid angle.
+  if (value == null) {
+    const withoutLabels = compact
+      .replaceAll(positive, '')
+      .replaceAll(negative, '')
+      .replace(/[°ºO-]/g, '')
+    if (withoutLabels === '0' || withoutLabels === '00' || withoutLabels === '0.') value = 0
+  }
+  if (value == null || !Number.isFinite(value) || value < 0 || value > 60) {
+    return { value: null, canonical: null }
+  }
+
+  let direction: string | null = compact.includes(positive)
+    ? positive
+    : compact.includes(negative)
+      ? negative
+      : null
+  if (value === 0 && direction == null) direction = positive
+  if (!direction) return { value: null, canonical: null }
+
+  const signed = direction === positive ? value : -value
+  return {
+    value: Math.round(signed * 10) / 10,
+    canonical: `${value.toFixed(1)} ${direction}`,
+  }
+}
+
+const axisCrop = (footer: CropSpec, offset: number, width: number): CropSpec => ({
+  ...footer,
+  x: footer.x + footer.width * offset,
+  width: footer.width * width,
+})
+
+const liePayloadFromComponents = (
+  longitudinalText: string,
+  longitudinalConfidence: number | null,
+  lateralText: string,
+  lateralConfidence: number | null,
   side: 'right' | 'left',
 ): GsproLieOcrPayload => {
-  const parsed = parseGsproLieRawText(rawText)
-  const ready = parsed.upDownDegrees != null && parsed.leftRightDegrees != null
+  const longitudinal = parseLieAxisComponent(longitudinalText, 'UP', 'DOWN')
+  const lateral = parseLieAxisComponent(lateralText, 'RIGHT', 'LEFT')
+  const confidenceValues = [longitudinalConfidence, lateralConfidence].filter(
+    (value): value is number => value != null && Number.isFinite(value),
+  )
+  const confidence = confidenceValues.length > 0 ? Math.min(...confidenceValues) : null
+  const canonicalParts = [longitudinal.canonical, lateral.canonical].filter(Boolean)
+  const rawText = canonicalParts.length > 0
+    ? canonicalParts.join(' ')
+    : `LONG: ${longitudinalText} LAT: ${lateralText}`
+  const ready = longitudinal.value != null && lateral.value != null
+
   return {
     status: ready ? 'READY' : 'UNKNOWN',
-    surface: parsed.surface,
-    upDownDegrees: parsed.upDownDegrees,
-    leftRightDegrees: parsed.leftRightDegrees,
+    surface: null,
+    upDownDegrees: longitudinal.value,
+    leftRightDegrees: lateral.value,
     observedAt: new Date().toISOString(),
     confidence,
     rawText,
     note: ready
-      ? `Browser OCR read the ${side}-side GSPro minimap lie footer.`
-      : `Browser OCR did not find both lie axes in the ${side}-side minimap footer.`,
+      ? `Browser OCR read the ${side}-side GSPro minimap lie footer using split axis crops.`
+      : `Browser OCR did not find both lie axes in the ${side}-side split minimap footer.`,
   }
 }
 
@@ -296,7 +348,7 @@ export const connectToBrowserGsproVisualCapture = async ({
     audio: false,
     preferCurrentTab: false,
     selfBrowserSurface: 'exclude',
-    monitorTypeSurfaces: 'exclude',
+    monitorTypeSurfaces: 'include',
     surfaceSwitching: 'exclude',
   }
 
@@ -377,10 +429,11 @@ export const connectToBrowserGsproVisualCapture = async ({
     const recognize = async (
       crop: CropSpec,
       whitelist: string,
+      pageSegMode = '6',
     ) => {
       if (!worker) throw new Error('Browser OCR worker is unavailable.')
       await worker.setParameters({
-        tessedit_pageseg_mode: '6',
+        tessedit_pageseg_mode: pageSegMode,
         tessedit_char_whitelist: whitelist,
       })
       return worker.recognize(drawCrop(video, crop))
@@ -396,35 +449,36 @@ export const connectToBrowserGsproVisualCapture = async ({
           normalizedConfidence(windResult.data.confidence),
         ))
 
-        const rightLieResult = await recognize(
-          RIGHT_LIE_CROP,
-          '0123456789.,°ºUPDOWNRIGHTLEFT- ',
-        )
-        let liePayload = liePayloadFromText(
-          rightLieResult.data.text ?? '',
-          normalizedConfidence(rightLieResult.data.confidence),
-          'right',
-        )
+        const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {
+          // Same overlapping 56% / 44% split as the proven Windows reader.
+          const longitudinalResult = await recognize(
+            axisCrop(footer, 0, 0.56),
+            '0123456789.,°ºUPDOWNO- ',
+            '7',
+          )
+          const lateralResult = await recognize(
+            axisCrop(footer, 0.44, 0.56),
+            '0123456789.,°ºRIGHTLEFTO- ',
+            '7',
+          )
+          return liePayloadFromComponents(
+            longitudinalResult.data.text ?? '',
+            normalizedConfidence(longitudinalResult.data.confidence),
+            lateralResult.data.text ?? '',
+            normalizedConfidence(lateralResult.data.confidence),
+            side,
+          )
+        }
 
+        let liePayload = await readLieCandidate(RIGHT_LIE_CROP, 'right')
         if (liePayload.status !== 'READY') {
-          const leftLieResult = await recognize(
-            LEFT_LIE_CROP,
-            '0123456789.,°ºUPDOWNRIGHTLEFT- ',
-          )
-          const leftPayload = liePayloadFromText(
-            leftLieResult.data.text ?? '',
-            normalizedConfidence(leftLieResult.data.confidence),
-            'left',
-          )
+          const leftPayload = await readLieCandidate(LEFT_LIE_CROP, 'left')
           if (leftPayload.status === 'READY') liePayload = leftPayload
           else {
             liePayload = {
               ...liePayload,
-              rawText: [
-                `RIGHT: ${rightLieResult.data.text ?? ''}`,
-                `LEFT: ${leftLieResult.data.text ?? ''}`,
-              ].join('\n'),
-              note: 'Browser OCR did not find both lie axes in either minimap footer.',
+              rawText: `RIGHT: ${liePayload.rawText ?? ''} | LEFT: ${leftPayload.rawText ?? ''}`,
+              note: 'Browser OCR did not find both lie axes in either split minimap footer.',
             }
           }
         }

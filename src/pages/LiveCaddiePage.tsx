@@ -857,7 +857,7 @@ export default function LiveCaddiePage() {
             type="button"
             onClick={() => void connectGsproVisuals()}
             disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
-            title="Share the GSPro application window so Looper can read wind and lie locally in this browser."
+            title="Share the GSPro application window. If window capture is blank, reconnect and share the full GSPro display instead."
           >
             {visualCaptureStatus === 'connected'
               ? 'Reconnect GSPro Visuals'
@@ -874,9 +874,12 @@ export default function LiveCaddiePage() {
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
-            {visualCaptureStatus === 'connected'
-              ? <span>Visual OCR connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
-              : null}
+            {visualCaptureStatus === 'connected' ? (
+              <>
+                <span>Visual capture connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
+                <span>Wind OCR {windObservation?.status ?? 'WAITING'} · Lie OCR {lieObservation?.status ?? 'WAITING'}</span>
+              </>
+            ) : null}
           </div>
         </section>
 
