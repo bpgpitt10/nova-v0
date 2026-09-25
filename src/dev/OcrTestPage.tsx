@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   connectToBrowserGsproVisualCapture,
   type BrowserGsproVisualCaptureConnection,
@@ -16,6 +16,7 @@ type OcrMode = 'lie' | 'wind'
 
 type TestResult = {
   filename: string
+  mode: OcrMode
   status: string
   rawText: string
   parsed: string
@@ -24,28 +25,19 @@ type TestResult = {
 
 type CanvasTrack = MediaStreamTrack & { requestFrame?: () => void }
 
-type FolderFileHandle = {
-  kind: 'file'
-  name: string
-  getFile: () => Promise<File>
-}
+const RESULTS_STORAGE_KEY = 'looper-ocr-test-results-v1'
 
-type FolderDirectoryHandle = {
-  kind: 'directory'
-  name: string
-  values: () => AsyncIterableIterator<FolderFileHandle | FolderDirectoryHandle>
+const loadSavedResults = (): TestResult[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(RESULTS_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
-
-type DirectoryPickerWindow = Window & {
-  showDirectoryPicker?: () => Promise<FolderDirectoryHandle>
-}
-
-type CorpusFile = {
-  file: File
-  path: string
-}
-
-const SAMPLE_SIZE = 40
 
 const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
   const bitmap = await createImageBitmap(file)
@@ -128,7 +120,7 @@ const formatWind = (payload: GsproWindOcrPayload) => ({
   parsed: `${payload.speedMph == null ? '?' : payload.speedMph} MPH | ${directionLabel(payload.directionDegrees)}`,
 })
 
-const runScreenshot = async (file: File, path: string, mode: OcrMode): Promise<TestResult> => {
+const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => {
   const canvas = await makeCaptureCanvas(file, mode)
   const stream = canvas.captureStream(1)
   const track = stream.getVideoTracks()[0] as CanvasTrack | undefined
@@ -157,7 +149,7 @@ const runScreenshot = async (file: File, path: string, mode: OcrMode): Promise<T
     const formatted = mode === 'lie'
       ? formatLie(payload as GsproLieOcrPayload)
       : formatWind(payload as GsproWindOcrPayload)
-    return { filename: path, ...formatted }
+    return { filename: file.name, mode, ...formatted }
   } finally {
     connection?.disconnect()
     stream.getTracks().forEach((candidate) => candidate.stop())
@@ -169,85 +161,49 @@ const runScreenshot = async (file: File, path: string, mode: OcrMode): Promise<T
   }
 }
 
-const collectImages = async (
-  directory: FolderDirectoryHandle,
-  prefix = directory.name,
-): Promise<CorpusFile[]> => {
-  const files: CorpusFile[] = []
-  for await (const entry of directory.values()) {
-    const path = `${prefix}/${entry.name}`
-    if (entry.kind === 'directory') {
-      files.push(...await collectImages(entry, path))
-      continue
-    }
-    if (!/\.(png|jpe?g)$/i.test(entry.name)) continue
-    files.push({ file: await entry.getFile(), path })
-  }
-  return files.sort((a, b) => a.path.localeCompare(b.path))
-}
-
-const sampleEvenly = (files: CorpusFile[], limit: number) => {
-  if (files.length <= limit) return files
-  return Array.from({ length: limit }, (_, index) => {
-    const fileIndex = Math.round(index * (files.length - 1) / (limit - 1))
-    return files[fileIndex]
-  })
-}
-
 export default function OcrTestPage() {
   const [mode, setMode] = useState<OcrMode>('lie')
-  const [results, setResults] = useState<TestResult[]>([])
+  const [results, setResults] = useState<TestResult[]>(loadSavedResults)
   const [running, setRunning] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
 
-  const runFiles = async (files: CorpusFile[], totalFound: number) => {
-    if (files.length === 0 || running) return
-    setRunning(true)
-    setResults([])
-    setMessage(totalFound > files.length
-      ? `${totalFound} images found · running ${files.length} evenly spaced samples`
-      : `${files.length} images found`)
-    const next: TestResult[] = []
-
-    for (const item of files) {
-      try {
-        next.push(await runScreenshot(item.file, item.path, mode))
-      } catch (error) {
-        next.push({
-          filename: item.path,
-          status: 'ERROR',
-          rawText: '',
-          parsed: '',
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-      setResults([...next])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RESULTS_STORAGE_KEY, JSON.stringify(results))
+    } catch {
+      // Persistence is a convenience only; OCR testing should still work without it.
     }
+  }, [results])
 
+  const runFiles = async (files: FileList | null) => {
+    if (!files?.length || running) return
+    const imageFiles = Array.from(files).filter((file) => /\.(png|jpe?g)$/i.test(file.name))
+    if (imageFiles.length === 0) return
+
+    setRunning(true)
+    for (const file of imageFiles) {
+      try {
+        const result = await runScreenshot(file, mode)
+        setResults((current) => [...current, result])
+      } catch (error) {
+        setResults((current) => [
+          ...current,
+          {
+            filename: file.name,
+            mode,
+            status: 'ERROR',
+            rawText: '',
+            parsed: '',
+            error: error instanceof Error ? error.message : String(error),
+          },
+        ])
+      }
+    }
     setRunning(false)
   }
 
-  const chooseFolder = async () => {
+  const clearResults = () => {
     if (running) return
-    setMessage(null)
-    const picker = (window as DirectoryPickerWindow).showDirectoryPicker
-    if (!picker) {
-      setMessage('Folder selection requires desktop Chrome or Edge.')
-      return
-    }
-
-    try {
-      const directory = await picker.call(window)
-      const files = await collectImages(directory)
-      if (files.length === 0) {
-        setMessage('No PNG/JPG images found in that folder or its subfolders.')
-        return
-      }
-      await runFiles(sampleEvenly(files, SAMPLE_SIZE), files.length)
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      setMessage(error instanceof Error ? error.message : String(error))
-    }
+    setResults([])
   }
 
   return (
@@ -255,10 +211,10 @@ export default function OcrTestPage() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Pick the top-level screenshot folder once. Looper scans every subfolder, then runs a small evenly spaced sample through the exact Live Caddie browser OCR path.
+          Add screenshots one at a time. Each result stays in the table and is saved in this browser until you clear it.
         </p>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0', flexWrap: 'wrap' }}>
           <select
             value={mode}
             disabled={running}
@@ -269,17 +225,31 @@ export default function OcrTestPage() {
             <option value="wind">Wind / full screenshot</option>
           </select>
 
+          <label style={{ padding: '10px 16px', borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer' }}>
+            {running ? 'Reading…' : 'Add image'}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg"
+              multiple
+              disabled={running}
+              style={{ display: 'none' }}
+              onChange={(event) => {
+                void runFiles(event.target.files)
+                event.target.value = ''
+              }}
+            />
+          </label>
+
           <button
             type="button"
-            disabled={running}
-            onClick={() => void chooseFolder()}
-            style={{ padding: '10px 16px', border: 0, borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer', fontSize: 16 }}
+            disabled={running || results.length === 0}
+            onClick={clearResults}
+            style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #536856', background: 'transparent', color: '#fff', cursor: running || results.length === 0 ? 'default' : 'pointer' }}
           >
-            {running ? `Running ${Math.min(results.length + 1, SAMPLE_SIZE)} of ${SAMPLE_SIZE}…` : 'Choose folder'}
+            Clear results
           </button>
 
-          {message ? <span>{message}</span> : null}
-          {results.length > 0 ? <span>{results.length} done</span> : null}
+          <span>{results.length} saved</span>
         </div>
 
         {results.length > 0 ? (
@@ -287,7 +257,9 @@ export default function OcrTestPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ background: '#17231a' }}>
                 <tr>
+                  <th style={{ padding: 12 }}>#</th>
                   <th style={{ padding: 12 }}>File</th>
+                  <th style={{ padding: 12 }}>Type</th>
                   <th style={{ padding: 12 }}>Status</th>
                   <th style={{ padding: 12 }}>Raw OCR</th>
                   <th style={{ padding: 12 }}>Parsed</th>
@@ -295,8 +267,10 @@ export default function OcrTestPage() {
               </thead>
               <tbody>
                 {results.map((result, index) => (
-                  <tr key={`${result.filename}-${index}`} style={{ borderTop: '1px solid #344436' }}>
+                  <tr key={`${index}-${result.filename}`} style={{ borderTop: '1px solid #344436' }}>
+                    <td style={{ padding: 12 }}>{index + 1}</td>
                     <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{result.filename}</td>
+                    <td style={{ padding: 12 }}>{result.mode === 'lie' ? 'Lie' : 'Wind'}</td>
                     <td style={{ padding: 12, fontWeight: 800 }}>{result.status}</td>
                     <td style={{ padding: 12, minWidth: 260, whiteSpace: 'pre-wrap' }}>{result.error || result.rawText || '—'}</td>
                     <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{result.parsed || '—'}</td>
