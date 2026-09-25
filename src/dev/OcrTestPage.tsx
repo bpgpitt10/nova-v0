@@ -45,6 +45,8 @@ type CorpusFile = {
   path: string
 }
 
+const SAMPLE_SIZE = 40
+
 const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
   const bitmap = await createImageBitmap(file)
   const isSavedMinimap = mode === 'lie'
@@ -61,9 +63,6 @@ const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
     return canvas
   }
 
-  // Historical minimap-probe images are cropped out of the full GSPro screen.
-  // Put them back into the production right-side minimap position so the exact
-  // Live Caddie crop/preprocessing/OCR code can run unchanged.
   const canvas = document.createElement('canvas')
   canvas.width = 3840
   canvas.height = 2160
@@ -187,17 +186,27 @@ const collectImages = async (
   return files.sort((a, b) => a.path.localeCompare(b.path))
 }
 
+const sampleEvenly = (files: CorpusFile[], limit: number) => {
+  if (files.length <= limit) return files
+  return Array.from({ length: limit }, (_, index) => {
+    const fileIndex = Math.round(index * (files.length - 1) / (limit - 1))
+    return files[fileIndex]
+  })
+}
+
 export default function OcrTestPage() {
   const [mode, setMode] = useState<OcrMode>('lie')
   const [results, setResults] = useState<TestResult[]>([])
   const [running, setRunning] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const runFiles = async (files: CorpusFile[]) => {
+  const runFiles = async (files: CorpusFile[], totalFound: number) => {
     if (files.length === 0 || running) return
     setRunning(true)
     setResults([])
-    setMessage(`${files.length} images found`)
+    setMessage(totalFound > files.length
+      ? `${totalFound} images found · running ${files.length} evenly spaced samples`
+      : `${files.length} images found`)
     const next: TestResult[] = []
 
     for (const item of files) {
@@ -234,7 +243,7 @@ export default function OcrTestPage() {
         setMessage('No PNG/JPG images found in that folder or its subfolders.')
         return
       }
-      await runFiles(files)
+      await runFiles(sampleEvenly(files, SAMPLE_SIZE), files.length)
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setMessage(error instanceof Error ? error.message : String(error))
@@ -246,7 +255,7 @@ export default function OcrTestPage() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Pick the top-level screenshot folder once. Looper walks every subfolder and replays every PNG/JPG through the exact Live Caddie browser OCR path.
+          Pick the top-level screenshot folder once. Looper scans every subfolder, then runs a small evenly spaced sample through the exact Live Caddie browser OCR path.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0' }}>
@@ -266,7 +275,7 @@ export default function OcrTestPage() {
             onClick={() => void chooseFolder()}
             style={{ padding: '10px 16px', border: 0, borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer', fontSize: 16 }}
           >
-            {running ? `Running ${results.length + 1}…` : 'Choose folder'}
+            {running ? `Running ${Math.min(results.length + 1, SAMPLE_SIZE)} of ${SAMPLE_SIZE}…` : 'Choose folder'}
           </button>
 
           {message ? <span>{message}</span> : null}
