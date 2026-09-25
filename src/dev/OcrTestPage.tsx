@@ -24,7 +24,26 @@ type TestResult = {
 
 type CanvasTrack = MediaStreamTrack & { requestFrame?: () => void }
 
-const displayName = (file: File) => file.webkitRelativePath || file.name
+type FolderFileHandle = {
+  kind: 'file'
+  name: string
+  getFile: () => Promise<File>
+}
+
+type FolderDirectoryHandle = {
+  kind: 'directory'
+  name: string
+  values: () => AsyncIterableIterator<FolderFileHandle | FolderDirectoryHandle>
+}
+
+type DirectoryPickerWindow = Window & {
+  showDirectoryPicker?: () => Promise<FolderDirectoryHandle>
+}
+
+type CorpusFile = {
+  file: File
+  path: string
+}
 
 const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
   const bitmap = await createImageBitmap(file)
@@ -110,7 +129,7 @@ const formatWind = (payload: GsproWindOcrPayload) => ({
   parsed: `${payload.speedMph == null ? '?' : payload.speedMph} MPH | ${directionLabel(payload.directionDegrees)}`,
 })
 
-const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => {
+const runScreenshot = async (file: File, path: string, mode: OcrMode): Promise<TestResult> => {
   const canvas = await makeCaptureCanvas(file, mode)
   const stream = canvas.captureStream(1)
   const track = stream.getVideoTracks()[0] as CanvasTrack | undefined
@@ -139,7 +158,7 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
     const formatted = mode === 'lie'
       ? formatLie(payload as GsproLieOcrPayload)
       : formatWind(payload as GsproWindOcrPayload)
-    return { filename: displayName(file), ...formatted }
+    return { filename: path, ...formatted }
   } finally {
     connection?.disconnect()
     stream.getTracks().forEach((candidate) => candidate.stop())
@@ -151,26 +170,42 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
   }
 }
 
+const collectImages = async (
+  directory: FolderDirectoryHandle,
+  prefix = directory.name,
+): Promise<CorpusFile[]> => {
+  const files: CorpusFile[] = []
+  for await (const entry of directory.values()) {
+    const path = `${prefix}/${entry.name}`
+    if (entry.kind === 'directory') {
+      files.push(...await collectImages(entry, path))
+      continue
+    }
+    if (!/\.(png|jpe?g)$/i.test(entry.name)) continue
+    files.push({ file: await entry.getFile(), path })
+  }
+  return files.sort((a, b) => a.path.localeCompare(b.path))
+}
+
 export default function OcrTestPage() {
   const [mode, setMode] = useState<OcrMode>('lie')
   const [results, setResults] = useState<TestResult[]>([])
   const [running, setRunning] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
 
-  const runFiles = async (files: FileList | null) => {
-    if (!files?.length || running) return
-    const imageFiles = Array.from(files).filter((file) => /\.(png|jpe?g)$/i.test(file.name))
-    if (imageFiles.length === 0) return
-
+  const runFiles = async (files: CorpusFile[]) => {
+    if (files.length === 0 || running) return
     setRunning(true)
     setResults([])
+    setMessage(`${files.length} images found`)
     const next: TestResult[] = []
 
-    for (const file of imageFiles) {
+    for (const item of files) {
       try {
-        next.push(await runScreenshot(file, mode))
+        next.push(await runScreenshot(item.file, item.path, mode))
       } catch (error) {
         next.push({
-          filename: displayName(file),
+          filename: item.path,
           status: 'ERROR',
           rawText: '',
           parsed: '',
@@ -183,12 +218,35 @@ export default function OcrTestPage() {
     setRunning(false)
   }
 
+  const chooseFolder = async () => {
+    if (running) return
+    setMessage(null)
+    const picker = (window as DirectoryPickerWindow).showDirectoryPicker
+    if (!picker) {
+      setMessage('Folder selection requires desktop Chrome or Edge.')
+      return
+    }
+
+    try {
+      const directory = await picker.call(window)
+      const files = await collectImages(directory)
+      if (files.length === 0) {
+        setMessage('No PNG/JPG images found in that folder or its subfolders.')
+        return
+      }
+      await runFiles(files)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   return (
     <main style={{ minHeight: '100vh', background: '#0e1710', color: '#fff', padding: 32, fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Pick the top-level screenshot folder once. Every PNG/JPG underneath its subfolders is replayed through the exact Live Caddie browser OCR path.
+          Pick the top-level screenshot folder once. Looper walks every subfolder and replays every PNG/JPG through the exact Live Caddie browser OCR path.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0' }}>
@@ -202,22 +260,16 @@ export default function OcrTestPage() {
             <option value="wind">Wind / full screenshot</option>
           </select>
 
-          <label style={{ padding: '10px 16px', borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer' }}>
+          <button
+            type="button"
+            disabled={running}
+            onClick={() => void chooseFolder()}
+            style={{ padding: '10px 16px', border: 0, borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer', fontSize: 16 }}
+          >
             {running ? `Running ${results.length + 1}…` : 'Choose folder'}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              multiple
-              disabled={running}
-              style={{ display: 'none' }}
-              {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
-              onChange={(event) => {
-                void runFiles(event.target.files)
-                event.target.value = ''
-              }}
-            />
-          </label>
+          </button>
 
+          {message ? <span>{message}</span> : null}
           {results.length > 0 ? <span>{results.length} done</span> : null}
         </div>
 
