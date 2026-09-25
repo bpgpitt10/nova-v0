@@ -69,7 +69,15 @@ const openDb = () =>
     request.onerror = () => reject(request.error ?? new Error('Could not open OCR test storage.'))
   })
 
-const toMeta = ({ blob: _blob, ...meta }: StoredImageRecord): SavedImageMeta => meta
+const toMeta = (record: StoredImageRecord): SavedImageMeta => ({
+  id: record.id,
+  filename: record.filename,
+  mode: record.mode,
+  mimeType: record.mimeType,
+  lastModified: record.lastModified,
+  addedAt: record.addedAt,
+  result: record.result,
+})
 
 const loadSavedImages = async (): Promise<SavedImageMeta[]> => {
   const db = await openDb()
@@ -78,9 +86,7 @@ const loadSavedImages = async (): Promise<SavedImageMeta[]> => {
     const records = await requestToPromise(
       transaction.objectStore(IMAGE_STORE).getAll() as IDBRequest<StoredImageRecord[]>,
     )
-    return records
-      .sort((a, b) => a.addedAt - b.addedAt)
-      .map(toMeta)
+    return records.sort((a, b) => a.addedAt - b.addedAt).map(toMeta)
   } finally {
     db.close()
   }
@@ -123,14 +129,13 @@ const loadImageRecord = async (id: string): Promise<StoredImageRecord | null> =>
 }
 
 const saveResult = async (id: string, result: TestResult): Promise<SavedImageMeta> => {
+  const record = await loadImageRecord(id)
+  if (!record) throw new Error('Saved OCR test image could not be found.')
+  const updated: StoredImageRecord = { ...record, result }
   const db = await openDb()
   try {
     const transaction = db.transaction(IMAGE_STORE, 'readwrite')
-    const store = transaction.objectStore(IMAGE_STORE)
-    const record = await requestToPromise(store.get(id) as IDBRequest<StoredImageRecord | undefined>)
-    if (!record) throw new Error('Saved OCR test image could not be found.')
-    const updated: StoredImageRecord = { ...record, result }
-    store.put(updated)
+    transaction.objectStore(IMAGE_STORE).put(updated)
     await transactionToPromise(transaction)
     return toMeta(updated)
   } finally {
@@ -174,10 +179,7 @@ const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   const targetWidth = Math.round(canvas.width * 0.149)
-  const targetHeight = Math.min(
-    canvas.height,
-    Math.round(bitmap.height * (targetWidth / bitmap.width)),
-  )
+  const targetHeight = Math.min(canvas.height, Math.round(bitmap.height * (targetWidth / bitmap.width)))
   const x = Math.round(canvas.width * 0.848)
   const y = canvas.height - targetHeight
   context.drawImage(bitmap, x, y, targetWidth, targetHeight)
@@ -240,9 +242,7 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
   const ownDescriptor = Object.getOwnPropertyDescriptor(mediaDevices, 'getDisplayMedia')
   let connection: BrowserGsproVisualCaptureConnection | null = null
 
-  const eventName = mode === 'lie'
-    ? GSPRO_LIE_OCR_BROWSER_EVENT
-    : GSPRO_WIND_OCR_BROWSER_EVENT
+  const eventName = mode === 'lie' ? GSPRO_LIE_OCR_BROWSER_EVENT : GSPRO_WIND_OCR_BROWSER_EVENT
   const resultPromise = mode === 'lie'
     ? waitForPayload<GsproLieOcrPayload>(eventName)
     : waitForPayload<GsproWindOcrPayload>(eventName)
@@ -305,7 +305,6 @@ export default function OcrTestPage() {
     } catch {
       // Ignore legacy cleanup failures.
     }
-
     void navigator.storage?.persist?.().catch(() => false)
 
     return () => {
@@ -337,12 +336,12 @@ export default function OcrTestPage() {
     if (imageFiles.length === 0) return
 
     setRunning(true)
-    setMessage('Saving screenshot…')
     try {
       for (const file of imageFiles) {
+        setMessage(`Saving ${file.name}…`)
         const saved = await saveImage(file, mode)
         setSavedImages((current) => [...current, saved])
-        setMessage(`Saved ${savedImages.length + 1} screenshot${savedImages.length === 0 ? '' : 's'} · reading OCR…`)
+        setMessage(`${file.name} saved · reading OCR…`)
         const record = await loadImageRecord(saved.id)
         if (!record) throw new Error('Saved screenshot could not be reloaded.')
         await processSavedImage(record)
@@ -366,7 +365,7 @@ export default function OcrTestPage() {
         setMessage(`Re-running ${index + 1} of ${savedImages.length}: ${meta.filename}`)
         const record = await loadImageRecord(meta.id)
         if (!record) {
-          replaceSavedImage(await saveResult(meta.id, errorResult(meta.filename, meta.mode, 'Saved image bytes are missing.')))
+          replaceSavedImage({ ...meta, result: errorResult(meta.filename, meta.mode, 'Saved image bytes are missing.') })
           continue
         }
         await processSavedImage(record)
