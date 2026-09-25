@@ -35,13 +35,37 @@ type StoredImageRecord = {
 }
 
 type SavedImageMeta = Omit<StoredImageRecord, 'blob'>
-
 type CanvasTrack = MediaStreamTrack & { requestFrame?: () => void }
+
+type CorpusManifestImage = {
+  id: string
+  filename: string
+  mode: OcrMode
+  mimeType: string
+  lastModified: number
+  addedAt: number
+  imagePath: string
+  result?: TestResult
+}
+
+type CorpusManifest = {
+  format: 'looper-ocr-corpus'
+  version: 1
+  exportedAt: string
+  images: CorpusManifestImage[]
+}
+
+type ZipEntry = {
+  name: string
+  data: Uint8Array
+}
 
 const DB_NAME = 'looper-ocr-test-v1'
 const DB_VERSION = 1
 const IMAGE_STORE = 'images'
 const LEGACY_RESULTS_STORAGE_KEY = 'looper-ocr-test-results-v1'
+const textEncoder = new TextEncoder()
+const textDecoder = new TextDecoder()
 
 const requestToPromise = <T,>(request: IDBRequest<T>) =>
   new Promise<T>((resolve, reject) => {
@@ -79,18 +103,21 @@ const toMeta = (record: StoredImageRecord): SavedImageMeta => ({
   result: record.result,
 })
 
-const loadSavedImages = async (): Promise<SavedImageMeta[]> => {
+const loadAllImageRecords = async (): Promise<StoredImageRecord[]> => {
   const db = await openDb()
   try {
     const transaction = db.transaction(IMAGE_STORE, 'readonly')
     const records = await requestToPromise(
       transaction.objectStore(IMAGE_STORE).getAll() as IDBRequest<StoredImageRecord[]>,
     )
-    return records.sort((a, b) => a.addedAt - b.addedAt).map(toMeta)
+    return records.sort((a, b) => a.addedAt - b.addedAt)
   } finally {
     db.close()
   }
 }
+
+const loadSavedImages = async (): Promise<SavedImageMeta[]> =>
+  (await loadAllImageRecords()).map(toMeta)
 
 const saveImage = async (file: File, mode: OcrMode): Promise<SavedImageMeta> => {
   const record: StoredImageRecord = {
@@ -110,6 +137,18 @@ const saveImage = async (file: File, mode: OcrMode): Promise<SavedImageMeta> => 
     transaction.objectStore(IMAGE_STORE).put(record)
     await transactionToPromise(transaction)
     return toMeta(record)
+  } finally {
+    db.close()
+  }
+}
+
+const saveImportedRecords = async (records: StoredImageRecord[]) => {
+  const db = await openDb()
+  try {
+    const transaction = db.transaction(IMAGE_STORE, 'readwrite')
+    const store = transaction.objectStore(IMAGE_STORE)
+    for (const record of records) store.put(record)
+    await transactionToPromise(transaction)
   } finally {
     db.close()
   }
@@ -152,6 +191,129 @@ const clearSavedImages = async () => {
   } finally {
     db.close()
   }
+}
+
+const crcTable = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n += 1) {
+    let c = n
+    for (let k = 0; k < 8; k += 1) c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    table[n] = c >>> 0
+  }
+  return table
+})()
+
+const crc32 = (data: Uint8Array) => {
+  let crc = 0xffffffff
+  for (const byte of data) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+const concatBytes = (parts: Uint8Array[]) => {
+  const output = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    output.set(part, offset)
+    offset += part.length
+  }
+  return output
+}
+
+const makeZip = (entries: ZipEntry[]) => {
+  const localParts: Uint8Array[] = []
+  const centralParts: Uint8Array[] = []
+  let offset = 0
+
+  for (const entry of entries) {
+    const nameBytes = textEncoder.encode(entry.name)
+    const crc = crc32(entry.data)
+    const localHeader = new Uint8Array(30)
+    const localView = new DataView(localHeader.buffer)
+    localView.setUint32(0, 0x04034b50, true)
+    localView.setUint16(4, 20, true)
+    localView.setUint16(6, 0x0800, true)
+    localView.setUint16(8, 0, true)
+    localView.setUint32(14, crc, true)
+    localView.setUint32(18, entry.data.length, true)
+    localView.setUint32(22, entry.data.length, true)
+    localView.setUint16(26, nameBytes.length, true)
+    localParts.push(localHeader, nameBytes, entry.data)
+
+    const centralHeader = new Uint8Array(46)
+    const centralView = new DataView(centralHeader.buffer)
+    centralView.setUint32(0, 0x02014b50, true)
+    centralView.setUint16(4, 20, true)
+    centralView.setUint16(6, 20, true)
+    centralView.setUint16(8, 0x0800, true)
+    centralView.setUint16(10, 0, true)
+    centralView.setUint32(16, crc, true)
+    centralView.setUint32(20, entry.data.length, true)
+    centralView.setUint32(24, entry.data.length, true)
+    centralView.setUint16(28, nameBytes.length, true)
+    centralView.setUint32(42, offset, true)
+    centralParts.push(centralHeader, nameBytes)
+
+    offset += localHeader.length + nameBytes.length + entry.data.length
+  }
+
+  const centralDirectory = concatBytes(centralParts)
+  const end = new Uint8Array(22)
+  const endView = new DataView(end.buffer)
+  endView.setUint32(0, 0x06054b50, true)
+  endView.setUint16(8, entries.length, true)
+  endView.setUint16(10, entries.length, true)
+  endView.setUint32(12, centralDirectory.length, true)
+  endView.setUint32(16, offset, true)
+  return concatBytes([...localParts, centralDirectory, end])
+}
+
+const parseZip = (bytes: Uint8Array): Map<string, Uint8Array> => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let endOffset = -1
+  const start = Math.max(0, bytes.length - 65557)
+  for (let offset = bytes.length - 22; offset >= start; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) {
+      endOffset = offset
+      break
+    }
+  }
+  if (endOffset < 0) throw new Error('That file is not a valid Looper OCR corpus ZIP.')
+
+  const entryCount = view.getUint16(endOffset + 10, true)
+  let centralOffset = view.getUint32(endOffset + 16, true)
+  const entries = new Map<string, Uint8Array>()
+
+  for (let index = 0; index < entryCount; index += 1) {
+    if (view.getUint32(centralOffset, true) !== 0x02014b50) throw new Error('ZIP directory is invalid.')
+    const method = view.getUint16(centralOffset + 10, true)
+    const compressedSize = view.getUint32(centralOffset + 20, true)
+    const nameLength = view.getUint16(centralOffset + 28, true)
+    const extraLength = view.getUint16(centralOffset + 30, true)
+    const commentLength = view.getUint16(centralOffset + 32, true)
+    const localOffset = view.getUint32(centralOffset + 42, true)
+    const name = textDecoder.decode(bytes.subarray(centralOffset + 46, centralOffset + 46 + nameLength))
+    if (method !== 0) throw new Error('This importer expects a ZIP exported by Looper OCR Test.')
+    if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error('ZIP entry is invalid.')
+    const localNameLength = view.getUint16(localOffset + 26, true)
+    const localExtraLength = view.getUint16(localOffset + 28, true)
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength
+    entries.set(name, bytes.slice(dataStart, dataStart + compressedSize))
+    centralOffset += 46 + nameLength + extraLength + commentLength
+  }
+  return entries
+}
+
+const safeZipFilename = (filename: string) => filename.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'image.png'
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
@@ -380,9 +542,93 @@ export default function OcrTestPage() {
     }
   }
 
+  const exportCorpus = async () => {
+    if (running || savedImages.length === 0) return
+    setRunning(true)
+    try {
+      setMessage('Building corpus ZIP…')
+      const records = await loadAllImageRecords()
+      const entries: ZipEntry[] = []
+      const manifestImages: CorpusManifestImage[] = []
+
+      for (let index = 0; index < records.length; index += 1) {
+        const record = records[index]
+        const imagePath = `images/${String(index + 1).padStart(3, '0')}_${safeZipFilename(record.filename)}`
+        entries.push({ imagePath, name: imagePath, data: new Uint8Array(await record.blob.arrayBuffer()) } as ZipEntry & { imagePath: string })
+        manifestImages.push({
+          id: record.id,
+          filename: record.filename,
+          mode: record.mode,
+          mimeType: record.mimeType,
+          lastModified: record.lastModified,
+          addedAt: record.addedAt,
+          imagePath,
+          result: record.result,
+        })
+      }
+
+      const manifest: CorpusManifest = {
+        format: 'looper-ocr-corpus',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        images: manifestImages,
+      }
+      entries.unshift({ name: 'manifest.json', data: textEncoder.encode(JSON.stringify(manifest, null, 2)) })
+      const zip = makeZip(entries)
+      downloadBlob(new Blob([zip as BlobPart], { type: 'application/zip' }), `looper-ocr-corpus-${new Date().toISOString().slice(0, 10)}.zip`)
+      setMessage(`Exported ${records.length} screenshots to ZIP`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const importCorpus = async (file: File | null) => {
+    if (!file || running) return
+    setRunning(true)
+    try {
+      setMessage(`Importing ${file.name}…`)
+      const entries = parseZip(new Uint8Array(await file.arrayBuffer()))
+      const manifestBytes = entries.get('manifest.json')
+      if (!manifestBytes) throw new Error('ZIP is missing manifest.json.')
+      const manifest = JSON.parse(textDecoder.decode(manifestBytes)) as CorpusManifest
+      if (manifest.format !== 'looper-ocr-corpus' || manifest.version !== 1 || !Array.isArray(manifest.images)) {
+        throw new Error('That ZIP is not a supported Looper OCR corpus.')
+      }
+
+      const records: StoredImageRecord[] = manifest.images.map((image) => {
+        if (!image.id || !image.filename || (image.mode !== 'lie' && image.mode !== 'wind') || !image.imagePath) {
+          throw new Error('Corpus manifest contains an invalid image record.')
+        }
+        const imageBytes = entries.get(image.imagePath)
+        if (!imageBytes) throw new Error(`ZIP is missing ${image.imagePath}.`)
+        return {
+          id: image.id,
+          filename: image.filename,
+          mode: image.mode,
+          mimeType: image.mimeType || 'image/png',
+          lastModified: Number.isFinite(image.lastModified) ? image.lastModified : Date.now(),
+          addedAt: Number.isFinite(image.addedAt) ? image.addedAt : Date.now(),
+          blob: new Blob([imageBytes.slice() as BlobPart], { type: image.mimeType || 'image/png' }),
+          result: image.result,
+        }
+      })
+
+      await saveImportedRecords(records)
+      const latest = await loadSavedImages()
+      setSavedImages(latest)
+      setMessage(`Imported ${records.length} screenshots · ${latest.length} total saved · ready to re-run`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const clearCorpus = async () => {
     if (running || savedImages.length === 0) return
-    if (!window.confirm('Delete all saved OCR test screenshots and results from this browser?')) return
+    if (!window.confirm('Delete all saved OCR test screenshots and results from this browser? Export a ZIP first if you want a backup.')) return
     setRunning(true)
     try {
       await clearSavedImages()
@@ -400,7 +646,7 @@ export default function OcrTestPage() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Add useful screenshots once. Looper saves the actual images in this browser so the same corpus can be re-run after every OCR tweak.
+          Add useful screenshots once. Looper keeps the image bytes in this browser; export a corpus ZIP for a portable backup and import it anywhere later.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0', flexWrap: 'wrap' }}>
@@ -437,6 +683,29 @@ export default function OcrTestPage() {
           >
             Re-run saved images
           </button>
+
+          <button
+            type="button"
+            disabled={running || savedImages.length === 0}
+            onClick={() => void exportCorpus()}
+            style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #7d9d82', background: 'transparent', color: '#fff', cursor: running || savedImages.length === 0 ? 'default' : 'pointer' }}
+          >
+            Export corpus ZIP
+          </button>
+
+          <label style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #7d9d82', color: '#fff', cursor: running ? 'default' : 'pointer' }}>
+            Import corpus ZIP
+            <input
+              type="file"
+              accept=".zip,application/zip"
+              disabled={running}
+              style={{ display: 'none' }}
+              onChange={(event) => {
+                void importCorpus(event.target.files?.[0] ?? null)
+                event.target.value = ''
+              }}
+            />
+          </label>
 
           <button
             type="button"
