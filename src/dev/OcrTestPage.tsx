@@ -24,6 +24,8 @@ type TestResult = {
 
 type CanvasTrack = MediaStreamTrack & { requestFrame?: () => void }
 
+const displayName = (file: File) => file.webkitRelativePath || file.name
+
 const makeCaptureCanvas = async (file: File, mode: OcrMode) => {
   const bitmap = await createImageBitmap(file)
   const isSavedMinimap = mode === 'lie'
@@ -137,7 +139,7 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
     const formatted = mode === 'lie'
       ? formatLie(payload as GsproLieOcrPayload)
       : formatWind(payload as GsproWindOcrPayload)
-    return { filename: file.name, ...formatted }
+    return { filename: displayName(file), ...formatted }
   } finally {
     connection?.disconnect()
     stream.getTracks().forEach((candidate) => candidate.stop())
@@ -156,16 +158,19 @@ export default function OcrTestPage() {
 
   const runFiles = async (files: FileList | null) => {
     if (!files?.length || running) return
+    const imageFiles = Array.from(files).filter((file) => /\.(png|jpe?g)$/i.test(file.name))
+    if (imageFiles.length === 0) return
+
     setRunning(true)
     setResults([])
     const next: TestResult[] = []
 
-    for (const file of Array.from(files)) {
+    for (const file of imageFiles) {
       try {
         next.push(await runScreenshot(file, mode))
       } catch (error) {
         next.push({
-          filename: file.name,
+          filename: displayName(file),
           status: 'ERROR',
           rawText: '',
           parsed: '',
@@ -183,7 +188,7 @@ export default function OcrTestPage() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Saved screenshots are replayed through the exact Live Caddie browser OCR path.
+          Pick the top-level screenshot folder once. Every PNG/JPG underneath its subfolders is replayed through the exact Live Caddie browser OCR path.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0' }}>
@@ -198,13 +203,14 @@ export default function OcrTestPage() {
           </select>
 
           <label style={{ padding: '10px 16px', borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer' }}>
-            {running ? `Running ${results.length + 1}…` : 'Choose images'}
+            {running ? `Running ${results.length + 1}…` : 'Choose folder'}
             <input
               type="file"
               accept="image/png,image/jpeg,image/jpg"
               multiple
               disabled={running}
               style={{ display: 'none' }}
+              {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
               onChange={(event) => {
                 void runFiles(event.target.files)
                 event.target.value = ''
