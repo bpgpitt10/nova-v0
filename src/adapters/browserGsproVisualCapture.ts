@@ -77,11 +77,6 @@ const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const OCR_INTERVAL_MS = 2500
 
-// The wind HUD has stable geometry and always renders bright text on its dark
-// top-center panel. Keep these crops entirely inside the panel and use a fixed
-// binary threshold so scenery behind the translucent HUD cannot change OCR
-// polarity/contrast. These settings plus the speed fallback read 33/33 of the
-// reference screenshots, including calm, N/NE/SE/SW and 1-3 MPH examples.
 const WIND_SPEED_CROP: CropSpec = {
   x: 0.443,
   y: 0.009,
@@ -100,11 +95,6 @@ const WIND_DIRECTION_CROP: CropSpec = {
   binaryThreshold: 190,
 }
 
-// The GSPro minimap footer has stable geometry. The OCR corpus showed that asking
-// Tesseract to read an entire axis as one phrase was the dominant lie failure
-// mode (especially short "UP" labels and dropped decimal points). Use the same
-// footer box, but scale it more aggressively and OCR each number/direction from
-// its own small region. The final reference-corpus layout read 33/33 locally.
 const RIGHT_LIE_CROP: CropSpec = {
   x: 0.848,
   y: 0.952,
@@ -212,9 +202,6 @@ const drawCrop = (video: HTMLVideoElement, spec: CropSpec) => {
     let value = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b)
 
     if (spec.binaryThreshold != null) {
-      // Wind HUD text is always light on a dark panel. A fixed threshold is
-      // materially more stable than average-luminance inversion when bright sky,
-      // trees or other scenery are visible through the translucent background.
       value = value >= spec.binaryThreshold ? 0 : 255
     } else {
       if (invert) value = 255 - value
@@ -234,6 +221,14 @@ const normalizedConfidence = (value: unknown) =>
     ? Math.max(0, Math.min(1, value / 100))
     : null
 
+const normalizeCardinalText = (rawText: string) => {
+  const compact = rawText.toUpperCase().replace(/\s+/g, '').trim()
+  const collapsed = compact.replace(/(.)\1+/g, '$1')
+  return Object.prototype.hasOwnProperty.call(WIND_CARDINAL_DEGREES, collapsed)
+    ? collapsed
+    : null
+}
+
 const parseWindComponents = (
   speedRawText: string,
   speedConfidence: number | null,
@@ -241,22 +236,22 @@ const parseWindComponents = (
   directionConfidence: number | null,
 ): GsproWindOcrPayload => {
   const normalizedSpeed = speedRawText.toUpperCase().replace(/\s+/g, ' ').trim()
-  const normalizedDirection = directionRawText.toUpperCase().replace(/\s+/g, '').trim()
   const speedMatch = normalizedSpeed.match(/(\d{1,2}(?:[\.,]\d+)?)/)
   const parsedSpeed = speedMatch ? Number(speedMatch[1].replace(',', '.')) : null
   const speedMph = parsedSpeed != null && Number.isFinite(parsedSpeed) && parsedSpeed >= 0 && parsedSpeed <= 50
     ? parsedSpeed
     : null
-  const cardinalMatch = normalizedDirection.match(/(NE|SE|SW|NW|N|E|S|W)/)
-  const cardinal = cardinalMatch?.[1] ?? null
-  const directionDegrees = cardinal ? WIND_CARDINAL_DEGREES[cardinal] ?? null : null
+  const cardinal = normalizeCardinalText(directionRawText)
+  const parsedDirectionDegrees = cardinal ? WIND_CARDINAL_DEGREES[cardinal] ?? null : null
+  const calm = speedMph === 0
+  const directionDegrees = calm && parsedDirectionDegrees == null ? 0 : parsedDirectionDegrees
   const confidenceValues = [speedConfidence, directionConfidence].filter(
     (value): value is number => value != null && Number.isFinite(value),
   )
   const confidence = confidenceValues.length > 0 ? Math.min(...confidenceValues) : null
   const missing: string[] = []
   if (speedMph == null) missing.push('speed')
-  if (directionDegrees == null) missing.push('cardinal direction')
+  if (!calm && directionDegrees == null) missing.push('cardinal direction')
 
   return {
     status: missing.length === 0 ? 'READY' : 'UNKNOWN',
@@ -268,7 +263,9 @@ const parseWindComponents = (
     confidence,
     rawText: `SPEED: ${speedRawText.trim()} | DIR: ${directionRawText.trim()}`,
     note: missing.length === 0
-      ? 'Browser OCR read the split GSPro wind speed and cardinal HUD labels.'
+      ? calm && parsedDirectionDegrees == null
+        ? 'Browser OCR read calm wind; direction is immaterial at 0 MPH.'
+        : 'Browser OCR read the split GSPro wind speed and cardinal HUD labels.'
       : `Browser wind OCR was incomplete; missing ${missing.join(', ')}.`,
   }
 }
@@ -294,6 +291,14 @@ const parseLieDirection = (
   const compact = rawText.toUpperCase().replace(/\s+/g, '')
   if (compact.includes(positive)) return positive
   if (compact.includes(negative)) return negative
+
+  // Browser Tesseract.js consistently reduced the short UP label to one of
+  // these three strings in the acceptance corpus while the numeric crop and
+  // the opposite DOWN label remained reliable. Keep the tolerance narrow so
+  // arbitrary OCR noise never becomes a confident lie direction.
+  if (positive === 'UP' && (compact === 'P' || compact === 'OP' || compact === 'DP')) {
+    return 'UP'
+  }
   return null
 }
 
@@ -382,8 +387,6 @@ export const connectToBrowserGsproVisualCapture = async ({
 
   onStatusChange?.('requesting')
 
-  // This must be the first privileged action in the click handler. Browsers
-  // require fresh user activation for every new screen/window capture session.
   const displayOptions: LooperDisplayMediaOptions = {
     video: {
       displaySurface: 'window',
@@ -492,10 +495,10 @@ export const connectToBrowserGsproVisualCapture = async ({
           '0123456789.,MPH ',
           '7',
         )
-        const windDirectionResult = await recognize(
+        let windDirectionResult = await recognize(
           WIND_DIRECTION_CROP,
           'NSEW ',
-          '13',
+          '6',
         )
         let windPayload = parseWindComponents(
           windSpeedResult.data.text ?? '',
@@ -504,14 +507,39 @@ export const connectToBrowserGsproVisualCapture = async ({
           normalizedConfidence(windDirectionResult.data.confidence),
         )
 
-        // One corpus image needed block-mode segmentation for the speed while
-        // every other image preferred single-line mode. Retry only when speed
-        // is missing, so normal live OCR pays no extra recognition cost.
         if (windPayload.speedMph == null) {
           windSpeedResult = await recognize(
             WIND_SPEED_CROP,
             '0123456789.,MPH ',
             '6',
+          )
+          windPayload = parseWindComponents(
+            windSpeedResult.data.text ?? '',
+            normalizedConfidence(windSpeedResult.data.confidence),
+            windDirectionResult.data.text ?? '',
+            normalizedConfidence(windDirectionResult.data.confidence),
+          )
+        }
+
+        if (windPayload.speedMph == null) {
+          windSpeedResult = await recognize(
+            WIND_SPEED_CROP,
+            '0123456789.,MPH ',
+            '13',
+          )
+          windPayload = parseWindComponents(
+            windSpeedResult.data.text ?? '',
+            normalizedConfidence(windSpeedResult.data.confidence),
+            windDirectionResult.data.text ?? '',
+            normalizedConfidence(windDirectionResult.data.confidence),
+          )
+        }
+
+        if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
+          windDirectionResult = await recognize(
+            WIND_DIRECTION_CROP,
+            'NSEW ',
+            '13',
           )
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
@@ -531,7 +559,7 @@ export const connectToBrowserGsproVisualCapture = async ({
           const longitudinalDirectionResult = await recognize(
             axisCrop(footer, 0.24, 0.25),
             'UPDOWN',
-            '7',
+            '6',
           )
           const lateralNumberResult = await recognize(
             axisCrop(footer, 0.47, 0.27),
