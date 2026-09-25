@@ -68,6 +68,7 @@ type CropSpec = {
   width: number
   height: number
   scale: number
+  binaryThreshold?: number
 }
 
 const TESSERACT_VERSION = '6.0.1'
@@ -76,31 +77,34 @@ const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const OCR_INTERVAL_MS = 2500
 
-// Tight top-center crops validated against the user's live GSPro layout.
-// Speed is left of the compass arrow; cardinal text is right of it. Keeping the
-// arrow/scenery out of each OCR pass is substantially more reliable than reading
-// the entire top-center strip.
+// The wind HUD has stable geometry and always renders bright text on its dark
+// top-center panel. Keep these crops entirely inside the panel and use a fixed
+// binary threshold so scenery behind the translucent HUD cannot change OCR
+// polarity/contrast. These settings plus the speed fallback read 33/33 of the
+// reference screenshots, including calm, N/NE/SE/SW and 1-3 MPH examples.
 const WIND_SPEED_CROP: CropSpec = {
-  x: 0.405,
-  y: 0,
-  width: 0.08,
-  height: 0.075,
-  scale: 4,
+  x: 0.443,
+  y: 0.009,
+  width: 0.045,
+  height: 0.040,
+  scale: 6,
+  binaryThreshold: 190,
 }
 
 const WIND_DIRECTION_CROP: CropSpec = {
-  x: 0.515,
-  y: 0,
-  width: 0.075,
-  height: 0.075,
-  scale: 4,
+  x: 0.530,
+  y: 0.009,
+  width: 0.040,
+  height: 0.040,
+  scale: 6,
+  binaryThreshold: 190,
 }
 
 // The GSPro minimap footer has stable geometry. The OCR corpus showed that asking
 // Tesseract to read an entire axis as one phrase was the dominant lie failure
 // mode (especially short "UP" labels and dropped decimal points). Use the same
 // footer box, but scale it more aggressively and OCR each number/direction from
-// its own small region. The 33-image reference corpus read 33/33 with this split.
+// its own small region. The final reference-corpus layout read 33/33 locally.
 const RIGHT_LIE_CROP: CropSpec = {
   x: 0.848,
   y: 0.952,
@@ -190,9 +194,6 @@ const drawCrop = (video: HTMLVideoElement, spec: CropSpec) => {
   context.imageSmoothingEnabled = true
   context.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
 
-  // Normalize to high-contrast grayscale. Most GSPro HUD text is light on a
-  // dark background; invert darker crops so Tesseract sees conventional dark
-  // glyphs on a light field without baking in one specific GSPro theme.
   const image = context.getImageData(0, 0, canvas.width, canvas.height)
   let luminanceTotal = 0
   for (let index = 0; index < image.data.length; index += 4) {
@@ -209,8 +210,17 @@ const drawCrop = (video: HTMLVideoElement, spec: CropSpec) => {
     const g = image.data[index + 1]
     const b = image.data[index + 2]
     let value = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b)
-    if (invert) value = 255 - value
-    value = Math.max(0, Math.min(255, Math.round((value - 128) * 1.35 + 128)))
+
+    if (spec.binaryThreshold != null) {
+      // Wind HUD text is always light on a dark panel. A fixed threshold is
+      // materially more stable than average-luminance inversion when bright sky,
+      // trees or other scenery are visible through the translucent background.
+      value = value >= spec.binaryThreshold ? 0 : 255
+    } else {
+      if (invert) value = 255 - value
+      value = Math.max(0, Math.min(255, Math.round((value - 128) * 1.35 + 128)))
+    }
+
     image.data[index] = value
     image.data[index + 1] = value
     image.data[index + 2] = value
@@ -477,7 +487,7 @@ export const connectToBrowserGsproVisualCapture = async ({
       if (disconnected || ocrInFlight || !worker) return
       ocrInFlight = true
       try {
-        const windSpeedResult = await recognize(
+        let windSpeedResult = await recognize(
           WIND_SPEED_CROP,
           '0123456789.,MPH ',
           '7',
@@ -485,18 +495,36 @@ export const connectToBrowserGsproVisualCapture = async ({
         const windDirectionResult = await recognize(
           WIND_DIRECTION_CROP,
           'NSEW ',
-          '7',
+          '13',
         )
-        dispatchGsproWindOcrObservation(parseWindComponents(
+        let windPayload = parseWindComponents(
           windSpeedResult.data.text ?? '',
           normalizedConfidence(windSpeedResult.data.confidence),
           windDirectionResult.data.text ?? '',
           normalizedConfidence(windDirectionResult.data.confidence),
-        ))
+        )
+
+        // One corpus image needed block-mode segmentation for the speed while
+        // every other image preferred single-line mode. Retry only when speed
+        // is missing, so normal live OCR pays no extra recognition cost.
+        if (windPayload.speedMph == null) {
+          windSpeedResult = await recognize(
+            WIND_SPEED_CROP,
+            '0123456789.,MPH ',
+            '6',
+          )
+          windPayload = parseWindComponents(
+            windSpeedResult.data.text ?? '',
+            normalizedConfidence(windSpeedResult.data.confidence),
+            windDirectionResult.data.text ?? '',
+            normalizedConfidence(windDirectionResult.data.confidence),
+          )
+        }
+        dispatchGsproWindOcrObservation(windPayload)
 
         const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {
           const longitudinalNumberResult = await recognize(
-            axisCrop(footer, 0.02, 0.30),
+            axisCrop(footer, 0.05, 0.27),
             '0123456789.,°º',
             '7',
           )
