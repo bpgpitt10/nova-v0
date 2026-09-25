@@ -144,7 +144,7 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
     if (ownDescriptor) {
       Object.defineProperty(mediaDevices, 'getDisplayMedia', ownDescriptor)
     } else {
-      delete (mediaDevices as MediaDevices & { getDisplayMedia?: unknown }).getDisplayMedia
+      delete (mediaDevices as unknown as { getDisplayMedia?: unknown }).getDisplayMedia
     }
   }
 }
