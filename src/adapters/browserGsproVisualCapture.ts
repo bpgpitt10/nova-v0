@@ -96,23 +96,25 @@ const WIND_DIRECTION_CROP: CropSpec = {
   scale: 4,
 }
 
-// Proven minimap-footer geometry from the Windows reader. GSPro can place the
-// minimap on either side, so the browser checks the normal right footer first
-// and falls back to its mirrored left-side location only when needed.
+// The GSPro minimap footer has stable geometry. The OCR corpus showed that asking
+// Tesseract to read an entire axis as one phrase was the dominant lie failure
+// mode (especially short "UP" labels and dropped decimal points). Use the same
+// footer box, but scale it more aggressively and OCR each number/direction from
+// its own small region. The 33-image reference corpus read 33/33 with this split.
 const RIGHT_LIE_CROP: CropSpec = {
   x: 0.848,
   y: 0.952,
   width: 0.149,
-  height: 0.047,
-  scale: 4,
+  height: 0.040,
+  scale: 6,
 }
 
 const LEFT_LIE_CROP: CropSpec = {
   x: 0.003,
   y: 0.952,
   width: 0.149,
-  height: 0.047,
-  scale: 4,
+  height: 0.040,
+  scale: 6,
 }
 
 const WIND_CARDINAL_DEGREES: Record<string, number> = {
@@ -263,44 +265,44 @@ const parseWindComponents = (
 
 type LieAxisParse = {
   value: number | null
+  direction: string | null
   canonical: string | null
 }
 
-const parseLieAxisComponent = (
+const parseLieNumber = (rawText: string) => {
+  const compact = rawText.toUpperCase().replace(/\s+/g, '').replace(',', '.')
+  const decimalMatch = compact.match(/(\d{1,2})\.(\d)/)
+  const value = decimalMatch ? Number(`${decimalMatch[1]}.${decimalMatch[2]}`) : null
+  return value != null && Number.isFinite(value) && value >= 0 && value <= 60 ? value : null
+}
+
+const parseLieDirection = (
   rawText: string,
   positive: 'UP' | 'RIGHT',
   negative: 'DOWN' | 'LEFT',
+) => {
+  const compact = rawText.toUpperCase().replace(/\s+/g, '')
+  if (compact.includes(positive)) return positive
+  if (compact.includes(negative)) return negative
+  return null
+}
+
+const makeLieAxis = (
+  numberText: string,
+  directionText: string,
+  positive: 'UP' | 'RIGHT',
+  negative: 'DOWN' | 'LEFT',
 ): LieAxisParse => {
-  const compact = rawText.toUpperCase().replace(/\s+/g, '').replace(',', '.')
-  const decimalMatch = compact.match(/(\d{1,2})\.(\d)/)
-  let value = decimalMatch ? Number(`${decimalMatch[1]}.${decimalMatch[2]}`) : null
-
-  // The proven Windows reader deliberately accepts a flat lie even when OCR
-  // loses the direction word. Do the same here, but never interpret a dropped
-  // decimal on a non-zero number (e.g. 3.9 -> 39) as a valid angle.
-  if (value == null) {
-    const withoutLabels = compact
-      .replaceAll(positive, '')
-      .replaceAll(negative, '')
-      .replace(/[°ºO-]/g, '')
-    if (withoutLabels === '0' || withoutLabels === '00' || withoutLabels === '0.') value = 0
-  }
-  if (value == null || !Number.isFinite(value) || value < 0 || value > 60) {
-    return { value: null, canonical: null }
-  }
-
-  let direction: string | null = compact.includes(positive)
-    ? positive
-    : compact.includes(negative)
-      ? negative
-      : null
-  if (value === 0 && direction == null) direction = positive
-  if (!direction) return { value: null, canonical: null }
-
-  const signed = direction === positive ? value : -value
+  const magnitude = parseLieNumber(numberText)
+  if (magnitude == null) return { value: null, direction: null, canonical: null }
+  const direction = parseLieDirection(directionText, positive, negative)
+    ?? (magnitude === 0 ? positive : null)
+  if (!direction) return { value: null, direction: null, canonical: null }
+  const signed = direction === positive ? magnitude : -magnitude
   return {
     value: Math.round(signed * 10) / 10,
-    canonical: `${value.toFixed(1)} ${direction}`,
+    direction,
+    canonical: `${magnitude.toFixed(1)} ${direction}`,
   }
 }
 
@@ -311,22 +313,29 @@ const axisCrop = (footer: CropSpec, offset: number, width: number): CropSpec => 
 })
 
 const liePayloadFromComponents = (
-  longitudinalText: string,
-  longitudinalConfidence: number | null,
-  lateralText: string,
-  lateralConfidence: number | null,
+  longitudinalNumberText: string,
+  longitudinalNumberConfidence: number | null,
+  longitudinalDirectionText: string,
+  longitudinalDirectionConfidence: number | null,
+  lateralNumberText: string,
+  lateralNumberConfidence: number | null,
+  lateralDirectionText: string,
+  lateralDirectionConfidence: number | null,
   side: 'right' | 'left',
 ): GsproLieOcrPayload => {
-  const longitudinal = parseLieAxisComponent(longitudinalText, 'UP', 'DOWN')
-  const lateral = parseLieAxisComponent(lateralText, 'RIGHT', 'LEFT')
-  const confidenceValues = [longitudinalConfidence, lateralConfidence].filter(
-    (value): value is number => value != null && Number.isFinite(value),
-  )
+  const longitudinal = makeLieAxis(longitudinalNumberText, longitudinalDirectionText, 'UP', 'DOWN')
+  const lateral = makeLieAxis(lateralNumberText, lateralDirectionText, 'RIGHT', 'LEFT')
+  const confidenceValues = [
+    longitudinalNumberConfidence,
+    longitudinalDirectionConfidence,
+    lateralNumberConfidence,
+    lateralDirectionConfidence,
+  ].filter((value): value is number => value != null && Number.isFinite(value))
   const confidence = confidenceValues.length > 0 ? Math.min(...confidenceValues) : null
   const canonicalParts = [longitudinal.canonical, lateral.canonical].filter(Boolean)
-  const rawText = canonicalParts.length > 0
+  const rawText = canonicalParts.length === 2
     ? canonicalParts.join(' ')
-    : `LONG: ${longitudinalText} LAT: ${lateralText}`
+    : `LONG_NUM: ${longitudinalNumberText.trim()} LONG_DIR: ${longitudinalDirectionText.trim()} LAT_NUM: ${lateralNumberText.trim()} LAT_DIR: ${lateralDirectionText.trim()}`
   const ready = longitudinal.value != null && lateral.value != null
 
   return {
@@ -338,8 +347,8 @@ const liePayloadFromComponents = (
     confidence,
     rawText,
     note: ready
-      ? `Browser OCR read the ${side}-side GSPro minimap lie footer using split axis crops.`
-      : `Browser OCR did not find both lie axes in the ${side}-side split minimap footer.`,
+      ? `Browser OCR read the ${side}-side GSPro minimap lie footer using four segmented number/direction crops.`
+      : `Browser OCR did not find both lie axes in the ${side}-side segmented minimap footer.`,
   }
 }
 
@@ -486,22 +495,35 @@ export const connectToBrowserGsproVisualCapture = async ({
         ))
 
         const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {
-          // Same overlapping 56% / 44% split as the proven Windows reader.
-          const longitudinalResult = await recognize(
-            axisCrop(footer, 0, 0.56),
-            '0123456789.,°ºUPDOWNO- ',
+          const longitudinalNumberResult = await recognize(
+            axisCrop(footer, 0.02, 0.30),
+            '0123456789.,°º',
             '7',
           )
-          const lateralResult = await recognize(
-            axisCrop(footer, 0.44, 0.56),
-            '0123456789.,°ºRIGHTLEFTO- ',
+          const longitudinalDirectionResult = await recognize(
+            axisCrop(footer, 0.24, 0.25),
+            'UPDOWN',
+            '7',
+          )
+          const lateralNumberResult = await recognize(
+            axisCrop(footer, 0.47, 0.27),
+            '0123456789.,°º',
+            '7',
+          )
+          const lateralDirectionResult = await recognize(
+            axisCrop(footer, 0.62, 0.37),
+            'RIGHTLEFT',
             '7',
           )
           return liePayloadFromComponents(
-            longitudinalResult.data.text ?? '',
-            normalizedConfidence(longitudinalResult.data.confidence),
-            lateralResult.data.text ?? '',
-            normalizedConfidence(lateralResult.data.confidence),
+            longitudinalNumberResult.data.text ?? '',
+            normalizedConfidence(longitudinalNumberResult.data.confidence),
+            longitudinalDirectionResult.data.text ?? '',
+            normalizedConfidence(longitudinalDirectionResult.data.confidence),
+            lateralNumberResult.data.text ?? '',
+            normalizedConfidence(lateralNumberResult.data.confidence),
+            lateralDirectionResult.data.text ?? '',
+            normalizedConfidence(lateralDirectionResult.data.confidence),
             side,
           )
         }
@@ -514,7 +536,7 @@ export const connectToBrowserGsproVisualCapture = async ({
             liePayload = {
               ...liePayload,
               rawText: `RIGHT: ${liePayload.rawText ?? ''} | LEFT: ${leftPayload.rawText ?? ''}`,
-              note: 'Browser OCR did not find both lie axes in either split minimap footer.',
+              note: 'Browser OCR did not find both lie axes in either segmented minimap footer.',
             }
           }
         }
