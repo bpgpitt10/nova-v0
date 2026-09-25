@@ -23,19 +23,129 @@ type TestResult = {
   error?: string
 }
 
+type StoredImageRecord = {
+  id: string
+  filename: string
+  mode: OcrMode
+  mimeType: string
+  lastModified: number
+  addedAt: number
+  blob: Blob
+  result?: TestResult
+}
+
+type SavedImageMeta = Omit<StoredImageRecord, 'blob'>
+
 type CanvasTrack = MediaStreamTrack & { requestFrame?: () => void }
 
-const RESULTS_STORAGE_KEY = 'looper-ocr-test-results-v1'
+const DB_NAME = 'looper-ocr-test-v1'
+const DB_VERSION = 1
+const IMAGE_STORE = 'images'
+const LEGACY_RESULTS_STORAGE_KEY = 'looper-ocr-test-results-v1'
 
-const loadSavedResults = (): TestResult[] => {
-  if (typeof window === 'undefined') return []
+const requestToPromise = <T,>(request: IDBRequest<T>) =>
+  new Promise<T>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed.'))
+  })
+
+const transactionToPromise = (transaction: IDBTransaction) =>
+  new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed.'))
+    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction was aborted.'))
+  })
+
+const openDb = () =>
+  new Promise<IDBDatabase>((resolve, reject) => {
+    const request = window.indexedDB.open(DB_NAME, DB_VERSION)
+    request.onupgradeneeded = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains(IMAGE_STORE)) {
+        db.createObjectStore(IMAGE_STORE, { keyPath: 'id' })
+      }
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error ?? new Error('Could not open OCR test storage.'))
+  })
+
+const toMeta = ({ blob: _blob, ...meta }: StoredImageRecord): SavedImageMeta => meta
+
+const loadSavedImages = async (): Promise<SavedImageMeta[]> => {
+  const db = await openDb()
   try {
-    const raw = window.localStorage.getItem(RESULTS_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+    const transaction = db.transaction(IMAGE_STORE, 'readonly')
+    const records = await requestToPromise(
+      transaction.objectStore(IMAGE_STORE).getAll() as IDBRequest<StoredImageRecord[]>,
+    )
+    return records
+      .sort((a, b) => a.addedAt - b.addedAt)
+      .map(toMeta)
+  } finally {
+    db.close()
+  }
+}
+
+const saveImage = async (file: File, mode: OcrMode): Promise<SavedImageMeta> => {
+  const record: StoredImageRecord = {
+    id: typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    filename: file.name,
+    mode,
+    mimeType: file.type || 'image/png',
+    lastModified: file.lastModified,
+    addedAt: Date.now(),
+    blob: file,
+  }
+  const db = await openDb()
+  try {
+    const transaction = db.transaction(IMAGE_STORE, 'readwrite')
+    transaction.objectStore(IMAGE_STORE).put(record)
+    await transactionToPromise(transaction)
+    return toMeta(record)
+  } finally {
+    db.close()
+  }
+}
+
+const loadImageRecord = async (id: string): Promise<StoredImageRecord | null> => {
+  const db = await openDb()
+  try {
+    const transaction = db.transaction(IMAGE_STORE, 'readonly')
+    const record = await requestToPromise(
+      transaction.objectStore(IMAGE_STORE).get(id) as IDBRequest<StoredImageRecord | undefined>,
+    )
+    return record ?? null
+  } finally {
+    db.close()
+  }
+}
+
+const saveResult = async (id: string, result: TestResult): Promise<SavedImageMeta> => {
+  const db = await openDb()
+  try {
+    const transaction = db.transaction(IMAGE_STORE, 'readwrite')
+    const store = transaction.objectStore(IMAGE_STORE)
+    const record = await requestToPromise(store.get(id) as IDBRequest<StoredImageRecord | undefined>)
+    if (!record) throw new Error('Saved OCR test image could not be found.')
+    const updated: StoredImageRecord = { ...record, result }
+    store.put(updated)
+    await transactionToPromise(transaction)
+    return toMeta(updated)
+  } finally {
+    db.close()
+  }
+}
+
+const clearSavedImages = async () => {
+  const db = await openDb()
+  try {
+    const transaction = db.transaction(IMAGE_STORE, 'readwrite')
+    transaction.objectStore(IMAGE_STORE).clear()
+    await transactionToPromise(transaction)
+  } finally {
+    db.close()
   }
 }
 
@@ -161,49 +271,129 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
   }
 }
 
+const errorResult = (filename: string, mode: OcrMode, error: unknown): TestResult => ({
+  filename,
+  mode,
+  status: 'ERROR',
+  rawText: '',
+  parsed: '',
+  error: error instanceof Error ? error.message : String(error),
+})
+
 export default function OcrTestPage() {
   const [mode, setMode] = useState<OcrMode>('lie')
-  const [results, setResults] = useState<TestResult[]>(loadSavedResults)
+  const [savedImages, setSavedImages] = useState<SavedImageMeta[]>([])
   const [running, setRunning] = useState(false)
+  const [message, setMessage] = useState('Loading saved screenshots…')
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(RESULTS_STORAGE_KEY, JSON.stringify(results))
-    } catch {
-      // Persistence is a convenience only; OCR testing should still work without it.
-    }
-  }, [results])
+    let cancelled = false
+    void loadSavedImages()
+      .then((images) => {
+        if (cancelled) return
+        setSavedImages(images)
+        setMessage(images.length > 0
+          ? `${images.length} screenshots saved in this browser`
+          : 'No screenshots saved yet')
+      })
+      .catch((error) => {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : String(error))
+      })
 
-  const runFiles = async (files: FileList | null) => {
+    try {
+      window.localStorage.removeItem(LEGACY_RESULTS_STORAGE_KEY)
+    } catch {
+      // Ignore legacy cleanup failures.
+    }
+
+    void navigator.storage?.persist?.().catch(() => false)
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const replaceSavedImage = (updated: SavedImageMeta) => {
+    setSavedImages((current) => current.map((item) => item.id === updated.id ? updated : item))
+  }
+
+  const processSavedImage = async (record: StoredImageRecord) => {
+    const file = new File([record.blob], record.filename, {
+      type: record.mimeType,
+      lastModified: record.lastModified,
+    })
+    let result: TestResult
+    try {
+      result = await runScreenshot(file, record.mode)
+    } catch (error) {
+      result = errorResult(record.filename, record.mode, error)
+    }
+    replaceSavedImage(await saveResult(record.id, result))
+  }
+
+  const addFiles = async (files: FileList | null) => {
     if (!files?.length || running) return
     const imageFiles = Array.from(files).filter((file) => /\.(png|jpe?g)$/i.test(file.name))
     if (imageFiles.length === 0) return
 
     setRunning(true)
-    for (const file of imageFiles) {
-      try {
-        const result = await runScreenshot(file, mode)
-        setResults((current) => [...current, result])
-      } catch (error) {
-        setResults((current) => [
-          ...current,
-          {
-            filename: file.name,
-            mode,
-            status: 'ERROR',
-            rawText: '',
-            parsed: '',
-            error: error instanceof Error ? error.message : String(error),
-          },
-        ])
+    setMessage('Saving screenshot…')
+    try {
+      for (const file of imageFiles) {
+        const saved = await saveImage(file, mode)
+        setSavedImages((current) => [...current, saved])
+        setMessage(`Saved ${savedImages.length + 1} screenshot${savedImages.length === 0 ? '' : 's'} · reading OCR…`)
+        const record = await loadImageRecord(saved.id)
+        if (!record) throw new Error('Saved screenshot could not be reloaded.')
+        await processSavedImage(record)
       }
+      const latest = await loadSavedImages()
+      setSavedImages(latest)
+      setMessage(`${latest.length} screenshots saved in this browser`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRunning(false)
     }
-    setRunning(false)
   }
 
-  const clearResults = () => {
-    if (running) return
-    setResults([])
+  const rerunSavedImages = async () => {
+    if (running || savedImages.length === 0) return
+    setRunning(true)
+    try {
+      for (let index = 0; index < savedImages.length; index += 1) {
+        const meta = savedImages[index]
+        setMessage(`Re-running ${index + 1} of ${savedImages.length}: ${meta.filename}`)
+        const record = await loadImageRecord(meta.id)
+        if (!record) {
+          replaceSavedImage(await saveResult(meta.id, errorResult(meta.filename, meta.mode, 'Saved image bytes are missing.')))
+          continue
+        }
+        await processSavedImage(record)
+      }
+      const latest = await loadSavedImages()
+      setSavedImages(latest)
+      setMessage(`Re-run complete · ${latest.length} screenshots remain saved`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const clearCorpus = async () => {
+    if (running || savedImages.length === 0) return
+    if (!window.confirm('Delete all saved OCR test screenshots and results from this browser?')) return
+    setRunning(true)
+    try {
+      await clearSavedImages()
+      setSavedImages([])
+      setMessage('No screenshots saved yet')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRunning(false)
+    }
   }
 
   return (
@@ -211,7 +401,7 @@ export default function OcrTestPage() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Add screenshots one at a time. Each result stays in the table and is saved in this browser until you clear it.
+          Add useful screenshots once. Looper saves the actual images in this browser so the same corpus can be re-run after every OCR tweak.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0', flexWrap: 'wrap' }}>
@@ -226,7 +416,7 @@ export default function OcrTestPage() {
           </select>
 
           <label style={{ padding: '10px 16px', borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer' }}>
-            {running ? 'Reading…' : 'Add image'}
+            {running ? 'Working…' : 'Add image'}
             <input
               type="file"
               accept="image/png,image/jpeg,image/jpg"
@@ -234,7 +424,7 @@ export default function OcrTestPage() {
               disabled={running}
               style={{ display: 'none' }}
               onChange={(event) => {
-                void runFiles(event.target.files)
+                void addFiles(event.target.files)
                 event.target.value = ''
               }}
             />
@@ -242,17 +432,26 @@ export default function OcrTestPage() {
 
           <button
             type="button"
-            disabled={running || results.length === 0}
-            onClick={clearResults}
-            style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #536856', background: 'transparent', color: '#fff', cursor: running || results.length === 0 ? 'default' : 'pointer' }}
+            disabled={running || savedImages.length === 0}
+            onClick={() => void rerunSavedImages()}
+            style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #d4b15a', background: 'transparent', color: '#fff', cursor: running || savedImages.length === 0 ? 'default' : 'pointer', fontWeight: 700 }}
           >
-            Clear results
+            Re-run saved images
           </button>
 
-          <span>{results.length} saved</span>
+          <button
+            type="button"
+            disabled={running || savedImages.length === 0}
+            onClick={() => void clearCorpus()}
+            style={{ padding: '10px 14px', borderRadius: 6, border: '1px solid #536856', background: 'transparent', color: '#fff', cursor: running || savedImages.length === 0 ? 'default' : 'pointer' }}
+          >
+            Clear saved corpus
+          </button>
+
+          <span>{message}</span>
         </div>
 
-        {results.length > 0 ? (
+        {savedImages.length > 0 ? (
           <div style={{ overflowX: 'auto', border: '1px solid #344436', borderRadius: 8 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ background: '#17231a' }}>
@@ -266,14 +465,14 @@ export default function OcrTestPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((result, index) => (
-                  <tr key={`${index}-${result.filename}`} style={{ borderTop: '1px solid #344436' }}>
+                {savedImages.map((item, index) => (
+                  <tr key={item.id} style={{ borderTop: '1px solid #344436' }}>
                     <td style={{ padding: 12 }}>{index + 1}</td>
-                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{result.filename}</td>
-                    <td style={{ padding: 12 }}>{result.mode === 'lie' ? 'Lie' : 'Wind'}</td>
-                    <td style={{ padding: 12, fontWeight: 800 }}>{result.status}</td>
-                    <td style={{ padding: 12, minWidth: 260, whiteSpace: 'pre-wrap' }}>{result.error || result.rawText || '—'}</td>
-                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{result.parsed || '—'}</td>
+                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.filename}</td>
+                    <td style={{ padding: 12 }}>{item.mode === 'lie' ? 'Lie' : 'Wind'}</td>
+                    <td style={{ padding: 12, fontWeight: 800 }}>{item.result?.status ?? 'SAVED'}</td>
+                    <td style={{ padding: 12, minWidth: 260, whiteSpace: 'pre-wrap' }}>{item.result?.error || item.result?.rawText || '—'}</td>
+                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.result?.parsed || '—'}</td>
                   </tr>
                 ))}
               </tbody>
