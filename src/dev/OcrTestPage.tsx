@@ -32,6 +32,8 @@ type StoredImageRecord = {
   addedAt: number
   blob: Blob
   result?: TestResult
+  lieResult?: TestResult
+  windResult?: TestResult
 }
 
 type SavedImageMeta = Omit<StoredImageRecord, 'blob'>
@@ -46,6 +48,8 @@ type CorpusManifestImage = {
   addedAt: number
   imagePath: string
   result?: TestResult
+  lieResult?: TestResult
+  windResult?: TestResult
 }
 
 type CorpusManifest = {
@@ -58,6 +62,11 @@ type CorpusManifest = {
 type ZipEntry = {
   name: string
   data: Uint8Array
+}
+
+type TestPair = {
+  lie: TestResult
+  wind: TestResult
 }
 
 const DB_NAME = 'looper-ocr-test-v1'
@@ -101,6 +110,8 @@ const toMeta = (record: StoredImageRecord): SavedImageMeta => ({
   lastModified: record.lastModified,
   addedAt: record.addedAt,
   result: record.result,
+  lieResult: record.lieResult,
+  windResult: record.windResult,
 })
 
 const loadAllImageRecords = async (): Promise<StoredImageRecord[]> => {
@@ -167,10 +178,15 @@ const loadImageRecord = async (id: string): Promise<StoredImageRecord | null> =>
   }
 }
 
-const saveResult = async (id: string, result: TestResult): Promise<SavedImageMeta> => {
+const saveResults = async (id: string, pair: TestPair): Promise<SavedImageMeta> => {
   const record = await loadImageRecord(id)
   if (!record) throw new Error('Saved OCR test image could not be found.')
-  const updated: StoredImageRecord = { ...record, result }
+  const updated: StoredImageRecord = {
+    ...record,
+    result: record.mode === 'wind' ? pair.wind : pair.lie,
+    lieResult: pair.lie,
+    windResult: pair.wind,
+  }
   const db = await openDb()
   try {
     const transaction = db.transaction(IMAGE_STORE, 'readwrite')
@@ -366,7 +382,9 @@ const waitForPayload = <T,>(eventName: string, timeoutMs = 45000) =>
     window.addEventListener(eventName, onEvent)
   })
 
-const formatLie = (payload: GsproLieOcrPayload) => ({
+const formatLie = (payload: GsproLieOcrPayload): TestResult => ({
+  filename: '',
+  mode: 'lie',
   status: payload.status ?? 'UNKNOWN',
   rawText: payload.rawText ?? '',
   parsed: [
@@ -388,14 +406,16 @@ const directionLabel = (degrees: number | null | undefined) => {
   return labels[degrees] ?? `${degrees}°`
 }
 
-const formatWind = (payload: GsproWindOcrPayload) => ({
+const formatWind = (payload: GsproWindOcrPayload): TestResult => ({
+  filename: '',
+  mode: 'wind',
   status: payload.status ?? 'UNKNOWN',
   rawText: payload.rawText ?? '',
   parsed: `${payload.speedMph == null ? '?' : payload.speedMph} MPH | ${directionLabel(payload.directionDegrees)}`,
 })
 
-const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => {
-  const canvas = await makeCaptureCanvas(file, mode)
+const runScreenshotBoth = async (file: File, replayMode: OcrMode): Promise<TestPair> => {
+  const canvas = await makeCaptureCanvas(file, replayMode)
   const stream = canvas.captureStream(1)
   const track = stream.getVideoTracks()[0] as CanvasTrack | undefined
   track?.requestFrame?.()
@@ -404,10 +424,8 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
   const ownDescriptor = Object.getOwnPropertyDescriptor(mediaDevices, 'getDisplayMedia')
   let connection: BrowserGsproVisualCaptureConnection | null = null
 
-  const eventName = mode === 'lie' ? GSPRO_LIE_OCR_BROWSER_EVENT : GSPRO_WIND_OCR_BROWSER_EVENT
-  const resultPromise = mode === 'lie'
-    ? waitForPayload<GsproLieOcrPayload>(eventName)
-    : waitForPayload<GsproWindOcrPayload>(eventName)
+  const windPromise = waitForPayload<GsproWindOcrPayload>(GSPRO_WIND_OCR_BROWSER_EVENT)
+  const liePromise = waitForPayload<GsproLieOcrPayload>(GSPRO_LIE_OCR_BROWSER_EVENT)
 
   Object.defineProperty(mediaDevices, 'getDisplayMedia', {
     configurable: true,
@@ -417,11 +435,11 @@ const runScreenshot = async (file: File, mode: OcrMode): Promise<TestResult> => 
   try {
     connection = await connectToBrowserGsproVisualCapture()
     track?.requestFrame?.()
-    const payload = await resultPromise
-    const formatted = mode === 'lie'
-      ? formatLie(payload as GsproLieOcrPayload)
-      : formatWind(payload as GsproWindOcrPayload)
-    return { filename: file.name, mode, ...formatted }
+    const [windPayload, liePayload] = await Promise.all([windPromise, liePromise])
+    return {
+      lie: { ...formatLie(liePayload), filename: file.name },
+      wind: { ...formatWind(windPayload), filename: file.name },
+    }
   } finally {
     connection?.disconnect()
     stream.getTracks().forEach((candidate) => candidate.stop())
@@ -441,6 +459,11 @@ const errorResult = (filename: string, mode: OcrMode, error: unknown): TestResul
   parsed: '',
   error: error instanceof Error ? error.message : String(error),
 })
+
+const resultFor = (item: SavedImageMeta, mode: OcrMode) => {
+  if (mode === 'lie') return item.lieResult ?? (item.result?.mode === 'lie' ? item.result : undefined)
+  return item.windResult ?? (item.result?.mode === 'wind' ? item.result : undefined)
+}
 
 export default function OcrTestPage() {
   const [mode, setMode] = useState<OcrMode>('lie')
@@ -483,13 +506,15 @@ export default function OcrTestPage() {
       type: record.mimeType,
       lastModified: record.lastModified,
     })
-    let result: TestResult
     try {
-      result = await runScreenshot(file, record.mode)
+      const pair = await runScreenshotBoth(file, record.mode)
+      replaceSavedImage(await saveResults(record.id, pair))
     } catch (error) {
-      result = errorResult(record.filename, record.mode, error)
+      replaceSavedImage(await saveResults(record.id, {
+        lie: errorResult(record.filename, 'lie', error),
+        wind: errorResult(record.filename, 'wind', error),
+      }))
     }
-    replaceSavedImage(await saveResult(record.id, result))
   }
 
   const addFiles = async (files: FileList | null) => {
@@ -503,7 +528,7 @@ export default function OcrTestPage() {
         setMessage(`Saving ${file.name}…`)
         const saved = await saveImage(file, mode)
         setSavedImages((current) => [...current, saved])
-        setMessage(`${file.name} saved · reading OCR…`)
+        setMessage(`${file.name} saved · reading lie + wind OCR…`)
         const record = await loadImageRecord(saved.id)
         if (!record) throw new Error('Saved screenshot could not be reloaded.')
         await processSavedImage(record)
@@ -527,7 +552,11 @@ export default function OcrTestPage() {
         setMessage(`Re-running ${index + 1} of ${savedImages.length}: ${meta.filename}`)
         const record = await loadImageRecord(meta.id)
         if (!record) {
-          replaceSavedImage({ ...meta, result: errorResult(meta.filename, meta.mode, 'Saved image bytes are missing.') })
+          replaceSavedImage({
+            ...meta,
+            lieResult: errorResult(meta.filename, 'lie', 'Saved image bytes are missing.'),
+            windResult: errorResult(meta.filename, 'wind', 'Saved image bytes are missing.'),
+          })
           continue
         }
         await processSavedImage(record)
@@ -554,7 +583,7 @@ export default function OcrTestPage() {
       for (let index = 0; index < records.length; index += 1) {
         const record = records[index]
         const imagePath = `images/${String(index + 1).padStart(3, '0')}_${safeZipFilename(record.filename)}`
-        entries.push({ imagePath, name: imagePath, data: new Uint8Array(await record.blob.arrayBuffer()) } as ZipEntry & { imagePath: string })
+        entries.push({ name: imagePath, data: new Uint8Array(await record.blob.arrayBuffer()) })
         manifestImages.push({
           id: record.id,
           filename: record.filename,
@@ -564,6 +593,8 @@ export default function OcrTestPage() {
           addedAt: record.addedAt,
           imagePath,
           result: record.result,
+          lieResult: record.lieResult,
+          windResult: record.windResult,
         })
       }
 
@@ -612,6 +643,8 @@ export default function OcrTestPage() {
           addedAt: Number.isFinite(image.addedAt) ? image.addedAt : Date.now(),
           blob: new Blob([imageBytes.slice() as BlobPart], { type: image.mimeType || 'image/png' }),
           result: image.result,
+          lieResult: image.lieResult,
+          windResult: image.windResult,
         }
       })
 
@@ -643,10 +676,10 @@ export default function OcrTestPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: '#0e1710', color: '#fff', padding: 32, fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1480, margin: '0 auto' }}>
         <h1 style={{ marginBottom: 6 }}>OCR Test</h1>
         <p style={{ marginTop: 0, color: '#bdc9bd' }}>
-          Add useful screenshots once. Looper keeps the image bytes in this browser; export a corpus ZIP for a portable backup and import it anywhere later.
+          Add useful screenshots once. Every run now records both lie and wind from the same image; export a corpus ZIP for a portable backup.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '24px 0', flexWrap: 'wrap' }}>
@@ -655,9 +688,10 @@ export default function OcrTestPage() {
             disabled={running}
             onChange={(event) => setMode(event.target.value as OcrMode)}
             style={{ padding: '10px 12px', fontSize: 16 }}
+            title="Only controls how cropped historical images are replayed. Full screenshots are always tested for both lie and wind."
           >
-            <option value="lie">Lie / minimap</option>
-            <option value="wind">Wind / full screenshot</option>
+            <option value="lie">Lie / minimap source</option>
+            <option value="wind">Wind / full screenshot source</option>
           </select>
 
           <label style={{ padding: '10px 16px', borderRadius: 6, background: '#d4b15a', color: '#0e1710', fontWeight: 800, cursor: running ? 'default' : 'pointer' }}>
@@ -726,23 +760,27 @@ export default function OcrTestPage() {
                 <tr>
                   <th style={{ padding: 12 }}>#</th>
                   <th style={{ padding: 12 }}>File</th>
-                  <th style={{ padding: 12 }}>Type</th>
-                  <th style={{ padding: 12 }}>Status</th>
-                  <th style={{ padding: 12 }}>Raw OCR</th>
-                  <th style={{ padding: 12 }}>Parsed</th>
+                  <th style={{ padding: 12 }}>Lie</th>
+                  <th style={{ padding: 12 }}>Lie raw</th>
+                  <th style={{ padding: 12 }}>Wind</th>
+                  <th style={{ padding: 12 }}>Wind raw</th>
                 </tr>
               </thead>
               <tbody>
-                {savedImages.map((item, index) => (
-                  <tr key={item.id} style={{ borderTop: '1px solid #344436' }}>
-                    <td style={{ padding: 12 }}>{index + 1}</td>
-                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.filename}</td>
-                    <td style={{ padding: 12 }}>{item.mode === 'lie' ? 'Lie' : 'Wind'}</td>
-                    <td style={{ padding: 12, fontWeight: 800 }}>{item.result?.status ?? 'SAVED'}</td>
-                    <td style={{ padding: 12, minWidth: 260, whiteSpace: 'pre-wrap' }}>{item.result?.error || item.result?.rawText || '—'}</td>
-                    <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.result?.parsed || '—'}</td>
-                  </tr>
-                ))}
+                {savedImages.map((item, index) => {
+                  const lie = resultFor(item, 'lie')
+                  const wind = resultFor(item, 'wind')
+                  return (
+                    <tr key={item.id} style={{ borderTop: '1px solid #344436' }}>
+                      <td style={{ padding: 12 }}>{index + 1}</td>
+                      <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.filename}</td>
+                      <td style={{ padding: 12, whiteSpace: 'nowrap' }}><strong>{lie?.status ?? 'SAVED'}</strong><br />{lie?.parsed || '—'}</td>
+                      <td style={{ padding: 12, minWidth: 260, whiteSpace: 'pre-wrap' }}>{lie?.error || lie?.rawText || '—'}</td>
+                      <td style={{ padding: 12, whiteSpace: 'nowrap' }}><strong>{wind?.status ?? 'SAVED'}</strong><br />{wind?.parsed || '—'}</td>
+                      <td style={{ padding: 12, minWidth: 220, whiteSpace: 'pre-wrap' }}>{wind?.error || wind?.rawText || '—'}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
