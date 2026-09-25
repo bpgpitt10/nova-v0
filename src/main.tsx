@@ -19,6 +19,7 @@ import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
 import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
 import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
 import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
+import OcrTestPage from './dev/OcrTestPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import RoundTeeSelectionBar from './components/RoundTeeSelectionBar.tsx'
@@ -163,7 +164,8 @@ function RootRouter() {
   const showGsproReplay = pathname === '/dev/gspro-replay'
   const showDecisionReplay = pathname === '/dev/decision-replay'
   const showDecisionAudit = pathname === '/dev/decision-audit'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit
+  const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -193,6 +195,7 @@ function RootRouter() {
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
     if (showDecisionAudit) return <DecisionAuditDevPage />
+    if (showOcrTest) return <OcrTestPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
@@ -226,6 +229,7 @@ function RootRouter() {
     showDecisionReplay,
     showGsproReplay,
     showLiveCaddie,
+    showOcrTest,
     updateError,
     updateStatus,
   ])
