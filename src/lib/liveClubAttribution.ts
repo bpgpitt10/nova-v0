@@ -265,6 +265,19 @@ const scheduleVisibleArmedClubSync = () => {
   window.setTimeout(syncVisibleArmedClubState, 0)
 }
 
+const recommendedClubFromUi = (): Club | null => {
+  const recommendationText = document
+    .querySelector('.live-club-strip button.recommended strong')
+    ?.textContent
+    ?.trim()
+  if (isClub(recommendationText)) return recommendationText
+
+  // Fallback for older Live Caddie markup where the club strip did not expose
+  // a dedicated recommendation marker.
+  const heroText = document.querySelector('.live-club-hero')?.textContent?.trim()
+  return isClub(heroText) ? heroText : null
+}
+
 /**
  * Transitional UI bridge: Live Caddie already owns the visible armed state.
  * Capture those existing clicks into the durable attribution state while also
@@ -290,8 +303,7 @@ const installLiveCaddieClubClickBridge = () => {
       return
     }
 
-    const recommendationText = document.querySelector('.live-club-hero')?.textContent?.trim()
-    const recommendedClub = isClub(recommendationText) ? recommendationText : null
+    const recommendedClub = recommendedClubFromUi()
 
     if (button.closest('.live-club-strip')) {
       const clubText = button.querySelector('strong')?.textContent?.trim()
@@ -302,9 +314,13 @@ const installLiveCaddieClubClickBridge = () => {
       return
     }
 
-    if (button.classList.contains('live-arm-recommendation') && recommendedClub) {
-      armLiveClub(recommendedClub, recommendedClub)
-      scheduleVisibleArmedClubSync()
+    if (button.classList.contains('live-arm-recommendation')) {
+      const displayedClubText = document.querySelector('.live-club-hero')?.textContent?.trim()
+      const displayedClub = isClub(displayedClubText) ? displayedClubText : recommendedClub
+      if (displayedClub) {
+        armLiveClub(displayedClub, recommendedClub)
+        scheduleVisibleArmedClubSync()
+      }
     }
   })
 
