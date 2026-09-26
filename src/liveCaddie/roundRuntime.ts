@@ -7,8 +7,15 @@ export type LiveCaddieStartRoundDetail = {
 
 export type LiveCaddieShotStateChangedDetail = {
   key: string
+  courseKey?: string | null
+  roundId?: number | null
   holeNumber: number | null
   nextShotNumber: number | null
+  surface?: string | null
+  surfaceSource?: string | null
+  distanceToPinYds?: number | null
+  ballLocalYds?: readonly [number, number] | null
+  latestShotKey?: string | null
   source: 'manual-start' | 'gspro'
 }
 
