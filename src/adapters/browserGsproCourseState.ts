@@ -6,6 +6,10 @@ import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
 import type { CourseHoleGeometry } from '../courseGeometry/types'
+import {
+  dispatchLiveCaddieShotStateChanged,
+  LIVE_CADDIE_START_ROUND_EVENT,
+} from '../liveCaddie/roundRuntime'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
 import {
   connectToBrowserGsproCourseState as connectCoreCourseState,
@@ -181,6 +185,43 @@ const enrichSnapshotWithStartingPosition = async (
   }
 }
 
+const buildManualStartSnapshot = async (
+  selectedCourseId: Exclude<ReturnType<typeof loadLastSelectedCourseId>, typeof UNSELECTED_COURSE_ID>,
+): Promise<BrowserGsproCourseSnapshot> => {
+  const holeNumber = 1
+  const geometry = await loadLiveTeeGeometry(selectedCourseId, holeNumber)
+  const resolution = resolveLiveSupportedTee(geometry, null)
+  const tee = resolution.status === 'supported'
+    ? resolution.courseLocalYds
+    : geometry.markers.tee
+  const pin = geometry.markers.pin
+  const distanceToPinYds = pin
+    ? Math.hypot(pin[0] - tee[0], pin[1] - tee[1])
+    : null
+
+  return {
+    courseKey: null,
+    roundId: null,
+    holeNumber,
+    ballLocalYds: tee,
+    ballSource: 'osm-tee-match',
+    surface: 'tee',
+    surfaceSource: 'cached-tee',
+    distanceToPinYds,
+    nextShotNumber: 1,
+    latestShot: null,
+    latestShotKey: null,
+    warnings: [],
+    observedAt: new Date().toISOString(),
+    preShotStart: null,
+  }
+}
+
+const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | null) =>
+  snapshot?.latestShotKey
+    ? `${snapshot.roundId ?? 'round'}:${snapshot.latestShotKey}`
+    : null
+
 export const connectToBrowserGsproCourseState = ({
   onSnapshot,
   onStatusChange,
@@ -192,28 +233,94 @@ export const connectToBrowserGsproCourseState = ({
 }) => {
   let disconnected = false
   let snapshotSequence = 0
+  let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
+  let manualStartActive = false
+  let manualStartBaselineCaptured = false
+  let manualStartBaselineIdentity: string | null = null
+  let lastPublishedShotStateKey: string | null = null
+
+  const publishSnapshot = (
+    snapshot: BrowserGsproCourseSnapshot,
+    source: 'manual-start' | 'gspro',
+  ) => {
+    onSnapshot(snapshot)
+    const key = source === 'manual-start'
+      ? 'manual-start:1:1'
+      : `${snapshot.roundId ?? 'round'}:${snapshot.holeNumber ?? 'hole'}:${snapshot.nextShotNumber ?? 'shot'}:${snapshot.latestShotKey ?? 'none'}`
+    if (key === lastPublishedShotStateKey) return
+    lastPublishedShotStateKey = key
+    dispatchLiveCaddieShotStateChanged({
+      key,
+      holeNumber: snapshot.holeNumber,
+      nextShotNumber: snapshot.nextShotNumber,
+      source,
+    })
+  }
+
+  const onStartRound = () => {
+    if (disconnected) return
+    const selectedCourseId = loadLastSelectedCourseId()
+    if (selectedCourseId === UNSELECTED_COURSE_ID) return
+
+    manualStartActive = true
+    manualStartBaselineCaptured = lastCoreSnapshot !== null
+    manualStartBaselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    const sequence = ++snapshotSequence
+
+    void buildManualStartSnapshot(selectedCourseId)
+      .then((snapshot) => {
+        if (disconnected || sequence !== snapshotSequence || !manualStartActive) return
+        publishSnapshot(snapshot, 'manual-start')
+      })
+      .catch((error) => {
+        if (disconnected || sequence !== snapshotSequence) return
+        console.warn('[Browser GSPro course state] Could not establish manual Shot 1 tee state.', error)
+        onError?.(error)
+      })
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+  }
 
   const coreConnection = connectCoreCourseState({
     onStatusChange,
     onError,
     onSnapshot: (snapshot) => {
+      lastCoreSnapshot = snapshot
+
+      if (manualStartActive) {
+        if (!manualStartBaselineCaptured) {
+          manualStartBaselineIdentity = physicalSnapshotIdentity(snapshot)
+          manualStartBaselineCaptured = true
+          return
+        }
+
+        const currentIdentity = physicalSnapshotIdentity(snapshot)
+        const hasNewPhysicalShot = currentIdentity != null
+          && currentIdentity !== manualStartBaselineIdentity
+        if (!hasNewPhysicalShot) return
+
+        manualStartActive = false
+      }
+
       const sequence = ++snapshotSequence
       void enrichSnapshotWithStartingPosition(snapshot)
         .then((enriched) => {
           if (disconnected || sequence !== snapshotSequence) return
-          onSnapshot(enriched)
+          publishSnapshot(enriched, 'gspro')
         })
         .catch((error) => {
           if (disconnected || sequence !== snapshotSequence) return
           console.warn('[Browser GSPro course state] Supported-tee reconciliation failed; using core snapshot.', error)
-          onSnapshot({
+          publishSnapshot({
             ...snapshot,
             preShotStart: null,
             warnings: dedupeWarnings([
               ...snapshot.warnings,
               'GSPro Shot 1 tee reconciliation failed; supported-tee placement was not applied.',
             ]),
-          })
+          }, 'gspro')
         })
     },
   })
@@ -222,6 +329,9 @@ export const connectToBrowserGsproCourseState = ({
     disconnect: () => {
       if (disconnected) return
       disconnected = true
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+      }
       coreConnection.disconnect()
     },
   }
