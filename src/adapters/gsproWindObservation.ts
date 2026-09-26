@@ -72,10 +72,16 @@ export const normalizeGsproWindOcrPayload = (
   const directionDegrees = finite(payload?.directionDegrees)
     ? normalizeDegrees(payload!.directionDegrees!)
     : null
-  const convention = validConvention(payload?.convention) ? payload.convention : null
   const referenceFrame = validReferenceFrame(payload?.referenceFrame)
     ? payload.referenceFrame
     : null
+  const requestedConvention = validConvention(payload?.convention) ? payload.convention : null
+  // GSPro's compass HUD label is the direction the wind is coming FROM.
+  // Normalize that contract here so downstream projection math receives the
+  // same convention regardless of what an OCR producer happened to tag it as.
+  const convention: WindDirectionConvention | null = referenceFrame === 'compass'
+    ? 'from'
+    : requestedConvention
   const confidence = finite(payload?.confidence)
     && payload!.confidence! >= 0
     && payload!.confidence! <= 1
