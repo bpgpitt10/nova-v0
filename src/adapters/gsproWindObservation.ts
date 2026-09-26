@@ -30,7 +30,9 @@ export type ConnectGsproWindObservationOptions = {
   staleAfterMs?: number
 }
 
-const DEFAULT_STALE_AFTER_MS = 7000
+// Visual OCR is shot-driven now. A successful wind read belongs to the current
+// shot until canonical shot state advances or visual capture is disconnected.
+const DEFAULT_STALE_AFTER_MS = Number.POSITIVE_INFINITY
 const STALE_CHECK_INTERVAL_MS = 500
 const SOURCE = 'GSPro HUD OCR'
 
@@ -166,7 +168,7 @@ export const connectToGsproWindObservation = ({
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
   }
 
-  const staleTimer = typeof window !== 'undefined'
+  const staleTimer = typeof window !== 'undefined' && Number.isFinite(staleAfterMs)
     ? window.setInterval(() => {
         if (!latest || disconnected) return
         const next = staleObservation(latest, staleAfterMs)
