@@ -9,7 +9,7 @@ import type {
   DecisionShotGoal,
   DecisionShotQuality,
 } from './decisionEngine'
-import type { ModeledAimSample } from './aimOutcomeSampling'
+import type { LandingTransform, ModeledAimSample } from './aimOutcomeSampling'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -180,6 +180,8 @@ export const buildDecisionRiskProfile = ({
   player,
   carryAdjustmentYds = 0,
   lateralAdjustmentYds = 0,
+  pinLocalYds,
+  landingTransform,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -193,6 +195,10 @@ export const buildDecisionRiskProfile = ({
   carryAdjustmentYds?: number
   /** Current-condition translation relative to the Stock lateral baseline. */
   lateralAdjustmentYds?: number
+  /** Exact live pin when available; falls back to imported geometry. */
+  pinLocalYds?: CoursePointYds | null
+  /** Same destination-terrain transform used by the modeled core cloud. */
+  landingTransform?: LandingTransform
 }): DecisionRiskProfile => {
   const historicalSamples = player?.samples ?? []
   const totalHistoricalWeight = historicalSamples.reduce(
@@ -254,11 +260,15 @@ export const buildDecisionRiskProfile = ({
       const carry = Math.max(0, sample.carryYds + carryAdjustmentYds)
       const finalDistance = carry + coreRolloutYds
       const offline = sample.offlineYds + lateralAdjustmentYds
-      const landing = addScaled(ball, forward, finalDistance, right, offline)
+      const carryLanding = addScaled(ball, forward, carry, right, offline)
+      const baselineLanding = addScaled(ball, forward, finalDistance, right, offline)
+      const landing = landingTransform
+        ? landingTransform(carryLanding, baselineLanding)
+        : baselineLanding
       const classification = classifyTacticalLandingPoint(hole, landing)
       const kind = classification.kind
       const tier = decisionRiskTierForSurface(kind, goal)
-      const state = buildDecisionLandingState(hole, landing, classification)
+      const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds)
       // Normalize inside the empirical tail, then allocate only the learned tail mass.
       const weight = (Math.max(0, sample.weight) / tailWeight) * tailProbability
       const tailLanding: DecisionRiskTailLanding = {
