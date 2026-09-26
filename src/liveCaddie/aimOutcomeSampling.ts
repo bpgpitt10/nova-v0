@@ -31,6 +31,11 @@ export type ModeledAimSample = {
   state: DecisionLandingState
 }
 
+export type LandingTransform = (
+  carryLanding: CoursePointYds,
+  baselineLanding: CoursePointYds,
+) => CoursePointYds
+
 export type AimProbabilityContour = {
   probability: 0.5 | 0.8 | 0.95
   carryRadiusYds: number
@@ -159,6 +164,8 @@ export const sampleModeledAimDistribution = ({
   carrySigmaYds,
   totalSigmaYds,
   lateralSigmaYds,
+  pinLocalYds,
+  landingTransform,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -171,6 +178,10 @@ export const sampleModeledAimDistribution = ({
   /** Resting-distance variability. Falls back to carry sigma when unavailable. */
   totalSigmaYds?: number | null
   lateralSigmaYds: number | null | undefined
+  /** Exact live pin when available; falls back to the imported geometry marker. */
+  pinLocalYds?: CoursePointYds | null
+  /** Optional destination-terrain transform applied after baseline rollout. */
+  landingTransform?: LandingTransform
 }): {
   distribution: AimSurfaceDistribution
   meanCarryLanding: CoursePointYds
@@ -200,7 +211,10 @@ export const sampleModeledAimDistribution = ({
       ? totalSigmaYds
       : carrySigmaYds
   const meanCarryLanding = addScaled(ball, forward, carryMeanYds, right, lateralMeanYds)
-  const meanLanding = addScaled(ball, forward, resolvedTotalMean, right, lateralMeanYds)
+  const baselineMeanLanding = addScaled(ball, forward, resolvedTotalMean, right, lateralMeanYds)
+  const meanLanding = landingTransform
+    ? landingTransform(meanCarryLanding, baselineMeanLanding)
+    : baselineMeanLanding
 
   const samples = STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }): ModeledAimSample => {
     const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
@@ -209,13 +223,16 @@ export const sampleModeledAimDistribution = ({
     const total = Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma)
     const offline = lateralMeanYds + lateralZ * lateralSigmaYds
     const carryLanding = addScaled(ball, forward, carry, right, offline)
-    const landing = addScaled(ball, forward, total, right, offline)
+    const baselineLanding = addScaled(ball, forward, total, right, offline)
+    const landing = landingTransform
+      ? landingTransform(carryLanding, baselineLanding)
+      : baselineLanding
     const classification = classifyTacticalLandingPoint(hole, landing)
     return {
       carryLanding,
       landing,
       kind: classification.kind,
-      state: buildDecisionLandingState(hole, landing, classification),
+      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds),
     }
   })
 
