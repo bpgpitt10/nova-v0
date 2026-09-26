@@ -1,3 +1,4 @@
+import { sampleGreywolfGreenElevation } from '../courseGeometry/greywolfGreenDetail'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
@@ -51,7 +52,7 @@ type LandingElevationResolution = {
 }
 
 const DISPLAY_OUTCOME_DOT_COUNT = 256
-const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v7'
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v8'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const logAimDescriptorShadow = (
@@ -69,7 +70,7 @@ const logAimDescriptorShadow = (
     target: recommendation.planningTarget,
     aimPoint: candidate.aimPoint,
     aimOffsetYds: candidate.aimOffsetYds,
-    pin: request.hole.markers.pin ?? null,
+    pin: request.environment.exactPinLocalYds ?? request.hole.markers.pin ?? null,
   })
   const contextSentence = buildAimContextSentence(descriptor)
 
@@ -261,6 +262,17 @@ const resolveLandingElevation = (
   if (!ballTerrain) return fallback
 
   const landing = modeledCarryLandingPoint(evaluation, ball)
+  const greenLandingElevationFt = environment.greenDetail
+    ? sampleGreywolfGreenElevation(environment.greenDetail, landing)
+    : null
+  if (greenLandingElevationFt != null) {
+    return {
+      deltaFt: greenLandingElevationFt - ballTerrain.elevationFt,
+      source: 'modeled carry landing · 1 yd green LiDAR',
+      fromTerrain: true,
+    }
+  }
+
   const landingTerrain = estimateCourseTerrain(hole, landing)
   if (!landingTerrain) return fallback
 
@@ -501,6 +513,22 @@ const buildEvaluationCacheKey = ({
       surfaceOverride: environment.surfaceOverride ?? null,
       lieUpDownDeg: finiteKeyNumber(environment.lieUpDownDeg),
       lieLeftRightDeg: finiteKeyNumber(environment.lieLeftRightDeg),
+      exactPinLocalYds: environment.exactPinLocalYds
+        ? [
+            finiteKeyNumber(environment.exactPinLocalYds[0]),
+            finiteKeyNumber(environment.exactPinLocalYds[1]),
+          ]
+        : null,
+      greenDetail: environment.greenDetail
+        ? [
+            environment.greenDetail.holeNumber,
+            environment.greenDetail.grid.spacingYds,
+            environment.greenDetail.grid.width,
+            environment.greenDetail.grid.height,
+            finiteKeyNumber(environment.greenDetail.greenSummary.meanElevationFt),
+            finiteKeyNumber(environment.greenDetail.greenSummary.elevationRangeFt),
+          ]
+        : null,
     },
   })
 

@@ -1,4 +1,5 @@
 import { classifyPoint } from '../courseGeometry/geometry'
+import type { GreywolfGreenDetail } from '../courseGeometry/greywolfGreenDetail'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -29,6 +30,7 @@ import {
   evaluateEmpiricalAimDistribution,
   type EmpiricalAimSurfaceDistribution,
 } from './empiricalAimOutcomes'
+import { redirectGreywolfGreenRollout } from './greenTargeting'
 import { buildLiveCaddieProfileSet } from './profileProvider'
 import { modelShotContext } from './shotContextModel'
 
@@ -77,6 +79,10 @@ export type AimLabEnvironment = {
   /** Positive = GSPro Left / ball above feet. V0 applies the existing conservative sidehill prior. */
   lieLeftRightDeg?: number | null
   lieSource?: string
+  /** Exact GSPro pin in the same hole-local coordinate system as the course geometry. */
+  exactPinLocalYds?: CoursePointYds | null
+  /** Optional 1 yd Greywolf green grid used to shape destination rollout. */
+  greenDetail?: GreywolfGreenDetail | null
   /**
    * Optional per-club strategic target. Used by off-sim natural-landing
    * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
@@ -229,6 +235,16 @@ export const evaluateAimLab = (
   const decisionPlayers = buildDecisionPlayerModels(sessions, nowMs)
   const geometrySurface = classifyPoint(hole, ball).kind
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
+  const exactPinLocalYds = environment.exactPinLocalYds ?? hole.markers.pin ?? null
+  const greenLandingTransform = environment.greenDetail
+    ? (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) =>
+        redirectGreywolfGreenRollout({
+          hole,
+          detail: environment.greenDetail!,
+          carryLanding,
+          baselineLanding,
+        }).landing
+    : undefined
 
   const evaluations = profileSet.clubs.map((profile): ClubAimEvaluation => {
     const support = profileSet.club_support.find((item) => item.club === profile.club)
@@ -364,6 +380,8 @@ export const evaluateAimLab = (
         carrySigmaYds: profile.carry_sigma_yds,
         totalSigmaYds: profile.total_sigma_yds,
         lateralSigmaYds: profile.lateral_sigma_yds,
+        pinLocalYds: exactPinLocalYds,
+        landingTransform: greenLandingTransform,
       })
       if (!sampled) {
         return {
@@ -392,6 +410,8 @@ export const evaluateAimLab = (
         player: decisionPlayer,
         carryAdjustmentYds: empiricalCarryAdjustmentYds,
         lateralAdjustmentYds: empiricalLateralAdjustmentYds,
+        pinLocalYds: exactPinLocalYds,
+        landingTransform: greenLandingTransform,
       })
       const scored = scoreCandidate(sampled.distribution, carryGapYds)
       return {

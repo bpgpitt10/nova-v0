@@ -800,6 +800,16 @@ export default function LiveCaddiePage() {
         lieUpDownDeg,
         lieLeftRightDeg,
         lieSource,
+        exactPinLocalYds:
+          liveMatchesHole && liveSnapshot?.pinSource === 'output-log-course-layout'
+            ? liveSnapshot.pinLocalYds
+            : null,
+        greenDetail:
+          courseId === GREYWOLF_COURSE_ID
+          && liveMatchesHole
+          && liveSnapshot?.pinSource === 'output-log-course-layout'
+            ? greenDetail
+            : null,
       },
       nowMs: Date.now(),
     })
@@ -824,6 +834,11 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
+    courseId,
+    greenDetail,
+    liveMatchesHole,
+    liveSnapshot?.pinLocalYds,
+    liveSnapshot?.pinSource,
   ])
 
   const recommendation = evaluations[0] ?? null
