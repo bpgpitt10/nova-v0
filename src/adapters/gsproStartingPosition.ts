@@ -68,7 +68,9 @@ const surfaceFromRaw = (value: number | null) => {
   switch (value) {
     case 1: return 'rough'
     case 2: return 'fairway'
-    case 3: return 'sand'
+    case 3:
+    case 11:
+      return 'sand'
     case 5: return 'green'
     case 18: return 'tee'
     default: return null
