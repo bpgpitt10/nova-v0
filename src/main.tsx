@@ -30,6 +30,7 @@ import {
   refreshBagConfigState,
 } from './lib/bagConfig.ts'
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
+import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -66,7 +67,14 @@ function SignOutPage() {
 }
 
 function LiveGsproRoundArchiveBridge() {
-  useEffect(() => startLiveGsproCourseRoundArchiver(), [])
+  useEffect(() => {
+    const stopArchive = startLiveGsproCourseRoundArchiver()
+    const stopLineage = startLiveCaddieShotLineage()
+    return () => {
+      stopLineage()
+      stopArchive()
+    }
+  }, [])
   return null
 }
 
