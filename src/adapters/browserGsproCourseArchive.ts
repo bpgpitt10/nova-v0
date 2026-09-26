@@ -62,6 +62,8 @@ export type BrowserGsproCourseArchiveShot = {
   startingSurfaceRaw: number | null
   endingSurfaceRaw: number | null
   distanceToPinYds: number | null
+  isHoled: boolean
+  isGimme: boolean
   ballSpeedMph: number | null
   carryYards: number | null
   totalYards: number | null
@@ -98,6 +100,16 @@ const asNumber = (value: unknown): number | null => {
 
 const asString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null
+
+const asBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return normalized === 'true' || normalized === '1'
+  }
+  return false
+}
 
 const vec3 = (value: unknown): { x: number; y: number; z: number } | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
@@ -166,6 +178,10 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
   const distanceToPinMeters = asNumber(record.DistanceToPin)
   const totalDistanceMeters = asNumber(record.TotalDistance)
   const rawBallSpeed = asNumber(record.BallSpeed)
+  const isHoled = asBoolean(record.activeShot?.sd?.isHoled)
+    || asBoolean(ghost?.atShotData?.isHoled)
+  const isGimme = asBoolean(record.activeShot?.sd?.isGimme)
+    || asBoolean(ghost?.atShotData?.isGimme)
   const lmfSP = asNumber(ghost?.lmfSP)
   const lmfEL = asNumber(ghost?.lmfEL)
   const lmfAZ = asNumber(ghost?.lmfAZ)
@@ -185,6 +201,8 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
     startingSurfaceRaw: asNumber(record.StartingSurface),
     endingSurfaceRaw: asNumber(record.EndingSurface),
     distanceToPinYds: distanceToPinMeters == null ? null : distanceToPinMeters * METERS_TO_YARDS,
+    isHoled,
+    isGimme,
     ballSpeedMph: lmfSP ?? rawBallSpeed,
     carryYards: carryDistanceYards(record),
     totalYards: totalDistanceMeters == null ? null : totalDistanceMeters * METERS_TO_YARDS,
@@ -199,6 +217,8 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
       ballSpeedRaw: rawBallSpeed,
       totalDistanceMeters,
       distanceToPinMeters,
+      isHoled,
+      isGimme,
       lmfSP,
       lmfEL,
       lmfAZ,
