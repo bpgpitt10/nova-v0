@@ -6,6 +6,7 @@ import {
   dispatchGsproWindOcrObservation,
   type GsproWindOcrPayload,
 } from './gsproWindObservation'
+import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
 
 export type BrowserGsproVisualCaptureStatus =
   | 'idle'
@@ -75,13 +76,11 @@ const TESSERACT_VERSION = '6.0.1'
 const TESSERACT_SCRIPT_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`
 const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js`
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
-const OCR_INTERVAL_MS = 2500
+const SHOT_OCR_SETTLE_MS = 650
 
 // Keep the wind crops tight around the actual glyphs. On the 3840x2160
 // reference corpus the speed text occupies roughly x=1712..1821/y=32..69 and
-// the direction text x=2056..2108/y=32..69. The prior direction box was more
-// than twice as wide as the glyphs and browser Tesseract frequently returned a
-// blank N even though the text was visually obvious.
+// the direction text x=2056..2108/y=32..69.
 const WIND_SPEED_CROP: CropSpec = {
   x: 0.444,
   y: 0.011,
@@ -296,10 +295,7 @@ const parseLieDirection = (
   const compact = rawText.toUpperCase().replace(/\s+/g, '')
   if (compact.includes(positive)) return positive
   if (compact.includes(negative)) return negative
-
-  if (positive === 'UP' && (compact === 'P' || compact === 'OP' || compact === 'DP')) {
-    return 'UP'
-  }
+  if (positive === 'UP' && (compact === 'P' || compact === 'OP' || compact === 'DP')) return 'UP'
   return null
 }
 
@@ -427,14 +423,19 @@ export const connectToBrowserGsproVisualCapture = async ({
 
   let disconnected = false
   let ocrInFlight = false
-  let timer: number | null = null
+  let shotOcrTimer: number | null = null
+  let shotStateListener: (() => void) | null = null
   let worker: TesseractWorker | null = null
 
   const stop = () => {
     if (disconnected) return
     disconnected = true
-    if (timer != null) window.clearInterval(timer)
-    timer = null
+    if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
+    shotOcrTimer = null
+    if (shotStateListener) {
+      window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
+      shotStateListener = null
+    }
     video.pause()
     video.srcObject = null
     stream.getTracks().forEach((candidate) => candidate.stop())
@@ -491,16 +492,8 @@ export const connectToBrowserGsproVisualCapture = async ({
       if (disconnected || ocrInFlight || !worker) return
       ocrInFlight = true
       try {
-        let windSpeedResult = await recognize(
-          WIND_SPEED_CROP,
-          '0123456789.,MPH ',
-          '7',
-        )
-        let windDirectionResult = await recognize(
-          WIND_DIRECTION_CROP,
-          'NSEW ',
-          '8',
-        )
+        let windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '7')
+        let windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '8')
         let windPayload = parseWindComponents(
           windSpeedResult.data.text ?? '',
           normalizedConfidence(windSpeedResult.data.confidence),
@@ -509,11 +502,7 @@ export const connectToBrowserGsproVisualCapture = async ({
         )
 
         if (windPayload.speedMph == null) {
-          windSpeedResult = await recognize(
-            WIND_SPEED_CROP,
-            '0123456789.,MPH ',
-            '6',
-          )
+          windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '6')
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
             normalizedConfidence(windSpeedResult.data.confidence),
@@ -523,11 +512,7 @@ export const connectToBrowserGsproVisualCapture = async ({
         }
 
         if (windPayload.speedMph == null) {
-          windSpeedResult = await recognize(
-            WIND_SPEED_CROP,
-            '0123456789.,MPH ',
-            '13',
-          )
+          windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '13')
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
             normalizedConfidence(windSpeedResult.data.confidence),
@@ -537,11 +522,7 @@ export const connectToBrowserGsproVisualCapture = async ({
         }
 
         if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
-          windDirectionResult = await recognize(
-            WIND_DIRECTION_CROP,
-            'NSEW ',
-            '7',
-          )
+          windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '7')
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
             normalizedConfidence(windSpeedResult.data.confidence),
@@ -551,11 +532,7 @@ export const connectToBrowserGsproVisualCapture = async ({
         }
 
         if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
-          windDirectionResult = await recognize(
-            WIND_DIRECTION_CROP,
-            'NSEW ',
-            '10',
-          )
+          windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '10')
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
             normalizedConfidence(windSpeedResult.data.confidence),
@@ -620,9 +597,22 @@ export const connectToBrowserGsproVisualCapture = async ({
       }
     }
 
+    const scheduleShotOcr = () => {
+      if (disconnected) return
+      if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
+      shotOcrTimer = window.setTimeout(() => {
+        shotOcrTimer = null
+        void runOcr()
+      }, SHOT_OCR_SETTLE_MS)
+    }
+
+    shotStateListener = scheduleShotOcr
+    window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
+
     onStatusChange?.('connected')
+    // Connecting visuals is itself an explicit request for the current shot's
+    // conditions. After this first read, OCR only runs when canonical shot state advances.
     void runOcr()
-    timer = window.setInterval(() => void runOcr(), OCR_INTERVAL_MS)
   } catch (error) {
     stop()
     onStatusChange?.('error')
