@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import ctypes.wintypes
 import json
 import math
 import os
@@ -40,12 +41,10 @@ import target_cards_v6
 MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 
-
 @dataclass
 class Pair:
     x: float
     y: float
-
 
 @dataclass
 class CaptureFrame:
@@ -54,7 +53,6 @@ class CaptureFrame:
     monitor_top: int
     monitor_width: int
     monitor_height: int
-
 
 @dataclass
 class ClickLabResult:
@@ -78,7 +76,6 @@ class ClickLabResult:
     verification: str
     warnings: list[str]
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Guarded GSPro minimap click validation lab")
     parser.add_argument("--monitor", type=int, default=1)
@@ -98,13 +95,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json", action="store_true")
     return parser.parse_args()
 
-
 def parse_pair(text: str, label: str) -> Pair:
     parts = [part.strip() for part in text.split(",")]
     if len(parts) != 2:
         raise ValueError(f"{label} must be x,y")
     return Pair(float(parts[0]), float(parts[1]))
-
 
 def _fixed_ocr(image, tesseract_exe: str, whitelist: str, psm: str = "7") -> str:
     prepared = target_card._prep_ocr(image)
@@ -130,9 +125,7 @@ def _fixed_ocr(image, tesseract_exe: str, whitelist: str, psm: str = "7") -> str
         except OSError:
             pass
 
-
 target_card._ocr = _fixed_ocr
-
 
 def capture_monitor(index: int) -> CaptureFrame:
     try:
@@ -152,7 +145,6 @@ def capture_monitor(index: int) -> CaptureFrame:
             monitor_height=int(monitor["height"]),
         )
 
-
 def read_pin_distance(screen: np.ndarray, explicit_distance: float | None, tesseract_path: str | None, debug_dir: Path):
     warnings: list[str] = []
     if explicit_distance is not None:
@@ -165,13 +157,11 @@ def read_pin_distance(screen: np.ndarray, explicit_distance: float | None, tesse
         raise RuntimeError("Could not read the white GSPro PIN card. Use --distance only as a deliberate lab fallback.")
     return float(pin.distance_yds), pin.source, warnings
 
-
 def unit(dx: float, dy: float):
     length = math.hypot(dx, dy)
     if length < 1e-9:
         raise ValueError("Cannot build a frame from coincident points")
     return dx / length, dy / length
-
 
 def resolve_target_components(args: argparse.Namespace, distance_to_pin_yds: float):
     absolute_values = [args.ball_course, args.pin_course, args.target_course]
@@ -204,7 +194,6 @@ def resolve_target_components(args: argparse.Namespace, distance_to_pin_yds: flo
     forward_yds = float(args.forward)
     return right_yds, forward_yds, math.hypot(right_yds, forward_yds), "right-forward"
 
-
 def predict_minimap_pixel(ball: base.Point, pin: base.Point, distance_to_pin_yds: float, right_yds: float, forward_yds: float):
     dx = pin.x - ball.x
     dy = pin.y - ball.y
@@ -219,7 +208,6 @@ def predict_minimap_pixel(ball: base.Point, pin: base.Point, distance_to_pin_yds
     target_x = ball.x + (forward_yds / yards_per_pixel) * sfx + (right_yds / yards_per_pixel) * srx
     target_y = ball.y + (forward_yds / yards_per_pixel) * sfy + (right_yds / yards_per_pixel) * sry
     return base.Point(target_x, target_y), yards_per_pixel
-
 
 def annotate_preview(screen, roi_box, ball, pin, predicted, expected_distance_yds):
     annotated = screen.copy()
@@ -236,7 +224,6 @@ def annotate_preview(screen, roi_box, ball, pin, predicted, expected_distance_yd
                 cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2, cv2.LINE_AA)
     return annotated
 
-
 def get_window_rect(hwnd: int):
     if os.name != "nt":
         raise RuntimeError("GSPro mouse actuation is Windows-only.")
@@ -245,7 +232,6 @@ def get_window_rect(hwnd: int):
     if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
         raise RuntimeError("Could not read GSPro window bounds.")
     return int(rect.left), int(rect.top), int(rect.right), int(rect.bottom)
-
 
 def click_once_and_restore(hwnd: int, desktop_x: int, desktop_y: int):
     if not aim_actuator.focus_gspro(hwnd, wait_s=0.03):
@@ -267,7 +253,6 @@ def click_once_and_restore(hwnd: int, desktop_x: int, desktop_y: int):
         time.sleep(0.025)
         user32.SetCursorPos(int(original.x), int(original.y))
 
-
 def verify_after_click(screen, tesseract_path, debug_dir, expected_distance_yds, tolerance_yds):
     try:
         states = target_cards_v6.read_cards(screen, tesseract_path=tesseract_path, debug_dir=debug_dir)
@@ -280,7 +265,6 @@ def verify_after_click(screen, tesseract_path, debug_dir, expected_distance_yds,
         return observed, error, status, []
     except Exception as exc:
         return None, None, "UNVERIFIED", [f"AIM-card verification failed: {exc}"]
-
 
 def main() -> int:
     args = parse_args()
@@ -378,7 +362,6 @@ def main() -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     return 2 if verification == "FAIL_DISTANCE" else 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
