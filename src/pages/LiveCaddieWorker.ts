@@ -5,6 +5,10 @@ import type {
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import {
+  buildAimContextSentence,
+  buildAimDescriptor,
+} from '../liveCaddie/aimDescriptor'
+import {
   nextStateValueForAimCandidate,
   rankRiskAwareClubChoices,
 } from '../liveCaddie/aimDecisionRanking'
@@ -49,6 +53,40 @@ type LandingElevationResolution = {
 const DISPLAY_OUTCOME_DOT_COUNT = 256
 const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v7'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
+
+const logAimDescriptorShadow = (
+  request: LiveCaddieWorkerRequest,
+  evaluations: ClubAimEvaluation[],
+  source: 'cache' | 'fresh',
+) => {
+  const recommendation = evaluations[0] ?? null
+  const candidate = recommendation?.bestCandidate ?? null
+  if (!recommendation || !candidate) return
+
+  const descriptor = buildAimDescriptor({
+    hole: request.hole,
+    ball: request.ball,
+    target: recommendation.planningTarget,
+    aimPoint: candidate.aimPoint,
+    aimOffsetYds: candidate.aimOffsetYds,
+    pin: request.hole.markers.pin ?? null,
+  })
+  const contextSentence = buildAimContextSentence(descriptor)
+
+  console.info('[Live Caddie][AimDescriptor shadow]', {
+    source,
+    courseId: request.hole.courseId,
+    holeNumber: request.hole.holeNumber,
+    club: recommendation.club,
+    absoluteAimPoint: candidate.aimPoint,
+    aimOffsetYds: candidate.aimOffsetYds,
+    descriptor: descriptor.text,
+    descriptorKind: descriptor.kind,
+    descriptorConfidence: descriptor.confidence,
+    contextSentence,
+    reason: descriptor.reason,
+  })
+}
 
 const displayTierForSurface = (
   kind: CourseSurfaceClassification,
@@ -534,6 +572,7 @@ self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
       const cacheKey = buildEvaluationCacheKey(request)
       const cached = await readCachedEvaluations(cacheKey)
       if (cached) {
+        logAimDescriptorShadow(request, cached, 'cache')
         const response: LiveCaddieWorkerResponse = { type: 'success', evaluations: cached }
         self.postMessage(response)
         return
@@ -546,6 +585,7 @@ self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
         ),
         ball,
       )
+      logAimDescriptorShadow(request, evaluations, 'fresh')
       await writeCachedEvaluations(cacheKey, evaluations)
       const response: LiveCaddieWorkerResponse = { type: 'success', evaluations }
       self.postMessage(response)
