@@ -1,0 +1,29 @@
+name: Exact pin and green detail validation
+
+on:
+  push:
+    branches:
+      - exact-pin-outputlog-v1
+    paths:
+      - src/adapters/gsproCourseLayoutPin.ts
+      - src/adapters/browserGsproCourseState.ts
+      - src/courseGeometry/greywolfWorldCoordinates.ts
+      - src/courseGeometry/greywolfGreenDetail.ts
+      - public/course-geometry/greywolf/green-detail-v1.json
+      - .github/workflows/exact-pin-green-validation.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: exact-pin-outputlog-v1
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
