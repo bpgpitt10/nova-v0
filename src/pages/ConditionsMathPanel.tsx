@@ -52,6 +52,19 @@ const pct = (value: number | null | undefined) => {
   return `${Math.round(percentage)}%`
 }
 
+const upDownLie = (value: number | null | undefined) => {
+  if (!finite(value)) return '—'
+  if (Math.abs(value) < 0.05) return '0.0° UP'
+  return `${Math.abs(value).toFixed(1)}° ${value > 0 ? 'UP' : 'DOWN'}`
+}
+
+const leftRightLie = (value: number | null | undefined) => {
+  if (!finite(value)) return '—'
+  if (Math.abs(value) < 0.05) return '0.0° RIGHT'
+  // Live Caddie's model convention is +LEFT / -RIGHT.
+  return `${Math.abs(value).toFixed(1)}° ${value > 0 ? 'LEFT' : 'RIGHT'}`
+}
+
 function AdjustmentRow({
   label,
   distance,
@@ -124,22 +137,9 @@ export default function ConditionsMathPanel({
     ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
     : 'Base altitude unavailable'
   const hasLie = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
-  const sidehillLabel = finite(lieLeftRightDeg) && Math.abs(lieLeftRightDeg) >= 0.05
-    ? `${Math.abs(lieLeftRightDeg).toFixed(1)}° ${lieLeftRightDeg > 0 ? 'Left' : 'Right'}`
-    : null
-  const upDownLabel = finite(lieUpDownDeg) && Math.abs(lieUpDownDeg) >= 0.05
-    ? `${Math.abs(lieUpDownDeg).toFixed(1)}° ${lieUpDownDeg > 0 ? 'Up' : 'Down'}`
-    : null
-  const lieDetail = hasLie
-    ? sidehillLabel || upDownLabel
-      ? [
-          sidehillLabel,
-          upDownLabel,
-          sidehillLabel ? '50% loft-aware V0 sidehill prior' : null,
-          upDownLabel ? '25% VLA V0 prior · ±3° VLA / ±3% carry caps' : null,
-        ].filter(Boolean).join(' · ')
-      : 'Flat lie · 0.0° up/down · 0.0° left/right'
-    : 'Lie angle not captured yet'
+  const lieUpDownLabel = upDownLie(lieUpDownDeg)
+  const lieLeftRightLabel = leftRightLie(lieLeftRightDeg)
+  const lieDetail = hasLie ? 'GSPro minimap lie input' : 'Lie angle not captured yet'
 
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
@@ -228,8 +228,8 @@ export default function ConditionsMathPanel({
           />
           <AdjustmentRow
             label="Lie"
-            distance={evaluation && hasLie ? signedYards(evaluation.lieCarryDeltaYds ?? 0) : '—'}
-            lateral={evaluation && hasLie ? lateralYards(evaluation.lieLateralDeltaYds ?? 0) : '—'}
+            distance={hasLie ? lieUpDownLabel : '—'}
+            lateral={hasLie ? lieLeftRightLabel : '—'}
             detail={lieDetail}
             muted={!hasLie}
           />
