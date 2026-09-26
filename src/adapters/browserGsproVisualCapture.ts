@@ -6,7 +6,10 @@ import {
   dispatchGsproWindOcrObservation,
   type GsproWindOcrPayload,
 } from './gsproWindObservation'
-import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
+import {
+  LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT,
+  type LiveCaddieShotStateChangedDetail,
+} from '../liveCaddie/roundRuntime'
 
 export type BrowserGsproVisualCaptureStatus =
   | 'idle'
@@ -25,6 +28,7 @@ export type BrowserGsproVisualCaptureConnection = {
 export type ConnectBrowserGsproVisualCaptureOptions = {
   onStatusChange?: (status: BrowserGsproVisualCaptureStatus) => void
   onError?: (error: unknown) => void
+  initiallyPaused?: boolean
 }
 
 type TesseractWorker = {
@@ -78,9 +82,6 @@ const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const SHOT_OCR_SETTLE_MS = 650
 
-// Keep the wind crops tight around the actual glyphs. On the 3840x2160
-// reference corpus the speed text occupies roughly x=1712..1821/y=32..69 and
-// the direction text x=2056..2108/y=32..69.
 const WIND_SPEED_CROP: CropSpec = {
   x: 0.444,
   y: 0.011,
@@ -261,7 +262,7 @@ const parseWindComponents = (
     status: missing.length === 0 ? 'READY' : 'UNKNOWN',
     speedMph,
     directionDegrees,
-    convention: 'toward',
+    convention: 'from',
     referenceFrame: 'compass',
     observedAt: new Date().toISOString(),
     confidence,
@@ -377,6 +378,7 @@ export const isBrowserGsproVisualCaptureSupported = () =>
 export const connectToBrowserGsproVisualCapture = async ({
   onStatusChange,
   onError,
+  initiallyPaused = false,
 }: ConnectBrowserGsproVisualCaptureOptions = {}): Promise<BrowserGsproVisualCaptureConnection> => {
   if (!isBrowserGsproVisualCaptureSupported()) {
     throw new Error('GSPro visual capture requires a desktop browser with window sharing support.')
@@ -423,8 +425,9 @@ export const connectToBrowserGsproVisualCapture = async ({
 
   let disconnected = false
   let ocrInFlight = false
+  let greenPaused = initiallyPaused
   let shotOcrTimer: number | null = null
-  let shotStateListener: (() => void) | null = null
+  let shotStateListener: ((event: Event) => void) | null = null
   let worker: TesseractWorker | null = null
 
   const stop = () => {
@@ -489,7 +492,7 @@ export const connectToBrowserGsproVisualCapture = async ({
     }
 
     const runOcr = async () => {
-      if (disconnected || ocrInFlight || !worker) return
+      if (disconnected || greenPaused || ocrInFlight || !worker) return
       ocrInFlight = true
       try {
         let windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '7')
@@ -597,8 +600,18 @@ export const connectToBrowserGsproVisualCapture = async ({
       }
     }
 
-    const scheduleShotOcr = () => {
+    const scheduleShotOcr = (event: Event) => {
       if (disconnected) return
+      const detail = (event as CustomEvent<LiveCaddieShotStateChangedDetail>).detail
+      const surface = detail?.surface?.trim().toLowerCase() ?? null
+      if (surface === 'green') {
+        greenPaused = true
+        if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
+        shotOcrTimer = null
+        return
+      }
+
+      greenPaused = false
       if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
       shotOcrTimer = window.setTimeout(() => {
         shotOcrTimer = null
@@ -610,9 +623,7 @@ export const connectToBrowserGsproVisualCapture = async ({
     window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
 
     onStatusChange?.('connected')
-    // Connecting visuals is itself an explicit request for the current shot's
-    // conditions. After this first read, OCR only runs when canonical shot state advances.
-    void runOcr()
+    if (!greenPaused) void runOcr()
   } catch (error) {
     stop()
     onStatusChange?.('error')
