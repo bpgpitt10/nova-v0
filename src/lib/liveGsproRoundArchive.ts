@@ -81,6 +81,8 @@ const rawShotPayload = (
   startingSurfaceRaw: shot.startingSurfaceRaw,
   endingSurfaceRaw: shot.endingSurfaceRaw,
   distanceToPinYds: shot.distanceToPinYds,
+  isHoled: shot.isHoled === true,
+  isGimme: shot.isGimme === true,
   ballSpeedMph: shot.ballSpeedMph,
   carryYards: shot.carryYards,
   totalYards: shot.totalYards,
@@ -100,6 +102,8 @@ const shotPayloadFingerprint = (
 
 const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCourseShot => ({
   ...shot,
+  isHoled: shot.isHoled === true,
+  isGimme: shot.isGimme === true,
   actualClub: typeof shot.actualClub === 'string' ? shot.actualClub as Club : null,
   recommendedClub: typeof shot.recommendedClub === 'string' ? shot.recommendedClub as Club : null,
   clubSource: shot.clubSource === 'user' ? 'user' : null,
