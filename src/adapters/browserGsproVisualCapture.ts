@@ -77,21 +77,26 @@ const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const OCR_INTERVAL_MS = 2500
 
+// Keep the wind crops tight around the actual glyphs. On the 3840x2160
+// reference corpus the speed text occupies roughly x=1712..1821/y=32..69 and
+// the direction text x=2056..2108/y=32..69. The prior direction box was more
+// than twice as wide as the glyphs and browser Tesseract frequently returned a
+// blank N even though the text was visually obvious.
 const WIND_SPEED_CROP: CropSpec = {
-  x: 0.443,
-  y: 0.009,
-  width: 0.045,
-  height: 0.040,
-  scale: 6,
+  x: 0.444,
+  y: 0.011,
+  width: 0.033,
+  height: 0.026,
+  scale: 8,
   binaryThreshold: 190,
 }
 
 const WIND_DIRECTION_CROP: CropSpec = {
-  x: 0.530,
-  y: 0.009,
-  width: 0.040,
-  height: 0.040,
-  scale: 6,
+  x: 0.532,
+  y: 0.011,
+  width: 0.020,
+  height: 0.026,
+  scale: 8,
   binaryThreshold: 190,
 }
 
@@ -292,10 +297,6 @@ const parseLieDirection = (
   if (compact.includes(positive)) return positive
   if (compact.includes(negative)) return negative
 
-  // Browser Tesseract.js consistently reduced the short UP label to one of
-  // these three strings in the acceptance corpus while the numeric crop and
-  // the opposite DOWN label remained reliable. Keep the tolerance narrow so
-  // arbitrary OCR noise never becomes a confident lie direction.
   if (positive === 'UP' && (compact === 'P' || compact === 'OP' || compact === 'DP')) {
     return 'UP'
   }
@@ -498,7 +499,7 @@ export const connectToBrowserGsproVisualCapture = async ({
         let windDirectionResult = await recognize(
           WIND_DIRECTION_CROP,
           'NSEW ',
-          '6',
+          '8',
         )
         let windPayload = parseWindComponents(
           windSpeedResult.data.text ?? '',
@@ -539,7 +540,21 @@ export const connectToBrowserGsproVisualCapture = async ({
           windDirectionResult = await recognize(
             WIND_DIRECTION_CROP,
             'NSEW ',
-            '13',
+            '7',
+          )
+          windPayload = parseWindComponents(
+            windSpeedResult.data.text ?? '',
+            normalizedConfidence(windSpeedResult.data.confidence),
+            windDirectionResult.data.text ?? '',
+            normalizedConfidence(windDirectionResult.data.confidence),
+          )
+        }
+
+        if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
+          windDirectionResult = await recognize(
+            WIND_DIRECTION_CROP,
+            'NSEW ',
+            '10',
           )
           windPayload = parseWindComponents(
             windSpeedResult.data.text ?? '',
