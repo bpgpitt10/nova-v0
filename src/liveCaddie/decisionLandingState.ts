@@ -36,6 +36,7 @@ export const buildDecisionLandingState = (
   hole: CourseHoleGeometry,
   landing: CoursePointYds,
   classification: SurfaceClassificationResult,
+  pinOverride?: CoursePointYds | null,
 ): DecisionLandingState => {
   const semantics = TACTICAL_SURFACE_SEMANTICS[classification.kind]
   const penalty = classification.kind === 'water' || classification.kind === 'penalty'
@@ -44,13 +45,14 @@ export const buildDecisionLandingState = (
     : classification.kind === 'unknown'
       ? 'unknown'
       : 'none'
+  const pin = pinOverride ?? hole.markers.pin ?? null
 
   return {
     landing,
     surface: classification.kind,
     surfaceId: classification.surfaceId,
     surfaceConfidence: classification.confidence,
-    distanceToPinYds: hole.markers.pin ? distance(landing, hole.markers.pin) : null,
+    distanceToPinYds: pin ? distance(landing, pin) : null,
     penaltyStrokeCount: penalty ? 1 : 0,
     requiresRelief: penalty,
     obstruction,
