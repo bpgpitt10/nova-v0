@@ -235,10 +235,6 @@ const enrichSnapshotWithStartingPosition = async (
     pinDistanceValidationErrorYds: exactPin?.distanceValidationErrorYds ?? null,
   }
 
-  const preShotIsTee = Boolean(
-    preShotStart
-    && (preShotStart.surface === 'tee' || preShotStart.shotNumber === 1),
-  )
   if (!teeContext || liveHoleNumber == null) return base
 
   if (selectedCourseId === UNSELECTED_COURSE_ID) {
