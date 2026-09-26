@@ -1,4 +1,4 @@
-import { pointInPolygon } from '../courseGeometry/geometry'
+import { classifyPoint, pointInPolygon } from '../courseGeometry/geometry'
 import {
   greenSectorAtPoint,
   sampleGreywolfGreenElevation,
@@ -26,9 +26,17 @@ export type GreenTargetingGuidance = {
   reason: string
 }
 
-type LocalSlope = {
+export type GreenLocalSlope = {
   slopePercent: number
   downhill: CoursePointYds
+}
+
+export type GreenRolloutResolution = {
+  landing: CoursePointYds
+  applied: boolean
+  slopePercent: number | null
+  downhillLocalUnit: CoursePointYds | null
+  blendWeight: number
 }
 
 const clamp = (value: number, min: number, max: number) =>
@@ -98,10 +106,10 @@ const nearestBoundary = (
   }
 }
 
-const localSlopeAtPoint = (
+export const sampleGreywolfGreenSlopeAtPoint = (
   detail: GreywolfGreenDetail,
   point: CoursePointYds,
-): LocalSlope | null => {
+): GreenLocalSlope | null => {
   // A 6-yard stencil smooths the 1-yard LiDAR enough for approach/roll context
   // without pretending to model putting-scale micro-contours.
   const radiusYds = 3
@@ -186,6 +194,70 @@ const safeShiftedTarget = (
 }
 
 /**
+ * Preserve the player's observed rollout DISTANCE, but let measured green slope
+ * redirect some of that rollout after a green touchdown. This deliberately does
+ * not invent extra yards of run. Flat greens and non-green carry landings are
+ * unchanged; steeper greens can bend the resting distribution toward the actual
+ * downhill side and, where geometry warrants it, off the green.
+ */
+export const redirectGreywolfGreenRollout = ({
+  hole,
+  detail,
+  carryLanding,
+  baselineLanding,
+}: {
+  hole: CourseHoleGeometry
+  detail: GreywolfGreenDetail
+  carryLanding: CoursePointYds
+  baselineLanding: CoursePointYds
+}): GreenRolloutResolution => {
+  const base: GreenRolloutResolution = {
+    landing: baselineLanding,
+    applied: false,
+    slopePercent: null,
+    downhillLocalUnit: null,
+    blendWeight: 0,
+  }
+  if (classifyPoint(hole, carryLanding).kind !== 'green') return base
+
+  const rolloutVector: CoursePointYds = [
+    baselineLanding[0] - carryLanding[0],
+    baselineLanding[1] - carryLanding[1],
+  ]
+  const rolloutYds = Math.hypot(rolloutVector[0], rolloutVector[1])
+  if (rolloutYds < 0.25) return base
+
+  const slope = sampleGreywolfGreenSlopeAtPoint(detail, carryLanding)
+  if (!slope || slope.slopePercent <= 1.25) {
+    return {
+      ...base,
+      slopePercent: slope?.slopePercent ?? null,
+      downhillLocalUnit: slope?.downhill ?? null,
+    }
+  }
+
+  const rolloutDirection = normalize(rolloutVector)
+  if (!rolloutDirection) return base
+  const blendWeight = clamp((slope.slopePercent - 1.25) / 4.5, 0, 0.65)
+  const blendedDirection = normalize([
+    rolloutDirection[0] * (1 - blendWeight) + slope.downhill[0] * blendWeight,
+    rolloutDirection[1] * (1 - blendWeight) + slope.downhill[1] * blendWeight,
+  ])
+  if (!blendedDirection || blendWeight < 0.01) return base
+
+  return {
+    landing: [
+      carryLanding[0] + blendedDirection[0] * rolloutYds,
+      carryLanding[1] + blendedDirection[1] * rolloutYds,
+    ],
+    applied: true,
+    slopePercent: slope.slopePercent,
+    downhillLocalUnit: slope.downhill,
+    blendWeight,
+  }
+}
+
+/**
  * Conservative approach-level green guidance.
  *
  * The 1-yard LiDAR is used to understand the broad landing/roll shape near an
@@ -209,7 +281,7 @@ export const buildGreywolfGreenApproachTarget = ({
   const pinElevationFt = sampleGreywolfGreenElevation(detail, pin)
   const sector = greenSectorAtPoint(detail, pin)
   const polygon = containingGreenPolygon(hole, pin)
-  const slope = localSlopeAtPoint(detail, pin)
+  const slope = sampleGreywolfGreenSlopeAtPoint(detail, pin)
   const downhillLabel = directionLabel(slope?.downhill ?? null)
   const edge = polygon ? nearestBoundary(polygon, pin) : null
 
