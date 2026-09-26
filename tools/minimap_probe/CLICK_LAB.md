@@ -20,7 +20,23 @@ Given a desired point in the live ball-to-pin coordinate frame (or full Looper c
 - Sends exactly one left click and restores the previous cursor position.
 - Saves before / minimap / preview / after screenshots plus JSON evidence.
 
-## First test: preview only
+## Offline screenshot replay
+
+A previously captured GSPro screenshot can now validate marker detection, scale, handedness and predicted click location without GSPro running and without any mouse actuation:
+
+```powershell
+python .\click_lab_replay.py `
+  --image "C:\path\to\gspro_screenshot.png" `
+  --distance 410 `
+  --right 10 `
+  --forward 220
+```
+
+The replay writes an annotated PNG beside the source screenshot. Because the distance is supplied explicitly, this path does not require the target-card OCR to be visible in the screenshot.
+
+This is useful for old screenshots from the earlier minimap-probe work: if the full minimap is visible and the ball/pin markers are present, we can validate the transform before returning to the sim.
+
+## First live test: preview only
 
 From `tools\minimap_probe` on the sim PC, with GSPro stopped at a normal full shot:
 
@@ -81,12 +97,13 @@ Absolute mode refuses to operate when Looper's ball-to-pin distance disagrees wi
 
 ## Acceptance sequence
 
-1. Center point preview.
-2. Center point one-shot click.
-3. +/-10 yard lateral previews and clicks.
-4. Repeat after manually changing minimap zoom.
-5. Repeat on an approach after the tee shot.
-6. Repeat on a rotated/dogleg minimap.
-7. Feed one real Looper absolute recommendation point.
+1. Offline replay against any useful old screenshot we have.
+2. Center point preview.
+3. Center point one-shot click.
+4. +/-10 yard lateral previews and clicks.
+5. Repeat after manually changing minimap zoom.
+6. Repeat on an approach after the tee shot.
+7. Repeat on a rotated/dogleg minimap.
+8. Feed one real Looper absolute recommendation point.
 
 Do not connect this harness to automatic Live Caddie execution until those cases are repeatable.
