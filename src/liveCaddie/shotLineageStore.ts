@@ -81,7 +81,6 @@ const rawSurfaceLabel = (value: number | null | undefined) => {
     case 1: return 'rough'
     case 2: return 'fairway'
     case 3: return 'sand'
-    // GSPro also uses 11 for the bunker/sand state seen in live course play.
     case 11: return 'sand'
     case 5: return 'green'
     case 18: return 'tee'
@@ -167,6 +166,10 @@ const activeRecords = (store: LiveCaddieLineageStore) =>
     ? store.records.filter((record) => record.lineageRoundId === store.activeRoundId)
     : []
 
+const archivePhysicalKeys = () => loadLiveGsproRoundArchive().rounds.flatMap(
+  (round) => round.shots.map((shot) => shot.key),
+)
+
 const pendingCloud = new Map<string, LiveCaddieLineageRecord>()
 let cloudTimer: number | null = null
 
@@ -238,12 +241,10 @@ const createRound = (
   store: LiveCaddieLineageStore,
   createdAt: string,
   source: 'manual-start' | 'implicit-resume',
+  baselinePhysicalKeys = archivePhysicalKeys(),
 ) => {
   const lineageRoundId = uuid()
   store.activeRoundId = lineageRoundId
-  const baselinePhysicalKeys = loadLiveGsproRoundArchive().rounds.flatMap(
-    (round) => round.shots.map((shot) => shot.key),
-  )
   appendRecord(store, {
     id: lineageRoundId,
     lineageRoundId,
@@ -320,8 +321,6 @@ const decisionFingerprint = (payload: Record<string, unknown>) => JSON.stringify
 })
 
 const handleArmedClubChanged = () => {
-  // Let React finish switching the displayed evaluation when the user selects
-  // an alternate club before freezing the spec snapshot.
   window.setTimeout(() => {
     const armed = loadArmedLiveClub()
     if (!armed) return
@@ -334,6 +333,7 @@ const handleArmedClubChanged = () => {
     if (!currentState) return
 
     const modeledSurface = readUiSurface()
+    if (modeledSurface === 'green') return
     const recommendedStockCarryYds = profileStockCarry(armed.recommendedClub)
     const decisionPayload: Record<string, unknown> = {
       stateId: currentState.id,
@@ -436,35 +436,120 @@ const latestArmedSpecForState = (
   && record.payload.status === 'armed'
 ))
 
+const stateDistanceYds = (state: LiveCaddieLineageRecord | null) => {
+  const value = state?.payload.distanceToPinYds
+  return finite(value) ? value : null
+}
+
+const orderedRoundShots = (shot: ArchivedGsproCourseShot) => {
+  const round = loadLiveGsproRoundArchive().rounds.find((candidate) => candidate.roundId === shot.roundId)
+  if (!round) return []
+  return [...round.shots].sort((left, right) => {
+    const globalDelta = (left.globalShotNumber ?? Number.MAX_SAFE_INTEGER)
+      - (right.globalShotNumber ?? Number.MAX_SAFE_INTEGER)
+    if (globalDelta !== 0) return globalDelta
+    const holeDelta = left.holeNumber - right.holeNumber
+    if (holeDelta !== 0) return holeDelta
+    return (left.holeShot ?? Number.MAX_SAFE_INTEGER) - (right.holeShot ?? Number.MAX_SAFE_INTEGER)
+  })
+}
+
+const puttingFactsForShot = (
+  store: LiveCaddieLineageStore,
+  shot: ArchivedGsproCourseShot,
+  preState: LiveCaddieLineageRecord,
+  postState: LiveCaddieLineageRecord | null,
+) => {
+  if (rawSurfaceLabel(shot.startingSurfaceRaw) !== 'green') return null
+
+  const ordered = orderedRoundShots(shot)
+  const shotIndex = ordered.findIndex((candidate) => candidate.key === shot.key)
+  const priorPhysical = shotIndex > 0 ? ordered[shotIndex - 1] : null
+  const holePutts = ordered.filter((candidate) => (
+    candidate.holeNumber === shot.holeNumber
+    && rawSurfaceLabel(candidate.startingSurfaceRaw) === 'green'
+    && (candidate.globalShotNumber ?? Number.MAX_SAFE_INTEGER) <= (shot.globalShotNumber ?? Number.MAX_SAFE_INTEGER)
+  ))
+  const puttNumberOnHole = Math.max(1, holePutts.findIndex((candidate) => candidate.key === shot.key) + 1)
+  const terminal = shot.isHoled || shot.isGimme
+  const startDistanceToPinYds = stateDistanceYds(preState)
+    ?? (priorPhysical?.distanceToPinYds ?? null)
+    ?? shot.distanceToPinYds
+  const endDistanceToPinYds = terminal
+    ? 0
+    : stateDistanceYds(postState) ?? shot.distanceToPinYds
+
+  const firstPriorPuttingOutcome = activeRecords(store).find((record) => (
+    record.recordType === 'shot_outcome'
+    && record.payload.holeNumber === shot.holeNumber
+    && asRecord(record.payload.putting) != null
+  ))
+  const priorPutting = firstPriorPuttingOutcome ? asRecord(firstPriorPuttingOutcome.payload.putting) : null
+  const greenEntryDistanceYds = finite(priorPutting?.greenEntryDistanceYds)
+    ? priorPutting.greenEntryDistanceYds
+    : startDistanceToPinYds
+
+  return {
+    puttNumberOnHole,
+    greenEntryDistanceYds,
+    startDistanceToPinYds,
+    endDistanceToPinYds,
+    holed: shot.isHoled,
+    gimme: shot.isGimme,
+    terminal,
+    puttsTakenFromGreenEntry: terminal ? puttNumberOnHole : null,
+    expectedStrokesBenchmark: null,
+    expectedStrokesFromStart: null,
+    expectedStrokesFromEnd: null,
+    strokesGained: null,
+  }
+}
+
 const createOutcome = (
   store: LiveCaddieLineageStore,
   attempt: LiveCaddieLineageRecord,
   shot: ArchivedGsproCourseShot,
-  postState: LiveCaddieLineageRecord,
+  preState: LiveCaddieLineageRecord,
+  postState: LiveCaddieLineageRecord | null,
 ) => {
-  const existing = newestRecord(store, (record) => (
+  const terminal = shot.isHoled || shot.isGimme
+  if (!postState && !terminal) return null
+
+  const putting = puttingFactsForShot(store, shot, preState, postState)
+  const latestExisting = newestRecord(store, (record) => (
     record.lineageRoundId === attempt.lineageRoundId
     && record.recordType === 'shot_outcome'
     && record.attemptId === attempt.id
   ))
-  if (existing) return existing
+  const outcomeFingerprint = JSON.stringify({
+    postStateId: postState?.id ?? null,
+    isHoled: shot.isHoled,
+    isGimme: shot.isGimme,
+    putting,
+  })
+  if (latestExisting?.payload.outcomeFingerprint === outcomeFingerprint) return latestExisting
 
+  const outcomeId = uuid()
   return appendRecord(store, {
+    id: outcomeId,
     lineageRoundId: attempt.lineageRoundId,
     recordType: 'shot_outcome',
-    createdAt: shot.observedAt,
-    supersedesId: null,
-    stateId: postState.id,
+    createdAt: postState?.createdAt ?? shot.observedAt,
+    supersedesId: latestExisting?.id ?? null,
+    stateId: postState?.id ?? null,
     decisionId: attempt.decisionId,
     shotSpecId: attempt.shotSpecId,
     attemptId: attempt.id,
-    outcomeId: null,
+    outcomeId,
     gsproRoundId: shot.roundId,
     gsproShotId: shot.shotId,
     payload: {
+      outcomeFingerprint,
       attemptId: attempt.id,
       preStateId: attempt.stateId,
-      postStateId: postState.id,
+      postStateId: postState?.id ?? null,
+      holeNumber: shot.holeNumber,
+      holeShot: shot.holeShot,
       carryYards: shot.carryYards,
       totalYards: shot.totalYards,
       ballSpeedMph: shot.ballSpeedMph,
@@ -476,7 +561,12 @@ const createOutcome = (
       startingSurface: rawSurfaceLabel(shot.startingSurfaceRaw),
       endingSurfaceRaw: shot.endingSurfaceRaw,
       endingSurface: rawSurfaceLabel(shot.endingSurfaceRaw),
-      completedAt: postState.createdAt,
+      distanceToPinYdsRaw: shot.distanceToPinYds,
+      isHoled: shot.isHoled,
+      isGimme: shot.isGimme,
+      terminal,
+      putting,
+      completedAt: postState?.createdAt ?? shot.observedAt,
     },
   })
 }
@@ -489,24 +579,25 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
     && record.gsproRoundId === shot.roundId
     && record.gsproShotId === shot.shotId
   ))
-  if (existingAttempt) {
-    const postState = newestRecord(store, (record) => (
-      record.lineageRoundId === store.activeRoundId
-      && record.recordType === 'state'
-      && record.payload.latestShotKey === shot.key
-    ))
-    if (postState) createOutcome(store, existingAttempt, shot, postState)
-    return
-  }
-
-  let postState = newestRecord(store, (record) => (
+  const postState = newestRecord(store, (record) => (
     record.lineageRoundId === store.activeRoundId
     && record.recordType === 'state'
     && record.payload.latestShotKey === shot.key
   ))
 
+  if (existingAttempt) {
+    const preState = existingAttempt.stateId
+      ? store.records.find((record) => record.id === existingAttempt.stateId) ?? null
+      : null
+    if (preState) createOutcome(store, existingAttempt, shot, preState, postState)
+    return
+  }
+
   let preState = stateForPhysicalPreShot(store, shot, postState)
   if (!preState) {
+    const ordered = orderedRoundShots(shot)
+    const index = ordered.findIndex((candidate) => candidate.key === shot.key)
+    const priorPhysical = index > 0 ? ordered[index - 1] : null
     const inferredStateId = uuid()
     preState = appendRecord(store, {
       id: inferredStateId,
@@ -529,14 +620,15 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
         nextShotNumber: shot.holeShot,
         surface: rawSurfaceLabel(shot.startingSurfaceRaw),
         surfaceSource: 'gspro-archive-starting-surface',
-        distanceToPinYds: shot.distanceToPinYds,
+        distanceToPinYds: priorPhysical?.distanceToPinYds ?? shot.distanceToPinYds,
         source: 'gspro-inferred-pre',
         latestShotKey: null,
       },
     })
   }
 
-  const spec = latestArmedSpecForState(store, preState.id)
+  const isPutt = rawSurfaceLabel(shot.startingSurfaceRaw) === 'green'
+  const spec = isPutt ? null : latestArmedSpecForState(store, preState.id)
   const decision = spec?.decisionId
     ? store.records.find((record) => record.id === spec.decisionId) ?? null
     : null
@@ -547,11 +639,15 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
     && record.payload.holeShot === shot.holeShot
   ))
   const attemptId = uuid()
-  const actualClub = shot.actualClub
-    ?? (typeof spec?.payload.club === 'string' ? spec.payload.club : null)
-  const recommendedClub = shot.recommendedClub
-    ?? (typeof spec?.payload.recommendedClub === 'string' ? spec.payload.recommendedClub : null)
-    ?? (typeof decision?.payload.recommendedClub === 'string' ? decision.payload.recommendedClub : null)
+  const actualClub = isPutt
+    ? null
+    : shot.actualClub
+      ?? (typeof spec?.payload.club === 'string' ? spec.payload.club : null)
+  const recommendedClub = isPutt
+    ? null
+    : shot.recommendedClub
+      ?? (typeof spec?.payload.recommendedClub === 'string' ? spec.payload.recommendedClub : null)
+      ?? (typeof decision?.payload.recommendedClub === 'string' ? decision.payload.recommendedClub : null)
 
   const attempt = appendRecord(store, {
     id: attemptId,
@@ -575,53 +671,64 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
       holeNumber: shot.holeNumber,
       holeShot: shot.holeShot,
       globalShotNumber: shot.globalShotNumber,
+      isPutt,
       actualClub,
       recommendedClub,
-      modeledSurface: spec?.payload.modeledSurface ?? preState.payload.surface ?? null,
-      modeledSurfaceSource: spec?.payload.modeledSurfaceSource ?? preState.payload.surfaceSource ?? null,
+      modeledSurface: isPutt ? 'green' : spec?.payload.modeledSurface ?? preState.payload.surface ?? null,
+      modeledSurfaceSource: isPutt
+        ? 'gspro-starting-surface'
+        : spec?.payload.modeledSurfaceSource ?? preState.payload.surfaceSource ?? null,
       gsproStartingSurfaceRaw: shot.startingSurfaceRaw,
       gsproStartingSurface: rawSurfaceLabel(shot.startingSurfaceRaw),
       gsproEndingSurfaceRaw: shot.endingSurfaceRaw,
       gsproEndingSurface: rawSurfaceLabel(shot.endingSurfaceRaw),
+      isHoled: shot.isHoled,
+      isGimme: shot.isGimme,
       capturedAt: shot.observedAt,
     },
   })
 
-  postState = postState ?? newestRecord(store, (record) => (
-    record.lineageRoundId === store.activeRoundId
-    && record.recordType === 'state'
-    && record.payload.latestShotKey === shot.key
-  ))
-  if (postState) createOutcome(store, attempt, shot, postState)
+  createOutcome(store, attempt, shot, preState, postState)
 }
 
-const reconcileArchive = (acceptedPhysicalKeys: Set<string>) => {
+const reconcileArchive = (baselinePhysicalKeys: Set<string>) => {
   const store = loadLiveCaddieLineageStore()
-  if (!store.activeRoundId || acceptedPhysicalKeys.size === 0) return
+  if (!store.activeRoundId) return
   const archive = loadLiveGsproRoundArchive()
   for (const round of archive.rounds) {
     for (const shot of round.shots) {
-      if (!acceptedPhysicalKeys.has(shot.key)) continue
+      if (baselinePhysicalKeys.has(shot.key)) continue
       processPhysicalShot(store, shot)
     }
   }
 }
 
+const baselineForActiveRound = (store: LiveCaddieLineageStore) => {
+  if (!store.activeRoundId) return archivePhysicalKeys()
+  const roundRecord = store.records.find((record) => (
+    record.id === store.activeRoundId && record.recordType === 'round'
+  ))
+  const stored = roundRecord?.payload.baselinePhysicalKeys
+  return Array.isArray(stored)
+    ? stored.filter((value): value is string => typeof value === 'string')
+    : archivePhysicalKeys()
+}
+
 export const startLiveCaddieShotLineage = () => {
   if (typeof window === 'undefined') return () => undefined
   let stopped = false
-  const acceptedPhysicalKeys = new Set<string>()
+  const initialStore = loadLiveCaddieLineageStore()
+  const baselinePhysicalKeys = new Set<string>(baselineForActiveRound(initialStore))
 
-  // Retry any locally durable lineage records that may have missed cloud sync
-  // during a prior disconnect/reload. Upsert-by-ID keeps this idempotent.
-  const existing = loadLiveCaddieLineageStore()
-  existing.records.slice(-500).forEach(queueCloudRecord)
+  initialStore.records.slice(-500).forEach(queueCloudRecord)
 
   const onStartRound = (event: Event) => {
     const detail = (event as CustomEvent<LiveCaddieStartRoundDetail>).detail
     const store = loadLiveCaddieLineageStore()
-    acceptedPhysicalKeys.clear()
-    createRound(store, detail?.startedAt ?? new Date().toISOString(), 'manual-start')
+    const baseline = archivePhysicalKeys()
+    baselinePhysicalKeys.clear()
+    baseline.forEach((key) => baselinePhysicalKeys.add(key))
+    createRound(store, detail?.startedAt ?? new Date().toISOString(), 'manual-start', baseline)
   }
 
   const onShotStateChanged = (event: Event) => {
@@ -664,8 +771,7 @@ export const startLiveCaddieShotLineage = () => {
         },
       })
     }
-    if (detail.latestShotKey) acceptedPhysicalKeys.add(detail.latestShotKey)
-    window.setTimeout(() => reconcileArchive(acceptedPhysicalKeys), 0)
+    window.setTimeout(() => reconcileArchive(baselinePhysicalKeys), 0)
   }
 
   window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
@@ -673,7 +779,7 @@ export const startLiveCaddieShotLineage = () => {
   window.addEventListener(LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT, handleArmedClubChanged)
 
   const timer = window.setInterval(() => {
-    if (!stopped) reconcileArchive(acceptedPhysicalKeys)
+    if (!stopped) reconcileArchive(baselinePhysicalKeys)
   }, ARCHIVE_RECONCILE_MS)
 
   return () => {
