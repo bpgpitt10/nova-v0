@@ -59,9 +59,6 @@ import ConditionsMathPanel from './ConditionsMathPanel'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 
-// SVG uses painter's order: broad/low-priority surfaces first, then increasingly
-// specific golf surfaces and hazards. This is the reverse of tactical point
-// classification precedence so woods can never visually cover fairway/green/hazards.
 const surfaceOrder: CourseSurfaceKind[] = [
   'rough',
   'deep-rough',
@@ -171,10 +168,6 @@ const buildTacticalMapBounds = (
     0,
   ) ?? 0
 
-  // Tee-shot framing should preserve enough of the hole to understand what the
-  // current shot is setting up, while still keeping the landing zone readable.
-  // A later-shot/manual zoom mode can tighten this further once the live ball
-  // has advanced on long holes; do not force that tighter camera here.
   const minY = ball[1] - 24
   const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
   const desiredMaxY = furthestFocusY + Math.max(115, maxCarryRadius + 70)
@@ -201,9 +194,6 @@ const buildTacticalMapBounds = (
     'penalty',
   ])
 
-  // Let nearby playable/hazard geometry widen the frame, but do not allow a
-  // remote rough/context polygon to dictate the camera. Woods/scrub still draw
-  // normally wherever they intersect this tactical window.
   for (const surface of hole.surfaces) {
     if (!framingKinds.has(surface.kind)) continue
     for (const polygon of surface.polygons) {
@@ -646,6 +636,8 @@ export default function LiveCaddiePage() {
     : 0
   const windRelativeDeg = projectedWind.projection?.relativeFromDegrees ?? 0
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
+  const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
+  const isGreenSurface = normalizedCurrentSurface === 'green'
   const isTeeSurface = typeof authoritativeGsproSurface === 'string'
     && authoritativeGsproSurface.trim().toLowerCase() === 'tee'
   const hasOcrLie = lieObservation?.status === 'READY' && (
@@ -665,8 +657,6 @@ export default function LiveCaddiePage() {
     : hasOcrLie
       && typeof lieObservation?.leftRightDegrees === 'number'
       && Number.isFinite(lieObservation.leftRightDegrees)
-      // Helper convention is +RIGHT / -LEFT. The existing sidehill model uses
-      // +LEFT / -RIGHT, so invert once here at the LIVE Caddie integration seam.
       ? -lieObservation.leftRightDegrees
       : null
   const lieSource = isTeeSurface
@@ -676,7 +666,14 @@ export default function LiveCaddiePage() {
       : undefined
 
   useEffect(() => {
-    if (!hole) {
+    if (isGreenSurface) {
+      setArmedClub(null)
+      setInspectedAimOffset(null)
+    }
+  }, [isGreenSurface])
+
+  useEffect(() => {
+    if (!hole || isGreenSurface) {
       setEvaluations([])
       setEvaluationError(null)
       setEvaluationPending(false)
@@ -742,6 +739,7 @@ export default function LiveCaddiePage() {
     hole,
     ball,
     target,
+    isGreenSurface,
     windMph,
     windRelativeDeg,
     elevationDeltaFt,
@@ -797,6 +795,7 @@ export default function LiveCaddiePage() {
         onError: (error) => setVisualCaptureError(
           error instanceof Error ? error.message : String(error),
         ),
+        initiallyPaused: isGreenSurface,
       })
       visualCaptureRef.current = connection
       setVisualCaptureSource(connection.sourceLabel ?? connection.displaySurface)
@@ -882,18 +881,18 @@ export default function LiveCaddiePage() {
           <div className="live-caddie-secondary-context">
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
+            {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
             {visualCaptureStatus === 'connected' ? (
               <>
                 <span>Visual capture connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
-                <span>
-                  Wind OCR {windObservation?.status ?? 'WAITING'} · {isTeeSurface
+                <span>{isGreenSurface
+                  ? 'Visual OCR paused on green'
+                  : `Wind OCR ${windObservation?.status ?? 'WAITING'} · ${isTeeSurface
                     ? 'Lie 0/0 (TEE)'
-                    : `Lie OCR ${lieObservation?.status ?? 'WAITING'}`}
-                </span>
+                    : `Lie OCR ${lieObservation?.status ?? 'WAITING'}`}`}</span>
               </>
             ) : null}
           </div>
@@ -920,6 +919,12 @@ export default function LiveCaddiePage() {
           <section className="live-empty-state">
             <span className="live-kicker">LOADING COURSE</span>
             <h1>{selectedCourse?.name} · Hole {holeNumber}</h1>
+          </section>
+        ) : isGreenSurface ? (
+          <section className="live-empty-state">
+            <span className="live-kicker">ON GREEN</span>
+            <h1>Caddie paused.</h1>
+            <p>Looper is recording the putt sequence and hole completion for scoring, but it is not calculating a club, aim, wind or lie recommendation.</p>
           </section>
         ) : (
           <>
