@@ -14,6 +14,7 @@ import {
   saveRoundTeeSelection,
   type RoundTeeSelection,
 } from '../courseGeometry/roundTeeSelection'
+import { startLiveCaddieRound } from '../liveCaddie/roundRuntime'
 
 const commonTeeSets = ['Blue', 'White', 'Black', 'Gold', 'Red', 'Green', 'Silver', 'Yellow']
 
@@ -24,6 +25,7 @@ export default function RoundTeeSelectionBar() {
     return initialCourse === UNSELECTED_COURSE_ID ? null : loadRoundTeeSelection(initialCourse)
   })
   const [draft, setDraft] = useState(() => selection?.teeSet ?? '')
+  const [startFlash, setStartFlash] = useState(false)
 
   useEffect(() => {
     const refreshCourse = () => {
@@ -34,6 +36,7 @@ export default function RoundTeeSelectionBar() {
         : loadRoundTeeSelection(nextCourse)
       setSelection(nextSelection)
       setDraft(nextSelection?.teeSet ?? '')
+      setStartFlash(false)
     }
     window.addEventListener(COURSE_SELECTION_UPDATED_EVENT, refreshCourse)
     window.addEventListener('storage', refreshCourse)
@@ -66,16 +69,23 @@ export default function RoundTeeSelectionBar() {
     }
   }
 
+  const startRound = () => {
+    if (courseId === UNSELECTED_COURSE_ID) return
+    startLiveCaddieRound()
+    setStartFlash(true)
+    window.setTimeout(() => setStartFlash(false), 1400)
+  }
+
   return (
     <aside
-      aria-label="Round tee selection"
+      aria-label="Live Caddie round controls"
       style={{
         position: 'fixed',
         right: 18,
-        bottom: 18,
-        zIndex: 50,
+        top: 74,
+        zIndex: 80,
         display: 'grid',
-        gridTemplateColumns: 'auto 150px auto',
+        gridTemplateColumns: 'auto auto 150px auto',
         alignItems: 'center',
         gap: 8,
         padding: '9px 10px',
@@ -87,6 +97,26 @@ export default function RoundTeeSelectionBar() {
         fontSize: 12,
       }}
     >
+      <button
+        type="button"
+        disabled={courseId === UNSELECTED_COURSE_ID}
+        onClick={startRound}
+        title="Start a fresh Looper round on Hole 1, Shot 1 and ignore pre-existing currentRound.dat shots until GSPro writes a new shot."
+        style={{
+          minHeight: 30,
+          border: '1px solid rgba(118, 211, 155, 0.55)',
+          borderRadius: 7,
+          padding: '0 12px',
+          background: startFlash ? 'rgba(95, 191, 122, 0.28)' : 'rgba(95, 191, 122, 0.12)',
+          color: '#d7ead9',
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.04em',
+        }}
+      >
+        {startFlash ? 'ROUND STARTED' : 'START ROUND'}
+      </button>
+
       <div style={{ display: 'grid', lineHeight: 1.1 }}>
         <strong style={{ color: '#fff', fontSize: 11 }}>ROUND TEES</strong>
         <span style={{ color: '#829083', fontSize: 9 }}>{courseName}</span>
