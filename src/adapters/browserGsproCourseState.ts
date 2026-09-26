@@ -122,8 +122,18 @@ const enrichSnapshotWithStartingPosition = async (
     ? null
     : parseGsproStartingPosition(roundText, snapshot.holeNumber)
 
+  // GSPro uses raw surface 11 for the bunker/sand state encountered in live
+  // play. The core map historically only knew raw 3, so a ball clearly shown as
+  // Sand by GSPro could fall through to OSM and appear as Rough. Preserve the
+  // currentRound source and normalize that second bunker code at this seam.
+  const normalizedSurface = snapshot.surface
+    ?? (snapshot.latestShot?.endingSurfaceRaw === 11 ? 'sand' : null)
   const base: BrowserGsproCourseSnapshot = {
     ...snapshot,
+    surface: normalizedSurface,
+    surfaceSource: normalizedSurface && snapshot.surface == null
+      ? 'currentRound'
+      : snapshot.surfaceSource,
     preShotStart,
   }
 
@@ -251,8 +261,15 @@ export const connectToBrowserGsproCourseState = ({
     lastPublishedShotStateKey = key
     dispatchLiveCaddieShotStateChanged({
       key,
+      courseKey: snapshot.courseKey,
+      roundId: snapshot.roundId,
       holeNumber: snapshot.holeNumber,
       nextShotNumber: snapshot.nextShotNumber,
+      surface: snapshot.surface,
+      surfaceSource: snapshot.surfaceSource,
+      distanceToPinYds: snapshot.distanceToPinYds,
+      ballLocalYds: snapshot.ballLocalYds,
+      latestShotKey: snapshot.latestShotKey,
       source,
     })
   }
