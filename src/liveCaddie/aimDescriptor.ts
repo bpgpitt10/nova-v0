@@ -1,17 +1,21 @@
 import {
   classifyPoint,
   fairwayCorridorAtForwardY,
+  surfaceIntervalsAtForwardY,
+  surfaceIntervalsAtRightX,
 } from '../courseGeometry/geometry'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CoursePolygonYds,
+  CourseSurfaceKind,
   GeometryConfidence,
 } from '../courseGeometry/types'
 
 export type AimDescriptorKind =
   | 'landmark'
   | 'fairway-zone'
+  | 'green-zone'
   | 'pin-offset'
   | 'fairway-edge'
   | 'centerline'
@@ -26,16 +30,22 @@ export type AimDescriptor = {
   anchorLabel: string | null
   /** Debug-only reason retained for shadow-mode validation. */
   reason: string
+  /** Measured/contextual facts derived from the same geometry used by the recommendation. */
+  contextFacts: string[]
 }
+
+type AimDescriptorCore = Omit<AimDescriptor, 'contextFacts'>
 
 export type BuildAimDescriptorInput = {
   hole: CourseHoleGeometry
   ball: CoursePointYds
+  /** Strategic planning target. On Greywolf approaches this may already include the <=5 yd green-terrain adjustment. */
   target: CoursePointYds
+  /** Final absolute aim point selected by the optimizer. */
   aimPoint: CoursePointYds
   /** Existing optimizer offset. Used only as a deterministic final fallback. */
   aimOffsetYds?: number | null
-  /** Optional pin/flag estimate. It is never allowed to alter the recommended aim point. */
+  /** Exact GSPro pin when available; course marker remains the fallback upstream. */
   pin?: CoursePointYds | null
 }
 
@@ -153,12 +163,29 @@ const landmarkLabel = (
   return side === 'center' ? 'water' : `${side}-side water`
 }
 
+const chooseRelevantInterval = (
+  intervals: ReturnType<typeof surfaceIntervalsAtForwardY>,
+  reference: number,
+) => {
+  if (intervals.length === 0) return null
+  const intervalDistance = (min: number, max: number) => {
+    if (reference < min) return min - reference
+    if (reference > max) return reference - max
+    return 0
+  }
+  return [...intervals].sort((a, b) => {
+    const delta = intervalDistance(a.min, a.max) - intervalDistance(b.min, b.max)
+    if (Math.abs(delta) > EPSILON) return delta
+    return b.width - a.width
+  })[0]
+}
+
 const landmarkDescriptor = ({
   hole,
   ball,
   target,
   aimPoint,
-}: BuildAimDescriptorInput): AimDescriptor | null => {
+}: BuildAimDescriptorInput): AimDescriptorCore | null => {
   const toShotFrame = shotFrame(ball, target)
   const aim = toShotFrame(aimPoint)
   const candidates: LandmarkCandidate[] = []
@@ -169,7 +196,6 @@ const landmarkDescriptor = ({
       surface.provenance.confidence,
       hole.availability[surface.kind],
     )
-    // A low-confidence landmark is worse than a stable zone/edge description.
     if (confidence === 'low') continue
 
     for (const polygon of surface.polygons) {
@@ -183,8 +209,6 @@ const landmarkDescriptor = ({
       const lateralGap = edge.lateral - aim.lateral
       const forwardGap = Math.abs(edge.forward - aim.forward)
 
-      // The object must be in the player's forward view and close enough to the
-      // intended aim depth to work as a genuine visual anchor.
       if (center.forward < 10 || center.forward > aim.forward + 55) continue
       if (absoluteDistance > 34 || forwardGap > 30 || Math.abs(lateralGap) > 26) continue
 
@@ -213,7 +237,6 @@ const landmarkDescriptor = ({
   const best = candidates[0]
   const second = candidates[1]
 
-  // If two landmarks are effectively tied, the spoken anchor is ambiguous.
   if (second && second.score - best.score < 4 && second.anchorLabel === best.anchorLabel) return null
 
   return {
@@ -228,7 +251,7 @@ const landmarkDescriptor = ({
 const fairwayZoneDescriptor = ({
   hole,
   aimPoint,
-}: BuildAimDescriptorInput): AimDescriptor | null => {
+}: BuildAimDescriptorInput): AimDescriptorCore | null => {
   const classification = classifyPoint(hole, aimPoint)
   if (classification.kind !== 'fairway') return null
   const corridor = fairwayCorridorAtForwardY(hole, aimPoint[1], aimPoint[0])
@@ -263,44 +286,115 @@ const fairwayZoneDescriptor = ({
   }
 }
 
+const greenZoneDescriptor = ({
+  hole,
+  aimPoint,
+}: BuildAimDescriptorInput): AimDescriptorCore | null => {
+  const classification = classifyPoint(hole, aimPoint)
+  if (classification.kind !== 'green') return null
+
+  const confidence = descriptorConfidence(
+    classification.confidence,
+    hole.availability.green,
+  )
+  if (confidence === 'low') return null
+
+  // The 1 yd Greywolf detail grid intentionally extends outside the green so it
+  // can model near-green terrain and rollout. It is NOT a green-boundary mask.
+  // Zone language therefore remains anchored to the actual course green polygon.
+  const lateralInterval = chooseRelevantInterval(
+    surfaceIntervalsAtForwardY(hole, aimPoint[1], ['green']),
+    aimPoint[0],
+  )
+  const depthIntervals = surfaceIntervalsAtRightX(hole, aimPoint[0], ['green'])
+  const depthInterval = depthIntervals.length === 0
+    ? null
+    : [...depthIntervals].sort((a, b) => {
+        const aDistance = aimPoint[1] < a.min ? a.min - aimPoint[1] : aimPoint[1] > a.max ? aimPoint[1] - a.max : 0
+        const bDistance = aimPoint[1] < b.min ? b.min - aimPoint[1] : aimPoint[1] > b.max ? aimPoint[1] - b.max : 0
+        return aDistance - bDistance
+      })[0]
+  if (!lateralInterval || !depthInterval) return null
+
+  const lateralPosition = Math.max(
+    0,
+    Math.min(1, (aimPoint[0] - lateralInterval.min) / Math.max(EPSILON, lateralInterval.width)),
+  )
+  const depthPosition = Math.max(
+    0,
+    Math.min(1, (aimPoint[1] - depthInterval.min) / Math.max(EPSILON, depthInterval.width)),
+  )
+
+  const lateral = lateralPosition < 0.34 ? 'left' : lateralPosition > 0.66 ? 'right' : 'center'
+  const depth = depthPosition < 0.30 ? 'front' : depthPosition > 0.70 ? 'back' : 'middle'
+  const zone = depth === 'middle'
+    ? lateral === 'center' ? 'center' : `${lateral}-center`
+    : lateral === 'center' ? `${depth}-center` : `${depth}-${lateral}`
+
+  return {
+    text: `Aim ${zone} green`,
+    kind: 'green-zone',
+    confidence,
+    anchorLabel: 'green',
+    reason: `Aim point is ${(lateralPosition * 100).toFixed(0)}% across and ${(depthPosition * 100).toFixed(0)}% through the actual green polygon.`,
+  }
+}
+
 const pinOffsetDescriptor = ({
   ball,
   target,
   aimPoint,
   pin,
-}: BuildAimDescriptorInput): AimDescriptor | null => {
+}: BuildAimDescriptorInput): AimDescriptorCore | null => {
   if (!pin) return null
   const toShotFrame = shotFrame(ball, target)
   const aim = toShotFrame(aimPoint)
   const flag = toShotFrame(pin)
-  const forwardGap = Math.abs(flag.forward - aim.forward)
+  const signedForwardGap = aim.forward - flag.forward
+  const forwardGap = Math.abs(signedForwardGap)
   const lateralGap = flag.lateral - aim.lateral
   const absoluteDistance = distance(pin, aimPoint)
-  if (forwardGap > 35 || absoluteDistance > 55) return null
+  if (forwardGap > 12 || absoluteDistance > 35) return null
 
-  if (Math.abs(lateralGap) < 1.5) {
+  // With exact GSPro pin coordinates available upstream, do not collapse a
+  // meaningful 2-3 yd green-terrain target shift into the vague phrase "at pin".
+  if (absoluteDistance <= 1.25) {
     return {
       text: 'Aim at the pin',
       kind: 'pin-offset',
       confidence: 'medium',
       anchorLabel: 'pin',
-      reason: `Pin is ${absoluteDistance.toFixed(1)} yd from the absolute aim point with negligible lateral separation.`,
+      reason: `Pin is ${absoluteDistance.toFixed(1)} yd from the absolute aim point.`,
     }
   }
 
-  return {
-    text: `Aim ${roundedYards(lateralGap)} yd ${lateralGap >= 0 ? 'left' : 'right'} of the pin`,
-    kind: 'pin-offset',
-    confidence: 'medium',
-    anchorLabel: 'pin',
-    reason: `Pin is ${absoluteDistance.toFixed(1)} yd from the absolute aim point and ${Math.abs(lateralGap).toFixed(1)} yd away laterally.`,
+  if (Math.abs(lateralGap) >= 1.5) {
+    return {
+      text: `Aim ${roundedYards(lateralGap)} yd ${lateralGap >= 0 ? 'left' : 'right'} of the pin`,
+      kind: 'pin-offset',
+      confidence: 'medium',
+      anchorLabel: 'pin',
+      reason: `Pin is ${absoluteDistance.toFixed(1)} yd from the absolute aim point and ${Math.abs(lateralGap).toFixed(1)} yd away laterally.`,
+    }
   }
+
+  if (forwardGap >= 1.25) {
+    return {
+      text: `Aim ${roundedYards(signedForwardGap)} yd ${signedForwardGap < 0 ? 'short of' : 'past'} the pin`,
+      kind: 'pin-offset',
+      confidence: 'medium',
+      anchorLabel: 'pin',
+      reason: `Aim point is ${forwardGap.toFixed(1)} yd ${signedForwardGap < 0 ? 'short of' : 'past'} the pin along the shot line.`,
+    }
+  }
+
+  return null
 }
 
 const fairwayEdgeDescriptor = ({
   hole,
   aimPoint,
-}: BuildAimDescriptorInput): AimDescriptor | null => {
+}: BuildAimDescriptorInput): AimDescriptorCore | null => {
   const corridor = fairwayCorridorAtForwardY(hole, aimPoint[1], aimPoint[0])
   if (!corridor) return null
   if (aimPoint[0] < corridor.leftEdgeYds || aimPoint[0] > corridor.rightEdgeYds) return null
@@ -331,7 +425,7 @@ const centerlineDescriptor = ({
   target,
   aimPoint,
   aimOffsetYds,
-}: BuildAimDescriptorInput): AimDescriptor => {
+}: BuildAimDescriptorInput): AimDescriptorCore => {
   const toShotFrame = shotFrame(ball, target)
   const aim = toShotFrame(aimPoint)
   const targetPoint = toShotFrame(target)
@@ -345,7 +439,7 @@ const centerlineDescriptor = ({
       kind: 'centerline',
       confidence: 'high',
       anchorLabel: 'center line',
-      reason: 'No higher-confidence landmark, fairway-zone, pin or fairway-edge descriptor was available.',
+      reason: 'No higher-confidence landmark, zone, pin or edge descriptor was available.',
     }
   }
 
@@ -354,43 +448,177 @@ const centerlineDescriptor = ({
     kind: 'centerline',
     confidence: 'high',
     anchorLabel: 'center line',
-    reason: 'No higher-confidence landmark, fairway-zone, pin or fairway-edge descriptor was available.',
+    reason: 'No higher-confidence landmark, zone, pin or edge descriptor was available.',
   }
+}
+
+const isApproachLike = ({
+  hole,
+  ball,
+  target,
+  aimPoint,
+  pin,
+}: BuildAimDescriptorInput) => {
+  if (classifyPoint(hole, aimPoint).kind === 'green') return true
+  if (classifyPoint(hole, target).kind === 'green') return true
+  if (!pin) return false
+  return distance(aimPoint, pin) <= 60 && distance(ball, pin) <= 260
+}
+
+const capitalize = (value: string) => value.length > 0
+  ? `${value[0].toUpperCase()}${value.slice(1)}`
+  : value
+
+const relevantHazardKind = (descriptor: AimDescriptorCore): CourseSurfaceKind | null => {
+  if (descriptor.kind !== 'landmark' || !descriptor.anchorLabel) return null
+  if (descriptor.anchorLabel.includes('bunker')) return 'bunker'
+  if (descriptor.anchorLabel.includes('water')) return 'water'
+  return null
+}
+
+const hazardStartFact = (
+  { hole, ball, aimPoint }: BuildAimDescriptorInput,
+  descriptor: AimDescriptorCore,
+) => {
+  const kind = relevantHazardKind(descriptor)
+  if (!kind || hole.availability[kind] === 'unavailable') return null
+
+  let selectedPolygon: CoursePolygonYds | null = null
+  let selectedAimGap = Number.POSITIVE_INFINITY
+
+  for (const surface of hole.surfaces) {
+    if (surface.kind !== kind || surface.provenance.confidence === 'low' || surface.provenance.confidence === 'unknown') continue
+    for (const polygon of surface.polygons) {
+      const nearestToAim = closestPointOnPolygon(aimPoint, polygon)
+      if (!nearestToAim) continue
+      const aimGap = distance(aimPoint, nearestToAim)
+      if (aimGap < selectedAimGap) {
+        selectedAimGap = aimGap
+        selectedPolygon = polygon
+      }
+    }
+  }
+
+  if (!selectedPolygon || selectedAimGap > 40) return null
+  const nearestToBall = closestPointOnPolygon(ball, selectedPolygon)
+  if (!nearestToBall) return null
+  const startYds = distance(ball, nearestToBall)
+  if (!Number.isFinite(startYds) || startYds <= 0) return null
+
+  return `${capitalize(descriptor.anchorLabel ?? kind)} begins about ${Math.round(startYds)} yd from the ball.`
+}
+
+const fairwayWidthFact = ({ hole, aimPoint }: BuildAimDescriptorInput) => {
+  if (hole.availability.fairway === 'unavailable') return null
+  const corridor = fairwayCorridorAtForwardY(hole, aimPoint[1], aimPoint[0])
+  if (!corridor || corridor.widthYds < 10) return null
+  return `Fairway is ${Math.round(corridor.widthYds)} yd wide at this landing depth.`
+}
+
+const greenWidthFact = ({ hole, aimPoint }: BuildAimDescriptorInput) => {
+  if (hole.availability.green === 'unavailable') return null
+  const intervals = surfaceIntervalsAtForwardY(hole, aimPoint[1], ['green'])
+  const relevant = intervals.find(
+    (interval) => aimPoint[0] >= interval.min - EPSILON && aimPoint[0] <= interval.max + EPSILON,
+  )
+  if (!relevant || relevant.width < 8) return null
+  return `Green is ${Math.round(relevant.width)} yd wide on this line.`
+}
+
+const greenTerrainShiftFact = ({
+  hole,
+  target,
+  pin,
+}: BuildAimDescriptorInput) => {
+  if (!pin || classifyPoint(hole, target).kind !== 'green') return null
+  const shiftYds = distance(target, pin)
+  // Greywolf's new green targeting is hard-capped at 5 yd. Staying just above
+  // that cap protects this language from unrelated future target transforms.
+  if (shiftYds < 0.35 || shiftYds > 5.25) return null
+  return `Strategic target is ${shiftYds.toFixed(1)} yd from the pin after the green slope/edge adjustment.`
+}
+
+const buildContextFacts = (
+  input: BuildAimDescriptorInput,
+  descriptor: AimDescriptorCore,
+) => {
+  const facts: string[] = []
+  const terrainShift = greenTerrainShiftFact(input)
+  if (terrainShift) facts.push(terrainShift)
+
+  if (descriptor.kind === 'green-zone' || descriptor.kind === 'pin-offset') {
+    const green = greenWidthFact(input)
+    if (green) facts.push(green)
+  } else {
+    const fairway = fairwayWidthFact(input)
+    if (fairway) facts.push(fairway)
+  }
+
+  const hazard = hazardStartFact(input, descriptor)
+  if (hazard) facts.push(hazard)
+
+  return facts.slice(0, 2)
 }
 
 /**
  * Convert an already-selected absolute aim point into player-facing language.
  * This layer is descriptive only: it never changes club ranking, aim ranking,
- * the recommended coordinate, or GSPro execution.
+ * the recommended coordinate, GSPro execution, or the green-terrain adjustment.
  *
- * Precedence is intentionally human-first:
- * 1) meaningful visible landmark,
+ * Tee/long-shot precedence:
+ * 1) meaningful visible hazard landmark,
  * 2) recognizable fairway zone,
- * 3) numeric pin anchor,
- * 4) fairway edge,
+ * 3) fairway edge,
+ * 4) pin only when genuinely nearby,
+ * 5) geometric center-line fallback.
+ *
+ * Approach/par-3 precedence:
+ * 1) exact/fallback pin relationship when it accurately describes the same depth,
+ * 2) green zone from the true green polygon,
+ * 3) meaningful visible hazard landmark,
+ * 4) fairway/edge fallbacks,
  * 5) geometric center-line fallback.
  */
-export const buildAimDescriptor = (input: BuildAimDescriptorInput): AimDescriptor =>
-  landmarkDescriptor(input)
-  ?? fairwayZoneDescriptor(input)
-  ?? pinOffsetDescriptor(input)
-  ?? fairwayEdgeDescriptor(input)
-  ?? centerlineDescriptor(input)
+export const buildAimDescriptor = (input: BuildAimDescriptorInput): AimDescriptor => {
+  const core = isApproachLike(input)
+    ? pinOffsetDescriptor(input)
+      ?? greenZoneDescriptor(input)
+      ?? landmarkDescriptor(input)
+      ?? fairwayZoneDescriptor(input)
+      ?? fairwayEdgeDescriptor(input)
+      ?? centerlineDescriptor(input)
+    : landmarkDescriptor(input)
+      ?? fairwayZoneDescriptor(input)
+      ?? fairwayEdgeDescriptor(input)
+      ?? pinOffsetDescriptor(input)
+      ?? greenZoneDescriptor(input)
+      ?? centerlineDescriptor(input)
+
+  return {
+    ...core,
+    contextFacts: buildContextFacts(input, core),
+  }
+}
 
 /**
- * Context is intentionally selected separately from the short aim command.
- * Low-confidence geometry is never promoted into an explanatory sentence.
+ * Context is selected separately from the short aim command. The first priority
+ * is measured context from the same underlying geometry/target. Generic copy is
+ * retained only when no measured fact is available.
  */
 export const buildAimContextSentence = (descriptor: AimDescriptor): string | null => {
   if (descriptor.confidence === 'low') return null
+  if (descriptor.contextFacts.length > 0) return descriptor.contextFacts.join(' ')
   if (descriptor.kind === 'landmark' && descriptor.anchorLabel) {
     return `Use the ${descriptor.anchorLabel} as the visual reference for the line.`
   }
   if (descriptor.kind === 'fairway-zone') {
     return 'The recommended line sits in a stable fairway corridor.'
   }
+  if (descriptor.kind === 'green-zone') {
+    return 'The recommendation is anchored to a safe section of the green rather than the flag alone.'
+  }
   if (descriptor.kind === 'pin-offset') {
-    return 'The pin is being used only as a visual reference for the same recommended aim point.'
+    return 'The pin is being used as the visual reference for the selected absolute aim point.'
   }
   return null
 }
