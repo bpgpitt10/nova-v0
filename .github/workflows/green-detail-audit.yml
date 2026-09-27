@@ -6,6 +6,7 @@ on:
       - exact-pin-outputlog-v1
     paths:
       - 'tools/audit_green_detail.py'
+      - 'tools/audit_green_local_planes.py'
       - 'public/course-geometry/greywolf/green-detail-v1.json'
       - 'public/course-geometry/greywolf/local-geometry/**'
       - '.github/workflows/green-detail-audit.yml'
@@ -22,18 +23,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Audit all 18 Greywolf greens
+      - name: Raw terrain discontinuity diagnostic across all 18
         run: |
+          echo 'NOTE: WARN in this raw-derivative scan is diagnostic, not a tactical slope rejection. Greywolf contains legitimately steep coherent banks.'
           python tools/audit_green_detail.py \
             --course-slug greywolf \
             --report /tmp/greywolf-green-detail-audit.json
-          echo 'Machine-readable report written to /tmp/greywolf-green-detail-audit.json; console table above is the CI record.'
-      - name: Report coarse 3x3 sector slopes
+          echo 'Machine-readable report written to /tmp/greywolf-green-detail-audit.json; use the local-plane audit below for tactical slope trust.'
+      - name: Tactical green-clipped local-plane audit across all 18
+        run: python tools/audit_green_local_planes.py
+      - name: Report coarse 3x3 sector slopes for context only
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           package = json.loads(Path('public/course-geometry/greywolf/green-detail-v1.json').read_text())
+          print('NOTE: sectors are descriptive context; tactical slope now comes from green-clipped local plane fits.')
           print('hole  greenPlane  maxSector  medianSector  steepestSector')
           for number in range(1, 19):
               hole = package['holes'][str(number)]
