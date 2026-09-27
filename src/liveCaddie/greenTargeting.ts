@@ -131,24 +131,42 @@ const fitGreenClippedLocalPlane = (
   point: CoursePointYds,
   polygon: CoursePolygonYds,
 ): GreenLocalSlope | null => {
-  const spacing = detail.grid.spacingYds
+  const { grid } = detail
+  const spacing = grid.spacingYds
   if (!Number.isFinite(spacing) || spacing <= 0) return null
-  const radiusCells = Math.max(1, Math.round(LOCAL_GREEN_PLANE_RADIUS_YDS / spacing))
+
+  const minColumn = Math.max(
+    0,
+    Math.ceil((point[0] - LOCAL_GREEN_PLANE_RADIUS_YDS - grid.minX) / spacing),
+  )
+  const maxColumn = Math.min(
+    grid.width - 1,
+    Math.floor((point[0] + LOCAL_GREEN_PLANE_RADIUS_YDS - grid.minX) / spacing),
+  )
+  const minRow = Math.max(
+    0,
+    Math.ceil((point[1] - LOCAL_GREEN_PLANE_RADIUS_YDS - grid.minY) / spacing),
+  )
+  const maxRow = Math.min(
+    grid.height - 1,
+    Math.floor((point[1] + LOCAL_GREEN_PLANE_RADIUS_YDS - grid.minY) / spacing),
+  )
   const samples: LocalPlaneSample[] = []
 
-  for (let rowOffset = -radiusCells; rowOffset <= radiusCells; rowOffset += 1) {
-    for (let columnOffset = -radiusCells; columnOffset <= radiusCells; columnOffset += 1) {
-      const rightOffset = columnOffset * spacing
-      const forwardOffset = rowOffset * spacing
-      if (Math.hypot(rightOffset, forwardOffset) > LOCAL_GREEN_PLANE_RADIUS_YDS + 1e-8) continue
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let column = minColumn; column <= maxColumn; column += 1) {
       const candidate: CoursePointYds = [
-        point[0] + rightOffset,
-        point[1] + forwardOffset,
+        grid.minX + column * spacing,
+        grid.minY + row * spacing,
       ]
+      if (Math.hypot(candidate[0] - point[0], candidate[1] - point[1]) > LOCAL_GREEN_PLANE_RADIUS_YDS + 1e-8) continue
       if (!pointInPolygon(candidate, polygon)) continue
-      const elevationFt = sampleCourseGreenElevation(detail, candidate)
-      if (elevationFt == null) continue
-      samples.push({ point: candidate, elevationFt })
+      const encoded = grid.values[row * grid.width + column]
+      if (encoded == null || encoded === grid.nodata) continue
+      samples.push({
+        point: candidate,
+        elevationFt: grid.elevationOffsetFt + encoded / 10,
+      })
     }
   }
 
@@ -195,7 +213,7 @@ const fitGreenClippedLocalPlane = (
 
   // Fit quality, not slope magnitude, decides whether this patch is safe to use
   // as a tactical surface plane. Greywolf contains legitimately severe banks;
-  // those remain valid when the nearby on-green LiDAR forms a coherent plane.
+  // those remain valid when nearby on-green LiDAR forms a coherent plane.
   // Tier/ledge transitions instead produce a poor plane fit and fall back to the
   // whole-green summary rather than masquerading as an extreme putting slope.
   if (rmsFitErrorFt > LOCAL_GREEN_PLANE_MAX_RMS_FT) return null
