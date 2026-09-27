@@ -3,14 +3,14 @@ from pathlib import Path
 
 path = Path('src/liveCaddie/greenTargeting.ts')
 text = path.read_text(encoding='utf-8')
-start = text.index('const localSlopeAtPoint = (')
+start = text.index('export const sampleGreywolfGreenSlopeAtPoint = (')
 end = text.index('\nconst directionLabel =', start)
 replacement = r'''const MAX_TACTICAL_SECTOR_SLOPE_PERCENT = 12
 
 const summarySlope = (
   slopePercent: number | null | undefined,
   downhillLocalUnit: readonly [number, number] | null | undefined,
-): LocalSlope | null => {
+): GreenLocalSlope | null => {
   if (typeof slopePercent !== 'number' || !Number.isFinite(slopePercent)) return null
   if (!downhillLocalUnit) return null
   const downhill = normalize([downhillLocalUnit[0], downhillLocalUnit[1]])
@@ -18,10 +18,10 @@ const summarySlope = (
   return { slopePercent, downhill }
 }
 
-const localSlopeAtPoint = (
+export const sampleGreywolfGreenSlopeAtPoint = (
   detail: GreywolfGreenDetail,
   point: CoursePointYds,
-): LocalSlope | null => {
+): GreenLocalSlope | null => {
   // The raw 1 yd DEM remains authoritative for elevation, but the all-18 audit
   // showed that local derivatives can capture banks/edge artifacts that are far
   // steeper than a playable putting surface. Strategy only needs broad green
