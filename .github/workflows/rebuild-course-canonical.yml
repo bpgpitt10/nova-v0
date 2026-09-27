@@ -3,12 +3,12 @@ name: Rebuild Course Canonical
 on:
   push:
     branches:
-      - course-importer-surface-semantics-v1
+      - course-importer-green-terrain-v1
     paths:
       - 'config/course-rebuild-request.json'
 
 concurrency:
-  group: rebuild-course-canonical
+  group: rebuild-course-canonical-green-terrain
   cancel-in-progress: false
 
 permissions:
@@ -23,10 +23,10 @@ jobs:
       - name: Checkout course branch with history
         uses: actions/checkout@v4
         with:
-          ref: course-importer-surface-semantics-v1
+          ref: course-importer-green-terrain-v1
           fetch-depth: 0
 
-      - name: Read rebuild request
+      - name: Read rebuild request and optional green-terrain config
         run: |
           python - <<'PY' >> "$GITHUB_ENV"
           import json
@@ -37,9 +37,18 @@ jobs:
           missing = [key for key in required if not request.get(key)]
           if missing:
               raise SystemExit(f"Missing rebuild request fields: {', '.join(missing)}")
+          config = json.loads(Path(request['configPath']).read_text())
+          green = config.get('greenTerrain') or {}
+          terrain_ref = request.get('terrainSourceRef', '')
           print(f"COURSE_SLUG={request['courseSlug']}")
           print(f"CONFIG_PATH={request['configPath']}")
-          print(f"TERRAIN_SOURCE_REF={request.get('terrainSourceRef', '')}")
+          print(f"TERRAIN_SOURCE_REF={terrain_ref}")
+          print(f"GREEN_DETAIL_SOURCE_REF={request.get('greenDetailSourceRef') or terrain_ref}")
+          print(f"GREEN_DEM_URL={green.get('demUrl', '')}")
+          print(f"GREEN_DATASET_NAME={green.get('datasetName', 'Configured high-resolution bare-earth DEM')}")
+          print(f"GREEN_SOURCE_RESOLUTION_METERS={green.get('sourceResolutionMeters', '')}")
+          print(f"GREEN_SPACING_YARDS={green.get('spacingYards', 1)}")
+          print(f"GREEN_MARGIN_YARDS={green.get('marginYards', 12)}")
           PY
 
       - name: Use Python
@@ -70,7 +79,7 @@ jobs:
             --output /tmp/looper-course-rebuild/geometry.json \
             --manifest "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json"
 
-      - name: Attach proven cached terrain when requested
+      - name: Attach proven cached whole-hole terrain when requested
         run: |
           mkdir -p "public/course-geometry/$COURSE_SLUG"
           if [ -n "$TERRAIN_SOURCE_REF" ]; then
@@ -85,14 +94,56 @@ jobs:
               "public/course-geometry/$COURSE_SLUG/course-v1.json"
           fi
 
+      - name: Build or carry high-resolution green terrain
+        run: |
+          GREEN_PATH="public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
+          rm -f "$GREEN_PATH"
+          if [ -n "$GREEN_DEM_URL" ]; then
+            echo "Building green detail from configured DEM: $GREEN_DEM_URL"
+            curl --fail --location --retry 3 "$GREEN_DEM_URL" \
+              --output /tmp/looper-course-rebuild/green-source-dem.tif
+            EXTRA_SOURCE_ARGS=()
+            if [ -n "$GREEN_SOURCE_RESOLUTION_METERS" ]; then
+              EXTRA_SOURCE_ARGS+=(--source-resolution-meters "$GREEN_SOURCE_RESOLUTION_METERS")
+            fi
+            python tools/build_course_green_detail.py \
+              --course-package "public/course-geometry/$COURSE_SLUG/course-v1.json" \
+              --dem /tmp/looper-course-rebuild/green-source-dem.tif \
+              --output "$GREEN_PATH" \
+              --spacing-yards "$GREEN_SPACING_YARDS" \
+              --margin-yards "$GREEN_MARGIN_YARDS" \
+              --dataset-name "$GREEN_DATASET_NAME" \
+              --source-url "$GREEN_DEM_URL" \
+              "${EXTRA_SOURCE_ARGS[@]}"
+          elif [ -n "$GREEN_DETAIL_SOURCE_REF" ] && \
+               git cat-file -e "${GREEN_DETAIL_SOURCE_REF}:public/course-geometry/${COURSE_SLUG}/green-detail-v1.json" 2>/dev/null; then
+            echo "Carrying validated green detail from $GREEN_DETAIL_SOURCE_REF"
+            git show "${GREEN_DETAIL_SOURCE_REF}:public/course-geometry/${COURSE_SLUG}/green-detail-v1.json" \
+              > "$GREEN_PATH"
+          else
+            echo "No high-resolution green DEM or prior green-detail sidecar configured; course remains valid without green detail."
+          fi
+
+          if [ -f "$GREEN_PATH" ]; then
+            python tools/validate_course_green_detail.py \
+              --package "$GREEN_PATH" \
+              --course-package "public/course-geometry/$COURSE_SLUG/course-v1.json"
+          fi
+
       - name: Refresh cache provenance and hashes
         run: |
+          GREEN_ARGS=()
+          GREEN_PATH="public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
+          if [ -f "$GREEN_PATH" ]; then
+            GREEN_ARGS+=(--green-detail "$GREEN_PATH")
+          fi
           python tools/update_course_cache_after_rebuild.py \
             --cache "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
             --config "$CONFIG_PATH" \
             --snapshot "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             --package "public/course-geometry/$COURSE_SLUG/course-v1.json" \
-            --manifest "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json"
+            --manifest "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
+            "${GREEN_ARGS[@]}"
 
       - name: Use Node
         uses: actions/setup-node@v4
@@ -116,6 +167,7 @@ jobs:
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
             src/courseGeometry/generatedRouteHoleHeadings.ts
+          git add -A "public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
           if git diff --cached --quiet; then
             echo 'No course rebuild changes to commit.'
             exit 0
@@ -123,4 +175,4 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "build(course): rebuild ${COURSE_SLUG} with canonical importer"
-          git push origin HEAD:course-importer-surface-semantics-v1
+          git push origin HEAD:course-importer-green-terrain-v1
