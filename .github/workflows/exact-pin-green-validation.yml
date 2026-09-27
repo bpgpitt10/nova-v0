@@ -9,6 +9,8 @@ on:
       - src/adapters/browserGsproCourseState.ts
       - src/courseGeometry/greywolfWorldCoordinates.ts
       - src/courseGeometry/greywolfGreenDetail.ts
+      - src/courseGeometry/courseGreenDetail.ts
+      - src/liveCaddie/greenTargeting.ts
       - public/course-geometry/greywolf/green-detail-v1.json
       - .github/workflows/exact-pin-green-validation.yml
   workflow_dispatch:
