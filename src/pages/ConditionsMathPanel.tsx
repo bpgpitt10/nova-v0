@@ -150,7 +150,13 @@ export default function ConditionsMathPanel({
 
   return (
     <div className="live-conditions-shell">
-      <section className="live-expected-shot-block">
+      <section
+        className="live-expected-shot-block"
+        data-shot-variant={evaluation?.variant ?? undefined}
+        data-stock-carry-yds={evaluation ? String(evaluation.stockCarryYds) : undefined}
+        data-planned-carry-yds={evaluation ? String(evaluation.stockCarryYds) : undefined}
+        data-modeled-carry-yds={evaluation ? String(evaluation.modeledCarryYds) : undefined}
+      >
         <div className="live-expected-shot-heading">
           <span>EXPECTED SHOT</span>
         </div>

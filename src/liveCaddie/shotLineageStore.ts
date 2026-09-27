@@ -55,6 +55,7 @@ export type LiveCaddieLineageStore = {
 const MAX_LOCAL_RECORDS = 4000
 const ARCHIVE_RECONCILE_MS = 1000
 const CLOUD_FLUSH_DELAY_MS = 250
+const BASELINE_FIRST_SHOT_RACE_TOLERANCE_MS = 2000
 
 const emptyStore = (): LiveCaddieLineageStore => ({
   version: 1,
@@ -372,9 +373,27 @@ const handleArmedClubChanged = () => {
       && record.recordType === 'shot_spec'
       && record.stateId === currentState.id
     ))
-    const modeledCarryYds = readUiExpectedCarry()
-    const aimOffsetYds = readUiAimOffset()
-    const stockCarryYds = profileStockCarry(armed.club)
+    const intent = armed.intent
+    const modeledCarryYds = finite(intent?.modeledCarryYds)
+      ? intent.modeledCarryYds
+      : readUiExpectedCarry()
+    const aimOffsetYds = finite(intent?.aimOffsetYds)
+      ? intent.aimOffsetYds
+      : readUiAimOffset()
+    const stockCarryYds = finite(intent?.stockCarryYds)
+      ? intent.stockCarryYds
+      : profileStockCarry(armed.club)
+    const variant = typeof intent?.variant === 'string' && intent.variant.trim()
+      ? intent.variant.trim()
+      : null
+    const plannedCarryYds = finite(intent?.plannedCarryYds)
+      ? intent.plannedCarryYds
+      : intent == null && finite(stockCarryYds)
+        ? stockCarryYds
+        : null
+    const carryAdjustmentFromStockYds = finite(stockCarryYds) && finite(plannedCarryYds)
+      ? plannedCarryYds - stockCarryYds
+      : null
     appendRecord(store, {
       lineageRoundId,
       recordType: 'shot_spec',
@@ -392,14 +411,17 @@ const handleArmedClubChanged = () => {
         decisionId: decision.id,
         club: armed.club,
         recommendedClub: armed.recommendedClub,
+        variant,
         stockCarryYds,
+        stockCarrySnapshotYds: stockCarryYds,
+        plannedCarryYds,
+        requestedCarryYds: plannedCarryYds,
         modeledCarryYds,
-        requestedCarryYds: null,
-        yardageAdjustmentYds: finite(stockCarryYds) && finite(modeledCarryYds)
-          ? modeledCarryYds - stockCarryYds
-          : null,
-        shotMode: 'stock',
+        carryAdjustmentFromStockYds,
+        yardageAdjustmentYds: carryAdjustmentFromStockYds,
+        shotMode: variant,
         aimOffsetYds,
+        intentSource: intent?.source ?? 'legacy-ui-fallback',
         modeledSurface,
         modeledSurfaceSource: currentState.payload.surfaceSource ?? 'live-caddie',
         armedAt: armed.armedAt,
@@ -593,6 +615,14 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
     return
   }
 
+  const isPutt = rawSurfaceLabel(shot.startingSurfaceRaw) === 'green'
+  // The archive writes inference synchronously after first seeing a physical shot.
+  // For an unarmed non-putt, wait for that evaluation before creating the one
+  // canonical attempt so the append-only record is never born without its
+  // inference evidence. A classifier result with predictedClub=null is still
+  // a completed evaluation and is persisted as such.
+  if (!isPutt && shot.actualClub == null && shot.clubInference == null) return
+
   let preState = stateForPhysicalPreShot(store, shot, postState)
   if (!preState) {
     const ordered = orderedRoundShots(shot)
@@ -627,7 +657,6 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
     })
   }
 
-  const isPutt = rawSurfaceLabel(shot.startingSurfaceRaw) === 'green'
   const spec = isPutt ? null : latestArmedSpecForState(store, preState.id)
   const decision = spec?.decisionId
     ? store.records.find((record) => record.id === spec.decisionId) ?? null
@@ -648,6 +677,18 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
     : shot.recommendedClub
       ?? (typeof spec?.payload.recommendedClub === 'string' ? spec.payload.recommendedClub : null)
       ?? (typeof decision?.payload.recommendedClub === 'string' ? decision.payload.recommendedClub : null)
+  const inference = isPutt ? null : shot.clubInference
+  const inferredClub = inference?.predictedClub ?? null
+  const inferenceConfidence = finite(inference?.confidence) ? inference.confidence : null
+  const clubAttributionSource = isPutt
+    ? 'putt'
+    : shot.actualClub != null
+      ? shot.clubSource ?? 'user'
+      : spec != null
+        ? 'armed-spec'
+        : inference != null
+          ? 'inferred'
+          : 'unknown'
 
   const attempt = appendRecord(store, {
     id: attemptId,
@@ -674,6 +715,13 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
       isPutt,
       actualClub,
       recommendedClub,
+      clubAttributionSource,
+      inferredClub,
+      inferenceConfidence,
+      inferenceAlternatives: inference?.alternatives ?? [],
+      inferenceModelVersion: inference?.modelVersion ?? null,
+      inferenceEvaluatedAt: inference?.evaluatedAt ?? null,
+      inferenceMetricsUsed: inference?.metricsUsed ?? [],
       modeledSurface: isPutt ? 'green' : spec?.payload.modeledSurface ?? preState.payload.surface ?? null,
       modeledSurfaceSource: isPutt
         ? 'gspro-starting-surface'
@@ -691,13 +739,48 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
   createOutcome(store, attempt, shot, preState, postState)
 }
 
+const activeRoundStartedAt = (store: LiveCaddieLineageStore) => {
+  if (!store.activeRoundId) return null
+  const roundRecord = store.records.find((record) => (
+    record.id === store.activeRoundId && record.recordType === 'round'
+  ))
+  const value = roundRecord?.payload.startedAt
+  return typeof value === 'string' ? value : null
+}
+
+const activeStateReferencesShot = (
+  store: LiveCaddieLineageStore,
+  shotKey: string,
+) => activeRecords(store).some((record) => (
+  record.recordType === 'state' && record.payload.latestShotKey === shotKey
+))
+
+const baselineShotBelongsToActiveRound = (
+  store: LiveCaddieLineageStore,
+  shot: ArchivedGsproCourseShot,
+) => {
+  if (!activeStateReferencesShot(store, shot.key)) return false
+  const startedAt = activeRoundStartedAt(store)
+  if (!startedAt) return true
+  const startedMs = Date.parse(startedAt)
+  const observedMs = Date.parse(shot.observedAt)
+  if (!Number.isFinite(startedMs) || !Number.isFinite(observedMs)) return true
+  return observedMs >= startedMs - BASELINE_FIRST_SHOT_RACE_TOLERANCE_MS
+}
+
 const reconcileArchive = (baselinePhysicalKeys: Set<string>) => {
   const store = loadLiveCaddieLineageStore()
   if (!store.activeRoundId) return
   const archive = loadLiveGsproRoundArchive()
   for (const round of archive.rounds) {
     for (const shot of round.shots) {
-      if (baselinePhysicalKeys.has(shot.key)) continue
+      if (baselinePhysicalKeys.has(shot.key)) {
+        if (!baselineShotBelongsToActiveRound(store, shot)) continue
+        // A startup race can archive shot 1 just before the manual baseline is
+        // frozen. Once the active LiveShotState explicitly references that key,
+        // admit it exactly once instead of silently losing the first shot.
+        baselinePhysicalKeys.delete(shot.key)
+      }
       processPhysicalShot(store, shot)
     }
   }
