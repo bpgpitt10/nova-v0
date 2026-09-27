@@ -29,8 +29,8 @@ import {
 import { greywolfHole01Geometry } from '../courseGeometry/greywolfHole01'
 import {
   loadCourseGreenDetail,
-  sampleCourseGreenElevation as sampleGreywolfGreenElevation,
-  type CourseGreenDetail as GreywolfGreenDetail,
+  sampleCourseGreenElevation,
+  type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
@@ -43,7 +43,7 @@ import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
-import { buildGreywolfGreenApproachTarget } from '../liveCaddie/greenTargeting'
+import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import {
   loadCourseHoleHeadingDegreesTrue,
   localShotBearingDegrees,
@@ -434,7 +434,7 @@ export default function LiveCaddiePage() {
   const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
   const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
-  const [greenDetail, setGreenDetail] = useState<GreywolfGreenDetail | null>(null)
+  const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
   const [showPracticeShots, setShowPracticeShots] = useState(false)
@@ -598,7 +598,7 @@ export default function LiveCaddiePage() {
       && nextPin
       && liveSnapshot.pinSource === 'output-log-course-layout'
       && pointDistance(nextBall, nextPin) <= 260
-      ? buildGreywolfGreenApproachTarget({
+      ? buildCourseGreenApproachTarget({
           hole,
           ball: nextBall,
           pin: nextPin,
@@ -638,7 +638,7 @@ export default function LiveCaddiePage() {
     ? `Shot ${nextShotNumber} · ${surface}`
     : surface
   const greenBallElevationFt = greenDetail
-    ? sampleGreywolfGreenElevation(greenDetail, ball)
+    ? sampleCourseGreenElevation(greenDetail, ball)
     : null
   const ballTerrain = greenBallElevationFt != null
     ? {
@@ -646,11 +646,11 @@ export default function LiveCaddiePage() {
         source: 'lidar-dem' as const,
         confidence: 'high' as const,
         gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
-        note: 'High-resolution 1 yd Greywolf green LiDAR sample.',
+        note: 'High-resolution course green terrain sample.',
       }
     : hole ? estimateCourseTerrain(hole, ball) : null
   const greenTargetElevationFt = greenDetail
-    ? sampleGreywolfGreenElevation(greenDetail, target)
+    ? sampleCourseGreenElevation(greenDetail, target)
     : null
   const targetTerrain = greenTargetElevationFt != null
     ? {
@@ -658,7 +658,7 @@ export default function LiveCaddiePage() {
         source: 'lidar-dem' as const,
         confidence: 'high' as const,
         gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
-        note: 'High-resolution 1 yd Greywolf green LiDAR sample.',
+        note: 'High-resolution course green terrain sample.',
       }
     : hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
@@ -702,7 +702,7 @@ export default function LiveCaddiePage() {
     && liveMatchesHole
     && liveSnapshot?.pinSource === 'output-log-course-layout'
     && pointDistance(ball, pinEstimate) <= 260
-    ? buildGreywolfGreenApproachTarget({
+    ? buildCourseGreenApproachTarget({
         hole,
         ball,
         pin: pinEstimate,

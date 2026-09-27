@@ -1,9 +1,9 @@
 import { classifyPoint, pointInPolygon } from '../courseGeometry/geometry'
 import {
-  greenSectorAtPoint,
-  sampleGreywolfGreenElevation,
-  type GreywolfGreenDetail,
-} from '../courseGeometry/greywolfGreenDetail'
+  courseGreenSectorAtPoint as greenSectorAtPoint,
+  sampleCourseGreenElevation,
+  type CourseGreenDetail,
+} from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -13,7 +13,7 @@ import type {
 export type GreenTargetingGuidance = {
   target: CoursePointYds
   applied: boolean
-  source: 'greywolf-green-lidar-1yd'
+  source: 'course-green-lidar-1yd'
   pinSector: string | null
   pinElevationFt: number | null
   localSlopePercent: number | null
@@ -119,8 +119,8 @@ const summarySlope = (
   return { slopePercent, downhill }
 }
 
-export const sampleGreywolfGreenSlopeAtPoint = (
-  detail: GreywolfGreenDetail,
+export const sampleCourseGreenSlopeAtPoint = (
+  detail: CourseGreenDetail,
   point: CoursePointYds,
 ): GreenLocalSlope | null => {
   // The raw 1 yd DEM remains authoritative for elevation, but the all-18 audit
@@ -173,7 +173,7 @@ const containingGreenPolygon = (
 
 const safeShiftedTarget = (
   polygon: CoursePolygonYds,
-  detail: GreywolfGreenDetail,
+  detail: CourseGreenDetail,
   pin: CoursePointYds,
   shift: CoursePointYds,
 ): CoursePointYds => {
@@ -184,7 +184,7 @@ const safeShiftedTarget = (
     ]
     if (
       pointInPolygon(candidate, polygon)
-      && sampleGreywolfGreenElevation(detail, candidate) != null
+      && sampleCourseGreenElevation(detail, candidate) != null
     ) return candidate
   }
   return pin
@@ -197,14 +197,14 @@ const safeShiftedTarget = (
  * unchanged; steeper greens can bend the resting distribution toward the actual
  * downhill side and, where geometry warrants it, off the green.
  */
-export const redirectGreywolfGreenRollout = ({
+export const redirectCourseGreenRollout = ({
   hole,
   detail,
   carryLanding,
   baselineLanding,
 }: {
   hole: CourseHoleGeometry
-  detail: GreywolfGreenDetail
+  detail: CourseGreenDetail
   carryLanding: CoursePointYds
   baselineLanding: CoursePointYds
 }): GreenRolloutResolution => {
@@ -224,7 +224,7 @@ export const redirectGreywolfGreenRollout = ({
   const rolloutYds = Math.hypot(rolloutVector[0], rolloutVector[1])
   if (rolloutYds < 0.25) return base
 
-  const slope = sampleGreywolfGreenSlopeAtPoint(detail, carryLanding)
+  const slope = sampleCourseGreenSlopeAtPoint(detail, carryLanding)
   if (!slope || slope.slopePercent <= 1.25) {
     return {
       ...base,
@@ -262,7 +262,7 @@ export const redirectGreywolfGreenRollout = ({
  * nudged slightly uphill and/or away from a nearby green edge, with a hard 5 yd
  * cap and an on-green guard.
  */
-export const buildGreywolfGreenApproachTarget = ({
+export const buildCourseGreenApproachTarget = ({
   hole,
   ball,
   pin,
@@ -272,20 +272,20 @@ export const buildGreywolfGreenApproachTarget = ({
   hole: CourseHoleGeometry
   ball: CoursePointYds
   pin: CoursePointYds
-  detail: GreywolfGreenDetail
+  detail: CourseGreenDetail
   exactPin: boolean
 }): GreenTargetingGuidance => {
-  const pinElevationFt = sampleGreywolfGreenElevation(detail, pin)
+  const pinElevationFt = sampleCourseGreenElevation(detail, pin)
   const sector = greenSectorAtPoint(detail, pin)
   const polygon = containingGreenPolygon(hole, pin)
-  const slope = sampleGreywolfGreenSlopeAtPoint(detail, pin)
+  const slope = sampleCourseGreenSlopeAtPoint(detail, pin)
   const downhillLabel = directionLabel(slope?.downhill ?? null)
   const edge = polygon ? nearestBoundary(polygon, pin) : null
 
   const base: GreenTargetingGuidance = {
     target: pin,
     applied: false,
-    source: 'greywolf-green-lidar-1yd',
+    source: 'course-green-lidar-1yd',
     pinSector: sector?.id ?? null,
     pinElevationFt,
     localSlopePercent: slope?.slopePercent ?? null,

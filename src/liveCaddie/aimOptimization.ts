@@ -1,5 +1,5 @@
 import { classifyPoint } from '../courseGeometry/geometry'
-import type { GreywolfGreenDetail } from '../courseGeometry/greywolfGreenDetail'
+import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -30,7 +30,7 @@ import {
   evaluateEmpiricalAimDistribution,
   type EmpiricalAimSurfaceDistribution,
 } from './empiricalAimOutcomes'
-import { redirectGreywolfGreenRollout } from './greenTargeting'
+import { redirectCourseGreenRollout } from './greenTargeting'
 import { buildLiveCaddieProfileSet } from './profileProvider'
 import { modelShotContext } from './shotContextModel'
 
@@ -81,8 +81,8 @@ export type AimLabEnvironment = {
   lieSource?: string
   /** Exact GSPro pin in the same hole-local coordinate system as the course geometry. */
   exactPinLocalYds?: CoursePointYds | null
-  /** Optional 1 yd Greywolf green grid used to shape destination rollout. */
-  greenDetail?: GreywolfGreenDetail | null
+  /** Optional high-resolution course green grid used to shape destination rollout. */
+  greenDetail?: CourseGreenDetail | null
   /**
    * Optional per-club strategic target. Used by off-sim natural-landing
    * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
@@ -238,7 +238,7 @@ export const evaluateAimLab = (
   const exactPinLocalYds = environment.exactPinLocalYds ?? hole.markers.pin ?? null
   const greenLandingTransform = environment.greenDetail
     ? (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) =>
-        redirectGreywolfGreenRollout({
+        redirectCourseGreenRollout({
           hole,
           detail: environment.greenDetail!,
           carryLanding,

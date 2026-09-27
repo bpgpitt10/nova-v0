@@ -1,4 +1,4 @@
-import { sampleGreywolfGreenElevation } from '../courseGeometry/greywolfGreenDetail'
+import { sampleCourseGreenElevation } from '../courseGeometry/courseGreenDetail'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
   CourseHoleGeometry,
@@ -263,7 +263,7 @@ const resolveLandingElevation = (
 
   const landing = modeledCarryLandingPoint(evaluation, ball)
   const greenLandingElevationFt = environment.greenDetail
-    ? sampleGreywolfGreenElevation(environment.greenDetail, landing)
+    ? sampleCourseGreenElevation(environment.greenDetail, landing)
     : null
   if (greenLandingElevationFt != null) {
     return {
