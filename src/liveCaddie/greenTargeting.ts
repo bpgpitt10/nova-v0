@@ -106,47 +106,44 @@ const nearestBoundary = (
   }
 }
 
+const MAX_TACTICAL_SECTOR_SLOPE_PERCENT = 12
+
+const summarySlope = (
+  slopePercent: number | null | undefined,
+  downhillLocalUnit: readonly [number, number] | null | undefined,
+): GreenLocalSlope | null => {
+  if (typeof slopePercent !== 'number' || !Number.isFinite(slopePercent)) return null
+  if (!downhillLocalUnit) return null
+  const downhill = normalize([downhillLocalUnit[0], downhillLocalUnit[1]])
+  if (!downhill) return null
+  return { slopePercent, downhill }
+}
+
 export const sampleGreywolfGreenSlopeAtPoint = (
   detail: GreywolfGreenDetail,
   point: CoursePointYds,
 ): GreenLocalSlope | null => {
-  // A 6-yard stencil smooths the 1-yard LiDAR enough for approach/roll context
-  // without pretending to model putting-scale micro-contours.
-  const radiusYds = 3
-  const left = sampleGreywolfGreenElevation(detail, [point[0] - radiusYds, point[1]])
-  const right = sampleGreywolfGreenElevation(detail, [point[0] + radiusYds, point[1]])
-  const front = sampleGreywolfGreenElevation(detail, [point[0], point[1] - radiusYds])
-  const back = sampleGreywolfGreenElevation(detail, [point[0], point[1] + radiusYds])
-
-  if (left != null && right != null && front != null && back != null) {
-    const gradientRightFtPerYd = (right - left) / (radiusYds * 2)
-    const gradientForwardFtPerYd = (back - front) / (radiusYds * 2)
-    const gradientMagnitudeFtPerYd = Math.hypot(
-      gradientRightFtPerYd,
-      gradientForwardFtPerYd,
-    )
-    const downhill = normalize([
-      -gradientRightFtPerYd,
-      -gradientForwardFtPerYd,
-    ])
-    if (downhill && gradientMagnitudeFtPerYd > 1e-5) {
-      return {
-        // 1 yard = 3 feet, so ft/yd divided by 3 is grade as a ratio.
-        slopePercent: (gradientMagnitudeFtPerYd / 3) * 100,
-        downhill,
-      }
-    }
-  }
-
+  // The raw 1 yd DEM remains authoritative for elevation, but the all-18 audit
+  // showed that local derivatives can capture banks/edge artifacts that are far
+  // steeper than a playable putting surface. Strategy only needs broad green
+  // structure, so use the fitted 3x3 sector plane first. If a sector itself is
+  // implausibly steep (>12%), fall back to the whole-green plane rather than
+  // turning a local LiDAR cliff into a five-yard tactical instruction.
   const sector = greenSectorAtPoint(detail, point)
-  const downhill = sector?.downhillLocalUnit
-    ? normalize(sector.downhillLocalUnit)
-    : null
-  if (!downhill || sector?.planeSlopePercent == null) return null
-  return {
-    slopePercent: sector.planeSlopePercent,
-    downhill,
-  }
+  const sectorSlope = summarySlope(
+    sector?.planeSlopePercent,
+    sector?.downhillLocalUnit ?? null,
+  )
+  if (
+    sectorSlope
+    && sectorSlope.slopePercent >= 0
+    && sectorSlope.slopePercent <= MAX_TACTICAL_SECTOR_SLOPE_PERCENT
+  ) return sectorSlope
+
+  return summarySlope(
+    detail.greenSummary.planeSlopePercent,
+    detail.greenSummary.downhillLocalUnit,
+  )
 }
 
 const directionLabel = (direction: CoursePointYds | null) => {
