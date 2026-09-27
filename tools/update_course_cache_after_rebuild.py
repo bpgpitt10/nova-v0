@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--snapshot", required=True, type=Path)
     parser.add_argument("--package", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument("--green-detail", type=Path)
     return parser.parse_args()
 
 
@@ -56,6 +57,19 @@ def main() -> int:
     package["sha256"] = sha256(args.package)
     package["terrainComposerVersion"] = "carry_forward_embedded_terrain_v1"
 
+    green_detail_path = args.green_detail
+    if green_detail_path and green_detail_path.exists():
+        green_detail = json.loads(green_detail_path.read_text(encoding="utf-8"))
+        package["greenDetail"] = {
+            "schemaVersion": green_detail.get("schemaVersion"),
+            "sha256": sha256(green_detail_path),
+            "spacingYds": (green_detail.get("runtimeTerrain") or {}).get("spacingYds"),
+            "marginYds": (green_detail.get("runtimeTerrain") or {}).get("marginYds"),
+            "sourceDataset": (green_detail.get("source") or {}).get("dataset"),
+        }
+    else:
+        package.pop("greenDetail", None)
+
     source = cache.setdefault("source", {})
     source["provider"] = source_provider
     source["fetchedAt"] = rebuilt_at
@@ -73,6 +87,7 @@ def main() -> int:
         "builder": package.get("builderVersion"),
         "sourceProvider": source.get("provider"),
         "packageSha256": package.get("sha256"),
+        "greenDetailSha256": (package.get("greenDetail") or {}).get("sha256"),
         "snapshotSha256": source.get("snapshotSha256"),
         "sourceBaseTimestamp": source.get("sourceBaseTimestamp"),
     }, indent=2, sort_keys=True))
