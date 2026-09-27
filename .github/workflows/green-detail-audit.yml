@@ -27,8 +27,4 @@ jobs:
           python tools/audit_green_detail.py \
             --course-slug greywolf \
             --report /tmp/greywolf-green-detail-audit.json
-      - name: Upload machine-readable audit
-        uses: actions/upload-artifact@v4
-        with:
-          name: greywolf-green-detail-audit
-          path: /tmp/greywolf-green-detail-audit.json
+          echo 'Machine-readable report written to /tmp/greywolf-green-detail-audit.json; console table above is the CI record.'
