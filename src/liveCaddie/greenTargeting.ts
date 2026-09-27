@@ -106,7 +106,9 @@ const nearestBoundary = (
   }
 }
 
-const MAX_TACTICAL_SECTOR_SLOPE_PERCENT = 12
+const LOCAL_GREEN_PLANE_RADIUS_YDS = 3
+const LOCAL_GREEN_PLANE_MIN_SAMPLES = 8
+const LOCAL_GREEN_PLANE_MAX_RMS_FT = 0.35
 
 const summarySlope = (
   slopePercent: number | null | undefined,
@@ -119,26 +121,102 @@ const summarySlope = (
   return { slopePercent, downhill }
 }
 
+type LocalPlaneSample = {
+  point: CoursePointYds
+  elevationFt: number
+}
+
+const fitGreenClippedLocalPlane = (
+  detail: CourseGreenDetail,
+  point: CoursePointYds,
+  polygon: CoursePolygonYds,
+): GreenLocalSlope | null => {
+  const spacing = detail.grid.spacingYds
+  if (!Number.isFinite(spacing) || spacing <= 0) return null
+  const radiusCells = Math.max(1, Math.round(LOCAL_GREEN_PLANE_RADIUS_YDS / spacing))
+  const samples: LocalPlaneSample[] = []
+
+  for (let rowOffset = -radiusCells; rowOffset <= radiusCells; rowOffset += 1) {
+    for (let columnOffset = -radiusCells; columnOffset <= radiusCells; columnOffset += 1) {
+      const rightOffset = columnOffset * spacing
+      const forwardOffset = rowOffset * spacing
+      if (Math.hypot(rightOffset, forwardOffset) > LOCAL_GREEN_PLANE_RADIUS_YDS + 1e-8) continue
+      const candidate: CoursePointYds = [
+        point[0] + rightOffset,
+        point[1] + forwardOffset,
+      ]
+      if (!pointInPolygon(candidate, polygon)) continue
+      const elevationFt = sampleCourseGreenElevation(detail, candidate)
+      if (elevationFt == null) continue
+      samples.push({ point: candidate, elevationFt })
+    }
+  }
+
+  if (samples.length < LOCAL_GREEN_PLANE_MIN_SAMPLES) return null
+
+  const meanRight = samples.reduce((sum, sample) => sum + sample.point[0], 0) / samples.length
+  const meanForward = samples.reduce((sum, sample) => sum + sample.point[1], 0) / samples.length
+  const meanElevation = samples.reduce((sum, sample) => sum + sample.elevationFt, 0) / samples.length
+
+  let rightSquared = 0
+  let forwardSquared = 0
+  let rightForward = 0
+  let rightElevation = 0
+  let forwardElevation = 0
+  for (const sample of samples) {
+    const right = sample.point[0] - meanRight
+    const forward = sample.point[1] - meanForward
+    const elevation = sample.elevationFt - meanElevation
+    rightSquared += right * right
+    forwardSquared += forward * forward
+    rightForward += right * forward
+    rightElevation += right * elevation
+    forwardElevation += forward * elevation
+  }
+
+  const determinant = rightSquared * forwardSquared - rightForward * rightForward
+  if (Math.abs(determinant) < 1e-8) return null
+  const risePerRightYard = (
+    rightElevation * forwardSquared - forwardElevation * rightForward
+  ) / determinant
+  const risePerForwardYard = (
+    forwardElevation * rightSquared - rightElevation * rightForward
+  ) / determinant
+
+  let residualSquaredTotal = 0
+  for (const sample of samples) {
+    const predictedElevation = meanElevation
+      + risePerRightYard * (sample.point[0] - meanRight)
+      + risePerForwardYard * (sample.point[1] - meanForward)
+    const residual = sample.elevationFt - predictedElevation
+    residualSquaredTotal += residual * residual
+  }
+  const rmsFitErrorFt = Math.sqrt(residualSquaredTotal / samples.length)
+
+  // Fit quality, not slope magnitude, decides whether this patch is safe to use
+  // as a tactical surface plane. Greywolf contains legitimately severe banks;
+  // those remain valid when the nearby on-green LiDAR forms a coherent plane.
+  // Tier/ledge transitions instead produce a poor plane fit and fall back to the
+  // whole-green summary rather than masquerading as an extreme putting slope.
+  if (rmsFitErrorFt > LOCAL_GREEN_PLANE_MAX_RMS_FT) return null
+
+  const downhill = normalize([-risePerRightYard, -risePerForwardYard])
+  if (!downhill) return null
+  return {
+    slopePercent: Math.hypot(risePerRightYard, risePerForwardYard) / 3 * 100,
+    downhill,
+  }
+}
+
 export const sampleCourseGreenSlopeAtPoint = (
   detail: CourseGreenDetail,
   point: CoursePointYds,
+  polygon?: CoursePolygonYds | null,
 ): GreenLocalSlope | null => {
-  // The raw 1 yd DEM remains authoritative for elevation, but the all-18 audit
-  // showed that local derivatives can capture banks/edge artifacts that are far
-  // steeper than a playable putting surface. Strategy only needs broad green
-  // structure, so use the fitted 3x3 sector plane first. If a sector itself is
-  // implausibly steep (>12%), fall back to the whole-green plane rather than
-  // turning a local LiDAR cliff into a five-yard tactical instruction.
-  const sector = greenSectorAtPoint(detail, point)
-  const sectorSlope = summarySlope(
-    sector?.planeSlopePercent,
-    sector?.downhillLocalUnit ?? null,
-  )
-  if (
-    sectorSlope
-    && sectorSlope.slopePercent >= 0
-    && sectorSlope.slopePercent <= MAX_TACTICAL_SECTOR_SLOPE_PERCENT
-  ) return sectorSlope
+  if (polygon) {
+    const local = fitGreenClippedLocalPlane(detail, point, polygon)
+    if (local) return local
+  }
 
   return summarySlope(
     detail.greenSummary.planeSlopePercent,
@@ -160,12 +238,12 @@ const directionLabel = (direction: CoursePointYds | null) => {
 
 const containingGreenPolygon = (
   hole: CourseHoleGeometry,
-  pin: CoursePointYds,
+  point: CoursePointYds,
 ): CoursePolygonYds | null => {
   for (const surface of hole.surfaces) {
     if (surface.kind !== 'green') continue
     for (const polygon of surface.polygons) {
-      if (pointInPolygon(pin, polygon)) return polygon
+      if (pointInPolygon(point, polygon)) return polygon
     }
   }
   return null
@@ -224,7 +302,8 @@ export const redirectCourseGreenRollout = ({
   const rolloutYds = Math.hypot(rolloutVector[0], rolloutVector[1])
   if (rolloutYds < 0.25) return base
 
-  const slope = sampleCourseGreenSlopeAtPoint(detail, carryLanding)
+  const polygon = containingGreenPolygon(hole, carryLanding)
+  const slope = sampleCourseGreenSlopeAtPoint(detail, carryLanding, polygon)
   if (!slope || slope.slopePercent <= 1.25) {
     return {
       ...base,
@@ -278,7 +357,7 @@ export const buildCourseGreenApproachTarget = ({
   const pinElevationFt = sampleCourseGreenElevation(detail, pin)
   const sector = greenSectorAtPoint(detail, pin)
   const polygon = containingGreenPolygon(hole, pin)
-  const slope = sampleCourseGreenSlopeAtPoint(detail, pin)
+  const slope = sampleCourseGreenSlopeAtPoint(detail, pin, polygon)
   const downhillLabel = directionLabel(slope?.downhill ?? null)
   const edge = polygon ? nearestBoundary(polygon, pin) : null
 
