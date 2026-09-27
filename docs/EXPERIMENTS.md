@@ -144,12 +144,30 @@ Use exact GSPro pin position plus high-resolution green terrain to improve appro
 - Terrain detail extends beyond the putting surface and must not be mistaken for the green polygon.
 - Strategic green-target adjustment is constrained to a small move from the pin/initial target (current model hard cap <=5 yd).
 - Descriptor language must report the selected strategic point rather than independently inventing a different pin/green interpretation.
+- Tactical slope validity is determined by local surface fit quality, not by an arbitrary maximum slope. Greywolf contains legitimately severe banks that must be preserved when the LiDAR forms a coherent local plane.
+
+**Green slope regression finding — 2026-09-27**
+
+- The original all-18 audit correctly exposed extreme local derivatives, but raw slope magnitude alone was not a valid rejection rule.
+- Greywolf H6 contains both a severe nonlinear front tier/ledge region and a separate coherent front-right bank with locally fitted slopes in the ~45–48% range. The latter is steep but internally consistent in the source terrain and must not be flattened solely because it exceeds a conventional green-slope threshold.
+- The prior runtime safeguard that rejected 3x3 sector slopes above 12% was therefore too aggressive and was removed.
+- Runtime tactical slope now fits a plane to actual ~1 yd terrain grid nodes within 3 yd of the query point, clipped to the actual green polygon.
+- A local plane is accepted when at least 8 on-green samples are available and RMS fit error is <=0.35 ft. There is no slope-magnitude ceiling.
+- Poorly planar tier/ledge transitions fail the fit-quality gate and fall back to the whole-green trend rather than being interpreted as an extreme putting-surface slope.
+- The 3x3 sectors remain useful for coarse pin-location language but are no longer the tactical slope/vector source.
+
+**Offline validation**
+
+- Focused H6 audit confirmed the worst raw 1 yd jumps and 100%+ derivative estimates are concentrated around the severe front transition, while coherent steep patches also exist.
+- All-18 green-clipped local-plane audit showed normal/coherent Greywolf patches generally have low residual error, while the meaningful nonlinear problem areas concentrate primarily on H4, H6 and H7.
+- The <=0.35 ft RMS gate preserves coherent local slopes above 12% across many holes, including slopes into the 20s and the H6/H7 ~40%+ banks, instead of flattening them.
+- Exact-pin/green-detail TypeScript + Vite production build passed after the runtime slope change.
 
 **Current relationship to Aim Descriptor**  
 Reconciled. Pin-relative wording uses the exact pin; green zone/width/edge wording uses the real green polygon; context can explain a small terrain-driven strategic shift.
 
 **Remaining gate**  
-Live-course validation of the exact pin and green-detail recommendations over multiple holes / pin placements.
+Live-course validation of the exact pin and green-detail recommendations over multiple holes / pin placements. In particular, verify that GSPro's rendered/modelled H6 severe green features correspond closely enough to the source LiDAR for tactical use; offline LiDAR consistency alone is not SIM validation.
 
 ---
 
