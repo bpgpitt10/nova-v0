@@ -1,0 +1,1 @@
+Temporary validation marker. Application/runtime code is identical to exact-pin-outputlog-v1 at branch creation; this file exists only to generate a Git push event on a Vercel-whitelisted web-* branch.
