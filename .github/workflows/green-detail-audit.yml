@@ -28,3 +28,25 @@ jobs:
             --course-slug greywolf \
             --report /tmp/greywolf-green-detail-audit.json
           echo 'Machine-readable report written to /tmp/greywolf-green-detail-audit.json; console table above is the CI record.'
+      - name: Report coarse 3x3 sector slopes
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          package = json.loads(Path('public/course-geometry/greywolf/green-detail-v1.json').read_text())
+          print('hole  greenPlane  maxSector  medianSector  steepestSector')
+          for number in range(1, 19):
+              hole = package['holes'][str(number)]
+              rows = [
+                  (str(s.get('id')), float(s['planeSlopePercent']))
+                  for s in hole.get('sectors', [])
+                  if isinstance(s.get('planeSlopePercent'), (int, float))
+              ]
+              ordered = sorted(value for _, value in rows)
+              median = ordered[len(ordered)//2] if ordered else 0
+              steep = max(rows, key=lambda item: item[1]) if rows else ('none', 0)
+              print(
+                  f"H{number:02d}   {float(hole['greenSummary']['planeSlopePercent']):6.1f}%"
+                  f"     {steep[1]:6.1f}%       {median:6.1f}%   {steep[0]}"
+              )
+          PY
