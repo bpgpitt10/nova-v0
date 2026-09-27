@@ -8,7 +8,7 @@ on:
       - 'tools/diagnose_h6_green.py'
       - 'tools/audit_green_local_planes.py'
       - 'public/course-geometry/greywolf/green-detail-v1.json'
-      - 'public/course-geometry/greywolf/local-geometry/greywolf-hole-06.json'
+      - 'public/course-geometry/greywolf/local-geometry/**'
       - '.github/workflows/h6-green-diagnostic.yml'
   workflow_dispatch:
 
@@ -27,3 +27,5 @@ jobs:
         run: python tools/diagnose_h6_green.py
       - name: Audit green-clipped local planes on Hole 6
         run: python tools/audit_green_local_planes.py --hole 6
+      - name: Audit green-clipped local planes on all 18
+        run: python tools/audit_green_local_planes.py
