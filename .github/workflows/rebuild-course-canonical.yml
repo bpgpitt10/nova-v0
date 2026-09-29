@@ -3,12 +3,12 @@ name: Rebuild Course Canonical
 on:
   push:
     branches:
-      - course-importer-green-terrain-v1
+      - course-importer-surface-semantics-v1
     paths:
       - 'config/course-rebuild-request.json'
 
 concurrency:
-  group: rebuild-course-canonical-green-terrain
+  group: rebuild-course-canonical
   cancel-in-progress: false
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
       - name: Checkout course branch with history
         uses: actions/checkout@v4
         with:
-          ref: course-importer-green-terrain-v1
+          ref: course-importer-surface-semantics-v1
           fetch-depth: 0
 
       - name: Read rebuild request and optional green-terrain config
@@ -94,7 +94,7 @@ jobs:
               "public/course-geometry/$COURSE_SLUG/course-v1.json"
           fi
 
-      - name: Build or carry high-resolution green terrain
+      - name: Build, carry, and validate high-resolution green terrain
         run: |
           GREEN_PATH="public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
           rm -f "$GREEN_PATH"
@@ -126,6 +126,9 @@ jobs:
 
           if [ -f "$GREEN_PATH" ]; then
             python tools/validate_course_green_detail.py \
+              --package "$GREEN_PATH" \
+              --course-package "public/course-geometry/$COURSE_SLUG/course-v1.json"
+            python tools/audit_course_green_surface_quality.py \
               --package "$GREEN_PATH" \
               --course-package "public/course-geometry/$COURSE_SLUG/course-v1.json"
           fi
@@ -175,4 +178,4 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "build(course): rebuild ${COURSE_SLUG} with canonical importer"
-          git push origin HEAD:course-importer-green-terrain-v1
+          git push origin HEAD:course-importer-surface-semantics-v1
