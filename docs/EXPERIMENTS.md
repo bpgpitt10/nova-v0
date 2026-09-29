@@ -82,7 +82,7 @@ This experiment does not decide where to aim.
 `tools/minimap_probe/`
 
 **Status**  
-**BUILT / OFFLINE VALIDATED — WAITING FOR SIM VALIDATION**
+**PARTIAL SIM VALIDATION — CENTER CLICK PASS / AUTOMATED OCR VERIFICATION OPEN**
 
 **What exists**
 
@@ -108,21 +108,32 @@ This experiment does not decide where to aim.
 - automatically loop clicks
 - modify Live Caddie state
 
-**First live validation sequence**
+**Live validation — 2026-09-29**
 
-1. 200 yd center preview.
-2. 200 yd center one-shot click.
-3. +/-10 yd lateral previews and clicks.
-4. Repeat after manually changing minimap zoom.
-5. Repeat from an approach position after the tee shot.
-6. Repeat on a rotated/dogleg minimap.
-7. Feed one real Looper absolute recommendation point.
+- Windows launcher encoding issue was fixed by removing non-ASCII console text that Windows PowerShell 5.1 misparsed.
+- Click Lab transform proof passed center/left/right handedness, rotated minimap handedness, and zoom/scale conversion.
+- GSPro Hole 1 at Greywolf was used from the tee with 350.2 yd live distance-to-pin.
+- PIN-card OCR failed, so the first live mechanical validation used the deliberate `-Distance 350.2` fallback rather than guessing from OCR.
+- A 200 yd straight-ahead preview placed the predicted crosshair on the visible GSPro white aim line at the expected depth.
+- A one-shot click was accepted by GSPro: the camera/aim changed and GSPro displayed the magenta minimap target marker.
+- After resetting the GSPro aim and repeating the same 200 yd center click, the magenta target marker appeared essentially centered on the white aim line at the intended depth. This is the first live proof that the predicted minimap pixel can actuate the intended center-line target.
+- The first clicked result appeared somewhat left by visual inspection, so repeatability still needs lateral/zoom/approach testing before the actuation path is considered fully SIM VALIDATED.
+- Post-click AIM-card OCR also failed, so current verification is visual rather than automated. This is a verification-layer defect, not evidence that the click was rejected.
+
+**Remaining live validation sequence**
+
+1. +/-10 yd lateral previews and one-shot clicks; verify handedness and offset visually.
+2. Repeat center/lateral tests after manually changing minimap zoom.
+3. Repeat from an approach position after the tee shot.
+4. Repeat on a rotated/dogleg minimap.
+5. Feed one real Looper absolute recommendation point.
+6. Repair PIN-card and post-click AIM-card OCR so distance verification can be automated rather than visual/manual.
 
 **Acceptance target**  
-Initial positional / AIM-distance tolerance approximately <=3 yd, with visual review of the selected minimap location.
+Initial positional / AIM-distance tolerance approximately <=3 yd, with visual review of the selected minimap location. Center-line actuation has passed a first live visual check; broader repeatability has not yet passed.
 
 **Remaining gate**  
-Actual physical proof on the sim PC that GSPro accepts the predicted pixel as the intended aim point.
+Prove lateral, zoom, approach, rotated/dogleg, and absolute-coordinate cases repeatably, then restore automated OCR verification before connecting the harness to Live Caddie execution.
 
 ---
 
