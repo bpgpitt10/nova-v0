@@ -29,6 +29,10 @@ if ($RunProof) {
   & $Python (Join-Path $Here "click_lab_transform_proof.py")
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   Write-Host ""
+  Write-Host "Running Click Lab marker identity proof..."
+  & $Python (Join-Path $Here "click_lab_marker_proof.py")
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  Write-Host ""
 }
 
 $argsList = @(
