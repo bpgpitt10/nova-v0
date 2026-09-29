@@ -84,6 +84,10 @@ const expectContains = (actual: readonly string[], expected: string) => {
   }
 }
 
+const expectKind = (actual: string, expected: string) => {
+  if (actual !== expected) throw new Error(`Aim descriptor proof expected kind "${expected}" but got "${actual}"`)
+}
+
 export const runAimDescriptorShotFrameProof = () => {
   // Baseline: course axes and shot axes align.
   {
@@ -112,6 +116,25 @@ export const runAimDescriptorShotFrameProof = () => {
       aimPoint: inverseShotPoint(ball, target, 15, 150),
     })
     expectText(descriptor.text, 'Aim right side fairway')
+    expectContains(descriptor.contextFacts, '40 yd wide')
+  }
+
+  // Adjacent polygons are one playable corridor and must merge before zone/width language.
+  {
+    const ball: CoursePointYds = [0, 0]
+    const target: CoursePointYds = [0, 200]
+    const leftHalf = shotRectangle(ball, target, -20, 0, 80, 220)
+    const rightHalf = shotRectangle(ball, target, 0, 20, 80, 220)
+    const descriptor = buildAimDescriptor({
+      hole: hole([
+        surface('fairway-left-half', 'fairway', leftHalf),
+        surface('fairway-right-half', 'fairway', rightHalf),
+      ], { fairway: 'available' }),
+      ball,
+      target,
+      aimPoint: inverseShotPoint(ball, target, 0, 150),
+    })
+    expectText(descriptor.text, 'Aim center fairway')
     expectContains(descriptor.contextFacts, '40 yd wide')
   }
 
@@ -160,6 +183,36 @@ export const runAimDescriptorShotFrameProof = () => {
       pin,
     })
     expectText(descriptor.text, 'Aim 3 yd short of the pin')
+  }
+
+  // With no usable surfaces/pin, the fallback still describes the optimizer point geometrically.
+  {
+    const ball: CoursePointYds = [0, 0]
+    const target: CoursePointYds = [0, 200]
+    const descriptor = buildAimDescriptor({
+      hole: hole([], {}),
+      ball,
+      target,
+      aimPoint: [10, 150],
+      aimOffsetYds: 10,
+    })
+    expectText(descriptor.text, 'Aim 10 yd right of center line')
+    expectKind(descriptor.kind, 'centerline')
+  }
+
+  // Hazard context must describe an obstacle on the recommended line, not merely one nearby.
+  {
+    const ball: CoursePointYds = [0, 0]
+    const target: CoursePointYds = [0, 220]
+    const bunker = shotRectangle(ball, target, -8, 8, 185, 205)
+    const descriptor = buildAimDescriptor({
+      hole: hole([surface('center-bunker', 'bunker', bunker)], { bunker: 'available' }),
+      ball,
+      target,
+      aimPoint: inverseShotPoint(ball, target, 0, 180),
+    })
+    expectKind(descriptor.kind, 'landmark')
+    expectContains(descriptor.contextFacts, 'along the recommended line')
   }
 
   return true
