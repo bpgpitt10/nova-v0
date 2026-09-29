@@ -32,7 +32,7 @@ if ($RunProof) {
 }
 
 $argsList = @(
-  (Join-Path $Here "click_lab.py"),
+  (Join-Path $Here "click_lab_runner.py"),
   "--monitor", "$Monitor"
 )
 
