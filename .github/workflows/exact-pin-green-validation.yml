@@ -11,6 +11,7 @@ on:
       - src/courseGeometry/greywolfGreenDetail.ts
       - src/courseGeometry/courseGreenDetail.ts
       - src/liveCaddie/greenTargeting.ts
+      - tests/greenTargetingRuntimeProof.ts
       - public/course-geometry/greywolf/green-detail-v1.json
       - .github/workflows/exact-pin-green-validation.yml
   workflow_dispatch:
@@ -28,4 +29,20 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Run green targeting runtime regression proof
+        run: |
+          rm -rf /tmp/green-targeting-proof
+          npx tsc tests/greenTargetingRuntimeProof.ts \
+            --outDir /tmp/green-targeting-proof \
+            --rootDir . \
+            --module commonjs \
+            --moduleResolution node \
+            --target ES2022 \
+            --lib ES2022,DOM \
+            --types node \
+            --esModuleInterop \
+            --skipLibCheck \
+            --noEmitOnError
+          printf '{"type":"commonjs"}\n' > /tmp/green-targeting-proof/package.json
+          node /tmp/green-targeting-proof/tests/greenTargetingRuntimeProof.js
       - run: npm run build
