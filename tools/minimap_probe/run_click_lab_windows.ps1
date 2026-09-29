@@ -33,6 +33,10 @@ if ($RunProof) {
   & $Python (Join-Path $Here "click_lab_marker_proof.py")
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   Write-Host ""
+  Write-Host "Running live-measured forward calibration proof..."
+  & $Python (Join-Path $Here "click_lab_calibration_proof.py")
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  Write-Host ""
 }
 
 $argsList = @(
