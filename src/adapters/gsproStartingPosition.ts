@@ -68,9 +68,10 @@ const surfaceFromRaw = (value: number | null) => {
   switch (value) {
     case 1: return 'rough'
     case 2: return 'fairway'
-    case 3:
-    case 11:
-      return 'sand'
+    case 3: return 'sand'
+    // Live testing showed raw surface 11 can also represent woods/scrub/deep rough.
+    // Keep it ambiguous so course geometry can resolve the actual playable surface.
+    case 11: return null
     case 5: return 'green'
     case 18: return 'tee'
     default: return null
