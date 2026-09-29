@@ -1,4 +1,3 @@
-import type { Club } from '../lib/bagConfig'
 import {
   isShotSourceIncluded,
   isSystemOldExcludedSession,
@@ -6,10 +5,7 @@ import {
   sizeWeightForShotCount,
   timeWeightForAgeDays,
 } from '../lib/historicalModel'
-import {
-  installMishitPlanningState,
-  mishitPlanningPopulationKey,
-} from '../lib/mishitPlanningPopulation'
+import { installMishitPlanningState } from '../lib/mishitPlanningPopulation'
 import {
   resolveShotVariantId,
   STOCK_SHOT_VARIANT_ID,
@@ -255,12 +251,19 @@ const mishitEvidenceForClub = (
   nowMs: number,
 ): MishitEvidenceSummary => {
   const state = installMishitPlanningState(sessions)
-  const populationKey = mishitPlanningPopulationKey({
-    club: club as Club,
-    shotVariantId: STOCK_SHOT_VARIANT_ID,
-  })
-  const population = state.populations.get(populationKey)
-  if (!population) {
+  const eligibleShotIds = new Set(
+    eligibleRawStockShots(sessions, club, nowMs).map(({ shot }) => shot.id),
+  )
+
+  // Production mishit populations are deliberately isolated by measurement
+  // profile. Live Caddie should summarize the relevant populations without
+  // rebuilding a cross-profile classifier population.
+  const relevantPopulations = [...state.populations.values()].filter((population) =>
+    population.analysis.classifications.some((classification) =>
+      eligibleShotIds.has(classification.shotId),
+    ),
+  )
+  if (relevantPopulations.length === 0) {
     return {
       baselineStatus: 'unavailable',
       evidence: 'low',
@@ -275,11 +278,10 @@ const mishitEvidenceForClub = (
     }
   }
 
-  const eligibleShotIds = new Set(
-    eligibleRawStockShots(sessions, club, nowMs).map(({ shot }) => shot.id),
-  )
-  const classifications = population.analysis.classifications.filter((classification) =>
-    eligibleShotIds.has(classification.shotId),
+  const classifications = relevantPopulations.flatMap((population) =>
+    population.analysis.classifications.filter((classification) =>
+      eligibleShotIds.has(classification.shotId),
+    ),
   )
 
   const normalShots = classifications.filter((item) => item.classification === 'normal').length
@@ -300,7 +302,17 @@ const mishitEvidenceForClub = (
     confidenceValues.length > 0
       ? confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length
       : null
-  const baselineStatus = population.analysis.baseline.status
+
+  const baselineStatuses = relevantPopulations.map(
+    (population) => population.analysis.baseline.status,
+  )
+  const baselineStatus: MishitEvidenceSummary['baselineStatus'] = baselineStatuses.every(
+    (status) => status === 'stable',
+  )
+    ? 'stable'
+    : baselineStatuses.every((status) => status === 'stable' || status === 'provisional')
+      ? 'provisional'
+      : 'insufficient'
   const evidence =
     baselineStatus === 'stable'
       ? 'high'
