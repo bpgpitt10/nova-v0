@@ -1,2 +1,3 @@
-Canonical source commit: dd1a6e8503fdf2028a639c9f4379c4572959aca6
-Purpose: deploy corrected Arcadia native-ground preview.
+Canonical source branch: exact-pin-outputlog-v1
+Canonical source commit: 62f57e0c766c563271200daf5febf9a9ee6c83a4
+Purpose: execute green targeting runtime regression proof inside the Vercel preview build.
