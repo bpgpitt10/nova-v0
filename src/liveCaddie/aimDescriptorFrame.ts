@@ -46,6 +46,22 @@ const pairSortedCrossings = (crossings: number[]): AimFrameInterval[] => {
   return intervals
 }
 
+const mergeIntervals = (intervals: readonly AimFrameInterval[]): AimFrameInterval[] => {
+  if (intervals.length === 0) return []
+  const sorted = [...intervals].sort((a, b) => a.min - b.min)
+  const merged: AimFrameInterval[] = []
+  for (const interval of sorted) {
+    const previous = merged[merged.length - 1]
+    if (!previous || interval.min > previous.max + 1e-7) {
+      merged.push({ ...interval })
+      continue
+    }
+    previous.max = Math.max(previous.max, interval.max)
+    previous.width = previous.max - previous.min
+  }
+  return merged
+}
+
 const projectedPolygon = (
   polygon: CoursePolygonYds,
   project: ReturnType<typeof buildAimShotFrame>,
@@ -73,7 +89,7 @@ export const polygonIntervalsAtForward = (
     }
     intervals.push(...pairSortedCrossings(crossings))
   }
-  return intervals
+  return mergeIntervals(intervals)
 }
 
 export const polygonIntervalsAtLateral = (
@@ -98,7 +114,7 @@ export const polygonIntervalsAtLateral = (
     }
     intervals.push(...pairSortedCrossings(crossings))
   }
-  return intervals
+  return mergeIntervals(intervals)
 }
 
 export const chooseAimFrameInterval = (
