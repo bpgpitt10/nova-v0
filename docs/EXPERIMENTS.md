@@ -82,22 +82,23 @@ This experiment does not decide where to aim.
 `tools/minimap_probe/`
 
 **Status**  
-**PARTIAL SIM VALIDATION — CENTER CLICK PASS / AUTOMATED OCR VERIFICATION OPEN**
+**PARTIAL SIM VALIDATION — CENTER CLICK PASS / HARDENED LATERAL RETEST READY**
 
 **What exists**
 
 - Guarded one-shot click harness.
 - Preview-only default mode.
-- Ball + pin marker detection reused from prior minimap probe work.
+- Dynamic ball + pin registration from the current minimap.
 - Dynamic yards-per-pixel calibration from current GSPro minimap state.
 - Right/forward and absolute Looper-coordinate modes.
 - GSPro foreground/window bounds checks before any input.
-- Predicted point must be inside minimap interior.
+- Predicted point must be inside the minimap interior.
 - Exactly one left click; previous cursor position is restored afterward.
 - Before / preview / after screenshots and JSON result evidence.
-- Post-click AIM-card OCR verification.
-- Windows launcher.
+- Windows launcher using an isolated `click_lab_runner.py` hardening layer around the original lab.
 - Transform proof covering center/left/right handedness, rotated minimap orientation, and changed scale/zoom.
+- Marker-identity proof that explicitly separates the real player marker from GSPro's magenta current-aim crosshair.
+- Direct post-click verification from the magenta minimap target marker; AIM-card OCR is now fallback-only.
 - Offline screenshot replay support.
 
 **Intentionally does NOT**
@@ -112,28 +113,44 @@ This experiment does not decide where to aim.
 
 - Windows launcher encoding issue was fixed by removing non-ASCII console text that Windows PowerShell 5.1 misparsed.
 - Click Lab transform proof passed center/left/right handedness, rotated minimap handedness, and zoom/scale conversion.
-- GSPro Hole 1 at Greywolf was used from the tee with 350.2 yd live distance-to-pin.
-- PIN-card OCR failed, so the first live mechanical validation used the deliberate `-Distance 350.2` fallback rather than guessing from OCR.
+- Greywolf Hole 1 was used from the tee with 350.2 yd live distance-to-pin.
+- PIN-card OCR failed, so the deliberate `-Distance 350.2` fallback was used for the mechanical test.
 - A 200 yd straight-ahead preview placed the predicted crosshair on the visible GSPro white aim line at the expected depth.
-- A one-shot click was accepted by GSPro: the camera/aim changed and GSPro displayed the magenta minimap target marker.
-- After resetting the GSPro aim and repeating the same 200 yd center click, the magenta target marker appeared essentially centered on the white aim line at the intended depth. This is the first live proof that the predicted minimap pixel can actuate the intended center-line target.
-- The first clicked result appeared somewhat left by visual inspection, so repeatability still needs lateral/zoom/approach testing before the actuation path is considered fully SIM VALIDATED.
-- Post-click AIM-card OCR also failed, so current verification is visual rather than automated. This is a verification-layer defect, not evidence that the click was rejected.
+- A repeated 200 yd center one-shot click was accepted by GSPro and the magenta target marker appeared essentially centered on the white aim line at the intended depth. This is the first live proof that the predicted minimap pixel can actuate the intended center-line target.
 
-**Remaining live validation sequence**
+**Lateral regression discovered**
 
-1. +/-10 yd lateral previews and one-shot clicks; verify handedness and offset visually.
-2. Repeat center/lateral tests after manually changing minimap zoom.
-3. Repeat from an approach position after the tee shot.
-4. Repeat on a rotated/dogleg minimap.
-5. Feed one real Looper absolute recommendation point.
-6. Repair PIN-card and post-click AIM-card OCR so distance verification can be automated rather than visual/manual.
+- The +10 yd right preview looked geometrically plausible, but its reported scale jumped from roughly `0.52 yd/px` to `1.22 yd/px`.
+- The subsequent click was accepted by GSPro but verified at roughly 270 yd radial distance rather than the requested ~200 yd.
+- Root cause: after GSPro aim had been reset, the generic saturated-marker detector could select GSPro's magenta current-aim crosshair as the BALL marker.
+- This was a registration/marker-identity failure, not a mouse-coordinate failure.
+
+**Hardening completed away from sim**
+
+- `click_lab_runner.py` now explicitly rejects the magenta GSPro aim marker as BALL, including hollow-crosshair cases where center HSV alone is insufficient.
+- Registration now prints BALL, PIN, and SCALE diagnostics before actuation.
+- Post-click verification now detects GSPro's actual magenta minimap target, re-registers BALL/PIN after the click, converts the accepted point back into forward/right yards, and computes vector error against the requested target.
+- `PASS_DISTANCE` is retained as the legacy result label, but the primary acceptance check is now <=3 yd **2D forward/right vector error**, not merely radial distance.
+- AIM-card OCR remains only a fallback when direct minimap-marker verification cannot run.
+- `latest_click_lab_marker_verify.png` is produced when direct marker verification succeeds.
+- `mss` capture path was updated to the non-deprecated API in the hardened runner.
+- Synthetic marker proof was added so magenta-aim-vs-ball identity can be checked with `-RunProof` alongside the transform proof.
+
+**Next live validation sequence**
+
+1. Start directly with `+10 yd right, 200 yd forward` preview using the hardened runner; confirm BALL/PIN/SCALE diagnostics.
+2. Click the same +10 target and require direct minimap-marker verification with <=3 yd vector error.
+3. Repeat `-10 yd left`.
+4. Manually change minimap zoom and repeat one target.
+5. Repeat from an approach position after the tee shot.
+6. Repeat on a rotated/dogleg minimap.
+7. Feed one real Looper absolute recommendation point.
 
 **Acceptance target**  
-Initial positional / AIM-distance tolerance approximately <=3 yd, with visual review of the selected minimap location. Center-line actuation has passed a first live visual check; broader repeatability has not yet passed.
+<=3 yd 2D forward/right vector error from the requested target, with direct visual evidence of BALL/PIN/GSPro aim registration.
 
 **Remaining gate**  
-Prove lateral, zoom, approach, rotated/dogleg, and absolute-coordinate cases repeatably, then restore automated OCR verification before connecting the harness to Live Caddie execution.
+Prove lateral, zoom, approach, rotated/dogleg, and absolute-coordinate cases repeatably. Center-line actuation is already SIM validated visually; the remaining question is repeatable registration across changing minimap states.
 
 ---
 
