@@ -1,0 +1,317 @@
+/* Focused visual tuning after the decision-first IA pass.
+ * Presentation only: no recommendation or shot-model behavior changes here.
+ */
+
+/* Make the aim instruction unmistakable without introducing an emoji/icon font. */
+.live-aim-hero::before {
+  content: '◎  AIM · ';
+  color: #d7b52d;
+  font-size: 0.54em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  vertical-align: 0.18em;
+}
+
+/* Keep the backdrop visible through the primary green surfaces. */
+.live-decision-card,
+.live-map-card,
+.live-club-strip-card {
+  background:
+    linear-gradient(180deg, rgba(25, 46, 32, 0.48) 0%, rgba(14, 28, 19, 0.38) 100%) !important;
+  backdrop-filter: blur(7px) !important;
+}
+
+.live-expected-shot-block,
+.live-conditions-panel {
+  background: rgba(10, 23, 15, 0.28) !important;
+}
+
+.live-club-strip button {
+  background: rgba(11, 24, 16, 0.34) !important;
+}
+
+/* NET ADJUSTMENT is the panel title/result. */
+.live-conditions-heading {
+  display: none !important;
+}
+
+.live-conditions-panel {
+  grid-template-rows: auto auto 1fr !important;
+  min-width: 0 !important;
+}
+
+.live-condition-net {
+  order: 1;
+  padding: 14px 16px 15px !important;
+  border-bottom: 1px solid rgba(63, 82, 65, 0.48);
+  background: rgba(234, 179, 8, 0.055) !important;
+}
+
+.live-condition-table-head {
+  order: 2;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+}
+
+.live-condition-rows {
+  order: 3;
+  grid-auto-rows: minmax(66px, 1fr) !important;
+}
+
+/* Keep the factor breakdown large enough to read at simulator distance. */
+.live-condition-table-head span,
+.live-condition-table-head strong {
+  font-size: 10px !important;
+}
+
+.live-condition-row {
+  padding: 12px 16px !important;
+}
+
+.live-condition-factor {
+  font-size: 13.5px !important;
+  font-weight: 675 !important;
+}
+
+.live-condition-row > strong {
+  min-width: 0;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+}
+
+.live-condition-row > small {
+  margin-top: 5px !important;
+  font-size: 10.5px !important;
+  line-height: 1.35 !important;
+}
+
+.live-condition-net > span {
+  font-size: 10.5px !important;
+}
+
+.live-condition-net > strong {
+  min-width: 0;
+  font-size: 19px !important;
+}
+
+.live-condition-net > small {
+  font-size: 10px !important;
+}
+
+/*
+ * Wide-screen layout: do not let CSS Grid intrinsic sizing create a mystery
+ * gutter or let the conditions panel overflow its card. The map keeps the size
+ * that tested well; the decision block simply receives every remaining pixel.
+ */
+@media (min-width: 1260px) {
+  .live-caddie-shell {
+    width: min(1700px, calc(100vw - 20px)) !important;
+  }
+
+  .live-caddie-main-grid {
+    display: flex !important;
+    width: calc(100% - 72px) !important;
+    margin-left: 72px !important;
+    gap: 14px !important;
+    align-items: stretch !important;
+  }
+
+  .live-decision-column {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .live-decision-card {
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr) !important;
+    column-gap: 24px !important;
+  }
+
+  .live-map-card {
+    flex: 0 0 clamp(620px, 42vw, 730px) !important;
+    width: clamp(620px, 42vw, 730px) !important;
+    max-width: clamp(620px, 42vw, 730px) !important;
+  }
+
+  .live-conditions-panel,
+  .live-expected-shot-block,
+  .live-condition-table-head,
+  .live-condition-row,
+  .live-condition-net {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .live-condition-table-head,
+  .live-condition-row,
+  .live-condition-net {
+    grid-template-columns: minmax(0, 1.12fr) minmax(92px, 0.82fr) minmax(104px, 0.9fr) !important;
+    column-gap: 14px !important;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-map-card {
+    flex-basis: clamp(560px, 42vw, 620px) !important;
+    width: clamp(560px, 42vw, 620px) !important;
+    max-width: clamp(560px, 42vw, 620px) !important;
+  }
+
+  .live-decision-card {
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr) !important;
+    column-gap: 18px !important;
+  }
+
+  .live-condition-factor {
+    font-size: 12.5px !important;
+  }
+
+  .live-condition-row > strong {
+    font-size: 14px !important;
+  }
+
+  .live-condition-row > small {
+    font-size: 9.5px !important;
+  }
+}
+
+/*
+ * Unboxed experiment: keep every control and nested information surface in
+ * place, but let the two primary navigation/decision regions float directly on
+ * the golf-scene backdrop. The map is intentionally excluded from this rule.
+ */
+.live-decision-card,
+.live-club-strip-card {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/*
+ * Second unboxed pass: Expected Shot no longer needs its own outer card. Keep
+ * its internal stat/outcome structure, while turning Net Adjustment into a
+ * compact data plane instead of stretching it to the full recommendation height.
+ */
+.live-expected-shot-block {
+  padding: 2px 0 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 1260px) {
+  .live-conditions-panel {
+    align-self: end !important;
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-rows: auto auto auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(10, 23, 15, 0.18) !important;
+    box-shadow: none !important;
+  }
+
+  .live-condition-net {
+    padding: 10px 16px 11px !important;
+  }
+
+  .live-condition-table-head {
+    min-height: 31px !important;
+  }
+
+  .live-condition-rows {
+    align-content: start !important;
+    grid-auto-rows: minmax(54px, auto) !important;
+  }
+
+  .live-condition-row {
+    padding: 8px 16px !important;
+  }
+
+  .live-condition-row > small {
+    margin-top: 3px !important;
+  }
+}
+
+/*
+ * Let the map itself be the visual surface; the surrounding card/frame no longer
+ * adds useful hierarchy in the unboxed layout.
+ */
+.live-map-card {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.live-map {
+  border: 0 !important;
+}
+
+/*
+ * MapPolish owns the compact header as an absolute CSS grid whose right edge is
+ * intentionally inset for the header actions. Keep that stable layout intact.
+ * Only let the shot-context item overflow its fourth grid cell to the shell edge;
+ * its left edge then matches the map's visible 8px inset exactly.
+ */
+@media (min-width: 1260px) {
+  .live-caddie-secondary-context {
+    box-sizing: border-box;
+    justify-self: end !important;
+    width: clamp(620px, 42vw, 730px);
+    max-width: none !important;
+    margin-left: 0 !important;
+    padding-left: 8px;
+    transform: translateX(190px);
+    justify-content: flex-start !important;
+    gap: 14px !important;
+    overflow: visible !important;
+  }
+
+  .live-caddie-secondary-context span:first-child {
+    font-size: 13px !important;
+  }
+
+  .live-caddie-secondary-context span:nth-child(2) {
+    font-size: 17px !important;
+  }
+
+  .live-caddie-secondary-context span:nth-child(3) {
+    font-size: 14px !important;
+  }
+
+  /* Club labels such as REC / #5 CLUB are supporting metadata. Keep every club
+   * name fixed at the true center of its button and pin the metadata below it. */
+  .live-club-strip button > strong {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .live-club-strip button > span {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 5px;
+    text-align: center;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-secondary-context {
+    width: clamp(560px, 42vw, 620px);
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1320px) {
+  .live-caddie-secondary-context {
+    transform: translateX(142px);
+  }
+}

@@ -5,6 +5,7 @@ import App from './App.tsx'
 import LooperLandingPage from './pages/LooperLandingPage.tsx'
 import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
+import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
@@ -12,8 +13,16 @@ import TheReadPage from './pages/TheReadPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
+import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
+import AimLabPage from './dev/AimLabPage.tsx'
+import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
+import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
+import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
+import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
+import OcrTestPage from './dev/OcrTestPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
+import RoundTeeSelectionBar from './components/RoundTeeSelectionBar.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
@@ -22,6 +31,8 @@ import {
 } from './lib/bagConfig.ts'
 import { deactivateLocalUserScope } from './lib/localUserScope.ts'
 import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.ts'
+import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
+import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -106,6 +117,18 @@ function InterruptedSessionGate({ children }: { children: ReactNode }) {
       </section>
     </main>
   )
+}
+
+function LiveGsproRoundArchiveBridge() {
+  useEffect(() => {
+    const stopArchive = startLiveGsproCourseRoundArchiver()
+    const stopLineage = startLiveCaddieShotLineage()
+    return () => {
+      stopLineage()
+      stopArchive()
+    }
+  }, [])
+  return null
 }
 
 function RootRouter() {
@@ -223,6 +246,16 @@ function RootRouter() {
   }, [])
 
   const showCourseRenderDev = pathname === '/dev/course-render'
+  const showCourseGeometryDev = pathname === '/dev/course-geometry'
+  const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
+  const showLiveCaddie = pathname === '/live-caddie' || pathname === '/caddie' || pathname === '/dev/live-caddie'
+  const showDevLiveCaddie = pathname === '/dev/live-caddie'
+  const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
+  const showGsproReplay = pathname === '/dev/gspro-replay'
+  const showDecisionReplay = pathname === '/dev/decision-replay'
+  const showDecisionAudit = pathname === '/dev/decision-audit'
+  const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -237,36 +270,31 @@ function RootRouter() {
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'
 
-    if (showCourseRenderDev) {
-      return <CourseRenderDevPage />
+    if (showCourseRenderDev) return <CourseRenderDevPage />
+    if (showCourseGeometryDev) return <CourseGeometryDevPage />
+    if (showAimLab) return <AimLabPage />
+    if (showLiveCaddie) {
+      return (
+        <>
+          <LiveCaddiePage />
+          <RoundTeeSelectionBar />
+        </>
+      )
     }
-    if (showSignOut) {
-      return <SignOutPage />
-    }
-    if (showAdminUsers) {
-      return <AdminUsersPage />
-    }
-    if (showCloudRepair) {
-      return <CloudRepairPage />
-    }
-    if (showBagSetup || !hasBagConfig) {
-      return <BagSetupPage />
-    }
-    if (showShotVariants) {
-      return <ShotVariantsPage />
-    }
-    if (showSessionSummary) {
-      return <SessionSummaryPage />
-    }
-    if (showDataManagement) {
-      return <DataManagementPage />
-    }
-    if (showSessionIntelligence) {
-      return <SessionIntelligencePage />
-    }
-    if (showTheRead) {
-      return <TheReadPage />
-    }
+    if (showCaddieInputs) return <CaddieInputsPage />
+    if (showGsproReplay) return <GsproReplayDevPage />
+    if (showDecisionReplay) return <DecisionReplayDevPage />
+    if (showDecisionAudit) return <DecisionAuditDevPage />
+    if (showOcrTest) return <OcrTestPage />
+    if (showSignOut) return <SignOutPage />
+    if (showAdminUsers) return <AdminUsersPage />
+    if (showCloudRepair) return <CloudRepairPage />
+    if (showBagSetup || !hasBagConfig) return <BagSetupPage />
+    if (showShotVariants) return <ShotVariantsPage />
+    if (showSessionSummary) return <SessionSummaryPage />
+    if (showDataManagement) return <DataManagementPage />
+    if (showSessionIntelligence) return <SessionIntelligencePage />
+    if (showTheRead) return <TheReadPage />
     if (showLooperLanding) {
       return (
         <InterruptedSessionGate>
@@ -280,11 +308,28 @@ function RootRouter() {
       )
     }
     return <App forceDashboardRoute={showDashboardRoute} />
-  }, [checkForUpdates, hasBagConfig, installAvailableUpdate, pathname, showCourseRenderDev, updateError, updateStatus])
+  }, [
+    checkForUpdates,
+    hasBagConfig,
+    installAvailableUpdate,
+    pathname,
+    showAimLab,
+    showCaddieInputs,
+    showCourseGeometryDev,
+    showCourseRenderDev,
+    showDecisionAudit,
+    showDecisionReplay,
+    showGsproReplay,
+    showLiveCaddie,
+    showOcrTest,
+    updateError,
+    updateStatus,
+  ])
 
   return (
     <LooperAuthGate>
-      {showCourseRenderDev ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
+      <LiveGsproRoundArchiveBridge />
+      {showDevPage ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
     </LooperAuthGate>
   )
 }

@@ -45,3 +45,50 @@ h3 {
 p {
   margin: 0;
 }
+
+/* Live Caddie uses the same visible golf-photo treatment as the primary app.
+   Keep the image and dark readability veil on separate layers so the photo does
+   not disappear behind compounded alpha gradients. */
+.live-caddie-backdrop {
+  background-image: url('./assets/Backgrounds/golfscene1.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  opacity: 0.42;
+  filter: saturate(0.9) contrast(0.96);
+}
+
+.live-caddie-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(9, 15, 12, 0.72) 0%,
+      rgba(12, 21, 16, 0.56) 42%,
+      rgba(12, 20, 16, 0.30) 72%,
+      rgba(10, 17, 14, 0.20) 100%
+    ),
+    linear-gradient(180deg, rgba(15, 22, 18, 0.12) 0%, rgba(8, 13, 10, 0.34) 100%);
+}
+
+/* The optimizer keeps a shared strategic planning target internally so clubs can
+   be ranked against the same future state. It is not a player-facing shot point.
+   Do not draw that fixed target/line on Live Caddie; the visible gold aim marker
+   is now projected at the selected club's modeled carry distance instead. */
+.live-caddie-page .live-target-line,
+.live-caddie-page .live-target-marker {
+  display: none;
+}
+
+/* Surface polygons may be split into multiple topology-safe pieces. Their
+   individual SVG strokes expose internal seams/triangulation on the live map,
+   so render the course as continuous filled surfaces instead. Aim, dispersion,
+   markers, and terrain contours keep their own independent stroke styles. */
+.live-caddie-page .live-map .live-surface {
+  stroke: none;
+  stroke-width: 0;
+}

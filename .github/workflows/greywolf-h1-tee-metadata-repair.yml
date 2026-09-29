@@ -1,0 +1,67 @@
+name: Greywolf H1 Tee Metadata CI
+
+on:
+  push:
+    branches:
+      - course-geometry-greywolf-tee-metadata-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch preserved Greywolf source
+        run: git fetch origin hazard-field-lab-v0:refs/remotes/origin/hazard-field-lab-v0
+
+      - name: Check reproducible H1 tee metadata
+        run: python tools/repair-greywolf-h1-tee-metadata.py --check
+
+      - name: Verify six concrete tees and no invented labels
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('public/course-geometry/greywolf/local-geometry/greywolf-hole-01.json')
+          hole = json.loads(path.read_text())
+          tees = hole['features']['tee']
+          expected = [1209190795, 1209190794, 1209190793, 1214871677, 1208932466, 1208932465]
+          ids = [int(tee['osm_id']) for tee in tees]
+          assert ids == expected, (ids, expected)
+          assert len(tees) == 6
+          for tee in tees:
+              assert tee['polygon'] and len(tee['polygon']) >= 3
+              assert tee['name'] is None
+              assert tee['ref'] is None
+              assert 'teeSet' not in tee
+              assert 'label' not in tee
+              tags = tee.get('osm_tags') or {}
+              assert not any(key in tags for key in ('colour','color','tee','tee:colour','tee:color'))
+          selected = tees[0]['centroid']
+          assert abs(float(selected['right_yards'])) < 0.05
+          assert abs(float(selected['forward_yards'])) < 0.05
+          print('Greywolf H1: six concrete OSM tees retained; no tee-set identity fabricated')
+          PY
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Shot 1 regression
+        run: node --experimental-strip-types tools/test-shot-one-tee-resolver.mjs
+
+      - name: Build browser app
+        run: npm run build

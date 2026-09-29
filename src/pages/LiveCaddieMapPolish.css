@@ -1,0 +1,229 @@
+/* Live Caddie map readability overrides.
+ * Keep the playing surface focused on the four player-facing markers:
+ * ball, optimized aim, expected finish and pin. The planning target remains
+ * a construction input, not a peer marker.
+ */
+
+.live-target-marker {
+  display: none;
+}
+
+.live-target-line {
+  stroke: rgba(111, 129, 113, 0.22);
+  stroke-width: 0.13;
+  stroke-dasharray: 0.55 0.9;
+}
+
+/* Probability hierarchy: 50% is the primary read, 80% secondary, 95% faint. */
+.live-probability.probability-50 {
+  fill: rgba(118, 211, 155, 0.022);
+  stroke: rgba(205, 221, 205, 0.86);
+  stroke-width: 0.35;
+  stroke-dasharray: none;
+}
+
+.live-probability.probability-80 {
+  fill: rgba(118, 211, 155, 0.012);
+  stroke: rgba(140, 166, 143, 0.62);
+  stroke-width: 0.24;
+  stroke-dasharray: 0.72 0.42;
+}
+
+.live-probability.probability-95 {
+  fill: rgba(255, 255, 255, 0.004);
+  stroke: rgba(91, 115, 95, 0.46);
+  stroke-width: 0.17;
+  stroke-dasharray: 0.42 0.58;
+}
+
+/* 50 / 80 are always-on reference contours, not an interactive control. */
+.live-map-toggles button.always-on {
+  min-height: 0;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #cfd8cd;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: default;
+  pointer-events: none;
+}
+
+.live-map-toggles button.always-on::before {
+  content: 'Dispersion ';
+  color: #758675;
+  font-weight: 600;
+}
+
+/* In the Live playing surface the final map toggle shows a compact sampled
+ * version of the same full-risk landing distribution used for the percentages.
+ */
+.live-map-toggles button:last-child {
+  font-size: 0;
+}
+
+.live-map-toggles button:last-child::after {
+  content: 'Outcome dots';
+  font-size: 10px;
+}
+
+.live-risk-dot {
+  opacity: 0.72;
+  stroke: rgba(7, 13, 9, 0.9);
+  stroke-width: 0.1;
+}
+
+.live-map-card:has(.live-map-toggles button:last-child.active) .live-map-legend::after {
+  content: 'Outcome dots: green success · white manageable · gold trouble · red penalty';
+  color: #8fa08f;
+  font-size: 9px;
+}
+
+/* Club selection sizing fallback for narrower layouts. Wide-screen placement is
+ * owned by LiveCaddieIA.css; do not reserve map space for the club rail here. */
+.live-club-strip-card {
+  gap: 7px;
+  padding-top: 9px;
+  padding-bottom: 8px;
+}
+
+.live-club-strip button {
+  min-height: 42px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+/* Compact transitional header.
+ * Course / hole are still manually selectable for validation today, but they
+ * share the same header band as the round context instead of consuming a
+ * second setup row. The eventual round-load flow can remove these controls
+ * without changing the playing surface below.
+ */
+@media (min-width: 1160px) {
+  .live-caddie-header {
+    position: relative;
+    grid-template-columns: 200px minmax(0, 1fr) auto;
+    gap: 16px;
+    min-height: 70px;
+    padding: 0 4px 8px;
+  }
+
+  .live-caddie-logo {
+    width: 170px;
+  }
+
+  .live-caddie-course-context {
+    position: absolute;
+    top: 7px;
+    left: 208px;
+    z-index: 4;
+    display: block;
+  }
+
+  .live-caddie-course-context strong,
+  .live-caddie-course-context > span {
+    display: none;
+  }
+
+  .live-caddie-setup-row {
+    position: absolute;
+    top: 34px;
+    left: 204px;
+    right: 236px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: minmax(190px, 250px) 82px auto minmax(0, 1fr);
+    gap: 7px;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .live-caddie-setup-row select,
+  .live-caddie-setup-row button {
+    min-height: 30px;
+  }
+
+  .live-caddie-setup-row select:first-of-type {
+    width: 100%;
+    max-width: 250px;
+    padding-left: 0;
+    border-color: transparent;
+    background: transparent;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .live-caddie-setup-row select:first-of-type:hover,
+  .live-caddie-setup-row select:first-of-type:focus {
+    border-color: rgba(79, 96, 79, 0.82);
+    background: rgba(23, 36, 25, 0.5);
+  }
+
+  .live-caddie-setup-row select:nth-of-type(2) {
+    width: 82px;
+    padding-left: 5px;
+    border-color: transparent;
+    background: transparent;
+    color: #cfd8cd;
+    font-size: 13px;
+  }
+
+  .live-caddie-setup-row select:nth-of-type(2):hover,
+  .live-caddie-setup-row select:nth-of-type(2):focus {
+    border-color: rgba(79, 96, 79, 0.82);
+    background: rgba(23, 36, 25, 0.5);
+  }
+
+  .live-caddie-setup-row > button {
+    min-width: 92px;
+    padding: 0 9px;
+    white-space: nowrap;
+  }
+
+  .live-caddie-secondary-context {
+    min-width: 0;
+    margin-left: 4px;
+    justify-content: flex-end;
+    gap: 9px;
+    overflow: hidden;
+    font-size: 10px;
+  }
+
+  .live-caddie-secondary-context span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .live-caddie-secondary-context span + span::before {
+    padding-right: 9px;
+  }
+
+  .live-caddie-header-actions {
+    position: relative;
+    z-index: 5;
+    gap: 9px;
+  }
+
+  .live-caddie-shell:has(.live-caddie-setup-row > button) .live-connection-state.state-offline {
+    display: none;
+  }
+
+  .live-caddie-main-grid {
+    margin-top: 10px;
+  }
+}
+
+@media (min-width: 1160px) and (max-width: 1320px) {
+  .live-caddie-setup-row {
+    right: 188px;
+    grid-template-columns: minmax(175px, 220px) 76px auto minmax(0, 1fr);
+  }
+
+  .live-caddie-secondary-context span:first-child {
+    display: none;
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "pebble-beach-pebble-beach-ca",
+  "courseName": "Pebble Beach Golf Links",
+  "location": "Pebble Beach, CA",
+  "slug": "pebble-beach",
+  "osmCourseElement": {
+    "type": "relation",
+    "id": 3741806
+  },
+  "osmCenter": [
+    36.5642591,
+    -121.9394359
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

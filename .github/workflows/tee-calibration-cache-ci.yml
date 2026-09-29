@@ -1,0 +1,28 @@
+name: Tee Calibration Cache CI
+
+on:
+  push:
+    branches:
+      - course-geometry-tee-calibration-cache-v1
+    paths:
+      - 'src/courseGeometry/teeCalibrationStore.ts'
+      - 'tools/test-tee-calibration-store.mjs'
+      - '.github/workflows/tee-calibration-cache-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tee calibration regression
+        run: node --experimental-strip-types tools/test-tee-calibration-store.mjs
+      - name: Build browser app
+        run: npm run build

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "cabot-cliffs-inverness-ns",
+  "courseName": "Cabot Cliffs",
+  "location": "Inverness, NS",
+  "slug": "cabot-cliffs",
+  "osmCourseElement": {
+    "type": "way",
+    "id": 676091202
+  },
+  "osmCenter": [
+    46.2526965,
+    -61.2848988
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

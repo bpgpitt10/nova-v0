@@ -1,0 +1,39 @@
+{
+  "catalogQueryUrl": "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Digital+Elevation+Model+%28DEM%29+1+meter&bbox=-83.1574805%2C40.1365806%2C-83.1259714%2C40.1540392&prodFormats=GeoTIFF&max=100&outputFormat=JSON",
+  "dataset": "Digital Elevation Model (DEM) 1 meter",
+  "license": "U.S. public domain",
+  "lidarDerived": true,
+  "products": [
+    {
+      "downloadBytes": 238844989,
+      "downloadSha256": "1143e94c53856f5db5797341b07cb38378996957ee03f64fe6e8ea90531b1fef",
+      "id": "68ca18cbd4be0274ff4eb37b",
+      "title": "USGS 1 Meter 17 x31y445 OH_Statewide_Phase3_2021_B21",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/OH_Statewide_Phase3_2021_B21/TIFF/USGS_1M_17_x31y445_OH_Statewide_Phase3_2021_B21.tif"
+    },
+    {
+      "downloadBytes": 240364831,
+      "downloadSha256": "dd473e712a18acce042bb975cac9b3338e547cfc9078c6bcf599e56939ebe0e9",
+      "id": "5e59e23fe4b01d50924ca257",
+      "title": "USGS one meter x31y445 OH Columbus 2019",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/OH_Columbus_2019/TIFF/USGS_1m_x31y445_OH_Columbus_2019.tif"
+    },
+    {
+      "downloadBytes": 106691533,
+      "downloadSha256": "2a5abad544142f568928c1cb2e06770c429fe0c5699de3fd4f3d82c70aca7bc8",
+      "id": "5eaceb3982cefae35a24a1d1",
+      "title": "USGS one meter x31y445 OH Delaware 2018",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/OH_Delaware_2018/TIFF/USGS_one_meter_x31y445_OH_Delaware_2018.tif"
+    }
+  ],
+  "provider": "usgs-3dep-1m",
+  "retrievedAt": "2026-09-18T15:06:04.150384Z",
+  "schemaVersion": "looper-course-terrain-source-v1",
+  "sourceBoundsWgs84": [
+    -83.1574805,
+    40.1365806,
+    -83.1259714,
+    40.1540392
+  ],
+  "sourceResolutionMeters": 1.0
+}

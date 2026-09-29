@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "tobacco-road-sanford-nc",
+  "courseName": "Tobacco Road Golf Club",
+  "location": "Sanford, NC",
+  "osmCourseWayId": 430227508,
+  "osmCenter": [35.39859, -79.21386],
+  "teeReference": {
+    "name": "Ripper",
+    "status": "provisional",
+    "note": "Used only to choose a consistent mapped tee for the first static package. This is not yet a GSPro tee/registration assertion; the league round should validate or replace it.",
+    "source": "Published Tobacco Road scorecard values, cross-checked against current course listings."
+  },
+  "holes": {
+    "1": { "par": 5, "targetYards": 558 },
+    "2": { "par": 4, "targetYards": 392 },
+    "3": { "par": 3, "targetYards": 152 },
+    "4": { "par": 5, "targetYards": 535 },
+    "5": { "par": 4, "targetYards": 333 },
+    "6": { "par": 3, "targetYards": 148 },
+    "7": { "par": 4, "targetYards": 411 },
+    "8": { "par": 3, "targetYards": 178 },
+    "9": { "par": 4, "targetYards": 427 },
+    "10": { "par": 4, "targetYards": 441 },
+    "11": { "par": 5, "targetYards": 531 },
+    "12": { "par": 4, "targetYards": 419 },
+    "13": { "par": 5, "targetYards": 573 },
+    "14": { "par": 3, "targetYards": 194 },
+    "15": { "par": 4, "targetYards": 365 },
+    "16": { "par": 4, "targetYards": 326 },
+    "17": { "par": 3, "targetYards": 142 },
+    "18": { "par": 4, "targetYards": 432 }
+  },
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

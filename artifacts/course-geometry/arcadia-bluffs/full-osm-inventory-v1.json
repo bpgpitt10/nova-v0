@@ -1,0 +1,554 @@
+{
+  "allTaggedFeatureInventory": {
+    "access": {
+      "features": 1,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "private"
+        }
+      ]
+    },
+    "amenity": {
+      "features": 3,
+      "topValues": [
+        {
+          "count": 3,
+          "value": "parking"
+        }
+      ]
+    },
+    "building": {
+      "features": 2,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "yes"
+        },
+        {
+          "count": 1,
+          "value": "retail"
+        }
+      ]
+    },
+    "golf": {
+      "features": 463,
+      "topValues": [
+        {
+          "count": 202,
+          "value": "bunker"
+        },
+        {
+          "count": 94,
+          "value": "rough"
+        },
+        {
+          "count": 68,
+          "value": "tee"
+        },
+        {
+          "count": 35,
+          "value": "cartpath"
+        },
+        {
+          "count": 24,
+          "value": "green"
+        },
+        {
+          "count": 21,
+          "value": "fairway"
+        },
+        {
+          "count": 18,
+          "value": "hole"
+        },
+        {
+          "count": 1,
+          "value": "water_hazard"
+        }
+      ]
+    },
+    "highway": {
+      "features": 14,
+      "topValues": [
+        {
+          "count": 10,
+          "value": "service"
+        },
+        {
+          "count": 2,
+          "value": "residential"
+        },
+        {
+          "count": 1,
+          "value": "unclassified"
+        },
+        {
+          "count": 1,
+          "value": "primary"
+        }
+      ]
+    },
+    "landuse": {
+      "features": 79,
+      "topValues": [
+        {
+          "count": 79,
+          "value": "grass"
+        }
+      ]
+    },
+    "leisure": {
+      "features": 1,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "golf_course"
+        }
+      ]
+    },
+    "natural": {
+      "features": 169,
+      "topValues": [
+        {
+          "count": 168,
+          "value": "sand"
+        },
+        {
+          "count": 1,
+          "value": "water"
+        }
+      ]
+    },
+    "service": {
+      "features": 6,
+      "topValues": [
+        {
+          "count": 6,
+          "value": "driveway"
+        }
+      ]
+    },
+    "surface": {
+      "features": 163,
+      "topValues": [
+        {
+          "count": 124,
+          "value": "grass"
+        },
+        {
+          "count": 35,
+          "value": "sand"
+        },
+        {
+          "count": 2,
+          "value": "unpaved"
+        },
+        {
+          "count": 2,
+          "value": "paved"
+        }
+      ]
+    }
+  },
+  "boundaryBoundsLonLat": [
+    -86.2513764,
+    44.4522349,
+    -86.2325437,
+    44.461033
+  ],
+  "course": "Arcadia Bluffs \u2014 The Bluffs Course",
+  "courseElement": {
+    "id": 293247442,
+    "type": "way"
+  },
+  "currentImporterRetention": {
+    "droppedTaggedFeatures": 21,
+    "note": "Current core importer drops all tagged nodes and only keeps golf plus narrow natural/landuse allow-lists.",
+    "retainedNonNodeFeatures": 464,
+    "retainedPctOfTagged": 95.7
+  },
+  "droppedExamples": {
+    "access": [
+      {
+        "id": 17875543,
+        "tags": {
+          "access": "private",
+          "highway": "service",
+          "service": "driveway",
+          "tiger:cfcc": "A74",
+          "tiger:county": "Manistee, MI"
+        },
+        "type": "way"
+      }
+    ],
+    "amenity": [
+      {
+        "id": 1369387172,
+        "tags": {
+          "amenity": "parking"
+        },
+        "type": "way"
+      },
+      {
+        "id": 1369387173,
+        "tags": {
+          "amenity": "parking"
+        },
+        "type": "way"
+      },
+      {
+        "id": 1369387174,
+        "tags": {
+          "amenity": "parking"
+        },
+        "type": "way"
+      }
+    ],
+    "building": [
+      {
+        "id": 729329772,
+        "tags": {
+          "building": "yes"
+        },
+        "type": "way"
+      },
+      {
+        "id": 1369387169,
+        "tags": {
+          "building": "retail"
+        },
+        "type": "way"
+      }
+    ],
+    "highway": [
+      {
+        "id": 17875543,
+        "tags": {
+          "access": "private",
+          "highway": "service",
+          "service": "driveway",
+          "tiger:cfcc": "A74",
+          "tiger:county": "Manistee, MI"
+        },
+        "type": "way"
+      },
+      {
+        "id": 17877093,
+        "tags": {
+          "highway": "unclassified",
+          "name": "Bischoff Road",
+          "surface": "unpaved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Bischoff",
+          "tiger:name_type": "Rd",
+          "tiger:zip_left": "49614"
+        },
+        "type": "way"
+      },
+      {
+        "id": 17877356,
+        "tags": {
+          "highway": "residential",
+          "name": "Maxey Road",
+          "surface": "paved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Maxey",
+          "tiger:name_type": "Rd",
+          "tiger:zip_left": "49613",
+          "tiger:zip_right": "49613"
+        },
+        "type": "way"
+      },
+      {
+        "id": 17877592,
+        "tags": {
+          "highway": "residential",
+          "name": "Lake Bluff Drive",
+          "surface": "unpaved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Lake Bluff",
+          "tiger:name_type": "Dr",
+          "tiger:zip_left": "49613",
+          "tiger:zip_right": "49613"
+        },
+        "type": "way"
+      },
+      {
+        "id": 41002670,
+        "tags": {
+          "hgv": "designated",
+          "highway": "primary",
+          "lanes": "2",
+          "maxspeed": "55 mph",
+          "name": "Northwood Highway",
+          "name_1": "State Highway 22",
+          "ref": "M 22",
+          "shoulder": "yes",
+          "source:hgv": "https://www.michigan.gov/mdot/-/media/Project/Websites/MDOT/Travel/Map/Truck-Operators-Map/Truck-Operators-Map.pdf",
+          "surface": "paved"
+        },
+        "type": "way"
+      },
+      {
+        "id": 264171117,
+        "tags": {
+          "highway": "service"
+        },
+        "type": "way"
+      },
+      {
+        "id": 739851191,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      },
+      {
+        "id": 739851192,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      }
+    ],
+    "leisure": [
+      {
+        "id": 293247442,
+        "tags": {
+          "addr:city": "Arcadia",
+          "addr:housenumber": "14710",
+          "addr:postcode": "49613",
+          "addr:state": "MI",
+          "addr:street": "Northwood Highway",
+          "gnis:feature_id": "2500385",
+          "leisure": "golf_course",
+          "name": "Arcadia Bluffs Golf Club",
+          "phone": "+1-800-494-8666",
+          "website": "https://arcadiabluffs.com/",
+          "wikidata": "Q4785134",
+          "wikipedia": "en:Arcadia Bluffs Golf Course"
+        },
+        "type": "way"
+      }
+    ],
+    "service": [
+      {
+        "id": 17875543,
+        "tags": {
+          "access": "private",
+          "highway": "service",
+          "service": "driveway",
+          "tiger:cfcc": "A74",
+          "tiger:county": "Manistee, MI"
+        },
+        "type": "way"
+      },
+      {
+        "id": 739851191,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      },
+      {
+        "id": 739851192,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      },
+      {
+        "id": 739851193,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      },
+      {
+        "id": 1078862584,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      },
+      {
+        "id": 1369387171,
+        "tags": {
+          "highway": "service",
+          "service": "driveway"
+        },
+        "type": "way"
+      }
+    ],
+    "surface": [
+      {
+        "id": 17877093,
+        "tags": {
+          "highway": "unclassified",
+          "name": "Bischoff Road",
+          "surface": "unpaved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Bischoff",
+          "tiger:name_type": "Rd",
+          "tiger:zip_left": "49614"
+        },
+        "type": "way"
+      },
+      {
+        "id": 17877356,
+        "tags": {
+          "highway": "residential",
+          "name": "Maxey Road",
+          "surface": "paved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Maxey",
+          "tiger:name_type": "Rd",
+          "tiger:zip_left": "49613",
+          "tiger:zip_right": "49613"
+        },
+        "type": "way"
+      },
+      {
+        "id": 17877592,
+        "tags": {
+          "highway": "residential",
+          "name": "Lake Bluff Drive",
+          "surface": "unpaved",
+          "tiger:cfcc": "A41",
+          "tiger:county": "Manistee, MI",
+          "tiger:name_base": "Lake Bluff",
+          "tiger:name_type": "Dr",
+          "tiger:zip_left": "49613",
+          "tiger:zip_right": "49613"
+        },
+        "type": "way"
+      },
+      {
+        "id": 41002670,
+        "tags": {
+          "hgv": "designated",
+          "highway": "primary",
+          "lanes": "2",
+          "maxspeed": "55 mph",
+          "name": "Northwood Highway",
+          "name_1": "State Highway 22",
+          "ref": "M 22",
+          "shoulder": "yes",
+          "source:hgv": "https://www.michigan.gov/mdot/-/media/Project/Websites/MDOT/Travel/Map/Truck-Operators-Map/Truck-Operators-Map.pdf",
+          "surface": "paved"
+        },
+        "type": "way"
+      }
+    ]
+  },
+  "droppedFeatureInventory": {
+    "access": {
+      "features": 1,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "private"
+        }
+      ]
+    },
+    "amenity": {
+      "features": 3,
+      "topValues": [
+        {
+          "count": 3,
+          "value": "parking"
+        }
+      ]
+    },
+    "building": {
+      "features": 2,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "yes"
+        },
+        {
+          "count": 1,
+          "value": "retail"
+        }
+      ]
+    },
+    "highway": {
+      "features": 12,
+      "topValues": [
+        {
+          "count": 8,
+          "value": "service"
+        },
+        {
+          "count": 2,
+          "value": "residential"
+        },
+        {
+          "count": 1,
+          "value": "unclassified"
+        },
+        {
+          "count": 1,
+          "value": "primary"
+        }
+      ]
+    },
+    "leisure": {
+      "features": 1,
+      "topValues": [
+        {
+          "count": 1,
+          "value": "golf_course"
+        }
+      ]
+    },
+    "service": {
+      "features": 6,
+      "topValues": [
+        {
+          "count": 6,
+          "value": "driveway"
+        }
+      ]
+    },
+    "surface": {
+      "features": 4,
+      "topValues": [
+        {
+          "count": 2,
+          "value": "unpaved"
+        },
+        {
+          "count": 2,
+          "value": "paved"
+        }
+      ]
+    }
+  },
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-86.25197640,44.45163490,-86.23194370,44.46163300",
+  "rawXmlCounts": {
+    "nodes": 11955,
+    "relations": 24,
+    "ways": 484
+  },
+  "source": "OpenStreetMap core /map endpoint; exact course-boundary intersection",
+  "taggedFeaturesInsideBoundary": {
+    "nodes": 0,
+    "relations": 16,
+    "total": 485,
+    "ways": 469
+  }
+}

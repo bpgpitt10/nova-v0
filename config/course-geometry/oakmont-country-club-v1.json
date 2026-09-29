@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "oakmont-country-club-oakmont-pa",
+  "courseName": "Oakmont Country Club",
+  "location": "Oakmont, PA",
+  "slug": "oakmont-country-club",
+  "osmCourseElement": {
+    "type": "relation",
+    "id": 6174192
+  },
+  "osmCenter": [
+    40.5289164,
+    -79.8260486
+  ],
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  },
+  "terrain": {
+    "provider": "usgs-3dep-1m",
+    "maxSourceResolutionMeters": 1.1,
+    "sourceMarginMeters": 300,
+    "runtimeSpacingYards": 10,
+    "gridPaddingYards": 0,
+    "routeProbeSpacingYards": 10,
+    "maxGridNoDataFraction": 0.35
+  }
+}

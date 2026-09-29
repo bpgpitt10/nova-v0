@@ -5,6 +5,9 @@ export const SHOT_VARIANTS_STORAGE_KEY = 'nova-shot-variants'
 export const SHOT_VARIANTS_DIRTY_STORAGE_KEY = 'nova-shot-variants-dirty-v1'
 export const MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY = 'looper-mishit-player-calibrations-v1'
 export const RETIRED_HUMAN_SHOT_REVIEWS_STORAGE_KEY = 'looper-human-shot-reviews-v1'
+export const LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY = 'looper-live-gspro-round-archive-v1'
+export const LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY = 'looper-live-caddie-armed-club-v1'
+export const LIVE_CADDIE_LINEAGE_STORAGE_KEY = 'looper-live-caddie-lineage-v1'
 
 const ACTIVE_LOCAL_USER_KEY = 'looper-active-local-user-v1'
 const LEGACY_BACKUP_PREFIX = 'looper-unscoped-legacy-backup-v1:'
@@ -19,11 +22,15 @@ const managedKeys = [
   SHOT_VARIANTS_STORAGE_KEY,
   SHOT_VARIANTS_DIRTY_STORAGE_KEY,
   MISHIT_PLAYER_CALIBRATIONS_STORAGE_KEY,
+  LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY,
+  LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY,
+  LIVE_CADDIE_LINEAGE_STORAGE_KEY,
 ] as const
 
 const dispatchLocalDataChanged = () => {
   window.dispatchEvent(new Event('looper-session-history-updated'))
   window.dispatchEvent(new Event('bag-config-updated'))
+  window.dispatchEvent(new Event('looper-live-caddie-armed-club-updated'))
 }
 
 const purgeRetiredHumanShotReviews = () => {

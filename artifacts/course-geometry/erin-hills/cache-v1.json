@@ -1,0 +1,65 @@
+{
+  "courseId": "erin-hills-erin-wi",
+  "courseName": "Erin Hills",
+  "freshness": {
+    "ageDays": 0,
+    "evaluatedAt": "2026-09-19T18:09:17.576771Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "reported-geometry-error",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "e270979e86021d396948772d685f597bb2a9ed127a513721a1d2c785d4ed4b4e",
+    "builderVersion": "build_osm_course_package_v5",
+    "builtAt": "2026-09-19T18:09:17.576771Z",
+    "configPath": "config/course-geometry/erin-hills-v1.json",
+    "configSha256": "54a792b80d8bddcfd1c9e6158a5bfbf054bfd447f852884e88475dd8fde80842",
+    "path": "public/course-geometry/erin-hills/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "dda3217a27abd453b07cbcb1c9c14a96b270c2ff84b35517e0dfcb4ec737b055",
+    "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 172725497,
+      "type": "way"
+    },
+    "fetchedAt": "2026-09-19T18:09:17.576771Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-09-19T18:09:17.576771Z",
+    "provider": "openstreetmap-core-map",
+    "snapshotPath": "artifacts/course-geometry/erin-hills/osm-snapshot.json",
+    "snapshotSha256": "83a461c0cf5377129354a25c1f793e4681a645208d2ca065bfde49fd4262ff54"
+  },
+  "terrain": {
+    "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",
+    "builderVersion": "import_course_terrain_v2",
+    "composedAt": "2026-09-18T12:32:51.400164Z",
+    "sourceManifestPath": "artifacts/course-geometry/erin-hills/terrain-source-v1.json",
+    "status": "cached",
+    "terrainCachePath": "artifacts/course-geometry/erin-hills/terrain-cache-v1.json",
+    "terrainPackagePath": "artifacts/course-geometry/erin-hills/terrain-v1.json",
+    "terrainPackageSha256": "659d5e19cdd01baeed8178cf553de893a7232cd32e2b1c88e00b2c3ae51446fc",
+    "validationPath": "artifacts/course-geometry/erin-hills/terrain-validation-v1.json"
+  }
+}

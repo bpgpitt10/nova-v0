@@ -1,0 +1,228 @@
+name: Arcadia OSM Basemap Proof
+
+on:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v2
+    paths:
+      - '.github/workflows/arcadia-osm-basemap-proof.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: web-course-importer-surface-semantics-v2
+          fetch-depth: 0
+
+      - name: Wire visual-only OSM basemap schema and renderer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected patch anchor missing in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Runtime types: basemap is explicitly separate from tactical context/surfaces.
+          replace(
+              'src/courseGeometry/types.ts',
+              "export type CoursePolygonYds = readonly CoursePointYds[]\n",
+              "export type CoursePolygonYds = readonly CoursePointYds[]\nexport type CoursePolylineYds = readonly CoursePointYds[]\n\nexport type CourseMapFeatureKind = 'cartpath' | 'road' | 'building' | 'parking'\n\nexport type CourseMapFeature = {\n  id: string\n  kind: CourseMapFeatureKind\n  lines?: readonly CoursePolylineYds[]\n  polygons?: readonly CoursePolygonYds[]\n  provenance: CourseSurfaceProvenance\n}\n",
+          )
+          replace(
+              'src/courseGeometry/types.ts',
+              "  contextLayers?: readonly CourseContextLayer[]\n",
+              "  contextLayers?: readonly CourseContextLayer[]\n  mapFeatures?: readonly CourseMapFeature[]\n",
+          )
+
+          # Loader: parse visual map primitives from packaged geometry.
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "  CourseHoleGeometry,\n  CoursePointYds,\n  CoursePolygonYds,\n",
+              "  CourseHoleGeometry,\n  CourseMapFeature,\n  CourseMapFeatureKind,\n  CoursePointYds,\n  CoursePolygonYds,\n  CoursePolylineYds,\n",
+          )
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'landcover-grass', 'landcover-woods', 'landcover-scrub', 'landcover-bare']\n",
+              "const CONTEXT_KINDS: readonly CourseContextKind[] = ['woods', 'scrub', 'grass-context', 'native-grass', 'dune-sand', 'landcover-grass', 'landcover-woods', 'landcover-scrub', 'landcover-bare']\nconst MAP_FEATURE_KINDS: readonly CourseMapFeatureKind[] = ['cartpath', 'road', 'building', 'parking']\n",
+          )
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "  context?: unknown\n  contours?: unknown\n",
+              "  context?: unknown\n  mapFeatures?: unknown\n  contours?: unknown\n",
+          )
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "const parsePolygons = (value: unknown): CoursePolygonYds[] =>\n  Array.isArray(value)\n    ? value.flatMap((candidate): CoursePolygonYds[] => {\n        const polygon = parsePolygon(candidate)\n        return polygon ? [polygon] : []\n      })\n    : []\n",
+              "const parsePolygons = (value: unknown): CoursePolygonYds[] =>\n  Array.isArray(value)\n    ? value.flatMap((candidate): CoursePolygonYds[] => {\n        const polygon = parsePolygon(candidate)\n        return polygon ? [polygon] : []\n      })\n    : []\n\nconst parsePolyline = (value: unknown): CoursePolylineYds | null => {\n  if (!Array.isArray(value)) return null\n  const points = value.flatMap((candidate): CoursePointYds[] => {\n    const point = parsePoint(candidate)\n    return point ? [point] : []\n  })\n  return points.length >= 2 ? points : null\n}\n\nconst parsePolylines = (value: unknown): CoursePolylineYds[] =>\n  Array.isArray(value)\n    ? value.flatMap((candidate): CoursePolylineYds[] => {\n        const line = parsePolyline(candidate)\n        return line ? [line] : []\n      })\n    : []\n",
+          )
+          anchor = "const parseContours = (value: unknown, courseName: string, holeNumber: number): CourseContourLine[] => {"
+          insert = """const parseMapFeatures = (\n  courseId: CourseId,\n  holeNumber: number,\n  value: unknown,\n): CourseMapFeature[] => {\n  const raw = parseRecord(value)\n  return MAP_FEATURE_KINDS.flatMap((kind): CourseMapFeature[] => {\n    const group = parseRecord(raw[kind])\n    const lines = parsePolylines(group.lines)\n    const polygons = parsePolygons(group.polygons)\n    if (!lines.length && !polygons.length) return []\n    return [{\n      id: `${courseId}-h${String(holeNumber).padStart(2, '0')}-map-${kind}`,\n      kind,\n      ...(lines.length ? { lines } : {}),\n      ...(polygons.length ? { polygons } : {}),\n      provenance: {\n        source: 'osm',\n        sourceFeature: kind === 'cartpath' ? 'golf=cartpath' : `osm basemap ${kind}`,\n        confidence: 'high',\n        note: 'Visual-only OSM basemap feature; excluded from tactical surface classification.',\n      },\n    }]\n  })\n}\n\n""" + anchor
+          replace('src/courseGeometry/routePackagedCourseLoader.ts', anchor, insert)
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context)\n  const contours = parseContours(raw.contours, courseName, holeNumber)\n",
+              "  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context)\n  const mapFeatures = parseMapFeatures(courseId, holeNumber, raw.mapFeatures)\n  const contours = parseContours(raw.contours, courseName, holeNumber)\n",
+          )
+          replace(
+              'src/courseGeometry/routePackagedCourseLoader.ts',
+              "    ...(contextLayers.length ? { contextLayers } : {}),\n    ...(contours.length ? { contours } : {}),\n",
+              "    ...(contextLayers.length ? { contextLayers } : {}),\n    ...(mapFeatures.length ? { mapFeatures } : {}),\n    ...(contours.length ? { contours } : {}),\n",
+          )
+
+          # Runtime tee-frame normalization must translate basemap primitives too.
+          replace(
+              'src/courseGeometry/normalizeRouteCourseGeometry.ts',
+              "const translatePolygon = (polygon: CoursePolygonYds, anchor: CoursePointYds): CoursePolygonYds =>\n  polygon.map((point) => translatePoint(point, anchor))\n",
+              "const translatePolygon = (polygon: CoursePolygonYds, anchor: CoursePointYds): CoursePolygonYds =>\n  polygon.map((point) => translatePoint(point, anchor))\n\nconst translatePolyline = (line: readonly CoursePointYds[], anchor: CoursePointYds) =>\n  line.map((point) => translatePoint(point, anchor))\n",
+          )
+          replace(
+              'src/courseGeometry/normalizeRouteCourseGeometry.ts',
+              "    ...(geometry.contextLayers ? {\n      contextLayers: geometry.contextLayers.map((layer) => ({\n        ...layer,\n        polygons: layer.polygons.map((polygon) => translatePolygon(polygon, anchor)),\n      })),\n    } : {}),\n",
+              "    ...(geometry.contextLayers ? {\n      contextLayers: geometry.contextLayers.map((layer) => ({\n        ...layer,\n        polygons: layer.polygons.map((polygon) => translatePolygon(polygon, anchor)),\n      })),\n    } : {}),\n    ...(geometry.mapFeatures ? {\n      mapFeatures: geometry.mapFeatures.map((feature) => ({\n        ...feature,\n        ...(feature.lines ? { lines: feature.lines.map((line) => translatePolyline(line, anchor)) } : {}),\n        ...(feature.polygons ? { polygons: feature.polygons.map((polygon) => translatePolygon(polygon, anchor)) } : {}),\n      })),\n    } : {}),\n",
+          )
+
+          # Compiler normalization: preserve golf=cartpath as linear visual geometry.
+          replace(
+              'tools/build_osm_course_package.py',
+              "CONTEXT_LANDUSE = {\"forest\": \"woods\", \"grass\": \"grass-context\", \"meadow\": \"grass-context\"}\n",
+              "CONTEXT_LANDUSE = {\"forest\": \"woods\", \"grass\": \"grass-context\", \"meadow\": \"grass-context\"}\nMAP_GOLF = {\"cartpath\": \"cartpath\"}\n",
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              "    if golf in SURFACE_GOLF:\n        return \"surface\", SURFACE_GOLF[golf]\n",
+              "    if golf in SURFACE_GOLF:\n        return \"surface\", SURFACE_GOLF[golf]\n    if golf in MAP_GOLF:\n        return \"map\", MAP_GOLF[golf]\n",
+          )
+          replace(
+              'tools/build_osm_course_package.py',
+              "        role, kind = classified\n        polygon_geometries = [geometry for geometry in geometries if len(geometry) >= 3]\n        if not polygon_geometries:\n            continue\n        features.append(\n            {\n                \"role\": role,\n                \"kind\": kind,\n                \"osm_type\": element.get(\"type\"),\n                \"osm_id\": element.get(\"id\"),\n                \"source_feature\": source_feature(tags, kind),\n                \"geometries\": polygon_geometries,\n                \"centroid\": centroid([point for geometry in polygon_geometries for point in geometry]),\n            }\n        )\n",
+              "        role, kind = classified\n        normalized_geometries = [\n            geometry for geometry in geometries\n            if len(geometry) >= (2 if role == \"map\" else 3)\n        ]\n        if not normalized_geometries:\n            continue\n        features.append(\n            {\n                \"role\": role,\n                \"kind\": kind,\n                \"osm_type\": element.get(\"type\"),\n                \"osm_id\": element.get(\"id\"),\n                \"source_feature\": source_feature(tags, kind),\n                \"geometries\": normalized_geometries,\n                \"centroid\": centroid([point for geometry in normalized_geometries for point in geometry]),\n            }\n        )\n",
+          )
+
+          # V5 is the canonical geometry path under V6/V7. Serialize cartpaths as lines
+          # clipped to a rectangular visual window, never as tactical surfaces.
+          replace(
+              'tools/build_osm_course_package_v5.py',
+              "from shapely.geometry import LineString\n",
+              "from shapely.geometry import GeometryCollection, LineString, MultiLineString, box\n",
+          )
+          helper_anchor = "def model_for_hole(\n"
+          helper = '''def _line_parts(geometry):\n    if geometry is None or geometry.is_empty:\n        return\n    if isinstance(geometry, LineString):\n        yield geometry\n        return\n    if isinstance(geometry, MultiLineString):\n        for part in geometry.geoms:\n            yield part\n        return\n    if isinstance(geometry, GeometryCollection):\n        for part in geometry.geoms:\n            yield from _line_parts(part)\n\n\ndef serialize_lines(shape, simplify_yards: float):\n    if shape is None or shape.is_empty:\n        return []\n    if simplify_yards > 0:\n        shape = shape.simplify(simplify_yards, preserve_topology=True)\n    output = []\n    for part in _line_parts(shape):\n        coordinates = list(part.coords)\n        if len(coordinates) < 2:\n            continue\n        output.append([[round(float(x), 3), round(float(y), 3)] for x, y in coordinates])\n    return output\n\n\ndef feature_lines_rebased(\n    features, visual_window, route_origin, forward, right, anchor_offset, simplify_yards\n):\n    lines = []\n    for feature in features:\n        for geometry in feature.get("geometries", []):\n            points = [\n                shifted_point(base.to_hole_local(point, route_origin, forward, right), anchor_offset)\n                for point in geometry\n            ]\n            if len(points) < 2:\n                continue\n            lines.extend(serialize_lines(LineString(points).intersection(visual_window), simplify_yards))\n    return lines\n\n\n''' + helper_anchor
+          replace('tools/build_osm_course_package_v5.py', helper_anchor, helper)
+          replace(
+              'tools/build_osm_course_package_v5.py',
+              "    context = {kind: polygons for kind, polygons in context.items() if polygons}\n\n    fallback_kind = str(selection.get(\"courseGroundFallbackContextKind\") or \"\").strip()\n",
+              "    context = {kind: polygons for kind, polygons in context.items() if polygons}\n\n    visual_window = box(*context_corridor.bounds)\n    cartpath_lines = feature_lines_rebased(\n        by_kind.get(\"cartpath\", []), visual_window,\n        route_origin, forward, right, anchor_offset, simplify_yards,\n    )\n    map_features = {\n        \"cartpath\": {\"lines\": cartpath_lines},\n    } if cartpath_lines else {}\n\n    fallback_kind = str(selection.get(\"courseGroundFallbackContextKind\") or \"\").strip()\n",
+          )
+          replace(
+              'tools/build_osm_course_package_v5.py',
+              "        \"surfaces\": surfaces,\n        \"context\": context,\n",
+              "        \"surfaces\": surfaces,\n        \"context\": context,\n        \"mapFeatures\": map_features,\n",
+          )
+          replace(
+              'tools/build_osm_course_package_v5.py',
+              "        \"contextPolygons\": {\n            kind: len(context.get(kind, []))\n            for kind in v4.CONTEXT_KINDS\n        },\n",
+              "        \"contextPolygons\": {\n            kind: len(context.get(kind, []))\n            for kind in v4.CONTEXT_KINDS\n        },\n        \"mapFeatureCounts\": {\n            \"cartpathLines\": len(cartpath_lines),\n        },\n",
+          )
+
+          # Render basemap before context and golf surfaces.
+          render_anchor = """        {hole.contextLayers?.flatMap((layer) =>\n          layer.polygons.map((polygon, index) => (\n"""
+          render_insert = """        {hole.mapFeatures?.flatMap((feature) => [\n          ...(feature.polygons ?? []).map((polygon, index) => (\n            <polygon\n              key={`${feature.id}-polygon-${index}`}\n              className={`live-map-feature map-${feature.kind}`}\n              points={polygon.map((point) => project(point).join(',')).join(' ')}\n            />\n          )),\n          ...(feature.lines ?? []).map((line, index) => (\n            <polyline\n              key={`${feature.id}-line-${index}`}\n              className={`live-map-feature map-${feature.kind}`}\n              points={line.map((point) => project(point).join(',')).join(' ')}\n            />\n          )),\n        ])}\n\n""" + render_anchor
+          replace('src/pages/LiveCaddiePage.tsx', render_anchor, render_insert)
+
+          css = Path('src/pages/LiveCaddiePage.css')
+          css.write_text(css.read_text() + '''\n\n/* Visual-only OSM basemap. These features never participate in tactical classification. */\n.live-map-feature {\n  pointer-events: none;\n}\n\n.live-map-feature.map-cartpath {\n  fill: none;\n  stroke: rgba(198, 184, 146, 0.64);\n  stroke-width: 0.72;\n  stroke-linecap: round;\n  stroke-linejoin: round;\n}\n''')
+          PY
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install geometry dependencies
+        run: pip install -r requirements-course-geometry.txt
+
+      - name: Rebuild Arcadia from cached OSM without WorldCover
+        run: |
+          mkdir -p /tmp/arcadia-osm-basemap public/course-geometry/arcadia-bluffs
+          cp public/course-geometry/arcadia-bluffs/course-v1.json /tmp/arcadia-osm-basemap/old-package.json
+          python tools/build_osm_course_package_canonical.py \
+            --osm artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json \
+            --config config/course-geometry/arcadia-bluffs-v1.json \
+            --output /tmp/arcadia-osm-basemap/geometry.json \
+            --manifest artifacts/course-geometry/arcadia-bluffs/validation-v1.json
+          python tools/carry_forward_embedded_terrain.py \
+            --old-package /tmp/arcadia-osm-basemap/old-package.json \
+            --new-package /tmp/arcadia-osm-basemap/geometry.json \
+            --output public/course-geometry/arcadia-bluffs/course-v1.json
+
+      - name: Validate Hole 2 and Hole 9 OSM basemap proof
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          package = json.loads(Path('public/course-geometry/arcadia-bluffs/course-v1.json').read_text())
+          report = {}
+          for hole_no in (2, 9):
+              hole = package['holes'][str(hole_no)]
+              map_features = hole.get('mapFeatures') or {}
+              cart = map_features.get('cartpath') or {}
+              lines = cart.get('lines') or []
+              context = hole.get('context') or {}
+              landcover = {k: len(v) for k, v in context.items() if k.startswith('landcover-')}
+              if not lines:
+                  raise SystemExit(f'Hole {hole_no} has no cartpath basemap lines')
+              if landcover:
+                  raise SystemExit(f'Hole {hole_no} still contains WorldCover context: {landcover}')
+              report[str(hole_no)] = {
+                  'cartpathLines': len(lines),
+                  'cartpathPoints': sum(len(line) for line in lines),
+                  'worldCoverLayers': landcover,
+              }
+          out = Path('artifacts/course-geometry/arcadia-bluffs/osm-basemap-proof-v1.json')
+          out.write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Validate runtime
+        run: |
+          npm run build
+          npm run courses:audit-runtime -- --strict --candidate arcadia-bluffs
+
+      - name: Commit OSM basemap proof
+        run: |
+          git add \
+            tools/build_osm_course_package.py \
+            tools/build_osm_course_package_v5.py \
+            src/courseGeometry/types.ts \
+            src/courseGeometry/routePackagedCourseLoader.ts \
+            src/courseGeometry/normalizeRouteCourseGeometry.ts \
+            src/pages/LiveCaddiePage.tsx \
+            src/pages/LiveCaddiePage.css \
+            artifacts/course-geometry/arcadia-bluffs/validation-v1.json \
+            artifacts/course-geometry/arcadia-bluffs/osm-basemap-proof-v1.json \
+            public/course-geometry/arcadia-bluffs/course-v1.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(course): render OSM cart paths as visual basemap'
+          git push origin HEAD:web-course-importer-surface-semantics-v2

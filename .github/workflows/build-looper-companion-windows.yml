@@ -1,0 +1,108 @@
+name: Build Looper Windows Companion
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-importer-surface-semantics-v2
+    paths:
+      - "helpers/looper_companion.py"
+      - "helpers/open_golf_coach_helper.py"
+      - "helpers/open_golf_coach_helper_lie_footer.py"
+      - "helpers/install_looper_companion.ps1"
+      - "helpers/install_looper_companion.cmd"
+      - "helpers/uninstall_looper_companion.ps1"
+      - ".github/workflows/build-looper-companion-windows.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller opengolfcoach
+
+      - name: Build Looper Companion
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --noconsole `
+            --name LooperCompanion `
+            --paths helpers `
+            helpers/looper_companion.py
+
+      - name: Smoke test companion executable
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath "dist/LooperCompanion.exe" -PassThru -WindowStyle Hidden
+          try {
+            $health = $null
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              Start-Sleep -Milliseconds 500
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:8787/health" -TimeoutSec 2
+                break
+              } catch {}
+            }
+            if ($null -eq $health) {
+              throw "Looper Companion never exposed /health."
+            }
+            if ($health.service -ne "open-golf-coach-helper" -or $health.status -ne "ok") {
+              throw "Unexpected companion health payload: $($health | ConvertTo-Json -Compress)"
+            }
+            if ($health.version -ne "6-looper-companion") {
+              throw "Unexpected companion version: $($health.version)"
+            }
+
+            # GSPro is intentionally absent on CI. These calls prove that the
+            # packaged wind/lie endpoints are present and fail closed instead
+            # of crashing when no GSPro window exists.
+            $wind = Invoke-RestMethod -Uri "http://127.0.0.1:8787/wind" -TimeoutSec 12
+            $lie = Invoke-RestMethod -Uri "http://127.0.0.1:8787/lie" -TimeoutSec 15
+            if ($null -eq $wind.status -or $null -eq $lie.status) {
+              throw "Packaged wind/lie endpoints did not return status payloads."
+            }
+          } finally {
+            if ($process -and !$process.HasExited) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Assemble install package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package -Force | Out-Null
+          Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
+          Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
+          Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
+          Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
+          Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
+
+      - name: Publish rolling companion prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view looper-companion-latest --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete looper-companion-latest --repo "$env:GITHUB_REPOSITORY" --yes --cleanup-tag
+          }
+          gh release create looper-companion-latest `
+            looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Windows Companion (latest)" `
+            --notes "Rolling Windows companion build for the hosted Looper web app. Install once; it runs in the background and starts with Windows." `
+            --prerelease

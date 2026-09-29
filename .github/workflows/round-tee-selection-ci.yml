@@ -1,0 +1,31 @@
+name: Round Tee Selection CI
+
+on:
+  push:
+    branches:
+      - course-geometry-round-tee-selection-v1
+    paths:
+      - 'src/courseGeometry/roundTeeSelection.ts'
+      - 'src/courseGeometry/courseSelection.ts'
+      - 'src/components/RoundTeeSelectionBar.tsx'
+      - 'src/main.tsx'
+      - 'tools/test-round-tee-selection.mjs'
+      - '.github/workflows/round-tee-selection-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run normalization regression
+        run: node tools/test-round-tee-selection.mjs
+      - name: Build browser app
+        run: npm run build

@@ -1,0 +1,33 @@
+name: Greywolf H1 StartingPOS CI
+
+on:
+  push:
+    branches:
+      - course-geometry-greywolf-h1-startingpos-v1
+    paths:
+      - 'src/adapters/browserGsproCourseState.ts'
+      - 'src/adapters/gsproStartingPosition.ts'
+      - 'src/courseGeometry/greywolfH1LiveTeePosition.ts'
+      - 'src/courseGeometry/greywolfH1StartingPositionCalibration.ts'
+      - 'src/courseGeometry/roundTeeSelection.ts'
+      - 'src/courseGeometry/teeCalibrationStore.ts'
+      - 'tools/test-greywolf-h1-startingpos-calibration.mjs'
+      - '.github/workflows/greywolf-h1-startingpos-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Greywolf H1 StartingPOS regression
+        run: node --experimental-strip-types tools/test-greywolf-h1-startingpos-calibration.mjs
+      - name: Build browser app
+        run: npm run build

@@ -1,0 +1,557 @@
+/* Live Caddie decision-first information architecture.
+ * Presentation only: recommendation, ranking, terrain, and shot-model behavior
+ * stay in their existing modules.
+ */
+
+.live-outcomes-card,
+.live-compare-card {
+  display: none !important;
+}
+
+/* Let the golf-scene backdrop remain part of the product's signature feel. */
+.live-decision-card,
+.live-map-card,
+.live-club-strip-card {
+  background:
+    linear-gradient(180deg, rgba(25, 46, 32, 0.7) 0%, rgba(14, 28, 19, 0.64) 100%) !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 18px 50px rgba(0, 0, 0, 0.12) !important;
+}
+
+.live-caddie-header {
+  border-bottom: 0 !important;
+}
+
+/* Current-shot context: lie/surface, live distance to pin, and current shot
+ * elevation. Absolute altitude remains in the adjustment explanation instead. */
+.live-caddie-secondary-context {
+  color: #cfd8cd !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.live-caddie-secondary-context span:first-child {
+  color: #d8e0d6;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-caddie-secondary-context span:nth-child(2) {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.live-caddie-secondary-context span:nth-child(3) {
+  color: #d9e2d7;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.live-caddie-secondary-context span:nth-child(4) {
+  display: none !important;
+}
+
+.live-conditions-shell {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.live-expected-shot-block,
+.live-conditions-panel {
+  box-sizing: border-box;
+  border: 1px solid rgba(80, 102, 82, 0.56);
+  border-radius: 11px;
+  background: rgba(12, 25, 17, 0.38);
+}
+
+.live-expected-shot-block {
+  padding: 11px;
+}
+
+.live-expected-shot-heading,
+.live-conditions-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.live-expected-shot-heading > span,
+.live-conditions-heading > span,
+.live-condition-net > span {
+  color: #eab308;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.live-shot-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.live-shot-stat-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 7px;
+  border-radius: 7px;
+  background: rgba(7, 16, 10, 0.36);
+}
+
+.live-shot-stat-grid span {
+  color: #8e9e8e;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.live-shot-stat-grid strong {
+  overflow: hidden;
+  color: #f3f5f2;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-hero-outcomes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 9px;
+  border: 1px solid rgba(62, 81, 64, 0.64);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.live-hero-outcomes > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 8px 3px;
+  text-align: center;
+  background: rgba(7, 16, 10, 0.27);
+}
+
+.live-hero-outcomes > div + div {
+  border-left: 1px solid rgba(62, 81, 64, 0.55);
+}
+
+.live-hero-outcomes strong {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.live-hero-outcomes span {
+  color: #899989;
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.live-hero-outcomes .outcome-success strong { color: #76d39b; }
+.live-hero-outcomes .outcome-trouble strong { color: #e2b85f; }
+.live-hero-outcomes .outcome-catastrophe strong { color: #e48678; }
+
+.live-hero-outcome-detail {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: #a7b4a7;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.live-hero-outcome-detail span + span::before {
+  content: '•';
+  padding-right: 9px;
+  color: #5a6b5a;
+}
+
+/* Full-height condition explanation with the original strong distance-vs-lateral
+ * distinction restored as explicit columns. */
+.live-conditions-panel {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.live-conditions-heading {
+  padding: 13px 13px 11px;
+  border-bottom: 1px solid rgba(63, 82, 65, 0.5);
+  background: rgba(234, 179, 8, 0.045);
+}
+
+.live-conditions-heading > strong {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.live-condition-table-head,
+.live-condition-row,
+.live-condition-net {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(78px, 0.8fr) minmax(92px, 0.9fr);
+  column-gap: 10px;
+}
+
+.live-condition-table-head {
+  align-items: center;
+  min-height: 31px;
+  padding: 0 13px;
+  border-bottom: 1px solid rgba(63, 82, 65, 0.45);
+  color: #788978;
+  background: rgba(7, 16, 10, 0.16);
+}
+
+.live-condition-table-head span,
+.live-condition-table-head strong {
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-condition-table-head strong {
+  color: #aeb9ae;
+  text-align: right;
+}
+
+.live-condition-rows {
+  display: grid;
+  align-content: stretch;
+  grid-auto-rows: minmax(58px, 1fr);
+}
+
+.live-condition-row {
+  align-content: center;
+  padding: 9px 13px;
+  border-bottom: 1px solid rgba(63, 82, 65, 0.38);
+}
+
+.live-condition-factor {
+  color: #d1d9cf;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.live-condition-row > strong {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.live-condition-row > small {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #7f907f;
+  font-size: 8px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-condition-row.muted > strong,
+.live-condition-row.muted > small {
+  color: #657565;
+}
+
+.live-condition-net {
+  align-items: baseline;
+  padding: 12px 13px 13px;
+  background: rgba(6, 14, 9, 0.34);
+}
+
+.live-condition-net > span {
+  align-self: center;
+}
+
+.live-condition-net > strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.live-condition-net > small {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  color: #899989;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+/* Map chrome belongs on top of the map, not in a separate title/legend band. */
+.live-map-card {
+  position: relative !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  padding: 8px !important;
+  overflow: hidden;
+}
+
+.live-map-topbar {
+  position: absolute !important;
+  top: 14px;
+  right: 14px;
+  z-index: 8;
+  min-height: 0 !important;
+  padding: 0 !important;
+  pointer-events: none;
+}
+
+.live-map-topbar > div:first-child {
+  display: none !important;
+}
+
+.live-map-toggles {
+  pointer-events: auto;
+}
+
+.live-map-shell {
+  min-height: 0;
+  height: 100%;
+}
+
+.live-map {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.live-map-legend {
+  position: absolute !important;
+  left: 16px;
+  bottom: 13px;
+  z-index: 7;
+  min-height: 0 !important;
+  padding: 6px 8px !important;
+  border-radius: 999px;
+  background: rgba(6, 14, 9, 0.45);
+  backdrop-filter: blur(5px);
+}
+
+@media (min-width: 1260px) {
+  /* Fill the useful vertical playing surface, but redistribute width so the
+   * decision and explanation are peers with the map rather than sidebars to it. */
+  .live-caddie-main-grid {
+    width: calc(100% - 72px);
+    grid-template-columns: minmax(690px, 1.14fr) minmax(500px, 0.86fr) !important;
+    gap: 14px !important;
+    align-items: stretch !important;
+    margin-left: 72px !important;
+  }
+
+  .live-decision-column {
+    display: block !important;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .live-decision-card,
+  .live-map-card {
+    height: clamp(620px, calc(100vh - 128px), 760px);
+  }
+
+  .live-decision-card {
+    anchor-name: --live-decision-card;
+    display: grid !important;
+    grid-template-columns: minmax(280px, 0.9fr) minmax(330px, 1.1fr);
+    grid-template-areas:
+      'label conditions'
+      'club conditions'
+      'aim conditions'
+      'reason conditions'
+      'shot conditions'
+      'arm conditions';
+    column-gap: 14px;
+    align-items: start;
+    padding: 16px !important;
+  }
+
+  .live-decision-card > .live-decision-label-row { grid-area: label; }
+  .live-decision-card > .live-club-hero { grid-area: club; }
+  .live-decision-card > .live-aim-hero { grid-area: aim; }
+  .live-decision-card > .live-decision-reason { grid-area: reason; }
+  .live-decision-card > .live-arm-recommendation { grid-area: arm; }
+
+  .live-decision-card .live-club-hero {
+    font-size: clamp(58px, 4.5vw, 76px) !important;
+  }
+
+  .live-decision-card .live-aim-hero {
+    font-size: clamp(21px, 1.7vw, 27px) !important;
+  }
+
+  .live-decision-card .live-decision-reason {
+    min-height: 0;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+
+  .live-conditions-shell {
+    display: contents;
+  }
+
+  .live-expected-shot-block {
+    grid-area: shot;
+    margin-top: 0;
+  }
+
+  .live-conditions-panel {
+    grid-area: conditions;
+    align-self: stretch;
+    height: 100%;
+  }
+
+  .live-arm-recommendation {
+    align-self: end;
+    margin-top: 10px !important;
+  }
+
+  /* Manual club selection is an override rail, not a peer information card. */
+  .live-club-strip-card {
+    position: absolute !important;
+    position-anchor: --live-decision-card !important;
+    top: anchor(top) !important;
+    right: anchor(left) !important;
+    box-sizing: border-box !important;
+    width: 64px !important;
+    height: anchor-size(height) !important;
+    margin: 0 !important;
+    padding: 9px 5px 7px !important;
+    transform: translateX(-8px) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 6px !important;
+    overflow: hidden;
+    z-index: 3;
+  }
+
+  .live-club-strip-heading {
+    display: block !important;
+    min-width: 0;
+  }
+
+  .live-club-strip-heading > div {
+    display: block !important;
+  }
+
+  .live-club-strip-heading .live-kicker {
+    display: block;
+    overflow: hidden;
+    font-size: 0 !important;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .live-club-strip-heading .live-kicker::after {
+    content: 'CLUB';
+    color: #eab308;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+  }
+
+  .live-club-strip-heading > div > strong,
+  .live-club-strip-heading > button,
+  .live-club-strip-card > p {
+    display: none !important;
+  }
+
+  .live-club-strip {
+    min-width: 0;
+    min-height: 0;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: minmax(34px, 1fr) !important;
+    gap: 4px !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+
+  .live-club-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .live-club-strip button {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    padding: 2px !important;
+    border-radius: 7px !important;
+    background: rgba(11, 24, 16, 0.48) !important;
+    overflow: hidden;
+  }
+
+  .live-club-strip button strong {
+    font-size: 11px !important;
+  }
+
+  .live-club-strip button span {
+    font-size: 6px !important;
+  }
+
+  .live-club-strip button.recommended {
+    border-color: rgba(234, 179, 8, 0.62) !important;
+  }
+
+  .live-club-strip button.armed {
+    border-color: #eab308 !important;
+    background: rgba(234, 179, 8, 0.16) !important;
+    color: #ffffff !important;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-main-grid {
+    width: calc(100% - 66px);
+    grid-template-columns: minmax(630px, 1.08fr) minmax(470px, 0.92fr) !important;
+    margin-left: 66px !important;
+  }
+
+  .live-decision-card {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.1fr);
+    column-gap: 10px;
+  }
+
+  .live-club-strip-card {
+    width: 60px !important;
+  }
+
+  .live-shot-stat-grid strong {
+    font-size: 11px;
+  }
+
+  .live-condition-table-head,
+  .live-condition-row,
+  .live-condition-net {
+    grid-template-columns: minmax(90px, 1fr) minmax(70px, 0.78fr) minmax(84px, 0.9fr);
+    column-gap: 7px;
+  }
+}
+
+@media (max-width: 1259px) {
+  .live-conditions-panel {
+    min-height: 0;
+  }
+}
