@@ -8,7 +8,7 @@
     "courses:generate-registration": "node tools/generate-course-registration-index.mjs",
     "courses:validate-promotions": "node tools/check-course-promotions.mjs",
     "dev": "npm run courses:generate-registration && vite",
-    "build": "npm run courses:validate-promotions && npm run courses:generate-registration && tsc -b && vite build",
+    "build": "node tools/capture-build-diagnostic.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
