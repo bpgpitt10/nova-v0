@@ -197,11 +197,26 @@ Use exact GSPro pin position plus high-resolution green terrain to improve appro
 - The <=0.35 ft RMS gate preserves coherent local slopes above 12% across many holes, including slopes into the 20s and the H6/H7 ~40%+ banks, instead of flattening them.
 - Exact-pin/green-detail TypeScript + Vite production build passed after the runtime slope change.
 
+**Pipeline integration — 2026-09-29**
+
+- The generic high-resolution green importer experiment `course-importer-green-terrain-v1` was a clean 7-commit fast-forward of the canonical importer lineage. It was promoted into `course-importer-surface-semantics-v1` without merging unrelated exact-pin product work.
+- The canonical rebuild can now take an explicitly configured trusted georeferenced DEM, generate `green-detail-v1.json` at approximately 1 yd spacing, structurally validate it, record provenance/cache hashes, and carry a previously validated sidecar forward when a fresh DEM is not supplied.
+- `tools/audit_course_green_surface_quality.py` adds a generic post-build quality audit against the actual canonical green polygons. Missing/poor DEM coverage and package/polygon mismatch are ingest failures; local non-planarity is diagnostic because real tiers/ledges may be nonlinear.
+- The quality audit intentionally mirrors the tactical slope trust contract: 3 yd radius, >=8 on-green samples, <=0.35 ft RMS for a trusted local plane, and **no slope-magnitude ceiling**.
+- Automatic DEM-provider discovery/selection remains intentionally out of scope for now. The automated boundary is `configured trusted DEM -> green sidecar -> validation/audit -> provenance/cache -> runtime`.
+- Greywolf itself is still a legacy/manual terrain package relative to the newer canonical importer: its official BC 1 m DEM source is known, but the canonical importer branch does not yet contain a Greywolf course config / canonical `course-v1.json`. Do not claim generic Greywolf regeneration parity until that migration or an equivalent parity proof is completed.
+
+**Runtime regression hardening — 2026-09-29**
+
+- `tests/greenTargetingRuntimeProof.ts` now exercises the actual production green-targeting functions with deterministic synthetic terrain.
+- Covered contracts: a coherent ~48% bank must remain valid; a sharp nonlinear tier crossing must fall back to the whole-green summary; exact-pin strategic movement remains <=5 yd and on-green; an inexact pin cannot receive a strategic shift; slope redirection preserves the observed rollout distance rather than inventing extra run.
+- GitHub Actions runs created for both the canonical importer CI and the exact-pin runtime proof failed before any job step executed: the jobs recorded `runner_id=0`, no runner name, and `steps=[]`. Treat that as CI infrastructure failure, **not** a failed green-model assertion. The new proof is not counted as executed/passed until a reliable runner or equivalent execution path runs it.
+
 **Current relationship to Aim Descriptor**  
 Reconciled. Pin-relative wording uses the exact pin; green zone/width/edge wording uses the real green polygon; directional words and widths now use the current shot frame; context can explain a small terrain-driven strategic shift.
 
 **Remaining gate**  
-Live-course validation of the exact pin and green-detail recommendations over multiple holes / pin placements. In particular, verify that GSPro's rendered/modelled H6 severe green features correspond closely enough to the source LiDAR for tactical use; offline LiDAR consistency alone is not SIM validation.
+Live-course validation of the exact pin and green-detail recommendations over multiple holes / pin placements. In particular, compare GSPro green heatmap/rendering against the source LiDAR on Greywolf H6 (plus a normal control green, then H4/H7 if needed) to verify that GSPro's model corresponds closely enough to the source terrain for tactical use. Separately, execute the new runtime proof in a functioning runner and prove at least one real canonical-course green sidecar can be reproduced through the generic importer. Offline LiDAR consistency alone is not SIM validation.
 
 ---
 
