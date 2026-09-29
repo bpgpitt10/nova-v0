@@ -36,7 +36,7 @@ if ($RunProof) {
 }
 
 $argsList = @(
-  (Join-Path $Here "click_lab_runner.py"),
+  (Join-Path $Here "click_lab_ready_runner.py"),
   "--monitor", "$Monitor"
 )
 
@@ -70,6 +70,7 @@ if ($Click) {
 } else {
   Write-Host "MODE: PREVIEW ONLY - GSPro will not receive mouse input."
 }
+Write-Host "Distance source priority: -Distance override, fresh currentRound.dat, then PIN-card OCR."
 Write-Host "Minimap zoom is never changed by this harness."
 Write-Host "Evidence is saved under tools\minimap_probe\output\click_lab."
 Write-Host ""
