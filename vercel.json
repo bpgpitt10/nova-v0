@@ -5,6 +5,7 @@
   "outputDirectory": "dist",
   "git": {
     "deploymentEnabled": {
+      "web-green-targeting-runtime-proof-v1": true,
       "*": false,
       "web-*": true,
       "auth-cloud-persistence": true,
