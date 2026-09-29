@@ -1,0 +1,1 @@
+Validation-only marker for shot-frame interval merging and expanded descriptor scenarios.
