@@ -168,17 +168,30 @@ const landmarkDescriptor = ({
       const edge = project(edgePoint)
       const absoluteDistance = distance(aimPoint, edgePoint)
       const lateralGap = edge.lateral - aim.lateral
-      const forwardGap = Math.abs(edge.forward - aim.forward)
+      const centerLateralGap = center.lateral - aim.lateral
+      const signedForwardGap = edge.forward - aim.forward
+      const forwardGap = Math.abs(signedForwardGap)
 
       if (center.forward < 10 || center.forward > aim.forward + 55) continue
       if (absoluteDistance > 34 || forwardGap > 30 || Math.abs(lateralGap) > 26) continue
 
       const anchorLabel = landmarkLabel(surface.kind, center.lateral)
-      const relation = lateralGap >= 0 ? 'left' : 'right'
-      const nearEdge = Math.abs(lateralGap) <= 2.5
-      const text = nearEdge
-        ? `Aim at the ${relation} edge of the ${anchorLabel}`
-        : `Aim ${roundedYards(lateralGap)} yd ${relation} of the ${anchorLabel}`
+      let text: string
+
+      if (Math.abs(lateralGap) >= 2.5) {
+        const relation = lateralGap > 0 ? 'left' : 'right'
+        text = Math.abs(lateralGap) <= 4
+          ? `Aim at the ${relation} edge of the ${anchorLabel}`
+          : `Aim ${roundedYards(lateralGap)} yd ${relation} of the ${anchorLabel}`
+      } else if (forwardGap <= 4 && Math.abs(centerLateralGap) >= 4) {
+        const relation = centerLateralGap > 0 ? 'left' : 'right'
+        text = `Aim at the ${relation} edge of the ${anchorLabel}`
+      } else if (forwardGap >= 1.5) {
+        text = `Aim ${roundedYards(signedForwardGap)} yd ${signedForwardGap > 0 ? 'short of' : 'past'} the ${anchorLabel}`
+      } else {
+        text = `Aim at the ${anchorLabel}`
+      }
+
       const importanceBonus = surface.kind === 'water' ? -2 : 0
       const confidencePenalty = confidence === 'medium' ? 4 : 0
       const score = absoluteDistance + forwardGap * 0.35 + confidencePenalty + importanceBonus
@@ -428,8 +441,6 @@ const hazardStartFact = (
   }
   if (!selectedPolygon || selectedAimGap > 40) return null
 
-  // Report where the hazard actually intersects the recommended line instead
-  // of the old Euclidean nearest-point distance, which could overstate relevance.
   const project = buildAimShotFrame(ball, aimPoint)
   const alongLine = chooseAimFrameInterval(
     polygonIntervalsAtLateral([selectedPolygon], project, 0),
