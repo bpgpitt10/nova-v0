@@ -4,6 +4,7 @@ import type {
   WindObservation,
   WindReferenceFrame,
 } from '../liveState/types'
+import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
 
 export const GSPRO_WIND_OCR_BROWSER_EVENT = 'looper:gspro-wind-ocr'
 
@@ -146,6 +147,15 @@ const staleObservation = (
   }
 }
 
+const staleForNextShot = (observation: WindObservation): WindObservation => ({
+  ...observation,
+  status: 'STALE',
+  note: [
+    observation.note,
+    'Canonical shot state advanced; waiting for fresh wind OCR for this shot.',
+  ].filter(Boolean).join(' '),
+})
+
 export const dispatchGsproWindOcrObservation = (payload: GsproWindOcrPayload) => {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent<GsproWindOcrPayload>(GSPRO_WIND_OCR_BROWSER_EVENT, {
@@ -162,7 +172,15 @@ export const connectToGsproWindObservation = ({
 
   const publish = (payload: GsproWindOcrPayload | null | undefined) => {
     if (disconnected) return
-    latest = normalizeGsproWindOcrPayload(payload)
+    const next = normalizeGsproWindOcrPayload(payload)
+    // A transient bad crop after a shot should not turn the model into fake calm.
+    // Preserve the previous value as STALE until one of the scheduled retries succeeds.
+    if (next.status === 'UNKNOWN' && latest && (latest.status === 'READY' || latest.status === 'STALE')) {
+      if (latest.status !== 'STALE') latest = staleForNextShot(latest)
+      onObservation(latest)
+      return
+    }
+    latest = next
     onObservation(latest)
   }
 
@@ -170,8 +188,15 @@ export const connectToGsproWindObservation = ({
     publish((event as CustomEvent<GsproWindOcrPayload>).detail)
   }
 
+  const shotStateListener = () => {
+    if (disconnected || !latest || latest.status !== 'READY') return
+    latest = staleForNextShot(latest)
+    onObservation(latest)
+  }
+
   if (typeof window !== 'undefined') {
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
+    window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
   }
 
   const staleTimer = typeof window !== 'undefined' && Number.isFinite(staleAfterMs)
@@ -192,6 +217,7 @@ export const connectToGsproWindObservation = ({
       disconnected = true
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
+        window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
     },
