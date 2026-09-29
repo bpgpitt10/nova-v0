@@ -1,0 +1,1 @@
+Validation-only marker for aim-descriptor-shot-frame-v1.
