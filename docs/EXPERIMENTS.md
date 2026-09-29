@@ -19,13 +19,13 @@ This file is the canonical lightweight record of active Looper experiments. Upda
 Describe the optimizer's already-selected absolute aim point in golfer language without changing the recommendation itself.
 
 **Current path**  
-`src/liveCaddie/aimDescriptor.ts`
+`src/liveCaddie/aimDescriptor.ts` -> `aimDescriptorCore.ts` with shot-frame helpers in `aimDescriptorFrame.ts`.
 
 **Current lineage**  
-Originally built on `live-caddie-aim-descriptor-v1`, then integrated into the Live Caddie lineage and reconciled with the exact-pin / high-resolution green targeting work on `exact-pin-outputlog-v1`.
+Originally built on `live-caddie-aim-descriptor-v1`, then integrated into the Live Caddie lineage and reconciled with the exact-pin / high-resolution green targeting work on `exact-pin-outputlog-v1`. Shot-frame hardening from `aim-descriptor-shot-frame-v1` is now fast-forwarded into `exact-pin-outputlog-v1`.
 
 **Status**  
-**SHADOW / OFFLINE VALIDATED**
+**SHADOW / OFFLINE BUILD VALIDATED**
 
 **Current hierarchy**
 
@@ -51,17 +51,23 @@ Approach / par-3 shots:
 - `Aim at the pin` is reserved for approximately <=1.25 yd separation from the exact pin.
 - Meaningful longitudinal shifts can be expressed as `short of` / `past` the pin rather than being incorrectly collapsed to `at pin`.
 - Measured context can include fairway width, green width, and relevant bunker/water start distance.
+- Player-facing directional language is now computed in the **current shot frame** (ball -> planning target), not global course X/Y. This applies to fairway left/center/right, fairway-edge side, green front/middle/back + left/right, and fairway/green width facts.
+- Hazard `begins about N yd` context now requires the hazard to intersect the recommended line rather than using the nearest Euclidean point to the ball.
 
 **Validated**
 
 - Deterministic descriptor logic implemented.
 - Shadow-only; does not alter club ranking, aim ranking, absolute recommendation, or GSPro execution.
 - Reconciled with exact-pin + green-detail data model.
-- Current exact-pin code was validated through a whitelisted `web-*` Vercel preview branch and built READY.
+- Shot-frame branch diff touched only descriptor-layer files.
+- Whitelisted validation branch `web-aim-descriptor-shot-frame-validation-v2` completed a full TypeScript/Vite production build READY.
+- `aimDescriptorFrameProof.ts` now contains deterministic aligned/rotated fairway, rotated green, rotated exact-pin, and longitudinal pin-shift scenarios as regression source.
+- A temporary GitHub Actions runner intended to execute those scenarios failed before recording meaningful job steps; it was removed. Do **not** count that runner as a scenario pass. The build/typecheck is the validated evidence today.
 
 **Still to validate**
 
-- Real examples across tee shots, approaches, tucked pins, multiple bunkers and unusual green shapes.
+- Execute the deterministic scenario matrix in a reliable test runner rather than only compiling it.
+- Review real shadow examples across tee shots, approaches, tucked pins, multiple bunkers, unusual green shapes and doglegs.
 - Decide when shadow language is good enough to become player-facing.
 
 ---
@@ -192,7 +198,7 @@ Use exact GSPro pin position plus high-resolution green terrain to improve appro
 - Exact-pin/green-detail TypeScript + Vite production build passed after the runtime slope change.
 
 **Current relationship to Aim Descriptor**  
-Reconciled. Pin-relative wording uses the exact pin; green zone/width/edge wording uses the real green polygon; context can explain a small terrain-driven strategic shift.
+Reconciled. Pin-relative wording uses the exact pin; green zone/width/edge wording uses the real green polygon; directional words and widths now use the current shot frame; context can explain a small terrain-driven strategic shift.
 
 **Remaining gate**  
 Live-course validation of the exact pin and green-detail recommendations over multiple holes / pin placements. In particular, verify that GSPro's rendered/modelled H6 severe green features correspond closely enough to the source LiDAR for tactical use; offline LiDAR consistency alone is not SIM validation.
@@ -219,6 +225,7 @@ Therefore branches such as `exact-pin-outputlog-v1` intentionally do **not** aut
 - Merely creating a whitelisted branch does not necessarily trigger a deployment.
 - An actual commit/push on a whitelisted `web-*` branch does trigger Vercel.
 - Temporary validation branch `web-exact-pin-language-validation-v1` successfully built READY from the exact-pin lineage.
+- Temporary validation branches `web-aim-descriptor-shot-frame-validation-v1` and `v2` built READY for the shot-frame descriptor implementation; v2 included the deterministic scenario source file in TypeScript compilation.
 
 **Working convention**  
 Do not weaken the Vercel whitelist just to validate an experiment. When a non-whitelisted branch needs browser-build validation, fork its current head into a temporary `web-*` validation branch, make a harmless non-runtime validation commit, verify the build, and record the result here.
