@@ -1,0 +1,1 @@
+Production validation marker for the 2026-09-29 Live Caddie + production reconciliation. Runtime code is unchanged from merge commit c090a04f9bf796d55e6306ecbd6600736de21dfd; this file exists only to generate a Git push event on the Vercel-whitelisted web-alpha-mishits branch.
