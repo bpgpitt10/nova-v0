@@ -64,7 +64,7 @@ if ($Click) {
   Write-Host "MODE: ONE-SHOT CLICK ENABLED"
   Write-Host "The lab will refuse input unless GSPro, markers, ROI, and target pixel all validate."
 } else {
-  Write-Host "MODE: PREVIEW ONLY — GSPro will not receive mouse input."
+  Write-Host "MODE: PREVIEW ONLY - GSPro will not receive mouse input."
 }
 Write-Host "Minimap zoom is never changed by this harness."
 Write-Host "Evidence is saved under tools\minimap_probe\output\click_lab."
