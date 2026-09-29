@@ -200,7 +200,7 @@ export const runAimDescriptorShotFrameProof = () => {
     expectKind(descriptor.kind, 'centerline')
   }
 
-  // Hazard context must describe an obstacle on the recommended line, not merely one nearby.
+  // A center-line bunker ahead of the landing point is a depth reference, not a fake left/right edge reference.
   {
     const ball: CoursePointYds = [0, 0]
     const target: CoursePointYds = [0, 220]
@@ -212,6 +212,7 @@ export const runAimDescriptorShotFrameProof = () => {
       aimPoint: inverseShotPoint(ball, target, 0, 180),
     })
     expectKind(descriptor.kind, 'landmark')
+    expectText(descriptor.text, 'Aim 5 yd short of the bunker')
     expectContains(descriptor.contextFacts, 'along the recommended line')
   }
 
