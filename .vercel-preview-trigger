@@ -1,2 +1,2 @@
-Canonical source commit: dd1a6e8503fdf2028a639c9f4379c4572959aca6
-Purpose: deploy corrected Arcadia native-ground preview.
+Canonical source commit: 993d7dbe71d4b6576dc5af6e74f45a94f70dc88b
+Purpose: deploy Live Caddie sim-validation fixes for browser OCR lifecycle, capture persistence, and ambiguous surface handling.
