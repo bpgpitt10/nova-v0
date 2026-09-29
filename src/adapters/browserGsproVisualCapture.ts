@@ -80,7 +80,8 @@ const TESSERACT_VERSION = '6.0.1'
 const TESSERACT_SCRIPT_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`
 const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js`
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
-const SHOT_OCR_SETTLE_MS = 650
+const SHOT_OCR_RETRY_DELAYS_MS = [650, 1600, 3200] as const
+const PERIODIC_OCR_REFRESH_MS = 8000
 
 const WIND_SPEED_CROP: CropSpec = {
   x: 0.444,
@@ -426,15 +427,22 @@ export const connectToBrowserGsproVisualCapture = async ({
   let disconnected = false
   let ocrInFlight = false
   let greenPaused = initiallyPaused
-  let shotOcrTimer: number | null = null
+  let shotOcrTimers: number[] = []
+  let periodicOcrTimer: number | null = null
   let shotStateListener: ((event: Event) => void) | null = null
   let worker: TesseractWorker | null = null
+
+  const clearShotOcrTimers = () => {
+    shotOcrTimers.forEach((timer) => window.clearTimeout(timer))
+    shotOcrTimers = []
+  }
 
   const stop = () => {
     if (disconnected) return
     disconnected = true
-    if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
-    shotOcrTimer = null
+    clearShotOcrTimers()
+    if (periodicOcrTimer != null) window.clearInterval(periodicOcrTimer)
+    periodicOcrTimer = null
     if (shotStateListener) {
       window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
       shotStateListener = null
@@ -606,21 +614,24 @@ export const connectToBrowserGsproVisualCapture = async ({
       const surface = detail?.surface?.trim().toLowerCase() ?? null
       if (surface === 'green') {
         greenPaused = true
-        if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
-        shotOcrTimer = null
+        clearShotOcrTimers()
         return
       }
 
       greenPaused = false
-      if (shotOcrTimer != null) window.clearTimeout(shotOcrTimer)
-      shotOcrTimer = window.setTimeout(() => {
-        shotOcrTimer = null
+      clearShotOcrTimers()
+      shotOcrTimers = SHOT_OCR_RETRY_DELAYS_MS.map((delay) => window.setTimeout(() => {
+        shotOcrTimers = shotOcrTimers.filter((timer) => timer !== windowTimer)
         void runOcr()
-      }, SHOT_OCR_SETTLE_MS)
+      }, delay))
     }
 
     shotStateListener = scheduleShotOcr
     window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
+
+    periodicOcrTimer = window.setInterval(() => {
+      if (!greenPaused) void runOcr()
+    }, PERIODIC_OCR_REFRESH_MS)
 
     onStatusChange?.('connected')
     if (!greenPaused) void runOcr()
