@@ -7,8 +7,9 @@
     "courses:audit-runtime": "node tools/audit-course-runtime-contract.mjs",
     "courses:generate-registration": "node tools/generate-course-registration-index.mjs",
     "courses:validate-promotions": "node tools/check-course-promotions.mjs",
+    "proof:green-targeting": "rm -rf /tmp/green-targeting-proof && tsc tests/greenTargetingRuntimeProof.ts --outDir /tmp/green-targeting-proof --rootDir . --module commonjs --moduleResolution node --target ES2022 --lib ES2022,DOM --types node --esModuleInterop --skipLibCheck --noEmitOnError && printf '{\"type\":\"commonjs\"}\\n' > /tmp/green-targeting-proof/package.json && node /tmp/green-targeting-proof/tests/greenTargetingRuntimeProof.js",
     "dev": "npm run courses:generate-registration && vite",
-    "build": "npm run courses:validate-promotions && npm run courses:generate-registration && tsc -b && vite build",
+    "build": "npm run proof:green-targeting && npm run courses:validate-promotions && npm run courses:generate-registration && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
@@ -35,11 +36,11 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
+    "eslint-plugin-react-hooks": "^6.0.0",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.57.0",
-    "vite": "^8.0.1"
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.2.4"
   }
 }
