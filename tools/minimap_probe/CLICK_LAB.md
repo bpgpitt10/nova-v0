@@ -23,7 +23,7 @@ Given a desired point in the live ball-to-pin coordinate frame (or full Looper c
 
 ## Current runtime
 
-`run_click_lab_windows.ps1` now launches `click_lab_ready_runner.py`.
+`run_click_lab_windows.ps1` launches `click_lab_ready_runner.py`.
 
 That runner layers the live-sim hardening on top of the original lab and resolves distance-to-pin in this order:
 
@@ -60,9 +60,30 @@ After GSPro had a magenta current-aim marker visible, the original generic playe
 - sane first-run scale: roughly `0.52 yd/px`
 - bad rerun scale: roughly `1.22 yd/px`
 - requested target: `200 yd forward, +10 yd right`
-- GSPro accepted target: roughly `270 yd` radial distance
+- GSPro accepted target: far beyond the requested depth
 
 This was a marker-identity failure, **not** a mouse-coordinate failure. The hardened runner now rejects the magenta current-aim marker before registration and verifies the resulting magenta target directly after the click.
+
+### Replay against the actual live screenshots
+
+The hardened detector/verifier was replayed offline against the screenshots captured during the live session, without committing the screenshots themselves.
+
+Known-good repeated center click:
+
+- detected player marker: red tee marker
+- detected accepted target: magenta GSPro crosshair
+- reconstructed target: **199.8 yd forward, +0.5 yd right**
+- 2D vector error versus requested `200 / 0`: **0.55 yd**
+- result under the hardened <=3 yd rule: **PASS**
+
+Known-bad +10 test from the marker-identity regression:
+
+- hardened detector correctly selects the red tee marker rather than the magenta aim crosshair
+- reconstructed accepted target: **286.1 yd forward, +3.5 yd right**
+- 2D vector error versus requested `200 / +10`: **86.3 yd**
+- result under the hardened <=3 yd rule: **FAIL**
+
+This proves the new direct minimap verifier distinguishes the known good and known bad live outcomes without relying on AIM-card OCR.
 
 ## Next sim validation — start here
 
@@ -76,12 +97,12 @@ git fetch origin
 git switch --detach origin/minimap-click-lab-v0
 ```
 
-Then, with GSPro stopped before a normal full shot, run exactly:
+Then, with GSPro stopped before a normal full shot:
 
 ### 1. Preview
 
 ```powershell
-.\tools\minimap_probe\run_next_click_lab_test.ps1
+.\click-lab-test.ps1
 ```
 
 This runs the transform + marker proofs, then previews `+10 yd right / 200 yd forward` with **no mouse input**.
@@ -98,7 +119,7 @@ Confirm the console shows:
 If the preview is right:
 
 ```powershell
-.\tools\minimap_probe\run_next_click_lab_test.ps1 -Click
+.\click-lab-test.ps1 -Click
 ```
 
 Expected output after the click:
@@ -108,7 +129,7 @@ Expected output after the click:
 - vector error;
 - `PASS_DISTANCE` if vector error is <=3 yd.
 
-Review:
+Review if desired:
 
 `tools\minimap_probe\output\click_lab\latest_click_lab_marker_verify.png`
 
@@ -120,7 +141,7 @@ If automatic distance resolution refuses to run, use the standard launcher with 
 
 ## Remaining acceptance sequence
 
-1. **Center point:** SIM validated visually.
+1. **Center point:** SIM validated visually and replay-validated at ~0.55 yd vector error.
 2. **+10 yd right:** repeat with hardened registration + direct target verification.
 3. **-10 yd left:** validate after right passes.
 4. Manually change minimap zoom and repeat one target.
