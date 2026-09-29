@@ -5,7 +5,8 @@ Adds convenience/safety layers on top of click_lab_runner:
 - explicit --distance remains authoritative;
 - otherwise prefer a fresh GSPro currentRound.dat DistanceToPin;
 - otherwise fall back to the existing PIN-card OCR path;
-- only direct 2D minimap-marker verification may produce a PASS after a click.
+- only direct 2D minimap-marker verification may produce a PASS after a click;
+- a clicked-but-UNVERIFIED result exits nonzero so it cannot look successful.
 
 AIM-card OCR remains useful diagnostic evidence, but radial distance alone cannot
 prove that GSPro accepted the correct left/right target.
@@ -13,6 +14,7 @@ prove that GSPro accepted the correct left/right target.
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 
@@ -101,9 +103,30 @@ def _verify_after_click_ready(screen, tesseract_path, debug_dir, expected_distan
     return observed, error, status, warnings
 
 
+def _run_ready() -> int:
+    exit_code = int(click_lab.main())
+    if exit_code != 0:
+        return exit_code
+
+    # click_lab's legacy main treats UNVERIFIED as exit 0. Tighten that contract
+    # for this ready runner so PowerShell/automation cannot mistake it for PASS.
+    result_path = Path(__file__).with_name("output") / "click_lab" / "latest_click_lab_result.json"
+    if result_path.exists():
+        try:
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+            if bool(result.get("clicked")) and result.get("verification") == "UNVERIFIED":
+                print("CLICK LAB RESULT: clicked target is UNVERIFIED; returning failure exit code 3.")
+                return 3
+        except Exception as exc:
+            print(f"WARNING: could not inspect Click Lab result JSON for fail-closed exit handling: {exc}")
+            return 3
+
+    return exit_code
+
+
 click_lab.read_pin_distance = _read_pin_distance_ready
 click_lab.verify_after_click = _verify_after_click_ready
 
 
 if __name__ == "__main__":
-    raise SystemExit(click_lab.main())
+    raise SystemExit(_run_ready())
