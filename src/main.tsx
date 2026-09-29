@@ -45,6 +45,10 @@ type UpdateStatus =
   | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
+const isLiveCaddiePath = (value: string) => {
+  const normalized = normalizePath(value)
+  return normalized === '/live-caddie' || normalized === '/caddie' || normalized === '/dev/live-caddie'
+}
 
 function SignOutPage() {
   const [error, setError] = useState<string | null>(null)
@@ -84,6 +88,7 @@ function RootRouter() {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
+  const [keepLiveCaddieMounted, setKeepLiveCaddieMounted] = useState(() => isLiveCaddiePath(window.location.pathname))
 
   const checkForUpdates = useCallback(async () => {
     setUpdateStatus('checking')
@@ -166,7 +171,7 @@ function RootRouter() {
   const showCourseRenderDev = pathname === '/dev/course-render'
   const showCourseGeometryDev = pathname === '/dev/course-geometry'
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
-  const showLiveCaddie = pathname === '/live-caddie' || pathname === '/caddie' || pathname === '/dev/live-caddie'
+  const showLiveCaddie = isLiveCaddiePath(pathname)
   const showDevLiveCaddie = pathname === '/dev/live-caddie'
   const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
   const showGsproReplay = pathname === '/dev/gspro-replay'
@@ -174,6 +179,10 @@ function RootRouter() {
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
   const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
+
+  useEffect(() => {
+    if (showLiveCaddie) setKeepLiveCaddieMounted(true)
+  }, [showLiveCaddie])
 
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
@@ -191,14 +200,7 @@ function RootRouter() {
     if (showCourseRenderDev) return <CourseRenderDevPage />
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
     if (showAimLab) return <AimLabPage />
-    if (showLiveCaddie) {
-      return (
-        <>
-          <LiveCaddiePage />
-          <RoundTeeSelectionBar />
-        </>
-      )
-    }
+    if (showLiveCaddie) return null
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
@@ -245,7 +247,15 @@ function RootRouter() {
   return (
     <LooperAuthGate>
       <LiveGsproRoundArchiveBridge />
-      {showDevPage ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>}
+      {keepLiveCaddieMounted ? (
+        <div style={{ display: showLiveCaddie ? 'contents' : 'none' }} aria-hidden={!showLiveCaddie}>
+          <LiveCaddiePage />
+          <RoundTeeSelectionBar />
+        </div>
+      ) : null}
+      {!showLiveCaddie
+        ? (showDevPage ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>)
+        : null}
     </LooperAuthGate>
   )
 }
