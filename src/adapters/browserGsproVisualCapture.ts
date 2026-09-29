@@ -621,7 +621,6 @@ export const connectToBrowserGsproVisualCapture = async ({
       greenPaused = false
       clearShotOcrTimers()
       shotOcrTimers = SHOT_OCR_RETRY_DELAYS_MS.map((delay) => window.setTimeout(() => {
-        shotOcrTimers = shotOcrTimers.filter((timer) => timer !== windowTimer)
         void runOcr()
       }, delay))
     }
