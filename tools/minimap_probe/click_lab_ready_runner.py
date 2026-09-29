@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Final hardened Click Lab runner for short live-validation sessions.
 
-Adds one convenience/safety layer on top of click_lab_runner:
+Adds convenience/safety layers on top of click_lab_runner:
 - explicit --distance remains authoritative;
 - otherwise prefer a fresh GSPro currentRound.dat DistanceToPin;
-- otherwise fall back to the existing PIN-card OCR path.
+- otherwise fall back to the existing PIN-card OCR path;
+- only direct 2D minimap-marker verification may produce a PASS after a click.
 
-This avoids requiring a manual distance entry in the normal case without ever
-silently trusting stale round state.
+AIM-card OCR remains useful diagnostic evidence, but radial distance alone cannot
+prove that GSPro accepted the correct left/right target.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import probe as base
 MAX_CURRENT_ROUND_AGE_SECONDS = 10 * 60
 
 _original_read_pin_distance = click_lab.read_pin_distance
+_direct_marker_verify = click_lab.verify_after_click
 
 
 def _read_pin_distance_ready(screen, explicit_distance, tesseract_path, debug_dir):
@@ -71,7 +73,36 @@ def _read_pin_distance_ready(screen, explicit_distance, tesseract_path, debug_di
         ) from exc
 
 
+def _verify_after_click_ready(screen, tesseract_path, debug_dir, expected_distance_yds, tolerance_yds):
+    observed, error, status, warnings = _direct_marker_verify(
+        screen,
+        tesseract_path,
+        debug_dir,
+        expected_distance_yds,
+        tolerance_yds,
+    )
+
+    direct_unavailable = any(
+        str(warning).startswith("Direct minimap-marker verification unavailable:")
+        for warning in warnings
+    )
+    if direct_unavailable:
+        diagnostic = (
+            f" Legacy AIM-card radial observation was {observed:.1f} yd and is diagnostic only."
+            if observed is not None
+            else ""
+        )
+        return observed, error, "UNVERIFIED", [
+            *warnings,
+            "Direct 2D minimap-marker verification is required for PASS; OCR fallback cannot validate left/right accuracy."
+            + diagnostic,
+        ]
+
+    return observed, error, status, warnings
+
+
 click_lab.read_pin_distance = _read_pin_distance_ready
+click_lab.verify_after_click = _verify_after_click_ready
 
 
 if __name__ == "__main__":
