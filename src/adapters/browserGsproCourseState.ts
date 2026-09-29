@@ -122,18 +122,12 @@ const enrichSnapshotWithStartingPosition = async (
     ? null
     : parseGsproStartingPosition(roundText, snapshot.holeNumber)
 
-  // GSPro uses raw surface 11 for the bunker/sand state encountered in live
-  // play. The core map historically only knew raw 3, so a ball clearly shown as
-  // Sand by GSPro could fall through to OSM and appear as Rough. Preserve the
-  // currentRound source and normalize that second bunker code at this seam.
-  const normalizedSurface = snapshot.surface
-    ?? (snapshot.latestShot?.endingSurfaceRaw === 11 ? 'sand' : null)
+  // Raw surface 11 is ambiguous in live GSPro data: physical testing has shown
+  // it for both bunker-like states and woods/scrub deep rough. Do not coerce it
+  // to sand here. Leaving it unresolved lets Live Caddie's course geometry classify
+  // the actual ball location while unambiguous GSPro surface codes still win.
   const base: BrowserGsproCourseSnapshot = {
     ...snapshot,
-    surface: normalizedSurface,
-    surfaceSource: normalizedSurface && snapshot.surface == null
-      ? 'currentRound'
-      : snapshot.surfaceSource,
     preShotStart,
   }
 
