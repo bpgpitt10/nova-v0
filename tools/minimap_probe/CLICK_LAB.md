@@ -23,9 +23,17 @@ Given a desired point in the live ball-to-pin coordinate frame (or full Looper c
 
 ## Current runtime
 
-`run_click_lab_windows.ps1` launches `click_lab_runner.py`, which wraps the original `click_lab.py` with live-sim hardening discovered during first field validation.
+`run_click_lab_windows.ps1` now launches `click_lab_ready_runner.py`.
 
-The hardened runner:
+That runner layers the live-sim hardening on top of the original lab and resolves distance-to-pin in this order:
+
+1. explicit `-Distance` override, if supplied;
+2. fresh GSPro `currentRound.dat` DistanceToPin when the file is no more than 10 minutes old;
+3. GSPro PIN-card OCR as the final automatic fallback.
+
+If none is safe, the lab refuses to calibrate and asks for an explicit `-Distance` rather than trusting stale state.
+
+The hardened runtime also:
 
 1. rejects the magenta GSPro current-aim target as a possible ball marker;
 2. prints the registered BALL, PIN, and scale before any click;
@@ -42,7 +50,7 @@ Greywolf Hole 1, tee, approximately 350.2 yd to pin:
 
 - Transform proof passed center/left/right handedness, rotated-minimap math, and zoom/scale conversion.
 - 200 yd center preview visually landed on the GSPro ball-to-pin line.
-- First 200 yd center one-shot click was accepted by GSPro and visually landed essentially on the intended line/depth.
+- A repeated 200 yd center one-shot click was accepted by GSPro and visually landed essentially on the intended line/depth.
 - Mouse actuation path is therefore proven: Looper can focus GSPro, move to the predicted minimap pixel, send one click, and GSPro accepts that click.
 
 ### Failure discovered during +10 yd lateral validation
@@ -54,15 +62,13 @@ After GSPro had a magenta current-aim marker visible, the original generic playe
 - requested target: `200 yd forward, +10 yd right`
 - GSPro accepted target: roughly `270 yd` radial distance
 
-This was a marker-identity failure, **not** a mouse-coordinate failure.
-
-The hardened runner now rejects the magenta current-aim marker before registration and verifies the resulting magenta aim marker directly after the click.
+This was a marker-identity failure, **not** a mouse-coordinate failure. The hardened runner now rejects the magenta current-aim marker before registration and verifies the resulting magenta target directly after the click.
 
 ## Next sim validation — start here
 
-Do **not** redo the already-proven center test unless diagnostics look wrong.
+Do **not** redo the center test.
 
-From the isolated worktree:
+First update the isolated worktree:
 
 ```powershell
 cd C:\Users\User\nova-click-lab
@@ -70,35 +76,34 @@ git fetch origin
 git switch --detach origin/minimap-click-lab-v0
 ```
 
-With Greywolf H1 (or another normal full shot) stopped before a shot, use the visible GSPro ball-to-pin distance as `-Distance`.
+Then, with GSPro stopped before a normal full shot, run exactly:
 
-### 1. +10 yd right preview
+### 1. Preview
 
 ```powershell
-.\tools\minimap_probe\run_click_lab_windows.ps1 -Right 10 -Forward 200 -Distance 350.2
+.\tools\minimap_probe\run_next_click_lab_test.ps1
 ```
 
-Before clicking, confirm the console prints:
+This runs the transform + marker proofs, then previews `+10 yd right / 200 yd forward` with **no mouse input**.
 
-- `Registration BALL` on the actual player/ball marker near the tee, **not** the magenta current-aim target;
+Confirm the console shows:
+
+- `Registration BALL` on the actual player marker, not the magenta current-aim target;
 - `Registration PIN` on the white pin marker;
-- a plausible map scale for the visible zoom.
+- a plausible scale;
+- preferably `Distance source: currentRound.dat ...` so no manual distance is needed.
 
-Review:
+### 2. One click
 
-`tools\minimap_probe\output\click_lab\latest_click_lab_preview.png`
-
-### 2. +10 yd right click
-
-If registration and preview are correct:
+If the preview is right:
 
 ```powershell
-.\tools\minimap_probe\run_click_lab_windows.ps1 -Right 10 -Forward 200 -Distance 350.2 -Click
+.\tools\minimap_probe\run_next_click_lab_test.ps1 -Click
 ```
 
 Expected output after the click:
 
-- direct minimap marker verification;
+- direct minimap-marker verification;
 - observed forward/right yard values;
 - vector error;
 - `PASS_DISTANCE` if vector error is <=3 yd.
@@ -107,19 +112,16 @@ Review:
 
 `tools\minimap_probe\output\click_lab\latest_click_lab_marker_verify.png`
 
-### 3. -10 yd left
-
-Reset GSPro aim, then repeat preview and click:
+If automatic distance resolution refuses to run, use the standard launcher with an explicit visible GSPro distance:
 
 ```powershell
-.\tools\minimap_probe\run_click_lab_windows.ps1 -Right -10 -Forward 200 -Distance 350.2
-.\tools\minimap_probe\run_click_lab_windows.ps1 -Right -10 -Forward 200 -Distance 350.2 -Click
+.\tools\minimap_probe\run_click_lab_windows.ps1 -Right 10 -Forward 200 -Distance 350.2
 ```
 
 ## Remaining acceptance sequence
 
 1. **Center point:** SIM validated visually.
-2. **+10 yd right:** repeat with hardened marker registration + direct target verification.
+2. **+10 yd right:** repeat with hardened registration + direct target verification.
 3. **-10 yd left:** validate after right passes.
 4. Manually change minimap zoom and repeat one target.
 5. Repeat from an approach position after the tee shot.
@@ -140,8 +142,6 @@ python .\click_lab_replay.py `
   --forward 220
 ```
 
-The replay writes an annotated PNG beside the source screenshot.
-
 ## Absolute Looper-coordinate mode
 
 When the mechanical cases above pass, feed an actual recommendation point rather than a synthetic offset:
@@ -150,8 +150,7 @@ When the mechanical cases above pass, feed an actual recommendation point rather
 .\tools\minimap_probe\run_click_lab_windows.ps1 `
   -BallCourse "12.4,84.1" `
   -PinCourse "18.7,421.6" `
-  -TargetCourse "23.3,281.0" `
-  -Distance 337.6
+  -TargetCourse "23.3,281.0"
 ```
 
-The harness converts the absolute target into right/forward components using Looper's course frame, then maps those components into the live GSPro ball/pin minimap frame. Add `-Click` only after preview validation.
+The harness converts the absolute target into right/forward components using Looper's course frame, then maps those components into the live GSPro ball/pin minimap frame. Fresh `currentRound.dat` supplies the GSPro distance automatically when available. Add `-Click` only after preview validation.
