@@ -3,10 +3,11 @@ name: Validate green terrain importer
 on:
   push:
     branches:
-      - course-importer-green-terrain-v1
+      - course-importer-surface-semantics-v1
     paths:
       - 'tools/build_course_green_detail.py'
       - 'tools/validate_course_green_detail.py'
+      - 'tools/audit_course_green_surface_quality.py'
       - 'tools/update_course_cache_after_rebuild.py'
       - 'requirements-course-geometry.txt'
       - '.github/workflows/rebuild-course-canonical.yml'
@@ -20,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: course-importer-green-terrain-v1
+          ref: course-importer-surface-semantics-v1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -30,6 +31,7 @@ jobs:
           python -m py_compile \
             tools/build_course_green_detail.py \
             tools/validate_course_green_detail.py \
+            tools/audit_course_green_surface_quality.py \
             tools/update_course_cache_after_rebuild.py
       - name: Build and validate synthetic 18-hole green terrain
         run: |
@@ -86,5 +88,8 @@ jobs:
             --dataset-name 'Synthetic test DEM' \
             --source-resolution-meters 1
           python tools/validate_course_green_detail.py \
+            --package /tmp/green-importer-test/green-detail-v1.json \
+            --course-package /tmp/green-importer-test/course-v1.json
+          python tools/audit_course_green_surface_quality.py \
             --package /tmp/green-importer-test/green-detail-v1.json \
             --course-package /tmp/green-importer-test/course-v1.json
