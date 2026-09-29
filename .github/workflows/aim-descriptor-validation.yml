@@ -1,0 +1,45 @@
+name: Aim descriptor validation
+
+on:
+  push:
+    branches:
+      - aim-descriptor-interval-merge-v1
+    paths:
+      - src/liveCaddie/aimDescriptor.ts
+      - src/liveCaddie/aimDescriptorCore.ts
+      - src/liveCaddie/aimDescriptorFrame.ts
+      - src/liveCaddie/aimDescriptorFrameProof.ts
+      - tests/aimDescriptorShotFrameRuntimeProof.ts
+      - .github/workflows/aim-descriptor-validation.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aim-descriptor-interval-merge-v1
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run aim descriptor runtime regression proof
+        run: |
+          rm -rf /tmp/aim-descriptor-proof
+          npx tsc tests/aimDescriptorShotFrameRuntimeProof.ts \
+            --outDir /tmp/aim-descriptor-proof \
+            --rootDir . \
+            --module commonjs \
+            --moduleResolution node \
+            --target ES2022 \
+            --lib ES2022,DOM \
+            --types node \
+            --esModuleInterop \
+            --skipLibCheck \
+            --noEmitOnError
+          printf '{"type":"commonjs"}\n' > /tmp/aim-descriptor-proof/package.json
+          node /tmp/aim-descriptor-proof/tests/aimDescriptorShotFrameRuntimeProof.js
+      - run: npm run build
