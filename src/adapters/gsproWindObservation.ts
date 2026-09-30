@@ -173,13 +173,18 @@ export const connectToGsproWindObservation = ({
   const publish = (payload: GsproWindOcrPayload | null | undefined) => {
     if (disconnected) return
     const next = normalizeGsproWindOcrPayload(payload)
-    // A transient bad crop after a shot should not turn the model into fake calm.
-    // Preserve the previous value as STALE until one of the scheduled retries succeeds.
-    if (next.status === 'UNKNOWN' && latest && (latest.status === 'READY' || latest.status === 'STALE')) {
-      if (latest.status !== 'STALE') latest = staleForNextShot(latest)
-      onObservation(latest)
-      return
+
+    // Once a field is READY for this shot, freeze it. Repeated OCR passes must not
+    // change the caddie answer. The canonical shot-state event below is the only
+    // thing that unlocks the value by marking it STALE for the next shot.
+    if (latest?.status === 'READY') {
+      if (next.status === 'READY' || next.status === 'UNKNOWN') return
     }
+
+    // If the new shot has already marked the prior value STALE, failed OCR retries
+    // leave that stale value in place until a retry actually succeeds.
+    if (next.status === 'UNKNOWN' && latest?.status === 'STALE') return
+
     latest = next
     onObservation(latest)
   }
