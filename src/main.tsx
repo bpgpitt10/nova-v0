@@ -140,19 +140,32 @@ function RootRouter() {
       if (!(anchor instanceof HTMLAnchorElement)) return
       if (anchor.target && anchor.target !== '_self') return
       if (anchor.hasAttribute('download')) return
+
       const rawHref = anchor.getAttribute('href')
-      if (!rawHref || !rawHref.startsWith('/')) return
-      const url = new URL(rawHref, window.location.origin)
+      if (!rawHref || rawHref.startsWith('#')) return
+
+      let url: URL
+      try {
+        url = new URL(rawHref, window.location.href)
+      } catch {
+        return
+      }
+      if (url.origin !== window.location.origin) return
+
       const next = `${url.pathname}${url.search}${url.hash}`
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
       if (next === current) return
+
+      // Match the proven base-Looper navigation path: keep the same document alive,
+      // then let the router react to popstate. This preserves auth, directory handles,
+      // and getDisplayMedia streams while moving between Looper pages.
       event.preventDefault()
       window.history.pushState({}, '', next)
-      setPathname(normalizePath(url.pathname))
+      window.dispatchEvent(new PopStateEvent('popstate'))
     }
 
     window.addEventListener('popstate', onPopState)
-    document.addEventListener('click', onDocumentClick)
+    document.addEventListener('click', onDocumentClick, true)
     const onBagConfigUpdated = () => {
       refreshBagConfigState()
       setHasBagConfig(hasSavedBagConfig())
@@ -162,7 +175,7 @@ function RootRouter() {
 
     return () => {
       window.removeEventListener('popstate', onPopState)
-      document.removeEventListener('click', onDocumentClick)
+      document.removeEventListener('click', onDocumentClick, true)
       window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
       window.removeEventListener('storage', onBagConfigUpdated)
     }
