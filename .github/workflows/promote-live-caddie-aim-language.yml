@@ -1,0 +1,44 @@
+name: Promote Live Caddie aim language
+
+on:
+  push:
+    branches:
+      - live-caddie-aim-language-promote-v1
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    if: ${{ !contains(github.event.head_commit.message, '[aim-language-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch validated descriptor source
+        run: git fetch origin aim-descriptor-shot-frame-v1:refs/remotes/origin/aim-descriptor-shot-frame-v1
+
+      - name: Promote descriptor into playing UI
+        run: python tools/promote_live_caddie_aim_language.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Commit validated promotion
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/liveCaddie/aimDescriptor.ts src/liveCaddie/aimDescriptorCore.ts src/liveCaddie/aimDescriptorFrame.ts src/pages/LiveCaddiePage.tsx
+          git commit -m "Promote hazard-aware Live Caddie aim language [aim-language-applied]"
+          git push origin HEAD:live-caddie-aim-language-promote-v1
