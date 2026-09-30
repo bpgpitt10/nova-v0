@@ -34,6 +34,10 @@ import type {
   CoursePointYds,
   CourseSurfaceKind,
 } from '../courseGeometry/types'
+import {
+  buildAimContextSentence,
+  buildAimDescriptor,
+} from '../liveCaddie/aimDescriptor'
 import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
@@ -768,6 +772,19 @@ export default function LiveCaddiePage() {
     armedClub && recommendation?.club && armedClub !== recommendation.club,
   )
   const viewedClubRank = viewedEvaluation?.decisionRank ?? null
+  const aimDescriptor = hole && viewedEvaluation && inspectedCandidate
+    ? buildAimDescriptor({
+        hole,
+        ball,
+        target: viewedEvaluation.planningTarget,
+        aimPoint: inspectedCandidate.aimPoint,
+        aimOffsetYds: inspectedCandidate.aimOffsetYds,
+        pin: pinEstimate,
+      })
+    : null
+  const playerFacingAim = aimDescriptor?.text
+    ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
+  const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
 
   useEffect(() => {
     setInspectedAimOffset(null)
@@ -952,10 +969,11 @@ export default function LiveCaddiePage() {
 
                   <div className="live-club-hero">{displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
-                    {viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line'}
+                    {playerFacingAim}
                   </div>
                   <p className="live-decision-reason">
-                    {inspectedCandidate?.decisionReason
+                    {aimContext
+                      ?? inspectedCandidate?.decisionReason
                       ?? viewedEvaluation?.decisionReason
                       ?? (evaluationPending
                         ? 'Looper is calculating the club, aim and next-shot value in the background.'
@@ -1017,7 +1035,7 @@ export default function LiveCaddiePage() {
                   <div>
                     <span className="live-kicker">SHOT MAP</span>
                     <h2>{displayedClub
-                      ? `${displayedClub} · ${viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'no modeled line'}`
+                      ? `${displayedClub} · ${viewedEvaluation ? playerFacingAim : 'no modeled line'}`
                       : evaluationPending
                         ? 'Calculating recommendation…'
                         : 'Waiting for recommendation'}</h2>
