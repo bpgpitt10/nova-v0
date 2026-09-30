@@ -56,6 +56,15 @@ type ReadableDirectoryHandle = {
 const CURRENT_ROUND_FILE = 'currentRound.dat'
 const liveTeeGeometryCache = new Map<string, Promise<CourseHoleGeometry>>()
 
+// START ROUND is a runtime override, not a property of one file-watcher instance.
+// Keep it at module scope so a route/hole re-render cannot resurrect stale shots
+// from the prior GSPro round before GSPro writes the first genuinely new shot.
+const manualRoundStart = {
+  active: false,
+  baselineCaptured: false,
+  baselineIdentity: null as string | null,
+}
+
 const readCurrentRoundFromHandle = async (handle: ReadableDirectoryHandle | null) => {
   if (!handle) return null
   try {
@@ -226,6 +235,24 @@ const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | nul
     ? `${snapshot.roundId ?? 'round'}:${snapshot.latestShotKey}`
     : null
 
+const snapshotSignature = (
+  snapshot: BrowserGsproCourseSnapshot,
+  source: 'manual-start' | 'gspro',
+) => JSON.stringify([
+  source,
+  snapshot.courseKey,
+  snapshot.roundId,
+  snapshot.holeNumber,
+  snapshot.nextShotNumber,
+  snapshot.latestShotKey,
+  snapshot.ballLocalYds?.[0] ?? null,
+  snapshot.ballLocalYds?.[1] ?? null,
+  snapshot.surface,
+  snapshot.surfaceSource,
+  snapshot.distanceToPinYds,
+  snapshot.warnings,
+])
+
 export const connectToBrowserGsproCourseState = ({
   onSnapshot,
   onStatusChange,
@@ -238,16 +265,19 @@ export const connectToBrowserGsproCourseState = ({
   let disconnected = false
   let snapshotSequence = 0
   let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
-  let manualStartActive = false
-  let manualStartBaselineCaptured = false
-  let manualStartBaselineIdentity: string | null = null
   let lastPublishedShotStateKey: string | null = null
+  let lastPublishedSnapshotSignature: string | null = null
 
   const publishSnapshot = (
     snapshot: BrowserGsproCourseSnapshot,
     source: 'manual-start' | 'gspro',
   ) => {
-    onSnapshot(snapshot)
+    const signature = snapshotSignature(snapshot, source)
+    if (signature !== lastPublishedSnapshotSignature) {
+      lastPublishedSnapshotSignature = signature
+      onSnapshot(snapshot)
+    }
+
     const key = source === 'manual-start'
       ? 'manual-start:1:1'
       : `${snapshot.roundId ?? 'round'}:${snapshot.holeNumber ?? 'hole'}:${snapshot.nextShotNumber ?? 'shot'}:${snapshot.latestShotKey ?? 'none'}`
@@ -273,14 +303,14 @@ export const connectToBrowserGsproCourseState = ({
     const selectedCourseId = loadLastSelectedCourseId()
     if (selectedCourseId === UNSELECTED_COURSE_ID) return
 
-    manualStartActive = true
-    manualStartBaselineCaptured = lastCoreSnapshot !== null
-    manualStartBaselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    manualRoundStart.active = true
+    manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
+    manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
     const sequence = ++snapshotSequence
 
     void buildManualStartSnapshot(selectedCourseId)
       .then((snapshot) => {
-        if (disconnected || sequence !== snapshotSequence || !manualStartActive) return
+        if (disconnected || sequence !== snapshotSequence || !manualRoundStart.active) return
         publishSnapshot(snapshot, 'manual-start')
       })
       .catch((error) => {
@@ -300,19 +330,21 @@ export const connectToBrowserGsproCourseState = ({
     onSnapshot: (snapshot) => {
       lastCoreSnapshot = snapshot
 
-      if (manualStartActive) {
-        if (!manualStartBaselineCaptured) {
-          manualStartBaselineIdentity = physicalSnapshotIdentity(snapshot)
-          manualStartBaselineCaptured = true
+      if (manualRoundStart.active) {
+        if (!manualRoundStart.baselineCaptured) {
+          manualRoundStart.baselineIdentity = physicalSnapshotIdentity(snapshot)
+          manualRoundStart.baselineCaptured = true
           return
         }
 
         const currentIdentity = physicalSnapshotIdentity(snapshot)
         const hasNewPhysicalShot = currentIdentity != null
-          && currentIdentity !== manualStartBaselineIdentity
+          && currentIdentity !== manualRoundStart.baselineIdentity
         if (!hasNewPhysicalShot) return
 
-        manualStartActive = false
+        manualRoundStart.active = false
+        manualRoundStart.baselineCaptured = false
+        manualRoundStart.baselineIdentity = null
       }
 
       const sequence = ++snapshotSequence
