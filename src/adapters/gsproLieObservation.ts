@@ -203,13 +203,17 @@ export const connectToGsproLieObservation = ({
   const publish = (payload: GsproLieOcrPayload | null | undefined) => {
     if (disconnected) return
     const next = normalizeGsproLieOcrPayload(payload)
-    // Never carry a prior-shot lie forward as READY when a new read misses.
-    // Keep it visibly STALE until one of the scheduled retries obtains both axes.
-    if (next.status === 'UNKNOWN' && latest && (latest.status === 'READY' || latest.status === 'STALE')) {
-      if (latest.status !== 'STALE') latest = staleForNextShot(latest)
-      onObservation(latest)
-      return
+
+    // Successful lie OCR is a shot-level fact. Lock it until the canonical shot
+    // state advances so retries/periodic producer noise cannot recalculate aim.
+    if (latest?.status === 'READY') {
+      if (next.status === 'READY' || next.status === 'UNKNOWN') return
     }
+
+    // During a new-shot retry window, a miss must not replace the prior value or
+    // generate another state transition. Stay STALE until a retry is actually READY.
+    if (next.status === 'UNKNOWN' && latest?.status === 'STALE') return
+
     latest = next
     onObservation(latest)
   }
