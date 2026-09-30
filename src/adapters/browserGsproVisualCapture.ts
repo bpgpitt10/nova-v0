@@ -81,7 +81,6 @@ const TESSERACT_SCRIPT_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSER
 const TESSERACT_WORKER_URL = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/worker.min.js`
 const TESSERACT_CORE_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0'
 const SHOT_OCR_RETRY_DELAYS_MS = [650, 1600, 3200] as const
-const PERIODIC_OCR_REFRESH_MS = 8000
 
 const WIND_SPEED_CROP: CropSpec = {
   x: 0.444,
@@ -372,6 +371,16 @@ const unavailable = (note: string) => {
   dispatchGsproLieOcrObservation({ status: 'UNAVAILABLE', observedAt, note })
 }
 
+const retryableOcrFailure = (needWind: boolean, needLie: boolean, note: string) => {
+  const observedAt = new Date().toISOString()
+  if (needWind) {
+    dispatchGsproWindOcrObservation({ status: 'UNKNOWN', observedAt, note })
+  }
+  if (needLie) {
+    dispatchGsproLieOcrObservation({ status: 'UNKNOWN', observedAt, note })
+  }
+}
+
 export const isBrowserGsproVisualCaptureSupported = () =>
   typeof navigator !== 'undefined'
   && typeof navigator.mediaDevices?.getDisplayMedia === 'function'
@@ -427,8 +436,9 @@ export const connectToBrowserGsproVisualCapture = async ({
   let disconnected = false
   let ocrInFlight = false
   let greenPaused = initiallyPaused
+  let windReadyForShot = false
+  let lieReadyForShot = false
   let shotOcrTimers: number[] = []
-  let periodicOcrTimer: number | null = null
   let shotStateListener: ((event: Event) => void) | null = null
   let worker: TesseractWorker | null = null
 
@@ -441,8 +451,6 @@ export const connectToBrowserGsproVisualCapture = async ({
     if (disconnected) return
     disconnected = true
     clearShotOcrTimers()
-    if (periodicOcrTimer != null) window.clearInterval(periodicOcrTimer)
-    periodicOcrTimer = null
     if (shotStateListener) {
       window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
       shotStateListener = null
@@ -499,110 +507,135 @@ export const connectToBrowserGsproVisualCapture = async ({
       return worker.recognize(drawCrop(video, crop))
     }
 
-    const runOcr = async () => {
-      if (disconnected || greenPaused || ocrInFlight || !worker) return
-      ocrInFlight = true
-      try {
-        let windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '7')
-        let windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '8')
-        let windPayload = parseWindComponents(
+    const readWind = async () => {
+      let windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '7')
+      let windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '8')
+      let windPayload = parseWindComponents(
+        windSpeedResult.data.text ?? '',
+        normalizedConfidence(windSpeedResult.data.confidence),
+        windDirectionResult.data.text ?? '',
+        normalizedConfidence(windDirectionResult.data.confidence),
+      )
+
+      if (windPayload.speedMph == null) {
+        windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '6')
+        windPayload = parseWindComponents(
           windSpeedResult.data.text ?? '',
           normalizedConfidence(windSpeedResult.data.confidence),
           windDirectionResult.data.text ?? '',
           normalizedConfidence(windDirectionResult.data.confidence),
         )
+      }
 
-        if (windPayload.speedMph == null) {
-          windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '6')
-          windPayload = parseWindComponents(
-            windSpeedResult.data.text ?? '',
-            normalizedConfidence(windSpeedResult.data.confidence),
-            windDirectionResult.data.text ?? '',
-            normalizedConfidence(windDirectionResult.data.confidence),
-          )
-        }
+      if (windPayload.speedMph == null) {
+        windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '13')
+        windPayload = parseWindComponents(
+          windSpeedResult.data.text ?? '',
+          normalizedConfidence(windSpeedResult.data.confidence),
+          windDirectionResult.data.text ?? '',
+          normalizedConfidence(windDirectionResult.data.confidence),
+        )
+      }
 
-        if (windPayload.speedMph == null) {
-          windSpeedResult = await recognize(WIND_SPEED_CROP, '0123456789.,MPH ', '13')
-          windPayload = parseWindComponents(
-            windSpeedResult.data.text ?? '',
-            normalizedConfidence(windSpeedResult.data.confidence),
-            windDirectionResult.data.text ?? '',
-            normalizedConfidence(windDirectionResult.data.confidence),
-          )
-        }
+      if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
+        windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '7')
+        windPayload = parseWindComponents(
+          windSpeedResult.data.text ?? '',
+          normalizedConfidence(windSpeedResult.data.confidence),
+          windDirectionResult.data.text ?? '',
+          normalizedConfidence(windDirectionResult.data.confidence),
+        )
+      }
 
-        if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
-          windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '7')
-          windPayload = parseWindComponents(
-            windSpeedResult.data.text ?? '',
-            normalizedConfidence(windSpeedResult.data.confidence),
-            windDirectionResult.data.text ?? '',
-            normalizedConfidence(windDirectionResult.data.confidence),
-          )
-        }
+      if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
+        windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '10')
+        windPayload = parseWindComponents(
+          windSpeedResult.data.text ?? '',
+          normalizedConfidence(windSpeedResult.data.confidence),
+          windDirectionResult.data.text ?? '',
+          normalizedConfidence(windDirectionResult.data.confidence),
+        )
+      }
 
-        if ((windPayload.speedMph ?? 0) > 0 && windPayload.directionDegrees == null) {
-          windDirectionResult = await recognize(WIND_DIRECTION_CROP, 'NSEW ', '10')
-          windPayload = parseWindComponents(
-            windSpeedResult.data.text ?? '',
-            normalizedConfidence(windSpeedResult.data.confidence),
-            windDirectionResult.data.text ?? '',
-            normalizedConfidence(windDirectionResult.data.confidence),
-          )
-        }
-        dispatchGsproWindOcrObservation(windPayload)
+      dispatchGsproWindOcrObservation(windPayload)
+      if (windPayload.status === 'READY') windReadyForShot = true
+    }
 
-        const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {
-          const longitudinalNumberResult = await recognize(
-            axisCrop(footer, 0.05, 0.27),
-            '0123456789.,°º',
-            '7',
-          )
-          const longitudinalDirectionResult = await recognize(
-            axisCrop(footer, 0.24, 0.25),
-            'UPDOWN',
-            '6',
-          )
-          const lateralNumberResult = await recognize(
-            axisCrop(footer, 0.47, 0.27),
-            '0123456789.,°º',
-            '7',
-          )
-          const lateralDirectionResult = await recognize(
-            axisCrop(footer, 0.62, 0.37),
-            'RIGHTLEFT',
-            '7',
-          )
-          return liePayloadFromComponents(
-            longitudinalNumberResult.data.text ?? '',
-            normalizedConfidence(longitudinalNumberResult.data.confidence),
-            longitudinalDirectionResult.data.text ?? '',
-            normalizedConfidence(longitudinalDirectionResult.data.confidence),
-            lateralNumberResult.data.text ?? '',
-            normalizedConfidence(lateralNumberResult.data.confidence),
-            lateralDirectionResult.data.text ?? '',
-            normalizedConfidence(lateralDirectionResult.data.confidence),
-            side,
-          )
-        }
+    const readLieCandidate = async (footer: CropSpec, side: 'right' | 'left') => {
+      const longitudinalNumberResult = await recognize(
+        axisCrop(footer, 0.05, 0.27),
+        '0123456789.,°º',
+        '7',
+      )
+      const longitudinalDirectionResult = await recognize(
+        axisCrop(footer, 0.24, 0.25),
+        'UPDOWN',
+        '6',
+      )
+      const lateralNumberResult = await recognize(
+        axisCrop(footer, 0.47, 0.27),
+        '0123456789.,°º',
+        '7',
+      )
+      const lateralDirectionResult = await recognize(
+        axisCrop(footer, 0.62, 0.37),
+        'RIGHTLEFT',
+        '7',
+      )
+      return liePayloadFromComponents(
+        longitudinalNumberResult.data.text ?? '',
+        normalizedConfidence(longitudinalNumberResult.data.confidence),
+        longitudinalDirectionResult.data.text ?? '',
+        normalizedConfidence(longitudinalDirectionResult.data.confidence),
+        lateralNumberResult.data.text ?? '',
+        normalizedConfidence(lateralNumberResult.data.confidence),
+        lateralDirectionResult.data.text ?? '',
+        normalizedConfidence(lateralDirectionResult.data.confidence),
+        side,
+      )
+    }
 
-        let liePayload = await readLieCandidate(RIGHT_LIE_CROP, 'right')
-        if (liePayload.status !== 'READY') {
-          const leftPayload = await readLieCandidate(LEFT_LIE_CROP, 'left')
-          if (leftPayload.status === 'READY') liePayload = leftPayload
-          else {
-            liePayload = {
-              ...liePayload,
-              rawText: `RIGHT: ${liePayload.rawText ?? ''} | LEFT: ${leftPayload.rawText ?? ''}`,
-              note: 'Browser OCR did not find both lie axes in either segmented minimap footer.',
-            }
+    const readLie = async () => {
+      let liePayload = await readLieCandidate(RIGHT_LIE_CROP, 'right')
+      if (liePayload.status !== 'READY') {
+        const leftPayload = await readLieCandidate(LEFT_LIE_CROP, 'left')
+        if (leftPayload.status === 'READY') liePayload = leftPayload
+        else {
+          liePayload = {
+            ...liePayload,
+            rawText: `RIGHT: ${liePayload.rawText ?? ''} | LEFT: ${leftPayload.rawText ?? ''}`,
+            note: 'Browser OCR did not find both lie axes in either segmented minimap footer.',
           }
         }
-        dispatchGsproLieOcrObservation(liePayload)
+      }
+      dispatchGsproLieOcrObservation(liePayload)
+      if (liePayload.status === 'READY') lieReadyForShot = true
+    }
+
+    const runOcr = async () => {
+      if (
+        disconnected
+        || greenPaused
+        || ocrInFlight
+        || !worker
+        || (windReadyForShot && lieReadyForShot)
+      ) return
+
+      ocrInFlight = true
+      const needWind = !windReadyForShot
+      const needLie = !lieReadyForShot
+      try {
+        if (needWind) await readWind()
+        if (needLie) await readLie()
+        if (windReadyForShot && lieReadyForShot) clearShotOcrTimers()
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
         onError?.(error)
-        unavailable(`Browser GSPro OCR failed: ${error instanceof Error ? error.message : String(error)}`)
+        retryableOcrFailure(
+          needWind && !windReadyForShot,
+          needLie && !lieReadyForShot,
+          `Browser GSPro OCR attempt failed and will retry: ${message}`,
+        )
       } finally {
         ocrInFlight = false
       }
@@ -619,6 +652,8 @@ export const connectToBrowserGsproVisualCapture = async ({
       }
 
       greenPaused = false
+      windReadyForShot = false
+      lieReadyForShot = false
       clearShotOcrTimers()
       shotOcrTimers = SHOT_OCR_RETRY_DELAYS_MS.map((delay) => window.setTimeout(() => {
         void runOcr()
@@ -627,10 +662,6 @@ export const connectToBrowserGsproVisualCapture = async ({
 
     shotStateListener = scheduleShotOcr
     window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
-
-    periodicOcrTimer = window.setInterval(() => {
-      if (!greenPaused) void runOcr()
-    }, PERIODIC_OCR_REFRESH_MS)
 
     onStatusChange?.('connected')
     if (!greenPaused) void runOcr()
