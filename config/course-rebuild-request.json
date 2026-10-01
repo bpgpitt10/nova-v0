@@ -1,5 +1,5 @@
 {
   "courseSlug": "farmlinks",
   "configPath": "config/course-geometry/farmlinks-v1.json",
-  "reason": "final-prove-one-shot-importer"
+  "reason": "prove-runtime-ready-single-course-importer-v2"
 }
