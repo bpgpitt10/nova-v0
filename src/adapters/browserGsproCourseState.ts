@@ -76,6 +76,15 @@ let courseLayoutCache: {
   rows: GsproCourseLayoutRow[]
 } | null = null
 
+// A manual Start Round is a runtime override, not a property of one watcher
+// instance. Keep the quarantine above the connection lifecycle so route/hole
+// changes cannot resurrect the previous round's stale currentRound.dat state.
+const manualRoundStart = {
+  active: false,
+  baselineCaptured: false,
+  baselineIdentity: null as string | null,
+}
+
 const readTextFileFromHandle = async (
   handle: ReadableDirectoryHandle | null,
   filename: string,
@@ -217,18 +226,11 @@ const enrichSnapshotWithStartingPosition = async (
       })
     : null
 
-  // GSPro uses raw surface 11 for the bunker/sand state encountered in live
-  // play. The core map historically only knew raw 3, so a ball clearly shown as
-  // Sand by GSPro could fall through to OSM and appear as Rough. Preserve the
-  // currentRound source and normalize that second bunker code at this seam.
-  const normalizedSurface = snapshot.surface
-    ?? (snapshot.latestShot?.endingSurfaceRaw === 11 ? 'sand' : null)
+  // Raw surface 11 is ambiguous in live GSPro data: physical testing has shown
+  // it for bunker-like states and woods/scrub deep rough. Do not coerce it here;
+  // unresolved cases should fall through to course geometry.
   const base: BrowserGsproCourseSnapshot = {
     ...snapshot,
-    surface: normalizedSurface,
-    surfaceSource: normalizedSurface && snapshot.surface == null
-      ? 'currentRound'
-      : snapshot.surfaceSource,
     preShotStart,
     pinLocalYds: exactPin?.pinLocalYds ?? null,
     pinSource: exactPin ? 'output-log-course-layout' : 'unavailable',
@@ -333,6 +335,27 @@ const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | nul
     ? `${snapshot.roundId ?? 'round'}:${snapshot.latestShotKey}`
     : null
 
+const snapshotSignature = (
+  snapshot: BrowserGsproCourseSnapshot,
+  source: 'manual-start' | 'gspro',
+) => JSON.stringify([
+  source,
+  snapshot.courseKey,
+  snapshot.roundId,
+  snapshot.holeNumber,
+  snapshot.nextShotNumber,
+  snapshot.latestShotKey,
+  snapshot.ballLocalYds?.[0] ?? null,
+  snapshot.ballLocalYds?.[1] ?? null,
+  snapshot.surface,
+  snapshot.surfaceSource,
+  snapshot.distanceToPinYds,
+  snapshot.pinLocalYds?.[0] ?? null,
+  snapshot.pinLocalYds?.[1] ?? null,
+  snapshot.pinSource,
+  snapshot.warnings,
+])
+
 export const connectToBrowserGsproCourseState = ({
   onSnapshot,
   onStatusChange,
@@ -345,16 +368,19 @@ export const connectToBrowserGsproCourseState = ({
   let disconnected = false
   let snapshotSequence = 0
   let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
-  let manualStartActive = false
-  let manualStartBaselineCaptured = false
-  let manualStartBaselineIdentity: string | null = null
   let lastPublishedShotStateKey: string | null = null
+  let lastPublishedSnapshotSignature: string | null = null
 
   const publishSnapshot = (
     snapshot: BrowserGsproCourseSnapshot,
     source: 'manual-start' | 'gspro',
   ) => {
-    onSnapshot(snapshot)
+    const signature = snapshotSignature(snapshot, source)
+    if (signature !== lastPublishedSnapshotSignature) {
+      lastPublishedSnapshotSignature = signature
+      onSnapshot(snapshot)
+    }
+
     const key = source === 'manual-start'
       ? 'manual-start:1:1'
       : `${snapshot.roundId ?? 'round'}:${snapshot.holeNumber ?? 'hole'}:${snapshot.nextShotNumber ?? 'shot'}:${snapshot.latestShotKey ?? 'none'}`
@@ -380,14 +406,14 @@ export const connectToBrowserGsproCourseState = ({
     const selectedCourseId = loadLastSelectedCourseId()
     if (selectedCourseId === UNSELECTED_COURSE_ID) return
 
-    manualStartActive = true
-    manualStartBaselineCaptured = lastCoreSnapshot !== null
-    manualStartBaselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    manualRoundStart.active = true
+    manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
+    manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
     const sequence = ++snapshotSequence
 
     void buildManualStartSnapshot(selectedCourseId)
       .then((snapshot) => {
-        if (disconnected || sequence !== snapshotSequence || !manualStartActive) return
+        if (disconnected || sequence !== snapshotSequence || !manualRoundStart.active) return
         publishSnapshot(snapshot, 'manual-start')
       })
       .catch((error) => {
@@ -407,19 +433,21 @@ export const connectToBrowserGsproCourseState = ({
     onSnapshot: (snapshot) => {
       lastCoreSnapshot = snapshot
 
-      if (manualStartActive) {
-        if (!manualStartBaselineCaptured) {
-          manualStartBaselineIdentity = physicalSnapshotIdentity(snapshot)
-          manualStartBaselineCaptured = true
+      if (manualRoundStart.active) {
+        if (!manualRoundStart.baselineCaptured) {
+          manualRoundStart.baselineIdentity = physicalSnapshotIdentity(snapshot)
+          manualRoundStart.baselineCaptured = true
           return
         }
 
         const currentIdentity = physicalSnapshotIdentity(snapshot)
         const hasNewPhysicalShot = currentIdentity != null
-          && currentIdentity !== manualStartBaselineIdentity
+          && currentIdentity !== manualRoundStart.baselineIdentity
         if (!hasNewPhysicalShot) return
 
-        manualStartActive = false
+        manualRoundStart.active = false
+        manualRoundStart.baselineCaptured = false
+        manualRoundStart.baselineIdentity = null
       }
 
       const sequence = ++snapshotSequence
