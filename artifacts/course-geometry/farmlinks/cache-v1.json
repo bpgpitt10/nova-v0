@@ -3,22 +3,22 @@
   "courseName": "FarmLinks at Pursell Farms",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-10-01T03:18:40.883461Z",
+    "evaluatedAt": "2026-10-01T10:37:04.727884Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "new-course-canonical-import",
+    "reason": "reported-geometry-error",
     "usedNetworkForOsm": true
   },
   "package": {
     "builderFingerprintSha256": "2253fffe6b509e2afc53a5c2df5b3d46fb52e83d9b5e9c0c308eb7ed7e411668",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-10-01T03:18:40.883461Z",
+    "builtAt": "2026-10-01T10:37:04.727884Z",
     "configPath": "config/course-geometry/farmlinks-v1.json",
     "configSha256": "13252799f41deb5255d2bb9dc88113805ab5e5c37ed1dc4a91a36f24d8ae06be",
     "path": "public/course-geometry/farmlinks/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "1fbf6a7d34014ce8a37ea747f71e7ad6991c8fa361de1c98f0d88ab971ce50ac",
+    "sha256": "ef49d77bbbaed8de0949eef464d51ed00940ade46e99eba216ea805a2996c887",
     "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
   },
   "refreshPolicy": {
@@ -44,11 +44,11 @@
       "id": 1054726077,
       "type": "way"
     },
-    "fetchedAt": "2026-10-01T03:18:40.883461Z",
+    "fetchedAt": "2026-10-01T10:37:04.727884Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-10-01T03:18:40.883461Z",
+    "lastCheckedAt": "2026-10-01T10:37:04.727884Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/farmlinks/osm-snapshot.json",
-    "snapshotSha256": "8e4184a2d0752ecf10490ceffacd876d70dbe22e2c1db86d7df17dda1be802b1"
+    "snapshotSha256": "1eaae4212dc0b3e123cc34c65dbd2c43d89ecc0fbbe3625da8aa0ac130088330"
   }
 }
