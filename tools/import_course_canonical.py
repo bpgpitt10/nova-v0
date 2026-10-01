@@ -201,6 +201,7 @@ def main() -> int:
         "--snapshot", str(snapshot),
         "--package", str(final_package),
         "--manifest", str(manifest),
+        "--build-reason", args.reason,
     ]
     if green_detail.exists():
         cache_args += ["--green-detail", str(green_detail)]
