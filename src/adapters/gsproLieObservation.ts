@@ -1,4 +1,5 @@
 import type { GsproLieObservation, LiveStateStatus } from '../liveState/types'
+import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
 
 export const GSPRO_LIE_OCR_BROWSER_EVENT = 'looper:gspro-lie-ocr'
 
@@ -176,6 +177,15 @@ const staleObservation = (
   }
 }
 
+const staleForNextShot = (observation: GsproLieObservation): GsproLieObservation => ({
+  ...observation,
+  status: 'STALE',
+  note: [
+    observation.note,
+    'Canonical shot state advanced; waiting for fresh lie OCR for this shot.',
+  ].filter(Boolean).join(' '),
+})
+
 export const dispatchGsproLieOcrObservation = (payload: GsproLieOcrPayload) => {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent<GsproLieOcrPayload>(GSPRO_LIE_OCR_BROWSER_EVENT, {
@@ -192,7 +202,19 @@ export const connectToGsproLieObservation = ({
 
   const publish = (payload: GsproLieOcrPayload | null | undefined) => {
     if (disconnected) return
-    latest = normalizeGsproLieOcrPayload(payload)
+    const next = normalizeGsproLieOcrPayload(payload)
+
+    // Successful lie OCR is a shot-level fact. Lock it until the canonical shot
+    // state advances so retries/periodic producer noise cannot recalculate aim.
+    if (latest?.status === 'READY') {
+      if (next.status === 'READY' || next.status === 'UNKNOWN') return
+    }
+
+    // During a new-shot retry window, a miss must not replace the prior value or
+    // generate another state transition. Stay STALE until a retry is actually READY.
+    if (next.status === 'UNKNOWN' && latest?.status === 'STALE') return
+
+    latest = next
     onObservation(latest)
   }
 
@@ -200,8 +222,15 @@ export const connectToGsproLieObservation = ({
     publish((event as CustomEvent<GsproLieOcrPayload>).detail)
   }
 
+  const shotStateListener = () => {
+    if (disconnected || !latest || latest.status !== 'READY') return
+    latest = staleForNextShot(latest)
+    onObservation(latest)
+  }
+
   if (typeof window !== 'undefined') {
     window.addEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
+    window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
   }
 
   const staleTimer = typeof window !== 'undefined' && Number.isFinite(staleAfterMs)
@@ -222,6 +251,7 @@ export const connectToGsproLieObservation = ({
       disconnected = true
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_LIE_OCR_BROWSER_EVENT, browserListener)
+        window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
     },
