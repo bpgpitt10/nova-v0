@@ -170,7 +170,10 @@ jobs:
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
             src/courseGeometry/generatedRouteHoleHeadings.ts
-          git add -A "public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
+          GREEN_PATH="public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
+          if [ -e "$GREEN_PATH" ] || git ls-files --error-unmatch "$GREEN_PATH" >/dev/null 2>&1; then
+            git add -A "$GREEN_PATH"
+          fi
           if git diff --cached --quiet; then
             echo 'No course rebuild changes to commit.'
             exit 0
