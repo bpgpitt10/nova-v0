@@ -1,3 +1,5 @@
+import { generatedImportedCourseRegistry } from './generatedImportedCourseRegistry'
+
 export const GREYWOLF_COURSE_ID = 'greywolf-panorama-bc' as const
 export const UNSELECTED_COURSE_ID = '__no-course-selected__' as const
 
@@ -20,9 +22,10 @@ export type CourseCatalogEntry = {
 }
 
 /**
- * Runtime-supported course registry. Only courses that have passed the current
- * importer/playability validation belong here. Historical importer artifacts
- * may remain in artifacts/ without becoming selectable runtime courses.
+ * Runtime-supported course registry. Canonical imported courses are generated
+ * from runtime-ready receipts; they must never require a hand-added catalog row.
+ * Legacy accepted courses remain explicit until they are re-imported through the
+ * canonical pipeline.
  */
 export const courseRegistry = [
   {
@@ -43,24 +46,7 @@ export const courseRegistry = [
     osmCacheStatus: 'cached',
     lidarCacheStatus: 'cached',
   },
-  {
-    id: 'farmlinks-pursell-farms-sylacauga-al',
-    name: 'FarmLinks at Pursell Farms',
-    location: 'Sylacauga, AL',
-    slug: 'farmlinks',
-    gsproAliases: [
-      'FarmLinks',
-      'FarmLinks at Pursell Farms',
-      'Pursell Farms',
-    ],
-    staticPackageUrl: '/course-geometry/farmlinks/course-v1.json',
-    status: 'validated',
-    packageStatus: 'ready',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
+  ...generatedImportedCourseRegistry,
   {
     id: 'augusta-national-augusta-ga',
     name: 'Augusta National Golf Club',
@@ -157,9 +143,9 @@ const normalizeCourseName = (value: string) =>
 
 /**
  * Course identity is explicit data, not fuzzy name equality at shot time.
- * Deliberately renamed GSPro courses can add a reviewed alias here once the
- * real-world mapping is proven. Location/geometry-assisted discovery belongs
- * in the package-generation workflow, not this deterministic runtime resolver.
+ * Deliberately renamed GSPro courses can add a reviewed alias to the course
+ * build config; canonical imports carry those aliases into the generated
+ * registry automatically.
  */
 export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCourseId | null => {
   const normalized = normalizeCourseName(gsproName)
