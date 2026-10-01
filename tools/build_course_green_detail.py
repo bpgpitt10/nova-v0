@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Build Looper's high-resolution green-detail sidecar from a georeferenced DEM.
 
-The canonical course package already defines each hole in selected-tee-local yards
-and includes WGS84 tee/green anchors. This compiler uses those anchors to project
-that local frame directly into the DEM CRS, samples only a small green+apron box,
-and emits the same compact 1 yd / 3x3 tactical contract used by Live Caddie.
+The canonical course package defines each hole in an anchor-local yard frame and
+includes WGS84 anchor coordinates plus a true heading. This compiler projects
+that exact packaged frame directly into the DEM CRS, samples only a small
+green+apron box, and emits the compact 1 yd / 3x3 tactical contract used by
+Live Caddie. The anchor may be a mapped selected tee or a virtual route start.
 
-It intentionally does not discover elevation data. Course config/workflows must
-provide a trusted georeferenced GeoTIFF/COG (local file or downloaded asset).
+It intentionally does not discover elevation data. The canonical importer must
+provide the same trusted georeferenced DEM used for whole-hole terrain.
 """
 from __future__ import annotations
 
@@ -22,16 +23,22 @@ from typing import Any
 
 import numpy as np
 import rasterio
+from pyproj import Geod
 from rasterio.warp import transform as transform_crs
 
 METERS_TO_YARDS = 1.0936133
 NODATA_ENCODED = 65535
 DEFAULT_SPACING_YDS = 1.0
 DEFAULT_MARGIN_YDS = 12.0
+GEOD = Geod(ellps="WGS84")
 
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def finite(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
 
 
 def polygon_area(points: list[list[float]]) -> float:
@@ -77,30 +84,34 @@ def points_inside_polygon(xx: np.ndarray, yy: np.ndarray, polygon: np.ndarray) -
 
 def hole_basis_in_dem_crs(ds: rasterio.DatasetReader, hole: dict[str, Any]):
     frame = hole.get("coordinateFrame") or {}
-    tee_ll = frame.get("selectedTeeLatLon")
-    green_ll = frame.get("targetGreenLatLon")
+    anchor_ll = frame.get("anchorLatLon") or frame.get("selectedTeeLatLon")
+    heading = frame.get("headingDegreesTrue")
     if not (
-        isinstance(tee_ll, list) and len(tee_ll) >= 2
-        and isinstance(green_ll, list) and len(green_ll) >= 2
+        isinstance(anchor_ll, list) and len(anchor_ll) >= 2
+        and finite(anchor_ll[0]) and finite(anchor_ll[1])
+        and finite(heading)
     ):
-        raise ValueError("hole coordinateFrame is missing selectedTeeLatLon/targetGreenLatLon")
+        raise ValueError("hole coordinateFrame is missing anchorLatLon/headingDegreesTrue")
     if ds.crs is None:
         raise ValueError("DEM has no CRS")
+
+    anchor_lat = float(anchor_ll[0])
+    anchor_lon = float(anchor_ll[1])
+    forward_lon, forward_lat, _ = GEOD.fwd(anchor_lon, anchor_lat, float(heading), 20.0)
     xs, ys = transform_crs(
         "EPSG:4326",
         ds.crs,
-        [float(tee_ll[1]), float(green_ll[1])],
-        [float(tee_ll[0]), float(green_ll[0])],
+        [anchor_lon, forward_lon],
+        [anchor_lat, forward_lat],
     )
-    tee = np.asarray([xs[0], ys[0]], dtype=float)
-    green = np.asarray([xs[1], ys[1]], dtype=float)
-    delta = green - tee
+    anchor = np.asarray([xs[0], ys[0]], dtype=float)
+    delta = np.asarray([xs[1] - xs[0], ys[1] - ys[0]], dtype=float)
     length = float(np.linalg.norm(delta))
     if length <= 1e-6:
-        raise ValueError("tee/green projected anchors are degenerate")
+        raise ValueError("projected heading basis is degenerate")
     forward = delta / length
     right = np.asarray([forward[1], -forward[0]], dtype=float)
-    return tee, forward, right
+    return anchor, forward, right
 
 
 def local_grid_to_dem_pixels(
@@ -109,11 +120,11 @@ def local_grid_to_dem_pixels(
     xx_yds: np.ndarray,
     yy_yds: np.ndarray,
 ):
-    tee, forward, right = hole_basis_in_dem_crs(ds, hole)
+    anchor, forward, right = hole_basis_in_dem_crs(ds, hole)
     x_m = xx_yds / METERS_TO_YARDS
     y_m = yy_yds / METERS_TO_YARDS
-    east = tee[0] + right[0] * x_m + forward[0] * y_m
-    north = tee[1] + right[1] * x_m + forward[1] * y_m
+    east = anchor[0] + right[0] * x_m + forward[0] * y_m
+    north = anchor[1] + right[1] * x_m + forward[1] * y_m
     inv = ~ds.transform
     cols = inv.a * east + inv.b * north + inv.c
     rows = inv.d * east + inv.e * north + inv.f
@@ -273,7 +284,7 @@ def build(
                 "layout": "3x3 green bounding-box sectors",
                 "rows": ["front", "middle", "back"],
                 "columns": ["left", "center", "right"],
-                "downhillBearingContract": "0=hole-forward, 90=right, 180=back toward tee, 270=left",
+                "downhillBearingContract": "0=hole-forward, 90=right, 180=back toward anchor, 270=left",
                 "note": "Broad landing/roll context only; not a putting-break model.",
             },
             "holes": {},
@@ -293,8 +304,8 @@ def build(
             xx, yy = np.meshgrid(xs, ys)
             cols, rows = local_grid_to_dem_pixels(ds, hole, xx, yy)
             elevation_ft = bilinear_pixels(dem, nodata, cols, rows) * 3.280839895
-            finite = elevation_ft[np.isfinite(elevation_ft)]
-            if finite.size == 0:
+            finite_values = elevation_ft[np.isfinite(elevation_ft)]
+            if finite_values.size == 0:
                 raise RuntimeError(f"H{hole_number}: no valid DEM samples around green")
 
             green_mask = points_inside_polygon(xx, yy, polygon) & np.isfinite(elevation_ft)
@@ -302,7 +313,7 @@ def build(
             if not overall:
                 raise RuntimeError(f"H{hole_number}: target green has too few valid DEM samples")
 
-            offset = math.floor(float(finite.min()) * 10) / 10
+            offset = math.floor(float(finite_values.min()) * 10) / 10
             quantized = np.rint((elevation_ft - offset) * 10)
             encoded = np.full(elevation_ft.shape, NODATA_ENCODED, dtype="<u2")
             valid = np.isfinite(elevation_ft) & (quantized >= 0) & (quantized < NODATA_ENCODED)
