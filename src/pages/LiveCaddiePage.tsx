@@ -27,11 +27,6 @@ import {
   saveLastSelectedCourseId,
 } from '../courseGeometry/courseSelection'
 import { greywolfHole01Geometry } from '../courseGeometry/greywolfHole01'
-import {
-  loadCourseGreenDetail,
-  sampleCourseGreenElevation,
-  type CourseGreenDetail,
-} from '../courseGeometry/courseGreenDetail'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
@@ -39,11 +34,14 @@ import type {
   CoursePointYds,
   CourseSurfaceKind,
 } from '../courseGeometry/types'
+import {
+  buildAimContextSentence,
+  buildAimDescriptor,
+} from '../liveCaddie/aimDescriptor'
 import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
-import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import {
   loadCourseHoleHeadingDegreesTrue,
   localShotBearingDegrees,
@@ -434,7 +432,6 @@ export default function LiveCaddiePage() {
   const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
   const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
-  const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
   const [showPracticeShots, setShowPracticeShots] = useState(false)
@@ -498,18 +495,6 @@ export default function LiveCaddiePage() {
       active = false
     }
   }, [courseId, holeNumber])
-
-  useEffect(() => {
-    let active = true
-    setGreenDetail(null)
-    if (!selectedCourse) return () => { active = false }
-    void loadCourseGreenDetail(selectedCourse.slug, holeNumber).then((detail) => {
-      if (active) setGreenDetail(detail)
-    })
-    return () => {
-      active = false
-    }
-  }, [selectedCourse?.slug, holeNumber])
 
   useEffect(() => {
     let active = true
@@ -591,34 +576,18 @@ export default function LiveCaddiePage() {
     const nextBall = liveSnapshot.ballLocalYds
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
-    const nextPin = liveSnapshot.pinLocalYds
-      ?? estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
-    const baselineTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
-    const refinedGreenTarget = greenDetail
-      && nextPin
-      && liveSnapshot.pinSource === 'output-log-course-layout'
-      && pointDistance(nextBall, nextPin) <= 260
-      ? buildCourseGreenApproachTarget({
-          hole,
-          ball: nextBall,
-          pin: nextPin,
-          detail: greenDetail,
-          exactPin: true,
-        })
-      : null
+    const nextPin = estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
     setBall(nextBall)
-    setTarget(refinedGreenTarget?.target ?? baselineTarget)
-  }, [hole, liveSnapshot, courseId, greenDetail])
+    setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
+  }, [hole, liveSnapshot])
 
   const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
   const pinEstimate = hole
-    ? liveMatchesHole && liveSnapshot?.pinLocalYds
-      ? liveSnapshot.pinLocalYds
-      : estimatePinFromGsproDistance(
-          hole,
-          ball,
-          liveMatchesHole ? liveSnapshot?.distanceToPinYds ?? null : null,
-        )
+    ? estimatePinFromGsproDistance(
+        hole,
+        ball,
+        liveMatchesHole ? liveSnapshot?.distanceToPinYds ?? null : null,
+      )
     : null
   const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
     ? lieObservation.surface.trim()
@@ -637,30 +606,8 @@ export default function LiveCaddiePage() {
   const shotContext = nextShotNumber != null
     ? `Shot ${nextShotNumber} · ${surface}`
     : surface
-  const greenBallElevationFt = greenDetail
-    ? sampleCourseGreenElevation(greenDetail, ball)
-    : null
-  const ballTerrain = greenBallElevationFt != null
-    ? {
-        elevationFt: greenBallElevationFt,
-        source: 'lidar-dem' as const,
-        confidence: 'high' as const,
-        gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
-        note: 'High-resolution course green terrain sample.',
-      }
-    : hole ? estimateCourseTerrain(hole, ball) : null
-  const greenTargetElevationFt = greenDetail
-    ? sampleCourseGreenElevation(greenDetail, target)
-    : null
-  const targetTerrain = greenTargetElevationFt != null
-    ? {
-        elevationFt: greenTargetElevationFt,
-        source: 'lidar-dem' as const,
-        confidence: 'high' as const,
-        gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
-        note: 'High-resolution course green terrain sample.',
-      }
-    : hole ? estimateCourseTerrain(hole, target) : null
+  const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
+  const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
     ? targetTerrain.elevationFt - ballTerrain.elevationFt
     : null
@@ -695,21 +642,6 @@ export default function LiveCaddiePage() {
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
   const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
   const isGreenSurface = normalizedCurrentSurface === 'green'
-  const greenGuidance = !isGreenSurface
-    && hole
-    && greenDetail
-    && pinEstimate
-    && liveMatchesHole
-    && liveSnapshot?.pinSource === 'output-log-course-layout'
-    && pointDistance(ball, pinEstimate) <= 260
-    ? buildCourseGreenApproachTarget({
-        hole,
-        ball,
-        pin: pinEstimate,
-        detail: greenDetail,
-        exactPin: true,
-      })
-    : null
   const isTeeSurface = typeof authoritativeGsproSurface === 'string'
     && authoritativeGsproSurface.trim().toLowerCase() === 'tee'
   const hasOcrLie = lieObservation?.status === 'READY' && (
@@ -798,15 +730,6 @@ export default function LiveCaddiePage() {
         lieUpDownDeg,
         lieLeftRightDeg,
         lieSource,
-        exactPinLocalYds:
-          liveMatchesHole && liveSnapshot?.pinSource === 'output-log-course-layout'
-            ? liveSnapshot.pinLocalYds
-            : null,
-        greenDetail:
-          liveMatchesHole
-          && liveSnapshot?.pinSource === 'output-log-course-layout'
-            ? greenDetail
-            : null,
       },
       nowMs: Date.now(),
     })
@@ -831,11 +754,6 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    courseId,
-    greenDetail,
-    liveMatchesHole,
-    liveSnapshot?.pinLocalYds,
-    liveSnapshot?.pinSource,
   ])
 
   const recommendation = evaluations[0] ?? null
@@ -854,6 +772,19 @@ export default function LiveCaddiePage() {
     armedClub && recommendation?.club && armedClub !== recommendation.club,
   )
   const viewedClubRank = viewedEvaluation?.decisionRank ?? null
+  const aimDescriptor = hole && viewedEvaluation && inspectedCandidate
+    ? buildAimDescriptor({
+        hole,
+        ball,
+        target: viewedEvaluation.planningTarget,
+        aimPoint: inspectedCandidate.aimPoint,
+        aimOffsetYds: inspectedCandidate.aimOffsetYds,
+        pin: pinEstimate,
+      })
+    : null
+  const playerFacingAim = aimDescriptor?.text
+    ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
+  const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
 
   useEffect(() => {
     setInspectedAimOffset(null)
@@ -967,7 +898,6 @@ export default function LiveCaddiePage() {
           <div className="live-caddie-secondary-context">
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
@@ -1039,10 +969,11 @@ export default function LiveCaddiePage() {
 
                   <div className="live-club-hero">{displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
-                    {viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line'}
+                    {playerFacingAim}
                   </div>
                   <p className="live-decision-reason">
-                    {inspectedCandidate?.decisionReason
+                    {aimContext
+                      ?? inspectedCandidate?.decisionReason
                       ?? viewedEvaluation?.decisionReason
                       ?? (evaluationPending
                         ? 'Looper is calculating the club, aim and next-shot value in the background.'
@@ -1104,7 +1035,7 @@ export default function LiveCaddiePage() {
                   <div>
                     <span className="live-kicker">SHOT MAP</span>
                     <h2>{displayedClub
-                      ? `${displayedClub} · ${viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'no modeled line'}`
+                      ? `${displayedClub} · ${viewedEvaluation ? playerFacingAim : 'no modeled line'}`
                       : evaluationPending
                         ? 'Calculating recommendation…'
                         : 'Waiting for recommendation'}</h2>
