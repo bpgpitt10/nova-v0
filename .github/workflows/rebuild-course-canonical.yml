@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 35
 
     steps:
-      - name: Checkout course branch with history
+      - name: Checkout triggering import request with history
         uses: actions/checkout@v4
         with:
-          ref: web-course-importer-current-lineage-v1
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Read rebuild request
@@ -110,7 +110,24 @@ jobs:
             echo 'No course import changes to commit.'
             exit 0
           fi
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "build(course): one-shot import ${COURSE_SLUG}"
-          git push origin HEAD:web-course-importer-current-lineage-v1
+
+          # A source/test commit can land while a long import is running. Replay
+          # the generated course commit on the latest branch head instead of
+          # reporting a false import failure because of a non-fast-forward push.
+          for ATTEMPT in 1 2 3; do
+            git fetch origin web-course-importer-current-lineage-v1
+            if git rebase origin/web-course-importer-current-lineage-v1 && \
+               git push origin HEAD:web-course-importer-current-lineage-v1; then
+              exit 0
+            fi
+            git rebase --abort || true
+            echo "Publish attempt ${ATTEMPT} raced with another branch update; retrying."
+            sleep 2
+          done
+
+          echo 'Canonical import completed and validated but could not publish after 3 race-safe attempts.' >&2
+          exit 1
