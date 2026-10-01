@@ -3,30 +3,36 @@
   "courseName": "FarmLinks at Pursell Farms",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-10-01T12:15:05.181708Z",
+    "evaluatedAt": "2026-10-01T12:23:19.972621Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "reported-geometry-error",
+    "reason": "final-prove-one-shot-importer",
     "usedNetworkForOsm": true
   },
   "package": {
     "builderFingerprintSha256": "2253fffe6b509e2afc53a5c2df5b3d46fb52e83d9b5e9c0c308eb7ed7e411668",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-10-01T12:15:05.181708Z",
-    "configPath": "/home/runner/work/nova-v0/nova-v0/config/course-geometry/farmlinks-v1.json",
+    "builtAt": "2026-10-01T12:23:19.972621Z",
+    "configPath": "config/course-geometry/farmlinks-v1.json",
     "configSha256": "f11ea3140b97c5f6248f1deaf351db480482d052743c00ccb600b987c17f75c5",
     "greenDetail": {
       "marginYds": 12.0,
       "schemaVersion": "looper-course-green-detail-v1",
-      "sha256": "63e5705610ca9244dc43bb3af9601a011511469013e58724bc6dd65d4ba73f51",
+      "sha256": "a6b1a040e8bc12ffc2fc15b652a3ecee31b7d71ab76aebc69e4271a7044bdd06",
       "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
       "spacingYds": 1.0
     },
-    "path": "/home/runner/work/nova-v0/nova-v0/public/course-geometry/farmlinks/course-v1.json",
+    "path": "public/course-geometry/farmlinks/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "5e5fda81c863f55038645ee1a1e2becb6b7119d9907ae57a1fb70f7dcbce13ce",
-    "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
+    "sha256": "b8534040f1b0cb20e58adf2be3aae7bc4b731506a2e350e1acca55c2c5872f0a",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "sourceProvider": "USGS 3DEP",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -51,11 +57,11 @@
       "id": 1054726077,
       "type": "way"
     },
-    "fetchedAt": "2026-10-01T12:15:05.181708Z",
+    "fetchedAt": "2026-10-01T12:23:19.972621Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-10-01T12:15:05.181708Z",
+    "lastCheckedAt": "2026-10-01T12:23:19.972621Z",
     "provider": "openstreetmap-core-map",
-    "snapshotPath": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/farmlinks/osm-snapshot.json",
+    "snapshotPath": "artifacts/course-geometry/farmlinks/osm-snapshot.json",
     "snapshotSha256": "1eaae4212dc0b3e123cc34c65dbd2c43d89ecc0fbbe3625da8aa0ac130088330"
   }
 }

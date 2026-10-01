@@ -10,7 +10,7 @@
   "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
   "exportResolutionMeters": 1.0,
   "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9621267.987%2C3910511.044%2C-9619229.462%2C3913233.407&bboxSR=3857&imageSR=3857&size=2039%2C2723&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
-  "fetchedAt": "2026-10-01T12:15:10.405683Z",
+  "fetchedAt": "2026-10-01T12:23:25.497056Z",
   "height": 2723,
   "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
   "provider": "USGS 3DEP",
