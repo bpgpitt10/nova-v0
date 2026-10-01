@@ -36,6 +36,15 @@ def finite_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and math.isfinite(float(value))
 
 
+def valid_latlon(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) >= 2
+        and finite_number(value[0])
+        and finite_number(value[1])
+    )
+
+
 def validate_grid(hole_number: int, raw: dict[str, Any], package_nodata: int) -> list[str]:
     errors: list[str] = []
     grid = raw.get("grid") or {}
@@ -148,8 +157,11 @@ def main() -> int:
             if not greens:
                 errors.append(f"H{hole_number}: course package has no green polygon")
             frame = course_hole.get("coordinateFrame") or {}
-            if not frame.get("selectedTeeLatLon") or not frame.get("targetGreenLatLon"):
-                errors.append(f"H{hole_number}: course package is missing tee/green geodetic anchors")
+            anchor = frame.get("anchorLatLon") or frame.get("selectedTeeLatLon")
+            if not valid_latlon(anchor) or not finite_number(frame.get("headingDegreesTrue")):
+                errors.append(f"H{hole_number}: course package is missing anchor geodetic frame/true heading")
+            if not valid_latlon(frame.get("targetGreenLatLon")):
+                errors.append(f"H{hole_number}: course package is missing target-green geodetic anchor")
 
     print(json.dumps({
         "schemaVersion": schema,
