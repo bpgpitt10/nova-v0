@@ -64,11 +64,16 @@ const hole1 = record(coursePackage.holes['1'])
 const hole1Candidates = Array.isArray(hole1.teeCandidates) ? hole1.teeCandidates.map(record) : []
 requireValue(hole1Candidates.length > 0, `${config.courseId} H1: no teeCandidates; course cannot enter Round Setup`)
 
-const teeSets = hole1Candidates.map((candidate, index) => {
-  const teeSet = text(candidate.teeSet)
-  requireValue(Boolean(teeSet), `${config.courseId} H1: teeCandidate ${index + 1} is missing canonical teeSet`)
-  return teeSet
-})
+// The explicit teeSetContract is the course-wide ordering authority. Candidate
+// arrays are intentionally stored in physical/front-to-back order, so deriving
+// the product tee-set order from candidate array order would be incorrect.
+const hole1Contract = record(hole1.teeSetContract)
+requireValue(hole1Contract.version === 1, `${config.courseId} H1: missing teeSetContract v1`)
+requireValue(hole1Contract.sourceHole === 1, `${config.courseId} H1: teeSetContract must be sourced from Hole 1`)
+const teeSets = Array.isArray(hole1Contract.teeSets)
+  ? hole1Contract.teeSets.map(text).filter(Boolean)
+  : []
+requireValue(teeSets.length > 0, `${config.courseId} H1: teeSetContract exposes no canonical tee sets`)
 const normalizedTeeSets = teeSets.map(normalize)
 requireValue(new Set(normalizedTeeSets).size === normalizedTeeSets.length, `${config.courseId} H1: canonical teeSet values are not unique`)
 
@@ -89,11 +94,14 @@ for (const holeNumber of holeNumbers) {
     const candidate = candidates[index]
     requireValue(finitePoint(candidate.coursePoint), `${config.courseId} H${holeNumber}: teeCandidate ${index + 1} has no finite coursePoint`)
     if (candidate.selectedAnchor === true) selectedAnchors += 1
+    if (holeNumber === 1) {
+      requireValue(Boolean(text(candidate.teeSet)), `${config.courseId} H1: teeCandidate ${index + 1} is missing its canonical teeSet`)
+    }
   }
   requireValue(selectedAnchors === 1, `${config.courseId} H${holeNumber}: expected exactly one selectedAnchor teeCandidate, found ${selectedAnchors}`)
 
-  // This is the core product invariant: every tee set that Round Setup exposes
-  // from Hole 1 must resolve to one and only one physical candidate on every
+  // This is the core product invariant: every tee set Round Setup exposes from
+  // the H1 contract must resolve to one and only one physical candidate on every
   // hole. A candidate may carry multiple aliases when several course-wide tee
   // sets share one physical box on a hole with fewer tee polygons.
   for (let teeIndex = 0; teeIndex < teeSets.length; teeIndex += 1) {
@@ -111,7 +119,7 @@ for (const holeNumber of holeNumbers) {
   const declaredSets = Array.isArray(contract.teeSets) ? contract.teeSets.map(normalize) : []
   requireValue(
     JSON.stringify(declaredSets) === JSON.stringify(normalizedTeeSets),
-    `${config.courseId} H${holeNumber}: teeSetContract does not match Hole 1 canonical tee sets`,
+    `${config.courseId} H${holeNumber}: teeSetContract does not match the Hole 1 canonical tee-set ordering`,
   )
 
   summaries.push({
