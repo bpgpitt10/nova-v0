@@ -1,5 +1,5 @@
 {
   "courseSlug": "farmlinks",
   "configPath": "config/course-geometry/farmlinks-v1.json",
-  "reason": "new-course-worldcover-context-validation"
+  "reason": "prove-zero-to-complete-one-shot-import"
 }
