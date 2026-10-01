@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
-"""V6 course compiler helpers: preserve every route-owned OSM tee candidate.
+"""V6 course compiler helpers: preserve and normalize route-owned OSM tees.
 
 V5 remains authoritative for hole ownership, route orientation, selected anchor,
-and playable geometry. V6 adds metadata only: the generated hole model retains
-all route-owned tee boxes in the same local coordinate frame as the hole.
+and playable geometry. V6 turns route-owned tee geometry into a COURSE-WIDE tee
+contract that the product can actually use:
+
+- Hole 1 defines the selectable tee-set slots for the course.
+- Real OSM tee/name/ref/colour labels are preserved when they uniquely identify
+  a Hole 1 tee.
+- Geometry-only tees receive deterministic back-to-front labels.
+- Every selectable Hole 1 tee set is mapped to exactly one tee candidate on
+  every hole. When a hole has fewer physical tee boxes, multiple course tee-set
+  aliases may intentionally resolve to the same physical box.
+- No course-specific mapping table or UI patch is required.
+
+The import validator is responsible for refusing any package where this
+course-wide invariant is not satisfied.
 """
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 import build_osm_course_package as base
@@ -52,6 +65,22 @@ def _tee_label(tags: dict[str, str]) -> str | None:
     return None
 
 
+def _normalize_label(value: str | None) -> str:
+    return " ".join((value or "").strip().lower().split())
+
+
+def _fallback_tee_label(index: int, count: int) -> str:
+    """Stable user-facing fallback when source data has no tee identity."""
+    number = index + 1
+    if count == 1:
+        return "Tee 1"
+    if index == 0:
+        return "Tee 1 (Back)"
+    if index == count - 1:
+        return f"Tee {number} (Front)"
+    return f"Tee {number}"
+
+
 def _candidate_polygons(
     feature: dict[str, Any],
     route_origin: tuple[float, float],
@@ -72,20 +101,15 @@ def _candidate_polygons(
     return polygons
 
 
-def model_for_hole(
+def _owned_tee_context(
     hole_number: int,
     config: dict[str, Any],
     features: list[dict[str, Any]],
     hole_routes: dict[int, dict[str, Any]],
-):
-    """Return the unchanged V5 model plus every confidently owned tee candidate."""
-    model, diagnostic = v5.model_for_hole(hole_number, config, features, hole_routes)
-
-    raw_route = hole_routes[hole_number]
+) -> dict[str, Any]:
     selection = config.get("selection") or {}
     tee_search_radius = float(selection.get("teeStartRadiusYards", v5.DEFAULT_TEE_SEARCH_RADIUS_YARDS))
-    simplify_yards = float(selection.get("geometrySimplifyYards", v4.DEFAULT_SIMPLIFY_YARDS))
-
+    raw_route = hole_routes[hole_number]
     greens = [feature for feature in features if feature["kind"] == "green"]
     tees = [feature for feature in features if feature["kind"] == "tee"]
     route, target_green, *_ = v5.orient_route_to_green(raw_route, greens)
@@ -96,29 +120,179 @@ def model_for_hole(
         hole_routes,
         tee_search_radius,
     )
-
     route_origin, forward, right, _ = v5.basis_for_route_start(route, target_green)
     anchor_offset = (
         base.to_hole_local(selected_tee["centroid"], route_origin, forward, right)
         if selected_tee is not None
         else (0.0, 0.0)
     )
-    selected_osm_id = selected_tee.get("osm_id") if selected_tee is not None else None
 
-    tee_candidates: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for item in nearby_candidates:
         if not item["ownedByCurrentHole"]:
             continue
         feature = item["feature"]
         tags = _string_tags(feature.get("source_tags"))
+        records.append({
+            "item": item,
+            "feature": feature,
+            "tags": tags,
+            "sourceLabel": _tee_label(tags),
+            "teeToGreenCentroidYards": base.haversine_yards(feature["centroid"], target_green["centroid"]),
+        })
+
+    # Back-to-front is the canonical positional order. OSM IDs provide a stable
+    # tie-break without introducing course-specific knowledge.
+    records.sort(key=lambda record: (
+        -float(record["teeToGreenCentroidYards"]),
+        str(record["feature"].get("osm_id")),
+    ))
+    return {
+        "route": route,
+        "targetGreen": target_green,
+        "selectedTee": selected_tee,
+        "routeOrigin": route_origin,
+        "forward": forward,
+        "right": right,
+        "anchorOffset": anchor_offset,
+        "records": records,
+    }
+
+
+def _canonical_tee_slots(
+    config: dict[str, Any],
+    features: list[dict[str, Any]],
+    hole_routes: dict[int, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build the course's selectable tee identities from Hole 1.
+
+    Hole 1 is already the Round Setup discovery hole, so making it the source of
+    truth prevents the UI, importer and runtime from inventing different tee-set
+    universes.
+    """
+    records = _owned_tee_context(1, config, features, hole_routes)["records"]
+    source_labels = [_normalize_label(record.get("sourceLabel")) for record in records]
+    counts = Counter(label for label in source_labels if label)
+    used: set[str] = set()
+    slots: list[dict[str, Any]] = []
+
+    for index, record in enumerate(records):
+        source_label = record.get("sourceLabel")
+        source_key = _normalize_label(source_label)
+        use_source = bool(source_key and counts[source_key] == 1 and source_key not in used)
+        label = str(source_label).strip() if use_source else _fallback_tee_label(index, len(records))
+        normalized = _normalize_label(label)
+        if normalized in used:
+            # Extremely defensive collision handling (for example a source tee
+            # literally named "Tee 1 (Back)"). The generated identity remains
+            # deterministic and unique.
+            base_label = _fallback_tee_label(index, len(records))
+            suffix = 2
+            label = base_label
+            normalized = _normalize_label(label)
+            while normalized in used:
+                label = f"{base_label} #{suffix}"
+                normalized = _normalize_label(label)
+                suffix += 1
+        used.add(normalized)
+        slots.append({
+            "index": index,
+            "label": label,
+            "normalized": normalized,
+            "sourceKey": source_key if use_source else None,
+        })
+    return slots
+
+
+def _slot_assignments(
+    records: list[dict[str, Any]],
+    slots: list[dict[str, Any]],
+) -> dict[int, list[str]]:
+    """Map every course-wide tee slot to exactly one physical tee on this hole."""
+    assignments: dict[int, list[str]] = {index: [] for index in range(len(records))}
+    if not records or not slots:
+        return assignments
+
+    source_owners: dict[str, list[int]] = {}
+    for index, record in enumerate(records):
+        source_key = _normalize_label(record.get("sourceLabel"))
+        if source_key:
+            source_owners.setdefault(source_key, []).append(index)
+
+    slot_denominator = max(1, len(slots) - 1)
+    record_denominator = max(1, len(records) - 1)
+
+    for slot_index, slot in enumerate(slots):
+        exact = source_owners.get(slot.get("sourceKey") or "", []) if slot.get("sourceKey") else []
+        if len(exact) == 1:
+            owner = exact[0]
+        else:
+            slot_position = slot_index / slot_denominator if len(slots) > 1 else 0.0
+            owner = min(
+                range(len(records)),
+                key=lambda record_index: (
+                    abs((record_index / record_denominator if len(records) > 1 else 0.0) - slot_position),
+                    record_index,
+                ),
+            )
+        assignments[owner].append(slot["label"])
+    return assignments
+
+
+def model_for_hole(
+    hole_number: int,
+    config: dict[str, Any],
+    features: list[dict[str, Any]],
+    hole_routes: dict[int, dict[str, Any]],
+):
+    """Return the V5 model plus course-wide runtime tee identities."""
+    model, diagnostic = v5.model_for_hole(hole_number, config, features, hole_routes)
+
+    selection = config.get("selection") or {}
+    simplify_yards = float(selection.get("geometrySimplifyYards", v4.DEFAULT_SIMPLIFY_YARDS))
+    context = _owned_tee_context(hole_number, config, features, hole_routes)
+    records = context["records"]
+    slots = _canonical_tee_slots(config, features, hole_routes)
+    assignments = _slot_assignments(records, slots)
+
+    route_origin = context["routeOrigin"]
+    forward = context["forward"]
+    right = context["right"]
+    anchor_offset = context["anchorOffset"]
+    selected_tee = context["selectedTee"]
+    selected_osm_id = selected_tee.get("osm_id") if selected_tee is not None else None
+
+    tee_candidates: list[dict[str, Any]] = []
+    for record_index, record in enumerate(records):
+        item = record["item"]
+        feature = record["feature"]
+        tags = record["tags"]
         local_before_rebase = base.to_hole_local(feature["centroid"], route_origin, forward, right)
         course_point = v5.shifted_point(local_before_rebase, anchor_offset)
-        tee_to_green = base.haversine_yards(feature["centroid"], target_green["centroid"])
         color = tags.get("colour") or tags.get("color")
+        aliases = assignments.get(record_index, [])
+
+        # The primary teeSet is the course-wide slot closest to this physical
+        # tee's own back-to-front position; teeAliases carry any additional slots
+        # that intentionally share this box on holes with fewer tee polygons.
+        primary = None
+        if aliases:
+            slot_index_by_label = {slot["label"]: slot["index"] for slot in slots}
+            record_position = record_index / max(1, len(records) - 1) if len(records) > 1 else 0.0
+            primary = min(
+                aliases,
+                key=lambda label: (
+                    abs((slot_index_by_label[label] / max(1, len(slots) - 1) if len(slots) > 1 else 0.0) - record_position),
+                    slot_index_by_label[label],
+                ),
+            )
+        ordered_aliases = ([primary] if primary else []) + [alias for alias in aliases if alias != primary]
+
         candidate = {
             "osmId": feature.get("osm_id"),
             "osmType": feature.get("osm_type"),
-            "teeSet": tags.get("tee"),
+            "teeSet": primary,
+            "teeAliases": ordered_aliases,
             "name": tags.get("name"),
             "ref": tags.get("ref"),
             "color": color,
@@ -129,7 +303,7 @@ def model_for_hole(
                 round(feature["centroid"][1], 8),
             ],
             "coursePoint": [round(course_point[0], 3), round(course_point[1], 3)],
-            "teeToGreenCentroidYards": round(tee_to_green, 1),
+            "teeToGreenCentroidYards": round(float(record["teeToGreenCentroidYards"]), 1),
             "startPolygonGapYards": round(item["startPolygonGapYards"], 1),
             "currentRouteGapYards": round(item["currentRouteGapYards"], 1),
             "selectedAnchor": feature.get("osm_id") == selected_osm_id,
@@ -144,16 +318,26 @@ def model_for_hole(
         }
         tee_candidates.append(candidate)
 
+    # Preserve the package's historical front-to-back candidate ordering while
+    # teeSet/teeAliases carry the course-wide identity independently.
     tee_candidates.sort(key=lambda candidate: (
         candidate["teeToGreenCentroidYards"],
         str(candidate["osmId"]),
     ))
     model["teeCandidates"] = tee_candidates
+    model["teeSetContract"] = {
+        "version": 1,
+        "sourceHole": 1,
+        "mapping": "source-identity-then-normalized-back-to-front-position",
+        "teeSets": [slot["label"] for slot in slots],
+    }
     diagnostic["ownedTeeCandidateCount"] = len(tee_candidates)
+    diagnostic["courseTeeSets"] = [slot["label"] for slot in slots]
     diagnostic["ownedTeeCandidates"] = [
         {
             "osmId": candidate["osmId"],
             "teeSet": candidate["teeSet"],
+            "teeAliases": candidate["teeAliases"],
             "label": candidate["label"],
             "coursePoint": candidate["coursePoint"],
             "teeToGreenCentroidYards": candidate["teeToGreenCentroidYards"],
