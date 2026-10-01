@@ -1,5 +1,5 @@
 {
   "courseSlug": "farmlinks",
   "configPath": "config/course-geometry/farmlinks-v1.json",
-  "reason": "prove-hardened-zero-to-complete-one-shot-import"
+  "reason": "final-prove-one-shot-importer"
 }
