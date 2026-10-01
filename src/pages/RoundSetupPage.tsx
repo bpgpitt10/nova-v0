@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   GREYWOLF_COURSE_ID,
   courseRegistry,
@@ -20,13 +20,14 @@ import {
 } from '../liveCaddie/roundRuntime'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
 
-const teeLabel = (candidate: CourseTeeCandidate) =>
-  candidate.teeSet
-  ?? candidate.color
-  ?? candidate.label
-  ?? candidate.name
-  ?? candidate.ref
-  ?? null
+const candidateTeeValues = (candidate: CourseTeeCandidate) => [
+  candidate.teeSet,
+  ...(candidate.teeAliases ?? []),
+  candidate.color,
+  candidate.label,
+  candidate.name,
+  candidate.ref,
+].filter((value): value is string => Boolean(value?.trim()))
 
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
 
@@ -56,14 +57,24 @@ export default function RoundSetupPage() {
     void loadCourseTeeCandidates(courseId, 1)
       .then((candidates) => {
         if (cancelled) return
-        const labels = [...new Set(candidates.map(teeLabel).filter((value): value is string => Boolean(value)))]
-          .sort((left, right) => left.localeCompare(right))
+        const labels = [...new Set(candidates.flatMap(candidateTeeValues))]
+          .sort((left, right) => {
+            const preferred = ['Grey', 'Black', 'Blue', 'Gold', 'White', 'Green']
+            const leftIndex = preferred.findIndex((value) => normalize(value) === normalize(left))
+            const rightIndex = preferred.findIndex((value) => normalize(value) === normalize(right))
+            if (leftIndex >= 0 || rightIndex >= 0) {
+              if (leftIndex < 0) return 1
+              if (rightIndex < 0) return -1
+              return leftIndex - rightIndex
+            }
+            return left.localeCompare(right)
+          })
         setTeeOptions(labels)
         if (labels.length > 0 && !labels.some((label) => normalize(label) === normalize(teeSet))) {
           const saved = loadRoundTeeSelection(courseId)
           const next = saved?.teeSet && labels.some((label) => normalize(label) === normalize(saved.teeSet))
             ? saved.teeSet
-            : labels[0]
+            : labels.find((label) => normalize(label) === 'blue') ?? labels[0]
           setTeeSet(next)
         }
       })
@@ -92,13 +103,13 @@ export default function RoundSetupPage() {
 
       const geometry = await loadCourseHoleGeometry(courseId, 1)
       const exactMatches = (geometry.teeCandidates ?? []).filter((candidate) =>
-        [candidate.teeSet, candidate.color, candidate.label, candidate.name, candidate.ref]
-          .some((value) => value && normalize(value) === selection.normalizedTeeSet),
+        candidateTeeValues(candidate)
+          .some((value) => normalize(value) === selection.normalizedTeeSet),
       )
       if (exactMatches.length !== 1) {
         throw new Error(
           exactMatches.length === 0
-            ? `${selection.teeSet} is not mapped to a unique Hole 1 tee yet.`
+            ? `${selection.teeSet} does not have a usable Hole 1 tee assumption yet.`
             : `${selection.teeSet} maps to multiple Hole 1 tee candidates; Looper will not guess.`,
         )
       }
@@ -122,14 +133,14 @@ export default function RoundSetupPage() {
     setActiveRound(null)
   }
 
-  const shell: React.CSSProperties = {
+  const shell: CSSProperties = {
     minHeight: '100vh',
     background: '#0b120d',
     color: '#f5f7f4',
     padding: '48px 24px',
     boxSizing: 'border-box',
   }
-  const card: React.CSSProperties = {
+  const card: CSSProperties = {
     width: 'min(620px, 100%)',
     margin: '0 auto',
     background: '#111c14',
@@ -138,7 +149,7 @@ export default function RoundSetupPage() {
     padding: 28,
     boxShadow: '0 18px 54px rgba(0,0,0,0.28)',
   }
-  const input: React.CSSProperties = {
+  const input: CSSProperties = {
     width: '100%',
     minHeight: 46,
     marginTop: 8,
@@ -150,7 +161,7 @@ export default function RoundSetupPage() {
     boxSizing: 'border-box',
     fontSize: 15,
   }
-  const primary: React.CSSProperties = {
+  const primary: CSSProperties = {
     minHeight: 46,
     border: '1px solid #74d49a',
     borderRadius: 9,
@@ -167,12 +178,12 @@ export default function RoundSetupPage() {
       <main style={shell}>
         <section style={card}>
           <div style={{ color: '#8ed3a8', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' }}>
-            ROUND ARMED
+            {activeRound.phase === 'armed' ? 'ROUND ARMED' : 'ROUND ACTIVE'}
           </div>
           <h1 style={{ margin: '8px 0 6px', fontSize: 30 }}>{activeCourse.name}</h1>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{activeRound.teeSet} tees</div>
           <p style={{ color: '#aeb9b0', lineHeight: 1.55, marginTop: 18 }}>
-            Looper is starting on Hole 1, Shot 1 using the mapped {activeRound.teeSet} tee. Set the same course and tee in GSPro. Looper will trust this selection now and use completed-shot GSPro data as validation evidence later.
+            Looper is using the mapped {activeRound.teeSet} tee assumption for this round. Set the same course and tee in GSPro. Looper will keep that tee identity authoritative and use completed-shot GSPro data as validation evidence later.
           </p>
           <div style={{ display: 'grid', gap: 8, margin: '22px 0', padding: 16, borderRadius: 10, background: '#0d1710', border: '1px solid #26372b' }}>
             <div><strong>Course:</strong> {activeCourse.name}</div>
@@ -230,10 +241,14 @@ export default function RoundSetupPage() {
             disabled={loadingTees || teeOptions.length === 0}
             style={input}
           >
-            {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading tees…' : 'No mapped tees'}</option> : null}
+            {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading tee assumptions…' : 'No mapped tee assumptions'}</option> : null}
             {teeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
+
+        <div style={{ margin: '-10px 0 20px', color: '#7f8d82', fontSize: 12, lineHeight: 1.45 }}>
+          Greywolf tee identities are provisional mappings from the cached tee coordinates and course scorecard. Your explicit selection wins; GSPro completed shots will be used to validate those mappings over time.
+        </div>
 
         {error ? (
           <div style={{ marginBottom: 18, padding: 12, borderRadius: 9, border: '1px solid rgba(248, 113, 113, 0.45)', background: 'rgba(127, 29, 29, 0.18)', color: '#fecaca' }}>
