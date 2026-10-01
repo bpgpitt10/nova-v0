@@ -19,11 +19,13 @@ from typing import Any
 
 import numpy as np
 import rasterio
+from pyproj import Geod
 from rasterio.warp import transform as transform_crs
 
 METERS_TO_YARDS = 1.0936133
 NODATA_ENCODED = 65535
 DEFAULT_SPACING_YDS = 10.0
+GEOD = Geod(ellps="WGS84")
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -37,27 +39,30 @@ def finite(value: Any) -> bool:
 def hole_basis_in_dem_crs(ds: rasterio.DatasetReader, hole: dict[str, Any]):
     frame = hole.get("coordinateFrame") or {}
     anchor_ll = frame.get("anchorLatLon") or frame.get("selectedTeeLatLon")
-    green_ll = frame.get("targetGreenLatLon")
+    heading = frame.get("headingDegreesTrue")
     if not (
         isinstance(anchor_ll, list) and len(anchor_ll) >= 2
-        and isinstance(green_ll, list) and len(green_ll) >= 2
+        and finite(anchor_ll[0]) and finite(anchor_ll[1])
+        and finite(heading)
     ):
-        raise ValueError("hole coordinateFrame is missing anchor/green geodetic coordinates")
+        raise ValueError("hole coordinateFrame is missing anchorLatLon/headingDegreesTrue")
     if ds.crs is None:
         raise ValueError("DEM has no CRS")
 
+    anchor_lat = float(anchor_ll[0])
+    anchor_lon = float(anchor_ll[1])
+    forward_lon, forward_lat, _ = GEOD.fwd(anchor_lon, anchor_lat, float(heading), 20.0)
     xs, ys = transform_crs(
         "EPSG:4326",
         ds.crs,
-        [float(anchor_ll[1]), float(green_ll[1])],
-        [float(anchor_ll[0]), float(green_ll[0])],
+        [anchor_lon, forward_lon],
+        [anchor_lat, forward_lat],
     )
     anchor = np.asarray([xs[0], ys[0]], dtype=float)
-    green = np.asarray([xs[1], ys[1]], dtype=float)
-    delta = green - anchor
+    delta = np.asarray([xs[1] - xs[0], ys[1] - ys[0]], dtype=float)
     length = float(np.linalg.norm(delta))
     if length <= 1e-6:
-        raise ValueError("anchor/green projected coordinates are degenerate")
+        raise ValueError("projected heading basis is degenerate")
     forward = delta / length
     right = np.asarray([forward[1], -forward[0]], dtype=float)
     return anchor, forward, right
