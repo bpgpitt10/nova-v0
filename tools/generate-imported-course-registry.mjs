@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const artifactRoot = path.join(repoRoot, 'artifacts/course-geometry')
 const outputPath = path.join(repoRoot, 'src/courseGeometry/generatedImportedCourseRegistry.ts')
+const includePending = process.argv.includes('--include-pending')
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'))
 const receipts = fs.existsSync(artifactRoot)
@@ -27,7 +28,9 @@ const entries = []
 
 for (const { slug, receipt, receiptPath } of receipts) {
   if (receipt.schemaVersion !== 'looper-course-runtime-ready-v1') fail(`${slug}: invalid runtime-ready receipt schema`)
-  if (receipt.runtimeReady !== true) fail(`${slug}: receipt exists but runtimeReady is not true`)
+  const ready = receipt.runtimeReady === true
+  const pending = receipt.staticReady === true && receipt.runtimeReady === false
+  if (!ready && !(includePending && pending)) continue
   if (receipt.slug !== slug) fail(`${slug}: receipt slug mismatch`)
   if (typeof receipt.courseId !== 'string' || !receipt.courseId) fail(`${slug}: missing courseId`)
   if (typeof receipt.courseName !== 'string' || !receipt.courseName) fail(`${slug}: missing courseName`)
@@ -49,8 +52,8 @@ for (const { slug, receipt, receiptPath } of receipts) {
     slug,
     gsproAliases: [...new Set(receipt.gsproAliases.map((value) => String(value).trim()).filter(Boolean))],
     staticPackageUrl: `/course-geometry/${slug}/course-v1.json`,
-    status: 'validated',
-    packageStatus: 'ready',
+    status: ready ? 'validated' : 'validation',
+    packageStatus: ready ? 'ready' : 'validation',
     packageVersion: 'v1',
     packageCacheStatus: 'cached',
     osmCacheStatus: 'cached',
@@ -63,8 +66,8 @@ entries.sort((a, b) => a.name.localeCompare(b.name))
 const lines = [
   '// GENERATED FILE. Do not hand-edit.',
   '// Source of truth: artifacts/course-geometry/*/runtime-ready-v1.json',
-  '// A course appears here only after the canonical importer passes the static',
-  '// import contract and the generic runtime loader/tee smoke test.',
+  '// A ready course appears here only after the canonical importer passes the',
+  '// static import contract and the generic runtime loader/tee smoke test.',
   '',
   'export const generatedImportedCourseRegistry = [',
 ]
@@ -77,8 +80,8 @@ for (const entry of entries) {
   lines.push(`    slug: ${quote(entry.slug)},`)
   lines.push(`    gsproAliases: ${JSON.stringify(entry.gsproAliases)},`)
   lines.push(`    staticPackageUrl: ${quote(entry.staticPackageUrl)},`)
-  lines.push("    status: 'validated',")
-  lines.push("    packageStatus: 'ready',")
+  lines.push(`    status: ${quote(entry.status)},`)
+  lines.push(`    packageStatus: ${quote(entry.packageStatus)},`)
   lines.push("    packageVersion: 'v1',")
   lines.push("    packageCacheStatus: 'cached',")
   lines.push("    osmCacheStatus: 'cached',")
@@ -91,4 +94,4 @@ lines.push('')
 const next = lines.join('\n')
 const previous = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : null
 if (previous !== next) fs.writeFileSync(outputPath, next, 'utf8')
-console.log(`[course-registry] generated ${entries.length} canonical imported course registration(s).`)
+console.log(`[course-registry] generated ${entries.length} canonical imported course registration(s)${includePending ? ' (including pending runtime validation)' : ''}.`)
