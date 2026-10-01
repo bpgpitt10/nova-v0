@@ -33,6 +33,7 @@ import { deactivateLocalUserScope } from './lib/localUserScope.ts'
 import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.ts'
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
+import { startLiveCaddieRoundTeeValidator } from './liveCaddie/roundTeeValidator.ts'
 import {
   loadActiveLiveCaddieRound,
   startLiveCaddieRound,
@@ -128,7 +129,9 @@ function LiveGsproRoundArchiveBridge() {
   useEffect(() => {
     const stopArchive = startLiveGsproCourseRoundArchiver()
     const stopLineage = startLiveCaddieShotLineage()
+    const stopTeeValidator = startLiveCaddieRoundTeeValidator()
     return () => {
+      stopTeeValidator()
       stopLineage()
       stopArchive()
     }
