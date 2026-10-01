@@ -6,6 +6,10 @@ on:
       - web-course-importer-current-lineage-v1
     paths:
       - 'tools/build_course_green_detail.py'
+      - 'tools/build_course_terrain.py'
+      - 'tools/fetch_course_dem.py'
+      - 'tools/import_course_canonical.py'
+      - 'tools/compose_course_package_canonical.py'
       - 'tools/validate_course_green_detail.py'
       - 'tools/audit_course_green_surface_quality.py'
       - 'tools/update_course_cache_after_rebuild.py'
@@ -30,6 +34,10 @@ jobs:
         run: |
           python -m py_compile \
             tools/build_course_green_detail.py \
+            tools/build_course_terrain.py \
+            tools/fetch_course_dem.py \
+            tools/import_course_canonical.py \
+            tools/compose_course_package_canonical.py \
             tools/validate_course_green_detail.py \
             tools/audit_course_green_surface_quality.py \
             tools/update_course_cache_after_rebuild.py
@@ -52,8 +60,11 @@ jobs:
               holes[str(number)] = {
                   'hole': number,
                   'coordinateFrame': {
+                      'origin': 'selected-tee',
+                      'anchorLatLon': tee,
                       'selectedTeeLatLon': tee,
                       'targetGreenLatLon': green,
+                      'headingDegreesTrue': 0.0,
                   },
                   'surfaces': {
                       'green': [[[-12, 95], [12, 95], [12, 125], [-12, 125]]],
