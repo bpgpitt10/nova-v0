@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
-"""Fetch one georeferenced DEM covering an entire Looper course package.
+"""Acquire one georeferenced DEM covering an entire Looper course package.
 
-The canonical importer owns elevation acquisition. For U.S. courses the default
-provider is the USGS 3DEP bare-earth ImageServer. The fetch extent is derived
-from every hole's packaged local view bounds so a fresh course import does not
-require a hand-authored DEM URL or a second terrain pass.
+This is the terrain-provider seam for the canonical course importer. Runtime
+terrain/green builders consume the same normalized GeoTIFF regardless of where
+it came from.
+
+Supported sources:
+- ``usgs-3dep``: automatic U.S. bare-earth acquisition from the National Map.
+- ``geotiff-url``: any directly downloadable georeferenced GeoTIFF.
+- ``geotiff-file``: an already available georeferenced GeoTIFF.
+
+Provider-specific acquisition stops here. No downstream Looper code is allowed
+to know which provider supplied a course.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import shutil
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -35,6 +43,19 @@ def read_json(path: Path) -> dict[str, Any]:
 
 def finite(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def validate_tiff_payload(payload: bytes, label: str, content_type: str = "") -> None:
+    if len(payload) < 1024:
+        preview = payload[:500].decode("utf-8", errors="replace")
+        raise SystemExit(f"{label} returned an unexpectedly small payload: {preview}")
+    if payload[:2] not in {b"II", b"MM"} and "tiff" not in content_type.lower():
+        preview = payload[:500].decode("utf-8", errors="replace")
+        raise SystemExit(f"{label} did not return TIFF data ({content_type}): {preview}")
 
 
 def course_extent_3857(course: dict[str, Any], margin_meters: float) -> tuple[float, float, float, float]:
@@ -82,6 +103,11 @@ def course_extent_3857(course: dict[str, Any], margin_meters: float) -> tuple[fl
     )
 
 
+def write_metadata(metadata_path: Path, metadata: dict[str, Any]) -> None:
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def fetch_usgs_3dep(
     course: dict[str, Any],
     output: Path,
@@ -121,18 +147,13 @@ def fetch_usgs_3dep(
     except Exception as exc:
         raise SystemExit(f"USGS 3DEP DEM fetch failed: {exc}") from exc
 
-    if len(payload) < 1024:
-        preview = payload[:500].decode("utf-8", errors="replace")
-        raise SystemExit(f"USGS 3DEP returned an unexpectedly small payload: {preview}")
-    if payload[:2] not in {b"II", b"MM"} and "tiff" not in content_type.lower():
-        preview = payload[:500].decode("utf-8", errors="replace")
-        raise SystemExit(f"USGS 3DEP did not return TIFF data ({content_type}): {preview}")
-
+    validate_tiff_payload(payload, "USGS 3DEP", content_type)
     output.write_bytes(payload)
     metadata = {
         "schemaVersion": "looper-course-dem-source-v1",
         "courseId": course.get("courseId"),
         "provider": "USGS 3DEP",
+        "providerKey": "usgs-3dep",
         "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
         "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
         "exportUrl": url,
@@ -143,14 +164,13 @@ def fetch_usgs_3dep(
         "bbox3857": [round(min_x, 3), round(min_y, 3), round(max_x, 3), round(max_y, 3)],
         "width": width,
         "height": height,
-        "fetchedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "fetchedAt": now_iso(),
         "note": (
             "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; "
             "the service selects the best available underlying 3DEP source for the location."
         ),
     }
-    metadata_path.parent.mkdir(parents=True, exist_ok=True)
-    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_metadata(metadata_path, metadata)
     print(json.dumps({
         "courseId": course.get("courseId"),
         "provider": metadata["provider"],
@@ -162,14 +182,93 @@ def fetch_usgs_3dep(
     }, indent=2, sort_keys=True))
 
 
+def fetch_geotiff_url(
+    course: dict[str, Any],
+    output: Path,
+    metadata_path: Path,
+    source_url: str,
+    source_resolution_meters: float,
+    dataset_name: str | None,
+) -> None:
+    request = urllib.request.Request(source_url, headers={"User-Agent": "LooperCourseImporter/1.0"})
+    output.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response:
+            payload = response.read()
+            content_type = response.headers.get("Content-Type", "")
+    except Exception as exc:
+        raise SystemExit(f"Configured GeoTIFF DEM fetch failed: {exc}") from exc
+    validate_tiff_payload(payload, "Configured GeoTIFF DEM", content_type)
+    output.write_bytes(payload)
+    write_metadata(metadata_path, {
+        "schemaVersion": "looper-course-dem-source-v1",
+        "courseId": course.get("courseId"),
+        "provider": "Configured GeoTIFF URL",
+        "providerKey": "geotiff-url",
+        "dataset": dataset_name or "Configured georeferenced DEM",
+        "sourceUrl": source_url,
+        "exportUrl": source_url,
+        "sourceResolutionMeters": source_resolution_meters,
+        "fetchedAt": now_iso(),
+        "note": "Provider-neutral DEM acquired through the canonical Looper terrain-provider seam.",
+    })
+    print(json.dumps({
+        "courseId": course.get("courseId"),
+        "provider": "Configured GeoTIFF URL",
+        "output": str(output),
+        "bytes": len(payload),
+        "sourceResolutionMeters": source_resolution_meters,
+    }, indent=2, sort_keys=True))
+
+
+def fetch_geotiff_file(
+    course: dict[str, Any],
+    output: Path,
+    metadata_path: Path,
+    source_file: Path,
+    source_resolution_meters: float,
+    dataset_name: str | None,
+) -> None:
+    if not source_file.exists() or not source_file.is_file():
+        raise SystemExit(f"Configured DEM file does not exist: {source_file}")
+    with source_file.open("rb") as handle:
+        header = handle.read(4)
+    if header[:2] not in {b"II", b"MM"}:
+        raise SystemExit(f"Configured DEM file is not a TIFF: {source_file}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source_file, output)
+    write_metadata(metadata_path, {
+        "schemaVersion": "looper-course-dem-source-v1",
+        "courseId": course.get("courseId"),
+        "provider": "Configured GeoTIFF File",
+        "providerKey": "geotiff-file",
+        "dataset": dataset_name or "Configured georeferenced DEM",
+        "sourceFile": str(source_file),
+        "sourceResolutionMeters": source_resolution_meters,
+        "fetchedAt": now_iso(),
+        "note": "Provider-neutral DEM supplied through the canonical Looper terrain-provider seam.",
+    })
+    print(json.dumps({
+        "courseId": course.get("courseId"),
+        "provider": "Configured GeoTIFF File",
+        "output": str(output),
+        "bytes": output.stat().st_size,
+        "sourceResolutionMeters": source_resolution_meters,
+    }, indent=2, sort_keys=True))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--course-package", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--metadata", type=Path, required=True)
-    parser.add_argument("--provider", default="usgs-3dep", choices=["usgs-3dep"])
+    parser.add_argument("--provider", default="usgs-3dep", choices=["usgs-3dep", "geotiff-url", "geotiff-file"])
     parser.add_argument("--resolution-meters", type=float, default=DEFAULT_RESOLUTION_METERS)
     parser.add_argument("--margin-meters", type=float, default=DEFAULT_MARGIN_METERS)
+    parser.add_argument("--source-url")
+    parser.add_argument("--source-file", type=Path)
+    parser.add_argument("--source-resolution-meters", type=float)
+    parser.add_argument("--dataset-name")
     args = parser.parse_args()
 
     if args.resolution_meters <= 0:
@@ -181,13 +280,34 @@ def main() -> int:
     if course.get("schemaVersion") != "looper-static-course-package-v1":
         raise SystemExit(f"Unsupported course package schema: {course.get('schemaVersion')!r}")
 
-    fetch_usgs_3dep(
-        course,
-        args.output,
-        args.metadata,
-        args.resolution_meters,
-        args.margin_meters,
-    )
+    if args.provider == "usgs-3dep":
+        fetch_usgs_3dep(course, args.output, args.metadata, args.resolution_meters, args.margin_meters)
+    elif args.provider == "geotiff-url":
+        if not args.source_url:
+            raise SystemExit("--provider geotiff-url requires --source-url")
+        if not finite(args.source_resolution_meters) or float(args.source_resolution_meters) <= 0:
+            raise SystemExit("--provider geotiff-url requires positive --source-resolution-meters")
+        fetch_geotiff_url(
+            course,
+            args.output,
+            args.metadata,
+            args.source_url,
+            float(args.source_resolution_meters),
+            args.dataset_name,
+        )
+    else:
+        if args.source_file is None:
+            raise SystemExit("--provider geotiff-file requires --source-file")
+        if not finite(args.source_resolution_meters) or float(args.source_resolution_meters) <= 0:
+            raise SystemExit("--provider geotiff-file requires positive --source-resolution-meters")
+        fetch_geotiff_file(
+            course,
+            args.output,
+            args.metadata,
+            args.source_file,
+            float(args.source_resolution_meters),
+            args.dataset_name,
+        )
     return 0
 
 
