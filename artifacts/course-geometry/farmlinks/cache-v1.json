@@ -1,0 +1,54 @@
+{
+  "courseId": "farmlinks-pursell-farms-sylacauga-al",
+  "courseName": "FarmLinks at Pursell Farms",
+  "freshness": {
+    "ageDays": 0,
+    "evaluatedAt": "2026-10-01T03:18:40.883461Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "new-course-canonical-import",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "2253fffe6b509e2afc53a5c2df5b3d46fb52e83d9b5e9c0c308eb7ed7e411668",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-10-01T03:18:40.883461Z",
+    "configPath": "config/course-geometry/farmlinks-v1.json",
+    "configSha256": "13252799f41deb5255d2bb9dc88113805ab5e5c37ed1dc4a91a36f24d8ae06be",
+    "path": "public/course-geometry/farmlinks/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "1fbf6a7d34014ce8a37ea747f71e7ad6991c8fa361de1c98f0d88ab971ce50ac",
+    "terrainComposerVersion": "carry_forward_embedded_terrain_v1"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 1054726077,
+      "type": "way"
+    },
+    "fetchedAt": "2026-10-01T03:18:40.883461Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-10-01T03:18:40.883461Z",
+    "provider": "openstreetmap-core-map",
+    "snapshotPath": "artifacts/course-geometry/farmlinks/osm-snapshot.json",
+    "snapshotSha256": "8e4184a2d0752ecf10490ceffacd876d70dbe22e2c1db86d7df17dda1be802b1"
+  }
+}
