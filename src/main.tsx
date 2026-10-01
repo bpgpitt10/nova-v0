@@ -6,6 +6,7 @@ import LooperLandingPage from './pages/LooperLandingPage.tsx'
 import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
+import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
@@ -22,7 +23,6 @@ import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import OcrTestPage from './dev/OcrTestPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
-import RoundTeeSelectionBar from './components/RoundTeeSelectionBar.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
@@ -33,6 +33,10 @@ import { deactivateLocalUserScope } from './lib/localUserScope.ts'
 import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.ts'
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
+import {
+  loadActiveLiveCaddieRound,
+  startLiveCaddieRound,
+} from './liveCaddie/roundRuntime.ts'
 import { checkForLooperUpdate } from './lib/updater.ts'
 import type { Update } from '@tauri-apps/plugin-updater'
 
@@ -58,9 +62,6 @@ function SignOutPage() {
   useEffect(() => {
     void signOutLooper()
       .then(() => {
-        // Do not rely on the asynchronous auth-state callback to win the race
-        // against navigation. Explicitly preserve this golfer's scoped cache and
-        // clear the shared working cache before the next account can sign in.
         deactivateLocalUserScope()
         window.location.replace('/')
       })
@@ -135,6 +136,20 @@ function LiveGsproRoundArchiveBridge() {
   return null
 }
 
+function LiveCaddieRoundBootstrap({ active }: { active: boolean }) {
+  useEffect(() => {
+    if (!active) return
+    const timers = [600, 1600, 3000].map((delay) => window.setTimeout(() => {
+      const round = loadActiveLiveCaddieRound()
+      if (round?.phase === 'armed') {
+        startLiveCaddieRound()
+      }
+    }, delay))
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [active])
+  return null
+}
+
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
@@ -194,41 +209,24 @@ function RootRouter() {
     }
 
     const onDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) {
-        return
-      }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return
-      }
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
 
       const target = event.target
-      if (!(target instanceof Element)) {
-        return
-      }
+      if (!(target instanceof Element)) return
 
       const anchor = target.closest('a[href]')
-      if (!(anchor instanceof HTMLAnchorElement)) {
-        return
-      }
-      if (anchor.target && anchor.target !== '_self') {
-        return
-      }
-      if (anchor.hasAttribute('download')) {
-        return
-      }
+      if (!(anchor instanceof HTMLAnchorElement)) return
+      if (anchor.target && anchor.target !== '_self') return
+      if (anchor.hasAttribute('download')) return
 
       const rawHref = anchor.getAttribute('href')
-      if (!rawHref || !rawHref.startsWith('/')) {
-        return
-      }
+      if (!rawHref || !rawHref.startsWith('/')) return
 
       const url = new URL(rawHref, window.location.origin)
       const next = `${url.pathname}${url.search}${url.hash}`
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-
-      if (next === current) {
-        return
-      }
+      if (next === current) return
 
       event.preventDefault()
       window.history.pushState({}, '', next)
@@ -257,6 +255,7 @@ function RootRouter() {
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
   const showLiveCaddie = isLiveCaddiePath(pathname)
   const showDevLiveCaddie = pathname === '/dev/live-caddie'
+  const showRoundSetup = pathname === '/round-setup' || pathname === '/new-round'
   const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
   const showGsproReplay = pathname === '/dev/gspro-replay'
   const showDecisionReplay = pathname === '/dev/decision-replay'
@@ -287,6 +286,7 @@ function RootRouter() {
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
     if (showAimLab) return <AimLabPage />
     if (showLiveCaddie) return null
+    if (showRoundSetup) return <RoundSetupPage />
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
@@ -328,22 +328,29 @@ function RootRouter() {
     showGsproReplay,
     showLiveCaddie,
     showOcrTest,
+    showRoundSetup,
     updateError,
     updateStatus,
   ])
 
-  return (
-    <LooperAuthGate>
-      <LiveGsproRoundArchiveBridge />
+  const normalContent = (
+    <>
       {keepLiveCaddieMounted ? (
         <div style={{ display: showLiveCaddie ? 'contents' : 'none' }} aria-hidden={!showLiveCaddie}>
           <LiveCaddiePage />
-          <RoundTeeSelectionBar />
         </div>
       ) : null}
-      {!showLiveCaddie
-        ? (showDevPage ? view : <BrowserGsproSetupGate>{view}</BrowserGsproSetupGate>)
-        : null}
+      <LiveCaddieRoundBootstrap active={showLiveCaddie} />
+      {!showLiveCaddie ? view : null}
+    </>
+  )
+
+  return (
+    <LooperAuthGate>
+      <LiveGsproRoundArchiveBridge />
+      {showDevPage && !showLiveCaddie
+        ? view
+        : <BrowserGsproSetupGate>{normalContent}</BrowserGsproSetupGate>}
     </LooperAuthGate>
   )
 }
