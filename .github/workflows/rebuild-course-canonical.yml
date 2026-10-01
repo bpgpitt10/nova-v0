@@ -48,8 +48,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
       - name: Install course importer dependencies
         run: pip install -r requirements-course-geometry.txt
+
+      - name: Install app dependencies
+        run: npm ci
 
       - name: Run one-shot canonical course importer
         run: |
@@ -57,15 +66,6 @@ jobs:
             --config "$CONFIG_PATH" \
             --slug "$COURSE_SLUG" \
             --reason "$IMPORT_REASON"
-
-      - name: Use Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install app dependencies
-        run: npm ci
 
       - name: Validate app and completed runtime candidate
         run: |
@@ -76,25 +76,33 @@ jobs:
           from pathlib import Path
           slug = os.environ['COURSE_SLUG']
           path = Path(f'artifacts/course-geometry/{slug}/validation-v1.json')
+          receipt_path = Path(f'artifacts/course-geometry/{slug}/runtime-ready-v1.json')
           data = json.loads(path.read_text())
+          receipt = json.loads(receipt_path.read_text())
           completion = data.get('canonicalImport') or {}
-          if completion.get('complete') is not True:
-              raise SystemExit('Canonical import did not stamp a complete one-shot result')
+          if completion.get('complete') is not True or completion.get('runtimeReady') is not True:
+              raise SystemExit('Canonical import did not stamp a complete runtime-ready result')
+          if receipt.get('runtimeReady') is not True:
+              raise SystemExit('Canonical import did not produce a runtime-ready receipt')
+          if receipt.get('packageSha256') != completion.get('packageSha256'):
+              raise SystemExit('Runtime-ready receipt and canonical completion package hashes differ')
           required = ('freshOsm', 'staticGeometry', 'wholeHoleTerrain', 'landcoverContext', 'greenDetail')
           missing = [key for key in required if completion.get(key) is not True]
           if missing:
               raise SystemExit('Canonical import is partial: ' + ', '.join(missing))
-          print('canonical one-shot completion verified:', ', '.join(required))
+          print('canonical one-shot runtime completion verified:', ', '.join(required))
           PY
 
-      - name: Commit completed course package and provenance
+      - name: Commit completed course package and runtime registration
         run: |
           git add \
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
+            "artifacts/course-geometry/$COURSE_SLUG/runtime-ready-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
             "public/course-geometry/$COURSE_SLUG/green-detail-v1.json" \
+            src/courseGeometry/generatedImportedCourseRegistry.ts \
             src/courseGeometry/generatedRouteHoleHeadings.ts
 
           for OPTIONAL_PATH in \
