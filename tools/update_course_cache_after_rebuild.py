@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh cache-v1 metadata after a canonical static-geometry rebuild."""
+"""Refresh cache-v1 metadata after a canonical course import/rebuild."""
 
 from __future__ import annotations
 
@@ -37,6 +37,16 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def repo_path(path: Path) -> str:
+    """Persist stable repository-relative paths instead of CI runner paths."""
+    resolved = path.resolve()
+    root = Path.cwd().resolve()
+    try:
+        return resolved.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", required=True, type=Path)
@@ -45,6 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--package", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--green-detail", type=Path)
+    parser.add_argument("--build-reason")
     return parser.parse_args()
 
 
@@ -56,15 +67,27 @@ def bootstrap_cache(args: argparse.Namespace, config: dict, course_package: dict
         "courseName": config.get("courseName"),
         "refreshPolicy": dict(DEFAULT_REFRESH_POLICY),
         "package": {
-            "configPath": args.config.as_posix(),
-            "path": args.package.as_posix(),
+            "configPath": repo_path(args.config),
+            "path": repo_path(args.package),
             "schemaVersion": course_package.get("schemaVersion"),
         },
         "source": {
             "element": config.get("osmCourseElement"),
-            "snapshotPath": args.snapshot.as_posix(),
+            "snapshotPath": repo_path(args.snapshot),
         },
     }
+
+
+def terrain_composer_version(course_package: dict) -> str | None:
+    provenance = course_package.get("terrainProvenance")
+    if not isinstance(provenance, dict):
+        return None
+    schema = provenance.get("schemaVersion")
+    if schema == "looper-course-terrain-v1":
+        return "compose_course_package_canonical_v1"
+    if schema == "looper-greywolf-terrain-v1":
+        return "compose_course_package_legacy_greywolf_v1"
+    return "embedded-terrain-unknown-composer"
 
 
 def main() -> int:
@@ -95,7 +118,7 @@ def main() -> int:
         "status": "current",
     }
     cache["lastBuild"] = {
-        "reason": "reported-geometry-error" if cache_existed else "new-course-canonical-import",
+        "reason": args.build_reason or ("reported-geometry-error" if cache_existed else "new-course-canonical-import"),
         "usedNetworkForOsm": True,
     }
 
@@ -103,12 +126,16 @@ def main() -> int:
     package["builderVersion"] = str(manifest.get("compiler") or "build_osm_course_package_v5")
     package["builderFingerprintSha256"] = str(manifest.get("builderFingerprintSha256") or "")
     package["builtAt"] = rebuilt_at
-    package["configPath"] = args.config.as_posix()
+    package["configPath"] = repo_path(args.config)
     package["configSha256"] = sha256(args.config)
-    package["path"] = args.package.as_posix()
+    package["path"] = repo_path(args.package)
     package["schemaVersion"] = course_package.get("schemaVersion")
     package["sha256"] = sha256(args.package)
-    package["terrainComposerVersion"] = "carry_forward_embedded_terrain_v1"
+    composer = terrain_composer_version(course_package)
+    if composer:
+        package["terrainComposerVersion"] = composer
+    else:
+        package.pop("terrainComposerVersion", None)
 
     green_detail_path = args.green_detail
     if green_detail_path and green_detail_path.exists():
@@ -123,13 +150,25 @@ def main() -> int:
     else:
         package.pop("greenDetail", None)
 
+    terrain_provenance = course_package.get("terrainProvenance")
+    if isinstance(terrain_provenance, dict):
+        terrain_source = terrain_provenance.get("source") or {}
+        package["terrain"] = {
+            "schemaVersion": terrain_provenance.get("schemaVersion"),
+            "sourceProvider": terrain_source.get("provider"),
+            "sourceDataset": terrain_source.get("dataset"),
+            "sourceResolutionMeters": terrain_source.get("sourceResolutionMeters"),
+        }
+    else:
+        package.pop("terrain", None)
+
     source = cache.setdefault("source", {})
     source["element"] = config.get("osmCourseElement") or source.get("element")
     source["provider"] = source_provider
     source["fetchedAt"] = rebuilt_at
     source["fetchedAtBasis"] = "source-provider-fetch"
     source["lastCheckedAt"] = rebuilt_at
-    source["snapshotPath"] = args.snapshot.as_posix()
+    source["snapshotPath"] = repo_path(args.snapshot)
     source["snapshotSha256"] = sha256(args.snapshot)
     if source_base:
         source["sourceBaseTimestamp"] = source_base
@@ -143,6 +182,7 @@ def main() -> int:
         "courseId": cache.get("courseId"),
         "builder": package.get("builderVersion"),
         "sourceProvider": source.get("provider"),
+        "terrainComposer": package.get("terrainComposerVersion"),
         "packageSha256": package.get("sha256"),
         "greenDetailSha256": (package.get("greenDetail") or {}).get("sha256"),
         "snapshotSha256": source.get("snapshotSha256"),
