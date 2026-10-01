@@ -26,10 +26,11 @@ jobs:
           ref: web-course-importer-current-lineage-v1
           fetch-depth: 0
 
-      - name: Read rebuild request and optional green-terrain config
+      - name: Read rebuild request and optional enrichment config
         run: |
           python - <<'PY' >> "$GITHUB_ENV"
           import json
+          import math
           from pathlib import Path
 
           request = json.loads(Path('config/course-rebuild-request.json').read_text())
@@ -37,9 +38,27 @@ jobs:
           missing = [key for key in required if not request.get(key)]
           if missing:
               raise SystemExit(f"Missing rebuild request fields: {', '.join(missing)}")
+
           config = json.loads(Path(request['configPath']).read_text())
           green = config.get('greenTerrain') or {}
+          landcover = config.get('landcoverContext') or {}
           terrain_ref = request.get('terrainSourceRef', '')
+
+          landcover_url = str(landcover.get('sourceUrl') or '')
+          if landcover.get('enabled') and not landcover_url:
+              center = config.get('osmCenter') or []
+              if len(center) < 2:
+                  raise SystemExit('landcoverContext.enabled requires config.osmCenter or an explicit sourceUrl')
+              lat = float(center[0])
+              lon = float(center[1])
+              lat0 = math.floor(lat / 3.0) * 3
+              lon0 = math.floor(lon / 3.0) * 3
+              tile = f"{'N' if lat0 >= 0 else 'S'}{abs(lat0):02d}{'E' if lon0 >= 0 else 'W'}{abs(lon0):03d}"
+              landcover_url = (
+                  'https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/'
+                  f'ESA_WorldCover_10m_2021_v200_{tile}_Map.tif'
+              )
+
           print(f"COURSE_SLUG={request['courseSlug']}")
           print(f"CONFIG_PATH={request['configPath']}")
           print(f"TERRAIN_SOURCE_REF={terrain_ref}")
@@ -49,6 +68,7 @@ jobs:
           print(f"GREEN_SOURCE_RESOLUTION_METERS={green.get('sourceResolutionMeters', '')}")
           print(f"GREEN_SPACING_YARDS={green.get('spacingYards', 1)}")
           print(f"GREEN_MARGIN_YARDS={green.get('marginYards', 12)}")
+          print(f"LANDCOVER_SOURCE_URL={landcover_url}")
           PY
 
       - name: Use Python
@@ -92,6 +112,21 @@ jobs:
           else
             cp /tmp/looper-course-rebuild/geometry.json \
               "public/course-geometry/$COURSE_SLUG/course-v1.json"
+          fi
+
+      - name: Fill optional unmapped context from WorldCover
+        run: |
+          AUDIT_PATH="artifacts/course-geometry/$COURSE_SLUG/worldcover-context-audit-v1.json"
+          rm -f "$AUDIT_PATH"
+          if [ -n "$LANDCOVER_SOURCE_URL" ]; then
+            echo "Filling unmapped context from $LANDCOVER_SOURCE_URL"
+            python tools/enrich_worldcover_context.py \
+              --package "public/course-geometry/$COURSE_SLUG/course-v1.json" \
+              --output "public/course-geometry/$COURSE_SLUG/course-v1.json" \
+              --audit "$AUDIT_PATH" \
+              --source-url "$LANDCOVER_SOURCE_URL"
+          else
+            echo 'No optional WorldCover context configured.'
           fi
 
       - name: Build, carry, and validate high-resolution green terrain
@@ -170,10 +205,17 @@ jobs:
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
             src/courseGeometry/generatedRouteHoleHeadings.ts
+
           GREEN_PATH="public/course-geometry/$COURSE_SLUG/green-detail-v1.json"
           if [ -e "$GREEN_PATH" ] || git ls-files --error-unmatch "$GREEN_PATH" >/dev/null 2>&1; then
             git add -A "$GREEN_PATH"
           fi
+
+          LANDCOVER_AUDIT="artifacts/course-geometry/$COURSE_SLUG/worldcover-context-audit-v1.json"
+          if [ -e "$LANDCOVER_AUDIT" ] || git ls-files --error-unmatch "$LANDCOVER_AUDIT" >/dev/null 2>&1; then
+            git add -A "$LANDCOVER_AUDIT"
+          fi
+
           if git diff --cached --quiet; then
             echo 'No course rebuild changes to commit.'
             exit 0
