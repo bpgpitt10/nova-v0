@@ -4,6 +4,11 @@
   "courseName": "FarmLinks at Pursell Farms",
   "location": "Sylacauga, AL",
   "slug": "farmlinks",
+  "gsproAliases": [
+    "FarmLinks",
+    "FarmLinks at Pursell Farms",
+    "Pursell Farms"
+  ],
   "osmCourseElement": {
     "type": "way",
     "id": 1054726077
