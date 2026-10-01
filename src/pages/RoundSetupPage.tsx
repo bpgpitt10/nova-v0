@@ -226,8 +226,8 @@ export default function RoundSetupPage() {
             style={input}
           >
             {courseRegistry.map((entry) => (
-              <option key={entry.id} value={entry.id} disabled={entry.id !== GREYWOLF_COURSE_ID}>
-                {entry.name}{entry.id === GREYWOLF_COURSE_ID ? '' : ' — live validation pending'}
+              <option key={entry.id} value={entry.id} disabled={entry.packageStatus !== 'ready'}>
+                {entry.name}{entry.packageStatus === 'ready' ? '' : ' — live validation pending'}
               </option>
             ))}
           </select>
@@ -247,7 +247,7 @@ export default function RoundSetupPage() {
         </label>
 
         <div style={{ margin: '-10px 0 20px', color: '#7f8d82', fontSize: 12, lineHeight: 1.45 }}>
-          Greywolf tee identities are provisional mappings from the cached tee coordinates and course scorecard. Your explicit selection wins; GSPro completed shots will be used to validate those mappings over time.
+          Your explicit tee selection is authoritative for the round. GSPro completed shots can be used to validate the mapped tee assumptions over time.
         </div>
 
         {error ? (
@@ -259,8 +259,8 @@ export default function RoundSetupPage() {
         <button
           type="button"
           onClick={() => void startRound()}
-          disabled={starting || loadingTees || !teeSet.trim() || course.id !== GREYWOLF_COURSE_ID}
-          style={{ ...primary, width: '100%', opacity: starting || !teeSet.trim() ? 0.55 : 1 }}
+          disabled={starting || loadingTees || !teeSet.trim() || course.packageStatus !== 'ready'}
+          style={{ ...primary, width: '100%', opacity: starting || loadingTees || !teeSet.trim() || course.packageStatus !== 'ready' ? 0.55 : 1 }}
         >
           {starting ? 'STARTING…' : 'START ROUND'}
         </button>
