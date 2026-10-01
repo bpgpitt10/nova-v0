@@ -8,11 +8,14 @@ A successful run produces, in one transaction:
 - automatic ESA WorldCover context fill
 - high-resolution green-detail sampled from the same DEM
 - cache/provenance refresh
-- a completion record in the validation manifest
+- runtime contract validation (including usable tee candidates)
+- automatic runtime catalog registration
+- generic package + tee-provider smoke validation through the real Looper loaders
+- a completion record only after every gate passes
 
-The importer is intentionally fail-closed: unless explicitly waived in course
-config, missing terrain/context/green inputs fail the import rather than leaving
-a silently partial course for a second pass.
+The importer is intentionally fail-closed. "Complete" means the course can be
+consumed by the existing Round Setup -> Live Caddie path without course-specific
+runtime code or a manual catalog edit.
 """
 from __future__ import annotations
 
@@ -33,8 +36,19 @@ def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def run(*args: str) -> None:
     command = [sys.executable, *args]
+    print("+", " ".join(command), flush=True)
+    subprocess.run(command, cwd=ROOT, check=True)
+
+
+def run_node(*args: str) -> None:
+    command = ["node", *args]
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=ROOT, check=True)
 
@@ -81,6 +95,11 @@ def main() -> int:
     course_id = config.get("courseId")
     if not isinstance(course_id, str) or not course_id:
         raise SystemExit("Course config is missing courseId")
+    if config.get("slug") != slug:
+        raise SystemExit(f"Importer --slug {slug!r} does not match config slug {config.get('slug')!r}")
+    aliases = [str(value).strip() for value in (config.get("gsproAliases") or []) if str(value).strip()]
+    if not aliases:
+        raise SystemExit("Course config must declare gsproAliases; runtime course identity may not require a hand edit after import")
 
     terrain_cfg = config.get("terrain") or {}
     terrain_enabled = terrain_cfg.get("enabled", True) is not False
@@ -105,6 +124,7 @@ def main() -> int:
 
     snapshot = artifact_dir / "osm-snapshot.json"
     manifest = artifact_dir / "validation-v1.json"
+    runtime_receipt = artifact_dir / "runtime-ready-v1.json"
     geometry = work_dir / "geometry.json"
     dem = work_dir / "course-dem.tif"
     dem_metadata = artifact_dir / "dem-source-v1.json"
@@ -114,6 +134,12 @@ def main() -> int:
     landcover_audit = artifact_dir / "worldcover-context-audit-v1.json"
     green_detail = public_dir / "green-detail-v1.json"
     cache = artifact_dir / "cache-v1.json"
+
+    # A re-import begins by withdrawing the previous generated runtime
+    # registration. There is never a window where stale output counts as a new
+    # successful import.
+    runtime_receipt.unlink(missing_ok=True)
+    run_node("tools/generate-imported-course-registry.mjs")
 
     # 1. Fresh source geometry.
     run("tools/fetch_osm_course_snapshot_core.py", "--config", str(config_path), "--output", str(snapshot))
@@ -207,37 +233,91 @@ def main() -> int:
         cache_args += ["--green-detail", str(green_detail)]
     run(*cache_args)
 
-    # 6. Stamp one completion contract. Downstream CI can now distinguish a
-    # complete import from a geometry-only intermediate artifact.
+    # 6. Static PRODUCT contract. Geometry is not enough: every imported course
+    # must have the exact package/tee identity needed by Round Setup and the
+    # generic runtime providers.
+    run_node(
+        "tools/validate-course-import-contract.mjs",
+        "--package", str(final_package),
+        "--config", str(config_path),
+    )
+
+    package_sha = sha256(final_package)
+    provisional_receipt = {
+        "schemaVersion": "looper-course-runtime-ready-v1",
+        "courseId": course_id,
+        "courseName": config.get("courseName"),
+        "location": config.get("location"),
+        "slug": slug,
+        "gsproAliases": aliases,
+        "staticReady": True,
+        "runtimeReady": False,
+        "terrainReady": terrain_enabled,
+        "greenDetailReady": green_enabled,
+        "packageSha256": package_sha,
+        "configPath": str(config_path.relative_to(ROOT)),
+        "packagePath": str(final_package.relative_to(ROOT)),
+        "validationPath": str(manifest.relative_to(ROOT)),
+        "reason": args.reason,
+    }
+    write_json(runtime_receipt, provisional_receipt)
+
+    # 7. Register provisionally so the real generic providers can resolve the
+    # course, then exercise all 18 holes and the same Hole 1 tee-provider path
+    # used by Round Setup. Roll registration back on any failure.
+    try:
+        run_node("tools/generate-imported-course-registry.mjs", "--include-pending")
+        run_node("tools/validate-course-runtime.mjs", "--course", course_id)
+    except Exception:
+        runtime_receipt.unlink(missing_ok=True)
+        run_node("tools/generate-imported-course-registry.mjs")
+        raise
+
+    completed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    final_receipt = {
+        **provisional_receipt,
+        "runtimeReady": True,
+        "completedAt": completed_at,
+    }
+    write_json(runtime_receipt, final_receipt)
+    run_node("tools/generate-imported-course-registry.mjs")
+
+    # 8. Only now may the import be stamped complete.
     validation = read_json(manifest)
     validation["canonicalImport"] = {
-        "schemaVersion": "looper-canonical-import-completion-v1",
-        "completedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "schemaVersion": "looper-canonical-import-completion-v2",
+        "completedAt": completed_at,
         "reason": args.reason,
         "complete": True,
+        "runtimeReady": True,
+        "runtimeContract": "round-setup-to-live-caddie-v1",
         "freshOsm": True,
         "staticGeometry": True,
         "wholeHoleTerrain": terrain_enabled,
         "landcoverContext": landcover_enabled,
         "greenDetail": green_enabled,
         "terrainProvider": terrain_provider if terrain_enabled else None,
-        "packageSha256": sha256(final_package),
+        "packageSha256": package_sha,
         "greenDetailSha256": sha256(green_detail) if green_detail.exists() else None,
+        "runtimeReceipt": str(runtime_receipt.relative_to(ROOT)),
         "demSourceMetadata": str(dem_metadata.relative_to(ROOT)) if dem_metadata.exists() else None,
         "terrainComposeReport": str(compose_report.relative_to(ROOT)) if compose_report.exists() else None,
         "worldcoverAudit": str(landcover_audit.relative_to(ROOT)) if landcover_audit.exists() else None,
     }
-    manifest.write_text(json.dumps(validation, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_json(manifest, validation)
 
     print(json.dumps({
         "courseId": course_id,
         "courseSlug": slug,
         "complete": True,
+        "runtimeReady": True,
         "package": str(final_package.relative_to(ROOT)),
         "terrain": terrain_enabled,
         "landcover": landcover_enabled,
         "greenDetail": green_enabled,
         "validation": str(manifest.relative_to(ROOT)),
+        "runtimeReceipt": str(runtime_receipt.relative_to(ROOT)),
+        "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
     }, indent=2, sort_keys=True))
     return 0
 
