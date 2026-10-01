@@ -39,27 +39,11 @@ const finitePoint = (value) =>
 const record = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 const text = (value) => typeof value === 'string' && value.trim() ? value.trim() : null
-
-// This deliberately mirrors RoundSetupPage candidateTeeValues plus the generic
-// tee loader's explicit fields. If the UI changes how a tee is identified, this
-// contract should change in the same commit.
-const candidateLabels = (candidate) => {
-  const tags = record(candidate.sourceTags)
-  const values = [
-    candidate.teeSet,
-    ...(Array.isArray(candidate.teeAliases) ? candidate.teeAliases : []),
-    candidate.name,
-    candidate.ref,
-    candidate.color,
-    candidate.label,
-    tags.tee,
-    tags.name,
-    tags.ref,
-    tags.colour,
-    tags.color,
-  ]
-  return [...new Set(values.map(text).filter(Boolean))]
-}
+const normalize = (value) => text(value)?.replace(/\s+/g, ' ').toLowerCase() ?? ''
+const canonicalCandidateValues = (candidate) => [
+  candidate.teeSet,
+  ...(Array.isArray(candidate.teeAliases) ? candidate.teeAliases : []),
+].map(normalize).filter(Boolean)
 
 requireValue(config.schemaVersion === 'looper-course-build-config-v1', 'build config schema must be looper-course-build-config-v1')
 requireValue(typeof config.courseId === 'string' && config.courseId.length > 0, 'build config courseId is required')
@@ -76,47 +60,65 @@ const holeNumbers = Object.keys(coursePackage.holes).map(Number).sort((a, b) => 
 requireValue(holeNumbers.length === 18, `${config.courseId}: package must contain exactly 18 holes`)
 requireValue(holeNumbers.every((hole, index) => hole === index + 1), `${config.courseId}: package hole keys must be exactly 1-18`)
 
+const hole1 = record(coursePackage.holes['1'])
+const hole1Candidates = Array.isArray(hole1.teeCandidates) ? hole1.teeCandidates.map(record) : []
+requireValue(hole1Candidates.length > 0, `${config.courseId} H1: no teeCandidates; course cannot enter Round Setup`)
+
+const teeSets = hole1Candidates.map((candidate, index) => {
+  const teeSet = text(candidate.teeSet)
+  requireValue(Boolean(teeSet), `${config.courseId} H1: teeCandidate ${index + 1} is missing canonical teeSet`)
+  return teeSet
+})
+const normalizedTeeSets = teeSets.map(normalize)
+requireValue(new Set(normalizedTeeSets).size === normalizedTeeSets.length, `${config.courseId} H1: canonical teeSet values are not unique`)
+
 const summaries = []
 for (const holeNumber of holeNumbers) {
   const hole = record(coursePackage.holes[String(holeNumber)])
   const frame = record(hole.coordinateFrame)
   const surfaces = record(hole.surfaces)
-  const candidates = Array.isArray(hole.teeCandidates) ? hole.teeCandidates : []
+  const candidates = Array.isArray(hole.teeCandidates) ? hole.teeCandidates.map(record) : []
 
   requireValue(frame.origin === 'selected-tee' || frame.origin === 'osm-hole-route-start', `${config.courseId} H${holeNumber}: unsupported coordinate-frame origin ${String(frame.origin)}`)
   requireValue(Array.isArray(surfaces.tee) && surfaces.tee.length > 0, `${config.courseId} H${holeNumber}: no tee surface geometry`)
   requireValue(Array.isArray(surfaces.green) && surfaces.green.length > 0, `${config.courseId} H${holeNumber}: no green surface geometry`)
   requireValue(candidates.length > 0, `${config.courseId} H${holeNumber}: no teeCandidates; course cannot enter the runtime/UI`)
 
-  const labelOwners = new Map()
   let selectedAnchors = 0
   for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = record(candidates[index])
+    const candidate = candidates[index]
     requireValue(finitePoint(candidate.coursePoint), `${config.courseId} H${holeNumber}: teeCandidate ${index + 1} has no finite coursePoint`)
     if (candidate.selectedAnchor === true) selectedAnchors += 1
-    for (const label of candidateLabels(candidate)) {
-      const normalized = label.toLowerCase()
-      const owners = labelOwners.get(normalized) ?? new Set()
-      owners.add(index)
-      labelOwners.set(normalized, owners)
-    }
   }
-
   requireValue(selectedAnchors === 1, `${config.courseId} H${holeNumber}: expected exactly one selectedAnchor teeCandidate, found ${selectedAnchors}`)
 
-  const uniqueLabels = [...labelOwners.entries()].filter(([, owners]) => owners.size === 1).map(([label]) => label)
-  // Round Setup currently discovers the user's tee choices from Hole 1. Other
-  // holes still need runtime candidates/anchors, but source OSM tagging can be
-  // sparse away from H1 without making the geometry unusable.
-  if (holeNumber === 1) {
-    requireValue(uniqueLabels.length > 0, `${config.courseId} H1: no unambiguous tee label is available for Round Setup`)
+  // This is the core product invariant: every tee set that Round Setup exposes
+  // from Hole 1 must resolve to one and only one physical candidate on every
+  // hole. A candidate may carry multiple aliases when several course-wide tee
+  // sets share one physical box on a hole with fewer tee polygons.
+  for (let teeIndex = 0; teeIndex < teeSets.length; teeIndex += 1) {
+    const wanted = normalizedTeeSets[teeIndex]
+    const matches = candidates.filter((candidate) => canonicalCandidateValues(candidate).includes(wanted))
+    requireValue(
+      matches.length === 1,
+      `${config.courseId} H${holeNumber}: canonical tee set ${JSON.stringify(teeSets[teeIndex])} resolves to ${matches.length} candidates; expected exactly 1`,
+    )
   }
+
+  const contract = record(hole.teeSetContract)
+  requireValue(contract.version === 1, `${config.courseId} H${holeNumber}: missing teeSetContract v1`)
+  requireValue(contract.sourceHole === 1, `${config.courseId} H${holeNumber}: teeSetContract must be sourced from Hole 1`)
+  const declaredSets = Array.isArray(contract.teeSets) ? contract.teeSets.map(normalize) : []
+  requireValue(
+    JSON.stringify(declaredSets) === JSON.stringify(normalizedTeeSets),
+    `${config.courseId} H${holeNumber}: teeSetContract does not match Hole 1 canonical tee sets`,
+  )
 
   summaries.push({
     hole: holeNumber,
     candidates: candidates.length,
     selectedAnchors,
-    uniqueLabels: uniqueLabels.length,
+    teeSetsResolved: teeSets.length,
   })
 }
 
@@ -125,5 +127,6 @@ const aliases = Array.isArray(config.gsproAliases)
   : []
 requireValue(aliases.length > 0, `${config.courseId}: gsproAliases must be declared in the build config so imported courses can resolve from GSPro without a hand edit`)
 
-console.log(`[course-import-contract] ${config.courseId}: PASS — 18/18 holes have runtime tee candidates and required geometry.`)
-console.log(`[course-import-contract] H1 exposes ${summaries[0].uniqueLabels} unambiguous tee label(s); ${aliases.length} GSPro alias(es) declared.`)
+console.log(`[course-import-contract] ${config.courseId}: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.`)
+console.log(`[course-import-contract] Round Setup exposes ${teeSets.length} canonical tee set(s): ${teeSets.join(', ')}.`)
+console.log(`[course-import-contract] Every canonical tee set resolves exactly once on every hole; ${aliases.length} GSPro alias(es) declared.`)
