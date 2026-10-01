@@ -30,6 +30,7 @@ export const courseGeometryFingerprint = (geometry: CourseHoleGeometry) => {
 
 const matchValues = (candidate: CourseTeeCandidate) => new Set([
   candidate.teeSet,
+  ...(candidate.teeAliases ?? []),
   candidate.color,
   candidate.label,
   candidate.name,
@@ -87,14 +88,14 @@ export const resolveShotOneTee = (
     return fallback(
       geometry,
       calibration,
-      `No OSM tee candidate matched ${selection.teeSet}; keeping the package tee marker.`,
+      `No OSM/inferred tee candidate matched ${selection.teeSet}; keeping the package tee marker.`,
     )
   }
   if (matches.length > 1) {
     return fallback(
       geometry,
       calibration,
-      `${matches.length} OSM tee candidates matched ${selection.teeSet}; refusing to guess.`,
+      `${matches.length} tee candidates matched ${selection.teeSet}; refusing to guess.`,
     )
   }
 
@@ -107,8 +108,10 @@ export const resolveShotOneTee = (
     osmTeeId: candidate.osmId,
     courseLocalYds: candidate.coursePoint,
     expectedYardageYds: candidate.teeToGreenCentroidYards,
-    confidence: 0.75,
-    confirmationMethod: 'user-tee-set-plus-osm-exact-match',
+    confidence: 0.6,
+    confirmationMethod: candidate.teeAliases?.some((alias) => normalize(alias) === selection.normalizedTeeSet)
+      ? 'user-tee-set-plus-scorecard-distance-assumption'
+      : 'user-tee-set-plus-osm-exact-match',
   })
 
   if (write.outcome === 'locked-conflict') {
@@ -117,7 +120,7 @@ export const resolveShotOneTee = (
       source: 'locked-calibration',
       candidate: null,
       calibration: write.record,
-      reason: `OSM ${selection.teeSet} tee conflicts with the locked calibration; preserving the locked tee.`,
+      reason: `Assumed ${selection.teeSet} tee conflicts with the locked calibration; preserving the locked tee.`,
     }
   }
 
@@ -130,6 +133,6 @@ export const resolveShotOneTee = (
     source: 'osm-tee-candidate',
     candidate,
     calibration: write.record,
-    reason: `Matched ${selection.teeSet} to one OSM tee candidate.`,
+    reason: `Mapped ${selection.teeSet} to one tee candidate; GSPro completed shots will validate the assumption.`,
   }
 }
