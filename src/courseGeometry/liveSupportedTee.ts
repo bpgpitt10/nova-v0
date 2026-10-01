@@ -1,4 +1,5 @@
 import type { GsproStartingPositionObservation } from '../adapters/gsproStartingPosition'
+import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -12,9 +13,9 @@ export type LiveSupportedTeeResolution =
   | Readonly<{
       status: 'supported'
       courseLocalYds: CoursePointYds
-      candidate: CourseTeeCandidate
-      residualYds: number
-      referenceDistanceYds: number
+      candidate: CourseTeeCandidate | null
+      residualYds: number | null
+      referenceDistanceYds: number | null
       reason: string
     }>
   | Readonly<{
@@ -31,6 +32,9 @@ const finite = (value: number | null | undefined): value is number =>
 
 const pointDistance = (a: CoursePointYds, b: CoursePointYds) =>
   Math.hypot(b[0] - a[0], b[1] - a[1])
+
+const normalize = (value: string | null | undefined) =>
+  value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? ''
 
 const candidateReferenceDistance = (
   geometry: CourseHoleGeometry,
@@ -55,22 +59,59 @@ const candidateLabel = (candidate: CourseTeeCandidate) => {
   return 'OSM tee'
 }
 
+const candidateMatchesTeeSet = (candidate: CourseTeeCandidate, teeSet: string) => {
+  const wanted = normalize(teeSet)
+  if (!wanted) return false
+  return [candidate.teeSet, candidate.color, candidate.label, candidate.name, candidate.ref]
+    .some((value) => normalize(value) === wanted)
+}
+
 /**
- * V1 live-tee contract.
+ * Live tee contract.
  *
- * We only support Shot 1 when GSPro's pre-shot distance-to-pin can be
- * reconciled to one retained OSM tee candidate for the imported hole. This is
- * intentionally conservative: no nearest-position snapping, no synthetic tee,
- * and no learning an unmapped tee from GSPro coordinates.
+ * Once the golfer explicitly starts a Looper round with a course + tee set,
+ * that selection is authoritative for the round. GSPro pre-shot state is useful
+ * evidence, but it must never silently redefine Black as Blue (or any other tee).
+ * The selected/imported tee is therefore used immediately and GSPro observations
+ * are treated as validation evidence rather than a prerequisite for Shot 1.
  *
- * The absolute residual allowance absorbs normal pin-vs-green-centroid
- * differences. The runner-up margin prevents two nearby tee boxes from being
- * treated as an identity match when the evidence is ambiguous.
+ * The older distance-to-pin matcher remains as a conservative fallback for
+ * legacy/dev flows that do not have an active configured round.
  */
 export const resolveLiveSupportedTee = (
   geometry: CourseHoleGeometry,
   observation: GsproStartingPositionObservation | null,
 ): LiveSupportedTeeResolution => {
+  const activeRound = loadActiveLiveCaddieRound()
+  if (activeRound && activeRound.courseId === geometry.courseId) {
+    const matches = (geometry.teeCandidates ?? [])
+      .filter((candidate) => candidateMatchesTeeSet(candidate, activeRound.normalizedTeeSet))
+
+    const candidate = matches.length === 1 ? matches[0] : null
+    const courseLocalYds: CoursePointYds = activeRound.assumedTeeLocalYds
+      ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
+      : candidate?.coursePoint ?? geometry.markers.tee
+    const referenceDistanceYds = candidate
+      ? candidateReferenceDistance(geometry, candidate)
+      : geometry.markers.pin
+        ? pointDistance(courseLocalYds, geometry.markers.pin)
+        : null
+    const residualYds = observation && finite(observation.distanceToPinYds) && finite(referenceDistanceYds)
+      ? Math.abs(observation.distanceToPinYds - referenceDistanceYds)
+      : null
+
+    return {
+      status: 'supported',
+      courseLocalYds,
+      candidate,
+      residualYds,
+      referenceDistanceYds,
+      reason: candidate
+        ? `Using the active round's ${activeRound.teeSet} tee (${candidateLabel(candidate)}). GSPro is validation evidence only.`
+        : `Using the active round's assumed ${activeRound.teeSet} tee coordinate. GSPro is validation evidence only.`,
+    }
+  }
+
   if (!observation) {
     return {
       status: 'unsupported',
