@@ -1,4 +1,7 @@
-import { loadGsproDirectoryHandle } from '../adapters/browserGsproAccess'
+import {
+  loadGsproDirectoryHandle,
+  type BrowserDirectoryHandle,
+} from '../adapters/browserGsproAccess'
 import { loadGsproCourseStateDirectoryHandle } from '../adapters/browserGsproCourseStateCore'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
@@ -15,12 +18,6 @@ import {
 
 const CURRENT_ROUND_FILE = 'currentRound.dat'
 const SAME_TEE_WORLD_TOLERANCE = 5
-
-type ReadableDirectoryHandle = {
-  getFileHandle(name: string, options?: { create?: boolean }): Promise<{
-    getFile(): Promise<File>
-  }>
-}
 
 type RawShot = {
   ShotID?: unknown
@@ -92,9 +89,10 @@ const completedShotOneStart = (
 const readCurrentRound = async () => {
   const primary = await loadGsproDirectoryHandle().catch(() => null)
   const dedicated = await loadGsproCourseStateDirectoryHandle().catch(() => null)
-  const handles = [primary, dedicated].filter((handle, index, all): handle is ReadableDirectoryHandle =>
-    Boolean(handle) && all.indexOf(handle) === index,
-  )
+  const handles: BrowserDirectoryHandle[] = []
+  if (primary) handles.push(primary)
+  if (dedicated && dedicated !== primary) handles.push(dedicated)
+
   for (const handle of handles) {
     try {
       const fileHandle = await handle.getFileHandle(CURRENT_ROUND_FILE)
@@ -139,7 +137,7 @@ const validateShotOne = async (detail: LiveCaddieShotStateChangedDetail) => {
     confirmationMethod: existing?.gsproWorld
       ? 'repeated-completed-shot-one-starting-position'
       : 'first-completed-shot-one-starting-position',
-  } as const
+  }
 
   if (!existing?.gsproWorld) {
     saveTeeCalibrationCandidate(input)
