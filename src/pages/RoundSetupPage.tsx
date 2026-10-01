@@ -29,6 +29,9 @@ const candidateTeeValues = (candidate: CourseTeeCandidate) => [
   candidate.ref,
 ].filter((value): value is string => Boolean(value?.trim()))
 
+const canonicalTeeOption = (candidate: CourseTeeCandidate) =>
+  candidate.teeSet?.trim() || null
+
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
 
 export default function RoundSetupPage() {
@@ -57,7 +60,10 @@ export default function RoundSetupPage() {
     void loadCourseTeeCandidates(courseId, 1)
       .then((candidates) => {
         if (cancelled) return
-        const labels = [...new Set(candidates.flatMap(candidateTeeValues))]
+        // teeSet is the product contract. Names/colors/refs remain candidate
+        // evidence and matching aliases, but must not create duplicate choices
+        // in the Round Setup dropdown.
+        const labels = [...new Set(candidates.map(canonicalTeeOption).filter((value): value is string => Boolean(value)))]
           .sort((left, right) => {
             const preferred = ['Grey', 'Black', 'Blue', 'Gold', 'White', 'Green']
             const leftIndex = preferred.findIndex((value) => normalize(value) === normalize(left))
@@ -67,7 +73,7 @@ export default function RoundSetupPage() {
               if (rightIndex < 0) return -1
               return leftIndex - rightIndex
             }
-            return left.localeCompare(right)
+            return left.localeCompare(right, undefined, { numeric: true })
           })
         setTeeOptions(labels)
         if (labels.length > 0 && !labels.some((label) => normalize(label) === normalize(teeSet))) {
@@ -114,6 +120,8 @@ export default function RoundSetupPage() {
         )
       }
 
+      // loadCourseHoleGeometry has already resolved the persisted tee selection
+      // through the same generic package contract used for every later hole.
       const round = startLiveCaddieRound({
         courseId,
         teeSet: selection.teeSet,
