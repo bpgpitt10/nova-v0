@@ -1,13 +1,30 @@
 {
   "allHolesStaticGeometryReady": true,
   "builderFingerprintSha256": "2253fffe6b509e2afc53a5c2df5b3d46fb52e83d9b5e9c0c308eb7ed7e411668",
+  "canonicalImport": {
+    "complete": true,
+    "completedAt": "2026-10-01T12:15:15.165240Z",
+    "demSourceMetadata": "artifacts/course-geometry/farmlinks/dem-source-v1.json",
+    "freshOsm": true,
+    "greenDetail": true,
+    "greenDetailSha256": "63e5705610ca9244dc43bb3af9601a011511469013e58724bc6dd65d4ba73f51",
+    "landcoverContext": true,
+    "packageSha256": "5e5fda81c863f55038645ee1a1e2becb6b7119d9907ae57a1fb70f7dcbce13ce",
+    "reason": "prove-zero-to-complete-one-shot-import",
+    "schemaVersion": "looper-canonical-import-completion-v1",
+    "staticGeometry": true,
+    "terrainComposeReport": "artifacts/course-geometry/farmlinks/terrain-compose-v1.json",
+    "terrainProvider": "usgs-3dep",
+    "wholeHoleTerrain": true,
+    "worldcoverAudit": "artifacts/course-geometry/farmlinks/worldcover-context-audit-v1.json"
+  },
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot.",
   "contextSourceStatus": "unavailable-in-osm-snapshot",
   "contextSourceTagCounts": {},
   "courseId": "farmlinks-pursell-farms-sylacauga-al",
   "courseName": "FarmLinks at Pursell Farms",
-  "generatedAt": "2026-10-01T10:41:02.400367Z",
+  "generatedAt": "2026-10-01T12:15:05.181708Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
