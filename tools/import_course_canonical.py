@@ -4,7 +4,7 @@
 A successful run produces, in one transaction:
 - fresh exact-boundary OSM snapshot
 - V7 static golf geometry and route diagnostics
-- automatic whole-hole bare-earth terrain
+- whole-hole terrain through the canonical provider-neutral DEM seam
 - automatic ESA WorldCover context fill
 - high-resolution green-detail sampled from the same DEM
 - cache/provenance refresh
@@ -80,6 +80,77 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def likely_usgs_3dep_coverage(config: dict[str, Any]) -> bool:
+    """Conservative geography gate for zero-config USGS 3DEP acquisition.
+
+    This is only provider selection, never a geometry/course special case. The
+    provider itself still validates coverage and the downstream terrain builder
+    requires >=95% valid samples for every hole.
+    """
+    center = config.get("osmCenter") or []
+    if len(center) < 2:
+        return False
+    try:
+        lat, lon = float(center[0]), float(center[1])
+    except (TypeError, ValueError):
+        return False
+    conus = 24.0 <= lat <= 50.5 and -125.5 <= lon <= -65.0
+    alaska = 51.0 <= lat <= 72.0 and -171.0 <= lon <= -129.0
+    hawaii = 18.0 <= lat <= 23.0 and -161.5 <= lon <= -154.0
+    puerto_rico = 17.0 <= lat <= 19.5 and -68.5 <= lon <= -65.0
+    return conus or alaska or hawaii or puerto_rico
+
+
+def resolve_terrain_provider(config: dict[str, Any], config_path: Path) -> tuple[str, list[str]]:
+    terrain = config.get("terrain") or {}
+    requested = str(terrain.get("provider") or "auto").strip().lower()
+    source_url = str(terrain.get("sourceUrl") or "").strip()
+    source_file_raw = str(terrain.get("sourceFile") or "").strip()
+    dataset_name = str(terrain.get("datasetName") or "").strip()
+    source_resolution = terrain.get("sourceResolutionMeters")
+
+    if requested == "auto":
+        if source_url:
+            requested = "geotiff-url"
+        elif source_file_raw:
+            requested = "geotiff-file"
+        elif likely_usgs_3dep_coverage(config):
+            requested = "usgs-3dep"
+        else:
+            raise SystemExit(
+                "No automatic high-resolution terrain provider is configured for this course geography. "
+                "Set terrain.sourceUrl or terrain.sourceFile plus terrain.sourceResolutionMeters in the course build config. "
+                "The importer will not substitute low-resolution global terrain and call the course complete."
+            )
+
+    if requested not in {"usgs-3dep", "geotiff-url", "geotiff-file"}:
+        raise SystemExit(f"Unsupported terrain provider {requested!r}")
+
+    extra: list[str] = []
+    if requested == "geotiff-url":
+        if not source_url:
+            raise SystemExit("terrain.provider=geotiff-url requires terrain.sourceUrl")
+        if not isinstance(source_resolution, (int, float)) or float(source_resolution) <= 0:
+            raise SystemExit("terrain.provider=geotiff-url requires positive terrain.sourceResolutionMeters")
+        extra += ["--source-url", source_url, "--source-resolution-meters", str(float(source_resolution))]
+    elif requested == "geotiff-file":
+        if not source_file_raw:
+            raise SystemExit("terrain.provider=geotiff-file requires terrain.sourceFile")
+        if not isinstance(source_resolution, (int, float)) or float(source_resolution) <= 0:
+            raise SystemExit("terrain.provider=geotiff-file requires positive terrain.sourceResolutionMeters")
+        source_file = Path(source_file_raw)
+        if not source_file.is_absolute():
+            # Prefer paths relative to the config, then repo-root paths for
+            # backwards-friendly build configs.
+            config_relative = (config_path.parent / source_file).resolve()
+            source_file = config_relative if config_relative.exists() else (ROOT / source_file).resolve()
+        extra += ["--source-file", str(source_file), "--source-resolution-meters", str(float(source_resolution))]
+
+    if dataset_name:
+        extra += ["--dataset-name", dataset_name]
+    return requested, extra
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
@@ -103,9 +174,9 @@ def main() -> int:
 
     terrain_cfg = config.get("terrain") or {}
     terrain_enabled = terrain_cfg.get("enabled", True) is not False
-    terrain_provider = str(terrain_cfg.get("provider") or "usgs-3dep")
     terrain_resolution = float(terrain_cfg.get("resolutionMeters") or 1.0)
     terrain_spacing = float(terrain_cfg.get("runtimeSpacingYards") or 10.0)
+    terrain_provider, terrain_provider_args = resolve_terrain_provider(config, config_path) if terrain_enabled else ("disabled", [])
 
     landcover_cfg = config.get("landcoverContext") or {}
     landcover_enabled = landcover_cfg.get("enabled", True) is not False
@@ -152,10 +223,8 @@ def main() -> int:
         "--manifest", str(manifest),
     )
 
-    # 2. Whole-hole terrain from an automatically acquired DEM.
+    # 2. Whole-hole terrain through the provider-neutral DEM seam.
     if terrain_enabled:
-        if terrain_provider != "usgs-3dep":
-            raise SystemExit(f"Unsupported automatic terrain provider: {terrain_provider!r}")
         run(
             "tools/fetch_course_dem.py",
             "--course-package", str(geometry),
@@ -163,6 +232,7 @@ def main() -> int:
             "--metadata", str(dem_metadata),
             "--provider", terrain_provider,
             "--resolution-meters", str(terrain_resolution),
+            *terrain_provider_args,
         )
         run(
             "tools/build_course_terrain.py",
@@ -211,7 +281,7 @@ def main() -> int:
             "--spacing-yards", str(green_spacing),
             "--margin-yards", str(green_margin),
             "--dataset-name", str(source_meta.get("dataset") or "Canonical import DEM"),
-            "--source-url", str(source_meta.get("serviceUrl") or ""),
+            "--source-url", str(source_meta.get("serviceUrl") or source_meta.get("sourceUrl") or ""),
             "--source-resolution-meters", str(source_meta.get("sourceResolutionMeters") or terrain_resolution),
         )
         run("tools/validate_course_green_detail.py", "--package", str(green_detail), "--course-package", str(final_package))
@@ -253,6 +323,7 @@ def main() -> int:
         "staticReady": True,
         "runtimeReady": False,
         "terrainReady": terrain_enabled,
+        "terrainProvider": terrain_provider if terrain_enabled else None,
         "greenDetailReady": green_enabled,
         "packageSha256": package_sha,
         "configPath": str(config_path.relative_to(ROOT)),
@@ -313,6 +384,7 @@ def main() -> int:
         "runtimeReady": True,
         "package": str(final_package.relative_to(ROOT)),
         "terrain": terrain_enabled,
+        "terrainProvider": terrain_provider if terrain_enabled else None,
         "landcover": landcover_enabled,
         "greenDetail": green_enabled,
         "validation": str(manifest.relative_to(ROOT)),
