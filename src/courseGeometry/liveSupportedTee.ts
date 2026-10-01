@@ -62,8 +62,14 @@ const candidateLabel = (candidate: CourseTeeCandidate) => {
 const candidateMatchesTeeSet = (candidate: CourseTeeCandidate, teeSet: string) => {
   const wanted = normalize(teeSet)
   if (!wanted) return false
-  return [candidate.teeSet, candidate.color, candidate.label, candidate.name, candidate.ref]
-    .some((value) => normalize(value) === wanted)
+  return [
+    candidate.teeSet,
+    ...(candidate.teeAliases ?? []),
+    candidate.color,
+    candidate.label,
+    candidate.name,
+    candidate.ref,
+  ].some((value) => normalize(value) === wanted)
 }
 
 /**
@@ -72,8 +78,8 @@ const candidateMatchesTeeSet = (candidate: CourseTeeCandidate, teeSet: string) =
  * Once the golfer explicitly starts a Looper round with a course + tee set,
  * that selection is authoritative for the round. GSPro pre-shot state is useful
  * evidence, but it must never silently redefine Black as Blue (or any other tee).
- * The selected/imported tee is therefore used immediately and GSPro observations
- * are treated as validation evidence rather than a prerequisite for Shot 1.
+ * The imported/inferred tee for each hole is therefore used immediately and
+ * GSPro observations are treated as validation evidence rather than a prerequisite.
  *
  * The older distance-to-pin matcher remains as a conservative fallback for
  * legacy/dev flows that do not have an active configured round.
@@ -88,7 +94,7 @@ export const resolveLiveSupportedTee = (
       .filter((candidate) => candidateMatchesTeeSet(candidate, activeRound.normalizedTeeSet))
 
     const candidate = matches.length === 1 ? matches[0] : null
-    const courseLocalYds: CoursePointYds = activeRound.assumedTeeLocalYds
+    const courseLocalYds: CoursePointYds = geometry.holeNumber === 1 && activeRound.assumedTeeLocalYds
       ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
       : candidate?.coursePoint ?? geometry.markers.tee
     const referenceDistanceYds = candidate
@@ -107,8 +113,8 @@ export const resolveLiveSupportedTee = (
       residualYds,
       referenceDistanceYds,
       reason: candidate
-        ? `Using the active round's ${activeRound.teeSet} tee (${candidateLabel(candidate)}). GSPro is validation evidence only.`
-        : `Using the active round's assumed ${activeRound.teeSet} tee coordinate. GSPro is validation evidence only.`,
+        ? `Using the active round's ${activeRound.teeSet} tee (${candidateLabel(candidate)}) for Hole ${geometry.holeNumber}. GSPro is validation evidence only.`
+        : `Using the active round's assumed ${activeRound.teeSet} tee coordinate for Hole ${geometry.holeNumber}. GSPro is validation evidence only.`,
     }
   }
 
