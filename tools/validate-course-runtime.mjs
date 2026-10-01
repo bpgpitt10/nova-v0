@@ -32,32 +32,53 @@ const assert = (condition, message) => {
   if (!condition) throw new Error(`[runtime-smoke] ${message}`)
 }
 
-const courses = [
-  {
-    name: 'Arcadia Bluffs',
-    courseId: 'arcadia-bluffs-arcadia-mi',
-  },
-  {
-    name: 'Cabot Cliffs',
-    courseId: 'cabot-cliffs-inverness-ns',
-  },
-  {
-    name: 'Pebble Beach',
-    courseId: 'pebble-beach-pebble-beach-ca',
-  },
-  {
-    name: 'Augusta National',
-    courseId: 'augusta-national-augusta-ga',
-  },
-  {
-    name: 'Oakmont',
-    courseId: 'oakmont-country-club-oakmont-pa',
-  },
-  {
-    name: 'Erin Hills',
-    courseId: 'erin-hills-erin-wi',
-  },
+const argValue = (name) => {
+  const index = process.argv.indexOf(name)
+  if (index < 0) return null
+  const value = process.argv[index + 1]
+  if (!value || value.startsWith('--')) throw new Error(`[runtime-smoke] ${name} requires a value`)
+  return value
+}
+
+const requestedCourseId = argValue('--course')
+const legacyCourses = [
+  { name: 'Arcadia Bluffs', courseId: 'arcadia-bluffs-arcadia-mi' },
+  { name: 'Cabot Cliffs', courseId: 'cabot-cliffs-inverness-ns' },
+  { name: 'Pebble Beach', courseId: 'pebble-beach-pebble-beach-ca' },
+  { name: 'Augusta National', courseId: 'augusta-national-augusta-ga' },
+  { name: 'Oakmont', courseId: 'oakmont-country-club-oakmont-pa' },
+  { name: 'Erin Hills', courseId: 'erin-hills-erin-wi' },
 ]
+
+const candidateTeeValues = (candidate) => {
+  const sourceTags = candidate.sourceTags ?? {}
+  return [...new Set([
+    candidate.teeSet,
+    ...(candidate.teeAliases ?? []),
+    candidate.name,
+    candidate.ref,
+    candidate.color,
+    candidate.label,
+    sourceTags.tee,
+    sourceTags.name,
+    sourceTags.ref,
+    sourceTags.colour,
+    sourceTags.color,
+  ].filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))]
+}
+
+const uniqueSelectableLabels = (candidates) => {
+  const owners = new Map()
+  candidates.forEach((candidate, index) => {
+    for (const label of candidateTeeValues(candidate)) {
+      const key = label.toLowerCase()
+      const current = owners.get(key) ?? new Set()
+      current.add(index)
+      owners.set(key, current)
+    }
+  })
+  return [...owners.entries()].filter(([, indexes]) => indexes.size === 1).map(([label]) => label)
+}
 
 const server = await createServer({
   logLevel: 'error',
@@ -67,12 +88,21 @@ const server = await createServer({
 
 try {
   const { loadCourseHoleGeometry } = await server.ssrLoadModule('/src/courseGeometry/courseProvider.ts')
+  const { loadCourseTeeCandidates } = await server.ssrLoadModule('/src/courseGeometry/teeCandidateProvider.ts')
+  const { getCourseCatalogEntry } = await server.ssrLoadModule('/src/courseGeometry/courseCatalog.ts')
   const { estimateGreywolfTerrain: estimateCourseTerrain } = await server.ssrLoadModule('/src/courseGeometry/lidar.ts')
+
+  const courses = requestedCourseId
+    ? [{ name: getCourseCatalogEntry(requestedCourseId).name, courseId: requestedCourseId }]
+    : legacyCourses
 
   for (const { name, courseId } of courses) {
     const summaries = []
+    const holeNumbers = requestedCourseId
+      ? Array.from({ length: 18 }, (_, index) => index + 1)
+      : [1, 9, 18]
 
-    for (const holeNumber of [1, 9, 18]) {
+    for (const holeNumber of holeNumbers) {
       const hole = await loadCourseHoleGeometry(courseId, holeNumber)
       assert(hole.courseId === courseId, `${name} Hole ${holeNumber} course id mismatch.`)
       assert(hole.surfaces.length > 0, `${name} Hole ${holeNumber} has no playable surfaces.`)
@@ -110,11 +140,30 @@ try {
       })
     }
 
-    console.log(`[runtime-smoke] ${name} runtime terrain validation passed.`)
+    if (requestedCourseId) {
+      const candidates = await loadCourseTeeCandidates(courseId, 1)
+      assert(candidates.length > 0, `${name} returned zero usable Hole 1 tee candidates through the generic tee provider.`)
+      for (const [index, candidate] of candidates.entries()) {
+        assert(
+          Array.isArray(candidate.coursePoint)
+            && candidate.coursePoint.length >= 2
+            && Number.isFinite(candidate.coursePoint[0])
+            && Number.isFinite(candidate.coursePoint[1]),
+          `${name} Hole 1 tee candidate ${index + 1} has an invalid runtime coursePoint.`,
+        )
+      }
+      const labels = uniqueSelectableLabels(candidates)
+      assert(labels.length > 0, `${name} has no unambiguous Hole 1 tee label for Round Setup.`)
+      console.log(`[runtime-smoke] ${name}: generic tee provider returned ${candidates.length} candidate(s), ${labels.length} unambiguous Round Setup label(s).`)
+    }
+
+    console.log(`[runtime-smoke] ${name} runtime terrain validation passed for ${holeNumbers.length} hole(s).`)
     console.table(summaries)
   }
 
-  console.log('[runtime-smoke] All promoted automated course runtime validations passed.')
+  console.log(requestedCourseId
+    ? `[runtime-smoke] ${requestedCourseId} passed the generic package + tee runtime path.`
+    : '[runtime-smoke] All promoted automated course runtime validations passed.')
 } finally {
   globalThis.fetch = originalFetch
   await server.close()
