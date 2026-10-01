@@ -21,7 +21,7 @@ const receipts = fs.existsSync(artifactRoot)
   : []
 
 const fail = (message) => { throw new Error(`[course-registry] ${message}`) }
-const quote = (value) => JSON.stringify(value)
+const quote = (value) => `'${String(value).replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`
 const ids = new Set()
 const slugs = new Set()
 const entries = []
@@ -78,7 +78,7 @@ for (const entry of entries) {
   lines.push(`    name: ${quote(entry.name)},`)
   lines.push(`    location: ${quote(entry.location)},`)
   lines.push(`    slug: ${quote(entry.slug)},`)
-  lines.push(`    gsproAliases: ${JSON.stringify(entry.gsproAliases)},`)
+  lines.push(`    gsproAliases: [${entry.gsproAliases.map(quote).join(', ')}],`)
   lines.push(`    staticPackageUrl: ${quote(entry.staticPackageUrl)},`)
   lines.push(`    status: ${quote(entry.status)},`)
   lines.push(`    packageStatus: ${quote(entry.packageStatus)},`)
