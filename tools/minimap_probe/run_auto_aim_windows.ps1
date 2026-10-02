@@ -10,6 +10,7 @@ param(
   [string]$PinCourse = "",
   [string]$TargetCourse = "",
   [string]$Roi = "",
+  [string]$Tesseract = "",
   [switch]$Click,
   [switch]$RunProof
 )
@@ -26,6 +27,32 @@ if (-not (Test-Path $Python)) {
   & $Python -m pip install -r (Join-Path $Here "requirements.txt")
 }
 
+# Resolve Tesseract once in the Windows launcher so the Python OCR path never
+# depends on shell PATH configuration. Explicit -Tesseract wins.
+if (-not $Tesseract) {
+  $TesseractCommand = Get-Command tesseract.exe -ErrorAction SilentlyContinue
+  if ($TesseractCommand) {
+    $Tesseract = $TesseractCommand.Source
+  } else {
+    $Candidates = @(
+      "C:\Program Files\Tesseract-OCR\tesseract.exe",
+      "C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+      (Join-Path $env:LOCALAPPDATA "Programs\Tesseract-OCR\tesseract.exe")
+    )
+    foreach ($Candidate in $Candidates) {
+      if (Test-Path $Candidate) {
+        $Tesseract = $Candidate
+        break
+      }
+    }
+  }
+}
+
+if (-not $Tesseract -or -not (Test-Path $Tesseract)) {
+  throw "Tesseract OCR was not found. Install Tesseract OCR for Windows or rerun with -Tesseract 'C:\path\to\tesseract.exe'."
+}
+Write-Host "Tesseract: $Tesseract"
+
 if ($RunProof) {
   & $Python (Join-Path $Here "waypoint_scale_proof.py")
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -35,7 +62,11 @@ if ($RunProof) {
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-$argsList = @((Join-Path $Here "auto_aim_click_runner.py"), "--monitor", "$Monitor")
+$argsList = @(
+  (Join-Path $Here "auto_aim_click_runner.py"),
+  "--monitor", "$Monitor",
+  "--tesseract", $Tesseract
+)
 if ($Roi) { $argsList += @("--roi", $Roi) }
 if ($Distance -ne $null) { $argsList += @("--distance", "$Distance") }
 
