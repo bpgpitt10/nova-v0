@@ -14,6 +14,38 @@ This remains isolated from production Live Caddie. Preview is the default; mouse
 - The white pin marker is an independent fail-closed transform check; visually plausible wrong registrations miss by hundreds of pixels.
 - Canonical->current inverse target math is locked by `auto_aim_transform_proof.py` on the saved H8/H13 zoom matrices.
 
+## Live physical simulator proof — PASS
+
+Greywolf Hole 8 was validated live on 2026-10-02.
+
+Tee calibration:
+
+- par 4 gray-waypoint calibration resolved successfully;
+- authoritative tee scale: `0.575811 yd/px`;
+- calibration state cached successfully.
+
+Shot 2 preview:
+
+- requested controlled target: `75 yd forward, +10 yd right`;
+- current target pixel: `(234.0, 618.0)`;
+- verified current->canonical pin cross-check: `0.73 px`;
+- preview produced no mouse input.
+
+Shot 2 physical click:
+
+- same requested target: `75 yd forward, +10 yd right`;
+- GSPro accepted the click and displayed the 75-yard AIM target plus magenta minimap marker;
+- current->canonical pin cross-check remained `0.73 px`;
+- accepted magenta target transformed back into the calibrated tee frame with **0.36 yd vector error**;
+- acceptance threshold was `<= 3 yd`;
+- result: **AUTO AIM PASS**.
+
+This is the first live end-to-end proof of the complete physical actuator chain:
+
+`tee calibration -> post-shot zoom registration -> pin verification -> canonical target -> inverse transform -> GSPro minimap click -> magenta accepted-target verification`.
+
+The remaining integration step is no longer pixel math. It is to feed the actual Live Caddie recommendation/aim point into this proven actuator path, then validate that real recommendation on a small number of live holes before enabling automatic triggering.
+
 ## Runtime model
 
 1. At the tee, capture and cache the canonical GSPro minimap plus authoritative yards/pixel.
@@ -27,7 +59,7 @@ This remains isolated from production Live Caddie. Preview is the default; mouse
 9. If `-Click` is explicitly supplied, click once.
 10. Detect the accepted magenta GSPro target, transform it back to canonical pixels, and measure vector error using the calibrated tee scale. No ball->pin distance ruler is used for click verification.
 
-## First physical simulator gate
+## Re-running the physical simulator gate
 
 Update the isolated worktree:
 
@@ -37,16 +69,16 @@ git fetch origin
 git switch --detach origin/minimap-waypoint-scale-v1
 ```
 
-At a normal tee before hitting, run all offline proofs and cache the tee calibration:
+At a normal tee, cache the tee calibration:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\minimap_probe\run_auto_aim_windows.ps1 `
-  -RunProof -CalibrateTee -Par 4
+  -CalibrateTee -Par 4
 ```
 
 For a par 3, use `-Par 3`.
 
-Hit the tee shot normally. Once GSPro has re-centered/zoomed for shot 2, preview a controlled target 75 yd forward and 10 yd right of the current ball:
+After GSPro re-centers/zooms for the next shot, preview a controlled target:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\minimap_probe\run_auto_aim_windows.ps1 `
@@ -79,4 +111,4 @@ powershell -ExecutionPolicy Bypass -File .\tools\minimap_probe\run_auto_aim_wind
   -TargetCourse "aimX,aimY"
 ```
 
-Add `-Click` only after preview validation. Production Live Caddie should not auto-trigger this until the controlled post-shot physical gate passes.
+Add `-Click` only after preview validation. The next gate is to bridge the actual Live Caddie aim point into this mode and validate a few real recommendations before production auto-triggering.
