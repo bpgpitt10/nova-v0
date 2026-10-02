@@ -10,7 +10,7 @@ Across the Greywolf tee captures, ball->pin pixel separation stays approximately
 
 ## Automatic tee-corpus result
 
-`waypoint_scale_cv.py` now detects the low-saturation gray waypoint oval, crops the nearby white numeric label, OCRs the yardage, and feeds the observation into `waypoint_scale.py`.
+`waypoint_scale_cv.py` detects the low-saturation gray waypoint oval, crops the nearby white numeric label, OCRs the yardage, and feeds the observation into `waypoint_scale.py`.
 
 The detector/resolver was run against all 18 preserved Greywolf tee minimaps:
 
@@ -57,41 +57,61 @@ Therefore 1.0375 is not a universal correction. It was compensating for H1's rou
 
 The original single-threshold OCR was perfect on the clean tee PNGs but one older JPEG approach frame could turn `51` into `91`. The detector now votes across fixed bright thresholds before accepting a label. On the preserved corpus this keeps the tee labels correct and recovers the visible compressed approach labels, including 51, 177/22, 126, 27, 222 and 56.
 
-## Mid-hole / zoom evidence
+## Zoom registration result
 
-The older corpus contains several post-shot minimaps where GSPro has zoomed the map. Gray routing labels are not present in every zoomed state, so waypoint-only scaling cannot be the entire runtime solution.
+The older `minimap_registration.py` approach is the correct way to carry a calibrated tee frame through GSPro's post-shot zoom, pan and rotation. It solves a similarity transform from the current minimap back into the cached tee minimap.
 
-Two zoomed approach frames do contain long gray rulers and a readable current PIN distance, allowing an independent scale check:
+A blind search across the OCR corpus found multiple real Greywolf post-shot states. Two strong zoom cases were validated quantitatively using three independent facts:
 
-- Approach frame 005: gray 177 yd ruler gives ~0.3621 yd/px; current PIN 245 yd over ball->pin pixels gives ~0.3617 yd/px (**~0.10% difference**).
-- Approach frame 006: gray 126 yd ruler gives ~0.2551 yd/px; current PIN 173 yd over ball->pin pixels gives ~0.2555 yd/px (**~0.15% difference**).
+1. SIFT/RANSAC course-image registration solved current pixels -> tee pixels;
+2. the current white pin marker was transformed and compared with the known tee pin marker;
+3. the transformed current ball position was converted to yards using the corrected tee waypoint scale and compared with GSPro's visible current distance-to-pin.
 
-This is encouraging evidence that after GSPro re-centers/zooms around a post-shot state, the current PIN distance may be a valid straight-line ruler even though tee-shot hole yardage was not. Two cases are not enough to make that a universal fallback yet.
+Results:
+
+| State | Registration scale/rotation | Pin cross-check | Canonical remaining distance | GSPro distance | Yard error |
+| --- | --- | --- | --- | --- | --- |
+| Greywolf H8 shot 2 | ~0.387x / +24.0 deg | 0.52 px | 150.71 yd | 150.6 yd | **0.11 yd** |
+| Greywolf H13 shot 2 | ~0.346x / +32.7 deg | 1.57 px | 112.97 yd | 112.5 yd | **0.47 yd** |
+
+These are strongly zoomed/rotated states, so this is direct evidence that **we do not need to rediscover yards-per-pixel after every zoom**. The correct model is:
+
+- calibrate the tee minimap once using gray waypoints (or ball->pin on a par 3);
+- when GSPro changes the minimap, solve the current->tee similarity transform;
+- express the current ball and desired target in the calibrated tee frame;
+- transform the desired target back into the current minimap frame for the physical click.
+
+The blind corpus search also produced visually plausible wrong registrations. Their transformed pin markers missed the known tee pin by ~165 px and ~389 px. This makes the white-pin cross-check an effective fail-closed acceptance gate. `minimap_registration.py` now exposes `register_current_to_canonical_verified`, which permits lower feature-match counts only when the independently detected pin also lands within the configured pixel tolerance.
+
+`canonical_position_from_hole_model` now accepts a `canonical_yards_per_pixel` override so post-shot geometry can use the corrected waypoint-derived tee scale rather than the legacy routed-hole/pin scale stored in older HoleModels.
+
+`minimap_zoom_registration_proof.py` locks the H8/H13 acceptance math and the false-registration rejection into a deterministic proof.
+
+## Mid-hole ruler evidence
+
+The older corpus also contains several post-shot minimaps where gray routing labels remain visible. These are no longer required for zoom calibration if tee registration succeeds, but they remain useful independent diagnostics.
+
+Two zoomed approach frames contain long gray rulers and a readable current PIN distance:
+
+- Approach frame 005: gray 177 yd ruler gives ~0.3621 yd/px; current PIN 245 yd over ball->pin pixels gives ~0.3617 yd/px (~0.10% difference).
+- Approach frame 006: gray 126 yd ruler gives ~0.2551 yd/px; current PIN 173 yd over ball->pin pixels gives ~0.2555 yd/px (~0.15% difference).
 
 A preserved fairway frame also contains gray labels 177 yd and 22 yd. The very short 22 yd marker is too close to the ball to be a stable authoritative ruler; the resolver therefore prefers labels >=75 yd.
 
-## Scale policy
-
-1. Prefer labeled gray GSPro waypoints whenever a long-enough one is visible.
-2. If multiple long-enough waypoint labels are visible, use their median implied scale and require <=2.5% spread.
-3. Ignore very short labels for authoritative scaling because pixel-centering error becomes large in percentage terms.
-4. On par-3 tee shots, ball->pin scaling is acceptable as the explicit fallback because dogleg routing is not a concern.
-5. At non-par-3 tee states with no trusted waypoint, fail closed rather than silently use routed hole yardage as a straight-line ruler.
-6. Keep testing the current post-shot PIN ruler as the likely fallback after zoom; do not promote it to universal authority until more independent zoomed cases are validated.
-
 ## Auto-aim implication
 
-Looper's own map can always display a course-space aim point without knowing GSPro pixels. A physical GSPro minimap click is different: it requires the live minimap transform.
+Looper's own map can always display a course-space aim point without knowing GSPro pixels. A physical GSPro minimap click requires the live pixel transform.
 
-The safest runtime model is to re-register from the current minimap immediately before every automatic click rather than trying to remember a scale from the tee. A zoom, pan, rotation, or new ball position should invalidate the previous pixel transform.
+The runtime model should now be:
 
-Current proposed resolver order:
+1. **Tee:** capture minimap and resolve authoritative scale from gray waypoints; par 3 may use direct ball->pin.
+2. Cache the tee minimap as the canonical GSPro pixel frame for the hole.
+3. Before every physical Auto Aim click, capture the current minimap.
+4. Detect the current ball and pin markers.
+5. Register current minimap -> canonical tee minimap with the similarity transform.
+6. Require the transformed current pin to land on the canonical tee pin within a tight tolerance; otherwise fail closed and do not click.
+7. Convert Looper's desired course/aim point into the calibrated canonical frame.
+8. Invert the current->canonical transform to obtain the current GSPro minimap click pixel.
+9. Click once, then use the existing magenta-target verification path to confirm GSPro accepted the intended target.
 
-1. fresh screenshot of current GSPro minimap;
-2. fresh hardened ball marker + pin marker;
-3. long gray waypoint ruler if visible;
-4. explicit par-3 tee ball->pin fallback;
-5. post-shot current-PIN fallback only after the remaining zoom validation proves it sufficiently;
-6. fail closed if no trustworthy ruler is available.
-
-The next actuator gate is to plug this fresh scale resolver into the isolated Click Lab and prove one tee click plus one post-shot/zoomed click. Production Live Caddie should remain untouched until those physical tests pass.
+The next physical simulator gate is therefore no longer 'solve zoom scaling.' It is: **wire the corrected canonical tee scale + verified zoom registration into isolated Click Lab, then prove one real post-shot recommendation click on GSPro.** Production Live Caddie remains untouched until that passes.
