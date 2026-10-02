@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
-"""Register a later GSPro minimap back into the tee HoleModel coordinate system.
+"""Register a later GSPro minimap back into the calibrated tee coordinate system.
 
-GSPro's minimap behaves like a 2D map that is translated, scaled, and can rotate a
-few degrees as the player advances.  That means a post-tee minimap can be aligned to
-the cached tee minimap using image features and a similarity transform
-(scale + rotation + translation).
+GSPro's minimap behaves like a 2D map that is translated, scaled, and can rotate as
+the player advances. A post-tee minimap can therefore be aligned to the cached tee
+minimap with a similarity transform (scale + rotation + translation).
 
-Why this matters:
-- the tee HoleModel already owns hazards + target-green geometry in canonical pixels;
-- after registration, the current ball can be expressed in those same pixels;
-- downstream recommendation logic can then reason about hazards relative to the
-  *current* ball without re-extracting the whole hole every shot.
-
-The implementation deliberately uses estimateAffinePartial2D rather than a free
-homography because the observed GSPro geometry is a scaled/rotated 2D map.  A more
-flexible projective transform could overfit dynamic UI/markers.
+The calibrated tee frame is authoritative. Post-shot zoom does not need a new yard
+ruler if the current minimap can be registered back to that frame. For automatic
+aiming, use ``register_current_to_canonical_verified`` so the transform is also
+checked against the independently detected white pin marker before any click.
 """
 
 from __future__ import annotations
@@ -44,7 +38,7 @@ class RegistrationResult:
 
 
 def _play_mask(shape: tuple[int, int]) -> np.ndarray:
-    """Mask out minimap title/footer UI while keeping the course imagery."""
+    """Mask title/footer UI while retaining the course imagery."""
     h, w = shape
     mask = np.zeros((h, w), dtype=np.uint8)
     y0 = int(round(h * 0.105))
@@ -61,13 +55,16 @@ def register_current_to_canonical(
     ransac_reproj_px: float = 3.0,
     min_good_matches: int = 30,
     min_inliers: int = 20,
+    max_rotation_deg: float = 40.0,
 ) -> RegistrationResult:
+    """Solve current-minimap pixels -> canonical-tee pixels.
+
+    The default evidence thresholds remain conservative. The verified wrapper below
+    deliberately allows fewer feature matches because its pin-marker cross-check is
+    a second independent acceptance gate.
+    """
     if current_bgr is None or canonical_bgr is None:
         raise ValueError("registration images are missing")
-    if current_bgr.shape[:2] != canonical_bgr.shape[:2]:
-        # Same crop dimensions are normal today, but the registration math itself
-        # does not require them to match.  Different sizes are still accepted.
-        pass
 
     current_gray = cv2.cvtColor(current_bgr, cv2.COLOR_BGR2GRAY)
     canonical_gray = cv2.cvtColor(canonical_bgr, cv2.COLOR_BGR2GRAY)
@@ -106,9 +103,8 @@ def register_current_to_canonical(
     if inliers < int(min_inliers):
         raise RuntimeError(f"Minimap registration had only {inliers} RANSAC inliers")
 
-    a, b, tx = [float(v) for v in matrix[0]]
-    c, d, ty = [float(v) for v in matrix[1]]
-    # estimateAffinePartial2D should produce [[s cos,-s sin],[s sin,s cos]].
+    a, b, _tx = [float(v) for v in matrix[0]]
+    c, d, _ty = [float(v) for v in matrix[1]]
     scale_x = math.hypot(a, c)
     scale_y = math.hypot(b, d)
     scale = (scale_x + scale_y) / 2.0
@@ -116,8 +112,11 @@ def register_current_to_canonical(
 
     if not (0.15 <= scale <= 4.0):
         raise RuntimeError(f"Implausible minimap registration scale {scale:.3f}")
-    if abs(rotation_deg) > 30.0:
-        raise RuntimeError(f"Implausible minimap registration rotation {rotation_deg:.1f} deg")
+    if abs(rotation_deg) > float(max_rotation_deg):
+        raise RuntimeError(
+            f"Implausible minimap registration rotation {rotation_deg:.1f} deg "
+            f"(limit {max_rotation_deg:.1f})"
+        )
 
     src_in = src[inliers_bool]
     dst_in = dst[inliers_bool]
@@ -126,7 +125,6 @@ def register_current_to_canonical(
     median_error = float(np.median(errors)) if len(errors) else 999.0
     inlier_ratio = inliers / max(len(good), 1)
 
-    # A simple bounded confidence score for debug/gating, not a probabilistic claim.
     match_score = min(1.0, inliers / 100.0)
     ratio_score = min(1.0, inlier_ratio / 0.65)
     error_score = max(0.0, min(1.0, 1.0 - median_error / 4.0))
@@ -152,19 +150,91 @@ def transform_point(matrix_2x3, x: float, y: float) -> tuple[float, float]:
     return float(out[0]), float(out[1])
 
 
+def verify_registration_pin(
+    registration: RegistrationResult,
+    *,
+    current_pin_xy: tuple[float, float],
+    canonical_pin_xy: tuple[float, float],
+    max_pin_error_px: float = 5.0,
+) -> float:
+    """Cross-check a solved transform using the independent white pin marker."""
+    mapped = transform_point(
+        registration.matrix_2x3,
+        float(current_pin_xy[0]),
+        float(current_pin_xy[1]),
+    )
+    error_px = math.hypot(
+        mapped[0] - float(canonical_pin_xy[0]),
+        mapped[1] - float(canonical_pin_xy[1]),
+    )
+    if error_px > float(max_pin_error_px):
+        raise RuntimeError(
+            f"Minimap registration pin cross-check missed by {error_px:.1f}px "
+            f"(limit {max_pin_error_px:.1f}px)"
+        )
+    return float(error_px)
+
+
+def register_current_to_canonical_verified(
+    current_bgr: np.ndarray,
+    canonical_bgr: np.ndarray,
+    *,
+    current_pin_xy: tuple[float, float],
+    canonical_pin_xy: tuple[float, float],
+    ratio_test: float = 0.72,
+    ransac_reproj_px: float = 3.0,
+    min_good_matches: int = 10,
+    min_inliers: int = 8,
+    max_rotation_deg: float = 40.0,
+    max_pin_error_px: float = 5.0,
+) -> tuple[RegistrationResult, float]:
+    """Solve a zoom transform and fail closed unless the pin lands correctly.
+
+    This is the preferred Auto Aim path. The independent pin check allows valid
+    strongly-zoomed frames with relatively few shared visual features to pass while
+    rejecting visually plausible but wrong-hole/wrong-region registrations.
+    """
+    registration = register_current_to_canonical(
+        current_bgr,
+        canonical_bgr,
+        ratio_test=ratio_test,
+        ransac_reproj_px=ransac_reproj_px,
+        min_good_matches=min_good_matches,
+        min_inliers=min_inliers,
+        max_rotation_deg=max_rotation_deg,
+    )
+    pin_error_px = verify_registration_pin(
+        registration,
+        current_pin_xy=current_pin_xy,
+        canonical_pin_xy=canonical_pin_xy,
+        max_pin_error_px=max_pin_error_px,
+    )
+    return registration, pin_error_px
+
+
 def canonical_position_from_hole_model(
     *,
     hole_model: dict,
     current_ball_xy: tuple[float, float],
     registration: RegistrationResult,
+    canonical_yards_per_pixel: float | None = None,
 ) -> dict:
-    """Express the current ball in canonical pixels and tee-relative yards."""
+    """Express current ball in canonical pixels and calibrated tee-frame yards.
+
+    ``canonical_yards_per_pixel`` should be the waypoint/par-3 scale resolved from
+    the tee screenshot. The old HoleModel value is retained only as a compatibility
+    fallback for callers that have not yet adopted waypoint calibration.
+    """
     minimap = hole_model.get("minimap") or {}
     tee_ball = minimap.get("ball_pixel") or {}
     pin = minimap.get("pin_pixel") or {}
-    yd_per_px = float(minimap.get("yards_per_pixel") or 0.0)
+    yd_per_px = (
+        float(canonical_yards_per_pixel)
+        if canonical_yards_per_pixel is not None
+        else float(minimap.get("yards_per_pixel") or 0.0)
+    )
     if yd_per_px <= 0:
-        raise ValueError("HoleModel minimap scale missing")
+        raise ValueError("Calibrated canonical minimap scale missing")
 
     cur_x, cur_y = transform_point(
         registration.matrix_2x3,
@@ -180,7 +250,6 @@ def canonical_position_from_hole_model(
     if norm < 10.0:
         raise ValueError("Canonical tee/pin axis is invalid")
     forward_unit = axis / norm
-    # Screen-space vector pointing to the player's right when tee->pin is forward.
     right_unit = np.array([-forward_unit[1], forward_unit[0]], dtype=float)
     delta = current - tee
 
@@ -193,4 +262,5 @@ def canonical_position_from_hole_model(
         "tee_relative_forward_yds": forward_yds,
         "tee_relative_lateral_yds": lateral_yds,
         "canonical_remaining_pin_yds": remaining_pin_yds,
+        "canonical_yards_per_pixel": yd_per_px,
     }
