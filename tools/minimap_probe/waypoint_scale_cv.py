@@ -4,8 +4,8 @@
 This module intentionally solves only the minimap-local ruler problem. It does
 not decide where Looper should aim and it never sends mouse/keyboard input.
 
-The preserved tee corpus shows that GSPro renders route/default-aim waypoints as
-a small light-gray vertical oval followed by a white numeric yardage label. The
+The preserved corpus shows that GSPro renders route/default-aim waypoints as a
+small light-gray vertical oval followed by a white numeric yardage label. The
 label is the current-ball distance to that marker. Because both marker and a
 future click live in the same minimap frame, ``yardage / ball->marker pixels``
 gives a local yards-per-pixel ruler without assuming screen hole yardage equals
@@ -14,6 +14,7 @@ a straight ball->pin line.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 import argparse
 import json
@@ -27,7 +28,8 @@ import numpy as np
 from waypoint_scale import Point, WaypointObservation, resolve_minimap_scale
 
 
-# Empirically stable across the preserved 18-hole Greywolf tee corpus.
+# Empirically stable across the preserved Greywolf tee corpus and the older
+# approach/lie screenshot corpus.
 GRAY_HSV_LOW = np.array([0, 18, 150], dtype=np.uint8)
 GRAY_HSV_HIGH = np.array([179, 62, 240], dtype=np.uint8)
 MAX_COMPONENT_SATURATION = 45.0
@@ -35,6 +37,7 @@ MIN_COMPONENT_VALUE = 185.0
 MIN_COMPONENT_AREA = 35
 MAX_COMPONENT_AREA = 220
 HEADER_EXCLUSION_PX = 120
+OCR_THRESHOLDS = (150, 160, 170, 180, 190, 200, 210, 220)
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,7 @@ class GrayWaypoint:
     yards: float
     ocr_text: str
     confidence: float
+    ocr_votes: int
 
 
 def _candidate_markers(image: np.ndarray) -> list[Point]:
@@ -85,30 +89,13 @@ def _candidate_markers(image: np.ndarray) -> list[Point]:
     return candidates
 
 
-def _ocr_numeric_crop(
-    image: np.ndarray,
-    marker: Point,
+def _run_digit_ocr(
+    gray: np.ndarray,
+    threshold: int,
     *,
-    tesseract_path: str = "tesseract",
-) -> tuple[str, float] | None:
-    """Read the white yardage label rendered below/right of one gray marker."""
-    height, width = image.shape[:2]
-    x1 = max(0, int(round(marker.x)) - 8)
-    x2 = min(width, int(round(marker.x)) + 105)
-    y1 = max(0, int(round(marker.y)) + 3)
-    y2 = min(height, int(round(marker.y)) + 58)
-    if x2 - x1 < 20 or y2 - y1 < 12:
-        return None
-
-    crop = image[y1:y2, x1:x2]
-    enlarged = cv2.resize(crop, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-    gray = cv2.cvtColor(enlarged, cv2.COLOR_BGR2GRAY)
-
-    # Fixed bright threshold was more stable than Otsu on the preserved corpus:
-    # it read all visible tee waypoint labels correctly, while Otsu sometimes
-    # confused 1/7 or appended background texture.
-    _, prepared = cv2.threshold(gray, 185, 255, cv2.THRESH_BINARY)
-
+    tesseract_path: str,
+) -> str | None:
+    _, prepared = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
     handle = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     temp_path = handle.name
     handle.close()
@@ -144,7 +131,45 @@ def _ocr_numeric_crop(
     yards = int(digits)
     if not (10 <= yards <= 700):
         return None
-    return digits, 1.0
+    return digits
+
+
+def _ocr_numeric_crop(
+    image: np.ndarray,
+    marker: Point,
+    *,
+    tesseract_path: str = "tesseract",
+) -> tuple[str, float, int] | None:
+    """Read the white yardage label rendered below/right of one gray marker.
+
+    Multiple fixed thresholds are deliberately voted instead of trusting one
+    segmentation. PNG tee captures are easy; JPEG approach captures can shift a
+    digit edge enough that a single threshold confuses e.g. 51/91. Voting made
+    the saved tee labels exact and recovered the older compressed approach labels.
+    """
+    height, width = image.shape[:2]
+    x1 = max(0, int(round(marker.x)) - 8)
+    x2 = min(width, int(round(marker.x)) + 105)
+    y1 = max(0, int(round(marker.y)) + 3)
+    y2 = min(height, int(round(marker.y)) + 58)
+    if x2 - x1 < 20 or y2 - y1 < 12:
+        return None
+
+    crop = image[y1:y2, x1:x2]
+    enlarged = cv2.resize(crop, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(enlarged, cv2.COLOR_BGR2GRAY)
+
+    reads: list[str] = []
+    for threshold in OCR_THRESHOLDS:
+        parsed = _run_digit_ocr(gray, threshold, tesseract_path=tesseract_path)
+        if parsed is not None:
+            reads.append(parsed)
+
+    if not reads:
+        return None
+    text, votes = Counter(reads).most_common(1)[0]
+    confidence = votes / len(OCR_THRESHOLDS)
+    return text, confidence, votes
 
 
 def detect_gray_waypoints(
@@ -157,13 +182,14 @@ def detect_gray_waypoints(
         parsed = _ocr_numeric_crop(image, marker, tesseract_path=tesseract_path)
         if parsed is None:
             continue
-        text, confidence = parsed
+        text, confidence, votes = parsed
         observations.append(
             GrayWaypoint(
                 pixel=marker,
                 yards=float(text),
                 ocr_text=text,
                 confidence=confidence,
+                ocr_votes=votes,
             )
         )
     return observations
@@ -238,6 +264,8 @@ def main() -> int:
                 "x": item.pixel.x,
                 "y": item.pixel.y,
                 "ocr": item.ocr_text,
+                "ocr_votes": item.ocr_votes,
+                "confidence": item.confidence,
             }
             for item in detected
         ],
@@ -252,7 +280,8 @@ def main() -> int:
         for item in detected:
             print(
                 f"  gray waypoint {item.ocr_text} yd @ "
-                f"({item.pixel.x:.1f},{item.pixel.y:.1f})"
+                f"({item.pixel.x:.1f},{item.pixel.y:.1f}) "
+                f"votes={item.ocr_votes}/{len(OCR_THRESHOLDS)}"
             )
         if result.diagnostic_pin_delta_pct is not None:
             print(f"  pin ruler delta: {result.diagnostic_pin_delta_pct:+.2f}%")
