@@ -36,6 +36,7 @@
       "binaries/open-golf-coach-helper"
     ],
     "resources": {
+      "../tools/minimap_probe": "auto-aim-toolkit",
       "resources/node/node.exe": "resources/node/node.exe",
       "resources/simread-helper/dist": "resources/simread-helper/dist",
       "resources/simread-helper/node_modules": "resources/simread-helper/node_modules",
