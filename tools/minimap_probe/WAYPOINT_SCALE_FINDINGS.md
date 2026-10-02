@@ -53,23 +53,45 @@ The independent anchors agreeing within 0.23% on four unrelated hole shapes is t
 
 Therefore 1.0375 is not a universal correction. It was compensating for H1's routed-yardage / straight-pixel mismatch.
 
-## Mid-hole evidence
+## OCR hardening
 
-A preserved fairway frame contains gray labels 177 yd and 22 yd. The farther 177 yd marker implies ~0.362 yd/px. The very short 22 yd marker is within only about 59 px of the ball, so a one- or two-pixel center estimate materially changes its ratio. The resolver therefore prefers farther waypoints (currently >=75 yd) and treats near-field labels as non-authoritative.
+The original single-threshold OCR was perfect on the clean tee PNGs but one older JPEG approach frame could turn `51` into `91`. The detector now votes across fixed bright thresholds before accepting a label. On the preserved corpus this keeps the tee labels correct and recovers the visible compressed approach labels, including 51, 177/22, 126, 27, 222 and 56.
 
-This demonstrates the waypoint-ruler approach is not inherently limited to tee shots and can be recomputed after GSPro zooms.
+## Mid-hole / zoom evidence
+
+The older corpus contains several post-shot minimaps where GSPro has zoomed the map. Gray routing labels are not present in every zoomed state, so waypoint-only scaling cannot be the entire runtime solution.
+
+Two zoomed approach frames do contain long gray rulers and a readable current PIN distance, allowing an independent scale check:
+
+- Approach frame 005: gray 177 yd ruler gives ~0.3621 yd/px; current PIN 245 yd over ball->pin pixels gives ~0.3617 yd/px (**~0.10% difference**).
+- Approach frame 006: gray 126 yd ruler gives ~0.2551 yd/px; current PIN 173 yd over ball->pin pixels gives ~0.2555 yd/px (**~0.15% difference**).
+
+This is encouraging evidence that after GSPro re-centers/zooms around a post-shot state, the current PIN distance may be a valid straight-line ruler even though tee-shot hole yardage was not. Two cases are not enough to make that a universal fallback yet.
+
+A preserved fairway frame also contains gray labels 177 yd and 22 yd. The very short 22 yd marker is too close to the ball to be a stable authoritative ruler; the resolver therefore prefers labels >=75 yd.
 
 ## Scale policy
 
-1. Prefer labeled gray GSPro waypoints.
+1. Prefer labeled gray GSPro waypoints whenever a long-enough one is visible.
 2. If multiple long-enough waypoint labels are visible, use their median implied scale and require <=2.5% spread.
 3. Ignore very short labels for authoritative scaling because pixel-centering error becomes large in percentage terms.
 4. On par-3 tee shots, ball->pin scaling is acceptable as the explicit fallback because dogleg routing is not a concern.
-5. On non-par-3 states with no trusted waypoint, fail closed rather than silently use routed hole yardage as a straight-line ruler.
-6. Keep pin-derived scale as a diagnostic only on non-par-3 states.
+5. At non-par-3 tee states with no trusted waypoint, fail closed rather than silently use routed hole yardage as a straight-line ruler.
+6. Keep testing the current post-shot PIN ruler as the likely fallback after zoom; do not promote it to universal authority until more independent zoomed cases are validated.
 
 ## Auto-aim implication
 
 Looper's own map can always display a course-space aim point without knowing GSPro pixels. A physical GSPro minimap click is different: it requires the live minimap transform.
 
-The safest runtime model is therefore to re-register from the current minimap immediately before every automatic click rather than trying to remember a scale from the tee. A zoom, pan, rotation, or new ball position should invalidate the previous pixel transform. The next validation task is to prove the same automatic waypoint-scale resolver on multiple preserved post-shot / zoomed minimaps and then plug that live resolver into the isolated Click Lab actuator.
+The safest runtime model is to re-register from the current minimap immediately before every automatic click rather than trying to remember a scale from the tee. A zoom, pan, rotation, or new ball position should invalidate the previous pixel transform.
+
+Current proposed resolver order:
+
+1. fresh screenshot of current GSPro minimap;
+2. fresh hardened ball marker + pin marker;
+3. long gray waypoint ruler if visible;
+4. explicit par-3 tee ball->pin fallback;
+5. post-shot current-PIN fallback only after the remaining zoom validation proves it sufficiently;
+6. fail closed if no trustworthy ruler is available.
+
+The next actuator gate is to plug this fresh scale resolver into the isolated Click Lab and prove one tee click plus one post-shot/zoomed click. Production Live Caddie should remain untouched until those physical tests pass.
