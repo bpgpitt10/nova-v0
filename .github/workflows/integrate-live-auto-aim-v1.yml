@@ -31,8 +31,17 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
-      - name: Build web app
-        run: npm run build
+      - name: Generate runtime course artifacts
+        shell: pwsh
+        run: |
+          npm run courses:generate-runtime-registry
+          npm run courses:generate-registration
+
+      - name: Check TypeScript
+        run: npx tsc -b
+
+      - name: Build Vite app
+        run: npx vite build
 
       - name: Check Tauri Rust
         run: cargo check --manifest-path src-tauri/Cargo.toml
