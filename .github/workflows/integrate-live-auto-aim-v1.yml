@@ -43,6 +43,9 @@ jobs:
       - name: Build Vite app
         run: npx vite build
 
+      - name: Build existing Windows helper sidecar
+        run: npm run helper:build:windows
+
       - name: Check Tauri Rust
         run: cargo check --manifest-path src-tauri/Cargo.toml
 
