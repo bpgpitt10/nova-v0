@@ -67,7 +67,7 @@ export default function LooperAuthGate({ children }: Props) {
         userId: nextUser.id,
         promise: bootstrapLooperCloudData(nextUser.id, {
           // Brian/admin is the controlled migration path for the old pre-auth
-          // browser cache. Normal invitees always start from their own scope.
+          // browser cache. Normal users always start from their own scope.
           claimUnscopedLegacyData: access.is_admin,
         })
           .then((result) => {
@@ -129,7 +129,7 @@ export default function LooperAuthGate({ children }: Props) {
       return
     }
 
-    // A genuinely different account must pass the allowlist/bootstrap path. Same-user
+    // A genuinely different account must pass the access/bootstrap path. Same-user
     // refresh/focus events are filtered by the auth listener before reaching here.
     if (authorizedUserIdRef.current !== nextUser.id) {
       authorizedUserIdRef.current = null
@@ -140,8 +140,8 @@ export default function LooperAuthGate({ children }: Props) {
       const allowlistRecord = await getAllowedUserRecord(nextUser)
       if (!allowlistRecord) {
         authorizedUserIdRef.current = null
-        // An uninvited signed-in identity must not inherit the previous allowed
-        // user's working cache while it sees the invite-only screen.
+        // A disabled or otherwise unprovisioned signed-in identity must not inherit
+        // the previous allowed user's working cache while access is blocked.
         deactivateLocalUserScope()
         setState('not-allowed')
         return
@@ -178,7 +178,7 @@ export default function LooperAuthGate({ children }: Props) {
           }
 
           // getCurrentLooperUser() immediately below is the single source of truth
-          // for startup. Ignoring Supabase's initial callback avoids duplicate invite
+          // for startup. Ignoring Supabase's initial callback avoids duplicate access
           // checks and bootstraps during first render.
           if (event === 'INITIAL_SESSION') {
             return
@@ -317,7 +317,7 @@ export default function LooperAuthGate({ children }: Props) {
     setBusy(true)
     clearFormFeedback()
     // updateUser can emit USER_UPDATED. Drop recovery mode before that event so
-    // the listener can continue through the normal invite/data bootstrap path.
+    // the listener can continue through the normal access/data bootstrap path.
     passwordResetFlowRef.current = false
     try {
       await updateLooperPassword(password)
@@ -393,7 +393,7 @@ export default function LooperAuthGate({ children }: Props) {
   if (state === 'checking' || state === 'checking-access' || state === 'syncing-data') {
     const heading =
       state === 'checking-access'
-        ? 'Checking your invite…'
+        ? 'Checking your account…'
         : state === 'syncing-data'
           ? 'Preparing your Looper data…'
           : 'Signing you in…'
@@ -461,11 +461,11 @@ export default function LooperAuthGate({ children }: Props) {
       <main className="looper-auth">
         <section className="looper-auth__card">
           <span className="looper-auth__eyebrow">The Looper</span>
-          <h1>Looper is invite only</h1>
+          <h1>Account access disabled</h1>
           <p className="looper-auth__lead">
             {user?.email
-              ? `${user.email} is signed in, but it is not currently on the Looper access list.`
-              : 'This account is not currently on the Looper access list.'}
+              ? `${user.email} is signed in, but this account is not currently enabled for Looper.`
+              : 'This account is not currently enabled for Looper.'}
           </p>
           <button type="button" className="looper-auth__secondary" disabled={busy} onClick={() => void handleSignOut()}>
             Sign out
@@ -503,7 +503,7 @@ export default function LooperAuthGate({ children }: Props) {
           {isForgotPassword
             ? 'Enter your email and we’ll send you a secure link to choose a new password.'
             : isSignUp
-              ? 'Create an account using the email address approved for Looper.'
+              ? 'Create your Looper account with your email and password.'
               : GOOGLE_AUTH_ENABLED
                 ? 'Sign in with Google or use your email and password.'
                 : 'Sign in with your email and password.'}
@@ -613,10 +613,10 @@ export default function LooperAuthGate({ children }: Props) {
 
         {!isForgotPassword && !isSignUp ? (
           <p className="looper-auth__fineprint">
-            Used Looper before without a password? Use “Forgot password?” once to set one. Access is still limited to approved email addresses.
+            Used Looper before without a password? Use “Forgot password?” once to set one. Your Looper data stays tied to your account.
           </p>
         ) : (
-          <p className="looper-auth__fineprint">Access is limited to approved email addresses.</p>
+          <p className="looper-auth__fineprint">Your Looper data stays tied to your account.</p>
         )}
 
         {allowedUser?.display_name ? (
