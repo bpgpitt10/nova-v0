@@ -38,10 +38,10 @@ const formatAimInstruction = (
   const pinFrame = frame(pin)
   const targetFrame = frame(target)
   const offset = targetFrame.lateral - pinFrame.lateral
-  if (Math.abs(offset) < 0.5) return { offset, text: 'AIM · target line' }
+  if (Math.abs(offset) < 0.5) return { offset, text: 'target line' }
   return {
     offset,
-    text: `AIM · ${Math.abs(offset).toFixed(Math.abs(offset) >= 10 ? 0 : 1)} yd ${offset < 0 ? 'left' : 'right'}`,
+    text: `${Math.abs(offset).toFixed(Math.abs(offset) >= 10 ? 0 : 1)} yd ${offset < 0 ? 'left' : 'right'}`,
   }
 }
 
