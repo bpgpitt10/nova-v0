@@ -1,5 +1,19 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogoWhite.png'
+import authBg0 from '../assets/Backgrounds/looper-auth-bg-0.txt?raw'
+import authBg1 from '../assets/Backgrounds/looper-auth-bg-1.txt?raw'
+import authBg2 from '../assets/Backgrounds/looper-auth-bg-2.txt?raw'
+import authBg3 from '../assets/Backgrounds/looper-auth-bg-3.txt?raw'
+import authBg4 from '../assets/Backgrounds/looper-auth-bg-4.txt?raw'
+import authBgH0 from '../assets/Backgrounds/looper-auth-bg-5h0.txt?raw'
+import authBgH1 from '../assets/Backgrounds/looper-auth-bg-5h1.txt?raw'
+import authBgH2 from '../assets/Backgrounds/looper-auth-bg-h2.txt?raw'
+import authBgH3 from '../assets/Backgrounds/looper-auth-bg-h3.txt?raw'
+import authBgH4 from '../assets/Backgrounds/looper-auth-bg-h4.txt?raw'
+import authBgH5 from '../assets/Backgrounds/looper-auth-bg-h5.txt?raw'
+import authBgH6 from '../assets/Backgrounds/looper-auth-bg-h6.txt?raw'
+import authBgH7 from '../assets/Backgrounds/looper-auth-bg-h7.txt?raw'
+import authBgH8 from '../assets/Backgrounds/looper-auth-bg-h8.txt?raw'
 import { bootstrapLooperCloudData } from '../cloud/cloudBootstrap'
 import {
   getAllowedUserRecord,
@@ -37,6 +51,36 @@ type Props = {
 }
 
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === 'true'
+
+const decodeHex = (hex: string) => {
+  let value = ''
+  for (let index = 0; index < hex.length; index += 2) {
+    value += String.fromCharCode(Number.parseInt(hex.slice(index, index + 2), 16))
+  }
+  return value
+}
+
+const LOOPER_AUTH_BACKGROUND_BASE64 =
+  authBg0 +
+  authBg1 +
+  authBg2 +
+  authBg3 +
+  authBg4 +
+  decodeHex(
+    authBgH0 +
+      authBgH1 +
+      authBgH2 +
+      authBgH3 +
+      authBgH4 +
+      authBgH5 +
+      authBgH6 +
+      authBgH7 +
+      authBgH8,
+  )
+
+const AUTH_BACKGROUND_STYLE = {
+  '--looper-auth-background': `url("data:image/webp;base64,${LOOPER_AUTH_BACKGROUND_BASE64}")`,
+} as CSSProperties
 
 const AuthBrand = () => (
   <img className="looper-auth__logo" src={looperLogo} alt="The Looper" />
@@ -403,7 +447,7 @@ export default function LooperAuthGate({ children }: Props) {
           ? 'Preparing your Looper data…'
           : 'Signing you in…'
     return (
-      <main className="looper-auth">
+      <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
         <section className="looper-auth__card looper-auth__card--compact">
           <AuthBrand />
           <h1>{heading}</h1>
@@ -419,7 +463,7 @@ export default function LooperAuthGate({ children }: Props) {
 
   if (state === 'reset-password') {
     return (
-      <main className="looper-auth">
+      <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
         <section className="looper-auth__card looper-auth__card--compact">
           <AuthBrand />
           <h1>Set a new password</h1>
@@ -463,7 +507,7 @@ export default function LooperAuthGate({ children }: Props) {
 
   if (state === 'not-allowed') {
     return (
-      <main className="looper-auth">
+      <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
         <section className="looper-auth__card">
           <AuthBrand />
           <h1>Account access disabled</h1>
@@ -483,7 +527,7 @@ export default function LooperAuthGate({ children }: Props) {
 
   if (state === 'error') {
     return (
-      <main className="looper-auth">
+      <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
         <section className="looper-auth__card">
           <AuthBrand />
           <h1>Account connection needs attention</h1>
@@ -500,7 +544,7 @@ export default function LooperAuthGate({ children }: Props) {
   const isSignUp = mode === 'sign-up'
 
   return (
-    <main className="looper-auth">
+    <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
       <section className="looper-auth__card">
         <AuthBrand />
         {isForgotPassword || isSignUp ? (
