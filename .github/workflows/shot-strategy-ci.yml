@@ -1,0 +1,26 @@
+name: Shot Strategy CI
+
+on:
+  push:
+    branches:
+      - live-caddie-shot-strategy-v1
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate runtime course artifacts
+        run: |
+          npm run courses:generate-runtime-registry
+          npm run courses:generate-registration
+      - name: Check TypeScript
+        run: npx tsc -b
+      - name: Build Vite app
+        run: npx vite build
