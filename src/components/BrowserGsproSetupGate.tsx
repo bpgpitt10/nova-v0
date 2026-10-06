@@ -73,7 +73,7 @@ export default function BrowserGsproSetupGate({
 
   const finishSetup = () => {
     markOnboardingComplete()
-    navigateWithinApp(returnToRange ? '/?openRange=1' : '/')
+    window.location.assign(returnToRange ? '/?openRange=1' : '/')
   }
 
   const prepareAndEnterLooper = async () => {
@@ -303,7 +303,7 @@ export default function BrowserGsproSetupGate({
             Direct GSPro connection currently requires desktop Chrome or Edge on Windows. Dashboard
             and your saved Looper data still work normally from this device.
           </p>
-          <button type="button" className="gspro-setup__secondary" onClick={() => navigateWithinApp('/')}>
+          <button type="button" className="gspro-setup__secondary" onClick={() => window.location.assign('/')}>
             Return to Looper
           </button>
         </section>
@@ -395,7 +395,7 @@ export default function BrowserGsproSetupGate({
                 type="button"
                 className="gspro-setup__secondary"
                 disabled={busy}
-                onClick={() => navigateWithinApp('/')}
+                onClick={() => window.location.assign('/')}
               >
                 Not now
               </button>
