@@ -157,8 +157,8 @@ export default function LooperLandingPage({
   }, [refreshGsproStatus])
 
   const connectGspro = (openRangeAfter = false) => {
-    const suffix = openRangeAfter ? '?return=range' : ''
-    navigateWithinApp(`/gspro-setup${suffix}`)
+    const suffix = openRangeAfter ? '&return=range' : ''
+    window.location.assign(`/?gsproSetup=1${suffix}`)
   }
 
   const choosePracticeRange = () => {
