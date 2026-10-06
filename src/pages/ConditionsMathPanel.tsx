@@ -11,6 +11,9 @@ type ConditionsMathPanelProps = {
   elevationDeltaFt: number | null
   lieUpDownDeg?: number | null
   lieLeftRightDeg?: number | null
+  strategyMode?: boolean
+  strategyEffectiveDistanceYds?: number | null
+  strategyEffectiveLateralYds?: number | null
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -96,6 +99,9 @@ export default function ConditionsMathPanel({
   elevationDeltaFt,
   lieUpDownDeg = null,
   lieLeftRightDeg = null,
+  strategyMode = false,
+  strategyEffectiveDistanceYds = null,
+  strategyEffectiveLateralYds = null,
 }: ConditionsMathPanelProps) {
   const carryDelta = evaluation
     ? evaluation.modeledCarryYds - evaluation.stockCarryYds
@@ -122,9 +128,11 @@ export default function ConditionsMathPanel({
     : null
 
   const elevationAware = evaluation as LandingElevationAwareEvaluation | null
-  const modeledLandingElevationDeltaFt = finite(elevationAware?.landingElevationDeltaFt)
-    ? elevationAware.landingElevationDeltaFt
-    : elevationDeltaFt
+  const modeledLandingElevationDeltaFt = strategyMode
+    ? elevationDeltaFt
+    : finite(elevationAware?.landingElevationDeltaFt)
+      ? elevationAware.landingElevationDeltaFt
+      : elevationDeltaFt
   const risk = evaluation?.bestCandidate?.riskProfile ?? null
 
   const windDetail = hasLiveWind
@@ -151,52 +159,77 @@ export default function ConditionsMathPanel({
   return (
     <div className="live-conditions-shell">
       <section
-        className="live-expected-shot-block"
-        data-shot-variant={evaluation?.variant ?? undefined}
-        data-stock-carry-yds={evaluation ? String(evaluation.stockCarryYds) : undefined}
-        data-planned-carry-yds={evaluation ? String(evaluation.stockCarryYds) : undefined}
-        data-modeled-carry-yds={evaluation ? String(evaluation.modeledCarryYds) : undefined}
+        className={`live-expected-shot-block${strategyMode ? ' live-strategy-shot-block' : ''}`}
+        data-shot-variant={strategyMode ? 'strategy' : evaluation?.variant ?? undefined}
+        data-stock-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
+        data-planned-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
+        data-modeled-carry-yds={!strategyMode && evaluation ? String(evaluation.modeledCarryYds) : undefined}
       >
         <div className="live-expected-shot-heading">
-          <span>EXPECTED SHOT</span>
+          <span>{strategyMode ? 'SHOT REQUIREMENT' : 'EXPECTED SHOT'}</span>
         </div>
 
         <div className="live-shot-stat-grid">
-          <div>
-            <span>Carry</span>
-            <strong>{evaluation ? `${Math.round(evaluation.modeledCarryYds)} yd` : '—'}</strong>
-          </div>
-          <div>
-            <span>Total</span>
-            <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
-          </div>
-          <div>
-            <span>Expected finish</span>
-            <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
-          </div>
+          {strategyMode ? (
+            <>
+              <div>
+                <span>Playing distance</span>
+                <strong>{finite(strategyEffectiveDistanceYds) ? `${Math.round(strategyEffectiveDistanceYds)} yd` : '—'}</strong>
+              </div>
+              <div>
+                <span>L/R change</span>
+                <strong>{lateralYards(strategyEffectiveLateralYds)}</strong>
+              </div>
+              <div>
+                <span>Club</span>
+                <strong>Player choice</strong>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <span>Carry</span>
+                <strong>{evaluation ? `${Math.round(evaluation.modeledCarryYds)} yd` : '—'}</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
+              </div>
+              <div>
+                <span>Expected finish</span>
+                <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="live-hero-outcomes">
-          <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
-          <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
-          <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Trouble</span></div>
-          <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
-        </div>
+        {!strategyMode ? (
+          <>
+            <div className="live-hero-outcomes">
+              <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
+              <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
+              <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Trouble</span></div>
+              <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
+            </div>
 
-        {outcomeDetails.length > 0 ? (
-          <div className="live-hero-outcome-detail">
-            {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
-          </div>
+            {outcomeDetails.length > 0 ? (
+              <div className="live-hero-outcome-detail">
+                {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
+              </div>
+            ) : null}
+          </>
         ) : null}
       </section>
 
       <section className="live-conditions-panel">
         <div className="live-conditions-heading">
-          <span>WHY THIS SHOT</span>
+          <span>{strategyMode ? 'SHOT ADJUSTMENTS' : 'WHY THIS SHOT'}</span>
           <strong>
-            {evaluation
-              ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}`
-              : 'Waiting for shot model'}
+            {strategyMode && finite(strategyEffectiveDistanceYds)
+              ? `Plays ${Math.round(strategyEffectiveDistanceYds)} yd · ${lateralSummary(strategyEffectiveLateralYds)}`
+              : evaluation
+                ? `${carrySummary(carryDelta)} · ${lateralSummary(lateralDelta)}`
+                : 'Waiting for shot model'}
           </strong>
         </div>
 
