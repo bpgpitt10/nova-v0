@@ -1,20 +1,56 @@
 .looper-auth {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
+  isolation: isolate;
+  overflow: hidden;
   padding: 32px 20px;
-  background: #0b1115;
-  color: #f4f0e8;
+  background: #0e1710;
+  color: #ffffff;
   font-family: Inter, system-ui, sans-serif;
 }
 
+.looper-auth::before {
+  content: '';
+  position: fixed;
+  inset: -2%;
+  z-index: -2;
+  pointer-events: none;
+  background-image: url('../assets/Backgrounds/golfscenedashboard.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.56;
+  filter: saturate(0.9) contrast(0.96) blur(1.2px);
+}
+
+.looper-auth::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 68% 20%, rgba(234, 179, 8, 0.08), transparent 32%),
+    linear-gradient(90deg, rgba(7, 12, 10, 0.76) 0%, rgba(10, 18, 14, 0.62) 48%, rgba(9, 16, 13, 0.52) 100%),
+    linear-gradient(180deg, rgba(7, 12, 10, 0.28) 0%, rgba(6, 11, 9, 0.68) 100%);
+}
+
 .looper-auth__card {
+  position: relative;
+  z-index: 1;
   width: min(620px, 100%);
   padding: 34px;
-  border: 1px solid #29343a;
+  border: 1px solid #314233;
   border-radius: 18px;
-  background: #11191e;
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+  background:
+    linear-gradient(180deg, rgba(30, 49, 35, 0.94) 0%, rgba(20, 33, 24, 0.96) 100%);
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .looper-auth__card--compact {
@@ -24,7 +60,7 @@
 .looper-auth__eyebrow {
   display: block;
   margin-bottom: 12px;
-  color: #cfb36e;
+  color: #eab308;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.11em;
@@ -39,7 +75,7 @@
 
 .looper-auth__lead,
 .looper-auth p {
-  color: #b8c2c7;
+  color: #cfd8cd;
   line-height: 1.55;
 }
 
@@ -63,19 +99,32 @@
 }
 
 .looper-auth__primary {
-  background: #cfb36e;
-  color: #101418;
+  background: #eab308;
+  color: #10170f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .looper-auth__secondary {
-  border-color: #3b4a51 !important;
-  background: #172126;
-  color: #edf0ee;
+  border-color: #314233 !important;
+  background: #172419;
+  color: #ffffff;
+}
+
+.looper-auth__primary:hover:not(:disabled) {
+  background: #f0bf19;
+}
+
+.looper-auth__secondary:hover:not(:disabled) {
+  background: #1e3123;
+}
+
+.looper-auth__text-button:hover:not(:disabled) {
+  color: #f0bf19;
 }
 
 .looper-auth__google {
   background: #f4f0e8;
-  color: #172126;
+  color: #172419;
   border-color: #f4f0e8 !important;
 }
 
@@ -89,7 +138,7 @@
   align-items: center;
   gap: 14px;
   margin: 24px 0;
-  color: #7e8a90;
+  color: #9fb09f;
   font-size: 13px;
 }
 
@@ -98,7 +147,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #29343a;
+  background: #314233;
 }
 
 .looper-auth__form {
@@ -114,7 +163,7 @@
 .looper-auth__label {
   display: block;
   margin-bottom: 0;
-  color: #e9e3d6;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
 }
@@ -128,14 +177,16 @@
 .looper-auth input {
   width: 100%;
   padding: 0 14px;
-  border: 1px solid #3b4a51;
+  border: 1px solid #314233;
   outline: none;
-  background: #0d1519;
-  color: #f4f0e8;
+  background: rgba(14, 23, 16, 0.9);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .looper-auth input:focus {
-  border-color: #cfb36e;
+  border-color: rgba(234, 179, 8, 0.82);
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.08);
 }
 
 .looper-auth__actions {
@@ -152,7 +203,7 @@
   padding: 4px 0 !important;
   border: 0 !important;
   background: transparent !important;
-  color: #cfb36e;
+  color: #eab308;
   font-size: 13px !important;
   font-weight: 700;
 }
@@ -230,7 +281,7 @@
 
 .looper-account-control__summary:hover {
   border-color: rgba(207, 179, 110, 0.5);
-  color: #f4f0e8;
+  color: #ffffff;
 }
 
 .looper-account-control__email {
