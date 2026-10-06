@@ -503,16 +503,16 @@ export default function LooperAuthGate({ children }: Props) {
     <main className="looper-auth">
       <section className="looper-auth__card">
         <AuthBrand />
-        <h1>{isForgotPassword ? 'Reset password' : isSignUp ? 'Create account' : 'Sign in'}</h1>
-        <p className="looper-auth__lead">
-          {isForgotPassword
-            ? 'Enter your email and we’ll send you a secure link to choose a new password.'
-            : isSignUp
-              ? 'Create your Looper account with your email and password.'
-              : GOOGLE_AUTH_ENABLED
-                ? 'Sign in with Google or use your email and password.'
-                : 'Sign in with your email and password.'}
-        </p>
+        {isForgotPassword || isSignUp ? (
+          <>
+            <h1>{isForgotPassword ? 'Reset password' : 'Create account'}</h1>
+            <p className="looper-auth__lead">
+              {isForgotPassword
+                ? 'Enter your email and we’ll send you a secure link to choose a new password.'
+                : 'Create your Looper account with your email and password.'}
+            </p>
+          </>
+        ) : null}
 
         {GOOGLE_AUTH_ENABLED && !isForgotPassword ? (
           <>

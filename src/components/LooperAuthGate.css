@@ -14,15 +14,15 @@
 .looper-auth::before {
   content: '';
   position: fixed;
-  inset: -2%;
+  inset: 0;
   z-index: -2;
   pointer-events: none;
   background-image: url('../assets/Backgrounds/looper-auth-background.webp');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  opacity: 0.96;
-  filter: saturate(0.94) contrast(1.02) brightness(0.9);
+  opacity: 1;
+  filter: saturate(0.96) contrast(1.01) brightness(0.94);
 }
 
 .looper-auth::after {
@@ -32,25 +32,24 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 70% 18%, rgba(212, 177, 90, 0.08), transparent 34%),
-    linear-gradient(90deg, rgba(7, 12, 10, 0.46) 0%, rgba(8, 14, 11, 0.24) 48%, rgba(7, 12, 10, 0.34) 100%),
-    linear-gradient(180deg, rgba(7, 12, 10, 0.1) 0%, rgba(6, 11, 9, 0.48) 100%);
+    radial-gradient(circle at 68% 20%, rgba(212, 177, 90, 0.05), transparent 34%),
+    linear-gradient(180deg, rgba(7, 12, 10, 0.03) 0%, rgba(6, 11, 9, 0.22) 100%);
 }
 
 .looper-auth__card {
   position: relative;
   z-index: 1;
-  width: min(620px, 100%);
-  padding: 34px;
+  width: min(580px, 100%);
+  padding: 36px;
   border: 1px solid #314233;
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(30, 49, 35, 0.94) 0%, rgba(20, 33, 24, 0.96) 100%);
+    linear-gradient(180deg, rgba(30, 49, 35, 0.92) 0%, rgba(20, 33, 24, 0.94) 100%);
   box-shadow:
     0 22px 65px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .looper-auth__card--compact {
@@ -59,9 +58,9 @@
 
 .looper-auth__logo {
   display: block;
-  width: min(290px, 72%);
+  width: min(340px, 80%);
   height: auto;
-  margin: 0 0 22px;
+  margin: 0 auto 30px;
   object-fit: contain;
 }
 
