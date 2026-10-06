@@ -298,10 +298,6 @@ export default function LooperLandingPage({
 
           {connectionCallout}
 
-          <a className="looper-landing-dashboard" href="/dashboard">
-            Go to Dashboard
-          </a>
-
           <div className="looper-landing-mode-grid" aria-label="GSPro modes">
             <button
               className={`looper-landing-mode-card looper-landing-mode-card--range ${rangeOpen ? 'is-selected' : ''}`}
@@ -401,6 +397,10 @@ export default function LooperLandingPage({
               ) : null}
             </section>
           ) : null}
+
+          <a className="looper-landing-dashboard" href="/dashboard">
+            Go to Dashboard
+          </a>
 
           <div className="looper-landing-utility-actions">
             <a href="/bag-setup?returnTo=%2Flooper">Edit Bag</a>
