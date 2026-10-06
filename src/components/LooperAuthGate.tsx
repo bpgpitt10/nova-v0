@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import looperLogo from '../assets/LooperLogoWhite.png'
 import { bootstrapLooperCloudData } from '../cloud/cloudBootstrap'
 import {
   getAllowedUserRecord,
@@ -36,6 +37,10 @@ type Props = {
 }
 
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === 'true'
+
+const AuthBrand = () => (
+  <img className="looper-auth__logo" src={looperLogo} alt="The Looper" />
+)
 
 const isPasswordResetReturn = () =>
   typeof window !== 'undefined' &&
@@ -400,7 +405,7 @@ export default function LooperAuthGate({ children }: Props) {
     return (
       <main className="looper-auth">
         <section className="looper-auth__card looper-auth__card--compact">
-          <span className="looper-auth__eyebrow">The Looper</span>
+          <AuthBrand />
           <h1>{heading}</h1>
           {state === 'syncing-data' ? (
             <p className="looper-auth__lead">
@@ -416,7 +421,7 @@ export default function LooperAuthGate({ children }: Props) {
     return (
       <main className="looper-auth">
         <section className="looper-auth__card looper-auth__card--compact">
-          <span className="looper-auth__eyebrow">The Looper</span>
+          <AuthBrand />
           <h1>Set a new password</h1>
           <p className="looper-auth__lead">
             Choose the password you’ll use to sign in to Looper from now on.
@@ -460,7 +465,7 @@ export default function LooperAuthGate({ children }: Props) {
     return (
       <main className="looper-auth">
         <section className="looper-auth__card">
-          <span className="looper-auth__eyebrow">The Looper</span>
+          <AuthBrand />
           <h1>Account access disabled</h1>
           <p className="looper-auth__lead">
             {user?.email
@@ -480,7 +485,7 @@ export default function LooperAuthGate({ children }: Props) {
     return (
       <main className="looper-auth">
         <section className="looper-auth__card">
-          <span className="looper-auth__eyebrow">The Looper</span>
+          <AuthBrand />
           <h1>Account connection needs attention</h1>
           <p className="looper-auth__lead">{error ?? 'Looper could not check your account.'}</p>
           <button type="button" className="looper-auth__primary" onClick={() => window.location.reload()}>
@@ -497,7 +502,7 @@ export default function LooperAuthGate({ children }: Props) {
   return (
     <main className="looper-auth">
       <section className="looper-auth__card">
-        <span className="looper-auth__eyebrow">The Looper</span>
+        <AuthBrand />
         <h1>{isForgotPassword ? 'Reset password' : isSignUp ? 'Create account' : 'Sign in'}</h1>
         <p className="looper-auth__lead">
           {isForgotPassword
