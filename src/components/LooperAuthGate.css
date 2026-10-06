@@ -22,7 +22,7 @@
   background-repeat: no-repeat;
   background-size: cover;
   opacity: 1;
-  filter: saturate(0.92) contrast(1.03) brightness(0.88);
+  filter: saturate(0.92) contrast(1.03) brightness(0.74);
 }
 
 .looper-auth::after {
@@ -32,7 +32,7 @@
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(5, 18, 13, 0.32) 0%, rgba(5, 18, 13, 0.5) 100%);
+    linear-gradient(180deg, rgba(5, 18, 13, 0.40) 0%, rgba(5, 18, 13, 0.58) 100%);
 }
 
 .looper-auth__card {
