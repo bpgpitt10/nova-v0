@@ -17,12 +17,12 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: url('../assets/Backgrounds/looper-auth-background.webp');
+  background-image: var(--looper-auth-background);
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
   opacity: 1;
-  filter: saturate(0.96) contrast(1.01) brightness(0.94);
+  filter: saturate(0.92) contrast(1.03) brightness(0.88);
 }
 
 .looper-auth::after {
@@ -32,8 +32,7 @@
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 68% 20%, rgba(212, 177, 90, 0.05), transparent 34%),
-    linear-gradient(180deg, rgba(7, 12, 10, 0.03) 0%, rgba(6, 11, 9, 0.22) 100%);
+    linear-gradient(180deg, rgba(5, 18, 13, 0.32) 0%, rgba(5, 18, 13, 0.5) 100%);
 }
 
 .looper-auth__card {
