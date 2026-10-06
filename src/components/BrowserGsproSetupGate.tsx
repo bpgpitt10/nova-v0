@@ -41,11 +41,6 @@ const isTauriRuntime = () =>
 const isWindowsBrowser = () =>
   typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
 
-const navigateWithinApp = (path: string) => {
-  window.history.pushState({}, '', path)
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
-
 const markOnboardingComplete = () => {
   try {
     window.localStorage.setItem(GSPRO_ONBOARDING_KEY, '1')
