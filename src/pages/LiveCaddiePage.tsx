@@ -1069,6 +1069,7 @@ export default function LiveCaddiePage() {
                     strategyMode={isShotStrategy}
                     strategyEffectiveDistanceYds={shotStrategy?.effectiveDistanceYds ?? null}
                     strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
+                    strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
                   />
 
                   <button
