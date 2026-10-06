@@ -13,6 +13,7 @@ export type ShotStrategyRead = {
   targetDistanceYds: number
   effectiveDistanceYds: number
   effectiveLateralChangeYds: number
+  adjustmentScale: number
   aimOffsetYds: number
   aimInstruction: string
   terrain: string
@@ -80,10 +81,17 @@ export const buildUnderRangeShotStrategy = ({
   // We still want Looper's environmental ledger without pretending the shortest
   // calibrated club is the shot. Use its flight response only as an adjustment
   // proxy, then remove club dispersion / outcome claims from the player surface.
-  const carryDeltaYds = referenceEvaluation.modeledCarryYds - referenceEvaluation.stockCarryYds
+  const adjustmentScale = Math.max(
+    0,
+    Math.min(1, targetDistanceYds / Math.max(1, referenceEvaluation.stockCarryYds)),
+  )
+  const carryDeltaYds = (
+    referenceEvaluation.modeledCarryYds - referenceEvaluation.stockCarryYds
+  ) * adjustmentScale
   const effectiveDistanceYds = Math.max(0, targetDistanceYds - carryDeltaYds)
-  const effectiveLateralChangeYds =
+  const effectiveLateralChangeYds = (
     referenceEvaluation.modeledLateralBiasYds - referenceEvaluation.lateralBiasYds
+  ) * adjustmentScale
 
   const pinPoint = pin ?? target
   const greenGuidance = greenDetail
@@ -111,6 +119,7 @@ export const buildUnderRangeShotStrategy = ({
     targetDistanceYds,
     effectiveDistanceYds,
     effectiveLateralChangeYds,
+    adjustmentScale,
     aimOffsetYds: aim.offset,
     aimInstruction: aim.text,
     terrain: tactical.terrain,
