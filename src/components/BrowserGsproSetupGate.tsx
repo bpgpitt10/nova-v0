@@ -62,7 +62,11 @@ export default function BrowserGsproSetupGate({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
-  const isSetupPage = children === undefined
+  const setupRequested =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/gspro-setup' ||
+      new URLSearchParams(window.location.search).get('gsproSetup') === '1')
+  const isSetupPage = children === undefined || setupRequested
   const returnToRange =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('return') === 'range'
