@@ -138,11 +138,11 @@ button.looper-landing-gspro-status {
 
 .looper-landing-dashboard {
   min-height: 54px;
-  width: min(780px, 100%);
+  width: min(980px, 100%);
   justify-self: center;
-  border: 1px solid rgba(212, 177, 90, 0.7);
+  border: 1px solid rgba(212, 177, 90, 0.78);
   border-radius: 13px;
-  background: linear-gradient(180deg, rgba(54, 71, 42, 0.76) 0%, rgba(28, 45, 31, 0.78) 100%);
+  background: linear-gradient(180deg, rgba(180, 145, 52, 0.28) 0%, rgba(112, 91, 35, 0.24) 100%);
   color: #ffffff;
   text-decoration: none;
   display: inline-flex;
@@ -157,7 +157,7 @@ button.looper-landing-gspro-status {
 
 .looper-landing-dashboard:hover {
   border-color: rgba(234, 179, 8, 0.88);
-  background: linear-gradient(180deg, rgba(65, 85, 50, 0.82) 0%, rgba(31, 51, 35, 0.84) 100%);
+  background: linear-gradient(180deg, rgba(202, 164, 57, 0.36) 0%, rgba(127, 101, 37, 0.3) 100%);
 }
 
 .looper-landing-mode-grid {
