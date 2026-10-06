@@ -330,6 +330,32 @@ const resolveClubLandingElevations = (
 ): LandingElevationAwareEvaluation[] => {
   const baseline = evaluateAimLab(sessions, hole, ball, target, environment, nowMs)
 
+  // Below the player's shortest calibrated modeled shot, the UI switches to
+  // Shot Strategy and deliberately stops claiming a club-specific outcome.
+  // Keep the baseline evaluation's environmental response anchored to the
+  // actual tactical target (pin/target elevation) instead of re-sampling terrain
+  // at the full-shot carry distance of a club the player is not being told to hit.
+  const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
+  const shortestSupportedModeledCarryYds = baseline
+    .filter((evaluation) => evaluation.supportShots > 0 && Number.isFinite(evaluation.modeledCarryYds))
+    .reduce(
+      (minimum, evaluation) => Math.min(minimum, evaluation.modeledCarryYds),
+      Number.POSITIVE_INFINITY,
+    )
+  if (
+    Number.isFinite(shortestSupportedModeledCarryYds)
+    && targetDistanceYds < shortestSupportedModeledCarryYds - 0.5
+  ) {
+    return baseline.map((evaluation): LandingElevationAwareEvaluation => ({
+      ...evaluation,
+      landingElevationDeltaFt:
+        typeof environment.elevationDeltaFt === 'number' && Number.isFinite(environment.elevationDeltaFt)
+          ? environment.elevationDeltaFt
+          : null,
+      landingElevationSource: environment.elevationSource ?? 'tactical target terrain',
+    }))
+  }
+
   const corrected = baseline.map((baselineEvaluation): LandingElevationAwareEvaluation => {
     let current = baselineEvaluation
     let resolution = resolveLandingElevation(hole, ball, current, environment)
