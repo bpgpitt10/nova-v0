@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  DEFAULT_NOVA_WS_URL,
-  LOCAL_NOVA_WS_URL_KEY,
-  resolveNovaWebSocketEndpoint,
-} from '../adapters/nova'
+  isBrowserGsproAccessSupported,
+  loadGsproDirectoryHandle,
+  queryGsproDirectoryPermission,
+} from '../adapters/browserGsproAccess'
 import {
   captureBrowserGsproSessionBaseline,
   GSPRO_SESSION_BASELINE_PARAM,
   isBrowserGsproRuntimePrepared,
+  prepareBrowserGsproRuntime,
 } from '../adapters/browserGsproLive'
 import { activeBagClubIds, getClubDisplayName, type Club } from '../lib/bagConfig'
 import {
@@ -20,17 +21,9 @@ import {
   SESSION_SOURCE_PARAM,
   legacyFeedModeForSessionSource,
 } from '../lib/sessionSources'
-import type { SessionSource } from '../types'
 import './LooperLandingPage.css'
 
-import looperLogoWhite from '../assets/looperlogowhite.png'
-
-type NovaConnectionState =
-  | 'not_configured'
-  | 'connecting'
-  | 'connected'
-  | 'error'
-  | 'disconnected'
+import looperLogoWhite from '../assets/LooperLogoWhite.png'
 
 type UpdateStatus =
   | 'idle'
@@ -42,6 +35,14 @@ type UpdateStatus =
   | 'installed'
   | 'error'
 
+type GsproConnectionState =
+  | 'checking'
+  | 'connected'
+  | 'not-connected'
+  | 'needs-permission'
+  | 'unsupported'
+  | 'error'
+
 type LooperLandingPageProps = {
   installAvailableUpdate?: () => void
   onRetryUpdateCheck?: () => void
@@ -49,158 +50,7 @@ type LooperLandingPageProps = {
   updateStatus?: UpdateStatus
 }
 
-const CONNECT_TIMEOUT_MS = 7000
-const VALIDATION_TIMEOUT_MS = 2500
-const DISCOVERY_TIMEOUT_MS = 5000
-
-const safeReadLocalStorage = (key: string) => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-  try {
-    return window.localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-const safeWriteLocalStorage = (key: string, value: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.setItem(key, value)
-  } catch {
-    // ignore
-  }
-}
-
-const safeRemoveLocalStorage = (key: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    // ignore
-  }
-}
-
-const hasTauriInvoke = () =>
-  typeof window !== 'undefined' &&
-  typeof (window as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__
-    ?.invoke === 'function'
-
-const tauriInvoke = async (command: string, args: Record<string, unknown> = {}) => {
-  const invoke = (window as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__
-    ?.invoke
-  if (typeof invoke !== 'function') {
-    return undefined
-  }
-  return invoke(command, args)
-}
-
-const appendNovaLog = async (line: string) => {
-  const stamped = `${new Date().toISOString()} ${line}`
-  console.info(stamped)
-  if (!hasTauriInvoke()) {
-    return
-  }
-  try {
-    await tauriInvoke('append_nova_log', { line: stamped })
-  } catch {
-    // logging fallback stays in console
-  }
-}
-
-type DiscoverResult = {
-  service: string
-  host: string
-  port: number
-  ws_url: string
-}
-
-const discoverNovaEndpoint = async () => {
-  if (!hasTauriInvoke()) {
-    return null
-  }
-  try {
-    const result = (await tauriInvoke('discover_nova_ws_endpoint', {
-      timeoutMs: DISCOVERY_TIMEOUT_MS,
-    })) as DiscoverResult | null
-    return result
-  } catch (error) {
-    await appendNovaLog(
-      `[landing.discovery] command failed error=${error instanceof Error ? error.message : String(error)}`,
-    )
-    return null
-  }
-}
-
-const connectWithTimeout = async (
-  url: string,
-  timeoutMs: number,
-  context: string,
-) =>
-  new Promise<boolean>((resolve) => {
-    let settled = false
-    const socket = new WebSocket(url)
-    const timer = window.setTimeout(() => {
-      if (settled) {
-        return
-      }
-      settled = true
-      appendNovaLog(`[landing.connect] timeout context=${context} url=${url}`)
-      try {
-        socket.close()
-      } catch {
-        // ignore
-      }
-      resolve(false)
-    }, timeoutMs)
-
-    socket.addEventListener('open', () => {
-      if (settled) {
-        return
-      }
-      settled = true
-      window.clearTimeout(timer)
-      appendNovaLog(`[landing.connect] open context=${context} url=${url}`)
-      try {
-        socket.close()
-      } catch {
-        // ignore
-      }
-      resolve(true)
-    })
-
-    socket.addEventListener('error', () => {
-      if (settled) {
-        return
-      }
-      settled = true
-      window.clearTimeout(timer)
-      appendNovaLog(`[landing.connect] error context=${context} url=${url}`)
-      resolve(false)
-    })
-
-    socket.addEventListener('close', (event) => {
-      if (settled) {
-        return
-      }
-      settled = true
-      window.clearTimeout(timer)
-      appendNovaLog(
-        `[landing.connect] close context=${context} url=${url} code=${event.code} reason=${event.reason || 'none'}`,
-      )
-      resolve(false)
-    })
-  })
-
-const resolveDevOverrideUrl = () => {
-  const endpoint = resolveNovaWebSocketEndpoint()
-  return endpoint.source === 'env' ? endpoint.url : undefined
-}
+const GSPRO_ONBOARDING_KEY = 'looper-gspro-onboarding-complete-v1'
 
 const navigateWithinApp = (path: string) => {
   window.history.pushState({}, '', path)
@@ -210,27 +60,42 @@ const navigateWithinApp = (path: string) => {
 const formatShotVariantName = (name: string) =>
   name.length > 24 ? `${name.slice(0, 21)}...` : name
 
+const readOnboardingComplete = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  try {
+    return window.localStorage.getItem(GSPRO_ONBOARDING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+const markOnboardingComplete = () => {
+  try {
+    window.localStorage.setItem(GSPRO_ONBOARDING_KEY, '1')
+  } catch {
+    // local persistence is a convenience only
+  }
+}
+
 export default function LooperLandingPage({
   installAvailableUpdate,
   onRetryUpdateCheck,
   updateError = null,
   updateStatus = 'idle',
 }: LooperLandingPageProps = {}) {
-  const [selectedSource, setSelectedSource] = useState<Extract<SessionSource, 'gspro' | 'nova'>>(
-    'gspro',
-  )
   const [selectedClub, setSelectedClub] = useState<Club>(() => activeBagClubIds[0] ?? '7i')
   const [selectedShotVariantId, setSelectedShotVariantId] = useState<string>(
     STOCK_SHOT_VARIANT_ID,
   )
-  const [novaState, setNovaState] = useState<NovaConnectionState>('connecting')
-  const [novaDetail, setNovaDetail] = useState<string | null>(null)
-  const [manualUrlInput, setManualUrlInput] = useState('')
-  const [manualOverrideUrl, setManualOverrideUrl] = useState<string | null>(null)
-  const [connectedUrl, setConnectedUrl] = useState<string | null>(null)
+  const [gsproState, setGsproState] = useState<GsproConnectionState>('checking')
+  const [rangeOpen, setRangeOpen] = useState(
+    () => new URLSearchParams(window.location.search).get('openRange') === '1',
+  )
+  const [showWelcome, setShowWelcome] = useState(false)
   const [isStartingSession, setIsStartingSession] = useState(false)
   const [sessionStartError, setSessionStartError] = useState<string | null>(null)
-  const devOverrideUrl = useMemo(() => resolveDevOverrideUrl(), [])
   const shotVariants = useMemo(() => getShotVariantsForClub(selectedClub), [selectedClub])
 
   useEffect(() => {
@@ -248,250 +113,100 @@ export default function LooperLandingPage({
     }
   }, [selectedShotVariantId, shotVariants])
 
-  useEffect(() => {
-    let isMounted = true
-
-    const bootstrap = async () => {
-      setNovaState('connecting')
-      setNovaDetail('Connecting to Nova...')
-
-      const savedUrl = safeReadLocalStorage(LOCAL_NOVA_WS_URL_KEY)?.trim()
-      const candidateUrls: Array<{ source: string; url: string; timeout: number }> = []
-      const configuredEndpoint = resolveNovaWebSocketEndpoint()
-
-      await appendNovaLog(
-        `[landing.config] selected_source=${configuredEndpoint.source} selected_url=${configuredEndpoint.url} mock_active=false`,
-      )
-
-      if (manualOverrideUrl) {
-        candidateUrls.push({
-          source: 'manual_override',
-          url: manualOverrideUrl,
-          timeout: CONNECT_TIMEOUT_MS,
-        })
-      }
-
-      if (
-        savedUrl &&
-        savedUrl !== manualOverrideUrl
-      ) {
-        candidateUrls.push({
-          source: 'saved_known_good',
-          url: savedUrl,
-          timeout: VALIDATION_TIMEOUT_MS,
-        })
-      }
-
-      if (
-        devOverrideUrl &&
-        devOverrideUrl !== manualOverrideUrl &&
-        devOverrideUrl !== savedUrl
-      ) {
-        candidateUrls.push({
-          source: 'env_fallback',
-          url: devOverrideUrl,
-          timeout: CONNECT_TIMEOUT_MS,
-        })
-      }
-
-      if (
-        !manualOverrideUrl &&
-        !savedUrl &&
-        configuredEndpoint.source === 'default'
-      ) {
-        candidateUrls.push({
-          source: 'default',
-          url: DEFAULT_NOVA_WS_URL,
-          timeout: CONNECT_TIMEOUT_MS,
-        })
-      }
-
-      for (const candidate of candidateUrls) {
-        await appendNovaLog(
-          `[landing.bootstrap] validating source=${candidate.source} url=${candidate.url}`,
-        )
-        const success = await connectWithTimeout(
-          candidate.url,
-          candidate.timeout,
-          candidate.source,
-        )
-        if (!isMounted) {
-          return
-        }
-        if (success) {
-          if (candidate.source !== 'env_fallback' && candidate.source !== 'default') {
-            safeWriteLocalStorage(LOCAL_NOVA_WS_URL_KEY, candidate.url)
-            await appendNovaLog(
-              `[landing.bootstrap] persisted_connected source=${candidate.source} url=${candidate.url}`,
-            )
-          }
-          setConnectedUrl(candidate.url)
-          setNovaState('connected')
-          setNovaDetail(null)
-          await appendNovaLog(
-            `[landing.bootstrap] selected_connected source=${candidate.source} url=${candidate.url}`,
-          )
-          return
-        }
-
-        if (candidate.source === 'saved_known_good') {
-          safeRemoveLocalStorage(LOCAL_NOVA_WS_URL_KEY)
-          await appendNovaLog(
-            `[landing.bootstrap] removed_stale_saved_endpoint url=${candidate.url}`,
-          )
-        }
-      }
-
-      setNovaDetail('Discovering Nova...')
-      await appendNovaLog('[landing.bootstrap] starting_runtime_discovery')
-      const discovered = await discoverNovaEndpoint()
-      if (!isMounted) {
-        return
-      }
-      if (!discovered?.ws_url) {
-        setConnectedUrl(null)
-        setNovaState('error')
-        setNovaDetail('No Nova found on this network')
-        await appendNovaLog('[landing.bootstrap] discovery_result none')
-        return
-      }
-
-      await appendNovaLog(
-        `[landing.bootstrap] discovery_result service=${discovered.service} host=${discovered.host} port=${discovered.port} ws=${discovered.ws_url}`,
-      )
-      const discoveredConnected = await connectWithTimeout(
-        discovered.ws_url,
-        CONNECT_TIMEOUT_MS,
-        'discovered_endpoint',
-      )
-      if (!isMounted) {
-        return
-      }
-      if (discoveredConnected) {
-        safeWriteLocalStorage(LOCAL_NOVA_WS_URL_KEY, discovered.ws_url)
-        setConnectedUrl(discovered.ws_url)
-        setNovaState('connected')
-        setNovaDetail(null)
-        await appendNovaLog(
-          `[landing.bootstrap] selected_connected source=discovery url=${discovered.ws_url}`,
-        )
-        return
-      }
-
-      setConnectedUrl(null)
-      setNovaState('error')
-      setNovaDetail('Nova connection failed')
-    }
-
-    void bootstrap()
-
-    return () => {
-      isMounted = false
-    }
-  }, [devOverrideUrl, manualOverrideUrl])
-
-  useEffect(() => {
-    if (!connectedUrl) {
+  const refreshGsproStatus = useCallback(async () => {
+    if (!isBrowserGsproAccessSupported()) {
+      setGsproState('unsupported')
+      setShowWelcome(false)
       return
     }
-    let closedByApp = false
-    const socket = new WebSocket(connectedUrl)
-    const timer = window.setTimeout(() => {
-      appendNovaLog(`[landing.monitor] timeout url=${connectedUrl}`)
-      setNovaState('error')
-      setNovaDetail('Connection timed out')
-      try {
-        socket.close()
-      } catch {
-        // ignore
-      }
-    }, CONNECT_TIMEOUT_MS)
 
-    socket.addEventListener('open', () => {
-      window.clearTimeout(timer)
-      appendNovaLog(`[landing.monitor] open url=${connectedUrl}`)
-      setNovaState('connected')
-      setNovaDetail(null)
-    })
-    socket.addEventListener('error', () => {
-      window.clearTimeout(timer)
-      appendNovaLog(`[landing.monitor] error url=${connectedUrl}`)
-      setNovaState('error')
-      setNovaDetail('Nova connection failed')
-    })
-    socket.addEventListener('close', (event) => {
-      window.clearTimeout(timer)
-      appendNovaLog(
-        `[landing.monitor] close url=${connectedUrl} code=${event.code} reason=${event.reason || 'none'}`,
-      )
-      if (closedByApp) {
-        setNovaState('disconnected')
+    setGsproState('checking')
+
+    try {
+      const handle = await loadGsproDirectoryHandle()
+      if (!handle) {
+        setGsproState('not-connected')
+        setShowWelcome(!readOnboardingComplete())
         return
       }
-      setNovaState('error')
-      setNovaDetail('Nova connection failed')
-    })
 
-    return () => {
-      closedByApp = true
-      window.clearTimeout(timer)
-      socket.close()
-    }
-  }, [connectedUrl])
+      markOnboardingComplete()
+      setShowWelcome(false)
 
-  const novaStatusText = (() => {
-    switch (novaState) {
-      case 'not_configured':
-        return 'Nova not configured'
-      case 'connecting':
-        return 'Connecting to Nova...'
-      case 'connected':
-        return 'Connected to Nova'
-      case 'error':
-        return 'Nova connection failed'
-      case 'disconnected':
-        return 'Nova disconnected'
+      const permission = await queryGsproDirectoryPermission(handle, 'readwrite')
+      if (permission !== 'granted') {
+        setGsproState('needs-permission')
+        return
+      }
+
+      const prepared = isBrowserGsproRuntimePrepared() || (await prepareBrowserGsproRuntime())
+      setGsproState(prepared ? 'connected' : 'needs-permission')
+    } catch (error) {
+      console.error('[GSPro Connection] landing status check failed', error)
+      setGsproState('error')
+      setShowWelcome(false)
     }
-  })()
+  }, [])
+
+  useEffect(() => {
+    void refreshGsproStatus()
+
+    const refreshOnFocus = () => void refreshGsproStatus()
+    window.addEventListener('focus', refreshOnFocus)
+    return () => window.removeEventListener('focus', refreshOnFocus)
+  }, [refreshGsproStatus])
+
+  const connectGspro = (openRangeAfter = false) => {
+    const suffix = openRangeAfter ? '?return=range' : ''
+    navigateWithinApp(`/gspro-setup${suffix}`)
+  }
+
+  const choosePracticeRange = () => {
+    setSessionStartError(null)
+    if (gsproState !== 'connected') {
+      connectGspro(true)
+      return
+    }
+    setRangeOpen(true)
+  }
 
   const startSession = async () => {
-    if (selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl)) {
-      return
-    }
-
     setIsStartingSession(true)
     setSessionStartError(null)
 
-    const params = new URLSearchParams({
-      [SESSION_SOURCE_PARAM]: selectedSource,
-      [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource(selectedSource),
-      club: selectedClub,
-      variant: resolveShotVariantId(selectedShotVariantId),
-    })
-
     try {
-      if (selectedSource === 'gspro' && isBrowserGsproRuntimePrepared()) {
-        const baselineRowId = await captureBrowserGsproSessionBaseline()
-        params.set(GSPRO_SESSION_BASELINE_PARAM, String(baselineRowId))
+      const prepared = isBrowserGsproRuntimePrepared() || (await prepareBrowserGsproRuntime())
+      if (!prepared) {
+        setGsproState('needs-permission')
+        setIsStartingSession(false)
+        connectGspro(true)
+        return
       }
 
+      const params = new URLSearchParams({
+        [SESSION_SOURCE_PARAM]: 'gspro',
+        [LEGACY_SESSION_FEED_PARAM]: legacyFeedModeForSessionSource('gspro'),
+        club: selectedClub,
+        variant: resolveShotVariantId(selectedShotVariantId),
+      })
+
+      const baselineRowId = await captureBrowserGsproSessionBaseline()
+      params.set(GSPRO_SESSION_BASELINE_PARAM, String(baselineRowId))
       navigateWithinApp(`/session-intelligence?${params.toString()}`)
     } catch (error) {
-      console.error('[GSPro Connection] could not capture session baseline', error)
+      console.error('[GSPro Connection] could not start practice range session', error)
+      setGsproState('needs-permission')
       setSessionStartError(
-        'Looper could not lock the GSPro starting point. Try Start again before hitting a shot.',
+        'Looper lost access to GSPro. Reconnect the GSPro folder, then start the session again.',
       )
       setIsStartingSession(false)
     }
   }
 
-  const applyManualUrl = () => {
-    const trimmed = manualUrlInput.trim()
-    if (!trimmed) {
-      return
-    }
-    void appendNovaLog(`[landing.manual] submitted url=${trimmed}`)
-    setManualOverrideUrl(trimmed)
+  const continueToDashboardFromWelcome = () => {
+    markOnboardingComplete()
+    setShowWelcome(false)
+    navigateWithinApp('/dashboard')
   }
 
   const updateStatusContent = (() => {
@@ -525,75 +240,115 @@ export default function LooperLandingPage({
     }
   })()
 
+  const connectionCallout = (() => {
+    if (gsproState === 'checking') {
+      return <div className="looper-landing-gspro-status is-checking">Checking GSPro connection…</div>
+    }
+
+    if (gsproState === 'connected') {
+      return (
+        <button
+          className="looper-landing-gspro-status is-connected"
+          onClick={() => connectGspro(false)}
+          type="button"
+        >
+          <span className="looper-landing-status-dot" aria-hidden="true" />
+          GSPro connected
+        </button>
+      )
+    }
+
+    if (gsproState === 'unsupported') {
+      return (
+        <div className="looper-landing-gspro-status is-neutral">
+          GSPro direct connection is available on your simulator PC in Chrome or Edge.
+        </div>
+      )
+    }
+
+    const heading =
+      gsproState === 'needs-permission'
+        ? 'GSPro connection needs attention'
+        : gsproState === 'error'
+          ? 'Looper could not verify GSPro'
+          : 'GSPro not connected'
+
+    return (
+      <div className="looper-landing-gspro-alert">
+        <div>
+          <strong>{heading}</strong>
+          <span>
+            {gsproState === 'not-connected'
+              ? ' Connect your GSPro folder to use Practice Range.'
+              : ' Reconnect the saved GSPro folder to use Practice Range.'}
+          </span>
+        </div>
+        <button onClick={() => connectGspro(false)} type="button">
+          {gsproState === 'not-connected' ? 'Connect GSPro' : 'Reconnect'}
+        </button>
+      </div>
+    )
+  })()
+
   return (
     <main className="looper-landing-page">
       <div className="looper-landing-shell">
         <section className="looper-landing-panel" aria-label="Looper entry">
           <img alt="The Looper" className="looper-landing-logo" src={looperLogoWhite} />
 
-          <div className="looper-landing-actions">
-            <a className="looper-landing-action looper-landing-action-primary" href="/dashboard">
-              Go to Dashboard
-            </a>
+          {connectionCallout}
 
-            <div className="looper-landing-session">
-              <label className="looper-landing-label" htmlFor="landing-club-select">
-                New Session
-              </label>
-              {import.meta.env.DEV && (
-                <>
-                  {/* DEV ONLY — opens Session Intelligence without Nova for SimRead testing. Safe to remove. */}
-                  <div style={{ marginBottom: 12 }}>
-                    <button
-                      className="looper-landing-action looper-landing-action-secondary"
-                      onClick={() =>
-                        navigateWithinApp(
-                          `/session-intelligence?source=mock&feed=mock&variant=${encodeURIComponent(resolveShotVariantId(selectedShotVariantId))}`,
-                        )
-                      }
-                      type="button"
-                    >
-                      DEV: Open SimRead Test Session
-                    </button>
-                  </div>
-                </>
-              )}
-              <div className="looper-landing-session-field">
-                <div className="looper-landing-source-toggle" role="radiogroup" aria-label="Session source">
-                  <button
-                    aria-checked={selectedSource === 'gspro'}
-                    className={`looper-landing-source-pill ${
-                      selectedSource === 'gspro' ? 'is-selected' : ''
-                    }`}
-                    onClick={() => setSelectedSource('gspro')}
-                    role="radio"
-                    type="button"
-                  >
-                    GSPro
-                  </button>
-                  <button
-                    aria-checked={selectedSource === 'nova'}
-                    className={`looper-landing-source-pill ${
-                      selectedSource === 'nova' ? 'is-selected' : ''
-                    }`}
-                    onClick={() => setSelectedSource('nova')}
-                    role="radio"
-                    type="button"
-                  >
-                    Nova
-                  </button>
+          <a className="looper-landing-dashboard" href="/dashboard">
+            Go to Dashboard
+          </a>
+
+          <div className="looper-landing-mode-grid" aria-label="GSPro modes">
+            <button
+              className={`looper-landing-mode-card looper-landing-mode-card--range ${rangeOpen ? 'is-selected' : ''}`}
+              onClick={choosePracticeRange}
+              type="button"
+            >
+              <span className="looper-landing-mode-kicker">GSPro</span>
+              <strong>Practice Range</strong>
+              <span>Capture shots, build your club data, and review the session live.</span>
+            </button>
+
+            <div className="looper-landing-mode-card looper-landing-mode-card--caddie is-disabled">
+              <span className="looper-landing-coming-soon">Coming Soon</span>
+              <span className="looper-landing-mode-kicker">GSPro</span>
+              <strong>Live Caddie</strong>
+              <span>Real-time club, target, and risk guidance while you play.</span>
+            </div>
+          </div>
+
+          {rangeOpen && gsproState === 'connected' ? (
+            <section className="looper-landing-range-setup" aria-label="Practice Range setup">
+              <div className="looper-landing-range-heading">
+                <div>
+                  <span>Practice Range</span>
+                  <strong>Choose what you’re working on.</strong>
                 </div>
+                <button onClick={() => setRangeOpen(false)} type="button">Close</button>
               </div>
-              {selectedSource === 'nova' ? (
-                <div className="looper-landing-session-status">
-                  <p className="looper-landing-status-tag">{novaStatusText}</p>
-                  {novaDetail ? <p className="looper-landing-status-detail">{novaDetail}</p> : null}
-                </div>
+
+              {import.meta.env.DEV ? (
+                <button
+                  className="looper-landing-dev-session"
+                  onClick={() =>
+                    navigateWithinApp(
+                      `/session-intelligence?source=mock&feed=mock&variant=${encodeURIComponent(resolveShotVariantId(selectedShotVariantId))}`,
+                    )
+                  }
+                  type="button"
+                >
+                  DEV: Open SimRead Test Session
+                </button>
               ) : null}
+
               <div className="looper-landing-club-variant-row">
-                <div className="looper-landing-session-field">
+                <label className="looper-landing-session-field">
                   <span className="looper-landing-field-label">Club</span>
-                  <div className="looper-landing-select-wrap">
+                  <span className="looper-landing-select-wrap">
                     <select
                       id="landing-club-select"
                       onChange={(event) => setSelectedClub(event.target.value as Club)}
@@ -605,11 +360,12 @@ export default function LooperLandingPage({
                         </option>
                       ))}
                     </select>
-                  </div>
-                </div>
-                <div className="looper-landing-session-field">
+                  </span>
+                </label>
+
+                <label className="looper-landing-session-field">
                   <span className="looper-landing-field-label">Variant</span>
-                  <div className="looper-landing-select-wrap">
+                  <span className="looper-landing-select-wrap">
                     <select
                       aria-label="Shot variant"
                       onChange={(event) => setSelectedShotVariantId(event.target.value)}
@@ -625,73 +381,68 @@ export default function LooperLandingPage({
                         </option>
                       ))}
                     </select>
-                  </div>
-                </div>
+                  </span>
+                </label>
               </div>
+
               <button
-                className="looper-landing-action looper-landing-action-secondary looper-landing-start"
-                disabled={
-                  isStartingSession ||
-                  (selectedSource === 'nova' && (novaState !== 'connected' || !connectedUrl))
-                }
+                className="looper-landing-start"
+                disabled={isStartingSession}
                 onClick={() => void startSession()}
                 type="button"
               >
-                {isStartingSession ? 'Starting…' : 'Start'}
+                {isStartingSession ? 'Starting…' : 'Start Practice'}
               </button>
+
               {sessionStartError ? (
                 <p className="looper-landing-start-error" role="alert">
                   {sessionStartError}
                 </p>
               ) : null}
-              {selectedSource === 'nova' ? (
-                <details className="looper-landing-manual">
-                  <summary>Manual Nova Connection</summary>
-                  <div className="looper-landing-session-row">
-                    <div className="looper-landing-select-wrap">
-                      <input
-                        aria-label="Manual Nova WebSocket URL"
-                        onChange={(event) => setManualUrlInput(event.target.value)}
-                        placeholder="ws://nova-host:port"
-                        type="text"
-                        value={manualUrlInput}
-                      />
-                    </div>
-                    <button
-                      className="looper-landing-action looper-landing-action-secondary"
-                      onClick={applyManualUrl}
-                      type="button"
-                    >
-                      Use URL
-                    </button>
-                  </div>
-                </details>
-              ) : null}
-            </div>
+            </section>
+          ) : null}
 
-            <div className="looper-landing-utility-actions">
-              <a
-                className="looper-landing-action looper-landing-action-secondary"
-                href="/bag-setup?returnTo=%2Flooper"
-              >
-                Edit Bag
-              </a>
-              <a
-                className="looper-landing-action looper-landing-action-secondary"
-                href="/data-management"
-              >
-                Manage Data
-              </a>
-            </div>
-
-            {updateStatusContent ? (
-              <div className="looper-landing-update-status" aria-live="polite">
-                {updateStatusContent}
-              </div>
-            ) : null}
+          <div className="looper-landing-utility-actions">
+            <a href="/bag-setup?returnTo=%2Flooper">Edit Bag</a>
+            <a href="/data-management">Manage Data</a>
           </div>
+
+          {updateStatusContent ? (
+            <div className="looper-landing-update-status" aria-live="polite">
+              {updateStatusContent}
+            </div>
+          ) : null}
         </section>
       </div>
+
+      {showWelcome ? (
+        <div className="looper-welcome-backdrop" role="presentation">
+          <section
+            aria-labelledby="looper-welcome-title"
+            aria-modal="true"
+            className="looper-welcome-card"
+            role="dialog"
+          >
+            <img alt="The Looper" className="looper-welcome-logo" src={looperLogoWhite} />
+            <span className="looper-welcome-kicker">Welcome to The Looper</span>
+            <h1 id="looper-welcome-title">Connect GSPro once. Then just play.</h1>
+            <p>
+              Looper reads your GSPro shot data directly from this simulator PC. Choose the GSPro
+              folder once and Looper can use it for Practice Range and future simulator features.
+            </p>
+            <button className="looper-welcome-primary" onClick={() => connectGspro(true)} type="button">
+              Connect GSPro
+            </button>
+            <button
+              className="looper-welcome-secondary"
+              onClick={continueToDashboardFromWelcome}
+              type="button"
+            >
+              Go to Dashboard
+            </button>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }
