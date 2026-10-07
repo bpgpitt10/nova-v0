@@ -79,6 +79,23 @@ class DataFolderDiscoveryTests(unittest.TestCase):
             self.assertIsNone(result["directory"])
 
 
+class DpiSafetyTests(unittest.TestCase):
+    def test_explicit_dpi_failure_is_fail_closed(self):
+        import gspro_direct_click as click
+        window = {
+            "status": "connected", "hwnd": 12, "pid": 9,
+            "minimized": False, "dpiAwareness": "unverified",
+            "bounds": {"left": 0, "top": 0, "width": 1280, "height": 720},
+        }
+        with self.assertRaisesRegex(ValueError, "DPI"):
+            click.prepare_verified_minimap_click(
+                window=window, minimap_roi=(900, 330, 220, 330),
+                target_roi_px=(100, 150), snapshot_age_ms=100,
+                pin_registration_error_px=0.5, shot_key="hole:1:shot:1",
+                ui_confirmed=True,
+            )
+
+
 class CaptureDiagnosticsTests(unittest.TestCase):
     def test_rejects_blank_frame_even_when_printwindow_reports_success(self):
         width, height = 128, 72

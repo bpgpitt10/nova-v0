@@ -88,6 +88,8 @@ def _window_fingerprint(window: dict, frame_bgr: np.ndarray) -> tuple[int, int, 
     width, height = _validate_frame(frame_bgr)
     if window.get("status") != "connected" or window.get("minimized"):
         raise ValueError("GSPro is not connected in an active window")
+    if window.get("dpiAwareness") != "per-monitor":
+        raise ValueError("Minimap coordinate preflight requires per-monitor DPI awareness")
     pid, hwnd = window.get("pid"), window.get("hwnd")
     b = window.get("bounds") or {}
     values = (pid, hwnd, b.get("left"), b.get("top"), b.get("width"), b.get("height"))

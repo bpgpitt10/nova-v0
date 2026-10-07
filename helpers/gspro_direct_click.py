@@ -49,6 +49,8 @@ def prepare_verified_minimap_click(
         raise ValueError("GSPro is not connected")
     if window.get("minimized"):
         raise ValueError("GSPro is minimized")
+    if window.get("dpiAwareness") != "per-monitor":
+        raise ValueError("Native GSPro coordinates are not per-monitor DPI safe")
     if not isinstance(window.get("hwnd"), int) or window["hwnd"] <= 0:
         raise ValueError("Unverified GSPro HWND")
     if not isinstance(window.get("pid"), int) or window["pid"] <= 0:
@@ -131,6 +133,8 @@ def execute_prepared_click(
         raise RuntimeError("GSPro window moved/resized after aim planning")
     if current.get("minimized"):
         raise RuntimeError("GSPro was minimized")
+    if current.get("dpiAwareness") != "per-monitor":
+        raise RuntimeError("GSPro DPI awareness changed; no input sent")
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.GetForegroundWindow.restype = wintypes.HWND
     user32.SetForegroundWindow.argtypes = [wintypes.HWND]

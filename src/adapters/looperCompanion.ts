@@ -9,6 +9,7 @@ export type LooperCompanionGsproState = {
   window?: {
     foreground: boolean
     minimized: boolean
+    dpiAwareness?: 'per-monitor' | 'unverified'
     bounds: { left: number; top: number; width: number; height: number }
   }
 }

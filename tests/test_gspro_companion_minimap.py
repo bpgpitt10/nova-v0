@@ -25,6 +25,7 @@ WINDOW = {
     "pid": 9001,
     "hwnd": 124445,
     "minimized": False,
+    "dpiAwareness": "per-monitor",
     "bounds": {"left": -1920, "top": -60, "width": 1920, "height": 1080},
 }
 
@@ -130,6 +131,10 @@ class NativePreviewTests(unittest.TestCase):
         self.assertTrue(-1920 <= result.click_plan.desktop_x < 0)
         with self.assertRaisesRegex(PermissionError, "disabled"):
             click.execute_prepared_click(result.click_plan, latest_window=lambda: WINDOW)
+
+    def test_dpi_mismatch_is_refused_before_cv_or_click(self):
+        with self.assertRaisesRegex(ValueError, "DPI"):
+            self.preview(window={**WINDOW, "dpiAwareness": "unverified"})
 
     def test_hole_window_and_shot_identity_are_bound(self):
         with self.assertRaisesRegex(ValueError, "hole changed"):

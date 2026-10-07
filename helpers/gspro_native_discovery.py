@@ -148,11 +148,36 @@ def process_image_path(pid: int) -> str | None:
     return None
 
 
+
+def ensure_per_monitor_dpi_awareness() -> bool:
+    """Set per-monitor DPI awareness and VERIFY it before pixel planning.
+
+    A failed SetProcess call is not necessarily failure: a PyInstaller
+    manifest may have set awareness earlier. Query the active thread before
+    trusting GetWindowRect coordinates against SetCursorPos.
+    """
+    if os.name != "nt":
+        return False
+    try:
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+        user32.SetProcessDpiAwarenessContext.restype = wintypes.BOOL
+        user32.GetThreadDpiAwarenessContext.argtypes = []
+        user32.GetThreadDpiAwarenessContext.restype = ctypes.c_void_p
+        user32.GetAwarenessFromDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+        user32.GetAwarenessFromDpiAwarenessContext.restype = ctypes.c_int
+        user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))  # per-monitor v2
+        context = user32.GetThreadDpiAwarenessContext()
+        return bool(context) and user32.GetAwarenessFromDpiAwarenessContext(context) == 2
+    except (AttributeError, OSError, ValueError):
+        return False
+
 def find_gspro_window() -> dict:
     """Query top-level HWNDs, tie each to an actual process executable."""
     if os.name != "nt":
         return {"status": "waiting", "reason": "windows_only"}
 
+    dpi_verified = ensure_per_monitor_dpi_awareness()
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     user32.IsWindowVisible.argtypes = [wintypes.HWND]
     user32.IsWindowVisible.restype = wintypes.BOOL
@@ -208,6 +233,7 @@ def find_gspro_window() -> dict:
             "processName": name,
             "title": title.value[:100],
             "foreground": int(user32.GetForegroundWindow()) == int(hwnd),
+            "dpiAwareness": "per-monitor" if dpi_verified else "unverified",
             "minimized": minimized,
             "bounds": {
                 "left": rect.left, "top": rect.top,
@@ -250,6 +276,7 @@ def public_gspro_window_status(private: dict) -> dict:
         "windowTitle": private["title"],
         "window": {
             "foreground": private["foreground"],
+            "dpiAwareness": private.get("dpiAwareness", "unverified"),
             "minimized": private["minimized"],
             "bounds": private["bounds"],
         },

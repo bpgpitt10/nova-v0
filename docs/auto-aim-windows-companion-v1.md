@@ -1,5 +1,24 @@
 # Auto Aim V1 — Windows companion architecture and handoff
 
+### Safety review and integration planning (2026-10-06)
+
+The initial Stage C review found GetWindowRect/SetCursorPos can use different
+coordinate scales if the helper process is DPI unaware. Discovery now attempts
+per-monitor-v2 awareness and *checks actual thread awareness*, returning
+dpiAwareness: per-monitor/unverified. Native minimap planning and future input
+refuse unverified DPI while read-only discovery continues. All validation so
+far is Windows CI, not physical mixed-monitor simulator testing.
+
+The partial/short-shot recommender changes are preserved separately on
+live-caddie-shot-strategy-v1. Do NOT merge the whole branch, which also holds
+older Tauri Auto Aim experiments. See
+docs/shot-strategy-windows-companion-merge-plan.md. In particular: strategy
+mode does not imply an automated club recommendation, success percentage,
+trajectory or rollout. The eventual native-aim target contract must accept a
+strategy target separately from an evaluated full-shot candidate while
+requiring explicit user consent and independently verified coordinate mapping.
+
+
 ## Stage C preflight integration — 2026-10-06 (read-only; SIM GATE OPEN)
 
 **Branch-only development. No production deploy and no browser-accessible aim command.**

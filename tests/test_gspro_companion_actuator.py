@@ -13,6 +13,7 @@ WINDOW = {
     "hwnd": 124445,
     "pid": 9001,
     "minimized": False,
+    "dpiAwareness": "per-monitor",
     "bounds": {"left": -1920, "top": -120, "width": 1920, "height": 1080},
 }
 
@@ -61,6 +62,10 @@ class ActuatorSafetyTests(unittest.TestCase):
         safe = plan()
         with self.assertRaisesRegex(PermissionError, "disabled"):
             actuator.execute_prepared_click(safe, latest_window=lambda: WINDOW)
+
+    def test_unknown_dpi_mode_never_clicks(self):
+        with self.assertRaisesRegex(ValueError, "DPI"):
+            plan(window={**WINDOW, "dpiAwareness": "unverified"})
 
     def test_required_shot_identity(self):
         with self.assertRaisesRegex(ValueError, "shot"):
