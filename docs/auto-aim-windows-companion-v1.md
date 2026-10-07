@@ -3,13 +3,29 @@
 **Decision date:** 2026-10-06  
 **New active implementation branch:** `auto-aim-windows-companion-v1`  
 **Base:** `web-course-importer-current-lineage-v1` (working hosted Live Caddie baseline).  
-**Status:** Architecture selected; implementation not yet started. No production changes.
+**Status:** Stage A code implemented on isolated branch, Windows build/smoke tests passed on initial CI run, dedicated development prerelease/preview validation pending. No production changes; no native input or aim control added.
 
 ## Product decision
 
 Looper remains the hosted website (`thelooper.golf`). Auto Aim will use **one optional Windows installer**, rather than attempting to inject desktop mouse/keyboard input directly from Chrome. A small user-session tray companion discovers GSPro, reads needed local state, captures its minimap, performs **one direct minimap click**, and verifies GSPro's accepted magenta aim marker. No keyboard LEFT/RIGHT pulse loop is required. Live Caddie remains useful without the optional companion (manual/suggested aim).
 
 The helper is **not** a second Looper app, replacement UI, browser extension, PowerShell script, localhost page, or full Tauri desktop conversion. There is no recurring manual selection of the GSPro folder or window. If automatic discovery fails, provide a narrow, one-time fallback picker with path/window verification.
+
+## Stage A implementation handoff (2026-10-06)
+
+**Existing foundation found:** The repository ALREADY contained `helpers/looper_companion.py`, a PyInstaller one-file Windows build, a PowerShell + CMD one-time per-user installer, HKCU Run autostart, an existing wind/lie OCR helper and a GitHub Actions workflow. Do not invent or install a second parallel helper. The existing binary listens on `127.0.0.1:8787` when started by the installer. It has no tray icon yet; that is future polish.
+
+**New code on this branch:**
+
+- `helpers/looper_companion.py`: new read-only `GET /companion/v1/status` endpoint on the SAME companion process; exact origin restrictions for `thelooper.golf`, localhost development and Looper's team-scoped preview hosts; Host validation; no POST/actuation endpoints. Reports `gspro.status` `connected` / `waiting` / `ambiguous` using HWND/PID and verified executable basename (no blind window-title trust). Advertises `autoAim:false`, `nativeCapture:false`, `folderDiscovery:false` accurately. Existing `/health`, `/wind`, `/lie`, `/derive` preserved.
+- `src/adapters/looperCompanion.ts`: typed Chrome `fetch` status adapter with explicit `targetAddressSpace: 'loopback'` for current LNA browser permission flows.
+- `public/dev/companion-connect.html`: standalone one-button **read-only** browser ↔ companion test, purposely outside existing Live Caddie folder access gate.
+- `tests/test_looper_companion_stage_a.py`: HTTP test for allowed/blocked origins, Host spoofing, OPTIONS, no click endpoint, and legacy `/health`.
+- `.github/workflows/build-looper-companion-windows.yml`: build/test/smoke + **isolated** development prerelease for this branch, never overwrite `looper-companion-latest`. GitHub Actions standard artifact uploads failed due account storage quota; deliver via dedicated tagged GitHub prerelease asset instead.
+
+**Connection test:** Install development companion package on the GSPro Windows computer, open `https://<preview-host>/dev/companion-connect.html` in Chrome, click Connect, allow Apps on device / loopback network access when prompted. A PASS is `service:looper-companion`, `version:autoaim-stage-a.1`, and `gspro.status:connected` when GSPro is running (or `waiting` before launch). This verifies secure-enough **read-only** Stage A connectivity only; actual native click and window capture remain entirely unimplemented.
+
+**Limitations deliberately retained until Stage B:** No GSPro folder autodiscovery yet. No minimap capture, aim actuator, on-shot lifecycle, tray interface, or browser pairing secret for future write commands. Live Caddie still has its original Chrome folder picker/screen capture path. Never remove/bypass that gate until helper data-ingestion parity is proven. Future native actuation MUST require explicit pairing/authentication beyond allowed Origin and hostile-site CSRF tests; `GET /status` alone is not permission to click.
 
 ## Relevant research and tested proof
 
