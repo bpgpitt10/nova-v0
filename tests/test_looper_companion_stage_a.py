@@ -61,8 +61,12 @@ class LooperCompanionStageATests(unittest.TestCase):
 
     def test_status_is_read_only_and_restricts_origins(self):
         with running_service() as port, mock.patch.object(
-            companion, "discover_gspro_window",
-            return_value={"status": "waiting", "reason": "test"},
+            companion, "discover_gspro_context",
+            return_value={
+                "gspro": {"status": "waiting", "reason": "test"},
+                "dataFolder": {"status": "not-found", "source": None, "files": {}, "reason": "no_files"},
+                "_window": {"status": "waiting", "reason": "test"},
+            },
         ):
             allowed = {"Origin": "https://thelooper.golf"}
             status, headers, payload = request(port, "/companion/v1/status", headers=allowed)
@@ -72,6 +76,19 @@ class LooperCompanionStageATests(unittest.TestCase):
             self.assertEqual(payload["gspro"]["status"], "waiting")
             self.assertFalse(payload["capabilities"]["autoAim"])
             self.assertFalse(payload["capabilities"]["nativeCapture"])
+            self.assertTrue(payload["capabilities"]["folderDiscovery"])
+            self.assertTrue(payload["capabilities"]["captureDiagnostic"])
+            self.assertEqual(payload["dataFolder"]["status"], "not-found")
+            self.assertNotIn("directory", payload["dataFolder"])
+
+            with mock.patch.object(companion.capture, "probe_gspro_capture", return_value={
+                "status": "not-connected", "method": "PrintWindow",
+            }):
+                status, _headers, payload = request(
+                    port, "/companion/v1/capture-check", headers=allowed,
+                )
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["windowCapture"]["status"], "not-connected")
 
             status, headers, payload = request(
                 port, "/companion/v1/status",
