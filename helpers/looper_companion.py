@@ -29,7 +29,7 @@ EXACT_ALLOWED_ORIGINS = frozenset({
 # Only the Looper Vercel project in this connected team, not arbitrary
 # *.vercel.app pages. Aim commands (later stages) will also require pairing.
 LOOPER_PREVIEW_ORIGIN = re.compile(
-    r"https://(?:looper|looper-web)[a-z0-9-]*-wqk25hkxcg-3591\\.vercel\\.app"
+    r"https://(?:looper|looper-web)[a-z0-9-]*-wqk25hkxcg-3591\.vercel\.app"
 )
 
 
@@ -146,6 +146,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
