@@ -10,6 +10,8 @@ on:
       - "helpers/looper_companion.py"
       - "helpers/gspro_native_discovery.py"
       - "helpers/gspro_window_capture.py"
+      - "helpers/gspro_direct_click.py"
+      - "tests/test_gspro_companion_actuator.py"
       - "tests/test_gspro_companion_discovery.py"
       - "tests/test_looper_companion_stage_a.py"
       - "src/adapters/looperCompanion.ts"
@@ -119,6 +121,7 @@ jobs:
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
       - name: Publish isolated Stage B prerelease
+        continue-on-error: true
         if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
         shell: pwsh
         env:
@@ -130,7 +133,7 @@ jobs:
             --repo "$env:GITHUB_REPOSITORY" `
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion Auto Aim Stage B ($shortSha)" `
-            --notes "Isolated Windows development installer. Read-only connection and GSPro window discovery only. No Auto Aim clicks or native capture yet." `
+            --notes "Isolated Windows development installer. Read-only folder/window discovery, bounded capture diagnostics, and dormant guarded click planning. The installed API cannot move the mouse." `
             --prerelease
 
       - name: Publish rolling companion prerelease
