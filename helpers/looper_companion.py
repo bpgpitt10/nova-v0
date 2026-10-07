@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """Looper's existing Windows companion, extended with a read-only Auto Aim bridge.
 
-Stage A only: report the connected companion and locate a visible GSPro process
-window. No desktop input, no arbitrary file operation, and no aim commands.
+Stage B: locate GSPro and data files, report window bounds and a safe capture
+quality probe. No desktop input, no file writes, and no aim commands.
 The existing /health, /wind, /lie and /derive endpoints remain compatible.
 """
 
-import ctypes
-from ctypes import wintypes
 import json
-import os
 import re
 from urllib.parse import urlsplit
 
 import open_golf_coach_helper_lie_footer as lie_footer
+import gspro_native_discovery as native
+import gspro_window_capture as capture
 
 base = lie_footer.base
-COMPANION_VERSION = "autoaim-stage-a.1"
+COMPANION_VERSION = "autoaim-stage-b.1"
 COMPANION_STATUS_PATH = "/companion/v1/status"
+COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 
 EXACT_ALLOWED_ORIGINS = frozenset({
     "https://thelooper.golf",
@@ -42,99 +42,16 @@ def is_allowed_origin(origin: str | None) -> bool:
     )
 
 
-def _process_image_name(pid: int) -> str | None:
-    """Read executable basename from the actual PID, never just a window title."""
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-    kernel32.OpenProcess.restype = wintypes.HANDLE
-    kernel32.QueryFullProcessImageNameW.argtypes = [
-        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
-        ctypes.POINTER(wintypes.DWORD),
-    ]
-    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
-    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-
-    # PROCESS_QUERY_LIMITED_INFORMATION; no elevation required for same-user GSPro.
-    handle = kernel32.OpenProcess(0x1000, False, pid)
-    if not handle:
-        return None
-    try:
-        capacity = 32768
-        image_path = ctypes.create_unicode_buffer(capacity)
-        length = wintypes.DWORD(capacity)
-        if not kernel32.QueryFullProcessImageNameW(
-            handle, 0, image_path, ctypes.byref(length)
-        ):
-            return None
-        return os.path.basename(image_path.value).lower()
-    finally:
-        kernel32.CloseHandle(handle)
-
-
-def discover_gspro_window() -> dict:
-    """Find an interactive GSPro window by verified executable identity + HWND."""
-    if os.name != "nt":
-        return {"status": "waiting", "reason": "windows_only"}
-
-    user32 = ctypes.WinDLL("user32", use_last_error=True)
-    user32.IsWindowVisible.argtypes = [wintypes.HWND]
-    user32.IsWindowVisible.restype = wintypes.BOOL
-    user32.GetWindowThreadProcessId.argtypes = [
-        wintypes.HWND, ctypes.POINTER(wintypes.DWORD)
-    ]
-    user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
-    user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
-
-    candidates = {}
-    executable_cache = {}
-    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-
-    @callback_type
-    def on_window(hwnd, _lparam):
-        if not user32.IsWindowVisible(hwnd):
-            return True
-        pid = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        if pid.value == 0:
-            return True
-        if pid.value not in executable_cache:
-            executable_cache[pid.value] = _process_image_name(pid.value)
-        executable_name = executable_cache[pid.value] or ""
-        if not executable_name.startswith("gspro") or not executable_name.endswith(".exe"):
-            return True
-
-        title_length = user32.GetWindowTextLengthW(hwnd)
-        title_buffer = ctypes.create_unicode_buffer(max(1, title_length + 1))
-        user32.GetWindowTextW(hwnd, title_buffer, len(title_buffer))
-        # Prefer a named game window over a splash screen or hidden helper HWND.
-        priority = (2 if "gspro" in title_buffer.value.lower() else 1) + (
-            1 if executable_name == "gspro.exe" else 0
-        )
-        prior = candidates.get(pid.value)
-        candidate = {
-            "pid": pid.value,
-            "processName": executable_name,
-            "windowTitle": title_buffer.value[:100],
-            "priority": priority,
-        }
-        if prior is None or candidate["priority"] > prior["priority"]:
-            candidates[pid.value] = candidate
-        return True
-
-    user32.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
-    user32.EnumWindows.restype = wintypes.BOOL
-    user32.EnumWindows(on_window, 0)
-
-    if not candidates:
-        return {"status": "waiting", "reason": "gspro_window_not_found"}
-    if len(candidates) > 1:
-        return {"status": "ambiguous", "processCount": len(candidates)}
-    match = next(iter(candidates.values()))
+def discover_gspro_context() -> dict:
+    """Internal result includes private paths; never serialize them to browser."""
+    window = native.find_gspro_window()
+    data = native.discover_gspro_data_directory(
+        image_path=window.get("imagePath")
+    )
     return {
-        "status": "connected",
-        "pid": match["pid"],
-        "processName": match["processName"],
-        "windowTitle": match["windowTitle"],
+        "gspro": native.public_gspro_window_status(window),
+        "dataFolder": native.public_data_folder_status(data),
+        "_window": window,
     }
 
 
@@ -168,6 +85,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
             self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Type", "application/json")
@@ -182,7 +100,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         )
 
     def do_OPTIONS(self) -> None:
-        if urlsplit(self.path).path == COMPANION_STATUS_PATH:
+        if urlsplit(self.path).path in (COMPANION_STATUS_PATH, COMPANION_CAPTURE_PATH):
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
@@ -195,17 +113,31 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
+            context = discover_gspro_context()
             self._send_companion(200, {
                 "service": "looper-companion",
                 "version": COMPANION_VERSION,
                 "status": "ready",
-                "gspro": discover_gspro_window(),
+                "gspro": context["gspro"],
+                "dataFolder": context["dataFolder"],
                 "capabilities": {
                     "windowDiscovery": True,
-                    "folderDiscovery": False,
+                    "folderDiscovery": True,
+                    "captureDiagnostic": True,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
+            })
+            return
+        if urlsplit(self.path).path == COMPANION_CAPTURE_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            context = discover_gspro_context()
+            self._send_companion(200, {
+                "service": "looper-companion",
+                "version": COMPANION_VERSION,
+                "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
             return
         super().do_GET()
