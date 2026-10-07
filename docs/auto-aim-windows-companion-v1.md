@@ -3,7 +3,7 @@
 **Decision date:** 2026-10-06  
 **New active implementation branch:** `auto-aim-windows-companion-v1`  
 **Base:** `web-course-importer-current-lineage-v1` (working hosted Live Caddie baseline).  
-**Status:** Stage B discovery plumbing, read-only capture diagnostic, web auto-detection, and parked Stage C native one-click preflight implemented. Windows CI + hosted preview validation in progress. Simulator-specific capture and clicking remain untested. No production changes, no HTTP input endpoint.
+**Status:** Stage B discovery plumbing, read-only capture diagnostics, web auto-detection, and parked Stage C native one-click preflight implemented. Windows CI succeeded on SHA `93309fea` (all 16 synthetic tests, packaged executable smoke) and the hosted Vercel preview is READY. Simulator-specific capture/clicking remain untested. No production changes and no HTTP mouse-input endpoint.
 
 ## Product decision
 
@@ -27,6 +27,13 @@ The user is away from the simulator, so development continued without requesting
 **Stage C scaffold committed but disabled:**
 
 - `helpers/gspro_direct_click.py`: geometry preflight for a window-relative minimap click (handles multiple displays including negative desktop coordinates), requires user arm, recent frame, tight pin-registration error, current shot identity, stable GSPro window, safe minimap bounds; separate one-click Win32 actuator based on the previously proven mouse primitive. Every normal caller hits `allow_native_input=False` and raises `PermissionError`; it is **not** reachable from web and no mouse input has been sent. The old proven minimap image registration/CV pipeline has NOT yet been ported into the companion.
+
+**Verified deliverables (no sim required):**
+
+- Windows CI: [successful build/run 37568525744](https://github.com/bpgpitt10/nova-v0/actions/runs/37568525744); test suite and packaged helper smoke both green.
+- Isolated development package: [looper-companion-autoaim-stage-b-93309fea](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-b-93309fea) — not promoted to the rolling or production release.
+- Hosted preview from companion branch: [companion diagnostics](https://looper-oces7kgyk-wqk25hkxcg-3591.vercel.app/dev/companion-connect.html) — Vercel build READY, GET returned HTTP 200. Browser-to-native communication on the actual sim PC is **not** yet verified.
+- No local GSPro physical test was performed because the user is away. No mouse input was sent.
 
 **Tests / release discipline:**
 
