@@ -108,13 +108,20 @@ jobs:
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
-      - name: Upload isolated Stage A installer artifact
+      - name: Publish isolated Stage A prerelease
         if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: looper-companion-autoaim-stage-a-windows
-          path: looper-windows-companion.zip
-          retention-days: 14
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          $tag = "looper-companion-autoaim-stage-a-$shortSha"
+          gh release create $tag looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion Auto Aim Stage A ($shortSha)" `
+            --notes "Isolated Windows development installer. Read-only connection and GSPro window discovery only. No Auto Aim clicks or native capture yet." `
+            --prerelease
 
       - name: Publish rolling companion prerelease
         if: github.ref == 'refs/heads/web-course-importer-surface-semantics-v2'
