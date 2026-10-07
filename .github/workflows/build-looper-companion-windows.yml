@@ -5,8 +5,12 @@ on:
   push:
     branches:
       - web-course-importer-surface-semantics-v2
+      - auto-aim-windows-companion-v1
     paths:
       - "helpers/looper_companion.py"
+      - "tests/test_looper_companion_stage_a.py"
+      - "src/adapters/looperCompanion.ts"
+      - "public/dev/companion-connect.html"
       - "helpers/open_golf_coach_helper.py"
       - "helpers/open_golf_coach_helper_lie_footer.py"
       - "helpers/install_looper_companion.ps1"
@@ -34,6 +38,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach
+
+      - name: Test Stage A companion handshake contract
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_looper_companion_stage_a.py" -v
 
       - name: Build Looper Companion
         shell: pwsh
@@ -66,6 +75,15 @@ jobs:
               throw "Unexpected companion version: $($health.version)"
             }
 
+            $headers = @{ Origin = "https://thelooper.golf" }
+            $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-a.1") {
+              throw "New companion status route is not available in packaged build."
+            }
+            if ($companion.capabilities.autoAim -ne $false) {
+              throw "Stage A must never enable Auto Aim."
+            }
+
             # GSPro is intentionally absent on CI. These calls prove that the
             # packaged wind/lie endpoints are present and fail closed instead
             # of crashing when no GSPro window exists.
@@ -90,7 +108,16 @@ jobs:
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
+      - name: Upload isolated Stage A installer artifact
+        if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: looper-companion-autoaim-stage-a-windows
+          path: looper-windows-companion.zip
+          retention-days: 14
+
       - name: Publish rolling companion prerelease
+        if: github.ref == 'refs/heads/web-course-importer-surface-semantics-v2'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
