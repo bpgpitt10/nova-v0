@@ -3,63 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Looper · Zero-install Auto Aim Probe</title>
+  <title>Looper · Auto Aim Research Status</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #08110d; color: #eef7f1; }
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 28px; background: radial-gradient(circle at top, #173225 0, #08110d 48%); }
-    main { width: min(900px, 100%); margin: 0 auto; }
-    h1 { margin: 0 0 8px; font-size: 30px; }
-    p { color: #b8c9be; line-height: 1.5; }
-    .warning { border: 1px solid #705d26; background: #2d2714; color: #f5df94; padding: 12px 14px; border-radius: 10px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 18px 0; }
-    .card { background: rgba(15, 29, 22, .94); border: 1px solid #284536; border-radius: 14px; padding: 16px; }
-    .label { text-transform: uppercase; letter-spacing: .08em; color: #7fa68c; font-size: 11px; font-weight: 700; }
-    .value { margin-top: 6px; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
-    button { border: 0; border-radius: 9px; background: #d8f55f; color: #10170d; padding: 11px 15px; font: inherit; font-weight: 800; cursor: pointer; }
-    button.secondary { background: #294537; color: #eef7f1; }
-    button.danger { background: #efb25d; }
-    button:disabled { cursor: not-allowed; opacity: .45; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
-    pre { min-height: 180px; max-height: 360px; overflow: auto; white-space: pre-wrap; background: #050b08; border: 1px solid #1c3026; border-radius: 10px; padding: 14px; color: #b9d5c1; }
-    video { width: 100%; max-height: 390px; object-fit: contain; background: #000; border-radius: 10px; margin-top: 10px; }
-    .pass { color: #b8f66d; }
-    .fail { color: #ff9d8f; }
-    .neutral { color: #f5df94; }
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #08110d; color: #edf6ee; }
+    body { margin: 0; padding: 5vw; } main { max-width: 780px; margin: 0 auto; }
+    .label { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #94c8a2; font-weight: bold; }
+    h1 { line-height: 1.2; } p { line-height: 1.65; color: #d0e0d3; }
+    .note { border: 1px solid #b99050; background: #3b2b14; color: #f4deae; padding: 18px; border-radius: 12px; margin: 24px 0; }
+    a { color: #d8f55f; }
   </style>
 </head>
 <body>
-<main>
-  <span class="label">Isolated development probe</span>
-  <h1>Zero-install Auto Aim Actuation</h1>
-  <p>This page tests one question only: can hosted Chrome change GSPro's live aim by temporarily writing a recorded aim field? It does not install anything and it automatically restores <code>currentRound.dat</code>.</p>
-  <div class="warning"><strong>Do not hit a shot while the probe is running.</strong> Put GSPro at a normal pre-shot screen with the mini-map visible. The mutation is held for less than two seconds and restored in a <code>finally</code> block.</div>
-
-  <div class="actions">
-    <button id="folderButton">Connect GSPro folder</button>
-    <button id="shareButton" class="secondary">Share GSPro window</button>
-    <button id="inspectButton" class="secondary" disabled>Inspect currentRound.dat</button>
-    <button id="probeButton" class="danger" disabled>Run reversible +3° probe</button>
-  </div>
-
-  <div class="grid">
-    <section class="card"><div class="label">Folder</div><div class="value" id="folderStatus">Not connected</div></section>
-    <section class="card"><div class="label">Capture</div><div class="value" id="captureStatus">Not shared</div></section>
-    <section class="card"><div class="label">Recorded aim field</div><div class="value" id="aimStatus">—</div></section>
-    <section class="card"><div class="label">Probe result</div><div class="value neutral" id="resultStatus">Not run</div></section>
-  </div>
-
-  <section class="card">
-    <div class="label">GSPro capture</div>
-    <video id="captureVideo" autoplay muted playsinline></video>
-    <canvas id="captureCanvas" hidden></canvas>
-  </section>
-
-  <section class="card" style="margin-top:12px">
-    <div class="label">Probe log</div>
-    <pre id="log"></pre>
-  </section>
-</main>
-<script type="module" src="/dev/auto-aim-zero-install-probe.js"></script>
+ <main>
+  <div class="label">The Looper · Development research</div>
+  <h1>Auto Aim file-write probe retired</h1>
+  <div class="note"><strong>Do not edit GSPro’s live currentRound.dat file to test Auto Aim.</strong> A browser write can race with GSPro’s own updates and may overwrite live game state. This probe has been disabled. No code on this page reads or writes your files.</div>
+  <p>Chrome screen sharing can read GSPro pixels, but it cannot independently inject clicks or keyboard controls into the GSPro desktop application. The previously tested OS-level click was performed with local development code, not by Chrome.</p>
+  <p>The isolated branch retains the reusable pixel closed-loop controller as research. Automatic actuation still requires either an actual GSPro-supported command interface or a local actuator, such as a small helper. Production Live Caddie was not modified.</p>
+  <p><a href="/">Back to Looper</a></p>
+ </main>
 </body>
 </html>
