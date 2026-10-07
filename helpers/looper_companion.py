@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 import open_golf_coach_helper_lie_footer as lie_footer
 import gspro_native_discovery as native
 import gspro_window_capture as capture
+import gspro_direct_click as native_click  # packaged for future gated Stage C; no HTTP callers
 
 base = lie_footer.base
 COMPANION_VERSION = "autoaim-stage-b.1"
