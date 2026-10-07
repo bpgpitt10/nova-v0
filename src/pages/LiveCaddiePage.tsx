@@ -454,7 +454,9 @@ export default function LiveCaddiePage() {
     let pending = false
     const refresh = async () => {
       if (pending || !alive || document.hidden) return
-      const pathname = window.location.pathname.replace(/\\/+$/, '')
+      const pathname = window.location.pathname.endsWith('/')
+        ? window.location.pathname.slice(0, -1)
+        : window.location.pathname
       if (!['/live-caddie', '/caddie', '/dev/live-caddie'].includes(pathname)) return
       pending = true
       try {
