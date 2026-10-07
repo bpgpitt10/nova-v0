@@ -52,7 +52,7 @@ class ActuatorSafetyTests(unittest.TestCase):
     def test_off_map_and_window_mismatch_refused(self):
         with self.assertRaisesRegex(ValueError, "safe minimap"):
             plan(target_roi_px=(1, 200))
-        with self.assertRaisesRegex(ValueError, "minimap ROI"):
+        with self.assertRaisesRegex(ValueError, "Minimap ROI"):
             plan(minimap_roi=(1800, 600, 400, 400))
         with self.assertRaisesRegex(ValueError, "minimized"):
             plan(window={**WINDOW, "minimized": True})
