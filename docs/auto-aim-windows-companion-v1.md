@@ -1,5 +1,66 @@
 # Auto Aim V1 — Windows companion architecture and handoff
 
+## Stage C preflight integration — 2026-10-06 (read-only; SIM GATE OPEN)
+
+**Branch-only development. No production deploy and no browser-accessible aim command.**
+
+The historical Greywolf H8/H13 algorithm is now packaged under helpers/ rather
+than running from a separate click-lab working directory:
+
+- auto_aim_transform.py — exact physically proven canonical/current inverse math.
+- minimap_registration.py — SIFT+RANSAC similarity fit, independently checked by
+  GSPro's detected white pin, with a tighter 3.0 px native preflight tolerance.
+- waypoint_scale.py and waypoint_scale_cv.py — authoritative gray waypoint/par-3
+  scale; Tesseract-based automatic waypoint OCR is retained as a proof module but
+  is **not yet activated** in the native helper without bundled/validated OCR.
+- gspro_minimap_markers.py — player, white pin and magenta accepted-target
+  detectors extracted from the proven native test harness, including explicit
+  rejection of the magenta target when locating the actual ball.
+- gspro_minimap_pipeline.py — private-frame tee calibration, window/hole/shot
+  fingerprint, fresh-image check (<1s), course-coordinate provenance gate,
+  zoom registration, bounded one-click *preview plan*, and <=3 yd accepted-marker
+  verification mathematics. It makes no mouse calls or HTTP requests.
+- gspro_window_capture.py — optional internal-only keep_pixels=True so a
+  verified GSPro frame can reach in-process CV; GET /capture-check still returns
+  ONLY pixel-quality metadata, never a screenshot.
+- test_gspro_companion_minimap.py — preserved H8/H13 exact-target tests,
+  authoritative scale gate, window/shot/pin/age rejections, no-native-input test,
+  and magenta acceptance math.
+
+Stage C is imported into the existing Looper Companion binary for packaging.
+The development build identifier is autoaim-stage-c-preflight.1. Capability flags
+remain nativeCapture:false and autoAim:false **on purpose**; these mean that
+native screenshot parity and actual click integration are NOT proven or enabled.
+The existing browser folder picker/window-share routes remain authoritative.
+
+**Important boundary:** Live Caddie's CoursePointYds local hole XY is NOT
+automatically assumed to be in the same world-coordinate frame as the
+physically proven GSPro course tee/pin/target coordinates. The stage C course
+path requires explicit shared course_frame_id + tee/pin anchor length agreement,
+and is still not reachable from browser UI. Existing "HITTING 7I · TAP TO ARM"
+arms a club recommendation; it does NOT authorize desktop input.
+
+**Remaining before activation:**
+1. Real simulator proof of PID/HWND, currentRound.dat freshness, and nonblank,
+   *nonstale* PrintWindow minimap with Chrome foreground; use real WGC HWND
+   capture if PrintWindow fails.
+2. Accurate tee gray-waypoint OCR without relying on unbundled Tesseract;
+   preserve the no-par4-hole-yardage-fallback rule.
+3. Validate course-local → GSPro-world shared coordinate translation at tee
+   and post-shot on real hole/pin; reject if anchors are ambiguous.
+4. Add native user-present pairing (see companion-native-aim-pairing-v1.md),
+   browser request integrity, one-shot nonce, repeated current shot checks,
+   no-green policy and an explicit Set Aim button. Keep native input DISABLED
+   until a controlled live test passes.
+5. Re-capture after the real click and verify the magenta accepted target with
+   independent shot state and frame freshness <=3 yd; log failures without
+   screenshot uploads. Do not call an unchanged stale target PASS.
+
+The initial GSPro test should use the isolated dev package for read-only
+discovery and capture before attempting any desktop input. Do not replace
+the production rolling companion or merge this highly diverged branch blindly.
+
+
 **Decision date:** 2026-10-06  
 **New active implementation branch:** `auto-aim-windows-companion-v1`  
 **Base:** `web-course-importer-current-lineage-v1` (working hosted Live Caddie baseline).  

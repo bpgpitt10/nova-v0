@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Looper's existing Windows companion, extended with a read-only Auto Aim bridge.
 
-Stage B: locate GSPro and data files, report window bounds and a safe capture
-quality probe. No desktop input, no file writes, and no aim commands.
+Stage C: keep read-only GSPro discovery plus on-demand capture diagnostics,
+and package the proven offline minimap registration/preflight library.
+No desktop input, no file writes, and no HTTP aim commands.
 The existing /health, /wind, /lie and /derive endpoints remain compatible.
 """
 
@@ -13,10 +14,11 @@ from urllib.parse import urlsplit
 import open_golf_coach_helper_lie_footer as lie_footer
 import gspro_native_discovery as native
 import gspro_window_capture as capture
-import gspro_direct_click as native_click  # packaged for future gated Stage C; no HTTP callers
+import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
+import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
 
 base = lie_footer.base
-COMPANION_VERSION = "autoaim-stage-b.1"
+COMPANION_VERSION = "autoaim-stage-c-preflight.1"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 

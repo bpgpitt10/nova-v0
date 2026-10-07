@@ -68,7 +68,7 @@ def assess_bgra_frame(raw: bytes, width: int, height: int) -> dict:
     }
 
 
-def probe_gspro_capture(gspro: dict) -> dict:
+def probe_gspro_capture(gspro: dict, *, keep_pixels: bool = False) -> dict:
     """Read a confirmed GSPro HWND without changing focus, cursor, or files."""
     if gspro.get("status") != "connected":
         return {"status": "not-connected", "method": "PrintWindow", "reason": "no_gspro_window"}
@@ -155,7 +155,9 @@ def probe_gspro_capture(gspro: dict) -> dict:
                 "windowHeight": height,
                 "foreground": bool(gspro.get("foreground")),
                 "quality": assessment,
-                # Capture is never uploaded / returned; only diagnostics.
+                # Only native, explicitly opted-in callers can access raw bytes.
+                # The HTTP diagnostic invokes the default keep_pixels=False.
+                **({"_private_bgra": pixels.raw} if keep_pixels and assessment["nonblank"] else {}),
             }
         finally:
             if selected and dest_dc:
