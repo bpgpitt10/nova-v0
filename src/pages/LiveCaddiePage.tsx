@@ -11,6 +11,10 @@ import {
   type BrowserGsproVisualCaptureConnection,
   type BrowserGsproVisualCaptureStatus,
 } from '../adapters/browserGsproVisualCapture'
+import {
+  readLooperCompanionStatus,
+  type LooperCompanionStatus,
+} from '../adapters/looperCompanion'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
@@ -431,6 +435,7 @@ export default function LiveCaddiePage() {
   const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
   const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
   const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
+  const [companionStatus, setCompanionStatus] = useState<LooperCompanionStatus | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -441,6 +446,30 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
+
+  // Background discovery only. Existing browser data/visual connections remain
+  // authoritative until companion data + capture parity has passed sim tests.
+  useEffect(() => {
+    let alive = true
+    let pending = false
+    const refresh = async () => {
+      if (pending || !alive || document.hidden) return
+      const pathname = window.location.pathname.replace(/\\/+$/, '')
+      if (!['/live-caddie', '/caddie', '/dev/live-caddie'].includes(pathname)) return
+      pending = true
+      try {
+        const status = await readLooperCompanionStatus(2000)
+        if (alive) setCompanionStatus(status)
+      } catch {
+        if (alive) setCompanionStatus(null)
+      } finally {
+        pending = false
+      }
+    }
+    void refresh()
+    const interval = window.setInterval(() => { void refresh() }, 8000)
+    return () => { alive = false; window.clearInterval(interval) }
+  }, [])
 
   useEffect(() => {
     const refreshSessions = () => setSessions(loadSavedSessions())
@@ -860,6 +889,13 @@ export default function LiveCaddiePage() {
               <i />
               <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
             </div>
+            {companionStatus?.gspro.status === 'connected' ? (
+              <div className="live-connection-state state-connected"
+                title={`Native Looper Companion ${companionStatus.version}; folder: ${companionStatus.dataFolder.status}. Auto Aim is not yet enabled.`}>
+                <i />
+                <span>Companion connected</span>
+              </div>
+            ) : null}
             <a href="/dev/aim-lab" className="live-diagnostics-link">Aim Lab</a>
           </div>
         </header>
