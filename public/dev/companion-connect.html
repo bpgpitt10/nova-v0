@@ -23,20 +23,26 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">The Looper / Companion Stage A</div>
+  <div class="eyebrow">The Looper / Companion Stage B</div>
   <h1>Windows companion connection</h1>
   <p>This is a <strong>read-only</strong> connection test for the proposed one-install Auto Aim system. It does not click GSPro or change any files. Use it on your Windows sim PC in Chrome or Edge after installing the development companion build.</p>
   <div class="box">
     <button id="connect">Connect to Looper Companion</button>
+    <button id="capture" disabled>Check Native Window Capture</button>
     <p id="help">Chrome may ask to allow access to apps on your device. Approve that prompt for thelooper.golf or this preview if you want to run the test.</p>
     <div class="label">Companion</div><div class="value" id="companion">Not checked</div>
     <div class="label">GSPro window discovery</div><div class="value" id="gspro">Not checked</div>
+    <div class="label">GSPro data folder</div><div class="value" id="folder">Not checked</div>
+    <div class="label">Window capture diagnostic</div><div class="value" id="captureStatus">Not checked</div>
     <div class="label">Auto Aim actuation</div><div class="value warn">Not enabled in Stage A</div>
     <div class="label">Diagnostics</div><pre id="log">No requests made yet.</pre>
   </div>
 </main>
 <script>
   const button = document.querySelector('#connect')
+  const captureButton = document.querySelector('#capture')
+  const captureStatus = document.querySelector('#captureStatus')
+  const folder = document.querySelector('#folder')
   const companion = document.querySelector('#companion')
   const gspro = document.querySelector('#gspro')
   const log = document.querySelector('#log')
@@ -44,6 +50,7 @@
 
   button.addEventListener('click', async () => {
     button.disabled = true
+    captureButton.disabled = true
     companion.className = 'value warn'
     companion.textContent = 'Connecting…'
     gspro.textContent = 'Not checked'
@@ -72,6 +79,13 @@
         : data.gspro?.status === 'ambiguous'
           ? 'AMBIGUOUS · Multiple GSPro windows/processes'
           : 'WAITING · Launch GSPro, then retry'
+      folder.className = 'value ' + (data.dataFolder?.status === 'ready' ? 'ok' : 'warn')
+      const files = data.dataFolder?.files || {}
+      const found = Object.entries(files).filter(([, present]) => present).map(([name]) => name)
+      folder.textContent = data.dataFolder
+        ? data.dataFolder.status.toUpperCase() + ' · ' + (found.join(', ') || 'No GSPro data files located')
+        : 'Unknown (older companion version)'
+      captureButton.disabled = data.gspro?.status !== 'connected' || !data.capabilities?.captureDiagnostic
       log.textContent = JSON.stringify(data, null, 2)
       help.textContent = 'PASS: Hosted browser reached the native companion. GSPro window status is shown above.'
     } catch (error) {
@@ -85,6 +99,41 @@
       button.disabled = false
     }
   })
+
+  captureButton.addEventListener('click', async () => {
+    captureButton.disabled = true
+    captureStatus.className = 'value warn'
+    captureStatus.textContent = 'Capturing (read-only)…'
+    const timeout = new AbortController()
+    const id = setTimeout(() => timeout.abort(), 10000)
+    try {
+      const request = new Request('http://127.0.0.1:8787/companion/v1/capture-check', {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        signal: timeout.signal,
+        targetAddressSpace: 'loopback'
+      })
+      const response = await fetch(request)
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      const data = await response.json()
+      if (data.service !== 'looper-companion' || !data.windowCapture) {
+        throw new Error('Invalid capture diagnostic response')
+      }
+      const result = data.windowCapture
+      captureStatus.className = 'value ' + (result.status === 'captured' ? 'ok' : 'warn')
+      captureStatus.textContent = result.status.toUpperCase() + ' · ' +
+        (result.reason || result.method || 'read-only window capture')
+      log.textContent += '\\n\\nCapture diagnostic (no pixels transmitted):\\n' + JSON.stringify(result, null, 2)
+    } catch (error) {
+      captureStatus.className = 'value fail'
+      captureStatus.textContent = 'Capture diagnostic error: ' + String(error)
+    } finally {
+      clearTimeout(id)
+      captureButton.disabled = false
+    }
+  })
+
 </script>
 </body>
 </html>
