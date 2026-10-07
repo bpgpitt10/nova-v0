@@ -11,7 +11,7 @@ on:
       - "helpers/gspro_native_discovery.py"
       - "helpers/gspro_window_capture.py"
       - "tests/test_gspro_companion_discovery.py"
-      - "tests/test_looper_companion_stage_b.py"
+      - "tests/test_looper_companion_stage_a.py"
       - "src/adapters/looperCompanion.ts"
       - "public/dev/companion-connect.html"
       - "helpers/open_golf_coach_helper.py"
