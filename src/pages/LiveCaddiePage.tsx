@@ -15,6 +15,7 @@ import {
   readLooperCompanionStatus,
   type LooperCompanionStatus,
 } from '../adapters/looperCompanion'
+import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
@@ -813,6 +814,16 @@ export default function LiveCaddiePage() {
         pin: pinEstimate,
       })
     : null
+  // Read-only envelope for future native pairing. The UI does NOT POST this
+  // unverified local-hole aim point to the Windows companion.
+  const nativeAimIntent = prepareReadOnlyNativeAimIntent({
+    snapshot: liveMatchesHole ? liveSnapshot : null,
+    courseId,
+    holeNumber,
+    club: displayedClub,
+    teeLocalYds: hole?.markers.tee ?? null,
+    targetLocalYds: inspectedCandidate?.aimPoint ?? null,
+  })
   const playerFacingAim = aimDescriptor?.text
     ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
   const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
@@ -893,7 +904,8 @@ export default function LiveCaddiePage() {
             </div>
             {companionStatus?.gspro.status === 'connected' ? (
               <div className="live-connection-state state-connected"
-                title={`Native Looper Companion ${companionStatus.version}; folder: ${companionStatus.dataFolder.status}. Auto Aim is not yet enabled.`}>
+                title={`Native Looper Companion ${companionStatus.version}; folder: ${companionStatus.dataFolder.status}. ${nativeAimIntent ? 'Read-only Looper-local recommendation prepared; GSPro coordinate frame not verified.' : 'Waiting for validated live shot and recommendation.'} Auto Aim remains disabled.`}
+                data-aim-intent={nativeAimIntent ? 'read-only-unverified' : 'blocked'}>
                 <i />
                 <span>Companion connected</span>
               </div>
