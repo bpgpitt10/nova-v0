@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - web-alpha-mishits
+      - auto-aim-windows-companion-v1
   pull_request:
     branches:
       - web-gspro-clean
