@@ -3,13 +3,46 @@
 **Decision date:** 2026-10-06  
 **New active implementation branch:** `auto-aim-windows-companion-v1`  
 **Base:** `web-course-importer-current-lineage-v1` (working hosted Live Caddie baseline).  
-**Status:** Stage A code implemented on isolated branch, Windows build/smoke tests passed on initial CI run, dedicated development prerelease/preview validation pending. No production changes; no native input or aim control added.
+**Status:** Stage B discovery plumbing, read-only capture diagnostic, web auto-detection, and parked Stage C native one-click preflight implemented. Windows CI + hosted preview validation in progress. Simulator-specific capture and clicking remain untested. No production changes, no HTTP input endpoint.
 
 ## Product decision
 
 Looper remains the hosted website (`thelooper.golf`). Auto Aim will use **one optional Windows installer**, rather than attempting to inject desktop mouse/keyboard input directly from Chrome. A small user-session tray companion discovers GSPro, reads needed local state, captures its minimap, performs **one direct minimap click**, and verifies GSPro's accepted magenta aim marker. No keyboard LEFT/RIGHT pulse loop is required. Live Caddie remains useful without the optional companion (manual/suggested aim).
 
 The helper is **not** a second Looper app, replacement UI, browser extension, PowerShell script, localhost page, or full Tauri desktop conversion. There is no recurring manual selection of the GSPro folder or window. If automatic discovery fails, provide a narrow, one-time fallback picker with path/window verification.
+
+## Progress without physical sim — Stage B + guarded Stage C scaffold (2026-10-06)
+
+The user is away from the simulator, so development continued without requesting physical tests.
+
+**Stage B work committed on this branch:**
+
+- `helpers/gspro_native_discovery.py`: Win32 PID/HWND/executable verification, current window size/position and foreground/minimized flags, deterministic user LocalLow-first GSPro folder search with process-location fallbacks. Reads only presence of `currentRound.dat`, `output_log.txt`, and `GSPro.db`. Returns `ready`, `partial`, or `not-found`; never exposes Windows usernames or full file paths over HTTP. Runtime cannot claim usable live shot parsing from file presence alone.
+- `helpers/gspro_window_capture.py`: ON-DEMAND bounded `PrintWindow(PW_RENDERFULLCONTENT)` capture quality diagnostic, strict not-connected/minimized/size refusals, all-black-frame rejection, **no screenshots transferred to website**, no file writes and no mouse input. This is a **candidate only**: Unity/GSPro may return black or stale images; then use Windows Graphics Capture HWND backend, not arbitrary browser screen-share.
+- `helpers/looper_companion.py`: new `GET /companion/v1/status` now returns `dataFolder` and window metadata as well as capability flags; `GET /companion/v1/capture-check` reports pixel quality metrics. Both are loopback-only and origin-restricted with LNA preflight support; `POST /companion/...` still **405**. Former wind/lie/health/derive endpoints remain intact. Capability flags intentionally say `nativeCapture:false` and `autoAim:false`.
+- `src/adapters/looperCompanion.ts`: browser typed read-only status + capture-check adapters.
+- `src/pages/LiveCaddiePage.tsx`: read-only optional status check on entering the Live Caddie route, refreshes at bounded interval only while page active; displays Companion connected badge. **Does not replace** existing Chrome directory gate or screenshot pipeline until data/capture parity proved.
+- `public/dev/companion-connect.html`: manual native capture diagnostic and discovered folder-file indicators; no user test performed yet.
+
+**Stage C scaffold committed but disabled:**
+
+- `helpers/gspro_direct_click.py`: geometry preflight for a window-relative minimap click (handles multiple displays including negative desktop coordinates), requires user arm, recent frame, tight pin-registration error, current shot identity, stable GSPro window, safe minimap bounds; separate one-click Win32 actuator based on the previously proven mouse primitive. Every normal caller hits `allow_native_input=False` and raises `PermissionError`; it is **not** reachable from web and no mouse input has been sent. The old proven minimap image registration/CV pipeline has NOT yet been ported into the companion.
+
+**Tests / release discipline:**
+
+- `tests/test_looper_companion_stage_a.py`, `tests/test_gspro_companion_discovery.py` and `tests/test_gspro_companion_actuator.py`: HTTP allowlist + denial, safety invariants, synthetic folder selection, blank-vs-real image heuristics and negative-monitor coordinate transforms.
+- `.github/workflows/build-looper-companion-windows.yml` runs these tests on `windows-latest`, packages one PyInstaller executable with existing one-click per-user installer and runs HTTP smoke checks; isolated prerelease for this branch, not production. Some builds earlier failed on a stale expected-version check, a test error-message capitalisation expectation, and intermittent GitHub Release permission (HTTP 403). Those test issues were corrected. Verify the latest run before declaring the build fully green.
+- Vercel preview built from companion branch; `/dev/companion-connect.html` returns HTTP 200. Production `thelooper.golf` is not deployed from this branch.
+
+**What cannot be proven without a sim:**
+
+1. Whether GSPro's actual executable name/window/title/layout match native discovery and whether LocalLow paths point to fresh files during live play.
+2. Whether Win32 `PrintWindow` returns a usable GSPro GPU minimap while covered by Chrome. If blank/stale, evaluate genuine HWND Windows Graphics Capture (WGC), not a fake success.
+3. Whether `SetForegroundWindow` actually succeeds when Live Caddie in Chrome initiates a click, and how fast it can click + verify magenta marker.
+4. End-to-end port of screenshot registration + pin crosscheck + recommended aim → click → accepted-marker <=3 yd; must be blocked until pairing/authenticated explicit command and live verification.
+5. Only after helper file+capture parity: remove recurring Chrome folder picker / user window-share requirements.
+
+**Next action when resuming**: inspect the latest Windows CI result, fix only real failures; then port saved minimap registration CV pipeline from `minimap-waypoint-scale-v1` into a reusable companion module and design the companion-specific pairing protocol. Do not enable click endpoints. The first GSPro PC session should test discovery then capture, **not** risk a blind click.
 
 ## Stage A implementation handoff (2026-10-06)
 
