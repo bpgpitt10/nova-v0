@@ -8,7 +8,10 @@ on:
       - auto-aim-windows-companion-v1
     paths:
       - "helpers/looper_companion.py"
-      - "tests/test_looper_companion_stage_a.py"
+      - "helpers/gspro_native_discovery.py"
+      - "helpers/gspro_window_capture.py"
+      - "tests/test_gspro_companion_discovery.py"
+      - "tests/test_looper_companion_stage_b.py"
       - "src/adapters/looperCompanion.ts"
       - "public/dev/companion-connect.html"
       - "helpers/open_golf_coach_helper.py"
@@ -39,10 +42,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach
 
-      - name: Test Stage A companion handshake contract
+      - name: Test Stage B companion discovery and handshake contracts
         shell: pwsh
         run: |
-          python -m unittest discover -s tests -p "test_looper_companion_stage_a.py" -v
+          python -m unittest discover -s tests -p "test_*companion*.py" -v
 
       - name: Build Looper Companion
         shell: pwsh
@@ -77,11 +80,18 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-a.1") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-b.1") {
               throw "New companion status route is not available in packaged build."
             }
+            if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
+              throw "Stage B discover/capture diagnostic capabilities missing."
+            }
+            $capture = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/capture-check" -Headers $headers -TimeoutSec 3
+            if ($capture.windowCapture.status -ne "not-connected") {
+              throw "Capture check without GSPro must fail closed."
+            }
             if ($companion.capabilities.autoAim -ne $false) {
-              throw "Stage A must never enable Auto Aim."
+              throw "Stage B must never enable Auto Aim."
             }
 
             # GSPro is intentionally absent on CI. These calls prove that the
@@ -108,18 +118,18 @@ jobs:
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
-      - name: Publish isolated Stage A prerelease
+      - name: Publish isolated Stage B prerelease
         if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $shortSha = $env:GITHUB_SHA.Substring(0, 8)
-          $tag = "looper-companion-autoaim-stage-a-$shortSha"
+          $tag = "looper-companion-autoaim-stage-b-$shortSha"
           gh release create $tag looper-windows-companion.zip `
             --repo "$env:GITHUB_REPOSITORY" `
             --target "$env:GITHUB_SHA" `
-            --title "Looper Companion Auto Aim Stage A ($shortSha)" `
+            --title "Looper Companion Auto Aim Stage B ($shortSha)" `
             --notes "Isolated Windows development installer. Read-only connection and GSPro window discovery only. No Auto Aim clicks or native capture yet." `
             --prerelease
 
