@@ -188,8 +188,10 @@
   }
 
   .live-caddie-secondary-context {
+    grid-column: 4;
     min-width: 0;
     margin-left: 4px;
+    justify-self: end;
     justify-content: flex-end;
     gap: 9px;
     overflow: hidden;
