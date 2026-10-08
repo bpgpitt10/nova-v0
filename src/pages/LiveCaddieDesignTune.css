@@ -263,12 +263,12 @@
 @media (min-width: 1260px) {
   .live-caddie-secondary-context {
     box-sizing: border-box;
-    justify-self: start !important;
-    width: max-content;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding-left: 0;
-    transform: none !important;
+    justify-self: end !important;
+    width: clamp(620px, 42vw, 730px);
+    max-width: none !important;
+    margin-left: 0 !important;
+    padding-left: 8px;
+    transform: translateX(190px);
     justify-content: flex-start !important;
     gap: 14px !important;
     overflow: visible !important;
@@ -301,5 +301,17 @@
     right: 2px;
     bottom: 5px;
     text-align: center;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-secondary-context {
+    width: clamp(560px, 42vw, 620px);
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1320px) {
+  .live-caddie-secondary-context {
+    transform: translateX(142px);
   }
 }

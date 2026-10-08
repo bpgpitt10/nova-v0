@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  connectBrowserGsproCourseStateFolder,
   connectToBrowserGsproCourseState,
   prepareBrowserGsproCourseStateRuntime,
   type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from '../adapters/browserGsproCourseState'
 import {
+  connectToBrowserGsproVisualCapture,
   type BrowserGsproVisualCaptureConnection,
   type BrowserGsproVisualCaptureStatus,
 } from '../adapters/browserGsproVisualCapture'
@@ -346,11 +348,12 @@ export default function LiveCaddiePage() {
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
   const [liveError, setLiveError] = useState<string | null>(null)
+  const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
-  const [visualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
-  const [visualCaptureError] = useState<string | null>(null)
-  const [visualCaptureSource] = useState<string | null>(null)
+  const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
+  const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
+  const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -453,7 +456,7 @@ export default function LiveCaddiePage() {
       },
     })
     return () => connection.disconnect()
-  }, [livePrepared, courseId, holeNumber])
+  }, [livePrepared, connectionVersion, courseId, holeNumber])
 
   useEffect(() => {
     let active = true
@@ -710,6 +713,37 @@ export default function LiveCaddiePage() {
     setInspectedAimOffset(null)
   }, [courseId, holeNumber, viewedEvaluation?.club])
 
+  const connectGspro = async () => {
+    setLiveError(null)
+    try {
+      await connectBrowserGsproCourseStateFolder()
+      setLivePrepared(true)
+      setConnectionVersion((value) => value + 1)
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const connectGsproVisuals = async () => {
+    setVisualCaptureError(null)
+    setVisualCaptureSource(null)
+    visualCaptureRef.current?.disconnect()
+    visualCaptureRef.current = null
+    try {
+      const connection = await connectToBrowserGsproVisualCapture({
+        onStatusChange: setVisualCaptureStatus,
+        onError: (error) => setVisualCaptureError(
+          error instanceof Error ? error.message : String(error),
+        ),
+        initiallyPaused: isGreenSurface,
+      })
+      visualCaptureRef.current = connection
+      setVisualCaptureSource(connection.sourceLabel ?? connection.displaySurface)
+    } catch (error) {
+      setVisualCaptureError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   const selectCourse = (nextCourseId: CourseId) => {
     setCourseId(nextCourseId)
     setHoleNumber(1)
@@ -736,56 +770,72 @@ export default function LiveCaddiePage() {
             <img src={looperLogoWhite} className="live-caddie-logo" alt="Looper" />
           </a>
 
-          <div className="live-caddie-header-stack">
-            <div className="live-caddie-header-line">
-              <span className="live-kicker live-caddie-header-kicker">LIVE CADDIE</span>
-              <select
-                className="live-caddie-header-select live-caddie-header-course"
-                value={courseId}
-                onChange={(event) => selectCourse(event.target.value as CourseId)}
-                aria-label="Course"
-              >
-                {courseCatalog.map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.name}</option>
-                ))}
-              </select>
-              <select
-                className="live-caddie-header-select live-caddie-header-hole"
-                value={holeNumber}
-                disabled={livePrepared}
-                onChange={(event) => setHoleNumber(Number(event.target.value))}
-                aria-label="Hole"
-              >
-                {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-                  <option key={number} value={number}>Hole {number}</option>
-                ))}
-              </select>
-              <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
-                <i />
-                <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
-              </div>
+          <div className="live-caddie-course-context">
+            <div>
+              <span className="live-kicker">LIVE CADDIE</span>
+              <strong>{selectedCourse?.name ?? 'Choose a course'}</strong>
             </div>
+            {selectedCourse ? <span>Hole {holeNumber}</span> : null}
+          </div>
 
-            <div className="live-caddie-secondary-context">
-              {courseId !== UNSELECTED_COURSE_ID ? <span>{shotContext}</span> : null}
-              {courseId !== UNSELECTED_COURSE_ID && pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-              {courseId !== UNSELECTED_COURSE_ID && !isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
-              {courseId !== UNSELECTED_COURSE_ID && airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
-                ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
-                : null}
-              {visualCaptureStatus === 'connected' ? (
-                <>
-                  <span>Visual capture connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
-                  <span>{isGreenSurface
-                    ? 'Visual OCR paused on green'
-                    : `Wind OCR ${windObservation?.status ?? 'WAITING'} · ${isTeeSurface
-                      ? 'Lie 0/0 (TEE)'
-                      : `Lie OCR ${lieObservation?.status ?? 'WAITING'}`}`}</span>
-                </>
-              ) : null}
+          <div className="live-caddie-header-actions">
+            <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
+              <i />
+              <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
             </div>
           </div>
         </header>
+
+        <section className="live-caddie-setup-row">
+          <select value={courseId} onChange={(event) => selectCourse(event.target.value as CourseId)}>
+            {courseCatalog.map((entry) => (
+              <option key={entry.id} value={entry.id}>{entry.name}</option>
+            ))}
+          </select>
+          <select
+            value={holeNumber}
+            disabled={livePrepared}
+            onChange={(event) => setHoleNumber(Number(event.target.value))}
+          >
+            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
+              <option key={number} value={number}>Hole {number}</option>
+            ))}
+          </select>
+          {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
+          {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
+          <button
+            type="button"
+            onClick={() => void connectGsproVisuals()}
+            disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
+            title="Share the GSPro application window. If window capture is blank, reconnect and share the full GSPro display instead."
+          >
+            {visualCaptureStatus === 'connected'
+              ? 'Reconnect GSPro Visuals'
+              : visualCaptureStatus === 'requesting'
+                ? 'Choose GSPro Window…'
+                : visualCaptureStatus === 'loading-ocr'
+                  ? 'Loading Visual OCR…'
+                  : 'Connect GSPro Visuals'}
+          </button>
+          <div className="live-caddie-secondary-context">
+            <span>{shotContext}</span>
+            {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
+            {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
+            {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
+              ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
+              : null}
+            {visualCaptureStatus === 'connected' ? (
+              <>
+                <span>Visual capture connected{visualCaptureSource ? ` · ${visualCaptureSource}` : ''}</span>
+                <span>{isGreenSurface
+                  ? 'Visual OCR paused on green'
+                  : `Wind OCR ${windObservation?.status ?? 'WAITING'} · ${isTeeSurface
+                    ? 'Lie 0/0 (TEE)'
+                    : `Lie OCR ${lieObservation?.status ?? 'WAITING'}`}`}</span>
+              </>
+            ) : null}
+          </div>
+        </section>
 
         {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
         {visualCaptureError ? (
