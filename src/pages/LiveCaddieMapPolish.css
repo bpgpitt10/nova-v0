@@ -107,7 +107,7 @@
     position: relative;
     grid-template-columns: 200px minmax(0, 1fr) auto;
     gap: 16px;
-    min-height: 70px;
+    min-height: 62px;
     padding: 0 4px 8px;
   }
 
@@ -218,7 +218,7 @@
   }
 
   .live-caddie-main-grid {
-    margin-top: 10px;
+    margin-top: 5px;
   }
 }
 

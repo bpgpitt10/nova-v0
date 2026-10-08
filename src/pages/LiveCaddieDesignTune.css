@@ -335,7 +335,7 @@
 
   .live-caddie-secondary-context {
     position: absolute !important;
-    top: 8px !important;
+    top: 26px !important;
     left: calc(100% + 236px - (var(--live-map-card-width) / 2)) !important;
     right: auto !important;
     width: max-content !important;
