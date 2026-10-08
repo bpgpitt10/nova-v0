@@ -16,24 +16,24 @@
 
 /* Probability hierarchy: 50% is the primary read, 80% secondary, 95% faint. */
 .live-probability.probability-50 {
-  fill: rgba(118, 211, 155, 0.018);
-  stroke: rgba(179, 204, 184, 0.9);
-  stroke-width: 0.44;
+  fill: rgba(118, 211, 155, 0.016);
+  stroke: rgba(188, 211, 191, 0.92);
+  stroke-width: 1.2;
   stroke-dasharray: none;
 }
 
 .live-probability.probability-80 {
-  fill: rgba(118, 211, 155, 0.01);
-  stroke: rgba(126, 151, 129, 0.78);
-  stroke-width: 0.3;
-  stroke-dasharray: 0.72 0.42;
+  fill: rgba(118, 211, 155, 0.008);
+  stroke: rgba(132, 159, 137, 0.84);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 2;
 }
 
 .live-probability.probability-95 {
-  fill: rgba(255, 255, 255, 0.003);
-  stroke: rgba(83, 107, 88, 0.64);
-  stroke-width: 0.22;
-  stroke-dasharray: 0.42 0.58;
+  fill: rgba(255, 255, 255, 0.002);
+  stroke: rgba(94, 119, 99, 0.74);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 2.5;
 }
 
 /* 50 / 80 are always-on reference contours, not an interactive control. */

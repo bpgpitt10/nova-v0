@@ -318,3 +318,30 @@
     transform: translateX(162px);
   }
 }
+
+
+/* Header shot context placement: anchor the visible content by its RIGHT edge.
+ * Previous versions used a 620–730px box plus translateX, which made small nudges
+ * visually ineffective. Keep this independent from course/hole sizing.
+ */
+@media (min-width: 1260px) {
+  .live-caddie-setup-row {
+    position: absolute;
+  }
+
+  .live-caddie-secondary-context {
+    position: absolute !important;
+    top: 0 !important;
+    right: -72px !important;
+    left: auto !important;
+    width: max-content !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    justify-self: auto !important;
+    justify-content: flex-end !important;
+    overflow: visible !important;
+  }
+}
