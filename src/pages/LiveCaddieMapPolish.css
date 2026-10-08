@@ -16,23 +16,23 @@
 
 /* Probability hierarchy: 50% is the primary read, 80% secondary, 95% faint. */
 .live-probability.probability-50 {
-  fill: rgba(118, 211, 155, 0.022);
-  stroke: rgba(205, 221, 205, 0.86);
-  stroke-width: 0.35;
+  fill: rgba(118, 211, 155, 0.018);
+  stroke: rgba(179, 204, 184, 0.9);
+  stroke-width: 0.44;
   stroke-dasharray: none;
 }
 
 .live-probability.probability-80 {
-  fill: rgba(118, 211, 155, 0.012);
-  stroke: rgba(140, 166, 143, 0.62);
-  stroke-width: 0.24;
+  fill: rgba(118, 211, 155, 0.01);
+  stroke: rgba(126, 151, 129, 0.78);
+  stroke-width: 0.3;
   stroke-dasharray: 0.72 0.42;
 }
 
 .live-probability.probability-95 {
-  fill: rgba(255, 255, 255, 0.004);
-  stroke: rgba(91, 115, 95, 0.46);
-  stroke-width: 0.17;
+  fill: rgba(255, 255, 255, 0.003);
+  stroke: rgba(83, 107, 88, 0.64);
+  stroke-width: 0.22;
   stroke-dasharray: 0.42 0.58;
 }
 
@@ -118,9 +118,14 @@
   .live-caddie-course-context {
     position: absolute;
     top: 7px;
-    left: 208px;
+    left: 216px;
     z-index: 4;
     display: block;
+  }
+
+  .live-caddie-course-context .live-kicker {
+    font-size: 11px;
+    letter-spacing: 0.105em;
   }
 
   .live-caddie-course-context strong,
@@ -179,9 +184,7 @@
   }
 
   .live-caddie-setup-row > button {
-    min-width: 92px;
-    padding: 0 9px;
-    white-space: nowrap;
+    display: none !important;
   }
 
   .live-caddie-secondary-context {

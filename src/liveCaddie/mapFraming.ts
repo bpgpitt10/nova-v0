@@ -5,7 +5,7 @@ import type {
 } from '../courseGeometry/types'
 import type { AimCandidateEvaluation } from './aimOptimization'
 
-const BACK_OF_BALL_BUFFER_YDS = 20
+const BACK_OF_BALL_BUFFER_YDS = 10
 const PAST_GREEN_BUFFER_YDS = 24
 const MIN_FORWARD_WINDOW_YDS = 140
 const MAX_NORMAL_HALF_WIDTH_YDS = 130
@@ -27,7 +27,7 @@ const greenPoints = (hole: CourseHoleGeometry): CoursePointYds[] =>
 /**
  * Live Caddie framing follows the player's progress through the hole:
  * - from the tee, the whole hole through the full green is visible;
- * - after every shot, ground >20 yd behind the ball can fall away;
+ * - after every shot, ground >10 yd behind the ball can fall away;
  * - the entire green plus a small destination buffer always remains visible.
  *
  * Context/rough polygons do not drive zoom because large background polygons

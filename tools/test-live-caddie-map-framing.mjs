@@ -31,18 +31,18 @@ const candidate = {
 }
 
 const tee = buildTacticalMapBounds(hole, [0, 0], [0, 220], [0, 607], candidate)
-assert.equal(tee.minY, -20)
+assert.equal(tee.minY, -10)
 assert.ok(tee.maxY >= 648, `tee view should show the full green + buffer, got ${tee.maxY}`)
 assert.ok(tee.maxY < 700, `tee view should not include excessive dead ground, got ${tee.maxY}`)
 assert.ok(tee.minX <= -16 && tee.maxX >= 95, 'tee view should contain the playable corridor and strategic water')
 
 const second = buildTacticalMapBounds(hole, [12, 260], [20, 470], [0, 607], candidate)
-assert.equal(second.minY, 240)
+assert.equal(second.minY, 250)
 assert.ok(second.maxY >= 648, 'shot 2 must retain the complete green plus destination buffer')
 assert.ok(second.minY > tee.minY, 'shot 2 should discard ground already passed')
 
 const approach = buildTacticalMapBounds(hole, [5, 520], [0, 607], [0, 607], null)
-assert.equal(approach.minY, 500)
+assert.equal(approach.minY, 510)
 assert.ok(approach.maxY >= 648)
 assert.ok(approach.maxY - approach.minY < second.maxY - second.minY, 'viewport should progressively tighten near the green')
 
