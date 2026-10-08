@@ -67,7 +67,7 @@
   display: grid;
   gap: 5px;
   min-width: 0;
-  transform: translateY(-22px);
+  transform: translateY(-14px);
 }
 
 .live-caddie-header-line {
@@ -84,8 +84,7 @@
   margin-right: 0;
 }
 
-.live-caddie-header-select,
-.live-caddie-header-button {
+.live-caddie-header-select {
   position: relative;
   z-index: 22;
   min-height: 34px;
@@ -111,12 +110,6 @@
 .live-caddie-header-hole {
   width: 96px;
   flex: 0 0 auto;
-}
-
-.live-caddie-header-button {
-  flex: 0 0 auto;
-  padding: 0 11px;
-  white-space: nowrap;
 }
 
 .live-kicker {
@@ -182,6 +175,10 @@
   pointer-events: none;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  justify-self: start;
+  width: max-content;
+  max-width: calc(100% - 116px);
   gap: 12px;
   margin-left: 116px;
   color: #9fb09f;

@@ -794,31 +794,6 @@ export default function LiveCaddiePage() {
                   <option key={number} value={number}>Hole {number}</option>
                 ))}
               </select>
-              {!livePrepared ? (
-                <button className="live-caddie-header-button" type="button" onClick={() => void connectGspro()}>
-                  Connect GSPro
-                </button>
-              ) : null}
-              {liveStatus === 'error' ? (
-                <button className="live-caddie-header-button" type="button" onClick={() => void connectGspro()}>
-                  Reconnect
-                </button>
-              ) : null}
-              <button
-                className="live-caddie-header-button"
-                type="button"
-                onClick={() => void connectGsproVisuals()}
-                disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
-                title="Share the GSPro application window. If window capture is blank, reconnect and share the full GSPro display instead."
-              >
-                {visualCaptureStatus === 'connected'
-                  ? 'Reconnect GSPro Visuals'
-                  : visualCaptureStatus === 'requesting'
-                    ? 'Choose GSPro Window…'
-                    : visualCaptureStatus === 'loading-ocr'
-                      ? 'Loading Visual OCR…'
-                      : 'Connect GSPro Visuals'}
-              </button>
               <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
                 <i />
                 <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
