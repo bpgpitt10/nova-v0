@@ -318,3 +318,52 @@
     transform: translateX(142px);
   }
 }
+
+
+/* Final wide-screen polish: keep the rail self-explanatory without a CLUB label. */
+@media (min-width: 1260px) {
+  .live-club-strip-heading {
+    display: none !important;
+  }
+
+  /* Shot context owns the right edge of the compact setup row. No translate hacks. */
+  .live-caddie-secondary-context {
+    justify-self: end !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    transform: none !important;
+    justify-content: flex-end !important;
+  }
+
+  /* Dedicated map toolbar: controls sit above the hole instead of over it. */
+  .live-map-card {
+    grid-template-rows: 36px minmax(0, 1fr) auto !important;
+  }
+
+  .live-map-topbar {
+    position: relative !important;
+    inset: auto !important;
+    z-index: 8;
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 36px !important;
+    padding: 0 4px 6px !important;
+    pointer-events: auto;
+    border-bottom: 1px solid rgba(79, 101, 82, 0.12);
+  }
+
+  .live-map-topbar > div:first-child {
+    display: none !important;
+  }
+
+  .live-map-shell {
+    grid-row: 2;
+  }
+
+  .live-map-legend {
+    grid-row: 3;
+  }
+}
