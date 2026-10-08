@@ -40,8 +40,8 @@
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
   min-height: 66px;
   padding: 0 4px 4px;
@@ -65,22 +65,22 @@
   position: relative;
   z-index: 21;
   display: grid;
-  gap: 5px;
+  grid-template-columns: 106px minmax(260px, 320px) 96px minmax(0, 1fr);
+  grid-template-rows: 34px auto;
+  column-gap: 10px;
+  row-gap: 6px;
+  align-items: center;
   min-width: 0;
   transform: translateY(-14px);
 }
 
 .live-caddie-header-line {
-  position: relative;
-  z-index: 21;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
+  display: contents;
 }
 
 .live-caddie-header-kicker {
-  flex: 0 0 106px;
+  grid-column: 1;
+  grid-row: 1;
   margin-right: 0;
 }
 
@@ -100,6 +100,9 @@
 }
 
 .live-caddie-header-course {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
   min-width: 0;
   max-width: 320px;
   color: #ffffff;
@@ -108,8 +111,15 @@
 }
 
 .live-caddie-header-hole {
+  grid-column: 3;
+  grid-row: 1;
   width: 96px;
-  flex: 0 0 auto;
+}
+
+.live-caddie-header-line .live-connection-state {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: start;
 }
 
 .live-kicker {
@@ -173,14 +183,16 @@
 
 .live-caddie-secondary-context {
   pointer-events: none;
+  grid-column: 2 / -1;
+  grid-row: 2;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   justify-self: start;
   width: max-content;
-  max-width: calc(100% - 116px);
+  max-width: 100%;
   gap: 12px;
-  margin-left: 116px;
+  margin: 0;
   color: #9fb09f;
   font-size: 11px;
   white-space: nowrap;
@@ -906,15 +918,38 @@
   }
 
   .live-caddie-header-stack {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    grid-template-rows: auto auto auto auto;
     transform: none;
   }
 
-  .live-caddie-header-line {
-    flex-wrap: wrap;
+  .live-caddie-header-kicker {
+    grid-column: 1 / -1;
+    grid-row: 1;
   }
 
   .live-caddie-header-course {
-    max-width: min(320px, 100%);
+    grid-column: 1;
+    grid-row: 2;
+    max-width: 100%;
+  }
+
+  .live-caddie-header-hole {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .live-caddie-header-line .live-connection-state {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .live-caddie-secondary-context {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
 
   .live-caddie-main-grid {
