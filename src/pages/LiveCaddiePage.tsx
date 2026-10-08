@@ -783,7 +783,6 @@ export default function LiveCaddiePage() {
               <i />
               <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
             </div>
-            <a href="/dev/aim-lab" className="live-diagnostics-link">Aim Lab</a>
           </div>
         </header>
 
