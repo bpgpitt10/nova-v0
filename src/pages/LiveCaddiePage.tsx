@@ -827,10 +827,10 @@ export default function LiveCaddiePage() {
 
         <section className="live-caddie-setup-row">
           <div className="live-caddie-secondary-context">
-            <span>{shotContext}</span>
-            {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
-            {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
+            {courseId !== UNSELECTED_COURSE_ID ? <span>{shotContext}</span> : null}
+            {courseId !== UNSELECTED_COURSE_ID && pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
+            {courseId !== UNSELECTED_COURSE_ID && !isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
+            {courseId !== UNSELECTED_COURSE_ID && airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
               : null}
             {visualCaptureStatus === 'connected' ? (
