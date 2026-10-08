@@ -320,28 +320,38 @@
 }
 
 
-/* Header shot context placement: anchor the visible content by its RIGHT edge.
- * Previous versions used a 620–730px box plus translateX, which made small nudges
- * visually ineffective. Keep this independent from course/hole sizing.
+/* Header shot context placement: center the summary over the actual map card.
+ * The setup row ends 236px before the shell edge, while the map card ends at the
+ * shell edge. Use the same width contract as the map rather than pixel nudges.
  */
 @media (min-width: 1260px) {
+  .live-caddie-shell {
+    --live-map-card-width: clamp(620px, 42vw, 730px);
+  }
+
   .live-caddie-setup-row {
     position: absolute;
   }
 
   .live-caddie-secondary-context {
     position: absolute !important;
-    top: 0 !important;
-    right: -72px !important;
-    left: auto !important;
+    top: 8px !important;
+    left: calc(100% + 236px - (var(--live-map-card-width) / 2)) !important;
+    right: auto !important;
     width: max-content !important;
     max-width: none !important;
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    transform: none !important;
+    transform: translateX(-50%) !important;
     justify-self: auto !important;
-    justify-content: flex-end !important;
+    justify-content: center !important;
     overflow: visible !important;
+  }
+}
+
+@media (min-width: 1260px) and (max-width: 1399px) {
+  .live-caddie-shell {
+    --live-map-card-width: clamp(560px, 42vw, 620px);
   }
 }
