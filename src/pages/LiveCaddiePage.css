@@ -38,7 +38,7 @@
 
 .live-caddie-header {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) auto;
+  grid-template-columns: 220px minmax(0, 1fr);
   gap: 24px;
   align-items: center;
   min-height: 66px;
@@ -59,32 +59,49 @@
   height: auto;
 }
 
-.live-caddie-course-context {
+.live-caddie-header-line {
   display: flex;
-  align-items: flex-end;
-  gap: 18px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-.live-caddie-course-context > div {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.live-caddie-header-kicker {
+  flex: 0 0 auto;
+  margin-right: 6px;
 }
 
-.live-caddie-course-context strong {
-  overflow: hidden;
+.live-caddie-header-select,
+.live-caddie-header-button {
+  min-height: 34px;
+  border: 1px solid rgba(49, 66, 51, 0.86);
+  border-radius: 8px;
+  background: rgba(23, 36, 25, 0.56);
+  color: #cfd8cd;
+  font-size: 13px;
+}
+
+.live-caddie-header-select {
+  padding: 0 9px;
+}
+
+.live-caddie-header-course {
+  min-width: 0;
+  max-width: 320px;
   color: #ffffff;
   font-size: 18px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.live-caddie-course-context > span {
-  padding-bottom: 2px;
-  color: #cfd8cd;
-  font-size: 13px;
+.live-caddie-header-hole {
+  width: 96px;
+  flex: 0 0 auto;
+}
+
+.live-caddie-header-button {
+  flex: 0 0 auto;
+  padding: 0 11px;
+  white-space: nowrap;
 }
 
 .live-kicker {
@@ -149,28 +166,8 @@
 .live-caddie-setup-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 8px 4px 6px;
-}
-
-.live-caddie-setup-row select,
-.live-caddie-setup-row button {
-  min-height: 32px;
-  border: 1px solid rgba(49, 66, 51, 0.86);
-  border-radius: 8px;
-  background: rgba(23, 36, 25, 0.84);
-  color: #cfd8cd;
-  font-size: 12px;
-}
-
-.live-caddie-setup-row select {
-  max-width: 230px;
-  padding: 0 8px;
-}
-
-.live-caddie-setup-row button {
-  padding: 0 11px;
+  min-height: 36px;
+  padding: 5px 4px 4px;
 }
 
 .live-caddie-secondary-context {
@@ -899,12 +896,15 @@
 
 @media (max-width: 860px) {
   .live-caddie-header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
   }
 
-  .live-caddie-course-context {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .live-caddie-header-line {
+    flex-wrap: wrap;
+  }
+
+  .live-caddie-header-course {
+    max-width: min(320px, 100%);
   }
 
   .live-caddie-main-grid {

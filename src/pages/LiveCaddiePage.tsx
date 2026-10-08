@@ -770,15 +770,54 @@ export default function LiveCaddiePage() {
             <img src={looperLogoWhite} className="live-caddie-logo" alt="Looper" />
           </a>
 
-          <div className="live-caddie-course-context">
-            <div>
-              <span className="live-kicker">LIVE CADDIE</span>
-              <strong>{selectedCourse?.name ?? 'Choose a course'}</strong>
-            </div>
-            {selectedCourse ? <span>Hole {holeNumber}</span> : null}
-          </div>
-
-          <div className="live-caddie-header-actions">
+          <div className="live-caddie-header-line">
+            <span className="live-kicker live-caddie-header-kicker">LIVE CADDIE</span>
+            <select
+              className="live-caddie-header-select live-caddie-header-course"
+              value={courseId}
+              onChange={(event) => selectCourse(event.target.value as CourseId)}
+              aria-label="Course"
+            >
+              {courseCatalog.map((entry) => (
+                <option key={entry.id} value={entry.id}>{entry.name}</option>
+              ))}
+            </select>
+            <select
+              className="live-caddie-header-select live-caddie-header-hole"
+              value={holeNumber}
+              disabled={livePrepared}
+              onChange={(event) => setHoleNumber(Number(event.target.value))}
+              aria-label="Hole"
+            >
+              {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
+                <option key={number} value={number}>Hole {number}</option>
+              ))}
+            </select>
+            {!livePrepared ? (
+              <button className="live-caddie-header-button" type="button" onClick={() => void connectGspro()}>
+                Connect GSPro
+              </button>
+            ) : null}
+            {liveStatus === 'error' ? (
+              <button className="live-caddie-header-button" type="button" onClick={() => void connectGspro()}>
+                Reconnect
+              </button>
+            ) : null}
+            <button
+              className="live-caddie-header-button"
+              type="button"
+              onClick={() => void connectGsproVisuals()}
+              disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
+              title="Share the GSPro application window. If window capture is blank, reconnect and share the full GSPro display instead."
+            >
+              {visualCaptureStatus === 'connected'
+                ? 'Reconnect GSPro Visuals'
+                : visualCaptureStatus === 'requesting'
+                  ? 'Choose GSPro Window…'
+                  : visualCaptureStatus === 'loading-ocr'
+                    ? 'Loading Visual OCR…'
+                    : 'Connect GSPro Visuals'}
+            </button>
             <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
               <i />
               <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>
@@ -787,36 +826,6 @@ export default function LiveCaddiePage() {
         </header>
 
         <section className="live-caddie-setup-row">
-          <select value={courseId} onChange={(event) => selectCourse(event.target.value as CourseId)}>
-            {courseCatalog.map((entry) => (
-              <option key={entry.id} value={entry.id}>{entry.name}</option>
-            ))}
-          </select>
-          <select
-            value={holeNumber}
-            disabled={livePrepared}
-            onChange={(event) => setHoleNumber(Number(event.target.value))}
-          >
-            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-              <option key={number} value={number}>Hole {number}</option>
-            ))}
-          </select>
-          {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
-          {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
-          <button
-            type="button"
-            onClick={() => void connectGsproVisuals()}
-            disabled={visualCaptureStatus === 'requesting' || visualCaptureStatus === 'loading-ocr'}
-            title="Share the GSPro application window. If window capture is blank, reconnect and share the full GSPro display instead."
-          >
-            {visualCaptureStatus === 'connected'
-              ? 'Reconnect GSPro Visuals'
-              : visualCaptureStatus === 'requesting'
-                ? 'Choose GSPro Window…'
-                : visualCaptureStatus === 'loading-ocr'
-                  ? 'Loading Visual OCR…'
-                  : 'Connect GSPro Visuals'}
-          </button>
           <div className="live-caddie-secondary-context">
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
