@@ -346,12 +346,11 @@ export default function LiveCaddiePage() {
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
   const [liveError, setLiveError] = useState<string | null>(null)
-  const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
-  const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
-  const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
-  const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
+  const [visualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
+  const [visualCaptureError] = useState<string | null>(null)
+  const [visualCaptureSource] = useState<string | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -454,7 +453,7 @@ export default function LiveCaddiePage() {
       },
     })
     return () => connection.disconnect()
-  }, [livePrepared, connectionVersion, courseId, holeNumber])
+  }, [livePrepared, courseId, holeNumber])
 
   useEffect(() => {
     let active = true
