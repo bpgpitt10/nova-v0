@@ -19,8 +19,6 @@ const framingKinds = new Set<CourseSurfaceKind>([
   'penalty',
 ])
 
-const finite = (value: number) => Number.isFinite(value)
-
 const greenPoints = (hole: CourseHoleGeometry): CoursePointYds[] =>
   hole.surfaces
     .filter((surface) => surface.kind === 'green')
