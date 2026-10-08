@@ -4,6 +4,7 @@ import {
   type CourseId,
 } from './courseCatalog'
 import { inferGreywolfTeeAliases } from './greywolfTeeAssumptions'
+import { applyCourseTeeMetadata } from './courseTeeMetadata'
 import type {
   CoursePointYds,
   CoursePolygonYds,
@@ -268,5 +269,6 @@ export const loadCourseTeeCandidates = async (
   holeNumber: number,
 ): Promise<readonly CourseTeeCandidate[]> => {
   if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfCandidates(holeNumber)
-  return loadGenericCandidates(courseId, holeNumber)
+  const candidates = await loadGenericCandidates(courseId, holeNumber)
+  return applyCourseTeeMetadata(courseId, candidates)
 }

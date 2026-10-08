@@ -42,6 +42,7 @@ import type {
   AimCandidateEvaluation,
   ClubAimEvaluation,
 } from '../liveCaddie/aimOptimization'
+import { buildTacticalMapBounds } from '../liveCaddie/mapFraming'
 import {
   loadCourseHoleHeadingDegreesTrue,
   localShotBearingDegrees,
@@ -148,84 +149,6 @@ const chooseLiveLandingTarget = (
   ]
   const corridor = fairwayCorridorAtForwardY(hole, rawTarget[1])
   return corridor ? [corridor.centerRightYds, rawTarget[1]] : rawTarget
-}
-
-const buildTacticalMapBounds = (
-  hole: CourseHoleGeometry,
-  ball: CoursePointYds,
-  target: CoursePointYds,
-  pinEstimate: CoursePointYds | null,
-  candidate: AimCandidateEvaluation | null,
-) => {
-  const pinDistance = pinEstimate ? pointDistance(ball, pinEstimate) : Number.POSITIVE_INFINITY
-  const includePin = Boolean(pinEstimate && pinDistance <= 285)
-  const focusPoints: CoursePointYds[] = [ball, target]
-  if (candidate) focusPoints.push(candidate.aimPoint, candidate.meanLanding)
-  if (includePin && pinEstimate) focusPoints.push(pinEstimate)
-
-  const maxCarryRadius = candidate?.probabilityContours.reduce(
-    (maximum, contour) => Math.max(maximum, contour.carryRadiusYds),
-    0,
-  ) ?? 0
-  const maxLateralRadius = candidate?.probabilityContours.reduce(
-    (maximum, contour) => Math.max(maximum, contour.lateralRadiusYds),
-    0,
-  ) ?? 0
-
-  const minY = ball[1] - 24
-  const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
-  const desiredMaxY = furthestFocusY + Math.max(115, maxCarryRadius + 70)
-  const minimumForwardSpan = pinDistance < 180
-    ? Math.max(130, pinDistance + 60)
-    : 260
-  const maxY = Math.max(
-    minY + minimumForwardSpan,
-    Math.min(desiredMaxY, ball[1] + 390),
-  )
-
-  let referenceMinX = Math.min(...focusPoints.map((point) => point[0])) - maxLateralRadius
-  let referenceMaxX = Math.max(...focusPoints.map((point) => point[0])) + maxLateralRadius
-  const surfaceWindowMinX = referenceMinX - 72
-  const surfaceWindowMaxX = referenceMaxX + 72
-  const surfaceWindowMinY = minY - 12
-  const surfaceWindowMaxY = maxY + 12
-  const framingKinds = new Set<CourseSurfaceKind>([
-    'tee',
-    'fairway',
-    'green',
-    'bunker',
-    'water',
-    'penalty',
-  ])
-
-  for (const surface of hole.surfaces) {
-    if (!framingKinds.has(surface.kind)) continue
-    for (const polygon of surface.polygons) {
-      for (const [x, y] of polygon) {
-        if (
-          y < surfaceWindowMinY ||
-          y > surfaceWindowMaxY ||
-          x < surfaceWindowMinX ||
-          x > surfaceWindowMaxX
-        ) continue
-        referenceMinX = Math.min(referenceMinX, x)
-        referenceMaxX = Math.max(referenceMaxX, x)
-      }
-    }
-  }
-
-  const centerX = (referenceMinX + referenceMaxX) / 2
-  const halfWidth = Math.min(
-    96,
-    Math.max(58, (referenceMaxX - referenceMinX) / 2 + 20),
-  )
-
-  return {
-    minX: centerX - halfWidth,
-    maxX: centerX + halfWidth,
-    minY,
-    maxY,
-  }
 }
 
 function LiveCaddieMap({
