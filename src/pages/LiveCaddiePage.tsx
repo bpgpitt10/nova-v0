@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  connectBrowserGsproCourseStateFolder,
   connectToBrowserGsproCourseState,
   prepareBrowserGsproCourseStateRuntime,
   type BrowserGsproCourseSnapshot,
   type BrowserGsproCourseStatus,
 } from '../adapters/browserGsproCourseState'
 import {
-  connectToBrowserGsproVisualCapture,
   type BrowserGsproVisualCaptureConnection,
   type BrowserGsproVisualCaptureStatus,
 } from '../adapters/browserGsproVisualCapture'
@@ -712,37 +710,6 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     setInspectedAimOffset(null)
   }, [courseId, holeNumber, viewedEvaluation?.club])
-
-  const connectGspro = async () => {
-    setLiveError(null)
-    try {
-      await connectBrowserGsproCourseStateFolder()
-      setLivePrepared(true)
-      setConnectionVersion((value) => value + 1)
-    } catch (error) {
-      setLiveError(error instanceof Error ? error.message : String(error))
-    }
-  }
-
-  const connectGsproVisuals = async () => {
-    setVisualCaptureError(null)
-    setVisualCaptureSource(null)
-    visualCaptureRef.current?.disconnect()
-    visualCaptureRef.current = null
-    try {
-      const connection = await connectToBrowserGsproVisualCapture({
-        onStatusChange: setVisualCaptureStatus,
-        onError: (error) => setVisualCaptureError(
-          error instanceof Error ? error.message : String(error),
-        ),
-        initiallyPaused: isGreenSurface,
-      })
-      visualCaptureRef.current = connection
-      setVisualCaptureSource(connection.sourceLabel ?? connection.displaySurface)
-    } catch (error) {
-      setVisualCaptureError(error instanceof Error ? error.message : String(error))
-    }
-  }
 
   const selectCourse = (nextCourseId: CourseId) => {
     setCourseId(nextCourseId)
