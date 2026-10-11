@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 
 USER_AGENT = "TheLooperCourseDiagnosis/1.0 (single diagnostic from shaftesburyglen.com address; thelooper.golf)"
 LAT, LON = 33.88958, -78.90363
-BOUND = (-78.923, 33.876, -78.884, 33.908)
+BOUND = (-78.945, 33.855, -78.860, 33.923)
 
 
 def get(url, *, data=None, timeout=35):
@@ -61,7 +61,7 @@ def execute():
     try:
         data=get("https://api.openstreetmap.org/api/0.6/map?bbox="+bbox,timeout=60)
         root=ET.fromstring(data)
-        courses,holes,counts=[],[],collections.Counter()
+        courses,holes,names,counts=[],[],[],collections.Counter()
         for el in root:
             if el.tag not in {"node","way","relation"}:continue
             tags={t.get("k"):t.get("v") for t in el.findall("tag")}
@@ -69,9 +69,11 @@ def execute():
             counts[tags.get("golf","other")]+=1
             row={"type":el.tag,"id":el.get("id"),"name":tags.get("name"),"leisure":tags.get("leisure"),"golf":tags.get("golf")}
             if tags.get("leisure")=="golf_course":courses.append(row)
+            if any("shaftes" in str(v).lower() for v in tags.values()): names.append({"type":el.tag,"id":el.get("id"),"tags":{k:v for k,v in tags.items() if k in {"name","name:en","golf","leisure","landuse","addr:street","amenity"}}})
             if tags.get("golf")=="hole": holes.append(row)
         print("OSM CORE RESULT",json.dumps({"elements":len(root),"tagCounts":counts,
-            "courses":courses[:30],"holeCount":len(holes),"holes":holes[:30]}),flush=True)
+            "courses":courses[:30],"holeCount":len(holes),"holes":holes[:30],
+            "nameMatches":names[:50]}),flush=True)
     except Exception as e:
         print("OSM CORE ERROR",type(e).__name__,str(e)[:400],flush=True)
 
