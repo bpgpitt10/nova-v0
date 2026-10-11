@@ -1,0 +1,1194 @@
+{
+  "holes": [
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782764575,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 587.7
+        },
+        {
+          "osmId": 782764576,
+          "routeGapYards": 6.2,
+          "sourceTags": {},
+          "startGapYards": 15.5,
+          "straightGreenYards": 567.5
+        },
+        {
+          "osmId": 782764577,
+          "routeGapYards": 1.8,
+          "sourceTags": {},
+          "startGapYards": 40.9,
+          "straightGreenYards": 541.9
+        },
+        {
+          "osmId": 782764578,
+          "routeGapYards": 2.3,
+          "sourceTags": {},
+          "startGapYards": 57.7,
+          "straightGreenYards": 526.4
+        },
+        {
+          "osmId": 782764579,
+          "routeGapYards": 22.1,
+          "sourceTags": {},
+          "startGapYards": 76.3,
+          "straightGreenYards": 513.7
+        }
+      ],
+      "hole": 5,
+      "nearbyRejected220": 6,
+      "nearbyRejected400": 20,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 36.3,
+          "nearestRouteGapYards": 36.3,
+          "nearestRouteHole": 5,
+          "osmId": 782764581,
+          "startGapYards": 175.0,
+          "straightGreenYards": 418.5
+        },
+        {
+          "currentRouteGapYards": 45.4,
+          "nearestRouteGapYards": 3.2,
+          "nearestRouteHole": 3,
+          "osmId": 782757892,
+          "startGapYards": 45.4,
+          "straightGreenYards": 633.7
+        },
+        {
+          "currentRouteGapYards": 55.7,
+          "nearestRouteGapYards": 0.6,
+          "nearestRouteHole": 3,
+          "osmId": 782757891,
+          "startGapYards": 55.7,
+          "straightGreenYards": 632.0
+        },
+        {
+          "currentRouteGapYards": 56.8,
+          "nearestRouteGapYards": 10.5,
+          "nearestRouteHole": 3,
+          "osmId": 782757893,
+          "startGapYards": 56.8,
+          "straightGreenYards": 639.1
+        },
+        {
+          "currentRouteGapYards": 98.1,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 3,
+          "osmId": 782757890,
+          "startGapYards": 98.1,
+          "straightGreenYards": 634.1
+        },
+        {
+          "currentRouteGapYards": 136.1,
+          "nearestRouteGapYards": 16.9,
+          "nearestRouteHole": 7,
+          "osmId": 782764600,
+          "startGapYards": 370.0,
+          "straightGreenYards": 295.6
+        },
+        {
+          "currentRouteGapYards": 159.3,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 782757827,
+          "startGapYards": 280.1,
+          "straightGreenYards": 377.6
+        },
+        {
+          "currentRouteGapYards": 188.3,
+          "nearestRouteGapYards": 4.6,
+          "nearestRouteHole": 13,
+          "osmId": 782757828,
+          "startGapYards": 255.0,
+          "straightGreenYards": 445.2
+        },
+        {
+          "currentRouteGapYards": 215.3,
+          "nearestRouteGapYards": 47.4,
+          "nearestRouteHole": 2,
+          "osmId": 782712291,
+          "startGapYards": 215.3,
+          "straightGreenYards": 704.1
+        },
+        {
+          "currentRouteGapYards": 223.4,
+          "nearestRouteGapYards": 2.7,
+          "nearestRouteHole": 13,
+          "osmId": 782757829,
+          "startGapYards": 261.4,
+          "straightGreenYards": 489.2
+        },
+        {
+          "currentRouteGapYards": 295.1,
+          "nearestRouteGapYards": 1.4,
+          "nearestRouteHole": 2,
+          "osmId": 782757884,
+          "startGapYards": 295.1,
+          "straightGreenYards": 889.0
+        },
+        {
+          "currentRouteGapYards": 314.5,
+          "nearestRouteGapYards": 16.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712290,
+          "startGapYards": 314.5,
+          "straightGreenYards": 776.0
+        },
+        {
+          "currentRouteGapYards": 320.0,
+          "nearestRouteGapYards": 2.1,
+          "nearestRouteHole": 2,
+          "osmId": 782757883,
+          "startGapYards": 320.0,
+          "straightGreenYards": 912.3
+        },
+        {
+          "currentRouteGapYards": 344.3,
+          "nearestRouteGapYards": 2.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757882,
+          "startGapYards": 344.3,
+          "straightGreenYards": 937.9
+        },
+        {
+          "currentRouteGapYards": 352.3,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712289,
+          "startGapYards": 352.3,
+          "straightGreenYards": 791.5
+        },
+        {
+          "currentRouteGapYards": 354.5,
+          "nearestRouteGapYards": 3.6,
+          "nearestRouteHole": 4,
+          "osmId": 782764570,
+          "startGapYards": 354.5,
+          "straightGreenYards": 752.4
+        },
+        {
+          "currentRouteGapYards": 367.8,
+          "nearestRouteGapYards": 3.5,
+          "nearestRouteHole": 2,
+          "osmId": 782757881,
+          "startGapYards": 367.8,
+          "straightGreenYards": 959.8
+        },
+        {
+          "currentRouteGapYards": 389.4,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757880,
+          "startGapYards": 389.4,
+          "straightGreenYards": 979.4
+        },
+        {
+          "currentRouteGapYards": 395.1,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 11,
+          "osmId": 782712280,
+          "startGapYards": 395.1,
+          "straightGreenYards": 991.0
+        },
+        {
+          "currentRouteGapYards": 397.4,
+          "nearestRouteGapYards": 2.9,
+          "nearestRouteHole": 11,
+          "osmId": 782712281,
+          "startGapYards": 397.4,
+          "straightGreenYards": 986.4
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 600,
+        "Blue": 546,
+        "Gold": 423,
+        "Green": 572,
+        "Red": 530,
+        "White": 517
+      },
+      "ownedMappedTees": 5,
+      "par": 5,
+      "selectedOsmId": 782764575
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782712280,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 310.3
+        },
+        {
+          "osmId": 782712281,
+          "routeGapYards": 2.9,
+          "sourceTags": {},
+          "startGapYards": 23.0,
+          "straightGreenYards": 283.2
+        },
+        {
+          "osmId": 782712282,
+          "routeGapYards": 14.4,
+          "sourceTags": {},
+          "startGapYards": 65.3,
+          "straightGreenYards": 246.2
+        },
+        {
+          "osmId": 782712283,
+          "routeGapYards": 26.5,
+          "sourceTags": {},
+          "startGapYards": 125.3,
+          "straightGreenYards": 213.2
+        }
+      ],
+      "hole": 11,
+      "nearbyRejected220": 5,
+      "nearbyRejected400": 23,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 55.2,
+          "nearestRouteGapYards": 16.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712290,
+          "startGapYards": 362.1,
+          "straightGreenYards": 64.5
+        },
+        {
+          "currentRouteGapYards": 84.2,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712289,
+          "startGapYards": 391.2,
+          "straightGreenYards": 86.7
+        },
+        {
+          "currentRouteGapYards": 95.3,
+          "nearestRouteGapYards": 3.5,
+          "nearestRouteHole": 2,
+          "osmId": 782757881,
+          "startGapYards": 95.3,
+          "straightGreenYards": 365.1
+        },
+        {
+          "currentRouteGapYards": 99.2,
+          "nearestRouteGapYards": 2.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757882,
+          "startGapYards": 99.2,
+          "straightGreenYards": 350.2
+        },
+        {
+          "currentRouteGapYards": 106.1,
+          "nearestRouteGapYards": 47.4,
+          "nearestRouteHole": 2,
+          "osmId": 782712291,
+          "startGapYards": 344.0,
+          "straightGreenYards": 111.2
+        },
+        {
+          "currentRouteGapYards": 107.4,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757880,
+          "startGapYards": 107.4,
+          "straightGreenYards": 389.1
+        },
+        {
+          "currentRouteGapYards": 108.7,
+          "nearestRouteGapYards": 2.1,
+          "nearestRouteHole": 2,
+          "osmId": 782757883,
+          "startGapYards": 108.7,
+          "straightGreenYards": 332.6
+        },
+        {
+          "currentRouteGapYards": 114.5,
+          "nearestRouteGapYards": 1.4,
+          "nearestRouteHole": 2,
+          "osmId": 782757884,
+          "startGapYards": 114.5,
+          "straightGreenYards": 306.5
+        },
+        {
+          "currentRouteGapYards": 145.1,
+          "nearestRouteGapYards": 18.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757846,
+          "startGapYards": 269.8,
+          "straightGreenYards": 264.8
+        },
+        {
+          "currentRouteGapYards": 160.2,
+          "nearestRouteGapYards": 12.6,
+          "nearestRouteHole": 15,
+          "osmId": 782757845,
+          "startGapYards": 316.8,
+          "straightGreenYards": 268.2
+        },
+        {
+          "currentRouteGapYards": 184.6,
+          "nearestRouteGapYards": 5.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757844,
+          "startGapYards": 359.4,
+          "straightGreenYards": 280.9
+        },
+        {
+          "currentRouteGapYards": 206.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 15,
+          "osmId": 782757843,
+          "startGapYards": 386.7,
+          "straightGreenYards": 295.7
+        },
+        {
+          "currentRouteGapYards": 209.8,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 3,
+          "osmId": 782757890,
+          "startGapYards": 360.6,
+          "straightGreenYards": 218.5
+        },
+        {
+          "currentRouteGapYards": 233.9,
+          "nearestRouteGapYards": 0.6,
+          "nearestRouteHole": 3,
+          "osmId": 782757891,
+          "startGapYards": 354.1,
+          "straightGreenYards": 250.9
+        },
+        {
+          "currentRouteGapYards": 272.5,
+          "nearestRouteGapYards": 3.2,
+          "nearestRouteHole": 3,
+          "osmId": 782757892,
+          "startGapYards": 353.3,
+          "straightGreenYards": 280.5
+        },
+        {
+          "currentRouteGapYards": 315.6,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 5,
+          "osmId": 782764575,
+          "startGapYards": 399.9,
+          "straightGreenYards": 321.9
+        },
+        {
+          "currentRouteGapYards": 325.5,
+          "nearestRouteGapYards": 10.5,
+          "nearestRouteHole": 3,
+          "osmId": 782757893,
+          "startGapYards": 360.8,
+          "straightGreenYards": 332.8
+        },
+        {
+          "currentRouteGapYards": 331.1,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 16,
+          "osmId": 782757852,
+          "startGapYards": 331.2,
+          "straightGreenYards": 638.4
+        },
+        {
+          "currentRouteGapYards": 331.9,
+          "nearestRouteGapYards": 34.8,
+          "nearestRouteHole": 10,
+          "osmId": 782575209,
+          "startGapYards": 331.9,
+          "straightGreenYards": 635.1
+        },
+        {
+          "currentRouteGapYards": 343.8,
+          "nearestRouteGapYards": 3.1,
+          "nearestRouteHole": 16,
+          "osmId": 782757853,
+          "startGapYards": 343.8,
+          "straightGreenYards": 655.2
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 377,
+        "Blue": 332,
+        "Gold": 239,
+        "Green": 350,
+        "Red": 294,
+        "White": 274
+      },
+      "ownedMappedTees": 4,
+      "par": 4,
+      "selectedOsmId": 782712280
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782712289,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 417.4
+        },
+        {
+          "osmId": 782712290,
+          "routeGapYards": 16.0,
+          "sourceTags": {},
+          "startGapYards": 22.3,
+          "straightGreenYards": 398.6
+        }
+      ],
+      "hole": 12,
+      "nearbyRejected220": 5,
+      "nearbyRejected400": 25,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 39.6,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 782757827,
+          "startGapYards": 392.5,
+          "straightGreenYards": 47.4
+        },
+        {
+          "currentRouteGapYards": 48.5,
+          "nearestRouteGapYards": 4.6,
+          "nearestRouteHole": 13,
+          "osmId": 782757828,
+          "startGapYards": 330.7,
+          "straightGreenYards": 83.3
+        },
+        {
+          "currentRouteGapYards": 62.5,
+          "nearestRouteGapYards": 47.4,
+          "nearestRouteHole": 2,
+          "osmId": 782712291,
+          "startGapYards": 132.5,
+          "straightGreenYards": 322.5
+        },
+        {
+          "currentRouteGapYards": 73.1,
+          "nearestRouteGapYards": 2.7,
+          "nearestRouteHole": 13,
+          "osmId": 782757829,
+          "startGapYards": 292.1,
+          "straightGreenYards": 129.8
+        },
+        {
+          "currentRouteGapYards": 105.1,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 14,
+          "osmId": 782757832,
+          "startGapYards": 105.1,
+          "straightGreenYards": 522.8
+        },
+        {
+          "currentRouteGapYards": 105.2,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 3,
+          "osmId": 782757890,
+          "startGapYards": 243.4,
+          "straightGreenYards": 261.6
+        },
+        {
+          "currentRouteGapYards": 121.8,
+          "nearestRouteGapYards": 4.8,
+          "nearestRouteHole": 14,
+          "osmId": 782757833,
+          "startGapYards": 121.8,
+          "straightGreenYards": 546.8
+        },
+        {
+          "currentRouteGapYards": 128.2,
+          "nearestRouteGapYards": 0.6,
+          "nearestRouteHole": 3,
+          "osmId": 782757891,
+          "startGapYards": 272.8,
+          "straightGreenYards": 270.1
+        },
+        {
+          "currentRouteGapYards": 134.5,
+          "nearestRouteGapYards": 4.2,
+          "nearestRouteHole": 14,
+          "osmId": 782757834,
+          "startGapYards": 134.5,
+          "straightGreenYards": 560.5
+        },
+        {
+          "currentRouteGapYards": 149.2,
+          "nearestRouteGapYards": 1.5,
+          "nearestRouteHole": 14,
+          "osmId": 782757835,
+          "startGapYards": 149.2,
+          "straightGreenYards": 574.2
+        },
+        {
+          "currentRouteGapYards": 158.1,
+          "nearestRouteGapYards": 2.3,
+          "nearestRouteHole": 5,
+          "osmId": 782764578,
+          "startGapYards": 387.0,
+          "straightGreenYards": 203.5
+        },
+        {
+          "currentRouteGapYards": 161.5,
+          "nearestRouteGapYards": 1.8,
+          "nearestRouteHole": 5,
+          "osmId": 782764577,
+          "startGapYards": 378.6,
+          "straightGreenYards": 213.8
+        },
+        {
+          "currentRouteGapYards": 163.6,
+          "nearestRouteGapYards": 6.2,
+          "nearestRouteHole": 5,
+          "osmId": 782764576,
+          "startGapYards": 361.0,
+          "straightGreenYards": 232.3
+        },
+        {
+          "currentRouteGapYards": 171.7,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 5,
+          "osmId": 782764575,
+          "startGapYards": 355.4,
+          "straightGreenYards": 249.4
+        },
+        {
+          "currentRouteGapYards": 172.4,
+          "nearestRouteGapYards": 3.2,
+          "nearestRouteHole": 3,
+          "osmId": 782757892,
+          "startGapYards": 319.4,
+          "straightGreenYards": 283.5
+        },
+        {
+          "currentRouteGapYards": 226.9,
+          "nearestRouteGapYards": 10.5,
+          "nearestRouteHole": 3,
+          "osmId": 782757893,
+          "startGapYards": 377.9,
+          "straightGreenYards": 312.1
+        },
+        {
+          "currentRouteGapYards": 280.9,
+          "nearestRouteGapYards": 26.5,
+          "nearestRouteHole": 11,
+          "osmId": 782712283,
+          "startGapYards": 280.9,
+          "straightGreenYards": 601.4
+        },
+        {
+          "currentRouteGapYards": 286.4,
+          "nearestRouteGapYards": 12.6,
+          "nearestRouteHole": 15,
+          "osmId": 782757845,
+          "startGapYards": 286.5,
+          "straightGreenYards": 698.1
+        },
+        {
+          "currentRouteGapYards": 294.7,
+          "nearestRouteGapYards": 5.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757844,
+          "startGapYards": 294.7,
+          "straightGreenYards": 707.9
+        },
+        {
+          "currentRouteGapYards": 300.2,
+          "nearestRouteGapYards": 18.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757846,
+          "startGapYards": 300.2,
+          "straightGreenYards": 693.7
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 437,
+        "Blue": 413,
+        "Gold": 322,
+        "Green": 428,
+        "Red": 380,
+        "White": 343
+      },
+      "ownedMappedTees": 2,
+      "par": 4,
+      "selectedOsmId": 782712289
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782757832,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 165.0
+        },
+        {
+          "osmId": 782757833,
+          "routeGapYards": 4.8,
+          "sourceTags": {},
+          "startGapYards": 22.5,
+          "straightGreenYards": 138.0
+        },
+        {
+          "osmId": 782757834,
+          "routeGapYards": 4.2,
+          "sourceTags": {},
+          "startGapYards": 43.4,
+          "straightGreenYards": 117.8
+        },
+        {
+          "osmId": 782757835,
+          "routeGapYards": 1.5,
+          "sourceTags": {},
+          "startGapYards": 61.3,
+          "straightGreenYards": 102.0
+        }
+      ],
+      "hole": 14,
+      "nearbyRejected220": 2,
+      "nearbyRejected400": 13,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 54.8,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 15,
+          "osmId": 782757843,
+          "startGapYards": 224.9,
+          "straightGreenYards": 60.7
+        },
+        {
+          "currentRouteGapYards": 59.3,
+          "nearestRouteGapYards": 5.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757844,
+          "startGapYards": 226.6,
+          "straightGreenYards": 67.9
+        },
+        {
+          "currentRouteGapYards": 72.8,
+          "nearestRouteGapYards": 12.6,
+          "nearestRouteHole": 15,
+          "osmId": 782757845,
+          "startGapYards": 228.5,
+          "straightGreenYards": 92.8
+        },
+        {
+          "currentRouteGapYards": 104.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712289,
+          "startGapYards": 104.5,
+          "straightGreenYards": 249.0
+        },
+        {
+          "currentRouteGapYards": 132.3,
+          "nearestRouteGapYards": 16.0,
+          "nearestRouteHole": 12,
+          "osmId": 782712290,
+          "startGapYards": 132.3,
+          "straightGreenYards": 266.9
+        },
+        {
+          "currentRouteGapYards": 133.1,
+          "nearestRouteGapYards": 18.8,
+          "nearestRouteHole": 15,
+          "osmId": 782757846,
+          "startGapYards": 265.0,
+          "straightGreenYards": 143.9
+        },
+        {
+          "currentRouteGapYards": 243.0,
+          "nearestRouteGapYards": 47.4,
+          "nearestRouteHole": 2,
+          "osmId": 782712291,
+          "startGapYards": 243.0,
+          "straightGreenYards": 358.6
+        },
+        {
+          "currentRouteGapYards": 251.0,
+          "nearestRouteGapYards": 26.5,
+          "nearestRouteHole": 11,
+          "osmId": 782712283,
+          "startGapYards": 306.7,
+          "straightGreenYards": 263.3
+        },
+        {
+          "currentRouteGapYards": 280.6,
+          "nearestRouteGapYards": 14.4,
+          "nearestRouteHole": 11,
+          "osmId": 782712282,
+          "startGapYards": 340.0,
+          "straightGreenYards": 309.2
+        },
+        {
+          "currentRouteGapYards": 347.2,
+          "nearestRouteGapYards": 2.9,
+          "nearestRouteHole": 11,
+          "osmId": 782712281,
+          "startGapYards": 396.2,
+          "straightGreenYards": 363.2
+        },
+        {
+          "currentRouteGapYards": 354.7,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 3,
+          "osmId": 782757890,
+          "startGapYards": 354.7,
+          "straightGreenYards": 467.4
+        },
+        {
+          "currentRouteGapYards": 383.5,
+          "nearestRouteGapYards": 0.6,
+          "nearestRouteHole": 3,
+          "osmId": 782757891,
+          "startGapYards": 383.5,
+          "straightGreenYards": 497.7
+        },
+        {
+          "currentRouteGapYards": 387.1,
+          "nearestRouteGapYards": 2.7,
+          "nearestRouteHole": 13,
+          "osmId": 782757829,
+          "startGapYards": 387.1,
+          "straightGreenYards": 551.5
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 216,
+        "Blue": 151,
+        "Gold": 101,
+        "Green": 175,
+        "Red": 140,
+        "White": 130
+      },
+      "ownedMappedTees": 4,
+      "par": 3,
+      "selectedOsmId": 782757832
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782757852,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 364.4
+        },
+        {
+          "osmId": 782757853,
+          "routeGapYards": 3.1,
+          "sourceTags": {},
+          "startGapYards": 23.6,
+          "straightGreenYards": 336.4
+        }
+      ],
+      "hole": 16,
+      "nearbyRejected220": 2,
+      "nearbyRejected400": 16,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 40.0,
+          "nearestRouteGapYards": 40.0,
+          "nearestRouteHole": 16,
+          "osmId": 782757854,
+          "startGapYards": 71.8,
+          "straightGreenYards": 318.3
+        },
+        {
+          "currentRouteGapYards": 54.9,
+          "nearestRouteGapYards": 54.9,
+          "nearestRouteHole": 16,
+          "osmId": 782757855,
+          "startGapYards": 112.8,
+          "straightGreenYards": 291.6
+        },
+        {
+          "currentRouteGapYards": 85.4,
+          "nearestRouteGapYards": 12.6,
+          "nearestRouteHole": 10,
+          "osmId": 782575206,
+          "startGapYards": 246.2,
+          "straightGreenYards": 212.0
+        },
+        {
+          "currentRouteGapYards": 89.6,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 10,
+          "osmId": 782712276,
+          "startGapYards": 291.0,
+          "straightGreenYards": 191.6
+        },
+        {
+          "currentRouteGapYards": 118.5,
+          "nearestRouteGapYards": 3.6,
+          "nearestRouteHole": 10,
+          "osmId": 782575207,
+          "startGapYards": 233.6,
+          "straightGreenYards": 256.1
+        },
+        {
+          "currentRouteGapYards": 151.5,
+          "nearestRouteGapYards": 10.4,
+          "nearestRouteHole": 10,
+          "osmId": 782575208,
+          "startGapYards": 228.8,
+          "straightGreenYards": 301.1
+        },
+        {
+          "currentRouteGapYards": 207.6,
+          "nearestRouteGapYards": 34.8,
+          "nearestRouteHole": 10,
+          "osmId": 782575209,
+          "startGapYards": 238.0,
+          "straightGreenYards": 378.5
+        },
+        {
+          "currentRouteGapYards": 221.4,
+          "nearestRouteGapYards": 12.8,
+          "nearestRouteHole": 1,
+          "osmId": 782757872,
+          "startGapYards": 329.1,
+          "straightGreenYards": 328.3
+        },
+        {
+          "currentRouteGapYards": 225.2,
+          "nearestRouteGapYards": 3.2,
+          "nearestRouteHole": 1,
+          "osmId": 782712272,
+          "startGapYards": 388.3,
+          "straightGreenYards": 306.7
+        },
+        {
+          "currentRouteGapYards": 315.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757880,
+          "startGapYards": 315.5,
+          "straightGreenYards": 605.7
+        },
+        {
+          "currentRouteGapYards": 324.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 11,
+          "osmId": 782712280,
+          "startGapYards": 324.5,
+          "straightGreenYards": 666.4
+        },
+        {
+          "currentRouteGapYards": 335.0,
+          "nearestRouteGapYards": 3.5,
+          "nearestRouteHole": 2,
+          "osmId": 782757881,
+          "startGapYards": 335.1,
+          "straightGreenYards": 630.5
+        },
+        {
+          "currentRouteGapYards": 344.5,
+          "nearestRouteGapYards": 2.9,
+          "nearestRouteHole": 11,
+          "osmId": 782712281,
+          "startGapYards": 344.5,
+          "straightGreenYards": 694.1
+        },
+        {
+          "currentRouteGapYards": 356.4,
+          "nearestRouteGapYards": 2.0,
+          "nearestRouteHole": 2,
+          "osmId": 782757882,
+          "startGapYards": 356.4,
+          "straightGreenYards": 651.0
+        },
+        {
+          "currentRouteGapYards": 373.3,
+          "nearestRouteGapYards": 14.4,
+          "nearestRouteHole": 11,
+          "osmId": 782712282,
+          "startGapYards": 373.3,
+          "straightGreenYards": 737.3
+        },
+        {
+          "currentRouteGapYards": 383.3,
+          "nearestRouteGapYards": 2.1,
+          "nearestRouteHole": 2,
+          "osmId": 782757883,
+          "startGapYards": 383.3,
+          "straightGreenYards": 675.8
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 475,
+        "Blue": 380,
+        "Gold": 303,
+        "Green": 418,
+        "Red": 370,
+        "White": 334
+      },
+      "ownedMappedTees": 2,
+      "par": 4,
+      "selectedOsmId": 782757852
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782757860,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 184.0
+        },
+        {
+          "osmId": 782757861,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 17.5,
+          "straightGreenYards": 161.0
+        },
+        {
+          "osmId": 782757862,
+          "routeGapYards": 13.9,
+          "sourceTags": {},
+          "startGapYards": 29.6,
+          "straightGreenYards": 155.0
+        },
+        {
+          "osmId": 782757863,
+          "routeGapYards": 16.3,
+          "sourceTags": {},
+          "startGapYards": 54.3,
+          "straightGreenYards": 132.1
+        }
+      ],
+      "hole": 17,
+      "nearbyRejected220": 2,
+      "nearbyRejected400": 15,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 56.5,
+          "nearestRouteGapYards": 0.2,
+          "nearestRouteHole": 18,
+          "osmId": 782698262,
+          "startGapYards": 203.7,
+          "straightGreenYards": 61.3
+        },
+        {
+          "currentRouteGapYards": 63.2,
+          "nearestRouteGapYards": 1.4,
+          "nearestRouteHole": 18,
+          "osmId": 782698261,
+          "startGapYards": 235.8,
+          "straightGreenYards": 71.4
+        },
+        {
+          "currentRouteGapYards": 63.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 18,
+          "osmId": 782698263,
+          "startGapYards": 181.4,
+          "straightGreenYards": 71.7
+        },
+        {
+          "currentRouteGapYards": 78.3,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 18,
+          "osmId": 782698260,
+          "startGapYards": 262.0,
+          "straightGreenYards": 85.8
+        },
+        {
+          "currentRouteGapYards": 251.1,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 10,
+          "osmId": 782712276,
+          "startGapYards": 251.1,
+          "straightGreenYards": 443.3
+        },
+        {
+          "currentRouteGapYards": 278.5,
+          "nearestRouteGapYards": 12.6,
+          "nearestRouteHole": 10,
+          "osmId": 782575206,
+          "startGapYards": 278.5,
+          "straightGreenYards": 476.5
+        },
+        {
+          "currentRouteGapYards": 294.6,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 1,
+          "osmId": 782712268,
+          "startGapYards": 294.6,
+          "straightGreenYards": 448.5
+        },
+        {
+          "currentRouteGapYards": 308.6,
+          "nearestRouteGapYards": 1.5,
+          "nearestRouteHole": 1,
+          "osmId": 782712270,
+          "startGapYards": 308.6,
+          "straightGreenYards": 479.3
+        },
+        {
+          "currentRouteGapYards": 308.7,
+          "nearestRouteGapYards": 0.2,
+          "nearestRouteHole": 1,
+          "osmId": 782712269,
+          "startGapYards": 308.7,
+          "straightGreenYards": 473.4
+        },
+        {
+          "currentRouteGapYards": 321.1,
+          "nearestRouteGapYards": 0.8,
+          "nearestRouteHole": 1,
+          "osmId": 782712271,
+          "startGapYards": 321.1,
+          "straightGreenYards": 495.2
+        },
+        {
+          "currentRouteGapYards": 322.2,
+          "nearestRouteGapYards": 3.6,
+          "nearestRouteHole": 10,
+          "osmId": 782575207,
+          "startGapYards": 322.2,
+          "straightGreenYards": 520.3
+        },
+        {
+          "currentRouteGapYards": 325.8,
+          "nearestRouteGapYards": 3.2,
+          "nearestRouteHole": 1,
+          "osmId": 782712272,
+          "startGapYards": 325.9,
+          "straightGreenYards": 505.4
+        },
+        {
+          "currentRouteGapYards": 368.1,
+          "nearestRouteGapYards": 10.4,
+          "nearestRouteHole": 10,
+          "osmId": 782575208,
+          "startGapYards": 368.1,
+          "straightGreenYards": 565.3
+        },
+        {
+          "currentRouteGapYards": 371.8,
+          "nearestRouteGapYards": 12.8,
+          "nearestRouteHole": 1,
+          "osmId": 782757872,
+          "startGapYards": 371.8,
+          "straightGreenYards": 559.6
+        },
+        {
+          "currentRouteGapYards": 385.0,
+          "nearestRouteGapYards": 54.9,
+          "nearestRouteHole": 16,
+          "osmId": 782757855,
+          "startGapYards": 385.0,
+          "straightGreenYards": 576.4
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 221,
+        "Blue": 159,
+        "Gold": 76,
+        "Green": 168,
+        "Red": 148,
+        "White": 148
+      },
+      "ownedMappedTees": 4,
+      "par": 3,
+      "selectedOsmId": 782757860
+    },
+    {
+      "acceptedTeePoints": [
+        {
+          "osmId": 782698260,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 0.0,
+          "straightGreenYards": 456.5
+        },
+        {
+          "osmId": 782698261,
+          "routeGapYards": 1.4,
+          "sourceTags": {},
+          "startGapYards": 26.0,
+          "straightGreenYards": 427.6
+        },
+        {
+          "osmId": 782698262,
+          "routeGapYards": 0.2,
+          "sourceTags": {},
+          "startGapYards": 64.8,
+          "straightGreenYards": 390.1
+        },
+        {
+          "osmId": 782698263,
+          "routeGapYards": 0.0,
+          "sourceTags": {},
+          "startGapYards": 98.4,
+          "straightGreenYards": 359.7
+        }
+      ],
+      "hole": 18,
+      "nearbyRejected220": 1,
+      "nearbyRejected400": 5,
+      "nearbyRejectedEvidence": [
+        {
+          "currentRouteGapYards": 63.9,
+          "nearestRouteGapYards": 16.3,
+          "nearestRouteHole": 17,
+          "osmId": 782757863,
+          "startGapYards": 202.8,
+          "straightGreenYards": 252.9
+        },
+        {
+          "currentRouteGapYards": 72.7,
+          "nearestRouteGapYards": 13.9,
+          "nearestRouteHole": 17,
+          "osmId": 782757862,
+          "startGapYards": 221.7,
+          "straightGreenYards": 230.6
+        },
+        {
+          "currentRouteGapYards": 96.8,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 17,
+          "osmId": 782757861,
+          "startGapYards": 234.1,
+          "straightGreenYards": 230.7
+        },
+        {
+          "currentRouteGapYards": 108.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 17,
+          "osmId": 782757860,
+          "startGapYards": 258.0,
+          "straightGreenYards": 210.6
+        },
+        {
+          "currentRouteGapYards": 284.6,
+          "nearestRouteGapYards": 284.6,
+          "nearestRouteHole": 18,
+          "osmId": 1251254739,
+          "startGapYards": 363.8,
+          "straightGreenYards": 451.8
+        }
+      ],
+      "officialPublishedYards": {
+        "Black": 509,
+        "Blue": 407,
+        "Gold": 336,
+        "Green": 441,
+        "Red": 370,
+        "White": 370
+      },
+      "ownedMappedTees": 4,
+      "par": 4,
+      "selectedOsmId": 782698260
+    }
+  ],
+  "noImportedOrAlteredTeePolygons": true,
+  "schemaVersion": "looper-gcne-tee-ownership-research-v1",
+  "source": "cached OSM Geofabrik extract; route ownership per existing v5 code"
+}
