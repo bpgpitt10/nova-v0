@@ -19,6 +19,7 @@ import {
   type ActiveLiveCaddieRound,
 } from '../liveCaddie/roundRuntime'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
+import { getAllowedUserRecord, getCurrentLooperUser, getSupabaseClient } from '../cloud/supabaseClient'
 
 const candidateTeeValues = (candidate: CourseTeeCandidate) => [
   candidate.teeSet,
@@ -47,11 +48,44 @@ export default function RoundSetupPage() {
   const [loadingTees, setLoadingTees] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [requestEnabled, setRequestEnabled] = useState(false)
+  const [requestName, setRequestName] = useState('')
+  const [requestBusy, setRequestBusy] = useState(false)
+  const [requestResult, setRequestResult] = useState<string | null>(null)
   const [activeRound, setActiveRound] = useState<ActiveLiveCaddieRound | null>(() =>
     loadActiveLiveCaddieRound(),
   )
 
   const course = useMemo(() => getCourseCatalogEntry(courseId), [courseId])
+
+  useEffect(() => {
+    let alive = true
+    void getCurrentLooperUser()
+      .then(async (user) => user ? getAllowedUserRecord(user) : null)
+      .then((record) => { if (alive) setRequestEnabled(record?.is_admin === true && record.enabled === true) })
+      .catch(() => { if (alive) setRequestEnabled(false) })
+    return () => { alive = false }
+  }, [])
+
+  const submitCourseRequest = async () => {
+    setRequestBusy(true)
+    setRequestResult(null)
+    try {
+      const client = await getSupabaseClient()
+      const auth = await client.auth.getSession()
+      const token = auth.data.session?.access_token
+      if (!token) throw new Error('Sign in to request a course.')
+      const response = await fetch('/api/course-request', {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: requestName.trim() }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error ?? `Request failed (${response.status})`)
+      setRequestResult('Request queued for the staging importer. It is not playable until compilation, validation and publication finish.')
+    } catch (requestError) {
+      setRequestResult(requestError instanceof Error ? requestError.message : String(requestError))
+    } finally { setRequestBusy(false) }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -261,6 +295,18 @@ export default function RoundSetupPage() {
         {error ? (
           <div style={{ marginBottom: 18, padding: 12, borderRadius: 9, border: '1px solid rgba(248, 113, 113, 0.45)', background: 'rgba(127, 29, 29, 0.18)', color: '#fecaca' }}>
             {error}
+          </div>
+        ) : null}
+
+        {requestEnabled ? (
+          <div style={{ marginBottom: 18, padding: 14, border: '1px solid #314233', borderRadius: 9 }}>
+            <div style={{ fontWeight: 750, marginBottom: 6 }}>Add a Course · admin staging</div>
+            <p style={{ fontSize: 12, color: '#aeb9b0', margin: '0 0 10px' }}>Enter only the course name. Looper will resolve its identity and attempt a cold import. Ambiguous or incomplete OSM mapping will fail rather than guess.</p>
+            <input value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Course name" maxLength={120} style={input} />
+            <button type="button" disabled={requestBusy || requestName.trim().length < 3} onClick={() => void submitCourseRequest()} style={{ ...primary, marginTop: 10, opacity: requestBusy ? 0.5 : 1 }}>
+              {requestBusy ? 'REQUESTING…' : 'Request Course'}
+            </button>
+            {requestResult ? <p role="status" style={{ color: '#cfd8cd', fontSize: 12 }}>{requestResult}</p> : null}
           </div>
         ) : null}
 

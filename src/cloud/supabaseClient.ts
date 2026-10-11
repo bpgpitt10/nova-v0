@@ -37,6 +37,7 @@ type AuthSubscription = {
 
 type SupabaseAuthSession = {
   user: LooperAuthUser
+  access_token: string
 }
 
 type SupabaseAuthResult = {
@@ -49,6 +50,7 @@ type SupabaseAuthResult = {
 
 type SupabaseClientLike = {
   auth: {
+    getSession(): Promise<{ data: { session: SupabaseAuthSession | null }; error: SupabaseError | null }>
     getUser(): Promise<{
       data: { user: LooperAuthUser | null }
       error: SupabaseError | null

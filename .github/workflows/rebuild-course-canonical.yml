@@ -7,6 +7,7 @@ on:
       - web-course-e2e-preflight-v1
     paths:
       - 'config/course-rebuild-request.json'
+      - 'config/course-name-request.json'
 
 concurrency:
   group: rebuild-course-canonical
@@ -26,6 +27,19 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+
+      - name: Resolve name-only course request, when that file triggered this run
+        run: |
+          if git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -qx 'config/course-name-request.json'; then
+            python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          req=json.loads(Path('config/course-name-request.json').read_text(encoding='utf-8'))
+          if req.get('schemaVersion') != 'looper-course-name-request-v1':
+              raise SystemExit('Invalid course-name request schema')
+          subprocess.run(['python', 'tools/discover_osm_course_by_name.py', '--name', req['name'], '--requested-at', req.get('requestedAt','')],check=True)
+          PY
+          fi
 
       - name: Read rebuild request
         run: |
@@ -60,6 +74,9 @@ jobs:
 
       - name: Install app dependencies
         run: npm ci
+
+      - name: Unit test name-only course discovery
+        run: python tools/test_discover_osm_course_by_name.py
 
       - name: Unit test WorldCover tee protection
         run: python tools/test_course_landcover_masks.py
@@ -108,6 +125,8 @@ jobs:
       - name: Commit completed course package and runtime registration
         run: |
           git add \
+            config/course-rebuild-request.json \
+            "config/course-geometry/$COURSE_SLUG-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
@@ -119,6 +138,7 @@ jobs:
 
           for OPTIONAL_PATH in \
             "artifacts/course-geometry/$COURSE_SLUG/import-timing-v1.json" \
+            artifacts/course-discovery-v1.json \
             "artifacts/course-geometry/$COURSE_SLUG/dem-source-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/terrain-compose-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/worldcover-context-audit-v1.json"; do
