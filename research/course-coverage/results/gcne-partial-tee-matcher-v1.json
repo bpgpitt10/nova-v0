@@ -1,0 +1,2445 @@
+{
+  "courseId": "golf-club-of-new-england",
+  "holes": [
+    {
+      "candidates": [
+        {
+          "directYards": 441.0,
+          "osmId": 782712268,
+          "routeEstimateYds": 447.82,
+          "sourceLatLon": [
+            43.01257592,
+            -70.86589672
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 405.6,
+          "osmId": 782712269,
+          "routeEstimateYds": 416.31,
+          "sourceLatLon": [
+            43.01255504,
+            -70.86549948
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 385.9,
+          "osmId": 782712270,
+          "routeEstimateYds": 396.45,
+          "sourceLatLon": [
+            43.01244216,
+            -70.86529224
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 365.1,
+          "osmId": 782712271,
+          "routeEstimateYds": 372.87,
+          "sourceLatLon": [
+            43.01243096,
+            -70.86505914
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 345.1,
+          "osmId": 782712272,
+          "routeEstimateYds": 357.68,
+          "sourceLatLon": [
+            43.01234894,
+            -70.86484282
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 267.2,
+          "osmId": 782757872,
+          "routeEstimateYds": 285.49,
+          "sourceLatLon": [
+            43.01213974,
+            -70.86397454
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 3.6,
+      "hole": 1,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 441.0,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782712268,
+          "publishedYards": 469,
+          "reasons": [],
+          "residualYards": 17.6,
+          "routeEstimateYards": 447.82,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 385.9,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782712270,
+          "publishedYards": 400,
+          "reasons": [],
+          "residualYards": -0.1,
+          "routeEstimateYards": 396.45,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 267.2,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782757872,
+          "publishedYards": 272,
+          "reasons": [],
+          "residualYards": -17.1,
+          "routeEstimateYards": 285.49,
+          "status": "provisional_unique_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 405.6,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782712269,
+          "publishedYards": 429,
+          "reasons": [],
+          "residualYards": 9.1,
+          "routeEstimateYards": 416.31,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 365.1,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782712271,
+          "publishedYards": 379,
+          "reasons": [],
+          "residualYards": 2.5,
+          "routeEstimateYards": 372.87,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 345.1,
+          "holeDistanceOffsetYards": 3.6,
+          "osmId": 782712272,
+          "publishedYards": 355,
+          "reasons": [],
+          "residualYards": -6.3,
+          "routeEstimateYards": 357.68,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 370.8,
+          "osmId": 782757880,
+          "routeEstimateYds": 391.31,
+          "sourceLatLon": [
+            43.011674,
+            -70.85991828
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 346.1,
+          "osmId": 782757881,
+          "routeEstimateYds": 373.26,
+          "sourceLatLon": [
+            43.01171576,
+            -70.85964308
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 325.6,
+          "osmId": 782757882,
+          "routeEstimateYds": 346.61,
+          "sourceLatLon": [
+            43.01183718,
+            -70.85945608
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 301.1,
+          "osmId": 782757883,
+          "routeEstimateYds": 322.05,
+          "sourceLatLon": [
+            43.0119712,
+            -70.85922508
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 271.9,
+          "osmId": 782757884,
+          "routeEstimateYds": 295.12,
+          "sourceLatLon": [
+            43.01203136,
+            -70.85890688
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -10.1,
+      "hole": 2,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 370.8,
+          "holeDistanceOffsetYards": -10.1,
+          "osmId": 782757880,
+          "publishedYards": 386,
+          "reasons": [],
+          "residualYards": 4.8,
+          "routeEstimateYards": 391.31,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 325.6,
+          "holeDistanceOffsetYards": -10.1,
+          "osmId": 782757882,
+          "publishedYards": 337,
+          "reasons": [],
+          "residualYards": 0.5,
+          "routeEstimateYards": 346.61,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 197,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 346.1,
+          "holeDistanceOffsetYards": -10.1,
+          "osmId": 782757881,
+          "publishedYards": 362,
+          "reasons": [],
+          "residualYards": -1.2,
+          "routeEstimateYards": 373.26,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 301.1,
+          "holeDistanceOffsetYards": -10.1,
+          "osmId": 782757883,
+          "publishedYards": 312,
+          "reasons": [],
+          "residualYards": 0.1,
+          "routeEstimateYards": 322.05,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 271.9,
+          "holeDistanceOffsetYards": -10.1,
+          "osmId": 782757884,
+          "publishedYards": 285,
+          "reasons": [],
+          "residualYards": -0.0,
+          "routeEstimateYards": 295.12,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 518.9,
+          "osmId": 782757890,
+          "routeEstimateYds": 526.6,
+          "sourceLatLon": [
+            43.01320088,
+            -70.85611784
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 477.0,
+          "osmId": 782757891,
+          "routeEstimateYds": 487.41,
+          "sourceLatLon": [
+            43.01339003,
+            -70.85652259
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 440.8,
+          "osmId": 782757892,
+          "routeEstimateYds": 453.55,
+          "sourceLatLon": [
+            43.01354534,
+            -70.85687786
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 382.2,
+          "osmId": 782757893,
+          "routeEstimateYds": 400.07,
+          "sourceLatLon": [
+            43.01381164,
+            -70.8574486
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 3.9,
+      "hole": 3,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 518.9,
+          "holeDistanceOffsetYards": 3.9,
+          "osmId": 782757890,
+          "publishedYards": 549,
+          "reasons": [],
+          "residualYards": 18.5,
+          "routeEstimateYards": 526.6,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 477.0,
+          "holeDistanceOffsetYards": 3.9,
+          "osmId": 782757891,
+          "publishedYards": 491,
+          "reasons": [],
+          "residualYards": -0.3,
+          "routeEstimateYards": 487.41,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 382.2,
+          "holeDistanceOffsetYards": 3.9,
+          "osmId": 782757893,
+          "publishedYards": 404,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 400.07,
+          "status": "provisional_unique_match"
+        },
+        "Green": {
+          "osmId": null,
+          "publishedYards": 513,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 477.0,
+          "holeDistanceOffsetYards": 3.9,
+          "osmId": 782757891,
+          "publishedYards": 491,
+          "reasons": [],
+          "residualYards": -0.3,
+          "routeEstimateYards": 487.41,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 440.8,
+          "holeDistanceOffsetYards": 3.9,
+          "osmId": 782757892,
+          "publishedYards": 461,
+          "reasons": [],
+          "residualYards": 3.6,
+          "routeEstimateYards": 453.55,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 5,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 467.5,
+          "osmId": 782757899,
+          "routeEstimateYds": 468.36,
+          "sourceLatLon": [
+            43.01576168,
+            -70.86215996
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 424.3,
+          "osmId": 782764567,
+          "routeEstimateYds": 427.76,
+          "sourceLatLon": [
+            43.01565936,
+            -70.86169406
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 393.1,
+          "osmId": 782764568,
+          "routeEstimateYds": 397.25,
+          "sourceLatLon": [
+            43.01557222,
+            -70.86136448
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 353.4,
+          "osmId": 782764569,
+          "routeEstimateYds": 363.24,
+          "sourceLatLon": [
+            43.01535108,
+            -70.86099496
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 304.5,
+          "osmId": 782764570,
+          "routeEstimateYds": 311.98,
+          "sourceLatLon": [
+            43.0152253,
+            -70.86047258
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -4.2,
+      "hole": 4,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 467.5,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782757899,
+          "publishedYards": 480,
+          "reasons": [],
+          "residualYards": 15.8,
+          "routeEstimateYards": 468.36,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 393.1,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782764568,
+          "publishedYards": 393,
+          "reasons": [],
+          "residualYards": -0.1,
+          "routeEstimateYards": 397.25,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 304.5,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782764570,
+          "publishedYards": 295,
+          "reasons": [],
+          "residualYards": -12.8,
+          "routeEstimateYards": 311.98,
+          "status": "provisional_unique_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 424.3,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782764567,
+          "publishedYards": 427,
+          "reasons": [],
+          "residualYards": 3.4,
+          "routeEstimateYards": 427.76,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 393.1,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782764568,
+          "publishedYards": 393,
+          "reasons": [],
+          "residualYards": -0.1,
+          "routeEstimateYards": 397.25,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 353.4,
+          "holeDistanceOffsetYards": -4.2,
+          "osmId": 782764569,
+          "publishedYards": 355,
+          "reasons": [],
+          "residualYards": -4.0,
+          "routeEstimateYards": 363.24,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 587.7,
+          "osmId": 782764575,
+          "routeEstimateYds": 591.47,
+          "sourceLatLon": [
+            43.0139483,
+            -70.85675722
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 567.5,
+          "osmId": 782764576,
+          "routeEstimateYds": 571.7,
+          "sourceLatLon": [
+            43.01408924,
+            -70.85663538
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 541.9,
+          "osmId": 782764577,
+          "routeEstimateYds": 550.11,
+          "sourceLatLon": [
+            43.01428976,
+            -70.85651962
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 513.7,
+          "osmId": 782764579,
+          "routeEstimateYds": 541.51,
+          "sourceLatLon": [
+            43.0146027,
+            -70.8565432
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 526.4,
+          "osmId": 782764578,
+          "routeEstimateYds": 537.09,
+          "sourceLatLon": [
+            43.0144114,
+            -70.85644998
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -4.1,
+      "hole": 5,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 587.7,
+          "holeDistanceOffsetYards": -4.1,
+          "osmId": 782764575,
+          "publishedYards": 600,
+          "reasons": [],
+          "residualYards": 12.6,
+          "routeEstimateYards": 591.47,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 541.9,
+          "holeDistanceOffsetYards": -4.1,
+          "osmId": 782764577,
+          "publishedYards": 546,
+          "reasons": [],
+          "residualYards": -0.0,
+          "routeEstimateYards": 550.11,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 423,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 567.5,
+          "holeDistanceOffsetYards": -4.1,
+          "osmId": 782764576,
+          "publishedYards": 572,
+          "reasons": [],
+          "residualYards": 4.4,
+          "routeEstimateYards": 571.7,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [
+            782764578
+          ],
+          "directToGreenCentroidYards": 513.7,
+          "holeDistanceOffsetYards": -4.1,
+          "osmId": 782764579,
+          "publishedYards": 530,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": -7.4,
+          "routeEstimateYards": 541.51,
+          "status": "ambiguous"
+        },
+        "White": {
+          "alternativeOsmIds": [
+            782764579
+          ],
+          "directToGreenCentroidYards": 526.4,
+          "holeDistanceOffsetYards": -4.1,
+          "osmId": 782764578,
+          "publishedYards": 517,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": -16.0,
+          "routeEstimateYards": 537.09,
+          "status": "ambiguous"
+        }
+      },
+      "par": 5,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 200.0,
+          "osmId": 782764589,
+          "routeEstimateYds": 200.0,
+          "sourceLatLon": [
+            43.01849132,
+            -70.85236136
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 165.8,
+          "osmId": 782764590,
+          "routeEstimateYds": 165.8,
+          "sourceLatLon": [
+            43.01824073,
+            -70.85270917
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 147.4,
+          "osmId": 782764591,
+          "routeEstimateYds": 147.4,
+          "sourceLatLon": [
+            43.01826322,
+            -70.85291745
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 10.2,
+      "hole": 6,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 200.0,
+          "holeDistanceOffsetYards": 10.2,
+          "osmId": 782764589,
+          "publishedYards": 223,
+          "reasons": [
+            "DISTANCE_RESIDUAL_HIGH"
+          ],
+          "residualYards": 12.8,
+          "routeEstimateYards": 200.0,
+          "status": "ambiguous"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 165.8,
+          "holeDistanceOffsetYards": 10.2,
+          "osmId": 782764590,
+          "publishedYards": 176,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 165.8,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 131,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 200.0,
+          "holeDistanceOffsetYards": 10.2,
+          "osmId": 782764589,
+          "publishedYards": 206,
+          "reasons": [
+            "SHARED_PAD_BUT_DISTINCT_SCORECARD_YARDAGES"
+          ],
+          "residualYards": -4.2,
+          "routeEstimateYards": 200.0,
+          "status": "ambiguous"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 147.4,
+          "holeDistanceOffsetYards": 10.2,
+          "osmId": 782764591,
+          "publishedYards": 160,
+          "reasons": [],
+          "residualYards": 2.4,
+          "routeEstimateYards": 147.4,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 147.4,
+          "holeDistanceOffsetYards": 10.2,
+          "osmId": 782764591,
+          "publishedYards": 156,
+          "reasons": [],
+          "residualYards": -1.6,
+          "routeEstimateYards": 147.4,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 3,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 412.0,
+          "osmId": 782764596,
+          "routeEstimateYds": 442.71,
+          "sourceLatLon": [
+            43.01786612,
+            -70.85421986
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 380.2,
+          "osmId": 782764597,
+          "routeEstimateYds": 414.2,
+          "sourceLatLon": [
+            43.01776266,
+            -70.85455268
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 357.5,
+          "osmId": 782764598,
+          "routeEstimateYds": 392.62,
+          "sourceLatLon": [
+            43.01768128,
+            -70.85478944
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 307.9,
+          "osmId": 782764599,
+          "routeEstimateYds": 340.5,
+          "sourceLatLon": [
+            43.01730928,
+            -70.85526736
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 249.2,
+          "osmId": 782764600,
+          "routeEstimateYds": 278.91,
+          "sourceLatLon": [
+            43.0169744,
+            -70.85590606
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -2.2,
+      "hole": 7,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 412.0,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764596,
+          "publishedYards": 447,
+          "reasons": [],
+          "residualYards": 6.5,
+          "routeEstimateYards": 442.71,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 357.5,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764598,
+          "publishedYards": 384,
+          "reasons": [],
+          "residualYards": -6.4,
+          "routeEstimateYards": 392.62,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 249.2,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764600,
+          "publishedYards": 262,
+          "reasons": [],
+          "residualYards": -14.7,
+          "routeEstimateYards": 278.91,
+          "status": "provisional_unique_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 380.2,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764597,
+          "publishedYards": 412,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 414.2,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 307.9,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764599,
+          "publishedYards": 340,
+          "reasons": [],
+          "residualYards": 1.7,
+          "routeEstimateYards": 340.5,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 307.9,
+          "holeDistanceOffsetYards": -2.2,
+          "osmId": 782764599,
+          "publishedYards": 334,
+          "reasons": [],
+          "residualYards": -4.3,
+          "routeEstimateYards": 340.5,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 242.3,
+          "osmId": 782764606,
+          "routeEstimateYds": 242.3,
+          "sourceLatLon": [
+            43.0169943,
+            -70.8593117
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 221.3,
+          "osmId": 782764607,
+          "routeEstimateYds": 221.3,
+          "sourceLatLon": [
+            43.01689288,
+            -70.85950526
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 208.0,
+          "osmId": 782764608,
+          "routeEstimateYds": 208.0,
+          "sourceLatLon": [
+            43.01686912,
+            -70.85965773
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 193.6,
+          "osmId": 782764609,
+          "routeEstimateYds": 193.6,
+          "sourceLatLon": [
+            43.01687445,
+            -70.85984844
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 172.1,
+          "osmId": 782764610,
+          "routeEstimateYds": 172.1,
+          "sourceLatLon": [
+            43.01682507,
+            -70.86009181
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 6.0,
+      "hole": 8,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 242.3,
+          "holeDistanceOffsetYards": 6.0,
+          "osmId": 782764606,
+          "publishedYards": 250,
+          "reasons": [],
+          "residualYards": 1.7,
+          "routeEstimateYards": 242.3,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 193.6,
+          "holeDistanceOffsetYards": 6.0,
+          "osmId": 782764609,
+          "publishedYards": 202,
+          "reasons": [],
+          "residualYards": 2.4,
+          "routeEstimateYards": 193.6,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 120,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 208.0,
+          "holeDistanceOffsetYards": 6.0,
+          "osmId": 782764608,
+          "publishedYards": 214,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 208.0,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 172.1,
+          "holeDistanceOffsetYards": 6.0,
+          "osmId": 782764610,
+          "publishedYards": 178,
+          "reasons": [],
+          "residualYards": -0.1,
+          "routeEstimateYards": 172.1,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 172.1,
+          "holeDistanceOffsetYards": 6.0,
+          "osmId": 782764610,
+          "publishedYards": 178,
+          "reasons": [],
+          "residualYards": -0.1,
+          "routeEstimateYards": 172.1,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 3,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 423.0,
+          "osmId": 782776562,
+          "routeEstimateYds": 460.91,
+          "sourceLatLon": [
+            43.01536728,
+            -70.86200222
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 386.6,
+          "osmId": 782776563,
+          "routeEstimateYds": 424.77,
+          "sourceLatLon": [
+            43.0151043,
+            -70.8622265
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 366.5,
+          "osmId": 782776564,
+          "routeEstimateYds": 404.98,
+          "sourceLatLon": [
+            43.01495936,
+            -70.86235402
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 349.8,
+          "osmId": 782776565,
+          "routeEstimateYds": 384.09,
+          "sourceLatLon": [
+            43.01480062,
+            -70.86241464
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 317.0,
+          "osmId": 782776566,
+          "routeEstimateYds": 351.63,
+          "sourceLatLon": [
+            43.0145084,
+            -70.86257252
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 275.5,
+          "osmId": 782776567,
+          "routeEstimateYds": 306.82,
+          "sourceLatLon": [
+            43.01415376,
+            -70.8628089
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -5.8,
+      "hole": 9,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 423.0,
+          "holeDistanceOffsetYards": -5.8,
+          "osmId": 782776562,
+          "publishedYards": 457,
+          "reasons": [],
+          "residualYards": 1.9,
+          "routeEstimateYards": 460.91,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 349.8,
+          "holeDistanceOffsetYards": -5.8,
+          "osmId": 782776565,
+          "publishedYards": 380,
+          "reasons": [],
+          "residualYards": 1.7,
+          "routeEstimateYards": 384.09,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 217,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 386.6,
+          "holeDistanceOffsetYards": -5.8,
+          "osmId": 782776563,
+          "publishedYards": 419,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 424.77,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 317.0,
+          "holeDistanceOffsetYards": -5.8,
+          "osmId": 782776566,
+          "publishedYards": 342,
+          "reasons": [],
+          "residualYards": -3.8,
+          "routeEstimateYards": 351.63,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 275.5,
+          "holeDistanceOffsetYards": -5.8,
+          "osmId": 782776567,
+          "publishedYards": 296,
+          "reasons": [],
+          "residualYards": -5.0,
+          "routeEstimateYards": 306.82,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 536.3,
+          "osmId": 782712276,
+          "routeEstimateYds": 566.51,
+          "sourceLatLon": [
+            43.01120738,
+            -70.8648578
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 495.1,
+          "osmId": 782575206,
+          "routeEstimateYds": 545.77,
+          "sourceLatLon": [
+            43.01108378,
+            -70.86441757
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 459.9,
+          "osmId": 782575207,
+          "routeEstimateYds": 488.1,
+          "sourceLatLon": [
+            43.011243,
+            -70.86396682
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 425.2,
+          "osmId": 782575208,
+          "routeEstimateYds": 458.74,
+          "sourceLatLon": [
+            43.0113987,
+            -70.8635028
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 368.7,
+          "osmId": 782575209,
+          "routeEstimateYds": 408.68,
+          "sourceLatLon": [
+            43.01164534,
+            -70.86268996
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 28.2,
+      "hole": 10,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 495.1,
+          "holeDistanceOffsetYards": 28.2,
+          "osmId": 782575206,
+          "publishedYards": 574,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 545.77,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 425.2,
+          "holeDistanceOffsetYards": 28.2,
+          "osmId": 782575208,
+          "publishedYards": 480,
+          "reasons": [],
+          "residualYards": -6.9,
+          "routeEstimateYards": 458.74,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 374,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 459.9,
+          "holeDistanceOffsetYards": 28.2,
+          "osmId": 782575207,
+          "publishedYards": 523,
+          "reasons": [],
+          "residualYards": 6.7,
+          "routeEstimateYards": 488.1,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 425.2,
+          "holeDistanceOffsetYards": 28.2,
+          "osmId": 782575208,
+          "publishedYards": 480,
+          "reasons": [],
+          "residualYards": -6.9,
+          "routeEstimateYards": 458.74,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 368.7,
+          "holeDistanceOffsetYards": 28.2,
+          "osmId": 782575209,
+          "publishedYards": 439,
+          "reasons": [],
+          "residualYards": 2.1,
+          "routeEstimateYards": 408.68,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 5,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 310.3,
+          "osmId": 782712280,
+          "routeEstimateYds": 359.27,
+          "sourceLatLon": [
+            43.01104538,
+            -70.85899736
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 283.2,
+          "osmId": 782712281,
+          "routeEstimateYds": 334.81,
+          "sourceLatLon": [
+            43.01092814,
+            -70.85865574
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 246.2,
+          "osmId": 782712282,
+          "routeEstimateYds": 300.58,
+          "sourceLatLon": [
+            43.01070792,
+            -70.85812817
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 213.2,
+          "osmId": 782712283,
+          "routeEstimateYds": 260.9,
+          "sourceLatLon": [
+            43.01057882,
+            -70.8576315
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 17.7,
+      "hole": 11,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 310.3,
+          "holeDistanceOffsetYards": 17.7,
+          "osmId": 782712280,
+          "publishedYards": 377,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 359.27,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [
+            782712281
+          ],
+          "directToGreenCentroidYards": 246.2,
+          "holeDistanceOffsetYards": 17.7,
+          "osmId": 782712282,
+          "publishedYards": 332,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 13.7,
+          "routeEstimateYards": 300.58,
+          "status": "ambiguous"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 239,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 283.2,
+          "holeDistanceOffsetYards": 17.7,
+          "osmId": 782712281,
+          "publishedYards": 350,
+          "reasons": [],
+          "residualYards": -2.5,
+          "routeEstimateYards": 334.81,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 213.2,
+          "holeDistanceOffsetYards": 17.7,
+          "osmId": 782712283,
+          "publishedYards": 294,
+          "reasons": [],
+          "residualYards": 15.4,
+          "routeEstimateYards": 260.9,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 213.2,
+          "holeDistanceOffsetYards": 17.7,
+          "osmId": 782712283,
+          "publishedYards": 274,
+          "reasons": [
+            "SHARED_PAD_BUT_DISTINCT_SCORECARD_YARDAGES"
+          ],
+          "residualYards": -4.6,
+          "routeEstimateYards": 260.9,
+          "status": "ambiguous"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 417.4,
+          "osmId": 782712289,
+          "routeEstimateYds": 426.08,
+          "sourceLatLon": [
+            43.01143562,
+            -70.85457818
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 398.6,
+          "osmId": 782712290,
+          "routeEstimateYds": 425.72,
+          "sourceLatLon": [
+            43.01161303,
+            -70.8548618
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 1.9,
+      "hole": 12,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [
+            782712290
+          ],
+          "directToGreenCentroidYards": 417.4,
+          "holeDistanceOffsetYards": 1.9,
+          "osmId": 782712289,
+          "publishedYards": 437,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 9.0,
+          "routeEstimateYards": 426.08,
+          "status": "ambiguous"
+        },
+        "Blue": {
+          "alternativeOsmIds": [
+            782712289
+          ],
+          "directToGreenCentroidYards": 398.6,
+          "holeDistanceOffsetYards": 1.9,
+          "osmId": 782712290,
+          "publishedYards": 413,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": -14.6,
+          "routeEstimateYards": 425.72,
+          "status": "ambiguous"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 322,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [
+            782712290
+          ],
+          "directToGreenCentroidYards": 417.4,
+          "holeDistanceOffsetYards": 1.9,
+          "osmId": 782712289,
+          "publishedYards": 428,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 0.0,
+          "routeEstimateYards": 426.08,
+          "status": "ambiguous"
+        },
+        "Red": {
+          "osmId": null,
+          "publishedYards": 380,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "White": {
+          "osmId": null,
+          "publishedYards": 343,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 379.4,
+          "osmId": 782757827,
+          "routeEstimateYds": 392.6,
+          "sourceLatLon": [
+            43.01478223,
+            -70.85372231
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 312.8,
+          "osmId": 782757828,
+          "routeEstimateYds": 334.52,
+          "sourceLatLon": [
+            43.01423498,
+            -70.85386136
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 266.2,
+          "osmId": 782757829,
+          "routeEstimateYds": 277.45,
+          "sourceLatLon": [
+            43.01385202,
+            -70.85376398
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -7.6,
+      "hole": 13,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 379.4,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757827,
+          "publishedYards": 394,
+          "reasons": [],
+          "residualYards": 9.0,
+          "routeEstimateYards": 392.6,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 379.4,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757827,
+          "publishedYards": 376,
+          "reasons": [],
+          "residualYards": -9.0,
+          "routeEstimateYards": 392.6,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 266.2,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757829,
+          "publishedYards": 270,
+          "reasons": [],
+          "residualYards": 0.2,
+          "routeEstimateYards": 277.45,
+          "status": "provisional_unique_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 379.4,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757827,
+          "publishedYards": 385,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 392.6,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 312.8,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757828,
+          "publishedYards": 318,
+          "reasons": [],
+          "residualYards": -8.9,
+          "routeEstimateYards": 334.52,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 312.8,
+          "holeDistanceOffsetYards": -7.6,
+          "osmId": 782757828,
+          "publishedYards": 318,
+          "reasons": [],
+          "residualYards": -8.9,
+          "routeEstimateYards": 334.52,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 165.0,
+          "osmId": 782757832,
+          "routeEstimateYds": 165.0,
+          "sourceLatLon": [
+            43.01056208,
+            -70.85410784
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 138.0,
+          "osmId": 782757833,
+          "routeEstimateYds": 138.0,
+          "sourceLatLon": [
+            43.01036283,
+            -70.85424611
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 117.8,
+          "osmId": 782757834,
+          "routeEstimateYds": 117.8,
+          "sourceLatLon": [
+            43.01025298,
+            -70.85443166
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 102.0,
+          "osmId": 782757835,
+          "routeEstimateYds": 102.0,
+          "sourceLatLon": [
+            43.01014251,
+            -70.8545266
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 33.2,
+      "hole": 14,
+      "mapping": {
+        "Black": {
+          "osmId": null,
+          "publishedYards": 216,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 117.8,
+          "holeDistanceOffsetYards": 33.2,
+          "osmId": 782757834,
+          "publishedYards": 151,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "residualYards": 0.0,
+          "routeEstimateYards": 117.8,
+          "status": "ambiguous"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 101,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 138.0,
+          "holeDistanceOffsetYards": 33.2,
+          "osmId": 782757833,
+          "publishedYards": 175,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "residualYards": 3.8,
+          "routeEstimateYards": 138.0,
+          "status": "ambiguous"
+        },
+        "Red": {
+          "alternativeOsmIds": [
+            782757834
+          ],
+          "directToGreenCentroidYards": 102.0,
+          "holeDistanceOffsetYards": 33.2,
+          "osmId": 782757835,
+          "publishedYards": 140,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET",
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 4.8,
+          "routeEstimateYards": 102.0,
+          "status": "ambiguous"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 102.0,
+          "holeDistanceOffsetYards": 33.2,
+          "osmId": 782757835,
+          "publishedYards": 130,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "residualYards": -5.2,
+          "routeEstimateYards": 102.0,
+          "status": "ambiguous"
+        }
+      },
+      "par": 3,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 562.5,
+          "osmId": 782757843,
+          "routeEstimateYds": 573.34,
+          "sourceLatLon": [
+            43.00902056,
+            -70.85552078
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 536.9,
+          "osmId": 782757844,
+          "routeEstimateYds": 554.4,
+          "sourceLatLon": [
+            43.00914846,
+            -70.85578636
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 502.7,
+          "osmId": 782757845,
+          "routeEstimateYds": 527.01,
+          "sourceLatLon": [
+            43.00929042,
+            -70.8561505
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 448.5,
+          "osmId": 782757846,
+          "routeEstimateYds": 476.87,
+          "sourceLatLon": [
+            43.00945582,
+            -70.85674226
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 27.6,
+      "hole": 15,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 562.5,
+          "holeDistanceOffsetYards": 27.6,
+          "osmId": 782757843,
+          "publishedYards": 609,
+          "reasons": [],
+          "residualYards": 8.1,
+          "routeEstimateYards": 573.34,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 502.7,
+          "holeDistanceOffsetYards": 27.6,
+          "osmId": 782757845,
+          "publishedYards": 554,
+          "reasons": [],
+          "residualYards": -0.6,
+          "routeEstimateYards": 527.01,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 460,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 536.9,
+          "holeDistanceOffsetYards": 27.6,
+          "osmId": 782757844,
+          "publishedYards": 582,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 554.4,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 448.5,
+          "holeDistanceOffsetYards": 27.6,
+          "osmId": 782757846,
+          "publishedYards": 514,
+          "reasons": [],
+          "residualYards": 9.5,
+          "routeEstimateYards": 476.87,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 448.5,
+          "holeDistanceOffsetYards": 27.6,
+          "osmId": 782757846,
+          "publishedYards": 504,
+          "reasons": [],
+          "residualYards": -0.5,
+          "routeEstimateYards": 476.87,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 5,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 364.4,
+          "osmId": 782757852,
+          "routeEstimateYds": 390.7,
+          "sourceLatLon": [
+            43.0096898,
+            -70.8623153
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 336.4,
+          "osmId": 782757853,
+          "routeEstimateYds": 371.48,
+          "sourceLatLon": [
+            43.00988666,
+            -70.86260311
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 0.0,
+      "hole": 16,
+      "mapping": {
+        "Black": {
+          "osmId": null,
+          "publishedYards": 475,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [
+            782757852
+          ],
+          "directToGreenCentroidYards": 336.4,
+          "holeDistanceOffsetYards": 0.0,
+          "osmId": 782757853,
+          "publishedYards": 380,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 8.5,
+          "routeEstimateYards": 371.48,
+          "status": "ambiguous"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 303,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "osmId": null,
+          "publishedYards": 418,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 336.4,
+          "holeDistanceOffsetYards": 0.0,
+          "osmId": 782757853,
+          "publishedYards": 370,
+          "reasons": [],
+          "residualYards": -1.5,
+          "routeEstimateYards": 371.48,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "osmId": null,
+          "publishedYards": 334,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 184.0,
+          "osmId": 782757860,
+          "routeEstimateYds": 184.0,
+          "sourceLatLon": [
+            43.01041696,
+            -70.86757992
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 161.0,
+          "osmId": 782757861,
+          "routeEstimateYds": 161.0,
+          "sourceLatLon": [
+            43.010392,
+            -70.86783754
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 155.0,
+          "osmId": 782757862,
+          "routeEstimateYds": 155.0,
+          "sourceLatLon": [
+            43.01055699,
+            -70.86798361
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 132.1,
+          "osmId": 782757863,
+          "routeEstimateYds": 132.1,
+          "sourceLatLon": [
+            43.01053226,
+            -70.86825152
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": 26.9,
+      "hole": 17,
+      "mapping": {
+        "Black": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 184.0,
+          "holeDistanceOffsetYards": 26.9,
+          "osmId": 782757860,
+          "publishedYards": 221,
+          "reasons": [],
+          "residualYards": 10.1,
+          "routeEstimateYards": 184.0,
+          "status": "provisional_unique_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 132.1,
+          "holeDistanceOffsetYards": 26.9,
+          "osmId": 782757863,
+          "publishedYards": 159,
+          "reasons": [],
+          "residualYards": 0.0,
+          "routeEstimateYards": 132.1,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 76,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [
+            782757862
+          ],
+          "directToGreenCentroidYards": 132.1,
+          "holeDistanceOffsetYards": 26.9,
+          "osmId": 782757863,
+          "publishedYards": 168,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "residualYards": 9.0,
+          "routeEstimateYards": 132.1,
+          "status": "ambiguous"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 132.1,
+          "holeDistanceOffsetYards": 26.9,
+          "osmId": 782757863,
+          "publishedYards": 148,
+          "reasons": [],
+          "residualYards": -11.0,
+          "routeEstimateYards": 132.1,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 132.1,
+          "holeDistanceOffsetYards": 26.9,
+          "osmId": 782757863,
+          "publishedYards": 148,
+          "reasons": [],
+          "residualYards": -11.0,
+          "routeEstimateYards": 132.1,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 3,
+      "status": "matched_with_cautions"
+    },
+    {
+      "candidates": [
+        {
+          "directYards": 456.5,
+          "osmId": 782698260,
+          "routeEstimateYds": 469.36,
+          "sourceLatLon": [
+            43.0101861,
+            -70.87054452
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 427.6,
+          "osmId": 782698261,
+          "routeEstimateYds": 444.5,
+          "sourceLatLon": [
+            43.01036244,
+            -70.87028632
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 390.1,
+          "osmId": 782698262,
+          "routeEstimateYds": 404.33,
+          "sourceLatLon": [
+            43.01051428,
+            -70.86991086
+          ],
+          "sourceTags": {}
+        },
+        {
+          "directYards": 359.7,
+          "osmId": 782698263,
+          "routeEstimateYds": 373.32,
+          "sourceLatLon": [
+            43.01065612,
+            -70.86961328
+          ],
+          "sourceTags": {}
+        }
+      ],
+      "fitOffsetYards": -3.3,
+      "hole": 18,
+      "mapping": {
+        "Black": {
+          "osmId": null,
+          "publishedYards": 509,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Blue": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 390.1,
+          "holeDistanceOffsetYards": -3.3,
+          "osmId": 782698262,
+          "publishedYards": 407,
+          "reasons": [],
+          "residualYards": 6.0,
+          "routeEstimateYards": 404.33,
+          "status": "provisional_unique_match"
+        },
+        "Gold": {
+          "osmId": null,
+          "publishedYards": 336,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        "Green": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 427.6,
+          "holeDistanceOffsetYards": -3.3,
+          "osmId": 782698261,
+          "publishedYards": 441,
+          "reasons": [],
+          "residualYards": -0.2,
+          "routeEstimateYards": 444.5,
+          "status": "provisional_unique_match"
+        },
+        "Red": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 359.7,
+          "holeDistanceOffsetYards": -3.3,
+          "osmId": 782698263,
+          "publishedYards": 370,
+          "reasons": [],
+          "residualYards": -0.0,
+          "routeEstimateYards": 373.32,
+          "status": "provisional_unique_match"
+        },
+        "White": {
+          "alternativeOsmIds": [],
+          "directToGreenCentroidYards": 359.7,
+          "holeDistanceOffsetYards": -3.3,
+          "osmId": 782698263,
+          "publishedYards": 370,
+          "reasons": [],
+          "residualYards": -0.0,
+          "routeEstimateYards": 373.32,
+          "status": "provisional_unique_match"
+        }
+      },
+      "par": 4,
+      "status": "matched_with_cautions"
+    }
+  ],
+  "osmCache": "research/course-coverage/source-cache/batch-01-geofabrik.json.gz",
+  "perTeeSet": [
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 8.1,
+      "name": "Black",
+      "provisionalUniqueHoles": 13,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 7673,
+      "unresolvedHoles": [
+        {
+          "hole": 6,
+          "reasons": [
+            "DISTANCE_RESIDUAL_HIGH"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 16,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 18,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        }
+      ]
+    },
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 0.7,
+      "name": "Green",
+      "provisionalUniqueHoles": 12,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 7024,
+      "unresolvedHoles": [
+        {
+          "hole": 3,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 6,
+          "reasons": [
+            "SHARED_PAD_BUT_DISTINCT_SCORECARD_YARDAGES"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 16,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 17,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        }
+      ]
+    },
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 0.6,
+      "name": "Blue",
+      "provisionalUniqueHoles": 14,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 6561,
+      "unresolvedHoles": [
+        {
+          "hole": 11,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 16,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        }
+      ]
+    },
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 2.4,
+      "name": "Red",
+      "provisionalUniqueHoles": 15,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 6139,
+      "unresolvedHoles": [
+        {
+          "hole": 5,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET",
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        }
+      ]
+    },
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 3.6,
+      "name": "White",
+      "provisionalUniqueHoles": 13,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 5797,
+      "unresolvedHoles": [
+        {
+          "hole": 5,
+          "reasons": [
+            "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 11,
+          "reasons": [
+            "SHARED_PAD_BUT_DISTINCT_SCORECARD_YARDAGES"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "LARGE_HOLE_DISTANCE_OFFSET"
+          ],
+          "status": "ambiguous"
+        },
+        {
+          "hole": 16,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        }
+      ]
+    },
+    {
+      "liveSelectable": false,
+      "medianResidualOnUniqueHolesYds": 12.8,
+      "name": "Gold",
+      "provisionalUniqueHoles": 5,
+      "researchEligibility": "excluded_pending_resolution",
+      "scorecardTotalYards": 4802,
+      "unresolvedHoles": [
+        {
+          "hole": 2,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 5,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 6,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 8,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 9,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 10,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 11,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 12,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 14,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 15,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 16,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 17,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        },
+        {
+          "hole": 18,
+          "reasons": [
+            "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+          ],
+          "status": "unsupported_no_match"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": "looper-generic-tee-matching-research-v1",
+  "sourceScorecard": "research/course-coverage/scorecards/gcne-official-six-tees-v1.json",
+  "teeSetPolicy": {
+    "algorithmDoesNotPublishOrModifyRuntime": true,
+    "liveRegistrationRequiresIndependentReview": true,
+    "minimumUnambiguousHolesPerSupportedSet": 18,
+    "partialSupportAllowed": true,
+    "unsupportedSets": "exclude from Looper Round Setup"
+  },
+  "totalCourseHoles": 18
+}
