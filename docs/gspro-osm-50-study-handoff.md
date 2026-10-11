@@ -9,7 +9,8 @@
 
 ## Read me first / current progress
 
-**ROSTER PREPARED. STUDY NOT YET RUN. NO COURSE PASSES CLAIMED.**
+**ROSTER PREPARED. BATCH 01 HAS BEEN ATTEMPTED; NO VERIFIED COURSE PASSES YET.**
+\n**Execution checkpoint (October 11, 2026):** The first-ten batched Overpass OSM geometry request returned HTTP 504 Gateway Timeout, not a confirmed lack of OSM data. The durable result ledger is `research/course-coverage/results/batch-01.json` (10 `U_unverified`, `OSM_SOURCE_ERROR`), with source diagnostics in `research/course-coverage/source-cache/batch-01-osm.json.gz`. No LiDAR or full imports were done. To bypass the blocked public API, a Geofabrik state-extract fallback is implemented in `tools/audit_gspro_osm_batch01_geofabrik.py` and workflow `.github/workflows/gspro-osm-coverage-geofabrik.yml`, run https://github.com/bpgpitt10/nova-v0/actions/runs/38160099532. **Before any new run, inspect the current run status and the newest batch-01 ledger:** the fallback may overwrite the initial unverified ledger with real geometry observations. Cached extracted source features should then be present in `research/course-coverage/source-cache/batch-01-geofabrik.json.gz`. Do not rerun the overloaded Overpass query; do not claim 0/10 courses usable based on an unavailable source.
 
 A preselected set of **50 distinct, real-world U.S. courses listed in the public SGT/GSPro course catalog** covers **25 states** and five geographic strata. This is a judgment-stratified engineering study, **not** a true random sample of all courses, so percentages are indicative for the selected sample, not a statistically representative national success rate. SGT listing status is documentary catalog evidence; precise naming/current availability can still be reconfirmed in the actual installed GSPro course selector if necessary.
 
