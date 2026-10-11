@@ -6,6 +6,7 @@ on:
       - web-course-e2e-preflight-v1
     paths:
       - '.github/workflows/tee-subset-coverage-test.yml'
+      - 'tools/evaluate_independent_tee_subsets.py'
 permissions:
   contents: write
 jobs:
