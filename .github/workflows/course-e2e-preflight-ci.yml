@@ -1,0 +1,39 @@
+name: Course E2E Preflight (No Imports)
+
+on:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install geometry deps
+        run: pip install -r requirements-course-geometry.txt
+      - name: Test name matching without external requests
+        run: python tools/test_discover_osm_course_by_name.py
+      - name: Regression test for WorldCover inner-hole masking
+        run: python tools/test_course_landcover_masks.py
+      - name: Test existing course contracts
+        run: |
+          node tools/test-course-tee-metadata.mjs
+          node tools/test-live-caddie-map-framing.mjs
+          node tools/check-canonical-imports.mjs
+      - name: App dependency installation
+        run: npm ci
+      - name: Build (no network course import)
+        run: npm run build
