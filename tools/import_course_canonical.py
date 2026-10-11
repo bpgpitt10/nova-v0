@@ -32,6 +32,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 _IMPORT_TIMING: ImportTiming | None = None
+_IMPORT_RESULT_STATUS = "failed"
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -164,6 +165,7 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--slug", required=True)
     parser.add_argument("--reason", default="canonical-one-shot-import")
+    parser.add_argument("--allow-map-preview", action="store_true", help="Staging-only non-playable map package if tee contract fails")
     args = parser.parse_args()
     global _IMPORT_TIMING
     _IMPORT_TIMING = ImportTiming(ROOT, args.slug, str(args.config), args.reason)
@@ -206,6 +208,7 @@ def main() -> int:
     snapshot = artifact_dir / "osm-snapshot.json"
     manifest = artifact_dir / "validation-v1.json"
     runtime_receipt = artifact_dir / "runtime-ready-v1.json"
+    map_receipt = artifact_dir / "map-ready-v1.json"
     geometry = work_dir / "geometry.json"
     dem = work_dir / "course-dem.tif"
     dem_metadata = artifact_dir / "dem-source-v1.json"
@@ -220,6 +223,7 @@ def main() -> int:
     # registration. There is never a window where stale output counts as a new
     # successful import.
     runtime_receipt.unlink(missing_ok=True)
+    map_receipt.unlink(missing_ok=True)
     run_node("tools/generate-imported-course-registry.mjs")
 
     # 1. Fresh source geometry.
@@ -316,16 +320,46 @@ def main() -> int:
         cache_args += ["--green-detail", str(green_detail)]
     run(*cache_args)
 
-    # 6. Static PRODUCT contract. Geometry is not enough: every imported course
-    # must have the exact package/tee identity needed by Round Setup and the
-    # generic runtime providers.
-    run_node(
-        "tools/validate-course-import-contract.mjs",
-        "--package", str(final_package),
-        "--config", str(config_path),
-    )
-
+    # A map can be useful without calibrated tee sets. Geometry, green details
+    # and real terrain remain mandatory. This receipt is NEVER runtime-ready.
+    run_node("tools/validate-course-map-contract.mjs",
+             "--package", str(final_package), "--config", str(config_path))
     package_sha = sha256(final_package)
+    holes = read_json(final_package)["holes"]
+    tee_mapped = sum(bool((holes[str(n)].get("surfaces") or {}).get("tee")) for n in range(1, 19))
+    tee_points = sum(len(holes[str(n)].get("teePointEvidence") or []) for n in range(1, 19))
+    map_status = {
+        "schemaVersion": "looper-course-map-ready-v1",
+        "courseId": course_id, "courseName": config.get("courseName"),
+        "location": config.get("location"), "slug": slug,
+        "mapReady": True, "runtimeReady": False,
+        "teeMappedHoles": tee_mapped, "teePointEvidence": tee_points,
+        "teeCalibration": "pending", "packageSha256": package_sha,
+        "greenDetailSha256": sha256(green_detail) if green_detail.exists() else None,
+        "terrainReady": terrain_enabled, "greenDetailReady": green_enabled,
+        "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+    write_json(map_receipt, map_status)
+    run_node("tools/generate-map-review-index.mjs")
+
+    # Runtime qualification retains the original strict product contract.
+    try:
+        run_node("tools/validate-course-import-contract.mjs",
+                 "--package", str(final_package), "--config", str(config_path))
+    except subprocess.CalledProcessError as error:
+        if not args.allow_map_preview:
+            raise
+        map_status["runtimeBlocker"] = "Tee selection contract incomplete; map preview only"
+        write_json(map_receipt, map_status)
+        run_node("tools/generate-map-review-index.mjs")
+        global _IMPORT_RESULT_STATUS
+        _IMPORT_RESULT_STATUS = "map-ready"
+        print(json.dumps({"mapReady": True, "runtimeReady": False,
+                          "teeMappedHoles":tee_mapped,"teePointEvidence":tee_points,
+                          "courseId":course_id,"reviewUrl":"/course-review",
+                          "teeContractExitCode":error.returncode}), flush=True)
+        return 0
+
     provisional_receipt = {
         "schemaVersion": "looper-course-runtime-ready-v1",
         "courseId": course_id,
@@ -365,6 +399,10 @@ def main() -> int:
     }
     write_json(runtime_receipt, final_receipt)
     run_node("tools/generate-imported-course-registry.mjs")
+    map_status["runtimeReady"] = True
+    map_status["teeCalibration"] = "validated"
+    write_json(map_receipt, map_status)
+    run_node("tools/generate-map-review-index.mjs")
 
     # 8. Only now may the import be stamped complete.
     validation = read_json(manifest)
@@ -390,6 +428,7 @@ def main() -> int:
     }
     write_json(manifest, validation)
 
+    _IMPORT_RESULT_STATUS = "runtime-ready"
     print(json.dumps({
         "courseId": course_id,
         "courseSlug": slug,
@@ -416,5 +455,5 @@ if __name__ == "__main__":
         raise
     else:
         if _IMPORT_TIMING:
-            _IMPORT_TIMING.finish("runtime-ready" if result == 0 else "failed")
+            _IMPORT_TIMING.finish(_IMPORT_RESULT_STATUS if result == 0 else "failed")
         raise SystemExit(result)
