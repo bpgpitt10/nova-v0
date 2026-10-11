@@ -1,0 +1,44 @@
+name: Tee Subset Coverage — Independent Partial Tee Test
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - '.github/workflows/tee-subset-coverage-test.yml'
+permissions:
+  contents: write
+jobs:
+  test-independent-tee-subsets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-course-geometry.txt
+      - run: python tools/test_match_scorecard_tees.py
+      - run: python tools/evaluate_independent_tee_subsets.py
+      - run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('research/course-coverage/results/gcne-independent-tee-subsets-v1.json').read_text())
+          assert d['testedSubsetCount']==57
+          assert d['liveSelectable']==[]
+          assert d['unavailableSetsRemainHidden'] is True
+          print('PASS: 57 tee subsets evaluated without runtime registration.')
+          PY
+      - name: Publish research checkpoint
+        run: |
+          git add research/course-coverage/results/gcne-independent-tee-subsets-v1.json
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(course): checkpoint independent tee subset feasibility'
+          git fetch origin web-course-e2e-preflight-v1
+          git rebase origin/web-course-e2e-preflight-v1
+          git push origin HEAD:web-course-e2e-preflight-v1
