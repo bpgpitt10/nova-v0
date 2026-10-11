@@ -1,0 +1,61 @@
+name: GSPro OSM Coverage Audit — Batch 01 (Read Only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - 'tools/audit_gspro_osm_batch01.py'
+      - '.github/workflows/gspro-osm-coverage-batch01.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gspro-osm-batch01
+  cancel-in-progress: false
+
+jobs:
+  snapshot-osm-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Geometry dependencies
+        run: pip install -r requirements-course-geometry.txt
+      - name: Audit exactly first ten frozen GSPro-listed courses (2 bounded source queries)
+        run: python tools/audit_gspro_osm_batch01.py
+      - name: Check result shape and safety
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('research/course-coverage/results/batch-01.json').read_text())
+          assert r['summary']['size']==10
+          assert [x['number'] for x in r['results']]==list(range(1,11))
+          assert r['summary']['verifiedPlayableCount']==0, 'No scorecards were checked in this cheap OSM stage'
+          assert all(x['existingStrictValidatorPass'] is None for x in r['results'])
+          print('Ten OSM-only observations ready to checkpoint. Source status:',r['summary']['sourceStatus'])
+          PY
+      - name: Commit resumable audit ledger and source evidence, never production
+        run: |
+          git add research/course-coverage/results/batch-01.json
+          git add -f research/course-coverage/source-cache/batch-01-osm.json.gz
+          if git diff --cached --quiet; then
+            echo 'Ledger is unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(course): checkpoint first ten GSPro OSM coverage findings'
+          git fetch origin web-course-e2e-preflight-v1
+          git rebase origin/web-course-e2e-preflight-v1
+          git push origin HEAD:web-course-e2e-preflight-v1
