@@ -1,5 +1,6 @@
 {
   "schemaVersion": "looper-course-name-request-v1",
   "name": "Valhalla",
-  "requestedAt": "2026-10-11T02:42:58.070Z"
+  "requestedAt": "2026-10-11T02:46:30.005Z",
+  "operatorNote": "Diagnostic rerun of the already-failed Valhalla cold import. Preserve original cold-run status and timings."
 }
