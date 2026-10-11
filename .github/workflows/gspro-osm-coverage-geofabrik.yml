@@ -1,0 +1,57 @@
+name: GSPro OSM Coverage — Geofabrik Regional Extract Fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - '.github/workflows/gspro-osm-coverage-geofabrik.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gspro-osm-batch01-regional
+  cancel-in-progress: false
+
+jobs:
+  batch-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing geometry dependencies and streaming PBF reader
+        run: |
+          pip install -r requirements-course-geometry.txt
+          pip install osmium
+      - name: Parse regional OSM extracts locally for only ten roster courses
+        run: python tools/audit_gspro_osm_batch01_geofabrik.py
+      - name: Validate checkpoint does not claim official tee identities
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('research/course-coverage/results/batch-01.json').read_text())
+          assert len(data['results'])==10
+          assert [x['number'] for x in data['results']]==list(range(1,11))
+          assert all(x['classification']!='A_verified_usable' for x in data['results'])
+          assert all(x['existingStrictValidatorPass'] is None for x in data['results'])
+          print('Regional extract audit checkpoint is safe; never call a course playable without verified scorecard.')
+          PY
+      - name: Commit first ten observations and geo source cache
+        run: |
+          git add research/course-coverage/results/batch-01.json
+          git add -f research/course-coverage/source-cache/batch-01-geofabrik.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(course): checkpoint ten-course regional OSM extract findings'
+          git fetch origin web-course-e2e-preflight-v1
+          git rebase origin/web-course-e2e-preflight-v1
+          git push origin HEAD:web-course-e2e-preflight-v1
