@@ -26,23 +26,55 @@ def norm_course(s):
 def slugify(s):
     raw = "-".join(norm(s).split())
     return raw[:70].strip("-")
+def is_golf_boundary(x):
+    osm_type=str(x.get("osm_type") or "").lower()
+    tags=x.get("extratags") or {}
+    return osm_type in {"way","relation"} and bool(x.get("osm_id")) and (
+        (x.get("category")=="leisure" and x.get("type")=="golf_course")
+        or x.get("type")=="golf_course"
+        or tags.get("leisure")=="golf_course"
+        or tags.get("golf")=="course"
+    )
+
+def name_matches(requested, candidate):
+    source=norm_course(requested).split()
+    target=norm_course(candidate).split()
+    # A shortened product name can be a prefix of the full official golf-club
+    # name, but a location or irrelevant suffix cannot be silently dropped.
+    return bool(source) and (target==source or (len(source)>=2 and target[:len(source)]==source))
+
 def get_candidates(name, timeout=25):
-    query = urllib.parse.urlencode({"q":name,"format":"jsonv2","addressdetails":1,"namedetails":1,"extratags":1,"limit":10})
-    request = urllib.request.Request(API+"?"+query, headers={"User-Agent":UA,"Accept":"application/json"})
-    with urllib.request.urlopen(request,timeout=timeout) as resp:
-        return json.load(resp)
+    queries=[name, f"{name} golf course", f"{name} golf club"]
+    seen=set()
+    candidates=[]
+    for i, query in enumerate(queries):
+        if i:
+            time.sleep(1.2) # OSMF's public Nominatim max 1 request/sec.
+        params=urllib.parse.urlencode({"q":query,"format":"jsonv2","addressdetails":1,"namedetails":1,"extratags":1,"limit":10})
+        request=urllib.request.Request(API+"?"+params, headers={"User-Agent":UA,"Accept":"application/json"})
+        with urllib.request.urlopen(request,timeout=timeout) as resp:
+            returned=json.load(resp)
+        print("Nominatim query:",json.dumps({"text":query,"results":len(returned)}),flush=True)
+        for item in returned:
+            key=(item.get("osm_type"),item.get("osm_id"))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(item)
+        if any(is_golf_boundary(x) and name_matches(
+            name,(x.get("namedetails") or {}).get("name") or str(x.get("display_name","")).split(",")[0]
+        ) for x in candidates):
+            break
+    return candidates
 
 def resolve(name, candidates):
     valid=[]
     raw_summaries=[{"name":(x.get("namedetails") or {}).get("name"),"display":str(x.get("display_name") or "")[:160],"category":x.get("category"),"type":x.get("type"),"osm_type":x.get("osm_type"),"osm_id":x.get("osm_id"),"extratags":{k:v for k,v in (x.get("extratags") or {}).items() if k in {"golf","leisure"}}} for x in candidates]
     print("Nominatim candidate classifications:",json.dumps(raw_summaries,ensure_ascii=True),flush=True)
     for x in candidates:
-        if str(x.get("osm_type") or "").lower() not in {"way","relation"}: continue
-        if x.get("type") not in {"golf_course","golf"} and not (x.get("extratags") or {}).get("golf")=="course": continue
-        if not x.get("osm_id"): continue
+        if not is_golf_boundary(x): continue
         named=(x.get("namedetails") or {}).get("name") or str(x.get("display_name","")).split(",")[0]
         valid.append((x,named))
-    hits=[item for item in valid if norm_course(item[1])==norm_course(name)]
+    hits=[item for item in valid if name_matches(name,item[1])]
     if len(hits)!=1:
         hints=[{"name":label,"osmType":x.get("osm_type"),"osmId":x.get("osm_id"),"place":x.get("display_name")} for x,label in (hits or valid)]
         raise ValueError(f"Expected exactly one exact-match mapped golf course for {name!r}; found {len(hits)}. Accepted: {json.dumps(hints)[:2000]}; raw: {json.dumps(raw_summaries)[:2500]}")

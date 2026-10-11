@@ -16,3 +16,14 @@ for source in [[],[item("Example Golf Course",1),item("Example Golf Course",2)]]
     except ValueError:pass
     else:raise AssertionError("Name resolver did not fail closed")
 print("PASS course-name identity: one exact match; zero/ambiguous are rejected")
+
+# Course name can be shortened, but a valid course boundary is still mandatory.
+official={"osm_type":"way","osm_id":7,"category":"leisure","type":"golf_course",
+          "lat":"33.1","lon":"-79.0","display_name":"Example Golf and Fish Club, Somewhere",
+          "namedetails":{"name":"Example Golf and Fish Club"}}
+from discover_osm_course_by_name import is_golf_boundary, name_matches
+assert is_golf_boundary(official)
+assert name_matches("Example Golf",official["namedetails"]["name"])
+assert not name_matches("Totally Other",official["namedetails"]["name"])
+assert not is_golf_boundary({"osm_type":"node","osm_id":1,"category":"railway","type":"tram_stop"})
+assert resolve("Example Golf",[official])["osmCourseElement"]["id"]==7
