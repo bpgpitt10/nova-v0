@@ -72,6 +72,43 @@ Existing geometry caveat: The initial first-ten audit also reported nonpar-three
 fairway gaps for each of the four selected courses. These require review before
 treating the entire course as recommendation-ready.
 
+## October 11 addendum — Scorecard-guided partial tee-set support
+
+**IMPLEMENTED / TESTED (research-only; do not promote course):**
+- `research/course-coverage/scorecards/gcne-official-six-tees-v1.json`: six named tee-set official per-hole 18-yardage columns from https://golfclubne.com/The_Course (Black, Green, Blue, Red, White, Gold), pars, totals and source provenance.
+- `tools/match_scorecard_tees.py`: generic monotone tee-to-real-OSM-polygon matcher, uses full playing route for par 4/5 and direct tee-to-green distance for par 3, refuses fabricated pad positions and reports ambiguous nearby polygons. Independent sets can be excluded; shared pads are permitted for small yardage differences. Unit tests `tools/test_match_scorecard_tees.py` pass.
+- `research/course-coverage/results/gcne-partial-tee-matcher-v1.json`: first six-color simultaneous experiment; unambiguous provisional holes **Red 15, Blue 14, White 13, Black 13, Green 12, Gold 5** out of 18. **0/6 tee sets are validated or selectable.** Workflow success https://github.com/bpgpitt10/nova-v0/actions/runs/38176956754 .
+- `tools/evaluate_independent_tee_subsets.py` and `research/course-coverage/results/gcne-independent-tee-subsets-v1.json`: 57 subsets (2+ sets) analyzed to avoid missing Black/Gold contaminating promising tee assignments. **0 subsets currently match all 18 holes with our intentionally conservative confidence rules.** Best Green+Blue: 16/18 and 15/18, respectively; common failures Hole 12 and 17. Workflow success https://github.com/bpgpitt10/nova-v0/actions/runs/38177105176 .
+- `tools/diagnose_gcne_tee_ownership.py` and `research/course-coverage/results/gcne-tee-ownership-diagnostic-v1.json` explain likely recoverable nearby geometry; workflow success https://github.com/bpgpitt10/nova-v0/actions/runs/38177169274 .
+
+**Ownership evidence (not authorization to reassign):**
+- Hole 12: only two accepted physical OSM tee polygons. Another polygon `782712291` approximately 62.5 yards from Hole 12 route is associated with Hole 2 under current nearest-route rule. Its direct distance to Hole 12 green (~322.5 yd) closely matches Gold's published 322 yd, but the physical hole association is unverified.
+- Hole 16: mapped candidates `782757854` and `782757855` are just outside the 35-yard current-route threshold (40.0 and 54.9 yards); both are closest to Hole 16 and have plausible direct-to-green distances (~318 and ~292 yd). They are not accepted in the current matcher.
+- Hole 17: potential very short pads are classified with Hole 18 under nearest-route ownership; no safe automatic promotion. Direct distances to Hole 17 green are much shorter than the four currently accepted polygons.
+- Hole 14: several color assignments are possible but no OSM tee is close to the published Black championship 216 yards (accepted farthest pad ~165 yd to green center); this may be truly absent.
+
+**CRITICAL USER PRODUCT REQUIREMENT: PARTIAL TEE SUPPORT IS ALLOWED.**
+A course may ultimately be imported with only `Blue` and `Red`, for example,
+if each *exposed* real named tee set has a complete 18-hole reviewed physical
+mapping. Other physical tee polygons and colors may exist but must not appear
+in Round Setup. A missing `Gold` must never block `Blue`; only the
+supported subset should be used for live validation. Individual holes cannot
+quietly fall back to a guessed physical tee for an exposed tee set. The current
+runtime validator derives ALL tee sets from Hole 1 and has not yet been
+extended to accept a vetted partial subset; **do not relax it globally or
+publish the research-only tee matches**.
+
+**NEXT ENGINEERING PASS (small and constrained):** Prototype a generic
+scorecard-informed nearest-route ownership override for candidates just
+outside existing gate, with competing-hole collision prevention, and
+independent per-tee confidence. Repeat 57-subset test using recovery evidence,
+then visually review ONLY remaining ambiguous tees on holes 12 and 17 and
+check OSM/GSPro hole ownership. The key goal is to find at least one named
+tee set supported on all 18 holes without invented pads. Only then design
+a gated `approvedTeeSets` whitelist in import validator and Round Setup;
+do not let generic `Tee 1` leak as a selectable tee.
+No LiDAR redo is justified until that gate is met.
+
 ## Strict budget / restart discipline
 
 1. **Do not start 50 full LiDAR imports.** Begin with a read-only, geometry-only OSM preflight; measure coverage cheaply before making expensive packages.
