@@ -98,7 +98,7 @@ def main():
     if [c['number'] for c in courses]!=list(range(1,11)):raise RuntimeError('Frozen roster changed')
     collected={}
     evidence={'provenance':'Geofabrik state OSM extracts, OpenStreetMap ODbL 1.0; https://www.openstreetmap.org/copyright',
-        'observedAt':prior.timestamp(),'states':{}}
+        'observedAt':prior.timestamp(),'states':{},'snapshots':{}}
     for state in STATE_SLUGS:
         group=[c for c in courses if c['state']==state]
         if not group:continue
@@ -120,7 +120,12 @@ def main():
                     code='GSPro_NAME_AMBIGUOUS' if reason and reason.startswith('Ambiguous') else 'OSM_COURSE_NOT_FOUND'
                     collected[c['number']]=prior.missing_record(c,reason or '',code,'ambiguous' if code=='GSPro_NAME_AMBIGUOUS' else 'not_found')
                 else:
-                    collected[c['number']]=prior.survey(c,venue,elements,prior.timestamp())
+                    region=prior.bbox(venue)
+                    scoped=[e for e in elements if (positions:=prior.coords(e)) and any(prior.within(pos,region) for pos in positions)]
+                    evidence['snapshots'][str(c['number'])]={
+                        'course':c['gsproListingName'],'venue':venue,
+                        'elements':scoped,'stateExtract':info['source']}
+                    collected[c['number']]=prior.survey(c,venue,scoped,prior.timestamp())
         except Exception as error:
             reason=type(error).__name__+': '+str(error)[:450]
             evidence['states'][state]={'status':'source_error','error':reason}
