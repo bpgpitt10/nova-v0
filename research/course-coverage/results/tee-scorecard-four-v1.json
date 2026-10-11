@@ -1,0 +1,1080 @@
+{
+  "courseChecks": [
+    {
+      "course": "Links at Hiawatha Landing",
+      "decision": "NOT_VERIFIED: named tee-to-position matching remains unproven.",
+      "genericSlotCount": 4,
+      "holeCandidates": {
+        "1": [
+          {
+            "distanceToGreenCentroidYds": 277.6,
+            "genericTeeAliases": [
+              "Tee 4 (Front)"
+            ],
+            "genericTeeSet": "Tee 4 (Front)",
+            "osmId": 891039222,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 325.6,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 891039220,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 340.8,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 891039219,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 372.3,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 891039218,
+            "rawTags": {}
+          }
+        ],
+        "18": [
+          {
+            "distanceToGreenCentroidYds": 310.9,
+            "genericTeeAliases": [
+              "Tee 4 (Front)"
+            ],
+            "genericTeeSet": "Tee 4 (Front)",
+            "osmId": 893163561,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 336.2,
+            "genericTeeAliases": [],
+            "genericTeeSet": null,
+            "osmId": 893063689,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 347.8,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 893063688,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 360.1,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 893063687,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 377.8,
+            "genericTeeAliases": [],
+            "genericTeeSet": null,
+            "osmId": 893063686,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 409.5,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 893063685,
+            "rawTags": {}
+          }
+        ]
+      },
+      "holeTeeCandidateCount": {
+        "1": 4,
+        "10": 6,
+        "11": 4,
+        "12": 4,
+        "13": 4,
+        "14": 4,
+        "15": 5,
+        "16": 5,
+        "17": 6,
+        "18": 6,
+        "2": 4,
+        "3": 4,
+        "4": 5,
+        "5": 6,
+        "6": 4,
+        "7": 5,
+        "8": 4,
+        "9": 3
+      },
+      "holeTeePhysicalPolygons": {
+        "1": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1,
+        "16": 1,
+        "17": 1,
+        "18": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "holesWithTees": 18,
+      "modelErrors": {},
+      "modelGenericSlots": [
+        "Tee 1 (Back)",
+        "Tee 2",
+        "Tee 3",
+        "Tee 4 (Front)"
+      ],
+      "modeledHoleCount": 18,
+      "namedTeeCountDifference": 1,
+      "officialReference": {
+        "name": "Links at Hiawatha Landing",
+        "notes": "Five named distances confirmed on official front/back nine images. Some handwritten numbers on card have corrections; do not assume unsourced per-hole rows.",
+        "par": 72,
+        "source": "https://www.hiawathalinks.com/golf-course/course-information/layout-scorecard",
+        "sourceType": "official_scorecard_image",
+        "tees": {
+          "Back": 6586,
+          "Championship": 7104,
+          "Forward": 5801,
+          "Front": 5101,
+          "Middle": 6195
+        }
+      },
+      "publishedNamedTeeCount": 5,
+      "rosterNumber": 4,
+      "scorecardComparisonType": "reference comparison only; no coordinates verified against named real tee sets",
+      "sourceGeometryHoleCount": 18,
+      "validRealTeeSetMatched": false
+    },
+    {
+      "course": "Running Deer Golf Club",
+      "decision": "NOT_VERIFIED: named tee-to-position matching remains unproven.",
+      "genericSlotCount": 6,
+      "holeCandidates": {
+        "1": [
+          {
+            "distanceToGreenCentroidYds": 252.3,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 1154160140,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 326.9,
+            "genericTeeAliases": [
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 5",
+            "osmId": 1154160139,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 352.6,
+            "genericTeeAliases": [
+              "Tee 4"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 1154160138,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 366.8,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 1154160137,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 378.6,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 1154160136,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 387.6,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 1154160135,
+            "rawTags": {}
+          }
+        ],
+        "18": [
+          {
+            "distanceToGreenCentroidYds": 296.5,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 1154640861,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 339.3,
+            "genericTeeAliases": [
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 5",
+            "osmId": 1154640860,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 375.5,
+            "genericTeeAliases": [
+              "Tee 4"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 1154640859,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 410.2,
+            "genericTeeAliases": [],
+            "genericTeeSet": null,
+            "osmId": 1154640858,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 431.6,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 1154640857,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 447.9,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 1154640856,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 470.5,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 1154640855,
+            "rawTags": {}
+          }
+        ]
+      },
+      "holeTeeCandidateCount": {
+        "1": 6,
+        "10": 5,
+        "11": 3,
+        "12": 5,
+        "13": 1,
+        "14": 3,
+        "15": 3,
+        "16": 2,
+        "17": 2,
+        "18": 7,
+        "2": 4,
+        "3": 6,
+        "4": 3,
+        "5": 5,
+        "6": 3,
+        "7": 2,
+        "8": 4,
+        "9": 4
+      },
+      "holeTeePhysicalPolygons": {
+        "1": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1,
+        "16": 1,
+        "17": 1,
+        "18": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "holesWithTees": 18,
+      "modelErrors": {},
+      "modelGenericSlots": [
+        "Tee 1 (Back)",
+        "Tee 2",
+        "Tee 3",
+        "Tee 4",
+        "Tee 5",
+        "Tee 6 (Front)"
+      ],
+      "modeledHoleCount": 18,
+      "namedTeeCountDifference": -1,
+      "officialReference": {
+        "name": "Running Deer Golf Club",
+        "notes": "Official web page provides the five named totals and approximate selected-hole tip distances. Official scorecard card image has additional combo/split tees and rates; numbers cannot be treated as exact per-hole geometry.",
+        "par": 72,
+        "source": "https://runningdeergolfclub.com/course-details/",
+        "sourceType": "official_course_website",
+        "tees": {
+          "Black": 7024,
+          "Blue": 6601,
+          "Gold": 5681,
+          "Red": 4833,
+          "White": 6270
+        }
+      },
+      "officialTotalsVsGenericSlots": "Five published single-color tee sets, but OSM product model has six inferred generic tee slots; no evidence of one-to-one equivalence.",
+      "publishedNamedTeeCount": 5,
+      "rosterNumber": 7,
+      "scorecardComparisonType": "reference comparison only; no coordinates verified against named real tee sets",
+      "sourceGeometryHoleCount": 18,
+      "validRealTeeSetMatched": false
+    },
+    {
+      "course": "Samoset Golf Resort",
+      "decision": "NOT_VERIFIED: named tee-to-position matching remains unproven.",
+      "genericSlotCount": 4,
+      "holeCandidates": {
+        "1": [
+          {
+            "distanceToGreenCentroidYds": 252.5,
+            "genericTeeAliases": [
+              "Tee 4 (Front)"
+            ],
+            "genericTeeSet": "Tee 4 (Front)",
+            "osmId": 744467876,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 324.1,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 744467875,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 358.5,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 744467874,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 391.9,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 744467873,
+            "rawTags": {}
+          }
+        ],
+        "18": [
+          {
+            "distanceToGreenCentroidYds": 357.7,
+            "genericTeeAliases": [
+              "Tee 4 (Front)"
+            ],
+            "genericTeeSet": "Tee 4 (Front)",
+            "osmId": 744626781,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 407.9,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 744626780,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 436.2,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 744626779,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 465.7,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 744626778,
+            "rawTags": {}
+          }
+        ]
+      },
+      "holeTeeCandidateCount": {
+        "1": 4,
+        "10": 3,
+        "11": 3,
+        "12": 3,
+        "13": 3,
+        "14": 2,
+        "15": 2,
+        "16": 1,
+        "17": 3,
+        "18": 4,
+        "2": 4,
+        "3": 4,
+        "4": 2,
+        "5": 3,
+        "6": 2,
+        "7": 1,
+        "8": 3,
+        "9": 3
+      },
+      "holeTeePhysicalPolygons": {
+        "1": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1,
+        "16": 1,
+        "17": 1,
+        "18": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "holesWithTees": 18,
+      "modelErrors": {},
+      "modelGenericSlots": [
+        "Tee 1 (Back)",
+        "Tee 2",
+        "Tee 3",
+        "Tee 4 (Front)"
+      ],
+      "modeledHoleCount": 18,
+      "namedTeeCountDifference": -3,
+      "officialHole14GoldVsAnyOSMTee": {
+        "candidateGreenCentroidYards": [
+          436.4,
+          485.1
+        ],
+        "caveat": "Par-5 dogleg published yardage is NOT interchangeable with tee-to-green straight line",
+        "publishedGoldYards": 545
+      },
+      "officialReference": {
+        "conflictSources": [
+          "https://gcr.foretee.com/golf-course-scorecard/maine/rockport/usa/samoset-resort-golf-course/6545/",
+          "https://zommagolf.com/courses/me/samoset-resort"
+        ],
+        "name": "Samoset Golf Resort",
+        "notes": "Official resort calls H14 a 545-yard Gold par 5. Unaffiliated scorecard sources materially disagree on hole pars and totals; do not ingest those as canonical.",
+        "par": null,
+        "source": "https://www.opalcollection.com/samoset/golf/",
+        "sourceType": "official_course_website",
+        "tees": {
+          "Gold": null
+        }
+      },
+      "publishedNamedTeeCount": 1,
+      "rosterNumber": 8,
+      "scorecardComparisonType": "reference comparison only; no coordinates verified against named real tee sets",
+      "sourceGeometryHoleCount": 18,
+      "validRealTeeSetMatched": false
+    },
+    {
+      "course": "The Golf Club of New England",
+      "decision": "NOT_VERIFIED: named tee-to-position matching remains unproven.",
+      "genericSlotCount": 6,
+      "holeCandidates": {
+        "1": [
+          {
+            "distanceToGreenCentroidYds": 267.2,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782757872,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 345.1,
+            "genericTeeAliases": [
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 5",
+            "osmId": 782712272,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 365.1,
+            "genericTeeAliases": [
+              "Tee 4"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 782712271,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 385.9,
+            "genericTeeAliases": [
+              "Tee 3"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782712270,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 405.6,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 782712269,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 441.0,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782712268,
+            "rawTags": {}
+          }
+        ],
+        "14": [
+          {
+            "distanceToGreenCentroidYds": 102.0,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782757835,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 117.8,
+            "genericTeeAliases": [
+              "Tee 4",
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 782757834,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 138.0,
+            "genericTeeAliases": [
+              "Tee 3",
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782757833,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 165.0,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782757832,
+            "rawTags": {}
+          }
+        ],
+        "17": [
+          {
+            "distanceToGreenCentroidYds": 132.1,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782757863,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 155.0,
+            "genericTeeAliases": [
+              "Tee 4",
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 782757862,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 161.0,
+            "genericTeeAliases": [
+              "Tee 3",
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782757861,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 184.0,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782757860,
+            "rawTags": {}
+          }
+        ],
+        "18": [
+          {
+            "distanceToGreenCentroidYds": 359.7,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782698263,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 390.1,
+            "genericTeeAliases": [
+              "Tee 4",
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 4",
+            "osmId": 782698262,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 427.6,
+            "genericTeeAliases": [
+              "Tee 3",
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782698261,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 456.5,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782698260,
+            "rawTags": {}
+          }
+        ],
+        "6": [
+          {
+            "distanceToGreenCentroidYds": 147.4,
+            "genericTeeAliases": [
+              "Tee 6 (Front)",
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782764591,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 165.8,
+            "genericTeeAliases": [
+              "Tee 3",
+              "Tee 4"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782764590,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 200.0,
+            "genericTeeAliases": [
+              "Tee 1 (Back)",
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782764589,
+            "rawTags": {}
+          }
+        ],
+        "8": [
+          {
+            "distanceToGreenCentroidYds": 172.1,
+            "genericTeeAliases": [
+              "Tee 6 (Front)"
+            ],
+            "genericTeeSet": "Tee 6 (Front)",
+            "osmId": 782764610,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 193.6,
+            "genericTeeAliases": [
+              "Tee 5"
+            ],
+            "genericTeeSet": "Tee 5",
+            "osmId": 782764609,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 208.0,
+            "genericTeeAliases": [
+              "Tee 3",
+              "Tee 4"
+            ],
+            "genericTeeSet": "Tee 3",
+            "osmId": 782764608,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 221.3,
+            "genericTeeAliases": [
+              "Tee 2"
+            ],
+            "genericTeeSet": "Tee 2",
+            "osmId": 782764607,
+            "rawTags": {}
+          },
+          {
+            "distanceToGreenCentroidYds": 242.3,
+            "genericTeeAliases": [
+              "Tee 1 (Back)"
+            ],
+            "genericTeeSet": "Tee 1 (Back)",
+            "osmId": 782764606,
+            "rawTags": {}
+          }
+        ]
+      },
+      "holeTeeCandidateCount": {
+        "1": 6,
+        "10": 5,
+        "11": 4,
+        "12": 2,
+        "13": 3,
+        "14": 4,
+        "15": 4,
+        "16": 2,
+        "17": 4,
+        "18": 4,
+        "2": 5,
+        "3": 4,
+        "4": 5,
+        "5": 5,
+        "6": 3,
+        "7": 5,
+        "8": 5,
+        "9": 6
+      },
+      "holeTeePhysicalPolygons": {
+        "1": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1,
+        "16": 1,
+        "17": 1,
+        "18": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1
+      },
+      "holesWithTees": 18,
+      "modelErrors": {},
+      "modelGenericSlots": [
+        "Tee 1 (Back)",
+        "Tee 2",
+        "Tee 3",
+        "Tee 4",
+        "Tee 5",
+        "Tee 6 (Front)"
+      ],
+      "modeledHoleCount": 18,
+      "namedTeeCountDifference": 2,
+      "officialReference": {
+        "name": "The Golf Club of New England",
+        "notes": "Official PDF includes eight separately named lines, some using shared physical tees or split tee combinations. Our OSM compiler infers six generic course-wide tee slots, so simple rank-based label mapping is incomplete.",
+        "par": 72,
+        "par3Holes": [
+          6,
+          8,
+          14,
+          17
+        ],
+        "source": "https://golfclubne.com/getmedia/9090d63e-a9b9-40fb-806e-b2f8adea8aef/Scorecard_Outside.aspx",
+        "sourceType": "official_scorecard_pdf",
+        "tees": {
+          "Black": 7673,
+          "Blue": 6561,
+          "Gold": 4802,
+          "Gold/White": 5313,
+          "Green": 7024,
+          "Red": 6139,
+          "USGA JR AM": 7178,
+          "White": 5797
+        }
+      },
+      "par3NearestAnyTeeDiagnostic": {
+        "Black": {
+          "medianMinAbsoluteDifferenceYds": 30.0,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 23.0,
+              "closestDistanceToGreenCentroidYds": 200.0,
+              "closestPhysicalTeeOsmId": 782764589,
+              "hole": 6,
+              "publishedYards": 223
+            },
+            {
+              "absoluteDifferenceYds": 7.7,
+              "closestDistanceToGreenCentroidYds": 242.3,
+              "closestPhysicalTeeOsmId": 782764606,
+              "hole": 8,
+              "publishedYards": 250
+            },
+            {
+              "absoluteDifferenceYds": 51.0,
+              "closestDistanceToGreenCentroidYds": 165.0,
+              "closestPhysicalTeeOsmId": 782757832,
+              "hole": 14,
+              "publishedYards": 216
+            },
+            {
+              "absoluteDifferenceYds": 37.0,
+              "closestDistanceToGreenCentroidYds": 184.0,
+              "closestPhysicalTeeOsmId": 782757860,
+              "hole": 17,
+              "publishedYards": 221
+            }
+          ],
+          "sampleCount": 4
+        },
+        "Blue": {
+          "medianMinAbsoluteDifferenceYds": 8.1,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 10.2,
+              "closestDistanceToGreenCentroidYds": 165.8,
+              "closestPhysicalTeeOsmId": 782764590,
+              "hole": 6,
+              "publishedYards": 176
+            },
+            {
+              "absoluteDifferenceYds": 6.0,
+              "closestDistanceToGreenCentroidYds": 208.0,
+              "closestPhysicalTeeOsmId": 782764608,
+              "hole": 8,
+              "publishedYards": 202
+            },
+            {
+              "absoluteDifferenceYds": 13.0,
+              "closestDistanceToGreenCentroidYds": 138.0,
+              "closestPhysicalTeeOsmId": 782757833,
+              "hole": 14,
+              "publishedYards": 151
+            },
+            {
+              "absoluteDifferenceYds": 2.0,
+              "closestDistanceToGreenCentroidYds": 161.0,
+              "closestPhysicalTeeOsmId": 782757861,
+              "hole": 17,
+              "publishedYards": 159
+            }
+          ],
+          "sampleCount": 4
+        },
+        "Gold": {
+          "medianMinAbsoluteDifferenceYds": 34.2,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 16.4,
+              "closestDistanceToGreenCentroidYds": 147.4,
+              "closestPhysicalTeeOsmId": 782764591,
+              "hole": 6,
+              "publishedYards": 131
+            },
+            {
+              "absoluteDifferenceYds": 52.1,
+              "closestDistanceToGreenCentroidYds": 172.1,
+              "closestPhysicalTeeOsmId": 782764610,
+              "hole": 8,
+              "publishedYards": 120
+            },
+            {
+              "absoluteDifferenceYds": 1.0,
+              "closestDistanceToGreenCentroidYds": 102.0,
+              "closestPhysicalTeeOsmId": 782757835,
+              "hole": 14,
+              "publishedYards": 101
+            },
+            {
+              "absoluteDifferenceYds": 56.1,
+              "closestDistanceToGreenCentroidYds": 132.1,
+              "closestPhysicalTeeOsmId": 782757863,
+              "hole": 17,
+              "publishedYards": 76
+            }
+          ],
+          "sampleCount": 4
+        },
+        "Green": {
+          "medianMinAbsoluteDifferenceYds": 6.5,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 6.0,
+              "closestDistanceToGreenCentroidYds": 200.0,
+              "closestPhysicalTeeOsmId": 782764589,
+              "hole": 6,
+              "publishedYards": 206
+            },
+            {
+              "absoluteDifferenceYds": 6.0,
+              "closestDistanceToGreenCentroidYds": 208.0,
+              "closestPhysicalTeeOsmId": 782764608,
+              "hole": 8,
+              "publishedYards": 214
+            },
+            {
+              "absoluteDifferenceYds": 10.0,
+              "closestDistanceToGreenCentroidYds": 165.0,
+              "closestPhysicalTeeOsmId": 782757832,
+              "hole": 14,
+              "publishedYards": 175
+            },
+            {
+              "absoluteDifferenceYds": 7.0,
+              "closestDistanceToGreenCentroidYds": 161.0,
+              "closestPhysicalTeeOsmId": 782757861,
+              "hole": 17,
+              "publishedYards": 168
+            }
+          ],
+          "sampleCount": 4
+        },
+        "Red": {
+          "medianMinAbsoluteDifferenceYds": 5.8,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 5.8,
+              "closestDistanceToGreenCentroidYds": 165.8,
+              "closestPhysicalTeeOsmId": 782764590,
+              "hole": 6,
+              "publishedYards": 160
+            },
+            {
+              "absoluteDifferenceYds": 5.9,
+              "closestDistanceToGreenCentroidYds": 172.1,
+              "closestPhysicalTeeOsmId": 782764610,
+              "hole": 8,
+              "publishedYards": 178
+            },
+            {
+              "absoluteDifferenceYds": 2.0,
+              "closestDistanceToGreenCentroidYds": 138.0,
+              "closestPhysicalTeeOsmId": 782757833,
+              "hole": 14,
+              "publishedYards": 140
+            },
+            {
+              "absoluteDifferenceYds": 7.0,
+              "closestDistanceToGreenCentroidYds": 155.0,
+              "closestPhysicalTeeOsmId": 782757862,
+              "hole": 17,
+              "publishedYards": 148
+            }
+          ],
+          "sampleCount": 4
+        },
+        "White": {
+          "medianMinAbsoluteDifferenceYds": 7.5,
+          "sample": [
+            {
+              "absoluteDifferenceYds": 8.6,
+              "closestDistanceToGreenCentroidYds": 147.4,
+              "closestPhysicalTeeOsmId": 782764591,
+              "hole": 6,
+              "publishedYards": 156
+            },
+            {
+              "absoluteDifferenceYds": 5.9,
+              "closestDistanceToGreenCentroidYds": 172.1,
+              "closestPhysicalTeeOsmId": 782764610,
+              "hole": 8,
+              "publishedYards": 178
+            },
+            {
+              "absoluteDifferenceYds": 8.0,
+              "closestDistanceToGreenCentroidYds": 138.0,
+              "closestPhysicalTeeOsmId": 782757833,
+              "hole": 14,
+              "publishedYards": 130
+            },
+            {
+              "absoluteDifferenceYds": 7.0,
+              "closestDistanceToGreenCentroidYds": 155.0,
+              "closestPhysicalTeeOsmId": 782757862,
+              "hole": 17,
+              "publishedYards": 148
+            }
+          ],
+          "sampleCount": 4
+        }
+      },
+      "publishedNamedTeeCount": 8,
+      "rosterNumber": 10,
+      "scorecardComparisonType": "reference comparison only; no coordinates verified against named real tee sets",
+      "sourceGeometryHoleCount": 18,
+      "validRealTeeSetMatched": false
+    }
+  ],
+  "method": "Cached OSM geometry v6 tee candidates compared with separately published official tee names/yardages; no edits and no external API calls",
+  "observedAt": "2026-10-11",
+  "schemaVersion": "looper-osm-official-scorecard-spotcheck-v1"
+}
