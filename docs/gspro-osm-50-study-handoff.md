@@ -109,6 +109,37 @@ a gated `approvedTeeSets` whitelist in import validator and Round Setup;
 do not let generic `Tee 1` leak as a selectable tee.
 No LiDAR redo is justified until that gate is met.
 
+## October 11 final controlled cutoff experiment
+
+`tools/test_scorecard_tee_route_gap_recovery.py` and
+`research/course-coverage/results/gcne-evidence-only-tee-recovery-v1.json`
+compare **current 35-yard** ownership with **research-only 65-yard** acceptance
+for polygons closest to the same hole route. GitHub run:
+https://github.com/bpgpitt10/nova-v0/actions/runs/38177327059 (PASS).
+It recovered three OSM polygons: one on H5 (`782764581`, route gap
+36.3 yds) and two on H16 (`782757854` at 40 yds and `782757855` at
+54.9 yds). **This did not improve the count of complete 18-hole tee
+subsets**, and some selected-color assignments became more ambiguous or
+regressed. E.g. Green/Blue still only show 16/18 and 15/18 unambiguous
+research matches. **Do not change the 35-yard production cutoff blindly.**
+The most important ambiguity is still H12/H17 and collision with adjacent
+holes. Geographic evidence, scorecard per-hole distances, and shared-tee
+semantics need more precise treatment before any named tee can be offered.
+
+**Current durable state / product gating:** Scorecard fixture exists;
+partial named-set research matcher and regression tests are passing; four
+report files preserve all diagnostics; **zero GCNE tee sets are approved
+for live play** and no imported course has been published from this
+experiment. The product objective remains: permit a subset of scorecard
+tee sets if and only if each approved set has 18/18 physically grounded
+and independently reviewed hole assignments. Keep unverified sets hidden.
+Next high-value work: (a) inspect actual near-route OSM tee geometry
+around holes 12 and 17 on a georeferenced map and compare the intended
+routes/scorecard positions; (b) improve joint assignment ambiguity
+handling where shared pads have nearby alternate OSM polygons; (c)
+re-run the independent subset test; (d) *only if at least one set meets
+review criteria* implement an allowlist in runtime import/Round Setup.
+
 ## Strict budget / restart discipline
 
 1. **Do not start 50 full LiDAR imports.** Begin with a read-only, geometry-only OSM preflight; measure coverage cheaply before making expensive packages.
