@@ -66,6 +66,91 @@ def get_candidates(name, timeout=25):
             break
     return candidates
 
+PHOTON_API = "https://photon.komoot.io/api/"
+OSM_CORE_MAP = "https://api.openstreetmap.org/api/0.6/map"
+
+def location_candidates(name, timeout=25):
+    """One bounded Photon place lookup; reject generic non-golf POIs."""
+    query = name if "golf" in norm(name).split() else name + " golf club"
+    params = urllib.parse.urlencode({"q": query, "limit": 10, "lang": "en"})
+    request = urllib.request.Request(PHOTON_API + "?" + params, headers={
+        "User-Agent": UA, "Accept": "application/json"
+    })
+    with urllib.request.urlopen(request, timeout=timeout) as resp:
+        data = json.load(resp)
+    found = []
+    for item in data.get("features", []):
+        props = item.get("properties") or {}
+        coordinate = (item.get("geometry") or {}).get("coordinates") or []
+        if len(coordinate) < 2:
+            continue
+        label = str(props.get("name") or "")
+        # Accept golf-related place features, but never trust them as source geometry.
+        if not name_matches(name, label):
+            continue
+        golf = (props.get("osm_key") == "leisure" and props.get("osm_value") == "golf_course")
+        if not golf and not ("golf" in norm(label).split() and props.get("osm_key") in {"leisure", "sport"}):
+            continue
+        try:
+            lon, lat = float(coordinate[0]), float(coordinate[1])
+        except (ValueError, TypeError):
+            continue
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            continue
+        found.append({"label": label, "lat": lat, "lon": lon, "city": props.get("city") or props.get("county"),
+                      "state": props.get("state") or props.get("country"), "osm_id": props.get("osm_id")})
+    print("Photon geographic candidates:", json.dumps(found), flush=True)
+    return found
+
+def nearby_osm_course_boundaries(lat, lon, timeout=45):
+    """Read a single bounded OSM map tile near the geocoded golf venue."""
+    import xml.etree.ElementTree as ET
+    import math
+    lat_delta = 2.5 / 111.2
+    lon_delta = 2.5 / (111.2 * max(0.3, math.cos(math.radians(lat))))
+    bounds = [lon-lon_delta, lat-lat_delta, lon+lon_delta, lat+lat_delta]
+    url = OSM_CORE_MAP + "?" + urllib.parse.urlencode({
+        "bbox": ",".join(f"{v:.6f}" for v in bounds)
+    })
+    request = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/xml"})
+    with urllib.request.urlopen(request, timeout=timeout) as resp:
+        root = ET.fromstring(resp.read())
+    output = []
+    for element in root:
+        if element.tag not in {"way", "relation"}:
+            continue
+        tags = {x.get("k"): x.get("v") for x in element.findall("tag")}
+        if tags.get("leisure") != "golf_course":
+            continue
+        if not tags.get("name"):
+            continue
+        output.append({"osm_type": element.tag, "osm_id": int(element.attrib["id"]),
+                       "category": "leisure", "type": "golf_course",
+                       "namedetails": {"name": tags["name"]},
+                       "display_name": tags["name"],
+                       "extratags": {"leisure": "golf_course"},
+                       "lat": lat, "lon": lon})
+    return output
+
+def geographically_resolve(name, timeout=25):
+    """Only unambiguous geocoded venues and exact named OSM boundaries qualify."""
+    sites = location_candidates(name, timeout)
+    unique_sites = list({(round(site["lat"], 4), round(site["lon"], 4)): site for site in sites}.values())
+    if len(unique_sites) != 1:
+        raise ValueError(f"Geographic fallback located {len(unique_sites)} plausible golf venues for {name!r}; refusing an ambiguous or unlocated import")
+    site = unique_sites[0]
+    boundaries = nearby_osm_course_boundaries(site["lat"], site["lon"], timeout=max(timeout, 45))
+    matching = [b for b in boundaries if name_matches(name, b["namedetails"]["name"])]
+    if len(matching) != 1:
+        raise ValueError(f"Golf venue located at {site['lat']:.5f},{site['lon']:.5f}, "
+                         f"but {len(matching)} matching OSM course boundaries found; cannot import without geometry")
+    candidate = matching[0]
+    # Use independent place service for location only, core OSM for the authoritative boundary.
+    candidate["address"] = {"city": site["city"], "state": site["state"]}
+    print("Spatial boundary confirmed:", json.dumps({"name": candidate["namedetails"]["name"],
+        "type":candidate["osm_type"],"id":candidate["osm_id"],"location":site}), flush=True)
+    return [candidate]
+
 def resolve(name, candidates):
     valid=[]
     raw_summaries=[{"name":(x.get("namedetails") or {}).get("name"),"display":str(x.get("display_name") or "")[:160],"category":x.get("category"),"type":x.get("type"),"osm_type":x.get("osm_type"),"osm_id":x.get("osm_id"),"extratags":{k:v for k,v in (x.get("extratags") or {}).items() if k in {"golf","leisure"}}} for x in candidates]
@@ -112,13 +197,34 @@ def main():
     name=args.name.strip()
     started=time.monotonic()
     audit={"schemaVersion":"looper-course-discovery-v1","requestedName":name,
-           "requestedAt":args.requested_at or None,"source":"OpenStreetMap Nominatim single lookup"}
+           "requestedAt":args.requested_at or None,"source":"OSM Nominatim name search; Photon place fallback; exact OSM core spatial boundary"}
     try:
         if len(name)<3 or len(name)>120:
             raise ValueError("Course name must contain 3-120 characters")
         candidates=json.loads(args.fixture.read_text()) if args.fixture else get_candidates(name)
         audit["candidateCount"]=len(candidates)
-        config=resolve(name,candidates)
+        try:
+            config=resolve(name,candidates)
+            audit["discoveryMethod"]="osm-name"
+        except ValueError as name_error:
+            # Fixture tests are deterministic, and ambiguity is not authority
+            # to select a different course via fuzzy geography.
+            if args.fixture:
+                raise
+            raw_matches=[
+                x for x in candidates
+                if is_golf_boundary(x) and name_matches(name,(x.get("namedetails") or {}).get("name") or str(x.get("display_name","")).split(",")[0])
+            ]
+            if raw_matches:
+                raise
+            print("OSM name search found no matching golf boundary; trying one location-first fallback.",flush=True)
+            try:
+                geo_candidates=geographically_resolve(name)
+                config=resolve(name,geo_candidates)
+                audit["discoveryMethod"]="photon-place-plus-osm-spatial"
+                audit["candidateCount"]+=len(geo_candidates)
+            except Exception as geo_error:
+                raise ValueError(f"OSM name lookup failed ({name_error}); geographic fallback: {geo_error}") from geo_error
         p=args.config_directory/(config["slug"]+"-v1.json")
         if p.exists():
             raise ValueError(f"Refusing to overwrite existing course config: {p}")
