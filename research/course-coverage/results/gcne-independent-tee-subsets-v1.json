@@ -1,0 +1,1258 @@
+{
+  "allFullSubsetCombinations": [],
+  "bestCandidateSubsets": [
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Green",
+        "Blue"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 15,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575208,
+            "11": 782712280,
+            "13": 782757827,
+            "14": 782757832,
+            "15": 782757844,
+            "16": 782757852,
+            "18": 782698261,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764576,
+            "6": 782764589,
+            "7": 782764596,
+            "8": 782764607,
+            "9": 782776563
+          },
+          "name": "Green",
+          "unambiguousCount": 16,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575209,
+            "11": 782712281,
+            "13": 782757827,
+            "14": 782757833,
+            "15": 782757845,
+            "16": 782757853,
+            "18": 782698262,
+            "2": 782757883,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764590,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 31
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Green",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 15,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575206,
+            "11": 782712281,
+            "13": 782757827,
+            "14": 782757832,
+            "15": 782757844,
+            "16": 782757852,
+            "18": 782698261,
+            "2": 782757881,
+            "3": 782757892,
+            "4": 782757899,
+            "5": 782764575,
+            "6": 782764589,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776563
+          },
+          "name": "Green",
+          "unambiguousCount": 16,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575208,
+            "11": 782712283,
+            "13": 782757828,
+            "14": 782757834,
+            "15": 782757846,
+            "17": 782757863,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757893,
+            "4": 782764568,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 31
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Green",
+        "Red"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 15,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575208,
+            "11": 782712280,
+            "13": 782757827,
+            "14": 782757832,
+            "15": 782757844,
+            "18": 782698261,
+            "2": 782757881,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764575,
+            "6": 782764589,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776565
+          },
+          "name": "Green",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "DISTANCE_RESIDUAL_HIGH"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575209,
+            "11": 782712282,
+            "13": 782757828,
+            "14": 782757833,
+            "15": 782757846,
+            "16": 782757853,
+            "17": 782757863,
+            "18": 782698263,
+            "2": 782757883,
+            "3": 782757892,
+            "4": 782764569,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "Red",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 6,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 30
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Blue",
+        "Red",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 14,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575208,
+            "11": 782712280,
+            "13": 782757827,
+            "14": 782757833,
+            "15": 782757843,
+            "16": 782757852,
+            "18": 782698262,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764576,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 16,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575208,
+            "13": 782757828,
+            "15": 782757845,
+            "16": 782757852,
+            "18": 782698263,
+            "2": 782757883,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764577,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776566
+          },
+          "name": "Red",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 11,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575209,
+            "11": 782712282,
+            "13": 782757828,
+            "14": 782757834,
+            "15": 782757845,
+            "16": 782757853,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 45
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Green",
+        "Blue",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 14,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575206,
+            "11": 782712281,
+            "13": 782757827,
+            "14": 782757832,
+            "15": 782757844,
+            "16": 782757852,
+            "18": 782698261,
+            "2": 782757881,
+            "4": 782764567,
+            "5": 782764575,
+            "6": 782764589,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776563
+          },
+          "name": "Green",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 3,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575207,
+            "13": 782757827,
+            "14": 782757833,
+            "15": 782757845,
+            "16": 782757853,
+            "18": 782698262,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764576,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 11,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575208,
+            "11": 782712283,
+            "13": 782757828,
+            "14": 782757834,
+            "15": 782757846,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 44
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Blue",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 14,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575208,
+            "11": 782712280,
+            "13": 782757827,
+            "14": 782757833,
+            "15": 782757845,
+            "16": 782757852,
+            "18": 782698262,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764576,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 16,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575209,
+            "11": 782712282,
+            "13": 782757828,
+            "14": 782757834,
+            "15": 782757846,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "DISTANCE_RESIDUAL_HIGH"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 30
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Red",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 14,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575208,
+            "11": 782712280,
+            "13": 782757828,
+            "14": 782757833,
+            "16": 782757852,
+            "18": 782698263,
+            "2": 782757883,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764577,
+            "6": 782764590,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776566
+          },
+          "name": "Red",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 15,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575209,
+            "11": 782712281,
+            "13": 782757828,
+            "15": 782757844,
+            "16": 782757853,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764590,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 29
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Blue",
+        "Red"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 14,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575207,
+            "11": 782712281,
+            "13": 782757827,
+            "14": 782757833,
+            "18": 782698262,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764577,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 15,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575207,
+            "11": 782712282,
+            "13": 782757828,
+            "15": 782757845,
+            "16": 782757853,
+            "18": 782698263,
+            "2": 782757883,
+            "3": 782757891,
+            "4": 782764568,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776566
+          },
+          "name": "Red",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 28
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Green",
+        "Blue",
+        "Red",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 13,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575207,
+            "11": 782712280,
+            "13": 782757827,
+            "14": 782757832,
+            "15": 782757844,
+            "16": 782757852,
+            "18": 782698261,
+            "2": 782757881,
+            "4": 782764567,
+            "5": 782764575,
+            "6": 782764589,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776563
+          },
+          "name": "Green",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 3,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575208,
+            "11": 782712281,
+            "13": 782757827,
+            "14": 782757833,
+            "15": 782757845,
+            "16": 782757853,
+            "18": 782698262,
+            "2": 782757882,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764576,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 16,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575208,
+            "11": 782712282,
+            "13": 782757828,
+            "15": 782757846,
+            "16": 782757853,
+            "18": 782698263,
+            "2": 782757883,
+            "3": 782757891,
+            "4": 782764568,
+            "5": 782764577,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776566
+          },
+          "name": "Red",
+          "unambiguousCount": 15,
+          "unresolved": [
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712271,
+            "10": 782575209,
+            "13": 782757828,
+            "14": 782757834,
+            "15": 782757846,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757892,
+            "4": 782764569,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 13,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 11,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 59
+    },
+    {
+      "all18SupportedSubset": false,
+      "evaluatedTeeSets": [
+        "Black",
+        "Green",
+        "Blue",
+        "White"
+      ],
+      "full18ProvisionalTees": [],
+      "minimumCoverage": 13,
+      "perTeeSet": [
+        {
+          "coveredHoleIds": {
+            "1": 782712268,
+            "10": 782575206,
+            "11": 782712280,
+            "13": 782757827,
+            "15": 782757843,
+            "17": 782757860,
+            "2": 782757880,
+            "3": 782757891,
+            "4": 782757899,
+            "5": 782764575,
+            "7": 782764596,
+            "8": 782764606,
+            "9": 782776562
+          },
+          "name": "Black",
+          "unambiguousCount": 13,
+          "unresolved": [
+            {
+              "hole": 6,
+              "reasons": [
+                "DISTANCE_RESIDUAL_HIGH"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 18,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712269,
+            "10": 782575207,
+            "11": 782712281,
+            "13": 782757827,
+            "15": 782757844,
+            "18": 782698261,
+            "2": 782757881,
+            "3": 782757892,
+            "4": 782764567,
+            "5": 782764576,
+            "7": 782764597,
+            "8": 782764608,
+            "9": 782776563
+          },
+          "name": "Green",
+          "unambiguousCount": 13,
+          "unresolved": [
+            {
+              "hole": 6,
+              "reasons": [
+                "SHARED_PAD_BUT_DISTINCT_SCORECARD_YARDAGES"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "LARGE_HOLE_DISTANCE_OFFSET"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 17,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712270,
+            "10": 782575208,
+            "13": 782757827,
+            "15": 782757845,
+            "16": 782757853,
+            "17": 782757863,
+            "18": 782698262,
+            "2": 782757882,
+            "4": 782764568,
+            "6": 782764590,
+            "7": 782764598,
+            "8": 782764609,
+            "9": 782776565
+          },
+          "name": "Blue",
+          "unambiguousCount": 13,
+          "unresolved": [
+            {
+              "hole": 3,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 5,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 11,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "LARGE_HOLE_DISTANCE_OFFSET"
+              ]
+            }
+          ]
+        },
+        {
+          "coveredHoleIds": {
+            "1": 782712272,
+            "10": 782575209,
+            "11": 782712283,
+            "13": 782757828,
+            "15": 782757846,
+            "17": 782757863,
+            "18": 782698263,
+            "2": 782757884,
+            "3": 782757893,
+            "4": 782764569,
+            "6": 782764591,
+            "7": 782764599,
+            "8": 782764610,
+            "9": 782776567
+          },
+          "name": "White",
+          "unambiguousCount": 14,
+          "unresolved": [
+            {
+              "hole": 5,
+              "reasons": [
+                "DISTANCE_RESIDUAL_HIGH",
+                "ALTERNATIVE_PAD_ALMOST_AS_CLOSE"
+              ]
+            },
+            {
+              "hole": 12,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            },
+            {
+              "hole": 14,
+              "reasons": [
+                "LARGE_HOLE_DISTANCE_OFFSET"
+              ]
+            },
+            {
+              "hole": 16,
+              "reasons": [
+                "NO_MATCH_WITHIN_DISTANCE_WINDOW"
+              ]
+            }
+          ]
+        }
+      ],
+      "totalUnambiguousAssignments": 53
+    }
+  ],
+  "candidatePairsOrMore": 0,
+  "course": "The Golf Club of New England",
+  "liveSelectable": [],
+  "maxSimultaneouslySupportableProvisionalSets": 0,
+  "notes": "Subsets are selected for diagnostic ranking, not approved or held-out verified. Needs review against actual tee-pad imagery or GSPro positions before exposure.",
+  "schemaVersion": "looper-independent-tee-subset-test-v1",
+  "scorecardSource": "https://golfclubne.com/The_Course",
+  "testedSubsetCount": 57,
+  "unavailableSetsRemainHidden": true,
+  "unsupportedSetDoesNotBlockOtherSubsets": true
+}
