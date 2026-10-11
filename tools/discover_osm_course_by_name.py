@@ -76,23 +76,35 @@ def main():
     parser.add_argument("--fixture",type=Path,help="Only for offline tests; never use in live workflow")
     args=parser.parse_args()
     name=args.name.strip()
-    if len(name)<3 or len(name)>120: raise ValueError("Course name must contain 3-120 characters")
     started=time.monotonic()
-    candidates=json.loads(args.fixture.read_text()) if args.fixture else get_candidates(name)
-    config=resolve(name,candidates)
-    p=args.config_directory/(config["slug"]+"-v1.json")
-    if p.exists():
-        raise ValueError(f"Refusing to overwrite existing course config: {p}")
-    request={"courseSlug":config["slug"],"configPath":str(p),"reason":"user-name-cold-import"}
     audit={"schemaVersion":"looper-course-discovery-v1","requestedName":name,
-           "requestedAt":args.requested_at or None,"resolvedAt":now(),
-           "discoveryWallSeconds":round(time.monotonic()-started,3),
-           "candidateCount":len(candidates),"acceptedOsm":config["osmCourseElement"],
-           "configPath":str(p),"status":"resolved","source":"OpenStreetMap Nominatim single lookup"}
-    for path,payload in [(p,config),(args.rebuild_request,request),(args.discovery_audit,audit)]:
-        path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
-    print(json.dumps(audit,indent=2))
+           "requestedAt":args.requested_at or None,"source":"OpenStreetMap Nominatim single lookup"}
+    try:
+        if len(name)<3 or len(name)>120:
+            raise ValueError("Course name must contain 3-120 characters")
+        candidates=json.loads(args.fixture.read_text()) if args.fixture else get_candidates(name)
+        audit["candidateCount"]=len(candidates)
+        config=resolve(name,candidates)
+        p=args.config_directory/(config["slug"]+"-v1.json")
+        if p.exists():
+            raise ValueError(f"Refusing to overwrite existing course config: {p}")
+        request={"courseSlug":config["slug"],"configPath":str(p),"reason":"user-name-cold-import"}
+        audit.update({"courseSlug":config["slug"],"acceptedOsm":config["osmCourseElement"],
+                      "configPath":str(p),"status":"resolved"})
+        p.parent.mkdir(parents=True,exist_ok=True)
+        p.write_text(json.dumps(config,indent=2)+"\\n",encoding="utf-8")
+        args.rebuild_request.parent.mkdir(parents=True,exist_ok=True)
+        args.rebuild_request.write_text(json.dumps(request,indent=2)+"\\n",encoding="utf-8")
+    except Exception as exc:
+        audit.update({"status":"failed","errorType":type(exc).__name__,"error":str(exc)[:1200]})
+        raise
+    finally:
+        audit["resolvedAt"]=now()
+        audit["discoveryWallSeconds"]=round(time.monotonic()-started,3)
+        args.discovery_audit.parent.mkdir(parents=True,exist_ok=True)
+        args.discovery_audit.write_text(json.dumps(audit,indent=2)+"\\n",encoding="utf-8")
+        print(json.dumps(audit,indent=2))
+
 
 if __name__=="__main__":
     main()

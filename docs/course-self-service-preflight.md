@@ -39,14 +39,16 @@ Do not turn on this dispatcher for production or non-admin accounts until
 authentication, rate limits, observability and API-level tests have passed.
 
 ## Timing and status facts
-- `artifacts/course-discovery-v1.json`: name-lookup wall time, selected
-  OSM identity and metadata when lookup succeeds.
+- `artifacts/course-discovery-v1.json`: name-lookup wall time and selected OSM
+  identity on success; failure cause and elapsed time on name-lookup failure.
 - `artifacts/course-geometry/<slug>/import-timing-v1.json`: durable
   timestamped machine steps, per-phase wall times, elapsed wall time,
   failures and whether a prior cache was present. Presence is *not* proof
   that cache was used.
-- GitHub Actions artifact: timing receipt uploaded even on failed builds
-  when a timing file exists.
+- GitHub Actions artifact: timing and discovery receipts uploaded even on
+  failed builds when those files exist. The machine receipt covers Python **and**
+  Node subprocesses; where a name request exists it also measures request-to-importer
+  and request-to-runtime-completion time.
 - Distinguish first request, CI queue, discovery, import, runtime ready,
   deployment ready and browser QA. The Python machine clock alone does not
   measure customer wait. End-to-end stopwatch should start from click.
@@ -73,3 +75,6 @@ authentication, rate limits, observability and API-level tests have passed.
 **Stop before the next real course until:** the staging dispatcher is
 configured and tested without triggering a real import; offline and web builds
 are green; UI is visibly acceptable. Preserve original failure timings.
+
+## Staging request throttling
+The API rejects new requests for 45 minutes after the previous accepted request. This is a conservative staging-only serialization guard (35-minute importer timeout plus queue/retry margin), not a scalable multi-user queue. Conflicting GitHub file updates return an explicit 409 rather than a false acceptance. Offline mock API tests exercise authorization, malformed inputs, repeat requests, and source-control conflicts. The generated course package commit intentionally does not restage the rebuild-request trigger file.

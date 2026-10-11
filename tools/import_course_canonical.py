@@ -55,7 +55,10 @@ def run(*args: str) -> None:
 def run_node(*args: str) -> None:
     command = ["node", *args]
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True)
+    if _IMPORT_TIMING:
+        _IMPORT_TIMING.execute(command, ROOT)
+    else:
+        subprocess.run(command, cwd=ROOT, check=True)
 
 
 def worldcover_url(config: dict[str, Any]) -> str:

@@ -26,6 +26,10 @@ jobs:
         run: pip install -r requirements-course-geometry.txt
       - name: Test name matching without external requests
         run: python tools/test_discover_osm_course_by_name.py
+      - name: Test request-to-config and failure receipts offline
+        run: python tools/test_course_discovery_receipts.py
+      - name: Test durable importer machine clock
+        run: python tools/test_course_import_timing.py
       - name: Regression test for WorldCover inner-hole masking
         run: python tools/test_course_landcover_masks.py
       - name: Test existing course contracts

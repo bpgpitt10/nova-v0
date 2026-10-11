@@ -57,6 +57,19 @@ class ImportTiming:
             "phaseDurationsSeconds": {},
             "failedSteps": 0,
         }
+        audit_path = root / "artifacts" / "course-discovery-v1.json"
+        if reason == "user-name-cold-import" and audit_path.exists():
+            try:
+                audit = json.loads(audit_path.read_text(encoding="utf-8"))
+                if audit.get("status") == "resolved" and audit.get("courseSlug") == slug and audit.get("requestedAt"):
+                    request_at = datetime.fromisoformat(audit["requestedAt"].replace("Z", "+00:00"))
+                    if request_at.tzinfo is not None:
+                        self.requested_at = request_at
+                        self.doc["requestedAt"] = audit["requestedAt"]
+                        self.doc["discoveryWallSeconds"] = audit.get("discoveryWallSeconds")
+                        self.doc["requestToImporterSeconds"] = round(max(0.0, (datetime.now(timezone.utc) - request_at).total_seconds()), 3)
+            except (OSError, ValueError, KeyError, TypeError):
+                pass  # Timing must never block a valid import.
         self.flush()
 
     def flush(self):
@@ -95,4 +108,9 @@ class ImportTiming:
         if error:
             self.doc["error"] = error
         self.doc["runtimeReady"] = status == "runtime-ready"
+        request_at = getattr(self, "requested_at", None)
+        if request_at is not None:
+            self.doc["requestToImporterCompletionSeconds"] = round(
+                max(0.0, (datetime.now(timezone.utc) - request_at).total_seconds()), 3
+            )
         self.flush()
