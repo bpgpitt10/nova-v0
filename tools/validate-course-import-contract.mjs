@@ -77,6 +77,25 @@ requireValue(teeSets.length > 0, `${config.courseId} H1: teeSetContract exposes 
 const normalizedTeeSets = teeSets.map(normalize)
 requireValue(new Set(normalizedTeeSets).size === normalizedTeeSets.length, `${config.courseId} H1: canonical teeSet values are not unique`)
 
+// Surface inventory precedes fail-closed assertions, so the FIRST absent tee
+// polygon does not conceal all other missing/virtual tee holes.
+const teeCoverage = holeNumbers.map((holeNumber) => {
+  const hole = record(coursePackage.holes[String(holeNumber)])
+  const surfaces = record(hole.surfaces)
+  const frame = record(hole.coordinateFrame)
+  const candidates = Array.isArray(hole.teeCandidates) ? hole.teeCandidates : []
+  return {
+    hole: holeNumber,
+    mappedTeePolygons: Array.isArray(surfaces.tee) ? surfaces.tee.length : 0,
+    teeCandidateCount: candidates.length,
+    teeAnchorSource: frame.teeAnchorMethod ?? null,
+    mappedGreenPolygons: Array.isArray(surfaces.green) ? surfaces.green.length : 0,
+  }
+})
+console.log('[course-import-contract] Complete 18-hole tee coverage inventory:', JSON.stringify(teeCoverage))
+console.log('[course-import-contract] Missing mapped tee surfaces on holes:',
+  teeCoverage.filter((h) => !h.mappedTeePolygons).map((h) => h.hole).join(', ') || 'none')
+
 const summaries = []
 for (const holeNumber of holeNumbers) {
   const hole = record(coursePackage.holes[String(holeNumber)])

@@ -102,6 +102,23 @@ jobs:
                 echo "\`\`\`"
               fi
             done
+            # A failed static contract still leaves its generated package in
+            # the runner workspace. Preserve all hole counts in the job summary
+            # even when GitHub Actions artifact storage is over quota.
+            if [ -n "${COURSE_SLUG:-}" ] && [ -f "public/course-geometry/$COURSE_SLUG/course-v1.json" ]; then
+              echo '#### Per-hole mapped tee coverage (unpublished candidate)'
+              node -e '
+                const fs=require("node:fs");
+                const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+                for (const [hole,h] of Object.entries(p.holes||{})) {
+                  const tees=(h.surfaces?.tee||[]).length;
+                  const candidates=(h.teeCandidates||[]).length;
+                  const origin=h.coordinateFrame?.teeAnchorMethod||"unknown";
+                  console.log("Hole "+hole+": mappedTeePolygons="+tees+
+                    " teeCandidates="+candidates+" anchor="+origin);
+                }
+              ' "public/course-geometry/$COURSE_SLUG/course-v1.json"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate app and completed runtime candidate
