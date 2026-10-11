@@ -34,6 +34,8 @@ def get_candidates(name, timeout=25):
 
 def resolve(name, candidates):
     valid=[]
+    raw_summaries=[{"name":(x.get("namedetails") or {}).get("name"),"display":str(x.get("display_name") or "")[:160],"category":x.get("category"),"type":x.get("type"),"osm_type":x.get("osm_type"),"osm_id":x.get("osm_id"),"extratags":{k:v for k,v in (x.get("extratags") or {}).items() if k in {"golf","leisure"}}} for x in candidates]
+    print("Nominatim candidate classifications:",json.dumps(raw_summaries,ensure_ascii=True),flush=True)
     for x in candidates:
         if str(x.get("osm_type") or "").lower() not in {"way","relation"}: continue
         if x.get("type") not in {"golf_course","golf"} and not (x.get("extratags") or {}).get("golf")=="course": continue
@@ -43,7 +45,7 @@ def resolve(name, candidates):
     hits=[item for item in valid if norm_course(item[1])==norm_course(name)]
     if len(hits)!=1:
         hints=[{"name":label,"osmType":x.get("osm_type"),"osmId":x.get("osm_id"),"place":x.get("display_name")} for x,label in (hits or valid)]
-        raise ValueError(f"Expected exactly one exact-match mapped golf course for {name!r}; found {len(hits)}. Candidates: {json.dumps(hints)[:2500]}")
+        raise ValueError(f"Expected exactly one exact-match mapped golf course for {name!r}; found {len(hits)}. Accepted: {json.dumps(hints)[:2000]}; raw: {json.dumps(raw_summaries)[:2500]}")
     x,named=hits[0]
     addr=x.get("address") or {}
     place=addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or ""

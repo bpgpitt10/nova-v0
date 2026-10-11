@@ -88,15 +88,21 @@ jobs:
             --slug "$COURSE_SLUG" \
             --reason "$IMPORT_REASON"
 
-      - name: Persist course timing receipt even on failure
+      - name: Publish discovery and timing into job summary even on failure
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: course-import-observability
-          path: |
-            artifacts/course-geometry/*/import-timing-v1.json
-            artifacts/course-discovery-v1.json
-          if-no-files-found: warn
+        run: |
+          {
+            echo '### Course request diagnostics'
+            echo 'Course: ${COURSE_SLUG:-not-resolved}'
+            echo 'Git commit: ${GITHUB_SHA}'
+            for FILE in artifacts/course-discovery-v1.json artifacts/course-geometry/*/import-timing-v1.json; do
+              if [ -f "$FILE" ]; then
+                echo "\`\`\`json"
+                cat "$FILE"
+                echo "\`\`\`"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate app and completed runtime candidate
         run: |
