@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - web-alpha-mishits
+      - farmlinks-ui-review-v1
+      - web-course-e2e-preflight-v1
   pull_request:
     branches:
       - web-gspro-clean
@@ -23,6 +25,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test reviewed course tee metadata
+        run: node tools/test-course-tee-metadata.mjs
+
+      - name: Test progressive Live Caddie map framing
+        run: node tools/test-live-caddie-map-framing.mjs
+
+      - name: Validate canonical import registration
+        run: node tools/check-canonical-imports.mjs
 
       - name: Build web app
         run: npm run build

@@ -462,11 +462,7 @@
   }
 
   .live-club-strip-heading .live-kicker::after {
-    content: 'CLUB';
-    color: #eab308;
-    font-size: 8px;
-    font-weight: 750;
-    letter-spacing: 0.08em;
+    content: '';
   }
 
   .live-club-strip-heading > div > strong,

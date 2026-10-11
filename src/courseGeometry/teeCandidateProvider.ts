@@ -3,6 +3,8 @@ import {
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
+import { inferGreywolfTeeAliases } from './greywolfTeeAssumptions'
+import { applyCourseTeeMetadata } from './courseTeeMetadata'
 import type {
   CoursePointYds,
   CoursePolygonYds,
@@ -22,6 +24,11 @@ const record = (value: unknown): Record<string, unknown> =>
 
 const text = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined
+
+const stringArray = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim())).map((item) => item.trim())
+    : []
 
 const parsePoint = (value: unknown): CoursePointYds | null =>
   Array.isArray(value) && value.length >= 2 && finite(value[0]) && finite(value[1])
@@ -122,10 +129,12 @@ const parseCandidate = (value: unknown): CourseTeeCandidate | null => {
   const teeToGreen = finite(raw.teeToGreenCentroidYards) ? raw.teeToGreenCentroidYards : undefined
   const startGap = finite(raw.startPolygonGapYards) ? raw.startPolygonGapYards : undefined
   const routeGap = finite(raw.currentRouteGapYards) ? raw.currentRouteGapYards : undefined
+  const teeAliases = stringArray(raw.teeAliases)
   return {
     ...(typeof raw.osmId === 'string' || typeof raw.osmId === 'number' ? { osmId: raw.osmId } : {}),
     ...(text(raw.osmType) ? { osmType: text(raw.osmType) } : {}),
     ...(text(raw.teeSet) ? { teeSet: text(raw.teeSet) } : {}),
+    ...(teeAliases.length ? { teeAliases } : {}),
     ...(text(raw.name) ? { name: text(raw.name) } : {}),
     ...(text(raw.ref) ? { ref: text(raw.ref) } : {}),
     ...(text(raw.color) ? { color: text(raw.color) } : {}),
@@ -197,6 +206,21 @@ const loadGreywolfCandidates = async (holeNumber: number) => {
   const payload = record(await response.json())
   const features = record(payload.features)
   const tees = Array.isArray(features.tee) ? features.tee : []
+  const anchors = record(payload.anchors)
+  const selectedAnchorDistanceYds = finite(anchors.tee_to_green_centroid_yards)
+    ? anchors.tee_to_green_centroid_yards
+    : null
+  const anchorCandidates = Array.isArray(anchors.tee_candidates) ? anchors.tee_candidates : []
+  const distanceByTeeId = new Map<string, number>()
+  for (const value of anchorCandidates) {
+    const raw = record(value)
+    const teeId = typeof raw.tee_id === 'string' || typeof raw.tee_id === 'number'
+      ? String(raw.tee_id)
+      : null
+    const distance = finite(raw.green_distance_yards) ? raw.green_distance_yards : null
+    if (teeId && distance != null) distanceByTeeId.set(teeId, distance)
+  }
+
   return tees.flatMap((value): CourseTeeCandidate[] => {
     const raw = record(value)
     const centerRaw = record(raw.centroid)
@@ -209,14 +233,31 @@ const loadGreywolfCandidates = async (holeNumber: number) => {
       const parsed = greywolfPoint(point)
       return parsed ? [parsed] : []
     })
+    const osmId = typeof raw.osm_id === 'string' || typeof raw.osm_id === 'number'
+      ? raw.osm_id
+      : undefined
+    const candidateDistanceYds = osmId == null ? null : distanceByTeeId.get(String(osmId)) ?? null
+    const inferredAliases = inferGreywolfTeeAliases({
+      holeNumber,
+      selectedAnchorDistanceYds,
+      candidateDistanceYds,
+    })
+    const explicitTeeSet = text(raw.tee)
+    const teeAliases = [...new Set([
+      ...(explicitTeeSet ? [explicitTeeSet] : []),
+      ...inferredAliases,
+    ])]
+
     return [{
-      ...(typeof raw.osm_id === 'string' || typeof raw.osm_id === 'number' ? { osmId: raw.osm_id } : {}),
+      ...(osmId != null ? { osmId } : {}),
       ...(text(raw.osm_type) ? { osmType: text(raw.osm_type) } : {}),
-      ...(text(raw.tee) ? { teeSet: text(raw.tee) } : {}),
+      ...(teeAliases[0] ? { teeSet: teeAliases[0] } : {}),
+      ...(teeAliases.length ? { teeAliases } : {}),
       ...(text(raw.name) ? { name: text(raw.name) } : {}),
       ...(text(raw.ref) ? { ref: text(raw.ref) } : {}),
       ...(text(raw.colour) || text(raw.color) ? { color: text(raw.colour) ?? text(raw.color) } : {}),
       coursePoint: center,
+      ...(candidateDistanceYds != null ? { teeToGreenCentroidYards: candidateDistanceYds } : {}),
       ...(polygon.length >= 3 ? { polygons: [polygon] } : {}),
       selectedAnchor: Math.hypot(center[0], center[1]) < 0.5,
     }]
@@ -228,5 +269,6 @@ export const loadCourseTeeCandidates = async (
   holeNumber: number,
 ): Promise<readonly CourseTeeCandidate[]> => {
   if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfCandidates(holeNumber)
-  return loadGenericCandidates(courseId, holeNumber)
+  const candidates = await loadGenericCandidates(courseId, holeNumber)
+  return applyCourseTeeMetadata(courseId, candidates)
 }

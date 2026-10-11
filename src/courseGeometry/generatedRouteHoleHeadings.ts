@@ -82,6 +82,26 @@ export const routeHoleHeadingDegreesTrue: Readonly<Record<string, readonly numbe
     86.38,
     90.46
   ],
+  "farmlinks-pursell-farms-sylacauga-al": [
+    353.72,
+    191.81,
+    354.74,
+    7.74,
+    178.7,
+    163.71,
+    214.13,
+    70.21,
+    28.91,
+    11.79,
+    8.58,
+    290.68,
+    61.93,
+    171.41,
+    149.65,
+    169.46,
+    231.47,
+    222.33
+  ],
   "oakmont-country-club-oakmont-pa": [
     74.99,
     62.31,

@@ -3,7 +3,7 @@ name: Rebuild Course Canonical
 on:
   push:
     branches:
-      - course-importer-surface-semantics-v1
+      - web-course-importer-current-lineage-v1
     paths:
       - 'config/course-rebuild-request.json'
 
@@ -17,13 +17,13 @@ permissions:
 jobs:
   rebuild:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     steps:
-      - name: Checkout course branch with history
+      - name: Checkout triggering import request with history
         uses: actions/checkout@v4
         with:
-          ref: course-importer-surface-semantics-v1
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Read rebuild request
@@ -37,9 +37,10 @@ jobs:
           missing = [key for key in required if not request.get(key)]
           if missing:
               raise SystemExit(f"Missing rebuild request fields: {', '.join(missing)}")
+
           print(f"COURSE_SLUG={request['courseSlug']}")
           print(f"CONFIG_PATH={request['configPath']}")
-          print(f"TERRAIN_SOURCE_REF={request.get('terrainSourceRef', '')}")
+          print(f"IMPORT_REASON={request.get('reason') or 'canonical-one-shot-import'}")
           PY
 
       - name: Use Python
@@ -47,80 +48,94 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install geometry dependencies
-        run: pip install -r requirements-course-geometry.txt
-
-      - name: Fetch fresh exact-boundary OSM snapshot
-        run: |
-          mkdir -p "artifacts/course-geometry/$COURSE_SLUG" /tmp/looper-course-rebuild
-          python tools/fetch_osm_course_snapshot_core.py \
-            --config "$CONFIG_PATH" \
-            --output "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json"
-
-      - name: Diagnose route endpoint orientation
-        run: |
-          python tools/diagnose_course_route_orientation.py \
-            --osm "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json"
-
-      - name: Build canonical static geometry
-        run: |
-          python tools/build_osm_course_package_canonical.py \
-            --osm "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
-            --config "$CONFIG_PATH" \
-            --output /tmp/looper-course-rebuild/geometry.json \
-            --manifest "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json"
-
-      - name: Attach proven cached terrain when requested
-        run: |
-          mkdir -p "public/course-geometry/$COURSE_SLUG"
-          if [ -n "$TERRAIN_SOURCE_REF" ]; then
-            git show "${TERRAIN_SOURCE_REF}:public/course-geometry/${COURSE_SLUG}/course-v1.json" \
-              > /tmp/looper-course-rebuild/terrain-source-package.json
-            python tools/carry_forward_embedded_terrain.py \
-              --old-package /tmp/looper-course-rebuild/terrain-source-package.json \
-              --new-package /tmp/looper-course-rebuild/geometry.json \
-              --output "public/course-geometry/$COURSE_SLUG/course-v1.json"
-          else
-            cp /tmp/looper-course-rebuild/geometry.json \
-              "public/course-geometry/$COURSE_SLUG/course-v1.json"
-          fi
-
-      - name: Refresh cache provenance and hashes
-        run: |
-          python tools/update_course_cache_after_rebuild.py \
-            --cache "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
-            --config "$CONFIG_PATH" \
-            --snapshot "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
-            --package "public/course-geometry/$COURSE_SLUG/course-v1.json" \
-            --manifest "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json"
-
       - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
+      - name: Install course importer dependencies
+        run: pip install -r requirements-course-geometry.txt
+
       - name: Install app dependencies
         run: npm ci
 
-      - name: Validate app, active runtime, and rebuild candidate
+      - name: Run one-shot canonical course importer
+        run: |
+          python tools/import_course_canonical.py \
+            --config "$CONFIG_PATH" \
+            --slug "$COURSE_SLUG" \
+            --reason "$IMPORT_REASON"
+
+      - name: Validate app and completed runtime candidate
         run: |
           npm run build
           npm run courses:audit-runtime -- --strict --candidate "$COURSE_SLUG"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          slug = os.environ['COURSE_SLUG']
+          path = Path(f'artifacts/course-geometry/{slug}/validation-v1.json')
+          receipt_path = Path(f'artifacts/course-geometry/{slug}/runtime-ready-v1.json')
+          data = json.loads(path.read_text())
+          receipt = json.loads(receipt_path.read_text())
+          completion = data.get('canonicalImport') or {}
+          if completion.get('complete') is not True or completion.get('runtimeReady') is not True:
+              raise SystemExit('Canonical import did not stamp a complete runtime-ready result')
+          if receipt.get('runtimeReady') is not True:
+              raise SystemExit('Canonical import did not produce a runtime-ready receipt')
+          if receipt.get('packageSha256') != completion.get('packageSha256'):
+              raise SystemExit('Runtime-ready receipt and canonical completion package hashes differ')
+          required = ('freshOsm', 'staticGeometry', 'wholeHoleTerrain', 'landcoverContext', 'greenDetail')
+          missing = [key for key in required if completion.get(key) is not True]
+          if missing:
+              raise SystemExit('Canonical import is partial: ' + ', '.join(missing))
+          print('canonical one-shot runtime completion verified:', ', '.join(required))
+          PY
 
-      - name: Commit rebuilt package and provenance
+      - name: Commit completed course package and runtime registration
         run: |
           git add \
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
+            "artifacts/course-geometry/$COURSE_SLUG/runtime-ready-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
+            "public/course-geometry/$COURSE_SLUG/green-detail-v1.json" \
+            src/courseGeometry/generatedImportedCourseRegistry.ts \
             src/courseGeometry/generatedRouteHoleHeadings.ts
+
+          for OPTIONAL_PATH in \
+            "artifacts/course-geometry/$COURSE_SLUG/dem-source-v1.json" \
+            "artifacts/course-geometry/$COURSE_SLUG/terrain-compose-v1.json" \
+            "artifacts/course-geometry/$COURSE_SLUG/worldcover-context-audit-v1.json"; do
+            if [ -e "$OPTIONAL_PATH" ] || git ls-files --error-unmatch "$OPTIONAL_PATH" >/dev/null 2>&1; then
+              git add -A "$OPTIONAL_PATH"
+            fi
+          done
+
           if git diff --cached --quiet; then
-            echo 'No course rebuild changes to commit.'
+            echo 'No course import changes to commit.'
             exit 0
           fi
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "build(course): rebuild ${COURSE_SLUG} with canonical importer"
-          git push origin HEAD:course-importer-surface-semantics-v1
+          git commit -m "build(course): one-shot import ${COURSE_SLUG}"
+
+          # A source/test commit can land while a long import is running. Replay
+          # the generated course commit on the latest branch head instead of
+          # reporting a false import failure because of a non-fast-forward push.
+          for ATTEMPT in 1 2 3; do
+            git fetch origin web-course-importer-current-lineage-v1
+            if git rebase origin/web-course-importer-current-lineage-v1 && \
+               git push origin HEAD:web-course-importer-current-lineage-v1; then
+              exit 0
+            fi
+            git rebase --abort || true
+            echo "Publish attempt ${ATTEMPT} raced with another branch update; retrying."
+            sleep 2
+          done
+
+          echo 'Canonical import completed and validated but could not publish after 3 race-safe attempts.' >&2
+          exit 1

@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-10-01T17:17:11.426509Z",
+  "configPath": "config/course-geometry/farmlinks-v1.json",
+  "courseId": "farmlinks-pursell-farms-sylacauga-al",
+  "courseName": "FarmLinks at Pursell Farms",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "FarmLinks",
+    "FarmLinks at Pursell Farms",
+    "Pursell Farms"
+  ],
+  "location": "Sylacauga, AL",
+  "packagePath": "public/course-geometry/farmlinks/course-v1.json",
+  "packageSha256": "680d3bfb755efbe490ea72df5c146c73a3d5aa8aa6bf7554fd4c055c822cf1bc",
+  "reason": "prove-course-wide-tee-contract-v4",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "farmlinks",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/farmlinks/validation-v1.json"
+}

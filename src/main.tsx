@@ -6,6 +6,7 @@ import LooperLandingPage from './pages/LooperLandingPage.tsx'
 import SessionSummaryPage from './pages/SessionSummaryPage.tsx'
 import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
+import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
@@ -250,6 +251,7 @@ function RootRouter() {
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
   const showLiveCaddie = pathname === '/live-caddie' || pathname === '/caddie' || pathname === '/dev/live-caddie'
   const showDevLiveCaddie = pathname === '/dev/live-caddie'
+  const showRoundSetup = pathname === '/round-setup' || pathname === '/new-round'
   const showCaddieInputs = pathname === '/caddie-inputs' || pathname === '/dev/caddie-inputs'
   const showGsproReplay = pathname === '/dev/gspro-replay'
   const showDecisionReplay = pathname === '/dev/decision-replay'
@@ -281,6 +283,7 @@ function RootRouter() {
         </>
       )
     }
+    if (showRoundSetup) return <RoundSetupPage />
     if (showCaddieInputs) return <CaddieInputsPage />
     if (showGsproReplay) return <GsproReplayDevPage />
     if (showDecisionReplay) return <DecisionReplayDevPage />
@@ -322,6 +325,7 @@ function RootRouter() {
     showGsproReplay,
     showLiveCaddie,
     showOcrTest,
+    showRoundSetup,
     updateError,
     updateStatus,
   ])

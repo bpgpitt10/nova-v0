@@ -309,12 +309,12 @@ export default function LooperLandingPage({
               <span>Capture shots, build your club data, and review the session live.</span>
             </button>
 
-            <div className="looper-landing-mode-card looper-landing-mode-card--caddie is-disabled">
-              <span className="looper-landing-coming-soon">Coming Soon</span>
+            <button type="button" className="looper-landing-mode-card looper-landing-mode-card--caddie" onClick={() => navigateWithinApp("/round-setup")}>
+              <span className="looper-landing-coming-soon">Course preview</span>
               <span className="looper-landing-mode-kicker">GSPro</span>
               <strong>Live Caddie</strong>
               <span>Real-time club, target, and risk guidance while you play.</span>
-            </div>
+            </button>
           </div>
 
           {rangeOpen && gsproState === 'connected' ? (

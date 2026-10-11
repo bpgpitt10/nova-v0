@@ -17,6 +17,7 @@ import argparse
 import json
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,23 @@ def include_tags(tags: dict[str, str]) -> bool:
     if tags.get("landuse") in LANDUSE_VALUES:
         return True
     return False
+
+
+def feature_tag_counts(payload: dict[str, Any]) -> dict[str, int]:
+    """Return compact source diagnostics for feature classes the importer consumes."""
+    counts: Counter[str] = Counter()
+    for element in payload.get("elements", []):
+        tags = element.get("tags") or {}
+        golf = tags.get("golf")
+        natural = tags.get("natural")
+        landuse = tags.get("landuse")
+        if golf:
+            counts[f"golf={golf}"] += 1
+        if natural in NATURAL_VALUES:
+            counts[f"natural={natural}"] += 1
+        if landuse in LANDUSE_VALUES:
+            counts[f"landuse={landuse}"] += 1
+    return dict(sorted(counts.items()))
 
 
 def fetch_core_map_features(
@@ -168,7 +186,9 @@ def main() -> int:
         boundary.bounds,
         args.timeout,
     )
+    raw_feature_tag_counts = feature_tag_counts(raw_payload)
     payload = fetcher.filter_to_boundary(raw_payload, boundary)
+    filtered_feature_tag_counts = feature_tag_counts(payload)
     source_key = (str(source_element.get("type")), int(source_element.get("id")))
     existing_keys = {
         (str(element.get("type")), int(element.get("id")))
@@ -188,8 +208,11 @@ def main() -> int:
         "sourceEndpoint": source_endpoint,
         "mapEndpoint": map_endpoint,
         "boundaryBoundsLonLat": [round(value, 8) for value in boundary.bounds],
-        "rawFeatureElementCount": raw_element_count,
+        "rawMapElementCount": raw_element_count,
+        "rawIncludedFeatureElementCount": len(raw_payload.get("elements", [])),
+        "rawIncludedFeatureTagCounts": raw_feature_tag_counts,
         "filteredFeatureElementCount": len(payload.get("elements", [])),
+        "filteredFeatureTagCounts": filtered_feature_tag_counts,
         "validatedHoleRoutes": {
             str(hole): {"type": element[0], "id": element[1]}
             for hole, element in sorted(holes.items())
@@ -205,7 +228,10 @@ def main() -> int:
         "sourceEndpoint": source_endpoint,
         "mapEndpoint": map_endpoint,
         "rawMapElements": raw_element_count,
+        "rawIncludedFeatures": len(raw_payload.get("elements", [])),
+        "rawIncludedFeatureTagCounts": raw_feature_tag_counts,
         "filteredElements": len(payload.get("elements", [])),
+        "filteredFeatureTagCounts": filtered_feature_tag_counts,
         "holeRefs": sorted(holes),
         "output": str(args.output),
     }, indent=2, sort_keys=True))
