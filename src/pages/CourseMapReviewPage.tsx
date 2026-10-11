@@ -9,6 +9,7 @@ type Hole = {
   context?: Record<string, Point[][]>
   teeCandidates?: { coursePoint: Point; teeSet?: string; label?: string; selectedAnchor?: boolean }[]
   teePointEvidence?: { coursePoint: Point; label?: string; source?: string }[]
+  mapFeatures?: { cartpath?: { lines?: Point[][] } }
   coordinateFrame?: { origin?: string; teeAnchorMethod?: string }
   viewBounds?: { minX: number; maxX: number; minY: number; maxY: number }
   terrain?: { source?: string; sourceResolutionMeters?: number; width?: number; height?: number; valuesBase64?: string }
@@ -131,7 +132,7 @@ export default function CourseMapReviewPage() {
               {showContext && (hole.mapFeatures?.cartpath?.lines??[]).map((points:Point[],i:number)=><polyline key={'cart'+i} points={poly(points)} fill="none" stroke="#8b927e" strokeWidth="1.2" opacity=".65"/>)}
               {showTees && (hole.teeCandidates??[]).map((p,i)=><circle key={'tee'+i} cx={p.coursePoint[0]} cy={p.coursePoint[1]} r="3.5" fill="#e5f2bf" stroke="#253626" strokeWidth=".9"/>)}
               {showTees && (hole.teePointEvidence??[]).map((p,i)=><circle key={'pt'+i} cx={p.coursePoint[0]} cy={p.coursePoint[1]} r="3.5" fill="#e1a966" stroke="#28311e" strokeWidth=".9"/>)}
-              <circle cx={hole.coordinateFrame?.origin==='osm-hole-route-start'?0:0} cy={hole.coordinateFrame?.origin==='osm-hole-route-start'?0:0} r="6" fill="none" stroke="#f3e2af" strokeWidth="1.6" strokeDasharray="3 2"/>
+              {hole.coordinateFrame?.origin==='osm-hole-route-start' && <circle cx={0} cy={0} r="6" fill="none" stroke="#f3e2af" strokeWidth="1.6" strokeDasharray="3 2"/>}
             </g>
           </svg> : <p>Hole map unavailable.</p>}
           <div style={{display:'flex',flexWrap:'wrap',gap:14,justifyContent:'center',marginTop:12,fontSize:12}}>
