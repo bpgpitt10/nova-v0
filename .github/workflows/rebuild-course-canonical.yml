@@ -167,6 +167,7 @@ jobs:
       - name: Commit completed course package and runtime registration
         run: |
           git add \
+            config/course-rebuild-request.json \
             "config/course-geometry/$COURSE_SLUG-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
@@ -198,6 +199,15 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "build(course): one-shot import ${COURSE_SLUG}"
+
+          # The name resolver and importer can leave tracked intermediate files
+          # after the curated output commit. Do not let those prevent a safe
+          # rebase of the reviewed package commit; retain them in runner stash.
+          if ! git diff --quiet; then
+            echo 'Stashing non-published tracked importer intermediates:'
+            git status --short
+            git stash push -m "course-import-nonpublished-intermediates"
+          fi
 
           # A source/test commit can land while a long import is running. Replay
           # the generated course commit on the latest branch head instead of
