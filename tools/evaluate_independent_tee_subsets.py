@@ -34,7 +34,7 @@ def main():
     tees=score['teeSets']
     for size in range(2,len(tees)+1):
         for combo in combinations(tees,size):
-            match=[match_hole(combo,models,contexts,n,score['pars'][n-1]) for n in range(1,19)]
+            match=[match_hole(combo,models,contexts[n],n,score['pars'][n-1]) for n in range(1,19)]
             by_tee=[]
             for tee in combo:
                 name=tee['name']
