@@ -1,6 +1,6 @@
 {
   "schemaVersion": "looper-course-name-request-v1",
   "name": "Valhalla",
-  "requestedAt": "2026-10-11T02:46:30.005Z",
-  "operatorNote": "Diagnostic rerun of the already-failed Valhalla cold import. Preserve original cold-run status and timings."
+  "requestedAt": "2026-10-11T14:21:40.354Z",
+  "operatorNote": "Staging validation rerun: publish map-ready preview, preserve strict tee calibration/live gate. Not a fresh cold-import benchmark."
 }
