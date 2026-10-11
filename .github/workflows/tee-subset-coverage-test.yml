@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/tee-subset-coverage-test.yml'
       - 'tools/evaluate_independent_tee_subsets.py'
+      - 'tools/diagnose_gcne_tee_ownership.py'
 permissions:
   contents: write
 jobs:
@@ -23,6 +24,8 @@ jobs:
       - run: pip install -r requirements-course-geometry.txt
       - run: python tools/test_match_scorecard_tees.py
       - run: python tools/evaluate_independent_tee_subsets.py
+      - name: Diagnose actual OSM polygons rejected near blocked holes
+        run: python tools/diagnose_gcne_tee_ownership.py
       - run: |
           python - <<'PY'
           import json
@@ -35,7 +38,7 @@ jobs:
           PY
       - name: Publish research checkpoint
         run: |
-          git add research/course-coverage/results/gcne-independent-tee-subsets-v1.json
+          git add research/course-coverage/results/gcne-independent-tee-subsets-v1.json research/course-coverage/results/gcne-tee-ownership-diagnostic-v1.json
           git diff --cached --quiet && exit 0
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
