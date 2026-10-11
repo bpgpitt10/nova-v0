@@ -102,6 +102,24 @@ def fetch_core_map_features(
         except (KeyError, TypeError, ValueError):
             continue
 
+    # Standalone golf=tee nodes are legitimate OSM tee evidence. Preserve
+    # them as points with provenance; never invent a polygon around the node.
+    point_features: list[dict[str, Any]] = []
+    for node in root.findall("node"):
+        tags = tags_for(node)
+        if tags.get("golf") != "tee":
+            continue
+        try:
+            point_features.append({
+                "type": "node", "id": int(node.attrib["id"]),
+                "tags": tags, "geometry": [{
+                    "lat": float(node.attrib["lat"]),
+                    "lon": float(node.attrib["lon"]),
+                }],
+            })
+        except (KeyError, ValueError):
+            continue
+
     all_ways: dict[int, dict[str, Any]] = {}
     for way in root.findall("way"):
         try:
@@ -124,10 +142,10 @@ def fetch_core_map_features(
             "geometry": geometry,
         }
 
-    feature_elements: list[dict[str, Any]] = [
+    feature_elements: list[dict[str, Any]] = [*point_features, *[
         way for way in all_ways.values()
         if include_tags(way.get("tags") or {}) and len(way.get("geometry") or []) >= 2
-    ]
+    ]]
 
     for relation in root.findall("relation"):
         relation_tags = tags_for(relation)
