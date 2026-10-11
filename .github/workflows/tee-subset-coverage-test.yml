@@ -8,6 +8,7 @@ on:
       - '.github/workflows/tee-subset-coverage-test.yml'
       - 'tools/evaluate_independent_tee_subsets.py'
       - 'tools/diagnose_gcne_tee_ownership.py'
+      - 'tools/test_scorecard_tee_route_gap_recovery.py'
 permissions:
   contents: write
 jobs:
@@ -26,6 +27,8 @@ jobs:
       - run: python tools/evaluate_independent_tee_subsets.py
       - name: Diagnose actual OSM polygons rejected near blocked holes
         run: python tools/diagnose_gcne_tee_ownership.py
+      - name: Compare conservative same-hole route-gap recovery evidence
+        run: python tools/test_scorecard_tee_route_gap_recovery.py
       - run: |
           python - <<'PY'
           import json
@@ -38,7 +41,7 @@ jobs:
           PY
       - name: Publish research checkpoint
         run: |
-          git add research/course-coverage/results/gcne-independent-tee-subsets-v1.json research/course-coverage/results/gcne-tee-ownership-diagnostic-v1.json
+          git add research/course-coverage/results/gcne-independent-tee-subsets-v1.json research/course-coverage/results/gcne-tee-ownership-diagnostic-v1.json research/course-coverage/results/gcne-evidence-only-tee-recovery-v1.json
           git diff --cached --quiet && exit 0
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
