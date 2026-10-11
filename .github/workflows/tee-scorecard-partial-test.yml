@@ -1,0 +1,50 @@
+name: Tee Scorecard Matching — Partial Tee Sets (Research)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - '.github/workflows/tee-scorecard-partial-test.yml'
+permissions:
+  contents: write
+concurrency:
+  group: looper-partial-tee-scorecard-research
+  cancel-in-progress: false
+jobs:
+  scorecard-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-course-geometry.txt
+      - name: Test shared pads and independent tee-set rejection
+        run: python tools/test_match_scorecard_tees.py
+      - name: Match GCNE official card against 18 holes of cached OSM features
+        run: python tools/match_scorecard_tees.py
+      - name: Validate non-publishing and partial-set contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('research/course-coverage/results/gcne-partial-tee-matcher-v1.json').read_text())
+          assert len(p['holes'])==18 and len(p['perTeeSet'])==6
+          assert p['teeSetPolicy']['partialSupportAllowed'] is True
+          assert all(t['liveSelectable'] is False for t in p['perTeeSet'])
+          print('Scorecard matched as research-only, no unsupported tee is exposed.')
+          PY
+      - name: Commit resumable matching report to staging
+        run: |
+          git add research/course-coverage/results/gcne-partial-tee-matcher-v1.json
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(course): GCNE partial tee scorecard-match diagnostic'
+          git fetch origin web-course-e2e-preflight-v1
+          git rebase origin/web-course-e2e-preflight-v1
+          git push origin HEAD:web-course-e2e-preflight-v1
