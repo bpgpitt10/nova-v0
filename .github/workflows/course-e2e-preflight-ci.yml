@@ -33,6 +33,8 @@ jobs:
           node tools/test-course-tee-metadata.mjs
           node tools/test-live-caddie-map-framing.mjs
           node tools/check-canonical-imports.mjs
+      - name: Test staged request API with mocked auth and GitHub
+        run: node --test tests/course-request-api.test.mjs
       - name: App dependency installation
         run: npm ci
       - name: Build (no network course import)

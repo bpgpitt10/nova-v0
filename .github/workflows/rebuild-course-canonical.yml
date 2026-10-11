@@ -92,8 +92,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: course-import-timing
-          path: artifacts/course-geometry/*/import-timing-v1.json
+          name: course-import-observability
+          path: |
+            artifacts/course-geometry/*/import-timing-v1.json
+            artifacts/course-discovery-v1.json
           if-no-files-found: warn
 
       - name: Validate app and completed runtime candidate
@@ -125,7 +127,6 @@ jobs:
       - name: Commit completed course package and runtime registration
         run: |
           git add \
-            config/course-rebuild-request.json \
             "config/course-geometry/$COURSE_SLUG-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \

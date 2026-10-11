@@ -3,6 +3,8 @@
 const REPO = 'bpgpitt10/nova-v0'
 const BRANCH = 'web-course-e2e-preflight-v1'
 const REQUEST_FILE = 'config/course-name-request.json'
+// Serial staging imports: GitHub job timeout is 35 min; 45 min includes queue/retries.
+const REQUEST_COOLDOWN_MS = 45 * 60 * 1000
 const SUPABASE_URL = 'https://kdjfdchzfemjpmaqpobn.supabase.co'
 // Supabase publishable key, not a service-role credential.
 const PUBLIC_KEY = 'sb_publishable_Lu_EV3L6mSIzQzcB0fESsA_4bJcnT4T'
@@ -26,7 +28,10 @@ async function githubRequest(path, token, options = {}) {
     },
   })
   if (!response.ok && response.status !== 404) {
-    throw Object.assign(new Error('GitHub request failed (' + response.status + ')'), { status: 502 })
+    const collision = response.status === 409 || response.status === 422
+    throw Object.assign(new Error(collision
+      ? 'Another request changed the staging branch. Reload and retry when the existing import finishes.'
+      : 'GitHub request failed (' + response.status + ')'), { status: collision ? 409 : 502 })
   }
   return { response, body: response.status === 404 ? null : await response.json() }
 }
@@ -57,7 +62,11 @@ export default async function handler(req, res) {
       const raw = Buffer.from(existing.body.content, 'base64').toString('utf8')
       const prev = JSON.parse(raw)
       const last = Date.parse(prev.requestedAt || '')
-      if (Number.isFinite(last) && Date.now() - last < 60_000) return res.status(429).json({ error: 'An import was just requested. Retry later.' })
+      if (Number.isFinite(last) && Date.now() - last < REQUEST_COOLDOWN_MS) {
+        const retryAfterSeconds = Math.ceil((REQUEST_COOLDOWN_MS - (Date.now() - last)) / 1000)
+        res.setHeader('Retry-After', String(retryAfterSeconds))
+        return res.status(429).json({ error: 'Staging is serializing imports. A course was already requested; wait until that run finishes before trying another.', retryAfterSeconds })
+      }
     }
     const accepted = new Date().toISOString()
     const request = { schemaVersion: 'looper-course-name-request-v1', name, requestedAt: accepted }
