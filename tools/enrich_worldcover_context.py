@@ -22,7 +22,7 @@ from pyproj import Transformer
 from rasterio.features import shapes
 from rasterio.mask import mask
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, box, mapping, shape
-from shapely.ops import transform, unary_union
+from shapely.ops import transform, triangulate, unary_union
 from shapely.validation import make_valid
 
 EARTH_RADIUS_M = 6_371_008.8
@@ -121,7 +121,33 @@ def known_geometry(hole: dict[str, Any]) -> Any:
     return make_valid(unary_union(polygons)) if polygons else GeometryCollection()
 
 
-def serialize_geometry(geometry: Any, min_area: float, simplify: float, smooth: float) -> list[list[list[float]]]:
+def _exterior_only_polygons(geometry: Any, depth: int = 0) -> list[Polygon]:
+    """The runtime polygon format stores exteriors only; never fill interior holes.
+
+    Cutting the clipped context into non-holed pieces prevents WorldCover from
+    painting back over OSM tee islands surrounded by forest.
+    """
+    if geometry.is_empty:
+        return []
+    if isinstance(geometry, Polygon):
+        if not geometry.interiors:
+            return [geometry]
+        if depth >= 3:
+            raise ValueError("WorldCover polygon could not be made hole-free")
+        pieces: list[Polygon] = []
+        for triangle in triangulate(geometry):
+            pieces.extend(_exterior_only_polygons(make_valid(triangle.intersection(geometry)), depth + 1))
+        return pieces
+    if isinstance(geometry, (MultiPolygon, GeometryCollection)):
+        return [
+            item
+            for part in geometry.geoms
+            for item in _exterior_only_polygons(part, depth)
+        ]
+    return []
+
+
+def serialize_geometry(geometry: Any, min_area: float, simplify: float, smooth: float, protected: Any = None) -> list[list[list[float]]]:
     if geometry.is_empty:
         return []
     cleaned = make_valid(geometry)
@@ -129,16 +155,14 @@ def serialize_geometry(geometry: Any, min_area: float, simplify: float, smooth: 
         cleaned = make_valid(cleaned.buffer(smooth, join_style=1).buffer(-smooth, join_style=1))
     if simplify > 0:
         cleaned = make_valid(cleaned.simplify(simplify, preserve_topology=True))
-
-    if isinstance(cleaned, Polygon):
-        parts = [cleaned]
-    elif isinstance(cleaned, MultiPolygon):
-        parts = list(cleaned.geoms)
-    else:
-        parts = [part for part in getattr(cleaned, "geoms", []) if isinstance(part, Polygon)]
+    # Protect AFTER smoothing/simplification, which can otherwise re-fill tees.
+    # The small buffer prevents 0.1-yard coordinate serialization rounding from
+    # repainting a mapped surface.
+    if protected is not None and not protected.is_empty:
+        cleaned = make_valid(cleaned.difference(protected.buffer(0.2)))
 
     output: list[list[list[float]]] = []
-    for polygon in parts:
+    for polygon in _exterior_only_polygons(cleaned):
         if polygon.area < min_area:
             continue
         coords = [[round(float(x), 1), round(float(y), 1)] for x, y in polygon.exterior.coords]
@@ -207,6 +231,7 @@ def enrich_hole(ds: rasterio.io.DatasetReader, hole: dict[str, Any], args: argpa
             min_area=args.min_area_sqyd,
             simplify=args.simplify_yards,
             smooth=args.smooth_yards,
+            protected=known,
         )
         if serialized:
             context[kind] = serialized

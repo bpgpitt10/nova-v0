@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - web-course-importer-current-lineage-v1
+      - web-course-e2e-preflight-v1
     paths:
       - 'config/course-rebuild-request.json'
 
@@ -60,12 +61,23 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
+      - name: Unit test WorldCover tee protection
+        run: python tools/test_course_landcover_masks.py
+
       - name: Run one-shot canonical course importer
         run: |
           python tools/import_course_canonical.py \
             --config "$CONFIG_PATH" \
             --slug "$COURSE_SLUG" \
             --reason "$IMPORT_REASON"
+
+      - name: Persist course timing receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-import-timing
+          path: artifacts/course-geometry/*/import-timing-v1.json
+          if-no-files-found: warn
 
       - name: Validate app and completed runtime candidate
         run: |
@@ -106,6 +118,7 @@ jobs:
             src/courseGeometry/generatedRouteHoleHeadings.ts
 
           for OPTIONAL_PATH in \
+            "artifacts/course-geometry/$COURSE_SLUG/import-timing-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/dem-source-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/terrain-compose-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/worldcover-context-audit-v1.json"; do
@@ -127,9 +140,9 @@ jobs:
           # the generated course commit on the latest branch head instead of
           # reporting a false import failure because of a non-fast-forward push.
           for ATTEMPT in 1 2 3; do
-            git fetch origin web-course-importer-current-lineage-v1
-            if git rebase origin/web-course-importer-current-lineage-v1 && \
-               git push origin HEAD:web-course-importer-current-lineage-v1; then
+            git fetch origin "$GITHUB_REF_NAME"
+            if git rebase "origin/$GITHUB_REF_NAME" && \
+               git push origin "HEAD:$GITHUB_REF_NAME"; then
               exit 0
             fi
             git rebase --abort || true

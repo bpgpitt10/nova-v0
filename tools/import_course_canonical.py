@@ -24,12 +24,14 @@ import hashlib
 import json
 import math
 import subprocess
+from course_import_timing import ImportTiming
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+_IMPORT_TIMING: ImportTiming | None = None
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -44,7 +46,10 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 def run(*args: str) -> None:
     command = [sys.executable, *args]
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True)
+    if _IMPORT_TIMING:
+        _IMPORT_TIMING.execute(command, ROOT)
+    else:
+        subprocess.run(command, cwd=ROOT, check=True)
 
 
 def run_node(*args: str) -> None:
@@ -157,6 +162,8 @@ def main() -> int:
     parser.add_argument("--slug", required=True)
     parser.add_argument("--reason", default="canonical-one-shot-import")
     args = parser.parse_args()
+    global _IMPORT_TIMING
+    _IMPORT_TIMING = ImportTiming(ROOT, args.slug, str(args.config), args.reason)
 
     config_path = (ROOT / args.config).resolve() if not args.config.is_absolute() else args.config
     config = read_json(config_path)
@@ -266,6 +273,9 @@ def main() -> int:
         )
     else:
         landcover_audit.unlink(missing_ok=True)
+
+    if landcover_enabled:
+        run("tools/validate_course_landcover_masks.py", "--package", str(final_package))
 
     # 4. Green terrain uses the exact same DEM as whole-hole terrain so there is
     # one elevation authority and no second source-selection pass.
@@ -395,4 +405,13 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        result = main()
+    except BaseException as exc:
+        if _IMPORT_TIMING:
+            _IMPORT_TIMING.finish("failed", str(exc))
+        raise
+    else:
+        if _IMPORT_TIMING:
+            _IMPORT_TIMING.finish("runtime-ready" if result == 0 else "failed")
+        raise SystemExit(result)
