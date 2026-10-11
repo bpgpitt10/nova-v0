@@ -83,10 +83,14 @@ jobs:
 
       - name: Run one-shot canonical course importer
         run: |
+          EXTRA_ARGS=()
+          if [ "$GITHUB_REF_NAME" = "web-course-e2e-preflight-v1" ]; then
+            EXTRA_ARGS+=(--allow-map-preview)
+          fi
           python tools/import_course_canonical.py \
             --config "$CONFIG_PATH" \
             --slug "$COURSE_SLUG" \
-            --reason "$IMPORT_REASON"
+            --reason "$IMPORT_REASON" "${EXTRA_ARGS[@]}"
 
       - name: Publish discovery and timing into job summary even on failure
         if: always()
@@ -124,13 +128,26 @@ jobs:
       - name: Validate app and completed runtime candidate
         run: |
           npm run build
-          npm run courses:audit-runtime -- --strict --candidate "$COURSE_SLUG"
+          if [ -f "artifacts/course-geometry/$COURSE_SLUG/runtime-ready-v1.json" ]; then
+            npm run courses:audit-runtime -- --strict --candidate "$COURSE_SLUG"
+          fi
           python - <<'PY'
           import json, os
           from pathlib import Path
           slug = os.environ['COURSE_SLUG']
           path = Path(f'artifacts/course-geometry/{slug}/validation-v1.json')
           receipt_path = Path(f'artifacts/course-geometry/{slug}/runtime-ready-v1.json')
+          map_path = Path(f'artifacts/course-geometry/{slug}/map-ready-v1.json')
+          map_receipt = json.loads(map_path.read_text())
+          if map_receipt.get('mapReady') is not True:
+              raise SystemExit('Map quality gate not passed')
+          if not receipt_path.exists():
+              if os.environ.get('GITHUB_REF_NAME') != 'web-course-e2e-preflight-v1':
+                  raise SystemExit('Map-only artifacts are prohibited outside staging')
+              if map_receipt.get('runtimeReady') is not False:
+                  raise SystemExit('Map-only receipt incorrectly says runtime ready')
+              print('map-ready only: not registered for live use')
+              raise SystemExit(0)
           data = json.loads(path.read_text())
           receipt = json.loads(receipt_path.read_text())
           completion = data.get('canonicalImport') or {}
@@ -154,13 +171,15 @@ jobs:
             "artifacts/course-geometry/$COURSE_SLUG/osm-snapshot.json" \
             "artifacts/course-geometry/$COURSE_SLUG/validation-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/cache-v1.json" \
-            "artifacts/course-geometry/$COURSE_SLUG/runtime-ready-v1.json" \
+            "artifacts/course-geometry/$COURSE_SLUG/map-ready-v1.json" \
+            "public/course-review/index-v1.json" \
             "public/course-geometry/$COURSE_SLUG/course-v1.json" \
             "public/course-geometry/$COURSE_SLUG/green-detail-v1.json" \
             src/courseGeometry/generatedImportedCourseRegistry.ts \
             src/courseGeometry/generatedRouteHoleHeadings.ts
 
           for OPTIONAL_PATH in \
+            "artifacts/course-geometry/$COURSE_SLUG/runtime-ready-v1.json" \
             "artifacts/course-geometry/$COURSE_SLUG/import-timing-v1.json" \
             artifacts/course-discovery-v1.json \
             "artifacts/course-geometry/$COURSE_SLUG/dem-source-v1.json" \
