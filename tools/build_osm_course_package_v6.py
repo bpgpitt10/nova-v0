@@ -54,6 +54,25 @@ def normalize_osm(payload: dict[str, Any]):
         tags = tags_by_element.get((str(feature.get("osm_type")), feature.get("osm_id")), {})
         if tags:
             feature["source_tags"] = tags
+    # Tee points carry legitimate source positions but NOT tee-box polygons.
+    # They are review evidence only; never counted as physical surfaces or as
+    # implicitly named product tee sets.
+    for element in payload.get("elements", []):
+        if element.get("type") != "node" or (element.get("tags") or {}).get("golf") != "tee":
+            continue
+        geometry = element.get("geometry") or []
+        if len(geometry) != 1:
+            continue
+        try:
+            latlon = (float(geometry[0]["lat"]), float(geometry[0]["lon"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        features.append({
+            "role": "evidence", "kind": "tee-point", "osm_type": "node",
+            "osm_id": element.get("id"), "geometries": [[latlon]],
+            "centroid": latlon, "source_feature": "golf=tee",
+            "source_tags": _string_tags(element.get("tags")),
+        })
     return features, hole_routes
 
 
@@ -324,6 +343,37 @@ def model_for_hole(
         candidate["teeToGreenCentroidYards"],
         str(candidate["osmId"]),
     ))
+    # Assign OSM point evidence by nearest mapped hole-line start, not by
+    # nearest fairway or UI tee color. Keep provenance and uncertainty explicit.
+    # A point is never converted into a fake surface polygon.
+    tee_point_evidence = []
+    mapped_points = [f for f in features if f["kind"] == "tee-point"]
+    if mapped_points:
+        greens = [f for f in features if f["kind"] == "green"]
+        starts = {
+            n: v5.orient_route_to_green(route, greens)[0]["geometry"][0]
+            for n, route in hole_routes.items()
+        }
+        for point_feature in mapped_points:
+            ranked = sorted(
+                ((base.haversine_yards(point_feature["centroid"], start), n)
+                 for n, start in starts.items())
+            )
+            if not ranked or ranked[0][1] != hole_number or ranked[0][0] > 220:
+                continue
+            local = base.to_hole_local(point_feature["centroid"], route_origin, forward, right)
+            tags = _string_tags(point_feature.get("source_tags"))
+            tee_point_evidence.append({
+                "osmId": point_feature.get("osm_id"), "osmType": "node",
+                "source": "osm-tee-node", "label": _tee_label(tags),
+                "sourceTags": tags,
+                "sourceLatLon": list(point_feature["centroid"]),
+                "coursePoint": [round(v, 3) for v in v5.shifted_point(local, anchor_offset)],
+                "routeStartGapYards": round(ranked[0][0], 1),
+                "confidence": "mapped-position-only-no-tee-set",
+            })
+    model["teePointEvidence"] = tee_point_evidence
+    diagnostic["mappedTeePointEvidence"] = len(tee_point_evidence)
     model["teeCandidates"] = tee_candidates
     model["teeSetContract"] = {
         "version": 1,
