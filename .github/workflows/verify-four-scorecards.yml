@@ -1,0 +1,54 @@
+name: Looper — Verify Four Scorecards Against Cached OSM Tees
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - '.github/workflows/verify-four-scorecards.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: looper-four-scorecard-validation
+  cancel-in-progress: false
+
+jobs:
+  scorecard-crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing OSM model dependencies only
+        run: pip install -r requirements-course-geometry.txt
+      - name: Compare four official tee catalogs with cached OSM tee candidates
+        run: python tools/validate_scorecard_four_osm.py
+      - name: Enforce honest research-grade classification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/course-coverage/results/tee-scorecard-four-v1.json')
+          r=json.loads(p.read_text())
+          assert len(r['courseChecks'])==4
+          assert {x['rosterNumber'] for x in r['courseChecks']}=={4,7,8,10}
+          assert all(x['validRealTeeSetMatched'] is False for x in r['courseChecks'])
+          print('Four published scorecard comparisons completed; no live-ready labels assigned.')
+          PY
+      - name: Commit durable four-course report to staging
+        run: |
+          git add research/course-coverage/results/tee-scorecard-four-v1.json
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'research(course): checkpoint published scorecard vs OSM tee mappings for four candidates'
+          git fetch origin web-course-e2e-preflight-v1
+          git rebase origin/web-course-e2e-preflight-v1
+          git push origin HEAD:web-course-e2e-preflight-v1
