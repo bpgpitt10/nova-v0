@@ -32,6 +32,10 @@ jobs:
         run: python tools/test_course_import_timing.py
       - name: Regression test for WorldCover inner-hole masking
         run: python tools/test_course_landcover_masks.py
+      - name: Tee points must never invent geometry or colors
+        run: python tools/test_osm_tee_point_evidence.py
+      - name: Validate map-only quality gate on a known reviewed course
+        run: node tools/validate-course-map-contract.mjs --package public/course-geometry/farmlinks/course-v1.json --config config/course-geometry/farmlinks-v1.json
       - name: Test existing course contracts
         run: |
           node tools/test-course-tee-metadata.mjs
