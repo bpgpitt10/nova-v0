@@ -1,0 +1,123 @@
+{
+  "crossHoleReassignmentAllowed": false,
+  "currentOwnershipRouteGapYds": 35,
+  "liveReady": false,
+  "policy": "Recovered tee polygons remain evidence only; review hole association, scorecard differences, and competing-route proximity before approval.",
+  "recoveredUnverifiedPolygons": {
+    "16": [
+      {
+        "currentRouteGapYards": 40.0,
+        "osmId": 782757854,
+        "teeToGreenCentroidYards": 318.27
+      },
+      {
+        "currentRouteGapYards": 54.9,
+        "osmId": 782757855,
+        "teeToGreenCentroidYards": 291.56
+      }
+    ],
+    "5": [
+      {
+        "currentRouteGapYards": 36.3,
+        "osmId": 782764581,
+        "teeToGreenCentroidYards": 418.51
+      }
+    ]
+  },
+  "researchMaxSameHoleRouteGapYds": 65,
+  "schemaVersion": "looper-tee-ownership-expansion-evidence-v1",
+  "source": "cached OSM; no source/terrain requests",
+  "studies": [
+    {
+      "evaluatedNames": [
+        "Green",
+        "Blue"
+      ],
+      "teeCoverage": {
+        "Blue": {
+          "all18Verified": false,
+          "baseUnambiguous": 15,
+          "holesUsingUnverifiedRecoveredTee": [
+            16
+          ],
+          "researchUnambiguous": 15
+        },
+        "Green": {
+          "all18Verified": false,
+          "baseUnambiguous": 16,
+          "holesUsingUnverifiedRecoveredTee": [],
+          "researchUnambiguous": 16
+        }
+      }
+    },
+    {
+      "evaluatedNames": [
+        "Blue",
+        "Red",
+        "White"
+      ],
+      "teeCoverage": {
+        "Blue": {
+          "all18Verified": false,
+          "baseUnambiguous": 16,
+          "holesUsingUnverifiedRecoveredTee": [],
+          "researchUnambiguous": 16
+        },
+        "Red": {
+          "all18Verified": false,
+          "baseUnambiguous": 14,
+          "holesUsingUnverifiedRecoveredTee": [
+            16
+          ],
+          "researchUnambiguous": 13
+        },
+        "White": {
+          "all18Verified": false,
+          "baseUnambiguous": 15,
+          "holesUsingUnverifiedRecoveredTee": [
+            16
+          ],
+          "researchUnambiguous": 15
+        }
+      }
+    },
+    {
+      "evaluatedNames": [
+        "Green",
+        "Blue",
+        "Red",
+        "White"
+      ],
+      "teeCoverage": {
+        "Blue": {
+          "all18Verified": false,
+          "baseUnambiguous": 16,
+          "holesUsingUnverifiedRecoveredTee": [
+            16
+          ],
+          "researchUnambiguous": 15
+        },
+        "Green": {
+          "all18Verified": false,
+          "baseUnambiguous": 15,
+          "holesUsingUnverifiedRecoveredTee": [],
+          "researchUnambiguous": 14
+        },
+        "Red": {
+          "all18Verified": false,
+          "baseUnambiguous": 15,
+          "holesUsingUnverifiedRecoveredTee": [],
+          "researchUnambiguous": 14
+        },
+        "White": {
+          "all18Verified": false,
+          "baseUnambiguous": 13,
+          "holesUsingUnverifiedRecoveredTee": [
+            16
+          ],
+          "researchUnambiguous": 14
+        }
+      }
+    }
+  ]
+}
