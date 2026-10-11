@@ -161,6 +161,26 @@ export const routeHoleHeadingDegreesTrue: Readonly<Record<string, readonly numbe
     213.38,
     73.3,
     111.09
+  ],
+  "valhalla-golf-club-louisville-kentucky": [
+    35.24,
+    291.4,
+    219.15,
+    100.87,
+    260.36,
+    162.87,
+    32.48,
+    81.69,
+    192.59,
+    85.79,
+    225.96,
+    262.63,
+    150.52,
+    47.34,
+    66.66,
+    239.51,
+    241.06,
+    346.51
   ]
 }
 

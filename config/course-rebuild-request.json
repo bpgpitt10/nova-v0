@@ -1,6 +1,5 @@
 {
-  "courseSlug": "arcadia-bluffs",
-  "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
-  "terrainSourceRef": "e9b10aa334c0bba98bc9de80ed644cd546fc5bed",
-  "reason": "course-4-runtime-validation-promotion"
+  "courseSlug": "valhalla-golf-club",
+  "configPath": "config/course-geometry/valhalla-golf-club-v1.json",
+  "reason": "user-name-cold-import"
 }

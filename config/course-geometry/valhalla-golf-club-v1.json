@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "valhalla-golf-club-louisville-kentucky",
+  "courseName": "Valhalla Golf Club",
+  "location": "Louisville, Kentucky",
+  "slug": "valhalla-golf-club",
+  "gsproAliases": [
+    "Valhalla",
+    "Valhalla Golf Club"
+  ],
+  "osmCourseElement": {
+    "type": "way",
+    "id": 59737644
+  },
+  "osmCenter": [
+    38.242317,
+    -85.4706879
+  ],
+  "terrain": {
+    "provider": "auto"
+  },
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
+  "greenTerrain": {
+    "enabled": true
+  }
+}

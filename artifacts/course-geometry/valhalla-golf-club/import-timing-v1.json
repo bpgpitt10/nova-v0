@@ -1,0 +1,169 @@
+{
+  "cacheHitVerified": null,
+  "configPath": "config/course-geometry/valhalla-golf-club-v1.json",
+  "courseSlug": "valhalla-golf-club",
+  "discoveryWallSeconds": 2.264,
+  "elapsedWallSeconds": 23.446,
+  "failedSteps": 1,
+  "finishedAt": "2026-10-11T14:25:02.503249Z",
+  "phaseDurationsSeconds": {
+    "cache-provenance": 0.108,
+    "green-detail": 1.294,
+    "landcover": 10.286,
+    "landcover-validation": 0.465,
+    "osm-geometry": 10.138,
+    "other": 0.121,
+    "registry": 0.034,
+    "static-validation": 0.051,
+    "terrain": 0.703
+  },
+  "previousCachePresent": false,
+  "reason": "user-name-cold-import",
+  "requestToImporterCompletionSeconds": 2.503,
+  "requestToImporterSeconds": 0.0,
+  "requestedAt": "2026-10-11T14:25:00.000Z",
+  "runtimeReady": false,
+  "schemaVersion": "looper-course-import-timing-v1",
+  "startedAt": "2026-10-11T14:24:39.057077Z",
+  "status": "map-ready",
+  "steps": [
+    {
+      "durationSeconds": 0.034,
+      "finishedAt": "2026-10-11T14:24:39.094932Z",
+      "phase": "registry",
+      "startedAt": "2026-10-11T14:24:39.061391Z",
+      "status": "passed",
+      "tool": "generate-imported-course-registry.mjs"
+    },
+    {
+      "durationSeconds": 2.666,
+      "finishedAt": "2026-10-11T14:24:41.761826Z",
+      "phase": "osm-geometry",
+      "startedAt": "2026-10-11T14:24:39.095445Z",
+      "status": "passed",
+      "tool": "fetch_osm_course_snapshot_core.py"
+    },
+    {
+      "durationSeconds": 0.232,
+      "finishedAt": "2026-10-11T14:24:41.994779Z",
+      "phase": "osm-geometry",
+      "startedAt": "2026-10-11T14:24:41.762332Z",
+      "status": "passed",
+      "tool": "diagnose_course_route_orientation.py"
+    },
+    {
+      "durationSeconds": 7.24,
+      "finishedAt": "2026-10-11T14:24:49.235172Z",
+      "phase": "osm-geometry",
+      "startedAt": "2026-10-11T14:24:41.995436Z",
+      "status": "passed",
+      "tool": "build_osm_course_package_canonical.py"
+    },
+    {
+      "durationSeconds": 0.258,
+      "finishedAt": "2026-10-11T14:24:49.493366Z",
+      "phase": "terrain",
+      "startedAt": "2026-10-11T14:24:49.235744Z",
+      "status": "passed",
+      "tool": "fetch_course_dem.py"
+    },
+    {
+      "durationSeconds": 0.327,
+      "finishedAt": "2026-10-11T14:24:49.821192Z",
+      "phase": "terrain",
+      "startedAt": "2026-10-11T14:24:49.493883Z",
+      "status": "passed",
+      "tool": "build_course_terrain.py"
+    },
+    {
+      "durationSeconds": 0.118,
+      "finishedAt": "2026-10-11T14:24:49.939362Z",
+      "phase": "terrain",
+      "startedAt": "2026-10-11T14:24:49.821777Z",
+      "status": "passed",
+      "tool": "compose_course_package_canonical.py"
+    },
+    {
+      "durationSeconds": 10.286,
+      "finishedAt": "2026-10-11T14:25:00.226021Z",
+      "phase": "landcover",
+      "startedAt": "2026-10-11T14:24:49.939864Z",
+      "status": "passed",
+      "tool": "enrich_worldcover_context.py"
+    },
+    {
+      "durationSeconds": 0.465,
+      "finishedAt": "2026-10-11T14:25:00.691785Z",
+      "phase": "landcover-validation",
+      "startedAt": "2026-10-11T14:25:00.226575Z",
+      "status": "passed",
+      "tool": "validate_course_landcover_masks.py"
+    },
+    {
+      "durationSeconds": 0.375,
+      "finishedAt": "2026-10-11T14:25:01.067756Z",
+      "phase": "green-detail",
+      "startedAt": "2026-10-11T14:25:00.692451Z",
+      "status": "passed",
+      "tool": "build_course_green_detail.py"
+    },
+    {
+      "durationSeconds": 0.193,
+      "finishedAt": "2026-10-11T14:25:01.270028Z",
+      "phase": "green-detail",
+      "startedAt": "2026-10-11T14:25:01.077328Z",
+      "status": "passed",
+      "tool": "validate_course_green_detail.py"
+    },
+    {
+      "durationSeconds": 0.726,
+      "finishedAt": "2026-10-11T14:25:02.178545Z",
+      "phase": "green-detail",
+      "startedAt": "2026-10-11T14:25:01.452363Z",
+      "status": "passed",
+      "tool": "audit_course_green_surface_quality.py"
+    },
+    {
+      "durationSeconds": 0.108,
+      "finishedAt": "2026-10-11T14:25:02.287565Z",
+      "phase": "cache-provenance",
+      "startedAt": "2026-10-11T14:25:02.179236Z",
+      "status": "passed",
+      "tool": "update_course_cache_after_rebuild.py"
+    },
+    {
+      "durationSeconds": 0.05,
+      "finishedAt": "2026-10-11T14:25:02.357102Z",
+      "phase": "other",
+      "startedAt": "2026-10-11T14:25:02.306608Z",
+      "status": "passed",
+      "tool": "validate-course-map-contract.mjs"
+    },
+    {
+      "durationSeconds": 0.036,
+      "finishedAt": "2026-10-11T14:25:02.411717Z",
+      "phase": "other",
+      "startedAt": "2026-10-11T14:25:02.376015Z",
+      "status": "passed",
+      "tool": "generate-map-review-index.mjs"
+    },
+    {
+      "durationSeconds": 0.051,
+      "error": "Command '['node', 'tools/validate-course-import-contract.mjs', '--package', '/home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla-golf-club/course-v1.json', '--config', '/home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-golf-club-v1.json']' returned non-zero exit status 1.",
+      "finishedAt": "2026-10-11T14:25:02.463013Z",
+      "phase": "static-validation",
+      "startedAt": "2026-10-11T14:25:02.412290Z",
+      "status": "failed",
+      "tool": "validate-course-import-contract.mjs"
+    },
+    {
+      "durationSeconds": 0.035,
+      "finishedAt": "2026-10-11T14:25:02.499275Z",
+      "phase": "other",
+      "startedAt": "2026-10-11T14:25:02.463907Z",
+      "status": "passed",
+      "tool": "generate-map-review-index.mjs"
+    }
+  ],
+  "updatedAt": "2026-10-11T14:25:02.503271Z"
+}

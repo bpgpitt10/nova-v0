@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "looper-course-discovery-v1",
+  "requestedName": "Valhalla",
+  "requestedAt": "2026-10-11T14:25:00.000Z",
+  "source": "OSM Nominatim name search; Photon place fallback; exact OSM core spatial boundary",
+  "candidateCount": 11,
+  "discoveryMethod": "osm-name",
+  "courseSlug": "valhalla-golf-club",
+  "acceptedOsm": {
+    "type": "way",
+    "id": 59737644
+  },
+  "configPath": "config/course-geometry/valhalla-golf-club-v1.json",
+  "status": "resolved",
+  "resolvedAt": "2026-10-11T14:24:24.098501Z",
+  "discoveryWallSeconds": 2.264
+}

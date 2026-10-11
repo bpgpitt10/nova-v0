@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "looper-map-review-index-v1",
+  "courses": [
+    {
+      "id": "valhalla-golf-club-louisville-kentucky",
+      "name": "Valhalla Golf Club",
+      "location": "Louisville, Kentucky",
+      "slug": "valhalla-golf-club",
+      "packageUrl": "/course-geometry/valhalla-golf-club/course-v1.json",
+      "greenDetailUrl": "/course-geometry/valhalla-golf-club/green-detail-v1.json",
+      "mapReady": true,
+      "liveReady": false,
+      "teeMappedHoles": 6,
+      "teePointEvidence": 0
+    }
+  ]
+}

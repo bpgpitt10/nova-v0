@@ -1,0 +1,18 @@
+{
+  "courseId": "valhalla-golf-club-louisville-kentucky",
+  "courseName": "Valhalla Golf Club",
+  "createdAt": "2026-10-11T14:25:02.375809Z",
+  "greenDetailReady": true,
+  "greenDetailSha256": "55e1442aef203f5e2123afa5b9a287995373101d9753749c2444a8cfaca0ac6f",
+  "location": "Louisville, Kentucky",
+  "mapReady": true,
+  "packageSha256": "411c21cac62b01ad3123d1b2a8e51f751800ebfa93766f616fb7ae6c61b06229",
+  "runtimeBlocker": "Tee selection contract incomplete; map preview only",
+  "runtimeReady": false,
+  "schemaVersion": "looper-course-map-ready-v1",
+  "slug": "valhalla-golf-club",
+  "teeCalibration": "pending",
+  "teeMappedHoles": 6,
+  "teePointEvidence": 0,
+  "terrainReady": true
+}

@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -9515790.949,
+    4612903.789,
+    -9513460.127,
+    4614765.615
+  ],
+  "courseId": "valhalla-golf-club-louisville-kentucky",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9515790.949%2C4612903.789%2C-9513460.127%2C4614765.615&bboxSR=3857&imageSR=3857&size=2331%2C1862&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-10-11T14:24:49.465646Z",
+  "height": 1862,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 2331
+}
