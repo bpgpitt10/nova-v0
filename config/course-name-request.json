@@ -1,6 +1,5 @@
 {
   "schemaVersion": "looper-course-name-request-v1",
   "name": "Valhalla",
-  "requestedAt": "2026-10-11T14:21:40.354Z",
-  "operatorNote": "Staging validation rerun: publish map-ready preview, preserve strict tee calibration/live gate. Not a fresh cold-import benchmark."
+  "requestedAt": "2026-10-11T14:25:00.000Z"
 }
