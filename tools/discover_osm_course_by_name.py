@@ -92,9 +92,9 @@ def main():
         audit.update({"courseSlug":config["slug"],"acceptedOsm":config["osmCourseElement"],
                       "configPath":str(p),"status":"resolved"})
         p.parent.mkdir(parents=True,exist_ok=True)
-        p.write_text(json.dumps(config,indent=2)+"\\n",encoding="utf-8")
+        p.write_text(json.dumps(config,indent=2)+"\n",encoding="utf-8")
         args.rebuild_request.parent.mkdir(parents=True,exist_ok=True)
-        args.rebuild_request.write_text(json.dumps(request,indent=2)+"\\n",encoding="utf-8")
+        args.rebuild_request.write_text(json.dumps(request,indent=2)+"\n",encoding="utf-8")
     except Exception as exc:
         audit.update({"status":"failed","errorType":type(exc).__name__,"error":str(exc)[:1200]})
         raise
@@ -102,7 +102,7 @@ def main():
         audit["resolvedAt"]=now()
         audit["discoveryWallSeconds"]=round(time.monotonic()-started,3)
         args.discovery_audit.parent.mkdir(parents=True,exist_ok=True)
-        args.discovery_audit.write_text(json.dumps(audit,indent=2)+"\\n",encoding="utf-8")
+        args.discovery_audit.write_text(json.dumps(audit,indent=2)+"\n",encoding="utf-8")
         print(json.dumps(audit,indent=2))
 
 
