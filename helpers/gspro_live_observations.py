@@ -10,7 +10,6 @@ import json
 import math
 from pathlib import Path
 import re
-import shutil
 import time
 
 import cv2
@@ -21,6 +20,7 @@ import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_native_wind_ocr as wind_ocr
 import gspro_native_lie_ocr as lie_ocr
+import gspro_companion_minimap_calibration as waypoint_diagnostics
 from waypoint_scale import Point, resolve_minimap_scale
 
 METERS_TO_YARDS = 1.0936132983377078
@@ -217,6 +217,19 @@ def _image_observation(window, state, *, report=None):
             result["pinPixel"] = {"x": round(pin.x, 2), "y": round(pin.y, 2)}
             result["minimapRoiWindowPixels"] = list(box)
             result["ballToPinPixels"] = round(gap, 2)
+            # Reuse the already-proven gray waypoint ruler (par 4/5/doglegs)
+            # and cached tee feature registration. These are local, provisional
+            # observations independent of Python's limited course-layout scan.
+            # Never interpret last_completed as authoritative current ball.
+            diagnostic = waypoint_diagnostics.observe(
+                cropped, ball, pin, window=window, frame_bgr=frame, roi=roi,
+                state=state,
+            )
+            result["waypointRuler"] = diagnostic["waypointRuler"]
+            result["registration"] = diagnostic["registration"]
+            result["scale"] = diagnostic["scale"]
+            if diagnostic["scale"]["status"] != "unavailable":
+                return result
             shot, layout = state.get("shot", {}), state.get("layout", {})
             if shot.get("status") != "ready" or layout.get("status") != "ready":
                 result["scale"] = {"status": "unavailable", "reason": "missing_fresh_world_or_layout"}
@@ -262,8 +275,6 @@ def _image_observation(window, state, *, report=None):
                     }
                 except (RuntimeError, ValueError) as exc:
                     result["scale"]["reason"] = str(exc)[:180]
-            elif shutil.which("tesseract") is None:
-                result["scale"]["waypointOcr"] = "unavailable_tesseract_not_bundled"
             return result
         except (RuntimeError, ValueError, IndexError, cv2.error) as exc:
             errors.append(side + ": " + type(exc).__name__ + ": " + str(exc)[:120])
@@ -294,7 +305,8 @@ def collect_observations(*, include_ocr=True):
         "capabilities": {
             "windLie": "on_demand",
             "ballPinPixels": "read_only_diagnostic",
-            "waypointScale": "requires_validated_ocr",
+            "waypointScale": "native_bundled_tesseract_read_only",
+            "zoomRegistration": "read_only_provisional",
             "osmRegistration": False,
             "autoAim": False,
         },
