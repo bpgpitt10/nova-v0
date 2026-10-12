@@ -35,6 +35,7 @@ export type LooperCompanionStatus = {
     windowDiscovery: boolean
     folderDiscovery: boolean
     captureDiagnostic: boolean
+    liveObservations?: boolean
     nativeCapture: boolean
     autoAim: boolean
   }
