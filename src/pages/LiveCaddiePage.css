@@ -954,3 +954,37 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* Diagnostic only: never render a native Set Aim action on this surface. */
+.live-native-aim-diagnostic {
+  margin: 10px 0 14px;
+  border: 1px solid rgba(182, 220, 147, .34);
+  border-radius: 12px;
+  background: rgba(11, 29, 18, .85);
+  padding: 13px 16px;
+  font-size: 12px;
+  color: #d6e4d5;
+  overflow-wrap: anywhere;
+}
+.live-native-aim-diagnostic-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.live-native-aim-diagnostic-heading strong {
+  font-size: 14px;
+  color: #e8f6c5;
+}
+.live-native-aim-diagnostic p {
+  margin: 8px 0;
+  line-height: 1.55;
+}
+.live-native-aim-diagnostic small {
+  color: #afc5af;
+}
+.live-native-timings {
+  font-variant-numeric: tabular-nums;
+  color: #b8d9ba;
+}
