@@ -49,6 +49,7 @@
  <section class="panel"><div class="label">Yards per pixel</div><div id="scale" class="value">Not checked</div><div id="scaleDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Gray waypoint ruler (doglegs)</div><div id="waypoint" class="value">Not checked</div><div id="waypointDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Tee cache / zoom registration</div><div id="registration" class="value">Not checked</div><div id="registrationDetails" class="details">—</div></section>
+ <section class="panel"><div class="label">Native performance</div><div id="timings" class="value">Not checked</div><div id="timingsDetails" class="details">—</div></section>
 </div>
 <section class="panel" style="margin-top:12px"><div class="label">Full sanitized local response</div><pre id="json">No native observations yet.</pre></section>
 <p><small>Coordinate caution: GSPro X/Y/Z and minimap pixels are not OSM geographic coordinates. Gray-waypoint and zoom scales remain provisional until matched to the authoritative Live Caddie current hole; a cached tee cannot authorize a native click. A nonblank PrintWindow capture is not proof the pixels are fresh; compare observations before/after a shot.</small></p>
@@ -89,6 +90,12 @@ function render(r) {
   display('waypoint',ruler.status||'not checked',reads+' | '+(ruler.reason||'no ruler explanation'),ruler.status==='scale_candidate'?'ok':'warn')
   const quality=reg.pinErrorPixels!=null?'pin err '+reg.pinErrorPixels+' px; zoom '+reg.zoomRatioCurrentToTee+'x; rotation '+reg.rotationDegrees+'°':''
   display('registration',reg.status||'not checked',quality+' | '+(reg.reason||'')+' | no native click authorized',reg.status==='registered_candidate_unverified'?'ok':'warn')
+  const timings=r.timingMs||{}
+  display('timings',timings.total!=null?timings.total+' ms total':'Not measured',
+    'state '+(timings.structuredDiscovery??'—')+' ms · capture '+(timings.nativeCapture??'—')+
+    ' ms · markers '+(timings.markerDetection??'—')+' ms · waypoint OCR '+(timings.waypointOcr??'—')+
+    ' ms · zoom '+(timings.zoomRegistration??'—')+' ms · wind '+(timings.windOcr??'—')+
+    ' ms · lie '+(timings.lieOcr??'—')+' ms','warn')
   el('json').textContent=JSON.stringify(r,null,2)
   el('export').disabled=false
 }
