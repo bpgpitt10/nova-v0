@@ -103,10 +103,12 @@ export const resolveLiveSupportedTee = (
       courseGeometryFingerprint(geometry), geometry.holeNumber, activeRound.normalizedTeeSet,
     )
     const exactLocked = locked?.status === 'locked' ? locked : null
-    // ONLY an unmapped OSM route origin may be estimated. Existing mapped or
-    // locked tee positions have strict priority over the synthetic fallback.
+    // Unmapped OSM route starts AND approximate tee origins with no named match
+    // may be estimated. Locked/matched or VERIFIED selected-tee anchors win.
     const provisional = !candidate && !exactLocked
-      && geometry.coordinateSystem.origin === 'osm-hole-route-start'
+      && (geometry.coordinateSystem.origin === 'osm-hole-route-start'
+        || (geometry.coordinateSystem.origin === 'selected-tee'
+          && geometry.registration.status !== 'verified'))
       ? estimateProvisionalTee(geometry,
           observation?.holeNumber === geometry.holeNumber
           && observation.shotNumber === 1
