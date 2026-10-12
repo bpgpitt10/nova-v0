@@ -52,7 +52,7 @@
 <p><small>Coordinate caution: GSPro X/Y/Z and minimap pixels are not OSM geographic coordinates. Even a plausible scale is provisional until validated at the simulator. A nonblank PrintWindow capture is not proof the pixels are fresh; compare observations before/after a shot.</small></p>
 </main>
 <script>
-const URL = 'http://127.0.0.1:8787/companion/v1/observations'
+const OBS_ENDPOINT = 'http://127.0.0.1:8787/companion/v1/observations'
 const el = id => document.getElementById(id)
 let latest = null, interval = null, busy = false
 const fmtPoint = p => p && [p.x,p.y].every(Number.isFinite)
@@ -85,7 +85,7 @@ async function read() {
   busy=true;el('read').disabled=true;el('progress').textContent='Reading GSPro + native capture + HUD OCR…'
   const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),50000)
   try {
-    const req=new Request(URL,{method:'GET',cache:'no-store',mode:'cors',targetAddressSpace:'loopback',signal:controller.signal})
+    const req=new Request(OBS_ENDPOINT,{method:'GET',cache:'no-store',mode:'cors',targetAddressSpace:'loopback',signal:controller.signal})
     const response=await fetch(req)
     if(!response.ok)throw new Error('HTTP '+response.status)
     const data=await response.json()
