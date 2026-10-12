@@ -1042,7 +1042,8 @@ export default function LiveCaddiePage() {
                 {' '}folder/state {nativeObservations.timingMs.structuredDiscovery ?? '—'}
                 {' · '}capture {nativeObservations.timingMs.nativeCapture ?? '—'}
                 {' · '}markers {nativeObservations.timingMs.markerDetection ?? '—'}
-                {' · '}waypoint/zoom {nativeObservations.timingMs.waypointCalibrationAndRegistration ?? '—'}
+                {' · '}waypoint OCR {nativeObservations.timingMs.waypointOcr ?? '—'}
+                {' · '}zoom register {nativeObservations.timingMs.zoomRegistration ?? '—'}
                 {' · '}wind {nativeObservations.timingMs.windOcr ?? '—'}
                 {' · '}lie {nativeObservations.timingMs.lieOcr ?? '—'}
                 {' · '}total {nativeObservations.timingMs.total ?? '—'}
