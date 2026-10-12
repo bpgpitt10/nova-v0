@@ -28,6 +28,30 @@ jobs:
         run: python tools/test_discover_osm_course_by_name.py
       - name: Test request-to-config and failure receipts offline
         run: python tools/test_course_discovery_receipts.py
+      - name: Test flexible course readiness without promoting unsupported tees
+        run: python tools/test_course_flexible_readiness.py
+      - name: Audit known FarmLinks and Valhalla evidence without rebuilding
+        run: |
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'tools')
+          from audit_course_flexible_readiness import audit
+          for slug in ('farmlinks','valhalla-golf-club'):
+              pkg=json.loads(Path(f'public/course-geometry/{slug}/course-v1.json').read_text())
+              base=Path(f'artifacts/course-geometry/{slug}')
+              def receipt(name):
+                  f=base/name
+                  return json.loads(f.read_text()) if f.is_file() else None
+              result=audit(pkg,map_receipt=receipt('map-ready-v1.json'),
+                           runtime_receipt=receipt('runtime-ready-v1.json'))
+              assert result['publicReady'] is False
+              assert result['summary']['mappedHoles']==18
+              expected=('existing_runtime_ready_not_scorecard_audited' if slug=='farmlinks'
+                        else 'map_review_only_companion_calibration_candidate')
+              assert result['mode']==expected, result['mode']
+              print(slug, json.dumps({'mode':result['mode'], **result['summary']}))
+          PY
       - name: Test durable importer machine clock
         run: python tools/test_course_import_timing.py
       - name: Regression test for WorldCover inner-hole masking
