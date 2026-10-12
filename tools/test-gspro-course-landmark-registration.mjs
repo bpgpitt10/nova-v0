@@ -44,6 +44,12 @@ try {
   },[72,210]).kind,'deep-rough',
   'Only unmapped wooded context becomes tactical deep rough')
   assert.equal(classifyTacticalLandingPoint(existingGeometry,[35,115]).kind,'water')
+  const promoted = { ...existingGeometry, surfaces: [
+    ...existingGeometry.surfaces, surface('deep-rough',rect(15,0,90,300)),
+  ] }
+  assert.equal(classifyPoint(promoted,[72,210]).kind,'deep-rough')
+  assert.equal(classifyPoint(promoted,[18,180]).kind,'fairway')
+  assert.equal(classifyPoint(promoted,[35,115]).kind,'water')
   const at = '2026-10-12T15:00:00.000Z'
   const now = Date.parse(at)
   // Known, orientation-preserving 0.5 yard/pixel transform. The pixel y-axis
