@@ -205,9 +205,13 @@ def _image_observation(window, state, *, report=None):
     errors = []
     for side, roi in (("right", pipeline.RIGHT_MINIMAP_ROI), ("left", pipeline.LEFT_MINIMAP_ROI)):
         try:
+            markers_started = time.perf_counter()
             cropped, box = pipeline.crop_minimap(frame, roi)
             ball = markers.detect_actual_ball_marker(cropped)
             pin = markers.detect_pin_marker(cropped)
+            result["timingMs"] = {"markerDetection": round(
+                (time.perf_counter() - markers_started) * 1000, 2
+            )}
             gap = math.hypot(pin.x - ball.x, pin.y - ball.y)
             if gap < MIN_PIXELS_FOR_SCALE:
                 raise ValueError("ball_pin_too_close_for_scale")
@@ -228,6 +232,7 @@ def _image_observation(window, state, *, report=None):
             result["waypointRuler"] = diagnostic["waypointRuler"]
             result["registration"] = diagnostic["registration"]
             result["scale"] = diagnostic["scale"]
+            result["timingMs"].update(diagnostic.get("timingMs", {}))
             if diagnostic["scale"]["status"] != "unavailable":
                 return result
             shot, layout = state.get("shot", {}), state.get("layout", {})
@@ -285,13 +290,22 @@ def _image_observation(window, state, *, report=None):
 
 def collect_observations(*, include_ocr=True):
     """Public JSON without full file paths, images, local usernames, or raw log."""
+    started = time.perf_counter()
     observed = now()
     window = native.find_gspro_window()
     folder = native.discover_gspro_data_directory(image_path=window.get("imagePath"))
     state = read_structured_state(folder)
-    # Capture the GSPro HWND once; share the SAME frame with minimap and wind.
-    # Desktop screen capture is never used for native wind.
+    structured_ms = round((time.perf_counter() - started) * 1000, 2)
+    # Capture GSPro HWND once. Timers include Windows process/system overhead,
+    # not merely CV execution; the frame remains private to this request.
+    capture_started = time.perf_counter()
     frame_report = capture.probe_gspro_capture(window, keep_pixels=True)
+    capture_ms = round((time.perf_counter() - capture_started) * 1000, 2)
+    minimap_started = time.perf_counter()
+    minimap = _image_observation(window, state, report=frame_report)
+    minimap_ms = round((time.perf_counter() - minimap_started) * 1000, 2)
+    wind_ms = 0.0
+    lie_ms = 0.0
     result = {
         "service": "looper-companion",
         "schemaVersion": "native-observations-v1",
@@ -300,7 +314,7 @@ def collect_observations(*, include_ocr=True):
         "gspro": native.public_gspro_window_status(window),
         "dataFolder": native.public_data_folder_status(folder),
         "structured": state,
-        "minimap": _image_observation(window, state, report=frame_report),
+        "minimap": minimap,
         "ocr": {},
         "capabilities": {
             "windLie": "on_demand",
@@ -314,6 +328,7 @@ def collect_observations(*, include_ocr=True):
     if include_ocr and window.get("status") == "connected":
         # The existing Windows HUD OCR readers run as separate bounded requests.
         # Individual OCR failures never prevent independent ball/world evidence.
+        wind_started = time.perf_counter()
         try:
             wind = wind_ocr.read_wind_from_capture(frame_report)
             result["ocr"]["wind"] = {k: v for k, v in wind.items()
@@ -322,7 +337,10 @@ def collect_observations(*, include_ocr=True):
             result["ocr"]["wind"] = {"status": "UNAVAILABLE",
                 "observedAt": now(), "ocrSource": "gspro-native-window",
                 "note": type(error).__name__}
+        finally:
+            wind_ms = round((time.perf_counter() - wind_started) * 1000, 2)
         # Lie now reads the same GSPro HWND frame as wind and minimap.
+        lie_started = time.perf_counter()
         try:
             lie = lie_ocr.read_lie_from_capture(frame_report)
             result["ocr"]["lie"] = {k: v for k, v in lie.items()
@@ -330,8 +348,24 @@ def collect_observations(*, include_ocr=True):
         except Exception as error:
             result["ocr"]["lie"] = {"status": "UNAVAILABLE",
                 "observedAt": now(), "note": type(error).__name__}
+        finally:
+            lie_ms = round((time.perf_counter() - lie_started) * 1000, 2)
     else:
         result["ocr"] = {key: {"status": "UNAVAILABLE", "observedAt": observed,
              "note": "GSPro not connected or OCR not requested."}
              for key in ("wind", "lie")}
+    # Numeric observations only; no imagery, operating-system paths, logs or
+    # native click/POST capability is serialized.
+    result["timingMs"] = {
+        "structuredDiscovery": structured_ms,
+        "nativeCapture": capture_ms,
+        "minimapTotal": minimap_ms,
+        "markerDetection": minimap.get("timingMs", {}).get("markerDetection"),
+        "waypointCalibrationAndRegistration": minimap.get("timingMs", {}).get(
+            "waypointCalibrationAndRegistration"
+        ),
+        "windOcr": wind_ms,
+        "lieOcr": lie_ms,
+        "total": round((time.perf_counter() - started) * 1000, 2),
+    }
     return result
