@@ -170,6 +170,32 @@ def collect():
                         "outside1To18": [n for n in nums if not isinstance(n, int) or n not in range(1, 19)][:16],
                         "duplicates": sorted({str(n) for n in nums if nums.count(n) > 1}),
                     }
+                    yards = {}
+                    pars = []
+                    for row in items:
+                        if not isinstance(row, dict) or row.get("number") not in range(1, 19):
+                            continue
+                        if numeric(row.get("par")): pars.append(row["par"])
+                        y = row.get("yardages")
+                        if isinstance(y, dict):
+                            for key, val in y.items():
+                                if numeric(val):
+                                    yards.setdefault(key, []).append(val)
+                    entry["scorecardCoverage"] = {
+                        "parCount1to18": len(pars),
+                        "parSum1to18": sum(pars),
+                        "perTee1to18": {str(k): {"holes": len(v), "yardsSum": sum(v)}
+                                         for k,v in sorted(yards.items())},
+                        "firstGreen": next((row.get("green") for row in items
+                                            if isinstance(row, dict) and row.get("green")), None),
+                    }
+                if part == "detail" and isinstance(result["data"], dict):
+                    sources = result["data"].get("sources")
+                    entry["sourceProvenance"] = {
+                        "type": type(sources).__name__,
+                        "keys": sorted(sources) if isinstance(sources, dict) else None,
+                        "sample": str(sources)[:300],
+                    }
                 if part == "detail" and isinstance(result["data"], dict):
                     entry["detail"]["topLevelKeys"] = sorted(result["data"])
                     if isinstance(result["data"].get("tees"), list):
