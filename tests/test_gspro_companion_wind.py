@@ -103,7 +103,8 @@ class NativeWindTests(unittest.TestCase):
     def test_incomplete_or_failed_ocr_never_invents_wind(self):
         for outputs, status in [
             ([{"status": "ok", "rawText": "8 MPH"},
-              {"status": "ok", "rawText": ""}], "UNKNOWN"),
+              {"status": "ok", "rawText": ""},
+              {"status": "ok", "rawText": "8 MPH"}], "UNKNOWN"),
             ([{"status": "ok", "rawText": "8 MPH"},
               {"status": "error", "note": "WinRT_AsTask_IAsyncOperation_unavailable"}], "UNAVAILABLE"),
         ]:
@@ -111,6 +112,38 @@ class NativeWindTests(unittest.TestCase):
                 result = wind.read_wind_from_capture(fake_native_frame())
             self.assertEqual(result["status"], status)
             self.assertIsNone(result.get("directionDegrees"))
+
+    def test_stitched_line_recovers_direction_when_winrt_drops_single_letter(self):
+        calls = []
+        def ocr(png):
+            image = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+            calls.append(image.shape)
+            value = ["9 MPH", "", "9 MPH NW"][len(calls) - 1]
+            return {"status": "ok", "rawText": value}
+        with mock.patch.object(wind, "_ocr_png_with_windows", side_effect=ocr):
+            result = wind.read_wind_from_capture(fake_native_frame())
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["speedMph"], 9)
+        self.assertEqual(result["directionDegrees"], 315)
+        self.assertEqual(result["directionOcrStrategy"], "stitched-line")
+        self.assertEqual(result["directionFallbackRawText"], "9 MPH NW")
+        self.assertEqual(len(calls), 3)
+        self.assertGreater(calls[2][1], calls[0][1])
+
+    def test_stitched_line_without_cardinal_cannot_claim_ready(self):
+        with mock.patch.object(wind, "_ocr_png_with_windows", side_effect=[
+            {"status": "ok", "rawText": "9 MPH"},
+            {"status": "ok", "rawText": ""},
+            {"status": "ok", "rawText": "9 MPH"},
+        ]):
+            result = wind.read_wind_from_capture(fake_native_frame())
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIsNone(result["directionDegrees"])
+        self.assertEqual(result["directionOcrStrategy"], "split-and-stitched-unreadable")
+        for bad in ("9 MPH WIND", "9 MPH", "N 9 MPH", "9 MPH WH"):
+            self.assertIsNone(wind._parse_direction_from_joint_ocr(bad))
+        self.assertEqual(wind._parse_direction_from_joint_ocr("9 MPH S"), "S")
+        self.assertEqual(wind._parse_direction_from_joint_ocr("9 MPH SW"), "SW")
 
     def test_one_native_frame_shared_by_minimap_and_wind_without_exposure(self):
         report = fake_native_frame()
