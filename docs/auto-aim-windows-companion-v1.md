@@ -1,5 +1,74 @@
 # Auto Aim V1 — Windows companion architecture and handoff
 
+## Native observations Stage D diagnostics — October 11, 2026 (research/read-only)
+
+**Scope:** This development branch now has a unified, on-demand read-only
+observation endpoint `GET /companion/v1/observations`, bound to loopback and
+the same exact Origin/Host checks as status. Browser test:
+`/dev/companion-observations.html`. No GSPro file mutation, native click,
+screen pixels returned to browser, automatic OSM georegistration, or public
+production merge.
+
+- `helpers/gspro_live_observations.py` gathers fresh `CurrentShot.StartingPOS`,
+  the latest completed `EndingPOS` where present, `DistanceToPin`, shot/hole
+  identity, and the latest bounded `output_log.txt` course-layout array's
+  `teePos`/`pinPos`. Parses read-only, caps file sizes and records ages,
+  with file/folder paths never returned to the browser. Layout is initially
+  **hole-array-order unverified**, not a confirmed world registration.
+- In the same request, the existing `/wind` and `/lie` Windows OCR
+  routines supply HUD wind speed/cardinal direction and signed lie angles
+  as independently labelled observations. A missing component is not silently
+  filled from previous shots.
+- A native `PrintWindow` attempt crops each allowed minimap sidebar and
+  uses the already tested player-marker detector (explicitly excludes magenta
+  aim) and white pin detector. The web client receives pixel coordinates
+  plus capture-quality and provisional source/freshness status, **not frames**.
+  Visual capture can be black/stale in Unity, so no real-PC guarantee yet.
+- A *provisional* yards-per-pixel diagnostic uses validated on-hole
+  GSPro-world ball/pin horizontal separation. For a first par-3 shot this
+  also emits par-3 ball/pin scale; non-par-3 gray waypoint OCR still requires
+  an independently verified OCR producer. No par-4 dogleg hole-yardage scale
+  fallback, and no provisional pixel scale authorizes a native aim click.
+- `src/adapters/looperCompanion.ts` exposes an opt-in 16s native observation
+  poller. `LiveCaddiePage.tsx` has a "Use Native Wind / Lie" button that
+  bridges only the OCR wind/lie payloads to the existing recommender events.
+  It **does not** feed unregistered native ball pixels or world X/Z to the
+  hazard/OSM map. Chrome visual capture remains a fallback, never both
+  simultaneously. The new diagnostic webpage can read on demand, watch,
+  and export sanitized local evidence as JSON.
+- `tests/test_gspro_companion_observations.py` checks bounded parsing,
+  hole-index, source freshness, origin/host security, GET-only endpoints,
+  and no private frame transmission. The Windows build workflow exercises
+  the packaged observation endpoint with GSPro absent, explicitly requiring
+  fail-closed behavior.
+
+**Simulator acceptance steps (ONE session, read-only):**
+1. Install only the tagged Stage-D development ZIP and start GSPro.
+   Open the matching *branch preview* at
+   `/dev/companion-connect.html` and confirm window/data-folder
+   discovery and pixel-quality capture when Chrome is foremost.
+2. Open `/dev/companion-observations.html` and click
+   `Read live snapshot` before shot one, then after a tee shot and at a
+   different hole (Greywolf control; ideally GCNE as second test).
+   Look for live `CurrentShot.StartingPOS`, nonstale log layout
+   tee/pin, native ball/pin pixels, wind/lie status, and changing
+   frame/coordinates. Export diagnostic JSON for reproducible analysis
+   **only with user approval; do not upload unfiltered logs or screenshots**.
+3. Confirm a par-3 provisional pixel scale from known GSPro distances;
+   **on par 4/5 scale must remain provisional/unknown** until trustworthy
+   gray-waypoint OCR or independent scale reference is available.
+   After the first shot, ensure ball moves, pin crosscheck holds, and
+   the observation response is fresh. If PrintWindow is black or stale,
+   stop and implement a window-specific WGC capture backend on this
+   branch; do not claim it works or fall back silently to desktop clicks.
+
+**Not yet complete:** Sim-PC acceptance; reliable non-par-3 waypoint
+label OCR inside the native EXE; verified GSPro-to-OSM registration; WGC
+fallback if PrintWindow fails; native command pairing/Set Aim. The
+status flags `nativeCapture:false` and `autoAim:false` remain correct.
+No remote site can send a click command. No production deployment.
+
+
 ### Safety review and integration planning (2026-10-06)
 
 The initial Stage C review found GetWindowRect/SetCursorPos can use different
