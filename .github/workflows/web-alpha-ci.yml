@@ -28,5 +28,8 @@ jobs:
       - name: Test read-only native aim preview against Greywolf fixtures
         run: npm run test:companion-preview
 
+      - name: Test GSPro to OSM research-only landmark transform and existing hazard invariants
+        run: node tools/test-gspro-course-landmark-registration.mjs
+
       - name: Build web app
         run: npm run build
