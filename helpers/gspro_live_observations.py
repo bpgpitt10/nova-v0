@@ -19,6 +19,7 @@ import gspro_minimap_pipeline as pipeline
 import gspro_minimap_markers as markers
 import gspro_native_discovery as native
 import gspro_window_capture as capture
+import gspro_native_wind_ocr as wind_ocr
 from waypoint_scale import Point, resolve_minimap_scale
 
 METERS_TO_YARDS = 1.0936132983377078
@@ -182,8 +183,8 @@ def read_structured_state(discovery):
     }
 
 
-def _image_observation(window, state):
-    report = capture.probe_gspro_capture(window, keep_pixels=True)
+def _image_observation(window, state, *, report=None):
+    report = report if report is not None else capture.probe_gspro_capture(window, keep_pixels=True)
     result = {
         "status": report.get("status", "unavailable"),
         "method": report.get("method"),
@@ -276,6 +277,9 @@ def collect_observations(*, include_ocr=True):
     window = native.find_gspro_window()
     folder = native.discover_gspro_data_directory(image_path=window.get("imagePath"))
     state = read_structured_state(folder)
+    # Capture the GSPro HWND once; share the SAME frame with minimap and wind.
+    # Desktop screen capture is never used for native wind.
+    frame_report = capture.probe_gspro_capture(window, keep_pixels=True)
     result = {
         "service": "looper-companion",
         "schemaVersion": "native-observations-v1",
@@ -284,7 +288,7 @@ def collect_observations(*, include_ocr=True):
         "gspro": native.public_gspro_window_status(window),
         "dataFolder": native.public_data_folder_status(folder),
         "structured": state,
-        "minimap": _image_observation(window, state),
+        "minimap": _image_observation(window, state, report=frame_report),
         "ocr": {},
         "capabilities": {
             "windLie": "on_demand",
@@ -298,15 +302,23 @@ def collect_observations(*, include_ocr=True):
         # The existing Windows HUD OCR readers run as separate bounded requests.
         # Individual OCR failures never prevent independent ball/world evidence.
         import open_golf_coach_helper_lie_footer as footer
-        for key, fn in (("wind", footer.base.read_gspro_wind_hud),
-                        ("lie", footer.read_gspro_lie_hud)):
-            try:
-                payload = fn()
-                result["ocr"][key] = {k: v for k, v in payload.items()
+        try:
+            wind = wind_ocr.read_wind_from_capture(frame_report)
+            result["ocr"]["wind"] = {k: v for k, v in wind.items()
                                       if k not in ("capture", "ocrRawText")}
-            except Exception as error:
-                result["ocr"][key] = {"status": "UNAVAILABLE",
-                    "observedAt": now(), "note": type(error).__name__}
+        except Exception as error:
+            result["ocr"]["wind"] = {"status": "UNAVAILABLE",
+                "observedAt": now(), "ocrSource": "gspro-native-window",
+                "note": type(error).__name__}
+        # Lie has NOT been migrated yet. Preserve its legacy diagnostics and
+        # clearly label it as the old screen-copy path.
+        try:
+            lie = footer.read_gspro_lie_hud()
+            result["ocr"]["lie"] = {k: v for k, v in lie.items()
+                                     if k not in ("capture", "ocrRawText")}
+        except Exception as error:
+            result["ocr"]["lie"] = {"status": "UNAVAILABLE",
+                "observedAt": now(), "note": type(error).__name__}
     else:
         result["ocr"] = {key: {"status": "UNAVAILABLE", "observedAt": observed,
              "note": "GSPro not connected or OCR not requested."}

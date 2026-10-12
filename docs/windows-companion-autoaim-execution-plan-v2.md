@@ -21,6 +21,20 @@
 
 **Next smallest sensible pass after CI:** one native OCR/HWND capture repair with an isolated Windows test fixture (prefer wind first), without touching shot-state ownership or activating mouse input. A separate future pass addresses file evidence/transport parity for removing the browser folder picker. Avoid conflating these workstreams.
 
+## Incremental implementation log — 2026-10-11 (V2 small pass #2: Wind native OCR)
+
+**Scope: wind ONLY.** The user asked to repair wind OCR without restarting the Live Caddie shot/ball/tee state work. This commit refactors only the local visual-adapter flow. No AutoAim POST, mouse input, course loader, or production changes.
+
+- [x] Added `helpers/gspro_native_wind_ocr.py`: extracts the *GSPro HWND* top-center 36%×16% image from the existing read-only PrintWindow capture, doubles resolution for small HUD text, uses Windows OCR on a temporary **HUD-only** PNG, removes it in `finally`, and passes text through the pre-existing `parse_wind_ocr_text`. No Tesseract bundle, no screenshot/full-frame response, and no Chrome desktop `CopyFromScreen` wind fallback.
+- [x] Replaced the defective `GetAwaiter` PowerShell reflection path for *new native wind only* with `System.WindowsRuntimeSystemExtensions.AsTask(IAsyncOperation<T>)`, selecting a generic overload explicitly and returning a meaningful failure reason if unavailable. **Requires real sim-PC validation**; Windows CI proves runtime packaging but cannot guarantee GSPro HUD or user-profile OCR languages.
+- [x] Reused **one** GSPro native frame for minimap CV and native wind in `collect_observations`; `/wind` on **LooperCompanion.exe** now uses the same HWND-based wind OCR instead of the legacy screen-copy path. The standalone legacy helper (outside this companion) is untouched.
+- [x] Kept current OCR wind schema (`READY/UNKNOWN/UNAVAILABLE`, speed/direction, compass-toward semantics) with `ocrSource: gspro-native-window` and explicitly unverified capture freshness. No guessed values or click authorization.
+- [x] Lie reader remains legacy and **unfixed**. Live Caddie remains exclusive authority for ball, hole and shot state; no Python tee transitions or new state parsing in this pass.
+- [ ] CI (Windows packaged EXE + web) results to record after the build completes.
+- [ ] Next real-PC test when convenient: Greywolf wind HUD showing e.g. `8 MPH W`, with Chrome in foreground, compare companion `/wind` and `/observations`, plus changed wind values. No need to hit a shot. If WinRT OCR fails with a named error, use the precise error from the JSON; do not guess the reading.
+
+**Next isolated step after this:** migrate the lie footer OCR to the SAME native GSPro-window image, preserving existing lie math/event contract; independently validate minimap scaling/registration before turning on any click.
+
 ## Read this first: immutable architectural boundaries
 
 **Do NOT duplicate or replace Live Caddie's already functioning shot-state engine.** The user expressly confirmed that Live Caddie correctly tracks the ball and transitions from a completed putt/hole to the **next tee**, even if `currentRound.dat` is temporarily stale. The first Windows diagnostic showed H8 on the H9 tee because it used a NEW simplistic Python interpretation — **not** because Live Caddie needs that logic rebuilt.

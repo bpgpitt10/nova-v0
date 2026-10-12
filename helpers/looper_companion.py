@@ -17,6 +17,7 @@ import gspro_window_capture as capture
 import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
 import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
 import gspro_live_observations as observations  # read-only diagnostic; no desktop input
+import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
 
 base = lie_footer.base
 COMPANION_VERSION = "autoaim-stage-c-preflight.1"
@@ -114,6 +115,13 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         super().do_OPTIONS()
 
     def do_GET(self) -> None:
+        if urlsplit(self.path).path == "/wind":
+            # Retain the established /wind route and payload shape, but ensure
+            # the packaged Companion uses its own GSPro HWND, not CopyFromScreen.
+            # No new write endpoint or Live Caddie shot-state parser.
+            window = native.find_gspro_window()
+            self._write_json(200, native_wind.read_gspro_native_wind(window))
+            return
         if urlsplit(self.path).path == COMPANION_STATUS_PATH:
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
