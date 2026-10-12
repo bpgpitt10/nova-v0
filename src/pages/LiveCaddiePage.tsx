@@ -168,6 +168,7 @@ const buildTacticalMapBounds = (
   target: CoursePointYds,
   pinEstimate: CoursePointYds | null,
   candidate: AimCandidateEvaluation | null,
+  provisionalTeeRadiusYds: number | null = null,
 ) => {
   const pinDistance = pinEstimate ? pointDistance(ball, pinEstimate) : Number.POSITIVE_INFINITY
   const includePin = Boolean(pinEstimate && pinDistance <= 285)
@@ -184,7 +185,7 @@ const buildTacticalMapBounds = (
     0,
   ) ?? 0
 
-  const minY = ball[1] - 24
+  const minY = ball[1] - Math.max(24, (provisionalTeeRadiusYds ?? 0) + 5)
   const furthestFocusY = Math.max(...focusPoints.map((point) => point[1]))
   const desiredMaxY = furthestFocusY + Math.max(115, maxCarryRadius + 70)
   const minimumForwardSpan = pinDistance < 180
@@ -249,6 +250,7 @@ function LiveCaddieMap({
   show95,
   showRiskTail,
   showPracticeShots,
+  provisionalTeeRadiusYds,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -258,10 +260,11 @@ function LiveCaddieMap({
   show95: boolean
   showRiskTail: boolean
   showPracticeShots: boolean
+  provisionalTeeRadiusYds: number | null
 }) {
   const viewSize = 100
   const pad = 4
-  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate)
+  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate, provisionalTeeRadiusYds)
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
   const spanY = Math.max(1, displayBounds.maxY - displayBounds.minY)
   const scale = Math.min((viewSize - pad * 2) / spanX, (viewSize - pad * 2) / spanY)
@@ -409,6 +412,11 @@ function LiveCaddieMap({
           </>
         ) : null}
         {pinSvg ? <circle className="live-pin-marker" cx={pinSvg[0]} cy={pinSvg[1]} r="0.78" /> : null}
+        {provisionalTeeRadiusYds != null ? (
+          <circle cx={ballSvg[0]} cy={ballSvg[1]} r={provisionalTeeRadiusYds * scale}
+            fill="#dabb6c" fillOpacity={0.10} stroke="#f0c777"
+            strokeOpacity={0.72} strokeDasharray="1.2 1" strokeWidth={0.27}/>
+        ) : null}
         <circle className="live-ball-marker" cx={ballSvg[0]} cy={ballSvg[1]} r="1.2" />
       </svg>
     </div>
