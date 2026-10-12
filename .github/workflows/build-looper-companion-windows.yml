@@ -63,28 +63,32 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach numpy opencv-python-headless
 
-      - name: Acquire portable Tesseract engine for packaging
+      - name: Reuse physically validated portable Tesseract bundle
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Install on the CI runner ONLY. The sim user's machine receives a
-          # complete portable bin/tessdata folder alongside the EXE, no admin.
-          choco install tesseract -y --no-progress
-          $ocrRoot = Join-Path $env:ProgramFiles "Tesseract-OCR"
-          $exe = Join-Path $ocrRoot "tesseract.exe"
-          $language = Join-Path $ocrRoot "tessdata/eng.traineddata"
-          if (!(Test-Path $exe) -or !(Test-Path $language)) {
-            throw "Tesseract binary or English model missing after Chocolatey install."
+          # Reuse OUR own pinned OCR bundle already proven on physical GSPro.
+          # Avoid Chocolatey package-feed 504 failures and version drift.
+          $tag = "looper-companion-autoaim-stage-c-d11eb7ad"
+          $extract = Join-Path $env:RUNNER_TEMP "pinned-looper-ocr"
+          New-Item -ItemType Directory -Path $extract -Force | Out-Null
+          gh release download $tag --repo "$env:GITHUB_REPOSITORY" --pattern "looper-windows-companion.zip" --dir $extract
+          if ($LASTEXITCODE -ne 0) { throw "Pinned OCR release download failed." }
+          $zip = Join-Path $extract "looper-windows-companion.zip"
+          if (!(Test-Path $zip)) { throw "Pinned OCR ZIP missing." }
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $extract "unzipped")
+          $ocrRoot = Join-Path $extract "unzipped/ocr"
+          if (!(Test-Path (Join-Path $ocrRoot "tesseract.exe")) -or
+              !(Test-Path (Join-Path $ocrRoot "tessdata/eng.traineddata"))) {
+            throw "Pinned release lacks complete portable Tesseract and English data."
           }
-          $ocrRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          & $exe --version
-          $langs = & $exe --list-langs
-          if ($langs -notcontains "eng") { throw "Packaged Tesseract has no English traineddata." }
-          New-Item -ItemType Directory -Path "portable-ocr/tessdata" -Force | Out-Null
-          Copy-Item -Path $exe -Destination "portable-ocr/tesseract.exe" -Force
-          Copy-Item -Path (Join-Path $ocrRoot "*.dll") -Destination "portable-ocr/" -Force
-          Copy-Item -Path $language -Destination "portable-ocr/tessdata/eng.traineddata" -Force
-          if (Test-Path (Join-Path $ocrRoot "LICENSE")) {
-            Copy-Item -Path (Join-Path $ocrRoot "LICENSE") -Destination "portable-ocr/LICENSE-Tesseract.txt"
+          Copy-Item $ocrRoot -Destination portable-ocr -Recurse -Force
+          & "portable-ocr/tesseract.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "Pinned OCR executable cannot launch." }
+          $langs = & "portable-ocr/tesseract.exe" --list-langs
+          if ($LASTEXITCODE -ne 0 -or $langs -notcontains "eng") {
+            throw "Pinned English traineddata unavailable."
           }
 
       - name: Test Stage C read-only registration, safety, discovery and handshake
