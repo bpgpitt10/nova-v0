@@ -65,6 +65,18 @@
 
 **Next:** once physical wind and lie pass, advance to read-only minimap marker accuracy and scaling/zoom registration. Native file evidence parity remains separate and must reuse the existing TypeScript Live Caddie state engine.
 
+## Incremental implementation log — 2026-10-11 (V2 small pass #5: WinRT direction-context fallback)
+
+**Real simulator finding:** After pass #4's restored browser-proven image geometry, the *installed updated companion* correctly identified \`SPEED: 9 MPH\` but returned \`DIR: \` (blank) and wind UNKNOWN. This confirms 9 MPH recognition is fixed; the Windows WinRT OCR backend is still failing to recognize the **isolated compass glyph**. The browser Tesseract.js code used explicit single-glyph page segmentation (mode 8), which WinRT OCR does not expose. Do not rework current Live Caddie wind math or speculate which direction was displayed.
+
+- [x] Added a **bounded, conditional** native WinRT OCR retry: only when the independent speed crop is recognized and direction is missing, stitch the two existing preprocessed GSPro HUD regions into one line with a short white gap, for OCR context. This uses the **same** GSPro HWND capture, no desktop capture, no extra HUD pixels, and no remote screenshots.
+- [x] Restrict fallback recognition to an actual \`MPH <cardinal>\` token on the stitched line; otherwise leave wind \`UNKNOWN\`. Record \`directionOcrStrategy\` and \`directionFallbackRawText\` (text only) to diagnose the next simulator result. Do **not** guess compass direction or treat 9 MPH alone as ready.
+- [x] Added tests for recovered \`9 MPH NW\`, blank single-glyph + blank combined glyph, corrupt OCR, three-call fallback behavior and protected \`READY\`/UNKNOWN boundary.
+- [ ] Build and packaged EXE smoke test in [Windows CI run](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784335); [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784264). Mark green only after each actually passes; do not install the earlier 02a3f44c package for this fallback.
+- [ ] **Physical simulator proof required.** Validate nonzero speed and cardinal with Chrome in front at multiple wind headings. The composite WinRT fallback is an unverified hypothesis, not established Tesseract parity. If it still returns no cardinal, stop tinkering with speed; diagnose/replace the **direction OCR backend** (e.g. existing Tesseract.js path) using a real user-approved wind-crop fixture. Continue fail-closed and keep native clicks off.
+
+**Next gate:** wind speed + cardinal, lie, read-only image capture passing on simulator; then minimap/zoom registration. No production deployment/merge.
+
 ## Read this first: immutable architectural boundaries
 
 **Do NOT duplicate or replace Live Caddie's already functioning shot-state engine.** The user expressly confirmed that Live Caddie correctly tracks the ball and transitions from a completed putt/hole to the **next tee**, even if `currentRound.dat` is temporarily stale. The first Windows diagnostic showed H8 on the H9 tee because it used a NEW simplistic Python interpretation — **not** because Live Caddie needs that logic rebuilt.
