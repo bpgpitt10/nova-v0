@@ -1,10 +1,10 @@
 # The Looper — Windows Companion / Native AutoAim execution plan (V2)
 
-**Updated:** 2026-10-12 (proven waypoint + zoom registration connected to read-only Windows diagnostics)  
+**Updated:** 2026-10-12 (pass #8: authoritative Live Caddie bridge, read-only recommendation pixel preview, per-stage native timings)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
 **Current latest CI-tested package:** native waypoint/zoom integration prerelease [`looper-companion-autoaim-stage-c-59bdb329`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-59bdb329), ~105 MB ZIP with bundled Tesseract. [Windows tests/build/packaged smoke PASS](https://github.com/bpgpitt10/nova-v0/actions/runs/38203842422); [Web Alpha CI PASS](https://github.com/bpgpitt10/nova-v0/actions/runs/38203842407). The original wind+lie GSPro test remains validated; **new waypoint and zoom integration requires physical simulator verification**.  
-**Most recent implementation:** pass #7 code/test SHA `59bdb329` connects historical waypoint and zoom registration to native read-only diagnostics, including par-3 tee cache and multi-threshold OCR confidence. CI/build/smoke passed; the new waypoint and zoom simulator acceptance remains pending. Wind/lie unchanged.  
+**Most recent implementation:** pass #8 adds the cross-source Live Caddie shot reconciliation and provisional recommendation-to-minimap pixel preview plus native stage timings. Web fixture tests/build PASS; Windows packaged build is revalidating after CI fixture repair. Code has no native input authorization, no POST and no main/production merge. Historical wind+lie remain physically validated.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -123,6 +123,42 @@
 - [ ] Full AutoAim integration remains separate: secure read-only binding between canonical TS current state and native tee/pin/coordinate frame, preview-only target-to-pixel, explicit user Set Aim consent, fresh native-click preflight/pairing and magenta accepted-target post-click check. Do NOT promote provisional scaling to authoritative on the basis of one snapshot.
 
 **Next:** Use the current companion to verify this existing math on the real Greywolf sim. Do not re-run the entire 18-hole corpus as the default next step.
+## Incremental implementation log — 2026-10-12 (V2 pass #8: Connect Live Caddie → preview target → profile performance)
+
+**User request:** Complete priorities 1–3 offline while away from GSPro; then update this implementation plan. Scope is narrow. Do not rebuild the canonical shot-state engine, the recommender, gray waypoint geometry, or wind/lie OCR, and do not enable clicking.
+
+### 1. Browser/native diagnostic reconciliation — implemented
+
+- [x] Reuse the existing authoritative BrowserGsproCourseSnapshot + prepareReadOnlyNativeAimIntent, including selected club and candidate aimPoint. Add lastCompletedShotId to the read-only intent for exact finished-shot evidence matching.
+- [x] Retain the existing GET-only companion local observation connection. LiveCaddiePage now saves sanitized native observations instead of only summarizing wind/lie in a status line; native wind and lie event dispatch remains unchanged.
+- [x] Added pure src/adapters/looperCompanionAimPreview.ts. Strictly require compatible native schema, autoAim:false, connected GSPro per-monitor DPI/non-minimized, fresh timestamps/file age, exact course key/round/hole, and matching active pre-shot number OR matching latest completed ShotID + shot number. The companion's last_completed record NEVER supersedes Live Caddie's own current hole/ball.
+- [x] Prevent false preview on green/unavailable Live Caddie target, geometry length >10 yd disagreement, post-shot pixel-ball mismatch >12 yd, native white-pin check >3 px, uncalibrated tee/zoom, nonfinite/singular transform, or target beyond minimap bounds. All failures render a specific reason and no target pixel.
+
+### 2. Recommendation to GSPro minimap read-only pixel candidate — implemented, NOT physically verified
+
+- [x] Expose only numeric canonical native tee/pin pixel anchors and the previously proven current→canonical 2x3 similarity matrix through the local diagnostics GET; preserve raw GSPro images inside EXE.
+- [x] Browser calculation reproduces helpers/auto_aim_transform.py: Looper-local tee/pin axis and right-handed offset to canonical tee minimap pixels, then inverse cached zoom matrix into current ROI pixels. Output is always candidate-unverified; there is NO mouse-command transport, pairing, permission or native POST.
+- [x] LiveCaddiePage displays a compact read-only status (blocked vs candidate), target pixel, tee/pin anchor error, current ball error, matching shot evidence, and an illustrative blank minimap schematic with red native ball, white native pin and unverified target. Schematic is NOT an actual GSPro image.
+- [x] Added tools/test-looper-native-aim-preview.mjs and npm test:companion-preview, run by Web Alpha CI. Replays saved Greywolf H8/H13 matrices and expected target pixels; rejects wrong hole, wrong round, wrong previous shot, stale records, bad registration pin, bad tee/pin anchors and ball mismatch. The web build and source-level regression tests passed during development.
+
+### 3. Performance instrumentation — implemented, real-PC timing values pending
+
+- [x] Python companion emits numeric timingMs for structured discovery, direct HWND capture, minimap processing, marker detection, waypoint OCR subprocesses, scale math, cached tee/zoom registration, wind OCR, lie OCR and overall elapsed ms (perf_counter). Missing stages are null, not fabricated zero-speed results.
+- [x] The existing diagnostics HTML and LiveCaddiePage surface per-stage timing readouts, included in the exported sanitized diagnostic JSON, enabling tomorrow's repeated measurements and identification of the slowest step.
+- [x] Tests assert timing fields remain sanitized numeric values and do not leak image bytes, usernames or local paths.
+
+### Build, packaging and safety
+
+- [x] Kept Tesseract wind and WinRT lie implementation unchanged. Worked only on isolated auto-aim-windows-companion-v1 branch. Native POST/AutoAim mouse input remain disabled; browser pixel preview never sends target to native companion.
+- [x] Replaced flaky Chocolatey re-install in Windows CI (package feed 504) with a pinned portable OCR bundle from own physically proven Looper release d11eb7ad; keeps English data/DLLs and avoids version drift. GitHub release must be available or build fails closed.
+- [x] Fixed intermediate web unused-state variable and numeric-affine test fixture errors discovered in CI. Fixed a missing reason field in mock GSPro discovery response.
+- [ ] Confirm consolidated Windows unit/EXE packaged smoke and published Stage C prerelease from the final implementation commit; verify latest Web Alpha build. Do not give new ZIP until CI succeeds.
+- [ ] Publish and verify matching BRANCH-only Vercel preview for the updated LiveCaddiePage and standalone diagnostics; do not promote to thelooper.golf production.
+- [ ] Physical Greywolf H8 and par-4 dogleg/par-3 simulator acceptance: waypoint ruler vs displayed yardage, tee cache and zoom pin registration after shot, shot-ID/source reconciliation, correct relative preview placement and per-stage millisecond measurements. Existing H8 0.36 yd physical click proof belongs to older isolated harness; not to this new preview.
+- [ ] Coordinate frame is explicitly still unverified even when math and numerical guards pass. Need independent course↔GSPro tee/pin/bearing evidence and real-PC preview error measurements before promoting to aim-ready. A native snapshot showing only a previous-hole last_completed record at the next tee MUST be blocked, not silently treated as a new tee. Browser folder picker for the authoritative Live Caddie shot feed is separate work and remains in place; **no Chrome screen sharing is required for companion capture**.
+- [ ] Shorter-than-calibrated partial shot strategy integration remains a separate branch/merge gate; no invented named club or fake success probabilities.
+
+**Next task after physical evidence:** if pixel candidate matches GSPro across at least a par-3, dogleg and post-shot zoom, establish explicit verified coordinate-frame provenance and begin secure user-consented Set Aim command integration, with one native click and magenta acceptance <=3 yd verification. Until then all click routes disabled.
 ## Read this first: immutable architectural boundaries
 
 **Do NOT duplicate or replace Live Caddie's already functioning shot-state engine.** The user expressly confirmed that Live Caddie correctly tracks the ball and transitions from a completed putt/hole to the **next tee**, even if `currentRound.dat` is temporarily stale. The first Windows diagnostic showed H8 on the H9 tee because it used a NEW simplistic Python interpretation — **not** because Live Caddie needs that logic rebuilt.
@@ -222,12 +258,12 @@ The EXE may **independently recheck minimal fresh file/window/shot facts for cli
 - Browser-read-only Live Caddie and Chrome fallback continue working if companion absent/blocked. Full/partial confidence logic for imported holes is a separate course-importer workstream; integrate only via explicit validity gates.
 - Final production acceptance: stage preview, security tests, user-consented actual sim tests, robust Win10/11, 1080p/4K, DPI/multiple monitors, GSPro restart, new course/hole/pin, minimap zoom, install/autostart/uninstall, browser permissions; THEN consider release/merge.
 
-## Immediate next acceptance gate — native waypoint / tee zoom proof
+## Immediate next acceptance gate — current Live Caddie ↔ native preview physical test
 
-1. Verify the new Windows branch ZIP, read gray waypoint distance and waypoint/candidate scale while Chrome remains in front and GSPro in background. No browser sharing prompt.
-2. On tee with fresh pre-shot #1, confirm tee_anchor_candidate_cached. After a shot, confirm same-hole registered_candidate_unverified including zoom factor, rotation, pin error and scale; reject changed hole, stale frame, wrong pin.
-3. Validate one par-4 dogleg and one par 3. The par-3 direct ruler requires a verifiably current direct distance, while the waypoint ruler does not depend on routed scorecard length.
-4. Later bind the existing authoritative TypeScript Live Caddie hole/shot and actual recommender aim to the cached calibration for preview-only target pixel and measured error. Native clicks stay disabled.
+1. Install only the CI-passing latest Windows ZIP and use the matching development Vercel preview (not the original stale page); maintain the existing browser GSPro round/folder access, start native observations without Chrome getDisplayMedia screen sharing.
+2. At Greywolf H8 tee verify gray waypoint yardage and resulting tee-frame yards/pixel, then move/shot for zoom and inspect cached tee, white-pin residual and both scale/registration states. Capture the new per-stage timingMs.
+3. In Live Caddie with selected club/aim, inspect the read-only native aim check. Confirm native record and canonical Live Caddie course/round/hole/shot agreement and candidate screen-ROI pixel. A stale previous-hole record MUST yield an explicit blocked reason. Compare candidate against actual GSPro minimap visually; do not click.
+4. Repeat controlled preview for one dogleg and one par 3, capture snapshot JSON and stage performance totals. Only then propose a verified native coordinate-frame contract. Explicit Set Aim/pairing and physical click authorization are distinct later steps.
 ## Links and existing artifacts
 
 - Long-form historical architecture: [`docs/auto-aim-windows-companion-v1.md`](./auto-aim-windows-companion-v1.md)
@@ -244,5 +280,4 @@ The EXE may **independently recheck minimal fresh file/window/shot facts for cli
 
 ## Copy into a new chat to resume
 
-> Continue The Looper's Windows Companion / native AutoAim work in `bpgpitt10/nova-v0`. **FIRST read `docs/windows-companion-autoaim-execution-plan-v2.md` on branch `auto-aim-windows-companion-v1`** and cross-check `docs/auto-aim-windows-companion-v1.md`, `docs/companion-native-aim-pairing-v1.md`, and `docs/shot-strategy-windows-companion-merge-plan.md`. We have ALREADY solved ball-position tracking, tee initialization, holed-out hole transition, and stale GSPro file reconciliation in TypeScript Live Caddie. DO NOT port or duplicate that state machine in the Windows EXE. EXE must do native GSPro capture, OCR, minimap scale/registration, **one secured explicit Set Aim click**, and post-click verification; recommender chooses target. Greywolf live testing proved GSPro HWND capture and real shot records; native Lie OCR subsequently worked. Wind then regressed (reported `IO MPH`, no cardinal) because native OCR had replaced the previously validated browser split speed/direction crops with one large 2× crop. Pass #4 restores the browser wind crop geometry, 8× threshold preprocessing, separate speed/direction recognition, and compass FROM semantics in native GSPro-window capture. **Next action is the physical wind + lie verification, NOT another parser rewrite or AutoAim click.** Only then continue read-only minimap scaling/registration; native file-evidence transport must reuse the established JS engine. Keep native input OFF, no production merge/deploy, publish ONE development test package only after CI. Report what changed, tests, and what's still sim-gated.
-
+> Continue The Looper Windows Companion native AutoAim work on branch auto-aim-windows-companion-v1, NOT main. Read this V2 plan, the earlier Greywolf H8/H13 physical proof, and docs/companion-native-aim-pairing-v1.md. The packaged Tesseract wind and native lie are already confirmed on the simulator; the old waypoint/zoom transform calibrated 18/18 Greywolf tee frames offline and completed one <=0.36 yd physical isolated-lab click. Pass #7 integrated that geometry into the current read-only companion. Pass #8 now reconciles the existing authoritative TypeScript Live Caddie snapshot with native round/hole/shot evidence, derives a guarded NON-CLICKING recommendation-to-minimap pixel candidate, displays a schematic on Live Caddie, and logs per-stage timing. NEXT: verify consolidated CI and matching branch preview, then run one real simulator preview and performance check tomorrow. Keep companion POST/AutoAim input FALSE, do not recreate shot-state in Python, do not infer GSPro current shot from old last_completed, do not treat Looper-local XY as verified native world coordinates. Later work requires verified per-hole course-frame, secured user consent, one click and magenta marker check. No production merge.
