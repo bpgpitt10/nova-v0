@@ -74,7 +74,7 @@ function fixture([matrix, actualBall, tee, pin, ypp, expectedPixel]) {
   return { intent, native }
 }
 
-const [intent, native] = fixture([
+const { intent, native } = fixture([
   [[0.353548471, -0.157713020, 210.251806], [0.157713020, 0.353548471, 68.2961123]],
   { x: 277.6226784, y: 852.1339198 },
   { x: 275.9562842, y: 851.1857923 },
