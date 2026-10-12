@@ -1,19 +1,20 @@
 import type { CourseHoleGeometry, CoursePointYds } from './types'
 
 /**
- * First-use fallback ONLY for an un-mapped tee in a route-origin OSM hole.
+ * First-use fallback ONLY when no selected tee is matched or locked.
  *
  * No pixel x/% -> map x conversion: the GSPro minimap is recentered and may be
  * rotated; raw lateral screen position is NOT a geospatial measurement.
  * Instead, a measured GSPro *straight* ball-to-pin distance can constrain the
- * likely tee along the OSM route-start-to-green-centroid bearing. The OSM
- * origin and centroid remain approximate; this never verifies a tee.
+ * likely tee along the existing map-tee-anchor-to-green-centroid bearing.
+ * The base can be the OSM route start OR the nearest mapped tee after
+ * normalization: neither proves the user's selected tee. This is unverified.
  */
 export type ProvisionalTeeEstimate =
   | Readonly<{
       status: 'provisional'
       point: CoursePointYds
-      source: 'osm-route-start' | 'ball-pin-distance-constrained'
+      source: 'osm-route-start' | 'existing-map-tee-anchor' | 'ball-pin-distance-constrained'
       uncertaintyRadiusYds: number
       distanceInputYds: number | null
       adjustmentYds: number
@@ -50,9 +51,16 @@ export const estimateProvisionalTee = (
   geometry: CourseHoleGeometry,
   measuredStraightBallPinYds?: number | null,
 ): ProvisionalTeeEstimate => {
-  if (geometry.coordinateSystem.origin !== 'osm-hole-route-start') {
-    return block('Course coordinates have already been rebased to a mapped tee. Do not invent a second tee.')
+  const sourceOrigin = geometry.coordinateSystem.origin
+  if (sourceOrigin === 'selected-tee' && geometry.registration.status === 'verified') {
+    return block('This hole already has a verified selected-tee coordinate origin.')
   }
+  if (sourceOrigin !== 'osm-hole-route-start' && sourceOrigin !== 'selected-tee') {
+    return block('Unknown course coordinate origin.')
+  }
+  const anchorDescription = sourceOrigin === 'selected-tee'
+    ? 'Existing approximate mapped tee anchor'
+    : 'OSM hole route start'
   const tee = geometry.markers.tee, pin = geometry.markers.pin
   if (!pointOk(tee) || !pointOk(pin)) {
     return block('No route-start and green-centroid anchor.')
@@ -67,10 +75,10 @@ export const estimateProvisionalTee = (
   }
   if (measuredStraightBallPinYds == null) {
     return {
-      status: 'provisional', point: tee, source: 'osm-route-start',
+      status: 'provisional', point: tee, source: sourceOrigin === 'selected-tee' ? 'existing-map-tee-anchor' : 'osm-route-start',
       uncertaintyRadiusYds: ROUTE_ONLY_UNCERTAINTY_YDS,
       distanceInputYds: null, adjustmentYds: 0,
-      note: 'OSM route start only. Tee may be tens of yards away; precise carries, elevation and hazards must not be presented as validated.',
+      note: anchorDescription + ' only. The selected tee may be farther away than the planning guard band; precise carries, elevation and hazards are unverified.',
       usableForExactHazardCarry: false, authorizesNativeAim: false, locksTeeCalibration: false,
     }
   }
@@ -96,7 +104,7 @@ export const estimateProvisionalTee = (
     uncertaintyRadiusYds: DISTANCE_CONSTRAINED_UNCERTAINTY_YDS,
     distanceInputYds: measuredStraightBallPinYds,
     adjustmentYds: shift,
-    note: 'Projected GSPro ball-to-pin ruler onto the OSM route-start↔green-centroid bearing. Lateral tee position is NOT established by minimap screen X. Approximate tee only.',
+    note: 'Projected GSPro ball-to-pin ruler onto the ' + anchorDescription + ' to green-centroid bearing. Lateral tee position is NOT established by minimap screen X. Approximate tee only.',
     usableForExactHazardCarry: false, authorizesNativeAim: false, locksTeeCalibration: false,
   }
 }
