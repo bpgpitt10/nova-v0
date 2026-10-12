@@ -4,7 +4,7 @@
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
 **Current tested package:** prerelease `looper-companion-autoaim-stage-c-5543b4f4`, build from `5543b4f4` (Windows CI passed; native simulator proof limited to read-only).  
-**Current code tip at writing:** `34b05401512a556985cc4d3cc6e873f5a75567b7`. Keep this plan updated as development progresses.  
+**Most recent implementation pass:** `f434685a5fd6c06d1a0a42ab6b801410e2b2809c` (diagnostic-only/version contract fix; Windows and web CI passed). Keep this plan updated as development progresses.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -15,7 +15,7 @@
 - [x] Explicit `stateAuthority: "diagnostic-only"` contract in the endpoint and TypeScript consumer. Structured records are never dispatched as authoritative current ball/tee/hole; the existing `browserGsproCourseStateCore.ts` remains untouched.
 - [x] Change the diagnostic card from misleading "GSPro ball world" to **shot-record evidence**; display `StartingPOS` only for an observed `CurrentShot`, and `EndingPOS` for a `last_completed` record with a prominent previous-hole warning. Does not invent a next tee or "current" ball in Python.
 - [x] Add Python/HTTP tests for the version and diagnostic-only invariants, previous-shot labeling, and retained origin/host/POST protection.
-- [ ] Validate Windows Companion CI and web CI on this exact commit (see Actions run for updated branch head). Native live observation still depends on repaired OCR.
+- [x] **CI passed on implementation commit `f434685a`:** [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38197311740) and [Windows Companion build, native contract tests and packaged EXE smoke test](https://github.com/bpgpitt10/nova-v0/actions/runs/38197311877) both succeeded. The branch-only [Windows ZIP prerelease](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-f434685a) was published; **do not reinstall for this contract-only fix**, wait for the consolidated OCR/capture validation build. Physical OCR remains unverified/unfixed.
 - [ ] Further native file-evidence transport through the **existing JS parsers** remains future work; we have intentionally NOT ported hole-transition logic to Python.
 - [ ] Wind/lie OCR from verified GSPro HWND in-memory pixels, waypoint label OCR, zoom registration and paired one-click AutoAim are **not changed in this pass**. No production deployment/merge and no simulator reinstall requested.
 
