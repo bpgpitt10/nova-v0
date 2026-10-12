@@ -139,12 +139,14 @@ def _normalize_wind_speed(raw: str):
     compact = re.sub(r"\s+", "", raw.upper()).replace(",", ".")
     # Preserve successful numeric OCR as-is. The observed 'IO MPH' -> 10 MPH
     # substitution is only made inside the SPEED crop, never the direction.
-    match = re.search(r"(\d{1,2}(?:\.\d+)?)", compact)
-    if not match:
-        match = re.search(r"([IO]{1,2}(?:\.\d+)?)", compact)
+    # Allow I->1 and O->0 ONLY in the speed crop, and only for a
+    # complete numeric-like token. Never convert arbitrary OCR noise to 0.
+    match = re.search(r"(?<![A-Z0-9])([0-9IO]{1,2}(?:\.[0-9IO]+)?)(?=MPH|$)", compact)
     if not match:
         return None
     token = match.group(1).replace("I", "1").replace("O", "0")
+    if not any(char.isdigit() for char in match.group(1)) and "MPH" not in compact:
+        return None
     try:
         number = float(token)
         return number if 0 <= number <= 50 else None
