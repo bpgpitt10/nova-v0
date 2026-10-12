@@ -7,6 +7,8 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
+import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
+import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
 import {
@@ -119,7 +121,12 @@ export default function RoundSetupPage() {
         candidateTeeValues(candidate)
           .some((value) => normalize(value) === selection.normalizedTeeSet),
       )
-      const provisional = exactMatches.length !== 1 ? estimateProvisionalTee(geometry) : null
+      const calibration = loadTeeCalibration(
+        courseGeometryFingerprint(geometry), 1, selection.normalizedTeeSet,
+      )
+      const hasLockedTee = calibration?.status === 'locked'
+      const provisional = !hasLockedTee && exactMatches.length !== 1
+        ? estimateProvisionalTee(geometry) : null
       if (provisional?.status === 'blocked') {
         throw new Error(
           'Selected tee is not mapped, and a provisional Hole 1 tee cannot be estimated safely: ' +
