@@ -13,6 +13,8 @@ import {
 } from '../adapters/browserGsproVisualCapture'
 import {
   readLooperCompanionStatus,
+  connectToLooperNativeObservations,
+  type LooperNativeObservationConnection,
   type LooperCompanionStatus,
 } from '../adapters/looperCompanion'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
@@ -437,6 +439,9 @@ export default function LiveCaddiePage() {
   const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
   const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
   const [companionStatus, setCompanionStatus] = useState<LooperCompanionStatus | null>(null)
+  const [nativeVisualActive, setNativeVisualActive] = useState(false)
+  const [nativeVisualMessage, setNativeVisualMessage] = useState<string | null>(null)
+  const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -514,6 +519,8 @@ export default function LiveCaddiePage() {
   useEffect(() => () => {
     visualCaptureRef.current?.disconnect()
     visualCaptureRef.current = null
+    nativeVisualRef.current?.disconnect()
+    nativeVisualRef.current = null
   }, [])
 
   useEffect(() => {
@@ -844,6 +851,10 @@ export default function LiveCaddiePage() {
   }
 
   const connectGsproVisuals = async () => {
+    nativeVisualRef.current?.disconnect()
+    nativeVisualRef.current = null
+    setNativeVisualActive(false)
+    setNativeVisualMessage(null)
     setVisualCaptureError(null)
     setVisualCaptureSource(null)
     visualCaptureRef.current?.disconnect()
@@ -861,6 +872,33 @@ export default function LiveCaddiePage() {
     } catch (error) {
       setVisualCaptureError(error instanceof Error ? error.message : String(error))
     }
+  }
+
+  const toggleNativeVisuals = () => {
+    if (nativeVisualRef.current) {
+      nativeVisualRef.current.disconnect()
+      nativeVisualRef.current = null
+      setNativeVisualActive(false)
+      setNativeVisualMessage('Native observation polling stopped.')
+      return
+    }
+    visualCaptureRef.current?.disconnect()
+    visualCaptureRef.current = null
+    setVisualCaptureStatus('stopped')
+    setVisualCaptureError(null)
+    setNativeVisualActive(true)
+    setNativeVisualMessage('Requesting a fresh read-only companion snapshot…')
+    nativeVisualRef.current = connectToLooperNativeObservations({
+      onObservation: (data) => {
+        const wind = data.ocr?.wind?.status ?? 'UNAVAILABLE'
+        const lie = data.ocr?.lie?.status ?? 'UNAVAILABLE'
+        const map = data.minimap?.status ?? 'unavailable'
+        setNativeVisualMessage(`Native observations: wind ${wind}, lie ${lie}, minimap ${map}. Ball/pin still diagnostic-only.`)
+      },
+      onError: (error) => setNativeVisualMessage(
+        `Native observation error: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+    })
   }
 
   const selectCourse = (nextCourseId: CourseId) => {
@@ -931,6 +969,11 @@ export default function LiveCaddiePage() {
           </select>
           {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
           {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
+          {companionStatus?.capabilities?.liveObservations ? (
+            <button type="button" onClick={toggleNativeVisuals}>
+              {nativeVisualActive ? 'Stop Native Observations' : 'Use Native Wind / Lie'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => void connectGsproVisuals()}
@@ -946,6 +989,7 @@ export default function LiveCaddiePage() {
                   : 'Connect GSPro Visuals'}
           </button>
           <div className="live-caddie-secondary-context">
+            {nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
