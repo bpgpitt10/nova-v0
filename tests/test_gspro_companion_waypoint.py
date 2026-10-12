@@ -79,7 +79,8 @@ class WaypointIntegrationTests(unittest.TestCase):
         self.assertEqual(first["registration"]["status"], "tee_anchor_candidate_cached")
         self.assertIsNotNone(integrated._tee_cache)
         self.assertEqual(integrated._tee_cache["calibration"].canonical_bgr.shape, CROP.shape)
-        reg = types.SimpleNamespace(scale=0.387, rotation_deg=24.0, inliers=34,
+        reg = types.SimpleNamespace(matrix_2x3=[[0.35355, -0.15771, 210.25], [0.15771, 0.35355, 68.30]],
+                                    scale=0.387, rotation_deg=24.0, inliers=34,
                                     inlier_ratio=0.72, median_reprojection_error_px=0.63,
                                     confidence=0.86)
         with mock.patch.object(integrated.registration, "register_current_to_canonical_verified",
@@ -90,6 +91,8 @@ class WaypointIntegrationTests(unittest.TestCase):
         no_new_ocr.assert_not_called()
         self.assertEqual(later["registration"]["status"], "registered_candidate_unverified")
         self.assertEqual(later["registration"]["pinErrorPixels"], 0.73)
+        self.assertEqual(later["registration"]["canonicalTeePixel"], {"x": 140, "y": 425})
+        self.assertEqual(later["registration"]["currentToCanonicalMatrix"], reg.matrix_2x3)
         self.assertAlmostEqual(later["scale"]["yardsPerPixel"], 0.1935)
         self.assertEqual(later["scale"]["status"], "provisional_registered_tee")
         self.assertNotIn("canonical_bgr", str(later))
