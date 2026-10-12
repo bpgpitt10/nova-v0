@@ -1,10 +1,10 @@
 # The Looper — Windows Companion / Native AutoAim execution plan (V2)
 
-**Updated:** 2026-10-11 (post Greywolf H8/H9 first simulator test)  
+**Updated:** 2026-10-12 (Tesseract wind and native lie confirmed on physical simulator)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
-**Current latest CI-tested package:** portable-Tesseract prerelease [`looper-companion-autoaim-stage-c-d11eb7ad`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-d11eb7ad), verified Windows CI + EXE smoke, ~105 MB ZIP with Tesseract binary/DLLs and English traineddata. The older `0b3ec91b` WinRT build is superseded. Actual sim OCR proof remains pending.  
-**Most recent implementation pass:** `d11eb7ad` (portable Tesseract wind, browser crop/PSM parity, preserved working Lie; Windows CI, packaged smoke, Web Alpha CI **PASSED**; simulator parity pending). Earlier passes below.  
+**Current latest CI-tested package:** portable-Tesseract prerelease [`looper-companion-autoaim-stage-c-d11eb7ad`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-d11eb7ad), verified Windows CI + EXE smoke, ~105 MB ZIP with Tesseract binary/DLLs and English traineddata. The older `0b3ec91b` WinRT build is superseded. Physical GSPro sim success confirmed for wind and lie (see 2026-10-12 acceptance evidence below).  
+**Most recent implementation pass:** `d11eb7ad` (portable Tesseract wind, browser crop/PSM parity, preserved native Lie). Windows CI, packaged smoke, Web Alpha CI **PASSED**; physical sim test **PASSED for wind + lie on the observed round**. **Next focus: read-only minimap accuracy and authoritative scale/zoom registration**, not more OCR. Earlier passes below.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -92,6 +92,18 @@
 - [ ] **Simulator acceptance gate:** test 2+ nonzero wind headings including NW, confirm speed, FROM-cardinal, READY, and stable lie with Chrome foreground and GSPro background. Confirm real OCR provenance is tesseract-cli, not WinRT. Do not infer success from CI alone.
 
 **Next work:** once native Tesseract wind and unchanged Lie pass, continue read-only minimap scale, waypoint/zoom registration. Do not merge to main, enable POST/AutoAim click, or rebuild the existing authoritative TypeScript Live Caddie shot/tee engine.
+
+## Simulator acceptance evidence — 2026-10-12 (OCR working; move to minimap)
+
+**User confirmation:** After installing the Tesseract companion, both wind and lie read correctly on the real GSPro simulator. Exported diagnostic `looper-native-observations-2026-10-12T04-02-58-721Z.json` (04:02:52Z observation) confirms the new path without Chrome window sharing. GSPro was `connected`, **not foreground**, with a 3840×2160 HWND on a display whose X origin is -3840; native capture used `PrintWindow` and returned nonblank pixels.
+
+- [x] **Wind** `READY`, **2 MPH from W (270°)**, raw `SPEED: 2 MPH | DIR: W`; `ocrSource: gspro-native-tesseract`, `ocrEngine: tesseract-cli`, `speedOcrStrategy: reference-crop`, `directionOcrStrategy: word-psm8`. User says wind worked great. This is confirmed operation of the packaged Tesseract engine, not just CI mocked values.
+- [x] **Lie** `READY`, **+2.1° UP, -1.6° LEFT**, raw `2.1 UP 1.6 LEFT`; native WinRT path preserved and user says Lie worked great. Earlier user also reported lie OCR stopped appropriately on the green. No evidence this latest export independently exercises that transition.
+- [x] **Capture** GSPro process found, `foreground:false`, `dpiAwareness: per-monitor`, `minimized:false`; demonstrated direct HWND capture while the other application was foreground. No browser screen-sharing prompt or external OCR setup needed in this workflow.
+- [ ] **Not yet solved: minimap registration.** Export reports `minimap.status:markers_found`, right-side map, ball `(278.88, 851.24)`, pin `(277.75, 174.35)` in minimap ROI pixels, `ballToPinPixels:676.89`, but `scale.status:unavailable`, `reason:missing_fresh_world_or_layout`. `structured.shot` is `completed_record_only/last_completed` (GreyWolf hole 8, shot 1), **not** authoritative current ball. `structured.layout.status:unavailable` because `course_layout_not_found`. Do not infer yards-per-pixel from the old shot record or simply call pixel detection accurate without ground-truth checks.
+- [ ] **Additional acceptance** for deployment-quality OCR: test multiple wind headings/strengths, lie types and HUD variations, especially compass N/E/NE/SW and no-wind conditions. One successful real export plus user confirmation justifies proceeding to minimap research, **not** claiming exhaustive OCR accuracy or capture freshness.
+
+**Next implementation pass (read-only, small):** (1) verify native marker detector output against screenshots across tee/fairway/zoom states, including confidence/freshness; (2) find/use existing canonical TypeScript Live Caddie current hole/shot/ball/pin facts as read-only evidence and validate the binding to the *same* native minimap frame (do not port the JS state machine to Python); (3) establish trustworthy yards-per-pixel and zoom/viewport registration before even considering a preview target. Maintain `autoAim:false`, `POST` disabled, no click, no main/production merge. Reuse this successful Tesseract+Lie build and do **not** regress it.
 
 ## Read this first: immutable architectural boundaries
 
@@ -192,13 +204,14 @@ The EXE may **independently recheck minimal fresh file/window/shot facts for cli
 - Browser-read-only Live Caddie and Chrome fallback continue working if companion absent/blocked. Full/partial confidence logic for imported holes is a separate course-importer workstream; integrate only via explicit validity gates.
 - Final production acceptance: stage preview, security tests, user-consented actual sim tests, robust Win10/11, 1080p/4K, DPI/multiple monitors, GSPro restart, new course/hole/pin, minimap zoom, install/autostart/uninstall, browser permissions; THEN consider release/merge.
 
-## Immediate next acceptance gate — packaged Tesseract + simulator parity
+## Immediate next acceptance gate — minimap marker / scale registration
 
-1. Wait for Windows CI to pass and the ONE verified test ZIP (including OCR subdirectory) to publish. No separate user Tesseract or screen-sharing installation.
-2. Install new Windows Companion once. Open the existing diagnostics page with Chrome foreground and GSPro in background. No Chrome getDisplayMedia prompt.
-3. On Greywolf compare OCR raw SPEED and DIR, speedMph, directionDegrees, status READY and engine tesseract-cli against the visible wind HUD at two directions (e.g. NW, and another).
-4. Validate native Lie at tee, playable slope and green without altering WinRT Lie.
-5. When both wind and Lie pass, continue read-only minimap scale and zoom/waypoint registration. Keep shot state in canonical TypeScript Live Caddie and native clicks disabled.
+Wind and Lie now work on a real GSPro simulator with background HWND capture. **No need to repeat the same wind test to begin minimap validation.** Keep using the validated `d11eb7ad` Windows companion.
+
+1. Validate right/left minimap marker coordinates visually against GSPro at tee and after a real shot, and after zoom changes; show source ROI/scale/freshness diagnostics without exposing full screenshot data in the browser by default.
+2. Resolve `missing_fresh_world_or_layout` through the existing authoritative TypeScript state engine and read-only companion evidence. Never treat a `last_completed` shot as current ball/tee position.
+3. Establish zoom state and yards-per-pixel via actual calibrated reference distances and current matching player/pin context. Refuse conversion to aim coordinates until independently validated.
+4. Only then test **preview-only** target alignment, not native clicking. Security/pairing, explicit Set Aim consent and a physically confirmed click-verification sequence remain future gates.
 
 ## Links and existing artifacts
 
