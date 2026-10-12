@@ -20,6 +20,19 @@
 
 A failed tee surface on Hole 12 should not necessarily prevent a *map preview* of Hole 12 or live advice after **verified live calibration**, but it should prevent claims that a complete, correctly identified `Blue` tee set is available. A missing fairway, bunker or hazard should be presented as coverage uncertainty and may disable particular hazard-specific advice, not synthesize empty hazards.
 
+### Observed results on already cached real packages
+
+The offline no-import audit ran in [Course E2E CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38248662600) and printed the actual package counts, rather than guessing:
+
+| Package | Geometry/DEM/green evidence | Owned physical mapped tee on hole | Fairway polygons | Tier |
+| --- | --- | --- | --- | --- |
+| FarmLinks | **18/18** | **18/18** | **17/18** | Existing runtime-ready, tee labels not independently scorecard-certified by this audit |
+| Valhalla | **18/18** | **6/18** | **18/18** | Map-review-only, candidate for *future* GSPro live calibration |
+
+FarmLinks's single hole without a mapped fairway is **Hole 17, par 3, 184.6 reference yards**. A par 3 may legitimately have no fairway, so the audit now raises `missing_mapped_fairway_on_par4_or_par5` **only on par-4/5 holes**; par 3s remain eligible to show map evidence. Valhalla has no owned mapped tee polygons on **holes 3, 4, 5, 6, 8, 10, 12, 14, 15, 16, 17, 18**. These numbers demonstrate why a per-hole inventory is more useful than an undifferentiated whole-course failure.
+
+**Important:** `companionAlignedResearchHoles=0` for both cached packages because no real current-GSPro observations were supplied to this offline audit. That is expected; it does NOT mean native ball/pin capture is broken, which was already observed working on Greywolf. No course was newly imported, published, certified or made playable by these tests.
+
 ### Offline implementation completed without changing runtime
 
 - [x] `tools/audit_course_flexible_readiness.py`: independent per-hole evidence inventory. Reports mapped tee/fairway/green/bunker/water counts, DEM/green availability, unknown hazard completeness, incomplete hole concerns and the need for native ball/frame calibration. Labels `map_review_only_companion_calibration_candidate` vs `existing_runtime_ready_not_scorecard_audited` vs `incomplete_source_or_receipt`.
