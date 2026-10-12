@@ -15,7 +15,7 @@ import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
-import GsproCourseAlignmentLab from './dev/GsproCourseAlignmentLab.tsx'
+import GsproMarkerAlignmentLab from './dev/GsproMarkerAlignmentLab.tsx'
 import AimLabPage from './dev/AimLabPage.tsx'
 import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
 import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
@@ -289,7 +289,7 @@ function RootRouter() {
 
     if (showCourseRenderDev) return <CourseRenderDevPage />
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
-    if (showGsproCourseAlignment) return <GsproCourseAlignmentLab />
+    if (showGsproCourseAlignment) return <GsproMarkerAlignmentLab />
     if (showAimLab) return <AimLabPage />
     if (showLiveCaddie) return null
     if (showRoundSetup) return <RoundSetupPage />
