@@ -1,10 +1,10 @@
 # The Looper — Windows Companion / Native AutoAim execution plan (V2)
 
-**Updated:** 2026-10-12 (Tesseract wind and native lie confirmed on physical simulator)  
+**Updated:** 2026-10-12 (proven waypoint + zoom registration connected to read-only Windows diagnostics)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
 **Current latest CI-tested package:** portable-Tesseract prerelease [`looper-companion-autoaim-stage-c-d11eb7ad`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-d11eb7ad), verified Windows CI + EXE smoke, ~105 MB ZIP with Tesseract binary/DLLs and English traineddata. The older `0b3ec91b` WinRT build is superseded. Physical GSPro sim success confirmed for wind and lie (see 2026-10-12 acceptance evidence below).  
-**Most recent implementation pass:** `d11eb7ad` (portable Tesseract wind, browser crop/PSM parity, preserved native Lie). Windows CI, packaged smoke, Web Alpha CI **PASSED**; physical sim test **PASSED for wind + lie on the observed round**. **Next focus: read-only minimap accuracy and authoritative scale/zoom registration**, not more OCR. Earlier passes below.  
+**Most recent implementation:** pass #7 connects historical waypoint and zoom registration into read-only native diagnostics. Windows CI and new simulator validation remain separate gates; previously validated wind/lie preserved. Earlier passes below.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -105,6 +105,23 @@
 
 **Next implementation pass (read-only, small):** (1) verify native marker detector output against screenshots across tee/fairway/zoom states, including confidence/freshness; (2) find/use existing canonical TypeScript Live Caddie current hole/shot/ball/pin facts as read-only evidence and validate the binding to the *same* native minimap frame (do not port the JS state machine to Python); (3) establish trustworthy yards-per-pixel and zoom/viewport registration before even considering a preview target. Maintain `autoAim:false`, `POST` disabled, no click, no main/production merge. Reuse this successful Tesseract+Lie build and do **not** regress it.
 
+## Incremental implementation log — 2026-10-12 (V2 pass #7: Proven waypoint/zoom integration)
+
+**Architectural decision:** Reuse the already validated gray fairway waypoint ruler and post-shot zoom transform. Do not re-research dogleg calibration or port the Live Caddie shot-state machine to Python. This pass is read-only; native input and POST remain disabled.
+
+**Historical proof (separate lab):** 18/18 Greywolf tee minimaps calibrated offline (par-4/5 waypoint, par-3 direct pin). Multi-waypoint rulers agreed within approximately 0.23%; Greywolf H8 physical GSPro proof on 2026-10-02 gave 0.575811 yd/px tee scale, pin residual 0.73 px after zoom registration, and one explicitly requested 75 yd forward/+10 yd right native click with 0.36 yd accepted-target error. That click was in an isolated harness, NOT the new companion or permission to enable production AutoAim.
+
+- [x] Connected existing waypoint_scale_cv.py and waypoint_scale.py with bundled native Tesseract to the companion's current minimap crop. Use labeled gray marker's straight current-ball distance divided by ball-to-marker pixel distance. Par-4/5 routed tee-to-pin scorecard yardage is never substituted as the pixel ruler. Consistency checks require >=75 yd markers and reject >2.5% scale spread.
+- [x] Added bounded live OCR (up to four waypoint candidates and 17 s total OCR budget per snapshot), while preserving the historical offline multi-threshold detector defaults. Bundled tessdata is resolved adjacent to executable; no Chrome screen share or separate Tesseract installation.
+- [x] Added gspro_companion_minimap_calibration.py to reuse pipeline.TeeCalibration and the existing SIFT similarity registration + independent white-pin crosscheck. Tee-frame image cache is local process memory only, only seeded by a fresh pre-shot shot #1 record with matching course/round/hole, stable DPI/HWND and tee-like ball position. Completed shot alone never seeds a tee. Later same-hole snapshots return only provisional zoom/rotation/current-scale diagnostics; cache expires or invalidates on changed window/hole.
+- [x] Native diagnostics now try the labeled waypoint ruler BEFORE the fragile Python course-layout scan gate. Therefore a correct waypoint scale can be displayed when the diagnostic shot is last_completed or course_layout_not_found, without pretending a last-completed record is the current ball. Existing conditional par-3 direct-pin handling remains separate.
+- [x] Exposed gray waypoint distance, pixel position, OCR voting confidence, scale and provisional zoom-registration pin error on the existing browser diagnostic page. No screenshots are sent over HTTP and no native click is enabled. Wind and lie readers unchanged.
+- [x] Added regression tests: waypoint scale despite missing layout, fresh tee-image caching, later registered zoom candidate, no tee from stale completed shot, changed-hole invalidation, two conflicting rulers fail closed, missing bundled OCR, and rejected pin registration.
+- [ ] Verify Windows CI tests, packaged build/ZIP and Web Alpha CI for this pass before user installation; only link a real published ZIP. Do not merge to production.
+- [ ] Simulator check: Greywolf H8 at tee, capture default gray waypoint distance and scale. Compare with historical 0.575811 yd/px only if same zoom/reference frame. Hit shot, verify cached tee to current zoom/rotation and white-pin residual; one dogleg and one par 3 follow. If native files still show last_completed at tee, display provisional ruler but no trusted tee cache until authoritative TypeScript Live Caddie hole/shot evidence is provided.
+- [ ] Full AutoAim integration remains separate: secure read-only binding between canonical TS current state and native tee/pin/coordinate frame, preview-only target-to-pixel, explicit user Set Aim consent, fresh native-click preflight/pairing and magenta accepted-target post-click check. Do NOT promote provisional scaling to authoritative on the basis of one snapshot.
+
+**Next:** Use the current companion to verify this existing math on the real Greywolf sim. Do not re-run the entire 18-hole corpus as the default next step.
 ## Read this first: immutable architectural boundaries
 
 **Do NOT duplicate or replace Live Caddie's already functioning shot-state engine.** The user expressly confirmed that Live Caddie correctly tracks the ball and transitions from a completed putt/hole to the **next tee**, even if `currentRound.dat` is temporarily stale. The first Windows diagnostic showed H8 on the H9 tee because it used a NEW simplistic Python interpretation — **not** because Live Caddie needs that logic rebuilt.
@@ -204,15 +221,12 @@ The EXE may **independently recheck minimal fresh file/window/shot facts for cli
 - Browser-read-only Live Caddie and Chrome fallback continue working if companion absent/blocked. Full/partial confidence logic for imported holes is a separate course-importer workstream; integrate only via explicit validity gates.
 - Final production acceptance: stage preview, security tests, user-consented actual sim tests, robust Win10/11, 1080p/4K, DPI/multiple monitors, GSPro restart, new course/hole/pin, minimap zoom, install/autostart/uninstall, browser permissions; THEN consider release/merge.
 
-## Immediate next acceptance gate — minimap marker / scale registration
+## Immediate next acceptance gate — native waypoint / tee zoom proof
 
-Wind and Lie now work on a real GSPro simulator with background HWND capture. **No need to repeat the same wind test to begin minimap validation.** Keep using the validated `d11eb7ad` Windows companion.
-
-1. Validate right/left minimap marker coordinates visually against GSPro at tee and after a real shot, and after zoom changes; show source ROI/scale/freshness diagnostics without exposing full screenshot data in the browser by default.
-2. Resolve `missing_fresh_world_or_layout` through the existing authoritative TypeScript state engine and read-only companion evidence. Never treat a `last_completed` shot as current ball/tee position.
-3. Establish zoom state and yards-per-pixel via actual calibrated reference distances and current matching player/pin context. Refuse conversion to aim coordinates until independently validated.
-4. Only then test **preview-only** target alignment, not native clicking. Security/pairing, explicit Set Aim consent and a physically confirmed click-verification sequence remain future gates.
-
+1. Verify the new Windows branch ZIP, read gray waypoint distance and waypoint/candidate scale while Chrome remains in front and GSPro in background. No browser sharing prompt.
+2. On tee with fresh pre-shot #1, confirm tee_anchor_candidate_cached. After a shot, confirm same-hole registered_candidate_unverified including zoom factor, rotation, pin error and scale; reject changed hole, stale frame, wrong pin.
+3. Validate one par-4 dogleg and one par 3. The par-3 direct ruler requires a verifiably current direct distance, while the waypoint ruler does not depend on routed scorecard length.
+4. Later bind the existing authoritative TypeScript Live Caddie hole/shot and actual recommender aim to the cached calibration for preview-only target pixel and measured error. Native clicks stay disabled.
 ## Links and existing artifacts
 
 - Long-form historical architecture: [`docs/auto-aim-windows-companion-v1.md`](./auto-aim-windows-companion-v1.md)
