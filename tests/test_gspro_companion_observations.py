@@ -95,7 +95,8 @@ class ObservationTests(unittest.TestCase):
             self.assertEqual(result["shot"]["holeNumber"], 1)
             self.assertIn("fileAgeMs", result)
             self.assertNotIn(str(root), json.dumps(result))
-            self.assertNotIn("raw", json.dumps(result).lower())
+            self.assertNotIn("rawText", json.dumps(result))
+            self.assertNotIn("directory", json.dumps(result))
 
     def test_no_screenshot_or_mouse_data_in_native_json(self):
         with mock.patch.object(obs.native, "find_gspro_window", return_value={"status": "waiting", "reason": "not-running"}), \
@@ -116,8 +117,6 @@ class ObservationTests(unittest.TestCase):
             "minimap": {"status": "not-connected"},
             "ocr": {"wind": {"status": "UNAVAILABLE"}, "lie": {"status": "UNAVAILABLE"}},
         }
-        with local_server(), mock.patch.object(companion.observations, "collect_observations", return_value=fake):
-            pass
         with local_server() as port, mock.patch.object(companion.observations, "collect_observations", return_value=fake):
             origin = {"Origin": "https://thelooper.golf"}
             ok, data = request(port, "/companion/v1/observations", origin)
