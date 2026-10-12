@@ -30,7 +30,7 @@
 <body><main>
 <div class="eyebrow">The Looper · Windows companion · research diagnostics</div>
 <h1>GSPro live observations</h1>
-<p><strong>Read-only test.</strong> Reports HUD wind/lie OCR, actual GSPro world-ball/tee/pin coordinates, minimap ball/pin pixels, capture quality and yard-per-pixel confidence. It does not set aim or send screen images. Unsupported or stale results stay visibly unavailable.</p>
+<p><strong>Read-only diagnostics—not Live Caddie shot state.</strong> Reports HUD wind/lie OCR, GSPro shot-record evidence, minimap ball/pin pixels, capture quality and yard-per-pixel confidence. A completed-shot record may still describe the previous hole; Live Caddie's existing state engine decides the current hole, ball and next tee. This page never sets aim or sends screen images.</p>
 <div class="controls">
   <button id="read">Read live snapshot</button>
   <button id="watch" class="secondary">Start watching (16s)</button>
@@ -42,7 +42,7 @@
  <section class="panel"><div class="label">GSPro connection</div><div id="gspro" class="value">Not checked</div><div id="folder" class="details">Folder unknown</div></section>
  <section class="panel"><div class="label">Wind HUD OCR</div><div id="wind" class="value">Not checked</div><div id="windDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Lie HUD OCR</div><div id="lie" class="value">Not checked</div><div id="lieDetails" class="details">—</div></section>
- <section class="panel"><div class="label">GSPro ball world</div><div id="world" class="value">Not checked</div><div id="worldDetails" class="details">—</div></section>
+ <section class="panel"><div class="label">Shot world evidence (not live ball)</div><div id="world" class="value">Not checked</div><div id="worldDetails" class="details">—</div></section>
  <section class="panel"><div class="label">GSPro tee and pin world</div><div id="layout" class="value">Not checked</div><div id="layoutDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Minimap ball pixel</div><div id="ball" class="value">Not checked</div><div id="ballDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Minimap pin pixel</div><div id="pin" class="value">Not checked</div><div id="pinDetails" class="details">—</div></section>
@@ -72,7 +72,12 @@ function render(r) {
   el('folder').textContent='Data folder: '+(r.dataFolder?.status||'unavailable')+' | state age '+(s.fileAgeMs==null?'unknown':Math.round(s.fileAgeMs/1000)+'s')
   display('wind',wind.status==='READY'?String(wind.speedMph)+' MPH / '+String(wind.directionDegrees)+'°':(wind.status||'UNAVAILABLE'),wind.note,wind.status==='READY'?'ok':'warn')
   display('lie',lie.status==='READY'?(String(lie.upDownDegrees)+'° / '+String(lie.leftRightDegrees)+'°'):(lie.status||'UNAVAILABLE'),lie.note,lie.status==='READY'?'ok':'warn')
-  display('world',world(shot.startingWorld),'H'+(shot.holeNumber||'?')+' shot '+(shot.shotNumber||'?')+' | '+(shot.kind||'no shot')+' | '+(shot.status||'no status'),'warn')
+  const isPreShot = shot.kind === 'pre_shot'
+  const isCompleted = shot.kind === 'last_completed'
+  const evidence = isPreShot ? shot.startingWorld : isCompleted ? shot.endingWorld : null
+  const evidenceKind = isPreShot ? 'Pre-shot StartingPOS' : isCompleted ? 'Last completed EndingPOS' : 'No reliable shot evidence'
+  const priorRecord = isCompleted ? ' | May be previous hole; not authoritative current ball' : ' | Diagnostic only'
+  display('world',world(evidence),evidenceKind+' | Record H'+(shot.holeNumber||'?')+' shot '+(shot.shotNumber||'?')+' | '+(shot.status||'no status')+priorRecord,'warn')
   display('layout',layout.status==='ready'?'Tee + pin present':(layout.status||'unavailable'),'Tee '+world(layout.teeWorld)+'; pin '+world(layout.pinWorld)+' | hole association: '+(layout.binding||'unverified'),layout.status==='ready'?'ok':'warn')
   display('ball',fmtPoint(m.ballPixel),'Side '+(m.minimapSide||'unknown')+' | capture '+(m.status||'unavailable')+' | '+(m.reason||'no reported error'),m.ballPixel?'ok':'warn')
   display('pin',fmtPoint(m.pinPixel),'Quality '+(m.quality?.nonblank?'nonblank':'unverified')+' | freshness '+(m.freshness||'unknown'),m.pinPixel?'ok':'warn')
@@ -89,7 +94,7 @@ async function read() {
     const response=await fetch(req)
     if(!response.ok)throw new Error('HTTP '+response.status)
     const data=await response.json()
-    if(data.service!=='looper-companion'||data.schemaVersion!=='native-observations-v1')throw new Error('Install current development companion; incompatible response.')
+    if(data.service!=='looper-companion'||data.schemaVersion!=='native-observations-v1'||data.stateAuthority!=='diagnostic-only'||typeof data.version!=='string')throw new Error('Install current development companion; incompatible response.')
     render(data)
     el('progress').textContent='Read-only capture completed '+new Date().toLocaleTimeString()+'. Repeat after a GSPro shot to check freshness.'
   } catch(e) { el('progress').textContent='Observation failed: '+String(e)+'. Check local companion, GSPro window and Chrome Apps on device permission.' }

@@ -7,6 +7,20 @@
 **Current code tip at writing:** `34b05401512a556985cc4d3cc6e873f5a75567b7`. Keep this plan updated as development progresses.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
+## Incremental implementation log — 2026-10-11 (V2 small pass #1)
+
+**Purpose:** fix one real integration blocker from the first sim test while deliberately avoiding a second Live Caddie shot-state engine. This is a **contract/UI hardening pass**, not a full replacement of native diagnostics or OCR repair.
+
+- [x] Fix `/companion/v1/observations` to include `version`, which the existing `getCompanionReadOnly()` browser transport already requires. Previously the native diagnostic HTML could read this endpoint while the Live Caddie client rejected it before consuming wind/lie observations.
+- [x] Explicit `stateAuthority: "diagnostic-only"` contract in the endpoint and TypeScript consumer. Structured records are never dispatched as authoritative current ball/tee/hole; the existing `browserGsproCourseStateCore.ts` remains untouched.
+- [x] Change the diagnostic card from misleading "GSPro ball world" to **shot-record evidence**; display `StartingPOS` only for an observed `CurrentShot`, and `EndingPOS` for a `last_completed` record with a prominent previous-hole warning. Does not invent a next tee or "current" ball in Python.
+- [x] Add Python/HTTP tests for the version and diagnostic-only invariants, previous-shot labeling, and retained origin/host/POST protection.
+- [ ] Validate Windows Companion CI and web CI on this exact commit (see Actions run for updated branch head). Native live observation still depends on repaired OCR.
+- [ ] Further native file-evidence transport through the **existing JS parsers** remains future work; we have intentionally NOT ported hole-transition logic to Python.
+- [ ] Wind/lie OCR from verified GSPro HWND in-memory pixels, waypoint label OCR, zoom registration and paired one-click AutoAim are **not changed in this pass**. No production deployment/merge and no simulator reinstall requested.
+
+**Next smallest sensible pass after CI:** one native OCR/HWND capture repair with an isolated Windows test fixture (prefer wind first), without touching shot-state ownership or activating mouse input. A separate future pass addresses file evidence/transport parity for removing the browser folder picker. Avoid conflating these workstreams.
+
 ## Read this first: immutable architectural boundaries
 
 **Do NOT duplicate or replace Live Caddie's already functioning shot-state engine.** The user expressly confirmed that Live Caddie correctly tracks the ball and transitions from a completed putt/hole to the **next tee**, even if `currentRound.dat` is temporarily stale. The first Windows diagnostic showed H8 on the H9 tee because it used a NEW simplistic Python interpretation — **not** because Live Caddie needs that logic rebuilt.

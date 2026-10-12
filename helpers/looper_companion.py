@@ -151,10 +151,17 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
             try:
-                self._send_companion(200, observations.collect_observations())
+                payload = observations.collect_observations()
+                # This is read-only evidence, NOT a second live shot-state
+                # authority. The existing browser Live Caddie owns transitions.
+                payload["version"] = COMPANION_VERSION
+                payload["stateAuthority"] = "diagnostic-only"
+                self._send_companion(200, payload)
             except Exception as error:
                 self._send_companion(200, {
                     "service": "looper-companion",
+                    "version": COMPANION_VERSION,
+                    "stateAuthority": "diagnostic-only",
                     "schemaVersion": "native-observations-v1",
                     "status": "unavailable",
                     "reason": type(error).__name__,

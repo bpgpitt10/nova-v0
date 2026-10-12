@@ -133,6 +133,9 @@ export const readLooperCompanionCaptureDiagnostic = async (
  */
 export type LooperCompanionLiveObservations = {
   service: 'looper-companion'
+  version: string
+  /** Raw/native observations are diagnostic only. Live Caddie is authoritative. */
+  stateAuthority: 'diagnostic-only'
   schemaVersion: 'native-observations-v1'
   status: 'ready' | 'unavailable'
   observedAt?: string
@@ -175,6 +178,8 @@ export type LooperCompanionLiveObservations = {
 export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
   const data = await getCompanionReadOnly<LooperCompanionLiveObservations>('observations', timeoutMs)
   if (data.schemaVersion !== 'native-observations-v1' ||
+      data.stateAuthority !== 'diagnostic-only' ||
+      data.capabilities?.autoAim !== false ||
       !['ready', 'unavailable'].includes(data.status) ||
       !data.structured || !data.minimap || !data.ocr) {
     throw new Error('Companion did not provide a complete native observations snapshot.')

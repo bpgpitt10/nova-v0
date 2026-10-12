@@ -68,6 +68,10 @@ class ObservationTests(unittest.TestCase):
         }))
         self.assertEqual(previous["kind"], "last_completed")
         self.assertEqual(previous["status"], "completed_record_only")
+        # An old completed shot is evidence, not an authoritative tee/current ball.
+        self.assertEqual(previous["startingWorld"], {"x": 2.0, "y": 0.0, "z": 1.0})
+        self.assertNotIn("currentBallWorld", previous)
+        self.assertNotIn("currentHole", previous)
 
     def test_bounded_log_layout_and_hole_index(self):
         rows = [
@@ -107,7 +111,16 @@ class ObservationTests(unittest.TestCase):
             result = obs.collect_observations()
         self.assertEqual(result["status"], "unavailable")
         self.assertFalse(result["capabilities"]["autoAim"])
+        self.assertNotIn("currentBallWorld", json.dumps(result))
+        self.assertNotIn("currentHole", json.dumps(result))
         self.assertNotIn("_private_bgra", json.dumps(result))
+
+    def test_dashboard_labels_completed_record_as_evidence_only(self):
+        html = (Path(__file__).resolve().parents[1] /
+                "public/dev/companion-observations.html").read_text(encoding="utf-8")
+        self.assertIn("Last completed EndingPOS", html)
+        self.assertIn("May be previous hole; not authoritative current ball", html)
+        self.assertNotIn('class="label">GSPro ball world', html)
 
     def test_http_endpoint_is_origin_and_host_restricted_and_no_post(self):
         fake = {
@@ -122,6 +135,10 @@ class ObservationTests(unittest.TestCase):
             ok, data = request(port, "/companion/v1/observations", origin)
             self.assertEqual(ok, 200)
             self.assertEqual(data["schemaVersion"], "native-observations-v1")
+            self.assertEqual(data["version"], companion.COMPANION_VERSION)
+            self.assertEqual(data["stateAuthority"], "diagnostic-only")
+            self.assertNotIn("currentBallWorld", data)
+            self.assertNotIn("nextShotNumber", data)
             forbidden, _ = request(port, "/companion/v1/observations", {"Origin": "https://evil.example"})
             self.assertEqual(forbidden, 403)
             forbidden_host, _ = request(port, "/companion/v1/observations",
