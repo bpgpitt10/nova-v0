@@ -10,6 +10,7 @@ def package():
     holes = {}
     for n in range(1, 19):
         holes[str(n)] = {
+            "par": 4,
             "coordinateFrame": {
                 "origin": "osm-hole-route-start",
                 "anchorLatLon": [35, -81],
@@ -39,6 +40,13 @@ def run():
     assert all(h["recommendationHazardCompleteness"] == "unknown_not_established_by_osm"
                for h in result["holes"])
     assert all(h["companionCalibration"] == "awaiting_current_sim_observation" for h in result["holes"])
+
+    # No fairway is a sensible par-3 condition; for a par 4/5 it is an
+    # explicitly missing feature that must not become "no hazard" advice.
+    pkg["holes"]["17"]["par"] = 3
+    no_fairway = audit(pkg, map_receipt=map_receipt)
+    assert "missing_mapped_fairway_on_par4_or_par5" not in no_fairway["holes"][16]["concerns"]
+    assert "missing_mapped_fairway_on_par4_or_par5" in no_fairway["holes"][15]["concerns"]
 
     pkg["holes"]["1"]["teeCandidates"] = [{
         "coursePoint": [0, 0], "osmId": 23,
