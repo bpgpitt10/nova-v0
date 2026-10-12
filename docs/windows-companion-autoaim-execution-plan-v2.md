@@ -4,7 +4,7 @@
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
 **Current tested package:** prerelease `looper-companion-autoaim-stage-c-5543b4f4`, build from `5543b4f4` (Windows CI passed; native simulator proof limited to read-only).  
-**Most recent implementation pass:** `f434685a5fd6c06d1a0a42ab6b801410e2b2809c` (diagnostic-only/version contract fix; Windows and web CI passed). Keep this plan updated as development progresses.  
+**Most recent implementation pass:** `fd6c6f855564e75dea1a1a2b1c75a6f2bf4c6feb` (GSPro-HWND-only wind OCR + one native frame for minimap/wind; Windows and web CI passed; simulator wind OCR still unverified). Prior small pass: `f434685a` (diagnostic-only/version contract). Keep this plan updated as development progresses.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -30,7 +30,7 @@
 - [x] Reused **one** GSPro native frame for minimap CV and native wind in `collect_observations`; `/wind` on **LooperCompanion.exe** now uses the same HWND-based wind OCR instead of the legacy screen-copy path. The standalone legacy helper (outside this companion) is untouched.
 - [x] Kept current OCR wind schema (`READY/UNKNOWN/UNAVAILABLE`, speed/direction, compass-toward semantics) with `ocrSource: gspro-native-window` and explicitly unverified capture freshness. No guessed values or click authorization.
 - [x] Lie reader remains legacy and **unfixed**. Live Caddie remains exclusive authority for ball, hole and shot state; no Python tee transitions or new state parsing in this pass.
-- [ ] CI (Windows packaged EXE + web) results to record after the build completes.
+- [x] **Build / integration CI passed** for implementation commit `fd6c6f855564e75dea1a1a2b1c75a6f2bf4c6feb`: [Windows companion tests, executable build and packaged smoke test](https://github.com/bpgpitt10/nova-v0/actions/runs/38197689399) and [Web Alpha build](https://github.com/bpgpitt10/nova-v0/actions/runs/38197689558). Development-only ZIP published at [release `looper-companion-autoaim-stage-c-fd6c6f85`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-fd6c6f85). Tests use mocked OCR text/frame; **not proof of real GSPro OCR text on the Windows simulator**. No sim reinstall necessary until a consolidated visual test is requested.
 - [ ] Next real-PC test when convenient: Greywolf wind HUD showing e.g. `8 MPH W`, with Chrome in foreground, compare companion `/wind` and `/observations`, plus changed wind values. No need to hit a shot. If WinRT OCR fails with a named error, use the precise error from the JSON; do not guess the reading.
 
 **Next isolated step after this:** migrate the lie footer OCR to the SAME native GSPro-window image, preserving existing lie math/event contract; independently validate minimap scaling/registration before turning on any click.
