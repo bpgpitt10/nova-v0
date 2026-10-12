@@ -6,6 +6,7 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
 import {
@@ -33,6 +34,7 @@ const canonicalTeeOption = (candidate: CourseTeeCandidate) =>
   candidate.teeSet?.trim() || null
 
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
+const OTHER_TEE = '__looper-unmapped-tee__'
 
 export default function RoundSetupPage() {
   const initialCourse = loadLastSelectedCourseId()
@@ -43,6 +45,7 @@ export default function RoundSetupPage() {
 
   const [courseId, setCourseId] = useState<CourseId>(initialCourseId)
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
+  const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
   const [loadingTees, setLoadingTees] = useState(true)
   const [starting, setStarting] = useState(false)
@@ -76,12 +79,15 @@ export default function RoundSetupPage() {
             return left.localeCompare(right, undefined, { numeric: true })
           })
         setTeeOptions(labels)
-        if (labels.length > 0 && !labels.some((label) => normalize(label) === normalize(teeSet))) {
-          const saved = loadRoundTeeSelection(courseId)
-          const next = saved?.teeSet && labels.some((label) => normalize(label) === normalize(saved.teeSet))
-            ? saved.teeSet
-            : labels.find((label) => normalize(label) === 'blue') ?? labels[0]
-          setTeeSet(next)
+        const saved = loadRoundTeeSelection(courseId)?.teeSet
+        if (saved && !labels.some(label => normalize(label) === normalize(saved))) {
+          // Honor the user's actual GSPro tee selection even when OSM has no
+          // matching named tee. The fallback will explicitly stay provisional.
+          setTeeSet(OTHER_TEE)
+          setUnmappedTeeName(saved)
+        } else {
+          setTeeSet(saved ?? labels.find(label => normalize(label) === 'blue') ?? labels[0] ?? OTHER_TEE)
+          setUnmappedTeeName('')
         }
       })
       .catch((loadError) => {
@@ -98,13 +104,14 @@ export default function RoundSetupPage() {
     }
   }, [courseId])
 
+  const actualTeeSet = teeSet === OTHER_TEE ? unmappedTeeName.trim() : teeSet.trim()
   const startRound = async () => {
-    if (!teeSet.trim()) return
+    if (!actualTeeSet || actualTeeSet.length > 60) return
     setStarting(true)
     setError(null)
     try {
       saveLastSelectedCourseId(courseId)
-      const selection = saveRoundTeeSelection(courseId, teeSet)
+      const selection = saveRoundTeeSelection(courseId, actualTeeSet)
       if (!selection) throw new Error('Choose a tee set before starting the round.')
 
       const geometry = await loadCourseHoleGeometry(courseId, 1)
@@ -112,20 +119,22 @@ export default function RoundSetupPage() {
         candidateTeeValues(candidate)
           .some((value) => normalize(value) === selection.normalizedTeeSet),
       )
-      if (exactMatches.length !== 1) {
+      const provisional = exactMatches.length !== 1 ? estimateProvisionalTee(geometry) : null
+      if (provisional?.status === 'blocked') {
         throw new Error(
-          exactMatches.length === 0
-            ? `${selection.teeSet} does not have a usable Hole 1 tee assumption yet.`
-            : `${selection.teeSet} maps to multiple Hole 1 tee candidates; Looper will not guess.`,
+          'Selected tee is not mapped, and a provisional Hole 1 tee cannot be estimated safely: ' +
+          provisional.reason,
         )
       }
 
-      // loadCourseHoleGeometry has already resolved the persisted tee selection
-      // through the same generic package contract used for every later hole.
+      // The selected tee label is supplied by the golfer, not silently
+      // inferred from whichever OSM tee happens to be nearest. The route
+      // marker is a provisional playing assumption, NEVER a verified tee.
       const round = startLiveCaddieRound({
         courseId,
         teeSet: selection.teeSet,
-        assumedTeeLocalYds: geometry.markers.tee,
+        assumedTeeLocalYds: provisional?.status === 'provisional'
+          ? provisional.point : geometry.markers.tee,
       })
       if (!round) throw new Error('Looper could not arm the round.')
       setActiveRound(round)
@@ -191,7 +200,7 @@ export default function RoundSetupPage() {
           <h1 style={{ margin: '8px 0 6px', fontSize: 30 }}>{activeCourse.name}</h1>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{activeRound.teeSet} tees</div>
           <p style={{ color: '#aeb9b0', lineHeight: 1.55, marginTop: 18 }}>
-            Looper is using the mapped {activeRound.teeSet} tee assumption for this round. Set the same course and tee in GSPro. Looper will keep that tee identity authoritative and use completed-shot GSPro data as validation evidence later.
+            Looper is using a map-based {activeRound.teeSet} tee assumption for this round; it may be provisional if OSM has no matching named tee. Set the same course and tee in GSPro. Looper will keep that tee identity authoritative and use completed-shot GSPro data as validation evidence later.
           </p>
           <div style={{ display: 'grid', gap: 8, margin: '22px 0', padding: 16, borderRadius: 10, background: '#0d1710', border: '1px solid #26372b' }}>
             <div><strong>Course:</strong> {activeCourse.name}</div>
@@ -220,7 +229,7 @@ export default function RoundSetupPage() {
         </div>
         <h1 style={{ margin: '8px 0 6px', fontSize: 30 }}>Start a Round</h1>
         <p style={{ margin: '0 0 24px', color: '#9da99f', lineHeight: 1.5 }}>
-          Choose the course and tee you intend to use in GSPro. Looper will use that tee as the starting assumption for the whole round.
+          Choose the exact course and tee you intend to use in GSPro. If the tee is not mapped, Looper can start with a clearly provisional estimate.
         </p>
 
         <label style={{ display: 'block', marginBottom: 18, color: '#cbd4cd', fontWeight: 700 }}>
@@ -230,6 +239,7 @@ export default function RoundSetupPage() {
             onChange={(event) => {
               setCourseId(event.target.value as CourseId)
               setTeeSet('')
+              setUnmappedTeeName('')
             }}
             style={input}
           >
@@ -246,16 +256,24 @@ export default function RoundSetupPage() {
           <select
             value={teeSet}
             onChange={(event) => setTeeSet(event.target.value)}
-            disabled={loadingTees || teeOptions.length === 0}
+            disabled={loadingTees}
             style={input}
           >
-            {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading tee assumptions…' : 'No mapped tee assumptions'}</option> : null}
+            {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading mapped tees…' : 'No mapped tee names'}</option> : null}
             {teeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            <option value={OTHER_TEE}>My GSPro tee is not listed…</option>
           </select>
+          {teeSet === OTHER_TEE ? (
+            <input type="text" value={unmappedTeeName} maxLength={60}
+              onChange={event => setUnmappedTeeName(event.target.value)}
+              placeholder="Type the actual GSPro tee color/name (e.g. Blue)"
+              aria-label="Actual tee selected in GSPro"
+              style={input} />
+          ) : null}
         </label>
 
         <div style={{ margin: '-10px 0 20px', color: '#7f8d82', fontSize: 12, lineHeight: 1.45 }}>
-          Your explicit tee selection is authoritative for the round. GSPro completed shots can be used to validate the mapped tee assumptions over time.
+          Use the tee name you actually selected in GSPro. An unmatched tee starts as a provisional estimate, not a confirmed tee. Physical shots can validate it later.
         </div>
 
         {error ? (
@@ -267,7 +285,7 @@ export default function RoundSetupPage() {
         <button
           type="button"
           onClick={() => void startRound()}
-          disabled={starting || loadingTees || !teeSet.trim() || course.packageStatus !== 'ready'}
+          disabled={starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'}
           style={{ ...primary, width: '100%', opacity: starting || loadingTees || !teeSet.trim() || course.packageStatus !== 'ready' ? 0.55 : 1 }}
         >
           {starting ? 'STARTING…' : 'START ROUND'}
