@@ -161,14 +161,20 @@ export default function GsproCourseAlignmentLab() {
     setLastChecked(updated)
     const shot = updated.structured?.shot
     const matchedCourse = shot?.courseKey ? resolveCourseIdFromGsproName(shot.courseKey) : null
-    if (matchedCourse !== courseId || shot?.holeNumber !== hole ||
-      shot.kind !== 'pre_shot' || shot.status !== 'ready' ||
-      !finite(shot.roundId) || updated.gspro?.status !== 'connected' ||
+    if (matchedCourse !== courseId || !shot?.courseKey ||
+      !finite(shot.roundId) || !finite(shot.holeNumber) ||
+      updated.gspro?.status !== 'connected' ||
       updated.gspro.window?.minimized !== false ||
       updated.gspro.window.dpiAwareness !== 'per-monitor') {
-      setNativeError('No confirmed live PRE-SHOT for this course and hole. A last-completed shot may be from the previous hole; export evidence and retry on an active pre-shot.')
+      setNativeError('Native GSPro course identity or round evidence is insufficient. Do not substitute a stale course key. Export diagnostic evidence.')
       return
     }
+    const matchingPreShot = shot.kind === 'pre_shot' &&
+      shot.status === 'ready' && shot.holeNumber === hole
+    // A completed shot often belongs to the previous hole. It can be used as
+    // the COURSE identity for a manual numerical landmark exercise, but never
+    // as proof of the current ball, hole, tee or playable aim location.
+    const operatorOnly = !matchingPreShot
     const landmarks: CrossFrameLandmark[] = []
     for (let i=0;i<pairs.length;i++) {
       const pair=pairs[i]
@@ -185,9 +191,10 @@ export default function GsproCourseAlignmentLab() {
       })
     }
     setResult(evaluateGsproToCourseLandmarkRegistration({
+      identityEvidence: operatorOnly ? 'operator-confirmed-hole-only' : 'native-pre-shot',
       expected:{courseId,gsproCourseKey:shot.courseKey!,roundId:shot.roundId,holeNumber:hole},
       native:{
-        courseId:matchedCourse!,gsproCourseKey:shot.courseKey!,roundId:shot.roundId,holeNumber:hole,
+        courseId:matchedCourse!,gsproCourseKey:shot.courseKey!,roundId:shot.roundId,holeNumber:shot.holeNumber,
         observedAt:updated.observedAt || '', frame:'canonical-tee-minimap-roi',
         minimapStatus:updated.minimap?.status || 'unknown',
         registrationStatus:updated.minimap?.registration?.status || 'unavailable',
@@ -323,8 +330,11 @@ export default function GsproCourseAlignmentLab() {
     <section className="align-evaluate">
       <label><input type="checkbox" checked={confirmed} onChange={e=>{
         setConfirmed(e.target.checked);setResult(null)
-      }}/> I independently confirmed every marked pair describes the <strong>same physical
-      landmark</strong>—not an assumed centroid or nearby hole.</label>
+      }}/> I visually confirmed that GSPro is showing the <strong>selected course and hole</strong>,
+      the view has not changed since the screenshot, and every A/B/C pair is the
+      <strong> same physical landmark</strong> (not an assumed centroid or nearby hole).
+      If the companion only has a last-completed shot, any numerical result is
+      <strong> manual-only</strong>, never current-shot verification.</label>
       <div className="align-actions">
         <button type="button" disabled={!canEvaluate||busy} onClick={()=>void evaluate()}>
           Refresh live native &amp; evaluate (no clicks)</button>
@@ -343,8 +353,8 @@ export default function GsproCourseAlignmentLab() {
         </dl>
       </div>:null}
       <small>Passing points do not certify unmapped hazards, tee location, green slopes,
-        playable course or AutoAim input. A completed-shot record from a previous hole
-        is deliberately insufficient to validate the current pre-shot.</small>
+        playable course or AutoAim input. A previous-hole completed-shot record may only
+        support a manually checked geometry research exercise, NOT live ball/shot identity.</small>
     </section>
   </main>
 }
