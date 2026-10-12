@@ -444,7 +444,6 @@ export default function LiveCaddiePage() {
   const [nativeVisualActive, setNativeVisualActive] = useState(false)
   const [nativeVisualMessage, setNativeVisualMessage] = useState<string | null>(null)
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
-  const [nativeNetworkMs, setNativeNetworkMs] = useState<number | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
@@ -863,7 +862,6 @@ export default function LiveCaddiePage() {
     setNativeVisualActive(false)
     setNativeVisualMessage(null)
     setNativeObservations(null)
-    setNativeNetworkMs(null)
     setVisualCaptureError(null)
     setVisualCaptureSource(null)
     visualCaptureRef.current?.disconnect()
@@ -889,8 +887,7 @@ export default function LiveCaddiePage() {
       nativeVisualRef.current = null
       setNativeVisualActive(false)
       setNativeObservations(null)
-      setNativeNetworkMs(null)
-      setNativeVisualMessage('Native observation polling stopped.')
+        setNativeVisualMessage('Native observation polling stopped.')
       return
     }
     visualCaptureRef.current?.disconnect()
