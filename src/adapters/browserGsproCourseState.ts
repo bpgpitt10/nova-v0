@@ -11,6 +11,7 @@ import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types
 import {
   dispatchLiveCaddieShotStateChanged,
   LIVE_CADDIE_START_ROUND_EVENT,
+  loadActiveLiveCaddieRound,
 } from '../liveCaddie/roundRuntime'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
 import {
@@ -483,6 +484,17 @@ export const connectToBrowserGsproCourseState = ({
         })
     },
   })
+
+  // Round Setup is a separate route. On a *first* visit to Live Caddie,
+  // Start Round's DOM event may have fired before this watcher existed.
+  // The persisted 'armed' round is authoritative; re-establish its Hole 1
+  // shot-1 baseline without letting a stale completed shot displace the tee.
+  const persistedRound = loadActiveLiveCaddieRound()
+  const selectedAtConnect = loadLastSelectedCourseId()
+  if (persistedRound?.phase === 'armed'
+      && persistedRound.courseId === selectedAtConnect) {
+    onStartRound()
+  }
 
   return {
     disconnect: () => {
