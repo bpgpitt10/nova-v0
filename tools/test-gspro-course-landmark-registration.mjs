@@ -99,6 +99,23 @@ try {
   const dogleg = evaluate({ ...base, landmarks: landmarks.map(x => ({...x})) }, now)
   assert.equal(dogleg.status, 'research-candidate')
 
+  // When native observations expose only last-completed (possibly previous
+  // hole), the user may still compare static geometry by manually inspecting
+  // the screenshot. That is never current-shot proof or authorization.
+  const manualState = { ...base, identityEvidence:'operator-confirmed-hole-only',
+    native:{...base.native,holeNumber:11} }
+  const manual = evaluate(manualState, now)
+  assert.equal(manual.status,'research-candidate')
+  assert.match(manual.reason,/manual-only/i)
+  assert.equal(manual.verifiedForPlay,false)
+  assert.equal(manual.authorizesNativeAim,false)
+  assert.equal(manual.canPublishCourse,false)
+  assert.equal(evaluate({...base,native:{...base.native,holeNumber:11}},now).status,'blocked')
+  assert.equal(evaluate({...manualState,native:{...manualState.native,
+    gsproCourseKey:'unrelated-course'}},now).status,'blocked')
+  assert.equal(evaluate({...manualState,native:{...manualState.native,
+    teeScaleYardsPerPixel:0.7}},now).status,'blocked')
+
   const block = (state, phrase) => {
     const result = evaluate(state, now)
     assert.equal(result.status, 'blocked', phrase + ': ' + result.reason)
