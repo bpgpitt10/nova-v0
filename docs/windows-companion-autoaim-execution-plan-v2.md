@@ -33,7 +33,20 @@
 - [x] **Build / integration CI passed** for implementation commit `fd6c6f855564e75dea1a1a2b1c75a6f2bf4c6feb`: [Windows companion tests, executable build and packaged smoke test](https://github.com/bpgpitt10/nova-v0/actions/runs/38197689399) and [Web Alpha build](https://github.com/bpgpitt10/nova-v0/actions/runs/38197689558). Development-only ZIP published at [release `looper-companion-autoaim-stage-c-fd6c6f85`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-fd6c6f85). Tests use mocked OCR text/frame; **not proof of real GSPro OCR text on the Windows simulator**. No sim reinstall necessary until a consolidated visual test is requested.
 - [ ] Next real-PC test when convenient: Greywolf wind HUD showing e.g. `8 MPH W`, with Chrome in foreground, compare companion `/wind` and `/observations`, plus changed wind values. No need to hit a shot. If WinRT OCR fails with a named error, use the precise error from the JSON; do not guess the reading.
 
-**Next isolated step after this:** migrate the lie footer OCR to the SAME native GSPro-window image, preserving existing lie math/event contract; independently validate minimap scaling/registration before turning on any click.
+**Completed in pass #3:** lie footer OCR is now fed from the same native GSPro HWND capture. Real simulator validation for BOTH OCR readers still pending; independently validate minimap scaling/registration before turning on any click.
+
+## Incremental implementation log — 2026-10-11 (V2 small pass #3: Lie native OCR)
+
+**Scope: lie ONLY**, matching the wind native observation architecture. No shot-state ownership change, minimap registration, POST input or production merge.
+
+- [x] Added `helpers/gspro_native_lie_ocr.py` using the **same GSPro HWND image** as minimap and wind. It crops the established right/left lie footer ROIs in *window-relative coordinates*, splits the overlapping 56%/44% longitudinal/lateral areas, enlarges 4× and uses the repaired WinRT `AsTask` OCR bridge from native wind. No desktop `CopyFromScreen`.
+- [x] Preserved existing one-decimal signed lie parsing (`+UP/-DOWN`, `+RIGHT/-LEFT`), `READY/UNKNOWN/UNAVAILABLE` status and event-compatible payload, with native source attribution and unverified single-frame freshness.
+- [x] Migrated BOTH `/lie` and `/companion/v1/observations` to native GSPro-window lie OCR; the observation route shares its one captured frame across minimap/wind/lie.
+- [x] Added `tests/test_gspro_companion_lie.py` covering window-relative crops, flat tee, DOWN/RIGHT, incomplete and failed OCR. Added native lie module to Windows companion workflow trigger.
+- [ ] Windows CI and packaged EXE smoke outcome: **check current GitHub Actions run**. Passing mock tests do not prove actual simulator recognition.
+- [ ] Real simulator test: compare `/lie` with visible GSPro footer on flat tee and non-flat lie (e.g. 2.9 DOWN/0.9 RIGHT) with Chrome in foreground and GSPro background. Confirm changed values and capture freshness; use failure notes rather than guessing.
+
+**Next work after combined wind/lie sim proof:** minimap marker accuracy, waypoint scaling and zoom registration in read-only mode. Keep desktop clicks disabled. Separate native file-evidence transport/parity from the visual-layer test; do not replace the existing Live Caddie state machine.
 
 ## Read this first: immutable architectural boundaries
 
