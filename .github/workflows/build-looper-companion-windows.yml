@@ -12,6 +12,7 @@ on:
       - "helpers/gspro_window_capture.py"
       - "helpers/gspro_live_observations.py"
       - "helpers/gspro_native_wind_ocr.py"
+      - "helpers/gspro_native_lie_ocr.py"
       - "helpers/gspro_direct_click.py"
       - "helpers/gspro_minimap_markers.py"
       - "helpers/gspro_minimap_pipeline.py"
