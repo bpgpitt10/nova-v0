@@ -115,6 +115,23 @@ class ObservationTests(unittest.TestCase):
         self.assertNotIn("currentHole", json.dumps(result))
         self.assertNotIn("_private_bgra", json.dumps(result))
 
+    def test_stage_timings_are_sanitized_and_monotonic(self):
+        with mock.patch.object(obs.native, "find_gspro_window",
+                               return_value={"status": "waiting", "reason": "not-running"}), \
+             mock.patch.object(obs.native, "discover_gspro_data_directory",
+                               return_value={"directory": None, "status": "not-found",
+                                             "source": None, "files": {}}):
+            result = obs.collect_observations()
+        timers = result["timingMs"]
+        self.assertGreaterEqual(timers["total"], 0)
+        for name in ("structuredDiscovery", "nativeCapture", "minimapTotal",
+                     "windOcr", "lieOcr"):
+            self.assertIsInstance(timers[name], float)
+            self.assertGreaterEqual(timers[name], 0)
+        self.assertGreaterEqual(timers["total"], timers["minimapTotal"])
+        self.assertNotIn("_private_bgra", json.dumps(result))
+        self.assertFalse(result["capabilities"]["autoAim"])
+
     def test_dashboard_labels_completed_record_as_evidence_only(self):
         html = (Path(__file__).resolve().parents[1] /
                 "public/dev/companion-observations.html").read_text(encoding="utf-8")
