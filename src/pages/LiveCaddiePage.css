@@ -988,3 +988,40 @@
   font-variant-numeric: tabular-nums;
   color: #b8d9ba;
 }
+
+
+.live-native-preview-layout {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+}
+.live-native-preview-schematic {
+  display: block;
+  height: 190px;
+  width: auto;
+  max-width: 100%;
+  border: 1px solid rgba(184, 209, 170, .32);
+  border-radius: 8px;
+}
+.live-native-preview-legend {
+  display: grid;
+  gap: 7px;
+  max-width: 250px;
+  color: #d5e6d5;
+}
+.live-native-preview-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-native-preview-legend b {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.live-native-preview-legend .dot-ball { background: #e7605b; }
+.live-native-preview-legend .dot-pin { background: #fff; }
+.live-native-preview-legend .dot-target { border: 2px solid #d9f886; }
