@@ -16,8 +16,10 @@ import {
   connectToLooperNativeObservations,
   type LooperNativeObservationConnection,
   type LooperCompanionStatus,
+  type LooperCompanionLiveObservations,
 } from '../adapters/looperCompanion'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
+import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
@@ -441,6 +443,8 @@ export default function LiveCaddiePage() {
   const [companionStatus, setCompanionStatus] = useState<LooperCompanionStatus | null>(null)
   const [nativeVisualActive, setNativeVisualActive] = useState(false)
   const [nativeVisualMessage, setNativeVisualMessage] = useState<string | null>(null)
+  const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
+  const [nativeNetworkMs, setNativeNetworkMs] = useState<number | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
@@ -831,6 +835,9 @@ export default function LiveCaddiePage() {
     teeLocalYds: hole?.markers.tee ?? null,
     targetLocalYds: inspectedCandidate?.aimPoint ?? null,
   })
+  const nativeAimPreview = nativeVisualActive
+    ? prepareReadOnlyNativeAimPreview(nativeAimIntent, nativeObservations)
+    : null
   const playerFacingAim = aimDescriptor?.text
     ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
   const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
@@ -855,6 +862,8 @@ export default function LiveCaddiePage() {
     nativeVisualRef.current = null
     setNativeVisualActive(false)
     setNativeVisualMessage(null)
+    setNativeObservations(null)
+    setNativeNetworkMs(null)
     setVisualCaptureError(null)
     setVisualCaptureSource(null)
     visualCaptureRef.current?.disconnect()
@@ -879,6 +888,8 @@ export default function LiveCaddiePage() {
       nativeVisualRef.current.disconnect()
       nativeVisualRef.current = null
       setNativeVisualActive(false)
+      setNativeObservations(null)
+      setNativeNetworkMs(null)
       setNativeVisualMessage('Native observation polling stopped.')
       return
     }
@@ -890,6 +901,7 @@ export default function LiveCaddiePage() {
     setNativeVisualMessage('Requesting a fresh read-only companion snapshot…')
     nativeVisualRef.current = connectToLooperNativeObservations({
       onObservation: (data) => {
+        setNativeObservations(data)
         const wind = data.ocr?.wind?.status ?? 'UNAVAILABLE'
         const lie = data.ocr?.lie?.status ?? 'UNAVAILABLE'
         const map = data.minimap?.status ?? 'unavailable'
@@ -905,6 +917,7 @@ export default function LiveCaddiePage() {
     setCourseId(nextCourseId)
     setHoleNumber(1)
     setLiveSnapshot(null)
+    setNativeObservations(null)
     setArmedClub(null)
     lastShotKeyRef.current = null
   }
@@ -1008,6 +1021,39 @@ export default function LiveCaddiePage() {
             ) : null}
           </div>
         </section>
+
+        {nativeVisualActive ? (
+          <section className="live-native-aim-diagnostic" data-native-input-authorized="false">
+            <div className="live-native-aim-diagnostic-heading">
+              <span className="live-kicker">READ-ONLY NATIVE AIM CHECK</span>
+              <strong>{nativeAimPreview?.status === 'candidate-unverified'
+                ? 'Pixel candidate — not verified'
+                : 'Preview blocked'}</strong>
+            </div>
+            <p>{nativeAimPreview?.reason ?? 'Waiting for the first native observation.'}</p>
+            {nativeAimPreview?.targetPixel ? (
+              <p>Looper target → GSPro minimap ROI
+                <strong> ({nativeAimPreview.targetPixel.x}, {nativeAimPreview.targetPixel.y}) px</strong>
+                {' · '}tee/pin anchor difference {nativeAimPreview.teePinAnchorErrorYds} yd
+                {' · '}current ball residual {nativeAimPreview.projectedBallErrorYds} yd
+                {' · '}shot match {nativeAimPreview.shotMatch}
+              </p>
+            ) : null}
+            {nativeObservations?.timingMs ? (
+              <p className="live-native-timings">
+                Native timings (ms):
+                {' '}folder/state {nativeObservations.timingMs.structuredDiscovery ?? '—'}
+                {' · '}capture {nativeObservations.timingMs.nativeCapture ?? '—'}
+                {' · '}markers {nativeObservations.timingMs.markerDetection ?? '—'}
+                {' · '}waypoint/zoom {nativeObservations.timingMs.waypointCalibrationAndRegistration ?? '—'}
+                {' · '}wind {nativeObservations.timingMs.windOcr ?? '—'}
+                {' · '}lie {nativeObservations.timingMs.lieOcr ?? '—'}
+                {' · '}total {nativeObservations.timingMs.total ?? '—'}
+              </p>
+            ) : null}
+            <small>Looper-local preview geometry is NOT GSPro/world registration. No Set Aim command or mouse input is available.</small>
+          </section>
+        ) : null}
 
         {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
         {visualCaptureError ? (
