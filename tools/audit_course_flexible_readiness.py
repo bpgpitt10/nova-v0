@@ -93,7 +93,9 @@ def audit(package, *, map_receipt=None, runtime_receipt=None, live_evidence=None
         if not has_reference: concerns.append("no_georeferenced_hole_axis")
         if not greens: concerns.append("no_green_polygon")
         if not terrain.get("valuesBase64"): concerns.append("no_runtime_terrain")
-        if not fairways: concerns.append("missing_mapped_fairway")
+        # A par-3 can legitimately have no fairway polygon at all.
+        if not fairways and hole.get("par") in (4, 5):
+            concerns.append("missing_mapped_fairway_on_par4_or_par5")
         if not mapped: concerns.append("no_owned_mapped_tee_polygon")
         # This only means one *physical* pad is present, NOT a real scorecard
         # tee name. Inferred generic "Tee 1" is NOT verified.
