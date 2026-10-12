@@ -1,5 +1,14 @@
 # Plan: merge partial Shot Strategy and Windows Companion Auto Aim
 
+> **Scope clarification (2026-10-11):** This remains the plan for manually
+> reconciling **partial Shot Strategy** across diverged branches; it is NOT the
+> overarching native Windows Companion implementation plan. For current EXE
+> read-only simulator findings, Live Caddie state ownership, OCR/capture repair,
+> secure native click and acceptance criteria, see
+> [Windows Companion / Native AutoAim execution plan V2](./windows-companion-autoaim-execution-plan-v2.md).
+> Preserve the existing Live Caddie ball/tee/hole transition system unchanged.
+
+
 **Date:** 2026-10-06. **Status: PLAN ONLY; branches intentionally remain separate.**
 **Base for eventual integration:** rebase/create a *new isolated integration
 branch* from the then-current working Live Caddie/Importer branch after the
