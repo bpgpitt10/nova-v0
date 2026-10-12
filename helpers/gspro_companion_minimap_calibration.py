@@ -141,6 +141,9 @@ def _register(cropped, pin, cache):
     # Similarity transform maps current pixels into canonical pixels.
     return {
         "status": "registered_candidate_unverified",
+        "canonicalTeePixel": _point(calibration.canonical_ball),
+        "canonicalPinPixel": _point(calibration.canonical_pin),
+        "currentToCanonicalMatrix": fitted.matrix_2x3,
         "reason": "Validated against cached native tee pin; Live Caddie current-hole binding still required before aim.",
         "source": "cached-tee-feature-registration",
         "teeScaleYardsPerPixel": round(calibration.yards_per_pixel, 6),
@@ -155,7 +158,7 @@ def _register(cropped, pin, cache):
     }
 
 
-def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
+def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
     """Return **only JSON-safe numeric observations**; cache imagery privately.
 
     It can calculate a dogleg-safe LOCAL yard ruler without a course-layout
@@ -205,6 +208,9 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
             )
             result["registration"] = {
                 "status": "tee_anchor_candidate_cached",
+                "canonicalTeePixel": _point(ball),
+                "canonicalPinPixel": _point(pin),
+                "currentToCanonicalMatrix": [[1, 0, 0], [0, 1, 0]],
                 "source": "ball-pin-par3",
                 "reason": "Direct par-3 ruler; course/shot identity still diagnostic-only.",
             }
@@ -292,6 +298,9 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
         )
         result["registration"] = {
             "status": "tee_anchor_candidate_cached",
+            "canonicalTeePixel": _point(ball),
+            "canonicalPinPixel": _point(pin),
+            "currentToCanonicalMatrix": [[1, 0, 0], [0, 1, 0]],
             "reason": "Fresh native pre-shot H/round evidence; browser authoritative state confirmation still pending.",
             "source": "gray-waypoint",
         }
@@ -299,4 +308,22 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
         result["registration"]["reason"] = "no_fresh_round_hole_identity"
     elif not fresh_tee:
         result["registration"]["reason"] = "no_fresh_tee_preshot_evidence"
+    return result
+
+
+def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
+    """Bounded, read-only diagnostic + wall-clock profile.
+
+    Never serializes captured imagery. Timers are per invocation and include
+    Tesseract subprocess startup; elapsed values are rounded milliseconds.
+    """
+    started = time.perf_counter()
+    result = _observe_impl(
+        cropped, ball, pin, window=window, frame_bgr=frame_bgr, roi=roi, state=state
+    )
+    result["timingMs"] = {
+        "waypointCalibrationAndRegistration": round(
+            (time.perf_counter() - started) * 1000, 2
+        )
+    }
     return result
