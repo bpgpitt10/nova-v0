@@ -20,6 +20,7 @@ import gspro_minimap_markers as markers
 import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_native_wind_ocr as wind_ocr
+import gspro_native_lie_ocr as lie_ocr
 from waypoint_scale import Point, resolve_minimap_scale
 
 METERS_TO_YARDS = 1.0936132983377078
@@ -301,7 +302,6 @@ def collect_observations(*, include_ocr=True):
     if include_ocr and window.get("status") == "connected":
         # The existing Windows HUD OCR readers run as separate bounded requests.
         # Individual OCR failures never prevent independent ball/world evidence.
-        import open_golf_coach_helper_lie_footer as footer
         try:
             wind = wind_ocr.read_wind_from_capture(frame_report)
             result["ocr"]["wind"] = {k: v for k, v in wind.items()
@@ -310,10 +310,9 @@ def collect_observations(*, include_ocr=True):
             result["ocr"]["wind"] = {"status": "UNAVAILABLE",
                 "observedAt": now(), "ocrSource": "gspro-native-window",
                 "note": type(error).__name__}
-        # Lie has NOT been migrated yet. Preserve its legacy diagnostics and
-        # clearly label it as the old screen-copy path.
+        # Lie now reads the same GSPro HWND frame as wind and minimap.
         try:
-            lie = footer.read_gspro_lie_hud()
+            lie = lie_ocr.read_lie_from_capture(frame_report)
             result["ocr"]["lie"] = {k: v for k, v in lie.items()
                                      if k not in ("capture", "ocrRawText")}
         except Exception as error:
