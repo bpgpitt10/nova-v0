@@ -20,6 +20,7 @@ export type ReadOnlyNativeAimIntent = {
   holeNumber: number
   nextShotNumber: number
   previousShotKey: string | null
+  lastCompletedShotId: string | null
   shotReference: string
   observedAt: string
   club: string
@@ -78,6 +79,7 @@ export const prepareReadOnlyNativeAimIntent = ({
     holeNumber,
     nextShotNumber: snapshot.nextShotNumber!,
     previousShotKey: snapshot.latestShotKey,
+    lastCompletedShotId: snapshot.latestShot?.shotId ?? null,
     shotReference: [
       snapshot.roundId,
       snapshot.courseKey,
