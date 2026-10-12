@@ -25,5 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test read-only native aim preview against Greywolf fixtures
+        run: npm run test:companion-preview
+
       - name: Build web app
         run: npm run build
