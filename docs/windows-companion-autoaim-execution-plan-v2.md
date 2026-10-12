@@ -3,8 +3,8 @@
 **Updated:** 2026-10-11 (post Greywolf H8/H9 first simulator test)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
-**Current tested package:** prerelease `looper-companion-autoaim-stage-c-5543b4f4`, build from `5543b4f4` (Windows CI passed; native simulator proof limited to read-only).  
-**Most recent implementation pass:** `fd6c6f855564e75dea1a1a2b1c75a6f2bf4c6feb` (GSPro-HWND-only wind OCR + one native frame for minimap/wind; Windows and web CI passed; simulator wind OCR still unverified). Prior small pass: `f434685a` (diagnostic-only/version contract). Keep this plan updated as development progresses.  
+**Current latest CI-tested package:** prerelease `looper-companion-autoaim-stage-c-0b3ec91b`, from implementation/test commit `0b3ec91b` (Windows and Web Alpha CI passed; composite WinRT compass OCR **not yet validated on physical simulator**).  
+**Most recent implementation pass:** `0b3ec91b` (split-crop WinRT compass context fallback + regression tests; build and packaged smoke passed; simulator verification outstanding). Earlier passes are preserved below. Keep this plan updated as development progresses.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -72,7 +72,7 @@
 - [x] Added a **bounded, conditional** native WinRT OCR retry: only when the independent speed crop is recognized and direction is missing, stitch the two existing preprocessed GSPro HUD regions into one line with a short white gap, for OCR context. This uses the **same** GSPro HWND capture, no desktop capture, no extra HUD pixels, and no remote screenshots.
 - [x] Restrict fallback recognition to an actual \`MPH <cardinal>\` token on the stitched line; otherwise leave wind \`UNKNOWN\`. Record \`directionOcrStrategy\` and \`directionFallbackRawText\` (text only) to diagnose the next simulator result. Do **not** guess compass direction or treat 9 MPH alone as ready.
 - [x] Added tests for recovered \`9 MPH NW\`, blank single-glyph + blank combined glyph, corrupt OCR, three-call fallback behavior and protected \`READY\`/UNKNOWN boundary.
-- [ ] Build and packaged EXE smoke test in [Windows CI run](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784335); [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784264). Mark green only after each actually passes; do not install the earlier 02a3f44c package for this fallback.
+- [x] Windows tests, EXE build, packaged smoke and prerelease publication **PASSED** for `0b3ec91b`: [Windows Companion CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784335), [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38200784264). [Isolated read-only Windows ZIP](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-0b3ec91b) published; install this rather than the older 02a3f44c package for the composite fallback.
 - [ ] **Physical simulator proof required.** Validate nonzero speed and cardinal with Chrome in front at multiple wind headings. The composite WinRT fallback is an unverified hypothesis, not established Tesseract parity. If it still returns no cardinal, stop tinkering with speed; diagnose/replace the **direction OCR backend** (e.g. existing Tesseract.js path) using a real user-approved wind-crop fixture. Continue fail-closed and keep native clicks off.
 
 **Next gate:** wind speed + cardinal, lie, read-only image capture passing on simulator; then minimap/zoom registration. No production deployment/merge.
