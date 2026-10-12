@@ -16,11 +16,13 @@ import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
 import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
+import gspro_live_observations as observations  # read-only diagnostic; no desktop input
 
 base = lie_footer.base
 COMPANION_VERSION = "autoaim-stage-c-preflight.1"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
+COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
 
 EXACT_ALLOWED_ORIGINS = frozenset({
     "https://thelooper.golf",
@@ -103,7 +105,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         )
 
     def do_OPTIONS(self) -> None:
-        if urlsplit(self.path).path in (COMPANION_STATUS_PATH, COMPANION_CAPTURE_PATH):
+        if urlsplit(self.path).path in (COMPANION_STATUS_PATH, COMPANION_CAPTURE_PATH, COMPANION_OBSERVATIONS_PATH):
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
@@ -127,6 +129,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "windowDiscovery": True,
                     "folderDiscovery": True,
                     "captureDiagnostic": True,
+                    "liveObservations": True,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
@@ -146,6 +149,21 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         super().do_GET()
 
     def do_POST(self) -> None:
+        if urlsplit(self.path).path == COMPANION_OBSERVATIONS_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            try:
+                self._send_companion(200, observations.collect_observations())
+            except Exception as error:
+                self._send_companion(200, {
+                    "service": "looper-companion",
+                    "schemaVersion": "native-observations-v1",
+                    "status": "unavailable",
+                    "reason": type(error).__name__,
+                    "capabilities": {"autoAim": False},
+                })
+            return
         if urlsplit(self.path).path.startswith("/companion/"):
             self._send_companion(405, {"error": "actuation_not_implemented"})
             return
