@@ -126,6 +126,37 @@ class WaypointIntegrationTests(unittest.TestCase):
         self.assertIn("registration_rejected", result["registration"]["reason"])
         self.assertEqual(result["scale"]["status"], "unavailable")
 
+    def test_par3_direct_tee_ruler_caches_without_gray_waypoint(self):
+        # 300 world meters x-axis => 328.084 yd; 375 pin px => 0.87489.
+        s = state()
+        s["shot"]["startingWorld"] = {"x": 0, "y": 0, "z": 0}
+        s["layout"] = {
+            "status": "ready", "par": 3, "holeNumber": 8,
+            "teeWorld": {"x": 0, "y": 0, "z": 0},
+            "pinWorld": {"x": 0, "y": 0, "z": 300},
+        }
+        with mock.patch.object(integrated.waypoint_cv, "detect_gray_waypoints") as gray_ocr:
+            first = self.observe(s)
+        gray_ocr.assert_not_called()
+        self.assertEqual(first["scale"]["status"], "provisional_par3")
+        self.assertEqual(first["scale"]["source"], "ball-pin-par3")
+        self.assertAlmostEqual(first["scale"]["yardsPerPixel"], 300 * 1.0936132983377078 / 375, places=5)
+        self.assertEqual(first["registration"]["status"], "tee_anchor_candidate_cached")
+        self.assertEqual(integrated._tee_cache["calibration"].scale_source, "ball-pin-par3")
+
+    def test_par3_rejects_stale_or_mismatched_tee_layout(self):
+        s = state()
+        s["shot"]["startingWorld"] = {"x": 100, "y": 0, "z": 0}
+        s["layout"] = {
+            "status": "ready", "par": 3, "holeNumber": 8,
+            "teeWorld": {"x": 0, "y": 0, "z": 0},
+            "pinWorld": {"x": 0, "y": 0, "z": 300},
+        }
+        with mock.patch.object(integrated.waypoint_cv, "detect_gray_waypoints", return_value=[]):
+            result = self.observe(s)
+        self.assertEqual(result["scale"]["status"], "unavailable")
+        self.assertIsNone(integrated._tee_cache)
+
     def test_no_tesseract_leaves_ruler_unavailable(self):
         with mock.patch.object(integrated.wind_ocr, "_tesseract_bundle", return_value=None):
             result = self.observe()
