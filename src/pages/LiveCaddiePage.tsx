@@ -1028,6 +1028,44 @@ export default function LiveCaddiePage() {
                 : 'Preview blocked'}</strong>
             </div>
             <p>{nativeAimPreview?.reason ?? 'Waiting for the first native observation.'}</p>
+            {nativeAimPreview?.targetPixel && nativeAimPreview.roiWidthPx && nativeAimPreview.roiHeightPx
+                && nativeObservations?.minimap?.ballPixel && nativeObservations.minimap.pinPixel ? (
+              <div className="live-native-preview-layout">
+                <svg
+                  role="img"
+                  aria-label="Schematic minimap preview showing native ball, pin, and proposed aim. No screenshot and no desktop click."
+                  viewBox={['0', '0', nativeAimPreview.roiWidthPx, nativeAimPreview.roiHeightPx].join(' ')}
+                  preserveAspectRatio="xMidYMid meet"
+                  className="live-native-preview-schematic"
+                >
+                  <rect x="0" y="0" width={nativeAimPreview.roiWidthPx} height={nativeAimPreview.roiHeightPx}
+                    fill="rgba(24, 52, 34, 0.95)" rx="15" />
+                  <line x1={nativeObservations.minimap.ballPixel.x}
+                    y1={nativeObservations.minimap.ballPixel.y}
+                    x2={nativeAimPreview.targetPixel.x}
+                    y2={nativeAimPreview.targetPixel.y}
+                    stroke="#d8ed96" strokeDasharray="10 8" strokeWidth="3" />
+                  <circle cx={nativeObservations.minimap.pinPixel.x} cy={nativeObservations.minimap.pinPixel.y}
+                    r="9" fill="#fff" stroke="#173b29" strokeWidth="3" />
+                  <circle cx={nativeObservations.minimap.ballPixel.x} cy={nativeObservations.minimap.ballPixel.y}
+                    r="10" fill="#e7605b" stroke="#fff" strokeWidth="2.5" />
+                  <circle cx={nativeAimPreview.targetPixel.x} cy={nativeAimPreview.targetPixel.y}
+                    r="13" fill="none" stroke="#d9f886" strokeWidth="3" />
+                  <line x1={nativeAimPreview.targetPixel.x - 18} x2={nativeAimPreview.targetPixel.x + 18}
+                    y1={nativeAimPreview.targetPixel.y} y2={nativeAimPreview.targetPixel.y}
+                    stroke="#d9f886" strokeWidth="2.5" />
+                  <line y1={nativeAimPreview.targetPixel.y - 18} y2={nativeAimPreview.targetPixel.y + 18}
+                    x1={nativeAimPreview.targetPixel.x} x2={nativeAimPreview.targetPixel.x}
+                    stroke="#d9f886" strokeWidth="2.5" />
+                </svg>
+                <span className="live-native-preview-legend">
+                  <span><b className="dot-ball" /> Native ball</span>
+                  <span><b className="dot-pin" /> Native pin</span>
+                  <span><b className="dot-target" /> Looper preview</span>
+                  <small>Schematic pixel positions only; not actual GSPro imagery or a Set Aim control.</small>
+                </span>
+              </div>
+            ) : null}
             {nativeAimPreview?.targetPixel ? (
               <p>Looper target → GSPro minimap ROI
                 <strong> ({nativeAimPreview.targetPixel.x}, {nativeAimPreview.targetPixel.y}) px</strong>
