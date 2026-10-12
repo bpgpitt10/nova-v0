@@ -30,7 +30,7 @@
 <body><main>
 <div class="eyebrow">The Looper · Windows companion · research diagnostics</div>
 <h1>GSPro live observations</h1>
-<p><strong>Read-only diagnostics—not Live Caddie shot state.</strong> Reports HUD wind/lie OCR, GSPro shot-record evidence, minimap ball/pin pixels, capture quality and yard-per-pixel confidence. A completed-shot record may still describe the previous hole; Live Caddie's existing state engine decides the current hole, ball and next tee. This page never sets aim or sends screen images.</p>
+<p><strong>Read-only diagnostics—not Live Caddie shot state.</strong> Reports HUD wind/lie OCR, GSPro shot-record evidence, minimap ball/pin pixels, gray-waypoint ruler and read-only zoom-registration candidates. A completed-shot record may still describe the previous hole; Live Caddie's existing state engine decides the current hole, ball and next tee. This page never sets aim or sends screen images.</p>
 <div class="controls">
   <button id="read">Read live snapshot</button>
   <button id="watch" class="secondary">Start watching (16s)</button>
@@ -47,9 +47,11 @@
  <section class="panel"><div class="label">Minimap ball pixel</div><div id="ball" class="value">Not checked</div><div id="ballDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Minimap pin pixel</div><div id="pin" class="value">Not checked</div><div id="pinDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Yards per pixel</div><div id="scale" class="value">Not checked</div><div id="scaleDetails" class="details">—</div></section>
+ <section class="panel"><div class="label">Gray waypoint ruler (doglegs)</div><div id="waypoint" class="value">Not checked</div><div id="waypointDetails" class="details">—</div></section>
+ <section class="panel"><div class="label">Tee cache / zoom registration</div><div id="registration" class="value">Not checked</div><div id="registrationDetails" class="details">—</div></section>
 </div>
 <section class="panel" style="margin-top:12px"><div class="label">Full sanitized local response</div><pre id="json">No native observations yet.</pre></section>
-<p><small>Coordinate caution: GSPro X/Y/Z and minimap pixels are not OSM geographic coordinates. Even a plausible scale is provisional until validated at the simulator. A nonblank PrintWindow capture is not proof the pixels are fresh; compare observations before/after a shot.</small></p>
+<p><small>Coordinate caution: GSPro X/Y/Z and minimap pixels are not OSM geographic coordinates. Gray-waypoint and zoom scales remain provisional until matched to the authoritative Live Caddie current hole; a cached tee cannot authorize a native click. A nonblank PrintWindow capture is not proof the pixels are fresh; compare observations before/after a shot.</small></p>
 </main>
 <script>
 const OBS_ENDPOINT = 'http://127.0.0.1:8787/companion/v1/observations'
@@ -82,6 +84,11 @@ function render(r) {
   display('ball',fmtPoint(m.ballPixel),'Side '+(m.minimapSide||'unknown')+' | capture '+(m.status||'unavailable')+' | '+(m.reason||'no reported error'),m.ballPixel?'ok':'warn')
   display('pin',fmtPoint(m.pinPixel),'Quality '+(m.quality?.nonblank?'nonblank':'unverified')+' | freshness '+(m.freshness||'unknown'),m.pinPixel?'ok':'warn')
   display('scale',m.scale?.yardsPerPixel!=null?m.scale.yardsPerPixel+' yd/px':(m.scale?.status||'unavailable'),(m.scale?.source||'')+' | '+(m.scale?.reason||'')+' | status '+(m.scale?.status||'unavailable'),'warn')
+  const ruler=m.waypointRuler||{}, reg=m.registration||{}
+  const reads=(ruler.candidates||[]).map(x=>x.yards+' yd @ '+fmtPoint(x.pixel)+' ('+Math.round((x.confidence||0)*100)+'% votes)').join('; ')
+  display('waypoint',ruler.status||'not checked',reads+' | '+(ruler.reason||'no ruler explanation'),ruler.status==='scale_candidate'?'ok':'warn')
+  const quality=reg.pinErrorPixels!=null?'pin err '+reg.pinErrorPixels+' px; zoom '+reg.zoomRatioCurrentToTee+'x; rotation '+reg.rotationDegrees+'°':''
+  display('registration',reg.status||'not checked',quality+' | '+(reg.reason||'')+' | no native click authorized',reg.status==='registered_candidate_unverified'?'ok':'warn')
   el('json').textContent=JSON.stringify(r,null,2)
   el('export').disabled=false
 }
