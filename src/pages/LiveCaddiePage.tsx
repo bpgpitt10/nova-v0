@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   connectBrowserGsproCourseStateFolder,
   connectToBrowserGsproCourseState,
@@ -13,6 +13,7 @@ import {
 } from '../adapters/browserGsproVisualCapture'
 import {
   readLooperCompanionStatus,
+  readLooperCompanionObservations,
   connectToLooperNativeObservations,
   type LooperNativeObservationConnection,
   type LooperCompanionStatus,
@@ -26,11 +27,13 @@ import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import {
   courseCatalog,
   getCourseCatalogEntry,
+  resolveCourseIdFromGsproName,
   GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -445,6 +448,7 @@ export default function LiveCaddiePage() {
   const [nativeVisualMessage, setNativeVisualMessage] = useState<string | null>(null)
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
+  const triedProvisionalTeeNative = useRef(new Set<string>())
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -612,6 +616,65 @@ export default function LiveCaddiePage() {
       active = false
     }
   }, [courseId, holeNumber])
+
+  // One bounded, read-only native observation at a new, UNMAPPED tee. The
+  // manual Start Round pathway stays authoritative about Hole 1. This does
+  // not create another hole tracker or run continuous screenshot capture.
+  useEffect(() => {
+    if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== holeNumber
+      || liveSnapshot.teePlacement !== 'provisional'
+      || liveSnapshot.nextShotNumber !== 1
+      || companionStatus?.gspro.status !== 'connected'
+      || nativeVisualActive) return
+    const key = [courseId, holeNumber, liveSnapshot.roundId ?? 'manual-start'].join(':')
+    if (triedProvisionalTeeNative.current.has(key)) return
+    triedProvisionalTeeNative.current.add(key)
+    let cancelled = false
+    void readLooperCompanionObservations(45000)
+      .then(obs => { if (!cancelled) setNativeObservations(obs) })
+      .catch(() => { /* Route-origin provisional estimate remains explicit. */ })
+    return () => { cancelled = true }
+  }, [hole, courseId, holeNumber, liveSnapshot, companionStatus?.gspro.status, nativeVisualActive])
+
+  // The ball and pin plus a native waypoint scale produce a STRAIGHT distance,
+  // not an absolute tee X or Y. Never use screenshot left/right framing as a
+  // geospatial measurement; mirror/rotation/cropping remain unproven.
+  const nativeProvisionalTee = useMemo(() => {
+    if (!hole || !liveSnapshot || liveSnapshot.teePlacement !== 'provisional'
+      || liveSnapshot.holeNumber !== hole.holeNumber
+      || liveSnapshot.nextShotNumber !== 1
+      || !nativeObservations || nativeObservations.status !== 'ready'
+      || nativeObservations.gspro?.status !== 'connected'
+      || nativeObservations.gspro.window?.minimized !== false) return null
+    const seenAt = Date.parse(nativeObservations.observedAt ?? '')
+    if (!Number.isFinite(seenAt) || Math.abs(Date.now()-seenAt)>30000) return null
+    const shot = nativeObservations.structured?.shot
+    const seenCourse = shot?.courseKey ? resolveCourseIdFromGsproName(shot.courseKey) : null
+    if (seenCourse && seenCourse !== courseId) return null
+    const nativeHasThisTee = shot?.kind === 'pre_shot'
+      && shot?.status === 'ready'
+      && shot.holeNumber === hole.holeNumber && shot.shotNumber === 1
+    // Manual start is the existing explicit user commitment to Hole 1.
+    const isManuallyArmedHoleOne = hole.holeNumber === 1 && liveSnapshot.roundId == null
+    if (!nativeHasThisTee && !isManuallyArmedHoleOne) return null
+    const mini = nativeObservations.minimap
+    const roiHeight = mini?.minimapRoiWindowPixels?.[3]
+    if (!mini?.ballPixel || !Number.isFinite(roiHeight) || roiHeight! <= 0
+      || mini.ballPixel.y < roiHeight! * 0.70) return null
+    const distance = readTeeBallPinDistanceYds({
+      ballPixel: mini.ballPixel, pinPixel: mini.pinPixel,
+      yardsPerPixel: mini.scale?.yardsPerPixel,
+      waypointCount: mini.scale?.waypointCount,
+      scaleStatus: mini.scale?.status, markerStatus: mini.status,
+    })
+    return distance == null ? null : estimateProvisionalTee(hole, distance)
+  }, [hole, liveSnapshot, nativeObservations, courseId])
+
+  useEffect(() => {
+    if (nativeProvisionalTee?.status !== 'provisional') return
+    setBall(nativeProvisionalTee.point)
+    if (hole) setTarget(chooseLiveLandingTarget(hole, nativeProvisionalTee.point, hole.markers.pin ?? null))
+  }, [nativeProvisionalTee, hole])
 
   useEffect(() => {
     if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
@@ -1097,6 +1160,19 @@ export default function LiveCaddiePage() {
         ) : null}
         {visualCaptureStatus === 'stopped' && !visualCaptureError ? (
           <div className="live-caddie-alert">GSPro visual capture stopped. Reconnect visuals for live wind and lie.</div>
+        ) : null}
+        {liveSnapshot?.teePlacement === 'provisional'
+          && liveSnapshot.holeNumber === holeNumber
+          && liveSnapshot.nextShotNumber === 1 ? (
+          <div className="live-caddie-alert" data-tee-quality="provisional">
+            Provisional first-use tee — about ±{nativeProvisionalTee?.status === 'provisional'
+              ? nativeProvisionalTee.uncertaintyRadiusYds : liveSnapshot.teeUncertaintyYds ?? 50} yards.
+            {nativeProvisionalTee?.status === 'provisional'
+              ? ' GSPro ball/pin ruler constrained the forward tee estimate; lateral position remains unknown.'
+              : ' Using approximate OSM route start until a reliable GSPro ball/pin ruler is available.'}
+            {' '}Club choice is preliminary; exact forced carries, hazard margins, elevation at tee
+            and native aim are not verified. Do not save this as a confirmed tee.
+          </div>
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
