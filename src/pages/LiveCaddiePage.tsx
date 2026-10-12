@@ -695,6 +695,12 @@ export default function LiveCaddiePage() {
   }, [hole, liveSnapshot])
 
   const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
+  const provisionalTeeRadiusYds = liveMatchesHole && liveSnapshot?.teePlacement === 'provisional'
+    && liveSnapshot.nextShotNumber === 1
+    ? nativeProvisionalTee?.status === 'provisional'
+      ? nativeProvisionalTee.uncertaintyRadiusYds
+      : liveSnapshot.teeUncertaintyYds ?? 50
+    : null
   const pinEstimate = hole
     ? estimatePinFromGsproDistance(
         hole,
@@ -1319,6 +1325,7 @@ export default function LiveCaddiePage() {
                   show95={show95}
                   showRiskTail={showRiskTail}
                   showPracticeShots={showPracticeShots}
+                  provisionalTeeRadiusYds={provisionalTeeRadiusYds}
                 />
 
                 <div className="live-map-legend">
