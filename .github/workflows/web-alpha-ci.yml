@@ -31,5 +31,8 @@ jobs:
       - name: Test GSPro to OSM research-only landmark transform and existing hazard invariants
         run: node tools/test-gspro-course-landmark-registration.mjs
 
+      - name: Test marker-only GSPro ball-waypoint-pin OSM diagnostics without hazard tagging
+        run: node tools/test-gspro-marker-only-alignment.mjs
+
       - name: Build web app
         run: npm run build
