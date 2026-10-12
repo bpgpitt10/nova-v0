@@ -46,7 +46,24 @@
 - [ ] Windows CI and packaged EXE smoke outcome: **check current GitHub Actions run**. Passing mock tests do not prove actual simulator recognition.
 - [ ] Real simulator test: compare `/lie` with visible GSPro footer on flat tee and non-flat lie (e.g. 2.9 DOWN/0.9 RIGHT) with Chrome in foreground and GSPro background. Confirm changed values and capture freshness; use failure notes rather than guessing.
 
-**Next work after combined wind/lie sim proof:** minimap marker accuracy, waypoint scaling and zoom registration in read-only mode. Keep desktop clicks disabled. Separate native file-evidence transport/parity from the visual-layer test; do not replace the existing Live Caddie state machine.
+**Next work after combined wind/lie sim proof:** **wind parity repair in pass #4 is required first**. Then minimap marker accuracy, waypoint scaling and zoom registration in read-only mode. Keep desktop clicks disabled. Separate native file-evidence transport/parity from the visual-layer test; do not replace the existing Live Caddie state machine.
+
+## Incremental implementation log — 2026-10-11 (V2 small pass #4: Restore wind OCR parity)
+
+**Reason:** The first physical sim test after Lie OCR showed successful native GSPro background capture and lie (0.0 UP / 0.0 RIGHT), but native wind was UNKNOWN with raw "IO MPH", no cardinal. This is a regression against the *previously validated browser wind implementation*, not evidence that GSPro lacks wind data.
+
+**Root cause identified in source:** \`src/adapters/browserGsproVisualCapture.ts\` uses two tightly bounded crops (speed x .444/y .011/w .033/h .026; direction x .532/y .011/w .020/h .026), 8× enlargement and luminance threshold 190 with separately recognized compass tokens. The new \`helpers/gspro_native_wind_ocr.py\` instead read a giant top-center 36%×16% region with 2× enlargement, asking WinRT to recognize both values together. Direction was not found. The established browser producer also emits compass wind as **from**; the new native producer had reported **toward**, although the TypeScript adapter normalized compass wind back to **from**.
+
+- [x] Restore the two proven **browser** crop coordinates, 8× scaling and thresholded black-on-white images in the **native HWND-only** reader. Preserve one shared \`PrintWindow\` frame for wind/lie/minimap, no \`CopyFromScreen\` and no desktop or screenshot transmission.
+- [x] OCR **speed and direction independently** using the packaged WinRT OCR bridge; keep status UNKNOWN unless an independently recognized valid direction is available for nonzero wind. Keep calm (0 MPH) consistent with browser behavior.
+- [x] Add narrowly scoped speed-token cleanup for observed \`IO MPH\` → 10, but **never infer direction** or silently return READY from the numeric guess alone. Align produced compass convention to **from**, consistent with browser.
+- [x] Update Windows tests for dual crops, 3840×2160 pixel coordinates, source-only binary preprocessing, nonzero missing direction, ambiguous/noisy OCR and the actual \`IO MPH\` trace; ensure read-only shared frame contract includes native lie.
+- [ ] Verify Windows build, packaged EXE smoke and web CI on the resulting implementation/test commits. See linked GitHub Actions runs.
+- [ ] **Simulator gate (required):** screenshot-compare both raw \`SPEED: … | DIR: …\` fields and parsed wind against actual GSPro HUD for multiple different wind settings, with Chrome foreground / GSPro background. Confirm real compass direction and speed reliably; do not equate mocked WinRT results with production OCR reliability.
+
+**Important testing limit:** the 33-image GSPro browser OCR corpus is documented at \`tools/ocr_corpus_reference_v1.json\`, but the image bytes are not included in this branch. The browser uses Tesseract.js, whereas the native EXE uses Windows WinRT OCR: geometry/preprocessing are restored, but **actual engine parity remains a physical-simulator acceptance requirement**. Do not claim 33/33 parity from unit tests. Keep native AutoAim POST/mouse input disabled, no production merge/deploy.
+
+**Next:** once physical wind and lie pass, advance to read-only minimap marker accuracy and scaling/zoom registration. Native file evidence parity remains separate and must reuse the existing TypeScript Live Caddie state engine.
 
 ## Read this first: immutable architectural boundaries
 
