@@ -1,14 +1,16 @@
-"""Windows-only read-only wind OCR from the *native GSPro HWND capture*, not desktop.
+"""Read-only wind OCR: native GSPro HWND pixels + packaged Tesseract 5 CLI.
 
-Reuses the existing tested parse_wind_ocr_text convention, but captures no
-desktop pixels. A bounded, temporary HUD-only PNG is deleted in finally.
-Actual WinRT OCR with GSPro foreground/background still requires sim validation.
+The browser's validated crop/preprocessing/PSM strategy is the reference.
+No Chrome screen-sharing; native window capture remains read-only.
+The WinRT helper below is intentionally retained for the already-working lie reader.
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import shutil
+import sys
 from pathlib import Path
 import subprocess
 import tempfile
@@ -85,6 +87,7 @@ WIND_CROPS = {
     "speed": (0.444, 0.011, 0.033, 0.026),
     "direction": (0.532, 0.011, 0.020, 0.026),
 }
+WIND_SPEED_EXPANDED_BOUNDS = (0.439, 0.011, 0.043, 0.026)
 WIND_CROP_SCALE = 8
 WIND_BINARY_THRESHOLD = 190
 WIND_CARDINAL_DEGREES = {
@@ -93,7 +96,7 @@ WIND_CARDINAL_DEGREES = {
 }
 
 
-def extract_wind_hud_regions(report: dict):
+def extract_wind_hud_regions(report: dict, *, expanded_speed: bool = False):
     """Extract both separate, preprocessed regions from one GSPro HWND capture.
 
     Match the browser's canvas drawCrop: normalized coordinates, 8x bicubic
@@ -111,7 +114,10 @@ def extract_wind_hud_regions(report: dict):
             return None
         frame = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[:, :, :3]
         regions = {}
-        for name, (x, y, w, h) in WIND_CROPS.items():
+        bounds = dict(WIND_CROPS)
+        if expanded_speed:
+            bounds["speed"] = WIND_SPEED_EXPANDED_BOUNDS
+        for name, (x, y, w, h) in bounds.items():
             left, top = int(width * x), int(height * y)
             cw, ch = max(1, int(width * w)), max(1, int(height * h))
             if left + cw > width or top + ch > height:
@@ -182,37 +188,75 @@ def _parse_split_wind(speed_text: str, direction_text: str) -> dict:
 
 
 
-def _parse_direction_from_joint_ocr(raw: str):
-    """Only accept a cardinal explicitly OCR'd after MPH on stitched HUD tiles.
 
-    Isolated one-letter crops can be discarded by WinRT OCR's line detector.
-    Putting the speed and direction glyphs on a single text line gives that
-    detector context, without hallucinating a direction from the speed.
+def _tesseract_bundle():
+    """Use an installed adjacent portable OCR bundle in frozen builds only.
+
+    Development may use a locally installed CLI. A missing packaged binary
+    fails closed: no WinRT fallback, browser screen sharing, or network install.
     """
-    normalized = " ".join(raw.upper().split())
-    match = re.search(r"\bMPH\s*(NE|NW|SE|SW|N|E|S|W)\s*$", normalized)
-    return match.group(1) if match else None
+    if getattr(sys, "frozen", False):
+        root = Path(sys.executable).resolve().parent / "ocr"
+        engine = root / "tesseract.exe"
+        trained = root / "tessdata" / "eng.traineddata"
+        if engine.is_file() and trained.is_file():
+            return engine, root / "tessdata"
+        return None
+    executable = shutil.which("tesseract")
+    return (Path(executable), None) if executable else None
 
 
-def _read_stitched_direction(regions: dict):
-    """One WinRT OCR retry on a tiny derived image, never a desktop screenshot."""
-    speed_image = regions["speed"][0]
-    direction_image = regions["direction"][0]
-    gap = 32
-    h = max(speed_image.shape[0], direction_image.shape[0])
-    w = speed_image.shape[1] + gap + direction_image.shape[1]
-    line = np.full((h, w), 255, dtype=np.uint8)
-    line[:speed_image.shape[0], :speed_image.shape[1]] = speed_image
-    x = speed_image.shape[1] + gap
-    line[:direction_image.shape[0], x:] = direction_image
-    ok, encoded = cv2.imencode(".png", line)
+def _ocr_png_with_tesseract(png: bytes, *, psm: int, whitelist: str) -> dict:
+    """Read one tightly cropped local image, using the browser's Tesseract PSM.
+
+    The OCR executable is bundled alongside the Windows EXE with eng.traineddata.
+    We pass fixed command arguments (not OCR text or arbitrary user strings).
+    """
+    bundle = _tesseract_bundle()
+    if bundle is None:
+        return {"status": "error", "note": "bundled_tesseract_unavailable"}
+    engine, tessdata = bundle
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="looper-wind-hud-", suffix=".png", delete=False) as output:
+            path = output.name
+            output.write(png)
+        args = [
+            str(engine), path, "stdout", "-l", "eng", "--psm", str(psm),
+            "-c", f"tessedit_char_whitelist={whitelist}",
+            "-c", "load_system_dawg=0", "-c", "load_freq_dawg=0",
+        ]
+        if tessdata is not None:
+            args.extend(["--tessdata-dir", str(tessdata)])
+        completed = subprocess.run(
+            args, capture_output=True, text=True, check=False, timeout=8,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        if completed.returncode:
+            return {"status": "error", "note": "tesseract_exit_" + str(completed.returncode)}
+        return {"status": "ok", "rawText": completed.stdout.strip()}
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "note": "tesseract_timeout"}
+    except OSError:
+        return {"status": "error", "note": "tesseract_start_failed"}
+    finally:
+        if path is not None:
+            try:
+                Path(path).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _recognize_region(regions: dict, name: str, psm: int):
+    image, _ = regions[name]
+    ok, encoded = cv2.imencode(".png", image)
     if not ok:
-        return None, "stitched_image_encode_failed"
-    result = _ocr_png_with_windows(encoded.tobytes())
-    if result.get("status") != "ok" or not isinstance(result.get("rawText"), str):
-        return None, str(result.get("note") or "stitched_ocr_failed")[:120]
-    raw = result["rawText"]
-    return _parse_direction_from_joint_ocr(raw), raw[:120]
+        return {"status": "error", "note": "wind_" + name + "_encode_failed"}
+    return _ocr_png_with_tesseract(
+        encoded.tobytes(),
+        psm=psm,
+        whitelist="0123456789.,MPH " if name == "speed" else "NSEW ",
+    )
 
 
 def _ocr_png_with_windows(png: bytes) -> dict:
@@ -251,44 +295,52 @@ def _ocr_png_with_windows(png: bytes) -> dict:
 
 
 def read_wind_from_capture(report: dict) -> dict:
-    """Read independent speed/direction crops, preserving fail-closed behavior."""
+    """Read speed/direction via the proven Tesseract family and PSM strategy."""
     regions = extract_wind_hud_regions(report)
     if regions is None:
         return _unavailable("GSPro window capture unavailable or wind HUD regions invalid.")
 
-    texts = {}
-    for name in ("speed", "direction"):
-        image, _ = regions[name]
-        ok, png = cv2.imencode(".png", image)
-        if not ok:
-            return _unavailable(f"Could not encode GSPro wind {name} crop.")
-        result = _ocr_png_with_windows(png.tobytes())
-        if result.get("status") != "ok":
-            return _unavailable(
-                f"Windows {name} OCR failed: {str(result.get('note') or 'unknown')[:180]}"
-            )
-        if not isinstance(result.get("rawText"), str):
-            return _unavailable(f"Windows {name} OCR returned invalid text.")
-        texts[name] = result["rawText"]
+    speed_result = _recognize_region(regions, "speed", 7)
+    if speed_result.get("status") != "ok":
+        return _unavailable("Tesseract wind speed OCR failed: " + str(speed_result.get("note"))[:150])
+    speed_text = speed_result.get("rawText") or ""
+    speed_strategy = "reference-crop"
+    if _normalize_wind_speed(speed_text) is None:
+        # Browser-proven ROI first. Screenshot from physical sim shows that
+        # 2048-pixel scaled frames may truncate the leftmost numeral; a modest
+        # widened fallback sees the numeral without the compass/arrow HUD.
+        expanded = extract_wind_hud_regions(report, expanded_speed=True)
+        if expanded:
+            retry = _recognize_region(expanded, "speed", 7)
+            if retry.get("status") == "ok" and _normalize_wind_speed(retry.get("rawText") or "") is not None:
+                regions["speed"] = expanded["speed"]
+                speed_text = retry["rawText"]
+                speed_strategy = "expanded-crop"
 
-    parsed = _parse_split_wind(texts["speed"], texts["direction"])
-    # The physical sim returned SPEED: 9 MPH | DIR: (blank) despite an
-    # independently recognized speed. Windows OCR may suppress isolated
-    # single-character tokens. One optional joint-line OCR is a bounded
-    # fallback; it does not crop additional screen space or invent a bearing.
-    if parsed["status"] == "UNKNOWN" and parsed["speedMph"] is not None and parsed["directionDegrees"] is None:
-        recovered, fallback_raw = _read_stitched_direction(regions)
-        parsed["directionFallbackRawText"] = fallback_raw
-        if recovered is not None:
-            parsed = _parse_split_wind(texts["speed"], recovered)
-            parsed["directionFallbackRawText"] = fallback_raw
-            parsed["directionOcrStrategy"] = "stitched-line"
-        else:
-            parsed["directionOcrStrategy"] = "split-and-stitched-unreadable"
-    else:
-        parsed["directionOcrStrategy"] = "split"
-    parsed["ocrSource"] = "gspro-native-window"
+    direction_result = _recognize_region(regions, "direction", 8)
+    if direction_result.get("status") != "ok":
+        return _unavailable("Tesseract wind direction OCR failed: " + str(direction_result.get("note"))[:150])
+    direction_text = direction_result.get("rawText") or ""
+    parsed = _parse_split_wind(speed_text, direction_text)
+    direction_strategy = "word-psm8"
+    if parsed["status"] == "UNKNOWN" and parsed["speedMph"] not in (None, 0) and parsed["directionDegrees"] is None:
+        # The existing browser OCR attempts modes 7 and 10 for missing
+        # compass labels. Never accept an unsupported cardinal.
+        for mode in (7, 10):
+            retry = _recognize_region(regions, "direction", mode)
+            if retry.get("status") == "ok":
+                candidate = _parse_split_wind(speed_text, retry.get("rawText") or "")
+                if candidate["directionDegrees"] is not None:
+                    direction_text = retry["rawText"]
+                    parsed = candidate
+                    direction_strategy = "fallback-psm" + str(mode)
+                    break
+
+    parsed["ocrSource"] = "gspro-native-tesseract"
+    parsed["ocrEngine"] = "tesseract-cli"
     parsed["captureFreshness"] = "single_capture_unverified"
+    parsed["directionOcrStrategy"] = direction_strategy
+    parsed["speedOcrStrategy"] = speed_strategy
     parsed["capture"] = {
         "method": report.get("method"),
         "crops": {name: roi[1] for name, roi in regions.items()},
