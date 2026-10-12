@@ -148,6 +148,9 @@ export type LooperCompanionLiveObservations = {
       kind?: string
       holeNumber?: number | null
       shotNumber?: number | null
+      courseKey?: string | null
+      roundId?: number | null
+      shotId?: string | null
       startingWorld?: { x: number; y: number; z: number } | null
       endingWorld?: { x: number; y: number; z: number } | null
       distanceToPinYds?: number | null
@@ -182,10 +185,26 @@ export type LooperCompanionLiveObservations = {
       zoomRatioCurrentToTee?: number
       rotationDegrees?: number
       pinErrorPixels?: number
+      canonicalTeePixel?: { x: number; y: number }
+      canonicalPinPixel?: { x: number; y: number }
+      /** Maps CURRENT minimap pixels into the original tee minimap frame. */
+      currentToCanonicalMatrix?: [[number, number, number], [number, number, number]]
       inliers?: number
       confidence?: number
     }
     freshness?: string
+    minimapRoiWindowPixels?: number[]
+    timingMs?: { markerDetection?: number; waypointCalibrationAndRegistration?: number }
+  }
+  timingMs?: {
+    structuredDiscovery?: number
+    nativeCapture?: number
+    minimapTotal?: number
+    markerDetection?: number | null
+    waypointCalibrationAndRegistration?: number | null
+    windOcr?: number
+    lieOcr?: number
+    total?: number
   }
   ocr?: {
     wind?: import('./gsproWindObservation').GsproWindOcrPayload
