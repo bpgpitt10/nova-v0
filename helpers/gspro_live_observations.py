@@ -364,6 +364,9 @@ def collect_observations(*, include_ocr=True):
         "waypointCalibrationAndRegistration": minimap.get("timingMs", {}).get(
             "waypointCalibrationAndRegistration"
         ),
+        "waypointOcr": minimap.get("timingMs", {}).get("waypointOcr"),
+        "scaleMath": minimap.get("timingMs", {}).get("scaleMath"),
+        "zoomRegistration": minimap.get("timingMs", {}).get("zoomRegistration"),
         "windOcr": wind_ms,
         "lieOcr": lie_ms,
         "total": round((time.perf_counter() - started) * 1000, 2),
