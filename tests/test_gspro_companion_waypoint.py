@@ -157,6 +157,14 @@ class WaypointIntegrationTests(unittest.TestCase):
         self.assertEqual(result["scale"]["status"], "unavailable")
         self.assertIsNone(integrated._tee_cache)
 
+    def test_weak_single_label_vote_cannot_seed_a_tee(self):
+        with mock.patch.object(integrated.waypoint_cv, "detect_gray_waypoints",
+                               return_value=[gray(votes=1)]):
+            result = self.observe()
+        self.assertEqual(result["waypointRuler"]["status"], "detected_unverified")
+        self.assertEqual(result["scale"]["reason"], "low_waypoint_ocr_confidence")
+        self.assertIsNone(integrated._tee_cache)
+
     def test_no_tesseract_leaves_ruler_unavailable(self):
         with mock.patch.object(integrated.wind_ocr, "_tesseract_bundle", return_value=None):
             result = self.observe()
