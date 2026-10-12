@@ -28,24 +28,65 @@ def fake_native_frame():
 
 
 class NativeWindTests(unittest.TestCase):
-    def test_uses_native_hud_crop_and_existing_compass_parser(self):
+    def test_uses_prior_validated_split_crops_and_compass_parser(self):
         image = fake_native_frame()
         calls = []
+
         def stub(png):
-            decoded = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_COLOR)
-            calls.append(decoded.shape)
-            return {"status": "ok", "rawText": "8 MPH W"}
+            decoded = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+            calls.append((decoded.shape, np.unique(decoded).tolist()))
+            return {"status": "ok", "rawText": "8 MPH" if len(calls) == 1 else "W"}
+
         with mock.patch.object(wind, "_ocr_png_with_windows", side_effect=stub):
             result = wind.read_wind_from_capture(image)
-        self.assertEqual(calls, [(160, 576, 3)])
+
+        # 800x500 scales to pixel ROIs 26x13 and 16x13, then 8x.
+        self.assertEqual([x[0] for x in calls], [(104, 208), (104, 128)])
+        self.assertTrue(all(set(x[1]).issubset({0, 255}) for x in calls))
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["speedMph"], 8.0)
         self.assertEqual(result["directionDegrees"], 270)
-        self.assertEqual(result["convention"], "toward")
+        self.assertEqual(result["convention"], "from")
         self.assertEqual(result["ocrSource"], "gspro-native-window")
         self.assertEqual(result["captureFreshness"], "single_capture_unverified")
         self.assertEqual(result["capture"]["method"], "PrintWindow")
+        self.assertEqual(set(result["capture"]["crops"]), {"speed", "direction"})
         self.assertNotIn("_private_bgra", result)
+
+    def test_4k_geometry_recovers_precise_browser_rois(self):
+        # Browser production geometry x .444/.532 and y .011 at 3840x2160.
+        frame = np.zeros((2160, 3840, 4), dtype=np.uint8)
+        frame[:, :, 3] = 255
+        report = {"status": "captured", "quality": {"nonblank": True},
+                  "windowWidth": 3840, "windowHeight": 2160,
+                  "_private_bgra": frame.tobytes()}
+        regions = wind.extract_wind_hud_regions(report)
+        self.assertEqual(regions["speed"][1], {
+            "x": 1704, "y": 23, "width": 126, "height": 56})
+        self.assertEqual(regions["direction"][1], {
+            "x": 2042, "y": 23, "width": 76, "height": 56})
+        self.assertEqual(regions["speed"][0].shape, (448, 1008))
+        self.assertEqual(regions["direction"][0].shape, (448, 608))
+
+    def test_observed_io_mph_and_missing_direction_fails_closed(self):
+        # User's 2026-10-12 physical sim trace: OCR returned "IO MPH",
+        # no direction. Correct speed alone must NEVER activate wind.
+        result = wind._parse_split_wind("IO MPH", "")
+        self.assertEqual(result["speedMph"], 10)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIsNone(result["directionDegrees"])
+        # With an independently recognized cardinal, same evidence is ready.
+        repaired = wind._parse_split_wind("IO MPH", "SW")
+        self.assertEqual(repaired["speedMph"], 10)
+        self.assertEqual(repaired["directionDegrees"], 225)
+        self.assertEqual(repaired["status"], "READY")
+        self.assertEqual(wind._parse_split_wind("BOGUS", "W")["status"], "UNKNOWN")
+
+    def test_calm_wind_follows_existing_browser_contract(self):
+        self.assertEqual(wind._parse_split_wind("0 MPH", "")["status"], "READY")
+        self.assertEqual(wind._parse_split_wind("0 MPH", "")["directionDegrees"], 0)
+        self.assertEqual(wind._parse_split_wind("12 MPH", "NN")["directionDegrees"], 0)
+        self.assertEqual(wind._parse_split_wind("12 MPH", "NEE")["directionDegrees"], 45)
 
     def test_fail_closed_missing_black_or_malformed_native_pixels(self):
         for bad in [
@@ -60,11 +101,13 @@ class NativeWindTests(unittest.TestCase):
                 f.assert_not_called()
 
     def test_incomplete_or_failed_ocr_never_invents_wind(self):
-        for payload, status in [
-            ({"status": "ok", "rawText": "8 MPH"}, "UNKNOWN"),
-            ({"status": "error", "note": "WinRT_AsTask_IAsyncOperation_unavailable"}, "UNAVAILABLE"),
+        for outputs, status in [
+            ([{"status": "ok", "rawText": "8 MPH"},
+              {"status": "ok", "rawText": ""}], "UNKNOWN"),
+            ([{"status": "ok", "rawText": "8 MPH"},
+              {"status": "error", "note": "WinRT_AsTask_IAsyncOperation_unavailable"}], "UNAVAILABLE"),
         ]:
-            with mock.patch.object(wind, "_ocr_png_with_windows", return_value=payload):
+            with mock.patch.object(wind, "_ocr_png_with_windows", side_effect=outputs):
                 result = wind.read_wind_from_capture(fake_native_frame())
             self.assertEqual(result["status"], status)
             self.assertIsNone(result.get("directionDegrees"))
@@ -78,11 +121,12 @@ class NativeWindTests(unittest.TestCase):
             mock.patch.object(observations.capture, "probe_gspro_capture", return_value=report) as read_frame, \
             mock.patch.object(observations, "_image_observation", return_value={"status": "markers_unavailable"}) as map_image, \
             mock.patch.object(observations.wind_ocr, "read_wind_from_capture", return_value={"status": "READY", "speedMph": 8, "directionDegrees": 270, "capture": {"source": "hidden"}}) as wind_read, \
-            mock.patch("open_golf_coach_helper_lie_footer.read_gspro_lie_hud", return_value={"status": "UNKNOWN"}):
+            mock.patch.object(observations.lie_ocr, "read_lie_from_capture", return_value={"status": "READY", "upDownDegrees": 0, "leftRightDegrees": 0}) as lie_read:
             result = observations.collect_observations()
         read_frame.assert_called_once()
         self.assertIs(map_image.call_args.kwargs["report"], report)
         wind_read.assert_called_once_with(report)
+        lie_read.assert_called_once_with(report)
         self.assertEqual(result["ocr"]["wind"]["speedMph"], 8)
         self.assertNotIn("_private_bgra", str(result))
         self.assertNotIn('"source": "hidden"', str(result))
