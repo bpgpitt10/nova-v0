@@ -10,6 +10,7 @@ on:
       - "helpers/looper_companion.py"
       - "helpers/gspro_native_discovery.py"
       - "helpers/gspro_window_capture.py"
+      - "helpers/gspro_live_observations.py"
       - "helpers/gspro_direct_click.py"
       - "helpers/gspro_minimap_markers.py"
       - "helpers/gspro_minimap_pipeline.py"
@@ -20,9 +21,11 @@ on:
       - "tests/test_gspro_companion_minimap.py"
       - "tests/test_gspro_companion_actuator.py"
       - "tests/test_gspro_companion_discovery.py"
+      - "tests/test_gspro_companion_observations.py"
       - "tests/test_looper_companion_stage_a.py"
       - "src/adapters/looperCompanion.ts"
       - "public/dev/companion-connect.html"
+      - "public/dev/companion-observations.html"
       - "helpers/open_golf_coach_helper.py"
       - "helpers/open_golf_coach_helper_lie_footer.py"
       - "helpers/install_looper_companion.ps1"
@@ -98,6 +101,13 @@ jobs:
             $capture = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/capture-check" -Headers $headers -TimeoutSec 3
             if ($capture.windowCapture.status -ne "not-connected") {
               throw "Capture check without GSPro must fail closed."
+            }
+            if ($companion.capabilities.liveObservations -ne $true) {
+              throw "Unified observation diagnostic capability missing."
+            }
+            $observed = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/observations" -Headers $headers -TimeoutSec 12
+            if ($observed.schemaVersion -ne "native-observations-v1" -or $observed.capabilities.autoAim -ne $false) {
+              throw "Packaged native observation endpoint failed read-only smoke."
             }
             if ($companion.capabilities.autoAim -ne $false) {
               throw "Stage B must never enable Auto Aim."
