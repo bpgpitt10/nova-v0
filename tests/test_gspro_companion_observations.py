@@ -120,7 +120,7 @@ class ObservationTests(unittest.TestCase):
                                return_value={"status": "waiting", "reason": "not-running"}), \
              mock.patch.object(obs.native, "discover_gspro_data_directory",
                                return_value={"directory": None, "status": "not-found",
-                                             "source": None, "files": {}}):
+                                             "source": None, "files": {}, "reason": "not-running"}):
             result = obs.collect_observations()
         timers = result["timingMs"]
         self.assertGreaterEqual(timers["total"], 0)
