@@ -64,7 +64,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check',
+  path: 'status' | 'capture-check' | 'observations',
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -124,4 +124,102 @@ export const readLooperCompanionCaptureDiagnostic = async (
     throw new Error('Looper Companion returned no capture diagnostic result.')
   }
   return data
+}
+
+/** Native companion live observations are separate from course/OSM registration.
+ * Only wind and lie are currently dispatched to the recommender. Raw GSPro-world
+ * ball and minimap pixels remain diagnostics until actual-PC alignment is proven.
+ */
+export type LooperCompanionLiveObservations = {
+  service: 'looper-companion'
+  schemaVersion: 'native-observations-v1'
+  status: 'ready' | 'unavailable'
+  observedAt?: string
+  gspro?: LooperCompanionGsproState
+  structured?: {
+    status: string
+    fileAgeMs?: number | null
+    shot?: {
+      status: string
+      kind?: string
+      holeNumber?: number | null
+      shotNumber?: number | null
+      startingWorld?: { x: number; y: number; z: number } | null
+      endingWorld?: { x: number; y: number; z: number } | null
+      distanceToPinYds?: number | null
+    }
+    layout?: {
+      status: string
+      par?: number | null
+      teeWorld?: { x: number; y: number; z: number } | null
+      pinWorld?: { x: number; y: number; z: number } | null
+    }
+  }
+  minimap?: {
+    status: string
+    reason?: string | null
+    minimapSide?: string | null
+    ballPixel?: { x: number; y: number } | null
+    pinPixel?: { x: number; y: number } | null
+    scale?: { status: string; yardsPerPixel?: number; reason?: string; source?: string }
+    freshness?: string
+  }
+  ocr?: {
+    wind?: import('./gsproWindObservation').GsproWindOcrPayload
+    lie?: import('./gsproLieObservation').GsproLieOcrPayload
+  }
+  capabilities?: { autoAim: false }
+}
+
+export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
+  const data = await getCompanionReadOnly<LooperCompanionLiveObservations>('observations', timeoutMs)
+  if (data.schemaVersion !== 'native-observations-v1' ||
+      !['ready', 'unavailable'].includes(data.status) ||
+      !data.structured || !data.minimap || !data.ocr) {
+    throw new Error('Companion did not provide a complete native observations snapshot.')
+  }
+  return data
+}
+
+export type LooperNativeObservationConnection = { disconnect: () => void }
+
+export const connectToLooperNativeObservations = ({
+  onObservation, onError,
+}: {
+  onObservation?: (value: LooperCompanionLiveObservations) => void
+  onError?: (error: unknown) => void
+}): LooperNativeObservationConnection => {
+  let stopped = false
+  let pending = false
+  let timer: number | null = null
+  const refresh = async () => {
+    if (stopped || pending || document.hidden) return
+    pending = true
+    try {
+      const result = await readLooperCompanionObservations()
+      if (stopped) return
+      onObservation?.(result)
+      // Do not consume unproven ball or pin pixel readings as world/OSM positions.
+      // HUD values share the existing tested projection and source normalization.
+      if (result.status === 'ready' && result.ocr) {
+        const { dispatchGsproWindOcrObservation } = await import('./gsproWindObservation')
+        const { dispatchGsproLieOcrObservation } = await import('./gsproLieObservation')
+        if (stopped) return
+        if (result.ocr.wind) dispatchGsproWindOcrObservation(result.ocr.wind)
+        if (result.ocr.lie) dispatchGsproLieOcrObservation(result.ocr.lie)
+      }
+    } catch (error) {
+      if (!stopped) onError?.(error)
+    } finally {
+      pending = false
+    }
+  }
+  void refresh()
+  timer = window.setInterval(() => { void refresh() }, 16000)
+  return {
+    disconnect: () => {
+      stopped = true
+      if (timer != null) window.clearInterval(timer)
+    },
+  }
 }
