@@ -165,7 +165,26 @@ export type LooperCompanionLiveObservations = {
     minimapSide?: string | null
     ballPixel?: { x: number; y: number } | null
     pinPixel?: { x: number; y: number } | null
-    scale?: { status: string; yardsPerPixel?: number; reason?: string; source?: string }
+    scale?: { status: string; yardsPerPixel?: number; reason?: string; source?: string; waypointCount?: number; waypointSpreadPct?: number }
+    waypointRuler?: {
+      status: string
+      reason?: string
+      waypointCount?: number
+      spreadPercent?: number | null
+      candidates?: { pixel: { x: number; y: number }; yards: number; confidence: number; ocrVotes: number }[]
+    }
+    registration?: {
+      status: string
+      source?: string
+      reason?: string
+      teeScaleYardsPerPixel?: number
+      currentScaleYardsPerPixel?: number
+      zoomRatioCurrentToTee?: number
+      rotationDegrees?: number
+      pinErrorPixels?: number
+      inliers?: number
+      confidence?: number
+    }
     freshness?: string
   }
   ocr?: {
