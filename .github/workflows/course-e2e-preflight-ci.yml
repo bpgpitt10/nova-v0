@@ -69,5 +69,11 @@ jobs:
         run: node --test tests/course-request-api.test.mjs
       - name: App dependency installation
         run: npm ci
+      - name: Validate GSPro-to-OSM landmark research proof, no native input
+        run: node tools/test-gspro-course-landmark-registration.mjs
+      - name: Re-run existing hazard and tactical surface precedence regressions
+        run: |
+          node tools/test-course-surface-classification.mjs
+          python tools/test_course_surface_semantics_v7.py
       - name: Build (no network course import)
         run: npm run build
