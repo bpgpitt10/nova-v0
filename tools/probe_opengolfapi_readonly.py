@@ -144,6 +144,32 @@ def collect():
             entry["requested"][part] = {k: v for k, v in result.items() if k != "data"}
             if "data" in result:
                 entry[part] = summary(result["data"], "courses" if part == "detail" else part)
+                if part == "holes":
+                    items = records(result["data"], "holes")
+                    fields = ["tee_coords", "green_polygon", "fairway_polygon",
+                              "green", "landing_zone", "hazards", "yardages",
+                              "elevation", "dogleg", "plays_like_yards"]
+                    entry["holeFieldAudit"] = {}
+                    for field in fields:
+                        present = [h.get(field) for h in items if isinstance(h, dict)
+                                   and h.get(field) not in (None, [], {}, "")]
+                        sample = present[0] if present else None
+                        entry["holeFieldAudit"][field] = {
+                            "nonemptyHoles": len(present),
+                            "sampleType": type(sample).__name__,
+                            "sampleShape": (
+                                sorted(sample) if isinstance(sample, dict)
+                                else {"length": len(sample), "firstType": type(sample[0]).__name__,
+                                      "firstPreview": str(sample[0])[:200]} if isinstance(sample, list) and sample
+                                else str(sample)[:200]
+                            ),
+                        }
+                    nums = [h.get("number") for h in items if isinstance(h, dict)]
+                    entry["holeNumberAudit"] = {
+                        "count": len(nums), "unique": len(set(map(str, nums))),
+                        "outside1To18": [n for n in nums if not isinstance(n, int) or n not in range(1, 19)][:16],
+                        "duplicates": sorted({str(n) for n in nums if nums.count(n) > 1}),
+                    }
                 if part == "detail" and isinstance(result["data"], dict):
                     entry["detail"]["topLevelKeys"] = sorted(result["data"])
                     if isinstance(result["data"].get("tees"), list):
