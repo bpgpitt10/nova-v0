@@ -146,9 +146,6 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
             return
-        super().do_GET()
-
-    def do_POST(self) -> None:
         if urlsplit(self.path).path == COMPANION_OBSERVATIONS_PATH:
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
@@ -164,6 +161,9 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "capabilities": {"autoAim": False},
                 })
             return
+        super().do_GET()
+
+    def do_POST(self) -> None:
         if urlsplit(self.path).path.startswith("/companion/"):
             self._send_companion(405, {"error": "actuation_not_implemented"})
             return
