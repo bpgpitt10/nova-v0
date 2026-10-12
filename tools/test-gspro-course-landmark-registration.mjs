@@ -10,6 +10,40 @@ try {
     evaluateGsproToCourseLandmarkRegistration: evaluate,
     applyCourseLandmarkTransform: project,
   } = await vite.ssrLoadModule('/src/courseGeometry/gsproCourseLandmarkRegistration.ts')
+  // Call the EXISTING tactical classifiers; do not build a second surface or
+  // obstruction engine for map registration. Keep overlap precedence locked.
+  const { classifyPoint } = await vite.ssrLoadModule('/src/courseGeometry/geometry.ts')
+  const { classifyTacticalLandingPoint } = await vite.ssrLoadModule('/src/courseGeometry/tacticalClassification.ts')
+  const { SURFACE_CLASSIFICATION_PRECEDENCE } = await vite.ssrLoadModule('/src/courseGeometry/semantics.ts')
+  assert.deepEqual([...SURFACE_CLASSIFICATION_PRECEDENCE],
+    ['water', 'penalty', 'bunker', 'green', 'tee', 'fairway', 'deep-rough', 'rough'])
+  const rect = (a,b,c,d) => [[a,b],[c,b],[c,d],[a,d]]
+  const surface = (kind, polygon) => ({
+    id: kind, kind, polygons: [polygon], provenance: { source:'osm',confidence:'high' },
+  })
+  const existingGeometry = {
+    surfaces: [
+      surface('rough', rect(-90,0,90,300)),
+      surface('fairway', rect(-20,0,20,300)),
+      surface('bunker', rect(25,100,45,150)),
+      surface('water', rect(30,110,40,125)),
+    ],
+    contextLayers: [{
+      id:'woods', kind:'woods', polygons:[rect(15,0,90,300)],
+      provenance:{source:'osm',confidence:'medium'},
+    }],
+  }
+  assert.equal(classifyPoint(existingGeometry,[35,115]).kind,'water')
+  assert.equal(classifyPoint(existingGeometry,[27,140]).kind,'bunker')
+  assert.equal(classifyPoint(existingGeometry,[18,180]).kind,'fairway')
+  assert.equal(classifyTacticalLandingPoint(existingGeometry,[72,210]).kind,'rough',
+    'Explicit rough remains the underlying GSPro golf surface')
+  assert.equal(classifyTacticalLandingPoint({
+    ...existingGeometry,
+    surfaces: existingGeometry.surfaces.filter(x=>x.kind!=='rough'),
+  },[72,210]).kind,'deep-rough',
+  'Only unmapped wooded context becomes tactical deep rough')
+  assert.equal(classifyTacticalLandingPoint(existingGeometry,[35,115]).kind,'water')
   const at = '2026-10-12T15:00:00.000Z'
   const now = Date.parse(at)
   // Known, orientation-preserving 0.5 yard/pixel transform. The pixel y-axis
@@ -97,7 +131,7 @@ try {
     ...x, courseLocalYds: [x.courseLocalYds[0]+16, x.courseLocalYds[1]+8],
   } : x) }, 'residual')
 
-  console.log('PASS: cross-frame GSPro/OSM research-only fit, dogleg, stale, wrong hole, bad pin/scale, reflection, duplicate, guessed centroid and independent holdout')
+  console.log('PASS: cross-frame GSPro/OSM research-only fit and EXISTING tactical classifier invariants; no hazard rewrite')
 } finally {
   await vite.close()
 }
