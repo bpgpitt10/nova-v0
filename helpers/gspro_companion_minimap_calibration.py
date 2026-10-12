@@ -20,6 +20,7 @@ import waypoint_scale_cv as waypoint_cv
 from waypoint_scale import Point, WaypointObservation, resolve_minimap_scale
 
 MAX_WAYPOINT_CANDIDATES = 4
+MIN_WAYPOINT_VOTES = 4  # A single OCR reading cannot seed a tee-scale cache.
 WAYPOINT_OCR_BUDGET_SECONDS = 17.0
 MAX_TEE_RECORD_AGE_MS = 5 * 60 * 1000
 MAX_TEE_CACHE_AGE_SECONDS = 75 * 60
@@ -245,6 +246,12 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
     ]
     if not detected:
         return result
+    verified_votes = [item for item in detected if item.ocr_votes >= MIN_WAYPOINT_VOTES]
+    if not verified_votes:
+        result["waypointRuler"]["status"] = "detected_unverified"
+        result["waypointRuler"]["reason"] = "waypoint_labels_below_four_ocr_votes"
+        result["scale"]["reason"] = "low_waypoint_ocr_confidence"
+        return result
     try:
         resolution = resolve_minimap_scale(
             ball=Point(ball.x, ball.y),
@@ -254,7 +261,7 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
             waypoints=[
                 WaypointObservation(
                     yards=item.yards, pixel=item.pixel, confidence=item.confidence
-                ) for item in detected
+                ) for item in verified_votes
             ],
         )
     except (RuntimeError, ValueError) as exc:
