@@ -3,8 +3,8 @@
 **Updated:** 2026-10-11 (post Greywolf H8/H9 first simulator test)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
-**Last prior CI-tested package:** WinRT prerelease `looper-companion-autoaim-stage-c-0b3ec91b` (DO NOT reinstall for this task). The new Tesseract package is pending Windows CI pass; update this line with verified release URL when published.  
-**Most recent implementation pass:** `d11eb7ad` (packaged native Tesseract wind backend, browser crop/PSM parity, preserved working Lie; Windows CI and simulator parity pending). Earlier passes are preserved below.  
+**Current latest CI-tested package:** portable-Tesseract prerelease [`looper-companion-autoaim-stage-c-d11eb7ad`](https://github.com/bpgpitt10/nova-v0/releases/tag/looper-companion-autoaim-stage-c-d11eb7ad), verified Windows CI + EXE smoke, ~105 MB ZIP with Tesseract binary/DLLs and English traineddata. The older `0b3ec91b` WinRT build is superseded. Actual sim OCR proof remains pending.  
+**Most recent implementation pass:** `d11eb7ad` (portable Tesseract wind, browser crop/PSM parity, preserved working Lie; Windows CI, packaged smoke, Web Alpha CI **PASSED**; simulator parity pending). Earlier passes below.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -88,7 +88,7 @@
 - [x] Preserve already working native WinRT lie reader and its call into the legacy WinRT helper in the wind module. Do not replace lie logic because wind's backend changed.
 - [x] Windows workflow provisions Tesseract on CI runner, validates executable/English language, ships portable bin/DLLs plus eng.traineddata in the Windows ZIP. Installer copies the OCR folder next to LooperCompanion.exe into the user's local app directory; **no admin rights or separate OCR installer required on user's PC**.
 - [x] Regression tests revised for Tesseract segmentation modes, missing direction fail-closed, no bundled OCR availability, speed crop fallback, and 9 MPH NW recovery.
-- [ ] **CI and release gate:** verify [Windows CI build](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627321) and [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627371) pass, including ZIP assembly, bundled Tesseract executable and packaged EXE smoke. Until then do not provide a new installer link.
+- [x] **CI and release gate passed:** [Windows CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627321) and [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627371) succeeded on commit `d11eb7ad`: portable binary/English-data availability, Windows unit tests, packaged EXE smoke, ZIP assembly, [published Tesseract ZIP](https://github.com/bpgpitt10/nova-v0/releases/download/looper-companion-autoaim-stage-c-d11eb7ad/looper-windows-companion.zip) (~105 MB). This establishes packaging health, **NOT** live on-screen OCR parity.
 - [ ] **Simulator acceptance gate:** test 2+ nonzero wind headings including NW, confirm speed, FROM-cardinal, READY, and stable lie with Chrome foreground and GSPro background. Confirm real OCR provenance is tesseract-cli, not WinRT. Do not infer success from CI alone.
 
 **Next work:** once native Tesseract wind and unchanged Lie pass, continue read-only minimap scale, waypoint/zoom registration. Do not merge to main, enable POST/AutoAim click, or rebuild the existing authoritative TypeScript Live Caddie shot/tee engine.
