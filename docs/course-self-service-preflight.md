@@ -57,6 +57,8 @@ On Valhalla, GCNE and FarmLinks, the `tees` endpoint returns tee name/color, cou
 
 ## Current simulator workbench — 2026-10-12 (built on COMPANION branch)
 
+**Test-ready:** [GSPro/OSM alignment workbench](https://looper-1mncjufer-wqk25hkxcg-3591.vercel.app/dev/gspro-course-alignment), branch preview READY, [web CI PASS](https://github.com/bpgpitt10/nova-v0/actions/runs/38270088467). No new Windows Companion installer. The source screenshot stays browser-local; this is manual supervised feature pairing, **not automatic hazard-image recognition** or physical proof.
+
 The separate [auto-aim-windows-companion-v1 branch](https://github.com/bpgpitt10/nova-v0/tree/auto-aim-windows-companion-v1) now incorporates this importer's existing pure landmark evaluator, reusing the native GET, minimap zoom, and course geometry. This is one coordinate-alignment bridge, **NOT** a replacement for hazard classification or a newly invented GSPro shot tracker.
 
 - [x] Browser-only **/dev/gspro-course-alignment** takes an explicitly chosen local GSPro screenshot (no image upload), manual minimap crop, paired exact feature landmarks (A/B fit, C off-axis check, D optional), Looper's existing map polygons from the course provider, and the current native→canonical tee-frame zoom matrix. It calculates research-only scale/yard residuals and exports an image-free diagnostic JSON.
