@@ -21,6 +21,8 @@ import json
 import os
 import subprocess
 import tempfile
+import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -102,16 +104,16 @@ def _run_digit_ocr(
     try:
         cv2.imwrite(temp_path, prepared)
         creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        command = [
+            tesseract_path, temp_path, "stdout", "-l", "eng",
+            "--psm", "7", "-c", "tessedit_char_whitelist=0123456789",
+        ]
+        # Works with the per-user bundled OCR engine as well as normal installs.
+        tessdata = Path(tesseract_path).resolve().parent / "tessdata"
+        if (tessdata / "eng.traineddata").is_file():
+            command.extend(["--tessdata-dir", str(tessdata)])
         completed = subprocess.run(
-            [
-                tesseract_path,
-                temp_path,
-                "stdout",
-                "--psm",
-                "7",
-                "-c",
-                "tessedit_char_whitelist=0123456789",
-            ],
+            command,
             capture_output=True,
             text=True,
             creationflags=creationflags,
@@ -139,6 +141,7 @@ def _ocr_numeric_crop(
     marker: Point,
     *,
     tesseract_path: str = "tesseract",
+    deadline: float | None = None,
 ) -> tuple[str, float, int] | None:
     """Read the white yardage label rendered below/right of one gray marker.
 
@@ -161,6 +164,8 @@ def _ocr_numeric_crop(
 
     reads: list[str] = []
     for threshold in OCR_THRESHOLDS:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         parsed = _run_digit_ocr(gray, threshold, tesseract_path=tesseract_path)
         if parsed is not None:
             reads.append(parsed)
@@ -176,18 +181,32 @@ def detect_gray_waypoints(
     image: np.ndarray,
     *,
     tesseract_path: str = "tesseract",
+    max_candidates: int | None = None,
+    time_budget_s: float | None = None,
 ) -> list[GrayWaypoint]:
+    """Original recognizer, optionally bounded for companion HTTP polling."""
     observations: list[GrayWaypoint] = []
-    for marker in _candidate_markers(image):
-        parsed = _ocr_numeric_crop(image, marker, tesseract_path=tesseract_path)
+    deadline = time.monotonic() + time_budget_s if time_budget_s is not None else None
+    candidates = _candidate_markers(image)
+    if max_candidates is not None:
+        candidates = candidates[:max(0, int(max_candidates))]
+    for marker in candidates:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        try:
+            parsed = _ocr_numeric_crop(
+                image, marker, tesseract_path=tesseract_path, deadline=deadline
+            )
+        except (OSError, subprocess.TimeoutExpired, cv2.error):
+            continue
         if parsed is None:
             continue
-        text, confidence, votes = parsed
+        label, confidence, votes = parsed
         observations.append(
             GrayWaypoint(
                 pixel=marker,
-                yards=float(text),
-                ocr_text=text,
+                yards=float(label),
+                ocr_text=label,
                 confidence=confidence,
                 ocr_votes=votes,
             )
