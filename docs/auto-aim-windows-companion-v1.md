@@ -1,5 +1,13 @@
 # Auto Aim V1 — Windows companion architecture and handoff
 
+> **CURRENT implementation handoff (2026-10-11):** Read
+> [Windows Companion / Native AutoAim execution plan V2](./windows-companion-autoaim-execution-plan-v2.md)
+> **before coding or resuming in another chat.** This original document records
+> stages/history. The V2 plan supersedes its old "start with Stage A" advice,
+> preserves Live Caddie as the ONLY authoritative shot/tee/hole state engine,
+> and records the real Greywolf H8/H9 simulator findings and next gates.
+
+
 ## Native observations Stage D diagnostics — October 11, 2026 (research/read-only)
 
 **Scope:** This development branch now has a unified, on-demand read-only
@@ -283,4 +291,4 @@ The user is away from the simulator, so development continued without requesting
 
 ## Resume instructions for a new ChatGPT chat
 
-> Continue The Looper Auto Aim **Windows companion** work. Read `docs/auto-aim-windows-companion-v1.md` on branch `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`. User approved a **single-install quiet Windows helper**: auto-find GSPro process/folder/window when Live Caddie opens, native minimap capture, one direct window click (not L/R keys), post-click magenta verification, hosted Looper UI. Starting point is Stage A: lean helper shell and secure 127.0.0.1 Chrome handshake. Reuse physical proof files on `live-caddie-auto-aim-v1` and avoid the retired `web-auto-aim-closed-loop-v0` file-write experiment. Do not mutate production or claim native click is implemented until tested.
+> **CURRENT:** Start with `docs/windows-companion-autoaim-execution-plan-v2.md` on `auto-aim-windows-companion-v1`. It contains the latest simulator findings, exact division of labor, practical next coding pass, safety gates, and copy/paste instructions for a new chat. Do not recreate the already-working Live Caddie ball/tee/hole transition logic. Do not enable native click or merge to production without verified registration, pairing and physical simulator acceptance. The older Stage A instructions in this document are historical only.
