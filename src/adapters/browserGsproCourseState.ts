@@ -53,6 +53,8 @@ export type BrowserGsproCourseSnapshot = Omit<
   pinLocalYds: CoursePointYds | null
   pinSource: 'output-log-course-layout' | 'unavailable'
   pinDistanceValidationErrorYds: number | null
+  teePlacement?: 'mapped' | 'locked' | 'provisional' | null
+  teeUncertaintyYds?: number | null
 }
 
 type SnapshotHandler = (snapshot: BrowserGsproCourseSnapshot) => void
@@ -278,11 +280,16 @@ const enrichSnapshotWithStartingPosition = async (
     holeNumber: liveHoleNumber,
     ballLocalYds: resolution.courseLocalYds,
     ballSource: 'osm-tee-match',
+    teePlacement: resolution.placement,
+    teeUncertaintyYds: resolution.uncertaintyRadiusYds,
     surface: preShotStart?.surface ?? 'tee',
     surfaceSource: preShotStart ? 'gspro-startingpos' : 'cached-tee',
     distanceToPinYds: preShotStart?.distanceToPinYds ?? snapshot.distanceToPinYds,
     nextShotNumber: 1,
-    warnings: dedupeWarnings(snapshot.warnings),
+    warnings: dedupeWarnings([
+      ...snapshot.warnings,
+      ...(resolution.placement === 'provisional' ? [resolution.reason] : []),
+    ]),
   }
 }
 
@@ -315,13 +322,16 @@ const buildManualStartSnapshot = async (
     holeNumber,
     ballLocalYds: tee,
     ballSource: 'osm-tee-match',
+    teePlacement: resolution.status === 'supported' ? resolution.placement : null,
+    teeUncertaintyYds: resolution.status === 'supported' ? resolution.uncertaintyRadiusYds : null,
     surface: 'tee',
     surfaceSource: 'cached-tee',
     distanceToPinYds,
     nextShotNumber: 1,
     latestShot: null,
     latestShotKey: null,
-    warnings: [],
+    warnings: resolution.status === 'supported' && resolution.placement === 'provisional'
+      ? [resolution.reason] : [],
     observedAt: new Date().toISOString(),
     preShotStart: null,
     pinLocalYds: exactPin?.pinLocalYds ?? null,
