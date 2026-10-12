@@ -12,6 +12,7 @@ on:
       - "helpers/gspro_window_capture.py"
       - "helpers/gspro_live_observations.py"
       - "helpers/gspro_native_wind_ocr.py"
+      - "helpers/install_looper_companion.ps1"
       - "helpers/gspro_native_lie_ocr.py"
       - "helpers/gspro_direct_click.py"
       - "helpers/gspro_minimap_markers.py"
@@ -56,6 +57,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach numpy opencv-python-headless
+
+      - name: Acquire portable Tesseract engine for packaging
+        shell: pwsh
+        run: |
+          # Install on the CI runner ONLY. The sim user's machine receives a
+          # complete portable bin/tessdata folder alongside the EXE, no admin.
+          choco install tesseract -y --no-progress
+          $ocrRoot = Join-Path $env:ProgramFiles "Tesseract-OCR"
+          $exe = Join-Path $ocrRoot "tesseract.exe"
+          $language = Join-Path $ocrRoot "tessdata/eng.traineddata"
+          if (!(Test-Path $exe) -or !(Test-Path $language)) {
+            throw "Tesseract binary or English model missing after Chocolatey install."
+          }
+          $ocrRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $exe --version
+          $langs = & $exe --list-langs
+          if ($langs -notcontains "eng") { throw "Packaged Tesseract has no English traineddata." }
+          New-Item -ItemType Directory -Path "portable-ocr/tessdata" -Force | Out-Null
+          Copy-Item -Path $exe -Destination "portable-ocr/tesseract.exe" -Force
+          Copy-Item -Path (Join-Path $ocrRoot "*.dll") -Destination "portable-ocr/" -Force
+          Copy-Item -Path $language -Destination "portable-ocr/tessdata/eng.traineddata" -Force
+          if (Test-Path (Join-Path $ocrRoot "LICENSE")) {
+            Copy-Item -Path (Join-Path $ocrRoot "LICENSE") -Destination "portable-ocr/LICENSE-Tesseract.txt"
+          }
 
       - name: Test Stage C read-only registration, safety, discovery and handshake
         shell: pwsh
@@ -116,6 +141,14 @@ jobs:
               throw "Stage B must never enable Auto Aim."
             }
 
+            # Tesseract must ship next to packaged executable, and be capable
+            # of OCR without relying on a system-wide install.
+            if (!(Test-Path "portable-ocr/tesseract.exe") -or !(Test-Path "portable-ocr/tessdata/eng.traineddata")) {
+              throw "Portable OCR bundle was not assembled."
+            }
+            $engineVersion = & "portable-ocr/tesseract.exe" --version 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Bundled OCR executable could not launch." }
+
             # GSPro is intentionally absent on CI. These calls prove that the
             # packaged wind/lie endpoints are present and fail closed instead
             # of crashing when no GSPro window exists.
@@ -135,6 +168,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path package -Force | Out-Null
           Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
+          Copy-Item -Path portable-ocr -Destination package/ocr -Recurse -Force
           Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
           Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
