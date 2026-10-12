@@ -30,6 +30,10 @@ export type CrossFrameLandmark = Readonly<{
 }>
 
 export type CrossFrameEvidence = Readonly<{
+  /** Used only by the research workbench when GSPro exposes only a previously completed shot.
+   * The operator visually confirms the current hole; never constitutes live-shot identity.
+   */
+  identityEvidence?: 'native-pre-shot' | 'operator-confirmed-hole-only'
   expected: {
     courseId: string
     gsproCourseKey: string
@@ -121,11 +125,12 @@ export const evaluateGsproToCourseLandmarkRegistration = (
   const bad = (reason: string, info?: Parameters<typeof rejected>[3]) =>
     rejected(reason, f.length, h.length, info)
   const { expected, native } = input
+  const operatorOnly = input.identityEvidence === 'operator-confirmed-hole-only'
   if (!expected.courseId || !expected.gsproCourseKey || !String(expected.roundId)
     || native.courseId !== expected.courseId
     || native.gsproCourseKey !== expected.gsproCourseKey
     || String(native.roundId) !== String(expected.roundId)
-    || native.holeNumber !== expected.holeNumber
+    || (!operatorOnly && native.holeNumber !== expected.holeNumber)
     || !Number.isInteger(expected.holeNumber) || expected.holeNumber < 1 || expected.holeNumber > 18) {
     return bad('Course, round, hole or GSPro course key does not match canonical Live Caddie.')
   }
@@ -224,7 +229,9 @@ export const evaluateGsproToCourseLandmarkRegistration = (
   }
   return {
     status: 'research-candidate',
-    reason: 'Numerical fit and independent holdout passed; GSPro feature matches still require physical review. Never enables play, publishing or clicking.',
+    reason: operatorOnly
+      ? 'Manual-only spatial candidate: native shot record does NOT confirm this current hole. Operator-marked screenshot cannot authorize current-shot play, publishing or clicking.'
+      : 'Numerical fit and independent holdout passed; GSPro feature matches still require physical review. Never enables play, publishing or clicking.',
     fitCount: f.length, holdoutCount: h.length, ...diagnostics,
     canonicalPixelToCourseLocal: { matrix2x3: matrix },
     verifiedForPlay: false, authorizesNativeAim: false, canPublishCourse: false,
