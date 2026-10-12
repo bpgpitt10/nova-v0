@@ -1,5 +1,8 @@
 import type { GsproStartingPositionObservation } from '../adapters/gsproStartingPosition'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
+import { estimateProvisionalTee } from './provisionalTeeEstimate'
+import { courseGeometryFingerprint } from './shotOneTeeResolver'
+import { loadTeeCalibration } from './teeCalibrationStore'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -17,6 +20,8 @@ export type LiveSupportedTeeResolution =
       residualYds: number | null
       referenceDistanceYds: number | null
       reason: string
+      placement: 'mapped' | 'locked' | 'provisional'
+      uncertaintyRadiusYds: number | null
     }>
   | Readonly<{
       status: 'unsupported'
@@ -94,9 +99,35 @@ export const resolveLiveSupportedTee = (
       .filter((candidate) => candidateMatchesTeeSet(candidate, activeRound.normalizedTeeSet))
 
     const candidate = matches.length === 1 ? matches[0] : null
-    const courseLocalYds: CoursePointYds = geometry.holeNumber === 1 && activeRound.assumedTeeLocalYds
-      ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
-      : candidate?.coursePoint ?? geometry.markers.tee
+    const locked = loadTeeCalibration(
+      courseGeometryFingerprint(geometry), geometry.holeNumber, activeRound.normalizedTeeSet,
+    )
+    const exactLocked = locked?.status === 'locked' ? locked : null
+    // ONLY an unmapped OSM route origin may be estimated. Existing mapped or
+    // locked tee positions have strict priority over the synthetic fallback.
+    const provisional = !candidate && !exactLocked
+      && geometry.coordinateSystem.origin === 'osm-hole-route-start'
+      ? estimateProvisionalTee(geometry,
+          observation?.holeNumber === geometry.holeNumber
+          && observation.shotNumber === 1
+          && observation.surface === 'tee'
+          && finite(observation.distanceToPinYds)
+            ? observation.distanceToPinYds : null)
+      : null
+    if (provisional?.status === 'blocked') {
+      return {
+        status: 'unsupported', courseLocalYds: null, candidate: null,
+        residualYds: null, referenceDistanceYds: null,
+        reason: provisional.reason,
+      }
+    }
+    const courseLocalYds: CoursePointYds = exactLocked
+      ? exactLocked.courseLocalYds
+      : provisional?.status === 'provisional'
+        ? provisional.point
+        : geometry.holeNumber === 1 && activeRound.assumedTeeLocalYds
+          ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
+          : candidate?.coursePoint ?? geometry.markers.tee
     const referenceDistanceYds = candidate
       ? candidateReferenceDistance(geometry, candidate)
       : geometry.markers.pin
@@ -112,9 +143,18 @@ export const resolveLiveSupportedTee = (
       candidate,
       residualYds,
       referenceDistanceYds,
-      reason: candidate
-        ? `Using the active round's ${activeRound.teeSet} tee (${candidateLabel(candidate)}) for Hole ${geometry.holeNumber}. GSPro is validation evidence only.`
-        : `Using the active round's assumed ${activeRound.teeSet} tee coordinate for Hole ${geometry.holeNumber}. GSPro is validation evidence only.`,
+      placement: exactLocked ? 'locked' : provisional?.status === 'provisional' ? 'provisional' : 'mapped',
+      uncertaintyRadiusYds: provisional?.status === 'provisional' ? provisional.uncertaintyRadiusYds : null,
+      reason: exactLocked
+        ? 'Using locked ' + activeRound.teeSet + ' tee calibration.'
+        : provisional?.status === 'provisional'
+          ? 'Provisional Hole ' + geometry.holeNumber + ' tee (' + provisional.source +
+            '), ±' + provisional.uncertaintyRadiusYds + ' yd. ' + provisional.note
+          : candidate
+            ? 'Using selected ' + activeRound.teeSet + ' tee (' + candidateLabel(candidate) +
+              ') on Hole ' + geometry.holeNumber + '. GSPro is validation evidence only.'
+            : 'Using the active round assumed ' + activeRound.teeSet + ' tee on Hole ' +
+              geometry.holeNumber + '. GSPro is validation evidence only.',
     }
   }
 
@@ -234,5 +274,7 @@ export const resolveLiveSupportedTee = (
     residualYds: best.residualYds,
     referenceDistanceYds: best.referenceDistanceYds,
     reason: `Matched GSPro Shot 1 to ${candidateLabel(best.candidate)} (${best.residualYds.toFixed(1)} yd residual).`,
+    placement: 'mapped',
+    uncertaintyRadiusYds: null,
   }
 }
