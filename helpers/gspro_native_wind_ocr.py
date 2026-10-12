@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,7 +17,7 @@ import cv2
 import numpy as np
 
 import gspro_window_capture as native_capture
-from open_golf_coach_helper import parse_wind_ocr_text, utc_now_iso
+from open_golf_coach_helper import utc_now_iso
 
 # Windows Powershell 5.1 WinRT await must use AsTask(IAsyncOperation<T>).
 # The earlier GetMember("GetAwaiter").Where(...)[0] was null on the sim PC.
@@ -76,29 +77,106 @@ def _unavailable(reason: str) -> dict:
     }
 
 
-def extract_wind_hud_image(report: dict):
-    """Crop the GSPro WINDOW pixels only; avoid Windows screen copies."""
+# Use the *previously validated browser OCR* positions, not the legacy
+# Windows helper's 36%-wide top-center block. Captures are HWND-relative.
+# src/adapters/browserGsproVisualCapture.ts is the source for these constants.
+# Separate crops matter: at 3840x2160 the direction is a ~77x56px tile.
+WIND_CROPS = {
+    "speed": (0.444, 0.011, 0.033, 0.026),
+    "direction": (0.532, 0.011, 0.020, 0.026),
+}
+WIND_CROP_SCALE = 8
+WIND_BINARY_THRESHOLD = 190
+WIND_CARDINAL_DEGREES = {
+    "N": 0, "NE": 45, "E": 90, "SE": 135,
+    "S": 180, "SW": 225, "W": 270, "NW": 315,
+}
+
+
+def extract_wind_hud_regions(report: dict):
+    """Extract both separate, preprocessed regions from one GSPro HWND capture.
+
+    Match the browser's canvas drawCrop: normalized coordinates, 8x bicubic
+    enlargement, then per-pixel luminance threshold to black on white.
+    No desktop position or screen capture is involved.
+    """
     if report.get("status") != "captured" or not report.get("quality", {}).get("nonblank", False):
         return None
-    raw = report.get("_private_bgra")
     try:
         width, height = int(report["windowWidth"]), int(report["windowHeight"])
+        raw = report.get("_private_bgra")
         if width < 640 or height < 360 or width * height > native_capture.MAX_CAPTURE_PIXELS:
             return None
         if not isinstance(raw, bytes) or len(raw) != width * height * 4:
             return None
-        frame = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)
-        # Existing Windows wind reader used the top-center 36% x 16% window ROI.
-        x1, x2 = int(width * 0.32), int(width * 0.68)
-        y1, y2 = 0, int(height * 0.16)
-        roi = frame[y1:y2, x1:x2, :3]
-        if roi.size == 0:
-            return None
-        # Upscaling short HUD glyphs helps WinRT, while source stays GSPro-only.
-        cropped = cv2.resize(roi, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-        return cropped, {"x": x1, "y": y1, "width": x2-x1, "height": y2-y1}
+        frame = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[:, :, :3]
+        regions = {}
+        for name, (x, y, w, h) in WIND_CROPS.items():
+            left, top = int(width * x), int(height * y)
+            cw, ch = max(1, int(width * w)), max(1, int(height * h))
+            if left + cw > width or top + ch > height:
+                return None
+            roi = frame[top:top + ch, left:left + cw]
+            if roi.size == 0:
+                return None
+            # OpenCV frame is BGR. Browser uses RGB luminance coefficients.
+            enlarged = cv2.resize(roi, (cw * WIND_CROP_SCALE, ch * WIND_CROP_SCALE),
+                                  interpolation=cv2.INTER_CUBIC)
+            b, g, red = cv2.split(enlarged)
+            luminance = 0.0722 * b.astype(np.float32) + 0.7152 * g.astype(np.float32) + 0.2126 * red.astype(np.float32)
+            binary = np.where(luminance >= WIND_BINARY_THRESHOLD, 0, 255).astype(np.uint8)
+            regions[name] = (
+                binary,
+                {"x": left, "y": top, "width": cw, "height": ch},
+            )
+        return regions
     except (ValueError, TypeError, KeyError, cv2.error):
         return None
+
+
+def _normalize_wind_speed(raw: str):
+    """Parse speed-only OCR. Restrict letter substitutions to numeric tokens."""
+    compact = re.sub(r"\s+", "", raw.upper()).replace(",", ".")
+    # Preserve successful numeric OCR as-is. The observed 'IO MPH' -> 10 MPH
+    # substitution is only made inside the SPEED crop, never the direction.
+    match = re.search(r"(\d{1,2}(?:\.\d+)?)", compact)
+    if not match:
+        match = re.search(r"([IO]{1,2}(?:\.\d+)?)", compact)
+    if not match:
+        return None
+    token = match.group(1).replace("I", "1").replace("O", "0")
+    try:
+        number = float(token)
+        return number if 0 <= number <= 50 else None
+    except ValueError:
+        return None
+
+
+def _parse_split_wind(speed_text: str, direction_text: str) -> dict:
+    speed = _normalize_wind_speed(speed_text)
+    compact_direction = re.sub(r"\s+", "", direction_text.upper())
+    # Match browser duplicate-glyph tolerance without guessing cardinals.
+    collapsed = re.sub(r"(.)\1+", r"\1", compact_direction)
+    cardinal = collapsed if collapsed in WIND_CARDINAL_DEGREES else None
+    calm = speed == 0
+    direction = WIND_CARDINAL_DEGREES.get(cardinal)
+    if calm and direction is None:
+        direction = 0  # Mathematically immaterial at exactly 0 MPH; browser parity.
+    missing = []
+    if speed is None:
+        missing.append("speed")
+    if not calm and direction is None:
+        missing.append("cardinal direction")
+    return {
+        "status": "READY" if not missing else "UNKNOWN",
+        "speedMph": speed,
+        "directionDegrees": direction,
+        "convention": "from", "referenceFrame": "compass",
+        "observedAt": utc_now_iso(), "confidence": None,
+        "rawText": f"SPEED: {speed_text.strip()} | DIR: {direction_text.strip()}",
+        "note": ("Native GSPro window OCR read split speed/direction HUD."
+                 if not missing else "HUD OCR was incomplete; missing " + ", ".join(missing) + "."),
+    }
 
 
 def _ocr_png_with_windows(png: bytes) -> dict:
@@ -137,24 +215,33 @@ def _ocr_png_with_windows(png: bytes) -> dict:
 
 
 def read_wind_from_capture(report: dict) -> dict:
-    """Return a single read-only, source-labelled wind observation or fail closed."""
-    crop = extract_wind_hud_image(report)
-    if crop is None:
-        return _unavailable("GSPro window capture unavailable or HUD image invalid.")
-    image, crop_box = crop
-    encoded, png = cv2.imencode(".png", image)
-    if not encoded:
-        return _unavailable("Could not encode GSPro wind HUD crop.")
-    result = _ocr_png_with_windows(png.tobytes())
-    if result.get("status") != "ok":
-        return _unavailable(str(result.get("note") or "Windows wind OCR unavailable.")[:240])
-    text = result.get("rawText")
-    if not isinstance(text, str):
-        return _unavailable("Windows wind OCR returned no text.")
-    parsed = parse_wind_ocr_text(text)
+    """Read independent speed/direction crops, preserving fail-closed behavior."""
+    regions = extract_wind_hud_regions(report)
+    if regions is None:
+        return _unavailable("GSPro window capture unavailable or wind HUD regions invalid.")
+
+    texts = {}
+    for name in ("speed", "direction"):
+        image, _ = regions[name]
+        ok, png = cv2.imencode(".png", image)
+        if not ok:
+            return _unavailable(f"Could not encode GSPro wind {name} crop.")
+        result = _ocr_png_with_windows(png.tobytes())
+        if result.get("status") != "ok":
+            return _unavailable(
+                f"Windows {name} OCR failed: {str(result.get('note') or 'unknown')[:180]}"
+            )
+        if not isinstance(result.get("rawText"), str):
+            return _unavailable(f"Windows {name} OCR returned invalid text.")
+        texts[name] = result["rawText"]
+
+    parsed = _parse_split_wind(texts["speed"], texts["direction"])
     parsed["ocrSource"] = "gspro-native-window"
     parsed["captureFreshness"] = "single_capture_unverified"
-    parsed["capture"] = {"method": report.get("method"), "crop": crop_box}
+    parsed["capture"] = {
+        "method": report.get("method"),
+        "crops": {name: roi[1] for name, roi in regions.items()},
+    }
     return parsed
 
 
