@@ -55,6 +55,17 @@ On Valhalla, GCNE and FarmLinks, the `tees` endpoint returns tee name/color, cou
 
 **Bottom line:** likely the easiest way to **avoid manually reconstructing tee names and scorecards**, not yet proven to replace local mapped physical tee positions or our LiDAR/green stack. **Do not assert that automatic.golf used OpenGolfAPI** without independent evidence; its litigation account remains unverified. No terms approval, network import or feature rollout was performed during this research.
 
+## Current simulator workbench — 2026-10-12 (built on COMPANION branch)
+
+The separate [auto-aim-windows-companion-v1 branch](https://github.com/bpgpitt10/nova-v0/tree/auto-aim-windows-companion-v1) now incorporates this importer's existing pure landmark evaluator, reusing the native GET, minimap zoom, and course geometry. This is one coordinate-alignment bridge, **NOT** a replacement for hazard classification or a newly invented GSPro shot tracker.
+
+- [x] Browser-only **/dev/gspro-course-alignment** takes an explicitly chosen local GSPro screenshot (no image upload), manual minimap crop, paired exact feature landmarks (A/B fit, C off-axis check, D optional), Looper's existing map polygons from the course provider, and the current native→canonical tee-frame zoom matrix. It calculates research-only scale/yard residuals and exports an image-free diagnostic JSON.
+- [x] Retains existing surface semantics, bunker/water/woods coverage, green detail, dispersion model, original tee resolver and Windows Companion. **No native clicks**, no production deployment, no new Windows installer, no course registry changes.
+- [x] Supports a deliberately labeled **operator-confirmed-hole-only** geometry calculation when GSPro native records represent the *last completed* shot on a previous hole. That is NOT evidence of the live/current ball or a verified tee; all outputs disallow play, course promotion and native input.
+- [ ] User simulator acceptance: start with **Greywolf H8** and existing Companion ZIP 6cb09a05, then FarmLinks only if the exact course is loaded in GSPro. Check 3 genuine distinctive cross-map landmarks and the resulting holdout residual; share the exported JSON (plus screenshot separately if desired). **Valhalla remains map-only and is not yet in runtime catalog.**
+- [ ] Only after physical matches are observed: consider assisted feature matching using existing GSPro pixels and OSM green/bunker/fairway shapes. Do not build a second hazard, tee or shot engine. Gate broader rollout through an explicit cross-branch integration plan.
+
+[Companion V2 plan / today's simulator acceptance steps](https://github.com/bpgpitt10/nova-v0/blob/auto-aim-windows-companion-v1/docs/windows-companion-autoaim-execution-plan-v2.md)
 ## GSPro↔OSM coordinate alignment, without rebuilding hazards — 2026-10-12 pass #1
 
 **Scope/decision:** Before writing a new alignment engine, audited the **existing implementation** on this importer staging branch and the parallel `auto-aim-windows-companion-v1` branch. **Hazard/landing/terrain logic is already built and must remain authoritative.** The only missing capability explored here is independent, course-specific evidence that a GSPro minimap landmark and an imported OSM landmark occupy the *same physical spot* in Looper's hole-local yards. This is **read-only research**, not a course-runtime route or automatic landmark detector.
