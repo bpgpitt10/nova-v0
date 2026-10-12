@@ -18,6 +18,7 @@ COURSES = [
     ("Valhalla Golf Club", "KY"),
     ("The Golf Club of New England", "NH"),
     ("FarmLinks Golf Course at Pursell Farms", "AL"),
+    ("Shaftesbury Glen", "SC"),  # Prior typed-name OSM-boundary discovery failed.
 ]
 HEADERS = {"User-Agent": "TheLooper-SourceAssessment/0.1 (read-only research)",
            "Accept": "application/json"}
