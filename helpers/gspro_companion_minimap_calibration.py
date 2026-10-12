@@ -80,6 +80,55 @@ def _store_tee(key, fingerprint, calibration):
         }
 
 
+def _par3_direct_reference(state, ball, pin):
+    """Use verified fresh tee -> pin *horizontal* world distance only on par 3.
+
+    The GSPro hole-layout array is not authoritative by itself; require a
+    matching hole and physical starting position close to its tee before
+    offering even a provisional direct-distance ruler.
+    """
+    layout = state.get("layout") or {}
+    shot = state.get("shot") or {}
+    if (layout.get("status") != "ready" or layout.get("par") != 3
+            or layout.get("holeNumber") != shot.get("holeNumber")):
+        return None
+    tee, target, origin = layout.get("teeWorld"), layout.get("pinWorld"), shot.get("startingWorld")
+    if not all(isinstance(point, dict) for point in (tee, target, origin)):
+        return None
+    try:
+        def horiz(a, b):
+            return math.hypot(
+                float(a["x"]) - float(b["x"]),
+                float(a["z"]) - float(b["z"]),
+            ) * 1.0936132983377078
+        if horiz(tee, origin) > 20.0:
+            return None
+        distance = horiz(origin, target)
+        resolution = resolve_minimap_scale(
+            ball=Point(ball.x, ball.y), pin=Point(pin.x, pin.y),
+            pin_distance_yds=distance, par=3,
+        )
+        return resolution
+    except (RuntimeError, ValueError, KeyError, TypeError, OverflowError):
+        return None
+
+
+def _cache_tee_calibration(identity, fingerprint, cropped, ball, pin, roi,
+                           ypp, source):
+    from auto_aim_transform import Point as PixelPoint
+    calibration = pipeline.TeeCalibration(
+        hole_key=":".join(map(str, identity)),
+        window_fingerprint=fingerprint,
+        roi_normalized=roi,
+        canonical_pin=PixelPoint(pin.x, pin.y),
+        canonical_ball=PixelPoint(ball.x, ball.y),
+        yards_per_pixel=ypp,
+        scale_source=source,
+        canonical_bgr=cropped.copy(),
+    )
+    _store_tee(identity, fingerprint, calibration)
+
+
 def _register(cropped, pin, cache):
     calibration = cache["calibration"]
     fitted, pin_error = registration.register_current_to_canonical_verified(
@@ -139,6 +188,26 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
     identity = _identity(state)
     cached = _current_cache(identity, fingerprint) if identity and fingerprint else None
     fresh_tee = bool(identity and fingerprint and _is_fresh_tee(state, cropped, ball))
+    if fresh_tee:
+        par3 = _par3_direct_reference(state, ball, pin)
+        if par3 is not None:
+            result["scale"] = {
+                "status": "provisional_par3",
+                "source": "ball-pin-par3",
+                "yardsPerPixel": round(par3.yards_per_pixel, 6),
+                "reason": "Fresh direct GSPro par-3 tee-to-pin ruler; Live Caddie authoritative course binding still required.",
+            }
+            result["waypointRuler"]["reason"] = "par3_direct_ruler_no_waypoint_needed"
+            _cache_tee_calibration(
+                identity, fingerprint, cropped, ball, pin, roi,
+                par3.yards_per_pixel, "ball-pin-par3",
+            )
+            result["registration"] = {
+                "status": "tee_anchor_candidate_cached",
+                "source": "ball-pin-par3",
+                "reason": "Direct par-3 ruler; course/shot identity still diagnostic-only.",
+            }
+            return result
 
     # On post-tee frames, prefer historical tee-image registration. GSPro
     # waypoint labels can disappear/change on zoom; don't recalibrate there.
@@ -209,19 +278,11 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
         "reason": "Dogleg-safe minimap ruler; not yet a current-hole/OSM registered aim scale.",
     }
     if fresh_tee:
-        # Uses existing TeeCalibration dataclass; frame remains private to EXE.
-        from auto_aim_transform import Point as PixelPoint
-        calibration = pipeline.TeeCalibration(
-            hole_key=":".join(map(str, identity)),
-            window_fingerprint=fingerprint,
-            roi_normalized=roi,
-            canonical_pin=PixelPoint(pin.x, pin.y),
-            canonical_ball=PixelPoint(ball.x, ball.y),
-            yards_per_pixel=resolution.yards_per_pixel,
-            scale_source="gray-waypoint",
-            canonical_bgr=cropped.copy(),
+        # Same proven native tee cache, independent of par/route geometry.
+        _cache_tee_calibration(
+            identity, fingerprint, cropped, ball, pin, roi,
+            resolution.yards_per_pixel, "gray-waypoint",
         )
-        _store_tee(identity, fingerprint, calibration)
         result["registration"] = {
             "status": "tee_anchor_candidate_cached",
             "reason": "Fresh native pre-shot H/round evidence; browser authoritative state confirmation still pending.",
