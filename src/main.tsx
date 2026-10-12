@@ -15,6 +15,7 @@ import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
+import GsproCourseAlignmentLab from './dev/GsproCourseAlignmentLab.tsx'
 import AimLabPage from './dev/AimLabPage.tsx'
 import CaddieInputsPage from './dev/CaddieInputsPage.tsx'
 import GsproReplayDevPage from './dev/GsproReplayDevPage.tsx'
@@ -255,6 +256,7 @@ function RootRouter() {
 
   const showCourseRenderDev = pathname === '/dev/course-render'
   const showCourseGeometryDev = pathname === '/dev/course-geometry'
+  const showGsproCourseAlignment = pathname === '/dev/gspro-course-alignment'
   const showAimLab = pathname === '/aim-lab' || pathname === '/dev/aim-lab'
   const showLiveCaddie = isLiveCaddiePath(pathname)
   const showDevLiveCaddie = pathname === '/dev/live-caddie'
@@ -264,7 +266,7 @@ function RootRouter() {
   const showDecisionReplay = pathname === '/dev/decision-replay'
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
 
   useEffect(() => {
     if (showLiveCaddie) {
@@ -287,6 +289,7 @@ function RootRouter() {
 
     if (showCourseRenderDev) return <CourseRenderDevPage />
     if (showCourseGeometryDev) return <CourseGeometryDevPage />
+    if (showGsproCourseAlignment) return <GsproCourseAlignmentLab />
     if (showAimLab) return <AimLabPage />
     if (showLiveCaddie) return null
     if (showRoundSetup) return <RoundSetupPage />
@@ -325,6 +328,7 @@ function RootRouter() {
     showAimLab,
     showCaddieInputs,
     showCourseGeometryDev,
+    showGsproCourseAlignment,
     showCourseRenderDev,
     showDecisionAudit,
     showDecisionReplay,
