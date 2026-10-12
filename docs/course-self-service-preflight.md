@@ -1,5 +1,36 @@
 # Course self-service preflight — October 10, 2026
 
+## Flexibility research checkpoint — 2026-10-12 (per-hole data + GSPro actual ball)
+
+**User's product question:** Can Looper use a mostly complete imported course with imperfect/missing mapped tee boxes, if GSPro tells us where the player actually dropped the ball? **Answer: potentially yes for live companion-assisted positioning, but this is NOT already a trustworthy GSPro-to-OSM alignment.** The companion's observed ball/pin **pixels** and wind/lie OCR are not course-geographic coordinates. Actual GSPro ball **world** evidence may also exist in `currentRound.dat` on a completed shot; the current native record often describes the **last completed shot**, not the live pre-shot ball. Do not use that as a fresh tee, do not invent scorecard tee names, and never infer a cross-coordinate transform from one unverified feature.
+
+### Separate three different requirements
+
+1. **Map/terrain usability per hole:** mapped `golf=hole` route, green, whole-hole DEM/green elevation, available fairway/bunker/water surfaces with provenance. A missing tee polygon does **not** erase terrain, hazards or green. Missing hazard mapping means **unknown coverage**, not a certified hazard-free zone; condition the recommender's claims accordingly.
+2. **Correct user starting ball:** a recent GSPro observation of actual ball and pin, current round/hole/shot match, pixel/yard ruler with independent stability checks and a **separately verified OSM↔GSPro frame transform**. The current Windows Companion can supply the pixels/scale and existing Live Caddie can supply shot state, but physical matching to the imported OSM hole is still **outstanding**. Moving/dropping the ball on GSPro's fairway may help prove **ball-relative shot advice** without needing an exact tee polygon—only once that transform passes.
+3. **Correct named tee-set selection:** published Blue/White/Gold tee identities across 18 holes are a *different* truth. Actual ball position on one shot cannot establish a permanent `Blue` tee's physical location on other holes. Never auto-approve a scorecard tee set because a manually placed ball happens to be inside/near a tee/fairway.
+
+### Proposed release tiers (not currently activated)
+
+| Tier | Evidence | User capability | Automatic registry status |
+| --- | --- | --- | --- |
+| A. Map review | 18 georeferenced hole/green/terrain datasets pass map gate; any missing tee sets or feature coverage flagged per hole | View/search course map and validation notes | **map-only**, not Live Caddie selectable |
+| B. Companion-assisted **candidate** | Same map + **current** matching GSPro round/hole and independent OSM-to-GSPro transformation, source/freshness/pin/ball/yard validation on the actual hole | After physical acceptance: optional *unverified-/limited-confidence* live shot preview from actual GSPro ball, per-hole caveats, missing-hazard fallback | **NOT YET IMPLEMENTED**, no change in runtime registry or enabled aim |
+| C. Fully verified named-tee play | Existing 18-hole runtime geometry/terrain, plus every *exposed* tee set independently mapped across all 18 holes and validated against identity/scorecard | Round Setup named tee and normal Live Caddie | Existing canonical strict runtime gate; approved subset policy is a separate future implementation |
+
+A failed tee surface on Hole 12 should not necessarily prevent a *map preview* of Hole 12 or live advice after **verified live calibration**, but it should prevent claims that a complete, correctly identified `Blue` tee set is available. A missing fairway, bunker or hazard should be presented as coverage uncertainty and may disable particular hazard-specific advice, not synthesize empty hazards.
+
+### Offline implementation completed without changing runtime
+
+- [x] `tools/audit_course_flexible_readiness.py`: independent per-hole evidence inventory. Reports mapped tee/fairway/green/bunker/water counts, DEM/green availability, unknown hazard completeness, incomplete hole concerns and the need for native ball/frame calibration. Labels `map_review_only_companion_calibration_candidate` vs `existing_runtime_ready_not_scorecard_audited` vs `incomplete_source_or_receipt`.
+- [x] `tools/test_course_flexible_readiness.py`: no-network regression cases for a course with 18 mapped holes but zero OSM tees; generic `Tee 1` must **not** imply true named tee; GSPro ball + pin pixels without registration stay **unregistered**; independently crosschecked ball/landmarks remain **research only**; mismatched receipt/terrain and 17-hole input fail closed.
+- [x] `.github/workflows/course-e2e-preflight-ci.yml`: adds regression tests and tests the real already-committed **FarmLinks** runtime package and **Valhalla** map-only package using the audit without fetching any source data or reimporting.
+- [ ] **Cross-frame proof:** build an independent static OSM hole↔GSPro minimap correspondence (e.g., a validated pin plus a second independently matched stable landmark or semantic surface shape) to ground scale, orientation and translation. Do not treat the same ball marker used to fit as independent verification. Require fresh matching round/hole, significant pixel frame confidence and measured target/ball residuals; begin **read-only**.
+- [ ] **Dynamic no-tee live policy:** after physical simulator proof, introduce an explicit limited-confidence **GSPro Live** path without publishing guessed tee identities. Gate recommendation assertions *per hole and per feature*; keep unverified hazard/green positioning blocked rather than passing a distorted course. Inactive until separate review, CI and user approval.
+- [ ] **Approved named tee subsets:** align the research scorecard matcher with an explicit vetted `approvedTeeSets` allowance; each offered set still requires exactly one independently confirmed tee mapping for **every** hole. Missing other colors must not block a genuinely complete subset. This changes runtime contract only in a separate reviewed pass.
+
+**Next bounded experiment:** Use the **existing Valhalla cached map** (which is valid for all 18 hole geometry/terrain stages but has mapped tee polygons on only six), and the already validated Greywolf companion capture to prototype alignment from **live ball to OSM green/fairway**, with two independent anchors and no native clicking. A change in the companion ball position after a GSPro drop must be shown fresh, not assumed from last-completed. Record before/after pixel coordinates, scale, hole match and yard residual; fail closed on cross-hole stale state. Until that evidence exists, tier B is a **design/research candidate, not available play**.
+
 ## Operational status — 2026-10-12 (reviewed; no new import triggered)
 
 **Executive state: canonical course importer works for a mapped/tee-complete course; self-service arbitrary course-to-play is NOT accepted yet.** Keep five states distinct: (1) name request accepted, (2) geometry/map ready, (3) all-18 tee/terrain/green **runtime ready**, (4) browser **player ready**, (5) physically **GSPro verified**. A successful CI job or map preview is not a substitute for the subsequent gates.
