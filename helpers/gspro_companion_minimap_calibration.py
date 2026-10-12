@@ -166,6 +166,7 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
     GSPro/world XY. A tee cache is only seeded by fresh pre-shot evidence.
     """
     result = {
+        "timingMs": {"waypointOcr": None, "zoomRegistration": None, "scaleMath": None},
         "waypointRuler": {
             "status": "unavailable", "reason": "no_labeled_gray_waypoint",
             "candidates": [],
@@ -193,7 +194,9 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
     cached = _current_cache(identity, fingerprint) if identity and fingerprint else None
     fresh_tee = bool(identity and fingerprint and _is_fresh_tee(state, cropped, ball))
     if fresh_tee:
+        math_started = time.perf_counter()
         par3 = _par3_direct_reference(state, ball, pin)
+        result["timingMs"]["scaleMath"] = round((time.perf_counter() - math_started) * 1000, 2)
         if par3 is not None:
             result["scale"] = {
                 "status": "provisional_par3",
@@ -219,6 +222,7 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
     # On post-tee frames, prefer historical tee-image registration. GSPro
     # waypoint labels can disappear/change on zoom; don't recalibrate there.
     if cached and not fresh_tee:
+        registration_started = time.perf_counter()
         try:
             result["registration"] = _register(cropped, pin, cached)
             result["scale"] = {
@@ -229,9 +233,14 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
             }
         except (RuntimeError, ValueError, cv2.error) as exc:
             result["registration"]["reason"] = "registration_rejected:" + str(exc)[:145]
+        finally:
+            result["timingMs"]["zoomRegistration"] = round(
+                (time.perf_counter() - registration_started) * 1000, 2
+            )
         result["waypointRuler"]["reason"] = "post_tee_uses_cached_tee_ruler"
         return result
 
+    ocr_started = time.perf_counter()
     try:
         detected = waypoint_cv.detect_gray_waypoints(
             cropped,
@@ -242,6 +251,8 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
     except (RuntimeError, ValueError, cv2.error, OSError) as exc:
         result["waypointRuler"]["reason"] = "waypoint_ocr_error:" + type(exc).__name__
         return result
+    finally:
+        result["timingMs"]["waypointOcr"] = round((time.perf_counter() - ocr_started) * 1000, 2)
 
     result["waypointRuler"]["candidates"] = [
         {
@@ -258,6 +269,7 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
         result["waypointRuler"]["reason"] = "waypoint_labels_below_four_ocr_votes"
         result["scale"]["reason"] = "low_waypoint_ocr_confidence"
         return result
+    math_started = time.perf_counter()
     try:
         resolution = resolve_minimap_scale(
             ball=Point(ball.x, ball.y),
@@ -275,6 +287,8 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
         result["waypointRuler"]["reason"] = str(exc)[:145]
         result["scale"]["reason"] = "waypoint_scale_rejected"
         return result
+    finally:
+        result["timingMs"]["scaleMath"] = round((time.perf_counter() - math_started) * 1000, 2)
 
     result["waypointRuler"].update({
         "status": "scale_candidate",
