@@ -3,8 +3,8 @@
 **Updated:** 2026-10-11 (post Greywolf H8/H9 first simulator test)  
 **Status:** implementation plan / authoritative new-chat handoff; **not** a production release or approval to click.  
 **Working branch:** `auto-aim-windows-companion-v1` in `bpgpitt10/nova-v0`.  
-**Current latest CI-tested package:** prerelease `looper-companion-autoaim-stage-c-0b3ec91b`, from implementation/test commit `0b3ec91b` (Windows and Web Alpha CI passed; composite WinRT compass OCR **not yet validated on physical simulator**).  
-**Most recent implementation pass:** `0b3ec91b` (split-crop WinRT compass context fallback + regression tests; build and packaged smoke passed; simulator verification outstanding). Earlier passes are preserved below. Keep this plan updated as development progresses.  
+**Last prior CI-tested package:** WinRT prerelease `looper-companion-autoaim-stage-c-0b3ec91b` (DO NOT reinstall for this task). The new Tesseract package is pending Windows CI pass; update this line with verified release URL when published.  
+**Most recent implementation pass:** `d11eb7ad` (packaged native Tesseract wind backend, browser crop/PSM parity, preserved working Lie; Windows CI and simulator parity pending). Earlier passes are preserved below.  
 **Production/main:** do **not** merge or deploy the experimental native-input path before the specific acceptance gates below.
 
 ## Incremental implementation log — 2026-10-11 (V2 small pass #1)
@@ -76,6 +76,22 @@
 - [ ] **Physical simulator proof required.** Validate nonzero speed and cardinal with Chrome in front at multiple wind headings. The composite WinRT fallback is an unverified hypothesis, not established Tesseract parity. If it still returns no cardinal, stop tinkering with speed; diagnose/replace the **direction OCR backend** (e.g. existing Tesseract.js path) using a real user-approved wind-crop fixture. Continue fail-closed and keep native clicks off.
 
 **Next gate:** wind speed + cardinal, lie, read-only image capture passing on simulator; then minimap/zoom registration. No production deployment/merge.
+
+## Incremental implementation log — 2026-10-11 (V2 pass #6: Native Tesseract wind, no screen sharing)
+
+**Architectural decision:** Stop iterating Windows WinRT OCR for wind. Keep GSPro-window-only PrintWindow capture, but replace wind text recognition with packaged native Tesseract 5 CLI, following the working browser Tesseract.js crop/threshold/segmentation approach. Chrome screen sharing is **not required**, and no extra Tesseract installation should be needed on the simulator PC.
+
+**Evidence:** User screenshot shows 9 MPH NW on Greywolf hole 8 while the latest native WinRT reader returned SPEED: 9 MPH | DIR: (empty). Locally tested Tesseract CLI on the user-provided 2048×1176 screenshot: NW recognized using the existing direction ROI, 8x enlargement, threshold 190 and PSM 8, 7, 10. The original narrow speed ROI clipped the digit at that screenshot scale; a slightly wider fallback recognized 9MPH. These are **one-screenshot** results, not 33-image or physical live validation.
+
+- [x] Wind reader now uses standalone packaged Tesseract CLI over native GSPro HWND crops (speed PSM7, direction PSM8 then PSM7/10 if missing) and browser-style 8x/threshold-190 preprocessing. Retains reference speed crop first, with a bounded expanded left crop only when needed.
+- [x] Conservative status: no nonzero READY wind without both parsed speed and independently recognized valid compass direction. Compass "from" contract retained. Temporary cropped PNGs are deleted; no browser screen share, user desktop screenshot, or remote pixels.
+- [x] Preserve already working native WinRT lie reader and its call into the legacy WinRT helper in the wind module. Do not replace lie logic because wind's backend changed.
+- [x] Windows workflow provisions Tesseract on CI runner, validates executable/English language, ships portable bin/DLLs plus eng.traineddata in the Windows ZIP. Installer copies the OCR folder next to LooperCompanion.exe into the user's local app directory; **no admin rights or separate OCR installer required on user's PC**.
+- [x] Regression tests revised for Tesseract segmentation modes, missing direction fail-closed, no bundled OCR availability, speed crop fallback, and 9 MPH NW recovery.
+- [ ] **CI and release gate:** verify [Windows CI build](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627321) and [Web Alpha CI](https://github.com/bpgpitt10/nova-v0/actions/runs/38201627371) pass, including ZIP assembly, bundled Tesseract executable and packaged EXE smoke. Until then do not provide a new installer link.
+- [ ] **Simulator acceptance gate:** test 2+ nonzero wind headings including NW, confirm speed, FROM-cardinal, READY, and stable lie with Chrome foreground and GSPro background. Confirm real OCR provenance is tesseract-cli, not WinRT. Do not infer success from CI alone.
+
+**Next work:** once native Tesseract wind and unchanged Lie pass, continue read-only minimap scale, waypoint/zoom registration. Do not merge to main, enable POST/AutoAim click, or rebuild the existing authoritative TypeScript Live Caddie shot/tee engine.
 
 ## Read this first: immutable architectural boundaries
 
@@ -176,17 +192,13 @@ The EXE may **independently recheck minimal fresh file/window/shot facts for cli
 - Browser-read-only Live Caddie and Chrome fallback continue working if companion absent/blocked. Full/partial confidence logic for imported holes is a separate course-importer workstream; integrate only via explicit validity gates.
 - Final production acceptance: stage preview, security tests, user-consented actual sim tests, robust Win10/11, 1080p/4K, DPI/multiple monitors, GSPro restart, new course/hole/pin, minimap zoom, install/autostart/uninstall, browser permissions; THEN consider release/merge.
 
-## The immediate next acceptance gate (after wind parity repair)
+## Immediate next acceptance gate — packaged Tesseract + simulator parity
 
-**No new code until the real simulator wind test on the consolidated Windows prerelease.** Wind and lie now share GSPro HWND capture, but they use WinRT OCR and are not physically verified together. The historical browser Tesseract.js wind path uses separate narrow crops and remains the validated geometry reference.
-
-1. Install **one** Windows ZIP from the successful **pass #4** Windows CI run (not a preceding failed or stale build). Open Greywolf, keep Chrome in the foreground, and start watching in the companion diagnostic page.
-2. Compare on-screen **actual wind speed and cardinal direction** against \`ocr.wind.rawText\`, \`speedMph\`, \`directionDegrees\` and \`status\` at two or more wind settings. Wind must be \`READY\` with correct *speed AND direction*, or explicitly \`UNKNOWN\`; a numeric OCR correction alone does not pass.
-3. At tee and on a sloped playable lie, verify \`ocr.lie\` still reads correctly and stops/does not report a false lie on green. Capture/collect **read-only** JSON; no need to hit a shot just to verify wind.
-4. If native WinRT OCR is still weaker than the known browser Tesseract.js reader, compare same GSPro HUD image crops, fix the OCR *engine parity* rather than changing wind math or inventing compass directions. The 33-image historical corpus is cataloged but image bytes aren't stored in this repo.
-5. **Only after confirmed wind + lie:** validate minimap marker centers, par-3/provisional rulers, par-4/5 waypoint scaling and tee-to-approach zoom registration. Maintain \`POST /companion/*\` 405, \`autoAim:false\`, read-only diagnostics, no production merge.
-
-The native file-evidence/parity plan is separate; keep browser Live Caddie as the only authority for current ball/hole/shot and post-putt transitions. Do not restart the Windows companion application or recompute strategy in the EXE.
+1. Wait for Windows CI to pass and the ONE verified test ZIP (including OCR subdirectory) to publish. No separate user Tesseract or screen-sharing installation.
+2. Install new Windows Companion once. Open the existing diagnostics page with Chrome foreground and GSPro in background. No Chrome getDisplayMedia prompt.
+3. On Greywolf compare OCR raw SPEED and DIR, speedMph, directionDegrees, status READY and engine tesseract-cli against the visible wind HUD at two directions (e.g. NW, and another).
+4. Validate native Lie at tee, playable slope and green without altering WinRT Lie.
+5. When both wind and Lie pass, continue read-only minimap scale and zoom/waypoint registration. Keep shot state in canonical TypeScript Live Caddie and native clicks disabled.
 
 ## Links and existing artifacts
 
