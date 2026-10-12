@@ -181,6 +181,40 @@ def _parse_split_wind(speed_text: str, direction_text: str) -> dict:
     }
 
 
+
+def _parse_direction_from_joint_ocr(raw: str):
+    """Only accept a cardinal explicitly OCR'd after MPH on stitched HUD tiles.
+
+    Isolated one-letter crops can be discarded by WinRT OCR's line detector.
+    Putting the speed and direction glyphs on a single text line gives that
+    detector context, without hallucinating a direction from the speed.
+    """
+    normalized = " ".join(raw.upper().split())
+    match = re.search(r"\bMPH\s*(NE|NW|SE|SW|N|E|S|W)\s*$", normalized)
+    return match.group(1) if match else None
+
+
+def _read_stitched_direction(regions: dict):
+    """One WinRT OCR retry on a tiny derived image, never a desktop screenshot."""
+    speed_image = regions["speed"][0]
+    direction_image = regions["direction"][0]
+    gap = 32
+    h = max(speed_image.shape[0], direction_image.shape[0])
+    w = speed_image.shape[1] + gap + direction_image.shape[1]
+    line = np.full((h, w), 255, dtype=np.uint8)
+    line[:speed_image.shape[0], :speed_image.shape[1]] = speed_image
+    x = speed_image.shape[1] + gap
+    line[:direction_image.shape[0], x:] = direction_image
+    ok, encoded = cv2.imencode(".png", line)
+    if not ok:
+        return None, "stitched_image_encode_failed"
+    result = _ocr_png_with_windows(encoded.tobytes())
+    if result.get("status") != "ok" or not isinstance(result.get("rawText"), str):
+        return None, str(result.get("note") or "stitched_ocr_failed")[:120]
+    raw = result["rawText"]
+    return _parse_direction_from_joint_ocr(raw), raw[:120]
+
+
 def _ocr_png_with_windows(png: bytes) -> dict:
     if os.name != "nt":
         return {"status": "error", "note": "windows_only"}
@@ -238,6 +272,21 @@ def read_wind_from_capture(report: dict) -> dict:
         texts[name] = result["rawText"]
 
     parsed = _parse_split_wind(texts["speed"], texts["direction"])
+    # The physical sim returned SPEED: 9 MPH | DIR: (blank) despite an
+    # independently recognized speed. Windows OCR may suppress isolated
+    # single-character tokens. One optional joint-line OCR is a bounded
+    # fallback; it does not crop additional screen space or invent a bearing.
+    if parsed["status"] == "UNKNOWN" and parsed["speedMph"] is not None and parsed["directionDegrees"] is None:
+        recovered, fallback_raw = _read_stitched_direction(regions)
+        parsed["directionFallbackRawText"] = fallback_raw
+        if recovered is not None:
+            parsed = _parse_split_wind(texts["speed"], recovered)
+            parsed["directionFallbackRawText"] = fallback_raw
+            parsed["directionOcrStrategy"] = "stitched-line"
+        else:
+            parsed["directionOcrStrategy"] = "split-and-stitched-unreadable"
+    else:
+        parsed["directionOcrStrategy"] = "split"
     parsed["ocrSource"] = "gspro-native-window"
     parsed["captureFreshness"] = "single_capture_unverified"
     parsed["capture"] = {
