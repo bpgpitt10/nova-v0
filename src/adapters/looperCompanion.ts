@@ -194,7 +194,7 @@ export type LooperCompanionLiveObservations = {
     }
     freshness?: string
     minimapRoiWindowPixels?: number[]
-    timingMs?: { markerDetection?: number; waypointCalibrationAndRegistration?: number }
+    timingMs?: { markerDetection?: number; waypointCalibrationAndRegistration?: number; waypointOcr?: number | null; scaleMath?: number | null; zoomRegistration?: number | null }
   }
   timingMs?: {
     structuredDiscovery?: number
@@ -202,6 +202,9 @@ export type LooperCompanionLiveObservations = {
     minimapTotal?: number
     markerDetection?: number | null
     waypointCalibrationAndRegistration?: number | null
+    waypointOcr?: number | null
+    scaleMath?: number | null
+    zoomRegistration?: number | null
     windOcr?: number
     lieOcr?: number
     total?: number
