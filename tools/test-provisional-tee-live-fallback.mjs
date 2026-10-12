@@ -54,8 +54,15 @@ try {
   assert.equal(adjusted.uncertaintyRadiusYds,25)
   assert.equal(adjusted.adjustmentYds,-25)
   assert.equal(estimate(geom,490).status,'blocked')
+  const normalizedButUnmatched=estimate({...geom,coordinateSystem:{
+    ...geom.coordinateSystem,origin:'selected-tee',
+  }},425)
+  assert.equal(normalizedButUnmatched.status,'provisional')
+  assert.equal(normalizedButUnmatched.adjustmentYds,-25)
   assert.equal(estimate({...geom,coordinateSystem:{
     ...geom.coordinateSystem,origin:'selected-tee',
+  },registration:{
+    status:'verified',targetCoordinateSystem:'looper-hole-local-yards',
   }},425).status,'blocked')
   assert.equal(estimate({...geom,markers:{tee:[0,0]}},425).status,'blocked')
   assert.equal(estimate({...geom,registration:{
@@ -99,6 +106,18 @@ try {
   assert.deepEqual(onFairway.courseLocalYds,[0,0])
   const bad=resolve(geom,{holeNumber:1,shotNumber:1,surface:'tee',distanceToPinYds:490})
   assert.equal(bad.status,'unsupported')
+  const approximateSelectedTee=resolve({
+    ...geom,coordinateSystem:{...geom.coordinateSystem,origin:'selected-tee'},
+  },null)
+  assert.equal(approximateSelectedTee.status,'supported')
+  assert.equal(approximateSelectedTee.placement,'provisional')
+  assert.equal(approximateSelectedTee.uncertaintyRadiusYds,50)
+  const verifiedSelectedTee=resolve({
+    ...geom,coordinateSystem:{...geom.coordinateSystem,origin:'selected-tee'},
+    registration:{status:'verified',targetCoordinateSystem:'looper-hole-local-yards'},
+  },null)
+  assert.equal(verifiedSelectedTee.status,'supported')
+  assert.equal(verifiedSelectedTee.placement,'mapped')
   const mapped=resolve({
     ...geom,coordinateSystem:{...geom.coordinateSystem,origin:'selected-tee'},
     teeCandidates:[{osmId:'1',teeSet:'Blue',coursePoint:[12,-18],teeToGreenCentroidYards:419}],
