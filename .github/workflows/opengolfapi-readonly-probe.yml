@@ -1,0 +1,25 @@
+name: OpenGolfAPI Read-only Source Assessment
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-e2e-preflight-v1
+    paths:
+      - tools/probe_opengolfapi_readonly.py
+      - .github/workflows/opengolfapi-readonly-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read-only OpenGolfAPI three-course comparison
+        run: python tools/probe_opengolfapi_readonly.py
