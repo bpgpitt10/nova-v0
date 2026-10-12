@@ -5,6 +5,7 @@ on:
     branches:
       - web-alpha-mishits
       - auto-aim-windows-companion-v1
+      - provisional-tee-live-fallback-v1
   pull_request:
     branches:
       - web-gspro-clean
