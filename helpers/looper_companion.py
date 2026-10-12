@@ -17,6 +17,7 @@ import gspro_window_capture as capture
 import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
 import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
 import gspro_live_observations as observations  # read-only diagnostic; no desktop input
+import gspro_native_lie_ocr as native_lie
 import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
 
 base = lie_footer.base
@@ -115,6 +116,10 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         super().do_OPTIONS()
 
     def do_GET(self) -> None:
+        if urlsplit(self.path).path == "/lie":
+            window = native.find_gspro_window()
+            self._write_json(200, native_lie.read_gspro_native_lie(window))
+            return
         if urlsplit(self.path).path == "/wind":
             # Retain the established /wind route and payload shape, but ensure
             # the packaged Companion uses its own GSPro HWND, not CopyFromScreen.
