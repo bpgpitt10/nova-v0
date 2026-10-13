@@ -6,6 +6,7 @@ import type {
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import { buildAirAltitudeAdjustment } from './airAltitudeAdjustment'
+import { clubEligibleForShot, resolveShotOriginEligibility, type ShotOriginEligibility } from './clubShotEligibility'
 import {
   rankRiskAwareAimCandidates,
   rankRiskAwareClubChoices,
@@ -74,6 +75,9 @@ export type AimLabEnvironment = {
   airAltitudeSource?: string
   /** Authoritative current GSPro lie surface. OSM remains the landing-outcome classifier. */
   surfaceOverride?: string | null
+  /** Driver and Mini Driver are eligible ONLY when the tee shot is affirmed.
+   * Live callers MUST pass the actual GSPro tee/shot state explicitly. */
+  shotOrigin?: ShotOriginEligibility
   /** Positive = GSPro Up. V0 applies a conservative 25% VLA prior with tight caps. */
   lieUpDownDeg?: number | null
   /** Positive = GSPro Left / ball above feet. V0 applies the existing conservative sidehill prior. */
@@ -235,6 +239,7 @@ export const evaluateAimLab = (
   const decisionPlayers = buildDecisionPlayerModels(sessions, nowMs)
   const geometrySurface = classifyPoint(hole, ball).kind
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
+  const shotOrigin = resolveShotOriginEligibility(environment.shotOrigin, ballSurface)
   const exactPinLocalYds = environment.exactPinLocalYds ?? hole.markers.pin ?? null
   const greenLandingTransform = environment.greenDetail
     ? (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) =>
@@ -246,7 +251,12 @@ export const evaluateAimLab = (
         }).landing
     : undefined
 
-  const evaluations = profileSet.clubs.map((profile): ClubAimEvaluation => {
+  // Hard exclusion BEFORE club physics, aim exploration, cache and ranking.
+  // Never let the expected-value ranker select a non-tee Driver or Mini Driver.
+  const eligibleProfiles = profileSet.clubs.filter(profile =>
+    clubEligibleForShot(profile.club, shotOrigin),
+  )
+  const evaluations = eligibleProfiles.map((profile): ClubAimEvaluation => {
     const support = profileSet.club_support.find((item) => item.club === profile.club)
     const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null
     const planningTarget = environment.clubTargets?.[profile.club] ?? target
