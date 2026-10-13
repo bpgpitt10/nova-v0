@@ -45,5 +45,8 @@ jobs:
       - name: Test actual FarmLinks 572-yard stale tee overwrite regression
         run: node tools/test-live-first-tee-display.mjs
 
+      - name: Test native one-shot wind/lie bridge from recorded FarmLinks 9mph SE capture
+        run: node tools/test-one-shot-companion-wind.mjs
+
       - name: Build web app
         run: npm run build
