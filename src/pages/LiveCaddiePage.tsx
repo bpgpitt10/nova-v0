@@ -658,13 +658,20 @@ export default function LiveCaddiePage() {
     const seenAt = Date.parse(nativeObservations.observedAt ?? '')
     if (!Number.isFinite(seenAt) || Math.abs(Date.now()-seenAt)>30000) return null
     const shot = nativeObservations.structured?.shot
+    // A completed Greywolf record left in currentRound.dat overnight must not
+    // stop a user who explicitly armed FarmLinks H1 from reading CURRENT pixels.
+    // Conversely, reject fresh contradictory GSPro course evidence.
+    const isManuallyArmedHoleOne = hole.holeNumber === 1 && liveSnapshot.roundId == null
+    const staleOldRecord = shot?.status === 'stale'
+      && (nativeObservations.structured?.fileAgeMs ?? 0) > 5 * 60_000
     const seenCourse = shot?.courseKey ? resolveCourseIdFromGsproName(shot.courseKey) : null
-    if (seenCourse && seenCourse !== courseId) return null
+    if (seenCourse && seenCourse !== courseId
+      && !(isManuallyArmedHoleOne && staleOldRecord)) return null
     const nativeHasThisTee = shot?.kind === 'pre_shot'
       && shot?.status === 'ready'
       && shot.holeNumber === hole.holeNumber && shot.shotNumber === 1
-    // Manual start is the existing explicit user commitment to Hole 1.
-    const isManuallyArmedHoleOne = hole.holeNumber === 1 && liveSnapshot.roundId == null
+    // Only the fresh captured native minimap supplies the distance here; no
+    // world position or physical shot identity is taken from a stale record.
     if (!nativeHasThisTee && !isManuallyArmedHoleOne) return null
     const mini = nativeObservations.minimap
     const roiHeight = mini?.minimapRoiWindowPixels?.[3]
