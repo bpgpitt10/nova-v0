@@ -35,7 +35,7 @@ import {
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
-import { saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
+import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import {
   loadLastSelectedCourseId,
@@ -776,6 +776,13 @@ export default function LiveCaddiePage() {
     && nextShotNumber != null && nextShotNumber > 1
     && !liveSnapshot?.ballLocalYds
     && liveSnapshot?.ballSource !== 'cached-tee'
+  const spatialPositionProvisional = liveMatchesHole
+    && liveSnapshot?.ballSource === 'world-provisional'
+  const savedNativeTee = liveMatchesHole
+    ? loadLiveTeeSessionAnchor(loadActiveLiveCaddieRound(), holeNumber) : null
+  const provisionalPositionRadiusYds = spatialPositionProvisional
+    ? Math.max(40, savedNativeTee?.uncertaintyRadiusYds ?? 50)
+    : null
   const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
   const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
@@ -1220,6 +1227,15 @@ export default function LiveCaddiePage() {
           </section>
         ) : null}
 
+        {spatialPositionProvisional ? (
+          <div className="live-caddie-alert" data-spatial-position="provisional">
+            Imported-course ball placement uses the actual GSPro shot movement and a
+            provisional OSM tee anchor/true-north heading. The position and displayed
+            club are planning estimates, not verified exact hazard carries, odds,
+            elevation or a native aim target. Approximate map uncertainty is at least
+            ±{provisionalPositionRadiusYds ?? 50} yards.
+          </div>
+        ) : null}
         {spatialPositionUnavailable ? (
           <div className="live-caddie-alert bad" data-spatial-position="unavailable">
             GSPro reported Shot {nextShotNumber} and the remaining pin distance, but its ball position
@@ -1289,6 +1305,8 @@ export default function LiveCaddiePage() {
                     <span className="live-recommended-pill">
                       {evaluationPending
                         ? 'CALCULATING'
+                        : spatialPositionProvisional
+                          ? 'PROVISIONAL · CLUB ESTIMATE'
                         : isAlternateClub
                           ? `USER SELECTED${viewedClubRank ? ` · #${viewedClubRank} CLUB` : ''}`
                           : 'RECOMMENDED · #1 CLUB'}
@@ -1396,7 +1414,7 @@ export default function LiveCaddiePage() {
                   show95={show95}
                   showRiskTail={showRiskTail}
                   showPracticeShots={showPracticeShots}
-                  provisionalTeeRadiusYds={provisionalTeeRadiusYds}
+                  provisionalTeeRadiusYds={provisionalPositionRadiusYds ?? provisionalTeeRadiusYds}
                 />
 
                 <div className="live-map-legend">
