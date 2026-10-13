@@ -15,6 +15,15 @@
 
 These are **4 modeled launch-response groups**, not 4 total GSPro lie types. Semi-rough currently shares the rough physics pending independent measurements. Other potential labels (fringe, path, hardpan, pine straw, etc.) are not verified here as actual GSPro enum entries and do not get invented coefficients.
 
+### External GSPro documentation: HUD authority and dynamic penalties
+
+GSPro's own [in-game UI guide](https://gspro.gitbook.io/gspro-knowledge-base/in-game-information/in-game-user-interface) states that the **center text at the top of the minimap is the current lie**; the bottom of the minimap separately displays the up/down and left/right slope angles. This confirms that the existing Companion slope-footer OCR is reading the wrong region for the surface *name*. A bounded OCR pass over the **top bar of the SAME captured minimap frame** is our preferred path to automatically detect Deep Rough, with source freshness/shot identity checked before overriding the rough fallback.
+
+GSPro's [published V2 user guide](https://www.golfinsim.com/wp-content/uploads/2023/11/GSPro-Users-Guide-V2.0.2.pdf) also explains that deep-rough penalties vary dynamically with launch angle and ball speed. Thus 82% speed / 49% spin / 98% VLA is an **observed representative model**, NOT universally correct across a 3W versus 9i (or even across two different launch-angle shots). Accurate next-stage physics requires collecting and fitting actual surface-specific penalty measurements across loft/VLA, not freezing these four coefficients as an exhaustive GSPro emulation.
+
+A third-party simulator venue explicitly enumerates at least eight displayed lie labels—Tee, Fairway, Semi-Rough, Rough, Deep Rough, Pine Straw, Sand, Green—but this is not an official exhaustive GSPro enum specification and does NOT verify the total count of 11. [Venue description](https://loftgolfstudios.com/gameplay).
+
+
 ## Raw `currentRound.dat` IDs: what we know vs what we don't
 
 The reviewed, executable working inventory is `src/adapters/gsproSurfaceCodes.ts`; every other numeric ID is currently unknown:
