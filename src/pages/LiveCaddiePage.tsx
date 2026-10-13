@@ -714,6 +714,35 @@ export default function LiveCaddiePage() {
     } : estimateProvisionalTee(hole, distance)
   }, [hole, liveSnapshot, nativeObservations, courseId])
 
+  // One pre-shot tee is authoritative for BOTH on-map ball placement AND
+  // displayed distance. The browser's manual Shot 1 snapshot may still hold
+  // the older 572-yard route anchor. Never let that stale estimate overwrite
+  // a successful native two-waypoint tee measurement.
+  const savedPreShotTee = liveSnapshot?.holeNumber === holeNumber
+    && liveSnapshot.nextShotNumber === 1
+    && liveSnapshot.teePlacement === 'provisional'
+    ? loadLiveTeeSessionAnchor(loadActiveLiveCaddieRound(), holeNumber)
+    : null
+  const measuredPreShotTee = liveSnapshot?.holeNumber === holeNumber
+    && liveSnapshot.nextShotNumber === 1
+    && liveSnapshot.teePlacement === 'provisional'
+    ? nativeProvisionalTee?.status === 'provisional'
+      ? {
+          point: nativeProvisionalTee.point,
+          distanceYds: nativeProvisionalTee.distanceInputYds,
+          uncertaintyYds: nativeProvisionalTee.uncertaintyRadiusYds,
+          source: nativeProvisionalTee.source,
+        }
+      : savedPreShotTee
+        ? {
+            point: savedPreShotTee.point,
+            distanceYds: savedPreShotTee.measuredStraightToPinYds,
+            uncertaintyYds: savedPreShotTee.uncertaintyRadiusYds,
+            source: savedPreShotTee.source,
+          }
+        : null
+    : null
+
   useEffect(() => {
     if (nativeProvisionalTee?.status !== 'provisional') return
     const round = loadActiveLiveCaddieRound()
@@ -737,27 +766,33 @@ export default function LiveCaddiePage() {
 
   useEffect(() => {
     if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
-    const nextBall = liveSnapshot.ballLocalYds
+    // Keep browser GSPro authoritative on hole/shot identity, but give the
+    // bounded *fresh native measurement* priority over the initial approximate
+    // tee marker on shot 1 only. After shot 1, actual ending coordinates win.
+    const nextBall = measuredPreShotTee?.point ?? liveSnapshot.ballLocalYds
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
-    const nextPin = estimatePinFromGsproDistance(hole, nextBall, liveSnapshot.distanceToPinYds)
+    const nextPin = estimatePinFromGsproDistance(
+      hole, nextBall, measuredPreShotTee?.distanceYds ?? liveSnapshot.distanceToPinYds,
+    )
     setBall(nextBall)
     setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
-  }, [hole, liveSnapshot])
+  }, [
+    hole, liveSnapshot,
+    measuredPreShotTee?.point[0], measuredPreShotTee?.point[1],
+    measuredPreShotTee?.distanceYds,
+  ])
 
   const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
   const provisionalTeeRadiusYds = liveMatchesHole && liveSnapshot?.teePlacement === 'provisional'
     && liveSnapshot.nextShotNumber === 1
-    ? nativeProvisionalTee?.status === 'provisional'
-      ? nativeProvisionalTee.uncertaintyRadiusYds
-      : liveSnapshot.teeUncertaintyYds ?? 50
+    ? measuredPreShotTee?.uncertaintyYds ?? liveSnapshot.teeUncertaintyYds ?? 50
+    : null
+  const effectiveDistanceToPinYds = liveMatchesHole
+    ? measuredPreShotTee?.distanceYds ?? liveSnapshot?.distanceToPinYds ?? null
     : null
   const pinEstimate = hole
-    ? estimatePinFromGsproDistance(
-        hole,
-        ball,
-        liveMatchesHole ? liveSnapshot?.distanceToPinYds ?? null : null,
-      )
+    ? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
     : null
   const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
     ? lieObservation.surface.trim()
@@ -1262,12 +1297,12 @@ export default function LiveCaddiePage() {
           && liveSnapshot.holeNumber === holeNumber
           && liveSnapshot.nextShotNumber === 1 ? (
           <div className="live-caddie-alert" data-tee-quality="provisional">
-            Provisional first-use tee — about ±{nativeProvisionalTee?.status === 'provisional'
-              ? nativeProvisionalTee.uncertaintyRadiusYds : liveSnapshot.teeUncertaintyYds ?? 50} yards.
-            {nativeProvisionalTee?.status === 'provisional'
-              ? nativeProvisionalTee.source === 'distance-matched-osm-tee'
-                ? ' GSPro two-waypoint ruler supports a provisional existing OSM tee polygon. The chosen GSPro tee NAME remains unchanged and map accuracy is not yet verified.'
-                : ' GSPro ball/pin ruler constrained the forward tee estimate; lateral position remains unknown.'
+            Provisional first-use tee — about ±{provisionalTeeRadiusYds ?? 50} yards.
+            {measuredPreShotTee
+              ? (measuredPreShotTee.source === 'distance-matched-osm-tee'
+                  || measuredPreShotTee.source === 'native-distance-matched-osm-tee')
+                ? ' Native two-waypoint ruler matched an existing OSM tee polygon; that position now drives the map, yardage and recommendation. Tee identity and exact hazard accuracy remain unverified.'
+                : ' Native ball/pin ruler constrained the forward tee estimate; lateral position remains unknown.'
               : ' Using approximate OSM route start until a reliable GSPro ball/pin ruler is available.'}
             {' '}Club choice is preliminary; exact forced carries, hazard margins, elevation at tee
             and native aim are not verified. Do not save this as a confirmed tee.
@@ -1275,7 +1310,11 @@ export default function LiveCaddiePage() {
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
-        {liveSnapshot?.warnings.map((warning) => <div className="live-caddie-alert" key={warning}>{warning}</div>)}
+        {liveSnapshot?.warnings
+          .filter(warning => !(measuredPreShotTee
+            && warning.startsWith('Provisional Hole ')
+            && (warning.includes('existing-map-tee-anchor') || warning.includes('osm-route-start'))))
+          .map((warning) => <div className="live-caddie-alert" key={warning}>{warning}</div>)}
 
         {courseId === UNSELECTED_COURSE_ID ? (
           <section className="live-empty-state">
