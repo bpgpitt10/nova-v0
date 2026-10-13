@@ -205,6 +205,37 @@
   color: #f2cac4;
 }
 
+.live-lie-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.live-lie-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.live-lie-confirmation-actions button {
+  border: 1px solid rgba(234, 179, 8, 0.36);
+  border-radius: 5px;
+  background: rgba(26, 45, 29, 0.95);
+  color: #e4dfc3;
+  padding: 6px 11px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.live-lie-confirmation-actions button:hover,
+.live-lie-confirmation-actions button.selected {
+  background: rgba(170, 145, 58, 0.35);
+  border-color: #ddc56c;
+  color: #fff4c3;
+}
+
 .live-empty-state {
   display: grid;
   gap: 10px;
@@ -954,3 +985,74 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* Diagnostic only: never render a native Set Aim action on this surface. */
+.live-native-aim-diagnostic {
+  margin: 10px 0 14px;
+  border: 1px solid rgba(182, 220, 147, .34);
+  border-radius: 12px;
+  background: rgba(11, 29, 18, .85);
+  padding: 13px 16px;
+  font-size: 12px;
+  color: #d6e4d5;
+  overflow-wrap: anywhere;
+}
+.live-native-aim-diagnostic-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.live-native-aim-diagnostic-heading strong {
+  font-size: 14px;
+  color: #e8f6c5;
+}
+.live-native-aim-diagnostic p {
+  margin: 8px 0;
+  line-height: 1.55;
+}
+.live-native-aim-diagnostic small {
+  color: #afc5af;
+}
+.live-native-timings {
+  font-variant-numeric: tabular-nums;
+  color: #b8d9ba;
+}
+
+
+.live-native-preview-layout {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+}
+.live-native-preview-schematic {
+  display: block;
+  height: 190px;
+  width: auto;
+  max-width: 100%;
+  border: 1px solid rgba(184, 209, 170, .32);
+  border-radius: 8px;
+}
+.live-native-preview-legend {
+  display: grid;
+  gap: 7px;
+  max-width: 250px;
+  color: #d5e6d5;
+}
+.live-native-preview-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-native-preview-legend b {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.live-native-preview-legend .dot-ball { background: #e7605b; }
+.live-native-preview-legend .dot-pin { background: #fff; }
+.live-native-preview-legend .dot-target { border: 2px solid #d9f886; }

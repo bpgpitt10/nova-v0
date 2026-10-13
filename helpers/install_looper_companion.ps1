@@ -7,6 +7,11 @@ if (!(Test-Path $sourceExe)) {
 
 $installDir = Join-Path $env:LOCALAPPDATA "Looper\Companion"
 $installExe = Join-Path $installDir "LooperCompanion.exe"
+$sourceOcr = Join-Path $PSScriptRoot "ocr"
+$installOcr = Join-Path $installDir "ocr"
+if (!(Test-Path (Join-Path $sourceOcr "tesseract.exe")) -or !(Test-Path (Join-Path $sourceOcr "tessdata/eng.traineddata"))) {
+  throw "This installer requires the packaged portable Tesseract engine (ocr folder). Re-extract the complete Windows Companion ZIP."
+}
 $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $runName = "LooperCompanion"
 
@@ -16,6 +21,10 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 Get-Process -Name "LooperCompanion" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 250
 Copy-Item -Path $sourceExe -Destination $installExe -Force
+# Keep the OCR engine adjacent to the installed EXE; never require PATH,
+# administrator privileges, Chrome sharing or separate Tesseract setup.
+if (Test-Path $installOcr) { Remove-Item -Path $installOcr -Recurse -Force }
+Copy-Item -Path $sourceOcr -Destination $installOcr -Recurse -Force
 
 if (!(Test-Path $runKey)) {
   New-Item -Path $runKey -Force | Out-Null

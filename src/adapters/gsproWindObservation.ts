@@ -4,6 +4,7 @@ import type {
   WindObservation,
   WindReferenceFrame,
 } from '../liveState/types'
+import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
 
 export const GSPRO_WIND_OCR_BROWSER_EVENT = 'looper:gspro-wind-ocr'
 
@@ -146,6 +147,15 @@ const staleObservation = (
   }
 }
 
+const staleForNextShot = (observation: WindObservation): WindObservation => ({
+  ...observation,
+  status: 'STALE',
+  note: [
+    observation.note,
+    'Canonical shot state advanced; waiting for fresh wind OCR for this shot.',
+  ].filter(Boolean).join(' '),
+})
+
 export const dispatchGsproWindOcrObservation = (payload: GsproWindOcrPayload) => {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent<GsproWindOcrPayload>(GSPRO_WIND_OCR_BROWSER_EVENT, {
@@ -162,7 +172,20 @@ export const connectToGsproWindObservation = ({
 
   const publish = (payload: GsproWindOcrPayload | null | undefined) => {
     if (disconnected) return
-    latest = normalizeGsproWindOcrPayload(payload)
+    const next = normalizeGsproWindOcrPayload(payload)
+
+    // Once a field is READY for this shot, freeze it. Repeated OCR passes must not
+    // change the caddie answer. The canonical shot-state event below is the only
+    // thing that unlocks the value by marking it STALE for the next shot.
+    if (latest?.status === 'READY') {
+      if (next.status === 'READY' || next.status === 'UNKNOWN') return
+    }
+
+    // If the new shot has already marked the prior value STALE, failed OCR retries
+    // leave that stale value in place until a retry actually succeeds.
+    if (next.status === 'UNKNOWN' && latest?.status === 'STALE') return
+
+    latest = next
     onObservation(latest)
   }
 
@@ -170,8 +193,15 @@ export const connectToGsproWindObservation = ({
     publish((event as CustomEvent<GsproWindOcrPayload>).detail)
   }
 
+  const shotStateListener = () => {
+    if (disconnected || !latest || latest.status !== 'READY') return
+    latest = staleForNextShot(latest)
+    onObservation(latest)
+  }
+
   if (typeof window !== 'undefined') {
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
+    window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
   }
 
   const staleTimer = typeof window !== 'undefined' && Number.isFinite(staleAfterMs)
@@ -192,6 +222,7 @@ export const connectToGsproWindObservation = ({
       disconnected = true
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
+        window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
     },

@@ -117,6 +117,7 @@ export type CourseTeeCandidate = {
   osmId?: string | number
   osmType?: string
   teeSet?: string
+  teeAliases?: readonly string[]
   name?: string
   ref?: string
   color?: string

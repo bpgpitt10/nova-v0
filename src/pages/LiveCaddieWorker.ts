@@ -511,6 +511,7 @@ const buildEvaluationCacheKey = ({
       elevationDeltaFt: finiteKeyNumber(environment.elevationDeltaFt),
       airAltitudeFt: finiteKeyNumber(environment.airAltitudeFt),
       surfaceOverride: environment.surfaceOverride ?? null,
+      shotOrigin: environment.shotOrigin ?? null,
       lieUpDownDeg: finiteKeyNumber(environment.lieUpDownDeg),
       lieLeftRightDeg: finiteKeyNumber(environment.lieLeftRightDeg),
       exactPinLocalYds: environment.exactPinLocalYds

@@ -5,8 +5,37 @@ on:
   push:
     branches:
       - web-course-importer-surface-semantics-v2
+      - auto-aim-windows-companion-v1
+      - unified-imported-course-positioning-v1
     paths:
       - "helpers/looper_companion.py"
+      - "helpers/gspro_native_discovery.py"
+      - "helpers/gspro_window_capture.py"
+      - "helpers/gspro_live_observations.py"
+      - "helpers/gspro_native_wind_ocr.py"
+      - "helpers/install_looper_companion.ps1"
+      - "helpers/gspro_native_lie_ocr.py"
+      - "helpers/gspro_companion_minimap_calibration.py"
+      - "helpers/waypoint_scale_cv.py"
+      - "helpers/waypoint_scale.py"
+      - "helpers/minimap_registration.py"
+      - "tests/test_gspro_companion_waypoint.py"
+      - "helpers/gspro_direct_click.py"
+      - "helpers/gspro_minimap_markers.py"
+      - "helpers/gspro_minimap_pipeline.py"
+      - "helpers/auto_aim_transform.py"
+      - "helpers/minimap_registration.py"
+      - "helpers/waypoint_scale.py"
+      - "helpers/waypoint_scale_cv.py"
+      - "tests/test_gspro_companion_minimap.py"
+      - "tests/test_gspro_companion_actuator.py"
+      - "tests/test_gspro_companion_discovery.py"
+      - "tests/test_gspro_companion_observations.py"
+      - "tests/test_gspro_companion_wind.py"
+      - "tests/test_looper_companion_stage_a.py"
+      - "src/adapters/looperCompanion.ts"
+      - "public/dev/companion-connect.html"
+      - "public/dev/companion-observations.html"
       - "helpers/open_golf_coach_helper.py"
       - "helpers/open_golf_coach_helper_lie_footer.py"
       - "helpers/install_looper_companion.ps1"
@@ -33,7 +62,40 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller opengolfcoach
+          python -m pip install pyinstaller opengolfcoach numpy opencv-python-headless
+
+      - name: Reuse physically validated portable Tesseract bundle
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Reuse OUR own pinned OCR bundle already proven on physical GSPro.
+          # Avoid Chocolatey package-feed 504 failures and version drift.
+          $tag = "looper-companion-autoaim-stage-c-d11eb7ad"
+          $extract = Join-Path $env:RUNNER_TEMP "pinned-looper-ocr"
+          New-Item -ItemType Directory -Path $extract -Force | Out-Null
+          gh release download $tag --repo "$env:GITHUB_REPOSITORY" --pattern "looper-windows-companion.zip" --dir $extract
+          if ($LASTEXITCODE -ne 0) { throw "Pinned OCR release download failed." }
+          $zip = Join-Path $extract "looper-windows-companion.zip"
+          if (!(Test-Path $zip)) { throw "Pinned OCR ZIP missing." }
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $extract "unzipped")
+          $ocrRoot = Join-Path $extract "unzipped/ocr"
+          if (!(Test-Path (Join-Path $ocrRoot "tesseract.exe")) -or
+              !(Test-Path (Join-Path $ocrRoot "tessdata/eng.traineddata"))) {
+            throw "Pinned release lacks complete portable Tesseract and English data."
+          }
+          Copy-Item $ocrRoot -Destination portable-ocr -Recurse -Force
+          & "portable-ocr/tesseract.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "Pinned OCR executable cannot launch." }
+          $langs = & "portable-ocr/tesseract.exe" --list-langs
+          if ($LASTEXITCODE -ne 0 -or $langs -notcontains "eng") {
+            throw "Pinned English traineddata unavailable."
+          }
+
+      - name: Test Stage C read-only registration, safety, discovery and handshake
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p "test_*companion*.py" -v
 
       - name: Build Looper Companion
         shell: pwsh
@@ -66,6 +128,37 @@ jobs:
               throw "Unexpected companion version: $($health.version)"
             }
 
+            $headers = @{ Origin = "https://thelooper.golf" }
+            $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-c-preflight.1") {
+              throw "New companion status route is not available in packaged build."
+            }
+            if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
+              throw "Stage B discover/capture diagnostic capabilities missing."
+            }
+            $capture = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/capture-check" -Headers $headers -TimeoutSec 3
+            if ($capture.windowCapture.status -ne "not-connected") {
+              throw "Capture check without GSPro must fail closed."
+            }
+            if ($companion.capabilities.liveObservations -ne $true) {
+              throw "Unified observation diagnostic capability missing."
+            }
+            $observed = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/observations" -Headers $headers -TimeoutSec 12
+            if ($observed.schemaVersion -ne "native-observations-v1" -or $observed.capabilities.autoAim -ne $false) {
+              throw "Packaged native observation endpoint failed read-only smoke."
+            }
+            if ($companion.capabilities.autoAim -ne $false) {
+              throw "Stage B must never enable Auto Aim."
+            }
+
+            # Tesseract must ship next to packaged executable, and be capable
+            # of OCR without relying on a system-wide install.
+            if (!(Test-Path "portable-ocr/tesseract.exe") -or !(Test-Path "portable-ocr/tessdata/eng.traineddata")) {
+              throw "Portable OCR bundle was not assembled."
+            }
+            $engineVersion = & "portable-ocr/tesseract.exe" --version 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Bundled OCR executable could not launch." }
+
             # GSPro is intentionally absent on CI. These calls prove that the
             # packaged wind/lie endpoints are present and fail closed instead
             # of crashing when no GSPro window exists.
@@ -85,12 +178,45 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path package -Force | Out-Null
           Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
+          Copy-Item -Path portable-ocr -Destination package/ocr -Recurse -Force
           Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
           Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
+      - name: Publish isolated Stage C preflight prerelease
+        continue-on-error: true
+        if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          $tag = "looper-companion-autoaim-stage-c-$shortSha"
+          gh release create $tag looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion Auto Aim Stage C Preflight ($shortSha)" `
+            --notes "Isolated Windows development installer with original physically proven minimap CV/math packaged. Read-only diagnostics only. Native input and browser aim commands remain disabled." `
+            --prerelease
+
+      - name: Publish isolated unified course-positioning companion prerelease
+        if: github.ref == 'refs/heads/unified-imported-course-positioning-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          $tag = "looper-companion-unified-course-$shortSha"
+          gh release create $tag looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Unified Course Positioning Research ($shortSha)" `
+            --notes "Isolated read-only Windows Companion development build: updated near-white gray-waypoint OCR and scale diagnostics for imported courses. No Auto Aim click/input. Test only with a separate branch-only Looper preview." `
+            --prerelease
+
       - name: Publish rolling companion prerelease
+        if: github.ref == 'refs/heads/web-course-importer-surface-semantics-v2'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

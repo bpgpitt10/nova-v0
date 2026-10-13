@@ -5,6 +5,14 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
+import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import { loadLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
+import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistance } from '../courseGeometry/gsproWorldCourseProjection'
+import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
+import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
+import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
+import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
+import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
   isBrowserGsproAccessSupported,
@@ -31,6 +39,7 @@ export type BrowserGsproCourseShot = {
   courseKey: string | null
   startLocalYds: CoursePointYds | null
   endLocalYds: CoursePointYds | null
+  positionQuality?: 'verified' | 'provisional'
   endingSurface: string | null
   endingSurfaceRaw: number | null
   distanceToPinYds: number | null
@@ -41,7 +50,7 @@ export type BrowserGsproCourseSnapshot = {
   roundId: number | null
   holeNumber: number | null
   ballLocalYds: CoursePointYds | null
-  ballSource: 'currentRound' | 'cached-tee' | 'unavailable'
+  ballSource: 'currentRound' | 'world-provisional' | 'cached-tee' | 'unavailable'
   surface: string | null
   surfaceSource: 'currentRound' | 'cached-tee' | 'unavailable'
   distanceToPinYds: number | null
@@ -254,16 +263,7 @@ export const connectBrowserGsproCourseStateFolder = async () => {
 
 export const isBrowserGsproCourseStatePrepared = () => preparedStateHandle !== null
 
-const surfaceFromRaw = (value: number | null) => {
-  switch (value) {
-    case 1: return 'rough'
-    case 2: return 'fairway'
-    case 3: return 'sand'
-    case 5: return 'green'
-    case 18: return 'tee'
-    default: return null
-  }
-}
+const surfaceFromRaw = surfaceFromGsproRaw
 
 const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   const parsed = JSON.parse(text) as unknown
@@ -412,6 +412,24 @@ const worldPointToHoleLocal = async (
   return [rightYds, forwardYds]
 }
 
+// Cache static geometry fetches, not tee hypotheses (which can change during
+// the active round after a fresh native minimap reading).
+const importedGeometryCache = new Map<string, Promise<Awaited<ReturnType<typeof loadCourseHoleGeometry>>>>()
+const loadImportedHole = (courseId: CourseId, holeNumber: number, roundId: string) => {
+  // The provider normalizes to the selected tee as part of loading geometry.
+  // A new round can select a different tee without leaving this browser tab.
+  // Keying only by course/hole silently reused the previous tee frame.
+  const key = courseId + ':' + holeNumber + ':' + roundId
+  const cached = importedGeometryCache.get(key)
+  if (cached) return cached
+  const work = loadCourseHoleGeometry(courseId, holeNumber).catch(error => {
+    importedGeometryCache.delete(key)
+    throw error
+  })
+  importedGeometryCache.set(key, work)
+  return work
+}
+
 const buildShot = async (
   record: RoundShotRecord,
   roundRecords: RoundShotRecord[],
@@ -425,18 +443,67 @@ const buildShot = async (
 
   let startLocalYds: CoursePointYds | null = null
   let endLocalYds: CoursePointYds | null = null
-  if (coordinateCourseId === GREYWOLF_COURSE_ID) {
-    const sameHole = roundRecords
-      .filter((item) => asNumber(item.Hole) === holeIndex)
-      .sort((a, b) => recordSortValue(a) - recordSortValue(b))
-    const firstStart = vec3(sameHole[0]?.StartingPOS)
-    const start = vec3(record.StartingPOS)
-    const end = vec3(record.EndingPOS)
-    if (firstStart && start && end) {
-      ;[startLocalYds, endLocalYds] = await Promise.all([
-        worldPointToHoleLocal(start, firstStart, holeNumber),
-        worldPointToHoleLocal(end, firstStart, holeNumber),
-      ])
+  let positionQuality: 'verified' | 'provisional' | undefined
+  const sameHole = roundRecords
+    .filter((item) => asNumber(item.Hole) === holeIndex)
+    .sort((a, b) => recordSortValue(a) - recordSortValue(b))
+  const firstStart = vec3(sameHole[0]?.StartingPOS)
+  const start = vec3(record.StartingPOS)
+  const end = vec3(record.EndingPOS)
+  if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
+    ;[startLocalYds, endLocalYds] = await Promise.all([
+      worldPointToHoleLocal(start, firstStart, holeNumber),
+      worldPointToHoleLocal(end, firstStart, holeNumber),
+    ])
+    positionQuality = 'verified'
+  } else if (firstStart && start && end && coordinateCourseId) {
+    // New generic route: only align relative world movement after resolving
+    // a genuine selected tee origin in our map frame. For an unmatched tee,
+    // the native multi-waypoint ruler must first save a per-round tee anchor.
+    // A bare package route/back-tee marker is NOT such an anchor.
+    const round = loadActiveLiveCaddieRound()
+    if (round?.courseId === coordinateCourseId) {
+      try {
+        const [geometry, heading] = await Promise.all([
+          loadImportedHole(coordinateCourseId, holeNumber, round.id),
+          loadCourseHoleHeadingDegreesTrue(coordinateCourseId, holeNumber),
+        ])
+        const locked = loadTeeCalibration(
+          courseGeometryFingerprint(geometry), holeNumber, round.normalizedTeeSet,
+        )
+        const named = matchingTeeCandidates(geometry, round.normalizedTeeSet)
+        const observed = loadLiveTeeSessionAnchor(round, holeNumber)
+        const teeAnchor = locked?.status === 'locked'
+          ? locked.courseLocalYds
+          : observed?.point ?? (named.length === 1 ? named[0].coursePoint : null)
+        if (teeAnchor && heading != null) {
+          // Current FarmLinks H1 independent physical holdout: 227.1 yards
+          // forward, 3.93 yards right vs GSPro 227.1 total / 3.9 offline.
+          // For other imports 0° GSPro-world heading bias remains PROVISIONAL.
+          startLocalYds = projectGsproWorldPointToHole(
+            teeAnchor, firstStart, start, heading,
+          )
+          endLocalYds = projectGsproWorldPointToHole(
+            teeAnchor, firstStart, end, heading,
+          )
+          const remainingYards = asNumber(record.DistanceToPin)
+          const gsproRemainingYds = remainingYards == null ? null : remainingYards * METERS_TO_YARDS
+          // Do not apply a world heading to any imported course blindly.
+          // Independently cross-check current GSPro remaining straight distance
+          // against the mapped GREEN centroid (not a supposedly exact pin).
+          if (geometry.registration.status !== 'unavailable'
+            && provisionalWorldPositionMatchesPinDistance(
+              endLocalYds, geometry.markers.pin ?? null, gsproRemainingYds,
+            ) && startLocalYds) {
+            positionQuality = 'provisional'
+          } else {
+            startLocalYds = null
+            endLocalYds = null
+          }
+        }
+      } catch (error) {
+        console.warn('[GSPro state] Imported-course world-to-map position unavailable.', error)
+      }
     }
   }
 
@@ -453,6 +520,7 @@ const buildShot = async (
     courseKey: asString(record.CourseKey),
     startLocalYds,
     endLocalYds,
+    ...(positionQuality ? { positionQuality } : {}),
     endingSurface: surfaceFromRaw(endingSurfaceRaw),
     endingSurfaceRaw,
     distanceToPinYds: distanceToPin == null ? null : distanceToPin * METERS_TO_YARDS,
@@ -597,13 +665,12 @@ const buildSnapshot = async (
     )
   }
 
-  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
-    warnings.push(
-      `${selectedCourse.name} is selected and validated, but GSPro-world shot coordinates are not registered for this course yet. Shot ingestion continues without live ball placement.`,
-    )
-  }
-
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
+  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+    warnings.push(latestShot?.positionQuality === 'provisional'
+      ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
+      : 'Imported-course GSPro shot recognized, but no distance-consistent map registration is available; hazard/aim recommendations must stay paused.')
+  }
 
   let holeNumber = preShotHole ?? latestRecordHole
   if (preShotHole == null && logHole != null) {
@@ -707,7 +774,9 @@ const buildSnapshot = async (
     roundId: activeRoundId,
     holeNumber,
     ballLocalYds: currentShot?.endLocalYds ?? null,
-    ballSource: currentShot?.endLocalYds ? 'currentRound' : 'unavailable',
+    ballSource: currentShot?.endLocalYds
+      ? currentShot.positionQuality === 'provisional' ? 'world-provisional' : 'currentRound'
+      : 'unavailable',
     surface: preShotSurface ?? currentSurface,
     surfaceSource: preShotSurface || currentSurface ? 'currentRound' : 'unavailable',
     distanceToPinYds: preShotDistanceYds ?? currentShot?.distanceToPinYds ?? null,

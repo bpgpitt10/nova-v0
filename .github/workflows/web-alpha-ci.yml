@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - web-alpha-mishits
+      - auto-aim-windows-companion-v1
+      - provisional-tee-live-fallback-v1
+      - unified-imported-course-positioning-v1
   pull_request:
     branches:
       - web-gspro-clean
@@ -23,6 +26,36 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test read-only native aim preview against Greywolf fixtures
+        run: npm run test:companion-preview
+
+      - name: Test GSPro to OSM research-only landmark transform and existing hazard invariants
+        run: node tools/test-gspro-course-landmark-registration.mjs
+
+      - name: Test marker-only GSPro ball-waypoint-pin OSM diagnostics without hazard tagging
+        run: node tools/test-gspro-marker-only-alignment.mjs
+
+      - name: Test provisional missing tee fallback, native ruler input and locked-tee priority
+        run: node tools/test-provisional-tee-live-fallback.mjs
+
+      - name: Test FarmLinks physical GSPro world movement and round tee session isolation
+        run: node tools/test-unified-gspro-world-projection.mjs
+
+      - name: Test actual FarmLinks 572-yard stale tee overwrite regression
+        run: node tools/test-live-first-tee-display.mjs
+
+      - name: Test native one-shot wind/lie bridge from recorded FarmLinks 9mph SE capture
+        run: node tools/test-one-shot-companion-wind.mjs
+
+      - name: Test FarmLinks Deep Rough correction and ambiguous GSPro surface protection
+        run: node tools/test-gspro-surface-fallback.mjs
+
+      - name: Test hard tee-only Driver and Mini Driver rule in full recommender
+        run: node tools/test-live-tee-only-club-rule.mjs
+
+      - name: Test evidence-based GSPro numeric surface library and paired HUD observations
+        run: node tools/test-gspro-surface-evidence-library.mjs
 
       - name: Build web app
         run: npm run build
