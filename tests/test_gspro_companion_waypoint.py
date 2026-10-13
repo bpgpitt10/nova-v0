@@ -10,10 +10,12 @@ import unittest
 from unittest import mock
 
 import numpy as np
+import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "helpers"))
 import gspro_companion_minimap_calibration as integrated
 import gspro_live_observations as observations
+import waypoint_scale_cv
 from waypoint_scale import Point
 
 WIN = {
@@ -46,6 +48,31 @@ def gray(yards=150.0, y=125.0, votes=8):
 
 
 class WaypointIntegrationTests(unittest.TestCase):
+    def test_near_white_farmlinks_ovals_rank_ahead_of_text(self):
+        # FarmLinks field screenshot (2026-10-12): neutral-white ovals next
+        # to visible 445 and 253 yardages; old HSV saturation floor 18
+        # incorrectly rejected markers whose actual saturation was ~7-9.
+        image = np.full((900, 400, 3), (34, 100, 47), dtype=np.uint8)
+        for x, y, text in ((205, 210, "445"), (160, 510, "253")):
+            cv2.circle(image, (x, y), 8, (236, 243, 247), -1)
+            cv2.putText(image, text, (x + 5, y + 31),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                        (245, 247, 248), 2, cv2.LINE_AA)
+        # The pin is fully white, not a gray waypoint.
+        cv2.circle(image, (206, 150), 8, (255, 255, 255), -1)
+        found = waypoint_scale_cv._candidate_markers(image)
+        self.assertGreaterEqual(len(found), 2)
+        self.assertLess(np.hypot(found[0].x - 205, found[0].y - 210), 3)
+        self.assertLess(np.hypot(found[1].x - 160, found[1].y - 510), 3)
+        self.assertTrue(all(np.hypot(point.x - 206, point.y - 150) > 15 for point in found[:2]))
+
+    def test_waypoint_timing_details_are_not_overwritten(self):
+        with mock.patch.object(integrated.waypoint_cv, "detect_gray_waypoints", return_value=[]):
+            result = self.observe(state("last_completed"))
+        self.assertIn("waypointOcr", result["timingMs"])
+        self.assertIsNotNone(result["timingMs"]["waypointOcr"])
+        self.assertIn("ovalCandidateCount", result["waypointRuler"])
+
     def setUp(self):
         integrated._tee_cache = None
         self.engine = mock.patch.object(
