@@ -7,6 +7,7 @@ import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
+import { isNewLooperRoundForCapture } from '../liveCaddie/teeCaptureReadiness'
 import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types'
 import {
   dispatchLiveCaddieShotStateChanged,
@@ -384,6 +385,7 @@ export const connectToBrowserGsproCourseState = ({
   let lastCoreSnapshot: CoreBrowserGsproCourseSnapshot | null = null
   let lastPublishedShotStateKey: string | null = null
   let lastPublishedSnapshotSignature: string | null = null
+  let lastManuallyArmedLooperRoundId: string | null = null
 
   const publishSnapshot = (
     snapshot: BrowserGsproCourseSnapshot,
@@ -418,7 +420,20 @@ export const connectToBrowserGsproCourseState = ({
   const onStartRound = () => {
     if (disconnected) return
     const selectedCourseId = loadLastSelectedCourseId()
-    if (selectedCourseId === UNSELECTED_COURSE_ID) return
+    const armedRound = loadActiveLiveCaddieRound()
+    if (selectedCourseId === UNSELECTED_COURSE_ID || !armedRound
+      || armedRound.courseId !== selectedCourseId) return
+    if (!isNewLooperRoundForCapture(lastManuallyArmedLooperRoundId, armedRound.id)) {
+      // LiveCaddieRoundBootstrap may re-emit this same round on navigation;
+      // it must not quarantine real shots or reset a successful capture.
+      return
+    }
+    lastManuallyArmedLooperRoundId = armedRound.id
+    // A NEW round may have identical course/tee/hole/OSM location and even
+    // the same stale GSPro RoundID. Reset snapshot deduplication, otherwise
+    // it suppresses the new manual start and downstream fresh wind/lie state.
+    lastPublishedShotStateKey = null
+    lastPublishedSnapshotSignature = null
 
     manualRoundStart.active = true
     manualRoundStart.baselineCaptured = lastCoreSnapshot !== null

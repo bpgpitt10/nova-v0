@@ -42,7 +42,18 @@ import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeom
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
-import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
+import {
+  loadActiveLiveCaddieRound,
+  LIVE_CADDIE_START_ROUND_EVENT,
+  type LiveCaddieStartRoundDetail,
+} from '../liveCaddie/roundRuntime'
+import {
+  firstTeeCaptureKey,
+  isNewLooperRoundForCapture,
+  shouldHoldUnmatchedTeeRecommendation,
+  captureStatusForKey,
+  type TeeCaptureProgress,
+} from '../liveCaddie/teeCaptureReadiness'
 import { activeManualLieSurface, liveShotLieKey, type ManualLieSelection } from '../liveCaddie/currentShotLie'
 import { clubEligibleForShot, type ShotOriginEligibility } from '../liveCaddie/clubShotEligibility'
 import { recordGsproSurfaceHudConfirmation } from '../adapters/gsproSurfaceEvidenceStore'
@@ -472,6 +483,13 @@ export default function LiveCaddiePage() {
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const triedProvisionalTeeNative = useRef(new Set<string>())
+  const [captureRoundId, setCaptureRoundId] = useState<string | null>(
+    () => loadActiveLiveCaddieRound()?.id ?? null,
+  )
+  const lastCaptureRoundIdRef = useRef(captureRoundId)
+  const [teeCaptureProgress, setTeeCaptureProgress] = useState<TeeCaptureProgress | null>(null)
+  const [fallbackApprovedKey, setFallbackApprovedKey] = useState<string | null>(null)
+  const [captureRetryNonce, setCaptureRetryNonce] = useState(0)
   const [holeHeadingDegreesTrue, setHoleHeadingDegreesTrue] = useState<number | null>(null)
   const [show95, setShow95] = useState(false)
   const [showRiskTail, setShowRiskTail] = useState(false)
@@ -482,6 +500,29 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
+
+  // The Live Caddie page stays mounted while navigating. Start Round emits
+  // several bootstrap events for the same Looper round, so reset ONLY when
+  // the stable Looper round ID actually changes. GSPro's stale RoundID is not
+  // an adequate identity for manual first-tee calibration.
+  useEffect(() => {
+    const onStartRound = (event: Event) => {
+      const detail = (event as CustomEvent<LiveCaddieStartRoundDetail>).detail
+      const id = detail?.round?.id
+      if (!isNewLooperRoundForCapture(lastCaptureRoundIdRef.current, id)) return
+      lastCaptureRoundIdRef.current = id
+      triedProvisionalTeeNative.current.clear()
+      setCaptureRoundId(id)
+      setTeeCaptureProgress(null)
+      setFallbackApprovedKey(null)
+      setNativeObservations(null)
+      setLiveSnapshot(null)
+      setManualShotLie(null)
+      setArmedClub(null)
+    }
+    window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+    return () => window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+  }, [])
 
   // Background discovery only. Existing browser data/visual connections remain
   // authoritative until companion data + capture parity has passed sim tests.
@@ -638,7 +679,7 @@ export default function LiveCaddiePage() {
     return () => {
       active = false
     }
-  }, [courseId, holeNumber])
+  }, [courseId, holeNumber, captureRoundId])
 
   // Preserve production's detailed green terrain loading and exact-pin
   // approach targeting; do not assert exact targeting from provisional frames.
@@ -654,37 +695,57 @@ export default function LiveCaddiePage() {
     return () => { active = false }
   }, [selectedCourse?.slug, holeNumber])
 
-  // One bounded, read-only native observation at a new, UNMAPPED tee. The
-  // manual Start Round pathway stays authoritative about Hole 1. This does
-  // not create another hole tracker or run continuous screenshot capture.
+  const teeCaptureKey = firstTeeCaptureKey(captureRoundId, courseId, holeNumber)
+  const teeCaptureStatus = captureStatusForKey(teeCaptureProgress, teeCaptureKey)
+  const retryTeeCapture = () => {
+    triedProvisionalTeeNative.current.delete(teeCaptureKey)
+    setNativeObservations(null)
+    setTeeCaptureProgress(null)
+    setFallbackApprovedKey(null)
+    setCaptureRetryNonce(value => value + 1)
+  }
+
+  // A single, bounded native observation is read for each Looper *round* and
+  // hole, regardless of stale/unknown GSPro RoundID. A cancelled fetch must
+  // not burn the sole attempt. An explicit retry does not enable polling.
   useEffect(() => {
     if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== holeNumber
       || liveSnapshot.teePlacement !== 'provisional'
       || liveSnapshot.nextShotNumber !== 1
       || companionStatus?.gspro.status !== 'connected'
       || nativeVisualActive) return
-    const key = [courseId, holeNumber, liveSnapshot.roundId ?? 'manual-start'].join(':')
+    const key = teeCaptureKey
     if (triedProvisionalTeeNative.current.has(key)) return
     triedProvisionalTeeNative.current.add(key)
     let cancelled = false
+    let pending = true
+    setTeeCaptureProgress({ key, status: 'capturing' })
     void readLooperCompanionObservations(45000)
       .then(obs => {
         if (cancelled) return
         setNativeObservations(obs)
-        // The same bounded tee snapshot already includes current HUD wind
-        // and lie. Send that fresh, source-gated data to the existing
-        // shot-aware adapters; do NOT start the optional 16s native poller.
         publishOneShotCompanionHud(obs)
+        setTeeCaptureProgress({
+          key, status: obs.status === 'ready' ? 'complete' : 'failed',
+          note: obs.status === 'ready' ? undefined : 'Companion could not read the GSPro minimap.',
+        })
       })
-      .catch(() => { /* Route-origin provisional estimate remains explicit. */ })
-    return () => { cancelled = true }
-  // Do not cancel a 10-40s OCR call merely because a new snapshot object
-  // arrived with the same hole/shot/tee identity. The attempted-key set would
-  // otherwise block the retry and permanently lose the first tee measurement.
+      .catch(error => {
+        if (!cancelled) setTeeCaptureProgress({
+          key, status: 'failed',
+          note: error instanceof Error ? error.message : 'Native tee capture failed.',
+        })
+      })
+      .finally(() => { pending = false })
+    return () => {
+      cancelled = true
+      if (pending) triedProvisionalTeeNative.current.delete(key)
+    }
   }, [
     hole, courseId, holeNumber, liveSnapshot?.holeNumber,
     liveSnapshot?.nextShotNumber, liveSnapshot?.teePlacement,
-    liveSnapshot?.roundId, companionStatus?.gspro.status, nativeVisualActive,
+    companionStatus?.gspro.status, nativeVisualActive,
+    teeCaptureKey, captureRetryNonce,
   ])
 
   // The ball and pin plus a native waypoint scale produce a STRAIGHT distance,
@@ -774,6 +835,20 @@ export default function LiveCaddiePage() {
     } : null,
   )
   const measuredPreShotTee = firstTeeDisplay.measured
+  const activeRoundForCapture = loadActiveLiveCaddieRound()
+  const waitingForNewRoundSnapshot = activeRoundForCapture?.id === captureRoundId
+    && activeRoundForCapture.phase === 'armed'
+    && activeRoundForCapture.courseId === courseId
+    && holeNumber === 1
+    && (!liveSnapshot || liveSnapshot.holeNumber !== holeNumber)
+  const holdFirstTeeRecommendation = waitingForNewRoundSnapshot
+    || shouldHoldUnmatchedTeeRecommendation({
+      matchesCurrentHole: liveSnapshot?.holeNumber === holeNumber,
+      nextShotNumber: liveSnapshot?.nextShotNumber ?? null,
+      teePlacement: liveSnapshot?.teePlacement,
+      calibrated: measuredPreShotTee !== null,
+      fallbackApproved: fallbackApprovedKey === teeCaptureKey,
+    })
 
   useEffect(() => {
     if (nativeProvisionalTee?.status !== 'provisional') return
@@ -1015,7 +1090,7 @@ export default function LiveCaddiePage() {
   }, [isGreenSurface])
 
   useEffect(() => {
-    if (!hole || isGreenSurface || spatialPositionUnavailable) {
+    if (!hole || isGreenSurface || spatialPositionUnavailable || holdFirstTeeRecommendation) {
       setEvaluations([])
       setEvaluationError(null)
       setEvaluationPending(false)
@@ -1087,6 +1162,7 @@ export default function LiveCaddiePage() {
     target,
     isGreenSurface,
     spatialPositionUnavailable,
+    holdFirstTeeRecommendation,
     windMph,
     windRelativeDeg,
     elevationDeltaFt,
@@ -1498,6 +1574,36 @@ export default function LiveCaddiePage() {
             <span className="live-kicker">ON GREEN</span>
             <h1>Caddie paused.</h1>
             <p>Looper is recording the putt sequence and hole completion for scoring, but it is not calculating a club, aim, wind or lie recommendation.</p>
+          </section>
+        ) : holdFirstTeeRecommendation ? (
+          <section className="live-empty-state" data-recommendation-gate="first-tee-capture">
+            <span className="live-kicker">PROVISIONAL TEE · NOT YET MEASURED</span>
+            <h1>{teeCaptureStatus === 'capturing'
+              ? 'Locating tee and reading conditions…'
+              : 'Tee measurement needed.'}</h1>
+            <p>
+              This hole's initial OSM position is only an estimate. Looper will
+              not rank a club or aim line from that unmeasured tee.
+              {teeCaptureStatus === 'failed' ? ' The last native attempt did not complete.' : ''}
+              {teeCaptureStatus === 'complete'
+                ? ' Native capture returned, but the waypoint scale did not establish a matching tee.'
+                : null}
+              {teeCaptureStatus === 'not-started'
+                ? ' Waiting for a connected Windows Companion or an explicit fallback choice.'
+                : null}
+            </p>
+            {teeCaptureProgress?.key === teeCaptureKey && teeCaptureProgress.note
+              ? <p>{teeCaptureProgress.note}</p> : null}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+              <button type="button" onClick={retryTeeCapture}
+                disabled={teeCaptureStatus === 'capturing'}>
+                {teeCaptureStatus === 'capturing' ? 'Reading GSPro…' : 'Retry tee measurement'}
+              </button>
+              <button type="button" onClick={() => setFallbackApprovedKey(teeCaptureKey)}>
+                Use approximate OSM tee instead
+              </button>
+            </div>
+            <p>Approximate fallback will display a provisional club estimate, not verified hazard carries or an exact tee position.</p>
           </section>
         ) : spatialPositionUnavailable ? (
           <section className="live-empty-state" data-recommendation-gate="unregistered-ball">
