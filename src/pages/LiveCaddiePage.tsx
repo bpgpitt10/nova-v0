@@ -516,6 +516,7 @@ export default function LiveCaddiePage() {
       setTeeCaptureProgress(null)
       setFallbackApprovedKey(null)
       setNativeObservations(null)
+      setLiveSnapshot(null)
       setManualShotLie(null)
       setArmedClub(null)
     }
@@ -678,7 +679,7 @@ export default function LiveCaddiePage() {
     return () => {
       active = false
     }
-  }, [courseId, holeNumber])
+  }, [courseId, holeNumber, captureRoundId])
 
   // Preserve production's detailed green terrain loading and exact-pin
   // approach targeting; do not assert exact targeting from provisional frames.
@@ -834,13 +835,20 @@ export default function LiveCaddiePage() {
     } : null,
   )
   const measuredPreShotTee = firstTeeDisplay.measured
-  const holdFirstTeeRecommendation = shouldHoldUnmatchedTeeRecommendation({
-    matchesCurrentHole: liveSnapshot?.holeNumber === holeNumber,
-    nextShotNumber: liveSnapshot?.nextShotNumber ?? null,
-    teePlacement: liveSnapshot?.teePlacement,
-    calibrated: measuredPreShotTee !== null,
-    fallbackApproved: fallbackApprovedKey === teeCaptureKey,
-  })
+  const activeRoundForCapture = loadActiveLiveCaddieRound()
+  const waitingForNewRoundSnapshot = activeRoundForCapture?.id === captureRoundId
+    && activeRoundForCapture.phase === 'armed'
+    && activeRoundForCapture.courseId === courseId
+    && holeNumber === 1
+    && (!liveSnapshot || liveSnapshot.holeNumber !== holeNumber)
+  const holdFirstTeeRecommendation = waitingForNewRoundSnapshot
+    || shouldHoldUnmatchedTeeRecommendation({
+      matchesCurrentHole: liveSnapshot?.holeNumber === holeNumber,
+      nextShotNumber: liveSnapshot?.nextShotNumber ?? null,
+      teePlacement: liveSnapshot?.teePlacement,
+      calibrated: measuredPreShotTee !== null,
+      fallbackApproved: fallbackApprovedKey === teeCaptureKey,
+    })
 
   useEffect(() => {
     if (nativeProvisionalTee?.status !== 'provisional') return
