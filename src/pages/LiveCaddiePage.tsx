@@ -49,6 +49,7 @@ import {
 } from '../liveCaddie/roundRuntime'
 import {
   firstTeeCaptureKey,
+  isNewLooperRoundForCapture,
   shouldHoldUnmatchedTeeRecommendation,
   captureStatusForKey,
   type TeeCaptureProgress,
@@ -508,7 +509,7 @@ export default function LiveCaddiePage() {
     const onStartRound = (event: Event) => {
       const detail = (event as CustomEvent<LiveCaddieStartRoundDetail>).detail
       const id = detail?.round?.id
-      if (!id || lastCaptureRoundIdRef.current === id) return
+      if (!isNewLooperRoundForCapture(lastCaptureRoundIdRef.current, id)) return
       lastCaptureRoundIdRef.current = id
       triedProvisionalTeeNative.current.clear()
       setCaptureRoundId(id)
