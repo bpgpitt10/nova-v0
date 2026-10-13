@@ -241,6 +241,8 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
         return result
 
     ocr_started = time.perf_counter()
+    oval_count = waypoint_cv.count_gray_waypoint_candidates(cropped)
+    result["waypointRuler"]["ovalCandidateCount"] = oval_count
     try:
         detected = waypoint_cv.detect_gray_waypoints(
             cropped,
@@ -262,6 +264,10 @@ def _observe_impl(cropped, ball, pin, *, window, frame_bgr, roi, state):
         } for item in detected[:MAX_WAYPOINT_CANDIDATES]
     ]
     if not detected:
+        result["waypointRuler"]["reason"] = (
+            "oval_segmentation_found_no_valid_yardage_ocr" if oval_count
+            else "no_neutral_gray_oval_candidates"
+        )
         return result
     verified_votes = [item for item in detected if item.ocr_votes >= MIN_WAYPOINT_VOTES]
     if not verified_votes:
@@ -335,9 +341,11 @@ def observe(cropped, ball, pin, *, window, frame_bgr, roi, state):
     result = _observe_impl(
         cropped, ball, pin, window=window, frame_bgr=frame_bgr, roi=roi, state=state
     )
+    # Keep detailed OCR and scale timings; the previous assignment erased them.
     result["timingMs"] = {
+        **result.get("timingMs", {}),
         "waypointCalibrationAndRegistration": round(
             (time.perf_counter() - started) * 1000, 2
-        )
+        ),
     }
     return result
