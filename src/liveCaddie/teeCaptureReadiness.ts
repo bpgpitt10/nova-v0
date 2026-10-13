@@ -34,3 +34,12 @@ export const captureStatusForKey = (
   key: string,
 ): TeeCaptureStatus | 'not-started' =>
   state?.key === key ? state.status : 'not-started'
+
+/**
+ * Opening Live Caddie can replay Start Round during bootstrap. Only a genuinely
+ * different Looper round is a new test requiring calibration reset.
+ */
+export const isNewLooperRoundForCapture = (
+  previousRoundId: string | null,
+  nextRoundId: string | null | undefined,
+): boolean => Boolean(nextRoundId && previousRoundId !== nextRoundId)
