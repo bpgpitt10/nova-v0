@@ -41,6 +41,8 @@ import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeo
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { activeManualLieSurface, liveShotLieKey, type ManualLieSelection } from '../liveCaddie/currentShotLie'
 import { clubEligibleForShot, type ShotOriginEligibility } from '../liveCaddie/clubShotEligibility'
+import { recordGsproSurfaceHudConfirmation } from '../adapters/gsproSurfaceEvidenceStore'
+import type { ManualLieSurface } from '../liveCaddie/currentShotLie'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -834,6 +836,34 @@ export default function LiveCaddiePage() {
   const shotContext = nextShotNumber != null
     ? `Shot ${nextShotNumber} · ${surface}`
     : surface
+  // The final surface code belongs to the COMPLETED prior shot. Never pair a
+  // screen label with an old round, another hole or another shot.
+  const latestShot = liveMatchesHole ? liveSnapshot?.latestShot : null
+  const matchedPreviousShot = latestShot?.holeNumber === holeNumber
+    && latestShot?.roundId === liveSnapshot?.roundId
+    && nextShotNumber != null
+    && latestShot?.holeShot === nextShotNumber - 1
+  const currentRawEndingSurface = matchedPreviousShot
+    && Number.isInteger(latestShot?.endingSurfaceRaw)
+    ? latestShot?.endingSurfaceRaw ?? null : null
+  const confirmGsproHudLie = (confirmed: ManualLieSurface) => {
+    setManualShotLie({ shotKey: currentShotLieKey, surface: confirmed })
+    if (matchedPreviousShot && latestShot && currentRawEndingSurface != null
+      && latestShot.roundId != null && latestShot.holeShot != null) {
+      recordGsproSurfaceHudConfirmation({
+        shotKey: currentShotLieKey,
+        shotId: latestShot.shotId,
+        courseId,
+        holeNumber,
+        roundId: latestShot.roundId,
+        completedHoleShot: latestShot.holeShot,
+        endingSurfaceRaw: currentRawEndingSurface,
+        gsproHudLabel: confirmed,
+        observedAt: new Date().toISOString(),
+        source: 'golfer-confirmed-visible-gspro-hud',
+      })
+    }
+  }
   // The original tee is NOT the next physical ball location. Imported GSPro
   // shot files can contain true distances/lie while lacking a validated map
   // transform. Never recommend Driver/hazard lines using the previous tee.
@@ -1315,21 +1345,24 @@ export default function LiveCaddiePage() {
               {confirmedCurrentLie
                 ? ' — confirmed against the GSPro screen for this shot.'
                 : ' — based on GSPro file code / imported map; may differ from the GSPro minimap label.'}
+              {currentRawEndingSurface != null
+                ? ` Previous shot raw ending code: ${currentRawEndingSurface} (unverified mapping).`
+                : ' Previous shot raw ending code unavailable.'}
             </span>
             <span className="live-lie-confirmation-actions">
               <button type="button"
                 className={confirmedCurrentLie === 'deep-rough' ? 'selected' : ''}
-                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'deep-rough' })}>
+                onClick={() => confirmGsproHudLie('deep-rough')}>
                 Use Deep Rough
               </button>
               <button type="button"
                 className={confirmedCurrentLie === 'rough' ? 'selected' : ''}
-                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'rough' })}>
+                onClick={() => confirmGsproHudLie('rough')}>
                 Rough
               </button>
               <button type="button"
                 className={confirmedCurrentLie === 'sand' ? 'selected' : ''}
-                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'sand' })}>
+                onClick={() => confirmGsproHudLie('sand')}>
                 Sand
               </button>
               {confirmedCurrentLie ? (
