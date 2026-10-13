@@ -725,6 +725,13 @@ export default function LiveCaddiePage() {
   const shotContext = nextShotNumber != null
     ? `Shot ${nextShotNumber} · ${surface}`
     : surface
+  // The original tee is NOT the next physical ball location. Imported GSPro
+  // shot files can contain true distances/lie while lacking a validated map
+  // transform. Never recommend Driver/hazard lines using the previous tee.
+  const spatialPositionUnavailable = liveMatchesHole
+    && nextShotNumber != null && nextShotNumber > 1
+    && !liveSnapshot?.ballLocalYds
+    && liveSnapshot?.ballSource !== 'cached-tee'
   const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
   const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
@@ -796,7 +803,7 @@ export default function LiveCaddiePage() {
   }, [isGreenSurface])
 
   useEffect(() => {
-    if (!hole || isGreenSurface) {
+    if (!hole || isGreenSurface || spatialPositionUnavailable) {
       setEvaluations([])
       setEvaluationError(null)
       setEvaluationPending(false)
@@ -863,6 +870,7 @@ export default function LiveCaddiePage() {
     ball,
     target,
     isGreenSurface,
+    spatialPositionUnavailable,
     windMph,
     windRelativeDeg,
     elevationDeltaFt,
@@ -1168,6 +1176,14 @@ export default function LiveCaddiePage() {
           </section>
         ) : null}
 
+        {spatialPositionUnavailable ? (
+          <div className="live-caddie-alert bad" data-spatial-position="unavailable">
+            GSPro reported Shot {nextShotNumber} and the remaining pin distance, but its ball position
+            cannot yet be registered to this imported course map. The previous tee marker is NOT the
+            current ball. Club, hazard, elevation and aim recommendations are paused until a
+            validated position is available.
+          </div>
+        ) : null}
         {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
         {visualCaptureError ? (
           <div className="live-caddie-alert bad">GSPro visuals: {visualCaptureError}</div>
@@ -1208,6 +1224,15 @@ export default function LiveCaddiePage() {
             <span className="live-kicker">ON GREEN</span>
             <h1>Caddie paused.</h1>
             <p>Looper is recording the putt sequence and hole completion for scoring, but it is not calculating a club, aim, wind or lie recommendation.</p>
+          </section>
+        ) : spatialPositionUnavailable ? (
+          <section className="live-empty-state" data-recommendation-gate="unregistered-ball">
+            <span className="live-kicker">POSITION NOT REGISTERED</span>
+            <h1>Shot {nextShotNumber} recognized. Mapping pending.</h1>
+            <p>GSPro distance to pin: {liveSnapshot?.distanceToPinYds != null
+              ? `${Math.round(liveSnapshot.distanceToPinYds)} yd` : 'unavailable'}.
+              We will not reuse the old tee point to calculate a misleading club or aim.
+              Physical shot tracking remains active.</p>
           </section>
         ) : (
           <>
