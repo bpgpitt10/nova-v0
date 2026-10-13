@@ -43,7 +43,8 @@ const block = (reason: string): ProvisionalTeeEstimate => ({
 // These bounds are provisional product research gates, not validated errors.
 // Unknown tee placement is broad; even a length-constrained estimate remains
 // laterally uncertain. Never represent 0..1 screen framing as geographic side.
-export const MAX_ROUTE_TEE_DISTANCE_YDS = 45
+export const MAX_ROUTE_TEE_DISTANCE_YDS = 150
+export const ROUTE_SMALL_SHIFT_YDS = 45
 export const ROUTE_ONLY_UNCERTAINTY_YDS = 50
 export const DISTANCE_CONSTRAINED_UNCERTAINTY_YDS = 25
 
@@ -86,14 +87,20 @@ export const estimateProvisionalTee = (
     || measuredStraightBallPinYds < 45 || measuredStraightBallPinYds > 750) {
     return block('GSPro straight ball-to-pin distance is invalid.')
   }
-  // OSM green marker is polygon CENTROID, GSPro distance is to today's PIN.
-  // A modest disagreement can reflect pin/tee offsets; large differences
-  // typically signal dogleg route/tee/green mismatch or stale observations.
+  // OSM green marker is a polygon CENTROID; GSPro measured straight distance
+  // is to today's PIN. A mismatched back-tee anchor is not evidence that
+  // another plausible tee farther forward is invalid. Treat large permitted
+  // adjustments as very uncertain, and never certify hazard carries from them.
   const shift = baseline - measuredStraightBallPinYds
   if (Math.abs(shift) > MAX_ROUTE_TEE_DISTANCE_YDS) {
-    return block('GSPro straight distance and mapped tee/green axis disagree by more than 45 yards; cannot safely guess this tee.')
+    return block('GSPro straight distance and mapped tee/green axis disagree by more than 150 yards; no credible provisional tee can be placed.')
   }
   const axisX = dx / baseline, axisY = dy / baseline
+  // Longitudinal correction is not proof of lateral tee placement. Preserve
+  // a wide planning guard band when the original route anchor was far wrong.
+  const planningUncertaintyYds = Math.abs(shift) > ROUTE_SMALL_SHIFT_YDS
+    ? Math.min(90, Math.max(50, Math.ceil(Math.abs(shift) / 2)))
+    : DISTANCE_CONSTRAINED_UNCERTAINTY_YDS
   return {
     status: 'provisional',
     point: [
@@ -101,7 +108,7 @@ export const estimateProvisionalTee = (
       tee[1] + axisY * shift,
     ],
     source: 'ball-pin-distance-constrained',
-    uncertaintyRadiusYds: DISTANCE_CONSTRAINED_UNCERTAINTY_YDS,
+    uncertaintyRadiusYds: planningUncertaintyYds,
     distanceInputYds: measuredStraightBallPinYds,
     adjustmentYds: shift,
     note: 'Projected GSPro ball-to-pin ruler onto the ' + anchorDescription + ' to green-centroid bearing. Lateral tee position is NOT established by minimap screen X. Approximate tee only.',
