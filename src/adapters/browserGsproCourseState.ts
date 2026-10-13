@@ -132,7 +132,10 @@ const loadLiveTeeGeometry = (
   courseId: Exclude<ReturnType<typeof loadLastSelectedCourseId>, typeof UNSELECTED_COURSE_ID>,
   holeNumber: number,
 ) => {
-  const key = `${courseId}:${holeNumber}`
+  const selectedRound = loadActiveLiveCaddieRound()
+  // loadCourseHoleGeometry embeds the active tee selection in the frame.
+  // Never keep a tee frame from a prior White/Blue round in this long-lived cache.
+  const key = `${courseId}:${holeNumber}:${selectedRound?.courseId === courseId ? selectedRound.id : 'no-round'}`
   const cached = liveTeeGeometryCache.get(key)
   if (cached) return cached
   const pending = loadCourseHoleGeometry(courseId, holeNumber)
