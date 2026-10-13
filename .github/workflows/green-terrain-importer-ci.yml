@@ -1,0 +1,106 @@
+name: Validate green terrain importer
+
+on:
+  push:
+    branches:
+      - web-course-importer-current-lineage-v1
+    paths:
+      - 'tools/build_course_green_detail.py'
+      - 'tools/build_course_terrain.py'
+      - 'tools/fetch_course_dem.py'
+      - 'tools/import_course_canonical.py'
+      - 'tools/compose_course_package_canonical.py'
+      - 'tools/validate_course_green_detail.py'
+      - 'tools/audit_course_green_surface_quality.py'
+      - 'tools/update_course_cache_after_rebuild.py'
+      - 'requirements-course-geometry.txt'
+      - '.github/workflows/rebuild-course-canonical.yml'
+      - '.github/workflows/green-terrain-importer-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: web-course-importer-current-lineage-v1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-course-geometry.txt
+      - name: Compile importer scripts
+        run: |
+          python -m py_compile \
+            tools/build_course_green_detail.py \
+            tools/build_course_terrain.py \
+            tools/fetch_course_dem.py \
+            tools/import_course_canonical.py \
+            tools/compose_course_package_canonical.py \
+            tools/validate_course_green_detail.py \
+            tools/audit_course_green_surface_quality.py \
+            tools/update_course_cache_after_rebuild.py
+      - name: Build and validate synthetic 18-hole green terrain
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import rasterio
+          from rasterio.transform import from_origin
+          from rasterio.warp import transform
+
+          out = Path('/tmp/green-importer-test')
+          out.mkdir(parents=True, exist_ok=True)
+          tee = [44.4560, -86.2420]
+          green = [44.4570, -86.2420]
+          holes = {}
+          for number in range(1, 19):
+              holes[str(number)] = {
+                  'hole': number,
+                  'coordinateFrame': {
+                      'origin': 'selected-tee',
+                      'anchorLatLon': tee,
+                      'selectedTeeLatLon': tee,
+                      'targetGreenLatLon': green,
+                      'headingDegreesTrue': 0.0,
+                  },
+                  'surfaces': {
+                      'green': [[[-12, 95], [12, 95], [12, 125], [-12, 125]]],
+                  },
+              }
+          course = {
+              'schemaVersion': 'looper-static-course-package-v1',
+              'courseId': 'synthetic-green-importer-test',
+              'courseName': 'Synthetic Importer Test',
+              'holes': holes,
+          }
+          (out / 'course-v1.json').write_text(json.dumps(course), encoding='utf-8')
+
+          xs, ys = transform('EPSG:4326', 'EPSG:3857', [tee[1]], [tee[0]])
+          center_x, center_y = xs[0], ys[0]
+          width = height = 900
+          pixel = 1.0
+          transform_affine = from_origin(center_x - width/2, center_y + height/2, pixel, pixel)
+          rows, cols = np.mgrid[0:height, 0:width]
+          dem = (300.0 + cols * 0.005 + rows * 0.003).astype('float32')
+          with rasterio.open(
+              out / 'dem.tif', 'w', driver='GTiff', width=width, height=height,
+              count=1, dtype='float32', crs='EPSG:3857', transform=transform_affine,
+              nodata=-9999.0,
+          ) as dataset:
+              dataset.write(dem, 1)
+          PY
+          python tools/build_course_green_detail.py \
+            --course-package /tmp/green-importer-test/course-v1.json \
+            --dem /tmp/green-importer-test/dem.tif \
+            --output /tmp/green-importer-test/green-detail-v1.json \
+            --dataset-name 'Synthetic test DEM' \
+            --source-resolution-meters 1
+          python tools/validate_course_green_detail.py \
+            --package /tmp/green-importer-test/green-detail-v1.json \
+            --course-package /tmp/green-importer-test/course-v1.json
+          python tools/audit_course_green_surface_quality.py \
+            --package /tmp/green-importer-test/green-detail-v1.json \
+            --course-package /tmp/green-importer-test/course-v1.json

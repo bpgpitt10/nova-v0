@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Looper · Companion Connection Test</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, Arial, sans-serif;
+      background:#07130e; color:#edf8f0; }
+    body { margin:0; padding:36px 20px; background:radial-gradient(circle at top,#183a25,#07130e 62%); min-height:100vh; }
+    main { max-width:760px; margin:auto; }
+    h1 { letter-spacing:-.03em; font-size:clamp(26px,4vw,42px); margin:10px 0; }
+    p { color:#b9d3c4; line-height:1.6; }
+    .eyebrow { color:#bada90; font-size:12px; letter-spacing:.12em; font-weight:800; text-transform:uppercase; }
+    .box { background:#12271b; border:1px solid #325341; border-radius:16px; padding:24px; margin-top:20px; }
+    button { color:#10200c; background:#d5f465; font:inherit; font-weight:800; padding:12px 17px; border:0; border-radius:10px; cursor:pointer; }
+    button:disabled { opacity:.55; }
+    .label { color:#92ad98; font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:800; }
+    .value { margin:6px 0 16px; font-size:19px; font-weight:700; overflow-wrap:anywhere; }
+    .ok { color:#d5f465; } .warn { color:#f4ca84; } .fail { color:#f59c8a; }
+    pre { white-space:pre-wrap; word-break:break-word; font-size:12px; color:#b7d2c1; background:#08150f; border-radius:10px; padding:14px; overflow:auto; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">The Looper / Companion Stage C Preview</div>
+  <h1>Windows companion connection</h1>
+  <p>This is a <strong>read-only</strong> connection test for the proposed one-install Auto Aim system. It does not click GSPro or change any files. Use it on your Windows sim PC in Chrome or Edge after installing the development companion build.</p>
+  <div class="box">
+    <button id="connect">Connect to Looper Companion</button>
+    <button id="capture" disabled>Check Native Window Capture</button>
+    <a href="/dev/companion-observations.html" style="color:#d5f465;margin-left:12px">Open Full Native Observations →</a>
+    <p id="help">Chrome may ask to allow access to apps on your device. Approve that prompt for thelooper.golf or this preview if you want to run the test.</p>
+    <div class="label">Companion</div><div class="value" id="companion">Not checked</div>
+    <div class="label">GSPro window discovery</div><div class="value" id="gspro">Not checked</div>
+    <div class="label">GSPro data folder</div><div class="value" id="folder">Not checked</div>
+    <div class="label">Window capture diagnostic</div><div class="value" id="captureStatus">Not checked</div>
+    <div class="label">Auto Aim actuation</div><div class="value warn">Disabled until simulator acceptance</div>
+    <div class="label">Diagnostics</div><pre id="log">No requests made yet.</pre>
+  </div>
+</main>
+<script>
+  const button = document.querySelector('#connect')
+  const captureButton = document.querySelector('#capture')
+  const captureStatus = document.querySelector('#captureStatus')
+  const folder = document.querySelector('#folder')
+  const companion = document.querySelector('#companion')
+  const gspro = document.querySelector('#gspro')
+  const log = document.querySelector('#log')
+  const help = document.querySelector('#help')
+
+  button.addEventListener('click', async () => {
+    button.disabled = true
+    captureButton.disabled = true
+    companion.className = 'value warn'
+    companion.textContent = 'Connecting…'
+    gspro.textContent = 'Not checked'
+    log.textContent = 'Requesting read-only status over 127.0.0.1…'
+    const timeout = new AbortController()
+    const id = setTimeout(() => timeout.abort(), 5000)
+    try {
+      const request = new Request('http://127.0.0.1:8787/companion/v1/status', {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        signal: timeout.signal,
+        targetAddressSpace: 'loopback'
+      })
+      const response = await fetch(request)
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      const data = await response.json()
+      if (data.service !== 'looper-companion' || data.status !== 'ready') {
+        throw new Error('Unexpected service responded; install a compatible companion build.')
+      }
+      companion.className = 'value ok'
+      companion.textContent = 'CONNECTED · ' + data.version
+      gspro.className = 'value ' + (data.gspro?.status === 'connected' ? 'ok' : 'warn')
+      gspro.textContent = data.gspro?.status === 'connected'
+        ? 'CONNECTED · ' + (data.gspro.windowTitle || data.gspro.processName || 'GSPro window')
+        : data.gspro?.status === 'ambiguous'
+          ? 'AMBIGUOUS · Multiple GSPro windows/processes'
+          : 'WAITING · Launch GSPro, then retry'
+      folder.className = 'value ' + (data.dataFolder?.status === 'ready' ? 'ok' : 'warn')
+      const files = data.dataFolder?.files || {}
+      const found = Object.entries(files).filter(([, present]) => present).map(([name]) => name)
+      folder.textContent = data.dataFolder
+        ? data.dataFolder.status.toUpperCase() + ' · ' + (found.join(', ') || 'No GSPro data files located')
+        : 'Unknown (older companion version)'
+      captureButton.disabled = data.gspro?.status !== 'connected' || !data.capabilities?.captureDiagnostic
+      log.textContent = JSON.stringify(data, null, 2)
+      help.textContent = 'PASS: Hosted browser reached the native companion. GSPro window status is shown above.'
+    } catch (error) {
+      companion.className = 'value fail'
+      companion.textContent = 'NOT CONNECTED'
+      gspro.textContent = 'Not checked'
+      log.textContent = String(error)
+      help.textContent = 'Check that the companion is installed/running and the Chrome “Apps on device” permission is allowed. Production Looper remains unaffected.'
+    } finally {
+      clearTimeout(id)
+      button.disabled = false
+    }
+  })
+
+  captureButton.addEventListener('click', async () => {
+    captureButton.disabled = true
+    captureStatus.className = 'value warn'
+    captureStatus.textContent = 'Capturing (read-only)…'
+    const timeout = new AbortController()
+    const id = setTimeout(() => timeout.abort(), 10000)
+    try {
+      const request = new Request('http://127.0.0.1:8787/companion/v1/capture-check', {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        signal: timeout.signal,
+        targetAddressSpace: 'loopback'
+      })
+      const response = await fetch(request)
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      const data = await response.json()
+      if (data.service !== 'looper-companion' || !data.windowCapture) {
+        throw new Error('Invalid capture diagnostic response')
+      }
+      const result = data.windowCapture
+      captureStatus.className = 'value ' + (result.status === 'captured' ? 'ok' : 'warn')
+      captureStatus.textContent = result.status.toUpperCase() + ' · ' +
+        (result.reason || result.method || 'read-only window capture')
+      log.textContent += '\\n\\nCapture diagnostic (no pixels transmitted):\\n' + JSON.stringify(result, null, 2)
+    } catch (error) {
+      captureStatus.className = 'value fail'
+      captureStatus.textContent = 'Capture diagnostic error: ' + String(error)
+    } finally {
+      clearTimeout(id)
+      captureButton.disabled = false
+    }
+  })
+
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "farmlinks-pursell-farms-sylacauga-al",
+  "courseName": "FarmLinks at Pursell Farms",
+  "location": "Sylacauga, AL",
+  "slug": "farmlinks",
+  "gsproAliases": [
+    "FarmLinks",
+    "FarmLinks at Pursell Farms",
+    "Pursell Farms",
+    "farmlinks_al_2_7_gsp"
+  ],
+  "osmCourseElement": {
+    "type": "way",
+    "id": 1054726077
+  },
+  "osmCenter": [
+    33.12345,
+    -86.42004
+  ],
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

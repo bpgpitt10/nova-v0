@@ -278,7 +278,9 @@ const sanitizeSnapshot = (
       ...snapshot,
       holeNumber: identity.holeNumber,
       ballLocalYds: shotMatchesRoundHole ? snapshot.latestShot?.endLocalYds ?? null : null,
-      ballSource: shotMatchesRoundHole && snapshot.latestShot?.endLocalYds ? 'currentRound' : 'unavailable',
+      ballSource: shotMatchesRoundHole && snapshot.latestShot?.endLocalYds
+        ? snapshot.latestShot.positionQuality === 'provisional' ? 'world-provisional' : 'currentRound'
+        : 'unavailable',
       surface: shotMatchesRoundHole ? snapshot.latestShot?.endingSurface ?? null : null,
       surfaceSource: shotMatchesRoundHole && snapshot.latestShot?.endingSurface ? 'currentRound' : 'unavailable',
       distanceToPinYds: shotMatchesRoundHole ? snapshot.latestShot?.distanceToPinYds ?? null : null,

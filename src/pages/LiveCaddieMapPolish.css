@@ -16,24 +16,24 @@
 
 /* Probability hierarchy: 50% is the primary read, 80% secondary, 95% faint. */
 .live-probability.probability-50 {
-  fill: rgba(118, 211, 155, 0.022);
-  stroke: rgba(205, 221, 205, 0.86);
-  stroke-width: 0.35;
+  fill: rgba(118, 211, 155, 0.018);
+  stroke: rgba(202, 222, 204, 0.96) !important;
+  stroke-width: 1.7 !important;
   stroke-dasharray: none;
 }
 
 .live-probability.probability-80 {
-  fill: rgba(118, 211, 155, 0.012);
-  stroke: rgba(140, 166, 143, 0.62);
-  stroke-width: 0.24;
-  stroke-dasharray: 0.72 0.42;
+  fill: rgba(118, 211, 155, 0.009);
+  stroke: rgba(151, 179, 155, 0.9) !important;
+  stroke-width: 1.3 !important;
+  stroke-dasharray: 3.4 2.2;
 }
 
 .live-probability.probability-95 {
-  fill: rgba(255, 255, 255, 0.004);
-  stroke: rgba(91, 115, 95, 0.46);
-  stroke-width: 0.17;
-  stroke-dasharray: 0.42 0.58;
+  fill: rgba(255, 255, 255, 0.002);
+  stroke: rgba(110, 137, 115, 0.82) !important;
+  stroke-width: 1.0 !important;
+  stroke-dasharray: 2.5 2.8;
 }
 
 /* 50 / 80 are always-on reference contours, not an interactive control. */
@@ -107,7 +107,7 @@
     position: relative;
     grid-template-columns: 200px minmax(0, 1fr) auto;
     gap: 16px;
-    min-height: 70px;
+    min-height: 62px;
     padding: 0 4px 8px;
   }
 
@@ -118,9 +118,14 @@
   .live-caddie-course-context {
     position: absolute;
     top: 7px;
-    left: 208px;
+    left: 216px;
     z-index: 4;
     display: block;
+  }
+
+  .live-caddie-course-context .live-kicker {
+    font-size: 11px;
+    letter-spacing: 0.105em;
   }
 
   .live-caddie-course-context strong,
@@ -179,14 +184,14 @@
   }
 
   .live-caddie-setup-row > button {
-    min-width: 92px;
-    padding: 0 9px;
-    white-space: nowrap;
+    display: none !important;
   }
 
   .live-caddie-secondary-context {
+    grid-column: 4;
     min-width: 0;
     margin-left: 4px;
+    justify-self: end;
     justify-content: flex-end;
     gap: 9px;
     overflow: hidden;
@@ -213,7 +218,7 @@
   }
 
   .live-caddie-main-grid {
-    margin-top: 10px;
+    margin-top: 5px;
   }
 }
 
