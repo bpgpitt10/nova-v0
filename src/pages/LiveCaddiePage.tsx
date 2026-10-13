@@ -812,10 +812,10 @@ export default function LiveCaddiePage() {
     )
     const baselineTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
     const refinedGreenTarget = greenDetail && exactPin
-      && Math.hypot(nextPin[0] - nextBall[0], nextPin[1] - nextBall[1]) <= 260
+      && Math.hypot(exactPin[0] - nextBall[0], exactPin[1] - nextBall[1]) <= 260
       && liveSnapshot.ballSource !== 'world-provisional'
       ? buildCourseGreenApproachTarget({
-          hole, ball: nextBall, pin: nextPin, detail: greenDetail, exactPin: true,
+          hole, ball: nextBall, pin: exactPin, detail: greenDetail, exactPin: true,
         })
       : null
     const nextTarget = refinedGreenTarget?.target ?? baselineTarget
