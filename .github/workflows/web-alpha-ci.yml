@@ -8,6 +8,7 @@ on:
       - provisional-tee-live-fallback-v1
       - unified-imported-course-positioning-v1
       - production-live-caddie-consolidation-v1
+      - live-caddie-production-readiness-v1
   pull_request:
     branches:
       - web-gspro-clean
@@ -61,6 +62,9 @@ jobs:
 
       - name: Validate production green LiDAR and auth integration contracts
         run: node tools/test-production-live-integration.mjs
+
+      - name: Test homepage Live Caddie and same-course fresh round OCR gating
+        run: node tools/test-live-caddie-round-restart-gate.mjs
 
       - name: Build web app
         run: npm run build
