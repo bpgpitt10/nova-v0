@@ -19,6 +19,7 @@ import {
   type LooperCompanionStatus,
   type LooperCompanionLiveObservations,
 } from '../adapters/looperCompanion'
+import { publishOneShotCompanionHud } from '../adapters/companionHudBridge'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
@@ -643,7 +644,14 @@ export default function LiveCaddiePage() {
     triedProvisionalTeeNative.current.add(key)
     let cancelled = false
     void readLooperCompanionObservations(45000)
-      .then(obs => { if (!cancelled) setNativeObservations(obs) })
+      .then(obs => {
+        if (cancelled) return
+        setNativeObservations(obs)
+        // The same bounded tee snapshot already includes current HUD wind
+        // and lie. Send that fresh, source-gated data to the existing
+        // shot-aware adapters; do NOT start the optional 16s native poller.
+        publishOneShotCompanionHud(obs)
+      })
       .catch(() => { /* Route-origin provisional estimate remains explicit. */ })
     return () => { cancelled = true }
   // Do not cancel a 10-40s OCR call merely because a new snapshot object
