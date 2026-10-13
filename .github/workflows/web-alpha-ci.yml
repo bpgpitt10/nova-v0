@@ -7,9 +7,11 @@ on:
       - auto-aim-windows-companion-v1
       - provisional-tee-live-fallback-v1
       - unified-imported-course-positioning-v1
+      - production-live-caddie-consolidation-v1
   pull_request:
     branches:
       - web-gspro-clean
+      - web-alpha-mishits
 
 jobs:
   build:
@@ -56,6 +58,9 @@ jobs:
 
       - name: Test evidence-based GSPro numeric surface library and paired HUD observations
         run: node tools/test-gspro-surface-evidence-library.mjs
+
+      - name: Validate production green LiDAR and auth integration contracts
+        run: node tools/test-production-live-integration.mjs
 
       - name: Build web app
         run: npm run build
