@@ -46,3 +46,26 @@ export const projectGsproWorldPointToHole = (
   const delta = gsproWorldDeltaToHoleLocal(teeWorld, currentWorld, headingDegreesTrue, worldRotationDeg)
   return delta ? [observedTeeLocalYds[0] + delta[0], observedTeeLocalYds[1] + delta[1]] : null
 }
+
+/**
+ * An independent guard on provisional map registration: GSPro's remaining
+ * straight distance is a different measurement from the world shot delta.
+ * The imported green CENTROID is not today's exact flag, so allow substantial
+ * pin/tee-source discrepancy. A grossly incorrect handedness or hole frame
+ * must never drive a precise recommendation.
+ */
+export const provisionalWorldPositionMatchesPinDistance = (
+  ball: CoursePointYds | null,
+  greenCentroid: CoursePointYds | null,
+  gsproRemainingStraightYds: number | null,
+  toleranceYds = 55,
+): boolean => {
+  if (!ball || !greenCentroid || !ball.every(finite)
+    || !greenCentroid.every(finite)
+    || !finite(gsproRemainingStraightYds) || gsproRemainingStraightYds < 0
+    || !finite(toleranceYds) || toleranceYds <= 0) return false
+  return Math.abs(
+    Math.hypot(greenCentroid[0] - ball[0], greenCentroid[1] - ball[1])
+    - gsproRemainingStraightYds
+  ) <= toleranceYds
+}
