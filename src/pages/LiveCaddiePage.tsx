@@ -39,6 +39,7 @@ import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupporte
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
+import { activeManualLieSurface, liveShotLieKey, type ManualLieSelection } from '../liveCaddie/currentShotLie'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -453,6 +454,7 @@ export default function LiveCaddiePage() {
   const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
+  const [manualShotLie, setManualShotLie] = useState<ManualLieSelection | null>(null)
   const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
   const [visualCaptureError, setVisualCaptureError] = useState<string | null>(null)
   const [visualCaptureSource, setVisualCaptureSource] = useState<string | null>(null)
@@ -812,7 +814,12 @@ export default function LiveCaddiePage() {
   const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
     ? lieObservation.surface.trim()
     : null
-  const surface = liveLieSurface
+  const currentShotLieKey = liveShotLieKey(
+    courseId, holeNumber, liveSnapshot?.roundId ?? null,
+    liveSnapshot?.nextShotNumber ?? null, liveSnapshot?.latestShotKey ?? null,
+  )
+  const confirmedCurrentLie = activeManualLieSurface(currentShotLieKey, manualShotLie)
+  const surface = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole && liveSnapshot?.surface
       ? liveSnapshot.surface
       : hole
@@ -856,7 +863,7 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
-  const surfaceOverride = liveLieSurface
+  const surfaceOverride = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
   const localAimBearingDeg = localShotBearingDegrees(ball, target)
   const currentShotCompassBearingDeg = shotCompassBearingDegrees(
@@ -1284,6 +1291,35 @@ export default function LiveCaddiePage() {
           </section>
         ) : null}
 
+        {liveMatchesHole && nextShotNumber != null && nextShotNumber > 1 && !isGreenSurface ? (
+          <div className="live-caddie-alert live-lie-confirmation" data-lie-source={confirmedCurrentLie ? 'manual-gspro-hud' : 'unverified'}>
+            <span>Current lie: <strong>{surface === 'deep-rough' ? 'Deep Rough' : surface}</strong>
+              {confirmedCurrentLie
+                ? ' — confirmed against the GSPro screen for this shot.'
+                : ' — based on GSPro file code / imported map; may differ from the GSPro minimap label.'}
+            </span>
+            <span className="live-lie-confirmation-actions">
+              <button type="button"
+                className={confirmedCurrentLie === 'deep-rough' ? 'selected' : ''}
+                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'deep-rough' })}>
+                Use Deep Rough
+              </button>
+              <button type="button"
+                className={confirmedCurrentLie === 'rough' ? 'selected' : ''}
+                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'rough' })}>
+                Rough
+              </button>
+              <button type="button"
+                className={confirmedCurrentLie === 'sand' ? 'selected' : ''}
+                onClick={() => setManualShotLie({ shotKey: currentShotLieKey, surface: 'sand' })}>
+                Sand
+              </button>
+              {confirmedCurrentLie ? (
+                <button type="button" onClick={() => setManualShotLie(null)}>Reset to detected</button>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
         {spatialPositionProvisional ? (
           <div className="live-caddie-alert" data-spatial-position="provisional">
             Imported-course ball placement uses the actual GSPro shot movement and a
