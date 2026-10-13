@@ -152,6 +152,34 @@ const hazardName = (kind: HazardKind) => {
   return 'Bunker'
 }
 
+/**
+ * Nearest polygon EDGE, not merely nearest vertex. A bunker can have a long
+ * straight side one yard from the target with vertices 100 yards away.
+ * A target *inside* the hazard is explicitly distance zero.
+ */
+export const closestPointOnHazardEdge = (
+  target: CoursePointYds,
+  polygon: CoursePolygonYds,
+): { point: CoursePointYds; distanceYds: number } | null => {
+  if (polygon.length === 0) return null
+  if (pointInPolygon(target, polygon)) return { point: target, distanceYds: 0 }
+  let best: { point: CoursePointYds; distanceYds: number } | null = null
+  for (let index = 0; index < polygon.length; index += 1) {
+    const a = polygon[index]
+    const b = polygon[(index + 1) % polygon.length]
+    const dx = b[0] - a[0]
+    const dy = b[1] - a[1]
+    const lengthSquared = dx * dx + dy * dy
+    const t = lengthSquared > 1e-10
+      ? Math.max(0, Math.min(1, ((target[0] - a[0]) * dx + (target[1] - a[1]) * dy) / lengthSquared))
+      : 0
+    const point: CoursePointYds = [a[0] + t * dx, a[1] + t * dy]
+    const distanceYds = distance(target, point)
+    if (!best || distanceYds < best.distanceYds) best = { point, distanceYds }
+  }
+  return best
+}
+
 const nearestHazardPoint = (
   hole: CourseHoleGeometry,
   target: CoursePointYds,
@@ -161,12 +189,10 @@ const nearestHazardPoint = (
   for (const surface of hole.surfaces) {
     if (!allowed.has(surface.kind as HazardKind)) continue
     for (const polygon of surface.polygons) {
-      for (const point of polygon) {
-        const distanceYds = distance(target, point)
-        if (distanceYds > 28) continue
-        if (!best || distanceYds < best.distanceYds) {
-          best = { kind: surface.kind as HazardKind, point, distanceYds }
-        }
+      const nearest = closestPointOnHazardEdge(target, polygon)
+      if (!nearest || nearest.distanceYds > 28) continue
+      if (!best || nearest.distanceYds < best.distanceYds) {
+        best = { kind: surface.kind as HazardKind, ...nearest }
       }
     }
   }
