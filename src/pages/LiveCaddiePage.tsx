@@ -35,6 +35,8 @@ import {
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
+import { saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
+import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -707,9 +709,24 @@ export default function LiveCaddiePage() {
 
   useEffect(() => {
     if (nativeProvisionalTee?.status !== 'provisional') return
+    const round = loadActiveLiveCaddieRound()
+    // Save a per-round, source-labeled assumption only. Never upgrade a
+    // measured distance into an absolute confirmed tee or permanent cache.
+    if (round?.courseId === courseId && hole
+      && nativeProvisionalTee.distanceInputYds != null) {
+      saveLiveTeeSessionAnchor(round, {
+        holeNumber: hole.holeNumber,
+        point: nativeProvisionalTee.point,
+        source: nativeProvisionalTee.source === 'distance-matched-osm-tee'
+          ? 'native-distance-matched-osm-tee'
+          : 'native-distance-route-estimate',
+        measuredStraightToPinYds: nativeProvisionalTee.distanceInputYds,
+        uncertaintyRadiusYds: nativeProvisionalTee.uncertaintyRadiusYds,
+      })
+    }
     setBall(nativeProvisionalTee.point)
     if (hole) setTarget(chooseLiveLandingTarget(hole, nativeProvisionalTee.point, hole.markers.pin ?? null))
-  }, [nativeProvisionalTee, hole])
+  }, [nativeProvisionalTee, hole, courseId])
 
   useEffect(() => {
     if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
