@@ -1269,7 +1269,7 @@ export default function LiveCaddiePage() {
                 <span>Companion connected</span>
               </div>
             ) : null}
-            <a href="/dev/aim-lab" className="live-diagnostics-link">Aim Lab</a>
+            {/* Diagnostics remain available at /dev/aim-lab, without a primary Live Caddie header link. */}
           </div>
         </header>
 
