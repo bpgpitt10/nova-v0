@@ -205,6 +205,37 @@
   color: #f2cac4;
 }
 
+.live-lie-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.live-lie-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.live-lie-confirmation-actions button {
+  border: 1px solid rgba(234, 179, 8, 0.36);
+  border-radius: 5px;
+  background: rgba(26, 45, 29, 0.95);
+  color: #e4dfc3;
+  padding: 6px 11px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.live-lie-confirmation-actions button:hover,
+.live-lie-confirmation-actions button.selected {
+  background: rgba(170, 145, 58, 0.35);
+  border-color: #ddc56c;
+  color: #fff4c3;
+}
+
 .live-empty-state {
   display: grid;
   gap: 10px;
