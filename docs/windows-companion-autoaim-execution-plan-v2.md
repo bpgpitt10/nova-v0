@@ -24,6 +24,18 @@
 
 **Milestones:** A plan + actual evidence fixtures; B tee candidate selection + reviewed course alias; C robust two-waypoint native CV; D generic shot-to-map registration (including explicit blocked state) + advice guards; E tests/CI and branch preview; F one controlled FarmLinks sim acceptance. The 18-hole GSPro world `teePos/pinPos` extractor remains an optional later precision enhancement, NOT a blocker for this playable-first-use test.
 
+### FarmLinks White H1 morning field-test finding — 2026-10-13 (STOP BEFORE FIRST SHOT)
+
+**Observed:** on the audited Vercel preview, live companion measurement succeeded and the banner read `GSPro two-waypoint ruler supports a provisional existing OSM tee polygon` with ±25 yd. But the map still showed ball at the default mapped back tee and the top-right `Shot 1 · Tee · 572 yd to pin` (instead of the native-matched ~493 yd Tee 3 candidate). An old `Provisional Hole 1 tee (existing-map-tee-anchor), ±50 yd` warning also remained below the successful native banner. The golfer correctly stopped before hitting. **This invalidates the previous H1 first-tee field acceptance despite correct native OCR.**
+
+**Root cause:** `LiveCaddiePage` had two competing independent effects: the native tee observation wrote `setBall(nativeProvisionalTee.point)`, but the browser manual/pre-shot `liveSnapshot.ballLocalYds` effect wrote back its original anchor after every refreshed snapshot. Header `pinEstimate` also exclusively used `liveSnapshot.distanceToPinYds` (=572 from manual fallback), instead of the same native-measured straight distance. The success banner read native state independently of the displayed ball and distance.
+
+**Fix:** single tested `resolveLiveFirstTeeDisplay` contract owns both shot-1 map-ball and header-yardage, prioritizing the valid current native ruler, then same active-round saved ruler, and using manual/pre-shot fallback only when no measured tee exists. Shot 2+ always defers to completed GSPro shot data. The React snapshot effect now uses that contract even after further browser-state refreshes; uncertainty radius uses the same measurement; stale route-only warning is suppressed once a measured tee supersedes it. A direct FarmLinks 572→493 / Tee 3 fixture test asserts both quantities, refresh persistence, saved measurement after OCR expiry, and Shot 2 physical-point precedence in `tools/test-live-first-tee-display.mjs` enforced by Web Alpha CI.
+
+**Next gate:** CI green and new branch-only Vercel preview READY, reload a fresh round on that NEW origin while staying stationary on FarmLinks White H1 and confirm both map and top-right distance move toward the ~493 yd tee **without hitting**. If wrong, get one native JSON diagnostic and stop. Only then hit one bounded shot. Existing Windows Companion binary requires no new install for this browser-only correction.
+
+---
+
 ### Independent audit — 2026-10-13 (follow-up correctness review)
 
 **Result:** native detector passed a local, offline reproduction against the actual FarmLinks minimap crop `image(20261013-011901).png` held only in the private session, **not committed to GitHub**. The new HSV/shape filter found two approximately 16px near-neutral white waypoint ovals (centers ~[279,226] and [244,495]); the existing 8-threshold Tesseract crop/voting read `445` and `253` for both. Historical native JSONs showed old OCR returning `no_labeled_gray_waypoint`, and the post-shot diagnostic independently confirmed FarmLinks H1 Round 253, Shot 1, 262.72 yd remaining. This validates color segmentation plus saved-image digit recognition, **not** updated Companion live-GSPro capture or long-running workload stability.
