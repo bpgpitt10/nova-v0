@@ -35,6 +35,7 @@ import {
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
+import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import {
@@ -723,25 +724,24 @@ export default function LiveCaddiePage() {
     && liveSnapshot.teePlacement === 'provisional'
     ? loadLiveTeeSessionAnchor(loadActiveLiveCaddieRound(), holeNumber)
     : null
-  const measuredPreShotTee = liveSnapshot?.holeNumber === holeNumber
-    && liveSnapshot.nextShotNumber === 1
-    && liveSnapshot.teePlacement === 'provisional'
-    ? nativeProvisionalTee?.status === 'provisional'
+  const firstTeeDisplay = resolveLiveFirstTeeDisplay(
+    liveSnapshot, holeNumber,
+    nativeProvisionalTee?.status === 'provisional' && nativeProvisionalTee.distanceInputYds != null
       ? {
           point: nativeProvisionalTee.point,
           distanceYds: nativeProvisionalTee.distanceInputYds,
           uncertaintyYds: nativeProvisionalTee.uncertaintyRadiusYds,
           source: nativeProvisionalTee.source,
         }
-      : savedPreShotTee
-        ? {
-            point: savedPreShotTee.point,
-            distanceYds: savedPreShotTee.measuredStraightToPinYds,
-            uncertaintyYds: savedPreShotTee.uncertaintyRadiusYds,
-            source: savedPreShotTee.source,
-          }
-        : null
-    : null
+      : null,
+    savedPreShotTee ? {
+      point: savedPreShotTee.point,
+      distanceYds: savedPreShotTee.measuredStraightToPinYds,
+      uncertaintyYds: savedPreShotTee.uncertaintyRadiusYds,
+      source: savedPreShotTee.source,
+    } : null,
+  )
+  const measuredPreShotTee = firstTeeDisplay.measured
 
   useEffect(() => {
     if (nativeProvisionalTee?.status !== 'provisional') return
@@ -769,11 +769,11 @@ export default function LiveCaddiePage() {
     // Keep browser GSPro authoritative on hole/shot identity, but give the
     // bounded *fresh native measurement* priority over the initial approximate
     // tee marker on shot 1 only. After shot 1, actual ending coordinates win.
-    const nextBall = measuredPreShotTee?.point ?? liveSnapshot.ballLocalYds
+    const nextBall = firstTeeDisplay.ball
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
     const nextPin = estimatePinFromGsproDistance(
-      hole, nextBall, measuredPreShotTee?.distanceYds ?? liveSnapshot.distanceToPinYds,
+      hole, nextBall, firstTeeDisplay.distanceToPinYds,
     )
     setBall(nextBall)
     setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
@@ -789,7 +789,7 @@ export default function LiveCaddiePage() {
     ? measuredPreShotTee?.uncertaintyYds ?? liveSnapshot.teeUncertaintyYds ?? 50
     : null
   const effectiveDistanceToPinYds = liveMatchesHole
-    ? measuredPreShotTee?.distanceYds ?? liveSnapshot?.distanceToPinYds ?? null
+    ? firstTeeDisplay.distanceToPinYds
     : null
   const pinEstimate = hole
     ? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
