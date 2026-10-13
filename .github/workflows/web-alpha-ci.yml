@@ -51,5 +51,11 @@ jobs:
       - name: Test FarmLinks Deep Rough correction and ambiguous GSPro surface protection
         run: node tools/test-gspro-surface-fallback.mjs
 
+      - name: Test hard tee-only Driver and Mini Driver rule in full recommender
+        run: node tools/test-live-tee-only-club-rule.mjs
+
+      - name: Test evidence-based GSPro numeric surface library and paired HUD observations
+        run: node tools/test-gspro-surface-evidence-library.mjs
+
       - name: Build web app
         run: npm run build
