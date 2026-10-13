@@ -80,6 +80,11 @@ try {
   assert.ok(page.includes('LIVE_CADDIE_START_ROUND_EVENT'))
   assert.ok(page.includes('lastCaptureRoundIdRef.current = id'))
   assert.ok(page.includes('triedProvisionalTeeNative.current.clear()'))
+  assert.ok(page.includes('setLiveSnapshot(null)'), 'new Looper round must not show previous shot while rearming')
+  assert.ok(page.includes('[courseId, holeNumber, captureRoundId]'),
+    'geometry cache/selected tee must reload for a second Looper round')
+  assert.ok(page.includes('waitingForNewRoundSnapshot'),
+    'do not rank against an old tee before new manual snapshot arrives')
   assert.ok(page.includes("status: 'capturing'"))
   assert.ok(page.includes('if (pending) triedProvisionalTeeNative.current.delete(key)'))
   assert.ok(page.includes('holdFirstTeeRecommendation'))
