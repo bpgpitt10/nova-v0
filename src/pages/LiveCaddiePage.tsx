@@ -34,6 +34,10 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import {
+  loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
+} from '../courseGeometry/courseGreenDetail'
+import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -437,6 +441,7 @@ export default function LiveCaddiePage() {
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
+  const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
     loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
   )
@@ -635,6 +640,20 @@ export default function LiveCaddiePage() {
     }
   }, [courseId, holeNumber])
 
+  // Preserve production's detailed green terrain loading and exact-pin
+  // approach targeting; do not assert exact targeting from provisional frames.
+  useEffect(() => {
+    let active = true
+    setGreenDetail(null)
+    if (!selectedCourse) return () => { active = false }
+    void loadCourseGreenDetail(selectedCourse.slug, holeNumber)
+      .then(detail => { if (active) setGreenDetail(detail) })
+      .catch(error => {
+        if (active) console.warn('[Live Caddie] Green detail unavailable.', error)
+      })
+    return () => { active = false }
+  }, [selectedCourse?.slug, holeNumber])
+
   // One bounded, read-only native observation at a new, UNMAPPED tee. The
   // manual Start Round pathway stays authoritative about Hole 1. This does
   // not create another hole tracker or run continuous screenshot capture.
@@ -786,10 +805,20 @@ export default function LiveCaddiePage() {
     const nextBall = firstTeeDisplay.ball
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
-    const nextPin = estimatePinFromGsproDistance(
+    const exactPin = liveSnapshot.pinSource === 'output-log-course-layout'
+      ? liveSnapshot.pinLocalYds : null
+    const nextPin = exactPin ?? estimatePinFromGsproDistance(
       hole, nextBall, firstTeeDisplay.distanceToPinYds,
     )
-    const nextTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
+    const baselineTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
+    const refinedGreenTarget = greenDetail && exactPin
+      && Math.hypot(nextPin[0] - nextBall[0], nextPin[1] - nextBall[1]) <= 260
+      && liveSnapshot.ballSource !== 'world-provisional'
+      ? buildCourseGreenApproachTarget({
+          hole, ball: nextBall, pin: nextPin, detail: greenDetail, exactPin: true,
+        })
+      : null
+    const nextTarget = refinedGreenTarget?.target ?? baselineTarget
     // GSPro can rewrite output_log / currentRound while the golfer waits.
     // Identical physical coordinates must never create new array identities
     // that restart the 2,048-sample-per-candidate recommendation worker.
@@ -801,6 +830,7 @@ export default function LiveCaddiePage() {
     hole, liveSnapshot,
     measuredPreShotTee?.point[0], measuredPreShotTee?.point[1],
     measuredPreShotTee?.distanceYds,
+    greenDetail, liveSnapshot?.pinSource, liveSnapshot?.pinLocalYds,
   ])
 
   const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
@@ -811,8 +841,12 @@ export default function LiveCaddiePage() {
   const effectiveDistanceToPinYds = liveMatchesHole
     ? firstTeeDisplay.distanceToPinYds
     : null
+  const trustedLivePin = liveMatchesHole
+    && liveSnapshot?.pinSource === 'output-log-course-layout'
+    ? liveSnapshot.pinLocalYds ?? null
+    : null
   const pinEstimate = hole
-    ? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
+    ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
     : null
   const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
     ? lieObservation.surface.trim()
@@ -878,8 +912,26 @@ export default function LiveCaddiePage() {
   const provisionalPositionRadiusYds = spatialPositionProvisional
     ? Math.max(40, savedNativeTee?.uncertaintyRadiusYds ?? 50)
     : null
-  const ballTerrain = hole ? estimateCourseTerrain(hole, ball) : null
-  const targetTerrain = hole ? estimateCourseTerrain(hole, target) : null
+  const greenBallElevationFt = greenDetail ? sampleCourseGreenElevation(greenDetail, ball) : null
+  const ballTerrain = greenBallElevationFt != null
+    ? {
+        elevationFt: greenBallElevationFt,
+        source: 'lidar-dem' as const,
+        confidence: 'high' as const,
+        gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
+        note: 'High-resolution course green terrain sample.',
+      }
+    : hole ? estimateCourseTerrain(hole, ball) : null
+  const greenTargetElevationFt = greenDetail ? sampleCourseGreenElevation(greenDetail, target) : null
+  const targetTerrain = greenTargetElevationFt != null
+    ? {
+        elevationFt: greenTargetElevationFt,
+        source: 'lidar-dem' as const,
+        confidence: 'high' as const,
+        gridSpacingYds: greenDetail?.grid.spacingYds ?? 1,
+        note: 'High-resolution course green terrain sample.',
+      }
+    : hole ? estimateCourseTerrain(hole, target) : null
   const elevationDeltaFt = ballTerrain && targetTerrain
     ? targetTerrain.elevationFt - ballTerrain.elevationFt
     : null
@@ -914,6 +966,13 @@ export default function LiveCaddiePage() {
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
   const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
   const isGreenSurface = normalizedCurrentSurface === 'green'
+  const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
+    && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
+    && Math.hypot(ball[0] - trustedLivePin[0], ball[1] - trustedLivePin[1]) <= 260
+      ? buildCourseGreenApproachTarget({
+          hole, ball, pin: trustedLivePin, detail: greenDetail, exactPin: true,
+        })
+      : null
   const isTeeSurface = typeof authoritativeGsproSurface === 'string'
     && authoritativeGsproSurface.trim().toLowerCase() === 'tee'
   const hasOcrLie = lieObservation?.status === 'READY' && (
@@ -1010,6 +1069,9 @@ export default function LiveCaddiePage() {
         lieUpDownDeg,
         lieLeftRightDeg,
         lieSource,
+        exactPinLocalYds: trustedLivePin,
+        greenDetail: trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'
+          ? greenDetail : null,
       },
       nowMs: Date.now(),
     })
@@ -1036,6 +1098,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
+    trustedLivePin, greenDetail,
   ])
 
   const recommendation = evaluations[0] ?? null
@@ -1250,6 +1313,7 @@ export default function LiveCaddiePage() {
             {nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
+            {greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
