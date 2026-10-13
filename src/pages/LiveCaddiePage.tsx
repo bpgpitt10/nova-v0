@@ -760,8 +760,9 @@ export default function LiveCaddiePage() {
         uncertaintyRadiusYds: nativeProvisionalTee.uncertaintyRadiusYds,
       })
     }
-    setBall(nativeProvisionalTee.point)
-    if (hole) setTarget(chooseLiveLandingTarget(hole, nativeProvisionalTee.point, hole.markers.pin ?? null))
+    // Do not also setBall/setTarget here. The single Shot 1 authority effect
+    // below owns BOTH together. Two competing target calculations used to
+    // repeatedly cancel and restart the expensive decision worker.
   }, [nativeProvisionalTee, hole, courseId])
 
   useEffect(() => {
@@ -775,8 +776,14 @@ export default function LiveCaddiePage() {
     const nextPin = estimatePinFromGsproDistance(
       hole, nextBall, firstTeeDisplay.distanceToPinYds,
     )
-    setBall(nextBall)
-    setTarget(chooseLiveLandingTarget(hole, nextBall, nextPin))
+    const nextTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
+    // GSPro can rewrite output_log / currentRound while the golfer waits.
+    // Identical physical coordinates must never create new array identities
+    // that restart the 2,048-sample-per-candidate recommendation worker.
+    setBall(previous => Math.hypot(previous[0] - nextBall[0], previous[1] - nextBall[1]) < 0.05
+      ? previous : [nextBall[0], nextBall[1]])
+    setTarget(previous => Math.hypot(previous[0] - nextTarget[0], previous[1] - nextTarget[1]) < 0.05
+      ? previous : [nextTarget[0], nextTarget[1]])
   }, [
     hole, liveSnapshot,
     measuredPreShotTee?.point[0], measuredPreShotTee?.point[1],
