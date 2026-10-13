@@ -24,6 +24,20 @@
 
 **Milestones:** A plan + actual evidence fixtures; B tee candidate selection + reviewed course alias; C robust two-waypoint native CV; D generic shot-to-map registration (including explicit blocked state) + advice guards; E tests/CI and branch preview; F one controlled FarmLinks sim acceptance. The 18-hole GSPro world `teePos/pinPos` extractor remains an optional later precision enhancement, NOT a blocker for this playable-first-use test.
 
+### Independent audit — 2026-10-13 (follow-up correctness review)
+
+**Result:** native detector passed a local, offline reproduction against the actual FarmLinks minimap crop `image(20261013-011901).png` held only in the private session, **not committed to GitHub**. The new HSV/shape filter found two approximately 16px near-neutral white waypoint ovals (centers ~[279,226] and [244,495]); the existing 8-threshold Tesseract crop/voting read `445` and `253` for both. Historical native JSONs showed old OCR returning `no_labeled_gray_waypoint`, and the post-shot diagnostic independently confirmed FarmLinks H1 Round 253, Shot 1, 262.72 yd remaining. This validates color segmentation plus saved-image digit recognition, **not** updated Companion live-GSPro capture or long-running workload stability.
+
+**Hidden issues fixed during audit:**
+- Pending one-shot Companion OCR was cancelled by a non-semantic `liveSnapshot` object update while the `triedProvisionalTeeNative` key remained permanently marked; narrowed dependencies to actual shot/tee/round identity.
+- Both imported geometry caches could outlive the user's tee selection and return an earlier round's normalized anchor; now keyed by active round ID.
+- Initial movement regression checked GSPro total / offline but did not independently confirm final map location. Post-shot projection now also requires the local projected ball to be within a 55-yard planning tolerance of GSPro's **separately reported straight remaining-to-pin** distance against the imported OSM green centroid; missing/stale/mismatched spatial evidence fails closed to the position-unavailable UI. FarmLinks physical movement yields ~268.53 yd to centroid vs GSPro 262.72 yd to today's pin (5.81-yd residual). Regression covers wrong direction, distant geometry and missing reference.
+- Removed contradictory old imported-course warning claiming *no* registered ball even when `world-provisional` is successfully resolved.
+
+**Still not proven:** end-to-end interaction in the GSPro simulator with the updated native package; sustained Windows/GSPro stability following the earlier full-PC crash; any claim of exact lateral positional precision or cross-course GSPro X/Z north-orientation portability; before-first-shot OCR arriving in time without a manual refresh. A 55-yard independent guard detects gross misregistration, **not** small lateral errors, and estimated probabilities/forced carries from provisional points remain uncertain. The saved screenshots/JSON are direct fixture evidence but cannot replace one bounded physical test. Production/native aim still unchanged.
+
+---
+
 ### Implementation progress — 2026-10-13 (branch code, NOT physical retest)
 
 - [x] **Plan and identity:** isolated working branch from the proven first-use fallback; updated this execution plan and marked former fallback instructions superseded. Added physically observed `farmlinks_al_2_7_gsp` alias to config, runtime-ready receipt, and generated registry, preserving regeneration source.
