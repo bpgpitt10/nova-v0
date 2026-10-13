@@ -645,7 +645,14 @@ export default function LiveCaddiePage() {
       .then(obs => { if (!cancelled) setNativeObservations(obs) })
       .catch(() => { /* Route-origin provisional estimate remains explicit. */ })
     return () => { cancelled = true }
-  }, [hole, courseId, holeNumber, liveSnapshot, companionStatus?.gspro.status, nativeVisualActive])
+  // Do not cancel a 10-40s OCR call merely because a new snapshot object
+  // arrived with the same hole/shot/tee identity. The attempted-key set would
+  // otherwise block the retry and permanently lose the first tee measurement.
+  }, [
+    hole, courseId, holeNumber, liveSnapshot?.holeNumber,
+    liveSnapshot?.nextShotNumber, liveSnapshot?.teePlacement,
+    liveSnapshot?.roundId, companionStatus?.gspro.status, nativeVisualActive,
+  ])
 
   // The ball and pin plus a native waypoint scale produce a STRAIGHT distance,
   // not an absolute tee X or Y. Never use screenshot left/right framing as a
