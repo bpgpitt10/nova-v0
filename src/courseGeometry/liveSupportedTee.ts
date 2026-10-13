@@ -11,6 +11,11 @@ import type {
 
 const MAX_DISTANCE_RESIDUAL_YDS = 30
 const MIN_RUNNER_UP_MARGIN_YDS = 8
+// Separately gated for first-use tee distance (pin != green centroid).
+// This is a provisional physical tee *candidate*, never a White -> Tee 3 alias.
+const MAX_PROVISIONAL_TEE_RESIDUAL_YDS = 20
+const MIN_PROVISIONAL_RUNNER_UP_GAP_YDS = 25
+const PROVISIONAL_CANDIDATE_UNCERTAINTY_YDS = 25
 
 export type LiveSupportedTeeResolution =
   | Readonly<{
@@ -78,6 +83,40 @@ const candidateMatchesTeeSet = (candidate: CourseTeeCandidate, teeSet: string) =
 }
 
 /**
+ * Rank real, already imported OSM tee pads using an observed STRAIGHT GSPro
+ * distance to today's flag and the OSM distance to the green centroid.
+ * The centroid/flag offset means this is *never* proof of a tee identity.
+ * Reject ambiguous matches and return no result unless one is clearly better.
+ */
+export const matchProvisionalOsmTeeByDistance = (
+  geometry: CourseHoleGeometry,
+  observedStraightYds: number | null | undefined,
+): Readonly<{
+  candidate: CourseTeeCandidate
+  referenceDistanceYds: number
+  residualYds: number
+  runnerUpGapYds: number | null
+}> | null => {
+  if (!finite(observedStraightYds) || observedStraightYds < 45 || observedStraightYds > 750
+    || geometry.registration.status === 'unavailable') return null
+  const ranked = (geometry.teeCandidates ?? [])
+    .flatMap(candidate => {
+      const referenceDistanceYds = candidateReferenceDistance(geometry, candidate)
+      if (!finite(referenceDistanceYds) || referenceDistanceYds <= 0
+        || !Array.isArray(candidate.coursePoint)
+        || !candidate.coursePoint.every(Number.isFinite)) return []
+      return [{ candidate, referenceDistanceYds,
+        residualYds: Math.abs(observedStraightYds - referenceDistanceYds) }]
+    })
+    .sort((a, b) => a.residualYds - b.residualYds)
+  const best = ranked[0]
+  if (!best || best.residualYds > MAX_PROVISIONAL_TEE_RESIDUAL_YDS) return null
+  const runnerUpGapYds = ranked[1] ? ranked[1].residualYds - best.residualYds : null
+  if (runnerUpGapYds != null && runnerUpGapYds < MIN_PROVISIONAL_RUNNER_UP_GAP_YDS) return null
+  return { ...best, runnerUpGapYds }
+}
+
+/**
  * Live tee contract.
  *
  * Once the golfer explicitly starts a Looper round with a course + tee set,
@@ -103,19 +142,25 @@ export const resolveLiveSupportedTee = (
       courseGeometryFingerprint(geometry), geometry.holeNumber, activeRound.normalizedTeeSet,
     )
     const exactLocked = locked?.status === 'locked' ? locked : null
-    // Unmapped OSM route starts AND approximate tee origins with no named match
-    // may be estimated. Locked/matched or VERIFIED selected-tee anchors win.
-    const provisional = !candidate && !exactLocked
+    const observedTeeDistanceYds = observation?.holeNumber === geometry.holeNumber
+      && observation.shotNumber === 1 && observation.surface === 'tee'
+      && finite(observation.distanceToPinYds)
+      ? observation.distanceToPinYds : null
+    const distanceMatch = !candidate && !exactLocked
+      ? matchProvisionalOsmTeeByDistance(geometry, observedTeeDistanceYds) : null
+    // The route start is the last-resort estimate, not the first choice when
+    // a real OSM tee matches the measured GSPro distance much more closely.
+    const maybeProvisional = !candidate && !exactLocked && !distanceMatch
       && (geometry.coordinateSystem.origin === 'osm-hole-route-start'
         || (geometry.coordinateSystem.origin === 'selected-tee'
           && geometry.registration.status !== 'verified'))
-      ? estimateProvisionalTee(geometry,
-          observation?.holeNumber === geometry.holeNumber
-          && observation.shotNumber === 1
-          && observation.surface === 'tee'
-          && finite(observation.distanceToPinYds)
-            ? observation.distanceToPinYds : null)
+      ? estimateProvisionalTee(geometry, observedTeeDistanceYds)
       : null
+    // If an extreme or unreliable length cannot safely constrain the route,
+    // retain the explicitly uncertain original mapped starting estimate.
+    const provisional = maybeProvisional?.status === 'blocked' && observedTeeDistanceYds != null
+      ? estimateProvisionalTee(geometry)
+      : maybeProvisional
     if (provisional?.status === 'blocked') {
       return {
         status: 'unsupported', courseLocalYds: null, candidate: null,
@@ -125,16 +170,20 @@ export const resolveLiveSupportedTee = (
     }
     const courseLocalYds: CoursePointYds = exactLocked
       ? exactLocked.courseLocalYds
-      : provisional?.status === 'provisional'
-        ? provisional.point
-        : geometry.holeNumber === 1 && activeRound.assumedTeeLocalYds
-          ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
-          : candidate?.coursePoint ?? geometry.markers.tee
-    const referenceDistanceYds = candidate
-      ? candidateReferenceDistance(geometry, candidate)
-      : geometry.markers.pin
-        ? pointDistance(courseLocalYds, geometry.markers.pin)
-        : null
+      : distanceMatch
+        ? distanceMatch.candidate.coursePoint
+        : provisional?.status === 'provisional'
+          ? provisional.point
+          : geometry.holeNumber === 1 && activeRound.assumedTeeLocalYds
+            ? [activeRound.assumedTeeLocalYds[0], activeRound.assumedTeeLocalYds[1]]
+            : candidate?.coursePoint ?? geometry.markers.tee
+    const referenceDistanceYds = distanceMatch
+      ? distanceMatch.referenceDistanceYds
+      : candidate
+        ? candidateReferenceDistance(geometry, candidate)
+        : geometry.markers.pin
+          ? pointDistance(courseLocalYds, geometry.markers.pin)
+          : null
     const residualYds = observation && finite(observation.distanceToPinYds) && finite(referenceDistanceYds)
       ? Math.abs(observation.distanceToPinYds - referenceDistanceYds)
       : null
@@ -142,21 +191,26 @@ export const resolveLiveSupportedTee = (
     return {
       status: 'supported',
       courseLocalYds,
-      candidate,
+      candidate: distanceMatch?.candidate ?? candidate,
       residualYds,
       referenceDistanceYds,
-      placement: exactLocked ? 'locked' : provisional?.status === 'provisional' ? 'provisional' : 'mapped',
-      uncertaintyRadiusYds: provisional?.status === 'provisional' ? provisional.uncertaintyRadiusYds : null,
+      placement: exactLocked ? 'locked' : (distanceMatch || provisional?.status === 'provisional') ? 'provisional' : 'mapped',
+      uncertaintyRadiusYds: distanceMatch ? PROVISIONAL_CANDIDATE_UNCERTAINTY_YDS
+        : provisional?.status === 'provisional' ? provisional.uncertaintyRadiusYds : null,
       reason: exactLocked
         ? 'Using locked ' + activeRound.teeSet + ' tee calibration.'
-        : provisional?.status === 'provisional'
-          ? 'Provisional Hole ' + geometry.holeNumber + ' tee (' + provisional.source +
-            '), ±' + provisional.uncertaintyRadiusYds + ' yd. ' + provisional.note
-          : candidate
-            ? 'Using selected ' + activeRound.teeSet + ' tee (' + candidateLabel(candidate) +
-              ') on Hole ' + geometry.holeNumber + '. GSPro is validation evidence only.'
-            : 'Using the active round assumed ' + activeRound.teeSet + ' tee on Hole ' +
-              geometry.holeNumber + '. GSPro is validation evidence only.',
+        : distanceMatch
+          ? 'Provisional ' + activeRound.teeSet + ' tee: measured GSPro distance best fits mapped ' +
+            candidateLabel(distanceMatch.candidate) + ' (' + distanceMatch.residualYds.toFixed(1) +
+            ' yd residual vs OSM green center). The tee NAME is not confirmed; exact hazard/aim geometry is unverified.'
+          : provisional?.status === 'provisional'
+            ? 'Provisional Hole ' + geometry.holeNumber + ' tee (' + provisional.source +
+              '), ±' + provisional.uncertaintyRadiusYds + ' yd. ' + provisional.note
+            : candidate
+              ? 'Using selected ' + activeRound.teeSet + ' tee (' + candidateLabel(candidate) +
+                ') on Hole ' + geometry.holeNumber + '. GSPro is validation evidence only.'
+              : 'Using the active round assumed ' + activeRound.teeSet + ' tee on Hole ' +
+                geometry.holeNumber + '. GSPro is validation evidence only.',
     }
   }
 
