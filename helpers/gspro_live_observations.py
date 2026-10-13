@@ -123,6 +123,10 @@ def parse_current_round(raw):
         "distanceToPinYds": round(_num(item.get("DistanceToPin")) * METERS_TO_YARDS, 2)
             if _num(item.get("DistanceToPin")) is not None else None,
         "startingSurfaceRaw": _num(item.get("StartingSurface")),
+        # Raw numeric identifiers are EVIDENCE, not validated surface labels.
+        # Capture BOTH sides so a verified next-shot HUD label can eventually
+        # be paired with this physical shot's ending code.
+        "endingSurfaceRaw": _num(item.get("EndingSurface")),
     }
 
 
