@@ -42,5 +42,8 @@ jobs:
       - name: Test FarmLinks physical GSPro world movement and round tee session isolation
         run: node tools/test-unified-gspro-world-projection.mjs
 
+      - name: Test actual FarmLinks 572-yard stale tee overwrite regression
+        run: node tools/test-live-first-tee-display.mjs
+
       - name: Build web app
         run: npm run build
