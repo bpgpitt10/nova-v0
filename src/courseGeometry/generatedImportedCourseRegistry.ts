@@ -9,7 +9,7 @@ export const generatedImportedCourseRegistry = [
     name: 'FarmLinks at Pursell Farms',
     location: 'Sylacauga, AL',
     slug: 'farmlinks',
-    gsproAliases: ['FarmLinks', 'FarmLinks at Pursell Farms', 'Pursell Farms'],
+    gsproAliases: ['FarmLinks', 'FarmLinks at Pursell Farms', 'Pursell Farms', 'farmlinks_al_2_7_gsp'],
     staticPackageUrl: '/course-geometry/farmlinks/course-v1.json',
     status: 'validated',
     packageStatus: 'ready',
