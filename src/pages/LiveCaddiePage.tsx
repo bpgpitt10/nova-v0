@@ -34,6 +34,7 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
+import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -675,7 +676,26 @@ export default function LiveCaddiePage() {
       waypointCount: mini.scale?.waypointCount,
       scaleStatus: mini.scale?.status, markerStatus: mini.status,
     })
-    return distance == null ? null : estimateProvisionalTee(hole, distance)
+    if (distance == null) return null
+    // Use the real imported OSM tee *polygon* when it is uniquely consistent
+    // with the live GSPro ruler; only if not, project along the approximate
+    // route-start-to-green axis. White remains White, not permanently Tee 3.
+    const matched = matchProvisionalOsmTeeByDistance(hole, distance)
+    return matched ? {
+      status: 'provisional' as const,
+      point: matched.candidate.coursePoint,
+      source: 'distance-matched-osm-tee' as const,
+      uncertaintyRadiusYds: 25,
+      distanceInputYds: distance,
+      adjustmentYds: 0,
+      note: 'GSPro live multi-waypoint ruler suggests mapped ' +
+        (matched.candidate.teeSet ?? 'OSM tee') + ' (' +
+        matched.residualYds.toFixed(1) +
+        ' yd from OSM green-center distance); tee label, actual pin and hazards are unverified.',
+      usableForExactHazardCarry: false as const,
+      authorizesNativeAim: false as const,
+      locksTeeCalibration: false as const,
+    } : estimateProvisionalTee(hole, distance)
   }, [hole, liveSnapshot, nativeObservations, courseId])
 
   useEffect(() => {
@@ -1198,7 +1218,9 @@ export default function LiveCaddiePage() {
             Provisional first-use tee — about ±{nativeProvisionalTee?.status === 'provisional'
               ? nativeProvisionalTee.uncertaintyRadiusYds : liveSnapshot.teeUncertaintyYds ?? 50} yards.
             {nativeProvisionalTee?.status === 'provisional'
-              ? ' GSPro ball/pin ruler constrained the forward tee estimate; lateral position remains unknown.'
+              ? nativeProvisionalTee.source === 'distance-matched-osm-tee'
+                ? ' GSPro two-waypoint ruler supports a provisional existing OSM tee polygon. The chosen GSPro tee NAME remains unchanged and map accuracy is not yet verified.'
+                : ' GSPro ball/pin ruler constrained the forward tee estimate; lateral position remains unknown.'
               : ' Using approximate OSM route start until a reliable GSPro ball/pin ruler is available.'}
             {' '}Club choice is preliminary; exact forced carries, hazard margins, elevation at tee
             and native aim are not verified. Do not save this as a confirmed tee.
