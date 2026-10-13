@@ -53,7 +53,11 @@ try {
   assert.equal(adjusted.point[1],-25)
   assert.equal(adjusted.uncertaintyRadiusYds,25)
   assert.equal(adjusted.adjustmentYds,-25)
-  assert.equal(estimate(geom,490).status,'blocked')
+  const broad=estimate(geom,490)
+  assert.equal(broad.status,'provisional')
+  assert.deepEqual(broad.point,[0,-90])
+  assert.ok(broad.uncertaintyRadiusYds>=50)
+  assert.equal(estimate(geom,600).status,'blocked')
   const normalizedButUnmatched=estimate({...geom,coordinateSystem:{
     ...geom.coordinateSystem,origin:'selected-tee',
   }},425)
@@ -105,7 +109,44 @@ try {
   })
   assert.deepEqual(onFairway.courseLocalYds,[0,0])
   const bad=resolve(geom,{holeNumber:1,shotNumber:1,surface:'tee',distanceToPinYds:490})
-  assert.equal(bad.status,'unsupported')
+  assert.equal(bad.status,'supported')
+  assert.equal(bad.placement,'provisional')
+  assert.deepEqual(bad.courseLocalYds,[0,-90])
+  assert.ok(bad.uncertaintyRadiusYds>=50)
+  // Actual FarmLinks White H1: GSPro ~493 yd; five OSM tee polygons, Tee 3
+  // ~495 yd to green center. Do not relabel the user's White tee as Tee 3.
+  const farmlinks={...geom,markers:{tee:[0,0],pin:[0,572]},
+    teeCandidates:[
+      {teeSet:'Tee 1 (Back)',osmId:101,coursePoint:[0,0],teeToGreenCentroidYards:572},
+      {teeSet:'Tee 2',osmId:102,coursePoint:[0,26],teeToGreenCentroidYards:546},
+      {teeSet:'Tee 3',osmId:103,coursePoint:[-37,78],teeToGreenCentroidYards:495},
+      {teeSet:'Tee 4',osmId:104,coursePoint:[-20,136],teeToGreenCentroidYards:436},
+      {teeSet:'Tee 5 (Front)',osmId:105,coursePoint:[-36,156],teeToGreenCentroidYards:417},
+    ],
+  }
+  start({courseId:'farmlinks',teeSet:'White'})
+  const white=resolve(farmlinks,{
+    holeNumber:1,shotNumber:1,surface:'tee',distanceToPinYds:493,
+  })
+  assert.equal(white.status,'supported')
+  assert.equal(white.placement,'provisional')
+  assert.equal(white.candidate?.teeSet,'Tee 3')
+  assert.deepEqual(white.courseLocalYds,[-37,78])
+  assert.ok(white.reason.includes('White'))
+  assert.ok(white.reason.includes('not confirmed'))
+  assert.equal(white.uncertaintyRadiusYds,25)
+  const manual=resolve(farmlinks,null)
+  assert.equal(manual.placement,'provisional')
+  assert.deepEqual(manual.courseLocalYds,[0,0]) // no verified ruler yet
+  const ambiguous=resolve({...farmlinks,teeCandidates:[
+    ...farmlinks.teeCandidates,
+    {teeSet:'Tee X',osmId:999,coursePoint:[25,85],teeToGreenCentroidYards:496},
+  ]},{holeNumber:1,shotNumber:1,surface:'tee',distanceToPinYds:493})
+  assert.equal(ambiguous.placement,'provisional')
+  assert.equal(ambiguous.candidate,null) // distance match refused
+  assert.ok(ambiguous.uncertaintyRadiusYds>=50)
+  // Reset active selection for the original mapped/locked tests below.
+  start({courseId:'farmlinks',teeSet:'Blue'})
   const approximateSelectedTee=resolve({
     ...geom,coordinateSystem:{...geom.coordinateSystem,origin:'selected-tee'},
   },null)
@@ -137,5 +178,5 @@ try {
   assert.equal(afterLock.placement,'locked')
   assert.deepEqual(afterLock.courseLocalYds,[9,-33])
   assert.equal(afterLock.uncertaintyRadiusYds,null)
-  console.log('PASS: first-use shot 1 provisional fallback, GSPro ruler refinement, 45yd mismatch rejection, no map/tee overriding, locked > provisional and fail-closed safety.')
+  console.log('PASS: first-use fallback, FarmLinks White provisional Tee 3 distance match, ambiguous tee rejection, wide route fallback, locked tee precedence.')
 } finally { await vite.close() }
