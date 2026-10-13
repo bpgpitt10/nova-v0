@@ -423,8 +423,11 @@ const worldPointToHoleLocal = async (
 // Cache static geometry fetches, not tee hypotheses (which can change during
 // the active round after a fresh native minimap reading).
 const importedGeometryCache = new Map<string, Promise<Awaited<ReturnType<typeof loadCourseHoleGeometry>>>>()
-const loadImportedHole = (courseId: CourseId, holeNumber: number) => {
-  const key = courseId + ':' + holeNumber
+const loadImportedHole = (courseId: CourseId, holeNumber: number, roundId: string) => {
+  // The provider normalizes to the selected tee as part of loading geometry.
+  // A new round can select a different tee without leaving this browser tab.
+  // Keying only by course/hole silently reused the previous tee frame.
+  const key = courseId + ':' + holeNumber + ':' + roundId
   const cached = importedGeometryCache.get(key)
   if (cached) return cached
   const work = loadCourseHoleGeometry(courseId, holeNumber).catch(error => {
@@ -470,7 +473,7 @@ const buildShot = async (
     if (round?.courseId === coordinateCourseId) {
       try {
         const [geometry, heading] = await Promise.all([
-          loadImportedHole(coordinateCourseId, holeNumber),
+          loadImportedHole(coordinateCourseId, holeNumber, round.id),
           loadCourseHoleHeadingDegreesTrue(coordinateCourseId, holeNumber),
         ])
         const locked = loadTeeCalibration(
