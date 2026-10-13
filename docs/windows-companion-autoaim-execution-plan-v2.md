@@ -24,6 +24,18 @@
 
 **Milestones:** A plan + actual evidence fixtures; B tee candidate selection + reviewed course alias; C robust two-waypoint native CV; D generic shot-to-map registration (including explicit blocked state) + advice guards; E tests/CI and branch preview; F one controlled FarmLinks sim acceptance. The 18-hole GSPro world `teePos/pinPos` extractor remains an optional later precision enhancement, NOT a blocker for this playable-first-use test.
 
+### FarmLinks White H1 Deep Rough vs Sand lie field failure — 2026-10-13
+
+**Observed physical acceptance shot:** FarmLinks White, Round 255, Shot 1 moved ~40 yd. GSPro Hole 1 displayed **Shot 2, 449.6 yd remaining, Deep Rough** (dense weeds), wind 9 mph W, down lie 0.9°/right 0.5°. Looper correctly displayed Shot 2, ~450 yd, ball moved provisionally, but displayed **SAND**, then Driver with **-91.6 yd surface carry** and an implausible bunker-only physical modifier. Native diagnostic's currentRound latest completed record includes StartingSurfaceRaw=18 (tee) but **does not expose EndingSurfaceRaw**, so do not claim the numeric code for this particular shot has been independently read. The browser decoder mapped raw numeric **3 -> 'sand'** unconditionally and raw **11** was already marked ambiguous in earlier research; it is unsafe to equate an undocumented surface numeric with the GSPro minimap HUD wording.
+
+**OSM independent check:** imported FarmLinks H1 Tee 3 candidate local `(-37.351,78.434)`, the raw first-shot GSPro-world start `(1184.93384,764.004639)`, end `(1180.69287,800.2199)`, OSM true heading `353.715216°` project to ~`(-37.6,118.3)` hole-local. That point lies within imported OSM **rough** polygon, **not bunker**, but imported OSM does not encode the difference between ordinary rough and GSPro **Deep Rough** at this point.
+
+**Immediate safe correction (branch only):** treat unproven GSPro numeric raw 3 (formerly sand) and disputed 11 as unknown rather than inventing a bunker penalty, preserving a distinct provenance/OSM rough fallback. Add a small **shot-scoped "Use Deep Rough" / Rough / Sand** confirmation control on Live Caddie. When the golfer sees "Deep Rough" on actual GSPro HUD, clicking it overrides the fallback surface for *this shot only* in both displayed header and shot-physics model, using already-observed deep-rough launch response rather than sand. Clear automatically by round/hole/next-shot identity. `tools/test-gspro-surface-fallback.mjs` covers ambiguous code rejection and user confirmed Deep Rough's distinct physics. No GSPro data writes, simulator mouse clicks or Companion changes.
+
+**Next precision fix:** read the **actual GSPro minimap lie text** ("Deep Rough") via bounded read-only native OCR or a validated GSPro log field, then use that higher-priority source automatically. The current native `ocr.lie` only returns slope degrees and null surface even while the GSPro HUD visibly says Deep Rough, so the one-shot Lie OCR bridge cannot resolve this alone. Also add `EndingSurfaceRaw` read-only diagnostic exposure to confirm numeric meanings from real examples before re-enabling numeric sand. Don't hardcode raw 3 -> Deep Rough based on one isolated shot.
+
+---
+
 ### FarmLinks Live Wind field-test correction — 2026-10-13
 
 **Observed:** Actual GSPro capture (white H1, live first tee ~495yd, Driver recommended) had `ocr.wind: READY`, **9 MPH from SE (135° compass)**, `ocr.lie: READY` (0°/0°), companion connected, two consistent gray waypoint yardages 445/253 and 0.72291 yd/pixel. Live Caddie nonetheless displayed **`No live wind input · model assumes calm`**. This is *not* an OCR/direction calculation failure.
