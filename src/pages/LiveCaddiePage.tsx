@@ -1188,26 +1188,46 @@ export default function LiveCaddiePage() {
     trustedLivePin, greenDetail,
   ])
 
-  const recommendation = evaluations[0] ?? null
-  // No stale armed Driver may survive a transition into the fairway/rough.
+  const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation
+    && !spatialPositionUnavailable && !evaluationPending
+    ? buildUnderRangeShotStrategy({
+        evaluations,
+        hole,
+        ball,
+        target,
+        pin: trustedLivePin ?? pinEstimate,
+        greenDetail: trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'
+          ? greenDetail : null,
+        trustedPin: Boolean(trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'),
+      })
+    : null
+  const isShotStrategy = Boolean(shotStrategy)
+  const recommendation = isShotStrategy ? null : evaluations[0] ?? null
+  // A user-selected club is metadata in Partial Shot Strategy, never a
+  // modeled partial-flight recommendation; tee-only clubs remain prohibited.
   const eligibleArmedClub = armedClub && clubEligibleForShot(armedClub, shotOrigin)
     ? armedClub : null
-  const viewedEvaluation = eligibleArmedClub
-    ? evaluations.find((evaluation) => evaluation.club === eligibleArmedClub) ?? null
-    : recommendation
+  const viewedEvaluation = isShotStrategy
+    ? shotStrategy?.referenceEvaluation ?? null
+    : eligibleArmedClub
+      ? evaluations.find((evaluation) => evaluation.club === eligibleArmedClub) ?? null
+      : recommendation
   const viewedBestCandidate = viewedEvaluation?.bestCandidate ?? null
-  const inspectedCandidate = viewedEvaluation
+  const inspectedCandidate = !isShotStrategy && viewedEvaluation
     ? viewedEvaluation.candidates.find((candidate) => candidate.aimOffsetYds === inspectedAimOffset)
       ?? viewedBestCandidate
       ?? null
     : null
-  const risk = inspectedCandidate?.riskProfile ?? null
-  const displayedClub = eligibleArmedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
+  const risk = isShotStrategy ? null : inspectedCandidate?.riskProfile ?? null
+  const displayedClub = isShotStrategy
+    ? eligibleArmedClub
+    : eligibleArmedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
-    eligibleArmedClub && recommendation?.club && eligibleArmedClub !== recommendation.club,
+    !isShotStrategy && eligibleArmedClub && recommendation?.club
+      && eligibleArmedClub !== recommendation.club,
   )
-  const viewedClubRank = viewedEvaluation?.decisionRank ?? null
-  const aimDescriptor = hole && viewedEvaluation && inspectedCandidate
+  const viewedClubRank = isShotStrategy ? null : viewedEvaluation?.decisionRank ?? null
+  const aimDescriptor = !isShotStrategy && hole && viewedEvaluation && inspectedCandidate
     ? buildAimDescriptor({
         hole,
         ball,
@@ -1217,26 +1237,28 @@ export default function LiveCaddiePage() {
         pin: pinEstimate,
       })
     : null
-  // Read-only envelope for future native pairing. The UI does NOT POST this
-  // unverified local-hole aim point to the Windows companion.
+  // A short-game tactical point must NEVER be formatted as a native full-shot
+  // aim command. Native aim remains read-only and has no shot-strategy intent.
   const nativeAimIntent = prepareReadOnlyNativeAimIntent({
     snapshot: liveMatchesHole ? liveSnapshot : null,
     courseId,
     holeNumber,
-    club: displayedClub,
+    club: isShotStrategy ? null : displayedClub,
     teeLocalYds: hole?.markers.tee ?? null,
-    targetLocalYds: inspectedCandidate?.aimPoint ?? null,
+    targetLocalYds: isShotStrategy ? null : inspectedCandidate?.aimPoint ?? null,
   })
-  const nativeAimPreview = nativeVisualActive
+  const nativeAimPreview = !isShotStrategy && nativeVisualActive
     ? prepareReadOnlyNativeAimPreview(nativeAimIntent, nativeObservations)
     : null
-  const playerFacingAim = aimDescriptor?.text
-    ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
+  const playerFacingAim = isShotStrategy
+    ? shotStrategy?.aimInstruction ?? 'target line'
+    : aimDescriptor?.text
+      ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
   const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
 
   useEffect(() => {
     setInspectedAimOffset(null)
-  }, [courseId, holeNumber, viewedEvaluation?.club])
+  }, [courseId, holeNumber, viewedEvaluation?.club, isShotStrategy])
 
   // A new physical shot must never inherit a previous club's "armed" state.
   useEffect(() => {
