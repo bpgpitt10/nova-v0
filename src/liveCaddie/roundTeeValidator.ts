@@ -120,6 +120,16 @@ const validateShotOne = async (detail: LiveCaddieShotStateChangedDetail) => {
   const geometry = await loadCourseHoleGeometry(round.courseId, detail.holeNumber)
   const matches = matchingTeeCandidates(geometry, round.normalizedTeeSet)
   const candidate = matches.length === 1 ? matches[0] : null
+  // A first physical GSPro start is real, but an unmatched White tee does
+  // NOT inherit the approximate imported route/back-tee map anchor. Do not
+  // build or repeatedly confirm a false world -> OSM calibration from it.
+  // The existing shot archive preserves StartingPOS for later alignment.
+  if (!candidate) {
+    console.info('[Live Caddie tee validation] Real tee start archived; OSM tee association is unverified.', {
+      holeNumber: detail.holeNumber, teeSet: round.teeSet,
+    })
+    return
+  }
   const fingerprint = courseGeometryFingerprint(geometry)
   const existing = loadTeeCalibration(fingerprint, detail.holeNumber, round.normalizedTeeSet)
   const input = {
