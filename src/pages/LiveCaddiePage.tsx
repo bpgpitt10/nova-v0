@@ -38,6 +38,7 @@ import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
+import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -271,6 +272,7 @@ function LiveCaddieMap({
   target,
   pinEstimate,
   candidate,
+  strategyAimPoint,
   show95,
   showRiskTail,
   showPracticeShots,
@@ -281,6 +283,7 @@ function LiveCaddieMap({
   target: CoursePointYds
   pinEstimate: CoursePointYds | null
   candidate: AimCandidateEvaluation | null
+  strategyAimPoint: CoursePointYds | null
   show95: boolean
   showRiskTail: boolean
   showPracticeShots: boolean
@@ -307,6 +310,7 @@ function LiveCaddieMap({
   const pinSvg = pinEstimate ? project(pinEstimate) : null
   const aimSvg = candidate ? project(candidate.aimPoint) : null
   const meanSvg = candidate ? project(candidate.meanLanding) : null
+  const strategyAimSvg = strategyAimPoint ? project(strategyAimPoint) : null
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
   const shotAngle = (Math.atan2(shotDy, shotDx) * 180) / Math.PI + 90
@@ -433,6 +437,13 @@ function LiveCaddieMap({
             })}
             <circle className="live-mean-marker" cx={meanSvg[0]} cy={meanSvg[1]} r="1.05" />
             <circle className="live-aim-marker" cx={aimSvg[0]} cy={aimSvg[1]} r="0.82" />
+          </>
+        ) : null}
+        {!candidate && strategyAimSvg ? (
+          <>
+            <line className="live-aim-line" x1={ballSvg[0]} y1={ballSvg[1]}
+              x2={strategyAimSvg[0]} y2={strategyAimSvg[1]} />
+            <circle className="live-aim-marker" cx={strategyAimSvg[0]} cy={strategyAimSvg[1]} r="0.9" />
           </>
         ) : null}
         {pinSvg ? <circle className="live-pin-marker" cx={pinSvg[0]} cy={pinSvg[1]} r="0.78" /> : null}
