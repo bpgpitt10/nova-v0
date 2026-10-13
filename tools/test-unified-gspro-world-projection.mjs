@@ -20,7 +20,7 @@ globalThis.CustomEvent ??= class CustomEvent {
   constructor(type, opts = {}) { this.type = type; this.detail = opts.detail }
 }
 try {
-  const { gsproWorldDeltaToHoleLocal, projectGsproWorldPointToHole } =
+  const { gsproWorldDeltaToHoleLocal, projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistance } =
     await vite.ssrLoadModule('/src/courseGeometry/gsproWorldCourseProjection.ts')
   const { saveLiveTeeSessionAnchor, loadLiveTeeSessionAnchor } =
     await vite.ssrLoadModule('/src/courseGeometry/liveTeeSessionAnchor.ts')
@@ -40,6 +40,16 @@ try {
   assert.equal(gsproWorldDeltaToHoleLocal(from, to, Number.NaN), null)
   assert.equal(gsproWorldDeltaToHoleLocal(from, to, 353, 35), null)
   assert.equal(projectGsproWorldPointToHole([Number.NaN, 0], from, to, 353), null)
+  // FarmLinks imported green centroid is roughly (-0.38, 572.03).
+  // GSPro independently reported 262.72yd left; the projected map point
+  // is 268.53yd from the OSM green center, a 5.81yd residual.
+  assert.equal(provisionalWorldPositionMatchesPinDistance(local, [-0.3768,572.0258],262.72),true)
+  // A reversed world direction, wrong course, stale anchor or wildly shifted
+  // geometry must fail before the UI is allowed to recommend from the point.
+  assert.equal(provisionalWorldPositionMatchesPinDistance([-33.4,-305.5],[-0.3768,572.0258],262.72),false)
+  assert.equal(provisionalWorldPositionMatchesPinDistance([300,150],[-0.3768,572.0258],262.72),false)
+  assert.equal(provisionalWorldPositionMatchesPinDistance(local,null,262.72),false)
+  assert.equal(provisionalWorldPositionMatchesPinDistance(local,[-0.3768,572.0258],null),false)
 
   const round = startLiveCaddieRound({ courseId: 'farmlinks-pursell-farms-sylacauga-al', teeSet: 'White' })
   assert.ok(round)
