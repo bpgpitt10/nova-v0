@@ -7,7 +7,7 @@ import {
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
-import { gsproWorldDeltaToHoleLocal, projectGsproWorldPointToHole } from '../courseGeometry/gsproWorldCourseProjection'
+import { projectGsproWorldPointToHole } from '../courseGeometry/gsproWorldCourseProjection'
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
