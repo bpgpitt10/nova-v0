@@ -34,6 +34,11 @@ from waypoint_scale import Point, WaypointObservation, resolve_minimap_scale
 # approach/lie screenshot corpus.
 GRAY_HSV_LOW = np.array([0, 18, 150], dtype=np.uint8)
 GRAY_HSV_HIGH = np.array([179, 62, 240], dtype=np.uint8)
+# Live FarmLinks 4K markers measured around H=21..25, S=7..9, V=220..248.
+# Unlike the older Greywolf tinted markers they are effectively neutral-white.
+# Excluding full-255 white helps keep the white flag/pin out of the oval pool.
+NEAR_WHITE_HSV_LOW = np.array([0, 0, 185], dtype=np.uint8)
+NEAR_WHITE_HSV_HIGH = np.array([179, 20, 252], dtype=np.uint8)
 MAX_COMPONENT_SATURATION = 45.0
 MIN_COMPONENT_VALUE = 185.0
 MIN_COMPONENT_AREA = 35
@@ -54,7 +59,9 @@ class GrayWaypoint:
 def _candidate_markers(image: np.ndarray) -> list[Point]:
     """Find the low-saturation light-gray GSPro waypoint ovals."""
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, GRAY_HSV_LOW, GRAY_HSV_HIGH)
+    tinted = cv2.inRange(hsv, GRAY_HSV_LOW, GRAY_HSV_HIGH)
+    neutral = cv2.inRange(hsv, NEAR_WHITE_HSV_LOW, NEAR_WHITE_HSV_HIGH)
+    mask = cv2.bitwise_or(tinted, neutral)
     mask[: min(HEADER_EXCLUSION_PX, mask.shape[0]), :] = 0
     mask = cv2.morphologyEx(
         mask,
@@ -63,7 +70,7 @@ def _candidate_markers(image: np.ndarray) -> list[Point]:
     )
 
     count, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, 8)
-    candidates: list[Point] = []
+    candidates: list[tuple[Point, int]] = []
     for label in range(1, count):
         x, y, width, height, area = [int(value) for value in stats[label]]
         if not (MIN_COMPONENT_AREA <= area <= MAX_COMPONENT_AREA):
@@ -85,10 +92,18 @@ def _candidate_markers(image: np.ndarray) -> list[Point]:
             continue
 
         cx, cy = centroids[label]
-        candidates.append(Point(float(cx), float(cy)))
+        candidates.append((Point(float(cx), float(cy)), area))
 
-    candidates.sort(key=lambda point: (point.y, point.x))
-    return candidates
+    # Prefer real full-size marker ovals over individual small white digits.
+    # Previously the four-candidate OCR budget could be exhausted on text
+    # fragments above the second waypoint (e.g. FarmLinks 445 / 253).
+    candidates.sort(key=lambda entry: (-entry[1], entry[0].y, entry[0].x))
+    return [point for point, _area in candidates]
+
+
+def count_gray_waypoint_candidates(image: np.ndarray) -> int:
+    """Safe numeric diagnostic: distinguish marker segmentation from digit OCR."""
+    return len(_candidate_markers(image))
 
 
 def _run_digit_ocr(
