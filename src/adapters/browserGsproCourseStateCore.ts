@@ -7,7 +7,7 @@ import {
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
-import { projectGsproWorldPointToHole } from '../courseGeometry/gsproWorldCourseProjection'
+import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistance } from '../courseGeometry/gsproWorldCourseProjection'
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
@@ -494,7 +494,20 @@ const buildShot = async (
           endLocalYds = projectGsproWorldPointToHole(
             teeAnchor, firstStart, end, heading,
           )
-          if (startLocalYds && endLocalYds) positionQuality = 'provisional'
+          const remainingYards = asNumber(record.DistanceToPin)
+          const gsproRemainingYds = remainingYards == null ? null : remainingYards * METERS_TO_YARDS
+          // Do not apply a world heading to any imported course blindly.
+          // Independently cross-check current GSPro remaining straight distance
+          // against the mapped GREEN centroid (not a supposedly exact pin).
+          if (geometry.registration.status !== 'unavailable'
+            && provisionalWorldPositionMatchesPinDistance(
+              endLocalYds, geometry.markers.pin ?? null, gsproRemainingYds,
+            ) && startLocalYds) {
+            positionQuality = 'provisional'
+          } else {
+            startLocalYds = null
+            endLocalYds = null
+          }
         }
       } catch (error) {
         console.warn('[GSPro state] Imported-course world-to-map position unavailable.', error)
@@ -660,13 +673,12 @@ const buildSnapshot = async (
     )
   }
 
-  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
-    warnings.push(
-      `${selectedCourse.name} is selected and validated, but GSPro-world shot coordinates are not registered for this course yet. Shot ingestion continues without live ball placement.`,
-    )
-  }
-
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
+  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+    warnings.push(latestShot?.positionQuality === 'provisional'
+      ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
+      : 'Imported-course GSPro shot recognized, but no distance-consistent map registration is available; hazard/aim recommendations must stay paused.')
+  }
 
   let holeNumber = preShotHole ?? latestRecordHole
   if (preShotHole == null && logHole != null) {
