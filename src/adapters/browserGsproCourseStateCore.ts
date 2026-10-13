@@ -12,6 +12,7 @@ import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeome
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
+import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
   isBrowserGsproAccessSupported,
@@ -262,16 +263,7 @@ export const connectBrowserGsproCourseStateFolder = async () => {
 
 export const isBrowserGsproCourseStatePrepared = () => preparedStateHandle !== null
 
-const surfaceFromRaw = (value: number | null) => {
-  switch (value) {
-    case 1: return 'rough'
-    case 2: return 'fairway'
-    case 3: return 'sand'
-    case 5: return 'green'
-    case 18: return 'tee'
-    default: return null
-  }
-}
+const surfaceFromRaw = surfaceFromGsproRaw
 
 const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   const parsed = JSON.parse(text) as unknown
