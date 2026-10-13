@@ -48,5 +48,8 @@ jobs:
       - name: Test native one-shot wind/lie bridge from recorded FarmLinks 9mph SE capture
         run: node tools/test-one-shot-companion-wind.mjs
 
+      - name: Test FarmLinks Deep Rough correction and ambiguous GSPro surface protection
+        run: node tools/test-gspro-surface-fallback.mjs
+
       - name: Build web app
         run: npm run build
