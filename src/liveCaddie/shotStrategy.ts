@@ -53,6 +53,7 @@ export const buildUnderRangeShotStrategy = ({
   target,
   pin,
   greenDetail,
+  trustedPin = false,
 }: {
   evaluations: ClubAimEvaluation[]
   hole: CourseHoleGeometry
@@ -60,6 +61,8 @@ export const buildUnderRangeShotStrategy = ({
   target: CoursePointYds
   pin: CoursePointYds | null
   greenDetail: CourseGreenDetail | null
+  /** LiDAR pin-based tactical shifting requires an exact, source-validated pin. */
+  trustedPin?: boolean
 }): ShotStrategyRead | null => {
   const supported = evaluations.filter((evaluation) =>
     finite(evaluation.stockCarryYds)
@@ -73,7 +76,20 @@ export const buildUnderRangeShotStrategy = ({
   const referenceEvaluation = [...supported].sort(
     (left, right) => left.modeledCarryYds - right.modeledCarryYds,
   )[0]
-  const targetDistanceYds = distance(ball, target)
+  // Preserve the LIVE planning target when pin registration is approximate.
+  // Precise green-LiDAR shaping is permitted only on an exact GSPro pin.
+  const pinPoint = pin ?? target
+  const greenGuidance = trustedPin && greenDetail && pin
+    ? buildCourseGreenApproachTarget({
+        hole,
+        ball,
+        pin,
+        detail: greenDetail,
+        exactPin: true,
+      })
+    : null
+  const strategyTarget = greenGuidance?.target ?? target
+  const targetDistanceYds = distance(ball, strategyTarget)
   if (targetDistanceYds >= referenceEvaluation.modeledCarryYds - UNDER_RANGE_EPSILON_YDS) {
     return null
   }
@@ -93,22 +109,11 @@ export const buildUnderRangeShotStrategy = ({
     referenceEvaluation.modeledLateralBiasYds - referenceEvaluation.lateralBiasYds
   ) * adjustmentScale
 
-  const pinPoint = pin ?? target
-  const greenGuidance = greenDetail
-    ? buildCourseGreenApproachTarget({
-        hole,
-        ball,
-        pin: pinPoint,
-        detail: greenDetail,
-        exactPin: true,
-      })
-    : null
-  const strategyTarget = greenGuidance?.target ?? pinPoint
   const tactical = buildShotStrategyTacticalRead(
     hole,
     ball,
     pinPoint,
-    greenDetail,
+    trustedPin ? greenDetail : null,
   )
   const aim = formatAimInstruction(ball, pinPoint, strategyTarget)
 
