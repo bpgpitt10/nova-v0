@@ -60,6 +60,19 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(state["startingWorld"]["x"], 123.5)
         self.assertAlmostEqual(state["distanceToPinYds"], 169.51, places=1)
 
+    def test_completed_shot_exposes_raw_ending_code_without_assigning_surface_label(self):
+        shot = obs.parse_current_round(json.dumps({
+            "Shots": [{"Hole": 0, "HoleShot": 1, "CourseKey": "farmlinks_al_2_7_gsp",
+                       "StartingSurface": 18, "EndingSurface": 3,
+                       "StartingPOS": {"x": 1, "y": 0, "z": 3},
+                       "EndingPOS": {"x": 2, "y": 0, "z": 8}}]
+        }))
+        self.assertEqual(shot["kind"], "last_completed")
+        self.assertEqual(shot["startingSurfaceRaw"], 18)
+        self.assertEqual(shot["endingSurfaceRaw"], 3)
+        self.assertNotIn("endingSurface", shot)
+        self.assertNotIn("lieName", shot)
+
     def test_bad_and_unavailable_are_not_fake_tee_fixes(self):
         self.assertEqual(obs.parse_current_round("not-json")["status"], "unavailable")
         self.assertEqual(obs.parse_current_round(None)["status"], "unavailable")
