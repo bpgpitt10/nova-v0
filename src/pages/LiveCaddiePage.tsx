@@ -40,6 +40,7 @@ import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeSta
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { activeManualLieSurface, liveShotLieKey, type ManualLieSelection } from '../liveCaddie/currentShotLie'
+import { clubEligibleForShot, type ShotOriginEligibility } from '../liveCaddie/clubShotEligibility'
 import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
@@ -889,6 +890,13 @@ export default function LiveCaddiePage() {
     (typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees))
     || (typeof lieObservation.leftRightDegrees === 'number' && Number.isFinite(lieObservation.leftRightDegrees))
   )
+  // Only an explicit GSPro Shot 1 + TEE state may authorize tee-only
+  // clubs. Unknown/unsynchronized live state is NOT a tee authorization.
+  const shotOrigin: ShotOriginEligibility = liveMatchesHole
+    && nextShotNumber === 1 && isTeeSurface
+      ? 'tee'
+      : liveMatchesHole && nextShotNumber != null
+        ? 'non-tee' : 'unknown'
   const hasLiveLie = isTeeSurface || hasOcrLie
   const lieUpDownDeg = isTeeSurface
     ? 0
@@ -968,6 +976,7 @@ export default function LiveCaddiePage() {
         airAltitudeFt,
         airAltitudeSource,
         surfaceOverride,
+        shotOrigin,
         lieUpDownDeg,
         lieLeftRightDeg,
         lieSource,
@@ -993,14 +1002,18 @@ export default function LiveCaddiePage() {
     airAltitudeFt,
     airAltitudeSource,
     surfaceOverride,
+    shotOrigin,
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
   ])
 
   const recommendation = evaluations[0] ?? null
-  const viewedEvaluation = armedClub
-    ? evaluations.find((evaluation) => evaluation.club === armedClub) ?? null
+  // No stale armed Driver may survive a transition into the fairway/rough.
+  const eligibleArmedClub = armedClub && clubEligibleForShot(armedClub, shotOrigin)
+    ? armedClub : null
+  const viewedEvaluation = eligibleArmedClub
+    ? evaluations.find((evaluation) => evaluation.club === eligibleArmedClub) ?? null
     : recommendation
   const viewedBestCandidate = viewedEvaluation?.bestCandidate ?? null
   const inspectedCandidate = viewedEvaluation
@@ -1009,9 +1022,9 @@ export default function LiveCaddiePage() {
       ?? null
     : null
   const risk = inspectedCandidate?.riskProfile ?? null
-  const displayedClub = armedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
+  const displayedClub = eligibleArmedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
-    armedClub && recommendation?.club && armedClub !== recommendation.club,
+    eligibleArmedClub && recommendation?.club && eligibleArmedClub !== recommendation.club,
   )
   const viewedClubRank = viewedEvaluation?.decisionRank ?? null
   const aimDescriptor = hole && viewedEvaluation && inspectedCandidate
@@ -1044,6 +1057,11 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     setInspectedAimOffset(null)
   }, [courseId, holeNumber, viewedEvaluation?.club])
+
+  // A new physical shot must never inherit a previous club's "armed" state.
+  useEffect(() => {
+    setArmedClub(null)
+  }, [courseId, holeNumber, liveSnapshot?.roundId, liveSnapshot?.nextShotNumber])
 
   const connectGspro = async () => {
     setLiveError(null)
@@ -1538,24 +1556,29 @@ export default function LiveCaddiePage() {
               <div className="live-club-strip-heading">
                 <div>
                   <span className="live-kicker">ACTUAL CLUB</span>
-                  <strong>{armedClub ? `${armedClub} armed for the next physical shot` : 'Tap the club you are actually hitting'}</strong>
+                  <strong>{eligibleArmedClub ? `${eligibleArmedClub} armed for the next physical shot` : 'Tap the club you are actually hitting'}</strong>
                 </div>
-                {armedClub ? <button type="button" onClick={() => setArmedClub(null)}>Clear</button> : null}
+                {eligibleArmedClub ? <button type="button" onClick={() => setArmedClub(null)}>Clear</button> : null}
               </div>
               <div className="live-club-strip">
                 {bagClubs.map((club) => {
+                  const eligible = clubEligibleForShot(club, shotOrigin)
                   const clubEvaluation = evaluations.find((evaluation) => evaluation.club === club) ?? null
                   return (
                     <button
                       type="button"
                       key={club}
-                      className={`${armedClub === club ? 'armed ' : ''}${recommendation?.club === club ? 'recommended' : ''}`}
-                      onClick={() => setArmedClub(club)}
+                      disabled={!eligible}
+                      title={!eligible ? 'Tee-only club: excluded from all non-tee recommendations' : undefined}
+                      className={`${!eligible ? 'ineligible ' : ''}${eligibleArmedClub === club ? 'armed ' : ''}${recommendation?.club === club ? 'recommended' : ''}`}
+                      onClick={() => { if (eligible) setArmedClub(club) }}
                     >
                       <strong>{club}</strong>
-                      {recommendation?.club === club
-                        ? <span>REC</span>
-                        : armedClub === club && clubEvaluation?.decisionRank
+                      {!eligible
+                        ? <span>TEE ONLY</span>
+                        : recommendation?.club === club
+                          ? <span>REC</span>
+                        : eligibleArmedClub === club && clubEvaluation?.decisionRank
                           ? <span>#{clubEvaluation.decisionRank} CLUB</span>
                           : null}
                     </button>
