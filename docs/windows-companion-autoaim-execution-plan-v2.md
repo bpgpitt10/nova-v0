@@ -24,6 +24,16 @@
 
 **Milestones:** A plan + actual evidence fixtures; B tee candidate selection + reviewed course alias; C robust two-waypoint native CV; D generic shot-to-map registration (including explicit blocked state) + advice guards; E tests/CI and branch preview; F one controlled FarmLinks sim acceptance. The 18-hole GSPro world `teePos/pinPos` extractor remains an optional later precision enhancement, NOT a blocker for this playable-first-use test.
 
+### FarmLinks Live Wind field-test correction — 2026-10-13
+
+**Observed:** Actual GSPro capture (white H1, live first tee ~495yd, Driver recommended) had `ocr.wind: READY`, **9 MPH from SE (135° compass)**, `ocr.lie: READY` (0°/0°), companion connected, two consistent gray waypoint yardages 445/253 and 0.72291 yd/pixel. Live Caddie nonetheless displayed **`No live wind input · model assumes calm`**. This is *not* an OCR/direction calculation failure.
+
+**Root cause:** The first-use, single-shot `readLooperCompanionObservations` response in `LiveCaddiePage` was stored for tee matching but never dispatched to the `connectToGsproWindObservation` / `connectToGsproLieObservation` subscribers. The separate **Use Native Wind / Lie** mode forwarded OCR events, but turns on repeated 16-second native capture; the golfer had been explicitly told to leave that off given an unresolved prior whole-PC crash.
+
+**Fix (browser only, no new Windows capture work):** Add `publishOneShotCompanionHud` and invoke it in the existing bounded single tee capture after fresh/current-GSPro checks. Reuse the already-tested native OCR event normalization and wind compass/hole heading projection. Require screenshot/HUD timestamps within 30s, ready OCR, connected nonminimized GSPro window; stale prior completed-shot JSON is *not* proof the current HUD is stale. Refuse invalid screenshots and UNAVAILABLE OCR. No 16-second polling and no extra capture. Regression `tools/test-one-shot-companion-wind.mjs` uses the field diagnostic's 9 mph/135°/0° data, verifies READY normalization to a projected wind vector and rejection of old/minimized/invalid capture. **Limitation:** a one-time Shot 1 reading remains shot-scoped and won't refresh automatically on every later shot without opt-in polling or future event-driven on-demand sampling. Do not promise continuing live wind from a single snapshot.
+
+---
+
 ### FarmLinks White H1 morning field-test finding — 2026-10-13 (STOP BEFORE FIRST SHOT)
 
 **Observed:** on the audited Vercel preview, live companion measurement succeeded and the banner read `GSPro two-waypoint ruler supports a provisional existing OSM tee polygon` with ±25 yd. But the map still showed ball at the default mapped back tee and the top-right `Shot 1 · Tee · 572 yd to pin` (instead of the native-matched ~493 yd Tee 3 candidate). An old `Provisional Hole 1 tee (existing-map-tee-anchor), ±50 yd` warning also remained below the successful native banner. The golfer correctly stopped before hitting. **This invalidates the previous H1 first-tee field acceptance despite correct native OCR.**
