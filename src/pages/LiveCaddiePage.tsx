@@ -1651,18 +1651,20 @@ export default function LiveCaddiePage() {
           <>
             <section className="live-caddie-main-grid">
               <aside className="live-decision-column">
-                <article className="live-decision-card">
+                <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
                       {evaluationPending
                         ? 'CALCULATING'
+                        : isShotStrategy
+                          ? 'SHOT STRATEGY'
                         : spatialPositionProvisional
                           ? 'PROVISIONAL · CLUB ESTIMATE'
                         : isAlternateClub
                           ? `USER SELECTED${viewedClubRank ? ` · #${viewedClubRank} CLUB` : ''}`
                           : 'RECOMMENDED · #1 CLUB'}
                     </span>
-                    {isAlternateClub && recommendation ? (
+                    {!isShotStrategy && isAlternateClub && recommendation ? (
                       <span style={{ color: '#9fb09f', fontSize: '10px' }}>
                         Looper recommends {recommendation.club}
                       </span>
@@ -1673,10 +1675,26 @@ export default function LiveCaddiePage() {
                     ) : null}
                   </div>
 
-                  <div className="live-club-hero">{displayedClub ?? '—'}</div>
+                  <div className="live-club-hero">{isShotStrategy && shotStrategy
+                    ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
+                    : displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
                     {playerFacingAim}
                   </div>
+                  {isShotStrategy && shotStrategy ? (
+                    <div className="live-strategy-read">
+                      <div><span>GREEN TERRAIN</span><strong>{shotStrategy.terrain}</strong></div>
+                      {shotStrategy.hazard ? (
+                        <div><span>HAZARD</span><strong>{shotStrategy.hazard}</strong></div>
+                      ) : null}
+                      <div><span>SAFE MISS</span><strong>{shotStrategy.safeMiss}</strong></div>
+                      {!trustedLivePin ? (
+                        <div><span>POSITION CONFIDENCE</span>
+                          <strong>Estimated pin — green contours and precise hazard margins are unverified.</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
                   <p className="live-decision-reason">
                     {aimContext
                       ?? inspectedCandidate?.decisionReason
@@ -1687,6 +1705,7 @@ export default function LiveCaddiePage() {
                           ? `Looper does not yet have enough modeled support to rank a ${displayedClub} line for this shot.`
                           : 'Looper is waiting for enough player data to rank this shot.')}
                   </p>
+                  )}
 
                   <ConditionsMathPanel
                     evaluation={viewedEvaluation}
@@ -1696,25 +1715,31 @@ export default function LiveCaddiePage() {
                     elevationDeltaFt={elevationDeltaFt}
                     lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
                     lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
+                    strategyMode={isShotStrategy}
+                    strategyEffectiveDistanceYds={shotStrategy?.effectiveDistanceYds ?? null}
+                    strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
+                    strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
                   />
 
                   <button
                     type="button"
-                    className={`live-arm-recommendation${armedClub && armedClub === displayedClub ? ' armed' : ''}`}
-                    disabled={!displayedClub}
-                    onClick={() => displayedClub && setArmedClub(displayedClub)}
+                    className={`live-arm-recommendation${eligibleArmedClub && eligibleArmedClub === displayedClub ? ' armed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    disabled={isShotStrategy || !displayedClub}
+                    onClick={() => { if (!isShotStrategy && displayedClub) setArmedClub(displayedClub) }}
                   >
-                    {armedClub && armedClub === displayedClub
-                      ? `${displayedClub} ARMED FOR NEXT SHOT`
-                      : displayedClub
-                        ? `HITTING ${displayedClub} · TAP TO ARM`
-                        : evaluationPending
-                          ? 'CALCULATING RECOMMENDATION…'
-                          : 'WAITING FOR RECOMMENDATION'}
+                    {isShotStrategy
+                      ? eligibleArmedClub ? `${eligibleArmedClub} PLAYER SELECTION` : 'CHOOSE ACTUAL CLUB BELOW'
+                      : eligibleArmedClub && eligibleArmedClub === displayedClub
+                        ? `${displayedClub} ARMED FOR NEXT SHOT`
+                        : displayedClub
+                          ? `HITTING ${displayedClub} · TAP TO ARM`
+                          : evaluationPending
+                            ? 'CALCULATING RECOMMENDATION…'
+                            : 'WAITING FOR RECOMMENDATION'}
                   </button>
                 </article>
 
-                <article className="live-outcomes-card">
+                {!isShotStrategy ? <article className="live-outcomes-card">
                   <div className="live-section-heading">
                     <div>
                       <span className="live-kicker">OUTCOMES</span>
@@ -1733,7 +1758,7 @@ export default function LiveCaddiePage() {
                       {outcomeDetails.map(([label, value]) => <span key={label}>{label} {pct(value)}</span>)}
                     </div>
                   ) : <div className="live-outcome-details"><span>No material bunker / woods / outside map area / penalty probability in the current model.</span></div>}
-                </article>
+                </article> : null}
               </aside>
 
               <article className="live-map-card">
