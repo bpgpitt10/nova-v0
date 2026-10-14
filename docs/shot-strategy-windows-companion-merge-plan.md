@@ -1,5 +1,15 @@
 # Plan: merge partial Shot Strategy and Windows Companion Auto Aim
 
+> **2026-10-13 Partial Shot integration update:** The Shot Strategy **portion** is now selectively integrated on `live-caddie-partial-shot-integration-v1` from the real production branch `web-alpha-mishits` (current baseline `b414c068`). The separate native Windows Auto Aim component is **not enabled or merged as part of this change**. No alternate beta URL is intended for daily testing; production target is `thelooper.golf` after CI and deployment approval.
+
+> **Changes ported:** `shotStrategy.ts` and `shotStrategyTerrain.ts` from `live-caddie-shot-strategy-v1`; tactical-target elevation bypass in `LiveCaddieWorker.ts`; the strategy-only ledger interface in `ConditionsMathPanel.tsx`; strategy card, map target, disabled unvalidated risk percentages and per-shot club-choice UX in `LiveCaddiePage.tsx`; appended scoped CSS. No wholesale branch merge or replacement of current GSPro session, tee, wind, or green logic.
+
+> **Correctness fixes over original partial branch:** precise LiDAR green aim requires a **source-validated exact GSPro pin**, never just an estimated pin. When exact pin unavailable, keep the live tactical target and label the confidence limit. Recalculate playing distance/adjustment scale from the **same strategy map target**. Hazard search uses closest polygon **edge/inside** rather than checking polygon vertices, closing the long straight bunker-edge failure. In Shot Strategy mode, native read-only full-shot intent has `club:null` and `targetLocalYds:null`, even if the player selected a physical club. All Driver/Mini Driver non-tee restrictions and first-tee hold apply unchanged.
+
+> **Release checks:** `tools/test-live-partial-shot-strategy.mjs` checks 5/60/75yd under-range, 88/95yd above floor, uncalibrated model, segment/inside bunker, exact pin confidence, disabled risk percentages, and no native command target. Run the full preexisting farm/movement/wind/surface/green/auth/shot-state regressions. Physical validation of 60yd target and on-green transition still outstanding until user is at simulator.
+
+
+
 > **Scope clarification (2026-10-11):** This remains the plan for manually
 > reconciling **partial Shot Strategy** across diverged branches; it is NOT the
 > overarching native Windows Companion implementation plan. For current EXE
