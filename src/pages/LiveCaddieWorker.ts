@@ -52,7 +52,7 @@ type LandingElevationResolution = {
 }
 
 const DISPLAY_OUTCOME_DOT_COUNT = 256
-const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v8'
+const EVALUATION_CACHE_NAME = 'looper-live-caddie-evaluations-v9'
 const EVALUATION_CACHE_TTL_MS = 10 * 60 * 1000
 
 const logAimDescriptorShadow = (
@@ -329,6 +329,25 @@ const resolveClubLandingElevations = (
   nowMs: number,
 ): LandingElevationAwareEvaluation[] => {
   const baseline = evaluateAimLab(sessions, hole, ball, target, environment, nowMs)
+
+  // Short game has no calibrated stock trajectory; calculating landing
+  // elevation at the hypothetical full-stock carry is misleading. Preserve
+  // the actual tactical-target elevation so the shot-requirement ledger
+  // describes this shot, not a different (longer) club trajectory.
+  const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
+  const shortestSupportedModeledCarryYds = baseline
+    .filter(evaluation => evaluation.supportShots > 0 && Number.isFinite(evaluation.modeledCarryYds))
+    .reduce((minimum, evaluation) => Math.min(minimum, evaluation.modeledCarryYds), Number.POSITIVE_INFINITY)
+  if (Number.isFinite(shortestSupportedModeledCarryYds)
+    && targetDistanceYds < shortestSupportedModeledCarryYds - 0.5) {
+    return baseline.map((evaluation): LandingElevationAwareEvaluation => ({
+      ...evaluation,
+      landingElevationDeltaFt: typeof environment.elevationDeltaFt === 'number'
+        && Number.isFinite(environment.elevationDeltaFt)
+        ? environment.elevationDeltaFt : null,
+      landingElevationSource: environment.elevationSource ?? 'tactical target terrain',
+    }))
+  }
 
   const corrected = baseline.map((baselineEvaluation): LandingElevationAwareEvaluation => {
     let current = baselineEvaluation
