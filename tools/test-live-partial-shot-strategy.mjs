@@ -25,6 +25,9 @@ try {
   const tactical = buildShotStrategyTacticalRead(syntheticHole,[0,-62],[0,-1],null)
   assert.match(tactical.hazard,/Bunker/i)
   assert.ok(tactical.safeMiss)
+  const insideTactical = buildShotStrategyTacticalRead(syntheticHole,[0,-62],[0,4],null)
+  assert.match(insideTactical.hazard,/overlaps the mapped target/)
+  assert.match(insideTactical.safeMiss,/verified clear ground/)
 
   const ball=[0,0]
   const evaluation = {
