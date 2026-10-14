@@ -206,6 +206,15 @@ const hazardRead = (
 ) => {
   const hazard = nearestHazardPoint(hole, pin)
   if (!hazard) return { text: null, safeMiss: null }
+  if (hazard.distanceYds <= 1e-8) {
+    // A mapped hazard containing the pin/target is not a "no danger"
+    // scenario. Without a verified landing alternative, warn rather than
+    // invent an exact safe-side instruction.
+    return {
+      text: `${hazardName(hazard.kind)} overlaps the mapped target location.`,
+      safeMiss: 'Do not plan a landing inside this mapped hazard; favor verified clear ground.',
+    }
+  }
   const frame = buildAimShotFrame(ball, pin)
   const pinFrame = frame(pin)
   const hazardFrame = frame(hazard.point)
