@@ -1780,7 +1780,7 @@ export default function LiveCaddiePage() {
                       Practice shots{viewedEvaluation ? ` · ${viewedEvaluation.empiricalShotCount}` : ''}
                     </button>
                     <button type="button" className={showRiskTail ? 'active' : ''} onClick={() => setShowRiskTail((value) => !value)}>Risk tail</button>
-                  </div> : <span className="live-strategy-map-label">TACTICAL TARGET</span>
+                  </div> : <span className="live-strategy-map-label">TACTICAL TARGET</span>}
                 </div>
 
                 <LiveCaddieMap
