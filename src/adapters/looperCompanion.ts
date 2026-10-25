@@ -162,6 +162,18 @@ export type LooperCompanionLiveObservations = {
       pinWorld?: { x: number; y: number; z: number } | null
     }
   }
+  teeHud?: {
+    status: 'READY' | 'UNAVAILABLE'
+    reason?: string
+    source?: string
+    courseText?: string
+    holeNumber?: number
+    shotNumber?: number
+    straightDistanceYds?: number
+    scorecardYards?: number
+    scorecardDifferenceYds?: number
+    authorizesNativeAim?: boolean
+  }
   minimap?: {
     status: string
     reason?: string | null
