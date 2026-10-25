@@ -42,6 +42,7 @@
  <section class="panel"><div class="label">GSPro connection</div><div id="gspro" class="value">Not checked</div><div id="folder" class="details">Folder unknown</div></section>
  <section class="panel"><div class="label">Wind HUD OCR</div><div id="wind" class="value">Not checked</div><div id="windDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Lie HUD OCR</div><div id="lie" class="value">Not checked</div><div id="lieDetails" class="details">—</div></section>
+ <section class="panel"><div class="label">Current first-tee HUD OCR</div><div id="teeHud" class="value">Not checked</div><div id="teeHudDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Shot world evidence (not live ball)</div><div id="world" class="value">Not checked</div><div id="worldDetails" class="details">—</div></section>
  <section class="panel"><div class="label">GSPro tee and pin world</div><div id="layout" class="value">Not checked</div><div id="layoutDetails" class="details">—</div></section>
  <section class="panel"><div class="label">Minimap ball pixel</div><div id="ball" class="value">Not checked</div><div id="ballDetails" class="details">—</div></section>
@@ -75,6 +76,10 @@ function render(r) {
   el('folder').textContent='Data folder: '+(r.dataFolder?.status||'unavailable')+' | state age '+(s.fileAgeMs==null?'unknown':Math.round(s.fileAgeMs/1000)+'s')
   display('wind',wind.status==='READY'?String(wind.speedMph)+' MPH / '+String(wind.directionDegrees)+'°':(wind.status||'UNAVAILABLE'),wind.note,wind.status==='READY'?'ok':'warn')
   display('lie',lie.status==='READY'?(String(lie.upDownDegrees)+'° / '+String(lie.leftRightDegrees)+'°'):(lie.status||'UNAVAILABLE'),lie.note,lie.status==='READY'?'ok':'warn')
+  const teeHud=r.teeHud||{}
+  display('teeHud',teeHud.status==='READY'?(teeHud.straightDistanceYds+' YDS · Hole '+teeHud.holeNumber):(teeHud.status||'UNAVAILABLE'),
+    (teeHud.courseText||'No verified course')+' | Shot '+(teeHud.shotNumber??'—')+' | scorecard '+(teeHud.scorecardYards??'—')+' yd | '+(teeHud.reason||'Read-only distance; OSM tee identity and exact XY unverified'),
+    teeHud.status==='READY'?'ok':'warn')
   const isPreShot = shot.kind === 'pre_shot'
   const isCompleted = shot.kind === 'last_completed'
   const evidence = isPreShot ? shot.startingWorld : isCompleted ? shot.endingWorld : null
@@ -95,7 +100,7 @@ function render(r) {
     'state '+(timings.structuredDiscovery??'—')+' ms · capture '+(timings.nativeCapture??'—')+
     ' ms · markers '+(timings.markerDetection??'—')+' ms · waypoint OCR '+(timings.waypointOcr??'—')+
     ' ms · zoom '+(timings.zoomRegistration??'—')+' ms · wind '+(timings.windOcr??'—')+
-    ' ms · lie '+(timings.lieOcr??'—')+' ms','warn')
+    ' ms · lie '+(timings.lieOcr??'—')+' ms · tee HUD '+(timings.teeHudOcr??'—')+' ms','warn')
   el('json').textContent=JSON.stringify(r,null,2)
   el('export').disabled=false
 }
