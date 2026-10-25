@@ -42,6 +42,7 @@ import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
+import { resolveNativeTeeHudDistance } from '../courseGeometry/nativeTeeHudDistance'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import {
   loadActiveLiveCaddieRound,
@@ -791,17 +792,34 @@ export default function LiveCaddiePage() {
     const roiHeight = mini?.minimapRoiWindowPixels?.[3]
     if (!mini?.ballPixel || !Number.isFinite(roiHeight) || roiHeight! <= 0
       || mini.ballPixel.y < roiHeight! * 0.70) return null
-    const distance = readTeeBallPinDistanceYds({
+    // The actual GSPro Shot 1 HUD is a separate, screenshot-current source.
+    // The user-selected course/tee remains authoritative; require the HUD's
+    // own course, hole and shot labels to match before using its distance.
+    // Old completed-shot files (including another course) are never promoted
+    // into fresh shot or geographic-position authority.
+    const hudDistance = selectedCourse
+      ? resolveNativeTeeHudDistance({
+          hud: nativeObservations.teeHud,
+          courseName: selectedCourse.name,
+          courseAliases: selectedCourse.gsproAliases,
+          holeNumber: hole.holeNumber,
+        })
+      : null
+    const rulerDistance = readTeeBallPinDistanceYds({
       ballPixel: mini.ballPixel, pinPixel: mini.pinPixel,
       yardsPerPixel: mini.scale?.yardsPerPixel,
       waypointCount: mini.scale?.waypointCount,
       scaleStatus: mini.scale?.status, markerStatus: mini.status,
     })
+    const distance = hudDistance ?? rulerDistance
     if (distance == null) return null
     // Use the real imported OSM tee *polygon* when it is uniquely consistent
     // with the live GSPro ruler; only if not, project along the approximate
     // route-start-to-green axis. White remains White, not permanently Tee 3.
     const matched = matchProvisionalOsmTeeByDistance(hole, distance)
+    // Direct HUD evidence cannot justify inventing a precise geographic tee.
+    // Only one clearly matched *existing* imported pad can unlock Shot 1.
+    if (hudDistance != null && !matched) return null
     return matched ? {
       status: 'provisional' as const,
       point: matched.candidate.coursePoint,
@@ -809,7 +827,7 @@ export default function LiveCaddiePage() {
       uncertaintyRadiusYds: 25,
       distanceInputYds: distance,
       adjustmentYds: 0,
-      note: 'GSPro live multi-waypoint ruler suggests mapped ' +
+      note: (hudDistance != null ? 'GSPro live first-shot HUD distance' : 'GSPro live multi-waypoint ruler') + ' suggests mapped ' +
         (matched.candidate.teeSet ?? 'OSM tee') + ' (' +
         matched.residualYds.toFixed(1) +
         ' yd from OSM green-center distance); tee label, actual pin and hazards are unverified.',
@@ -817,7 +835,7 @@ export default function LiveCaddiePage() {
       authorizesNativeAim: false as const,
       locksTeeCalibration: false as const,
     } : estimateProvisionalTee(hole, distance)
-  }, [hole, liveSnapshot, nativeObservations, courseId])
+  }, [hole, liveSnapshot, nativeObservations, courseId, selectedCourse])
 
   // One pre-shot tee is authoritative for BOTH on-map ball placement AND
   // displayed distance. The browser's manual Shot 1 snapshot may still hold
@@ -1619,7 +1637,7 @@ export default function LiveCaddiePage() {
               not rank a club or aim line from that unmeasured tee.
               {teeCaptureStatus === 'failed' ? ' The last native attempt did not complete.' : ''}
               {teeCaptureStatus === 'complete'
-                ? ' Native capture returned, but the waypoint scale did not establish a matching tee.'
+                ? ' Native capture returned, but neither a verified first-shot HUD distance nor waypoint scale established a matching tee.'
                 : null}
               {teeCaptureStatus === 'not-started'
                 ? ' Waiting for a connected Windows Companion or an explicit fallback choice.'
