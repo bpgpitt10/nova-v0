@@ -10,6 +10,7 @@ on:
       - production-live-caddie-consolidation-v1
       - live-caddie-partial-shot-integration-v1
       - live-caddie-production-readiness-v1
+      - first-tee-native-hud-distance-v1
   pull_request:
     branches:
       - web-gspro-clean
@@ -48,6 +49,9 @@ jobs:
 
       - name: Test actual FarmLinks 572-yard stale tee overwrite regression
         run: node tools/test-live-first-tee-display.mjs
+
+      - name: Test guarded first-tee HUD OCR against real FarmLinks field evidence
+        run: node tools/test-native-tee-hud-distance.mjs
 
       - name: Test native one-shot wind/lie bridge from recorded FarmLinks 9mph SE capture
         run: node tools/test-one-shot-companion-wind.mjs
