@@ -20,6 +20,7 @@ import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_native_wind_ocr as wind_ocr
 import gspro_native_lie_ocr as lie_ocr
+import gspro_native_tee_hud_ocr as tee_hud_ocr
 import gspro_companion_minimap_calibration as waypoint_diagnostics
 from waypoint_scale import Point, resolve_minimap_scale
 
@@ -241,7 +242,9 @@ def _image_observation(window, state, *, report=None):
                 return result
             shot, layout = state.get("shot", {}), state.get("layout", {})
             if shot.get("status") != "ready" or layout.get("status") != "ready":
-                result["scale"] = {"status": "unavailable", "reason": "missing_fresh_world_or_layout"}
+                # Keep the actual waypoint-rejection reason. Missing old world
+                # records cannot explain away disagreement visible in fresh pixels.
+                result["worldFallbackBlockedReason"] = "missing_fresh_world_or_layout"
                 return result
 
             # Crosscheck actual tee start against the output_log tee to reject a
@@ -329,7 +332,15 @@ def collect_observations(*, include_ocr=True):
             "autoAim": False,
         },
     }
+    tee_hud_ms = 0.0
     if include_ocr and window.get("status") == "connected":
+        tee_hud_started = time.perf_counter()
+        try:
+            result["teeHud"] = tee_hud_ocr.read_tee_hud_from_capture(frame_report)
+        except Exception as error:
+            result["teeHud"] = {"status": "UNAVAILABLE", "reason": "tee_hud_" + type(error).__name__}
+        finally:
+            tee_hud_ms = round((time.perf_counter() - tee_hud_started) * 1000, 2)
         # The existing Windows HUD OCR readers run as separate bounded requests.
         # Individual OCR failures never prevent independent ball/world evidence.
         wind_started = time.perf_counter()
@@ -355,6 +366,7 @@ def collect_observations(*, include_ocr=True):
         finally:
             lie_ms = round((time.perf_counter() - lie_started) * 1000, 2)
     else:
+        result["teeHud"] = {"status": "UNAVAILABLE", "reason": "gspro_not_connected_or_ocr_disabled"}
         result["ocr"] = {key: {"status": "UNAVAILABLE", "observedAt": observed,
              "note": "GSPro not connected or OCR not requested."}
              for key in ("wind", "lie")}
@@ -373,6 +385,7 @@ def collect_observations(*, include_ocr=True):
         "zoomRegistration": minimap.get("timingMs", {}).get("zoomRegistration"),
         "windOcr": wind_ms,
         "lieOcr": lie_ms,
+        "teeHudOcr": tee_hud_ms,
         "total": round((time.perf_counter() - started) * 1000, 2),
     }
     return result
