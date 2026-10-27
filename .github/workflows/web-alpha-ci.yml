@@ -56,6 +56,9 @@ jobs:
       - name: Test native one-shot wind/lie bridge from recorded FarmLinks 9mph SE capture
         run: node tools/test-one-shot-companion-wind.mjs
 
+      - name: Test native wind and lie refresh once after each physical shot
+        run: node tools/test-post-shot-companion-hud.mjs
+
       - name: Test FarmLinks Deep Rough correction and ambiguous GSPro surface protection
         run: node tools/test-gspro-surface-fallback.mjs
 
