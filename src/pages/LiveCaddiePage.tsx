@@ -20,6 +20,7 @@ import {
   type LooperCompanionLiveObservations,
 } from '../adapters/looperCompanion'
 import { publishOneShotCompanionHud } from '../adapters/companionHudBridge'
+import { shotHudCaptureKey } from '../liveCaddie/shotHudCaptureKey'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
@@ -495,6 +496,7 @@ export default function LiveCaddiePage() {
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const triedProvisionalTeeNative = useRef(new Set<string>())
+  const triedPostShotHudNative = useRef(new Set<string>())
   const [captureRoundId, setCaptureRoundId] = useState<string | null>(
     () => loadActiveLiveCaddieRound()?.id ?? null,
   )
@@ -524,6 +526,7 @@ export default function LiveCaddiePage() {
       if (!isNewLooperRoundForCapture(lastCaptureRoundIdRef.current, id)) return
       lastCaptureRoundIdRef.current = id
       triedProvisionalTeeNative.current.clear()
+      triedPostShotHudNative.current.clear()
       setCaptureRoundId(id)
       setTeeCaptureProgress(null)
       setFallbackApprovedKey(null)
@@ -759,6 +762,50 @@ export default function LiveCaddiePage() {
     companionStatus?.gspro.status, nativeVisualActive,
     teeCaptureKey, captureRetryNonce,
   ])
+
+  // One fresh, read-only wind/lie observation for each real new shot.
+  // The initial H1 tee is already handled by the separate native-tee capture
+  // above; after that first physical shot, that effect stops firing. The
+  // canonical GSPro shot state deliberately marks prior HUD readings stale,
+  // so we MUST obtain and publish new values for Shot 2 onward.
+  //
+  // No 16-second polling, no screen images sent, no native click/Auto Aim.
+  const postShotHudKey = shotHudCaptureKey({
+    captureRoundId, courseId, selectedHoleNumber: holeNumber,
+    snapshotHoleNumber: liveSnapshot?.holeNumber ?? null,
+    nextShotNumber: liveSnapshot?.nextShotNumber ?? null,
+    latestShotKey: liveSnapshot?.latestShotKey ?? null,
+    teePlacement: liveSnapshot?.teePlacement,
+  })
+  useEffect(() => {
+    if (!postShotHudKey || companionStatus?.gspro.status !== 'connected'
+      || nativeVisualActive || document.hidden) return
+    const key = postShotHudKey
+    if (triedPostShotHudNative.current.has(key)) return
+    triedPostShotHudNative.current.add(key)
+    let cancelled = false
+    // GSPro may switch its on-screen HUD just *after* writing the shot file.
+    // Give the game time to render the next lie before reading the same HWND.
+    const timeout = window.setTimeout(() => {
+      void readLooperCompanionObservations(45000)
+        .then(obs => {
+          if (cancelled) return
+          // A fresh OBSERVATION is diagnostic: only wind and lie enter the
+          // recommender via the existing validated per-shot event bridge.
+          setNativeObservations(obs)
+          publishOneShotCompanionHud(obs)
+        })
+        .catch(error => {
+          if (!cancelled) {
+            console.warn('[Live Caddie] New-shot GSPro wind/lie capture failed.', error)
+          }
+        })
+    }, 1250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
+  }, [postShotHudKey, companionStatus?.gspro.status, nativeVisualActive])
 
   // The ball and pin plus a native waypoint scale produce a STRAIGHT distance,
   // not an absolute tee X or Y. Never use screenshot left/right framing as a
