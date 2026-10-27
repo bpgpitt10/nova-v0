@@ -74,14 +74,36 @@ try {
   assert.equal(wind.speedMph,9,'New-shot OCR must become the current wind')
   assert.equal(lie.status,'READY')
   assert.equal(lie.upDownDegrees,1.5,'New-shot OCR must become current lie')
-  wc.disconnect();lc.disconnect()
-
   const page=readFileSync('src/pages/LiveCaddiePage.tsx','utf8')
   assert.ok(page.includes('postShotHudKey = shotHudCaptureKey('),
     'UI must derive physical shot key')
   assert.ok(page.includes('publishOneShotCompanionHud(obs)'),
     'Native one-shot HUD must reach the existing wind/lie adapters')
-  assert.ok(page.includes('}, 1250)'),
+  assert.ok(page.includes('void capture(0) }, 1250)'),
     'Native HUD must capture after GSPro updates the post-shot screen')
-  console.log('PASS: native wind/lie refreshed once per real physical shot, stale old shot rejected, Shot 2 wind+lie recommender events restored, no polling.')
+  assert.ok(page.includes('const MAX_CAPTURE_ATTEMPTS = 2')
+    && page.includes('attempt + 1 < MAX_CAPTURE_ATTEMPTS')
+    && page.includes('void capture(attempt + 1) }, 1750)'),
+    'At most one retry for partial/noisy captures, not open-ended polling')
+  assert.ok(page.includes('const result = publishOneShotCompanionHud(obs)')
+    && page.includes('complete = result.wind && result.lie'),
+    'Only complete shot-scoped wind/lie OCR is terminal success')
+  assert.ok(!page.slice(page.indexOf('const postShotHudKey = shotHudCaptureKey('),
+      page.indexOf('// The ball and pin plus a native waypoint scale'))
+    .includes('document.hidden'), 'GSPro foreground must not disable background-browser shot HUD reads')
+
+  window.dispatchEvent(new CustomEvent(SHOT_EVENT,{detail:{
+    key:'round-263:H1:S2',nextShotNumber:3,holeNumber:1,source:'gspro',
+  }}))
+  assert.equal(wind.status,'STALE');assert.equal(lie.status,'STALE')
+  const partial=obs(8,2)
+  partial.ocr.lie.status='UNAVAILABLE'
+  assert.deepEqual(publish(partial),{wind:true,lie:false},'Incomplete lie must request one bounded retry')
+  assert.equal(wind.status,'READY');assert.equal(lie.status,'STALE')
+  assert.deepEqual(publish(obs(8,2)),{wind:true,lie:true},
+    'Retry repairs missing lie without requiring manual toggle')
+  assert.equal(lie.status,'READY');assert.equal(lie.upDownDegrees,2)
+
+  wc.disconnect();lc.disconnect()
+  console.log('PASS: post-shot wind/lie refresh after canonical shot, missed lie recovered via bounded retry, no manual toggle/polling; browser background does not gate readings.')
 } finally { await vite.close() }
