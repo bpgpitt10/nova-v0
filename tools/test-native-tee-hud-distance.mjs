@@ -15,8 +15,14 @@ try {
     shotNumber: 1, holeNumber: 1, straightDistanceYds: 492.6,
     scorecardYards: 493, authorizesNativeAim: false,
   }
-  const args = { hud: valid, courseName: course, courseAliases: aliases, holeNumber: 1 }
+  const args = { hud: valid, holeNumber: 1 }
   assert.equal(resolve(args), 492.6, 'Exact screenshot fixture must survive absent currentRound data')
+  // Physical October 27 screenshot: OCR misreads FarmLinks as "Carmiinke Ralf Clih v".
+  // Looper's user-selected course is the authority; OCR title is diagnostic.
+  for (const courseText of ['Carmiinke Ralf Clih v', '', 'Shaftesbury Golf Club']) {
+    assert.equal(resolve({ ...args, hud: { ...valid, courseText } }), 492.6,
+      'Course title OCR must not veto a selected course: ' + courseText)
+  }
   const geom = {
     registration: { status: 'approximate' },
     markers: { tee: [0, 0], pin: [0, 572] },
@@ -36,7 +42,6 @@ try {
     { hud: { ...valid, authorizesNativeAim: true } },
     { hud: { ...valid, holeNumber: 9 } },
     { hud: { ...valid, shotNumber: 2 } },
-    { hud: { ...valid, courseText: 'Shaftesbury Golf Club' } },
     { hud: { ...valid, straightDistanceYds: 472 } },
     { hud: { ...valid, straightDistanceYds: Number.NaN } },
     { hud: { ...valid, scorecardYards: 0 } },
@@ -50,5 +55,5 @@ try {
     { teeSet:'Ambiguous',coursePoint:[-32,80],teeToGreenCentroidYards:494 },
   ] },492.6),null,'Even good OCR must not promote ambiguous geographic tee')
 
-  console.log('PASS: screenshot Shot 1 492.6yd + matching FarmLinks/H1/493 scorecard independently matches one OSM tee; wrong course/shot/holes and ambiguous pads reject; no native aim.')
+  console.log('PASS: user-selected FarmLinks + native Shot 1 492.6yd/H1/493 scorecard uniquely matches mapped tee; garbled course OCR does not gate; wrong shot/hole and ambiguous tees reject; no native aim.')
 } finally { await server.close() }
