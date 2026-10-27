@@ -786,26 +786,37 @@ export default function LiveCaddiePage() {
     if (triedPostShotHudNative.current.has(key)) return
     triedPostShotHudNative.current.add(key)
     let cancelled = false
+    let timer: number | null = null
+    const MAX_CAPTURE_ATTEMPTS = 2
+    const capture = async (attempt: number) => {
+      if (cancelled) return
+      let complete = false
+      try {
+        const obs = await readLooperCompanionObservations(45000)
+        if (cancelled) return
+        // Only live wind/lie measurements are published to the recommender.
+        // Captured minimap/world coordinates remain diagnostic-only.
+        setNativeObservations(obs)
+        const result = publishOneShotCompanionHud(obs)
+        complete = result.wind && result.lie
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('[Live Caddie] New-shot GSPro wind/lie capture failed.', error)
+        }
+      }
+      // A single missed OCR axis, late HUD transition or transient local
+      // connection error must not strand this shot on stale/calm readings.
+      // At most one retry, only for an incomplete read, never indefinitely.
+      if (!cancelled && !complete && attempt + 1 < MAX_CAPTURE_ATTEMPTS) {
+        timer = window.setTimeout(() => { void capture(attempt + 1) }, 1750)
+      }
+    }
     // GSPro may switch its on-screen HUD just *after* writing the shot file.
-    // Give the game time to render the next lie before reading the same HWND.
-    const timeout = window.setTimeout(() => {
-      void readLooperCompanionObservations(45000)
-        .then(obs => {
-          if (cancelled) return
-          // A fresh OBSERVATION is diagnostic: only wind and lie enter the
-          // recommender via the existing validated per-shot event bridge.
-          setNativeObservations(obs)
-          publishOneShotCompanionHud(obs)
-        })
-        .catch(error => {
-          if (!cancelled) {
-            console.warn('[Live Caddie] New-shot GSPro wind/lie capture failed.', error)
-          }
-        })
-    }, 1250)
+    // Wait for the *next* physical lie to appear before reading its HWND.
+    timer = window.setTimeout(() => { void capture(0) }, 1250)
     return () => {
       cancelled = true
-      window.clearTimeout(timeout)
+      if (timer != null) window.clearTimeout(timer)
     }
   }, [postShotHudKey, companionStatus?.gspro.status, nativeVisualActive])
 
