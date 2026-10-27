@@ -792,16 +792,13 @@ export default function LiveCaddiePage() {
     const roiHeight = mini?.minimapRoiWindowPixels?.[3]
     if (!mini?.ballPixel || !Number.isFinite(roiHeight) || roiHeight! <= 0
       || mini.ballPixel.y < roiHeight! * 0.70) return null
-    // The actual GSPro Shot 1 HUD is a separate, screenshot-current source.
-    // The user-selected course/tee remains authoritative; require the HUD's
-    // own course, hole and shot labels to match before using its distance.
-    // Old completed-shot files (including another course) are never promoted
-    // into fresh shot or geographic-position authority.
+    // Course selection in Looper is authoritative. The same-screen GSPro
+    // Shot 1 HUD provides physical distance and hole verification only;
+    // blurry/incorrect course-name OCR is diagnostic, not a prerequisite.
+    // Old completed-shot files never supply current shot/position authority.
     const hudDistance = selectedCourse
       ? resolveNativeTeeHudDistance({
           hud: nativeObservations.teeHud,
-          courseName: selectedCourse.name,
-          courseAliases: selectedCourse.gsproAliases,
           holeNumber: hole.holeNumber,
         })
       : null
