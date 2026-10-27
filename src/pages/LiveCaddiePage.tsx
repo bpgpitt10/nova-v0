@@ -778,8 +778,10 @@ export default function LiveCaddiePage() {
     teePlacement: liveSnapshot?.teePlacement,
   })
   useEffect(() => {
+    // Physical GSPro play often obscures/minimizes Chrome. Never skip a
+    // shot-scoped native HUD capture just because the browser is backgrounded.
     if (!postShotHudKey || companionStatus?.gspro.status !== 'connected'
-      || nativeVisualActive || document.hidden) return
+      || nativeVisualActive) return
     const key = postShotHudKey
     if (triedPostShotHudNative.current.has(key)) return
     triedPostShotHudNative.current.add(key)
