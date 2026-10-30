@@ -107,6 +107,19 @@ class GkdNativeTests(unittest.TestCase):
         raw['Holes'][0]['Pins'][0]['Position']['x'] += 1.0
         self.assertNotEqual(g.normalize(raw)['layoutFingerprint'], self.course['layoutFingerprint'])
 
+    def test_scene_fingerprint_ignores_tees(self):
+        # Alternate layouts (GKDalt) and tee-only revisions keep the scene.
+        self.assertEqual(g.scene_fingerprint_text(self.course['holes']), '1|300,1350;360,1500|300,1400')
+        self.assertEqual(self.course['sceneFingerprint'],
+                         'e356348e6071672d52bea988972af8030dee5e3c9197d9e38a39d7463e486508')
+        raw = synthetic_gkd()
+        raw['Holes'][0]['Tees'][0]['Position']['x'] += 40.0
+        moved = g.normalize(raw)
+        self.assertEqual(moved['sceneFingerprint'], self.course['sceneFingerprint'])
+        self.assertNotEqual(moved['layoutFingerprint'], self.course['layoutFingerprint'])
+        raw['Holes'][0]['Pins'][0]['Position']['x'] += 1.0
+        self.assertNotEqual(g.normalize(raw)['sceneFingerprint'], self.course['sceneFingerprint'])
+
     def test_malformed_files_fail_closed(self):
         with tempfile.TemporaryDirectory() as d:
             bad = Path(d) / 'bad.GKD'

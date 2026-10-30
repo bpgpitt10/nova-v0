@@ -139,6 +139,7 @@ def normalize(raw: dict, source_sha256: str | None = None) -> dict:
         'parserVersion': PARSER_VERSION,
         'sourceSha256': source_sha256,
         'layoutFingerprint': layout_fingerprint(holes),
+        'sceneFingerprint': scene_fingerprint(holes),
         'identity': {
             'courseName': raw.get('CourseName'),
             'sceneFolderName': raw.get('SceneFolderName'),  # GKDalt only; equals live CourseKey
@@ -172,6 +173,27 @@ def layout_fingerprint_text(holes: list[dict]) -> str:
         gc_txt = '-' if gc is None else f"{_dm(gc['x'])},{_dm(gc['z'])}"
         lines.append(f"{h['hole']}|{tees}|{pins}|{gc_txt}")
     return '\n'.join(lines)
+
+
+def scene_fingerprint_text(holes: list[dict]) -> str:
+    """Canonical scene text: pins and green centres only (no tees).
+
+    Alternate layouts of one GSPro scene (e.g. "Farmlinks Kids.GKDalt" with
+    SceneFolderName farmlinks_al_2_7_gsp) share greens and pins but move every
+    tee, so the world <-> real-world registration belongs to the scene and is
+    keyed by this. Mirrored by src/courseGeometry/nativeGkd.ts.
+    """
+    lines = []
+    for h in sorted(holes, key=lambda r: r['hole']):
+        pins = ';'.join(f"{_dm(p['x'])},{_dm(p['z'])}" for p in h['pins'])
+        gc = h['greenCenter']
+        gc_txt = '-' if gc is None else f"{_dm(gc['x'])},{_dm(gc['z'])}"
+        lines.append(f"{h['hole']}|{pins}|{gc_txt}")
+    return '\n'.join(lines)
+
+
+def scene_fingerprint(holes: list[dict]) -> str:
+    return hashlib.sha256(scene_fingerprint_text(holes).encode('utf-8')).hexdigest()
 
 
 def layout_fingerprint(holes: list[dict]) -> str:

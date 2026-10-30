@@ -108,6 +108,7 @@ def main() -> int:
         'courseId': pkg['courseId'],
         'gsproCourseKey': args.course_key,
         'layoutFingerprint': course['layoutFingerprint'],
+        'sceneFingerprint': course['sceneFingerprint'],
         'grade': fit['grade'],
         'method': 'terrain-height match, true-north GSPro frame (rotation/scale fixed by UTM geometry)',
         'reference': {'latLon': [round(lat0, 9), round(lon0, 9)], 'worldXZ': [round(x0, 4), round(z0, 4)]},
@@ -120,7 +121,8 @@ def main() -> int:
         'holes': {k: {'anchorLatLon': f['anchorLatLon'], 'headingDegreesTrue': f['headingDegreesTrue'],
                       'origin': f.get('origin')}
                   for k, f in sorted(frames.items(), key=lambda kv: int(kv[0]))},
-        'note': 'Contains no GKD geometry. Applies only when the player\'s GKD layout fingerprint matches.',
+        'note': ('Contains no GKD geometry. Applies to any layout (GKD or GKDalt) of this GSPro scene '
+                 'whose pins and green centres match sceneFingerprint.'),
     }
 
     # End-to-end check in the package's own frame.
