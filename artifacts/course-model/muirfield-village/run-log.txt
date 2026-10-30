@@ -1,166 +1,359 @@
 === [muirfield-village:find] python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex muirfield --lat 40.133 --lon -83.149 --radius-m 10000 --out artifacts/course-model/muirfield-village
 [{"type": "way", "id": 419930363, "name": "Brookside Golf & Country Club", "areaHa": 96.3, "nameMatch": false}, {"type": "way", "id": 560536597, "name": "Scioto Reserve Country Club", "areaHa": 104.8, "nameMatch": false}, {"type": "way", "id": 674824972, "name": "Kinsale Golf and Fitness Club", "areaHa": 108.3, "nameMatch": false}, {"type": "way", "id": 694841424, "name": "Golf Club of Dublin", "areaHa": 83.7, "nameMatch": false}, {"type": "way", "id": 844331426, "name": "Rolling Meadows", "areaHa": 91.2, "nameMatch": false}, {"type": "way", "id": 1551150129, "name": "Sports Ohio Wee Links", "areaHa": 4.8, "nameMatch": false}, {"type": "relation", "id": 193427, "name": "Worthington Hills Country Club", "areaHa": 72.8, "nameMatch": false}, {"type": "relation", "id": 337417, "name": "The Country Club at Muirfield Village", "areaHa": 78.3, "nameMatch": true}, {"type": "relation", "id": 337418, "name": "Muirfield Village Golf Club", "areaHa": 107.2, "nameMatch": true}, {"type": "relation", "id": 7421433, "name": "The Club at Tartan Fields", "areaHa": 78.1, "nameMatch": false}, {"type": "relation", "id": 9729886, "name": "Wedgewood Golf & Country Club", "areaHa": 75.7, "nameMatch": false}, {"type": "relation", "id": 13691164, "name": "Safari Golf Club", "areaHa": 72.3, "nameMatch": false}]
-{"bboxLonLat": [-83.15583632297074, 40.13569302514927, -83.12699587702926, 40.15285457485073], "crs": "EPSG:26917", "osm": {"type": "relation", "id": 337418, "name": "Muirfield Village Golf Club", "areaHa": 107.2}} {"name": "USGS_LPC_OH_Columbus_2019", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "count": 46432698522, "year": 2019}
-=== [muirfield-village:find] rc=0 seconds=38
+grew bbox with 13890 vertices from nearby golf features
+{"bboxLonLat": [-83.16565761642683, 40.12784482514927, -83.12699588357317, 40.16019837485073], "crs": "EPSG:26917", "osm": {"type": "relation", "id": 337418, "name": "Muirfield Village Golf Club", "areaHa": 107.2}} {"name": "USGS_LPC_OH_Columbus_2019", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "count": 46432698522, "year": 2019}
+=== [muirfield-village:find] rc=0 seconds=89
 === [muirfield-village:osm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source artifacts/course-model/muirfield-village/course-bbox.json --out artifacts/course-model/muirfield-village
-overpass ok url=https://overpass-api.de/api/interpreter bytes=4912153 seconds=27.7
-{"elementsByType": {"node": 24333, "way": 1915, "relation": 18}, "taggedElements": 2184, "compressedBytes": 630184}
-=== [muirfield-village:osm] rc=0 seconds=28
+https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway
+overpass ok url=https://overpass-api.de/api/interpreter bytes=11852493 seconds=37.3
+{"elementsByType": {"node": 58244, "way": 4471, "relation": 66}, "taggedElements": 5271, "compressedBytes": 1515102}
+=== [muirfield-village:osm] rc=0 seconds=49
 === [muirfield-village:dem] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source artifacts/course-model/muirfield-village/course-bbox.json --crs EPSG:26917 --tmp .tmp/course-model/muirfield-village --out artifacts/course-model/muirfield-village
-dem bytes=20975239 seconds=4.3 size=2504x1965
-{"width": 2504, "height": 1965, "pixel": 1.0, "validCells": 4920360, "elevMin": 249.1341094970703, "elevMax": 295.23541259765625}
-=== [muirfield-village:dem] rc=0 seconds=5
+Traceback (most recent call last):
+  File "/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py", line 185, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py", line 181, in main
+    return cmd_osm(args) if args.cmd == 'osm' else cmd_dem(args)
+                                                   ^^^^^^^^^^^^^
+  File "/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py", line 138, in cmd_dem
+    tif.write_bytes(http_get(url, timeout=600))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py", line 54, in http_get
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+=== [muirfield-village:dem] rc=1 seconds=25
 === [muirfield-village:lidar-chm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json --dem-source artifacts/course-model/muirfield-village/course-bbox.json --dem artifacts/course-model/muirfield-village/dem-utm-1m.json --out artifacts/course-model/muirfield-village
-nodes=3568 pointsInIntersectingNodes=150010200 hierarchySeconds=2.0
-tiles 25/3568 kept=685455 MB=7 seconds=3
-tiles 50/3568 kept=1905265 MB=15 seconds=4
-tiles 75/3568 kept=3470391 MB=24 seconds=6
-tiles 100/3568 kept=4836144 MB=32 seconds=7
-tiles 125/3568 kept=6113099 MB=41 seconds=8
-tiles 150/3568 kept=6840052 MB=47 seconds=9
-tiles 175/3568 kept=7897880 MB=53 seconds=10
-tiles 200/3568 kept=9037264 MB=60 seconds=11
-tiles 225/3568 kept=10102195 MB=67 seconds=12
-tiles 250/3568 kept=10677369 MB=70 seconds=12
-tiles 275/3568 kept=11140440 MB=73 seconds=13
-tiles 300/3568 kept=11588803 MB=76 seconds=13
-tiles 325/3568 kept=12504799 MB=81 seconds=14
-tiles 350/3568 kept=13519030 MB=87 seconds=15
-tiles 375/3568 kept=14485091 MB=92 seconds=15
-tiles 400/3568 kept=15308840 MB=97 seconds=16
-tiles 425/3568 kept=15726160 MB=100 seconds=17
-tiles 450/3568 kept=16688281 MB=110 seconds=18
-tiles 475/3568 kept=17632522 MB=119 seconds=19
-tiles 500/3568 kept=18766076 MB=126 seconds=20
-tiles 525/3568 kept=19803010 MB=134 seconds=20
-tiles 550/3568 kept=21018093 MB=142 seconds=22
-tiles 575/3568 kept=22251190 MB=150 seconds=23
-tiles 600/3568 kept=23670291 MB=159 seconds=24
-tiles 625/3568 kept=25249309 MB=168 seconds=25
-tiles 650/3568 kept=26726669 MB=177 seconds=26
-tiles 675/3568 kept=28377908 MB=186 seconds=27
-tiles 700/3568 kept=29624247 MB=195 seconds=29
-tiles 725/3568 kept=30909467 MB=204 seconds=30
-tiles 750/3568 kept=32348970 MB=213 seconds=31
-tiles 775/3568 kept=33420831 MB=223 seconds=32
-tiles 800/3568 kept=33966815 MB=228 seconds=33
-tiles 825/3568 kept=34784894 MB=232 seconds=33
-tiles 850/3568 kept=35737467 MB=238 seconds=34
-tiles 875/3568 kept=36714047 MB=243 seconds=35
-tiles 900/3568 kept=37813852 MB=250 seconds=36
-tiles 925/3568 kept=38858384 MB=256 seconds=37
-tiles 950/3568 kept=39932928 MB=262 seconds=38
-tiles 975/3568 kept=40986316 MB=269 seconds=39
-tiles 1000/3568 kept=42085964 MB=275 seconds=40
-tiles 1025/3568 kept=42867517 MB=280 seconds=40
-tiles 1050/3568 kept=43394417 MB=284 seconds=41
-tiles 1075/3568 kept=43888600 MB=287 seconds=41
-tiles 1100/3568 kept=44384396 MB=290 seconds=42
-tiles 1125/3568 kept=44898066 MB=293 seconds=42
-tiles 1150/3568 kept=45406059 MB=296 seconds=43
-tiles 1175/3568 kept=45911163 MB=299 seconds=43
-tiles 1200/3568 kept=46411693 MB=302 seconds=44
-tiles 1225/3568 kept=47117853 MB=307 seconds=44
-tiles 1250/3568 kept=48042925 MB=312 seconds=45
-tiles 1275/3568 kept=49142427 MB=319 seconds=46
-tiles 1300/3568 kept=50225171 MB=325 seconds=47
-tiles 1325/3568 kept=51371771 MB=332 seconds=48
-tiles 1350/3568 kept=52490025 MB=338 seconds=49
-tiles 1375/3568 kept=53654085 MB=345 seconds=50
-tiles 1400/3568 kept=54785128 MB=352 seconds=51
-tiles 1425/3568 kept=55956482 MB=359 seconds=52
-tiles 1450/3568 kept=56863354 MB=365 seconds=53
-tiles 1475/3568 kept=57521326 MB=369 seconds=53
-tiles 1500/3568 kept=57998022 MB=372 seconds=54
-tiles 1525/3568 kept=58350847 MB=375 seconds=54
-tiles 1550/3568 kept=59091470 MB=382 seconds=55
-tiles 1575/3568 kept=60633255 MB=395 seconds=56
-tiles 1600/3568 kept=62484685 MB=409 seconds=58
-tiles 1625/3568 kept=63746189 MB=421 seconds=59
-tiles 1650/3568 kept=64882503 MB=429 seconds=60
-tiles 1675/3568 kept=66047463 MB=436 seconds=61
-tiles 1700/3568 kept=67091187 MB=444 seconds=62
-tiles 1725/3568 kept=67936247 MB=450 seconds=63
-tiles 1750/3568 kept=68787452 MB=456 seconds=64
-tiles 1775/3568 kept=69212017 MB=459 seconds=64
-tiles 1800/3568 kept=69918009 MB=463 seconds=65
-tiles 1825/3568 kept=71070821 MB=471 seconds=66
-tiles 1850/3568 kept=71690227 MB=477 seconds=67
-tiles 1875/3568 kept=72980597 MB=490 seconds=68
-tiles 1900/3568 kept=74185762 MB=497 seconds=69
-tiles 1925/3568 kept=75490882 MB=504 seconds=70
-tiles 1950/3568 kept=76766349 MB=510 seconds=71
-tiles 1975/3568 kept=78013941 MB=517 seconds=72
-tiles 2000/3568 kept=79152844 MB=525 seconds=73
-tiles 2025/3568 kept=80475336 MB=533 seconds=74
-tiles 2050/3568 kept=82354001 MB=543 seconds=75
-tiles 2075/3568 kept=83167949 MB=547 seconds=76
-tiles 2100/3568 kept=83690983 MB=550 seconds=77
-tiles 2125/3568 kept=84450234 MB=555 seconds=77
-tiles 2150/3568 kept=85268939 MB=560 seconds=78
-tiles 2175/3568 kept=86164822 MB=565 seconds=79
-tiles 2200/3568 kept=87100746 MB=571 seconds=80
-tiles 2225/3568 kept=87535432 MB=574 seconds=80
-tiles 2250/3568 kept=88202282 MB=580 seconds=81
-tiles 2275/3568 kept=89404768 MB=591 seconds=82
-tiles 2300/3568 kept=90641006 MB=600 seconds=83
-tiles 2325/3568 kept=92036758 MB=608 seconds=84
-tiles 2350/3568 kept=93424767 MB=615 seconds=85
-tiles 2375/3568 kept=94686808 MB=621 seconds=86
-tiles 2400/3568 kept=95975958 MB=627 seconds=87
-tiles 2425/3568 kept=97421772 MB=633 seconds=89
-tiles 2450/3568 kept=98812959 MB=640 seconds=90
-tiles 2475/3568 kept=100000868 MB=647 seconds=91
-tiles 2500/3568 kept=101300026 MB=655 seconds=92
-tiles 2525/3568 kept=102529957 MB=662 seconds=93
-tiles 2550/3568 kept=103816675 MB=670 seconds=94
-tiles 2575/3568 kept=105095129 MB=677 seconds=95
-tiles 2600/3568 kept=106524230 MB=685 seconds=96
-tiles 2625/3568 kept=108069846 MB=692 seconds=97
-tiles 2650/3568 kept=109547422 MB=699 seconds=98
-tiles 2675/3568 kept=111031770 MB=706 seconds=100
-tiles 2700/3568 kept=112183864 MB=713 seconds=101
-tiles 2725/3568 kept=113142997 MB=718 seconds=101
-tiles 2750/3568 kept=114144873 MB=723 seconds=102
-tiles 2775/3568 kept=115144751 MB=729 seconds=103
-tiles 2800/3568 kept=116073488 MB=735 seconds=104
-tiles 2825/3568 kept=116642739 MB=738 seconds=104
-tiles 2850/3568 kept=117099111 MB=741 seconds=105
-tiles 2875/3568 kept=117750306 MB=744 seconds=105
-tiles 2900/3568 kept=118502481 MB=748 seconds=106
-tiles 2925/3568 kept=119244283 MB=752 seconds=107
-tiles 2950/3568 kept=119935648 MB=756 seconds=107
-tiles 2975/3568 kept=120682966 MB=760 seconds=108
-tiles 3000/3568 kept=121419451 MB=763 seconds=109
-tiles 3025/3568 kept=122198027 MB=767 seconds=109
-tiles 3050/3568 kept=123008129 MB=772 seconds=110
-tiles 3075/3568 kept=123591053 MB=775 seconds=111
-tiles 3100/3568 kept=124039446 MB=778 seconds=111
-tiles 3125/3568 kept=125061569 MB=787 seconds=112
-tiles 3150/3568 kept=126311124 MB=796 seconds=113
-tiles 3175/3568 kept=127668835 MB=807 seconds=114
-tiles 3200/3568 kept=128950781 MB=814 seconds=115
-tiles 3225/3568 kept=130070493 MB=820 seconds=116
-tiles 3250/3568 kept=131232791 MB=827 seconds=117
-tiles 3275/3568 kept=132427505 MB=833 seconds=118
-tiles 3300/3568 kept=133069344 MB=836 seconds=119
-tiles 3325/3568 kept=133626408 MB=841 seconds=119
-tiles 3350/3568 kept=134459799 MB=849 seconds=120
-tiles 3375/3568 kept=135436188 MB=855 seconds=121
-tiles 3400/3568 kept=136162755 MB=861 seconds=121
-tiles 3425/3568 kept=137008961 MB=868 seconds=122
-tiles 3450/3568 kept=137779762 MB=874 seconds=123
-tiles 3475/3568 kept=138643939 MB=879 seconds=124
-tiles 3500/3568 kept=139676335 MB=885 seconds=124
-tiles 3525/3568 kept=140793093 MB=891 seconds=125
-tiles 3550/3568 kept=141539774 MB=898 seconds=126
-{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "eptSrs": "3857", "octreeNodesRead": 3568, "downloadedMB": 902.6, "pointsKeptInBbox": 142040298, "pointsPerSquareMetre": 28.87, "firstReturnsPerSquareMetre": 17.75, "classificationHistogram": {"1": 79716863, "2": 62301553, "9": 24797, "20": 5759}, "chm": {"width": 2504, "height": 1965, "pixelMeters": 1.0, "cellsWithReturns": 4635121, "emptyCells": 285239, "cellsOver3m": 2092092, "cellsOver10m": 1060331, "p50": 0.3199999999999932, "p95": 20.329999999999984, "max": 65.43}, "seconds": 129.8}
-=== [muirfield-village:lidar-chm] rc=0 seconds=130
+nodes=7608 pointsInIntersectingNodes=324622372 hierarchySeconds=2.6
+tiles 25/7608 kept=29821 MB=6 seconds=4
+tiles 50/7608 kept=29821 MB=15 seconds=4
+tiles 75/7608 kept=29821 MB=21 seconds=5
+tiles 100/7608 kept=29821 MB=24 seconds=6
+tiles 125/7608 kept=29821 MB=32 seconds=7
+tiles 150/7608 kept=495067 MB=41 seconds=8
+tiles 175/7608 kept=953159 MB=48 seconds=8
+tiles 200/7608 kept=1393874 MB=56 seconds=9
+tiles 225/7608 kept=1990349 MB=64 seconds=10
+tiles 250/7608 kept=2588210 MB=72 seconds=11
+tiles 275/7608 kept=3385239 MB=81 seconds=12
+tiles 300/7608 kept=4031371 MB=89 seconds=12
+tiles 325/7608 kept=4811690 MB=98 seconds=13
+tiles 350/7608 kept=5205676 MB=106 seconds=14
+tiles 375/7608 kept=6013305 MB=114 seconds=15
+tiles 400/7608 kept=6629560 MB=124 seconds=16
+tiles 425/7608 kept=7262258 MB=129 seconds=16
+tiles 450/7608 kept=7621578 MB=134 seconds=17
+tiles 475/7608 kept=7928492 MB=140 seconds=18
+tiles 500/7608 kept=8511356 MB=146 seconds=19
+tiles 525/7608 kept=9179463 MB=153 seconds=20
+tiles 550/7608 kept=9774156 MB=159 seconds=20
+tiles 575/7608 kept=10115334 MB=165 seconds=21
+tiles 600/7608 kept=10462904 MB=171 seconds=22
+tiles 625/7608 kept=11058830 MB=177 seconds=23
+tiles 650/7608 kept=11363498 MB=181 seconds=23
+tiles 675/7608 kept=11617778 MB=184 seconds=24
+tiles 700/7608 kept=11831479 MB=187 seconds=25
+tiles 725/7608 kept=12095932 MB=189 seconds=25
+tiles 750/7608 kept=12372367 MB=192 seconds=26
+tiles 775/7608 kept=12588083 MB=195 seconds=27
+tiles 800/7608 kept=13030176 MB=200 seconds=27
+tiles 825/7608 kept=13726467 MB=206 seconds=28
+tiles 850/7608 kept=14230248 MB=212 seconds=29
+tiles 875/7608 kept=14557205 MB=218 seconds=30
+tiles 900/7608 kept=14965243 MB=224 seconds=30
+tiles 925/7608 kept=15348933 MB=230 seconds=31
+tiles 950/7608 kept=15887304 MB=235 seconds=32
+tiles 975/7608 kept=16295263 MB=241 seconds=33
+tiles 1000/7608 kept=16594294 MB=246 seconds=33
+tiles 1025/7608 kept=16748744 MB=250 seconds=34
+tiles 1050/7608 kept=17064975 MB=254 seconds=35
+tiles 1075/7608 kept=17459087 MB=262 seconds=36
+tiles 1100/7608 kept=18230519 MB=274 seconds=37
+tiles 1125/7608 kept=18758204 MB=283 seconds=37
+tiles 1150/7608 kept=19526327 MB=292 seconds=38
+tiles 1175/7608 kept=20620013 MB=299 seconds=39
+tiles 1200/7608 kept=21714670 MB=307 seconds=40
+tiles 1225/7608 kept=22882869 MB=315 seconds=41
+tiles 1250/7608 kept=24194606 MB=323 seconds=42
+tiles 1275/7608 kept=25750100 MB=332 seconds=42
+tiles 1300/7608 kept=27230628 MB=341 seconds=43
+tiles 1325/7608 kept=28814603 MB=350 seconds=44
+tiles 1350/7608 kept=30334559 MB=359 seconds=45
+tiles 1375/7608 kept=31552075 MB=368 seconds=46
+tiles 1400/7608 kept=32802096 MB=377 seconds=47
+tiles 1425/7608 kept=34469749 MB=387 seconds=47
+tiles 1450/7608 kept=35029597 MB=395 seconds=48
+tiles 1475/7608 kept=35700744 MB=399 seconds=49
+tiles 1500/7608 kept=36578888 MB=404 seconds=50
+tiles 1525/7608 kept=37576144 MB=410 seconds=50
+tiles 1550/7608 kept=38594091 MB=416 seconds=51
+tiles 1575/7608 kept=39652734 MB=422 seconds=52
+tiles 1600/7608 kept=40718736 MB=428 seconds=53
+tiles 1625/7608 kept=41766228 MB=434 seconds=53
+tiles 1650/7608 kept=42851125 MB=441 seconds=54
+tiles 1675/7608 kept=43965738 MB=448 seconds=55
+tiles 1700/7608 kept=44546708 MB=452 seconds=56
+tiles 1725/7608 kept=45026860 MB=455 seconds=56
+tiles 1750/7608 kept=45535328 MB=458 seconds=57
+tiles 1775/7608 kept=46027901 MB=461 seconds=58
+tiles 1800/7608 kept=46544407 MB=464 seconds=58
+tiles 1825/7608 kept=47052374 MB=467 seconds=59
+tiles 1850/7608 kept=47563074 MB=470 seconds=60
+tiles 1875/7608 kept=48054059 MB=473 seconds=61
+tiles 1900/7608 kept=48867949 MB=478 seconds=61
+tiles 1925/7608 kept=49900417 MB=485 seconds=62
+tiles 1950/7608 kept=51025437 MB=491 seconds=63
+tiles 1975/7608 kept=52110139 MB=497 seconds=64
+tiles 2000/7608 kept=53233173 MB=504 seconds=64
+tiles 2025/7608 kept=54359673 MB=510 seconds=65
+tiles 2050/7608 kept=55525880 MB=517 seconds=66
+tiles 2075/7608 kept=56651196 MB=524 seconds=67
+tiles 2100/7608 kept=57745396 MB=531 seconds=68
+tiles 2125/7608 kept=58630977 MB=537 seconds=68
+tiles 2150/7608 kept=59153340 MB=540 seconds=69
+tiles 2175/7608 kept=59642704 MB=543 seconds=70
+tiles 2200/7608 kept=59881123 MB=546 seconds=70
+tiles 2225/7608 kept=60963488 MB=557 seconds=71
+tiles 2250/7608 kept=62781146 MB=570 seconds=72
+tiles 2275/7608 kept=64462971 MB=583 seconds=73
+tiles 2300/7608 kept=65114621 MB=593 seconds=74
+tiles 2325/7608 kept=65401824 MB=601 seconds=75
+tiles 2350/7608 kept=65673808 MB=609 seconds=75
+tiles 2375/7608 kept=65992822 MB=617 seconds=76
+tiles 2400/7608 kept=66312610 MB=626 seconds=77
+tiles 2425/7608 kept=66586834 MB=634 seconds=78
+tiles 2450/7608 kept=66922374 MB=643 seconds=79
+tiles 2475/7608 kept=67254615 MB=652 seconds=80
+tiles 2500/7608 kept=67481191 MB=661 seconds=81
+tiles 2525/7608 kept=67637617 MB=669 seconds=81
+tiles 2550/7608 kept=67810411 MB=677 seconds=82
+tiles 2575/7608 kept=68003240 MB=684 seconds=83
+tiles 2600/7608 kept=68172936 MB=692 seconds=84
+tiles 2625/7608 kept=68378039 MB=702 seconds=85
+tiles 2650/7608 kept=68744410 MB=712 seconds=86
+tiles 2675/7608 kept=68779659 MB=717 seconds=86
+tiles 2700/7608 kept=68917161 MB=722 seconds=87
+tiles 2725/7608 kept=69229432 MB=727 seconds=88
+tiles 2750/7608 kept=69329903 MB=732 seconds=89
+tiles 2775/7608 kept=69546094 MB=737 seconds=89
+tiles 2800/7608 kept=69826117 MB=742 seconds=90
+tiles 2825/7608 kept=70064193 MB=747 seconds=91
+tiles 2850/7608 kept=70064193 MB=752 seconds=92
+tiles 2875/7608 kept=70370882 MB=758 seconds=92
+tiles 2900/7608 kept=70607093 MB=763 seconds=93
+tiles 2925/7608 kept=70740859 MB=767 seconds=94
+tiles 2950/7608 kept=70895885 MB=770 seconds=94
+tiles 2975/7608 kept=71003544 MB=772 seconds=95
+tiles 3000/7608 kept=71249540 MB=775 seconds=96
+tiles 3025/7608 kept=71408489 MB=777 seconds=96
+tiles 3050/7608 kept=71545951 MB=782 seconds=97
+tiles 3075/7608 kept=71774522 MB=789 seconds=98
+tiles 3100/7608 kept=71823119 MB=795 seconds=99
+tiles 3125/7608 kept=72105557 MB=801 seconds=100
+tiles 3150/7608 kept=72390078 MB=808 seconds=100
+tiles 3175/7608 kept=72643849 MB=815 seconds=101
+tiles 3200/7608 kept=72939591 MB=822 seconds=103
+tiles 3225/7608 kept=73183057 MB=830 seconds=103
+tiles 3250/7608 kept=73263946 MB=836 seconds=104
+tiles 3275/7608 kept=73507884 MB=839 seconds=104
+tiles 3300/7608 kept=73564868 MB=842 seconds=105
+tiles 3325/7608 kept=73625945 MB=846 seconds=106
+tiles 3350/7608 kept=73866045 MB=859 seconds=107
+tiles 3375/7608 kept=74293792 MB=873 seconds=108
+tiles 3400/7608 kept=74674782 MB=888 seconds=109
+tiles 3425/7608 kept=74718553 MB=896 seconds=109
+tiles 3450/7608 kept=74718553 MB=905 seconds=110
+tiles 3475/7608 kept=74718553 MB=910 seconds=111
+tiles 3500/7608 kept=74907217 MB=918 seconds=112
+tiles 3525/7608 kept=75975442 MB=925 seconds=113
+tiles 3550/7608 kept=76970578 MB=931 seconds=113
+tiles 3575/7608 kept=77883765 MB=938 seconds=114
+tiles 3600/7608 kept=78679022 MB=945 seconds=115
+tiles 3625/7608 kept=79509363 MB=951 seconds=116
+tiles 3650/7608 kept=80212343 MB=958 seconds=117
+tiles 3675/7608 kept=80689437 MB=966 seconds=117
+tiles 3700/7608 kept=81095304 MB=974 seconds=118
+tiles 3725/7608 kept=81593070 MB=981 seconds=119
+tiles 3750/7608 kept=82250970 MB=989 seconds=120
+tiles 3775/7608 kept=83138261 MB=998 seconds=121
+tiles 3800/7608 kept=83682948 MB=1008 seconds=121
+tiles 3825/7608 kept=84780340 MB=1017 seconds=122
+tiles 3850/7608 kept=85258817 MB=1024 seconds=123
+tiles 3875/7608 kept=85928670 MB=1028 seconds=124
+tiles 3900/7608 kept=86452826 MB=1031 seconds=125
+tiles 3925/7608 kept=86643870 MB=1037 seconds=126
+tiles 3950/7608 kept=87074192 MB=1042 seconds=126
+tiles 3975/7608 kept=87556106 MB=1047 seconds=127
+tiles 4000/7608 kept=87639057 MB=1052 seconds=127
+tiles 4025/7608 kept=88047447 MB=1058 seconds=128
+tiles 4050/7608 kept=88541557 MB=1063 seconds=129
+tiles 4075/7608 kept=89003098 MB=1068 seconds=130
+tiles 4100/7608 kept=89278370 MB=1074 seconds=131
+tiles 4125/7608 kept=89671514 MB=1081 seconds=131
+tiles 4150/7608 kept=89827670 MB=1084 seconds=132
+tiles 4175/7608 kept=90071985 MB=1087 seconds=133
+tiles 4200/7608 kept=90446742 MB=1090 seconds=133
+tiles 4225/7608 kept=91004797 MB=1098 seconds=134
+tiles 4250/7608 kept=91653589 MB=1108 seconds=135
+tiles 4275/7608 kept=92437159 MB=1121 seconds=136
+tiles 4300/7608 kept=93408019 MB=1129 seconds=137
+tiles 4325/7608 kept=94803771 MB=1138 seconds=138
+tiles 4350/7608 kept=96191780 MB=1145 seconds=138
+tiles 4375/7608 kept=97453821 MB=1151 seconds=139
+tiles 4400/7608 kept=98742971 MB=1156 seconds=140
+tiles 4425/7608 kept=100188785 MB=1163 seconds=141
+tiles 4450/7608 kept=101579972 MB=1170 seconds=141
+tiles 4475/7608 kept=102767881 MB=1177 seconds=142
+tiles 4500/7608 kept=104067039 MB=1185 seconds=143
+tiles 4525/7608 kept=105296970 MB=1192 seconds=144
+tiles 4550/7608 kept=106583688 MB=1200 seconds=145
+tiles 4575/7608 kept=107862142 MB=1207 seconds=145
+tiles 4600/7608 kept=109291243 MB=1214 seconds=146
+tiles 4625/7608 kept=110836859 MB=1222 seconds=147
+tiles 4650/7608 kept=112314435 MB=1229 seconds=148
+tiles 4675/7608 kept=113798783 MB=1236 seconds=149
+tiles 4700/7608 kept=114950877 MB=1242 seconds=149
+tiles 4725/7608 kept=115910010 MB=1247 seconds=150
+tiles 4750/7608 kept=116911886 MB=1253 seconds=151
+tiles 4775/7608 kept=117911764 MB=1259 seconds=152
+tiles 4800/7608 kept=118840501 MB=1264 seconds=152
+tiles 4825/7608 kept=119409752 MB=1268 seconds=153
+tiles 4850/7608 kept=119866124 MB=1270 seconds=154
+tiles 4875/7608 kept=120517319 MB=1274 seconds=154
+tiles 4900/7608 kept=121269494 MB=1278 seconds=155
+tiles 4925/7608 kept=122011296 MB=1282 seconds=156
+tiles 4950/7608 kept=122702661 MB=1286 seconds=156
+tiles 4975/7608 kept=123449979 MB=1289 seconds=157
+tiles 5000/7608 kept=124186464 MB=1293 seconds=158
+tiles 5025/7608 kept=124965040 MB=1297 seconds=158
+tiles 5050/7608 kept=125775142 MB=1302 seconds=159
+tiles 5075/7608 kept=126358066 MB=1305 seconds=160
+tiles 5100/7608 kept=126806459 MB=1308 seconds=161
+tiles 5125/7608 kept=127828582 MB=1317 seconds=161
+tiles 5150/7608 kept=129078137 MB=1326 seconds=162
+tiles 5175/7608 kept=130435848 MB=1336 seconds=163
+tiles 5200/7608 kept=130999443 MB=1345 seconds=164
+tiles 5225/7608 kept=131186551 MB=1353 seconds=165
+tiles 5250/7608 kept=131540718 MB=1360 seconds=165
+tiles 5275/7608 kept=132059110 MB=1366 seconds=166
+tiles 5300/7608 kept=132341594 MB=1373 seconds=167
+tiles 5325/7608 kept=132658259 MB=1379 seconds=168
+tiles 5350/7608 kept=132962577 MB=1385 seconds=169
+tiles 5375/7608 kept=133280344 MB=1392 seconds=169
+tiles 5400/7608 kept=133588360 MB=1399 seconds=170
+tiles 5425/7608 kept=133981673 MB=1407 seconds=171
+tiles 5450/7608 kept=134543215 MB=1414 seconds=172
+tiles 5475/7608 kept=134752311 MB=1422 seconds=173
+tiles 5500/7608 kept=135227234 MB=1430 seconds=173
+tiles 5525/7608 kept=135536207 MB=1437 seconds=174
+tiles 5550/7608 kept=135774456 MB=1442 seconds=175
+tiles 5575/7608 kept=135976246 MB=1447 seconds=176
+tiles 5600/7608 kept=136059252 MB=1452 seconds=177
+tiles 5625/7608 kept=136140999 MB=1456 seconds=177
+tiles 5650/7608 kept=136140999 MB=1459 seconds=178
+tiles 5675/7608 kept=136241745 MB=1463 seconds=179
+tiles 5700/7608 kept=136397231 MB=1468 seconds=180
+tiles 5725/7608 kept=136515449 MB=1473 seconds=185
+tiles 5750/7608 kept=136672166 MB=1477 seconds=185
+tiles 5775/7608 kept=136795796 MB=1482 seconds=186
+tiles 5800/7608 kept=136990904 MB=1487 seconds=186
+tiles 5825/7608 kept=137126228 MB=1491 seconds=187
+tiles 5850/7608 kept=137202231 MB=1494 seconds=187
+tiles 5875/7608 kept=137202231 MB=1497 seconds=187
+tiles 5900/7608 kept=137207822 MB=1500 seconds=187
+tiles 5925/7608 kept=137339125 MB=1509 seconds=188
+tiles 5950/7608 kept=137584871 MB=1518 seconds=189
+tiles 5975/7608 kept=137861022 MB=1528 seconds=189
+tiles 6000/7608 kept=137966291 MB=1536 seconds=190
+tiles 6025/7608 kept=137966291 MB=1544 seconds=190
+tiles 6050/7608 kept=137966291 MB=1553 seconds=191
+tiles 6075/7608 kept=138429823 MB=1561 seconds=192
+tiles 6100/7608 kept=139093552 MB=1567 seconds=192
+tiles 6125/7608 kept=139093552 MB=1569 seconds=193
+tiles 6150/7608 kept=139093552 MB=1576 seconds=194
+tiles 6175/7608 kept=139093552 MB=1582 seconds=194
+tiles 6200/7608 kept=139093552 MB=1588 seconds=195
+tiles 6225/7608 kept=139093552 MB=1592 seconds=196
+tiles 6250/7608 kept=139112053 MB=1595 seconds=197
+tiles 6275/7608 kept=139950311 MB=1599 seconds=197
+tiles 6300/7608 kept=140228827 MB=1605 seconds=198
+tiles 6325/7608 kept=140430802 MB=1613 seconds=199
+tiles 6350/7608 kept=140430802 MB=1619 seconds=199
+tiles 6375/7608 kept=140430802 MB=1626 seconds=200
+tiles 6400/7608 kept=140430802 MB=1632 seconds=201
+tiles 6425/7608 kept=140430802 MB=1639 seconds=202
+tiles 6450/7608 kept=140430802 MB=1648 seconds=203
+tiles 6475/7608 kept=140430802 MB=1655 seconds=204
+tiles 6500/7608 kept=140430802 MB=1661 seconds=205
+tiles 6525/7608 kept=140435325 MB=1667 seconds=205
+tiles 6550/7608 kept=141593576 MB=1675 seconds=206
+tiles 6575/7608 kept=142043640 MB=1680 seconds=207
+tiles 6600/7608 kept=142043640 MB=1684 seconds=207
+tiles 6625/7608 kept=142043640 MB=1689 seconds=208
+tiles 6650/7608 kept=142043640 MB=1694 seconds=209
+tiles 6675/7608 kept=142043640 MB=1699 seconds=210
+tiles 6700/7608 kept=142043640 MB=1705 seconds=210
+tiles 6725/7608 kept=142043640 MB=1709 seconds=211
+tiles 6750/7608 kept=142043640 MB=1713 seconds=212
+tiles 6775/7608 kept=142043640 MB=1718 seconds=213
+tiles 6800/7608 kept=142043640 MB=1720 seconds=213
+tiles 6825/7608 kept=142457405 MB=1723 seconds=214
+tiles 6850/7608 kept=143352505 MB=1729 seconds=215
+tiles 6875/7608 kept=144407656 MB=1735 seconds=215
+tiles 6900/7608 kept=145456598 MB=1741 seconds=216
+tiles 6925/7608 kept=145539840 MB=1748 seconds=217
+tiles 6950/7608 kept=145539840 MB=1755 seconds=218
+tiles 6975/7608 kept=145840597 MB=1762 seconds=219
+tiles 7000/7608 kept=145863337 MB=1769 seconds=219
+tiles 7025/7608 kept=145863337 MB=1777 seconds=220
+tiles 7050/7608 kept=145863337 MB=1784 seconds=221
+tiles 7075/7608 kept=145863337 MB=1791 seconds=222
+tiles 7100/7608 kept=145863337 MB=1799 seconds=223
+tiles 7125/7608 kept=145863337 MB=1807 seconds=224
+tiles 7150/7608 kept=145863337 MB=1814 seconds=224
+tiles 7175/7608 kept=145863337 MB=1822 seconds=225
+tiles 7200/7608 kept=145959572 MB=1828 seconds=226
+tiles 7225/7608 kept=146227314 MB=1835 seconds=227
+tiles 7250/7608 kept=146227314 MB=1838 seconds=227
+tiles 7275/7608 kept=146227314 MB=1843 seconds=228
+tiles 7300/7608 kept=146227314 MB=1848 seconds=229
+tiles 7325/7608 kept=146227314 MB=1853 seconds=229
+tiles 7350/7608 kept=146227314 MB=1858 seconds=231
+tiles 7375/7608 kept=146227314 MB=1863 seconds=231
+tiles 7400/7608 kept=146227314 MB=1868 seconds=232
+tiles 7425/7608 kept=146227314 MB=1873 seconds=232
+tiles 7450/7608 kept=146227314 MB=1877 seconds=233
+tiles 7475/7608 kept=146227314 MB=1881 seconds=234
+tiles 7500/7608 kept=146326310 MB=1885 seconds=236
+tiles 7525/7608 kept=146563101 MB=1890 seconds=236
+tiles 7550/7608 kept=146802931 MB=1897 seconds=236
+tiles 7575/7608 kept=146813585 MB=1907 seconds=237
+tiles 7600/7608 kept=146813585 MB=1917 seconds=238
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "eptSrs": "3857", "octreeNodesRead": 7608, "downloadedMB": 1920.2, "pointsKeptInBbox": 146875532, "pointsPerSquareMetre": 29.85, "firstReturnsPerSquareMetre": 40.21, "classificationHistogram": {"1": 174831892, "2": 139662537, "9": 50169, "17": 6094, "20": 13856}, "chm": {"width": 2504, "height": 1965, "pixelMeters": 1.0, "cellsWithReturns": 4816928, "emptyCells": 103432, "cellsOver3m": 2163767, "cellsOver10m": 1090092, "p50": 0.2699999999999818, "p95": 20.25, "max": 65.43}, "seconds": 240.8}
+=== [muirfield-village:lidar-chm] rc=0 seconds=241
 === [muirfield-village:trees] python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm artifacts/course-model/muirfield-village/chm-utm-1m.json --osm artifacts/course-model/muirfield-village/osm-full.json.gz --out artifacts/course-model/muirfield-village
 /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py:143: DeprecationWarning: The 'shapely.ops.transform()' function is deprecated. Use 'shapely.transform()' or 'shapely.transform_coordseq()' instead. See https://shapely.readthedocs.io/en/latest/manual.html#shapely.ops.transform for more details.
   woods.append({'type': 'Feature', 'geometry': mapping(shp_transform(proj, poly)),
-{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26917", "treeCount": 25913, "heightM": {"p10": 5.3, "p50": 11.4, "p90": 22.6, "max": 65.3}, "crownRadiusM": {"p10": 2.0, "p50": 4.4, "p90": 7.5}, "woodlandPolygons": 3278, "woodlandAreaHa": 181.48, "maskedCellsBuildingsAndPower": 236109, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 5.0}
-=== [muirfield-village:trees] rc=0 seconds=6
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26917", "treeCount": 26863, "heightM": {"p10": 5.2, "p50": 11.4, "p90": 22.6, "max": 65.3}, "crownRadiusM": {"p10": 2.0, "p50": 4.4, "p90": 7.5}, "woodlandPolygons": 3392, "woodlandAreaHa": 187.69, "maskedCellsBuildingsAndPower": 238746, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 3.0}
+=== [muirfield-village:trees] rc=0 seconds=3
 === [muirfield-village:render] python /home/runner/work/nova-v0/nova-v0/tools/course_model/render_preview.py --dir artifacts/course-model/muirfield-village --title Muirfield Village
-{"golfValues": {"tee": 104, "cartpath": 16, "hole": 26, "bunker": 104, "green": 34, "water_hazard": 14, "fairway": 32, "clubhouse": 1}, "trees": 25913, "woodsPolys": 3278}
-=== [muirfield-village:render] rc=0 seconds=14
+{"golfValues": {"tee": 226, "bunker": 205, "cartpath": 91, "hole": 49, "green": 74, "fairway": 67, "water_hazard": 20, "lateral_water_hazard": 13, "rough": 3, "path": 2, "clubhouse": 1, "driving_range": 1}, "trees": 26863, "woodsPolys": 3392}
+=== [muirfield-village:render] rc=0 seconds=11

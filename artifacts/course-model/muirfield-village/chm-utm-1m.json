@@ -11,7 +11,7 @@
   "nodata": -32768,
   "encoding": "int16-le-gzip-rows-top-first",
   "dataFile": "chm-utm-1m.i16.gz",
-  "validCells": 4635121,
+  "validCells": 4816928,
   "provenance": {
     "source": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
     "method": "height above 3DEP bare-earth DEM, per-cell max, noise 7/18 dropped",

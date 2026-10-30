@@ -1,32 +1,41 @@
 === [valhalla:find] python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex valhalla --lat 38.247 --lon -85.484 --radius-m 10000 --out artifacts/course-model/valhalla
 [{"type": "way", "id": 59549989, "name": "Oxmoor Country Club", "areaHa": 72.3, "nameMatch": false}, {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1, "nameMatch": true}, {"type": "way", "id": 59991180, "name": "Charlie Vettner Golf Course", "areaHa": 70.2, "nameMatch": false}, {"type": "way", "id": 60413779, "name": "Midland Trail Golf Club", "areaHa": 58.4, "nameMatch": false}, {"type": "way", "id": 61188999, "name": "Long Run Golf Course", "areaHa": 62.5, "nameMatch": false}, {"type": "way", "id": 220489681, "name": "Hurstbourne Country Club", "areaHa": 85.9, "nameMatch": false}, {"type": "way", "id": 236728542, "name": "Mini-golf Course", "areaHa": 0.3, "nameMatch": false}, {"type": "way", "id": 242210673, "name": "Owl Creek Country Club", "areaHa": 21.6, "nameMatch": false}, {"type": "way", "id": 339612048, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339612816, "name": "", "areaHa": 40.2, "nameMatch": false}, {"type": "way", "id": 339613844, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339613845, "name": "Persimmon Ridge Golf Club", "areaHa": 38.8, "nameMatch": false}, {"type": "way", "id": 1206007378, "name": "Polo Fields Golf and Country Club", "areaHa": 63.5, "nameMatch": false}, {"type": "relation", "id": 20433393, "name": "Lake Forest Country Club", "areaHa": 67.1, "nameMatch": false}]
-{"bboxLonLat": [-85.48251355024493, 38.23496862514927, -85.45940554975506, 38.25018737485073], "crs": "EPSG:26916", "osm": {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1}} {"name": "KY_FullState", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "count": 448685375365, "year": 0}
-=== [valhalla:find] rc=0 seconds=46
+grew bbox with 10934 vertices from nearby golf features
+{"bboxLonLat": [-85.48442063850435, 38.227009225149274, -85.45940556149564, 38.257151774850726], "crs": "EPSG:26916", "osm": {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1}} {"name": "KY_FullState", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "count": 448685375365, "year": 0}
+=== [valhalla:find] rc=0 seconds=70
 === [valhalla:osm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source artifacts/course-model/valhalla/course-bbox.json --out artifacts/course-model/valhalla
-overpass ok url=https://overpass-api.de/api/interpreter bytes=4248605 seconds=49.7
-{"elementsByType": {"node": 14817, "way": 601, "relation": 11}, "taggedElements": 713, "compressedBytes": 544408}
-=== [valhalla:osm] rc=0 seconds=51
+overpass ok url=https://overpass-api.de/api/interpreter bytes=6794232 seconds=46.0
+{"elementsByType": {"node": 28828, "way": 1404, "relation": 20}, "taggedElements": 1610, "compressedBytes": 866444}
+=== [valhalla:osm] rc=0 seconds=47
 === [valhalla:dem] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source artifacts/course-model/valhalla/course-bbox.json --crs EPSG:26916 --tmp .tmp/course-model/valhalla --out artifacts/course-model/valhalla
-dem bytes=15600631 seconds=2.5 size=2051x1723
-{"width": 2051, "height": 1723, "pixel": 1.0, "validCells": 3533873, "elevMin": 174.89459228515625, "elevMax": 220.7247772216797}
-=== [valhalla:dem] rc=0 seconds=3
+dem bytes=31855543 seconds=4.4 size=2245x3382
+{"width": 2245, "height": 3382, "pixel": 1.0, "validCells": 7592590, "elevMin": 174.4931182861328, "elevMax": 229.31117248535156}
+=== [valhalla:dem] rc=0 seconds=5
 === [valhalla:lidar-chm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json --dem-source artifacts/course-model/valhalla/course-bbox.json --dem artifacts/course-model/valhalla/dem-utm-1m.json --out artifacts/course-model/valhalla
-nodes=206 pointsInIntersectingNodes=8285544 hierarchySeconds=0.7
-tiles 25/206 kept=1017221 MB=18 seconds=3
-tiles 50/206 kept=2072590 MB=27 seconds=4
-tiles 75/206 kept=3180800 MB=33 seconds=5
-tiles 100/206 kept=3639205 MB=37 seconds=6
-tiles 125/206 kept=4063215 MB=39 seconds=6
-tiles 150/206 kept=4592776 MB=42 seconds=6
-tiles 175/206 kept=5053657 MB=44 seconds=7
-tiles 200/206 kept=5437906 MB=46 seconds=7
-{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "eptSrs": "3857", "octreeNodesRead": 206, "downloadedMB": 49.1, "pointsKeptInBbox": 5547070, "pointsPerSquareMetre": 1.57, "firstReturnsPerSquareMetre": 1.36, "classificationHistogram": {"1": 446610, "2": 3069168, "3": 570669, "4": 288915, "5": 1017042, "6": 56082, "8": 74957, "9": 12072, "10": 6977, "13": 7971}, "chm": {"width": 2051, "height": 1723, "pixelMeters": 1.0, "cellsWithReturns": 2489190, "emptyCells": 1044683, "cellsOver3m": 590067, "cellsOver10m": 343566, "p50": 0.0, "p95": 20.889999999999986, "max": 47.06999999999999}, "seconds": 15.2}
-=== [valhalla:lidar-chm] rc=0 seconds=15
+nodes=423 pointsInIntersectingNodes=18064721 hierarchySeconds=1.0
+tiles 25/423 kept=534993 MB=15 seconds=3
+tiles 50/423 kept=1213800 MB=19 seconds=4
+tiles 75/423 kept=1861792 MB=27 seconds=4
+tiles 100/423 kept=3441420 MB=45 seconds=5
+tiles 125/423 kept=4619387 MB=57 seconds=6
+tiles 150/423 kept=5825541 MB=63 seconds=7
+tiles 175/423 kept=7046386 MB=70 seconds=8
+tiles 200/423 kept=8177726 MB=76 seconds=8
+tiles 225/423 kept=8459445 MB=81 seconds=9
+tiles 250/423 kept=8944395 MB=83 seconds=10
+tiles 275/423 kept=9399362 MB=86 seconds=10
+tiles 300/423 kept=9963154 MB=88 seconds=11
+tiles 325/423 kept=10425724 MB=91 seconds=11
+tiles 350/423 kept=10864996 MB=93 seconds=12
+tiles 375/423 kept=11348832 MB=95 seconds=13
+tiles 400/423 kept=11816976 MB=98 seconds=13
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "eptSrs": "3857", "octreeNodesRead": 423, "downloadedMB": 104.6, "pointsKeptInBbox": 12142296, "pointsPerSquareMetre": 1.6, "firstReturnsPerSquareMetre": 1.37, "classificationHistogram": {"1": 725402, "2": 6702978, "3": 1314190, "4": 636793, "5": 2332170, "6": 237468, "8": 148329, "9": 30719, "10": 11805, "13": 8030}, "chm": {"width": 2245, "height": 3382, "pixelMeters": 1.0, "cellsWithReturns": 5440067, "emptyCells": 2152523, "cellsOver3m": 1397231, "cellsOver10m": 781667, "p50": 0.0, "p95": 20.669999999999987, "max": 47.06999999999999}, "seconds": 26.6}
+=== [valhalla:lidar-chm] rc=0 seconds=27
 === [valhalla:trees] python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm artifacts/course-model/valhalla/chm-utm-1m.json --osm artifacts/course-model/valhalla/osm-full.json.gz --out artifacts/course-model/valhalla
 /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py:143: DeprecationWarning: The 'shapely.ops.transform()' function is deprecated. Use 'shapely.transform()' or 'shapely.transform_coordseq()' instead. See https://shapely.readthedocs.io/en/latest/manual.html#shapely.ops.transform for more details.
   woods.append({'type': 'Feature', 'geometry': mapping(shp_transform(proj, poly)),
-{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26916", "treeCount": 40200, "heightM": {"p10": 7.8, "p50": 16.0, "p90": 25.8, "max": 39.0}, "crownRadiusM": {"p10": 1.0, "p50": 2.2, "p90": 4.3}, "woodlandPolygons": 1050, "woodlandAreaHa": 13.1, "maskedCellsBuildingsAndPower": 212167, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 3.0}
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26916", "treeCount": 82938, "heightM": {"p10": 7.6, "p50": 15.3, "p90": 25.0, "max": 39.0}, "crownRadiusM": {"p10": 1.0, "p50": 2.3, "p90": 4.3}, "woodlandPolygons": 2985, "woodlandAreaHa": 29.87, "maskedCellsBuildingsAndPower": 523119, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 4.2}
 === [valhalla:trees] rc=0 seconds=4
 === [valhalla:render] python /home/runner/work/nova-v0/nova-v0/tools/course_model/render_preview.py --dir artifacts/course-model/valhalla --title Valhalla
-{"golfValues": {"cartpath": 51, "fairway": 92, "green": 21, "bunker": 66, "tee": 12, "water_hazard": 12, "rough": 31, "hole": 18}, "trees": 40200, "woodsPolys": 1050}
-=== [valhalla:render] rc=0 seconds=10
+{"golfValues": {"bunker": 110, "green": 38, "fairway": 111, "water_hazard": 19, "tee": 55, "hole": 37, "cartpath": 56, "rough": 31}, "trees": 82938, "woodsPolys": 2985}
+=== [valhalla:render] rc=0 seconds=17

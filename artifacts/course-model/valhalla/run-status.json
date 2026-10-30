@@ -1,28 +1,28 @@
 {
   "course": "valhalla",
-  "finishedAt": "2026-10-30T18:21:19Z",
-  "runId": "41105611472",
-  "commit": "9d65f48b56a4244e8a0a9be889daa417d2789772",
+  "finishedAt": "2026-10-30T18:37:45Z",
+  "runId": "41107868084",
+  "commit": "353d82edb54cc68af3efaae479dfb758f1b8e0b4",
   "stages": [
     {
       "stage": "find",
       "rc": 0,
-      "seconds": 46
+      "seconds": 70
     },
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 51
+      "seconds": 47
     },
     {
       "stage": "dem",
       "rc": 0,
-      "seconds": 3
+      "seconds": 5
     },
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 15
+      "seconds": 27
     },
     {
       "stage": "trees",
@@ -32,25 +32,26 @@
     {
       "stage": "render",
       "rc": 0,
-      "seconds": 10
+      "seconds": 17
     }
   ],
   "outputBytes": {
-    "chm-utm-1m.i16.gz": 1837323,
+    "chm-utm-1m.i16.gz": 4164966,
     "chm-utm-1m.json": 711,
-    "course-bbox.json": 978,
-    "dem-utm-1m.i16.gz": 3979437,
+    "course-bbox.json": 981,
+    "dem-utm-1m.i16.gz": 8725185,
     "dem-utm-1m.json": 1014,
-    "lidar-stats.json": 815,
-    "osm-full.json.gz": 544408,
-    "osm-golf-values.json": 133,
-    "osm-summary.json": 1655,
-    "preview-course.png": 4999756,
-    "preview-h1.png": 906003,
-    "run-log.txt": 5890,
-    "trees-summary.json": 736,
-    "trees.geojson": 6616296,
-    "woods.geojson": 1154756
+    "lidar-stats.json": 821,
+    "osm-full.json.gz": 866444,
+    "osm-golf-values.json": 135,
+    "osm-summary.json": 1813,
+    "preview-course.png": 9612519,
+    "preview-h1.png": 1395786,
+    "run-log.txt": 6314,
+    "run-status.json": 1095,
+    "trees-summary.json": 737,
+    "trees.geojson": 13649284,
+    "woods.geojson": 2764575
   },
   "allOk": true
 }

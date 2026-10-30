@@ -1,56 +1,57 @@
 {
   "course": "royal-new-kent",
-  "finishedAt": "2026-10-30T18:28:07Z",
-  "runId": "41105611472",
-  "commit": "9d65f48b56a4244e8a0a9be889daa417d2789772",
+  "finishedAt": "2026-10-30T18:48:00Z",
+  "runId": "41107868084",
+  "commit": "353d82edb54cc68af3efaae479dfb758f1b8e0b4",
   "stages": [
     {
       "stage": "find",
       "rc": 0,
-      "seconds": 54
+      "seconds": 71
     },
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 44
+      "seconds": 45
     },
     {
       "stage": "dem",
-      "rc": 0,
-      "seconds": 7
+      "rc": 1,
+      "seconds": 22
     },
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 36
+      "seconds": 31
     },
     {
       "stage": "trees",
       "rc": 0,
-      "seconds": 29
+      "seconds": 16
     },
     {
       "stage": "render",
       "rc": 0,
-      "seconds": 16
+      "seconds": 12
     }
   ],
   "outputBytes": {
-    "chm-utm-1m.i16.gz": 5619551,
+    "chm-utm-1m.i16.gz": 5722808,
     "chm-utm-1m.json": 726,
-    "course-bbox.json": 1065,
+    "course-bbox.json": 1068,
     "dem-utm-1m.i16.gz": 7057364,
     "dem-utm-1m.json": 1014,
-    "lidar-stats.json": 765,
-    "osm-full.json.gz": 422786,
-    "osm-golf-values.json": 184,
-    "osm-summary.json": 1853,
-    "preview-course.png": 5918635,
+    "lidar-stats.json": 769,
+    "osm-full.json.gz": 648040,
+    "osm-golf-values.json": 186,
+    "osm-summary.json": 1909,
+    "preview-course.png": 5964784,
     "preview-h1.png": 866220,
-    "run-log.txt": 5869,
+    "run-log.txt": 7946,
+    "run-status.json": 1105,
     "trees-summary.json": 740,
-    "trees.geojson": 10574218,
-    "woods.geojson": 16026817
+    "trees.geojson": 10790693,
+    "woods.geojson": 16306005
   },
-  "allOk": true
+  "allOk": false
 }

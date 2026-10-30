@@ -1,13 +1,13 @@
 {
   "course": "farmlinks",
-  "finishedAt": "2026-10-30T18:19:09Z",
-  "runId": "41105611472",
-  "commit": "9d65f48b56a4244e8a0a9be889daa417d2789772",
+  "finishedAt": "2026-10-30T18:34:55Z",
+  "runId": "41107868084",
+  "commit": "353d82edb54cc68af3efaae479dfb758f1b8e0b4",
   "stages": [
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 35
+      "seconds": 50
     },
     {
       "stage": "dem",
@@ -17,17 +17,17 @@
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 34
+      "seconds": 29
     },
     {
       "stage": "trees",
       "rc": 0,
-      "seconds": 9
+      "seconds": 6
     },
     {
       "stage": "render",
       "rc": 0,
-      "seconds": 11
+      "seconds": 7
     }
   ],
   "outputBytes": {
@@ -43,7 +43,8 @@
     "preview-course.png": 7383958,
     "preview-h1.png": 1618038,
     "registration-v1.json": 4404,
-    "run-log.txt": 5042,
+    "run-log.txt": 5041,
+    "run-status.json": 1072,
     "trees-summary.json": 737,
     "trees.geojson": 4016224,
     "woods.geojson": 7145063

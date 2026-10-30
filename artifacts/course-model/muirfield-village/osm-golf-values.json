@@ -1,10 +1,14 @@
 {
-  "bunker": 104,
-  "cartpath": 16,
+  "bunker": 205,
+  "cartpath": 91,
   "clubhouse": 1,
-  "fairway": 32,
-  "green": 34,
-  "hole": 26,
-  "tee": 104,
-  "water_hazard": 14
+  "driving_range": 1,
+  "fairway": 67,
+  "green": 74,
+  "hole": 49,
+  "lateral_water_hazard": 13,
+  "path": 2,
+  "rough": 3,
+  "tee": 226,
+  "water_hazard": 20
 }

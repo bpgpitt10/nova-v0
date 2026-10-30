@@ -1,10 +1,10 @@
 {
-  "bunker": 66,
-  "cartpath": 51,
-  "fairway": 92,
-  "green": 21,
-  "hole": 18,
+  "bunker": 110,
+  "cartpath": 56,
+  "fairway": 111,
+  "green": 38,
+  "hole": 37,
   "rough": 31,
-  "tee": 12,
-  "water_hazard": 12
+  "tee": 55,
+  "water_hazard": 19
 }

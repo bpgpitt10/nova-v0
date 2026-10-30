@@ -2,28 +2,29 @@
   "schemaVersion": "looper-course-model-lidar-stats-v1",
   "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
   "eptSrs": "3857",
-  "octreeNodesRead": 3568,
-  "downloadedMB": 902.6,
-  "pointsKeptInBbox": 142040298,
-  "pointsPerSquareMetre": 28.87,
-  "firstReturnsPerSquareMetre": 17.75,
+  "octreeNodesRead": 7608,
+  "downloadedMB": 1920.2,
+  "pointsKeptInBbox": 146875532,
+  "pointsPerSquareMetre": 29.85,
+  "firstReturnsPerSquareMetre": 40.21,
   "classificationHistogram": {
-    "1": 79716863,
-    "2": 62301553,
-    "9": 24797,
-    "20": 5759
+    "1": 174831892,
+    "2": 139662537,
+    "9": 50169,
+    "17": 6094,
+    "20": 13856
   },
   "chm": {
     "width": 2504,
     "height": 1965,
     "pixelMeters": 1.0,
-    "cellsWithReturns": 4635121,
-    "emptyCells": 285239,
-    "cellsOver3m": 2092092,
-    "cellsOver10m": 1060331,
-    "p50": 0.3199999999999932,
-    "p95": 20.329999999999984,
+    "cellsWithReturns": 4816928,
+    "emptyCells": 103432,
+    "cellsOver3m": 2163767,
+    "cellsOver10m": 1090092,
+    "p50": 0.2699999999999818,
+    "p95": 20.25,
     "max": 65.43
   },
-  "seconds": 129.8
+  "seconds": 240.8
 }

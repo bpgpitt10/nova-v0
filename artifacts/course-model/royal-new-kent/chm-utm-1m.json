@@ -11,7 +11,7 @@
   "nodata": -32768,
   "encoding": "int16-le-gzip-rows-top-first",
   "dataFile": "chm-utm-1m.i16.gz",
-  "validCells": 5847828,
+  "validCells": 5979205,
   "provenance": {
     "source": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
     "method": "height above 3DEP bare-earth DEM, per-cell max, noise 7/18 dropped",
