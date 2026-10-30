@@ -1,57 +1,57 @@
 {
   "course": "muirfield-village",
-  "finishedAt": "2026-10-30T18:44:43Z",
-  "runId": "41107868084",
-  "commit": "353d82edb54cc68af3efaae479dfb758f1b8e0b4",
+  "finishedAt": "2026-10-30T21:14:17Z",
+  "runId": "41127785212",
+  "commit": "b66486a663f42163aa46bd677d61600c24a0af86",
   "stages": [
     {
       "stage": "find",
       "rc": 0,
-      "seconds": 89
+      "seconds": 96
     },
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 49
+      "seconds": 48
     },
     {
       "stage": "dem",
-      "rc": 1,
-      "seconds": 25
-    },
-    {
-      "stage": "lidar-chm",
-      "rc": 0,
-      "seconds": 241
-    },
-    {
-      "stage": "trees",
       "rc": 0,
       "seconds": 3
     },
     {
+      "stage": "lidar-chm",
+      "rc": 0,
+      "seconds": 302
+    },
+    {
+      "stage": "trees",
+      "rc": 0,
+      "seconds": 7
+    },
+    {
       "stage": "render",
       "rc": 0,
-      "seconds": 11
+      "seconds": 22
     }
   ],
   "outputBytes": {
-    "chm-utm-1m.i16.gz": 3520254,
-    "chm-utm-1m.json": 724,
+    "chm-utm-1m.i16.gz": 7644900,
+    "chm-utm-1m.json": 725,
     "course-bbox.json": 1708,
-    "dem-utm-1m.i16.gz": 5456019,
-    "dem-utm-1m.json": 1014,
-    "lidar-stats.json": 749,
+    "dem-utm-1m.i16.gz": 13093714,
+    "dem-utm-1m.json": 1044,
+    "lidar-stats.json": 751,
     "osm-full.json.gz": 1515102,
     "osm-golf-values.json": 217,
     "osm-summary.json": 3250,
-    "preview-course.png": 5539495,
-    "preview-h1.png": 948524,
-    "run-log.txt": 22622,
-    "run-status.json": 1107,
+    "preview-course.png": 8171515,
+    "preview-h1.png": 1096154,
+    "run-log.txt": 20999,
+    "run-status.json": 1139,
     "trees-summary.json": 738,
-    "trees.geojson": 4415932,
-    "woods.geojson": 6081898
+    "trees.geojson": 9975415,
+    "woods.geojson": 13227809
   },
-  "allOk": false
+  "allOk": true
 }

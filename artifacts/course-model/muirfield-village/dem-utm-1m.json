@@ -1,30 +1,30 @@
 {
   "schemaVersion": "looper-course-model-grid-v1",
   "crs": "EPSG:26917",
-  "originX": 316335.0,
-  "originY": 4446951.0,
+  "originX": 315477.0,
+  "originY": 4447787.0,
   "originIs": "top-left corner of top-left pixel",
   "pixelSize": 1.0,
-  "width": 2504,
-  "height": 1965,
+  "width": 3382,
+  "height": 3672,
   "scale": 0.01,
   "nodata": -32768,
   "encoding": "int16-le-gzip-rows-top-first",
   "dataFile": "dem-utm-1m.i16.gz",
-  "validCells": 4920360,
+  "validCells": 12418704,
   "provenance": {
     "dataset": "USGS 3DEP Bare Earth DEM (dynamic service, best available source)",
-    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=316335%2C4444986%2C318839%2C4446951&bboxSR=26917&imageSR=26917&size=2504%2C1965&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image",
+    "exportUrl": "9 tiles of <= 1500 m; first: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=315477%2C4446287%2C316977%2C4447787&bboxSR=26917&imageSR=26917&size=1500%2C1500&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image",
     "requestedPixelMeters": 1.0,
     "license": "Public domain (USGS)",
-    "fetchedAt": "2026-10-30T18:22:31Z",
+    "fetchedAt": "2026-10-30T21:08:45Z",
     "rasterioTransform": [
       1.0,
       0.0,
-      316335.0,
+      315477.0,
       0.0,
       -1.0,
-      4446951.0
+      4447787.0
     ]
   }
 }

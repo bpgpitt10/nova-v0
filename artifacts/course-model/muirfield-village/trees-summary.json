@@ -1,21 +1,21 @@
 {
   "schemaVersion": "looper-course-model-trees-v1",
   "crs": "EPSG:26917",
-  "treeCount": 26863,
+  "treeCount": 60704,
   "heightM": {
     "p10": 5.2,
-    "p50": 11.4,
-    "p90": 22.6,
+    "p50": 10.4,
+    "p90": 21.0,
     "max": 65.3
   },
   "crownRadiusM": {
     "p10": 2.0,
-    "p50": 4.4,
-    "p90": 7.5
+    "p50": 4.2,
+    "p90": 7.3
   },
-  "woodlandPolygons": 3392,
-  "woodlandAreaHa": 187.69,
-  "maskedCellsBuildingsAndPower": 238746,
+  "woodlandPolygons": 8590,
+  "woodlandAreaHa": 396.62,
+  "maskedCellsBuildingsAndPower": 582728,
   "parameters": {
     "minTreeM": 3.0,
     "minCrownM": 2.0,
@@ -44,5 +44,5 @@
     ],
     "minWoodAreaM2": 25.0
   },
-  "seconds": 3.0
+  "seconds": 7.2
 }

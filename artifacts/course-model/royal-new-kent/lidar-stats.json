@@ -4,9 +4,9 @@
   "eptSrs": "3857",
   "octreeNodesRead": 675,
   "downloadedMB": 262.0,
-  "pointsKeptInBbox": 29950511,
-  "pointsPerSquareMetre": 4.83,
-  "firstReturnsPerSquareMetre": 3.73,
+  "pointsKeptInBbox": 37828282,
+  "pointsPerSquareMetre": 4.58,
+  "firstReturnsPerSquareMetre": 2.81,
   "classificationHistogram": {
     "1": 19683770,
     "2": 13653531,
@@ -15,16 +15,16 @@
     "11": 4490289
   },
   "chm": {
-    "width": 2840,
-    "height": 2185,
+    "width": 3579,
+    "height": 2307,
     "pixelMeters": 1.0,
-    "cellsWithReturns": 5979205,
-    "emptyCells": 226195,
-    "cellsOver3m": 3532952,
-    "cellsOver10m": 2642088,
-    "p50": 7.719999999999967,
-    "p95": 22.970000000000013,
+    "cellsWithReturns": 7734020,
+    "emptyCells": 522733,
+    "cellsOver3m": 4378687,
+    "cellsOver10m": 3227834,
+    "p50": 6.489999999999981,
+    "p95": 22.530000000000037,
     "max": 39.27999999999996
   },
-  "seconds": 30.9
+  "seconds": 37.6
 }
