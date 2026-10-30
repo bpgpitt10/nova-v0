@@ -1,4 +1,5 @@
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { isNativePositionsEnabled } from './nativeCourseRuntime'
 import type {
   CourseContextKind,
   CourseContextLayer,
@@ -59,9 +60,11 @@ type RawPackage = {
   location?: unknown
   provenance?: unknown
   holes?: unknown
+  /** Present on course-model enrichments (course-v1-lidar.json). */
+  enrichment?: unknown
 }
 
-const packageCache = new Map<CourseId, Promise<RawPackage>>()
+const packageCache = new Map<string, Promise<RawPackage>>()
 const holeCache = new Map<string, Promise<CourseHoleGeometry>>()
 
 const finite = (value: unknown): value is number =>
@@ -339,9 +342,28 @@ const parseProvenance = (value: unknown): CourseGeometryProvenance => {
 const wait = (delayMs: number) =>
   delayMs <= 0 ? Promise.resolve() : new Promise<void>((resolve) => globalThis.setTimeout(resolve, delayMs))
 
-const fetchPackage = async (courseId: CourseId): Promise<RawPackage> => {
+// Native positions (beta): prefer the course-model enrichment (LiDAR woods,
+// unclipped OSM hazards/paths, 2-yd terrain) when one is published. Same
+// schema and frame as course-v1.json; any problem falls back to it.
+const fetchEnrichedPackage = async (courseId: CourseId, url: string): Promise<RawPackage | null> => {
+  try {
+    const response = await fetch(url.replace(/course-v1\.json$/, 'course-v1-lidar.json'), { cache: 'no-cache' })
+    if (!response.ok) return null
+    const payload = await response.json() as RawPackage
+    return payload.schemaVersion === 'looper-static-course-package-v1' && payload.courseId === courseId
+      ? payload : null
+  } catch {
+    return null
+  }
+}
+
+const fetchPackage = async (courseId: CourseId, enriched: boolean): Promise<RawPackage> => {
   const entry = getCourseCatalogEntry(courseId)
   if (!entry.staticPackageUrl) throw new Error(`${entry.name} does not use a generic static package.`)
+  if (enriched) {
+    const payload = await fetchEnrichedPackage(courseId, entry.staticPackageUrl)
+    if (payload) return payload
+  }
   let lastError: unknown = null
   for (const delayMs of FETCH_RETRY_DELAYS_MS) {
     await wait(delayMs)
@@ -361,14 +383,15 @@ const fetchPackage = async (courseId: CourseId): Promise<RawPackage> => {
   throw lastError instanceof Error ? lastError : new Error(`${entry.name} package could not be loaded.`)
 }
 
-const loadPackage = (courseId: CourseId) => {
-  const existing = packageCache.get(courseId)
+const loadPackage = (courseId: CourseId, enriched: boolean) => {
+  const key = `${courseId}|${enriched ? 'lidar' : 'base'}`
+  const existing = packageCache.get(key)
   if (existing) return existing
-  const promise = fetchPackage(courseId).catch((error) => {
-    packageCache.delete(courseId)
+  const promise = fetchPackage(courseId, enriched).catch((error) => {
+    packageCache.delete(key)
     throw error
   })
-  packageCache.set(courseId, promise)
+  packageCache.set(key, promise)
   return promise
 }
 
@@ -389,7 +412,18 @@ const parseHole = async (
   const bounds = boundsFromSurfaces(surfaces)
   if (!bounds) throw new Error(`${courseName} Hole ${holeNumber} could not derive playable bounds.`)
   const viewBounds = parseBounds(raw.viewBounds)
-  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context)
+  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context).map((layer) =>
+    payload.enrichment && layer.kind === 'woods'
+      ? {
+          ...layer,
+          provenance: {
+            source: 'derived' as const,
+            sourceFeature: 'USGS 3DEP LiDAR canopy height model (>= 3 m), course model',
+            confidence: 'high' as const,
+            note: 'Tree canopy from the LiDAR point cloud; replaces 10 m WorldCover woods.',
+          },
+        }
+      : layer)
   const mapFeatures = parseMapFeatures(courseId, holeNumber, raw.mapFeatures)
   const contours = parseContours(raw.contours, courseName, holeNumber)
   const terrain = await parseTerrain(raw.terrain, courseName, holeNumber)
@@ -446,10 +480,11 @@ export const loadRoutePackagedCourseHoleGeometry = async (
   holeNumber: number,
 ): Promise<CourseHoleGeometry> => {
   const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
-  const key = `${courseId}:${normalized}`
+  const enriched = isNativePositionsEnabled()
+  const key = `${courseId}:${normalized}:${enriched ? 'lidar' : 'base'}`
   const existing = holeCache.get(key)
   if (existing) return existing
-  const promise = loadPackage(courseId)
+  const promise = loadPackage(courseId, enriched)
     .then((payload) => parseHole(courseId, payload, normalized))
     .catch((error) => {
       holeCache.delete(key)
