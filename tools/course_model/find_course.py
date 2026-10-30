@@ -124,6 +124,21 @@ def main() -> int:
     best = max(matched, key=lambda c: c['areaHa'])
     lons = [p[0] for r in best['rings'] for p in r]
     lats = [p[1] for r in best['rings'] for p in r]
+    # OSM course outlines are often incomplete (Muirfield Village's covers
+    # 107 ha and cuts through Hole 1). Grow the box to every golf playing
+    # feature within 600 m of the outline's box.
+    pad_lat = 600 / 110_540.0
+    pad_lon = 600 / (111_320.0 * math.cos(math.radians((min(lats) + max(lats)) / 2)))
+    s0, w0, n0, e0 = min(lats) - pad_lat, min(lons) - pad_lon, max(lats) + pad_lat, max(lons) + pad_lon
+    golf_q = (f'[out:json][timeout:180];way["golf"~"^(hole|fairway|green|tee|bunker|rough|water_hazard|lateral_water_hazard)$"]'
+              f'({s0},{w0},{n0},{e0});out geom;')
+    grown = 0
+    for el in overpass(golf_q).get('elements', []):
+        for p in el.get('geometry') or []:
+            lons.append(p['lon'])
+            lats.append(p['lat'])
+            grown += 1
+    print(f'grew bbox with {grown} vertices from nearby golf features')
     lat_mid = (min(lats) + max(lats)) / 2
     dlat = args.margin_m / 110_540.0
     dlon = args.margin_m / (111_320.0 * math.cos(math.radians(lat_mid)))
