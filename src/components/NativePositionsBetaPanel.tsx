@@ -21,19 +21,23 @@ type Props = {
 const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'warn' } => {
   switch (status.state) {
     case 'ready':
-      return { text: `Active · ${status.courseName} · registration grade ${status.grade}`, tone: 'ok' }
+      return {
+        text: `Active · ${status.courseName} · registration grade ${status.grade}`
+          + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
+        tone: 'ok',
+      }
     case 'no-registration':
       return { text: `${status.courseName} has no native registration yet; using current positioning.`, tone: 'warn' }
     case 'other-course':
       return { text: `GSPro is on ${status.courseKey}, not ${status.expectedKey}; using current positioning.`, tone: 'warn' }
     case 'no-folder':
-      return { text: 'Choose your GSPro course folder (the one containing the course .GKD files).', tone: 'warn' }
+      return { text: 'Choose your GSPro folder (e.g. C:\\GSProV1) or its Courses folder. Read-only; files stay on this PC.', tone: 'warn' }
     case 'needs-permission':
       return { text: 'Allow read access to your GSPro course folder again.', tone: 'warn' }
     case 'gkd-not-found':
-      return { text: `${status.courseKey}.GKD was not found in that folder. Choose the GSPro courses folder.`, tone: 'warn' }
+      return { text: `${status.courseKey}.GKD was not found in that folder. Choose your GSPro folder (e.g. C:\\GSProV1) or its Courses folder.`, tone: 'warn' }
     case 'layout-mismatch':
-      return { text: 'Your installed course layout differs from the registered one; using current positioning.', tone: 'warn' }
+      return { text: 'Your installed course has different greens or pins from the registered version; using current positioning.', tone: 'warn' }
     case 'error':
       return { text: `Native positions unavailable: ${status.message}`, tone: 'warn' }
     case 'no-course':

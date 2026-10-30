@@ -28,6 +28,9 @@ export type NativeRegistration = Readonly<{
   courseId: string
   gsproCourseKey: string
   layoutFingerprint: string
+  /** Pins + green centres of the scene; any layout of the scene that matches
+   * may use this registration. Older files lack it (main layout only). */
+  sceneFingerprint: string | null
   grade: string
   reference: Readonly<{ latLon: readonly [number, number]; worldXZ: readonly [number, number] }>
   worldYToElevationOffsetM: number
@@ -78,6 +81,8 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
     courseId: v.courseId,
     gsproCourseKey: v.gsproCourseKey,
     layoutFingerprint: v.layoutFingerprint,
+    sceneFingerprint: typeof v.sceneFingerprint === 'string' && /^[0-9a-f]{64}$/.test(v.sceneFingerprint)
+      ? v.sceneFingerprint : null,
     grade: v.grade,
     reference: { latLon, worldXZ },
     worldYToElevationOffsetM: v.worldYToElevationOffsetM,

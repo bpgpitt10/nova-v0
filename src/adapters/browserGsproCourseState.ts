@@ -6,8 +6,11 @@ import {
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import {
   nativeCourseContextForLive,
+  recallNativeLayout,
   recallNativePinSlot,
+  rememberNativeLayout,
   rememberNativePinSlot,
+  selectNativeLayout,
 } from '../courseGeometry/nativeCourseRuntime'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
@@ -228,10 +231,19 @@ const applyNativeIfReady = async (
     const selectedCourseId = loadLastSelectedCourseId()
     if (selectedCourseId === UNSELECTED_COURSE_ID || snapshot.holeNumber == null) return snapshot
     const courseKey = snapshot.preShotStart?.courseKey ?? snapshot.courseKey
-    const context = await nativeCourseContextForLive(selectedCourseId, courseKey)
-    if (!context) return snapshot
+    const loaded = await nativeCourseContextForLive(selectedCourseId, courseKey)
+    if (!loaded) return snapshot
     const round = loadActiveLiveCaddieRound()
-    const normalizedTeeSet = round?.courseId === selectedCourseId ? round.normalizedTeeSet : null
+    // Courses with alternate layouts (GKDalt): settle which one is in play.
+    const selection = selectNativeLayout(loaded, {
+      holeNumber: snapshot.holeNumber,
+      preShotWorld: teeContext ? snapshot.preShotStart?.world ?? null : null,
+      normalizedTeeSet: round?.courseId === selectedCourseId ? round.normalizedTeeSet : null,
+      rememberedLayoutName: recallNativeLayout(loaded.courseKey, snapshot.roundId),
+    })
+    const context = selection.context
+    const normalizedTeeSet = selection.normalizedTeeSet
+    if (selection.learnedLayoutName) rememberNativeLayout(context.courseKey, snapshot.roundId, selection.learnedLayoutName)
     // Legacy OSM tee picks ("Tee 3") carry no GSPro name; pass their map spot
     // so the overlay can use the GKD tee standing there.
     let legacyTeeLocal: CoursePointYds | null = null

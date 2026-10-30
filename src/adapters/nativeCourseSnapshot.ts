@@ -20,7 +20,9 @@ import type { GsproStartingPositionObservation } from './gsproStartingPosition'
  *
  * Tee (before shot 1): GSPro's pre-shot StartingPOS when it sits on a GKD tee,
  *   otherwise the GKD tee for the round's tee set (by GSPro name, e.g. "White",
- *   or, for a legacy OSM pick like "Tee 3", the GKD tee at that map spot).
+ *   only once the layout is confirmed; or, for a legacy OSM pick like "Tee 3",
+ *   the GKD tee at that map spot).
+ * The caller picks the layout (selectNativeLayout) before calling this.
  * Pin: the GKD pin slot that matches GSPro's own DistanceToPin (pre-shot from
  *   the tee, or from the latest shot's end); else the slot learned earlier this
  *   round; else unknown (the existing pin estimate stays).
@@ -105,8 +107,10 @@ export const applyNativeCourseSnapshot = ({
   }
   const preShotOnTee = preShotStart?.world && resolveNativeTee(hole, preShotStart.world).status !== 'no-match'
     ? preShotStart.world : null
+  // By-name lookup only once the layout is known: an alternate layout's
+  // "White" can be 70 m from the main layout's "White".
   const teeWorld: NativeXYZ | null = preShotOnTee
-    ?? gkdTeeForTeeSet(hole, normalizedTeeSet)
+    ?? (context.layoutConfirmed ? gkdTeeForTeeSet(hole, normalizedTeeSet) : null)
     ?? nearestGkdTeeTo(legacyTeeLocal)
   const ball = teeWorld ? toLocal(teeWorld) : null
   if (!teeWorld || !ball) return { snapshot: withPin, pinSlot }

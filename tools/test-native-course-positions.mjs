@@ -18,6 +18,8 @@ try {
   const gkd = await load('/src/courseGeometry/nativeGkd.ts')
   const reg = await load('/src/courseGeometry/nativeRegistration.ts')
   const snap = await load('/src/adapters/nativeCourseSnapshot.ts')
+  const folder = await load('/src/courseGeometry/nativeCourseFolder.ts')
+  const runtime = await load('/src/courseGeometry/nativeCourseRuntime.ts')
 
   const pos = (x, z, y = 10) => ({ x, y, z })
   // Same synthetic course as tools/course_model/test_gkd_native.py.
@@ -44,6 +46,10 @@ try {
   assert.equal(layout.fingerprintText, '1|Black:0,0;Red:10,210;White:0,200|300,1350;360,1500|300,1400')
   assert.equal(await gkd.sha256Hex(layout.fingerprintText),
     'a9aebbc26134b714d8da4137b213a58d63f9c1ed6e4d7c334cbd6d62606ff53d')
+  // Scene fingerprint (pins + green centres, no tees) matches Python too.
+  assert.equal(layout.sceneFingerprintText, '1|300,1350;360,1500|300,1400')
+  assert.equal(await gkd.sha256Hex(layout.sceneFingerprintText),
+    'e356348e6071672d52bea988972af8030dee5e3c9197d9e38a39d7463e486508')
   const renamed = gkd.parseGkdLayout(JSON.stringify({ ...synthetic, CourseName: 'Renamed' }))
   assert.equal(renamed.fingerprintText, layout.fingerprintText, 'metadata does not change the fingerprint')
 
@@ -87,7 +93,11 @@ try {
     reference: { latLon: [33.12, -86.42], worldXZ: [0, 0] }, worldYToElevationOffsetM: 100,
     holes: { 1: { anchorLatLon: [33.12, -86.42], headingDegreesTrue: 0 } },
   })
-  const context = { courseId: 'synthetic', courseKey: 'synthetic_gsp', layout, registration: synthReg }
+  const mainOption = { name: 'Synthetic Links', kind: 'main', layout }
+  const context = {
+    courseId: 'synthetic', courseKey: 'synthetic_gsp', layout, layoutName: 'Synthetic Links',
+    layoutConfirmed: true, layouts: [mainOption], registration: synthReg,
+  }
   const base = {
     courseKey: 'synthetic_gsp', roundId: 7, holeNumber: 1, ballLocalYds: null, ballSource: 'unavailable',
     surface: 'tee', surfaceSource: 'cached-tee', distanceToPinYds: null, nextShotNumber: 1,
@@ -146,6 +156,113 @@ try {
     base, context, holeNumber: 5, teeContext: true, preShotStart, normalizedTeeSet: 'black', rememberedPinSlot: null,
   })
   assert.equal(otherHole.snapshot, base, 'unknown hole passes the snapshot through unchanged')
+
+  // 6. Course folder discovery. Layout of a real GSPro install (FarmLinks):
+  //    C:\GSProV1\Courses\<folder>\<scene>.GKD + "<Alt name>.GKDalt" + GKD_BAK
+  //    revisions. The alternate layout shares pins/greens, moves every tee.
+  const alt = {
+    ...synthetic, gkversion: 4.1, SceneFolderName: 'synthetic_gsp', CourseName: 'Synthetic Kids',
+    Holes: [{ ...synthetic.Holes[0], Tees: [
+      { TeeType: 'White', Enabled: true, Distance: 90.0, Position: pos(10, 60) },
+      { TeeType: 'Red', Enabled: true, Distance: 80.0, Position: pos(15, 70) },
+      { TeeType: 'AimPoint1', Enabled: true, Distance: 0.0, Position: pos(0, 100) },
+      { TeeType: 'GreenCenterPoint', Enabled: false, Distance: 0.0, Position: pos(30, 140) },
+    ] }],
+  }
+  const otherScene = { ...alt, SceneFolderName: 'other_course_gsp', CourseName: 'Other Kids' }
+  let listings = 0
+  const fakeDir = (name, tree) => ({
+    kind: 'directory', name,
+    async getFileHandle(n) {
+      const v = tree[n]
+      if (typeof v !== 'string') throw new Error('NotFoundError')
+      return { getFile: async () => ({ name: n, size: v.length, lastModified: 1700000000000, text: async () => v }) }
+    },
+    async getDirectoryHandle(n) {
+      const v = tree[n]
+      if (!v || typeof v === 'string') throw new Error('NotFoundError')
+      return fakeDir(n, v)
+    },
+    async *values() {
+      listings += 1
+      for (const [n, v] of Object.entries(tree)) yield typeof v === 'string' ? { kind: 'file', name: n } : fakeDir(n, v)
+    },
+  })
+  const courseFolder = {
+    'synthetic_gsp.GKD': JSON.stringify(synthetic),
+    'Synthetic Kids.GKDalt': JSON.stringify(alt),
+    'Other Kids.GKDalt': JSON.stringify(otherScene),
+    'synthetic_gsp-1665162593.GKD_BAK': '{"Holes": []}',
+    'synthetic_gsp.unity3d': 'binary',
+    'broken.GKDalt': 'not json',
+  }
+  const install = fakeDir('GSProV1', {
+    GSPro_Data: { a: { b: {} } },
+    Courses: {
+      'Aaa Course': { 'aaa_gsp.GKD': JSON.stringify(synthetic) },
+      'Synthetic Links v2': courseFolder,
+    },
+  })
+  const found = await folder.findNativeSceneFolder(install, 'SYNTHETIC_GSP')
+  assert.deepEqual(found?.path, ['Courses', 'Synthetic Links v2'], 'install root -> Courses -> course folder (any case)')
+  assert.equal(await folder.findNativeSceneFolder(install, 'missing_gsp'), null)
+  assert.deepEqual((await folder.findNativeSceneFolder(fakeDir('x', courseFolder), 'synthetic_gsp'))?.path, [],
+    'course folder itself')
+  listings = 0
+  assert.equal(await folder.findNativeSceneFolder(install, 'missing_gsp', 2), null)
+  assert.ok(listings <= 2, 'folder walk is bounded')
+  assert.ok(await folder.walkNativePath(install, ['Courses', 'Synthetic Links v2']))
+  assert.equal(await folder.walkNativePath(install, ['Courses', 'Gone']), null)
+
+  const files = await folder.listNativeLayoutFiles(found.dir)
+  assert.deepEqual(files.map((f) => f.fileName), ['synthetic_gsp.GKD', 'broken.GKDalt', 'Other Kids.GKDalt', 'Synthetic Kids.GKDalt'],
+    'GKD first, then GKDalt; GKD_BAK revisions ignored')
+  assert.ok(folder.sameNativeLayoutFiles(files, await folder.listNativeLayoutFiles(found.dir)))
+  assert.equal(folder.sameNativeLayoutFiles(files, [{ ...files[0], size: 1 }, ...files.slice(1)]), false)
+  const sceneLayouts = await folder.readNativeSceneLayouts(found.dir, 'synthetic_gsp', files)
+  assert.deepEqual(sceneLayouts.map(folder.nativeLayoutName), ['Synthetic Links', 'Synthetic Kids'],
+    'malformed files and other scenes\' layouts are left out')
+
+  // 7. Verification against the registration: scene fingerprint admits the
+  //    alternate layout; old registrations (no scene fingerprint) only the main.
+  const sceneReg = { ...synthReg, sceneFingerprint: await gkd.sha256Hex(layout.sceneFingerprintText) }
+  const verified = await runtime.verifyNativeLayouts(sceneLayouts, sceneReg)
+  assert.deepEqual(verified.map((l) => `${l.kind}:${l.name}`), ['main:Synthetic Links', 'alt:Synthetic Kids'])
+  assert.deepEqual((await runtime.verifyNativeLayouts(sceneLayouts, { ...synthReg, sceneFingerprint: null })).map((l) => l.name),
+    ['Synthetic Links'])
+  const movedPins = gkd.parseGkdLayout(JSON.stringify({ ...synthetic, Holes: [{ ...synthetic.Holes[0], Pins: [{ Day: 'x', Position: pos(31, 135) }] }] }))
+  assert.equal((await runtime.verifyNativeLayouts([{ file: files[0], layout: movedPins }], sceneReg)).length, 0,
+    'a different pin layout is rejected')
+
+  // 8. Which layout is in play.
+  const twoLayouts = { ...context, registration: sceneReg, layouts: verified, layoutConfirmed: false }
+  const pick = (inputs) => runtime.selectNativeLayout(twoLayouts, { holeNumber: 1, preShotWorld: null, normalizedTeeSet: null, rememberedLayoutName: null, ...inputs })
+  assert.equal(pick({}).context.layoutConfirmed, false, 'two layouts and no evidence: unconfirmed')
+  const byTeeSet = pick({ normalizedTeeSet: 'white (synthetic kids)' })
+  assert.equal(byTeeSet.context.layoutName, 'Synthetic Kids')
+  assert.equal(byTeeSet.normalizedTeeSet, 'white')
+  assert.equal(byTeeSet.learnedLayoutName, 'Synthetic Kids')
+  const byPosition = pick({ preShotWorld: pos(10, 60) })
+  assert.equal(byPosition.context.layoutName, 'Synthetic Kids', 'StartingPOS on a Kids-only tee')
+  assert.equal(pick({ preShotWorld: pos(0, 0) }).context.layoutName, 'Synthetic Links', 'Black exists only on the main layout')
+  assert.equal(pick({ rememberedLayoutName: 'Synthetic Kids' }).context.layoutName, 'Synthetic Kids')
+  assert.equal(runtime.nativeTeeSetValue('White', verified[1]), 'White (Synthetic Kids)')
+  assert.equal(runtime.nativeTeeSetValue('White', verified[0]), 'White')
+
+  // Unconfirmed layout: no by-name tee (main "White" is not Kids "White").
+  const unconfirmed = snap.applyNativeCourseSnapshot({
+    base, context: twoLayouts, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'white', rememberedPinSlot: null,
+  })
+  assert.equal(unconfirmed.snapshot.ballSource, 'unavailable')
+  const kidsTee = snap.applyNativeCourseSnapshot({
+    base, context: byTeeSet.context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: byTeeSet.normalizedTeeSet, rememberedPinSlot: null,
+  })
+  const kidsWhite = reg.nativeWorldToHoleLocalYds(synthReg, 1, { x: 10, z: 60 })
+  assert.ok(Math.hypot(kidsTee.snapshot.ballLocalYds[0] - kidsWhite[0], kidsTee.snapshot.ballLocalYds[1] - kidsWhite[1]) < 0.01,
+    'Kids White tee placed from the Kids layout')
+
+  // Published FarmLinks registration carries the scene fingerprint.
+  assert.equal(farmlinks.sceneFingerprint, '0aecb74508c245b5f7071c8871f4dda9207fcb9f738004ca667a0681d5bd76ae')
 
   console.log('native course positions: all checks passed')
 } finally {

@@ -30,9 +30,13 @@ export type NativeHole = Readonly<{
 
 export type NativeCourseLayout = Readonly<{
   courseName: string | null
+  /** GKDalt only: the scene (main GKD / CourseKey) this alternate layout belongs to. */
   sceneFolderName: string | null
   holes: readonly NativeHole[]
+  /** Tees + pins + green centres: changes whenever a tee moves. */
   fingerprintText: string
+  /** Pins + green centres only: shared by every layout of one GSPro scene. */
+  sceneFingerprintText: string
 }>
 
 export class NativeGkdError extends Error {}
@@ -67,6 +71,18 @@ export const layoutFingerprintText = (holes: readonly NativeHole[]): string =>
       const pins = h.pins.map((p) => `${dm(p.x)},${dm(p.z)}`).join(';')
       const gc = h.greenCenter ? `${dm(h.greenCenter.x)},${dm(h.greenCenter.z)}` : '-'
       return `${h.hole}|${tees}|${pins}|${gc}`
+    })
+    .join('\n')
+
+/** Scene text: no tees, so a GKD and its GKDalt layouts (and tee-only
+ * revisions) agree. Mirrors scene_fingerprint_text in gkd_native.py. */
+export const sceneFingerprintText = (holes: readonly NativeHole[]): string =>
+  [...holes]
+    .sort((a, b) => a.hole - b.hole)
+    .map((h) => {
+      const pins = h.pins.map((p) => `${dm(p.x)},${dm(p.z)}`).join(';')
+      const gc = h.greenCenter ? `${dm(h.greenCenter.x)},${dm(h.greenCenter.z)}` : '-'
+      return `${h.hole}|${pins}|${gc}`
     })
     .join('\n')
 
@@ -126,6 +142,7 @@ export const parseGkdLayout = (text: string): NativeCourseLayout => {
     sceneFolderName: typeof root.SceneFolderName === 'string' ? root.SceneFolderName : null,
     holes,
     fingerprintText: layoutFingerprintText(holes),
+    sceneFingerprintText: sceneFingerprintText(holes),
   }
 }
 

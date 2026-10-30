@@ -11,7 +11,7 @@ import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
-import { loadNativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
+import { loadNativeCourseContext, nativeTeeSetValue } from '../courseGeometry/nativeCourseRuntime'
 import { nativeTeeSetOptions } from '../courseGeometry/nativeGkd'
 import {
   loadRoundTeeSelection,
@@ -71,7 +71,14 @@ export default function RoundSetupPage() {
         // Native positions (beta): when the player's GKD is verified for this
         // course, offer GSPro's own tee sets (what they pick in GSPro).
         const native = await loadNativeCourseContext(courseId, null).catch(() => null)
-        const nativeOptions = native?.context ? nativeTeeSetOptions(native.context.layout) : []
+        // Alternate layouts (GKDalt, e.g. "Farmlinks Kids") move every tee, so
+        // their tee sets are offered as "White (Farmlinks Kids)".
+        const nativeOptions = native?.context
+          ? native.context.layouts.flatMap((layout) => nativeTeeSetOptions(layout.layout).map((option) => ({
+              value: nativeTeeSetValue(option.name, layout),
+              label: layout.kind === 'alt' ? `${option.name} — ${layout.name} (GSPro tee)` : `${option.name} (GSPro tee)`,
+            })))
+          : []
         return { candidates, nativeOptions }
       })
       .then(({ candidates, nativeOptions }) => {
@@ -92,12 +99,12 @@ export default function RoundSetupPage() {
             return left.localeCompare(right, undefined, { numeric: true })
           })
         const useNative = nativeOptions.length > 0
-        const finalLabels = useNative ? nativeOptions.map((option) => option.name) : labels
+        const finalLabels = useNative ? nativeOptions.map((option) => option.value) : labels
         setTeeOptionText(useNative
           ? Object.fromEntries(nativeOptions.map((option) => [
               // Name only: GKD distances are route-to-green-centre metres and
               // would not match the yardage GSPro shows on its scorecard.
-              option.name, `${option.name} (GSPro tee)`,
+              option.value, option.label,
             ]))
           : {})
         setTeeOptions(finalLabels)
