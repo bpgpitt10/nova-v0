@@ -111,7 +111,8 @@ def render(ax, extent_xy, dem_h, dem, polys, lines, trees, woods_polys):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--dir', required=True, help='course-model output dir')
-    ap.add_argument('--course', required=True, help='public course-v1.json (for Hole 1 tee/green)')
+    ap.add_argument('--course', help='public course-v1.json (Hole 1 tee/green); else OSM golf=hole ref=1')
+    ap.add_argument('--title', default='Course')
     args = ap.parse_args()
 
     import matplotlib
@@ -120,13 +121,13 @@ def main() -> int:
     from pyproj import Transformer
 
     d = Path(args.dir)
-    to_utm = Transformer.from_crs('EPSG:4326', 'EPSG:26916', always_xy=True)
-    dem_h, dem = load_grid(d / 'dem-utm16n-1m.json')
+    dem_h, dem = load_grid(d / 'dem-utm-1m.json')
+    to_utm = Transformer.from_crs('EPSG:4326', dem_h['crs'], always_xy=True)
     polys, lines, golf_values = load_osm(d / 'osm-full.json.gz', to_utm)
     trees = []
     if (d / 'trees.geojson').exists():
         for f in json.loads((d / 'trees.geojson').read_text())['features']:
-            x, y = f['properties']['utm16n']
+            x, y = f['properties']['utm']
             trees.append((x, y, f['properties']['crown_radius_m'], f['properties']['height_m']))
     woods_polys = []
     if (d / 'woods.geojson').exists():
@@ -141,22 +142,37 @@ def main() -> int:
             dem_h['originY'] - dem.shape[0] * px, dem_h['originY']]
     fig, ax = plt.subplots(figsize=(12, 12 * (full[3] - full[2]) / (full[1] - full[0])), dpi=170)
     render(ax, full, dem_h, dem, polys, lines, trees, woods_polys)
-    ax.set_title('FarmLinks — LiDAR terrain + full OSM + LiDAR trees (prototype)', fontsize=10)
+    ax.set_title(f'{args.title} — LiDAR terrain + full OSM + LiDAR trees (prototype)', fontsize=10)
     fig.tight_layout()
     fig.savefig(d / 'preview-course.png')
     plt.close(fig)
 
-    course = json.loads(Path(args.course).read_text())
-    frame = course['holes']['1']['coordinateFrame']
-    tee = to_utm.transform(frame['selectedTeeLatLon'][1], frame['selectedTeeLatLon'][0])
-    green = to_utm.transform(frame['targetGreenLatLon'][1], frame['targetGreenLatLon'][0])
+    tee = green = None
+    if args.course:
+        course = json.loads(Path(args.course).read_text())
+        frame = course['holes']['1']['coordinateFrame']
+        tee = to_utm.transform(frame['selectedTeeLatLon'][1], frame['selectedTeeLatLon'][0])
+        green = to_utm.transform(frame['targetGreenLatLon'][1], frame['targetGreenLatLon'][0])
+    else:
+        payload = json.loads(gzip.open(d / 'osm-full.json.gz', 'rt', encoding='utf-8').read())
+        holes = [el for el in payload.get('elements', []) if el.get('type') == 'way'
+                 and (el.get('tags') or {}).get('golf') == 'hole'
+                 and str((el.get('tags') or {}).get('ref', '')).strip() == '1' and el.get('geometry')]
+        if holes:
+            g = holes[0]['geometry']
+            tee = to_utm.transform(g[0]['lon'], g[0]['lat'])
+            green = to_utm.transform(g[-1]['lon'], g[-1]['lat'])
+    if tee is None or green is None:
+        (d / 'osm-golf-values.json').write_text(json.dumps(dict(sorted(golf_values.items())), indent=2) + '\n')
+        print(json.dumps({'golfValues': golf_values, 'trees': len(trees), 'hole1': 'not mapped in OSM'}))
+        return 0
     m = 110
     box = [min(tee[0], green[0]) - m, max(tee[0], green[0]) + m,
            min(tee[1], green[1]) - m, max(tee[1], green[1]) + m]
     fig, ax = plt.subplots(figsize=(7, 7 * (box[3] - box[2]) / (box[1] - box[0])), dpi=200)
     render(ax, box, dem_h, dem, polys, lines, trees, woods_polys)
     ax.plot([tee[0], green[0]], [tee[1], green[1]], color='white', lw=0.8, ls='--')
-    ax.set_title('FarmLinks Hole 1 — prototype layers', fontsize=9)
+    ax.set_title(f'{args.title} Hole 1 — prototype layers', fontsize=9)
     fig.tight_layout()
     fig.savefig(d / 'preview-h1.png')
     plt.close(fig)

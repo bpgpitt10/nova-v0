@@ -1,0 +1,34 @@
+[
+  {
+    "slug": "farmlinks",
+    "name": "FarmLinks",
+    "bboxFile": "artifacts/course-geometry/farmlinks/dem-source-v1.json",
+    "crs": "EPSG:26916",
+    "ept": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json",
+    "coursePackage": "public/course-geometry/farmlinks/course-v1.json"
+  },
+  {
+    "slug": "valhalla",
+    "name": "Valhalla",
+    "nameRegex": "valhalla",
+    "lat": 38.247,
+    "lon": -85.484,
+    "radiusM": 10000
+  },
+  {
+    "slug": "muirfield-village",
+    "name": "Muirfield Village",
+    "nameRegex": "muirfield",
+    "lat": 40.133,
+    "lon": -83.149,
+    "radiusM": 10000
+  },
+  {
+    "slug": "royal-new-kent",
+    "name": "Royal New Kent",
+    "nameRegex": "royal new kent|new kent",
+    "lat": 37.45,
+    "lon": -77.05,
+    "radiusM": 15000
+  }
+]

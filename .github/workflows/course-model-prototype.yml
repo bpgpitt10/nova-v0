@@ -1,6 +1,6 @@
 name: course-model-prototype
 
-# Builds the FarmLinks layered course model from unfiltered public sources
+# Builds layered course models (tools/course_model/courses.json) from unfiltered public sources
 # (full OSM, 3DEP DEM in UTM, LiDAR point cloud -> trees) and commits compact
 # outputs back to this branch. Prototype only; nothing here feeds the runtime.
 on:
@@ -18,11 +18,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  farmlinks:
+  courses:
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
-      OUT: artifacts/course-model/farmlinks
+      OUT: artifacts/course-model
       TMP: .tmp/course-model
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +37,15 @@ jobs:
           python -m pip install -q numpy scipy rasterio pyproj shapely scikit-image matplotlib affine 'laspy[lazrs]'
           python -c "import rasterio, pyproj, shapely, skimage, scipy, laspy; print('python deps ok', laspy.__version__)"
 
-      - name: Build FarmLinks course model
-        run: bash tools/course_model/run_farmlinks.sh
+      - name: Build course models
+        run: bash tools/course_model/run_courses.sh
 
       - name: Commit outputs back to the branch
         if: always()
         run: |
           mkdir -p "$OUT"
-          if [ ! -f "$OUT/run-status.json" ]; then
-            printf '{"allOk": false, "note": "workflow failed before the stage runner; see check-run annotations", "runId": "%s"}\n' "$GITHUB_RUN_ID" > "$OUT/run-status.json"
+          if [ ! -f "$OUT/run-summary.json" ]; then
+            printf '{"allOk": false, "note": "workflow failed before the stage runner; see check-run annotations", "runId": "%s"}\n' "$GITHUB_RUN_ID" > "$OUT/run-summary.json"
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -54,5 +54,5 @@ jobs:
             echo 'No output changes to commit.'
             exit 0
           fi
-          git commit -m "data(course-model): FarmLinks prototype outputs (run ${GITHUB_RUN_ID})"
+          git commit -m "data(course-model): course model outputs (run ${GITHUB_RUN_ID})"
           git push origin HEAD:course-model-prototype-v1

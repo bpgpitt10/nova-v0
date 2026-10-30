@@ -4,7 +4,7 @@
 EPT is an octree of LAZ tiles. We walk the hierarchy, download every tile at
 every depth that intersects the course bbox, read it with laspy (lazrs
 backend), keep points inside the bbox, drop noise classes (7, 18), reproject to
-UTM 16N, and compute height above ground against the 3DEP bare-earth DEM that
+the course UTM zone, and compute height above ground against the 3DEP bare-earth DEM that
 the dem stage already fetched (same grid, same origin). The canopy height
 model is the per-cell MAXIMUM height above ground, aligned to the DEM grid.
 
@@ -95,7 +95,7 @@ def cmd_chm(args: argparse.Namespace) -> int:
     H, W = dem.shape
     chm = np.full((H, W), np.nan)
     returns = np.zeros((H, W), dtype=np.int32)
-    to_utm = Transformer.from_crs('EPSG:3857', 'EPSG:26916', always_xy=True)
+    to_utm = Transformer.from_crs('EPSG:3857', dem_h['crs'], always_xy=True)
     classes, first_returns, kept, downloaded_bytes = Counter(), 0, 0, 0
 
     def fetch(key):
@@ -136,12 +136,12 @@ def cmd_chm(args: argparse.Namespace) -> int:
     chm = np.clip(chm, 0, None)
     empty = ~np.isfinite(chm)
     out = Path(args.out)
-    save_grid(out / 'chm-utm16n-1m', chm, crs='EPSG:26916', origin_x=dem_h['originX'],
+    save_grid(out / 'chm-utm-1m', chm, crs=dem_h['crs'], origin_x=dem_h['originX'],
               origin_y=dem_h['originY'], pixel_size=px, scale=0.1, nodata_mask=empty,
               provenance={'source': ept_url,
                           'method': 'height above 3DEP bare-earth DEM, per-cell max, noise 7/18 dropped',
                           'acquisition': 'AL_17Co_2_2020, leaf-off Dec 2020 - Feb 2021',
-                          'license': 'Public domain (USGS 3DEP)', 'alignedTo': 'dem-utm16n-1m'})
+                          'license': 'Public domain (USGS 3DEP)', 'alignedTo': 'dem-utm-1m'})
     valid = chm[~empty]
     area = H * W * px * px
     report = {
@@ -172,8 +172,8 @@ def cmd_chm(args: argparse.Namespace) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--ept', required=True)
-    ap.add_argument('--dem-source', required=True, help='importer dem-source-v1.json (bbox3857)')
-    ap.add_argument('--dem', required=True, help='dem-utm16n-1m.json grid from the dem stage')
+    ap.add_argument('--dem-source', required=True, help='file with bbox3857 (importer dem-source or course-bbox.json)')
+    ap.add_argument('--dem', required=True, help='dem-utm-1m.json grid from the dem stage')
     ap.add_argument('--out', required=True)
     return cmd_chm(ap.parse_args())
 

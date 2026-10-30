@@ -117,13 +117,15 @@ def cmd_dem(args: argparse.Namespace) -> int:
     from grid_io import save_grid
 
     w, s, e, n = course_bbox_lonlat(Path(args.dem_source))
-    to_utm = Transformer.from_crs('EPSG:4326', TARGET_CRS, always_xy=True)
+    crs = args.crs or TARGET_CRS
+    epsg = crs.split(':')[1]
+    to_utm = Transformer.from_crs('EPSG:4326', crs, always_xy=True)
     xs, ys = zip(*[to_utm.transform(lon, lat) for lon in (w, e) for lat in (s, n)])
     minx, miny = math.floor(min(xs)), math.floor(min(ys))
     maxx, maxy = math.ceil(max(xs)), math.ceil(max(ys))
     width, height = int(maxx - minx), int(maxy - miny)
     params = {
-        'bbox': f'{minx},{miny},{maxx},{maxy}', 'bboxSR': '26916', 'imageSR': '26916',
+        'bbox': f'{minx},{miny},{maxx},{maxy}', 'bboxSR': epsg, 'imageSR': epsg,
         'size': f'{width},{height}', 'format': 'tiff', 'pixelType': 'F32',
         'noDataInterpretation': 'esriNoDataMatchAny',
         'interpolation': 'RSP_BilinearInterpolation', 'f': 'image',
@@ -131,7 +133,7 @@ def cmd_dem(args: argparse.Namespace) -> int:
     url = DEM_EXPORT + '?' + urllib.parse.urlencode(params)
     tmp = Path(args.tmp)
     tmp.mkdir(parents=True, exist_ok=True)
-    tif = tmp / 'dem-utm16n-1m.tif'
+    tif = tmp / 'dem-utm-1m.tif'
     t0 = time.time()
     tif.write_bytes(http_get(url, timeout=600))
     print(f'dem bytes={tif.stat().st_size} seconds={time.time() - t0:.1f} size={width}x{height}')
@@ -140,13 +142,13 @@ def cmd_dem(args: argparse.Namespace) -> int:
         arr = ds.read(1).astype('float64')
         transform = ds.transform
         nodata = ds.nodata
-        crs = ds.crs.to_string() if ds.crs else TARGET_CRS
+        crs = ds.crs.to_string() if ds.crs else crs
     bad = ~np.isfinite(arr) | (arr < -1000) | (arr > 9000)
     if nodata is not None:
         bad |= arr == nodata
     pixel = float(transform.a)
     header = save_grid(
-        Path(args.out) / 'dem-utm16n-1m', arr, crs=crs,
+        Path(args.out) / 'dem-utm-1m', arr, crs=crs,
         origin_x=transform.c, origin_y=transform.f, pixel_size=pixel,
         scale=0.01, nodata_mask=bad,
         provenance={
@@ -174,6 +176,7 @@ def main() -> int:
     p_dem.add_argument('--dem-source', required=True)
     p_dem.add_argument('--tmp', required=True)
     p_dem.add_argument('--out', required=True)
+    p_dem.add_argument('--crs', help='target UTM CRS, e.g. EPSG:26917 (default zone 16)')
     args = parser.parse_args()
     return cmd_osm(args) if args.cmd == 'osm' else cmd_dem(args)
 

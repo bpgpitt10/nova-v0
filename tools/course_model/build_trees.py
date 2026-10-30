@@ -31,10 +31,14 @@ MIN_WOOD_AREA_M2 = 25.0
 
 def osm_mask_shapes(osm_path: Path, to_utm) -> list:
     from shapely.geometry import LineString, Polygon
+    from shapely.geometry import Point
     payload = json.loads(gzip.open(osm_path, 'rt', encoding='utf-8').read())
     shapes = []
     for el in payload.get('elements', []):
         tags = el.get('tags') or {}
+        if el.get('type') == 'node' and tags.get('power') in {'tower', 'pole'} and 'lat' in el:
+            shapes.append(Point(to_utm.transform(el['lon'], el['lat'])).buffer(8.0))
+            continue
         geom = el.get('geometry')
         if el.get('type') != 'way' or not geom:
             continue
@@ -44,14 +48,30 @@ def osm_mask_shapes(osm_path: Path, to_utm) -> list:
                 shapes.append(Polygon(pts).buffer(2.0))
             except Exception:  # noqa: BLE001 - skip broken rings
                 pass
-        elif tags.get('power') in {'line', 'minor_line'} and len(pts) >= 2:
-            shapes.append(LineString(pts).buffer(4.0))
+        elif tags.get('power') in {'line', 'minor_line', 'cable'} and len(pts) >= 2:
+            shapes.append(LineString(pts).buffer(power_corridor_half_width_m(tags)))
     return shapes
+
+
+def power_corridor_half_width_m(tags: dict) -> float:
+    """Half-width of the wire corridor to mask. Transmission lines carry several
+    conductors spread across a cleared right-of-way: at FarmLinks (230 kV) the
+    false 'trees' sat between -10 m and +15 m of the OSM centreline, and real
+    trees resumed beyond about 15-20 m."""
+    try:
+        kv = max(float(v) for v in str(tags.get('voltage', '')).split(';') if v.strip()) / 1000
+    except ValueError:
+        kv = 0.0
+    if tags.get('power') == 'line' and (kv >= 100 or not kv):
+        return 16.0
+    if kv >= 35:
+        return 10.0
+    return 5.0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--chm', required=True, help='chm-utm16n-1m.json grid header')
+    ap.add_argument('--chm', required=True, help='chm-utm-1m.json grid header')
     ap.add_argument('--osm', required=True, help='osm-full.json.gz')
     ap.add_argument('--out', required=True)
     args = ap.parse_args()
@@ -68,8 +88,9 @@ def main() -> int:
     header, chm = load_grid(Path(args.chm))
     px = header['pixelSize']
     aff = Affine(px, 0, header['originX'], 0, -px, header['originY'])
-    to_utm = Transformer.from_crs('EPSG:4326', 'EPSG:26916', always_xy=True)
-    to_ll = Transformer.from_crs('EPSG:26916', 'EPSG:4326', always_xy=True)
+    crs = header['crs']
+    to_utm = Transformer.from_crs('EPSG:4326', crs, always_xy=True)
+    to_ll = Transformer.from_crs(crs, 'EPSG:4326', always_xy=True)
 
     chm = np.nan_to_num(chm, nan=0.0)
     masks = osm_mask_shapes(Path(args.osm), to_utm)
@@ -108,7 +129,7 @@ def main() -> int:
             'geometry': {'type': 'Point', 'coordinates': [round(lon, 7), round(lat, 7)]},
             'properties': {'height_m': round(float(h), 1),
                            'crown_radius_m': round(float(np.sqrt(max(a, px * px) / np.pi)), 1),
-                           'utm16n': [round(x, 2), round(y, 2)]},
+                           'utm': [round(x, 2), round(y, 2)]},
         })
 
     wood = ndi.binary_opening(chm >= MIN_TREE_M, structure=np.ones((3, 3)))
@@ -134,6 +155,7 @@ def main() -> int:
     cr = np.array([f['properties']['crown_radius_m'] for f in trees]) if trees else np.array([0.0])
     summary = {
         'schemaVersion': 'looper-course-model-trees-v1',
+        'crs': crs,
         'treeCount': len(trees),
         'heightM': {'p10': float(np.percentile(hs, 10)), 'p50': float(np.percentile(hs, 50)),
                     'p90': float(np.percentile(hs, 90)), 'max': float(hs.max())},
