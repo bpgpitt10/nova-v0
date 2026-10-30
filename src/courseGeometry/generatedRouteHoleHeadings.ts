@@ -2,46 +2,6 @@
 // Do not hand-edit; the cached validation manifests are the source of truth.
 
 export const routeHoleHeadingDegreesTrue: Readonly<Record<string, readonly number[]>> = {
-  "arcadia-bluffs-arcadia-mi": [
-    82.73,
-    319.14,
-    257.71,
-    264.23,
-    249.75,
-    78.02,
-    107.47,
-    200.18,
-    62.9,
-    258.75,
-    245.79,
-    358.23,
-    320.2,
-    86.65,
-    113.16,
-    276.72,
-    209.25,
-    67.61
-  ],
-  "augusta-national-augusta-ga": [
-    67.09,
-    335.25,
-    139.54,
-    130.52,
-    183.82,
-    334.16,
-    247.99,
-    82.33,
-    256.83,
-    189,
-    217.82,
-    209.59,
-    333.09,
-    91.58,
-    286.73,
-    335.42,
-    107.1,
-    14.93
-  ],
   "cabot-cliffs-inverness-ns": [
     219.28,
     216.25,
@@ -101,26 +61,6 @@ export const routeHoleHeadingDegreesTrue: Readonly<Record<string, readonly numbe
     169.46,
     231.47,
     222.33
-  ],
-  "oakmont-country-club-oakmont-pa": [
-    74.99,
-    62.31,
-    345.89,
-    187.69,
-    13.88,
-    359.15,
-    193.56,
-    182.47,
-    255.35,
-    73.01,
-    250.2,
-    39.61,
-    233.55,
-    208.15,
-    5.28,
-    256.64,
-    134.21,
-    178.69
   ],
   "pebble-beach-pebble-beach-ca": [
     65.99,

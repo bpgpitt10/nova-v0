@@ -24,8 +24,9 @@ export type CourseCatalogEntry = {
 /**
  * Runtime-supported course registry. Canonical imported courses are generated
  * from runtime-ready receipts; they must never require a hand-added catalog row.
- * Legacy accepted courses remain explicit until they are re-imported through the
- * canonical pipeline.
+ * Greywolf is the one legacy hand-registered course. Augusta National, Arcadia
+ * Bluffs and Oakmont were removed (2026-10-30): their packages never produced
+ * usable live positions; git history keeps them.
  */
 export const courseRegistry = [
   {
@@ -47,53 +48,6 @@ export const courseRegistry = [
     lidarCacheStatus: 'cached',
   },
   ...generatedImportedCourseRegistry,
-  {
-    id: 'augusta-national-augusta-ga',
-    name: 'Augusta National Golf Club',
-    location: 'Augusta, GA',
-    slug: 'augusta-national',
-    gsproAliases: ['Augusta National', 'Augusta National Golf Club'],
-    staticPackageUrl: '/course-geometry/augusta-national/course-v1.json',
-    status: 'validated',
-    packageStatus: 'ready',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'arcadia-bluffs-arcadia-mi',
-    name: 'Arcadia Bluffs — The Bluffs Course',
-    location: 'Arcadia, MI',
-    slug: 'arcadia-bluffs',
-    gsproAliases: [
-      'Arcadia Bluffs',
-      'Arcadia Bluffs - The Bluffs Course',
-      'Arcadia Bluffs — The Bluffs Course',
-      'Arcadia Bluffs The Bluffs Course',
-    ],
-    staticPackageUrl: '/course-geometry/arcadia-bluffs/course-v1.json',
-    status: 'validation',
-    packageStatus: 'validation',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
-  {
-    id: 'oakmont-country-club-oakmont-pa',
-    name: 'Oakmont Country Club',
-    location: 'Oakmont, PA',
-    slug: 'oakmont-country-club',
-    gsproAliases: ['Oakmont', 'Oakmont Country Club'],
-    staticPackageUrl: '/course-geometry/oakmont-country-club/course-v1.json',
-    status: 'validated',
-    packageStatus: 'ready',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
 ] as const satisfies readonly CourseCatalogEntry[]
 
 export type RegisteredCourseId = (typeof courseRegistry)[number]['id']
