@@ -31,8 +31,8 @@ stage() {
 
 stage osm   python "$HERE/fetch_sources.py" osm --dem-source "$DEM_SOURCE" --out "$OUT"
 stage dem   python "$HERE/fetch_sources.py" dem --dem-source "$DEM_SOURCE" --tmp "$TMP" --out "$OUT"
-stage lidar-fetch python "$HERE/lidar_pipeline.py" fetch --dem-source "$DEM_SOURCE" --ept "$EPT" --tmp "$TMP" \
-  && stage lidar-chm python "$HERE/lidar_pipeline.py" chm --ept "$EPT" --tmp "$TMP" --out "$OUT" \
+stage lidar-chm python "$HERE/lidar_pipeline.py" --ept "$EPT" --dem-source "$DEM_SOURCE" \
+    --dem "$OUT/dem-utm16n-1m.json" --out "$OUT" \
   && stage trees python "$HERE/build_trees.py" --chm "$OUT/chm-utm16n-1m.json" --osm "$OUT/osm-full.json.gz" --out "$OUT"
 stage render python "$HERE/render_preview.py" --dir "$OUT" --course "$COURSE"
 

@@ -24,26 +24,18 @@ jobs:
     env:
       OUT: artifacts/course-model/farmlinks
       TMP: .tmp/course-model
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
 
-      # Ubuntu's apt has no PDAL package; conda-forge ships PDAL + GDAL together.
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: actions/setup-python@v5
         with:
-          environment-name: course-model
-          create-args: >-
-            python=3.12 pdal numpy scipy rasterio pyproj shapely
-            scikit-image matplotlib affine
-          init-shell: bash
-          cache-environment: true
+          python-version: '3.12'
 
-      - name: Tool versions
+      # Pure pip wheels: laspy+lazrs reads the EPT LAZ tiles, no PDAL/conda.
+      - name: Install Python dependencies
         run: |
-          pdal --version
-          python -c "import rasterio, pyproj, shapely, skimage, scipy; print('python deps ok')"
+          python -m pip install -q numpy scipy rasterio pyproj shapely scikit-image matplotlib affine 'laspy[lazrs]'
+          python -c "import rasterio, pyproj, shapely, skimage, scipy, laspy; print('python deps ok', laspy.__version__)"
 
       - name: Build FarmLinks course model
         run: bash tools/course_model/run_farmlinks.sh
