@@ -9,14 +9,23 @@ npm install
 npm run dev
 ```
 
-## Web only
+## Web app + Windows Companion
 
-The Looper is a web app, deployed on Vercel (`looper-web`). Branches named
-`web-*` get a preview deployment automatically (see `vercel.json`).
+The Looper's UI is a web app, deployed on Vercel (`looper-web`). Branches
+named `web-*` get a preview deployment automatically (see `vercel.json`).
 
-The old Tauri desktop shell has been removed. Local helpers that talk to the
-web app (the Windows Companion for GSPro HUD reads, SimRead, OpenGolfCoach)
-run as separate processes; nothing is bundled into a desktop installer.
+On the simulator PC it pairs with the **Looper Windows Companion**
+(`helpers/looper_companion.py`, built to `LooperCompanion.exe` by
+`.github/workflows/build-looper-companion-windows.yml`, installed with
+`helpers/install_looper_companion.ps1`). A browser tab cannot read GSPro's
+screen or send input to it, so the companion does that work and serves it to
+the web app over `http://127.0.0.1` (CORS limited to Looper's own origins):
+GSPro discovery, HUD/wind/lie OCR, and Auto Aim (in progress).
+
+What was removed is only the old **Tauri desktop shell** that wrapped the
+whole UI (`src-tauri/`, its build scripts and bundled sidecars). The web app
+does not run inside a desktop window any more; the companion is a separate,
+small background program and stays.
 
 ## OpenGolfCoach helper
 
