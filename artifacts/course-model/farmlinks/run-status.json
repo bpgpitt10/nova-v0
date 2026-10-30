@@ -1,22 +1,22 @@
 {
-  "finishedAt": "2026-10-30T16:59:40Z",
-  "runId": "41094556704",
-  "commit": "6de89a78c7af2cf91f349e247df26c6f41141b9d",
+  "finishedAt": "2026-10-30T17:20:50Z",
+  "runId": "41097551155",
+  "commit": "cdc21dc5b437cbfe5d53c132cdb9c4fe48c0d5d1",
   "stages": [
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 33
+      "seconds": 50
     },
     {
       "stage": "dem",
       "rc": 0,
-      "seconds": 5
+      "seconds": 6
     },
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 32
+      "seconds": 36
     },
     {
       "stage": "trees",
@@ -26,7 +26,7 @@
     {
       "stage": "render",
       "rc": 0,
-      "seconds": 12
+      "seconds": 13
     }
   ],
   "outputBytes": {
@@ -37,11 +37,12 @@
     "lidar-stats.json": 751,
     "osm-full.json.gz": 355011,
     "osm-golf-values.json": 163,
-    "osm-summary.json": 1314,
+    "osm-summary.json": 1402,
     "preview-course.png": 7428765,
     "preview-h1.png": 1618038,
-    "run-log.txt": 4880,
-    "run-status.json": 119,
+    "registration-v1.json": 4404,
+    "run-log.txt": 4962,
+    "run-status.json": 1012,
     "trees-summary.json": 713,
     "trees.geojson": 4276277,
     "woods.geojson": 7147559
