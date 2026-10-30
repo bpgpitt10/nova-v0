@@ -12,6 +12,7 @@ import {
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
+import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
 import { isNewLooperRoundForCapture } from '../liveCaddie/teeCaptureReadiness'
 import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types'
 import {
@@ -230,14 +231,24 @@ const applyNativeIfReady = async (
     const context = await nativeCourseContextForLive(selectedCourseId, courseKey)
     if (!context) return snapshot
     const round = loadActiveLiveCaddieRound()
+    const normalizedTeeSet = round?.courseId === selectedCourseId ? round.normalizedTeeSet : null
+    // Legacy OSM tee picks ("Tee 3") carry no GSPro name; pass their map spot
+    // so the overlay can use the GKD tee standing there.
+    let legacyTeeLocal: CoursePointYds | null = null
+    if (teeContext && normalizedTeeSet) {
+      const geometry = await loadLiveTeeGeometry(selectedCourseId, snapshot.holeNumber).catch(() => null)
+      const named = geometry ? matchingTeeCandidates(geometry, normalizedTeeSet) : []
+      legacyTeeLocal = named.length === 1 ? named[0].coursePoint : null
+    }
     const { snapshot: next, pinSlot } = applyNativeCourseSnapshot({
       base: snapshot,
       context,
       holeNumber: snapshot.holeNumber,
       teeContext,
       preShotStart: snapshot.preShotStart,
-      normalizedTeeSet: round?.courseId === selectedCourseId ? round.normalizedTeeSet : null,
+      normalizedTeeSet,
       rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
+      legacyTeeLocal,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
     return next

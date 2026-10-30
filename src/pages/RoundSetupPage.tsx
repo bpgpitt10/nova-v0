@@ -11,6 +11,8 @@ import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
+import { loadNativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
+import { nativeTeeSetOptions } from '../courseGeometry/nativeGkd'
 import {
   loadRoundTeeSelection,
   saveRoundTeeSelection,
@@ -49,6 +51,8 @@ export default function RoundSetupPage() {
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
+  // Display text per option (GSPro tee names are marked as such).
+  const [teeOptionText, setTeeOptionText] = useState<Record<string, string>>({})
   const [loadingTees, setLoadingTees] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +67,14 @@ export default function RoundSetupPage() {
     setLoadingTees(true)
     setError(null)
     void loadCourseTeeCandidates(courseId, 1)
-      .then((candidates) => {
+      .then(async (candidates) => {
+        // Native positions (beta): when the player's GKD is verified for this
+        // course, offer GSPro's own tee sets (what they pick in GSPro).
+        const native = await loadNativeCourseContext(courseId, null).catch(() => null)
+        const nativeOptions = native?.context ? nativeTeeSetOptions(native.context.layout) : []
+        return { candidates, nativeOptions }
+      })
+      .then(({ candidates, nativeOptions }) => {
         if (cancelled) return
         // teeSet is the product contract. Names/colors/refs remain candidate
         // evidence and matching aliases, but must not create duplicate choices
@@ -80,15 +91,24 @@ export default function RoundSetupPage() {
             }
             return left.localeCompare(right, undefined, { numeric: true })
           })
-        setTeeOptions(labels)
+        const useNative = nativeOptions.length > 0
+        const finalLabels = useNative ? nativeOptions.map((option) => option.name) : labels
+        setTeeOptionText(useNative
+          ? Object.fromEntries(nativeOptions.map((option) => [
+              // Name only: GKD distances are route-to-green-centre metres and
+              // would not match the yardage GSPro shows on its scorecard.
+              option.name, `${option.name} (GSPro tee)`,
+            ]))
+          : {})
+        setTeeOptions(finalLabels)
         const saved = loadRoundTeeSelection(courseId)?.teeSet
-        if (saved && !labels.some(label => normalize(label) === normalize(saved))) {
+        if (saved && !finalLabels.some(label => normalize(label) === normalize(saved))) {
           // Honor the user's actual GSPro tee selection even when OSM has no
           // matching named tee. The fallback will explicitly stay provisional.
           setTeeSet(OTHER_TEE)
           setUnmappedTeeName(saved)
         } else {
-          setTeeSet(saved ?? labels.find(label => normalize(label) === 'blue') ?? labels[0] ?? OTHER_TEE)
+          setTeeSet(saved ?? finalLabels.find(label => normalize(label) === 'blue') ?? finalLabels[0] ?? OTHER_TEE)
           setUnmappedTeeName('')
         }
       })
@@ -267,7 +287,7 @@ export default function RoundSetupPage() {
             style={input}
           >
             {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading mapped tees…' : 'No mapped tee names'}</option> : null}
-            {teeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            {teeOptions.map((option) => <option key={option} value={option}>{teeOptionText[option] ?? option}</option>)}
             <option value={OTHER_TEE}>My GSPro tee is not listed…</option>
           </select>
           {teeSet === OTHER_TEE ? (

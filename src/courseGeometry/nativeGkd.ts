@@ -200,3 +200,24 @@ export const gkdTeeForTeeSet = (hole: NativeHole, normalizedTeeSet: string | nul
   const name = Object.keys(hole.tees).find((k) => k.replace(/\s+/g, '').toLowerCase() === wanted)
   return name ? hole.tees[name] : null
 }
+
+export type NativeTeeSetOption = Readonly<{ name: string; totalYards: number; holes: number }>
+
+/** GSPro's own tee sets for a round picker: playable tees present on at least
+ * nine holes with a designer distance, longest first. */
+export const nativeTeeSetOptions = (layout: NativeCourseLayout): readonly NativeTeeSetOption[] => {
+  const totals = new Map<string, { metres: number; holes: number }>()
+  for (const hole of layout.holes) {
+    for (const tee of Object.values(hole.tees)) {
+      if (!(PLAYABLE_TEES as readonly string[]).includes(tee.name) || tee.distanceM <= 0) continue
+      const entry = totals.get(tee.name) ?? { metres: 0, holes: 0 }
+      entry.metres += tee.distanceM
+      entry.holes += 1
+      totals.set(tee.name, entry)
+    }
+  }
+  return [...totals.entries()]
+    .filter(([, entry]) => entry.holes >= 9)
+    .map(([name, entry]) => ({ name, totalYards: Math.round(entry.metres * NATIVE_METERS_TO_YARDS), holes: entry.holes }))
+    .sort((a, b) => b.totalYards - a.totalYards)
+}

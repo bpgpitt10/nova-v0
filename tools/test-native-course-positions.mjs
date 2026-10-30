@@ -123,6 +123,25 @@ try {
   assert.equal(later.pinSlot, 1, 'slot from the latest shot end and GSPro distance')
   assert.equal(later.snapshot.ballSource, 'unavailable', 'after shot 1 the core owns ball placement')
 
+  // Legacy OSM tee pick ("Tee 2") maps to the GKD tee at that map spot.
+  const whiteLocal = reg.nativeWorldToHoleLocalYds(synthReg, 1, { x: 0, z: 20 })
+  const legacy = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'tee 2',
+    rememberedPinSlot: null, legacyTeeLocal: [whiteLocal[0] + 2, whiteLocal[1] - 3],
+  })
+  assert.ok(Math.abs(legacy.snapshot.ballLocalYds[1] - whiteLocal[1]) < 0.01, 'legacy pick -> nearest GKD tee')
+  const tooFar = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'tee 2',
+    rememberedPinSlot: null, legacyTeeLocal: [whiteLocal[0] + 40, whiteLocal[1]],
+  })
+  assert.equal(tooFar.snapshot.ballSource, 'unavailable', 'no GKD tee within 10 yd -> unchanged')
+
+  // GSPro tee sets for the round picker (synthetic course has one hole, so
+  // the nine-hole floor filters everything; a 9-hole copy lists them).
+  assert.deepEqual(gkd.nativeTeeSetOptions(layout), [])
+  const nine = gkd.parseGkdLayout(JSON.stringify({ ...synthetic, Holes: Array.from({ length: 9 }, (_, i) => ({ ...synthetic.Holes[0], HoleNumber: i + 1 })) }))
+  assert.deepEqual(gkd.nativeTeeSetOptions(nine).map((o) => o.name), ['Black', 'White', 'Red'])
+
   const otherHole = snap.applyNativeCourseSnapshot({
     base, context, holeNumber: 5, teeContext: true, preShotStart, normalizedTeeSet: 'black', rememberedPinSlot: null,
   })

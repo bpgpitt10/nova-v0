@@ -9,6 +9,7 @@ import {
 } from '../courseGeometry/nativeGkd'
 import type { NativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
 import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
+import type { CoursePointYds } from '../courseGeometry/types'
 import type { BrowserGsproCourseSnapshot } from './browserGsproCourseState'
 import type { GsproStartingPositionObservation } from './gsproStartingPosition'
 
@@ -18,7 +19,8 @@ import type { GsproStartingPositionObservation } from './gsproStartingPosition'
  * browser. If anything needed is missing, the input snapshot passes through.
  *
  * Tee (before shot 1): GSPro's pre-shot StartingPOS when it sits on a GKD tee,
- *   otherwise the GKD tee for the round's tee set.
+ *   otherwise the GKD tee for the round's tee set (by GSPro name, e.g. "White",
+ *   or, for a legacy OSM pick like "Tee 3", the GKD tee at that map spot).
  * Pin: the GKD pin slot that matches GSPro's own DistanceToPin (pre-shot from
  *   the tee, or from the latest shot's end); else the slot learned earlier this
  *   round; else unknown (the existing pin estimate stays).
@@ -33,7 +35,11 @@ export type NativeSnapshotInputs = Readonly<{
   preShotStart: GsproStartingPositionObservation | null
   normalizedTeeSet: string | null
   rememberedPinSlot: number | null
+  /** Map position of the round's OSM tee pick, for legacy names like "Tee 3". */
+  legacyTeeLocal?: CoursePointYds | null
 }>
+
+const LEGACY_TEE_MATCH_YDS = 10
 
 export type NativeSnapshotResult = Readonly<{
   snapshot: BrowserGsproCourseSnapshot
@@ -52,6 +58,7 @@ export const applyNativeCourseSnapshot = ({
   preShotStart,
   normalizedTeeSet,
   rememberedPinSlot,
+  legacyTeeLocal = null,
 }: NativeSnapshotInputs): NativeSnapshotResult => {
   const hole = nativeHole(context.layout, holeNumber)
   if (!hole) return { snapshot: base, pinSlot: rememberedPinSlot }
@@ -85,9 +92,22 @@ export const applyNativeCourseSnapshot = ({
     return { snapshot: withPin, pinSlot }
   }
 
+  const nearestGkdTeeTo = (local: CoursePointYds | null): NativeXYZ | null => {
+    if (!local) return null
+    let best: { tee: NativeXYZ; d: number } | null = null
+    for (const tee of Object.values(hole.tees)) {
+      const p = toLocal(tee)
+      if (!p) continue
+      const d = Math.hypot(p[0] - local[0], p[1] - local[1])
+      if (d <= LEGACY_TEE_MATCH_YDS && (!best || d < best.d)) best = { tee, d }
+    }
+    return best?.tee ?? null
+  }
   const preShotOnTee = preShotStart?.world && resolveNativeTee(hole, preShotStart.world).status !== 'no-match'
     ? preShotStart.world : null
-  const teeWorld: NativeXYZ | null = preShotOnTee ?? gkdTeeForTeeSet(hole, normalizedTeeSet)
+  const teeWorld: NativeXYZ | null = preShotOnTee
+    ?? gkdTeeForTeeSet(hole, normalizedTeeSet)
+    ?? nearestGkdTeeTo(legacyTeeLocal)
   const ball = teeWorld ? toLocal(teeWorld) : null
   if (!teeWorld || !ball) return { snapshot: withPin, pinSlot }
 
