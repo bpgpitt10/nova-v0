@@ -156,18 +156,30 @@ def normalize(raw: dict, source_sha256: str | None = None) -> dict:
     }
 
 
+def _dm(v: float) -> int:
+    """Round to integer decimetres, half up, identically in Python and JS."""
+    return math.floor(v * 10 + 0.5)
+
+
+def layout_fingerprint_text(holes: list[dict]) -> str:
+    """Canonical layout text. Mirrored byte-for-byte by the web app
+    (src/courseGeometry/nativeGkd.ts) so both sides hash the same thing."""
+    lines = []
+    for h in sorted(holes, key=lambda r: r['hole']):
+        tees = ';'.join(f"{name}:{_dm(t['x'])},{_dm(t['z'])}" for name, t in sorted(h['tees'].items()))
+        pins = ';'.join(f"{_dm(p['x'])},{_dm(p['z'])}" for p in h['pins'])
+        gc = h['greenCenter']
+        gc_txt = '-' if gc is None else f"{_dm(gc['x'])},{_dm(gc['z'])}"
+        lines.append(f"{h['hole']}|{tees}|{pins}|{gc_txt}")
+    return '\n'.join(lines)
+
+
 def layout_fingerprint(holes: list[dict]) -> str:
-    """Hash of tee, pin and green-centre positions rounded to 0.1 m.
+    """SHA-256 of tee, pin and green-centre positions at 0.1 m.
 
     Survives renamed files and metadata edits; changes when the layout moves.
     """
-    rows = []
-    for h in holes:
-        tees = sorted((k, round(v['x'], 1), round(v['z'], 1)) for k, v in h['tees'].items())
-        pins = [(round(p['x'], 1), round(p['z'], 1)) for p in h['pins']]
-        gc = h['greenCenter']
-        rows.append([h['hole'], tees, pins, None if gc is None else (round(gc['x'], 1), round(gc['z'], 1))])
-    return hashlib.sha256(json.dumps(rows, separators=(',', ':')).encode()).hexdigest()
+    return hashlib.sha256(layout_fingerprint_text(holes).encode('utf-8')).hexdigest()
 
 
 def check_tee_distances(course: dict, tol_m: float = 0.5) -> dict:
