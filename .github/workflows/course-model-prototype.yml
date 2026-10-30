@@ -1,0 +1,55 @@
+name: course-model-prototype
+
+# Builds the FarmLinks layered course model from unfiltered public sources
+# (full OSM, 3DEP DEM in UTM, LiDAR point cloud -> trees) and commits compact
+# outputs back to this branch. Prototype only; nothing here feeds the runtime.
+on:
+  push:
+    branches: [course-model-prototype-v1]
+    paths:
+      - 'tools/course_model/**'
+      - '.github/workflows/course-model-prototype.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: course-model-prototype
+  cancel-in-progress: false
+
+jobs:
+  farmlinks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      OUT: artifacts/course-model/farmlinks
+      TMP: .tmp/course-model
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PDAL and Python dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q pdal
+          pdal --version
+          python -m pip install -q numpy scipy rasterio pyproj shapely scikit-image matplotlib affine
+
+      - name: Build FarmLinks course model
+        run: bash tools/course_model/run_farmlinks.sh
+
+      - name: Commit outputs back to the branch
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A "$OUT"
+          if git diff --cached --quiet; then
+            echo 'No output changes to commit.'
+            exit 0
+          fi
+          git commit -m "data(course-model): FarmLinks prototype outputs (run ${GITHUB_RUN_ID})"
+          git push origin HEAD:course-model-prototype-v1
