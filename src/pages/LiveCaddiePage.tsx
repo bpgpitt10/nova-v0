@@ -97,6 +97,7 @@ import {
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
+import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 
@@ -891,7 +892,8 @@ export default function LiveCaddiePage() {
     const nextBall = firstTeeDisplay.ball
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
-    const exactPin = liveSnapshot.pinSource === 'output-log-course-layout'
+    // Exact pins: GSPro output_log layout, or the GKD pin slot (native beta).
+    const exactPin = liveSnapshot.pinSource !== 'unavailable'
       ? liveSnapshot.pinLocalYds : null
     const nextPin = exactPin ?? estimatePinFromGsproDistance(
       hole, nextBall, firstTeeDisplay.distanceToPinYds,
@@ -928,7 +930,7 @@ export default function LiveCaddiePage() {
     ? firstTeeDisplay.distanceToPinYds
     : null
   const trustedLivePin = liveMatchesHole
-    && liveSnapshot?.pinSource === 'output-log-course-layout'
+    && liveSnapshot != null && liveSnapshot.pinSource !== 'unavailable'
     ? liveSnapshot.pinLocalYds ?? null
     : null
   const pinEstimate = hole
@@ -1439,6 +1441,10 @@ export default function LiveCaddiePage() {
             ) : null}
           </div>
         </section>
+        <NativePositionsBetaPanel
+          courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
+          courseKey={liveSnapshot?.courseKey ?? null}
+        />
 
         {nativeVisualActive ? (
           <section className="live-native-aim-diagnostic" data-native-input-authorized="false">

@@ -11,6 +11,8 @@ import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistanc
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
+import { nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntime'
+import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
 import type { CoursePointYds } from '../courseGeometry/types'
@@ -40,6 +42,11 @@ export type BrowserGsproCourseShot = {
   startLocalYds: CoursePointYds | null
   endLocalYds: CoursePointYds | null
   positionQuality?: 'verified' | 'provisional'
+  /** 'native-gkd' when placed directly from GSPro coordinates (native positions beta). */
+  positionSource?: 'native-gkd'
+  /** GSPro world metres (x east, z north, y up), as recorded in currentRound.dat. */
+  startWorld?: { x: number; y: number; z: number } | null
+  endWorld?: { x: number; y: number; z: number } | null
   endingSurface: string | null
   endingSurfaceRaw: number | null
   distanceToPinYds: number | null
@@ -450,7 +457,19 @@ const buildShot = async (
   const firstStart = vec3(sameHole[0]?.StartingPOS)
   const start = vec3(record.StartingPOS)
   const end = vec3(record.EndingPOS)
-  if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
+  // Native positions (beta): with a fingerprint-verified GKD and the course's
+  // LiDAR registration, GSPro world coordinates map straight onto the hole.
+  // No tee anchor or heading guess is involved. Off unless enabled.
+  const native = start && end && coordinateCourseId
+    ? await nativeCourseContextForLive(coordinateCourseId, asString(record.CourseKey)).catch(() => null)
+    : null
+  const nativeStart = native ? nativeWorldToHoleLocalYds(native.registration, holeNumber, start) : null
+  const nativeEnd = native ? nativeWorldToHoleLocalYds(native.registration, holeNumber, end) : null
+  if (nativeStart && nativeEnd) {
+    startLocalYds = nativeStart
+    endLocalYds = nativeEnd
+    positionQuality = 'verified'
+  } else if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
     ;[startLocalYds, endLocalYds] = await Promise.all([
       worldPointToHoleLocal(start, firstStart, holeNumber),
       worldPointToHoleLocal(end, firstStart, holeNumber),
@@ -521,6 +540,9 @@ const buildShot = async (
     startLocalYds,
     endLocalYds,
     ...(positionQuality ? { positionQuality } : {}),
+    ...(nativeStart && nativeEnd ? { positionSource: 'native-gkd' as const } : {}),
+    startWorld: start,
+    endWorld: end,
     endingSurface: surfaceFromRaw(endingSurfaceRaw),
     endingSurfaceRaw,
     distanceToPinYds: distanceToPin == null ? null : distanceToPin * METERS_TO_YARDS,
@@ -666,7 +688,9 @@ const buildSnapshot = async (
   }
 
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
-  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+  if (latestShot?.positionSource === 'native-gkd') {
+    warnings.push('Native positions (beta): ball placed from GSPro coordinates using the LiDAR-verified course registration.')
+  } else if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
     warnings.push(latestShot?.positionQuality === 'provisional'
       ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
       : 'Imported-course GSPro shot recognized, but no distance-consistent map registration is available; hazard/aim recommendations must stay paused.')
