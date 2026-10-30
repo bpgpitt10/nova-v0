@@ -24,19 +24,26 @@ jobs:
     env:
       OUT: artifacts/course-model/farmlinks
       TMP: .tmp/course-model
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      # Ubuntu's apt has no PDAL package; conda-forge ships PDAL + GDAL together.
+      - uses: mamba-org/setup-micromamba@v2
         with:
-          python-version: '3.12'
+          environment-name: course-model
+          create-args: >-
+            python=3.12 pdal numpy scipy rasterio pyproj shapely
+            scikit-image matplotlib affine
+          init-shell: bash
+          cache-environment: true
 
-      - name: Install PDAL and Python dependencies
+      - name: Tool versions
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q pdal
           pdal --version
-          python -m pip install -q numpy scipy rasterio pyproj shapely scikit-image matplotlib affine
+          python -c "import rasterio, pyproj, shapely, skimage, scipy; print('python deps ok')"
 
       - name: Build FarmLinks course model
         run: bash tools/course_model/run_farmlinks.sh
@@ -44,6 +51,10 @@ jobs:
       - name: Commit outputs back to the branch
         if: always()
         run: |
+          mkdir -p "$OUT"
+          if [ ! -f "$OUT/run-status.json" ]; then
+            printf '{"allOk": false, "note": "workflow failed before the stage runner; see check-run annotations", "runId": "%s"}\n' "$GITHUB_RUN_ID" > "$OUT/run-status.json"
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A "$OUT"
