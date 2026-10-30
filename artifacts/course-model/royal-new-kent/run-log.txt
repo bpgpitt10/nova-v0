@@ -1,0 +1,45 @@
+=== [royal-new-kent:find] python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex royal new kent|new kent --lat 37.45 --lon -77.05 --radius-m 15000 --out artifacts/course-model/royal-new-kent
+[{"type": "way", "id": 498143941, "name": "Viniterra Golf Course", "areaHa": 257.3, "nameMatch": false}, {"type": "way", "id": 1442115411, "name": "Brickshire Golf Club", "areaHa": 79.5, "nameMatch": false}, {"type": "way", "id": 1442885672, "name": "Brickshire Golf Club", "areaHa": 52.8, "nameMatch": false}, {"type": "relation", "id": 6209148, "name": "Royal New Kent Golf Club", "areaHa": 148.7, "nameMatch": true}, {"type": "relation", "id": 13460148, "name": "The Brookwoods Golf Club", "areaHa": 39.8, "nameMatch": false}]
+{"bboxLonLat": [-77.0317775705976, 37.46517202514927, -77.0001969294024, 37.48431897485073], "crs": "EPSG:26918", "osm": {"type": "relation", "id": 6209148, "name": "Royal New Kent Golf Club", "areaHa": 148.7}} {"name": "VA_FEMA_MiddleCounties_2011", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json", "count": 11643221461, "year": 2011}
+=== [royal-new-kent:find] rc=0 seconds=54
+=== [royal-new-kent:osm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source artifacts/course-model/royal-new-kent/course-bbox.json --out artifacts/course-model/royal-new-kent
+overpass ok url=https://overpass-api.de/api/interpreter bytes=3311221 seconds=43.3
+{"elementsByType": {"node": 17990, "way": 893, "relation": 27}, "taggedElements": 1119, "compressedBytes": 422786}
+=== [royal-new-kent:osm] rc=0 seconds=44
+=== [royal-new-kent:dem] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source artifacts/course-model/royal-new-kent/course-bbox.json --crs EPSG:26918 --tmp .tmp/course-model/royal-new-kent --out artifacts/course-model/royal-new-kent
+dem bytes=27136375 seconds=5.7 size=2840x2185
+{"width": 2840, "height": 2185, "pixel": 1.0, "validCells": 6205400, "elevMin": 12.287317276000977, "elevMax": 43.125911712646484}
+=== [royal-new-kent:dem] rc=0 seconds=7
+=== [royal-new-kent:lidar-chm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json --dem-source artifacts/course-model/royal-new-kent/course-bbox.json --dem artifacts/course-model/royal-new-kent/dem-utm-1m.json --out artifacts/course-model/royal-new-kent
+nodes=528 pointsInIntersectingNodes=40683188 hierarchySeconds=2.1
+tiles 25/528 kept=745839 MB=19 seconds=4
+tiles 50/528 kept=1697496 MB=25 seconds=5
+tiles 75/528 kept=3956372 MB=40 seconds=7
+tiles 100/528 kept=4760700 MB=44 seconds=8
+tiles 125/528 kept=5284274 MB=48 seconds=8
+tiles 150/528 kept=7114602 MB=64 seconds=10
+tiles 175/528 kept=8914633 MB=80 seconds=12
+tiles 200/528 kept=9829171 MB=85 seconds=13
+tiles 225/528 kept=12226012 MB=98 seconds=15
+tiles 250/528 kept=14029506 MB=107 seconds=17
+tiles 275/528 kept=14830598 MB=110 seconds=17
+tiles 300/528 kept=15614938 MB=114 seconds=18
+tiles 325/528 kept=17815712 MB=132 seconds=20
+tiles 350/528 kept=19328161 MB=147 seconds=22
+tiles 375/528 kept=20755717 MB=158 seconds=23
+tiles 400/528 kept=21651006 MB=162 seconds=24
+tiles 425/528 kept=24574424 MB=181 seconds=26
+tiles 450/528 kept=25227613 MB=185 seconds=27
+tiles 475/528 kept=26100892 MB=189 seconds=28
+tiles 500/528 kept=28122052 MB=207 seconds=30
+tiles 525/528 kept=29116409 MB=215 seconds=31
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json", "eptSrs": "3857", "octreeNodesRead": 528, "downloadedMB": 215.9, "pointsKeptInBbox": 29265126, "pointsPerSquareMetre": 4.72, "firstReturnsPerSquareMetre": 2.8, "classificationHistogram": {"1": 15561414, "2": 10399057, "9": 769, "10": 3123, "11": 3315237}, "chm": {"width": 2840, "height": 2185, "pixelMeters": 1.0, "cellsWithReturns": 5847828, "emptyCells": 357572, "cellsOver3m": 3470933, "cellsOver10m": 2601898, "p50": 7.84000000000006, "p95": 22.990000000000016, "max": 39.27999999999996}, "seconds": 36.5}
+=== [royal-new-kent:lidar-chm] rc=0 seconds=36
+=== [royal-new-kent:trees] python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm artifacts/course-model/royal-new-kent/chm-utm-1m.json --osm artifacts/course-model/royal-new-kent/osm-full.json.gz --out artifacts/course-model/royal-new-kent
+/home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py:143: DeprecationWarning: The 'shapely.ops.transform()' function is deprecated. Use 'shapely.transform()' or 'shapely.transform_coordseq()' instead. See https://shapely.readthedocs.io/en/latest/manual.html#shapely.ops.transform for more details.
+  woods.append({'type': 'Feature', 'geometry': mapping(shp_transform(proj, poly)),
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26918", "treeCount": 64209, "heightM": {"p10": 10.0, "p50": 17.9, "p90": 24.4, "max": 38.7}, "crownRadiusM": {"p10": 2.3, "p50": 3.9, "p90": 6.1}, "woodlandPolygons": 1361, "woodlandAreaHa": 307.76, "maskedCellsBuildingsAndPower": 140631, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 27.6}
+=== [royal-new-kent:trees] rc=0 seconds=29
+=== [royal-new-kent:render] python /home/runner/work/nova-v0/nova-v0/tools/course_model/render_preview.py --dir artifacts/course-model/royal-new-kent --title Royal New Kent
+{"golfValues": {"pin": 1, "bunker": 122, "tee": 94, "cartpath": 27, "green": 22, "fairway": 42, "hole": 19, "rough": 54, "path": 7, "lateral_water_hazard": 2, "clubhouse": 1}, "trees": 64209, "woodsPolys": 1361}
+=== [royal-new-kent:render] rc=0 seconds=16

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "looper-course-model-bbox-v1",
+  "bbox3857": [
+    -9515869.88,
+    4612672.382,
+    -9513297.509,
+    4614829.436
+  ],
+  "bboxLonLat": [
+    -85.48251355024493,
+    38.23496862514927,
+    -85.45940554975506,
+    38.25018737485073
+  ],
+  "crs": "EPSG:26916",
+  "utmZone": 16,
+  "osm": {
+    "type": "way",
+    "id": 59737644,
+    "name": "Valhalla Golf Club",
+    "areaHa": 138.1
+  },
+  "ept": {
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json",
+    "chosen": {
+      "name": "KY_FullState",
+      "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json",
+      "count": 448685375365,
+      "year": 0
+    },
+    "rule": "newest year in dataset name, then most points",
+    "candidates": [
+      {
+        "name": "KY_FullState",
+        "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json",
+        "count": 448685375365,
+        "year": 0
+      }
+    ]
+  }
+}

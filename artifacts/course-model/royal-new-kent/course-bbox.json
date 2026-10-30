@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "looper-course-model-bbox-v1",
+  "bbox3857": [
+    -8575138.254,
+    4504145.64,
+    -8571622.713,
+    4506831.339
+  ],
+  "bboxLonLat": [
+    -77.0317775705976,
+    37.46517202514927,
+    -77.0001969294024,
+    37.48431897485073
+  ],
+  "crs": "EPSG:26918",
+  "utmZone": 18,
+  "osm": {
+    "type": "relation",
+    "id": 6209148,
+    "name": "Royal New Kent Golf Club",
+    "areaHa": 148.7
+  },
+  "ept": {
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+    "chosen": {
+      "name": "VA_FEMA_MiddleCounties_2011",
+      "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+      "count": 11643221461,
+      "year": 2011
+    },
+    "rule": "newest year in dataset name, then most points",
+    "candidates": [
+      {
+        "name": "VA_FEMA_MiddleCounties_2011",
+        "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+        "count": 11643221461,
+        "year": 2011
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "course": "royal-new-kent",
+  "finishedAt": "2026-10-30T18:28:07Z",
+  "runId": "41105611472",
+  "commit": "9d65f48b56a4244e8a0a9be889daa417d2789772",
+  "stages": [
+    {
+      "stage": "find",
+      "rc": 0,
+      "seconds": 54
+    },
+    {
+      "stage": "osm",
+      "rc": 0,
+      "seconds": 44
+    },
+    {
+      "stage": "dem",
+      "rc": 0,
+      "seconds": 7
+    },
+    {
+      "stage": "lidar-chm",
+      "rc": 0,
+      "seconds": 36
+    },
+    {
+      "stage": "trees",
+      "rc": 0,
+      "seconds": 29
+    },
+    {
+      "stage": "render",
+      "rc": 0,
+      "seconds": 16
+    }
+  ],
+  "outputBytes": {
+    "chm-utm-1m.i16.gz": 5619551,
+    "chm-utm-1m.json": 726,
+    "course-bbox.json": 1065,
+    "dem-utm-1m.i16.gz": 7057364,
+    "dem-utm-1m.json": 1014,
+    "lidar-stats.json": 765,
+    "osm-full.json.gz": 422786,
+    "osm-golf-values.json": 184,
+    "osm-summary.json": 1853,
+    "preview-course.png": 5918635,
+    "preview-h1.png": 866220,
+    "run-log.txt": 5869,
+    "trees-summary.json": 740,
+    "trees.geojson": 10574218,
+    "woods.geojson": 16026817
+  },
+  "allOk": true
+}

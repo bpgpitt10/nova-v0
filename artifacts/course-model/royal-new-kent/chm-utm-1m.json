@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "looper-course-model-grid-v1",
+  "crs": "EPSG:26918",
+  "originX": 320317.0,
+  "originY": 4150541.0,
+  "originIs": "top-left corner of top-left pixel",
+  "pixelSize": 1.0,
+  "width": 2840,
+  "height": 2185,
+  "scale": 0.1,
+  "nodata": -32768,
+  "encoding": "int16-le-gzip-rows-top-first",
+  "dataFile": "chm-utm-1m.i16.gz",
+  "validCells": 5847828,
+  "provenance": {
+    "source": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+    "method": "height above 3DEP bare-earth DEM, per-cell max, noise 7/18 dropped",
+    "acquisition": "AL_17Co_2_2020, leaf-off Dec 2020 - Feb 2021",
+    "license": "Public domain (USGS 3DEP)",
+    "alignedTo": "dem-utm-1m"
+  }
+}

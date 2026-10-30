@@ -1,0 +1,56 @@
+{
+  "course": "muirfield-village",
+  "finishedAt": "2026-10-30T18:25:01Z",
+  "runId": "41105611472",
+  "commit": "9d65f48b56a4244e8a0a9be889daa417d2789772",
+  "stages": [
+    {
+      "stage": "find",
+      "rc": 0,
+      "seconds": 38
+    },
+    {
+      "stage": "osm",
+      "rc": 0,
+      "seconds": 28
+    },
+    {
+      "stage": "dem",
+      "rc": 0,
+      "seconds": 5
+    },
+    {
+      "stage": "lidar-chm",
+      "rc": 0,
+      "seconds": 130
+    },
+    {
+      "stage": "trees",
+      "rc": 0,
+      "seconds": 6
+    },
+    {
+      "stage": "render",
+      "rc": 0,
+      "seconds": 14
+    }
+  ],
+  "outputBytes": {
+    "chm-utm-1m.i16.gz": 3409519,
+    "chm-utm-1m.json": 724,
+    "course-bbox.json": 1503,
+    "dem-utm-1m.i16.gz": 5456019,
+    "dem-utm-1m.json": 1014,
+    "lidar-stats.json": 742,
+    "osm-full.json.gz": 630184,
+    "osm-golf-values.json": 138,
+    "osm-summary.json": 2367,
+    "preview-course.png": 5469433,
+    "preview-h1.png": 846243,
+    "run-log.txt": 12532,
+    "trees-summary.json": 738,
+    "trees.geojson": 4259811,
+    "woods.geojson": 5888593
+  },
+  "allOk": true
+}

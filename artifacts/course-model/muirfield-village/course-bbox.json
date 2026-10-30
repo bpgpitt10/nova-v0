@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "looper-course-model-bbox-v1",
+  "bbox3857": [
+    -9256865.356,
+    4885680.457,
+    -9253654.852,
+    4888179.615
+  ],
+  "bboxLonLat": [
+    -83.15583632297074,
+    40.13569302514927,
+    -83.12699587702926,
+    40.15285457485073
+  ],
+  "crs": "EPSG:26917",
+  "utmZone": 17,
+  "osm": {
+    "type": "relation",
+    "id": 337418,
+    "name": "Muirfield Village Golf Club",
+    "areaHa": 107.2
+  },
+  "ept": {
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
+    "chosen": {
+      "name": "USGS_LPC_OH_Columbus_2019",
+      "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
+      "count": 46432698522,
+      "year": 2019
+    },
+    "rule": "newest year in dataset name, then most points",
+    "candidates": [
+      {
+        "name": "USGS_LPC_OH_Columbus_2019",
+        "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
+        "count": 46432698522,
+        "year": 2019
+      },
+      {
+        "name": "USGS_LPC_OH_Delaware_2018_LAS_2019",
+        "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Delaware_2018_LAS_2019/ept.json",
+        "count": 4986392161,
+        "year": 2019
+      },
+      {
+        "name": "OH_StatewideP3_5_B21",
+        "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/OH_StatewideP3_5_B21/ept.json",
+        "count": 368411562577,
+        "year": 0
+      }
+    ]
+  }
+}

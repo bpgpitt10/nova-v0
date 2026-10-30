@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "looper-course-model-lidar-stats-v1",
+  "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+  "eptSrs": "3857",
+  "octreeNodesRead": 528,
+  "downloadedMB": 215.9,
+  "pointsKeptInBbox": 29265126,
+  "pointsPerSquareMetre": 4.72,
+  "firstReturnsPerSquareMetre": 2.8,
+  "classificationHistogram": {
+    "1": 15561414,
+    "2": 10399057,
+    "9": 769,
+    "10": 3123,
+    "11": 3315237
+  },
+  "chm": {
+    "width": 2840,
+    "height": 2185,
+    "pixelMeters": 1.0,
+    "cellsWithReturns": 5847828,
+    "emptyCells": 357572,
+    "cellsOver3m": 3470933,
+    "cellsOver10m": 2601898,
+    "p50": 7.84000000000006,
+    "p95": 22.990000000000016,
+    "max": 39.27999999999996
+  },
+  "seconds": 36.5
+}

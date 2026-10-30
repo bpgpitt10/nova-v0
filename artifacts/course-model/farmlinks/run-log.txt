@@ -1,53 +1,51 @@
-=== [osm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --out artifacts/course-model/farmlinks
-https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway
-https://overpass-api.de/api/interpreter attempt 2: HTTP Error 502: Bad Gateway
-overpass ok url=https://overpass-api.de/api/interpreter bytes=2867814 seconds=45.8
+=== [farmlinks:osm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --out artifacts/course-model/farmlinks
+overpass ok url=https://overpass-api.de/api/interpreter bytes=2867814 seconds=35.1
 {"elementsByType": {"node": 17003, "way": 379, "relation": 18}, "taggedElements": 482, "compressedBytes": 355011}
-=== [osm] rc=0 seconds=78
-=== [dem] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --tmp .tmp/course-model --out artifacts/course-model/farmlinks
+=== [farmlinks:osm] rc=0 seconds=35
+=== [farmlinks:dem] python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --crs EPSG:26916 --tmp .tmp/course-model/farmlinks --out artifacts/course-model/farmlinks
 dem bytes=16518247 seconds=0.2 size=1722x2281
 {"width": 1722, "height": 2281, "pixel": 1.0, "validCells": 3927882, "elevMin": 132.22476196289062, "elevMax": 265.1471252441406}
-=== [dem] rc=0 seconds=1
-=== [lidar-chm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --dem artifacts/course-model/farmlinks/dem-utm16n-1m.json --out artifacts/course-model/farmlinks
-nodes=786 pointsInIntersectingNodes=36680238 hierarchySeconds=2.7
+=== [farmlinks:dem] rc=0 seconds=1
+=== [farmlinks:lidar-chm] python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json --dem-source artifacts/course-geometry/farmlinks/dem-source-v1.json --dem artifacts/course-model/farmlinks/dem-utm-1m.json --out artifacts/course-model/farmlinks
+nodes=786 pointsInIntersectingNodes=36680238 hierarchySeconds=2.8
 tiles 25/786 kept=206816 MB=6 seconds=4
 tiles 50/786 kept=1697227 MB=17 seconds=5
-tiles 75/786 kept=1847189 MB=21 seconds=5
-tiles 100/786 kept=3149838 MB=32 seconds=6
-tiles 125/786 kept=3659775 MB=39 seconds=7
+tiles 75/786 kept=1847189 MB=21 seconds=6
+tiles 100/786 kept=3149838 MB=32 seconds=7
+tiles 125/786 kept=3659775 MB=39 seconds=8
 tiles 150/786 kept=4093518 MB=45 seconds=8
 tiles 175/786 kept=5078865 MB=54 seconds=9
-tiles 200/786 kept=6740795 MB=64 seconds=10
-tiles 225/786 kept=8640325 MB=72 seconds=11
-tiles 250/786 kept=10360613 MB=81 seconds=12
-tiles 275/786 kept=11043070 MB=85 seconds=12
-tiles 300/786 kept=11794237 MB=90 seconds=13
-tiles 325/786 kept=13024234 MB=98 seconds=14
-tiles 350/786 kept=14896041 MB=107 seconds=15
-tiles 375/786 kept=16915968 MB=117 seconds=16
-tiles 400/786 kept=17829216 MB=122 seconds=17
-tiles 425/786 kept=18449603 MB=125 seconds=17
-tiles 450/786 kept=19323777 MB=131 seconds=18
-tiles 475/786 kept=19917589 MB=139 seconds=18
-tiles 500/786 kept=21221431 MB=151 seconds=19
-tiles 525/786 kept=22142610 MB=159 seconds=20
-tiles 550/786 kept=22862503 MB=163 seconds=21
-tiles 575/786 kept=23535783 MB=167 seconds=21
-tiles 600/786 kept=24235199 MB=171 seconds=22
-tiles 625/786 kept=25124715 MB=179 seconds=23
-tiles 650/786 kept=26545159 MB=193 seconds=24
-tiles 675/786 kept=27202558 MB=199 seconds=25
-tiles 700/786 kept=27834670 MB=202 seconds=25
-tiles 725/786 kept=28528659 MB=206 seconds=26
-tiles 750/786 kept=29234776 MB=210 seconds=27
-tiles 775/786 kept=29996189 MB=218 seconds=27
-{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json", "eptSrs": "3857", "octreeNodesRead": 786, "downloadedMB": 220.4, "pointsKeptInBbox": 30254169, "pointsPerSquareMetre": 7.7, "firstReturnsPerSquareMetre": 4.86, "classificationHistogram": {"1": 14487172, "2": 15745608, "9": 12376, "17": 445, "20": 8569}, "chm": {"width": 1722, "height": 2281, "pixelMeters": 1.0, "cellsWithReturns": 3805229, "emptyCells": 122653, "cellsOver3m": 1804109, "cellsOver10m": 1551573, "p50": 0.539999999999992, "p95": 26.069999999999993, "max": 39.61999999999992}, "seconds": 30.0}
-=== [lidar-chm] rc=0 seconds=30
-=== [trees] python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm artifacts/course-model/farmlinks/chm-utm16n-1m.json --osm artifacts/course-model/farmlinks/osm-full.json.gz --out artifacts/course-model/farmlinks
-/home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py:122: DeprecationWarning: The 'shapely.ops.transform()' function is deprecated. Use 'shapely.transform()' or 'shapely.transform_coordseq()' instead. See https://shapely.readthedocs.io/en/latest/manual.html#shapely.ops.transform for more details.
+tiles 200/786 kept=6740795 MB=64 seconds=11
+tiles 225/786 kept=8640325 MB=72 seconds=12
+tiles 250/786 kept=10360613 MB=81 seconds=13
+tiles 275/786 kept=11043070 MB=85 seconds=14
+tiles 300/786 kept=11794237 MB=90 seconds=15
+tiles 325/786 kept=13024234 MB=98 seconds=16
+tiles 350/786 kept=14896041 MB=107 seconds=17
+tiles 375/786 kept=16915968 MB=117 seconds=19
+tiles 400/786 kept=17829216 MB=122 seconds=20
+tiles 425/786 kept=18449603 MB=125 seconds=20
+tiles 450/786 kept=19323777 MB=131 seconds=21
+tiles 475/786 kept=19917589 MB=139 seconds=22
+tiles 500/786 kept=21221431 MB=151 seconds=23
+tiles 525/786 kept=22142610 MB=159 seconds=24
+tiles 550/786 kept=22862503 MB=163 seconds=25
+tiles 575/786 kept=23535783 MB=167 seconds=25
+tiles 600/786 kept=24235199 MB=171 seconds=26
+tiles 625/786 kept=25124715 MB=179 seconds=27
+tiles 650/786 kept=26545159 MB=193 seconds=28
+tiles 675/786 kept=27202558 MB=199 seconds=29
+tiles 700/786 kept=27834670 MB=202 seconds=29
+tiles 725/786 kept=28528659 MB=206 seconds=30
+tiles 750/786 kept=29234776 MB=210 seconds=31
+tiles 775/786 kept=29996189 MB=218 seconds=31
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json", "eptSrs": "3857", "octreeNodesRead": 786, "downloadedMB": 220.4, "pointsKeptInBbox": 30254169, "pointsPerSquareMetre": 7.7, "firstReturnsPerSquareMetre": 4.86, "classificationHistogram": {"1": 14487172, "2": 15745608, "9": 12376, "17": 445, "20": 8569}, "chm": {"width": 1722, "height": 2281, "pixelMeters": 1.0, "cellsWithReturns": 3805229, "emptyCells": 122653, "cellsOver3m": 1804109, "cellsOver10m": 1551573, "p50": 0.539999999999992, "p95": 26.069999999999993, "max": 39.61999999999992}, "seconds": 34.1}
+=== [farmlinks:lidar-chm] rc=0 seconds=34
+=== [farmlinks:trees] python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm artifacts/course-model/farmlinks/chm-utm-1m.json --osm artifacts/course-model/farmlinks/osm-full.json.gz --out artifacts/course-model/farmlinks
+/home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py:143: DeprecationWarning: The 'shapely.ops.transform()' function is deprecated. Use 'shapely.transform()' or 'shapely.transform_coordseq()' instead. See https://shapely.readthedocs.io/en/latest/manual.html#shapely.ops.transform for more details.
   woods.append({'type': 'Feature', 'geometry': mapping(shp_transform(proj, poly)),
-{"schemaVersion": "looper-course-model-trees-v1", "treeCount": 25497, "heightM": {"p10": 11.0, "p50": 19.5, "p90": 28.1, "max": 39.3}, "crownRadiusM": {"p10": 2.2, "p50": 4.4, "p90": 7.3}, "woodlandPolygons": 802, "woodlandAreaHa": 165.9, "maskedCellsBuildingsAndPower": 29991, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 5.9}
-=== [trees] rc=0 seconds=7
-=== [render] python /home/runner/work/nova-v0/nova-v0/tools/course_model/render_preview.py --dir artifacts/course-model/farmlinks --course public/course-geometry/farmlinks/course-v1.json
-{"golfValues": {"path": 4, "hole": 18, "green": 27, "bunker": 69, "tee": 92, "rough": 73, "clubhouse": 2, "cartpath": 28, "fairway": 26, "water_hazard": 5}, "trees": 25497, "woodsPolys": 802}
-=== [render] rc=0 seconds=9
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26916", "treeCount": 24383, "heightM": {"p10": 10.8, "p50": 19.7, "p90": 28.2, "max": 39.3}, "crownRadiusM": {"p10": 2.5, "p50": 4.5, "p90": 7.3}, "woodlandPolygons": 802, "woodlandAreaHa": 165.85, "maskedCellsBuildingsAndPower": 85021, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 8.2}
+=== [farmlinks:trees] rc=0 seconds=9
+=== [farmlinks:render] python /home/runner/work/nova-v0/nova-v0/tools/course_model/render_preview.py --dir artifacts/course-model/farmlinks --course public/course-geometry/farmlinks/course-v1.json --title FarmLinks
+{"golfValues": {"path": 4, "hole": 18, "green": 27, "bunker": 69, "tee": 92, "rough": 73, "clubhouse": 2, "cartpath": 28, "fairway": 26, "water_hazard": 5}, "trees": 24383, "woodsPolys": 802}
+=== [farmlinks:render] rc=0 seconds=11
