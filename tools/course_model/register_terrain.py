@@ -49,6 +49,20 @@ def utm16n(lat: float, lon: float) -> tuple[float, float]:
     return 500000 + 0.9996 * A * E, 0.9996 * A * N
 
 
+def utm_convergence_scale(lat: float, lon: float, lon0: float = -87.0, k0: float = 0.9996) -> tuple[float, float]:
+    """Grid convergence (radians) and point scale of UTM at a location.
+
+    A true-north ground-metre frame maps into UTM rotated by the convergence
+    and scaled by the point scale.
+    """
+    dl = math.radians(lon - lon0)
+    phi = math.radians(lat)
+    c2 = math.cos(phi) ** 2
+    gamma = dl * math.sin(phi) * (1 + dl * dl * c2 / 3)
+    k = k0 * (1 + dl * dl * c2 / 2)
+    return gamma, k
+
+
 def similarity(src: np.ndarray, dst: np.ndarray) -> tuple[float, float, np.ndarray]:
     ms, md = src.mean(0), dst.mean(0)
     s0, d0 = src - ms, dst - md
@@ -187,9 +201,22 @@ def main() -> int:
     r0, dy0 = residuals(start, dem, fit_pts)
     report['centroidStartResiduals'] = {**stats(r0), 'dy': round(dy0, 3)}
 
+    # FarmLinks showed GSPro x/z are TRUE-NORTH ground metres: the free fit's
+    # rotation equalled the UTM grid convergence (0.317 deg) to 0.001 deg. So
+    # the default model fixes rotation and scale from map geometry and fits
+    # only position + height; the free similarity fit is the cross-check.
+    lats = [lat for lat, _ in (pkg['holes'][k]['coordinateFrame']['targetGreenLatLon']
+                               for k in pkg['holes'] if pkg['holes'][k].get('coordinateFrame'))]
+    lons = [lon for _, lon in (pkg['holes'][k]['coordinateFrame']['targetGreenLatLon']
+                               for k in pkg['holes'] if pkg['holes'][k].get('coordinateFrame'))]
+    gamma, k_scale = utm_convergence_scale(sum(lats) / len(lats), sum(lons) / len(lons))
+    report['trueNorthFrame'] = {'gridConvergenceDeg': round(math.degrees(gamma), 5),
+                                'pointScale': round(k_scale, 7)}
+    true_north_start = (start[0], start[1], gamma, k_scale)
+
     models = {}
-    for name, free in (('translation', False), ('similarity', True)):
-        p = fit(dem, fit_pts, start, free)
+    for name, free, st in (('true-north', False, true_north_start), ('similarity', True, start)):
+        p = fit(dem, fit_pts, st, free)
         r, dy = residuals(p, dem, fit_pts)
         # Per group, measured against the FIT's vertical offset, so a group that
         # floats above ground (tee markers ~1 m) shows up as a bias.
@@ -201,11 +228,16 @@ def main() -> int:
                         'rotationDeg': round(math.degrees(p[2]), 4), 'scale': round(p[3], 6),
                         'dy': round(dy, 3), 'shiftFromCentroidStartM': round(math.hypot(p[0] - start[0], p[1] - start[1]), 2),
                         'fitResiduals': stats(r), 'byGroup': per_group, '_p': p}
-    # Prefer the simpler model unless the free one fits clearly better.
-    t_med = models['translation']['fitResiduals'].get('medianAbsM', 99)
+    # Prefer the physically constrained model unless the free one fits clearly
+    # better (which would mean this course does not use a true-north frame).
+    t_med = models['true-north']['fitResiduals'].get('medianAbsM', 99)
     s_med = models['similarity']['fitResiduals'].get('medianAbsM', 99)
-    chosen = 'similarity' if s_med < t_med - 0.05 else 'translation'
+    chosen = 'similarity' if s_med < t_med - 0.05 else 'true-north'
     free = chosen == 'similarity'
+    start = true_north_start if chosen == 'true-north' else start
+    tn, sim = models['true-north'], models['similarity']
+    report['freeFitRotationMinusConvergenceDeg'] = round(sim['rotationDeg'] - math.degrees(gamma), 4)
+    report['modelsAgreeAtCentreM'] = round(math.hypot(tn['tE'] - sim['tE'], tn['tN'] - sim['tN']), 3)
 
     # Held-out halves: fit on west points, score on east, and vice versa.
     # Also compare where each half's transform puts the course centre.

@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "looper-course-registration-v1",
+  "layoutFingerprint": "5be555f218b1be117f6712310070c03deb5857f8e9614337eff0beddd478f55f",
+  "targetCrs": "EPSG:26916",
+  "fitGroups": [
+    "pins",
+    "greenCentres",
+    "penaltyVertices",
+    "oobVertices",
+    "loggedShots"
+  ],
+  "centroidStart": {
+    "tE": 552919.7819363318,
+    "tN": 3663916.4740776797,
+    "rotationDeg": 0.3730112065461137,
+    "scale": 0.9997137957492823
+  },
+  "centroidStartResiduals": {
+    "n": 867,
+    "medianAbsM": 0.054,
+    "p90AbsM": 0.225,
+    "withinHalfMetre": 0.986,
+    "dy": 120.99
+  },
+  "trueNorthFrame": {
+    "gridConvergenceDeg": 0.31684,
+    "pointScale": 0.9996359
+  },
+  "freeFitRotationMinusConvergenceDeg": 0.0005,
+  "modelsAgreeAtCentreM": 0.858,
+  "models": {
+    "true-north": {
+      "tE": 552918.726,
+      "tN": 3663917.095,
+      "rotationDeg": 0.3168,
+      "scale": 0.999636,
+      "dy": 120.996,
+      "shiftFromCentroidStartM": 1.23,
+      "fitResiduals": {
+        "n": 867,
+        "medianAbsM": 0.045,
+        "p90AbsM": 0.2,
+        "withinHalfMetre": 0.986
+      },
+      "byGroup": {
+        "pins": {
+          "n": 72,
+          "medianAbsM": 0.016,
+          "p90AbsM": 0.03,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.016
+        },
+        "greenCentres": {
+          "n": 18,
+          "medianAbsM": 0.017,
+          "p90AbsM": 0.035,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.017
+        },
+        "penaltyVertices": {
+          "n": 708,
+          "medianAbsM": 0.053,
+          "p90AbsM": 0.208,
+          "withinHalfMetre": 0.992,
+          "medianSignedM": 0.011
+        },
+        "oobVertices": {
+          "n": 68,
+          "medianAbsM": 0.045,
+          "p90AbsM": 0.22,
+          "withinHalfMetre": 0.926,
+          "medianSignedM": -0.029
+        },
+        "teeMarkers": {
+          "n": 126,
+          "medianAbsM": 0.018,
+          "p90AbsM": 0.056,
+          "withinHalfMetre": 0.937,
+          "medianSignedM": -0.015
+        },
+        "aimPoints": {
+          "n": 18,
+          "medianAbsM": 0.019,
+          "p90AbsM": 0.047,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.019
+        },
+        "loggedShots": {
+          "n": 1,
+          "medianAbsM": 0.956,
+          "p90AbsM": 0.956,
+          "withinHalfMetre": 0.0,
+          "medianSignedM": 0.956
+        }
+      }
+    },
+    "similarity": {
+      "tE": 552918.085,
+      "tN": 3663916.525,
+      "rotationDeg": 0.3173,
+      "scale": 1.000119,
+      "dy": 120.997,
+      "shiftFromCentroidStartM": 1.7,
+      "fitResiduals": {
+        "n": 867,
+        "medianAbsM": 0.046,
+        "p90AbsM": 0.195,
+        "withinHalfMetre": 0.987
+      },
+      "byGroup": {
+        "pins": {
+          "n": 72,
+          "medianAbsM": 0.017,
+          "p90AbsM": 0.033,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.017
+        },
+        "greenCentres": {
+          "n": 18,
+          "medianAbsM": 0.016,
+          "p90AbsM": 0.035,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.016
+        },
+        "penaltyVertices": {
+          "n": 708,
+          "medianAbsM": 0.054,
+          "p90AbsM": 0.206,
+          "withinHalfMetre": 0.993,
+          "medianSignedM": 0.014
+        },
+        "oobVertices": {
+          "n": 68,
+          "medianAbsM": 0.056,
+          "p90AbsM": 0.212,
+          "withinHalfMetre": 0.926,
+          "medianSignedM": -0.03
+        },
+        "teeMarkers": {
+          "n": 126,
+          "medianAbsM": 0.02,
+          "p90AbsM": 0.051,
+          "withinHalfMetre": 0.937,
+          "medianSignedM": -0.017
+        },
+        "aimPoints": {
+          "n": 18,
+          "medianAbsM": 0.017,
+          "p90AbsM": 0.046,
+          "withinHalfMetre": 1.0,
+          "medianSignedM": -0.017
+        },
+        "loggedShots": {
+          "n": 1,
+          "medianAbsM": 0.96,
+          "p90AbsM": 0.96,
+          "withinHalfMetre": 0.0,
+          "medianSignedM": 0.96
+        }
+      }
+    }
+  },
+  "chosenModel": "true-north",
+  "heldOutHalves": {
+    "fitOnWestScoreOther": {
+      "n": 433,
+      "medianAbsM": 0.038,
+      "p90AbsM": 0.156,
+      "withinHalfMetre": 0.982
+    },
+    "fitOnEastScoreOther": {
+      "n": 434,
+      "medianAbsM": 0.054,
+      "p90AbsM": 0.234,
+      "withinHalfMetre": 0.988
+    }
+  },
+  "splitHalfCentreDifferenceM": 0.143,
+  "grade": "A"
+}
