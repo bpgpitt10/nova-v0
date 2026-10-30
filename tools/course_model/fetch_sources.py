@@ -110,6 +110,9 @@ def cmd_osm(args: argparse.Namespace) -> int:
     return 0
 
 
+TILE_M = 1500
+
+
 def cmd_dem(args: argparse.Namespace) -> int:
     import numpy as np
     import rasterio
@@ -124,25 +127,48 @@ def cmd_dem(args: argparse.Namespace) -> int:
     minx, miny = math.floor(min(xs)), math.floor(min(ys))
     maxx, maxy = math.ceil(max(xs)), math.ceil(max(ys))
     width, height = int(maxx - minx), int(maxy - miny)
-    params = {
-        'bbox': f'{minx},{miny},{maxx},{maxy}', 'bboxSR': epsg, 'imageSR': epsg,
-        'size': f'{width},{height}', 'format': 'tiff', 'pixelType': 'F32',
-        'noDataInterpretation': 'esriNoDataMatchAny',
-        'interpolation': 'RSP_BilinearInterpolation', 'f': 'image',
-    }
-    url = DEM_EXPORT + '?' + urllib.parse.urlencode(params)
+    # The 3DEP ImageServer returns HTTP 500 for large exports (Muirfield's
+    # 3.3 x 3.6 km box), so fetch <= TILE_M tiles and mosaic them.
     tmp = Path(args.tmp)
     tmp.mkdir(parents=True, exist_ok=True)
-    tif = tmp / 'dem-utm-1m.tif'
+    arr = np.full((height, width), np.nan, dtype='float64')
+    urls = []
     t0 = time.time()
-    tif.write_bytes(http_get(url, timeout=600))
-    print(f'dem bytes={tif.stat().st_size} seconds={time.time() - t0:.1f} size={width}x{height}')
-
-    with rasterio.open(tif) as ds:
-        arr = ds.read(1).astype('float64')
-        transform = ds.transform
-        nodata = ds.nodata
-        crs = ds.crs.to_string() if ds.crs else crs
+    for ty in range(0, height, TILE_M):
+        for tx in range(0, width, TILE_M):
+            tw, th = min(TILE_M, width - tx), min(TILE_M, height - ty)
+            bx0, by1 = minx + tx, maxy - ty
+            params = {
+                'bbox': f'{bx0},{by1 - th},{bx0 + tw},{by1}', 'bboxSR': epsg, 'imageSR': epsg,
+                'size': f'{tw},{th}', 'format': 'tiff', 'pixelType': 'F32',
+                'noDataInterpretation': 'esriNoDataMatchAny',
+                'interpolation': 'RSP_BilinearInterpolation', 'f': 'image',
+            }
+            url = DEM_EXPORT + '?' + urllib.parse.urlencode(params)
+            urls.append(url)
+            tif = tmp / f'dem-{tx}-{ty}.tif'
+            for attempt in range(4):
+                try:
+                    tif.write_bytes(http_get(url, timeout=600))
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    if attempt == 3:
+                        raise
+                    print(f'dem tile {tx},{ty} attempt {attempt + 1}: {exc}')
+                    time.sleep(10 * (attempt + 1))
+            with rasterio.open(tif) as ds:
+                tile = ds.read(1).astype('float64')
+                if ds.nodata is not None:
+                    tile[tile == ds.nodata] = np.nan
+                if tile.shape != (th, tw) or abs(ds.transform.c - bx0) > 0.01 or abs(ds.transform.f - by1) > 0.01:
+                    raise RuntimeError(f'dem tile {tx},{ty} came back {tile.shape} at {ds.transform}')
+                crs = ds.crs.to_string() if ds.crs else crs
+            arr[ty:ty + th, tx:tx + tw] = tile
+    print(f'dem tiles={len(urls)} seconds={time.time() - t0:.1f} size={width}x{height}')
+    from affine import Affine
+    transform = Affine(1.0, 0.0, float(minx), 0.0, -1.0, float(maxy))
+    nodata = None
+    url = urls[0] if len(urls) == 1 else f'{len(urls)} tiles of <= {TILE_M} m; first: {urls[0]}'
     bad = ~np.isfinite(arr) | (arr < -1000) | (arr > 9000)
     if nodata is not None:
         bad |= arr == nodata
