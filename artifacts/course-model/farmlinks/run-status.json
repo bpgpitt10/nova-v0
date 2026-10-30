@@ -1,1 +1,50 @@
-{"allOk": false, "note": "workflow failed before the stage runner; see check-run annotations", "runId": "41094237376"}
+{
+  "finishedAt": "2026-10-30T16:59:40Z",
+  "runId": "41094556704",
+  "commit": "6de89a78c7af2cf91f349e247df26c6f41141b9d",
+  "stages": [
+    {
+      "stage": "osm",
+      "rc": 0,
+      "seconds": 33
+    },
+    {
+      "stage": "dem",
+      "rc": 0,
+      "seconds": 5
+    },
+    {
+      "stage": "lidar-chm",
+      "rc": 0,
+      "seconds": 32
+    },
+    {
+      "stage": "trees",
+      "rc": 0,
+      "seconds": 8
+    },
+    {
+      "stage": "render",
+      "rc": 0,
+      "seconds": 12
+    }
+  ],
+  "outputBytes": {
+    "chm-utm16n-1m.i16.gz": 2989052,
+    "chm-utm16n-1m.json": 719,
+    "dem-utm16n-1m.i16.gz": 4528619,
+    "dem-utm16n-1m.json": 1017,
+    "lidar-stats.json": 751,
+    "osm-full.json.gz": 355011,
+    "osm-golf-values.json": 163,
+    "osm-summary.json": 1314,
+    "preview-course.png": 7428765,
+    "preview-h1.png": 1618038,
+    "run-log.txt": 4880,
+    "run-status.json": 119,
+    "trees-summary.json": 713,
+    "trees.geojson": 4276277,
+    "woods.geojson": 7147559
+  },
+  "allOk": true
+}

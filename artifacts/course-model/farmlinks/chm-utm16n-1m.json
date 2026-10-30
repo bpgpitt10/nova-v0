@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "looper-course-model-grid-v1",
+  "crs": "EPSG:26916",
+  "originX": 553229.0,
+  "originY": 3666405.0,
+  "originIs": "top-left corner of top-left pixel",
+  "pixelSize": 1.0,
+  "width": 1722,
+  "height": 2281,
+  "scale": 0.1,
+  "nodata": -32768,
+  "encoding": "int16-le-gzip-rows-top-first",
+  "dataFile": "chm-utm16n-1m.i16.gz",
+  "validCells": 3805229,
+  "provenance": {
+    "source": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json",
+    "method": "height above 3DEP bare-earth DEM, per-cell max, noise 7/18 dropped",
+    "acquisition": "AL_17Co_2_2020, leaf-off Dec 2020 - Feb 2021",
+    "license": "Public domain (USGS 3DEP)",
+    "alignedTo": "dem-utm16n-1m"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "looper-course-model-lidar-stats-v1",
+  "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/AL_17Co_2_2020/ept.json",
+  "eptSrs": "3857",
+  "octreeNodesRead": 786,
+  "downloadedMB": 220.4,
+  "pointsKeptInBbox": 30254169,
+  "pointsPerSquareMetre": 7.7,
+  "firstReturnsPerSquareMetre": 4.86,
+  "classificationHistogram": {
+    "1": 14487172,
+    "2": 15745608,
+    "9": 12376,
+    "17": 445,
+    "20": 8569
+  },
+  "chm": {
+    "width": 1722,
+    "height": 2281,
+    "pixelMeters": 1.0,
+    "cellsWithReturns": 3805229,
+    "emptyCells": 122653,
+    "cellsOver3m": 1804109,
+    "cellsOver10m": 1551573,
+    "p50": 0.539999999999992,
+    "p95": 26.069999999999993,
+    "max": 39.61999999999992
+  },
+  "seconds": 31.7
+}

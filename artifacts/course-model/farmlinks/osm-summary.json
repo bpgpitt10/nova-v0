@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "looper-course-model-osm-summary-v1",
+  "bboxLonLat": [
+    -86.42932085331962,
+    33.1144942832311,
+    -86.41100847167401,
+    33.13497526440867
+  ],
+  "query": "[out:json][timeout:240];(nwr(33.1144942832311,-86.42932085331962,33.13497526440867,-86.41100847167401););out body geom qt;",
+  "fetchedAt": "2026-10-30T16:58:43Z",
+  "osmBase": "2026-10-30T16:57:02Z",
+  "elementsByType": {
+    "node": 17003,
+    "way": 379,
+    "relation": 18
+  },
+  "taggedElements": 482,
+  "tagCounts": {
+    "golf=tee": 92,
+    "natural=tree": 88,
+    "golf=rough": 73,
+    "golf=bunker": 69,
+    "natural=sand": 69,
+    "golf=cartpath": 28,
+    "highway=path": 28,
+    "golf=green": 27,
+    "golf=fairway": 26,
+    "golf=hole": 18,
+    "building=*": 17,
+    "power=tower": 11,
+    "highway=unclassified": 7,
+    "golf=water_hazard": 5,
+    "natural=water": 5,
+    "golf=path": 4,
+    "highway=footway": 4,
+    "highway=residential": 3,
+    "highway=service": 3,
+    "landuse=grass": 3,
+    "waterway=stream": 3,
+    "golf=clubhouse": 2,
+    "barrier=gate": 1,
+    "highway=crossing": 1,
+    "highway=road": 1,
+    "leisure=golf_course": 1,
+    "power=line": 1,
+    "surface=unpaved": 1
+  },
+  "compressedBytes": 355011,
+  "license": "ODbL 1.0, (c) OpenStreetMap contributors",
+  "errorsBeforeSuccess": []
+}
