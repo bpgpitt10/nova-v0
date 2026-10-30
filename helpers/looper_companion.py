@@ -5,14 +5,17 @@ Stage C: keep read-only GSPro discovery plus on-demand capture diagnostics,
 and package the proven offline minimap registration/preflight library.
 No desktop input, no file writes, and no HTTP aim commands.
 The existing /health, /wind, /lie and /derive endpoints remain compatible.
+/companion/v1/course-layouts serves the course's GKD/GKDalt text (read-only, no paths)
+so the web app can place native positions without a browser folder grant.
 """
 
 import json
 import re
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import open_golf_coach_helper_lie_footer as lie_footer
 import gspro_native_discovery as native
+import gspro_course_library as course_library  # read-only GKD/GKDalt access
 import gspro_window_capture as capture
 import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
 import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
@@ -25,6 +28,13 @@ COMPANION_VERSION = "autoaim-stage-c-preflight.1"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
+COMPANION_COURSE_LAYOUTS_PATH = "/companion/v1/course-layouts"
+COMPANION_READ_PATHS = (
+    COMPANION_STATUS_PATH,
+    COMPANION_CAPTURE_PATH,
+    COMPANION_OBSERVATIONS_PATH,
+    COMPANION_COURSE_LAYOUTS_PATH,
+)
 
 EXACT_ALLOWED_ORIGINS = frozenset({
     "https://thelooper.golf",
@@ -107,7 +117,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         )
 
     def do_OPTIONS(self) -> None:
-        if urlsplit(self.path).path in (COMPANION_STATUS_PATH, COMPANION_CAPTURE_PATH, COMPANION_OBSERVATIONS_PATH):
+        if urlsplit(self.path).path in COMPANION_READ_PATHS:
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
@@ -143,6 +153,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "folderDiscovery": True,
                     "captureDiagnostic": True,
                     "liveObservations": True,
+                    "courseLayouts": True,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
@@ -158,6 +169,32 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 "version": COMPANION_VERSION,
                 "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
+            return
+        if urlsplit(self.path).path == COMPANION_COURSE_LAYOUTS_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            # Read-only: the course's GKD/GKDalt text for the web app on this
+            # machine. No paths; GKD_BAK revisions and other files never read.
+            key = (parse_qs(urlsplit(self.path).query).get("courseKey") or [None])[0]
+            try:
+                window = native.find_gspro_window()
+                image_path = window.get("imagePath") if isinstance(window, dict) else None
+            except Exception:
+                image_path = None
+            try:
+                payload = course_library.course_layouts(key, image_path=image_path)
+            except Exception as error:
+                payload = {
+                    "service": "looper-companion",
+                    "schemaVersion": course_library.SCHEMA_VERSION,
+                    "courseKey": key,
+                    "status": "unavailable",
+                    "reason": type(error).__name__,
+                    "layouts": [],
+                }
+            payload["version"] = COMPANION_VERSION
+            self._send_companion(200, payload)
             return
         if urlsplit(self.path).path == COMPANION_OBSERVATIONS_PATH:
             if not self._companion_authorized():
