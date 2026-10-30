@@ -37,7 +37,7 @@ LIE_SURFACE_PATTERNS = (
     ("tee", r"\bTEE\b"),
 )
 
-# Keep capture/OCR outside the React/Tauri state layers. The helper finds the
+# Keep capture/OCR outside the React state layers. The helper finds the
 # GSPro window, captures only a generous top-center HUD crop, then uses the OCR
 # engine already included with Windows. No Tesseract/model bundle is required.
 WINDOWS_WIND_OCR_SCRIPT = r'''

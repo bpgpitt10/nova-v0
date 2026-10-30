@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useMemo, useState } from 'react'
 import { activeBagClubIds, getClubLabel, type Club } from '../lib/bagConfig'
 import { toggleFeltPerfectShot } from '../lib/feltPerfect'
@@ -797,7 +796,15 @@ function DataManagementPage() {
     const suggestedFilename = `the-looper-shots-export-${csvDateStamp(new Date())}.csv`
 
     try {
-      await invoke('export_shots_csv', { suggestedFilename, csv })
+      // Web download (the old desktop save dialog is gone).
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = suggestedFilename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (error) {
       console.error('Failed to export CSV.', error)
       window.alert('Failed to export CSV. Please try again.')

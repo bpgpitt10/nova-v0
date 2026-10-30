@@ -14,14 +14,6 @@ dist-ssr
 helpers/dist
 helpers/build
 helpers/*.spec
-src-tauri/binaries/*
-!src-tauri/binaries/.gitkeep
-src-tauri/resources/simread-helper/*
-!src-tauri/resources/simread-helper/.gitkeep
-!src-tauri/resources/simread-helper/README.md
-src-tauri/resources/node/*
-!src-tauri/resources/node/.gitkeep
-!src-tauri/resources/node/README.md
 
 # Editor directories and files
 .vscode/*

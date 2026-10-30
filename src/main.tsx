@@ -39,8 +39,7 @@ import {
   loadActiveLiveCaddieRound,
   startLiveCaddieRound,
 } from './liveCaddie/roundRuntime.ts'
-import { checkForLooperUpdate } from './lib/updater.ts'
-import type { Update } from '@tauri-apps/plugin-updater'
+import { checkForLooperUpdate, type LooperUpdate as Update } from './lib/updater.ts'
 
 type UpdateStatus =
   | 'idle'

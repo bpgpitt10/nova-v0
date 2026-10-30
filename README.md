@@ -9,32 +9,14 @@ npm install
 npm run dev
 ```
 
-## Desktop (Tauri)
+## Web only
 
-This project is configured to run in a Tauri desktop shell without changing app UI/logic.
+The Looper is a web app, deployed on Vercel (`looper-web`). Branches named
+`web-*` get a preview deployment automatically (see `vercel.json`).
 
-### Run desktop app in development
-
-```sh
-npm install
-npm run tauri:dev
-```
-
-Notes:
-- Tauri dev uses the existing Vite dev server at `http://localhost:1420`.
-- The desktop window loads that dev server URL.
-
-### Build desktop app
-
-```sh
-npm run helper:build:mac
-npm run tauri:build
-```
-
-Notes:
-- Tauri build runs the existing Vite build first (`npm run build`) and then bundles from `dist`.
-- Desktop build artifacts are written under `src-tauri/target/release/bundle/` (for Windows, installers/bundles are placed there by target format).
-- Build the OpenGolfCoach sidecar first so Tauri can bundle `src-tauri/binaries/open-golf-coach-helper-<target-triple>`.
+The old Tauri desktop shell has been removed. Local helpers that talk to the
+web app (the Windows Companion for GSPro HUD reads, SimRead, OpenGolfCoach)
+run as separate processes; nothing is bundled into a desktop installer.
 
 ## OpenGolfCoach helper
 
@@ -56,35 +38,6 @@ Health response shape:
   "derive_endpoint": "/derive"
 }
 ```
-
-### Sidecar packaging (recommended for desktop pilot)
-
-Build the helper executable and place it in `src-tauri/binaries`:
-
-These scripts create/reuse a dedicated build virtual environment and install
-`pyinstaller` + `opengolfcoach` before building, so developers do not need to
-preinstall `opengolfcoach` globally.
-
-macOS:
-
-```sh
-npm run helper:build:mac
-```
-
-Windows (PowerShell):
-
-```powershell
-npm run helper:build:windows
-```
-
-The app bundles this binary through Tauri `externalBin` and applies this startup strategy:
-
-1. Probe `127.0.0.1:8787` for `/health`.
-2. If response is compatible (`service=open-golf-coach-helper`, `status=ok`), reuse existing process.
-3. If port is occupied by incompatible service, do not launch sidecar and log a clear error.
-4. If port is free, launch bundled sidecar once for this app process.
-
-This avoids interfering with users who already run OpenGolfCoach separately.
 
 Install and start it locally:
 
@@ -146,12 +99,6 @@ Then run the app:
 
 ```sh
 npm run dev
-```
-
-For Tauri desktop dev:
-
-```sh
-npm run tauri:dev
 ```
 
 The script searches `_openlaunch-ws._tcp.local.` and writes:
