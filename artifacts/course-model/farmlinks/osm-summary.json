@@ -7,8 +7,8 @@
     33.13497526440867
   ],
   "query": "[out:json][timeout:240];(nwr(33.1144942832311,-86.42932085331962,33.13497526440867,-86.41100847167401););out body geom qt;",
-  "fetchedAt": "2026-10-30T17:19:47Z",
-  "osmBase": "2026-10-30T17:18:16Z",
+  "fetchedAt": "2026-10-30T17:58:16Z",
+  "osmBase": "2026-10-30T17:57:21Z",
   "elementsByType": {
     "node": 17003,
     "way": 379,
@@ -48,6 +48,7 @@
   "compressedBytes": 355011,
   "license": "ODbL 1.0, (c) OpenStreetMap contributors",
   "errorsBeforeSuccess": [
-    "https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway"
+    "https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway",
+    "https://overpass-api.de/api/interpreter attempt 2: HTTP Error 502: Bad Gateway"
   ]
 }

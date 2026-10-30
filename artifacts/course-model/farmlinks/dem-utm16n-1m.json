@@ -17,7 +17,7 @@
     "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=553229%2C3664124%2C554951%2C3666405&bboxSR=26916&imageSR=26916&size=1722%2C2281&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image",
     "requestedPixelMeters": 1.0,
     "license": "Public domain (USGS)",
-    "fetchedAt": "2026-10-30T17:19:52Z",
+    "fetchedAt": "2026-10-30T17:58:16Z",
     "rasterioTransform": [
       1.0,
       0.0,
