@@ -261,6 +261,43 @@ try {
   assert.ok(Math.hypot(kidsTee.snapshot.ballLocalYds[0] - kidsWhite[0], kidsTee.snapshot.ballLocalYds[1] - kidsWhite[1]) < 0.01,
     'Kids White tee placed from the Kids layout')
 
+  // 9. Course files via the Windows Companion (no folder grant).
+  const realFetch = globalThis.fetch
+  const hadWindow = 'window' in globalThis
+  const realWindow = globalThis.window
+  globalThis.window = { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout }
+  try {
+    const companionReply = (body) => async (request) => {
+      assert.equal(new URL(request.url).searchParams.get('courseKey'), 'synthetic_gsp')
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+    globalThis.fetch = companionReply({
+      service: 'looper-companion', version: 'x', schemaVersion: 'looper-companion-course-layouts-v1',
+      courseKey: 'synthetic_gsp', status: 'ready', source: 'beside-gspro',
+      layouts: [
+        { fileName: 'synthetic_gsp.GKD', kind: 'main', size: 1, lastModified: 1, text: '\ufeff' + JSON.stringify(synthetic) },
+        { fileName: 'Synthetic Kids.GKDalt', kind: 'alt', size: 1, lastModified: 1, text: JSON.stringify(alt) },
+        { fileName: 'broken.GKDalt', kind: 'alt', size: 1, lastModified: 1, text: 'not json' },
+      ],
+    })
+    const viaCompanion = await runtime.companionSceneLayouts('synthetic_gsp')
+    assert.deepEqual(viaCompanion.map(folder.nativeLayoutName), ['Synthetic Links', 'Synthetic Kids'])
+    assert.deepEqual((await runtime.verifyNativeLayouts(viaCompanion, sceneReg)).map((l) => l.kind), ['main', 'alt'])
+    globalThis.fetch = companionReply({
+      service: 'looper-companion', version: 'x', schemaVersion: 'looper-companion-course-layouts-v1',
+      courseKey: 'synthetic_gsp', status: 'not-found', layouts: [],
+    })
+    assert.deepEqual(await runtime.companionSceneLayouts('synthetic_gsp'), [], 'companion up, course not installed')
+    globalThis.fetch = companionReply({ service: 'looper-companion', version: 'old', status: 'ready' })
+    assert.equal(await runtime.companionSceneLayouts('synthetic_gsp'), null, 'older companion -> folder grant')
+    globalThis.fetch = async () => { throw new TypeError('Failed to fetch') }
+    assert.equal(await runtime.companionSceneLayouts('synthetic_gsp'), null, 'no companion -> folder grant')
+  } finally {
+    globalThis.fetch = realFetch
+    if (hadWindow) globalThis.window = realWindow
+    else delete globalThis.window
+  }
+
   // Published FarmLinks registration carries the scene fingerprint.
   assert.equal(farmlinks.sceneFingerprint, '0aecb74508c245b5f7071c8871f4dda9207fcb9f738004ca667a0681d5bd76ae')
 

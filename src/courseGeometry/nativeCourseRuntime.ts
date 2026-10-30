@@ -1,3 +1,4 @@
+import { readLooperCompanionCourseLayouts } from '../adapters/looperCompanion'
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
 import {
   findNativeSceneFolder,
@@ -10,7 +11,15 @@ import {
   type NativeLayoutFile,
   type NativeSceneLayout,
 } from './nativeCourseFolder'
-import { nativeHole, resolveNativeTee, sha256Hex, type NativeCourseLayout, type NativeXYZ } from './nativeGkd'
+import {
+  NativeGkdError,
+  nativeHole,
+  parseGkdLayout,
+  resolveNativeTee,
+  sha256Hex,
+  type NativeCourseLayout,
+  type NativeXYZ,
+} from './nativeGkd'
 import { parseNativeRegistration, type NativeRegistration } from './nativeRegistration'
 
 /**
@@ -50,7 +59,15 @@ export type NativeCourseStatus =
   | Readonly<{ state: 'gkd-not-found'; courseKey: string }>
   | Readonly<{ state: 'layout-mismatch'; courseKey: string }>
   | Readonly<{ state: 'error'; message: string }>
-  | Readonly<{ state: 'ready'; courseKey: string; grade: string; courseName: string; layoutNames: readonly string[] }>
+  | Readonly<{
+      state: 'ready'
+      courseKey: string
+      grade: string
+      courseName: string
+      layoutNames: readonly string[]
+      /** Where the layout files came from. */
+      via: 'companion' | 'folder'
+    }>
 
 export type NativeLayoutOption = Readonly<{ name: string; kind: 'main' | 'alt'; layout: NativeCourseLayout }>
 
@@ -234,6 +251,32 @@ export const verifyNativeLayouts = async (
   return out
 }
 
+/**
+ * The Windows Companion reads the course files from the GSPro library itself.
+ * null = no companion (or an older one without the route): use the folder grant.
+ */
+export const companionSceneLayouts = async (sceneKey: string): Promise<readonly NativeSceneLayout[] | null> => {
+  let response
+  try {
+    response = await readLooperCompanionCourseLayouts(sceneKey)
+  } catch {
+    return null
+  }
+  if (response.status !== 'ready') return response.status === 'not-found' ? [] : null
+  const out: NativeSceneLayout[] = []
+  for (const file of response.layouts) {
+    try {
+      out.push({
+        file: { fileName: file.fileName, kind: file.kind, size: file.size, lastModified: file.lastModified },
+        layout: parseGkdLayout(file.text),
+      })
+    } catch (error) {
+      if (!(error instanceof NativeGkdError)) throw error
+    }
+  }
+  return out
+}
+
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
@@ -243,11 +286,19 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   const registration = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
   if (!registration) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
   const key = registration.gsproCourseKey
-  const folder = await loadCoursesFolderHandle()
-  if (!folder) return { context: null, status: { state: 'no-folder' } }
-  const permission = folder.queryPermission ? await folder.queryPermission({ mode: 'read' }) : 'granted'
-  if (permission !== 'granted') return { context: null, status: { state: 'needs-permission' } }
-  const sceneLayouts = await readSceneLayouts(folder, key)
+  // Companion first (no folder grant); the browser folder grant is the fallback.
+  let sceneLayouts = await companionSceneLayouts(key)
+  let via: 'companion' | 'folder' = 'companion'
+  if (!sceneLayouts || sceneLayouts.length === 0) {
+    const folder = await loadCoursesFolderHandle()
+    if (!folder) {
+      return { context: null, status: sceneLayouts ? { state: 'gkd-not-found', courseKey: key } : { state: 'no-folder' } }
+    }
+    const permission = folder.queryPermission ? await folder.queryPermission({ mode: 'read' }) : 'granted'
+    if (permission !== 'granted') return { context: null, status: { state: 'needs-permission' } }
+    sceneLayouts = await readSceneLayouts(folder, key)
+    via = 'folder'
+  }
   if (!sceneLayouts || sceneLayouts.length === 0) return { context: null, status: { state: 'gkd-not-found', courseKey: key } }
   const layouts = await verifyNativeLayouts(sceneLayouts, registration)
   if (layouts.length === 0) return { context: null, status: { state: 'layout-mismatch', courseKey: key } }
@@ -270,7 +321,10 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
       layouts,
       registration,
     },
-    status: { state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name, layoutNames: layouts.map((l) => l.name) },
+    status: {
+      state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name,
+      layoutNames: layouts.map((l) => l.name), via,
+    },
   }
 }
 

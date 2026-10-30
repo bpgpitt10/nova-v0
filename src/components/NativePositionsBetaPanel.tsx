@@ -23,6 +23,7 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
     case 'ready':
       return {
         text: `Active · ${status.courseName} · registration grade ${status.grade}`
+          + (status.via === 'companion' ? ' · course files via Looper Companion' : '')
           + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
         tone: 'ok',
       }
@@ -31,11 +32,11 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
     case 'other-course':
       return { text: `GSPro is on ${status.courseKey}, not ${status.expectedKey}; using current positioning.`, tone: 'warn' }
     case 'no-folder':
-      return { text: 'Choose your GSPro folder (e.g. C:\\GSProV1) or its Courses folder. Read-only; files stay on this PC.', tone: 'warn' }
+      return { text: 'Start the Looper Companion (reads the course files for you), or choose your GSPro folder (e.g. C:\\GSProV1). Read-only; files stay on this PC.', tone: 'warn' }
     case 'needs-permission':
       return { text: 'Allow read access to your GSPro course folder again.', tone: 'warn' }
     case 'gkd-not-found':
-      return { text: `${status.courseKey}.GKD was not found in that folder. Choose your GSPro folder (e.g. C:\\GSProV1) or its Courses folder.`, tone: 'warn' }
+      return { text: `${status.courseKey}.GKD was not found in your GSPro course library. Choose the folder that holds it.`, tone: 'warn' }
     case 'layout-mismatch':
       return { text: 'Your installed course has different greens or pins from the registered version; using current positioning.', tone: 'warn' }
     case 'error':
