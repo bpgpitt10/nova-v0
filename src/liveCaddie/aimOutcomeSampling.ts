@@ -1,10 +1,11 @@
-import { classifyTacticalLandingPoint, tacticalKindNear } from '../courseGeometry/tacticalClassification'
+import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -24,8 +25,14 @@ export type AimSurfaceDistribution = {
 export type ModeledAimSample = {
   /** Airborne touchdown point. */
   carryLanding: CoursePointYds
-  /** Resting/final position after rollout (scaled by surface and slope when a roll model is applied). */
+  /**
+   * Where the ball finishes: the rest point after rollout (scaled by surface and
+   * slope when a roll model is applied), unless it touched down in, or rolled
+   * into, water / penalty / bunker (carryAwareLanding).
+   */
   landing: CoursePointYds
+  /** Rest point if no hazard stopped the rollout. */
+  unobstructedLanding?: CoursePointYds
   /** The player's stock rollout for this sample, before any surface/slope scaling. */
   stockRollYds?: number
   /** The flight ran into trees: right after launch, or on the way down. The landing is where it hit. */
@@ -35,10 +42,30 @@ export type ModeledAimSample = {
   state: DecisionLandingState
 }
 
-export type LandingTransform = (
+/** Where the ball first meets the ground, and where it comes to rest. */
+export type LandingResolution = Readonly<{ touchdown: CoursePointYds; rest: CoursePointYds }>
+
+export type LandingTransform = ((
   carryLanding: CoursePointYds,
   baselineLanding: CoursePointYds,
-) => CoursePointYds
+) => CoursePointYds) & {
+  /**
+   * Touchdown and rest together. The roll model's touchdown can be short of the
+   * carry point (a ball flying into the face of a hill), and hazard capture has
+   * to start from where the ball really comes down.
+   */
+  resolve?: (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) => LandingResolution
+}
+
+export const resolveLanding = (
+  transform: LandingTransform | undefined,
+  carryLanding: CoursePointYds,
+  baselineLanding: CoursePointYds,
+): LandingResolution => {
+  if (!transform) return { touchdown: carryLanding, rest: baselineLanding }
+  if (transform.resolve) return transform.resolve(carryLanding, baselineLanding)
+  return { touchdown: carryLanding, rest: transform(carryLanding, baselineLanding) }
+}
 
 export type AimProbabilityContour = {
   probability: 0.5 | 0.8 | 0.95
@@ -288,13 +315,12 @@ export const sampleModeledAimDistribution = ({
         state: buildDecisionLandingState(hole, blocked.point, classification, pinLocalYds),
       }
     }
-    const landing = landingTransform
-      ? landingTransform(carryLanding, baselineLanding)
-      : baselineLanding
-    const classification = classifyTacticalLandingPoint(hole, landing)
+    const { touchdown, rest } = resolveLanding(landingTransform, carryLanding, baselineLanding)
+    const { landing, classification } = resolveCarryAwareLanding(hole, touchdown, rest)
     return {
       carryLanding,
       landing,
+      unobstructedLanding: rest,
       stockRollYds: total - carry,
       kind: classification.kind,
       state: buildDecisionLandingState(hole, landing, classification, pinLocalYds, ball),

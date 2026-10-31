@@ -1,7 +1,7 @@
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import type { CourseHoleGeometry, CoursePointYds, CourseSurfaceClassification } from '../courseGeometry/types'
-import type { LandingTransform } from './aimOutcomeSampling'
+import type { LandingResolution, LandingTransform } from './aimOutcomeSampling'
 
 /**
  * Roll by where the ball lands (spec: claude/spec-long-shot-engine.md, piece 5).
@@ -146,19 +146,24 @@ export const makeRollLandingTransform = (
   hole: CourseHoleGeometry,
   inner?: LandingTransform,
   flight?: DescentFlight | null,
-): LandingTransform => (carryLanding, baselineLanding) => {
-  const rx = baselineLanding[0] - carryLanding[0]
-  const ry = baselineLanding[1] - carryLanding[1]
-  const stockRoll = Math.hypot(rx, ry)
-  const touchdown = descentTouchdown(hole, carryLanding, flight)
-  const start = touchdown.point
-  if (stockRoll < 1e-6) {
-    const rest: CoursePointYds = [start[0], start[1]]
-    return inner ? inner(start, rest) : rest
+): LandingTransform => {
+  const resolve = (carryLanding: CoursePointYds, baselineLanding: CoursePointYds): LandingResolution => {
+    const rx = baselineLanding[0] - carryLanding[0]
+    const ry = baselineLanding[1] - carryLanding[1]
+    const stockRoll = Math.hypot(rx, ry)
+    const touchdown = descentTouchdown(hole, carryLanding, flight)
+    const start = touchdown.point
+    if (stockRoll < 1e-6) {
+      const rest: CoursePointYds = [start[0], start[1]]
+      return { touchdown: start, rest: inner ? inner(start, rest) : rest }
+    }
+    const dir: CoursePointYds = [rx / stockRoll, ry / stockRoll]
+    const { surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
+    const roll = stockRoll * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
+    const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
+    return { touchdown: start, rest: inner ? inner(start, scaled) : scaled }
   }
-  const dir: CoursePointYds = [rx / stockRoll, ry / stockRoll]
-  const { surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
-  const roll = stockRoll * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
-  const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
-  return inner ? inner(start, scaled) : scaled
+  const transform: LandingTransform = (carryLanding, baselineLanding) => resolve(carryLanding, baselineLanding).rest
+  transform.resolve = resolve
+  return transform
 }
