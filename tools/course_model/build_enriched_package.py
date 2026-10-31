@@ -35,7 +35,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from grid_io import load_grid  # noqa: E402
-from register_terrain import utm16n  # noqa: E402
+from register_terrain import utm, utm_zone_from_crs  # noqa: E402
 
 R = 6_371_008.8          # builder EARTH_RADIUS_M
 M_TO_YD = 1.0936133      # builder M_TO_YD
@@ -181,7 +181,8 @@ def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: floa
     ys = np.arange(min_y, max_y + spacing * 0.25, spacing)
     xx, yy = np.meshgrid(xs, ys)
     lat, lon = from_local(frame, xx, yy)
-    en = np.array([utm16n(la, lo) for la, lo in zip(lat.ravel(), lon.ravel())])
+    zone = utm_zone_from_crs(dem_h['crs'])
+    en = np.array([utm(la, lo, zone) for la, lo in zip(lat.ravel(), lon.ravel())])
     px = dem_h['pixelSize']
     cols = (en[:, 0] - dem_h['originX']) / px - 0.5
     rows = (dem_h['originY'] - en[:, 1]) / px - 0.5
@@ -216,8 +217,7 @@ def main() -> int:
     md = args.model_dir
     dem_json = md / 'dem-utm-1m.json' if (md / 'dem-utm-1m.json').exists() else md / 'dem-utm16n-1m.json'
     dem_h, dem = load_grid(dem_json)
-    if dem_h['crs'] not in ('EPSG:26916', 'EPSG:32616'):
-        raise SystemExit(f'utm16n projection only for now; DEM is {dem_h["crs"]}')
+    utm_zone_from_crs(dem_h['crs'])  # any northern UTM zone (NAD83 or WGS84)
     osm = json.loads(gzip.open(md / 'osm-full.json.gz', 'rt', encoding='utf-8').read())
     feats = list(osm_features(osm))
     woods = json.loads((md / 'woods.geojson').read_text())['features']

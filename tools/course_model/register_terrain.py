@@ -33,20 +33,35 @@ from grid_io import load_grid  # noqa: E402
 
 
 
-def utm16n(lat: float, lon: float) -> tuple[float, float]:
-    """GRS80 transverse Mercator (Kruger series), UTM zone 16N (NAD83)."""
+def utm(lat: float, lon: float, zone: int) -> tuple[float, float]:
+    """GRS80 transverse Mercator (Kruger series), UTM zone N (NAD83 / WGS84 north)."""
     a, f = 6378137.0, 1 / 298.257222101
     n = f / (2 - f)
     A = a / (1 + n) * (1 + n * n / 4 + n ** 4 / 64)
     al = [0, n / 2 - 2 * n * n / 3 + 5 * n ** 3 / 16, 13 * n * n / 48 - 3 * n ** 3 / 5, 61 * n ** 3 / 240]
     e = math.sqrt(f * (2 - f))
-    phi, lam = math.radians(lat), math.radians(lon + 87.0)
+    lon0 = -183.0 + 6.0 * zone
+    phi, lam = math.radians(lat), math.radians(lon - lon0)
     t = math.sinh(math.atanh(math.sin(phi)) - e * math.atanh(e * math.sin(phi)))
     xi = math.atan2(t, math.cos(lam))
     eta = math.atanh(math.sin(lam) / math.sqrt(1 + t * t))
     E = eta + sum(al[j] * math.cos(2 * j * xi) * math.sinh(2 * j * eta) for j in (1, 2, 3))
     N = xi + sum(al[j] * math.sin(2 * j * xi) * math.cosh(2 * j * eta) for j in (1, 2, 3))
     return 500000 + 0.9996 * A * E, 0.9996 * A * N
+
+
+def utm16n(lat: float, lon: float) -> tuple[float, float]:
+    return utm(lat, lon, 16)
+
+
+def utm_zone_from_crs(crs: str) -> int:
+    """'EPSG:26916' (NAD83) or 'EPSG:32616' (WGS84) -> 16."""
+    code = int(str(crs).split(':')[-1])
+    if 26901 <= code <= 26923:
+        return code - 26900
+    if 32601 <= code <= 32660:
+        return code - 32600
+    raise ValueError(f'not a northern UTM CRS: {crs}')
 
 
 def utm_convergence_scale(lat: float, lon: float, lon0: float = -87.0, k0: float = 0.9996) -> tuple[float, float]:
