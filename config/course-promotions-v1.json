@@ -2,16 +2,6 @@
   "schemaVersion": "looper-course-promotions-v1",
   "courses": [
     {
-      "courseId": "arcadia-bluffs-arcadia-mi",
-      "slug": "arcadia-bluffs",
-      "status": "validation",
-      "staticPackageUrl": "/course-geometry/arcadia-bluffs/course-v1.json",
-      "packagePath": "public/course-geometry/arcadia-bluffs/course-v1.json",
-      "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
-      "validationPath": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json",
-      "cachePath": "artifacts/course-geometry/arcadia-bluffs/cache-v1.json"
-    },
-    {
       "courseId": "cabot-cliffs-inverness-ns",
       "slug": "cabot-cliffs",
       "status": "validation",

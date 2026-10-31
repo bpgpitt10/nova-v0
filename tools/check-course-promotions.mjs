@@ -63,7 +63,12 @@ const promoted = readdirSync(artifactRoot, { withFileTypes: true })
   .filter(Boolean)
   .sort((a, b) => a.slug.localeCompare(b.slug))
 
-requireValue(promoted.length > 0, 'no promoted automated course packages were discovered')
+// Hand-registered automated packages are checked here; canonical imports
+// (generated registry) are checked by tools/check-canonical-imports.mjs.
+// Since Augusta/Arcadia/Oakmont were removed there may be none left.
+if (promoted.length === 0) {
+  console.log('[course-promotion] no hand-registered automated packages; canonical imports are checked separately.')
+}
 
 const seenCourseIds = new Set()
 const seenPackagePaths = new Set()

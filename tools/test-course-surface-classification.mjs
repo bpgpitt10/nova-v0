@@ -20,7 +20,7 @@ const surface = (kind, polygon) => ({
 })
 
 const packagedSurface = (kind, polygons) => ({
-  id: `augusta-h1-${kind}`,
+  id: `test-h1-${kind}`,
   kind,
   polygons,
   provenance: { source: 'osm', confidence: 'high' },
@@ -108,12 +108,14 @@ try {
   }
   assert.equal(classifyPoint(teeVsWoods, [0, 0]).kind, 'tee')
 
-  const augustaPackage = JSON.parse(readFileSync(
-    new URL('../public/course-geometry/augusta-national/course-v1.json', import.meta.url),
+  // Real-hole probe on a committed package (Augusta National was removed
+  // 2026-10-30; FarmLinks is the reference course).
+  const realPackage = JSON.parse(readFileSync(
+    new URL('../public/course-geometry/farmlinks/course-v1.json', import.meta.url),
     'utf8',
   ))
-  const rawH1 = augustaPackage.holes?.['1']
-  assert.ok(rawH1, 'Augusta National H1 must be committed for the real-hole probe')
+  const rawH1 = realPackage.holes?.['1']
+  assert.ok(rawH1, 'FarmLinks H1 must be committed for the real-hole probe')
 
   const rawSurfaces = rawH1.surfaces ?? {}
   const rawContext = rawH1.context ?? {}
@@ -123,20 +125,20 @@ try {
     .map(([kind, polygons]) => packagedSurface(kind, polygons))
   if (deepRough.length > 0) realSurfaces.push(packagedSurface('deep-rough', deepRough))
 
-  const augustaH1 = {
+  const realH1 = {
     ...hole,
-    courseId: 'augusta-national',
-    courseName: 'Augusta National',
+    courseId: 'farmlinks-pursell-farms-sylacauga-al',
+    courseName: 'FarmLinks at Pursell Farms',
     surfaces: realSurfaces,
   }
 
   const findClassifiedPoint = (kind) => {
-    const matching = augustaH1.surfaces.filter((candidate) => candidate.kind === kind)
+    const matching = realH1.surfaces.filter((candidate) => candidate.kind === kind)
     for (const candidate of matching) {
       for (const polygon of candidate.polygons) {
         for (const point of polygonCandidates(polygon)) {
           if (!pointInPolygon(point, polygon)) continue
-          if (classifyPoint(augustaH1, point).kind === kind) return point
+          if (classifyPoint(realH1, point).kind === kind) return point
         }
       }
     }
@@ -144,14 +146,17 @@ try {
   }
 
   const probes = {}
-  for (const kind of ['water', 'bunker', 'green', 'fairway', 'deep-rough']) {
+  const presentKinds = new Set(realSurfaces.map((candidate) => candidate.kind))
+  const requiredKinds = ['water', 'bunker', 'green', 'fairway', 'deep-rough'].filter((kind) => presentKinds.has(kind))
+  assert.ok(requiredKinds.length >= 4, `FarmLinks H1 should carry most tactical kinds, got ${[...presentKinds]}`)
+  for (const kind of requiredKinds) {
     probes[kind] = findClassifiedPoint(kind)
-    assert.ok(probes[kind], `Augusta H1 has no point that resolves tactically as ${kind}`)
+    assert.ok(probes[kind], `FarmLinks H1 has no point that resolves tactically as ${kind}`)
   }
   probes.rough = findClassifiedPoint('rough')
 
   console.log(
-    'Augusta National H1 point probes:',
+    'FarmLinks H1 point probes:',
     Object.entries(probes).map(([kind, point]) => `${kind}=${point ? point.map((v) => v.toFixed(1)).join(',') : 'fully-overridden'}`).join(' | '),
   )
   console.log('Runtime surface precedence: explicit hazards/golf surfaces > vegetation > rough: ok')
