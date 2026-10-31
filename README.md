@@ -9,32 +9,23 @@ npm install
 npm run dev
 ```
 
-## Desktop (Tauri)
+## Web app + Windows Companion
 
-This project is configured to run in a Tauri desktop shell without changing app UI/logic.
+The Looper's UI is a web app, deployed on Vercel (`looper-web`). Branches
+named `web-*` get a preview deployment automatically (see `vercel.json`).
 
-### Run desktop app in development
+On the simulator PC it pairs with the **Looper Windows Companion**
+(`helpers/looper_companion.py`, built to `LooperCompanion.exe` by
+`.github/workflows/build-looper-companion-windows.yml`, installed with
+`helpers/install_looper_companion.ps1`). A browser tab cannot read GSPro's
+screen or send input to it, so the companion does that work and serves it to
+the web app over `http://127.0.0.1` (CORS limited to Looper's own origins):
+GSPro discovery, HUD/wind/lie OCR, and Auto Aim (in progress).
 
-```sh
-npm install
-npm run tauri:dev
-```
-
-Notes:
-- Tauri dev uses the existing Vite dev server at `http://localhost:1420`.
-- The desktop window loads that dev server URL.
-
-### Build desktop app
-
-```sh
-npm run helper:build:mac
-npm run tauri:build
-```
-
-Notes:
-- Tauri build runs the existing Vite build first (`npm run build`) and then bundles from `dist`.
-- Desktop build artifacts are written under `src-tauri/target/release/bundle/` (for Windows, installers/bundles are placed there by target format).
-- Build the OpenGolfCoach sidecar first so Tauri can bundle `src-tauri/binaries/open-golf-coach-helper-<target-triple>`.
+What was removed is only the old **Tauri desktop shell** that wrapped the
+whole UI (`src-tauri/`, its build scripts and bundled sidecars). The web app
+does not run inside a desktop window any more; the companion is a separate,
+small background program and stays.
 
 ## OpenGolfCoach helper
 
@@ -56,35 +47,6 @@ Health response shape:
   "derive_endpoint": "/derive"
 }
 ```
-
-### Sidecar packaging (recommended for desktop pilot)
-
-Build the helper executable and place it in `src-tauri/binaries`:
-
-These scripts create/reuse a dedicated build virtual environment and install
-`pyinstaller` + `opengolfcoach` before building, so developers do not need to
-preinstall `opengolfcoach` globally.
-
-macOS:
-
-```sh
-npm run helper:build:mac
-```
-
-Windows (PowerShell):
-
-```powershell
-npm run helper:build:windows
-```
-
-The app bundles this binary through Tauri `externalBin` and applies this startup strategy:
-
-1. Probe `127.0.0.1:8787` for `/health`.
-2. If response is compatible (`service=open-golf-coach-helper`, `status=ok`), reuse existing process.
-3. If port is occupied by incompatible service, do not launch sidecar and log a clear error.
-4. If port is free, launch bundled sidecar once for this app process.
-
-This avoids interfering with users who already run OpenGolfCoach separately.
 
 Install and start it locally:
 
@@ -146,12 +108,6 @@ Then run the app:
 
 ```sh
 npm run dev
-```
-
-For Tauri desktop dev:
-
-```sh
-npm run tauri:dev
 ```
 
 The script searches `_openlaunch-ws._tcp.local.` and writes:

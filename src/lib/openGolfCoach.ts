@@ -20,7 +20,6 @@ export type OpenGolfCoachEnricher = {
 const OPEN_GOLF_COACH_LOCAL_STORAGE_KEY = 'open-golf-coach-url'
 const OPEN_GOLF_COACH_DEFAULT_URL = 'http://127.0.0.1:8787'
 const OPEN_GOLF_COACH_DEV_PROXY_URL = '/open-golf-coach'
-const ENRICHMENT_LOG_FILE_CHANNEL = 'enrichment-pipeline'
 
 const safeLocalStorageGet = (key: string) => {
   if (typeof window === 'undefined') {
@@ -33,32 +32,9 @@ const safeLocalStorageGet = (key: string) => {
   }
 }
 
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)
-
+// Web build: diagnostics go to the console (the desktop log file is gone).
 const appendEnrichmentLog = async (event: string, payload?: Record<string, unknown>) => {
-  const line = JSON.stringify({
-    ts: new Date().toISOString(),
-    channel: ENRICHMENT_LOG_FILE_CHANNEL,
-    event,
-    payload: payload ?? {},
-  })
-
   console.info(`[OpenGolfCoach][${event}]`, payload ?? {})
-
-  if (!isTauriRuntime()) {
-    return
-  }
-
-  try {
-    const invoke = (window as any).__TAURI_INTERNALS__?.invoke
-    if (typeof invoke === 'function') {
-      await invoke('append_enrichment_log', { line })
-    }
-  } catch (error) {
-    console.error('[OpenGolfCoach] failed to append enrichment log', error)
-  }
 }
 
 const resolveOpenGolfCoachUrl = () => {
@@ -71,17 +47,11 @@ const resolveOpenGolfCoachUrl = () => {
   if (localUrl) {
     if (
       import.meta.env.DEV &&
-      !isTauriRuntime() &&
       localUrl.replace(/\/+$/, '') === OPEN_GOLF_COACH_DEFAULT_URL
     ) {
       return { url: OPEN_GOLF_COACH_DEV_PROXY_URL, source: 'localStorage' as const }
     }
     return { url: localUrl, source: 'localStorage' as const }
-  }
-
-  const isDesktop = isTauriRuntime()
-  if (isDesktop) {
-    return { url: OPEN_GOLF_COACH_DEFAULT_URL, source: 'tauri_fallback' as const }
   }
 
   if (typeof window !== 'undefined') {

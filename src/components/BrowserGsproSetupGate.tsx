@@ -30,14 +30,6 @@ type BrowserGsproSetupGateProps = {
 const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
 const GSPRO_ONBOARDING_KEY = 'looper-gspro-onboarding-complete-v1'
 
-const isTauriRuntime = () =>
-  typeof window !== 'undefined' &&
-  Boolean(
-    (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown }).__TAURI__ ||
-      (window as Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown })
-        .__TAURI_INTERNALS__,
-  )
-
 const isWindowsBrowser = () =>
   typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
 
@@ -94,12 +86,7 @@ export default function BrowserGsproSetupGate({
 
   useEffect(() => {
     // Direct folder access is only needed for the hosted Windows browser.
-    // Tauri and non-Windows viewers can still use the rest of Looper normally.
-    if (isTauriRuntime()) {
-      setSetupState('ready')
-      return
-    }
-
+    // Non-Windows viewers can still use the rest of Looper normally.
     if (!isWindowsBrowser() || !isBrowserGsproAccessSupported()) {
       setSetupState('unsupported')
       return
@@ -149,7 +136,7 @@ export default function BrowserGsproSetupGate({
   }, [])
 
   useEffect(() => {
-    if (setupState !== 'ready' || isTauriRuntime() || !isWindowsBrowser()) {
+    if (setupState !== 'ready' || !isWindowsBrowser()) {
       return
     }
 
