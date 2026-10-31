@@ -32,7 +32,9 @@ COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
 COMPANION_COURSE_LAYOUTS_PATH = "/companion/v1/course-layouts"
 COMPANION_AIM_PREVIEW_PATH = "/companion/v1/aim-preview"
+COMPANION_COURSE_LIBRARY_PATH = "/companion/v1/course-library"
 COMPANION_READ_PATHS = (
+    COMPANION_COURSE_LIBRARY_PATH,
     COMPANION_AIM_PREVIEW_PATH,
     COMPANION_STATUS_PATH,
     COMPANION_CAPTURE_PATH,
@@ -159,6 +161,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "liveObservations": True,
                     "courseLayouts": True,
                     "aimPreview": True,
+                    "courseLibrary": True,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
@@ -174,6 +177,25 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 "version": COMPANION_VERSION,
                 "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
+            return
+        if urlsplit(self.path).path == COMPANION_COURSE_LIBRARY_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            # Read-only: names, locations and keys of installed GSPro courses
+            # so Looper can offer them for loading. No paths or geometry.
+            try:
+                window = native.find_gspro_window()
+                image_path = window.get("imagePath") if isinstance(window, dict) else None
+            except Exception:
+                image_path = None
+            try:
+                payload = course_library.list_installed_courses(image_path=image_path)
+            except Exception as error:
+                payload = {"service": "looper-companion", "schemaVersion": course_library.LIBRARY_SCHEMA_VERSION,
+                           "status": "unavailable", "reason": type(error).__name__, "courses": []}
+            payload["version"] = COMPANION_VERSION
+            self._send_companion(200, payload)
             return
         if urlsplit(self.path).path == COMPANION_AIM_PREVIEW_PATH:
             if not self._companion_authorized():

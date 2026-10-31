@@ -103,6 +103,20 @@ class CourseLibraryTests(unittest.TestCase):
         self.assertEqual(moved["status"], "ready")
         self.assertEqual(moved["source"], "override")
 
+    def test_library_listing(self):
+        env = {"LOOPER_GSPRO_COURSES_DIR": str(self.root / "Courses")}
+        listing = library.list_installed_courses(env=env)
+        self.assertEqual(listing["status"], "ready")
+        keys = [c["courseKey"] for c in listing["courses"]]
+        self.assertEqual(sorted(keys), ["aaa_gsp", "synthetic_gsp"])
+        synth = next(c for c in listing["courses"] if c["courseKey"] == "synthetic_gsp")
+        self.assertEqual(synth["courseName"], "Synthetic Links")
+        self.assertEqual(synth["holes"], 1)
+        self.assertEqual(synth["alternateLayouts"], ["Synthetic Kids"], "other scenes' GKDalt not attached")
+        self.assertNotIn(str(self.root), json.dumps(listing), "no local paths")
+        self.assertEqual(library.list_installed_courses(env={"LOOPER_GSPRO_COURSES_DIR": str(self.root / "nope")})["status"],
+                         "not-found")
+
     def test_walk_is_bounded(self):
         env = {"LOOPER_GSPRO_COURSES_DIR": str(self.root / "Courses")}
         self.assertIsNone(library.find_scene_dir(library.library_roots(env=env), "missing_gsp", max_visited=2))

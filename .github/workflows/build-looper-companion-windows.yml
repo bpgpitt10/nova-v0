@@ -9,6 +9,7 @@ on:
       - unified-imported-course-positioning-v1
       - companion-course-layouts-v1
       - web-native-aim-preview-v1
+      - web-course-load-v1
     paths:
       - "helpers/gspro_native_aim.py"
       - "tests/test_gspro_companion_aim_preview.py"
@@ -167,6 +168,13 @@ jobs:
             if ($preview.schemaVersion -ne "looper-companion-aim-preview-v1" -or $preview.input -ne "none" -or $preview.status -ne "gspro-not-connected") {
               throw "Aim preview must answer gspro-not-connected without GSPro: $($preview | ConvertTo-Json -Compress)"
             }
+            if ($companion.capabilities.courseLibrary -ne $true) {
+              throw "Course library capability missing."
+            }
+            $library = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/course-library" -Headers $headers -TimeoutSec 20
+            if ($library.schemaVersion -ne "looper-companion-course-library-v1" -or $library.status -ne "not-found") {
+              throw "Course library must answer not-found without GSPro courses: $($library | ConvertTo-Json -Compress)"
+            }
             if ($companion.capabilities.autoAim -ne $false) {
               throw "Stage B must never enable Auto Aim."
             }
@@ -261,6 +269,20 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: Auto Aim preview ($shortSha)" `
             --notes "Course layouts plus read-only /companion/v1/aim-preview: one capture of GSPro's minimap, finds the red ball and white pin dots, and shows where Looper WOULD click for its aim. No mouse or keyboard input." `
+            --prerelease
+
+      - name: Publish course-load companion installer
+        if: github.ref == 'refs/heads/web-course-load-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-course-load-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: course library + aim preview ($shortSha)" `
+            --notes "Course layouts, read-only Auto Aim preview, and read-only /companion/v1/course-library (names, locations and keys of installed GSPro courses for one-click loading). No mouse or keyboard input." `
             --prerelease
 
       - name: Publish rolling companion prerelease
