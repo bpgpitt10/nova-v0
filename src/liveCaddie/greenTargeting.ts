@@ -9,6 +9,12 @@ import type {
   CoursePointYds,
   CoursePolygonYds,
 } from '../courseGeometry/types'
+import {
+  describeFall,
+  pinPlacementFromBall,
+  toPlayerFrameDirection,
+  uphillPuttSide,
+} from './greenPlayerFrame'
 
 export type GreenTargetingGuidance = {
   target: CoursePointYds
@@ -23,9 +29,10 @@ export type GreenTargetingGuidance = {
   shiftRightYds: number
   shiftForwardYds: number
   shiftYds: number
+  /** Diagnostic only. Sector and downhill labels here are HOLE-local, not player-facing. */
   reason: string
-  /** One plain-language line for the golfer, e.g. "Pin back right; green
-   * slopes down to the right. Leave it left of the hole for an uphill putt." */
+  /** One plain-language line for the golfer, in the ball→pin frame, e.g. "Pin back
+   * right; green slopes down to the right. Leave it right of the hole for an uphill putt." */
   playerRead: string | null
 }
 
@@ -363,39 +370,37 @@ export const redirectCourseGreenRollout = ({
  * cap and an on-green guard.
  */
 
-const PLACE: Record<string, string> = { front: 'front', middle: 'middle', back: 'back' }
-const pinPlace = (row: string, column: string) =>
-  row === 'middle' && column === 'center' ? 'in the middle'
-    : column === 'center' ? PLACE[row] ?? row
-      : `${PLACE[row] ?? row} ${column}`
-const humanDirection = (label: string) => label.replace('-', ' ')
-/** Side of the hole that leaves an uphill putt, given which way the green falls. */
-const uphillSide = (downhill: string) => {
-  const parts = downhill.split('-')
-  const words = parts.map((p) => ({ right: 'left', left: 'right', back: 'short', front: 'past' } as Record<string, string>)[p] ?? null)
-    .filter(Boolean) as string[]
-  if (words.length === 0) return null
-  return `${words.join(' and ')} of the hole`
-}
-
-const greenPlayerRead = ({
-  row, column, slopePercent, downhillLabel, nearEdge,
+/**
+ * One plain-language green line for the golfer, entirely in the ball→pin frame
+ * (see greenPlayerFrame). The uphill-putt side is the LOW side of the hole:
+ * a green that slopes down to the right wants the ball right of the hole.
+ */
+export const greenPlayerRead = ({
+  ball, pin, green, slopePercent, downhillLocalUnit, nearEdge,
 }: {
-  row: string | null
-  column: string | null
+  ball: CoursePointYds
+  pin: CoursePointYds
+  green: CoursePolygonYds | null
   slopePercent: number | null
-  downhillLabel: string | null
+  /** Hole-local downhill unit vector; rotated into the player frame here. */
+  downhillLocalUnit: CoursePointYds | null
   nearEdge: boolean
 }): string | null => {
   const parts: string[] = []
-  if (row && column) parts.push(`Pin ${pinPlace(row, column)}`)
-  const sloped = slopePercent != null && slopePercent >= 1 && downhillLabel && downhillLabel !== 'flat'
-  if (sloped) {
-    const strength = slopePercent >= 4 ? 'steeply ' : slopePercent < 2 ? 'gently ' : ''
-    parts.push(`green slopes ${strength}down to the ${humanDirection(downhillLabel!)}`)
+  const placement = green ? pinPlacementFromBall(ball, pin, green) : null
+  if (placement) parts.push(`Pin ${placement.text}`)
+  const downhill = downhillLocalUnit
+    ? toPlayerFrameDirection(ball, pin, downhillLocalUnit)
+    : null
+  const fall = downhill && slopePercent != null && slopePercent >= 1
+    ? describeFall(downhill)
+    : null
+  if (fall) {
+    const strength = slopePercent! >= 4 ? 'steeply ' : slopePercent! < 2 ? 'gently ' : ''
+    parts.push(`green slopes ${strength}down ${fall}`)
   }
   let read = parts.length ? `${parts.join('; ')}.` : ''
-  const side = sloped && slopePercent! >= 2 ? uphillSide(downhillLabel!) : null
+  const side = fall && downhill && slopePercent! >= 2 ? uphillPuttSide(downhill) : null
   if (side) read += ` Leave it ${side} for an uphill putt.`
   if (nearEdge) read += ' Pin is close to the edge, so favour the middle of the green.'
   read = read.trim()
@@ -440,10 +445,11 @@ export const buildCourseGreenApproachTarget = ({
       : '1 yd LiDAR green context available, but target shift waits for an exact GSPro pin.',
     playerRead: exactPin
       ? greenPlayerRead({
-          row: sector?.row ?? null,
-          column: sector?.column ?? null,
+          ball,
+          pin,
+          green: polygon,
           slopePercent: slope?.slopePercent ?? null,
-          downhillLabel,
+          downhillLocalUnit: slope?.downhill ?? null,
           nearEdge: edge != null && edge.distanceYds < 4,
         })
       : null,

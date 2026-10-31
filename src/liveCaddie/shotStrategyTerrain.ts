@@ -1,6 +1,5 @@
 import { pointInPolygon } from '../courseGeometry/geometry'
 import {
-  courseGreenSectorAtPoint,
   sampleCourseGreenElevation,
   type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
@@ -12,6 +11,7 @@ import type {
   CourseSurfaceKind,
 } from '../courseGeometry/types'
 import { buildAimShotFrame } from './aimDescriptorFrame'
+import { describeFall, highSide, toPlayerFrameDirection } from './greenPlayerFrame'
 import { sampleCourseGreenSlopeAtPoint } from './greenTargeting'
 
 export type ShotStrategyTacticalRead = {
@@ -54,12 +54,20 @@ const containingGreen = (
   return null
 }
 
+type TerrainRead = {
+  text: string
+  shortIsCostly: boolean
+  longIsCostly: boolean
+  /** High lateral side of a strongly sloped target, as seen from the ball. */
+  highSide?: 'left' | 'right' | null
+}
+
 const terrainRead = (
   hole: CourseHoleGeometry,
   ball: CoursePointYds,
   pin: CoursePointYds,
   detail: CourseGreenDetail | null,
-) => {
+): TerrainRead => {
   const short6 = shortOf(ball, pin, 6)
   const short12 = shortOf(ball, pin, 12)
   const short20 = shortOf(ball, pin, 20)
@@ -70,7 +78,6 @@ const terrainRead = (
     const short12Z = sampleCourseGreenElevation(detail, short12)
     const polygon = containingGreen(hole, pin)
     const slope = sampleCourseGreenSlopeAtPoint(detail, pin, polygon)
-    const sector = courseGreenSectorAtPoint(detail, pin)
     const rise6 = pinZ != null && short6Z != null ? pinZ - short6Z : null
     const rise12 = pinZ != null && short12Z != null ? pinZ - short12Z : null
 
@@ -103,10 +110,17 @@ const terrainRead = (
       }
     }
     if (slope && slope.slopePercent >= 5) {
+      // Player frame, not the hole's sector grid: the golfer's "right" is what matters.
+      const downhill = toPlayerFrameDirection(ball, pin, slope.downhill)
+      const fall = downhill ? describeFall(downhill) : null
+      const high = downhill ? highSide(downhill) : null
       return {
-        text: `Strong green slope${sector ? ` on the ${sector.row}-${sector.column} section` : ''}; avoid the downhill side of the target.`,
+        text: fall
+          ? `Strong green slope falling ${fall}; keep it on the high side of the target.`
+          : 'Strong green slope at the target; keep it on the high side.',
         shortIsCostly: false,
         longIsCostly: false,
+        highSide: high,
       }
     }
   }
@@ -199,20 +213,33 @@ const nearestHazardPoint = (
   return best
 }
 
+type HazardRead = {
+  text: string | null
+  /** Set only when the target itself is inside a mapped hazard. */
+  overrideSafeMiss: string | null
+  name: string | null
+  depth: 'short' | 'long' | null
+  side: 'left' | 'right' | null
+}
+
+const NO_HAZARD: HazardRead = { text: null, overrideSafeMiss: null, name: null, depth: null, side: null }
+
 const hazardRead = (
   hole: CourseHoleGeometry,
   ball: CoursePointYds,
   pin: CoursePointYds,
-) => {
+): HazardRead => {
   const hazard = nearestHazardPoint(hole, pin)
-  if (!hazard) return { text: null, safeMiss: null }
+  if (!hazard) return NO_HAZARD
   if (hazard.distanceYds <= 1e-8) {
     // A mapped hazard containing the pin/target is not a "no danger"
     // scenario. Without a verified landing alternative, warn rather than
     // invent an exact safe-side instruction.
     return {
+      ...NO_HAZARD,
       text: `${hazardName(hazard.kind)} overlaps the mapped target location.`,
-      safeMiss: 'Do not plan a landing inside this mapped hazard; favor verified clear ground.',
+      overrideSafeMiss: 'Do not plan a landing inside this mapped hazard; favor verified clear ground.',
+      name: hazardName(hazard.kind),
     }
   }
   const frame = buildAimShotFrame(ball, pin)
@@ -223,15 +250,46 @@ const hazardRead = (
   const depth = forward < -2.5 ? 'short' : forward > 2.5 ? 'long' : null
   const side = lateral < -2.5 ? 'left' : lateral > 2.5 ? 'right' : null
   const where = depth && side ? `${depth}-${side}` : depth ?? side ?? 'near the target'
-  const safe: string[] = []
-  if (depth === 'short') safe.push('pin-high / slightly long')
-  if (depth === 'long') safe.push('pin-high / slightly short')
-  if (side === 'left') safe.push('right')
-  if (side === 'right') safe.push('left')
   return {
     text: `${hazardName(hazard.kind)} ${where === 'near the target' ? 'is tight to the target' : `guards ${where}`}.`,
-    safeMiss: safe.length ? `Favor ${safe.join(' / ')}.` : null,
+    overrideSafeMiss: null,
+    name: hazardName(hazard.kind),
+    depth,
+    side,
   }
+}
+
+/**
+ * One safe-miss line that agrees with BOTH reads. Previously a short hazard
+ * always produced "favor slightly long", even when the terrain line had just
+ * said long was the costly miss. Now short/long cost is the union of the
+ * hazard and terrain signals, and when both are costly we say so.
+ */
+const resolveSafeMiss = (hazard: HazardRead, terrain: TerrainRead): string => {
+  if (hazard.overrideSafeMiss) return hazard.overrideSafeMiss
+
+  const shortIsCostly = hazard.depth === 'short' || terrain.shortIsCostly
+  const longIsCostly = hazard.depth === 'long' || terrain.longIsCostly
+  const lateral = hazard.side === 'left'
+    ? 'right'
+    : hazard.side === 'right'
+      ? 'left'
+      : terrain.highSide
+        ? `the high (${terrain.highSide}) side`
+        : null
+
+  if (shortIsCostly && longIsCostly) {
+    const shortWhy = hazard.depth === 'short' ? `${hazard.name?.toLowerCase() ?? 'hazard'} short` : 'short stays well below the hole'
+    const longWhy = hazard.depth === 'long' ? `${hazard.name?.toLowerCase() ?? 'hazard'} long` : 'the slope runs it away long'
+    return `Distance control matters: ${shortWhy}, ${longWhy}. Commit to pin-high${lateral ? `, favoring ${lateral}` : ''}.`
+  }
+
+  const parts: string[] = []
+  if (shortIsCostly) parts.push('pin-high / slightly long')
+  if (longIsCostly) parts.push('pin-high / slightly short')
+  if (lateral) parts.push(lateral)
+  if (parts.length) return `Favor ${parts.join(' / ')}.`
+  return 'Favor the largest available section of green around the target.'
 }
 
 export const buildShotStrategyTacticalRead = (
@@ -242,12 +300,7 @@ export const buildShotStrategyTacticalRead = (
 ): ShotStrategyTacticalRead => {
   const terrain = terrainRead(hole, ball, pin, detail)
   const hazard = hazardRead(hole, ball, pin)
-  const safeMiss = hazard.safeMiss
-    ?? (terrain.shortIsCostly
-      ? 'Pin-high / slightly long is preferable to short.'
-      : terrain.longIsCostly
-        ? 'Pin-high / slightly short is preferable to long.'
-        : 'Favor the largest available section of green around the target.')
+  const safeMiss = resolveSafeMiss(hazard, terrain)
 
   return {
     terrain: terrain.text,
