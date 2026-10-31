@@ -15,6 +15,13 @@ import { nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntim
 import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
+import {
+  learnedCodeLies,
+  learnedSurfaceFactors,
+  parseGsproPenaltyEvents,
+  recordPenaltyEvents,
+} from './gsproPenaltyLog'
+import { setLearnedSurfaceFactors } from '../liveCaddie/surfaceResponse'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
   isBrowserGsproAccessSupported,
@@ -270,7 +277,26 @@ export const connectBrowserGsproCourseStateFolder = async () => {
 
 export const isBrowserGsproCourseStatePrepared = () => preparedStateHandle !== null
 
-const surfaceFromRaw = surfaceFromGsproRaw
+// Confirmed codes first; then codes GSPro itself paired with a lie name in
+// output_log ("Penalty Surface TVGdeeprough ... corrected type 3").
+let logLearnedCodes: ReadonlyMap<number, string> = new Map()
+const surfaceFromRaw = (value: number | null) =>
+  surfaceFromGsproRaw(value) ?? (value == null ? null : logLearnedCodes.get(value) ?? null)
+
+/** Learn from GSPro's penalty lines: store new samples, refresh the learned
+ * lie physics and code map. Never throws (storage may be unavailable). */
+const learnFromPenaltyLog = (logTail: string) => {
+  try {
+    const events = parseGsproPenaltyEvents(logTail)
+    if (recordPenaltyEvents(events) > 0 || logLearnedCodes.size === 0) {
+      logLearnedCodes = learnedCodeLies()
+      setLearnedSurfaceFactors(learnedSurfaceFactors())
+    }
+    return events.length > 0 ? events[events.length - 1] : null
+  } catch {
+    return null
+  }
+}
 
 const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   const parsed = JSON.parse(text) as unknown
@@ -596,6 +622,13 @@ const buildSnapshot = async (
   selectedCourseId: CourseId,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
+  const lastPenalty = learnFromPenaltyLog(logTail)
+  if (lastPenalty) {
+    const pct = (x: number) => `${Math.round(x * 100)}%`
+    warnings.push(`GSPro penalty on the last penalty-lie shot: ${lastPenalty.surfaceName}`
+      + `${lastPenalty.typeCode != null ? ` (code ${lastPenalty.typeCode})` : ''}`
+      + ` · speed ${pct(lastPenalty.speed)} · spin ${pct(lastPenalty.spin)} · VLA ${pct(lastPenalty.vla)}.`)
+  }
   const currentPreShot = parseCurrentShotRecord(roundText)
   const preShotRoundId = asNumber(currentPreShot?.RoundID)
   const preShotCourseKey = asString(currentPreShot?.CourseKey)

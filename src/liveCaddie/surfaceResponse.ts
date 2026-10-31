@@ -65,13 +65,44 @@ export const GSProSurfaceResponses = {
 const normalize = (surface: string | null | undefined) =>
   surface?.trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-') ?? ''
 
+type LearnedKind = 'rough' | 'deep-rough' | 'sand'
+let learnedFactors: Partial<Record<LearnedKind, SurfaceLaunchFactors & { samples: number }>> = {}
+
+/**
+ * The golfer's own GSPro penalties (median per lie, from output_log; see
+ * adapters/gsproPenaltyLog.ts). Set on the main thread and in the decision
+ * worker before evaluating. Values outside 50-105% are ignored.
+ */
+export const setLearnedSurfaceFactors = (
+  value: Partial<Record<LearnedKind, SurfaceLaunchFactors & { samples: number }>> | null | undefined,
+) => {
+  const ok = (f: SurfaceLaunchFactors & { samples: number }) =>
+    [f.speed, f.spin, f.vla].every((x) => Number.isFinite(x) && x >= 0.5 && x <= 1.05) && f.samples >= 2
+  learnedFactors = {}
+  for (const kind of ['rough', 'deep-rough', 'sand'] as const) {
+    const f = value?.[kind]
+    if (f && ok(f)) learnedFactors[kind] = f
+  }
+}
+
+const withLearned = (base: SurfaceResponse & { kind: LearnedKind }): SurfaceResponse => {
+  const learned = learnedFactors[base.kind]
+  if (!learned) return base
+  const pctText = (x: number) => `${Math.round(x * 100)}%`
+  return {
+    ...base,
+    factors: { speed: learned.speed, spin: learned.spin, vla: learned.vla },
+    evidence: `Your GSPro shots (${learned.samples}): Speed ${pctText(learned.speed)}, Spin ${pctText(learned.spin)}, VLA ${pctText(learned.vla)} (median from GSPro's log).`,
+  }
+}
+
 export const getSurfaceResponse = (surface: string | null | undefined): SurfaceResponse => {
   const value = normalize(surface)
 
   if (value === 'fairway' || value === 'tee') return GSProSurfaceResponses.baseline
-  if (value === 'rough' || value === 'semirough' || value === 'semi-rough') return GSProSurfaceResponses.rough
-  if (value === 'deep-rough' || value === 'deeprough') return GSProSurfaceResponses['deep-rough']
-  if (value === 'sand' || value === 'bunker' || value === 'tvgsand') return GSProSurfaceResponses.sand
+  if (value === 'rough' || value === 'semirough' || value === 'semi-rough') return withLearned(GSProSurfaceResponses.rough)
+  if (value === 'deep-rough' || value === 'deeprough') return withLearned(GSProSurfaceResponses['deep-rough'])
+  if (value === 'sand' || value === 'bunker' || value === 'tvgsand') return withLearned(GSProSurfaceResponses.sand)
 
   return {
     kind: 'unknown',

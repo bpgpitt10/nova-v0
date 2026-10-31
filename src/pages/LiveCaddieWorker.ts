@@ -21,8 +21,12 @@ import {
 } from '../liveCaddie/aimOptimization'
 import type { DecisionRiskTailLanding } from '../liveCaddie/decisionRiskProfile'
 import type { SavedSession } from '../types'
+import { setLearnedSurfaceFactors } from '../liveCaddie/surfaceResponse'
+import type { LearnedSurfaceFactors } from '../adapters/gsproPenaltyLog'
 
 type LiveCaddieWorkerRequest = {
+  /** The golfer's own GSPro lie penalties (median per lie, from output_log). */
+  learnedSurfaceFactors?: LearnedSurfaceFactors | null
   sessions: SavedSession[]
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -473,6 +477,7 @@ const buildEvaluationCacheKey = ({
   ball,
   target,
   environment,
+  learnedSurfaceFactors,
 }: LiveCaddieWorkerRequest) => {
   const playerSignature = sessions.map((session) => ({
     id: session.id,
@@ -520,6 +525,7 @@ const buildEvaluationCacheKey = ({
   }
 
   const stateSignature = JSON.stringify({
+    learnedSurfaceFactors: learnedSurfaceFactors ?? null,
     playerSignature,
     geometrySignature,
     ball: [finiteKeyNumber(ball[0]), finiteKeyNumber(ball[1])],
@@ -617,6 +623,7 @@ self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
   void (async () => {
     try {
       const request = event.data
+      setLearnedSurfaceFactors(request.learnedSurfaceFactors ?? null)
       const cacheKey = buildEvaluationCacheKey(request)
       const cached = await readCachedEvaluations(cacheKey)
       if (cached) {

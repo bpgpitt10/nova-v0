@@ -20,6 +20,7 @@ import {
   type LooperCompanionLiveObservations,
 } from '../adapters/looperCompanion'
 import { publishOneShotCompanionHud } from '../adapters/companionHudBridge'
+import { learnedSurfaceFactors } from '../adapters/gsproPenaltyLog'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
@@ -1216,6 +1217,7 @@ export default function LiveCaddiePage() {
     }
 
     worker.postMessage({
+      learnedSurfaceFactors: learnedSurfaceFactors(),
       sessions,
       hole,
       ball,
