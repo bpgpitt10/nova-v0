@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "valhalla",
+  "request": {
+    "slug": "valhalla",
+    "name": "Valhalla Golf Club",
+    "location": "Louisville, KY",
+    "nameRegex": "valhalla",
+    "lat": 38.247,
+    "lon": -85.484,
+    "radiusM": 10000
+  },
+  "ready": false,
+  "totalSeconds": 97.3,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 79.1
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/valhalla-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": false,
+      "seconds": 18.2,
+      "error": [
+        "    run_node(",
+        "  File \"/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py\", line 53, in run_node",
+        "    subprocess.run(command, cwd=ROOT, check=True)",
+        "  File \"/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/subprocess.py\", line 571, in run",
+        "    raise CalledProcessError(retcode, process.args,",
+        "subprocess.CalledProcessError: Command '['node', 'tools/validate-course-import-contract.mjs', '--package', '/home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json', '--config', '/home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json']' returned non-zero exit status 1."
+      ]
+    }
+  ],
+  "finishedAt": "2026-10-31T01:52:57Z",
+  "runId": "41157213464",
+  "osmCourse": {
+    "type": "way",
+    "id": 59737644,
+    "name": "Valhalla Golf Club",
+    "areaHa": 138.1
+  },
+  "lidar": {
+    "name": "KY_FullState",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json",
+    "count": 448685375365,
+    "year": 0
+  },
+  "crs": "EPSG:26916"
+}

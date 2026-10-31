@@ -1,0 +1,21 @@
+{
+  "completedAt": "2026-10-31T01:54:52.612685Z",
+  "configPath": "config/course-geometry/muirfield-village-v1.json",
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "courseName": "Muirfield Village Golf Club",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Muirfield Village Golf Club"
+  ],
+  "location": "Dublin, OH",
+  "packagePath": "public/course-geometry/muirfield-village/course-v1.json",
+  "packageSha256": "3dc65cbbe5e2c8cc6b993c9d74032180fe22d0d3f8055241417b073faa5c62b3",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "muirfield-village",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/muirfield-village/validation-v1.json"
+}

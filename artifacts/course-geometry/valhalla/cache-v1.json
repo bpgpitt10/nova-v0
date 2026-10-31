@@ -1,25 +1,38 @@
 {
-  "courseId": "valhalla-louisville-ky",
+  "courseId": "valhalla-golf-club-louisville-ky",
   "courseName": "Valhalla Golf Club",
   "freshness": {
-    "ageDays": 0.59,
-    "evaluatedAt": "2026-09-18T15:02:54.114905Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-10-31T01:52:49.038156Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "one-click-course-load",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T15:02:54.114905Z",
+    "builderFingerprintSha256": "9b1997f777ddbffc4c780e387ba7bf79aac860c262331848fdbb87c8fdf14e39",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-10-31T01:52:49.038156Z",
     "configPath": "config/course-geometry/valhalla-v1.json",
-    "configSha256": "6fc078c7369bcfe4c5985065bd5b324215d4764ad9ac905d8f94bb3ea0480120",
+    "configSha256": "ed8de826b9e0616645423e7788a6899b5b1c3c03e3e100ec0fdff8b4046b56a0",
+    "greenDetail": {
+      "marginYds": 12.0,
+      "schemaVersion": "looper-course-green-detail-v1",
+      "sha256": "89841ce820a9d16674de8f76f14e474fd7f2e6fb9caa4d542aa933a8b52269d6",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "spacingYds": 1.0
+    },
     "path": "public/course-geometry/valhalla/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "648c44f3b442f5921d8bf0a8cf8d18d3fe6ca22b2364d8b5cf5174be832f5436",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "df3de8545c1cc226f46206be0385b0b4fbcbb4a2a04feb31f3dc92d5cf51ca19",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "sourceProvider": "USGS 3DEP",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -44,13 +57,12 @@
       "id": 59737644,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T00:51:18.727635Z",
+    "fetchedAt": "2026-10-31T01:52:49.038156Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T00:51:18.727635Z",
-    "provider": "openstreetmap-overpass",
+    "lastCheckedAt": "2026-10-31T01:52:49.038156Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
-    "snapshotSha256": "c27cd37ff778f4f0c44dbfa42b2958eb633c19da63ced6bda25c7e1b724eb3a8",
-    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+    "snapshotSha256": "2ef236e1b15e2f75591a871287a443ed5e302c683fba450012e50065338e58a1"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",

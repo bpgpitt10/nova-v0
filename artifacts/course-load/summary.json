@@ -1,0 +1,134 @@
+{
+  "finishedAt": "2026-10-31T02:07:54Z",
+  "runId": "41157213464",
+  "courses": [
+    {
+      "slug": "valhalla",
+      "ready": false,
+      "totalSeconds": 97.3,
+      "stages": [
+        {
+          "stage": "find",
+          "ok": true,
+          "seconds": 79.1
+        },
+        {
+          "stage": "config",
+          "ok": true,
+          "seconds": 0.0,
+          "path": "config/course-geometry/valhalla-v1.json"
+        },
+        {
+          "stage": "import",
+          "ok": false,
+          "seconds": 18.2,
+          "error": [
+            "    run_node(",
+            "  File \"/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py\", line 53, in run_node",
+            "    subprocess.run(command, cwd=ROOT, check=True)",
+            "  File \"/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/subprocess.py\", line 571, in run",
+            "    raise CalledProcessError(retcode, process.args,",
+            "subprocess.CalledProcessError: Command '['node', 'tools/validate-course-import-contract.mjs', '--package', '/home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json', '--config', '/home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json']' returned non-zero exit status 1."
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "muirfield-village",
+      "ready": true,
+      "totalSeconds": 501.4,
+      "stages": [
+        {
+          "stage": "find",
+          "ok": true,
+          "seconds": 70.6
+        },
+        {
+          "stage": "config",
+          "ok": true,
+          "seconds": 0.0,
+          "path": "config/course-geometry/muirfield-village-v1.json"
+        },
+        {
+          "stage": "import",
+          "ok": true,
+          "seconds": 45.0
+        },
+        {
+          "stage": "osm",
+          "ok": true,
+          "seconds": 29.5
+        },
+        {
+          "stage": "dem",
+          "ok": true,
+          "seconds": 13.7
+        },
+        {
+          "stage": "lidar",
+          "ok": true,
+          "seconds": 275.7
+        },
+        {
+          "stage": "trees",
+          "ok": true,
+          "seconds": 15.1
+        },
+        {
+          "stage": "enrich",
+          "ok": true,
+          "seconds": 51.7
+        }
+      ]
+    },
+    {
+      "slug": "royal-new-kent",
+      "ready": true,
+      "totalSeconds": 395.7,
+      "stages": [
+        {
+          "stage": "find",
+          "ok": true,
+          "seconds": 127.4
+        },
+        {
+          "stage": "config",
+          "ok": true,
+          "seconds": 0.0,
+          "path": "config/course-geometry/royal-new-kent-v1.json"
+        },
+        {
+          "stage": "import",
+          "ok": true,
+          "seconds": 111.4
+        },
+        {
+          "stage": "osm",
+          "ok": true,
+          "seconds": 43.0
+        },
+        {
+          "stage": "dem",
+          "ok": true,
+          "seconds": 7.2
+        },
+        {
+          "stage": "lidar",
+          "ok": true,
+          "seconds": 44.9
+        },
+        {
+          "stage": "trees",
+          "ok": true,
+          "seconds": 32.7
+        },
+        {
+          "stage": "enrich",
+          "ok": true,
+          "seconds": 29.2
+        }
+      ]
+    }
+  ],
+  "setupSeconds": 62
+}

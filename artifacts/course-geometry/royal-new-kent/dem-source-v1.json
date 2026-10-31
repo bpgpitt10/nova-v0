@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -8575000.962,
+    4504349.631,
+    -8571751.693,
+    4506656.26
+  ],
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-8575000.962%2C4504349.631%2C-8571751.693%2C4506656.260&bboxSR=3857&imageSR=3857&size=3250%2C2307&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-10-31T02:05:11.148783Z",
+  "height": 2307,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 3250
+}

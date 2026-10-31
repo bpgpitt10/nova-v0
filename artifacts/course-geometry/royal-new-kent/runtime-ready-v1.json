@@ -1,0 +1,21 @@
+{
+  "completedAt": "2026-10-31T02:05:17.115244Z",
+  "configPath": "config/course-geometry/royal-new-kent-v1.json",
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "courseName": "Royal New Kent Golf Club",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Royal New Kent Golf Club"
+  ],
+  "location": "Providence Forge, VA",
+  "packagePath": "public/course-geometry/royal-new-kent/course-v1.json",
+  "packageSha256": "eda50a3882049886e3e869d7b90e942f0f0649dcedf60f6b7578209221a7f623",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "royal-new-kent",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/royal-new-kent/validation-v1.json"
+}

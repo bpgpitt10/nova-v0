@@ -1,0 +1,928 @@
+=== [valhalla:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex valhalla --lat 38.247 --lon -85.484 --radius-m 10000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model
+[{"type": "way", "id": 59549989, "name": "Oxmoor Country Club", "areaHa": 72.3, "nameMatch": false}, {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1, "nameMatch": true}, {"type": "way", "id": 59991180, "name": "Charlie Vettner Golf Course", "areaHa": 70.2, "nameMatch": false}, {"type": "way", "id": 60413779, "name": "Midland Trail Golf Club", "areaHa": 58.4, "nameMatch": false}, {"type": "way", "id": 61188999, "name": "Long Run Golf Course", "areaHa": 62.5, "nameMatch": false}, {"type": "way", "id": 220489681, "name": "Hurstbourne Country Club", "areaHa": 85.9, "nameMatch": false}, {"type": "way", "id": 236728542, "name": "Mini-golf Course", "areaHa": 0.3, "nameMatch": false}, {"type": "way", "id": 242210673, "name": "Owl Creek Country Club", "areaHa": 21.6, "nameMatch": false}, {"type": "way", "id": 339612048, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339612816, "name": "", "areaHa": 40.2, "nameMatch": false}, {"type": "way", "id": 339613844, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339613845, "name": "Persimmon Ridge Golf Club", "areaHa": 38.8, "nameMatch": false}, {"type": "way", "id": 1206007378, "name": "Polo Fields Golf and Country Club", "areaHa": 63.5, "nameMatch": false}, {"type": "relation", "id": 20433393, "name": "Lake Forest Country Club", "areaHa": 67.1, "nameMatch": false}]
+grew bbox with 10934 vertices from nearby golf features
+{"bboxLonLat": [-85.48442063850435, 38.227009225149274, -85.45940556149564, 38.257151774850726], "crs": "EPSG:26916", "osm": {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1}} {"name": "KY_FullState", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "count": 448685375365, "year": 0}
+=== [valhalla:find] rc=0 seconds=79.1
+=== [valhalla:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/valhalla-v1.json --slug valhalla --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 1 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json
+{
+  "course": "Valhalla Golf Club",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 307,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 66,
+    "golf=cartpath": 51,
+    "golf=fairway": 92,
+    "golf=green": 21,
+    "golf=hole": 18,
+    "golf=rough": 31,
+    "golf=tee": 12,
+    "golf=water_hazard": 12,
+    "landuse=grass": 153,
+    "natural=sand": 66,
+    "natural=water": 15
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-85.48139790,38.23572560,-85.46052120,38.24943040",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 66,
+    "golf=cartpath": 51,
+    "golf=fairway": 92,
+    "golf=green": 21,
+    "golf=hole": 18,
+    "golf=rough": 31,
+    "golf=tee": 12,
+    "golf=water_hazard": 12,
+    "landuse=grass": 153,
+    "natural=sand": 66,
+    "natural=water": 16
+  },
+  "rawIncludedFeatures": 307,
+  "rawMapElements": 15185,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/59737644/full"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,20.4,95.7,85.7,1.0,forward,21.3,181.5
+2,0.0,479.4,125.4,4.1,forward,4.1,604.7
+3,526.2,574.2,46.9,1.4,forward,527.6,621.2
+4,560.9,365.5,90.4,0.8,reverse,561.7,455.9
+5,280.4,404.6,69.9,3.8,forward,284.3,474.4
+6,469.7,145.1,98.6,2.2,reverse,471.9,243.7
+7,79.5,312.9,101.6,0.5,forward,80.0,414.4
+8,271.7,113.6,58.1,2.3,reverse,274.0,171.7
+9,15.1,152.0,129.4,3.0,forward,18.1,281.4
+10,34.0,69.9,93.3,1.9,forward,35.8,163.3
+11,0.0,146.0,124.8,0.9,forward,0.9,270.8
+12,142.6,68.5,93.9,0.3,forward,143.0,162.4
+13,0.0,266.1,75.6,2.4,forward,2.4,341.7
+14,327.3,360.6,64.2,1.3,forward,328.6,424.8
+15,368.6,126.5,47.2,2.4,reverse,371.0,173.8
+16,163.7,422.4,124.2,1.1,forward,164.8,546.6
+17,376.4,483.9,141.5,2.1,forward,378.5,625.4
+18,449.6,50.4,99.9,5.4,reverse,455.0,150.4
+
+TEE OWNERSHIP H1 targetGreenOsmId=737947906
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+296620287,20.4,449.2,20.4,1,20.4
+296620286,41.2,483.4,41.2,1,41.2
+737960433,250.2,439.5,228.3,13,0.0
+737960432,246.9,452.4,231.2,13,6.7
+737960434,263.0,469.3,249.8,13,0.0
+737960435,286.4,507.7,280.6,13,9.2
+296607279,325.2,700.2,325.2,7,33.4
+
+TEE OWNERSHIP H9 targetGreenOsmId=737947913
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+296607300,15.1,371.5,0.9,9,0.9
+737960423,108.7,404.5,108.7,2,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=737956437
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+813738033,0.0,193.7,0.0,11,0.0
+737956435,34.2,164.1,0.7,11,0.7
+1114965942,58.7,149.3,17.7,11,17.7
+
+TEE OWNERSHIP H13 targetGreenOsmId=737956439
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+737960433,0.0,330.6,0.0,13,0.0
+737960434,21.2,303.7,0.0,13,0.0
+737960432,9.4,324.8,6.7,13,6.7
+737960435,63.4,270.2,9.2,13,9.2
+296620287,146.4,486.9,146.4,1,20.4
+296620286,168.3,496.8,168.3,1,41.2
+
+TEE OWNERSHIP H15 targetGreenOsmId=737956447
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1114965942,441.2,146.3,141.9,11,17.7
+737960435,368.6,723.6,368.6,13,9.2
+737960434,388.5,728.1,388.5,13,0.0
+737960433,409.6,733.1,409.6,13,0.0
+737960432,411.6,741.7,411.6,13,6.7
+
+TEE OWNERSHIP H16 targetGreenOsmId=737956448
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+737956435,170.8,439.6,156.0,11,0.7
+813738033,163.7,468.4,158.6,11,0.0
+1114965942,202.0,425.9,178.5,11,17.7
+
+TEE OWNERSHIP H17 targetGreenOsmId=737956449
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1114965942,376.4,777.2,376.4,11,17.7
+737956435,378.6,792.3,378.6,11,0.7
+813738033,396.5,821.7,396.5,11,0.0
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Valhalla Golf Club",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 18681186,
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "exportResolutionMeters": 1.0,
+  "height": 1862,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 2331
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9515790.949%2C4612903.789%2C-9513460.127%2C4614765.615&bboxSR=3857&imageSR=3857&size=2331%2C1862&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W087_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W087_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 188347.6,
+      "knownAreaSqYd": 34077.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 19913.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 161714.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 217641.8,
+      "knownAreaSqYd": 33420.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 172706.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 66105.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 94381.2,
+      "knownAreaSqYd": 15009.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 54623.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 31954.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 147534.2,
+      "knownAreaSqYd": 22493.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 53145.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 77562.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 188946.4,
+      "knownAreaSqYd": 32614.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 32476.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 118381.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 211188.6,
+      "knownAreaSqYd": 33607.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 90238.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 86528.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 253268.6,
+      "knownAreaSqYd": 62396.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 38186.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 201456.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 2472.6
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 85515.2,
+      "knownAreaSqYd": 8375.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 27200.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 51735.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 166711.6,
+      "knownAreaSqYd": 19389.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 38238.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 97718.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 199681.2,
+      "knownAreaSqYd": 71357.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 29925.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 80056.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 94660.8,
+      "knownAreaSqYd": 10529.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 21513.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 62590.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 190311.5,
+      "knownAreaSqYd": 72824.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 11552.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 101715.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 148674.8,
+      "knownAreaSqYd": 19163.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 16925.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 123356.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 94547.9,
+      "knownAreaSqYd": 8817.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 21278.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 72802.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 158408.4,
+      "knownAreaSqYd": 27238.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 25365.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 114440.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 187836.9,
+      "knownAreaSqYd": 51523.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 50918.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 84479.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 168924.9,
+      "knownAreaSqYd": 18918.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 22573.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 147718.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 220280.3,
+      "knownAreaSqYd": 33459.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 11,
+          "areaSqYd": 25919.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 158126.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/valhalla/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:260: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-detail-v1.json (103,963 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 531,
+      "validOnGreenNodes": 531,
+      "greenCoverage": 1.0,
+      "localFitCount": 531,
+      "trustedLocalFitCount": 531,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.032,
+      "localRmsP95Ft": 0.042,
+      "maxTrustedSlopePercent": 7.0
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 528,
+      "validOnGreenNodes": 528,
+      "greenCoverage": 1.0,
+      "localFitCount": 528,
+      "trustedLocalFitCount": 528,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.062,
+      "maxTrustedSlopePercent": 10.0
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 605,
+      "validOnGreenNodes": 605,
+      "greenCoverage": 1.0,
+      "localFitCount": 605,
+      "trustedLocalFitCount": 597,
+      "trustedLocalFitRatio": 0.9868,
+      "localRmsP50Ft": 0.11,
+      "localRmsP95Ft": 0.284,
+      "maxTrustedSlopePercent": 51.1
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 535,
+      "validOnGreenNodes": 535,
+      "greenCoverage": 1.0,
+      "localFitCount": 535,
+      "trustedLocalFitCount": 535,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.12,
+      "maxTrustedSlopePercent": 17.8
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 651,
+      "validOnGreenNodes": 651,
+      "greenCoverage": 1.0,
+      "localFitCount": 651,
+      "trustedLocalFitCount": 651,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.037,
+      "localRmsP95Ft": 0.066,
+      "maxTrustedSlopePercent": 10.1
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 675,
+      "validOnGreenNodes": 675,
+      "greenCoverage": 1.0,
+      "localFitCount": 675,
+      "trustedLocalFitCount": 675,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.071,
+      "localRmsP95Ft": 0.206,
+      "maxTrustedSlopePercent": 36.1
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 556,
+      "validOnGreenNodes": 556,
+      "greenCoverage": 1.0,
+      "localFitCount": 556,
+      "trustedLocalFitCount": 556,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.092,
+      "maxTrustedSlopePercent": 7.0
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 592,
+      "validOnGreenNodes": 592,
+      "greenCoverage": 1.0,
+      "localFitCount": 592,
+      "trustedLocalFitCount": 592,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.078,
+      "maxTrustedSlopePercent": 10.4
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 624,
+      "validOnGreenNodes": 624,
+      "greenCoverage": 1.0,
+      "localFitCount": 624,
+      "trustedLocalFitCount": 624,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.082,
+      "localRmsP95Ft": 0.147,
+      "maxTrustedSlopePercent": 16.2
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 505,
+      "validOnGreenNodes": 505,
+      "greenCoverage": 1.0,
+      "localFitCount": 505,
+      "trustedLocalFitCount": 505,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.079,
+      "maxTrustedSlopePercent": 12.4
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 491,
+      "validOnGreenNodes": 491,
+      "greenCoverage": 1.0,
+      "localFitCount": 491,
+      "trustedLocalFitCount": 491,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.056,
+      "maxTrustedSlopePercent": 6.2
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 499,
+      "validOnGreenNodes": 499,
+      "greenCoverage": 1.0,
+      "localFitCount": 499,
+      "trustedLocalFitCount": 499,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.055,
+      "maxTrustedSlopePercent": 15.7
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 594,
+      "validOnGreenNodes": 594,
+      "greenCoverage": 1.0,
+      "localFitCount": 594,
+      "trustedLocalFitCount": 594,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.064,
+      "localRmsP95Ft": 0.126,
+      "maxTrustedSlopePercent": 15.7
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 516,
+      "validOnGreenNodes": 516,
+      "greenCoverage": 1.0,
+      "localFitCount": 516,
+      "trustedLocalFitCount": 516,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.056,
+      "maxTrustedSlopePercent": 12.7
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 516,
+      "validOnGreenNodes": 516,
+      "greenCoverage": 1.0,
+      "localFitCount": 516,
+      "trustedLocalFitCount": 516,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.077,
+      "maxTrustedSlopePercent": 18.0
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 713,
+      "validOnGreenNodes": 713,
+      "greenCoverage": 1.0,
+      "localFitCount": 713,
+      "trustedLocalFitCount": 713,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.117,
+      "localRmsP95Ft": 0.279,
+      "maxTrustedSlopePercent": 29.8
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 510,
+      "validOnGreenNodes": 510,
+      "greenCoverage": 1.0,
+      "localFitCount": 510,
+      "trustedLocalFitCount": 510,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.046,
+      "maxTrustedSlopePercent": 10.4
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 684,
+      "validOnGreenNodes": 684,
+      "greenCoverage": 1.0,
+      "localFitCount": 684,
+      "trustedLocalFitCount": 684,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.082,
+      "localRmsP95Ft": 0.168,
+      "maxTrustedSlopePercent": 29.4
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "greenDetailSha256": "89841ce820a9d16674de8f76f14e474fd7f2e6fb9caa4d542aa933a8b52269d6",
+  "packageSha256": "df3de8545c1cc226f46206be0385b0b4fbcbb4a2a04feb31f3dc92d5cf51ca19",
+  "snapshotSha256": "2ef236e1b15e2f75591a871287a443ed5e302c683fba450012e50065338e58a1",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json
+file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:29
+  throw new Error(`[course-import-contract] ${message}`)
+        ^
+
+Error: [course-import-contract] valhalla-golf-club-louisville-ky H3: no tee surface geometry
+    at fail (file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:29:9)
+    at requireValue (file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:32:19)
+    at file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:88:3
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.4
+Traceback (most recent call last):
+  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 398, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 309, in main
+    run_node(
+  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 53, in run_node
+    subprocess.run(command, cwd=ROOT, check=True)
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['node', 'tools/validate-course-import-contract.mjs', '--package', '/home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json', '--config', '/home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json']' returned non-zero exit status 1.
+=== [valhalla:import] rc=1 seconds=18.2

@@ -1,0 +1,1098 @@
+=== [royal-new-kent:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex royal new kent|new kent --lat 37.45 --lon -77.05 --radius-m 15000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model
+[{"type": "way", "id": 498143941, "name": "Viniterra Golf Course", "areaHa": 257.3, "nameMatch": false}, {"type": "way", "id": 1442115411, "name": "Brickshire Golf Club", "areaHa": 79.5, "nameMatch": false}, {"type": "way", "id": 1442885672, "name": "Brickshire Golf Club", "areaHa": 52.8, "nameMatch": false}, {"type": "relation", "id": 6209148, "name": "Royal New Kent Golf Club", "areaHa": 148.7, "nameMatch": true}, {"type": "relation", "id": 13460148, "name": "The Brookwoods Golf Club", "areaHa": 39.8, "nameMatch": false}]
+grew bbox with 13448 vertices from nearby golf features
+{"bboxLonLat": [-77.03177758144433, 37.46517202514927, -76.99186471855568, 37.485273874850726], "crs": "EPSG:26918", "osm": {"type": "relation", "id": 6209148, "name": "Royal New Kent Golf Club", "areaHa": 148.7}} {"name": "VA_FEMA_MiddleCounties_2011", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json", "count": 11643221461, "year": 2011}
+=== [royal-new-kent:find] rc=0 seconds=127.4
+=== [royal-new-kent:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/royal-new-kent-v1.json --slug royal-new-kent --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 2 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/royal-new-kent-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/osm-snapshot.json
+{
+  "course": "Royal New Kent Golf Club",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 366,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 112,
+    "golf=cartpath": 27,
+    "golf=clubhouse": 1,
+    "golf=fairway": 39,
+    "golf=green": 20,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 2,
+    "golf=path": 5,
+    "golf=rough": 52,
+    "golf=tee": 89,
+    "landuse=grass": 106,
+    "natural=sand": 112,
+    "natural=water": 2
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-77.03067970,37.46592900,-77.00129480,37.48356200",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 112,
+    "golf=cartpath": 27,
+    "golf=clubhouse": 1,
+    "golf=fairway": 39,
+    "golf=green": 20,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 2,
+    "golf=path": 5,
+    "golf=rough": 53,
+    "golf=tee": 89,
+    "landuse=grass": 107,
+    "natural=sand": 112,
+    "natural=water": 4
+  },
+  "rawIncludedFeatures": 368,
+  "rawMapElements": 18434,
+  "sourceEndpoint": "https://overpass-api.de/api/interpreter"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,101.3,66.7,3.2,forward,3.2,168.0
+2,0.0,307.0,109.0,4.8,forward,4.8,416.0
+3,0.0,30.0,175.8,23.0,forward,23.0,205.9
+4,0.0,52.5,54.8,5.8,forward,5.8,107.3
+5,0.0,327.4,64.2,6.0,forward,6.0,391.6
+6,0.0,139.0,331.0,13.6,forward,13.6,470.0
+7,0.0,70.2,140.1,12.5,forward,12.5,210.2
+8,0.0,213.2,79.3,8.1,forward,8.1,292.5
+9,0.0,85.5,249.1,11.8,forward,11.8,334.6
+10,0.0,108.4,76.3,10.3,forward,10.3,184.7
+11,0.0,46.1,169.0,15.1,forward,15.1,215.2
+12,0.0,121.3,193.1,24.7,forward,24.7,314.3
+13,0.0,212.4,69.8,14.0,forward,14.0,282.2
+14,0.0,43.1,235.7,5.1,forward,5.1,278.8
+15,12.0,28.9,74.7,8.6,forward,20.6,103.6
+16,0.0,219.5,44.5,8.3,forward,8.3,264.0
+17,0.0,95.3,259.6,13.5,forward,13.5,354.9
+18,0.0,84.1,93.9,12.4,forward,12.4,178.0
+
+TEE OWNERSHIP H1 targetGreenOsmId=809348980
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1022466287,0.0,326.7,0.0,1,0.0
+1022466286,14.0,309.8,0.4,1,0.4
+1022466285,31.1,294.1,0.7,1,0.7
+1022466284,45.3,279.4,1.6,1,1.6
+987017775,180.3,208.6,49.9,1,49.9
+1127372221,303.6,115.4,101.3,2,0.0
+1127372218,318.9,134.1,120.8,2,0.4
+1126822970,125.7,414.5,125.7,10,0.0
+1126822971,138.8,420.3,138.8,10,1.2
+809307188,149.9,421.7,149.9,10,0.0
+1127372219,329.5,159.3,150.6,2,6.0
+1127372220,343.5,180.4,170.6,2,8.2
+1126822972,179.1,422.7,179.1,10,3.3
+1127376238,278.4,209.4,202.9,9,87.2
+1126822969,374.9,340.4,331.9,9,28.2
+1126822968,405.3,363.1,353.6,9,30.1
+1126822967,434.7,390.2,377.4,9,28.0
+1127364512,425.5,691.7,425.5,18,45.7
+
+TEE OWNERSHIP H9 targetGreenOsmId=809347860
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1126822966,0.0,377.7,0.0,9,0.0
+1126822967,37.4,352.2,28.0,9,28.0
+1126822969,97.6,290.7,28.2,9,28.2
+1126822968,66.4,321.2,30.1,9,30.1
+1127376238,238.5,222.5,87.2,9,87.2
+1022466284,449.1,124.5,114.9,1,1.6
+1127372220,251.2,298.6,159.2,2,8.2
+1127372219,273.5,292.7,166.1,2,6.0
+1127372218,291.0,291.3,171.4,2,0.4
+1127372221,312.7,284.1,172.7,2,0.0
+1126822207,370.1,747.9,370.1,8,28.7
+1126822205,398.3,752.2,398.3,8,8.4
+1126822206,398.8,755.7,398.8,8,20.8
+1127376227,406.1,667.7,406.1,7,14.5
+1126822204,410.6,749.3,410.6,8,0.0
+809354546,421.9,679.6,421.9,7,0.3
+809354547,440.8,696.4,440.8,7,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=734615815
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1127362855,0.0,399.9,0.0,11,0.0
+1127362857,38.0,356.6,0.5,11,0.5
+1127362856,15.8,378.8,0.6,11,0.6
+1127362858,61.7,333.3,0.8,11,0.8
+1127362866,382.8,76.2,46.1,13,0.0
+1127362867,377.4,95.7,73.3,13,4.8
+1127362868,371.4,108.1,86.2,13,8.5
+1127362869,356.7,150.4,129.8,13,22.0
+1127384595,333.5,208.6,190.7,13,30.4
+1127364504,212.8,612.5,212.8,17,32.9
+1127364503,233.5,623.8,233.5,17,28.7
+1127364502,270.9,633.2,270.9,17,0.5
+1127364501,290.4,643.1,290.4,17,0.8
+1127364507,294.0,536.0,294.0,18,0.0
+1127364500,305.8,649.9,305.8,17,0.0
+1127364508,318.7,507.9,315.5,18,19.9
+1127364509,335.8,539.2,335.1,18,0.4
+1127364510,357.9,541.0,355.3,18,0.5
+
+TEE OWNERSHIP H13 targetGreenOsmId=783684958
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1127362866,0.0,357.6,0.0,13,0.0
+1127362867,18.7,341.4,4.8,13,4.8
+1127362868,31.7,328.9,8.5,13,8.5
+1127362869,75.9,291.5,22.0,13,22.0
+1127384595,138.5,235.1,30.4,13,30.4
+1127362864,160.6,527.8,160.6,12,17.1
+1127362863,176.0,552.7,176.0,12,5.0
+1127362862,178.8,542.5,178.9,12,28.4
+1127362861,211.6,575.5,211.6,12,8.6
+1127362855,379.2,223.7,212.4,11,0.0
+1127362856,361.4,221.8,213.0,11,0.6
+1127362858,316.7,219.5,214.3,11,0.8
+1127362857,338.6,223.0,215.6,11,0.5
+1127362860,247.0,599.6,247.0,12,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=1127363937
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1127363934,82.8,159.7,0.0,15,0.0
+1127363933,56.9,186.3,3.3,15,3.3
+1127363928,12.0,236.2,3.7,15,3.7
+1127363931,46.5,207.6,25.3,15,25.3
+809279088,269.2,43.4,28.9,16,0.0
+809279089,269.9,57.1,40.6,16,4.0
+809279090,275.5,74.3,57.5,16,1.1
+1127363935,105.2,166.4,59.1,15,59.1
+1127363932,81.3,198.2,63.7,15,63.7
+809279091,301.4,110.8,92.4,16,11.6
+809275002,291.7,318.0,269.9,14,26.3
+809274999,347.0,362.6,326.6,14,17.0
+809275000,370.9,380.4,346.8,14,16.7
+809275001,384.4,377.3,349.1,14,0.0
+
+TEE OWNERSHIP H16 targetGreenOsmId=809275004
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+809279088,0.0,450.4,0.0,16,0.0
+809279090,29.9,414.7,1.1,16,1.1
+809279089,12.6,433.5,4.0,16,4.0
+809279091,60.0,379.5,11.6,16,11.6
+809275001,346.4,237.8,102.4,14,0.0
+809275000,354.6,267.0,126.9,14,16.7
+809274999,339.5,283.1,127.1,14,17.0
+809275002,301.1,326.6,151.6,14,26.3
+1127363934,187.5,543.4,187.5,15,0.0
+1127363935,201.3,599.0,201.3,15,59.1
+1127363933,215.3,566.1,215.4,15,3.3
+1127363932,227.7,618.8,227.7,15,63.7
+1127363931,242.6,606.4,242.6,15,25.3
+1127363928,262.4,580.1,262.4,15,3.7
+
+TEE OWNERSHIP H17 targetGreenOsmId=1127364505
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1127364500,0.0,521.4,0.0,17,0.0
+1127364502,42.4,477.2,0.5,17,0.5
+1127364501,17.4,500.7,0.8,17,0.8
+1127364503,120.3,413.2,28.7,17,28.7
+1127364504,167.1,373.8,32.9,17,32.9
+1127362855,301.5,233.1,147.7,11,0.0
+1127362856,318.3,229.8,169.4,11,0.6
+1127362857,335.4,227.3,189.6,11,0.5
+809275001,201.7,699.4,201.7,14,0.0
+809275000,201.8,679.9,201.8,14,16.7
+1127362858,352.4,234.2,203.8,11,0.8
+809274999,220.8,688.6,220.8,14,17.0
+809275002,273.0,716.0,273.0,14,26.3
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/royal-new-kent-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Royal New Kent Golf Club",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 32379882,
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "exportResolutionMeters": 1.0,
+  "height": 2307,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 3250
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-8575000.962%2C4504349.631%2C-8571751.693%2C4506656.260&bboxSR=3857&imageSR=3857&size=3250%2C2307&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W078_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W078_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 174007.3,
+      "knownAreaSqYd": 23183.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 49396.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 106284.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 247957.9,
+      "knownAreaSqYd": 36571.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 122468.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 92828.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 92663.0,
+      "knownAreaSqYd": 11077.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 47699.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 38329.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 176439.6,
+      "knownAreaSqYd": 28167.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 59600.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 113142.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 237042.0,
+      "knownAreaSqYd": 41507.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 146792.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 47269.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 154851.6,
+      "knownAreaSqYd": 29305.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 78108.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 45931.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 101773.0,
+      "knownAreaSqYd": 8733.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 57037.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 36922.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 187786.5,
+      "knownAreaSqYd": 21194.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 57548.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 126356.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 174233.0,
+      "knownAreaSqYd": 34451.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 47288.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 96064.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 172672.7,
+      "knownAreaSqYd": 60644.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 40424.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 14,
+          "areaSqYd": 64977.2
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 158.0
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 167794.2,
+      "knownAreaSqYd": 32296.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 56839.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 17,
+          "areaSqYd": 37123.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 106849.6,
+      "knownAreaSqYd": 12035.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 16,
+          "areaSqYd": 30033.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 31217.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 161058.8,
+      "knownAreaSqYd": 31872.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 49121.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 14,
+          "areaSqYd": 45753.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 129749.4,
+      "knownAreaSqYd": 16636.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 13540.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 102645.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 108973.7,
+      "knownAreaSqYd": 13659.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 13807.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 72654.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 200926.0,
+      "knownAreaSqYd": 28991.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 50530.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 9,
+          "areaSqYd": 101018.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 237216.0,
+      "knownAreaSqYd": 43516.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 121198.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 12,
+          "areaSqYd": 43004.9
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 81.1
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 177899.7,
+      "knownAreaSqYd": 59598.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 54689.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 15,
+          "areaSqYd": 48595.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 122.2
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/royal-new-kent/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:260: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/green-detail-v1.json (129,397 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 824,
+      "validOnGreenNodes": 824,
+      "greenCoverage": 1.0,
+      "localFitCount": 824,
+      "trustedLocalFitCount": 782,
+      "trustedLocalFitRatio": 0.949,
+      "localRmsP50Ft": 0.158,
+      "localRmsP95Ft": 0.35,
+      "maxTrustedSlopePercent": 41.0
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 747,
+      "validOnGreenNodes": 747,
+      "greenCoverage": 1.0,
+      "localFitCount": 747,
+      "trustedLocalFitCount": 681,
+      "trustedLocalFitRatio": 0.9116,
+      "localRmsP50Ft": 0.151,
+      "localRmsP95Ft": 0.402,
+      "maxTrustedSlopePercent": 42.4
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 907,
+      "validOnGreenNodes": 907,
+      "greenCoverage": 1.0,
+      "localFitCount": 907,
+      "trustedLocalFitCount": 907,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.1,
+      "maxTrustedSlopePercent": 27.6
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 589,
+      "validOnGreenNodes": 589,
+      "greenCoverage": 1.0,
+      "localFitCount": 589,
+      "trustedLocalFitCount": 532,
+      "trustedLocalFitRatio": 0.9032,
+      "localRmsP50Ft": 0.179,
+      "localRmsP95Ft": 0.406,
+      "maxTrustedSlopePercent": 54.8
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 1127,
+      "validOnGreenNodes": 1127,
+      "greenCoverage": 1.0,
+      "localFitCount": 1127,
+      "trustedLocalFitCount": 1127,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.176,
+      "maxTrustedSlopePercent": 19.5
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 674,
+      "validOnGreenNodes": 674,
+      "greenCoverage": 1.0,
+      "localFitCount": 674,
+      "trustedLocalFitCount": 674,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.071,
+      "maxTrustedSlopePercent": 22.4
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 535,
+      "validOnGreenNodes": 535,
+      "greenCoverage": 1.0,
+      "localFitCount": 535,
+      "trustedLocalFitCount": 451,
+      "trustedLocalFitRatio": 0.843,
+      "localRmsP50Ft": 0.115,
+      "localRmsP95Ft": 0.526,
+      "maxTrustedSlopePercent": 39.7
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 616,
+      "validOnGreenNodes": 616,
+      "greenCoverage": 1.0,
+      "localFitCount": 616,
+      "trustedLocalFitCount": 511,
+      "trustedLocalFitRatio": 0.8295,
+      "localRmsP50Ft": 0.222,
+      "localRmsP95Ft": 0.41,
+      "maxTrustedSlopePercent": 62.7
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 945,
+      "validOnGreenNodes": 945,
+      "greenCoverage": 1.0,
+      "localFitCount": 945,
+      "trustedLocalFitCount": 945,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.067,
+      "localRmsP95Ft": 0.226,
+      "maxTrustedSlopePercent": 28.9
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 796,
+      "validOnGreenNodes": 796,
+      "greenCoverage": 1.0,
+      "localFitCount": 796,
+      "trustedLocalFitCount": 796,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.097,
+      "localRmsP95Ft": 0.186,
+      "maxTrustedSlopePercent": 19.9
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 1191,
+      "validOnGreenNodes": 1191,
+      "greenCoverage": 1.0,
+      "localFitCount": 1191,
+      "trustedLocalFitCount": 1191,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.081,
+      "maxTrustedSlopePercent": 22.9
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 917,
+      "validOnGreenNodes": 917,
+      "greenCoverage": 1.0,
+      "localFitCount": 917,
+      "trustedLocalFitCount": 900,
+      "trustedLocalFitRatio": 0.9815,
+      "localRmsP50Ft": 0.073,
+      "localRmsP95Ft": 0.223,
+      "maxTrustedSlopePercent": 40.6
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 671,
+      "validOnGreenNodes": 671,
+      "greenCoverage": 1.0,
+      "localFitCount": 671,
+      "trustedLocalFitCount": 671,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.07,
+      "localRmsP95Ft": 0.231,
+      "maxTrustedSlopePercent": 29.3
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 495,
+      "validOnGreenNodes": 495,
+      "greenCoverage": 1.0,
+      "localFitCount": 495,
+      "trustedLocalFitCount": 474,
+      "trustedLocalFitRatio": 0.9576,
+      "localRmsP50Ft": 0.108,
+      "localRmsP95Ft": 0.335,
+      "maxTrustedSlopePercent": 54.3
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 1234,
+      "validOnGreenNodes": 1234,
+      "greenCoverage": 1.0,
+      "localFitCount": 1234,
+      "trustedLocalFitCount": 1234,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.063,
+      "localRmsP95Ft": 0.16,
+      "maxTrustedSlopePercent": 43.6
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 715,
+      "validOnGreenNodes": 715,
+      "greenCoverage": 1.0,
+      "localFitCount": 715,
+      "trustedLocalFitCount": 715,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.094,
+      "maxTrustedSlopePercent": 18.6
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 637,
+      "validOnGreenNodes": 637,
+      "greenCoverage": 1.0,
+      "localFitCount": 637,
+      "trustedLocalFitCount": 637,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.056,
+      "localRmsP95Ft": 0.145,
+      "maxTrustedSlopePercent": 17.5
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 712,
+      "validOnGreenNodes": 712,
+      "greenCoverage": 1.0,
+      "localFitCount": 712,
+      "trustedLocalFitCount": 712,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.076,
+      "localRmsP95Ft": 0.196,
+      "maxTrustedSlopePercent": 33.2
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/royal-new-kent-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/royal-new-kent/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "greenDetailSha256": "5fdbd7bafcd71dd7586b8c5a3c155c9dbb4ee64adfc7084e72a9db9fd147ba8b",
+  "packageSha256": "eda50a3882049886e3e869d7b90e942f0f0649dcedf60f6b7578209221a7f623",
+  "snapshotSha256": "ced61014efc44dff8716be45a7ecde83d0d9c37a1f4b48111ec681b936b8e108",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/royal-new-kent-v1.json
+[course-import-contract] royal-new-kent-golf-club-providence-forge-va: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 4 canonical tee set(s): Tee 1 (Back), Tee 2, Tee 3, Tee 4 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 1 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 3 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course royal-new-kent-golf-club-providence-forge-va
+[runtime-smoke] Royal New Kent Golf Club: 4 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 4 (Front), Tee 3, Tee 2, Tee 1 (Back).
+[runtime-smoke] Royal New Kent Golf Club runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                     │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Royal New Kent Golf Club' │ 1    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 133.9          │ 92.5              │ -41.4            │
+│ 1       │ 'Royal New Kent Golf Club' │ 2    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 110.3          │ 75.2              │ -35.1            │
+│ 2       │ 'Royal New Kent Golf Club' │ 3    │ 4        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 94.8           │ 91.5              │ -3.3             │
+│ 3       │ 'Royal New Kent Golf Club' │ 4    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 106.3          │ 107.3             │ 1                │
+│ 4       │ 'Royal New Kent Golf Club' │ 5    │ 5        │ 2             │ 5             │ 4               │ 1                      │ 10                │ 133            │ 112.2             │ -20.8            │
+│ 5       │ 'Royal New Kent Golf Club' │ 6    │ 5        │ 2             │ 7             │ 4               │ 1                      │ 10                │ 103.9          │ 115.8             │ 11.9             │
+│ 6       │ 'Royal New Kent Golf Club' │ 7    │ 5        │ 2             │ 3             │ 4               │ 1                      │ 10                │ 134            │ 102.4             │ -31.6            │
+│ 7       │ 'Royal New Kent Golf Club' │ 8    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 117.2          │ 103.5             │ -13.7            │
+│ 8       │ 'Royal New Kent Golf Club' │ 9    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 111.6          │ 88.6              │ -23              │
+│ 9       │ 'Royal New Kent Golf Club' │ 10   │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 127.5          │ 85.2              │ -42.3            │
+│ 10      │ 'Royal New Kent Golf Club' │ 11   │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 114.5          │ 114.4             │ -0.1             │
+│ 11      │ 'Royal New Kent Golf Club' │ 12   │ 6        │ 2             │ 5             │ 4               │ 1                      │ 10                │ 123.2          │ 91.1              │ -32.1            │
+│ 12      │ 'Royal New Kent Golf Club' │ 13   │ 5        │ 2             │ 5             │ 4               │ 1                      │ 10                │ 133            │ 108.4             │ -24.6            │
+│ 13      │ 'Royal New Kent Golf Club' │ 14   │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 132.5          │ 100.6             │ -31.9            │
+│ 14      │ 'Royal New Kent Golf Club' │ 15   │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 137.5          │ 109               │ -28.5            │
+│ 15      │ 'Royal New Kent Golf Club' │ 16   │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 127.1          │ 100.7             │ -26.4            │
+│ 16      │ 'Royal New Kent Golf Club' │ 17   │ 6        │ 3             │ 5             │ 4               │ 1                      │ 10                │ 130.7          │ 110.8             │ -19.9            │
+│ 17      │ 'Royal New Kent Golf Club' │ 18   │ 6        │ 3             │ 5             │ 4               │ 1                      │ 10                │ 102.5          │ 97.4              │ -5.1             │
+└─────────┴────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] royal-new-kent-golf-club-providence-forge-va passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 3 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
+  "courseSlug": "royal-new-kent",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/royal-new-kent/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/royal-new-kent/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/royal-new-kent/validation-v1.json"
+}
+=== [royal-new-kent:import] rc=0 seconds=111.4
+=== [royal-new-kent:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=5111716 seconds=42.2
+{"elementsByType": {"node": 28073, "way": 1263, "relation": 43}, "taggedElements": 1686, "compressedBytes": 648040}
+=== [royal-new-kent:osm] rc=0 seconds=43.0
+=== [royal-new-kent:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/course-bbox.json --crs EPSG:26918 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=6 seconds=6.3 size=3579x2307
+{"width": 3579, "height": 2307, "pixel": 1.0, "validCells": 8256753, "elevMin": 12.287317276000977, "elevMax": 43.125911712646484}
+=== [royal-new-kent:dem] rc=0 seconds=7.2
+=== [royal-new-kent:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model
+nodes=675 pointsInIntersectingNodes=49747861 hierarchySeconds=2.0
+tiles 25/675 kept=892522 MB=21 seconds=4
+tiles 50/675 kept=2142112 MB=30 seconds=5
+tiles 75/675 kept=2774032 MB=35 seconds=6
+tiles 100/675 kept=3946947 MB=48 seconds=8
+tiles 125/675 kept=5567726 MB=57 seconds=9
+tiles 150/675 kept=6455137 MB=61 seconds=10
+tiles 175/675 kept=9160225 MB=75 seconds=12
+tiles 200/675 kept=10434888 MB=82 seconds=13
+tiles 225/675 kept=11139374 MB=85 seconds=14
+tiles 250/675 kept=12533363 MB=95 seconds=15
+tiles 275/675 kept=14231245 MB=107 seconds=17
+tiles 300/675 kept=16045197 MB=121 seconds=19
+tiles 325/675 kept=17347383 MB=128 seconds=20
+tiles 350/675 kept=18247900 MB=132 seconds=20
+tiles 375/675 kept=21589951 MB=149 seconds=23
+tiles 400/675 kept=22436085 MB=153 seconds=23
+tiles 425/675 kept=23194072 MB=157 seconds=24
+tiles 450/675 kept=25365760 MB=173 seconds=26
+tiles 475/675 kept=26212931 MB=180 seconds=27
+tiles 500/675 kept=28710672 MB=200 seconds=29
+tiles 525/675 kept=29450718 MB=204 seconds=30
+tiles 550/675 kept=30802667 MB=213 seconds=31
+tiles 575/675 kept=33141796 MB=228 seconds=32
+tiles 600/675 kept=33934275 MB=232 seconds=33
+tiles 625/675 kept=34780677 MB=236 seconds=34
+tiles 650/675 kept=36828935 MB=254 seconds=36
+tiles 675/675 kept=37828282 MB=262 seconds=37
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json", "eptSrs": "3857", "octreeNodesRead": 675, "downloadedMB": 262.0, "pointsKeptInBbox": 37828282, "pointsPerSquareMetre": 4.58, "firstReturnsPerSquareMetre": 2.81, "classificationHistogram": {"1": 19683770, "2": 13653531, "9": 10617, "10": 5851, "11": 4490289}, "chm": {"width": 3579, "height": 2307, "pixelMeters": 1.0, "cellsWithReturns": 7734020, "emptyCells": 522733, "cellsOver3m": 4378687, "cellsOver10m": 3227834, "p50": 6.489999999999981, "p95": 22.530000000000037, "max": 39.27999999999996}, "seconds": 44.7}
+=== [royal-new-kent:lidar] rc=0 seconds=44.9
+=== [royal-new-kent:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26918", "treeCount": 83420, "heightM": {"p10": 8.8, "p50": 17.5, "p90": 24.1, "max": 38.7}, "crownRadiusM": {"p10": 2.2, "p50": 3.8, "p90": 6.0}, "woodlandPolygons": 2079, "woodlandAreaHa": 381.47, "maskedCellsBuildingsAndPower": 224369, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 32.0}
+=== [royal-new-kent:trees] rc=0 seconds=32.7
+=== [royal-new-kent:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/royal-new-kent/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/royal-new-kent/course-v1-lidar.json
+{
+ "bytes": 1974218,
+ "originalBytes": 443099,
+ "holes": {
+  "woodsPolygons": 24,
+  "bunker": "1->4",
+  "water": "0->1",
+  "mapFeatures": {
+   "road": 6,
+   "cartpath": 19,
+   "building": 4,
+   "parking": 7
+  },
+  "terrainCells": 44160
+ },
+ "woodsTotal": 708
+}
+=== [royal-new-kent:enrich] rc=0 seconds=29.2
