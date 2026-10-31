@@ -777,18 +777,33 @@ export default function LiveCaddiePage() {
     const key = `${captureRoundId ?? 'round'}|${courseId}|${holeNumber}|${hudShotNumber}`
     if (triedShotHud.current.has(key)) return
     triedShotHud.current.add(key)
+    // GSPro may still be on the previous green, scorecard or flyover when the
+    // next tee or shot is detected, so retry a few times until wind reads.
+    const MAX_ATTEMPTS = 5
     let cancelled = false
-    let started = false
-    const timer = window.setTimeout(() => {
-      started = true
+    let done = false
+    let timer: number | null = null
+    const attempt = (n: number) => {
+      timer = null
       void readLooperCompanionObservations(45000)
-        .then(obs => { if (!cancelled) publishOneShotCompanionHud(obs) })
-        .catch(error => console.warn('[Live Caddie] Companion wind/lie read failed.', error))
-    }, hudShotNumber === 1 ? 500 : 3000)
+        .then(obs => {
+          if (cancelled) return
+          const published = publishOneShotCompanionHud(obs)
+          if (published.wind) done = true
+          else if (n < MAX_ATTEMPTS) timer = window.setTimeout(() => attempt(n + 1), 4000)
+          else done = true
+        })
+        .catch(error => {
+          console.warn('[Live Caddie] Companion wind/lie read failed.', error)
+          if (!cancelled && n < MAX_ATTEMPTS) timer = window.setTimeout(() => attempt(n + 1), 4000)
+        })
+    }
+    timer = window.setTimeout(() => attempt(1), hudShotNumber === 1 ? 2500 : 3000)
     return () => {
       cancelled = true
-      window.clearTimeout(timer)
-      if (!started) triedShotHud.current.delete(key)
+      if (timer != null) window.clearTimeout(timer)
+      // Interrupted before wind was read: allow the next render to try again.
+      if (!done) triedShotHud.current.delete(key)
     }
   }, [
     liveSnapshot?.holeNumber, liveSnapshot?.teePlacement, holeNumber, hudShotNumber,
