@@ -79,6 +79,9 @@ jobs:
       - name: Live map matches GSPro minimap orientation
         run: node tools/test-minimap-frame.mjs
 
+      - name: Map yardages (hazard reach/carry, green F/M/B)
+        run: node tools/test-map-yardages.mjs
+
       - name: Browser registration fit (new courses)
         run: node tools/test-native-registration-fit.mjs
 

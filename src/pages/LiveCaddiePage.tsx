@@ -41,6 +41,7 @@ import {
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { minimapFrame } from '../liveCaddie/minimapFrame'
+import { greenYardage, hazardYardages } from '../liveCaddie/mapYardages'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -326,13 +327,50 @@ function LiveCaddieMap({
   const offsetX = (viewSize - usedWidth) / 2
   const offsetY = (viewSize - usedHeight) / 2
 
-  const project = (point: CoursePointYds): [number, number] => {
-    const [x, y] = toView(point)
-    return [
-      offsetX + (x - displayBounds.minX) * scale,
-      viewSize - (offsetY + (y - displayBounds.minY) * scale),
-    ]
-  }
+  const projectView = ([x, y]: CoursePointYds): [number, number] => [
+    offsetX + (x - displayBounds.minX) * scale,
+    viewSize - (offsetY + (y - displayBounds.minY) * scale),
+  ]
+  const project = (point: CoursePointYds): [number, number] => projectView(toView(point))
+
+  // Yardage-book numbers: reach / carry for hazards in play on this shot, and
+  // front / middle / back of the green on approaches.
+  const yardages = useMemo(() => {
+    const aimView = toView(candidate?.aimPoint ?? strategyAimPoint ?? target)
+    const contours = candidate?.probabilityContours ?? []
+    const lateral = contours.reduce((m, c) => Math.max(m, c.lateralRadiusYds), 0)
+    const carry = contours.reduce((m, c) => Math.max(m, c.carryRadiusYds), 0)
+    const finish = candidate ? Math.hypot(...toView(candidate.meanLanding)) : Math.hypot(...aimView)
+    const hazards = viewHole.surfaces.flatMap((surface) =>
+      surface.kind === 'bunker' || surface.kind === 'water' || surface.kind === 'penalty'
+        ? [{ kind: surface.kind, polygons: surface.polygons }]
+        : [])
+    const labels = hazardYardages({
+      hazards,
+      aim: aimView,
+      corridorHalfWidthYds: candidate ? lateral + 5 : 20,
+      maxReachYds: finish + (candidate ? carry : 0) + 25,
+      bunkerMinCarryYds: finish - carry - 40,
+    })
+    const pinDistance = pinEstimate ? Math.hypot(...toView(pinEstimate)) : Number.POSITIVE_INFINITY
+    const green = pinDistance <= 300
+      ? greenYardage(viewHole.surfaces.filter((s) => s.kind === 'green').flatMap((s) => s.polygons))
+      : null
+    return { labels, green }
+  }, [toView, viewHole, candidate, strategyAimPoint, target, pinEstimate])
+
+  const placedYardages: { x: number; y: number }[] = []
+  const yardageLabels = yardages.labels.flatMap((label) => {
+    const [ax, ay] = projectView(label.anchor)
+    if (ax < 1 || ax > viewSize - 1 || ay < 1 || ay > viewSize - 1) return []
+    const leftward = label.side === 'left' ? ax > 14 : ax > viewSize - 16
+    const x = leftward ? ax - 1.4 : ax + 1.4
+    const y = Math.min(viewSize - 1.5, ay + 0.9)
+    if (placedYardages.some((p) => Math.abs(p.y - y) < 3.2 && Math.abs(p.x - x) < 14)) return []
+    placedYardages.push({ x, y })
+    const text = label.carryYds - label.reachYds >= 3 ? `${label.reachYds} / ${label.carryYds}` : `${label.reachYds}`
+    return [{ key: `${label.kind}-${label.reachYds}-${label.carryYds}`, kind: label.kind, x, y, leftward, text }]
+  })
 
   const ballSvg = project(ball)
   const targetSvg = project(target)
@@ -475,6 +513,12 @@ function LiveCaddieMap({
             <circle className="live-aim-marker" cx={strategyAimSvg[0]} cy={strategyAimSvg[1]} r="0.9" />
           </>
         ) : null}
+        {yardageLabels.map((label) => (
+          <text key={label.key} className={`live-map-yardage yardage-${label.kind}`}
+            x={label.x} y={label.y} textAnchor={label.leftward ? 'end' : 'start'}>
+            {label.text}
+          </text>
+        ))}
         {pinSvg ? <circle className="live-pin-marker" cx={pinSvg[0]} cy={pinSvg[1]} r="0.78" /> : null}
         {provisionalTeeRadiusYds != null ? (
           <circle cx={ballSvg[0]} cy={ballSvg[1]} r={provisionalTeeRadiusYds * scale}
@@ -483,6 +527,14 @@ function LiveCaddieMap({
         ) : null}
         <circle className="live-ball-marker" cx={ballSvg[0]} cy={ballSvg[1]} r="1.2" />
       </svg>
+      {yardages.green ? (
+        <div className="live-map-green-yardage" aria-label="Green front, middle and back yardages">
+          <span>Green</span>
+          <b>F {yardages.green.frontYds}</b>
+          <b>M {yardages.green.middleYds}</b>
+          <b>B {yardages.green.backYds}</b>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1921,6 +1973,7 @@ export default function LiveCaddiePage() {
                   <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim'}</span>
                   {!isShotStrategy ? <span><i className="mean" />Expected finish</span> : null}
                   <span><i className="pin" />Pin</span>
+                  <span><b className="yardage">238 / 252</b>Hazard: reach / carry (yds)</span>
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
