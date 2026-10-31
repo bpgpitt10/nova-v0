@@ -1,0 +1,71 @@
+name: Course load (one click, soup to nuts)
+
+# Prototype of "search, click Load, ready to play": every course in
+# config/course-load-requests.json goes from a name + location to a playable
+# Looper course (canonical package, green detail, LiDAR enrichment, runtime
+# registration), with each stage timed in artifacts/course-load/<slug>/.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - web-course-load-v1
+    paths:
+      - 'config/course-load-requests.json'
+      - 'tools/course_model/load_course.py'
+      - '.github/workflows/course-load.yml'
+
+concurrency:
+  group: course-load
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (timed)
+        run: |
+          start=$(date +%s)
+          pip install -r requirements-course-geometry.txt numpy scipy scikit-image matplotlib affine 'laspy[lazrs]'
+          npm ci
+          echo "SETUP_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+
+      - name: Load courses
+        run: python tools/course_model/load_course.py --requests config/course-load-requests.json
+
+      - name: Commit loaded courses back to the branch
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          path = 'artifacts/course-load/summary.json'
+          if os.path.exists(path):
+              s = json.load(open(path)); s['setupSeconds'] = int(os.environ.get('SETUP_SECONDS') or 0)
+              json.dump(s, open(path, 'w'), indent=2)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A public/course-geometry config/course-geometry artifacts/course-geometry artifacts/course-load src/courseGeometry
+          if git diff --cached --quiet; then echo 'Nothing to commit.'; exit 0; fi
+          git commit -m "data(course-load): one-click load outputs (run ${GITHUB_RUN_ID})"
+          for attempt in 1 2 3; do
+            git pull --rebase origin web-course-load-v1 && git push origin HEAD:web-course-load-v1 && exit 0
+            sleep 10
+          done
+          exit 1
