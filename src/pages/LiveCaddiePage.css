@@ -808,25 +808,23 @@
   border-radius: 50%;
 }
 
-.live-map-legend b.yardage {
-  color: #f3ecd6;
-  font-weight: 700;
-}
-
-/* Yardage-book numbers on the map (SVG user units: the map is 100 wide). */
+/* Hazard yardages on the map (SVG user units: the map is 100 wide). Quiet
+   on purpose: readable when you look for them, not shouting over the shot. */
 .live-map-yardage {
-  font-size: 2.6px;
-  font-weight: 700;
-  fill: #f3ecd6;
+  font-size: 1.9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   paint-order: stroke;
-  stroke: #0b130d;
-  stroke-width: 0.7px;
+  stroke: rgba(11, 19, 13, 0.85);
+  stroke-width: 0.55px;
   stroke-linejoin: round;
   pointer-events: none;
 }
-.live-map-yardage.yardage-bunker { fill: #f1e2b4; }
-.live-map-yardage.yardage-water { fill: #a9dcee; }
-.live-map-yardage.yardage-penalty { fill: #f3aca8; }
+.live-map-yardage .yardage-word { fill: rgba(205, 216, 204, 0.62); }
+.live-map-yardage .yardage-num { fill: rgba(236, 240, 232, 0.88); }
+.live-map-yardage.yardage-bunker .yardage-num { fill: rgba(236, 224, 188, 0.9); }
+.live-map-yardage.yardage-water .yardage-num { fill: rgba(176, 216, 232, 0.9); }
+.live-map-yardage.yardage-penalty .yardage-num { fill: rgba(240, 184, 180, 0.9); }
 
 .live-map-green-yardage {
   position: absolute;
