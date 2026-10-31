@@ -237,7 +237,8 @@ const applyNativeIfReady = async (
     // Courses with alternate layouts (GKDalt): settle which one is in play.
     const selection = selectNativeLayout(loaded, {
       holeNumber: snapshot.holeNumber,
-      preShotWorld: teeContext ? snapshot.preShotStart?.world ?? null : null,
+      preShotWorld: teeContext && snapshot.preShotStart?.holeNumber === snapshot.holeNumber
+        ? snapshot.preShotStart?.world ?? null : null,
       normalizedTeeSet: round?.courseId === selectedCourseId ? round.normalizedTeeSet : null,
       rememberedLayoutName: recallNativeLayout(loaded.courseKey, snapshot.roundId),
     })
@@ -257,7 +258,7 @@ const applyNativeIfReady = async (
       context,
       holeNumber: snapshot.holeNumber,
       teeContext,
-      preShotStart: snapshot.preShotStart,
+      preShotStart: snapshot.preShotStart?.holeNumber === snapshot.holeNumber ? snapshot.preShotStart : null,
       normalizedTeeSet,
       rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
       legacyTeeLocal,
@@ -274,7 +275,10 @@ const enrichSnapshotWithStartingPosition = async (
   snapshot: CoreBrowserGsproCourseSnapshot,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const legacy = await enrichSnapshotLegacy(snapshot)
-  const preShotStart = legacy.preShotStart
+  // After a hole ends, GSPro's pre-shot record still describes the previous
+  // hole's last shot until it writes the next tee. That record says nothing
+  // about this tee, so it must not cancel tee placement (Hole 2 preload).
+  const preShotStart = legacy.preShotStart?.holeNumber === legacy.holeNumber ? legacy.preShotStart : null
   const teeContext = legacy.holeNumber != null
     && snapshot.nextShotNumber === 1
     && (preShotStart == null || preShotStart.surface === 'tee' || preShotStart.shotNumber === 1)
