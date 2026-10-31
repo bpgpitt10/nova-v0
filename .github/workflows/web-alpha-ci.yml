@@ -76,6 +76,9 @@ jobs:
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 
+      - name: Live map matches GSPro minimap orientation
+        run: node tools/test-minimap-frame.mjs
+
       - name: Browser registration fit (new courses)
         run: node tools/test-native-registration-fit.mjs
 
