@@ -71,7 +71,9 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
     return () => { active = false }
   }, [enabled, courseId, courseKey, status.state])
 
-  if (!isNativePositionsSupported()) return null
+  // The companion serves course files in any browser; the folder picker
+  // fallback needs Chrome or Edge.
+  const canPickFolder = isNativePositionsSupported()
 
   const toggle = (next: boolean) => {
     setNativePositionsEnabled(next)
@@ -93,8 +95,8 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   }
 
   const { text, tone } = describe(enabled ? status : { state: 'off' })
-  const needsFolder = enabled && (status.state === 'no-folder' || status.state === 'gkd-not-found')
-  const needsPermission = enabled && status.state === 'needs-permission'
+  const needsFolder = canPickFolder && enabled && (status.state === 'no-folder' || status.state === 'gkd-not-found')
+  const needsPermission = canPickFolder && enabled && status.state === 'needs-permission'
 
   return (
     <section className="native-positions-beta" aria-label="Native positions beta">

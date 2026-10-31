@@ -117,9 +117,18 @@ export const isNativePositionsSupported = () =>
 export const isNativePositionsEnabled = (): boolean => {
   if (typeof window === 'undefined') return false
   try {
+    // ?native=1 / ?native=0 also remembers the choice, so it survives the
+    // app's own navigation (Round Setup -> Live Caddie drops the query).
     const param = new URLSearchParams(window.location.search).get('native')
-    if (param === '1') return true
-    if (param === '0') return false
+    if (param === '1' || param === '0') {
+      try {
+        if (param === '1') window.localStorage.setItem(STORAGE_KEY, '1')
+        else window.localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // storage blocked: the URL still decides for this page
+      }
+      return param === '1'
+    }
     return window.localStorage.getItem(STORAGE_KEY) === '1'
   } catch {
     return false

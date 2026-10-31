@@ -11,7 +11,13 @@ import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
-import { loadNativeCourseContext, nativeTeeSetValue } from '../courseGeometry/nativeCourseRuntime'
+import {
+  loadNativeCourseContext,
+  NATIVE_POSITIONS_CHANGED_EVENT,
+  nativeTeeSetValue,
+  type NativeCourseStatus,
+} from '../courseGeometry/nativeCourseRuntime'
+import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import { nativeTeeSetOptions } from '../courseGeometry/nativeGkd'
 import {
   loadRoundTeeSelection,
@@ -62,6 +68,18 @@ export default function RoundSetupPage() {
 
   const course = useMemo(() => getCourseCatalogEntry(courseId), [courseId])
 
+  // Native positions (beta): reload the tee list when the beta turns on/off or
+  // the course files become available, so GSPro's tee names appear here.
+  const [nativeState, setNativeState] = useState<NativeCourseStatus['state'] | null>(null)
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const state = (event as CustomEvent<NativeCourseStatus>).detail?.state ?? null
+      if (state === 'ready' || state === 'off') setNativeState(state)
+    }
+    window.addEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setLoadingTees(true)
@@ -108,14 +126,19 @@ export default function RoundSetupPage() {
             ]))
           : {})
         setTeeOptions(finalLabels)
-        const saved = loadRoundTeeSelection(courseId)?.teeSet
+        const storedTee = loadRoundTeeSelection(courseId)?.teeSet
+        // A saved OSM pick ("Tee 1 (Back)") is not a GSPro tee name; with the
+        // GSPro list showing, start from that list instead of "not listed".
+        const saved = useNative && storedTee && !finalLabels.some(label => normalize(label) === normalize(storedTee))
+          ? undefined
+          : storedTee
         if (saved && !finalLabels.some(label => normalize(label) === normalize(saved))) {
           // Honor the user's actual GSPro tee selection even when OSM has no
           // matching named tee. The fallback will explicitly stay provisional.
           setTeeSet(OTHER_TEE)
           setUnmappedTeeName(saved)
         } else {
-          setTeeSet(saved ?? finalLabels.find(label => normalize(label) === 'blue') ?? finalLabels[0] ?? OTHER_TEE)
+          setTeeSet(saved ?? finalLabels.find(label => normalize(label) === (useNative ? 'white' : 'blue')) ?? finalLabels[0] ?? OTHER_TEE)
           setUnmappedTeeName('')
         }
       })
@@ -131,7 +154,7 @@ export default function RoundSetupPage() {
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, nativeState])
 
   const actualTeeSet = teeSet === OTHER_TEE ? unmappedTeeName.trim() : teeSet.trim()
   const startRound = async () => {
@@ -284,6 +307,10 @@ export default function RoundSetupPage() {
             ))}
           </select>
         </label>
+
+        <div style={{ marginBottom: 18 }}>
+          <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
+        </div>
 
         <label style={{ display: 'block', marginBottom: 22, color: '#cbd4cd', fontWeight: 700 }}>
           Tees
