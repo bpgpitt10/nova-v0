@@ -38,6 +38,7 @@ export type LooperCompanionStatus = {
     liveObservations?: boolean
     courseLayouts?: boolean
     aimPreview?: boolean
+    courseLibrary?: boolean
     nativeCapture: boolean
     autoAim: boolean
   }
@@ -67,7 +68,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations' | `course-layouts?${string}` | `aim-preview?${string}`,
+  path: 'status' | 'capture-check' | 'observations' | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -202,6 +203,25 @@ export const readLooperCompanionAimPreview = async (
   const data = await getCompanionReadOnly<LooperCompanionAimPreview>(`aim-preview?${q.toString()}`, timeoutMs)
   if (data.schemaVersion !== 'looper-companion-aim-preview-v1' || data.input !== 'none') {
     throw new Error('Looper Companion does not support the aim preview yet (update the companion).')
+  }
+  return data
+}
+
+export type LooperCompanionInstalledCourse = {
+  courseKey: string
+  courseName: string
+  location: string
+  designer: string
+  holes: number
+  alternateLayouts: string[]
+}
+
+/** Installed GSPro courses (names, locations, keys; no paths), for loading. */
+export const readLooperCompanionCourseLibrary = async (timeoutMs = 20000) => {
+  const data = await getCompanionReadOnly<{ schemaVersion: string; status: string; courses: LooperCompanionInstalledCourse[] }>(
+    'course-library', timeoutMs)
+  if (data.schemaVersion !== 'looper-companion-course-library-v1' || !Array.isArray(data.courses)) {
+    throw new Error('Looper Companion does not list courses yet (update the companion).')
   }
   return data
 }

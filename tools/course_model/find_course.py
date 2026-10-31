@@ -96,6 +96,7 @@ def main() -> int:
     ap.add_argument('--radius-m', type=float, default=8000)
     ap.add_argument('--margin-m', type=float, default=150)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--osm-id', type=int, help='prefer this OSM way/relation id (from the search UI)')
     args = ap.parse_args()
 
     q = (f'[out:json][timeout:180];(way["leisure"="golf_course"](around:{args.radius_m},{args.lat},{args.lon});'
@@ -117,11 +118,16 @@ def main() -> int:
         candidates.append({'type': el['type'], 'id': el['id'], 'name': name, 'areaHa': round(area / 1e4, 1),
                            'nameMatch': bool(rx.search(name)), 'rings': rings})
     print(json.dumps([{k: c[k] for k in ('type', 'id', 'name', 'areaHa', 'nameMatch')} for c in candidates]))
+    if args.osm_id:
+        for c in candidates:
+            if c['id'] == args.osm_id:
+                c['nameMatch'] = True
     matched = [c for c in candidates if c['nameMatch']]
     if not matched:
         print(f'no leisure=golf_course matching /{args.name_regex}/ near {args.lat},{args.lon}', file=sys.stderr)
         return 1
-    best = max(matched, key=lambda c: c['areaHa'])
+    by_id = [c for c in matched if args.osm_id and c['id'] == args.osm_id]
+    best = by_id[0] if by_id else max(matched, key=lambda c: c['areaHa'])
     lons = [p[0] for r in best['rings'] for p in r]
     lats = [p[1] for r in best['rings'] for p in r]
     # OSM course outlines are often incomplete (Muirfield Village's covers

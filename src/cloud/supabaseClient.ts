@@ -20,9 +20,14 @@ type SupabaseQueryResult<T> = {
   error: SupabaseError | null
 }
 
-type SupabaseQueryBuilder<T> = {
+type SupabaseQueryBuilder<T> = PromiseLike<SupabaseQueryResult<T>> & {
   select(columns?: string): SupabaseQueryBuilder<T>
   eq(column: string, value: unknown): SupabaseQueryBuilder<T>
+  in(column: string, values: readonly unknown[]): SupabaseQueryBuilder<T>
+  order(column: string, options?: { ascending?: boolean }): SupabaseQueryBuilder<T>
+  limit(count: number): SupabaseQueryBuilder<T>
+  insert(values: Record<string, unknown> | Array<Record<string, unknown>>): SupabaseQueryBuilder<T>
+  single(): Promise<SupabaseQueryResult<T>>
   maybeSingle(): Promise<SupabaseQueryResult<T>>
   upsert(
     values: Record<string, unknown> | Array<Record<string, unknown>>,
@@ -89,6 +94,9 @@ type SupabaseClientLike = {
     ): { data: { subscription: AuthSubscription } }
   }
   from<T>(table: string): SupabaseQueryBuilder<T>
+  functions: {
+    invoke<T = unknown>(name: string, options?: { body?: unknown }): Promise<{ data: T | null; error: SupabaseError | null }>
+  }
 }
 
 type SupabaseGlobal = Window & {

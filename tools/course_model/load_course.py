@@ -45,8 +45,12 @@ def slugify(text: str) -> str:
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
+STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich')
+
+
 class Load:
-    def __init__(self, slug: str, report_dir: Path):
+    def __init__(self, slug: str, report_dir: Path, on_stage=None):
+        self.on_stage = on_stage
         self.slug = slug
         self.report_dir = report_dir
         self.stages: list[dict] = []
@@ -55,6 +59,11 @@ class Load:
         self.log = (report_dir / 'load-log.txt').open('w')
 
     def stage(self, name: str, *cmd: str) -> bool:
+        if self.on_stage:
+            try:
+                self.on_stage(name, STAGES.index(name) + 1 if name in STAGES else None, len(STAGES))
+            except Exception as error:  # progress reporting must never stop a load
+                print(f'progress hook failed: {error}', flush=True)
         t0 = time.time()
         self.log.write(f'=== [{self.slug}:{name}] {" ".join(cmd)}\n')
         self.log.flush()
@@ -114,20 +123,21 @@ def write_config(slug: str, request: dict, bbox: dict) -> Path:
     return path
 
 
-def load_one(request: dict, *, skip_import: bool = False) -> dict:
+def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict:
     slug = request.get('slug') or slugify(request['name'])
     py = sys.executable
     report_dir = ROOT / 'artifacts' / 'course-load' / slug
     model = ROOT / '.tmp' / 'course-load' / slug / 'model'
     tmp = ROOT / '.tmp' / 'course-load' / slug / 'tmp'
     model.mkdir(parents=True, exist_ok=True)
-    load = Load(slug, report_dir)
+    load = Load(slug, report_dir, on_stage)
     extra: dict = {}
 
     regex = request.get('nameRegex') or re.escape(request['name'].split()[0])
     if not load.stage('find', py, str(HERE / 'find_course.py'), '--name-regex', regex,
                       '--lat', str(request['lat']), '--lon', str(request['lon']),
-                      '--radius-m', str(request.get('radiusM', 8000)), '--out', str(model)):
+                      '--radius-m', str(request.get('radiusM', 8000)), '--out', str(model),
+                      *(['--osm-id', str(request['osmId'])] if request.get('osmId') else [])):
         return load.finish(request, extra)
     bbox = json.loads((model / 'course-bbox.json').read_text())
     extra['osmCourse'] = bbox['osm']
