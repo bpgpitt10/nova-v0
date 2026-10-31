@@ -17,7 +17,7 @@ import './LoadCoursePage.css'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
 
-const loadedSlugs = () => new Set(courseRegistry.map((entry) => entry.slug))
+const loadedSlugs = () => new Set<string>(courseRegistry.map((entry) => entry.slug))
 
 const statusText = (row: CourseLoadRow) => {
   if (row.status === 'queued') return 'Queued · starting shortly'
