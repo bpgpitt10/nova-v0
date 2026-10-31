@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "courseName": "Muirfield Village Golf Club",
+  "location": "Dublin, OH",
+  "slug": "muirfield-village",
+  "gsproAliases": [
+    "Muirfield Village Golf Club"
+  ],
+  "osmCourseElement": {
+    "type": "relation",
+    "id": 337418
+  },
+  "osmCenter": [
+    40.14402,
+    -83.14633
+  ],
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

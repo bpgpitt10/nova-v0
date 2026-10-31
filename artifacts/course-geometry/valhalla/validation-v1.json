@@ -1,0 +1,1633 @@
+{
+  "allHolesStaticGeometryReady": true,
+  "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
+  "canonicalImport": {
+    "complete": true,
+    "completedAt": "2026-10-31T02:11:40.839007Z",
+    "demSourceMetadata": "artifacts/course-geometry/valhalla/dem-source-v1.json",
+    "freshOsm": true,
+    "greenDetail": true,
+    "greenDetailSha256": "906116603f1bdd1f0235343e36063139932b09fb804c10c410376109857ed5af",
+    "landcoverContext": true,
+    "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+    "reason": "one-click-course-load",
+    "runtimeContract": "round-setup-to-live-caddie-v1",
+    "runtimeReady": true,
+    "runtimeReceipt": "artifacts/course-geometry/valhalla/runtime-ready-v1.json",
+    "schemaVersion": "looper-canonical-import-completion-v2",
+    "staticGeometry": true,
+    "terrainComposeReport": "artifacts/course-geometry/valhalla/terrain-compose-v1.json",
+    "terrainProvider": "usgs-3dep",
+    "wholeHoleTerrain": true,
+    "worldcoverAudit": "artifacts/course-geometry/valhalla/worldcover-context-audit-v1.json"
+  },
+  "compiler": "build_osm_course_package_v7",
+  "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot.",
+  "contextSourceStatus": "unavailable-in-osm-snapshot",
+  "contextSourceTagCounts": {},
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "generatedAt": "2026-10-31T02:11:31.100110Z",
+  "holes": [
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 85,
+        "rough": 30
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 1.0,
+      "headingDegreesTrue": 35.24,
+      "hole": 1,
+      "mapFeatureCounts": {
+        "cartpathLines": 15
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 20.4,
+          "nearestRouteGapYards": 20.4,
+          "nearestRouteHole": 1,
+          "osmId": 296620287,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 66.5,
+          "startPolygonGapYards": 20.4
+        },
+        {
+          "currentRouteGapYards": 41.2,
+          "nearestRouteGapYards": 41.2,
+          "nearestRouteHole": 1,
+          "osmId": 296620286,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 75.4,
+          "startPolygonGapYards": 41.2
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 20.4,
+      "ownedTeeCandidateCount": 1,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 296620287,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 449.2
+        }
+      ],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 437.1,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 1.0,
+        "mappedStart": 85.7
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 437.1,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 7,
+        "rough": 1
+      },
+      "selectedTeeNearestRouteHole": 1,
+      "selectedTeeOffsetFromRouteStartYds": [
+        63.5,
+        -19.9
+      ],
+      "selectedTeeOsmId": 296620287,
+      "selectedTeeRouteGapYards": 20.4,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 449.2,
+      "surfacePolygons": {
+        "bunker": 9,
+        "fairway": 7,
+        "green": 1,
+        "rough": 1,
+        "tee": 1,
+        "water": 0
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737947906,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 88,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 4.1,
+      "headingDegreesTrue": 291.4,
+      "hole": 2,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 0.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 2,
+          "osmId": 737960423,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 2.9,
+          "startPolygonGapYards": 0.0
+        },
+        {
+          "currentRouteGapYards": 112.5,
+          "nearestRouteGapYards": 0.9,
+          "nearestRouteHole": 9,
+          "osmId": 296607300,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 119.2,
+          "startPolygonGapYards": 112.5
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 0.0,
+      "ownedTeeCandidateCount": 1,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 737960423,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 486.6
+        }
+      ],
+      "par": 5,
+      "ready": true,
+      "referenceYards": 528.4,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 4.1,
+        "mappedStart": 125.4
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 528.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 4,
+        "rough": 2
+      },
+      "selectedTeeNearestRouteHole": 2,
+      "selectedTeeOffsetFromRouteStartYds": [
+        -1.8,
+        2.2
+      ],
+      "selectedTeeOsmId": 737960423,
+      "selectedTeeRouteGapYards": 0.0,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 486.6,
+      "surfacePolygons": {
+        "bunker": 5,
+        "fairway": 4,
+        "green": 1,
+        "rough": 2,
+        "tee": 1,
+        "water": 1
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 813522934,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 88,
+        "rough": 29
+      },
+      "fairwayRequired": false,
+      "greenEndpointGapYards": 1.4,
+      "headingDegreesTrue": 219.15,
+      "hole": 3,
+      "mapFeatureCounts": {
+        "cartpathLines": 3
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 3,
+      "ready": true,
+      "referenceYards": 205.0,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 1.4,
+        "mappedStart": 46.9
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 205.0,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 4,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 206.1,
+      "surfacePolygons": {
+        "bunker": 6,
+        "fairway": 4,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 1
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952785,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 85,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 0.8,
+      "headingDegreesTrue": 100.87,
+      "hole": 4,
+      "mapFeatureCounts": {
+        "cartpathLines": 4
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 359.7,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 0.8,
+        "mappedStart": 90.4
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 359.7,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 7,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 343.8,
+      "surfacePolygons": {
+        "bunker": 9,
+        "fairway": 7,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 2
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952787,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 87,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 3.8,
+      "headingDegreesTrue": 260.36,
+      "hole": 5,
+      "mapFeatureCounts": {
+        "cartpathLines": 10
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 456.8,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 3.8,
+        "mappedStart": 69.9
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 456.8,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 5,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 434.8,
+      "surfacePolygons": {
+        "bunker": 11,
+        "fairway": 5,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 5
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952789,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 84,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 2.2,
+      "headingDegreesTrue": 162.87,
+      "hole": 6,
+      "mapFeatureCounts": {
+        "cartpathLines": 10
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 494.4,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 2.2,
+        "mappedStart": 98.6
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 494.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 8,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 458.1,
+      "surfacePolygons": {
+        "bunker": 2,
+        "fairway": 8,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 2
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952791,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 86,
+        "rough": 27
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 0.5,
+      "headingDegreesTrue": 32.48,
+      "hole": 7,
+      "mapFeatureCounts": {
+        "cartpathLines": 13
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 33.4,
+          "nearestRouteGapYards": 33.4,
+          "nearestRouteHole": 7,
+          "osmId": 296607279,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 87.1,
+          "startPolygonGapYards": 79.5
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 79.5,
+      "ownedTeeCandidateCount": 1,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 296607279,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 446.9
+        }
+      ],
+      "par": 5,
+      "ready": true,
+      "referenceYards": 587.1,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 0.5,
+        "mappedStart": 101.6
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 587.1,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 6,
+        "rough": 4
+      },
+      "selectedTeeNearestRouteHole": 7,
+      "selectedTeeOffsetFromRouteStartYds": [
+        -5.3,
+        86.9
+      ],
+      "selectedTeeOsmId": 296607279,
+      "selectedTeeRouteGapYards": 33.4,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 446.9,
+      "surfacePolygons": {
+        "bunker": 11,
+        "fairway": 6,
+        "green": 1,
+        "rough": 4,
+        "tee": 1,
+        "water": 8
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952797,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 88,
+        "rough": 29
+      },
+      "fairwayRequired": false,
+      "greenEndpointGapYards": 2.3,
+      "headingDegreesTrue": 81.69,
+      "hole": 8,
+      "mapFeatureCounts": {
+        "cartpathLines": 12
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 3,
+      "ready": true,
+      "referenceYards": 168.0,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 2.3,
+        "mappedStart": 58.1
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 168.0,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 4,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 165.7,
+      "surfacePolygons": {
+        "bunker": 4,
+        "fairway": 4,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 2
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952799,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 89,
+        "rough": 30
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 3.0,
+      "headingDegreesTrue": 192.59,
+      "hole": 9,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 0.9,
+          "nearestRouteGapYards": 0.9,
+          "nearestRouteHole": 9,
+          "osmId": 296607300,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 26.9,
+          "startPolygonGapYards": 15.1
+        },
+        {
+          "currentRouteGapYards": 108.7,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 2,
+          "osmId": 737960423,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 116.9,
+          "startPolygonGapYards": 108.7
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 15.1,
+      "ownedTeeCandidateCount": 1,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 296607300,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 371.5
+        }
+      ],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 413.2,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 3.0,
+        "mappedStart": 129.4
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 413.2,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 3,
+        "rough": 1
+      },
+      "selectedTeeNearestRouteHole": 9,
+      "selectedTeeOffsetFromRouteStartYds": [
+        -4.0,
+        26.6
+      ],
+      "selectedTeeOsmId": 296607300,
+      "selectedTeeRouteGapYards": 0.9,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 371.5,
+      "surfacePolygons": {
+        "bunker": 8,
+        "fairway": 3,
+        "green": 1,
+        "rough": 1,
+        "tee": 1,
+        "water": 0
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737947913,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 86,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 1.9,
+      "headingDegreesTrue": 85.79,
+      "hole": 10,
+      "mapFeatureCounts": {
+        "cartpathLines": 12
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 34.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 737960433,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 39.7,
+          "startPolygonGapYards": 34.0
+        },
+        {
+          "currentRouteGapYards": 48.3,
+          "nearestRouteGapYards": 6.7,
+          "nearestRouteHole": 13,
+          "osmId": 737960432,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 55.2,
+          "startPolygonGapYards": 48.2
+        },
+        {
+          "currentRouteGapYards": 58.4,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 737960434,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 68.1,
+          "startPolygonGapYards": 58.4
+        },
+        {
+          "currentRouteGapYards": 100.4,
+          "nearestRouteGapYards": 9.2,
+          "nearestRouteHole": 13,
+          "osmId": 737960435,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 106.0,
+          "startPolygonGapYards": 100.4
+        },
+        {
+          "currentRouteGapYards": 162.9,
+          "nearestRouteGapYards": 20.4,
+          "nearestRouteHole": 1,
+          "osmId": 296620287,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 210.8,
+          "startPolygonGapYards": 162.9
+        },
+        {
+          "currentRouteGapYards": 188.9,
+          "nearestRouteGapYards": 41.2,
+          "nearestRouteHole": 1,
+          "osmId": 296620286,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 243.0,
+          "startPolygonGapYards": 188.9
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 34.0,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 5,
+      "ready": true,
+      "referenceYards": 587.3,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 1.9,
+        "mappedStart": 93.3
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 587.3,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 6,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 581.8,
+      "surfacePolygons": {
+        "bunker": 3,
+        "fairway": 6,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 0
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737952801,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor. Nearest mapped tee is 34.0 yd from route start."
+      ]
+    },
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 91,
+        "rough": 30
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 0.9,
+      "headingDegreesTrue": 225.96,
+      "hole": 11,
+      "mapFeatureCounts": {
+        "cartpathLines": 8
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 0.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 11,
+          "osmId": 813738033,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 12.0,
+          "startPolygonGapYards": 0.0
+        },
+        {
+          "currentRouteGapYards": 0.7,
+          "nearestRouteGapYards": 0.7,
+          "nearestRouteHole": 11,
+          "osmId": 737956435,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 42.2,
+          "startPolygonGapYards": 34.2
+        },
+        {
+          "currentRouteGapYards": 17.7,
+          "nearestRouteGapYards": 17.7,
+          "nearestRouteHole": 11,
+          "osmId": 1114965942,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 62.0,
+          "startPolygonGapYards": 58.7
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 0.0,
+      "ownedTeeCandidateCount": 3,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            20.39,
+            45.998
+          ],
+          "label": null,
+          "osmId": 1114965942,
+          "selectedAnchor": false,
+          "teeAliases": [],
+          "teeSet": null,
+          "teeToGreenCentroidYards": 149.3
+        },
+        {
+          "coursePoint": [
+            5.056,
+            29.732
+          ],
+          "label": null,
+          "osmId": 737956435,
+          "selectedAnchor": false,
+          "teeAliases": [],
+          "teeSet": null,
+          "teeToGreenCentroidYards": 164.1
+        },
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 813738033,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 193.7
+        }
+      ],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 206.4,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 0.9,
+        "mappedStart": 124.8
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 206.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 1,
+        "rough": 1
+      },
+      "selectedTeeNearestRouteHole": 11,
+      "selectedTeeOffsetFromRouteStartYds": [
+        1.7,
+        11.9
+      ],
+      "selectedTeeOsmId": 813738033,
+      "selectedTeeRouteGapYards": 0.0,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 193.7,
+      "surfacePolygons": {
+        "bunker": 7,
+        "fairway": 1,
+        "green": 1,
+        "rough": 1,
+        "tee": 1,
+        "water": 1
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956437,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 86,
+        "rough": 30
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 0.3,
+      "headingDegreesTrue": 262.63,
+      "hole": 12,
+      "mapFeatureCounts": {
+        "cartpathLines": 10
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 142.6,
+          "nearestRouteGapYards": 17.7,
+          "nearestRouteHole": 11,
+          "osmId": 1114965942,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 146.5,
+          "startPolygonGapYards": 142.6
+        },
+        {
+          "currentRouteGapYards": 158.9,
+          "nearestRouteGapYards": 0.7,
+          "nearestRouteHole": 11,
+          "osmId": 737956435,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 168.6,
+          "startPolygonGapYards": 158.9
+        },
+        {
+          "currentRouteGapYards": 180.5,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 11,
+          "osmId": 813738033,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 196.2,
+          "startPolygonGapYards": 180.5
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 142.6,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 463.5,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 0.3,
+        "mappedStart": 93.9
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 463.5,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 6,
+        "rough": 1
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 443.9,
+      "surfacePolygons": {
+        "bunker": 5,
+        "fairway": 6,
+        "green": 1,
+        "rough": 1,
+        "tee": 0,
+        "water": 0
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956433,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor. Nearest mapped tee is 142.6 yd from route start."
+      ]
+    },
+    {
+      "anchorMethod": "selected-tee-route-owned",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 90,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 2.4,
+      "headingDegreesTrue": 150.52,
+      "hole": 13,
+      "mapFeatureCounts": {
+        "cartpathLines": 15
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 0.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 737960433,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 0.7,
+          "startPolygonGapYards": 0.0
+        },
+        {
+          "currentRouteGapYards": 6.7,
+          "nearestRouteGapYards": 6.7,
+          "nearestRouteHole": 13,
+          "osmId": 737960432,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 16.7,
+          "startPolygonGapYards": 9.4
+        },
+        {
+          "currentRouteGapYards": 0.0,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 13,
+          "osmId": 737960434,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 30.3,
+          "startPolygonGapYards": 21.2
+        },
+        {
+          "currentRouteGapYards": 9.2,
+          "nearestRouteGapYards": 9.2,
+          "nearestRouteHole": 13,
+          "osmId": 737960435,
+          "ownedByCurrentHole": true,
+          "startCentroidGapYards": 68.9,
+          "startPolygonGapYards": 63.4
+        },
+        {
+          "currentRouteGapYards": 146.4,
+          "nearestRouteGapYards": 20.4,
+          "nearestRouteHole": 1,
+          "osmId": 296620287,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 201.9,
+          "startPolygonGapYards": 146.4
+        },
+        {
+          "currentRouteGapYards": 168.3,
+          "nearestRouteGapYards": 41.2,
+          "nearestRouteHole": 1,
+          "osmId": 296620286,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 230.0,
+          "startPolygonGapYards": 168.3
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 0.0,
+      "ownedTeeCandidateCount": 4,
+      "ownedTeeCandidates": [
+        {
+          "coursePoint": [
+            29.012,
+            62.069
+          ],
+          "label": null,
+          "osmId": 737960435,
+          "selectedAnchor": false,
+          "teeAliases": [],
+          "teeSet": null,
+          "teeToGreenCentroidYards": 270.2
+        },
+        {
+          "coursePoint": [
+            12.633,
+            27.193
+          ],
+          "label": null,
+          "osmId": 737960434,
+          "selectedAnchor": false,
+          "teeAliases": [],
+          "teeSet": null,
+          "teeToGreenCentroidYards": 303.7
+        },
+        {
+          "coursePoint": [
+            14.823,
+            6.179
+          ],
+          "label": null,
+          "osmId": 737960432,
+          "selectedAnchor": false,
+          "teeAliases": [],
+          "teeSet": null,
+          "teeToGreenCentroidYards": 324.8
+        },
+        {
+          "coursePoint": [
+            0.0,
+            0.0
+          ],
+          "label": null,
+          "osmId": 737960433,
+          "selectedAnchor": true,
+          "teeAliases": [
+            "Tee 1"
+          ],
+          "teeSet": "Tee 1",
+          "teeToGreenCentroidYards": 330.6
+        }
+      ],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 348.9,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 2.4,
+        "mappedStart": 75.6
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 348.9,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 2,
+        "rough": 2
+      },
+      "selectedTeeNearestRouteHole": 13,
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.7,
+        0.0
+      ],
+      "selectedTeeOsmId": 737960433,
+      "selectedTeeRouteGapYards": 0.0,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 330.6,
+      "surfacePolygons": {
+        "bunker": 9,
+        "fairway": 2,
+        "green": 1,
+        "rough": 2,
+        "tee": 1,
+        "water": 5
+      },
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956439,
+      "warnings": []
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 87,
+        "rough": 28
+      },
+      "fairwayRequired": false,
+      "greenEndpointGapYards": 1.3,
+      "headingDegreesTrue": 47.34,
+      "hole": 14,
+      "mapFeatureCounts": {
+        "cartpathLines": 9
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 3,
+      "ready": true,
+      "referenceYards": 208.4,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 1.3,
+        "mappedStart": 64.2
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 208.4,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 5,
+        "rough": 3
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 207.3,
+      "surfacePolygons": {
+        "bunker": 5,
+        "fairway": 5,
+        "green": 1,
+        "rough": 3,
+        "tee": 0,
+        "water": 2
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956441,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 87,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 2.4,
+      "headingDegreesTrue": 66.66,
+      "hole": 15,
+      "mapFeatureCounts": {
+        "cartpathLines": 15
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 436.0,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 2.4,
+        "mappedStart": 47.2
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 436.0,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 5,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 431.2,
+      "surfacePolygons": {
+        "bunker": 11,
+        "fairway": 5,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 1
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956447,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 86,
+        "rough": 29
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 1.1,
+      "headingDegreesTrue": 239.51,
+      "hole": 16,
+      "mapFeatureCounts": {
+        "cartpathLines": 11
+      },
+      "nearbyTeeCandidates": [
+        {
+          "currentRouteGapYards": 158.6,
+          "nearestRouteGapYards": 0.0,
+          "nearestRouteHole": 11,
+          "osmId": 813738033,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 174.9,
+          "startPolygonGapYards": 163.7
+        },
+        {
+          "currentRouteGapYards": 156.0,
+          "nearestRouteGapYards": 0.7,
+          "nearestRouteHole": 11,
+          "osmId": 737956435,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 186.3,
+          "startPolygonGapYards": 170.8
+        },
+        {
+          "currentRouteGapYards": 178.5,
+          "nearestRouteGapYards": 17.7,
+          "nearestRouteHole": 11,
+          "osmId": 1114965942,
+          "ownedByCurrentHole": false,
+          "startCentroidGapYards": 206.0,
+          "startPolygonGapYards": 202.0
+        }
+      ],
+      "nearestMappedTeeSurfaceYards": 163.7,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 511.7,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 1.1,
+        "mappedStart": 124.2
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 511.7,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 6,
+        "rough": 2
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 503.5,
+      "surfacePolygons": {
+        "bunker": 7,
+        "fairway": 6,
+        "green": 1,
+        "rough": 2,
+        "tee": 0,
+        "water": 1
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956448,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor. Nearest mapped tee is 163.7 yd from route start."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 85,
+        "rough": 30
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 2.1,
+      "headingDegreesTrue": 241.06,
+      "hole": 17,
+      "mapFeatureCounts": {
+        "cartpathLines": 14
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 4,
+      "ready": true,
+      "referenceYards": 464.5,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 2.1,
+        "mappedStart": 141.5
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 464.5,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 7,
+        "rough": 1
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 458.5,
+      "surfacePolygons": {
+        "bunker": 6,
+        "fairway": 7,
+        "green": 1,
+        "rough": 1,
+        "tee": 0,
+        "water": 1
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956449,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    },
+    {
+      "anchorMethod": "route-start-virtual-tee",
+      "axisBasis": "osm-hole-route-start-to-target-green",
+      "contextPolygons": {
+        "dune-sand": 0,
+        "grass-context": 0,
+        "native-grass": 0,
+        "scrub": 0,
+        "woods": 0
+      },
+      "courseTeeSets": [
+        "Tee 1"
+      ],
+      "excludedForeignSurfaceFeatures": {
+        "fairway": 85,
+        "rough": 28
+      },
+      "fairwayRequired": true,
+      "greenEndpointGapYards": 5.4,
+      "headingDegreesTrue": 346.51,
+      "hole": 18,
+      "mapFeatureCounts": {
+        "cartpathLines": 13
+      },
+      "nearbyTeeCandidates": [],
+      "nearestMappedTeeSurfaceYards": null,
+      "ownedTeeCandidateCount": 0,
+      "ownedTeeCandidates": [],
+      "par": 5,
+      "ready": true,
+      "referenceYards": 540.7,
+      "routeDirection": "as-mapped",
+      "routeEndpointGreenGapsYards": {
+        "mappedEnd": 5.4,
+        "mappedStart": 99.9
+      },
+      "routeLengthResidualYards": 0.0,
+      "routeLengthYards": 540.7,
+      "routeOwnedSurfaceFeatures": {
+        "fairway": 7,
+        "rough": 3
+      },
+      "selectedTeeOffsetFromRouteStartYds": [
+        0.0,
+        0.0
+      ],
+      "selectedTeeOsmId": null,
+      "selectionCorridorYards": 110.0,
+      "straightTeeToGreenYards": 495.3,
+      "surfacePolygons": {
+        "bunker": 5,
+        "fairway": 7,
+        "green": 1,
+        "rough": 3,
+        "tee": 0,
+        "water": 5
+      },
+      "syntheticRouteStartTee": true,
+      "tacticalDeepRoughPolygons": 0,
+      "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
+      "targetGreenOsmId": 737956451,
+      "warnings": [
+        "No mapped tee surface was confidently owned by this hole route; using golf=hole route start as a virtual tee anchor."
+      ]
+    }
+  ],
+  "readyHoleCount": 18,
+  "readyHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "registrationNote": "Static geometry preserves cached route-axis orientation, rebases the origin to a mapped tee when confidently owned, packages true heading metadata and route-owned OSM tee candidates, and preserves woods/scrub as source context while mirroring them to tactical deep-rough; runtime precedence resolves overlaps.",
+  "registrationStatus": "approximate",
+  "schemaVersion": "looper-course-package-validation-v1",
+  "sourceBaseTimestamp": null
+}

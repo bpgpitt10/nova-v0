@@ -193,3 +193,71 @@ def clear_caches() -> None:
     with _lock:
         _scene_dirs.clear()
         _texts.clear()
+
+
+LIBRARY_SCHEMA_VERSION = "looper-companion-course-library-v1"
+MAX_LIBRARY_COURSES = 2000
+
+
+def _header(path: Path) -> dict | None:
+    """CourseName / Location / hole count from a GKD or GKDalt (cached by mtime/size)."""
+    try:
+        stat = path.stat()
+        if stat.st_size > MAX_LAYOUT_BYTES:
+            return None
+        raw = json.loads(_read_text(path, stat))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(raw, dict) or not isinstance(raw.get("Holes"), list):
+        return None
+    return {
+        "courseName": str(raw.get("CourseName") or "")[:120],
+        "location": str(raw.get("Location") or "")[:120],
+        "designer": str(raw.get("Designer") or "")[:80],
+        "holes": len(raw["Holes"]),
+        "sceneFolderName": raw.get("SceneFolderName"),
+    }
+
+
+def list_installed_courses(*, image_path: str | None = None, env: dict | None = None) -> dict:
+    """Every course in the GSPro library: key (main GKD stem), name, location,
+    hole count and alternate layout names. No paths, no geometry."""
+    roots = library_roots(image_path=image_path, env=env)
+    courses: dict[str, dict] = {}
+    alternates: list[tuple[str, str]] = []
+    searched = []
+    for label, root in roots:
+        if not root.is_dir():
+            continue
+        searched.append(label)
+        queue: list[tuple[Path, int]] = [(root, 0)]
+        visited = 0
+        while queue and visited < MAX_FOLDERS_VISITED * 4 and len(courses) < MAX_LIBRARY_COURSES:
+            folder, depth = queue.pop(0)
+            visited += 1
+            files, dirs = _entries(folder)
+            for name in files:
+                lower = name.lower()
+                if lower.endswith(".gkd"):
+                    key = name[:-4]
+                    if key.lower() in courses:
+                        continue
+                    header = _header(folder / name)
+                    if header:
+                        courses[key.lower()] = {"courseKey": key, **{k: v for k, v in header.items() if k != "sceneFolderName"},
+                                                "alternateLayouts": []}
+                elif lower.endswith(".gkdalt"):
+                    header = _header(folder / name)
+                    if header and header.get("sceneFolderName"):
+                        alternates.append((str(header["sceneFolderName"]).lower(), name[:-7]))
+            if depth < MAX_DEPTH:
+                queue.extend((d, depth + 1) for d in sorted(dirs, key=lambda d: d.name.lower()))
+        if courses:
+            break  # first library root that has courses wins
+    for scene, alt in alternates:
+        if scene in courses and alt not in courses[scene]["alternateLayouts"]:
+            courses[scene]["alternateLayouts"].append(alt)
+    listed = sorted(courses.values(), key=lambda c: (c["courseName"] or c["courseKey"]).lower())
+    return {"service": "looper-companion", "schemaVersion": LIBRARY_SCHEMA_VERSION,
+            "status": "ready" if listed else "not-found", "searchedRoots": searched,
+            "courses": listed}

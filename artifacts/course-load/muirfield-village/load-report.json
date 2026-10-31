@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "muirfield-village",
+  "request": {
+    "slug": "muirfield-village",
+    "name": "Muirfield Village Golf Club",
+    "location": "Dublin, OH",
+    "nameRegex": "muirfield",
+    "lat": 40.133,
+    "lon": -83.149,
+    "radiusM": 10000
+  },
+  "ready": true,
+  "totalSeconds": 501.4,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 70.6
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/muirfield-village-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 45.0
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 29.5
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 13.7
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 275.7
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 15.1
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 51.7
+    }
+  ],
+  "finishedAt": "2026-10-31T02:01:18Z",
+  "runId": "41157213464",
+  "osmCourse": {
+    "type": "relation",
+    "id": 337418,
+    "name": "Muirfield Village Golf Club",
+    "areaHa": 107.2
+  },
+  "lidar": {
+    "name": "USGS_LPC_OH_Columbus_2019",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
+    "count": 46432698522,
+    "year": 2019
+  },
+  "crs": "EPSG:26917",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 7608,
+    "downloadedMB": 1920.2,
+    "pointsKeptInBbox": 314553093,
+    "pointsPerSquareMetre": 25.33,
+    "firstReturnsPerSquareMetre": 15.93,
+    "classificationHistogram": {
+      "1": 174831892,
+      "2": 139662537,
+      "9": 50169,
+      "17": 6094,
+      "20": 13856
+    },
+    "chm": {
+      "width": 3382,
+      "height": 3672,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 10727225,
+      "emptyCells": 1691479,
+      "cellsOver3m": 4598707,
+      "cellsOver10m": 2110142,
+      "p50": 0.13999999999998636,
+      "p95": 19.0,
+      "max": 65.43
+    },
+    "seconds": 275.5
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26917",
+    "treeCount": 60704,
+    "heightM": {
+      "p10": 5.2,
+      "p50": 10.4,
+      "p90": 21.0,
+      "max": 65.3
+    },
+    "crownRadiusM": {
+      "p10": 2.0,
+      "p50": 4.2,
+      "p90": 7.3
+    },
+    "woodlandPolygons": 8590,
+    "woodlandAreaHa": 396.62,
+    "maskedCellsBuildingsAndPower": 582728,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 14.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 2260890,
+    "course-v1.json": 378799,
+    "green-detail-v1.json": 96520
+  }
+}

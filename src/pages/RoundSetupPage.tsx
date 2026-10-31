@@ -308,6 +308,10 @@ export default function RoundSetupPage() {
           </select>
         </label>
 
+        <p style={{ margin: '-10px 0 16px', fontSize: 13 }}>
+          <a href="/courses" style={{ color: '#8fd19e' }}>Don't see your course? Load a course →</a>
+        </p>
+
         <div style={{ marginBottom: 18 }}>
           <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
         </div>

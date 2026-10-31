@@ -24,11 +24,12 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
       return {
         text: `Active · ${status.courseName} · registration grade ${status.grade}`
           + (status.via === 'companion' ? ' · course files via Looper Companion' : '')
+          + (status.fittedHere ? ' · matched to the map on this PC' : '')
           + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
         tone: 'ok',
       }
     case 'no-registration':
-      return { text: `${status.courseName} has no native registration yet; using current positioning.`, tone: 'warn' }
+      return { text: `${status.courseName}: start the round in GSPro so Looper can match your course files to the map.`, tone: 'warn' }
     case 'other-course':
       return { text: `GSPro is on ${status.courseKey}, not ${status.expectedKey}; using current positioning.`, tone: 'warn' }
     case 'no-folder':
@@ -39,6 +40,10 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
       return { text: `${status.courseKey}.GKD was not found in your GSPro course library. Choose the folder that holds it.`, tone: 'warn' }
     case 'layout-mismatch':
       return { text: 'Your installed course has different greens or pins from the registered version; using current positioning.', tone: 'warn' }
+    case 'registering':
+      return { text: 'Matching your GSPro course to the map (a few seconds)…', tone: 'warn' }
+    case 'registration-failed':
+      return { text: `Could not match your GSPro course to the map: ${status.reason}. Using current positioning.`, tone: 'warn' }
     case 'error':
       return { text: `Native positions unavailable: ${status.message}`, tone: 'warn' }
     case 'no-course':

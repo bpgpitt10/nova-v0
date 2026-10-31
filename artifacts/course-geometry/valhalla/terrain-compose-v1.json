@@ -1,6 +1,6 @@
 {
   "complete": true,
-  "courseId": "valhalla-louisville-ky",
+  "courseId": "valhalla-golf-club-louisville-ky",
   "schemaVersion": "looper-course-package-compose-report-v1",
   "terrainHoleCount": 18,
   "terrainHoles": [
@@ -23,5 +23,6 @@
     17,
     18
   ],
-  "terrainInputSchema": "looper-course-terrain-v1"
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
 }

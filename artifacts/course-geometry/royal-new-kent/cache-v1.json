@@ -1,25 +1,38 @@
 {
-  "courseId": "royal-new-kent-providence-forge-va",
+  "courseId": "royal-new-kent-golf-club-providence-forge-va",
   "courseName": "Royal New Kent Golf Club",
   "freshness": {
-    "ageDays": 0.86,
-    "evaluatedAt": "2026-09-18T15:02:52.539630Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-10-31T02:05:06.517208Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "one-click-course-load",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T15:02:52.539630Z",
+    "builderFingerprintSha256": "9b1997f777ddbffc4c780e387ba7bf79aac860c262331848fdbb87c8fdf14e39",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-10-31T02:05:06.517208Z",
     "configPath": "config/course-geometry/royal-new-kent-v1.json",
-    "configSha256": "c6a6869a370dc77c820d4743563f5788c10844e0698b1878947a294d7b8df900",
+    "configSha256": "a958fee239ab890e220ec41606d945b5448ade7dc49d5fc0a05c0c8fb6c24c88",
+    "greenDetail": {
+      "marginYds": 12.0,
+      "schemaVersion": "looper-course-green-detail-v1",
+      "sha256": "5fdbd7bafcd71dd7586b8c5a3c155c9dbb4ee64adfc7084e72a9db9fd147ba8b",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "spacingYds": 1.0
+    },
     "path": "public/course-geometry/royal-new-kent/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "8231eacd9884223c79f2b1665189984ecd28a7b281624c20df0d0994daf6991e",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "eda50a3882049886e3e869d7b90e942f0f0649dcedf60f6b7578209221a7f623",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "sourceProvider": "USGS 3DEP",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -44,13 +57,12 @@
       "id": 6209148,
       "type": "relation"
     },
-    "fetchedAt": "2026-09-17T18:20:35Z",
-    "fetchedAtBasis": "osm-base-timestamp-bootstrap",
-    "lastCheckedAt": null,
-    "provider": "openstreetmap-overpass",
+    "fetchedAt": "2026-10-31T02:05:06.517208Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-10-31T02:05:06.517208Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/royal-new-kent/osm-snapshot.json",
-    "snapshotSha256": "3def71ede549334840b1a728511ef5cb2a3eae91743713f2929cd66f23627e71",
-    "sourceBaseTimestamp": "2026-09-17T18:20:35Z"
+    "snapshotSha256": "ced61014efc44dff8716be45a7ecde83d0d9c37a1f4b48111ec681b936b8e108"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",

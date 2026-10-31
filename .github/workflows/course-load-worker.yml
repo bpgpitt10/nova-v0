@@ -1,0 +1,67 @@
+name: Course load worker
+
+# Works the one-click course-load queue (Supabase course_load_requests).
+# Started right away by the Supabase function `course-load-dispatch` when a
+# player clicks Load (workflow_dispatch), with a 6-hourly backstop. Always
+# runs the production branch's code and publishes loaded courses to it, so
+# Vercel deploys them to thelooper.golf.
+#
+# Secrets: SUPABASE_SECRET_KEY (service-role secret key). Without it, every
+# run exits in seconds.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+concurrency:
+  group: course-load-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Anything queued?
+        id: queue
+        env:
+          KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "SUPABASE_SECRET_KEY not set"; echo "count=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          count=$(curl -sf "https://kdjfdchzfemjpmaqpobn.supabase.co/rest/v1/course_load_requests?status=eq.queued&select=id" \
+            -H "apikey: $KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" || echo 0)
+          echo "queued: $count"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.queue.outputs.count != '0'
+        with:
+          ref: web-alpha-mishits
+          fetch-depth: 20
+
+      - uses: actions/setup-python@v5
+        if: steps.queue.outputs.count != '0'
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        if: steps.queue.outputs.count != '0'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.queue.outputs.count != '0'
+        run: |
+          pip install -r requirements-course-geometry.txt numpy scipy scikit-image matplotlib affine 'laspy[lazrs]'
+          npm ci
+
+      - name: Load queued courses
+        if: steps.queue.outputs.count != '0'
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          PUBLISH_BRANCH: web-alpha-mishits
+        run: python tools/course_model/course_load_worker.py

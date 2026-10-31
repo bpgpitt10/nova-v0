@@ -76,5 +76,8 @@ jobs:
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 
+      - name: Browser registration fit (new courses)
+        run: node tools/test-native-registration-fit.mjs
+
       - name: Build web app
         run: npm run build

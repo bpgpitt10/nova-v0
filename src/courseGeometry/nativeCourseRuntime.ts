@@ -58,6 +58,9 @@ export type NativeCourseStatus =
   | Readonly<{ state: 'needs-permission' }>
   | Readonly<{ state: 'gkd-not-found'; courseKey: string }>
   | Readonly<{ state: 'layout-mismatch'; courseKey: string }>
+  /** No published registration and the in-browser fit did not pass. */
+  | Readonly<{ state: 'registration-failed'; courseKey: string; reason: string }>
+  | Readonly<{ state: 'registering'; courseKey: string }>
   | Readonly<{ state: 'error'; message: string }>
   | Readonly<{
       state: 'ready'
@@ -67,6 +70,8 @@ export type NativeCourseStatus =
       layoutNames: readonly string[]
       /** Where the layout files came from. */
       via: 'companion' | 'folder'
+      /** Registration fitted on this PC (no published one yet). */
+      fittedHere?: boolean
     }>
 
 export type NativeLayoutOption = Readonly<{ name: string; kind: 'main' | 'alt'; layout: NativeCourseLayout }>
@@ -288,29 +293,113 @@ export const companionSceneLayouts = async (sceneKey: string): Promise<readonly 
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
-const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
-  const entry = getCourseCatalogEntry(courseId)
-  const url = registrationUrl(courseId)
-  const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
-  const registration = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
-  if (!registration) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
-  const key = registration.gsproCourseKey
-  // Companion first (no folder grant); the browser folder grant is the fallback.
+type SceneLookup =
+  | Readonly<{ ok: true; sceneLayouts: readonly NativeSceneLayout[]; via: 'companion' | 'folder' }>
+  | Readonly<{ ok: false; status: NativeCourseStatus }>
+
+/** The course's GKD/GKDalt layouts: companion first (no folder grant), then the folder grant. */
+const findSceneLayouts = async (key: string): Promise<SceneLookup> => {
   let sceneLayouts = await companionSceneLayouts(key)
   let via: 'companion' | 'folder' = 'companion'
   if (!sceneLayouts || sceneLayouts.length === 0) {
     const folder = await loadCoursesFolderHandle()
     if (!folder) {
-      return { context: null, status: sceneLayouts ? { state: 'gkd-not-found', courseKey: key } : { state: 'no-folder' } }
+      return { ok: false, status: sceneLayouts ? { state: 'gkd-not-found', courseKey: key } : { state: 'no-folder' } }
     }
     const permission = folder.queryPermission ? await folder.queryPermission({ mode: 'read' }) : 'granted'
-    if (permission !== 'granted') return { context: null, status: { state: 'needs-permission' } }
+    if (permission !== 'granted') return { ok: false, status: { state: 'needs-permission' } }
     sceneLayouts = await readSceneLayouts(folder, key)
     via = 'folder'
   }
-  if (!sceneLayouts || sceneLayouts.length === 0) return { context: null, status: { state: 'gkd-not-found', courseKey: key } }
+  if (!sceneLayouts || sceneLayouts.length === 0) return { ok: false, status: { state: 'gkd-not-found', courseKey: key } }
+  return { ok: true, sceneLayouts, via }
+}
+
+const REGISTRATION_CACHE_PREFIX = 'registration:'
+
+const loadCachedRegistration = async (courseId: CourseId, courseKey: string) => {
+  try {
+    const raw = await dbRequest<unknown>('readonly', (st) => st.get(`${REGISTRATION_CACHE_PREFIX}${courseId}|${courseKey.toLowerCase()}`))
+    return parseNativeRegistration(raw)
+  } catch {
+    return null
+  }
+}
+
+const saveCachedRegistration = async (courseId: CourseId, courseKey: string, registration: NativeRegistration | null) => {
+  try {
+    const key = `${REGISTRATION_CACHE_PREFIX}${courseId}|${courseKey.toLowerCase()}`
+    if (registration) await dbRequest('readwrite', (st) => st.put(registration, key))
+    else await dbRequest('readwrite', (st) => st.delete(key))
+  } catch {
+    // cache only
+  }
+}
+
+/**
+ * No published registration (e.g. a course just loaded): fit the player's
+ * GKD to the course's LiDAR terrain in this browser (about a second), and
+ * keep the result on this PC. Needs GSPro's CourseKey, which the live round
+ * reports.
+ */
+const registerInBrowser = async (
+  courseId: CourseId,
+  courseKey: string,
+  sceneLayouts: readonly NativeSceneLayout[],
+): Promise<{ registration: NativeRegistration | null; reason: string }> => {
+  const main = sceneLayouts.find((l) => l.file.kind === 'main') ?? sceneLayouts[0]
+  const packageUrl = getCourseCatalogEntry(courseId).staticPackageUrl
+  if (!main || !packageUrl) return { registration: null, reason: 'no course package' }
+  const fetchJson = async (url: string) => {
+    const response = await fetch(url, { cache: 'no-cache' }).catch(() => null)
+    return response?.ok ? response.json().catch(() => null) : null
+  }
+  // The LiDAR package's 2-yd terrain comes from the 1 m DEM; the older 10-yd
+  // terrain is too coarse (FarmLinks: grade C with it, grade A with LiDAR).
+  const packageJson = await fetchJson(packageUrl.replace(/course-v1\.json$/, 'course-v1-lidar.json'))
+  if (!packageJson) return { registration: null, reason: 'this course has no LiDAR package yet' }
+  const { fitRegistrationFromPackage } = await import('./nativeRegistrationAuto')
+  const result = await fitRegistrationFromPackage({ courseId, gsproCourseKey: courseKey, layout: main.layout, packageJson })
+  if (!result.registration) {
+    return {
+      registration: null,
+      reason: result.fit.grade === 'C'
+        ? 'GSPro course does not match the map closely enough'
+        : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`,
+    }
+  }
+  return { registration: result.registration, reason: `grade ${result.fit.grade}` }
+}
+
+const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
+  const entry = getCourseCatalogEntry(courseId)
+  const url = registrationUrl(courseId)
+  const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
+  let registration = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
+  let fitted = false
+  if (!registration && courseKey) registration = await loadCachedRegistration(courseId, courseKey)
+  if (!registration && !courseKey) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
+  const key = registration?.gsproCourseKey ?? courseKey!
+  const lookup = await findSceneLayouts(key)
+  if (!lookup.ok) return { context: null, status: lookup.status }
+  const { sceneLayouts, via } = lookup
+  if (!registration) {
+    announce({ state: 'registering', courseKey: key })
+    const result = await registerInBrowser(courseId, key, sceneLayouts)
+    if (!result.registration) {
+      return { context: null, status: { state: 'registration-failed', courseKey: key, reason: result.reason } }
+    }
+    registration = result.registration
+    fitted = true
+    await saveCachedRegistration(courseId, key, registration)
+  }
   const layouts = await verifyNativeLayouts(sceneLayouts, registration)
-  if (layouts.length === 0) return { context: null, status: { state: 'layout-mismatch', courseKey: key } }
+  if (layouts.length === 0) {
+    // A course update can change the greens; a locally fitted registration is
+    // then refitted on the next load.
+    if (!response?.ok && courseKey) await saveCachedRegistration(courseId, courseKey, null)
+    return { context: null, status: { state: 'layout-mismatch', courseKey: key } }
+  }
   // GSPro's CourseKey is the scene key for the main layout. If it names one of
   // the scene's GKDalt layouts instead, that layout is the one in play.
   const named = courseKey && !sameName(courseKey, key)
@@ -332,7 +421,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
     },
     status: {
       state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name,
-      layoutNames: layouts.map((l) => l.name), via,
+      layoutNames: layouts.map((l) => l.name), via, fittedHere: fitted,
     },
   }
 }

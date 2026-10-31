@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -9256802.344,
+    4886016.217,
+    -9253777.682,
+    4888149.836
+  ],
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9256802.344%2C4886016.217%2C-9253777.682%2C4888149.836&bboxSR=3857&imageSR=3857&size=3025%2C2134&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-10-31T01:54:45.838739Z",
+  "height": 2134,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 3025
+}

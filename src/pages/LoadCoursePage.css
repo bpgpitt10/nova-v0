@@ -1,0 +1,137 @@
+.load-course-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  color: #e8efe6;
+  font-family: inherit;
+}
+
+.load-course-kicker {
+  color: #8fd19e;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+}
+
+.load-course-page h1 {
+  margin: 8px 0 8px;
+  font-size: 30px;
+}
+
+.load-course-page h2 {
+  margin: 28px 0 10px;
+  font-size: 18px;
+}
+
+.load-course-page header p {
+  margin: 0 0 12px;
+  color: #b9c4b7;
+  line-height: 1.5;
+}
+
+.load-course-back {
+  color: #8fd19e;
+  font-size: 14px;
+}
+
+.load-course-message {
+  margin: 16px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(143, 209, 158, 0.35);
+  border-radius: 10px;
+  background: rgba(20, 40, 26, 0.6);
+}
+
+.load-course-note {
+  color: #9da99f;
+  font-size: 13px;
+}
+
+.load-course-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.load-course-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(14, 22, 16, 0.7);
+}
+
+.load-course-list li > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.load-course-list li > div span {
+  color: #9da99f;
+  font-size: 13px;
+}
+
+.load-course-list button,
+.load-course-search button {
+  padding: 7px 16px;
+  border: 1px solid #2f8f4e;
+  border-radius: 8px;
+  background: #1f6f3e;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.load-course-list button:disabled,
+.load-course-search button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.load-course-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.load-course-ready {
+  color: #8fd19e;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.load-course-progress {
+  color: #eab308;
+  font-size: 14px;
+}
+
+.load-course-failed {
+  color: #f19c8f;
+  font-size: 13px;
+  max-width: 420px;
+}
+
+.load-course-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.load-course-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: #0d150f;
+  color: #e8efe6;
+  font-size: 15px;
+}

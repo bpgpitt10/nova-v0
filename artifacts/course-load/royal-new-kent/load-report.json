@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "royal-new-kent",
+  "request": {
+    "slug": "royal-new-kent",
+    "name": "Royal New Kent Golf Club",
+    "location": "Providence Forge, VA",
+    "nameRegex": "royal new kent|new kent",
+    "lat": 37.45,
+    "lon": -77.05,
+    "radiusM": 15000
+  },
+  "ready": true,
+  "totalSeconds": 395.7,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 127.4
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/royal-new-kent-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 111.4
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 43.0
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 7.2
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 44.9
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 32.7
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 29.2
+    }
+  ],
+  "finishedAt": "2026-10-31T02:07:54Z",
+  "runId": "41157213464",
+  "osmCourse": {
+    "type": "relation",
+    "id": 6209148,
+    "name": "Royal New Kent Golf Club",
+    "areaHa": 148.7
+  },
+  "lidar": {
+    "name": "VA_FEMA_MiddleCounties_2011",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+    "count": 11643221461,
+    "year": 2011
+  },
+  "crs": "EPSG:26918",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/VA_FEMA_MiddleCounties_2011/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 675,
+    "downloadedMB": 262.0,
+    "pointsKeptInBbox": 37828282,
+    "pointsPerSquareMetre": 4.58,
+    "firstReturnsPerSquareMetre": 2.81,
+    "classificationHistogram": {
+      "1": 19683770,
+      "2": 13653531,
+      "9": 10617,
+      "10": 5851,
+      "11": 4490289
+    },
+    "chm": {
+      "width": 3579,
+      "height": 2307,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 7734020,
+      "emptyCells": 522733,
+      "cellsOver3m": 4378687,
+      "cellsOver10m": 3227834,
+      "p50": 6.489999999999981,
+      "p95": 22.530000000000037,
+      "max": 39.27999999999996
+    },
+    "seconds": 44.7
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26918",
+    "treeCount": 83420,
+    "heightM": {
+      "p10": 8.8,
+      "p50": 17.5,
+      "p90": 24.1,
+      "max": 38.7
+    },
+    "crownRadiusM": {
+      "p10": 2.2,
+      "p50": 3.8,
+      "p90": 6.0
+    },
+    "woodlandPolygons": 2079,
+    "woodlandAreaHa": 381.47,
+    "maskedCellsBuildingsAndPower": 224369,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 32.0
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 1974218,
+    "course-v1.json": 443099,
+    "green-detail-v1.json": 129397
+  }
+}

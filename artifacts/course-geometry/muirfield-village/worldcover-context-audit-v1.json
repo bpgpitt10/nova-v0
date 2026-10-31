@@ -1,0 +1,422 @@
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39W084_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 183897.8,
+      "knownAreaSqYd": 15426.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 11,
+          "areaSqYd": 68824.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 90617.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 162559.3,
+      "knownAreaSqYd": 11151.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 85452.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 60273.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 162744.3,
+      "knownAreaSqYd": 9727.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 65920.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 100829.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 96057.1,
+      "knownAreaSqYd": 4527.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 30783.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 61118.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 231277.7,
+      "knownAreaSqYd": 13355.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 86724.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 128431.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 163480.0,
+      "knownAreaSqYd": 12002.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 61766.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 10,
+          "areaSqYd": 82755.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 220999.8,
+      "knownAreaSqYd": 13961.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 120602.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 12,
+          "areaSqYd": 75333.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 93613.7,
+      "knownAreaSqYd": 2600.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 54623.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 32584.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 150630.5,
+      "knownAreaSqYd": 16284.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 82775.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 51228.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 176558.3,
+      "knownAreaSqYd": 16414.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 50980.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 99567.4
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 77.7
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 227350.8,
+      "knownAreaSqYd": 16549.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 15,
+          "areaSqYd": 58071.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 152768.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 77.9
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 86877.0,
+      "knownAreaSqYd": 6759.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 32673.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 47520.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 182210.1,
+      "knownAreaSqYd": 13123.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 64128.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 102060.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 127729.5,
+      "knownAreaSqYd": 7653.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 19938.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 102398.4
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 78.6
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 199586.2,
+      "knownAreaSqYd": 14906.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 63217.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 122188.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 78.0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 93109.4,
+      "knownAreaSqYd": 5059.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 11834.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 70336.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 167684.4,
+      "knownAreaSqYd": 10334.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 44938.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 116290.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 199498.0,
+      "knownAreaSqYd": 9783.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 14,
+          "areaSqYd": 64887.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 112940.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    }
+  }
+}

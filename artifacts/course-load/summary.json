@@ -1,0 +1,55 @@
+{
+  "finishedAt": "2026-10-31T02:13:25Z",
+  "runId": "41158682718",
+  "courses": [
+    {
+      "slug": "valhalla",
+      "ready": true,
+      "totalSeconds": 205.6,
+      "stages": [
+        {
+          "stage": "find",
+          "ok": true,
+          "seconds": 81.9
+        },
+        {
+          "stage": "config",
+          "ok": true,
+          "seconds": 0.0,
+          "path": "config/course-geometry/valhalla-v1.json"
+        },
+        {
+          "stage": "import",
+          "ok": true,
+          "seconds": 19.5
+        },
+        {
+          "stage": "osm",
+          "ok": true,
+          "seconds": 30.4
+        },
+        {
+          "stage": "dem",
+          "ok": true,
+          "seconds": 11.1
+        },
+        {
+          "stage": "lidar",
+          "ok": true,
+          "seconds": 39.5
+        },
+        {
+          "stage": "trees",
+          "ok": true,
+          "seconds": 8.1
+        },
+        {
+          "stage": "enrich",
+          "ok": true,
+          "seconds": 15.3
+        }
+      ]
+    }
+  ],
+  "setupSeconds": 25
+}

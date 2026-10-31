@@ -1,0 +1,1367 @@
+=== [muirfield-village:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex muirfield --lat 40.133 --lon -83.149 --radius-m 10000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model
+[{"type": "way", "id": 419930363, "name": "Brookside Golf & Country Club", "areaHa": 96.3, "nameMatch": false}, {"type": "way", "id": 560536597, "name": "Scioto Reserve Country Club", "areaHa": 104.8, "nameMatch": false}, {"type": "way", "id": 674824972, "name": "Kinsale Golf and Fitness Club", "areaHa": 108.3, "nameMatch": false}, {"type": "way", "id": 694841424, "name": "Golf Club of Dublin", "areaHa": 83.7, "nameMatch": false}, {"type": "way", "id": 844331426, "name": "Rolling Meadows", "areaHa": 91.2, "nameMatch": false}, {"type": "way", "id": 1551150129, "name": "Sports Ohio Wee Links", "areaHa": 4.8, "nameMatch": false}, {"type": "relation", "id": 193427, "name": "Worthington Hills Country Club", "areaHa": 72.8, "nameMatch": false}, {"type": "relation", "id": 337417, "name": "The Country Club at Muirfield Village", "areaHa": 78.3, "nameMatch": true}, {"type": "relation", "id": 337418, "name": "Muirfield Village Golf Club", "areaHa": 107.2, "nameMatch": true}, {"type": "relation", "id": 7421433, "name": "The Club at Tartan Fields", "areaHa": 78.1, "nameMatch": false}, {"type": "relation", "id": 9729886, "name": "Wedgewood Golf & Country Club", "areaHa": 75.7, "nameMatch": false}, {"type": "relation", "id": 13691164, "name": "Safari Golf Club", "areaHa": 72.3, "nameMatch": false}]
+grew bbox with 13890 vertices from nearby golf features
+{"bboxLonLat": [-83.16565761642683, 40.12784482514927, -83.12699588357317, 40.16019837485073], "crs": "EPSG:26917", "osm": {"type": "relation", "id": 337418, "name": "Muirfield Village Golf Club", "areaHa": 107.2}} {"name": "USGS_LPC_OH_Columbus_2019", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "count": 46432698522, "year": 2019}
+=== [muirfield-village:find] rc=0 seconds=70.6
+=== [muirfield-village:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/muirfield-village-v1.json --slug muirfield-village --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 1 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/muirfield-village-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/osm-snapshot.json
+{
+  "course": "Muirfield Village Golf Club",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 266,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 89,
+    "golf=clubhouse": 1,
+    "golf=fairway": 27,
+    "golf=green": 30,
+    "golf=hole": 18,
+    "golf=tee": 87,
+    "golf=water_hazard": 12,
+    "landuse=grass": 51,
+    "natural=sand": 13,
+    "natural=water": 13
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-83.15467360,40.13645000,-83.12815860,40.15209760",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 94,
+    "golf=cartpath": 10,
+    "golf=clubhouse": 1,
+    "golf=fairway": 31,
+    "golf=green": 33,
+    "golf=hole": 22,
+    "golf=tee": 97,
+    "golf=water_hazard": 13,
+    "landuse=grass": 69,
+    "natural=sand": 18,
+    "natural=water": 18,
+    "natural=wood": 5
+  },
+  "rawIncludedFeatures": 312,
+  "rawMapElements": 25629,
+  "sourceEndpoint": "https://overpass-api.de/api/interpreter"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,77.5,31.0,1.1,forward,1.1,108.5
+2,0.0,79.3,84.0,0.1,forward,0.1,163.3
+3,0.0,50.4,83.9,2.6,forward,2.6,134.3
+4,0.0,45.1,60.6,5.2,forward,5.2,105.6
+5,0.0,65.5,54.8,0.9,forward,0.9,120.3
+6,0.0,73.2,162.2,2.5,forward,2.5,235.4
+7,0.0,72.3,96.6,1.5,forward,1.5,168.9
+8,0.0,36.3,78.9,6.1,forward,6.1,115.2
+9,0.0,40.0,48.0,0.6,forward,0.6,88.0
+10,0.0,48.7,25.3,6.0,forward,6.0,74.1
+11,0.0,45.5,51.1,3.1,forward,3.1,96.6
+12,0.0,72.5,80.3,1.5,forward,1.5,152.8
+13,0.0,50.8,138.5,6.0,forward,6.0,189.3
+14,0.0,44.1,63.2,3.3,forward,3.3,107.4
+15,0.0,63.9,51.7,4.1,forward,4.1,115.6
+16,0.0,80.2,75.4,4.5,forward,4.5,155.6
+17,0.0,62.6,173.8,1.1,forward,1.1,236.5
+18,0.0,39.3,103.5,1.1,forward,1.1,142.8
+
+TEE OWNERSHIP H1 targetGreenOsmId=1244901428
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1244930654,0.0,478.8,0.0,1,0.0
+1244930657,43.7,428.3,0.2,1,0.2
+1244930658,76.2,393.3,0.3,1,0.3
+1244930659,120.5,351.0,0.7,1,0.7
+1244930663,166.2,312.4,7.2,1,7.2
+1244978476,15.5,481.8,15.4,1,15.4
+1244965373,47.5,507.0,47.5,10,0.0
+1244971438,63.4,526.7,63.4,10,0.5
+793333225,178.4,533.2,178.4,18,121.2
+793333226,200.7,562.8,200.7,18,135.3
+793333228,221.4,600.6,221.4,18,151.9
+1244962829,406.2,315.4,221.6,9,2.5
+793333227,317.0,606.2,317.0,18,269.1
+793333247,325.6,803.1,325.6,18,236.1
+814009115,351.3,811.8,351.2,18,25.0
+793332601,363.2,825.2,363.2,18,21.9
+1244971431,365.7,806.2,365.6,15,0.0
+1244971432,389.0,836.1,389.0,15,0.1
+
+TEE OWNERSHIP H9 targetGreenOsmId=1244962831
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+793301688,0.0,413.8,0.0,9,0.0
+793301689,20.4,376.9,1.0,9,1.0
+1244962829,102.8,306.2,2.5,9,2.5
+1244930658,442.2,45.2,40.0,1,0.3
+1244930659,411.7,51.5,44.8,1,0.7
+1244930663,373.2,77.4,52.5,1,7.2
+1244962828,116.7,513.5,116.7,8,0.6
+1244962827,131.8,530.2,131.8,8,0.8
+1244962826,149.3,550.8,149.3,8,0.9
+1244962825,175.4,574.4,175.4,8,0.8
+1244962824,195.8,593.3,195.8,8,0.0
+1244901425,431.1,420.0,355.8,2,0.0
+1244901429,440.1,469.5,390.4,2,13.3
+1244901430,442.7,484.2,400.3,2,18.1
+1244901431,444.4,512.5,415.6,2,21.9
+1244901432,431.7,539.8,417.6,2,8.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=1244978485
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1244978480,0.0,570.1,0.0,11,0.0
+1245018175,156.8,413.9,0.8,11,0.8
+1244978481,51.2,519.0,10.5,11,10.5
+1244978482,90.4,482.2,14.8,11,14.8
+1244978483,114.2,460.9,16.3,11,16.3
+1244978484,130.6,448.1,19.1,11,19.1
+1244984139,325.8,238.5,35.2,14,0.0
+1244984138,310.3,255.2,51.0,14,1.6
+1244984137,294.7,270.4,55.7,14,1.3
+1244984136,245.7,320.5,83.2,14,13.3
+1244971431,149.8,623.4,149.8,15,0.0
+1244971432,164.8,605.1,164.8,15,0.1
+1244996416,185.2,578.4,185.2,15,0.3
+814009115,212.4,658.9,212.4,18,25.0
+793332601,215.6,649.9,215.6,18,21.9
+1245006387,219.6,603.0,219.6,15,23.7
+1245006388,220.0,625.4,220.0,18,20.8
+1244996417,227.1,553.6,226.5,15,1.6
+
+TEE OWNERSHIP H13 targetGreenOsmId=1244984140
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+793328715,0.0,434.6,0.0,13,0.0
+1244988172,123.7,310.4,0.6,13,0.6
+1244988171,77.9,349.8,0.7,13,0.7
+1244988170,40.5,390.0,0.8,13,0.8
+1244988168,249.6,170.1,35.2,12,0.5
+1244988169,279.5,142.4,39.5,12,0.0
+1244988167,242.3,190.1,49.2,12,0.6
+1244988166,219.1,215.9,69.1,12,6.9
+
+TEE OWNERSHIP H15 targetGreenOsmId=1244996423
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1244971431,0.0,554.3,0.0,15,0.0
+1244971432,25.5,523.1,0.1,15,0.1
+1244996416,60.0,478.4,0.3,15,0.3
+1244996417,117.3,431.8,1.6,15,1.6
+1244996418,159.0,391.2,4.0,15,4.0
+1244965374,187.2,368.3,13.1,18,0.0
+1245006385,156.2,398.7,16.8,18,3.1
+1245006387,80.8,476.0,23.7,15,23.7
+1245006386,114.1,444.2,24.9,18,14.5
+1245006388,72.3,498.7,38.8,18,20.8
+793332601,61.9,528.4,51.1,18,21.9
+814009115,58.6,541.9,54.5,18,25.0
+1244978480,150.3,624.6,150.3,11,0.0
+1244978481,189.7,610.8,189.7,11,10.5
+1244978482,219.1,597.8,219.1,11,14.8
+1244978483,237.9,590.3,237.9,11,16.3
+1244978484,251.6,588.3,251.6,11,19.1
+1245018175,260.4,554.7,258.4,11,0.8
+
+TEE OWNERSHIP H16 targetGreenOsmId=1245006366
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1244971434,0.0,197.1,0.0,16,0.0
+1244971435,98.4,93.8,0.4,16,0.4
+1244971437,18.3,165.1,4.0,16,4.0
+1244971433,20.2,216.9,20.2,16,20.2
+1244971436,65.9,135.4,27.4,16,27.4
+1245006371,90.6,117.2,36.7,16,36.7
+1245006375,247.8,87.2,80.2,17,27.3
+1245006374,217.8,96.5,90.6,17,24.6
+1245006373,192.1,117.1,105.8,17,17.4
+1245006372,155.7,174.5,130.3,17,0.0
+1244965374,428.0,267.1,259.7,18,0.0
+1244988172,438.0,541.6,438.0,13,0.6
+1244988168,446.3,505.0,446.3,12,0.5
+1244988169,448.2,496.0,448.2,12,0.0
+1244988171,449.8,567.8,449.8,13,0.7
+
+TEE OWNERSHIP H17 targetGreenOsmId=1245006384
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1245006372,0.0,496.2,0.0,17,0.0
+1245006373,71.6,419.9,17.4,17,17.4
+1245006374,115.0,380.1,24.6,17,24.6
+1245006375,160.7,333.4,27.3,17,27.3
+1245006371,90.1,448.7,75.5,16,36.7
+1244965374,435.3,103.3,82.5,18,0.0
+1244971436,99.3,465.1,92.1,16,27.4
+1244971435,134.8,417.1,104.1,16,0.4
+1244971437,118.0,489.3,115.4,16,4.0
+1244971434,152.4,516.2,152.4,16,0.0
+1244971433,156.6,538.6,156.6,16,20.2
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/muirfield-village-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Muirfield Village Golf Club",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 26743098,
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "exportResolutionMeters": 1.0,
+  "height": 2134,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 3025
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9256802.344%2C4886016.217%2C-9253777.682%2C4888149.836&bboxSR=3857&imageSR=3857&size=3025%2C2134&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39W084_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39W084_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 183897.8,
+      "knownAreaSqYd": 15426.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 11,
+          "areaSqYd": 68824.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 90617.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 162559.3,
+      "knownAreaSqYd": 11151.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 85452.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 60273.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 162744.3,
+      "knownAreaSqYd": 9727.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 65920.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 100829.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 96057.1,
+      "knownAreaSqYd": 4527.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 30783.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 61118.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 231277.7,
+      "knownAreaSqYd": 13355.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 86724.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 128431.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 163480.0,
+      "knownAreaSqYd": 12002.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 61766.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 10,
+          "areaSqYd": 82755.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 220999.8,
+      "knownAreaSqYd": 13961.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 120602.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 12,
+          "areaSqYd": 75333.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 93613.7,
+      "knownAreaSqYd": 2600.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 54623.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 32584.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 150630.5,
+      "knownAreaSqYd": 16284.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 82775.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 51228.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 176558.3,
+      "knownAreaSqYd": 16414.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 50980.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 99567.4
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 77.7
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 227350.8,
+      "knownAreaSqYd": 16549.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 15,
+          "areaSqYd": 58071.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 152768.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 77.9
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 86877.0,
+      "knownAreaSqYd": 6759.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 32673.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 47520.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 182210.1,
+      "knownAreaSqYd": 13123.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 64128.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 102060.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 127729.5,
+      "knownAreaSqYd": 7653.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 19938.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 102398.4
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 78.6
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 199586.2,
+      "knownAreaSqYd": 14906.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 63217.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 122188.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 78.0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 93109.4,
+      "knownAreaSqYd": 5059.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 11834.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 70336.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 167684.4,
+      "knownAreaSqYd": 10334.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 44938.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 116290.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 199498.0,
+      "knownAreaSqYd": 9783.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 14,
+          "areaSqYd": 64887.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 112940.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/muirfield-village/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:260: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/green-detail-v1.json (96,520 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 472,
+      "validOnGreenNodes": 472,
+      "greenCoverage": 1.0,
+      "localFitCount": 472,
+      "trustedLocalFitCount": 472,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.031,
+      "localRmsP95Ft": 0.042,
+      "maxTrustedSlopePercent": 8.5
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 543,
+      "validOnGreenNodes": 543,
+      "greenCoverage": 1.0,
+      "localFitCount": 543,
+      "trustedLocalFitCount": 543,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.032,
+      "localRmsP95Ft": 0.044,
+      "maxTrustedSlopePercent": 7.1
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 473,
+      "validOnGreenNodes": 473,
+      "greenCoverage": 1.0,
+      "localFitCount": 473,
+      "trustedLocalFitCount": 473,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.051,
+      "localRmsP95Ft": 0.108,
+      "maxTrustedSlopePercent": 18.6
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 748,
+      "validOnGreenNodes": 748,
+      "greenCoverage": 1.0,
+      "localFitCount": 748,
+      "trustedLocalFitCount": 748,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.032,
+      "localRmsP95Ft": 0.101,
+      "maxTrustedSlopePercent": 25.8
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 375,
+      "validOnGreenNodes": 375,
+      "greenCoverage": 1.0,
+      "localFitCount": 375,
+      "trustedLocalFitCount": 375,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.085,
+      "localRmsP95Ft": 0.205,
+      "maxTrustedSlopePercent": 25.8
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 635,
+      "validOnGreenNodes": 635,
+      "greenCoverage": 1.0,
+      "localFitCount": 635,
+      "trustedLocalFitCount": 635,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.043,
+      "maxTrustedSlopePercent": 8.1
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 595,
+      "validOnGreenNodes": 595,
+      "greenCoverage": 1.0,
+      "localFitCount": 595,
+      "trustedLocalFitCount": 590,
+      "trustedLocalFitRatio": 0.9916,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.282,
+      "maxTrustedSlopePercent": 34.6
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 479,
+      "validOnGreenNodes": 479,
+      "greenCoverage": 1.0,
+      "localFitCount": 479,
+      "trustedLocalFitCount": 479,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.046,
+      "localRmsP95Ft": 0.107,
+      "maxTrustedSlopePercent": 13.0
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 609,
+      "validOnGreenNodes": 609,
+      "greenCoverage": 1.0,
+      "localFitCount": 609,
+      "trustedLocalFitCount": 609,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.054,
+      "localRmsP95Ft": 0.108,
+      "maxTrustedSlopePercent": 21.0
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 735,
+      "validOnGreenNodes": 735,
+      "greenCoverage": 1.0,
+      "localFitCount": 735,
+      "trustedLocalFitCount": 735,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.03,
+      "localRmsP95Ft": 0.039,
+      "maxTrustedSlopePercent": 3.7
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 575,
+      "validOnGreenNodes": 575,
+      "greenCoverage": 1.0,
+      "localFitCount": 575,
+      "trustedLocalFitCount": 575,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.032,
+      "localRmsP95Ft": 0.045,
+      "maxTrustedSlopePercent": 4.3
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 396,
+      "validOnGreenNodes": 396,
+      "greenCoverage": 1.0,
+      "localFitCount": 396,
+      "trustedLocalFitCount": 396,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.03,
+      "localRmsP95Ft": 0.048,
+      "maxTrustedSlopePercent": 1.6
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 419,
+      "validOnGreenNodes": 419,
+      "greenCoverage": 1.0,
+      "localFitCount": 419,
+      "trustedLocalFitCount": 419,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.055,
+      "maxTrustedSlopePercent": 14.6
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 484,
+      "validOnGreenNodes": 484,
+      "greenCoverage": 1.0,
+      "localFitCount": 484,
+      "trustedLocalFitCount": 458,
+      "trustedLocalFitRatio": 0.9463,
+      "localRmsP50Ft": 0.081,
+      "localRmsP95Ft": 0.353,
+      "maxTrustedSlopePercent": 22.4
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 659,
+      "validOnGreenNodes": 659,
+      "greenCoverage": 1.0,
+      "localFitCount": 659,
+      "trustedLocalFitCount": 659,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.048,
+      "maxTrustedSlopePercent": 12.1
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 542,
+      "validOnGreenNodes": 542,
+      "greenCoverage": 1.0,
+      "localFitCount": 542,
+      "trustedLocalFitCount": 542,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.094,
+      "maxTrustedSlopePercent": 5.6
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 487,
+      "validOnGreenNodes": 487,
+      "greenCoverage": 1.0,
+      "localFitCount": 487,
+      "trustedLocalFitCount": 487,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.042,
+      "maxTrustedSlopePercent": 12.4
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 535,
+      "validOnGreenNodes": 535,
+      "greenCoverage": 1.0,
+      "localFitCount": 535,
+      "trustedLocalFitCount": 535,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.109,
+      "maxTrustedSlopePercent": 16.7
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/muirfield-village-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/muirfield-village/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "greenDetailSha256": "b16ff2d3944c19c33419be3f4a134f5fb32c869a57a231ce527add87c3769ca5",
+  "packageSha256": "3dc65cbbe5e2c8cc6b993c9d74032180fe22d0d3f8055241417b073faa5c62b3",
+  "snapshotSha256": "eae84ae2719a09cb6d4c502024b4b20f0f8770f841c878a7ef8eff831303c1bf",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/muirfield-village-v1.json
+[course-import-contract] muirfield-village-golf-club-dublin-oh: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 6 canonical tee set(s): Tee 1 (Back), Tee 2, Tee 3, Tee 4, Tee 5, Tee 6 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 1 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 2 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course muirfield-village-golf-club-dublin-oh
+[runtime-smoke] Muirfield Village Golf Club: 6 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 6 (Front), Tee 5, Tee 4, Tee 3, Tee 2, Tee 1 (Back).
+[runtime-smoke] Muirfield Village Golf Club runtime terrain validation passed for 18 hole(s).
+┌─────────┬───────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                        │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼───────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Muirfield Village Golf Club' │ 1    │ 5        │ 2             │ 6             │ 6               │ 1                      │ 10                │ 918.9          │ 886.6             │ -32.3            │
+│ 1       │ 'Muirfield Village Golf Club' │ 2    │ 5        │ 2             │ 5             │ 6               │ 1                      │ 10                │ 900.8          │ 857.5             │ -43.3            │
+│ 2       │ 'Muirfield Village Golf Club' │ 3    │ 5        │ 2             │ 4             │ 6               │ 1                      │ 10                │ 867.3          │ 842.4             │ -24.9            │
+│ 3       │ 'Muirfield Village Golf Club' │ 4    │ 5        │ 2             │ 3             │ 6               │ 1                      │ 10                │ 856.1          │ 855.9             │ -0.2             │
+│ 4       │ 'Muirfield Village Golf Club' │ 5    │ 5        │ 2             │ 5             │ 6               │ 1                      │ 10                │ 881.1          │ 875.2             │ -5.9             │
+│ 5       │ 'Muirfield Village Golf Club' │ 6    │ 5        │ 2             │ 5             │ 6               │ 1                      │ 10                │ 880.8          │ 874.6             │ -6.2             │
+│ 6       │ 'Muirfield Village Golf Club' │ 7    │ 5        │ 2             │ 4             │ 6               │ 1                      │ 10                │ 892.6          │ 901               │ 8.4              │
+│ 7       │ 'Muirfield Village Golf Club' │ 8    │ 4        │ 2             │ 5             │ 6               │ 1                      │ 10                │ 917.4          │ 883.6             │ -33.8            │
+│ 8       │ 'Muirfield Village Golf Club' │ 9    │ 5        │ 2             │ 3             │ 6               │ 1                      │ 10                │ 895.4          │ 896.2             │ 0.8              │
+│ 9       │ 'Muirfield Village Golf Club' │ 10   │ 5        │ 3             │ 2             │ 6               │ 1                      │ 10                │ 924.7          │ 928.3             │ 3.6              │
+│ 10      │ 'Muirfield Village Golf Club' │ 11   │ 5        │ 3             │ 6             │ 6               │ 1                      │ 10                │ 944.9          │ 918.3             │ -26.6            │
+│ 11      │ 'Muirfield Village Golf Club' │ 12   │ 4        │ 2             │ 4             │ 6               │ 1                      │ 10                │ 942.3          │ 922.1             │ -20.2            │
+│ 12      │ 'Muirfield Village Golf Club' │ 13   │ 5        │ 2             │ 4             │ 6               │ 1                      │ 10                │ 956.8          │ 940.1             │ -16.7            │
+│ 13      │ 'Muirfield Village Golf Club' │ 14   │ 5        │ 3             │ 4             │ 6               │ 1                      │ 10                │ 935.7          │ 902               │ -33.7            │
+│ 14      │ 'Muirfield Village Golf Club' │ 15   │ 5        │ 3             │ 6             │ 6               │ 1                      │ 10                │ 903.8          │ 931.4             │ 27.6             │
+│ 15      │ 'Muirfield Village Golf Club' │ 16   │ 5        │ 2             │ 5             │ 6               │ 1                      │ 10                │ 956.3          │ 935.7             │ -20.6            │
+│ 16      │ 'Muirfield Village Golf Club' │ 17   │ 5        │ 2             │ 4             │ 6               │ 1                      │ 10                │ 949.5          │ 927.5             │ -22              │
+│ 17      │ 'Muirfield Village Golf Club' │ 18   │ 5        │ 2             │ 6             │ 6               │ 1                      │ 10                │ 920.4          │ 918.2             │ -2.2             │
+└─────────┴───────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] muirfield-village-golf-club-dublin-oh passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 2 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "muirfield-village-golf-club-dublin-oh",
+  "courseSlug": "muirfield-village",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/muirfield-village/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/muirfield-village/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/muirfield-village/validation-v1.json"
+}
+=== [muirfield-village:import] rc=0 seconds=45.0
+=== [muirfield-village:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=11852493 seconds=27.7
+{"elementsByType": {"node": 58244, "way": 4471, "relation": 66}, "taggedElements": 5271, "compressedBytes": 1515102}
+=== [muirfield-village:osm] rc=0 seconds=29.5
+=== [muirfield-village:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/course-bbox.json --crs EPSG:26917 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=9 seconds=12.5 size=3382x3672
+{"width": 3382, "height": 3672, "pixel": 1.0, "validCells": 12418704, "elevMin": 243.97525024414062, "elevMax": 301.9462890625}
+=== [muirfield-village:dem] rc=0 seconds=13.7
+=== [muirfield-village:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model
+nodes=7608 pointsInIntersectingNodes=324622372 hierarchySeconds=1.6
+tiles 25/7608 kept=495743 MB=6 seconds=3
+tiles 50/7608 kept=1663476 MB=15 seconds=4
+tiles 75/7608 kept=2505219 MB=21 seconds=5
+tiles 100/7608 kept=3034926 MB=24 seconds=5
+tiles 125/7608 kept=3885975 MB=32 seconds=6
+tiles 150/7608 kept=5207657 MB=41 seconds=7
+tiles 175/7608 kept=6248968 MB=48 seconds=8
+tiles 200/7608 kept=7361628 MB=56 seconds=9
+tiles 225/7608 kept=8510807 MB=64 seconds=10
+tiles 250/7608 kept=10137127 MB=72 seconds=12
+tiles 275/7608 kept=11758617 MB=81 seconds=13
+tiles 300/7608 kept=13511133 MB=89 seconds=14
+tiles 325/7608 kept=14904815 MB=98 seconds=15
+tiles 350/7608 kept=16167197 MB=106 seconds=17
+tiles 375/7608 kept=17465128 MB=114 seconds=18
+tiles 400/7608 kept=18812291 MB=124 seconds=19
+tiles 425/7608 kept=19496796 MB=129 seconds=20
+tiles 450/7608 kept=20360324 MB=134 seconds=20
+tiles 475/7608 kept=21340418 MB=140 seconds=21
+tiles 500/7608 kept=22420158 MB=146 seconds=22
+tiles 525/7608 kept=23556801 MB=153 seconds=23
+tiles 550/7608 kept=24657895 MB=159 seconds=24
+tiles 575/7608 kept=25669899 MB=165 seconds=25
+tiles 600/7608 kept=26744645 MB=171 seconds=26
+tiles 625/7608 kept=27824729 MB=177 seconds=27
+tiles 650/7608 kept=28431393 MB=181 seconds=28
+tiles 675/7608 kept=28900021 MB=184 seconds=28
+tiles 700/7608 kept=29359501 MB=187 seconds=29
+tiles 725/7608 kept=29827792 MB=189 seconds=29
+tiles 750/7608 kept=30304104 MB=192 seconds=30
+tiles 775/7608 kept=30802249 MB=195 seconds=30
+tiles 800/7608 kept=31551191 MB=200 seconds=31
+tiles 825/7608 kept=32591524 MB=206 seconds=32
+tiles 850/7608 kept=33713013 MB=212 seconds=33
+tiles 875/7608 kept=34766287 MB=218 seconds=34
+tiles 900/7608 kept=35850612 MB=224 seconds=35
+tiles 925/7608 kept=36892837 MB=230 seconds=36
+tiles 950/7608 kept=37865512 MB=235 seconds=36
+tiles 975/7608 kept=38937165 MB=241 seconds=37
+tiles 1000/7608 kept=39815122 MB=246 seconds=38
+tiles 1025/7608 kept=40457665 MB=250 seconds=39
+tiles 1050/7608 kept=40878135 MB=254 seconds=39
+tiles 1075/7608 kept=41702805 MB=262 seconds=40
+tiles 1100/7608 kept=43285601 MB=274 seconds=42
+tiles 1125/7608 kept=44402363 MB=283 seconds=43
+tiles 1150/7608 kept=45518387 MB=292 seconds=44
+tiles 1175/7608 kept=46612073 MB=299 seconds=45
+tiles 1200/7608 kept=47706730 MB=307 seconds=46
+tiles 1225/7608 kept=48874929 MB=315 seconds=47
+tiles 1250/7608 kept=50186666 MB=323 seconds=48
+tiles 1275/7608 kept=51742160 MB=332 seconds=49
+tiles 1300/7608 kept=53222688 MB=341 seconds=50
+tiles 1325/7608 kept=54806663 MB=350 seconds=52
+tiles 1350/7608 kept=56326619 MB=359 seconds=53
+tiles 1375/7608 kept=57544135 MB=368 seconds=54
+tiles 1400/7608 kept=58794156 MB=377 seconds=55
+tiles 1425/7608 kept=60461809 MB=387 seconds=57
+tiles 1450/7608 kept=61021657 MB=395 seconds=58
+tiles 1475/7608 kept=61692804 MB=399 seconds=58
+tiles 1500/7608 kept=62570948 MB=404 seconds=59
+tiles 1525/7608 kept=63568204 MB=410 seconds=60
+tiles 1550/7608 kept=64586151 MB=416 seconds=61
+tiles 1575/7608 kept=65644794 MB=422 seconds=62
+tiles 1600/7608 kept=66710796 MB=428 seconds=63
+tiles 1625/7608 kept=67758288 MB=434 seconds=64
+tiles 1650/7608 kept=68843185 MB=441 seconds=65
+tiles 1675/7608 kept=69957798 MB=448 seconds=66
+tiles 1700/7608 kept=70538768 MB=452 seconds=66
+tiles 1725/7608 kept=71018920 MB=455 seconds=67
+tiles 1750/7608 kept=71527388 MB=458 seconds=67
+tiles 1775/7608 kept=72019961 MB=461 seconds=68
+tiles 1800/7608 kept=72536467 MB=464 seconds=68
+tiles 1825/7608 kept=73044434 MB=467 seconds=69
+tiles 1850/7608 kept=73555134 MB=470 seconds=69
+tiles 1875/7608 kept=74046119 MB=473 seconds=70
+tiles 1900/7608 kept=74860009 MB=478 seconds=70
+tiles 1925/7608 kept=75892477 MB=485 seconds=71
+tiles 1950/7608 kept=77017497 MB=491 seconds=72
+tiles 1975/7608 kept=78102199 MB=497 seconds=73
+tiles 2000/7608 kept=79225233 MB=504 seconds=74
+tiles 2025/7608 kept=80351733 MB=510 seconds=75
+tiles 2050/7608 kept=81517940 MB=517 seconds=76
+tiles 2075/7608 kept=82643256 MB=524 seconds=77
+tiles 2100/7608 kept=83737456 MB=531 seconds=78
+tiles 2125/7608 kept=84623037 MB=537 seconds=79
+tiles 2150/7608 kept=85145400 MB=540 seconds=80
+tiles 2175/7608 kept=85634764 MB=543 seconds=80
+tiles 2200/7608 kept=85873183 MB=546 seconds=81
+tiles 2225/7608 kept=86955548 MB=557 seconds=82
+tiles 2250/7608 kept=88773206 MB=570 seconds=83
+tiles 2275/7608 kept=90455031 MB=583 seconds=85
+tiles 2300/7608 kept=91658208 MB=593 seconds=86
+tiles 2325/7608 kept=92851463 MB=601 seconds=87
+tiles 2350/7608 kept=94041104 MB=609 seconds=88
+tiles 2375/7608 kept=95205789 MB=617 seconds=89
+tiles 2400/7608 kept=96538402 MB=626 seconds=90
+tiles 2425/7608 kept=98050101 MB=634 seconds=92
+tiles 2450/7608 kept=99582827 MB=643 seconds=93
+tiles 2475/7608 kept=101150471 MB=652 seconds=94
+tiles 2500/7608 kept=102688761 MB=661 seconds=95
+tiles 2525/7608 kept=104140363 MB=669 seconds=97
+tiles 2550/7608 kept=105312186 MB=677 seconds=98
+tiles 2575/7608 kept=106286413 MB=684 seconds=99
+tiles 2600/7608 kept=107441377 MB=692 seconds=100
+tiles 2625/7608 kept=108764901 MB=702 seconds=101
+tiles 2650/7608 kept=110109607 MB=712 seconds=102
+tiles 2675/7608 kept=110598596 MB=717 seconds=103
+tiles 2700/7608 kept=111406595 MB=722 seconds=103
+tiles 2725/7608 kept=112279064 MB=727 seconds=104
+tiles 2750/7608 kept=113081856 MB=732 seconds=105
+tiles 2775/7608 kept=114009247 MB=737 seconds=106
+tiles 2800/7608 kept=114901562 MB=742 seconds=107
+tiles 2825/7608 kept=115717969 MB=747 seconds=107
+tiles 2850/7608 kept=116615253 MB=752 seconds=108
+tiles 2875/7608 kept=117571571 MB=758 seconds=109
+tiles 2900/7608 kept=118413906 MB=763 seconds=110
+tiles 2925/7608 kept=119031880 MB=767 seconds=111
+tiles 2950/7608 kept=119485646 MB=770 seconds=111
+tiles 2975/7608 kept=119930355 MB=772 seconds=111
+tiles 3000/7608 kept=120370611 MB=775 seconds=112
+tiles 3025/7608 kept=120844211 MB=777 seconds=112
+tiles 3050/7608 kept=121570224 MB=782 seconds=113
+tiles 3075/7608 kept=122679584 MB=789 seconds=114
+tiles 3100/7608 kept=123714900 MB=795 seconds=115
+tiles 3125/7608 kept=124776074 MB=801 seconds=116
+tiles 3150/7608 kept=125913273 MB=808 seconds=117
+tiles 3175/7608 kept=127063256 MB=815 seconds=118
+tiles 3200/7608 kept=128240229 MB=822 seconds=119
+tiles 3225/7608 kept=129495963 MB=830 seconds=120
+tiles 3250/7608 kept=130422795 MB=836 seconds=121
+tiles 3275/7608 kept=130995029 MB=839 seconds=122
+tiles 3300/7608 kept=131466842 MB=842 seconds=122
+tiles 3325/7608 kept=131806936 MB=846 seconds=122
+tiles 3350/7608 kept=133116228 MB=859 seconds=124
+tiles 3375/7608 kept=134941732 MB=873 seconds=125
+tiles 3400/7608 kept=136783190 MB=888 seconds=127
+tiles 3425/7608 kept=137852016 MB=896 seconds=128
+tiles 3450/7608 kept=139038424 MB=905 seconds=129
+tiles 3475/7608 kept=139893494 MB=910 seconds=130
+tiles 3500/7608 kept=140809045 MB=918 seconds=131
+tiles 3525/7608 kept=142059555 MB=925 seconds=132
+tiles 3550/7608 kept=143206720 MB=931 seconds=133
+tiles 3575/7608 kept=144803303 MB=938 seconds=134
+tiles 3600/7608 kept=146239837 MB=945 seconds=135
+tiles 3625/7608 kept=147707189 MB=951 seconds=136
+tiles 3650/7608 kept=149141396 MB=958 seconds=138
+tiles 3675/7608 kept=150408909 MB=966 seconds=139
+tiles 3700/7608 kept=151555109 MB=974 seconds=140
+tiles 3725/7608 kept=152536114 MB=981 seconds=141
+tiles 3750/7608 kept=153690174 MB=989 seconds=142
+tiles 3775/7608 kept=155367849 MB=998 seconds=143
+tiles 3800/7608 kept=157324078 MB=1008 seconds=144
+tiles 3825/7608 kept=159238573 MB=1017 seconds=146
+tiles 3850/7608 kept=160501265 MB=1024 seconds=147
+tiles 3875/7608 kept=161223390 MB=1028 seconds=148
+tiles 3900/7608 kept=161806868 MB=1031 seconds=148
+tiles 3925/7608 kept=162702337 MB=1037 seconds=149
+tiles 3950/7608 kept=163559053 MB=1042 seconds=150
+tiles 3975/7608 kept=164437098 MB=1047 seconds=151
+tiles 4000/7608 kept=165352877 MB=1052 seconds=151
+tiles 4025/7608 kept=166295340 MB=1058 seconds=152
+tiles 4050/7608 kept=167259171 MB=1063 seconds=153
+tiles 4075/7608 kept=168223082 MB=1068 seconds=154
+tiles 4100/7608 kept=169230418 MB=1074 seconds=155
+tiles 4125/7608 kept=170236991 MB=1081 seconds=156
+tiles 4150/7608 kept=170717202 MB=1084 seconds=156
+tiles 4175/7608 kept=171222062 MB=1087 seconds=157
+tiles 4200/7608 kept=171680379 MB=1090 seconds=157
+tiles 4225/7608 kept=172653199 MB=1098 seconds=158
+tiles 4250/7608 kept=174026632 MB=1108 seconds=160
+tiles 4275/7608 kept=175833467 MB=1121 seconds=161
+tiles 4300/7608 kept=177039405 MB=1129 seconds=162
+tiles 4325/7608 kept=178435157 MB=1138 seconds=163
+tiles 4350/7608 kept=179823166 MB=1145 seconds=164
+tiles 4375/7608 kept=181085207 MB=1151 seconds=166
+tiles 4400/7608 kept=182374357 MB=1156 seconds=167
+tiles 4425/7608 kept=183820171 MB=1163 seconds=168
+tiles 4450/7608 kept=185211358 MB=1170 seconds=169
+tiles 4475/7608 kept=186399267 MB=1177 seconds=170
+tiles 4500/7608 kept=187698425 MB=1185 seconds=171
+tiles 4525/7608 kept=188928356 MB=1192 seconds=172
+tiles 4550/7608 kept=190215074 MB=1200 seconds=173
+tiles 4575/7608 kept=191493528 MB=1207 seconds=174
+tiles 4600/7608 kept=192922629 MB=1214 seconds=175
+tiles 4625/7608 kept=194468245 MB=1222 seconds=176
+tiles 4650/7608 kept=195945821 MB=1229 seconds=177
+tiles 4675/7608 kept=197430169 MB=1236 seconds=178
+tiles 4700/7608 kept=198582263 MB=1242 seconds=179
+tiles 4725/7608 kept=199541396 MB=1247 seconds=180
+tiles 4750/7608 kept=200543272 MB=1253 seconds=181
+tiles 4775/7608 kept=201543150 MB=1259 seconds=181
+tiles 4800/7608 kept=202471887 MB=1264 seconds=182
+tiles 4825/7608 kept=203041138 MB=1268 seconds=182
+tiles 4850/7608 kept=203497510 MB=1270 seconds=183
+tiles 4875/7608 kept=204148705 MB=1274 seconds=183
+tiles 4900/7608 kept=204900880 MB=1278 seconds=184
+tiles 4925/7608 kept=205642682 MB=1282 seconds=184
+tiles 4950/7608 kept=206334047 MB=1286 seconds=185
+tiles 4975/7608 kept=207081365 MB=1289 seconds=186
+tiles 5000/7608 kept=207817850 MB=1293 seconds=186
+tiles 5025/7608 kept=208596426 MB=1297 seconds=187
+tiles 5050/7608 kept=209406528 MB=1302 seconds=187
+tiles 5075/7608 kept=209989452 MB=1305 seconds=188
+tiles 5100/7608 kept=210437845 MB=1308 seconds=188
+tiles 5125/7608 kept=211459968 MB=1317 seconds=189
+tiles 5150/7608 kept=212709523 MB=1326 seconds=190
+tiles 5175/7608 kept=214067234 MB=1336 seconds=191
+tiles 5200/7608 kept=215321783 MB=1345 seconds=192
+tiles 5225/7608 kept=216498981 MB=1353 seconds=193
+tiles 5250/7608 kept=217791114 MB=1360 seconds=194
+tiles 5275/7608 kept=219204267 MB=1366 seconds=195
+tiles 5300/7608 kept=220650268 MB=1373 seconds=196
+tiles 5325/7608 kept=222016527 MB=1379 seconds=197
+tiles 5350/7608 kept=223292303 MB=1385 seconds=198
+tiles 5375/7608 kept=224415612 MB=1392 seconds=199
+tiles 5400/7608 kept=225513816 MB=1399 seconds=199
+tiles 5425/7608 kept=226687948 MB=1407 seconds=200
+tiles 5450/7608 kept=227967353 MB=1414 seconds=201
+tiles 5475/7608 kept=229529561 MB=1422 seconds=202
+tiles 5500/7608 kept=231178845 MB=1430 seconds=203
+tiles 5525/7608 kept=232584594 MB=1437 seconds=204
+tiles 5550/7608 kept=233529300 MB=1442 seconds=205
+tiles 5575/7608 kept=234391781 MB=1447 seconds=206
+tiles 5600/7608 kept=235331582 MB=1452 seconds=207
+tiles 5625/7608 kept=236028346 MB=1456 seconds=207
+tiles 5650/7608 kept=236490934 MB=1459 seconds=207
+tiles 5675/7608 kept=237208866 MB=1463 seconds=208
+tiles 5700/7608 kept=238065027 MB=1468 seconds=209
+tiles 5725/7608 kept=238913326 MB=1473 seconds=209
+tiles 5750/7608 kept=239779049 MB=1477 seconds=210
+tiles 5775/7608 kept=240643229 MB=1482 seconds=211
+tiles 5800/7608 kept=241502742 MB=1487 seconds=211
+tiles 5825/7608 kept=242303099 MB=1491 seconds=212
+tiles 5850/7608 kept=242824672 MB=1494 seconds=212
+tiles 5875/7608 kept=243308169 MB=1497 seconds=213
+tiles 5900/7608 kept=243781662 MB=1500 seconds=213
+tiles 5925/7608 kept=244670226 MB=1509 seconds=214
+tiles 5950/7608 kept=245798843 MB=1518 seconds=215
+tiles 5975/7608 kept=246949408 MB=1528 seconds=216
+tiles 6000/7608 kept=248324330 MB=1536 seconds=217
+tiles 6025/7608 kept=249552465 MB=1544 seconds=218
+tiles 6050/7608 kept=251234799 MB=1553 seconds=219
+tiles 6075/7608 kept=252891345 MB=1561 seconds=220
+tiles 6100/7608 kept=253799246 MB=1567 seconds=221
+tiles 6125/7608 kept=254260491 MB=1569 seconds=221
+tiles 6150/7608 kept=255315573 MB=1576 seconds=222
+tiles 6175/7608 kept=256401014 MB=1582 seconds=223
+tiles 6200/7608 kept=257434605 MB=1588 seconds=224
+tiles 6225/7608 kept=258194088 MB=1592 seconds=224
+tiles 6250/7608 kept=258652203 MB=1595 seconds=225
+tiles 6275/7608 kept=259518189 MB=1599 seconds=225
+tiles 6300/7608 kept=260199520 MB=1605 seconds=226
+tiles 6325/7608 kept=261294208 MB=1613 seconds=227
+tiles 6350/7608 kept=262575489 MB=1619 seconds=228
+tiles 6375/7608 kept=263930606 MB=1626 seconds=229
+tiles 6400/7608 kept=265035289 MB=1632 seconds=229
+tiles 6425/7608 kept=266132557 MB=1639 seconds=230
+tiles 6450/7608 kept=267724336 MB=1648 seconds=231
+tiles 6475/7608 kept=269214035 MB=1655 seconds=232
+tiles 6500/7608 kept=270727525 MB=1661 seconds=233
+tiles 6525/7608 kept=272278994 MB=1667 seconds=234
+tiles 6550/7608 kept=273594491 MB=1675 seconds=235
+tiles 6575/7608 kept=274346054 MB=1680 seconds=236
+tiles 6600/7608 kept=275197624 MB=1684 seconds=237
+tiles 6625/7608 kept=276128825 MB=1689 seconds=237
+tiles 6650/7608 kept=277137728 MB=1694 seconds=238
+tiles 6675/7608 kept=278083688 MB=1699 seconds=239
+tiles 6700/7608 kept=279113768 MB=1705 seconds=239
+tiles 6725/7608 kept=279994345 MB=1709 seconds=240
+tiles 6750/7608 kept=280862818 MB=1713 seconds=241
+tiles 6775/7608 kept=281615815 MB=1718 seconds=241
+tiles 6800/7608 kept=282054309 MB=1720 seconds=242
+tiles 6825/7608 kept=282604506 MB=1723 seconds=242
+tiles 6850/7608 kept=283499606 MB=1729 seconds=243
+tiles 6875/7608 kept=284554757 MB=1735 seconds=244
+tiles 6900/7608 kept=285619977 MB=1741 seconds=244
+tiles 6925/7608 kept=286204930 MB=1748 seconds=245
+tiles 6950/7608 kept=287104872 MB=1755 seconds=246
+tiles 6975/7608 kept=288097474 MB=1762 seconds=247
+tiles 7000/7608 kept=289382515 MB=1769 seconds=248
+tiles 7025/7608 kept=290800034 MB=1777 seconds=249
+tiles 7050/7608 kept=291946747 MB=1784 seconds=249
+tiles 7075/7608 kept=292990273 MB=1791 seconds=250
+tiles 7100/7608 kept=294281636 MB=1799 seconds=251
+tiles 7125/7608 kept=295814829 MB=1807 seconds=252
+tiles 7150/7608 kept=297322724 MB=1814 seconds=253
+tiles 7175/7608 kept=299009309 MB=1822 seconds=254
+tiles 7200/7608 kept=300197251 MB=1828 seconds=255
+tiles 7225/7608 kept=301261757 MB=1835 seconds=256
+tiles 7250/7608 kept=301803996 MB=1838 seconds=257
+tiles 7275/7608 kept=302637164 MB=1843 seconds=257
+tiles 7300/7608 kept=303554413 MB=1848 seconds=258
+tiles 7325/7608 kept=304525781 MB=1853 seconds=259
+tiles 7350/7608 kept=305458406 MB=1858 seconds=259
+tiles 7375/7608 kept=306402528 MB=1863 seconds=260
+tiles 7400/7608 kept=307361103 MB=1868 seconds=261
+tiles 7425/7608 kept=308339126 MB=1873 seconds=261
+tiles 7450/7608 kept=308986763 MB=1877 seconds=262
+tiles 7475/7608 kept=309519673 MB=1881 seconds=262
+tiles 7500/7608 kept=310320858 MB=1885 seconds=263
+tiles 7525/7608 kept=311231752 MB=1890 seconds=264
+tiles 7550/7608 kept=311909692 MB=1897 seconds=264
+tiles 7575/7608 kept=312875068 MB=1907 seconds=265
+tiles 7600/7608 kept=314140959 MB=1917 seconds=266
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_OH_Columbus_2019/ept.json", "eptSrs": "3857", "octreeNodesRead": 7608, "downloadedMB": 1920.2, "pointsKeptInBbox": 314553093, "pointsPerSquareMetre": 25.33, "firstReturnsPerSquareMetre": 15.93, "classificationHistogram": {"1": 174831892, "2": 139662537, "9": 50169, "17": 6094, "20": 13856}, "chm": {"width": 3382, "height": 3672, "pixelMeters": 1.0, "cellsWithReturns": 10727225, "emptyCells": 1691479, "cellsOver3m": 4598707, "cellsOver10m": 2110142, "p50": 0.13999999999998636, "p95": 19.0, "max": 65.43}, "seconds": 275.5}
+=== [muirfield-village:lidar] rc=0 seconds=275.7
+=== [muirfield-village:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26917", "treeCount": 60704, "heightM": {"p10": 5.2, "p50": 10.4, "p90": 21.0, "max": 65.3}, "crownRadiusM": {"p10": 2.0, "p50": 4.2, "p90": 7.3}, "woodlandPolygons": 8590, "woodlandAreaHa": 396.62, "maskedCellsBuildingsAndPower": 582728, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 14.2}
+=== [muirfield-village:trees] rc=0 seconds=15.1
+=== [muirfield-village:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/muirfield-village/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/muirfield-village/course-v1-lidar.json
+{
+ "bytes": 2260890,
+ "originalBytes": 378799,
+ "holes": {
+  "woodsPolygons": 140,
+  "bunker": "12->12",
+  "water": "2->2",
+  "mapFeatures": {
+   "parking": 4,
+   "building": 13,
+   "road": 25,
+   "cartpath": 67
+  },
+  "terrainCells": 46683
+ },
+ "woodsTotal": 2570
+}
+=== [muirfield-village:enrich] rc=0 seconds=51.7
