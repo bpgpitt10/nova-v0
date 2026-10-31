@@ -70,6 +70,9 @@ jobs:
       - name: Test under-range Shot Strategy, edge hazards and native-aim guardrails
         run: node tools/test-live-partial-shot-strategy.mjs
 
+      - name: Green read (uphill-putt side, player-frame directions) and consistent partial-shot safe miss
+        run: node tools/test-live-green-read.mjs
+
       - name: Native course positions (beta)
         run: node tools/test-native-course-positions.mjs
 
