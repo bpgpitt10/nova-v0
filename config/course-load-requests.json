@@ -1,5 +1,5 @@
 [
   {"slug": "valhalla", "name": "Valhalla Golf Club", "location": "Louisville, KY", "nameRegex": "valhalla", "lat": 38.247, "lon": -85.484, "radiusM": 10000},
-  {"slug": "muirfield-village", "name": "Muirfield Village Golf Club", "location": "Dublin, OH", "nameRegex": "muirfield", "lat": 40.133, "lon": -83.149, "radiusM": 10000},
-  {"slug": "royal-new-kent", "name": "Royal New Kent Golf Club", "location": "Providence Forge, VA", "nameRegex": "royal new kent|new kent", "lat": 37.45, "lon": -77.05, "radiusM": 15000}
+  {"slug": "muirfield-village", "name": "Muirfield Village Golf Club", "location": "Dublin, OH", "nameRegex": "muirfield", "lat": 40.133, "lon": -83.149, "radiusM": 10000, "done": true},
+  {"slug": "royal-new-kent", "name": "Royal New Kent Golf Club", "location": "Providence Forge, VA", "nameRegex": "royal new kent|new kent", "lat": 37.45, "lon": -77.05, "radiusM": 15000, "done": true}
 ]

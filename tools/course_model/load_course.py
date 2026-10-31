@@ -178,8 +178,12 @@ def main() -> int:
     for request in requests:
         if args.only and request.get('slug') not in args.only:
             continue
+        if request.get('done'):
+            continue
         report = load_one(request)
         reports.append({k: report[k] for k in ('slug', 'ready', 'totalSeconds', 'stages')})
+    if not reports:
+        return 0
     summary = {'finishedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                'runId': os.environ.get('GITHUB_RUN_ID'), 'courses': reports}
     (ROOT / 'artifacts' / 'course-load').mkdir(parents=True, exist_ok=True)

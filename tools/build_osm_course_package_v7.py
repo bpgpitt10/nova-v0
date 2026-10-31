@@ -66,6 +66,64 @@ def apply_tactical_surface_semantics(model: dict[str, Any]) -> dict[str, Any]:
     return output
 
 
+ROUTE_START_TEE_HALF_WIDTH_YDS = 5.0
+ROUTE_START_TEE_HALF_DEPTH_YDS = 4.0
+
+
+def _route_start_tee_fallback(model: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """OSM often maps only some tee boxes (Valhalla: 12 golf=tee for 18 holes).
+    A hole with no owned tee polygon gets one small, clearly synthetic tee at
+    the start of its OSM golf=hole route (the hole frame's origin), carrying
+    every course-wide tee set, so the course can still be played. Native GSPro
+    positions replace it with the real tee when the player's GKD is available.
+    """
+    if model.get("teeCandidates"):
+        return model, False
+    frame = model.get("coordinateFrame") or {}
+    if frame.get("origin") != "osm-hole-route-start":
+        return model, False
+    contract = model.get("teeSetContract") or {}
+    tee_sets = [label for label in contract.get("teeSets") or [] if label]
+    if not tee_sets:
+        return model, False
+    greens = (model.get("surfaces") or {}).get("green") or []
+    ring = greens[0] if greens else None
+    if ring and isinstance(ring[0], (list, tuple)) and isinstance(ring[0][0], (list, tuple)):
+        ring = ring[0]
+    if ring:
+        gx = sum(p[0] for p in ring) / len(ring)
+        gy = sum(p[1] for p in ring) / len(ring)
+        to_green = (gx * gx + gy * gy) ** 0.5
+    else:
+        to_green = 0.0
+    w, d = ROUTE_START_TEE_HALF_WIDTH_YDS, ROUTE_START_TEE_HALF_DEPTH_YDS
+    box = [[-w, -d], [w, -d], [w, d], [-w, d]]
+    model = dict(model)
+    surfaces = dict(model.get("surfaces") or {})
+    surfaces["tee"] = [box]
+    model["surfaces"] = surfaces
+    model["teeCandidates"] = [{
+        "osmId": None,
+        "osmType": None,
+        "teeSet": tee_sets[0],
+        "teeAliases": tee_sets,
+        "name": None,
+        "ref": None,
+        "color": None,
+        "label": "Route start (no mapped tee)",
+        "sourceTags": {},
+        "sourceLatLon": None,
+        "coursePoint": [0.0, 0.0],
+        "teeToGreenCentroidYards": round(to_green, 1),
+        "startPolygonGapYards": 0.0,
+        "currentRouteGapYards": 0.0,
+        "selectedAnchor": True,
+        "synthetic": "osm-hole-route-start",
+        "polygons": [box],
+    }]
+    return model, True
+
+
 def model_for_hole(
     hole_number: int,
     config: dict[str, Any],
@@ -74,6 +132,10 @@ def model_for_hole(
 ):
     model, diagnostic = v6.model_for_hole(hole_number, config, features, hole_routes)
     model = apply_tactical_surface_semantics(model)
+    model, synthesized = _route_start_tee_fallback(model)
+    if synthesized:
+        diagnostic = dict(diagnostic)
+        diagnostic["syntheticRouteStartTee"] = True
 
     deep_rough_count = len((model.get("surfaces") or {}).get("deep-rough", []))
     diagnostic = dict(diagnostic)
