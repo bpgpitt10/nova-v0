@@ -668,6 +668,39 @@
   opacity: 0.75;
 }
 
+/* Green read: steepness colours on the green, labelled tiers/spines, and one
+   overall-tilt arrow just off the green (so the aim ring never covers it). */
+.live-green-slope {
+  pointer-events: none;
+  image-rendering: auto;
+}
+
+.live-green-tag {
+  font-size: 2px;
+  font-weight: 600;
+  fill: #fff6d6;
+  paint-order: stroke;
+  stroke: rgba(11, 19, 13, 0.9);
+  stroke-width: 0.55px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.live-green-tilt line {
+  stroke: #f3ecd6;
+  stroke-width: 0.55;
+  stroke-linecap: round;
+}
+
+.live-green-tilt text {
+  font-size: 2px;
+  font-weight: 600;
+  fill: #f3ecd6;
+  paint-order: stroke;
+  stroke: rgba(11, 19, 13, 0.9);
+  stroke-width: 0.5px;
+}
+
 .live-hillshade {
   pointer-events: none;
   image-rendering: auto;

@@ -39,6 +39,7 @@ import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
+import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -1015,6 +1016,33 @@ export default function LiveCaddiePage() {
       ?? null
     : null
   const risk = isShotStrategy ? null : inspectedCandidate?.riskProfile ?? null
+  // Green read (steepness, tilt, tiers, spines). Shown only when this shot can
+  // actually get to the green: the expected finish reaches the front of the
+  // green, or comes up no more than ~20 yd short. Tee shots on par 4s and 5s
+  // and lay-ups stay clean.
+  const greenReadAnalysis = useMemo(() => {
+    if (!hole || !greenDetail) return null
+    const greens = hole.surfaces.filter((s) => s.kind === 'green').flatMap((s) => s.polygons)
+    return analyzeGreen(greenDetail, greens)
+  }, [hole, greenDetail])
+  const greenReachable = (() => {
+    if (!hole || isGreenSurface || !pinEstimate) return false
+    if (isShotStrategy) return true
+    const finish = inspectedCandidate?.meanLanding
+    if (!finish) return false
+    const d = Math.hypot(pinEstimate[0] - ball[0], pinEstimate[1] - ball[1]) || 1
+    const ux = (pinEstimate[0] - ball[0]) / d
+    const uy = (pinEstimate[1] - ball[1]) / d
+    const greenPts = hole.surfaces.filter((s) => s.kind === 'green').flatMap((s) => s.polygons).flat()
+    if (!greenPts.length) return false
+    const front = Math.min(...greenPts.map((p) => (p[0] - ball[0]) * ux + (p[1] - ball[1]) * uy))
+    const reach = (finish[0] - ball[0]) * ux + (finish[1] - ball[1]) * uy
+    return reach >= front - 20
+  })()
+  const shownGreenRead = greenReachable ? greenReadAnalysis : null
+  const greenReadText = shownGreenRead && pinEstimate
+    ? greenReadLine(shownGreenRead, ball, pinEstimate, Boolean(trustedLivePin))
+    : null
   const displayedClub = isShotStrategy
     ? eligibleArmedClub
     : eligibleArmedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
@@ -1503,8 +1531,8 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
-                    {greenGuidance?.playerRead ? (
-                      <span className="live-green-read"><strong>Green:</strong> {greenGuidance.playerRead}</span>
+                    {greenReadText ? (
+                      <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}
                     {aimContext
                       ?? inspectedCandidate?.decisionReason
@@ -1604,6 +1632,7 @@ export default function LiveCaddiePage() {
                   showRiskTail={showRiskTail}
                   showPracticeShots={showPracticeShots}
                   provisionalTeeRadiusYds={provisionalPositionRadiusYds ?? provisionalTeeRadiusYds}
+                  greenRead={shownGreenRead}
                 />
 
                 <div className="live-map-legend">
