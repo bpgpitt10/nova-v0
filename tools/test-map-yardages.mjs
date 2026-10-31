@@ -80,16 +80,17 @@ labels = hazardYardages({
 assert.deepEqual(labels.map((l) => [l.reachYds, l.carryYds, l.side]), [[250, 258, 'center']])
 assert.ok(Math.abs(labels[0].anchor[0]) <= 6, JSON.stringify(labels[0].anchor))
 
-// Driver from the tee: a bunker 37-47 yds out is flown over and not shown; one in the
-// landing zone is; a pond short of it still is (forced carry).
+// Driver from the tee: only hazards whose front edge is where the ball could come
+// down get a reach number. A bunker 37 yds out and a pond you fly over at 20-60
+// are left off; the landing-zone bunker and the creek at 200 stay.
 labels = hazardYardages({
   hazards: [
     { kind: 'bunker', polygons: [rect(4, 37, 12, 47), rect(8, 238, 20, 252)] },
-    { kind: 'water', polygons: [rect(-15, 20, 15, 60)] },
+    { kind: 'water', polygons: [rect(-15, 20, 15, 60), rect(-30, 200, 30, 206)] },
   ],
-  aim: [0, 250], corridorHalfWidthYds: 29, maxReachYds: 290, bunkerMinCarryYds: 194,
+  aim: [0, 250], corridorHalfWidthYds: 29, maxReachYds: 290, minReachYds: 194,
 })
-assert.deepEqual(labels.map((l) => [l.kind, l.reachYds, l.carryYds]), [['water', 20, 60], ['bunker', 238, 252]])
+assert.deepEqual(labels.map((l) => [l.kind, l.reachYds]), [['water', 200], ['bunker', 238]])
 
 // Green front / middle / back along the pin line.
 assert.deepEqual(greenYardage([rect(-10, 142, 12, 160)]), { frontYds: 142, middleYds: 151, backYds: 160 })

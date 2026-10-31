@@ -4,8 +4,8 @@ import type { CoursePointYds } from '../courseGeometry/types'
  * Yardage-book numbers for the live map, computed in the map's view frame
  * (ball at the origin, see minimapFrame). Only hazards that are in play get
  * a label: in front of the ball, within reach, and inside the shot corridor
- * around the aim line. For each one we give the distance to reach its front
- * edge and to carry its back edge, measured from the ball along the aim line.
+ * around the aim line. For each one we compute the distance to reach its front
+ * edge (what the map shows) and to its back edge, measured from the ball.
  */
 
 export type HazardKind = 'bunker' | 'water' | 'penalty'
@@ -51,7 +51,7 @@ export const hazardYardages = ({
   aim,
   corridorHalfWidthYds,
   maxReachYds,
-  bunkerMinCarryYds = 0,
+  minReachYds = 0,
   limit = 4,
 }: {
   hazards: readonly { kind: HazardKind; polygons: readonly Polygon[] }[]
@@ -60,10 +60,11 @@ export const hazardYardages = ({
   corridorHalfWidthYds: number
   maxReachYds: number
   /**
-   * Bunkers you fly over long before the ball comes down don't matter;
-   * water does (a forced carry). Bunkers whose back edge is short of this are dropped.
+   * A "reach" number only means something where the ball could come down:
+   * hazards whose front edge is short of this (water you fly right over,
+   * a bunker just off the tee) are left off.
    */
-  bunkerMinCarryYds?: number
+  minReachYds?: number
   limit?: number
 }): HazardYardage[] => {
   const length = Math.hypot(aim[0], aim[1])
@@ -124,7 +125,7 @@ export const hazardYardages = ({
     merged.push({ ...item })
   }
   return merged
-    .filter((item) => item.kind !== 'bunker' || item.carryYds >= bunkerMinCarryYds)
+    .filter((item) => item.reachYds >= minReachYds)
     .slice(0, limit)
 }
 
