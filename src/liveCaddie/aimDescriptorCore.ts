@@ -470,8 +470,10 @@ const buildContextFacts = (
   descriptor: AimDescriptorCore,
 ) => {
   const facts: string[] = []
-  const terrainShift = greenTerrainShiftFact(input)
-  if (terrainShift) facts.push(terrainShift)
+  // The green read now sits under the aim line in plain words (greenTargeting
+  // playerRead); the old "Strategic target is N yd from the pin" fact is kept
+  // only for audits.
+  void greenTerrainShiftFact
 
   if (descriptor.kind === 'green-zone' || descriptor.kind === 'pin-offset') {
     const green = greenWidthFact(input)

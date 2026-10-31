@@ -459,6 +459,10 @@ function LiveCaddieMap({
   )
 }
 
+const LIVE_DIAGNOSTICS_KEY = 'looper.live-diagnostics.v1'
+// Lies GSPro's file code identifies reliably; anything else asks the golfer.
+const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'green'])
+
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
@@ -496,6 +500,27 @@ export default function LiveCaddiePage() {
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const triedProvisionalTeeNative = useRef(new Set<string>())
   const triedShotHud = useRef(new Set<string>())
+  // Status notes (yellow banners, raw codes, LiDAR internals) are for
+  // troubleshooting; off by default. ?debug=1 / ?debug=0 sets it too.
+  const [showDiagnostics, setShowDiagnostics] = useState(() => {
+    try {
+      const flag = new URLSearchParams(window.location.search).get('debug')
+      if (flag === '1') window.localStorage.setItem(LIVE_DIAGNOSTICS_KEY, '1')
+      if (flag === '0') window.localStorage.removeItem(LIVE_DIAGNOSTICS_KEY)
+      return window.localStorage.getItem(LIVE_DIAGNOSTICS_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleDiagnostics = () => setShowDiagnostics((value) => {
+    try {
+      if (value) window.localStorage.removeItem(LIVE_DIAGNOSTICS_KEY)
+      else window.localStorage.setItem(LIVE_DIAGNOSTICS_KEY, '1')
+    } catch {
+      // per-page only
+    }
+    return !value
+  })
   const [captureRoundId, setCaptureRoundId] = useState<string | null>(
     () => loadActiveLiveCaddieRound()?.id ?? null,
   )
@@ -1470,11 +1495,14 @@ export default function LiveCaddiePage() {
                   ? 'Loading Visual OCR…'
                   : 'Connect GSPro Visuals'}
           </button>
+          <button type="button" className="live-diagnostics-toggle" onClick={toggleDiagnostics}>
+            {showDiagnostics ? 'Hide details' : 'Details'}
+          </button>
           <div className="live-caddie-secondary-context">
             {nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
+            {showDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
@@ -1568,16 +1596,20 @@ export default function LiveCaddiePage() {
           </section>
         ) : null}
 
-        {liveMatchesHole && nextShotNumber != null && nextShotNumber > 1 && !isGreenSurface ? (
+        {liveMatchesHole && nextShotNumber != null && nextShotNumber > 1 && !isGreenSurface
+          && (showDiagnostics || !KNOWN_LIES.has(normalizedCurrentSurface)) ? (
           <div className="live-caddie-alert live-lie-confirmation" data-lie-source={confirmedCurrentLie ? 'manual-gspro-hud' : 'unverified'}>
-            <span>Current lie: <strong>{surface === 'deep-rough' ? 'Deep Rough' : surface}</strong>
-              {confirmedCurrentLie
-                ? ' — confirmed against the GSPro screen for this shot.'
-                : ' — based on GSPro file code / imported map; may differ from the GSPro minimap label.'}
-              {currentRawEndingSurface != null
-                ? ` Previous shot raw ending code: ${currentRawEndingSurface} (unverified mapping).`
-                : ' Previous shot raw ending code unavailable.'}
-            </span>
+            {KNOWN_LIES.has(normalizedCurrentSurface) || confirmedCurrentLie ? (
+              <span>Current lie: <strong>{surface === 'deep-rough' ? 'Deep Rough' : surface}</strong>
+                {confirmedCurrentLie ? ' — set by you for this shot.' : ' — from GSPro.'}
+                {currentRawEndingSurface != null ? ` GSPro code ${currentRawEndingSurface}.` : ''}
+              </span>
+            ) : (
+              <span>Looper doesn't recognise this lie yet
+                {currentRawEndingSurface != null ? ` (GSPro code ${currentRawEndingSurface})` : ''}.
+                {' '}Which lie does GSPro show?
+              </span>
+            )}
             <span className="live-lie-confirmation-actions">
               <button type="button"
                 className={confirmedCurrentLie === 'deep-rough' ? 'selected' : ''}
@@ -1600,7 +1632,7 @@ export default function LiveCaddiePage() {
             </span>
           </div>
         ) : null}
-        {spatialPositionProvisional ? (
+        {showDiagnostics && spatialPositionProvisional ? (
           <div className="live-caddie-alert" data-spatial-position="provisional">
             Imported-course ball placement uses the actual GSPro shot movement and a
             provisional OSM tee anchor/true-north heading. The position and displayed
@@ -1621,10 +1653,10 @@ export default function LiveCaddiePage() {
         {visualCaptureError ? (
           <div className="live-caddie-alert bad">GSPro visuals: {visualCaptureError}</div>
         ) : null}
-        {visualCaptureStatus === 'stopped' && !visualCaptureError ? (
+        {showDiagnostics && visualCaptureStatus === 'stopped' && !visualCaptureError ? (
           <div className="live-caddie-alert">GSPro visual capture stopped. Reconnect visuals for live wind and lie.</div>
         ) : null}
-        {liveSnapshot?.teePlacement === 'provisional'
+        {showDiagnostics && liveSnapshot?.teePlacement === 'provisional'
           && liveSnapshot.holeNumber === holeNumber
           && liveSnapshot.nextShotNumber === 1 ? (
           <div className="live-caddie-alert" data-tee-quality="provisional">
@@ -1641,7 +1673,7 @@ export default function LiveCaddiePage() {
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
-        {liveSnapshot?.warnings
+        {showDiagnostics && liveSnapshot?.warnings
           .filter(warning => !(measuredPreShotTee
             && warning.startsWith('Provisional Hole ')
             && (warning.includes('existing-map-tee-anchor') || warning.includes('osm-route-start'))))
@@ -1752,6 +1784,9 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
+                    {greenGuidance?.playerRead ? (
+                      <span className="live-green-read"><strong>Green:</strong> {greenGuidance.playerRead}</span>
+                    ) : null}
                     {aimContext
                       ?? inspectedCandidate?.decisionReason
                       ?? viewedEvaluation?.decisionReason

@@ -24,6 +24,9 @@ export type GreenTargetingGuidance = {
   shiftForwardYds: number
   shiftYds: number
   reason: string
+  /** One plain-language line for the golfer, e.g. "Pin back right; green
+   * slopes down to the right. Leave it left of the hole for an uphill putt." */
+  playerRead: string | null
 }
 
 export type GreenLocalSlope = {
@@ -359,6 +362,46 @@ export const redirectCourseGreenRollout = ({
  * nudged slightly uphill and/or away from a nearby green edge, with a hard 5 yd
  * cap and an on-green guard.
  */
+
+const PLACE: Record<string, string> = { front: 'front', middle: 'middle', back: 'back' }
+const pinPlace = (row: string, column: string) =>
+  row === 'middle' && column === 'center' ? 'in the middle'
+    : column === 'center' ? PLACE[row] ?? row
+      : `${PLACE[row] ?? row} ${column}`
+const humanDirection = (label: string) => label.replace('-', ' ')
+/** Side of the hole that leaves an uphill putt, given which way the green falls. */
+const uphillSide = (downhill: string) => {
+  const parts = downhill.split('-')
+  const words = parts.map((p) => ({ right: 'left', left: 'right', back: 'short', front: 'past' } as Record<string, string>)[p] ?? null)
+    .filter(Boolean) as string[]
+  if (words.length === 0) return null
+  return `${words.join(' and ')} of the hole`
+}
+
+const greenPlayerRead = ({
+  row, column, slopePercent, downhillLabel, nearEdge,
+}: {
+  row: string | null
+  column: string | null
+  slopePercent: number | null
+  downhillLabel: string | null
+  nearEdge: boolean
+}): string | null => {
+  const parts: string[] = []
+  if (row && column) parts.push(`Pin ${pinPlace(row, column)}`)
+  const sloped = slopePercent != null && slopePercent >= 1 && downhillLabel && downhillLabel !== 'flat'
+  if (sloped) {
+    const strength = slopePercent >= 4 ? 'steeply ' : slopePercent < 2 ? 'gently ' : ''
+    parts.push(`green slopes ${strength}down to the ${humanDirection(downhillLabel!)}`)
+  }
+  let read = parts.length ? `${parts.join('; ')}.` : ''
+  const side = sloped && slopePercent! >= 2 ? uphillSide(downhillLabel!) : null
+  if (side) read += ` Leave it ${side} for an uphill putt.`
+  if (nearEdge) read += ' Pin is close to the edge, so favour the middle of the green.'
+  read = read.trim()
+  return read ? read.charAt(0).toUpperCase() + read.slice(1) : null
+}
+
 export const buildCourseGreenApproachTarget = ({
   hole,
   ball,
@@ -395,6 +438,15 @@ export const buildCourseGreenApproachTarget = ({
     reason: exactPin
       ? '1 yd LiDAR green context available; no target shift warranted.'
       : '1 yd LiDAR green context available, but target shift waits for an exact GSPro pin.',
+    playerRead: exactPin
+      ? greenPlayerRead({
+          row: sector?.row ?? null,
+          column: sector?.column ?? null,
+          slopePercent: slope?.slopePercent ?? null,
+          downhillLabel,
+          nearEdge: edge != null && edge.distanceYds < 4,
+        })
+      : null,
   }
 
   const distanceToPin = Math.hypot(pin[0] - ball[0], pin[1] - ball[1])
