@@ -820,7 +820,10 @@
   stroke-linejoin: round;
   pointer-events: none;
 }
-.live-map-yardage .yardage-word { fill: rgba(205, 216, 204, 0.62); }
+.live-map-legend b.yardage {
+  color: rgba(236, 240, 232, 0.85);
+  font-weight: 500;
+}
 .live-map-yardage .yardage-num { fill: rgba(236, 240, 232, 0.88); }
 .live-map-yardage.yardage-bunker .yardage-num { fill: rgba(236, 224, 188, 0.9); }
 .live-map-yardage.yardage-water .yardage-num { fill: rgba(176, 216, 232, 0.9); }
