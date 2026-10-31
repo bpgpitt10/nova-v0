@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { AimCandidateEvaluation } from '../liveCaddie/aimOptimization'
 import { greenYardage, hazardYardages } from '../liveCaddie/mapYardages'
+import { greenSlopeImage, type GreenReadAnalysis } from '../liveCaddie/greenRead'
 import { buildHillshade } from '../liveCaddie/hillshade'
 import { minimapBasis, minimapFrame } from '../liveCaddie/minimapFrame'
 import type {
@@ -134,6 +135,7 @@ export default function LiveCaddieMap({
   showRiskTail,
   showPracticeShots,
   provisionalTeeRadiusYds,
+  greenRead = null,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -145,6 +147,8 @@ export default function LiveCaddieMap({
   showRiskTail: boolean
   showPracticeShots: boolean
   provisionalTeeRadiusYds: number | null
+  /** Green read overlay (steepness colours, tiers/spines, tilt arrow); null hides it. */
+  greenRead?: GreenReadAnalysis | null
 }) {
   const viewSize = 100
   const pad = 4
@@ -200,6 +204,52 @@ export default function LiveCaddieMap({
     const [u0, u1] = upKey.split(',').map(Number)
     return buildHillshade(hole.terrain, [u1, -u0], [u0, u1])
   }, [hole.terrain, upKey])
+
+  // Green read: the steepness image (once per green) and, in view space, the
+  // feature tags and an overall-tilt arrow placed just off the green.
+  const slopeImage = useMemo(() => (greenRead ? greenSlopeImage(greenRead) : null), [greenRead])
+  const greenPolys = viewHole.surfaces.filter((surface) => surface.kind === 'green').flatMap((surface) => surface.polygons)
+  const greenOverlay = (() => {
+    if (!greenRead || !greenPolys.length) return null
+    const pts = greenPolys.flatMap((poly) => poly.map(projectView))
+    const xs = pts.map((p) => p[0])
+    const ys = pts.map((p) => p[1])
+    const box = { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) }
+    if (box.maxX < 0 || box.minX > viewSize || box.maxY < 0 || box.minY > viewSize) return null
+    // The two biggest features, never stacked on each other.
+    const tags: { key: string; x: number; y: number; text: string }[] = []
+    for (const [index, feature] of greenRead.features.entries()) {
+      if (tags.length >= 2) break
+      const [px, py] = project(feature.at)
+      const x = Math.min(viewSize - 6, Math.max(6, px))
+      const y = Math.min(viewSize - 2, Math.max(3, py))
+      if (tags.some((t) => Math.abs(t.x - x) < 11 && Math.abs(t.y - y) < 3)) continue
+      tags.push({
+        key: `${feature.kind}-${index}`,
+        x,
+        y,
+        text: feature.kind === 'tier' ? `tier \u2191${feature.riseFt.toFixed(1)} ft` : 'spine',
+      })
+    }
+    let arrow: { x1: number; y1: number; x2: number; y2: number; lx: number; ly: number; text: string } | null = null
+    if (greenRead.tiltDownhill && greenRead.tiltPercent >= 1) {
+      const at = greenRead.features[0]?.at ?? hole.markers.pin ?? [0, 0]
+      const [ax, ay] = project(at)
+      const [bx, by] = project([at[0] + greenRead.tiltDownhill[0], at[1] + greenRead.tiltDownhill[1]])
+      const len = Math.hypot(bx - ax, by - ay) || 1
+      const ux = (bx - ax) / len
+      const uy = (by - ay) / len
+      const size = 6
+      // Just outside the green's top-left corner (or top-right if no room).
+      const cx = box.minX - 4 >= size / 2 + 1 ? box.minX - 4 : Math.min(viewSize - size / 2 - 1, box.maxX + 4)
+      const cy = Math.min(viewSize - size / 2 - 1, Math.max(size / 2 + 3, box.minY + 2))
+      arrow = {
+        x1: cx - (ux * size) / 2, y1: cy - (uy * size) / 2, x2: cx + (ux * size) / 2, y2: cy + (uy * size) / 2,
+        lx: cx, ly: cy + size / 2 + 2.6, text: `${greenRead.tiltPercent.toFixed(1)}%`,
+      }
+    }
+    return { tags, arrow }
+  })()
 
   // Yardage-book numbers: reach / carry for hazards in play on this shot, and
   // front / middle / back of the green on approaches.
@@ -283,6 +333,16 @@ export default function LiveCaddieMap({
             <rect width="5.2" height="5.2" fill="#4a4231" />
             <path d="M0 1.5 C1.3 1 2.6 2 5.2 1.35 M0 3.8 C1.7 3.25 3.1 4.2 5.2 3.55" fill="none" stroke="#7d6c4d" strokeOpacity="0.5" strokeWidth="0.22" />
           </pattern>
+          {greenRead && greenPolys.length ? (
+            <clipPath id="liveGreenClip">
+              {greenPolys.map((polygon, index) => (
+                <polygon key={index} points={polygon.map((point) => projectView(point).join(',')).join(' ')} />
+              ))}
+            </clipPath>
+          ) : null}
+          <marker id="liveTiltArrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#f3ecd6" />
+          </marker>
         </defs>
 
         {/* Ground outside the hole first (open grass under scrub under trees), */}
@@ -334,6 +394,13 @@ export default function LiveCaddieMap({
           <image className="live-hillshade" href={shade.dataUrl} x={shade.x} y={shade.y}
             width={shade.width} height={shade.height} preserveAspectRatio="none"
             transform={`matrix(${holeToSvg.join(' ')})`} />
+        ) : null}
+        {slopeImage && greenOverlay ? (
+          <g clipPath="url(#liveGreenClip)">
+            <image className="live-green-slope" href={slopeImage.dataUrl} x={slopeImage.x} y={slopeImage.y}
+              width={slopeImage.width} height={slopeImage.height} preserveAspectRatio="none"
+              transform={`matrix(${holeToSvg.join(' ')})`} />
+          </g>
         ) : null}
         {hole.contours?.map((contour, index) => (
           <polyline
@@ -392,6 +459,16 @@ export default function LiveCaddieMap({
               x2={strategyAimSvg[0]} y2={strategyAimSvg[1]} />
             <circle className="live-aim-marker" cx={strategyAimSvg[0]} cy={strategyAimSvg[1]} r="0.9" />
           </>
+        ) : null}
+        {greenOverlay?.tags.map((tag) => (
+          <text key={tag.key} className="live-green-tag" x={tag.x} y={tag.y} textAnchor="middle">{tag.text}</text>
+        ))}
+        {greenOverlay?.arrow ? (
+          <g className="live-green-tilt">
+            <line x1={greenOverlay.arrow.x1} y1={greenOverlay.arrow.y1} x2={greenOverlay.arrow.x2} y2={greenOverlay.arrow.y2}
+              markerEnd="url(#liveTiltArrowHead)" />
+            <text x={greenOverlay.arrow.lx} y={greenOverlay.arrow.ly} textAnchor="middle">{greenOverlay.arrow.text}</text>
+          </g>
         ) : null}
         {yardageLabels.map((label) => (
           <text key={label.key} className={`live-map-yardage yardage-${label.kind}`}
