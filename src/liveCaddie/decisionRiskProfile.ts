@@ -1,4 +1,4 @@
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -246,7 +246,7 @@ export const buildDecisionRiskProfile = ({
   // evaluated at a resting position too, rather than silently reverting to carry.
   const coreRolloutYds = coreSamples.length > 0
     ? coreSamples.reduce(
-        (sum, sample) => sum + distance(sample.carryLanding, sample.landing),
+        (sum, sample) => sum + distance(sample.carryLanding, sample.unobstructedLanding ?? sample.landing),
         0,
       ) / coreSamples.length
     : 0
@@ -262,10 +262,10 @@ export const buildDecisionRiskProfile = ({
       const offline = sample.offlineYds + lateralAdjustmentYds
       const carryLanding = addScaled(ball, forward, carry, right, offline)
       const baselineLanding = addScaled(ball, forward, finalDistance, right, offline)
-      const landing = landingTransform
+      const restLanding = landingTransform
         ? landingTransform(carryLanding, baselineLanding)
         : baselineLanding
-      const classification = classifyTacticalLandingPoint(hole, landing)
+      const { landing, classification } = resolveCarryAwareLanding(hole, carryLanding, restLanding)
       const kind = classification.kind
       const tier = decisionRiskTierForSurface(kind, goal)
       const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds)

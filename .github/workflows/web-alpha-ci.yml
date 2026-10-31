@@ -73,6 +73,9 @@ jobs:
       - name: Green read (uphill-putt side, player-frame directions) and consistent partial-shot safe miss
         run: node tools/test-live-green-read.mjs
 
+      - name: Carry-aware hazards (touchdown or roll-in counts as water / bunker)
+        run: node tools/test-carry-aware-landing.mjs
+
       - name: Native course positions (beta)
         run: node tools/test-native-course-positions.mjs
 

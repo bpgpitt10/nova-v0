@@ -1,10 +1,10 @@
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -24,8 +24,13 @@ export type AimSurfaceDistribution = {
 export type ModeledAimSample = {
   /** Airborne touchdown point. */
   carryLanding: CoursePointYds
-  /** Resting/final position after historical rollout. */
+  /**
+   * Where the ball finishes: the rest point after historical rollout, unless it
+   * touched down in, or rolled into, water / penalty / bunker (carryAwareLanding).
+   */
   landing: CoursePointYds
+  /** Rest point if nothing stopped the rollout. Used to measure stock rollout distance. */
+  unobstructedLanding?: CoursePointYds
   kind: CourseSurfaceClassification
   /** Exact geometric state retained for later SG/value evaluation. */
   state: DecisionLandingState
@@ -224,13 +229,14 @@ export const sampleModeledAimDistribution = ({
     const offline = lateralMeanYds + lateralZ * lateralSigmaYds
     const carryLanding = addScaled(ball, forward, carry, right, offline)
     const baselineLanding = addScaled(ball, forward, total, right, offline)
-    const landing = landingTransform
+    const restLanding = landingTransform
       ? landingTransform(carryLanding, baselineLanding)
       : baselineLanding
-    const classification = classifyTacticalLandingPoint(hole, landing)
+    const { landing, classification } = resolveCarryAwareLanding(hole, carryLanding, restLanding)
     return {
       carryLanding,
       landing,
+      unobstructedLanding: restLanding,
       kind: classification.kind,
       state: buildDecisionLandingState(hole, landing, classification, pinLocalYds),
     }
