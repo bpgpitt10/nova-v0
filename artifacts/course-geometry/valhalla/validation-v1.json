@@ -3,13 +3,13 @@
   "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
   "canonicalImport": {
     "complete": true,
-    "completedAt": "2026-10-31T02:11:40.839007Z",
+    "completedAt": "2026-10-31T02:31:50.465814Z",
     "demSourceMetadata": "artifacts/course-geometry/valhalla/dem-source-v1.json",
     "freshOsm": true,
     "greenDetail": true,
-    "greenDetailSha256": "906116603f1bdd1f0235343e36063139932b09fb804c10c410376109857ed5af",
+    "greenDetailSha256": "e8f33d047303ad10413ea334876644b0e96a16588332d33ce9256c20c215e7cd",
     "landcoverContext": true,
-    "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+    "packageSha256": "7ed4c5d3abb52f44b03e7c4adcb4bd68fc94f4ab40ca62cd02926a0567e812a8",
     "reason": "one-click-course-load",
     "runtimeContract": "round-setup-to-live-caddie-v1",
     "runtimeReady": true,
@@ -27,7 +27,7 @@
   "contextSourceTagCounts": {},
   "courseId": "valhalla-golf-club-louisville-ky",
   "courseName": "Valhalla Golf Club",
-  "generatedAt": "2026-10-31T02:11:31.100110Z",
+  "generatedAt": "2026-10-31T02:31:43.414718Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",

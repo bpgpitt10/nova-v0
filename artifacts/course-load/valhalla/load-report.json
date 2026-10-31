@@ -11,12 +11,12 @@
     "radiusM": 10000
   },
   "ready": true,
-  "totalSeconds": 205.6,
+  "totalSeconds": 194.6,
   "stages": [
     {
       "stage": "find",
       "ok": true,
-      "seconds": 81.9
+      "seconds": 74.7
     },
     {
       "stage": "config",
@@ -27,36 +27,36 @@
     {
       "stage": "import",
       "ok": true,
-      "seconds": 19.5
+      "seconds": 16.9
     },
     {
       "stage": "osm",
       "ok": true,
-      "seconds": 30.4
+      "seconds": 38.2
     },
     {
       "stage": "dem",
       "ok": true,
-      "seconds": 11.1
+      "seconds": 10.0
     },
     {
       "stage": "lidar",
       "ok": true,
-      "seconds": 39.5
+      "seconds": 33.6
     },
     {
       "stage": "trees",
       "ok": true,
-      "seconds": 8.1
+      "seconds": 7.2
     },
     {
       "stage": "enrich",
       "ok": true,
-      "seconds": 15.3
+      "seconds": 14.0
     }
   ],
-  "finishedAt": "2026-10-31T02:13:25Z",
-  "runId": "41158682718",
+  "finishedAt": "2026-10-31T02:33:33Z",
+  "runId": "41160250564",
   "osmCourse": {
     "type": "way",
     "id": 59737644,
@@ -103,7 +103,7 @@
       "p95": 20.669999999999987,
       "max": 47.06999999999999
     },
-    "seconds": 39.2
+    "seconds": 33.4
   },
   "trees-summary": {
     "schemaVersion": "looper-course-model-trees-v1",
@@ -151,7 +151,7 @@
       ],
       "minWoodAreaM2": 25.0
     },
-    "seconds": 7.3
+    "seconds": 6.5
   },
   "publishedBytes": {
     "course-v1-lidar.json": 1604624,

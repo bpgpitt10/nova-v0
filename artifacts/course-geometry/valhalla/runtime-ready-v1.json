@@ -1,5 +1,5 @@
 {
-  "completedAt": "2026-10-31T02:11:40.839007Z",
+  "completedAt": "2026-10-31T02:31:50.465814Z",
   "configPath": "config/course-geometry/valhalla-v1.json",
   "courseId": "valhalla-golf-club-louisville-ky",
   "courseName": "Valhalla Golf Club",
@@ -9,7 +9,7 @@
   ],
   "location": "Louisville, KY",
   "packagePath": "public/course-geometry/valhalla/course-v1.json",
-  "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+  "packageSha256": "7ed4c5d3abb52f44b03e7c4adcb4bd68fc94f4ab40ca62cd02926a0567e812a8",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
