@@ -363,13 +363,16 @@ function LiveCaddieMap({
   const yardageLabels = yardages.labels.flatMap((label) => {
     const [ax, ay] = projectView(label.anchor)
     if (ax < 1 || ax > viewSize - 1 || ay < 1 || ay > viewSize - 1) return []
-    const leftward = label.side === 'left' ? ax > 14 : ax > viewSize - 16
+    // "Reach 123 · Carry 130" is ~20 map units wide; keep it on the map.
+    const leftward = label.side === 'left' ? ax > 24 : ax > viewSize - 24
     const x = leftward ? ax - 1.4 : ax + 1.4
-    const y = Math.min(viewSize - 1.5, ay + 0.9)
-    if (placedYardages.some((p) => Math.abs(p.y - y) < 3.2 && Math.abs(p.x - x) < 14)) return []
+    const y = Math.min(viewSize - 1.5, ay + 0.7)
+    if (placedYardages.some((p) => Math.abs(p.y - y) < 2.8 && Math.abs(p.x - x) < 22)) return []
     placedYardages.push({ x, y })
-    const text = label.carryYds - label.reachYds >= 3 ? `${label.reachYds} / ${label.carryYds}` : `${label.reachYds}`
-    return [{ key: `${label.kind}-${label.reachYds}-${label.carryYds}`, kind: label.kind, x, y, leftward, text }]
+    const parts = label.carryYds - label.reachYds >= 3
+      ? [['Reach', label.reachYds], ['Carry', label.carryYds]] as const
+      : [['Carry', label.carryYds]] as const
+    return [{ key: `${label.kind}-${label.reachYds}-${label.carryYds}`, kind: label.kind, x, y, leftward, parts }]
   })
 
   const ballSvg = project(ball)
@@ -516,7 +519,13 @@ function LiveCaddieMap({
         {yardageLabels.map((label) => (
           <text key={label.key} className={`live-map-yardage yardage-${label.kind}`}
             x={label.x} y={label.y} textAnchor={label.leftward ? 'end' : 'start'}>
-            {label.text}
+            {label.parts.map(([word, yards], index) => (
+              <tspan key={word}>
+                {index > 0 ? <tspan className="yardage-word"> · </tspan> : null}
+                <tspan className="yardage-word">{word} </tspan>
+                <tspan className="yardage-num">{yards}</tspan>
+              </tspan>
+            ))}
           </text>
         ))}
         {pinSvg ? <circle className="live-pin-marker" cx={pinSvg[0]} cy={pinSvg[1]} r="0.78" /> : null}
@@ -1972,9 +1981,7 @@ export default function LiveCaddiePage() {
                   <span><i className="ball" />Ball</span>
                   <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim'}</span>
                   {!isShotStrategy ? <span><i className="mean" />Expected finish</span> : null}
-                  <span><i className="pin" />Pin</span>
-                  <span><b className="yardage">238 / 252</b>Hazard: reach / carry (yds)</span>
-                  {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
+                  <span><i className="pin" />Pin</span>                  {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
                 <NativeAimPreview
