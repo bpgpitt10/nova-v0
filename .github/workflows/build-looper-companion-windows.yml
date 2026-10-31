@@ -8,7 +8,10 @@ on:
       - auto-aim-windows-companion-v1
       - unified-imported-course-positioning-v1
       - companion-course-layouts-v1
+      - web-native-aim-preview-v1
     paths:
+      - "helpers/gspro_native_aim.py"
+      - "tests/test_gspro_companion_aim_preview.py"
       - "helpers/looper_companion.py"
       - "helpers/gspro_course_library.py"
       - "tests/test_gspro_companion_course_layouts.py"
@@ -157,6 +160,13 @@ jobs:
             if ($layouts.schemaVersion -ne "looper-companion-course-layouts-v1" -or $layouts.status -ne "not-found") {
               throw "Course-layout endpoint must answer not-found without a course library: $($layouts | ConvertTo-Json -Compress)"
             }
+            if ($companion.capabilities.aimPreview -ne $true) {
+              throw "Aim preview capability missing."
+            }
+            $preview = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/aim-preview?ballX=0&ballZ=0&pinX=0&pinZ=100&targetX=0&targetZ=50" -Headers $headers -TimeoutSec 10
+            if ($preview.schemaVersion -ne "looper-companion-aim-preview-v1" -or $preview.input -ne "none" -or $preview.status -ne "gspro-not-connected") {
+              throw "Aim preview must answer gspro-not-connected without GSPro: $($preview | ConvertTo-Json -Compress)"
+            }
             if ($companion.capabilities.autoAim -ne $false) {
               throw "Stage B must never enable Auto Aim."
             }
@@ -237,6 +247,20 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: course layouts for native positions ($shortSha)" `
             --notes "Read-only /companion/v1/course-layouts: finds the course's .GKD/.GKDalt in the GSPro library (Courses beside GSPro, C:\GSProV1\Courses, or LOOPER_GSPRO_COURSES_DIR) so the web app's Native positions (beta) needs no folder grant. No paths leave the machine. No native input or Auto Aim." `
+            --prerelease
+
+      - name: Publish aim-preview companion installer
+        if: github.ref == 'refs/heads/web-native-aim-preview-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-aim-preview-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: Auto Aim preview ($shortSha)" `
+            --notes "Course layouts plus read-only /companion/v1/aim-preview: one capture of GSPro's minimap, finds the red ball and white pin dots, and shows where Looper WOULD click for its aim. No mouse or keyboard input." `
             --prerelease
 
       - name: Publish rolling companion prerelease

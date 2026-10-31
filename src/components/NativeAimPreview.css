@@ -1,0 +1,58 @@
+.native-aim-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(234, 179, 8, 0.28);
+  border-radius: 10px;
+  background: rgba(10, 18, 12, 0.6);
+  color: #dfe7dc;
+  font-size: 13px;
+}
+
+.native-aim-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.native-aim-preview-title {
+  font-weight: 700;
+}
+
+.native-aim-preview-title em {
+  margin-left: 6px;
+  color: #9da99f;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.native-aim-preview button {
+  padding: 6px 12px;
+  border: 1px solid rgba(234, 179, 8, 0.6);
+  border-radius: 8px;
+  background: transparent;
+  color: #eab308;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.native-aim-preview button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.native-aim-preview-image {
+  display: block;
+  max-width: 100%;
+  width: 240px;
+  margin: 10px auto 0;
+  border-radius: 8px;
+}
+
+.native-aim-preview-note {
+  margin: 8px 0 0;
+  color: #cfd8cd;
+  line-height: 1.4;
+}

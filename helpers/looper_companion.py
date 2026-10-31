@@ -10,15 +10,17 @@ so the web app can place native positions without a browser folder grant.
 """
 
 import json
+import math
 import re
 from urllib.parse import parse_qs, urlsplit
 
 import open_golf_coach_helper_lie_footer as lie_footer
 import gspro_native_discovery as native
 import gspro_course_library as course_library  # read-only GKD/GKDalt access
+import gspro_native_aim as native_aim  # Auto Aim step 1: where Looper would click; no input
 import gspro_window_capture as capture
 import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
-import gspro_minimap_pipeline as minimap_pipeline  # packaged offline CV core; never called by HTTP
+import gspro_minimap_pipeline as minimap_pipeline  # CV core; only capture_native_bgr is used by HTTP (aim preview)
 import gspro_live_observations as observations  # read-only diagnostic; no desktop input
 import gspro_native_lie_ocr as native_lie
 import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
@@ -29,7 +31,9 @@ COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
 COMPANION_COURSE_LAYOUTS_PATH = "/companion/v1/course-layouts"
+COMPANION_AIM_PREVIEW_PATH = "/companion/v1/aim-preview"
 COMPANION_READ_PATHS = (
+    COMPANION_AIM_PREVIEW_PATH,
     COMPANION_STATUS_PATH,
     COMPANION_CAPTURE_PATH,
     COMPANION_OBSERVATIONS_PATH,
@@ -154,6 +158,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "captureDiagnostic": True,
                     "liveObservations": True,
                     "courseLayouts": True,
+                    "aimPreview": True,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
@@ -169,6 +174,41 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 "version": COMPANION_VERSION,
                 "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
+            return
+        if urlsplit(self.path).path == COMPANION_AIM_PREVIEW_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            # Read-only: one capture of GSPro's window, minimap only. Returns
+            # where Looper WOULD click and a small annotated minimap crop.
+            # Never moves the mouse or sends input.
+            query = parse_qs(urlsplit(self.path).query)
+            try:
+                values = {k: float((query.get(k) or ["nan"])[0])
+                          for k in ("ballX", "ballZ", "pinX", "pinZ", "targetX", "targetZ")}
+            except ValueError:
+                values = {}
+            base_payload = {"service": "looper-companion", "version": COMPANION_VERSION,
+                            "schemaVersion": "looper-companion-aim-preview-v1", "input": "none"}
+            if len(values) != 6 or not all(math.isfinite(v) and abs(v) < 1e6 for v in values.values()):
+                self._send_companion(200, {**base_payload, "status": "invalid-request"})
+                return
+            try:
+                window = native.find_gspro_window()
+                if not isinstance(window, dict) or window.get("status") != "connected":
+                    self._send_companion(200, {**base_payload, "status": "gspro-not-connected"})
+                    return
+                frame = minimap_pipeline.capture_native_bgr(window)
+                result = native_aim.aim_preview(
+                    frame,
+                    ball_world=(values["ballX"], values["ballZ"]),
+                    pin_world=(values["pinX"], values["pinZ"]),
+                    target_world=(values["targetX"], values["targetZ"]),
+                )
+                self._send_companion(200, {**base_payload, **result})
+            except Exception as error:
+                self._send_companion(200, {**base_payload, "status": "unavailable",
+                                           "reason": str(error)[:160]})
             return
         if urlsplit(self.path).path == COMPANION_COURSE_LAYOUTS_PATH:
             if not self._companion_authorized():

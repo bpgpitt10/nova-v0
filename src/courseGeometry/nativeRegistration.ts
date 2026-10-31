@@ -138,3 +138,48 @@ export const nativeWorldToHoleLocalYds = (
   const local = latLonToHoleLocalYds(frame, lat, lon)
   return local.every(finite) ? local : null
 }
+
+/** Inverse of latLonToHoleLocalYds (the builder's frame is linear). */
+export const holeLocalYdsToLatLon = (frame: NativeHoleFrame, local: CoursePointYds): readonly [number, number] => {
+  const [lat0, lon0] = frame.anchorLatLon
+  const h = frame.headingDegreesTrue * DEG
+  const forward = [Math.sin(h), Math.cos(h)] as const
+  const right = [forward[1], -forward[0]] as const
+  const r = local[0] / BUILDER_M_TO_YD
+  const f = local[1] / BUILDER_M_TO_YD
+  const east = r * right[0] + f * forward[0]
+  const north = r * right[1] + f * forward[1]
+  return [
+    lat0 + north / BUILDER_EARTH_RADIUS_M / DEG,
+    lon0 + east / (BUILDER_EARTH_RADIUS_M * Math.cos(lat0 * DEG)) / DEG,
+  ]
+}
+
+/** Inverse of nativeWorldToLatLon. */
+export const nativeLatLonToWorld = (
+  registration: NativeRegistration,
+  lat: number,
+  lon: number,
+): Readonly<{ x: number; z: number }> => {
+  const [lat0, lon0] = registration.reference.latLon
+  const [x0, z0] = registration.reference.worldXZ
+  const { meridian, primeVertical } = radii(lat0)
+  return {
+    x: x0 + (lon - lon0) * DEG * primeVertical * Math.cos(lat0 * DEG),
+    z: z0 + (lat - lat0) * DEG * meridian,
+  }
+}
+
+/** Looper hole-local yards -> GSPro world metres (for Auto Aim targets). */
+export const nativeHoleLocalYdsToWorld = (
+  registration: NativeRegistration,
+  holeNumber: number,
+  local: CoursePointYds | null | undefined,
+): Readonly<{ x: number; z: number }> | null => {
+  if (!local || !finite(local[0]) || !finite(local[1])) return null
+  const frame = registration.holes[String(holeNumber)]
+  if (!frame) return null
+  const [lat, lon] = holeLocalYdsToLatLon(frame, local)
+  const world = nativeLatLonToWorld(registration, lat, lon)
+  return finite(world.x) && finite(world.z) ? world : null
+}
