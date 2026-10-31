@@ -4,9 +4,18 @@ import {
   UNSELECTED_COURSE_ID,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import {
+  nativeCourseContextForLive,
+  recallNativeLayout,
+  recallNativePinSlot,
+  rememberNativeLayout,
+  rememberNativePinSlot,
+  selectNativeLayout,
+} from '../courseGeometry/nativeCourseRuntime'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
+import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
 import { isNewLooperRoundForCapture } from '../liveCaddie/teeCaptureReadiness'
 import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types'
 import {
@@ -29,6 +38,7 @@ import {
   parseGsproStartingPosition,
   type GsproStartingPositionObservation,
 } from './gsproStartingPosition'
+import { applyNativeCourseSnapshot } from './nativeCourseSnapshot'
 
 export {
   chooseGsproCourseStateDirectory,
@@ -49,11 +59,12 @@ export type BrowserGsproCourseSnapshot = Omit<
   CoreBrowserGsproCourseSnapshot,
   'ballSource' | 'surfaceSource'
 > & {
-  ballSource: CoreBrowserGsproCourseSnapshot['ballSource'] | 'osm-tee-match'
+  ballSource: CoreBrowserGsproCourseSnapshot['ballSource'] | 'osm-tee-match' | 'native-gkd'
   surfaceSource: CoreBrowserGsproCourseSnapshot['surfaceSource'] | 'gspro-startingpos'
   preShotStart: GsproStartingPositionObservation | null
   pinLocalYds: CoursePointYds | null
-  pinSource: 'output-log-course-layout' | 'unavailable'
+  /** Both exact: GSPro's output_log layout, or the GKD pin slot (native positions beta). */
+  pinSource: 'output-log-course-layout' | 'native-gkd' | 'unavailable'
   pinDistanceValidationErrorYds: number | null
   teePlacement?: 'mapped' | 'locked' | 'provisional' | null
   teeUncertaintyYds?: number | null
@@ -207,7 +218,74 @@ const unavailableShotOneSnapshot = (
   warnings: dedupeWarnings([...snapshot.warnings, warning]),
 })
 
+/**
+ * Native positions (beta). When enabled and the player's GKD matches the
+ * course registration, overlay GKD tee/ball/pin on the snapshot the existing
+ * pipeline built. Any failure returns that snapshot unchanged.
+ */
+const applyNativeIfReady = async (
+  snapshot: BrowserGsproCourseSnapshot,
+  teeContext: boolean,
+): Promise<BrowserGsproCourseSnapshot> => {
+  try {
+    const selectedCourseId = loadLastSelectedCourseId()
+    if (selectedCourseId === UNSELECTED_COURSE_ID || snapshot.holeNumber == null) return snapshot
+    const courseKey = snapshot.preShotStart?.courseKey ?? snapshot.courseKey
+    const loaded = await nativeCourseContextForLive(selectedCourseId, courseKey)
+    if (!loaded) return snapshot
+    const round = loadActiveLiveCaddieRound()
+    // Courses with alternate layouts (GKDalt): settle which one is in play.
+    const selection = selectNativeLayout(loaded, {
+      holeNumber: snapshot.holeNumber,
+      preShotWorld: teeContext && snapshot.preShotStart?.holeNumber === snapshot.holeNumber
+        ? snapshot.preShotStart?.world ?? null : null,
+      normalizedTeeSet: round?.courseId === selectedCourseId ? round.normalizedTeeSet : null,
+      rememberedLayoutName: recallNativeLayout(loaded.courseKey, snapshot.roundId),
+    })
+    const context = selection.context
+    const normalizedTeeSet = selection.normalizedTeeSet
+    if (selection.learnedLayoutName) rememberNativeLayout(context.courseKey, snapshot.roundId, selection.learnedLayoutName)
+    // Legacy OSM tee picks ("Tee 3") carry no GSPro name; pass their map spot
+    // so the overlay can use the GKD tee standing there.
+    let legacyTeeLocal: CoursePointYds | null = null
+    if (teeContext && normalizedTeeSet) {
+      const geometry = await loadLiveTeeGeometry(selectedCourseId, snapshot.holeNumber).catch(() => null)
+      const named = geometry ? matchingTeeCandidates(geometry, normalizedTeeSet) : []
+      legacyTeeLocal = named.length === 1 ? named[0].coursePoint : null
+    }
+    const { snapshot: next, pinSlot } = applyNativeCourseSnapshot({
+      base: snapshot,
+      context,
+      holeNumber: snapshot.holeNumber,
+      teeContext,
+      preShotStart: snapshot.preShotStart?.holeNumber === snapshot.holeNumber ? snapshot.preShotStart : null,
+      normalizedTeeSet,
+      rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
+      legacyTeeLocal,
+    })
+    if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
+    return next
+  } catch (error) {
+    console.warn('[Browser GSPro course state] Native positions unavailable; using existing positioning.', error)
+    return snapshot
+  }
+}
+
 const enrichSnapshotWithStartingPosition = async (
+  snapshot: CoreBrowserGsproCourseSnapshot,
+): Promise<BrowserGsproCourseSnapshot> => {
+  const legacy = await enrichSnapshotLegacy(snapshot)
+  // After a hole ends, GSPro's pre-shot record still describes the previous
+  // hole's last shot until it writes the next tee. That record says nothing
+  // about this tee, so it must not cancel tee placement (Hole 2 preload).
+  const preShotStart = legacy.preShotStart?.holeNumber === legacy.holeNumber ? legacy.preShotStart : null
+  const teeContext = legacy.holeNumber != null
+    && snapshot.nextShotNumber === 1
+    && (preShotStart == null || preShotStart.surface === 'tee' || preShotStart.shotNumber === 1)
+  return applyNativeIfReady(legacy, teeContext)
+}
+
+const enrichSnapshotLegacy = async (
   snapshot: CoreBrowserGsproCourseSnapshot,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const roundText = await readCurrentRoundText()
@@ -321,7 +399,7 @@ const buildManualStartSnapshot = async (
     ? Math.hypot(pin[0] - tee[0], pin[1] - tee[1])
     : null
 
-  return {
+  return applyNativeIfReady({
     courseKey: null,
     roundId: null,
     holeNumber,
@@ -342,7 +420,7 @@ const buildManualStartSnapshot = async (
     pinLocalYds: exactPin?.pinLocalYds ?? null,
     pinSource: exactPin ? 'output-log-course-layout' : 'unavailable',
     pinDistanceValidationErrorYds: exactPin?.distanceValidationErrorYds ?? null,
-  }
+  }, true)
 }
 
 const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | null) =>

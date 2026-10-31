@@ -11,8 +11,17 @@ import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistanc
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
+import { nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntime'
+import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
+import {
+  learnedCodeLies,
+  learnedSurfaceFactors,
+  parseGsproPenaltyEvents,
+  recordPenaltyEvents,
+} from './gsproPenaltyLog'
+import { setLearnedSurfaceFactors } from '../liveCaddie/surfaceResponse'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
   isBrowserGsproAccessSupported,
@@ -40,6 +49,11 @@ export type BrowserGsproCourseShot = {
   startLocalYds: CoursePointYds | null
   endLocalYds: CoursePointYds | null
   positionQuality?: 'verified' | 'provisional'
+  /** 'native-gkd' when placed directly from GSPro coordinates (native positions beta). */
+  positionSource?: 'native-gkd'
+  /** GSPro world metres (x east, z north, y up), as recorded in currentRound.dat. */
+  startWorld?: { x: number; y: number; z: number } | null
+  endWorld?: { x: number; y: number; z: number } | null
   endingSurface: string | null
   endingSurfaceRaw: number | null
   distanceToPinYds: number | null
@@ -263,7 +277,26 @@ export const connectBrowserGsproCourseStateFolder = async () => {
 
 export const isBrowserGsproCourseStatePrepared = () => preparedStateHandle !== null
 
-const surfaceFromRaw = surfaceFromGsproRaw
+// Confirmed codes first; then codes GSPro itself paired with a lie name in
+// output_log ("Penalty Surface TVGdeeprough ... corrected type 3").
+let logLearnedCodes: ReadonlyMap<number, string> = new Map()
+const surfaceFromRaw = (value: number | null) =>
+  surfaceFromGsproRaw(value) ?? (value == null ? null : logLearnedCodes.get(value) ?? null)
+
+/** Learn from GSPro's penalty lines: store new samples, refresh the learned
+ * lie physics and code map. Never throws (storage may be unavailable). */
+const learnFromPenaltyLog = (logTail: string) => {
+  try {
+    const events = parseGsproPenaltyEvents(logTail)
+    if (recordPenaltyEvents(events) > 0 || logLearnedCodes.size === 0) {
+      logLearnedCodes = learnedCodeLies()
+      setLearnedSurfaceFactors(learnedSurfaceFactors())
+    }
+    return events.length > 0 ? events[events.length - 1] : null
+  } catch {
+    return null
+  }
+}
 
 const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   const parsed = JSON.parse(text) as unknown
@@ -450,7 +483,19 @@ const buildShot = async (
   const firstStart = vec3(sameHole[0]?.StartingPOS)
   const start = vec3(record.StartingPOS)
   const end = vec3(record.EndingPOS)
-  if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
+  // Native positions (beta): with a fingerprint-verified GKD and the course's
+  // LiDAR registration, GSPro world coordinates map straight onto the hole.
+  // No tee anchor or heading guess is involved. Off unless enabled.
+  const native = start && end && coordinateCourseId
+    ? await nativeCourseContextForLive(coordinateCourseId, asString(record.CourseKey)).catch(() => null)
+    : null
+  const nativeStart = native ? nativeWorldToHoleLocalYds(native.registration, holeNumber, start) : null
+  const nativeEnd = native ? nativeWorldToHoleLocalYds(native.registration, holeNumber, end) : null
+  if (nativeStart && nativeEnd) {
+    startLocalYds = nativeStart
+    endLocalYds = nativeEnd
+    positionQuality = 'verified'
+  } else if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
     ;[startLocalYds, endLocalYds] = await Promise.all([
       worldPointToHoleLocal(start, firstStart, holeNumber),
       worldPointToHoleLocal(end, firstStart, holeNumber),
@@ -521,6 +566,9 @@ const buildShot = async (
     startLocalYds,
     endLocalYds,
     ...(positionQuality ? { positionQuality } : {}),
+    ...(nativeStart && nativeEnd ? { positionSource: 'native-gkd' as const } : {}),
+    startWorld: start,
+    endWorld: end,
     endingSurface: surfaceFromRaw(endingSurfaceRaw),
     endingSurfaceRaw,
     distanceToPinYds: distanceToPin == null ? null : distanceToPin * METERS_TO_YARDS,
@@ -574,6 +622,13 @@ const buildSnapshot = async (
   selectedCourseId: CourseId,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
+  const lastPenalty = learnFromPenaltyLog(logTail)
+  if (lastPenalty) {
+    const pct = (x: number) => `${Math.round(x * 100)}%`
+    warnings.push(`GSPro penalty on the last penalty-lie shot: ${lastPenalty.surfaceName}`
+      + `${lastPenalty.typeCode != null ? ` (code ${lastPenalty.typeCode})` : ''}`
+      + ` · speed ${pct(lastPenalty.speed)} · spin ${pct(lastPenalty.spin)} · VLA ${pct(lastPenalty.vla)}.`)
+  }
   const currentPreShot = parseCurrentShotRecord(roundText)
   const preShotRoundId = asNumber(currentPreShot?.RoundID)
   const preShotCourseKey = asString(currentPreShot?.CourseKey)
@@ -666,7 +721,9 @@ const buildSnapshot = async (
   }
 
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
-  if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+  if (latestShot?.positionSource === 'native-gkd') {
+    warnings.push('Native positions (beta): ball placed from GSPro coordinates using the LiDAR-verified course registration.')
+  } else if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
     warnings.push(latestShot?.positionQuality === 'provisional'
       ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
       : 'Imported-course GSPro shot recognized, but no distance-consistent map registration is available; hazard/aim recommendations must stay paused.')

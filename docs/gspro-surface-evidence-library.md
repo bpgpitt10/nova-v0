@@ -40,6 +40,23 @@ The reviewed, executable working inventory is `src/adapters/gsproSurfaceCodes.ts
 
 **Important nuance about the 2026-10-13 FarmLinks error:** Round 255, first shot traveled 39.9 yd and GSPro's **Shot 2 HUD** unequivocally displayed **Deep Rough**. Live Caddie previously displayed **Sand**, applying a -91.6 yd modeled carry modifier. However, the native JSON exported for that session showed `startingSurfaceRaw:18` and did NOT expose `endingSurfaceRaw`; therefore the particular raw ending code cannot yet be assigned to Deep Rough from that export. The existing decoder's `3 -> sand` association was unsafe, but assigning `3 -> deep rough` would ALSO be premature.
 
+## Paired codes, FarmLinks Round 269 (2026-10-30)
+
+Each row pairs a shot's `EndingSurface` in `currentRound.dat` with GSPro's own minimap lie label for the next shot (golfer screenshot). It is also checked against where the native GSPro position lands on the LiDAR-registered map.
+
+| Raw code | GSPro label | Shots | Map check |
+|---|---|---|---|
+| 18 | Tee (StartingSurface) | every tee shot | `StartingPOS` on the GKD White tee, 0.0 m |
+| 2 | Fairway | H1 S1, H1 S2, H2 S1 | inside mapped fairway |
+| 5 | Green | H1 S3, H2 S2, H3 S7 | inside mapped green |
+| 1 | Rough | H3 S4 | inside mapped rough, under LiDAR canopy (the ball sat behind a tree) |
+| **3** | **Deep Rough** | H3 S1, H3 S2 | outside every mapped surface (OSM has no deep rough) |
+| **11** | **Sand** | H3 S6 | inside the mapped greenside bunker |
+
+This settles the Round 255 error: raw 3 is Deep Rough, not sand, and sand is 11. `gsproSurfaceCodes.ts` now maps these six codes as `paired-confirmed`. Unpaired codes (semi-rough, pine straw and others) stay unknown until they have the same evidence.
+
+Also observed: putts are not written as separate records. GSPro repeats the last full shot's record for each putt, so on-green ball positions do not come from the file.
+
 ## How to build trustworthy coverage
 
 1. **Observe** a completed GSPro shot with round/course/hole/shot identity and both raw `StartingSurface` and `EndingSurface` from canonical `currentRound.dat`. The Companion now exposes `endingSurfaceRaw` for *future* Windows builds. Do not mistake starting surface for where the ball landed.

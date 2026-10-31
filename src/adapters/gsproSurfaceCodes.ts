@@ -7,30 +7,35 @@
  * type count nor the full code vocabulary has been independently established.
  * Existing labels may change across game versions or surface contexts.
  *
- * A "working-assumption" entry is the pre-existing parser mapping, not proof.
  * Do NOT extend mappings merely from one screen shot without a paired
- * currentRound EndingSurfaceRaw and observed GSPro HUD lie label.
+ * currentRound EndingSurfaceRaw and observed GSPro HUD lie label. Codes not
+ * listed (e.g. semi-rough, pine straw) stay unknown until paired.
  */
 export type GsproSurfaceCodeEvidence = Readonly<{
   rawCode: number
-  operationalLabel: 'tee' | 'fairway' | 'rough' | 'green' | null
-  state: 'working-assumption' | 'blocked-unverified'
+  operationalLabel: 'tee' | 'fairway' | 'rough' | 'deep-rough' | 'sand' | 'green' | null
+  /** paired-confirmed: currentRound EndingSurface matched GSPro's own minimap
+   * lie label for the same shot (and the native ball position agreed). */
+  state: 'paired-confirmed' | 'working-assumption' | 'blocked-unverified'
   notes: string
 }>
 
+// Paired evidence, FarmLinks Round 269 (2026-10-30): native GSPro positions
+// through the LiDAR registration, each EndingSurface checked against the
+// golfer's screenshot of GSPro's minimap lie label for the next shot.
 export const GSProSurfaceCodeEvidenceLibrary: readonly GsproSurfaceCodeEvidence[] = [
-  { rawCode: 1, operationalLabel: 'rough', state: 'working-assumption',
-    notes: 'Legacy currentRound parser mapping; lacks a modern paired HUD-label sample.' },
-  { rawCode: 2, operationalLabel: 'fairway', state: 'working-assumption',
-    notes: 'Legacy currentRound parser mapping; lacks a modern paired HUD-label sample.' },
-  { rawCode: 3, operationalLabel: null, state: 'blocked-unverified',
-    notes: 'Previously mapped to sand without adequate independent ground truth. Unsafe to impose bunker launch physics.' },
-  { rawCode: 5, operationalLabel: 'green', state: 'working-assumption',
-    notes: 'Legacy currentRound parser mapping; confirm with matched current GSPro HUD evidence.' },
-  { rawCode: 11, operationalLabel: null, state: 'blocked-unverified',
-    notes: 'Conflicting historic sandbox/woods interpretation; refuse guessing.' },
-  { rawCode: 18, operationalLabel: 'tee', state: 'working-assumption',
-    notes: 'Observed in real FarmLinks StartingSurfaceRaw when playing from tee; stronger, but not a complete codebook.' },
+  { rawCode: 1, operationalLabel: 'rough', state: 'paired-confirmed',
+    notes: 'R269 H3 shot 4: HUD "Rough" (ball under LiDAR tree canopy, inside mapped rough). Legacy mapping agreed.' },
+  { rawCode: 2, operationalLabel: 'fairway', state: 'paired-confirmed',
+    notes: 'R269: 4 shots ending on mapped fairway (H1 S1/S2, H2 S1, H3 S5 start); legacy mapping agreed.' },
+  { rawCode: 3, operationalLabel: 'deep-rough', state: 'paired-confirmed',
+    notes: 'R269 H3 shots 1 and 2: HUD "Deep Rough", ball outside every mapped surface. Previously guessed as sand, which caused the Round 255 -91.6 yd sand penalty.' },
+  { rawCode: 5, operationalLabel: 'green', state: 'paired-confirmed',
+    notes: 'R269: 3 shots ending on mapped greens (H1 S3, H2 S2, H3 S7).' },
+  { rawCode: 11, operationalLabel: 'sand', state: 'paired-confirmed',
+    notes: 'R269 H3 shot 6: HUD "Sand", ball inside the mapped greenside bunker. Earlier sandbox/woods reading was wrong.' },
+  { rawCode: 18, operationalLabel: 'tee', state: 'paired-confirmed',
+    notes: 'StartingSurface on every FarmLinks tee shot (R255, R269), StartingPOS on the GKD tee.' },
 ] as const
 
 export const gsproSurfaceCodeEvidence = (rawCode: number | null): GsproSurfaceCodeEvidence | null =>

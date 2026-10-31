@@ -1056,3 +1056,21 @@
 .live-native-preview-legend .dot-ball { background: #e7605b; }
 .live-native-preview-legend .dot-pin { background: #fff; }
 .live-native-preview-legend .dot-target { border: 2px solid #d9f886; }
+
+/* Green read sits directly under the aim line, as part of the aim strategy. */
+.live-green-read {
+  display: block;
+  margin-bottom: 6px;
+  color: #e7efe4;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.live-green-read strong {
+  color: #8fd19e;
+  font-weight: 700;
+}
+
+.live-diagnostics-toggle {
+  opacity: 0.7;
+}

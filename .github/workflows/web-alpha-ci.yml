@@ -70,5 +70,11 @@ jobs:
       - name: Test under-range Shot Strategy, edge hazards and native-aim guardrails
         run: node tools/test-live-partial-shot-strategy.mjs
 
+      - name: Native course positions (beta)
+        run: node tools/test-native-course-positions.mjs
+
+      - name: GSPro penalty log learning
+        run: node tools/test-gspro-penalty-log.mjs
+
       - name: Build web app
         run: npm run build

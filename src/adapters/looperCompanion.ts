@@ -65,7 +65,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations',
+  path: 'status' | 'capture-check' | 'observations' | `course-layouts?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -124,6 +124,45 @@ export const readLooperCompanionCaptureDiagnostic = async (
   if (!data.windowCapture || typeof data.windowCapture.status !== 'string') {
     throw new Error('Looper Companion returned no capture diagnostic result.')
   }
+  return data
+}
+
+export type LooperCompanionLayoutFile = {
+  fileName: string
+  kind: 'main' | 'alt'
+  size: number
+  lastModified: number
+  text: string
+}
+
+export type LooperCompanionCourseLayouts = {
+  service: 'looper-companion'
+  version: string
+  schemaVersion: 'looper-companion-course-layouts-v1'
+  courseKey: string | null
+  status: 'ready' | 'not-found' | 'invalid-request' | 'unavailable'
+  source?: string
+  layouts: LooperCompanionLayoutFile[]
+}
+
+/**
+ * The course's GKD/GKDalt text from the GSPro library, read by the companion
+ * on this PC (no browser folder grant needed). Throws if no companion, or an
+ * older companion without the route, is answering.
+ */
+export const readLooperCompanionCourseLayouts = async (
+  courseKey: string,
+  timeoutMs = 6000,
+): Promise<LooperCompanionCourseLayouts> => {
+  const data = await getCompanionReadOnly<LooperCompanionCourseLayouts>(
+    `course-layouts?courseKey=${encodeURIComponent(courseKey)}`, timeoutMs)
+  if (data.schemaVersion !== 'looper-companion-course-layouts-v1' || !Array.isArray(data.layouts)) {
+    throw new Error('Looper Companion does not serve course layouts (update the companion).')
+  }
+  const valid = data.layouts.every((file) =>
+    file && typeof file.fileName === 'string' && (file.kind === 'main' || file.kind === 'alt')
+    && typeof file.text === 'string' && Number.isFinite(file.size) && Number.isFinite(file.lastModified))
+  if (!valid) throw new Error('Looper Companion returned malformed course layouts.')
   return data
 }
 

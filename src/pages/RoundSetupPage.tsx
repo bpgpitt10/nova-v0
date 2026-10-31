@@ -12,6 +12,14 @@ import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadLastSelectedCourseId, saveLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
 import {
+  loadNativeCourseContext,
+  NATIVE_POSITIONS_CHANGED_EVENT,
+  nativeTeeSetValue,
+  type NativeCourseStatus,
+} from '../courseGeometry/nativeCourseRuntime'
+import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
+import { nativeTeeSetOptions } from '../courseGeometry/nativeGkd'
+import {
   loadRoundTeeSelection,
   saveRoundTeeSelection,
 } from '../courseGeometry/roundTeeSelection'
@@ -49,6 +57,8 @@ export default function RoundSetupPage() {
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
+  // Display text per option (GSPro tee names are marked as such).
+  const [teeOptionText, setTeeOptionText] = useState<Record<string, string>>({})
   const [loadingTees, setLoadingTees] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,12 +68,38 @@ export default function RoundSetupPage() {
 
   const course = useMemo(() => getCourseCatalogEntry(courseId), [courseId])
 
+  // Native positions (beta): reload the tee list when the beta turns on/off or
+  // the course files become available, so GSPro's tee names appear here.
+  const [nativeState, setNativeState] = useState<NativeCourseStatus['state'] | null>(null)
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const state = (event as CustomEvent<NativeCourseStatus>).detail?.state ?? null
+      if (state === 'ready' || state === 'off') setNativeState(state)
+    }
+    window.addEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setLoadingTees(true)
     setError(null)
     void loadCourseTeeCandidates(courseId, 1)
-      .then((candidates) => {
+      .then(async (candidates) => {
+        // Native positions (beta): when the player's GKD is verified for this
+        // course, offer GSPro's own tee sets (what they pick in GSPro).
+        const native = await loadNativeCourseContext(courseId, null).catch(() => null)
+        // Alternate layouts (GKDalt, e.g. "Farmlinks Kids") move every tee, so
+        // their tee sets are offered as "White (Farmlinks Kids)".
+        const nativeOptions = native?.context
+          ? native.context.layouts.flatMap((layout) => nativeTeeSetOptions(layout.layout).map((option) => ({
+              value: nativeTeeSetValue(option.name, layout),
+              label: layout.kind === 'alt' ? `${option.name} — ${layout.name} (GSPro tee)` : `${option.name} (GSPro tee)`,
+            })))
+          : []
+        return { candidates, nativeOptions }
+      })
+      .then(({ candidates, nativeOptions }) => {
         if (cancelled) return
         // teeSet is the product contract. Names/colors/refs remain candidate
         // evidence and matching aliases, but must not create duplicate choices
@@ -80,15 +116,29 @@ export default function RoundSetupPage() {
             }
             return left.localeCompare(right, undefined, { numeric: true })
           })
-        setTeeOptions(labels)
-        const saved = loadRoundTeeSelection(courseId)?.teeSet
-        if (saved && !labels.some(label => normalize(label) === normalize(saved))) {
+        const useNative = nativeOptions.length > 0
+        const finalLabels = useNative ? nativeOptions.map((option) => option.value) : labels
+        setTeeOptionText(useNative
+          ? Object.fromEntries(nativeOptions.map((option) => [
+              // Name only: GKD distances are route-to-green-centre metres and
+              // would not match the yardage GSPro shows on its scorecard.
+              option.value, option.label,
+            ]))
+          : {})
+        setTeeOptions(finalLabels)
+        const storedTee = loadRoundTeeSelection(courseId)?.teeSet
+        // A saved OSM pick ("Tee 1 (Back)") is not a GSPro tee name; with the
+        // GSPro list showing, start from that list instead of "not listed".
+        const saved = useNative && storedTee && !finalLabels.some(label => normalize(label) === normalize(storedTee))
+          ? undefined
+          : storedTee
+        if (saved && !finalLabels.some(label => normalize(label) === normalize(saved))) {
           // Honor the user's actual GSPro tee selection even when OSM has no
           // matching named tee. The fallback will explicitly stay provisional.
           setTeeSet(OTHER_TEE)
           setUnmappedTeeName(saved)
         } else {
-          setTeeSet(saved ?? labels.find(label => normalize(label) === 'blue') ?? labels[0] ?? OTHER_TEE)
+          setTeeSet(saved ?? finalLabels.find(label => normalize(label) === (useNative ? 'white' : 'blue')) ?? finalLabels[0] ?? OTHER_TEE)
           setUnmappedTeeName('')
         }
       })
@@ -104,7 +154,7 @@ export default function RoundSetupPage() {
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, nativeState])
 
   const actualTeeSet = teeSet === OTHER_TEE ? unmappedTeeName.trim() : teeSet.trim()
   const startRound = async () => {
@@ -258,6 +308,10 @@ export default function RoundSetupPage() {
           </select>
         </label>
 
+        <div style={{ marginBottom: 18 }}>
+          <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
+        </div>
+
         <label style={{ display: 'block', marginBottom: 22, color: '#cbd4cd', fontWeight: 700 }}>
           Tees
           <select
@@ -267,7 +321,7 @@ export default function RoundSetupPage() {
             style={input}
           >
             {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading mapped tees…' : 'No mapped tee names'}</option> : null}
-            {teeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            {teeOptions.map((option) => <option key={option} value={option}>{teeOptionText[option] ?? option}</option>)}
             <option value={OTHER_TEE}>My GSPro tee is not listed…</option>
           </select>
           {teeSet === OTHER_TEE ? (

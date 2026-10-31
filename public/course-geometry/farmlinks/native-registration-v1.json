@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "looper-native-registration-v1",
+  "courseId": "farmlinks-pursell-farms-sylacauga-al",
+  "gsproCourseKey": "farmlinks_al_2_7_gsp",
+  "layoutFingerprint": "1fadc9c794c9aa3bf05ee0cda41b608012833673954604d8f6979c59f2afdb3e",
+  "sceneFingerprint": "0aecb74508c245b5f7071c8871f4dda9207fcb9f738004ca667a0681d5bd76ae",
+  "grade": "A",
+  "method": "terrain-height match, true-north GSPro frame (rotation/scale fixed by UTM geometry)",
+  "reference": {
+    "latLon": [
+      33.123838411,
+      -86.420202424
+    ],
+    "worldXZ": [
+      1175.4432,
+      1242.2438
+    ]
+  },
+  "worldYToElevationOffsetM": 120.996,
+  "quality": {
+    "heightResidualMedianM": 0.045,
+    "splitHalfCentreDifferenceM": 0.143,
+    "heightPoints": 867,
+    "pinsInsideOsmGreens": "72/72"
+  },
+  "holes": {
+    "1": {
+      "anchorLatLon": [
+        33.11894709,
+        -86.41970008
+      ],
+      "headingDegreesTrue": 353.715216,
+      "origin": "selected-tee"
+    },
+    "2": {
+      "anchorLatLon": [
+        33.12335134,
+        -86.42115674
+      ],
+      "headingDegreesTrue": 191.813997,
+      "origin": "selected-tee"
+    },
+    "3": {
+      "anchorLatLon": [
+        33.12044988,
+        -86.42381572
+      ],
+      "headingDegreesTrue": 354.742251,
+      "origin": "selected-tee"
+    },
+    "4": {
+      "anchorLatLon": [
+        33.12270251,
+        -86.42571736
+      ],
+      "headingDegreesTrue": 7.736677,
+      "origin": "selected-tee"
+    },
+    "5": {
+      "anchorLatLon": [
+        33.12752837,
+        -86.42712167
+      ],
+      "headingDegreesTrue": 178.699369,
+      "origin": "selected-tee"
+    },
+    "6": {
+      "anchorLatLon": [
+        33.12538788,
+        -86.4275372
+      ],
+      "headingDegreesTrue": 163.705479,
+      "origin": "selected-tee"
+    },
+    "7": {
+      "anchorLatLon": [
+        33.12001522,
+        -86.42420056
+      ],
+      "headingDegreesTrue": 214.129509,
+      "origin": "selected-tee"
+    },
+    "8": {
+      "anchorLatLon": [
+        33.11616426,
+        -86.42692244
+      ],
+      "headingDegreesTrue": 70.213528,
+      "origin": "selected-tee"
+    },
+    "9": {
+      "anchorLatLon": [
+        33.11582868,
+        -86.42295022
+      ],
+      "headingDegreesTrue": 28.909602,
+      "origin": "selected-tee"
+    },
+    "10": {
+      "anchorLatLon": [
+        33.11926849,
+        -86.41919458
+      ],
+      "headingDegreesTrue": 11.7942,
+      "origin": "selected-tee"
+    },
+    "11": {
+      "anchorLatLon": [
+        33.12433138,
+        -86.4167764
+      ],
+      "headingDegreesTrue": 8.5805,
+      "origin": "selected-tee"
+    },
+    "12": {
+      "anchorLatLon": [
+        33.12870151,
+        -86.41580551
+      ],
+      "headingDegreesTrue": 290.677754,
+      "origin": "selected-tee"
+    },
+    "13": {
+      "anchorLatLon": [
+        33.13098054,
+        -86.42020164
+      ],
+      "headingDegreesTrue": 61.932549,
+      "origin": "selected-tee"
+    },
+    "14": {
+      "anchorLatLon": [
+        33.13381322,
+        -86.4163645
+      ],
+      "headingDegreesTrue": 171.411263,
+      "origin": "selected-tee"
+    },
+    "15": {
+      "anchorLatLon": [
+        33.12935731,
+        -86.41554372
+      ],
+      "headingDegreesTrue": 149.648449,
+      "origin": "selected-tee"
+    },
+    "16": {
+      "anchorLatLon": [
+        33.12779389,
+        -86.41354607
+      ],
+      "headingDegreesTrue": 169.458117,
+      "origin": "selected-tee"
+    },
+    "17": {
+      "anchorLatLon": [
+        33.1234247,
+        -86.41266193
+      ],
+      "headingDegreesTrue": 231.467534,
+      "origin": "selected-tee"
+    },
+    "18": {
+      "anchorLatLon": [
+        33.12045779,
+        -86.41447929
+      ],
+      "headingDegreesTrue": 222.328973,
+      "origin": "selected-tee"
+    }
+  },
+  "note": "Contains no GKD geometry. Applies to any layout (GKD or GKDalt) of this GSPro scene whose pins and green centres match sceneFingerprint."
+}
