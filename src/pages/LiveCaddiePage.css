@@ -599,6 +599,7 @@
 }
 
 .live-map-shell {
+  position: relative;
   min-height: 0;
   display: grid;
 }
@@ -805,6 +806,49 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
+}
+
+.live-map-legend b.yardage {
+  color: #f3ecd6;
+  font-weight: 700;
+}
+
+/* Yardage-book numbers on the map (SVG user units: the map is 100 wide). */
+.live-map-yardage {
+  font-size: 2.6px;
+  font-weight: 700;
+  fill: #f3ecd6;
+  paint-order: stroke;
+  stroke: #0b130d;
+  stroke-width: 0.7px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.live-map-yardage.yardage-bunker { fill: #f1e2b4; }
+.live-map-yardage.yardage-water { fill: #a9dcee; }
+.live-map-yardage.yardage-penalty { fill: #f3aca8; }
+
+.live-map-green-yardage {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 9px;
+  border: 1px solid rgba(118, 211, 155, 0.35);
+  border-radius: 8px;
+  background: rgba(11, 19, 13, 0.82);
+  color: #dceadd;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.live-map-green-yardage span {
+  color: #76d39b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .live-map-legend i.ball { background: #ffffff; }
