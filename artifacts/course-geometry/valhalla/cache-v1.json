@@ -3,7 +3,7 @@
   "courseName": "Valhalla Golf Club",
   "freshness": {
     "ageDays": 0,
-    "evaluatedAt": "2026-10-31T01:52:49.038156Z",
+    "evaluatedAt": "2026-10-31T02:11:31.100110Z",
     "status": "current"
   },
   "lastBuild": {
@@ -11,21 +11,21 @@
     "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "9b1997f777ddbffc4c780e387ba7bf79aac860c262331848fdbb87c8fdf14e39",
+    "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
     "builderVersion": "build_osm_course_package_v7",
-    "builtAt": "2026-10-31T01:52:49.038156Z",
+    "builtAt": "2026-10-31T02:11:31.100110Z",
     "configPath": "config/course-geometry/valhalla-v1.json",
     "configSha256": "ed8de826b9e0616645423e7788a6899b5b1c3c03e3e100ec0fdff8b4046b56a0",
     "greenDetail": {
       "marginYds": 12.0,
       "schemaVersion": "looper-course-green-detail-v1",
-      "sha256": "89841ce820a9d16674de8f76f14e474fd7f2e6fb9caa4d542aa933a8b52269d6",
+      "sha256": "906116603f1bdd1f0235343e36063139932b09fb804c10c410376109857ed5af",
       "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
       "spacingYds": 1.0
     },
     "path": "public/course-geometry/valhalla/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "df3de8545c1cc226f46206be0385b0b4fbcbb4a2a04feb31f3dc92d5cf51ca19",
+    "sha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
     "terrain": {
       "schemaVersion": "looper-course-terrain-v1",
       "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
@@ -57,9 +57,9 @@
       "id": 59737644,
       "type": "way"
     },
-    "fetchedAt": "2026-10-31T01:52:49.038156Z",
+    "fetchedAt": "2026-10-31T02:11:31.100110Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-10-31T01:52:49.038156Z",
+    "lastCheckedAt": "2026-10-31T02:11:31.100110Z",
     "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/valhalla/osm-snapshot.json",
     "snapshotSha256": "2ef236e1b15e2f75591a871287a443ed5e302c683fba450012e50065338e58a1"

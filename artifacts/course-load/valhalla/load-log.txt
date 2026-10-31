@@ -2,10 +2,10 @@
 [{"type": "way", "id": 59549989, "name": "Oxmoor Country Club", "areaHa": 72.3, "nameMatch": false}, {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1, "nameMatch": true}, {"type": "way", "id": 59991180, "name": "Charlie Vettner Golf Course", "areaHa": 70.2, "nameMatch": false}, {"type": "way", "id": 60413779, "name": "Midland Trail Golf Club", "areaHa": 58.4, "nameMatch": false}, {"type": "way", "id": 61188999, "name": "Long Run Golf Course", "areaHa": 62.5, "nameMatch": false}, {"type": "way", "id": 220489681, "name": "Hurstbourne Country Club", "areaHa": 85.9, "nameMatch": false}, {"type": "way", "id": 236728542, "name": "Mini-golf Course", "areaHa": 0.3, "nameMatch": false}, {"type": "way", "id": 242210673, "name": "Owl Creek Country Club", "areaHa": 21.6, "nameMatch": false}, {"type": "way", "id": 339612048, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339612816, "name": "", "areaHa": 40.2, "nameMatch": false}, {"type": "way", "id": 339613844, "name": "", "areaHa": 7.7, "nameMatch": false}, {"type": "way", "id": 339613845, "name": "Persimmon Ridge Golf Club", "areaHa": 38.8, "nameMatch": false}, {"type": "way", "id": 1206007378, "name": "Polo Fields Golf and Country Club", "areaHa": 63.5, "nameMatch": false}, {"type": "relation", "id": 20433393, "name": "Lake Forest Country Club", "areaHa": 67.1, "nameMatch": false}]
 grew bbox with 10934 vertices from nearby golf features
 {"bboxLonLat": [-85.48442063850435, 38.227009225149274, -85.45940556149564, 38.257151774850726], "crs": "EPSG:26916", "osm": {"type": "way", "id": 59737644, "name": "Valhalla Golf Club", "areaHa": 138.1}} {"name": "KY_FullState", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "count": 448685375365, "year": 0}
-=== [valhalla:find] rc=0 seconds=79.1
+=== [valhalla:find] rc=0 seconds=81.9
 === [valhalla:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/valhalla-v1.json --slug valhalla --reason one-click-course-load
 + node tools/generate-imported-course-registry.mjs
-[course-registry] generated 1 canonical imported course registration(s).
+[course-registry] generated 3 canonical imported course registration(s).
 + /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/valhalla/osm-snapshot.json
 {
   "course": "Valhalla Golf Club",
@@ -276,11 +276,11 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "3": {
       "hole": 3,
       "viewAreaSqYd": 94381.2,
-      "knownAreaSqYd": 15009.3,
+      "knownAreaSqYd": 15054.5,
       "classes": {
         "landcover-woods": {
           "polygons": 2,
-          "areaSqYd": 54623.5
+          "areaSqYd": 54578.3
         },
         "landcover-scrub": {
           "polygons": 0,
@@ -299,7 +299,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "4": {
       "hole": 4,
       "viewAreaSqYd": 147534.2,
-      "knownAreaSqYd": 22493.3,
+      "knownAreaSqYd": 22493.8,
       "classes": {
         "landcover-woods": {
           "polygons": 1,
@@ -483,7 +483,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "12": {
       "hole": 12,
       "viewAreaSqYd": 190311.5,
-      "knownAreaSqYd": 72824.7,
+      "knownAreaSqYd": 72838.4,
       "classes": {
         "landcover-woods": {
           "polygons": 5,
@@ -495,7 +495,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
         },
         "landcover-grass": {
           "polygons": 5,
-          "areaSqYd": 101715.9
+          "areaSqYd": 101685.8
         },
         "landcover-bare": {
           "polygons": 0,
@@ -552,7 +552,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "15": {
       "hole": 15,
       "viewAreaSqYd": 158408.4,
-      "knownAreaSqYd": 27238.9,
+      "knownAreaSqYd": 27242.1,
       "classes": {
         "landcover-woods": {
           "polygons": 8,
@@ -575,7 +575,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "16": {
       "hole": 16,
       "viewAreaSqYd": 187836.9,
-      "knownAreaSqYd": 51523.7,
+      "knownAreaSqYd": 51552.9,
       "classes": {
         "landcover-woods": {
           "polygons": 7,
@@ -621,7 +621,7 @@ As an alternative, you can create a new view using np.reshape (with copy=False i
     "18": {
       "hole": 18,
       "viewAreaSqYd": 220280.3,
-      "knownAreaSqYd": 33459.9,
+      "knownAreaSqYd": 33469.4,
       "classes": {
         "landcover-woods": {
           "polygons": 11,
@@ -893,36 +893,112 @@ wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/green-de
   "builder": "build_osm_course_package_v7",
   "cacheCreated": false,
   "courseId": "valhalla-golf-club-louisville-ky",
-  "greenDetailSha256": "89841ce820a9d16674de8f76f14e474fd7f2e6fb9caa4d542aa933a8b52269d6",
-  "packageSha256": "df3de8545c1cc226f46206be0385b0b4fbcbb4a2a04feb31f3dc92d5cf51ca19",
+  "greenDetailSha256": "906116603f1bdd1f0235343e36063139932b09fb804c10c410376109857ed5af",
+  "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
   "snapshotSha256": "2ef236e1b15e2f75591a871287a443ed5e302c683fba450012e50065338e58a1",
   "sourceBaseTimestamp": null,
   "sourceProvider": "openstreetmap-core-map",
   "terrainComposer": "compose_course_package_canonical_v1"
 }
 + node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json
-file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:29
-  throw new Error(`[course-import-contract] ${message}`)
-        ^
-
-Error: [course-import-contract] valhalla-golf-club-louisville-ky H3: no tee surface geometry
-    at fail (file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:29:9)
-    at requireValue (file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:32:19)
-    at file:///home/runner/work/nova-v0/nova-v0/tools/validate-course-import-contract.mjs:88:3
-    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
-    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
-    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
-
-Node.js v22.23.4
-Traceback (most recent call last):
-  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 398, in <module>
-    raise SystemExit(main())
-                     ^^^^^^
-  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 309, in main
-    run_node(
-  File "/home/runner/work/nova-v0/nova-v0/tools/import_course_canonical.py", line 53, in run_node
-    subprocess.run(command, cwd=ROOT, check=True)
-  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/subprocess.py", line 571, in run
-    raise CalledProcessError(retcode, process.args,
-subprocess.CalledProcessError: Command '['node', 'tools/validate-course-import-contract.mjs', '--package', '/home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json', '--config', '/home/runner/work/nova-v0/nova-v0/config/course-geometry/valhalla-v1.json']' returned non-zero exit status 1.
-=== [valhalla:import] rc=1 seconds=18.2
+[course-import-contract] valhalla-golf-club-louisville-ky: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 1 canonical tee set(s): Tee 1.
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 1 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 4 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course valhalla-golf-club-louisville-ky
+[runtime-smoke] Valhalla Golf Club: 1 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 1.
+[runtime-smoke] Valhalla Golf Club runtime terrain validation passed for 18 hole(s).
+┌─────────┬──────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course               │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼──────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Valhalla Golf Club' │ 1    │ 5        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 616.2          │ 597.8             │ -18.4            │
+│ 1       │ 'Valhalla Golf Club' │ 2    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 601.3          │ 586.7             │ -14.6            │
+│ 2       │ 'Valhalla Golf Club' │ 3    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 602.9          │ 592.7             │ -10.2            │
+│ 3       │ 'Valhalla Golf Club' │ 4    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 601.4          │ 592.6             │ -8.8             │
+│ 4       │ 'Valhalla Golf Club' │ 5    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 607.7          │ 588.8             │ -18.9            │
+│ 5       │ 'Valhalla Golf Club' │ 6    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 601.2          │ 603.4             │ 2.2              │
+│ 6       │ 'Valhalla Golf Club' │ 7    │ 6        │ 3             │ 1             │ 1               │ 1                      │ 10                │ 593.8          │ 594.9             │ 1.1              │
+│ 7       │ 'Valhalla Golf Club' │ 8    │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 607.9          │ 593               │ -14.9            │
+│ 8       │ 'Valhalla Golf Club' │ 9    │ 5        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 599.3          │ 602.7             │ 3.4              │
+│ 9       │ 'Valhalla Golf Club' │ 10   │ 5        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 650.9          │ 654.7             │ 3.8              │
+│ 10      │ 'Valhalla Golf Club' │ 11   │ 6        │ 2             │ 3             │ 1               │ 1                      │ 10                │ 655.3          │ 641.9             │ -13.4            │
+│ 11      │ 'Valhalla Golf Club' │ 12   │ 5        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 659.8          │ 632.1             │ -27.7            │
+│ 12      │ 'Valhalla Golf Club' │ 13   │ 6        │ 2             │ 4             │ 1               │ 1                      │ 10                │ 646            │ 594.2             │ -51.8            │
+│ 13      │ 'Valhalla Golf Club' │ 14   │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 616.9          │ 599               │ -17.9            │
+│ 14      │ 'Valhalla Golf Club' │ 15   │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 599.9          │ 602.7             │ 2.8              │
+│ 15      │ 'Valhalla Golf Club' │ 16   │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 612            │ 592.4             │ -19.6            │
+│ 16      │ 'Valhalla Golf Club' │ 17   │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 626.8          │ 641.9             │ 15.1             │
+│ 17      │ 'Valhalla Golf Club' │ 18   │ 6        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 638.3          │ 611.6             │ -26.7            │
+└─────────┴──────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] valhalla-golf-club-louisville-ky passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 4 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "courseSlug": "valhalla",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/valhalla/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/valhalla/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/valhalla/validation-v1.json"
+}
+=== [valhalla:import] rc=0 seconds=19.5
+=== [valhalla:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=6794232 seconds=29.3
+{"elementsByType": {"node": 28828, "way": 1404, "relation": 20}, "taggedElements": 1610, "compressedBytes": 866444}
+=== [valhalla:osm] rc=0 seconds=30.4
+=== [valhalla:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/course-bbox.json --crs EPSG:26916 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=6 seconds=10.2 size=2245x3382
+{"width": 2245, "height": 3382, "pixel": 1.0, "validCells": 7592590, "elevMin": 174.4931182861328, "elevMax": 229.31117248535156}
+=== [valhalla:dem] rc=0 seconds=11.1
+=== [valhalla:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model
+nodes=423 pointsInIntersectingNodes=18064721 hierarchySeconds=1.6
+tiles 25/423 kept=534993 MB=15 seconds=4
+tiles 50/423 kept=1213800 MB=19 seconds=5
+tiles 75/423 kept=1861792 MB=27 seconds=6
+tiles 100/423 kept=3441420 MB=45 seconds=8
+tiles 125/423 kept=4619387 MB=57 seconds=9
+tiles 150/423 kept=5825541 MB=63 seconds=11
+tiles 175/423 kept=7046386 MB=70 seconds=12
+tiles 200/423 kept=8177726 MB=76 seconds=13
+tiles 225/423 kept=8459445 MB=81 seconds=14
+tiles 250/423 kept=8944395 MB=83 seconds=15
+tiles 275/423 kept=9399362 MB=86 seconds=16
+tiles 300/423 kept=9963154 MB=88 seconds=17
+tiles 325/423 kept=10425724 MB=91 seconds=18
+tiles 350/423 kept=10864996 MB=93 seconds=19
+tiles 375/423 kept=11348832 MB=95 seconds=20
+tiles 400/423 kept=11816976 MB=98 seconds=21
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/KY_FullState/ept.json", "eptSrs": "3857", "octreeNodesRead": 423, "downloadedMB": 104.6, "pointsKeptInBbox": 12142296, "pointsPerSquareMetre": 1.6, "firstReturnsPerSquareMetre": 1.37, "classificationHistogram": {"1": 725402, "2": 6702978, "3": 1314190, "4": 636793, "5": 2332170, "6": 237468, "8": 148329, "9": 30719, "10": 11805, "13": 8030}, "chm": {"width": 2245, "height": 3382, "pixelMeters": 1.0, "cellsWithReturns": 5440067, "emptyCells": 2152523, "cellsOver3m": 1397231, "cellsOver10m": 781667, "p50": 0.0, "p95": 20.669999999999987, "max": 47.06999999999999}, "seconds": 39.2}
+=== [valhalla:lidar] rc=0 seconds=39.5
+=== [valhalla:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26916", "treeCount": 82938, "heightM": {"p10": 7.6, "p50": 15.3, "p90": 25.0, "max": 39.0}, "crownRadiusM": {"p10": 1.0, "p50": 2.3, "p90": 4.3}, "woodlandPolygons": 2985, "woodlandAreaHa": 29.87, "maskedCellsBuildingsAndPower": 523119, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 7.3}
+=== [valhalla:trees] rc=0 seconds=8.1
+=== [valhalla:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/valhalla/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/valhalla/course-v1-lidar.json
+{
+ "bytes": 1604624,
+ "originalBytes": 405628,
+ "holes": {
+  "woodsPolygons": 58,
+  "bunker": "9->16",
+  "water": "0->0",
+  "mapFeatures": {
+   "road": 9,
+   "cartpath": 16,
+   "building": 10,
+   "parking": 2
+  },
+  "terrainCells": 47762
+ },
+ "woodsTotal": 764
+}
+=== [valhalla:enrich] rc=0 seconds=15.3

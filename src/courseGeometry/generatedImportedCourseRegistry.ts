@@ -46,4 +46,18 @@ export const generatedImportedCourseRegistry = [
     osmCacheStatus: 'cached',
     lidarCacheStatus: 'cached',
   },
+  {
+    id: 'valhalla-golf-club-louisville-ky',
+    name: 'Valhalla Golf Club',
+    location: 'Louisville, KY',
+    slug: 'valhalla',
+    gsproAliases: ['Valhalla Golf Club'],
+    staticPackageUrl: '/course-geometry/valhalla/course-v1.json',
+    status: 'validated',
+    packageStatus: 'ready',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'cached',
+  },
 ] as const

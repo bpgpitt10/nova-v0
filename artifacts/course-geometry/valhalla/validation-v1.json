@@ -1,13 +1,33 @@
 {
   "allHolesStaticGeometryReady": true,
-  "builderFingerprintSha256": "9b1997f777ddbffc4c780e387ba7bf79aac860c262331848fdbb87c8fdf14e39",
+  "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
+  "canonicalImport": {
+    "complete": true,
+    "completedAt": "2026-10-31T02:11:40.839007Z",
+    "demSourceMetadata": "artifacts/course-geometry/valhalla/dem-source-v1.json",
+    "freshOsm": true,
+    "greenDetail": true,
+    "greenDetailSha256": "906116603f1bdd1f0235343e36063139932b09fb804c10c410376109857ed5af",
+    "landcoverContext": true,
+    "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+    "reason": "one-click-course-load",
+    "runtimeContract": "round-setup-to-live-caddie-v1",
+    "runtimeReady": true,
+    "runtimeReceipt": "artifacts/course-geometry/valhalla/runtime-ready-v1.json",
+    "schemaVersion": "looper-canonical-import-completion-v2",
+    "staticGeometry": true,
+    "terrainComposeReport": "artifacts/course-geometry/valhalla/terrain-compose-v1.json",
+    "terrainProvider": "usgs-3dep",
+    "wholeHoleTerrain": true,
+    "worldcoverAudit": "artifacts/course-geometry/valhalla/worldcover-context-audit-v1.json"
+  },
   "compiler": "build_osm_course_package_v7",
   "contextSourceNote": "No standalone OSM wood/scrub/forest/meadow/grass context features were present in the preserved snapshot.",
   "contextSourceStatus": "unavailable-in-osm-snapshot",
   "contextSourceTagCounts": {},
   "courseId": "valhalla-golf-club-louisville-ky",
   "courseName": "Valhalla Golf Club",
-  "generatedAt": "2026-10-31T01:52:49.038156Z",
+  "generatedAt": "2026-10-31T02:11:31.100110Z",
   "holes": [
     {
       "anchorMethod": "selected-tee-route-owned",
@@ -262,6 +282,7 @@
         "tee": 0,
         "water": 1
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952785,
@@ -326,6 +347,7 @@
         "tee": 0,
         "water": 2
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952787,
@@ -390,6 +412,7 @@
         "tee": 0,
         "water": 5
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952789,
@@ -454,6 +477,7 @@
         "tee": 0,
         "water": 2
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952791,
@@ -607,6 +631,7 @@
         "tee": 0,
         "water": 2
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952799,
@@ -824,6 +849,7 @@
         "tee": 0,
         "water": 0
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737952801,
@@ -1047,6 +1073,7 @@
         "tee": 0,
         "water": 0
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956433,
@@ -1281,6 +1308,7 @@
         "tee": 0,
         "water": 2
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956441,
@@ -1345,6 +1373,7 @@
         "tee": 0,
         "water": 1
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956447,
@@ -1437,6 +1466,7 @@
         "tee": 0,
         "water": 1
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956448,
@@ -1501,6 +1531,7 @@
         "tee": 0,
         "water": 1
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956449,
@@ -1565,6 +1596,7 @@
         "tee": 0,
         "water": 5
       },
+      "syntheticRouteStartTee": true,
       "tacticalDeepRoughPolygons": 0,
       "tacticalSurfacePolicy": "woods/scrub/native grass are preserved and mirrored as deep-rough; runtime precedence makes water/penalty/bunker/green/tee/fairway beat vegetation, and vegetation beat ordinary rough",
       "targetGreenOsmId": 737956451,

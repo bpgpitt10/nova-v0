@@ -1,0 +1,21 @@
+{
+  "completedAt": "2026-10-31T02:11:40.839007Z",
+  "configPath": "config/course-geometry/valhalla-v1.json",
+  "courseId": "valhalla-golf-club-louisville-ky",
+  "courseName": "Valhalla Golf Club",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Valhalla Golf Club"
+  ],
+  "location": "Louisville, KY",
+  "packagePath": "public/course-geometry/valhalla/course-v1.json",
+  "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "valhalla",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/valhalla/validation-v1.json"
+}
