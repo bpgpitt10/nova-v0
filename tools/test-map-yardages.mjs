@@ -100,3 +100,11 @@ assert.equal(greenYardage([rect(-10, -4, 10, 20)]), null)
 assert.equal(greenYardage([rect(20, 100, 30, 120)]), null)
 
 console.log('map yardages: ok')
+
+// Island green inside a pond, stored as one keyhole ring (outline CCW, island CW,
+// joined by a zero-width cut along x = 0). The ray along the cut still sees the
+// pond in front of the island: reach 100, carry to the island's front edge 140.
+const pond = [[-40, 100], [40, 100], [40, 200], [0, 200], [0, 170], [-10, 170], [-10, 140], [10, 140], [10, 170], [0, 170], [0, 200], [-40, 200]]
+labels = hazardYardages({ hazards: [{ kind: 'water', polygons: [pond] }], aim: [0, 155], corridorHalfWidthYds: 8, maxReachYds: 200 })
+assert.deepEqual(labels.map((l) => [l.reachYds, l.carryYds]), [[100, 140]])
+console.log('map yardages (keyhole): ok')

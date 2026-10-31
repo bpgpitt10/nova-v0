@@ -11,6 +11,9 @@ beside it, same schema, so the browser loader needs no changes:
 - surfaces.water / surfaces.bunker
                      every OSM water and bunker polygon in the hole's view,
                      unclipped (the importer's 110-yd corridor dropped some).
+                     Islands and clearings (multipolygon inner rings, canopy
+                     holes) are kept as keyhole rings, so an island green is
+                     not water.
                      Fairway, green, tee and rough stay the hole's own, so the
                      engine cannot pick a neighbouring hole's fairway as a target.
 - mapFeatures        cart paths, roads, buildings and parking from full OSM.
@@ -143,32 +146,117 @@ def localize(frame, latlon_ring, eps=0.8) -> list:
     return [[round(x, 1), round(y, 1)] for x, y in ring]
 
 
+def assemble_rings(ways: list) -> list:
+    """Join OSM relation member ways (open polylines) into closed rings."""
+    pending = [list(w) for w in ways if len(w) >= 2]
+    rings = []
+    while pending:
+        ring = pending.pop(0)
+        grew = True
+        while ring[0] != ring[-1] and grew:
+            grew = False
+            for i, w in enumerate(pending):
+                if w[0] == ring[-1]:
+                    ring += w[1:]
+                elif w[-1] == ring[-1]:
+                    ring += w[::-1][1:]
+                elif w[-1] == ring[0]:
+                    ring = w[:-1] + ring
+                elif w[0] == ring[0]:
+                    ring = w[::-1][:-1] + ring
+                else:
+                    continue
+                pending.pop(i)
+                grew = True
+                break
+        if len(ring) >= 4:
+            rings.append(ring)
+    return rings
+
+
+def point_in_ring(pt, ring) -> bool:
+    x, y = pt
+    inside = False
+    for i in range(len(ring)):
+        (x1, y1), (x2, y2) = ring[i], ring[i - 1]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
 def osm_features(osm: dict):
-    """Yield (category, [lat/lon rings or lines], is_polygon)."""
+    """Yield (category, shapes, is_polygon).
+
+    Polygons are [(outer_ring, [inner_rings])] so islands and clearings
+    survive; lines are [polyline]. Multipolygon members are joined into rings.
+    """
     for el in osm.get('elements', []):
         tags = el.get('tags') or {}
-        geoms = []
+        shapes: list = []
         if el.get('type') == 'way' and el.get('geometry'):
-            geoms = [[(p['lat'], p['lon']) for p in el['geometry']]]
+            shapes = [[(p['lat'], p['lon']) for p in el['geometry']]]
+            relation = False
         elif el.get('type') == 'relation':
-            geoms = [[(p['lat'], p['lon']) for p in m['geometry']]
-                     for m in el.get('members', []) if m.get('role') == 'outer' and m.get('geometry')]
-        if not geoms:
+            members = [m for m in el.get('members', []) if m.get('geometry')]
+            outers = assemble_rings([[(p['lat'], p['lon']) for p in m['geometry']]
+                                     for m in members if m.get('role') == 'outer'])
+            inners = assemble_rings([[(p['lat'], p['lon']) for p in m['geometry']]
+                                     for m in members if m.get('role') == 'inner'])
+            shapes = [(o, [i for i in inners if point_in_ring(i[0], o)]) for o in outers]
+            relation = True
+        if not shapes:
             continue
+        as_polys = shapes if relation else [(shapes[0], [])]
         golf, highway = tags.get('golf'), tags.get('highway')
         if golf == 'bunker' or (tags.get('natural') == 'sand' and 'golf' in tags):
-            yield 'bunker', geoms, True
+            yield 'bunker', as_polys, True
         elif golf in {'water_hazard', 'lateral_water_hazard'} or tags.get('natural') == 'water' \
                 or tags.get('water') or tags.get('waterway') == 'riverbank':
-            yield 'water', geoms, True
+            yield 'water', as_polys, True
         elif golf in {'cartpath', 'path'} or highway in {'path', 'footway', 'track', 'cycleway'}:
-            yield 'cartpath', geoms, False
+            yield 'cartpath', [o for o, _ in as_polys] if relation else shapes, False
         elif highway:
-            yield 'road', geoms, False
+            yield 'road', [o for o, _ in as_polys] if relation else shapes, False
         elif 'building' in tags:
-            yield 'building', geoms, True
+            yield 'building', as_polys, True
         elif tags.get('amenity') == 'parking':
-            yield 'parking', geoms, True
+            yield 'parking', as_polys, True
+
+
+def ring_area(ring: list) -> float:
+    return sum(ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1] for i in range(len(ring))) / 2
+
+
+def keyhole(outer: list, holes: list) -> list:
+    """One ring that keeps its holes: each hole is joined to the outline at
+    its nearest outline vertex by a zero-width cut and walked the other way
+    round. Even-odd point tests and SVG fills both see the hole as outside;
+    the single-ring format (and every consumer of it) stays unchanged.
+    (Cuts go to the original outline, so a cut can graze another hole on a
+    canopy with many clearings: a hairline artefact, never a filled hole.)"""
+    ring = outer if ring_area(outer) > 0 else outer[::-1]          # CCW outline
+    o = np.asarray(ring, dtype=float)
+    splices: dict[int, list] = {}
+    for hole in holes:
+        hole = hole if ring_area(hole) < 0 else hole[::-1]          # CW hole
+        hv = np.asarray(hole, dtype=float)
+        d = ((o[:, None, :] - hv[None, :, :]) ** 2).sum(axis=2)
+        i, j = np.unravel_index(int(np.argmin(d)), d.shape)
+        splices.setdefault(int(i), []).append(hole[j:] + hole[:j + 1])
+    out: list = []
+    for i, p in enumerate(ring):
+        out.append(p)
+        for loop in splices.get(i, []):
+            out.extend(loop)
+            out.append(p)
+    return out
+
+
+def localize_polygon(frame, outer, inners, eps: float) -> list:
+    """Local-yards ring for an outline with holes (holes under 20 sq yd are dropped)."""
+    ring = localize(frame, outer, eps=eps)
+    holes = [h for h in (localize(frame, i, eps=eps) for i in inners) if ring_ok(h)]
+    return keyhole(ring, holes) if holes else ring
 
 
 def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: float) -> dict:
@@ -226,7 +314,8 @@ def main() -> int:
         g = f['geometry']
         polys = [g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']
         for poly in polys:
-            woods_rings.append([(lat, lon) for lon, lat in poly[0]])
+            woods_rings.append(([(lat, lon) for lon, lat in poly[0]],
+                                [[(lat, lon) for lon, lat in hole] for hole in poly[1:]]))
 
     out = json.loads(json.dumps(pkg))
     report = {}
@@ -236,31 +325,33 @@ def main() -> int:
         box = (v['minX'] - MARGIN_YDS, v['minY'] - MARGIN_YDS, v['maxX'] + MARGIN_YDS, v['maxY'] + MARGIN_YDS)
         ctx = dict(hole.get('context') or {})
         ctx.pop('landcover-woods', None)
-        wood_polys = [c for c in (clip_to_box(r, box) for r in (localize(frame, ring, eps=1.5)
-                      for ring in woods_rings) if in_box(r, box)) if ring_ok(c)]
+        wood_polys = [c for c in (clip_to_box(r, box) for r in (localize_polygon(frame, outer, holes, eps=1.5)
+                      for outer, holes in woods_rings) if in_box(r, box)) if ring_ok(c)]
         ctx['woods'] = wood_polys
         hole['context'] = ctx
         surfaces = dict(hole.get('surfaces') or {})
         before = {k: len(surfaces.get(k, [])) for k in ('bunker', 'water')}
         for kind in ('bunker', 'water'):
-            polys = [r for cat, geoms, is_poly in feats if cat == kind and is_poly
-                     for r in (localize(frame, gm, eps=0.3) for gm in geoms) if ring_ok(r) and in_box(r, box)]
+            polys = [r for cat, shapes, is_poly in feats if cat == kind and is_poly
+                     for r in (localize_polygon(frame, outer, holes, eps=0.3) for outer, holes in shapes)
+                     if ring_ok(r) and in_box(r, box)]
             if polys:
                 surfaces[kind] = polys
         hole['surfaces'] = surfaces
         mf = {}
-        for cat, geoms, is_poly in feats:
+        for cat, shapes, is_poly in feats:
             if cat not in ('cartpath', 'road', 'building', 'parking'):
                 continue
-            for gm in geoms:
-                pts = [[round(x, 1), round(y, 1)] for x, y in (to_local(frame, la, lo) for la, lo in gm)]
-                if not in_box(pts, box):
+            for shape in shapes:
+                if is_poly:
+                    outer, holes = shape
+                    pts = localize_polygon(frame, outer, holes, eps=0.3)
+                    if in_box(pts, box) and ring_ok(pts):
+                        mf.setdefault(cat, {}).setdefault('polygons', []).append(pts)
                     continue
-                group = mf.setdefault(cat, {})
-                if is_poly and ring_ok(pts):
-                    group.setdefault('polygons', []).append(pts)
-                elif not is_poly and len(pts) >= 2:
-                    group.setdefault('lines', []).append(rdp(pts, 0.5))
+                pts = [[round(x, 1), round(y, 1)] for x, y in (to_local(frame, la, lo) for la, lo in shape)]
+                if in_box(pts, box) and len(pts) >= 2:
+                    mf.setdefault(cat, {}).setdefault('lines', []).append(rdp(pts, 0.5))
         hole['mapFeatures'] = mf
         hole['terrain'] = build_terrain(frame, v, dem_h, dem, args.terrain_spacing_yds)
         report[key] = {'woodsPolygons': len(wood_polys),

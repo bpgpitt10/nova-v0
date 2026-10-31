@@ -610,9 +610,13 @@
   min-height: 540px;
   border: 1px solid rgba(49, 66, 51, 0.72);
   border-radius: 12px;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(41, 64, 44, 0.16), transparent 42%),
-    #0b130d;
+  background: #111a12;
+}
+
+.live-context,
+.live-surface,
+.live-map-feature {
+  fill-rule: evenodd; /* keyhole rings: islands and clearings stay open */
 }
 
 .live-context,
@@ -624,60 +628,49 @@
   pointer-events: none;
 }
 
-.live-context.context-grass-context {
-  fill: rgba(122, 142, 73, 0.07);
+/* Ground outside the hole. Tight palette, one job each:
+   open grass = a dull olive wash; scrub/bare = muted khaki; trees = deep
+   canopy green with a fine crown texture and a lighter tree line, clearly
+   darker and cooler than rough. Patterns live in LiveCaddieMap's <defs>. */
+.live-context.context-grass-context,
+.live-context.context-landcover-grass {
+  fill: #1c2a1b;
   stroke: none;
 }
 
 .live-context.context-native-grass {
   fill: url(#liveNativePattern);
-  stroke: rgba(205, 190, 105, 0.48);
-  stroke-width: 0.11;
+  stroke: rgba(150, 140, 86, 0.35);
+  stroke-width: 0.1;
 }
 
-.live-context.context-landcover-grass {
-  fill: url(#liveNativePattern);
-  stroke: none;
-  opacity: 0.58;
-}
-
-.live-context.context-landcover-woods {
-  fill: url(#liveWoodsPattern);
-  stroke: rgba(131, 173, 115, 0.28);
-  stroke-width: 0.08;
-  opacity: 0.78;
-}
-
-.live-context.context-landcover-scrub {
+.live-context.context-landcover-scrub,
+.live-context.context-scrub {
   fill: url(#liveScrubPattern);
-  stroke: rgba(176, 165, 98, 0.24);
-  stroke-width: 0.08;
-  opacity: 0.74;
+  stroke: none;
 }
 
-.live-context.context-landcover-bare {
-  fill: url(#liveDunePattern);
-  stroke: rgba(224, 197, 137, 0.3);
-  stroke-width: 0.08;
-  opacity: 0.78;
-}
-
+.live-context.context-landcover-bare,
 .live-context.context-dune-sand {
   fill: url(#liveDunePattern);
-  stroke: rgba(224, 197, 137, 0.44);
-  stroke-width: 0.11;
+  stroke: none;
 }
 
-.live-context.context-woods {
+.live-context.context-woods,
+.live-context.context-landcover-woods {
   fill: url(#liveWoodsPattern);
-  stroke: rgba(131, 173, 115, 0.34);
+  stroke: rgba(92, 138, 98, 0.45);
   stroke-width: 0.12;
 }
 
-.live-context.context-scrub {
-  fill: url(#liveScrubPattern);
-  stroke: rgba(194, 184, 101, 0.3);
-  stroke-width: 0.11;
+/* WorldCover's 10 m woods are a rough guess; LiDAR canopy replaces them where published. */
+.live-context.context-landcover-woods {
+  opacity: 0.75;
+}
+
+.live-hillshade {
+  pointer-events: none;
+  image-rendering: auto;
 }
 
 .live-terrain-contour {
@@ -1011,22 +1004,38 @@
 /* Visual-only OSM basemap. These features never participate in tactical classification. */
 .live-map-feature {
   pointer-events: none;
+  vector-effect: non-scaling-stroke;
 }
 
-.live-map-feature.map-cartpath {
+.live-map-feature.map-parking {
+  fill: rgba(122, 124, 116, 0.22);
+  stroke: none;
+}
+
+.live-map-feature.map-building {
+  fill: #3a3d36;
+  stroke: rgba(170, 168, 152, 0.45);
+  stroke-width: 0.6px;
+}
+
+.live-map-feature.map-road {
+  fill: rgba(122, 124, 116, 0.3);
+  stroke: none;
+}
+
+.live-map-feature.map-road.map-line {
   fill: none;
-  stroke: rgba(198, 184, 146, 0.64);
-  stroke-width: 0.72;
+  stroke: rgba(150, 150, 138, 0.55);
+  stroke-width: 2.4px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-
-/* Core V1 basemap polish: cart paths are quiet background context. */
-.live-map-feature.map-cartpath {
+.live-map-feature.map-cartpath,
+.live-map-feature.map-cartpath.map-line {
   fill: none;
-  stroke: rgba(116, 124, 94, 0.34);
-  stroke-width: 0.44;
+  stroke: rgba(176, 168, 132, 0.42);
+  stroke-width: 1.1px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

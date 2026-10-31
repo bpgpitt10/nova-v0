@@ -1,5 +1,4 @@
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
-import { isNativePositionsEnabled } from './nativeCourseRuntime'
 import type {
   CourseContextKind,
   CourseContextLayer,
@@ -342,9 +341,18 @@ const parseProvenance = (value: unknown): CourseGeometryProvenance => {
 const wait = (delayMs: number) =>
   delayMs <= 0 ? Promise.resolve() : new Promise<void>((resolve) => globalThis.setTimeout(resolve, delayMs))
 
-// Native positions (beta): prefer the course-model enrichment (LiDAR woods,
-// unclipped OSM hazards/paths, 2-yd terrain) when one is published. Same
-// schema and frame as course-v1.json; any problem falls back to it.
+// Prefer the course-model enrichment (LiDAR tree canopy, unclipped OSM
+// hazards/paths/roads/buildings, 2-yd terrain) when one is published, for
+// everyone. Same schema and frame as course-v1.json; any problem falls back
+// to it. ?lidar=0 forces the base package (troubleshooting).
+const lidarPackagePreferred = (): boolean => {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').get('lidar') !== '0'
+  } catch {
+    return true
+  }
+}
+
 const fetchEnrichedPackage = async (courseId: CourseId, url: string): Promise<RawPackage | null> => {
   try {
     const response = await fetch(url.replace(/course-v1\.json$/, 'course-v1-lidar.json'), { cache: 'no-cache' })
@@ -480,7 +488,7 @@ export const loadRoutePackagedCourseHoleGeometry = async (
   holeNumber: number,
 ): Promise<CourseHoleGeometry> => {
   const normalized = Math.max(1, Math.min(18, Math.round(holeNumber)))
-  const enriched = isNativePositionsEnabled()
+  const enriched = lidarPackagePreferred()
   const key = `${courseId}:${normalized}:${enriched ? 'lidar' : 'base'}`
   const existing = holeCache.get(key)
   if (existing) return existing
