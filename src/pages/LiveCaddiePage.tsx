@@ -1899,7 +1899,7 @@ export default function LiveCaddiePage() {
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
                 <NativeAimPreview
-                  courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
+                  courseId={courseId}
                   courseKey={liveSnapshot?.courseKey ?? null}
                   holeNumber={holeNumber}
                   ball={liveMatchesHole ? ball : null}
