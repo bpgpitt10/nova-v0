@@ -36,6 +36,8 @@ export type LooperCompanionStatus = {
     folderDiscovery: boolean
     captureDiagnostic: boolean
     liveObservations?: boolean
+    courseLayouts?: boolean
+    aimPreview?: boolean
     nativeCapture: boolean
     autoAim: boolean
   }
@@ -65,7 +67,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations' | `course-layouts?${string}`,
+  path: 'status' | 'capture-check' | 'observations' | `course-layouts?${string}` | `aim-preview?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -163,6 +165,44 @@ export const readLooperCompanionCourseLayouts = async (
     file && typeof file.fileName === 'string' && (file.kind === 'main' || file.kind === 'alt')
     && typeof file.text === 'string' && Number.isFinite(file.size) && Number.isFinite(file.lastModified))
   if (!valid) throw new Error('Looper Companion returned malformed course layouts.')
+  return data
+}
+
+export type LooperCompanionAimPreview = {
+  service: 'looper-companion'
+  version: string
+  schemaVersion: 'looper-companion-aim-preview-v1'
+  /** Always "none": the preview never moves the mouse or presses keys. */
+  input: 'none'
+  status: 'ready' | 'target-off-map' | 'gspro-not-connected' | 'invalid-request' | 'unavailable'
+  reason?: string
+  click?: { windowX: number; windowY: number } | null
+  minimap?: { ball: [number, number]; pin: [number, number]; target: [number, number]; width: number; height: number }
+  checks?: { ballPinPixels: number; ballPinVerticalAlignment: number; alignedLikeGspro: boolean; yardsPerPixel: number }
+  /** Small annotated PNG of GSPro's minimap (base64). */
+  previewPng?: string
+}
+
+type WorldXZ = Readonly<{ x: number; z: number }>
+
+/**
+ * Auto Aim step 1 (read-only): ask the companion where it WOULD click on
+ * GSPro's minimap for a target, from the minimap's ball and pin dots. All
+ * points are GSPro world metres.
+ */
+export const readLooperCompanionAimPreview = async (
+  points: Readonly<{ ball: WorldXZ; pin: WorldXZ; target: WorldXZ }>,
+  timeoutMs = 12000,
+): Promise<LooperCompanionAimPreview> => {
+  const q = new URLSearchParams({
+    ballX: points.ball.x.toFixed(3), ballZ: points.ball.z.toFixed(3),
+    pinX: points.pin.x.toFixed(3), pinZ: points.pin.z.toFixed(3),
+    targetX: points.target.x.toFixed(3), targetZ: points.target.z.toFixed(3),
+  })
+  const data = await getCompanionReadOnly<LooperCompanionAimPreview>(`aim-preview?${q.toString()}`, timeoutMs)
+  if (data.schemaVersion !== 'looper-companion-aim-preview-v1' || data.input !== 'none') {
+    throw new Error('Looper Companion does not support the aim preview yet (update the companion).')
+  }
   return data
 }
 

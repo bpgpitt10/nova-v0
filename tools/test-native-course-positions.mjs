@@ -84,6 +84,10 @@ try {
   const r255 = reg.nativeWorldToHoleLocalYds(farmlinks, 1, { x: 1180.69287, z: 800.2199 })
   assert.ok(Math.abs(r255[0] - -33.103) < 0.002 && Math.abs(r255[1] - 114.458) < 0.002, `R255 end ${r255}`)
   assert.equal(reg.nativeWorldToHoleLocalYds(farmlinks, 19, { x: 0, z: 0 }), null)
+  // Inverse (Auto Aim targets): hole yards -> GSPro world round-trips to < 1 mm.
+  const back = reg.nativeHoleLocalYdsToWorld(farmlinks, 1, r255)
+  assert.ok(Math.abs(back.x - 1180.69287) < 1e-3 && Math.abs(back.z - 800.2199) < 1e-3, `inverse ${JSON.stringify(back)}`)
+  assert.equal(reg.nativeHoleLocalYdsToWorld(farmlinks, 19, [0, 0]), null)
   assert.equal(reg.parseNativeRegistration({ ...farmlinks, layoutFingerprint: 'nope' }), null)
 
   // 5. Snapshot overlay on a synthetic registration (true-north, heading 0).
