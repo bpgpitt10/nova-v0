@@ -238,6 +238,15 @@ try {
   const twoLayouts = { ...context, registration: sceneReg, layouts: verified, layoutConfirmed: false }
   const pick = (inputs) => runtime.selectNativeLayout(twoLayouts, { holeNumber: 1, preShotWorld: null, normalizedTeeSet: null, rememberedLayoutName: null, ...inputs })
   assert.equal(pick({}).context.layoutConfirmed, false, 'two layouts and no evidence: unconfirmed')
+  assert.equal(pick({ normalizedTeeSet: 'tee 3' }).context.layoutConfirmed, false, 'legacy OSM pick says nothing about the layout')
+  const plainWhite = pick({ normalizedTeeSet: 'white' })
+  assert.equal(plainWhite.context.layoutName, 'Synthetic Links', 'plain GSPro tee name = main layout')
+  assert.equal(plainWhite.context.layoutConfirmed, true)
+  const mainTee = snap.applyNativeCourseSnapshot({
+    base, context: plainWhite.context, holeNumber: 1, teeContext: true, preShotStart: null,
+    normalizedTeeSet: plainWhite.normalizedTeeSet, rememberedPinSlot: null,
+  })
+  assert.equal(mainTee.snapshot.teePlacement, 'mapped', 'White placed without a pre-shot record')
   const byTeeSet = pick({ normalizedTeeSet: 'white (synthetic kids)' })
   assert.equal(byTeeSet.context.layoutName, 'Synthetic Kids')
   assert.equal(byTeeSet.normalizedTeeSet, 'white')

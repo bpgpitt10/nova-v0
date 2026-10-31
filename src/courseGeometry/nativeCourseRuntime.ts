@@ -366,6 +366,15 @@ export const selectNativeLayout = (
     return { context, normalizedTeeSet: teeSet, learnedLayoutName: null }
   }
   if (picked) return { context: choose(picked, true), normalizedTeeSet: teeSet, learnedLayoutName: picked.name }
+  // Round Setup lists alternate-layout tees as "White (Farmlinks Kids)", so a
+  // plain GSPro tee name ("White") picked there means the main layout.
+  const main = context.layouts.find((l) => l.kind === 'main') ?? null
+  const plainName = teeSet && !suffix ? teeSet.replace(/\s+/g, '').toLowerCase() : null
+  const mainHole = main ? nativeHole(main.layout, inputs.holeNumber) : null
+  if (main && plainName && mainHole
+    && Object.keys(mainHole.tees).some((name) => name.toLowerCase() === plainName)) {
+    return { context: choose(main, true), normalizedTeeSet: teeSet, learnedLayoutName: main.name }
+  }
   if (inputs.preShotWorld) {
     const on = context.layouts.filter((l) => {
       const hole = nativeHole(l.layout, inputs.holeNumber)

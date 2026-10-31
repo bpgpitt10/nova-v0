@@ -495,6 +495,7 @@ export default function LiveCaddiePage() {
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
   const triedProvisionalTeeNative = useRef(new Set<string>())
+  const triedShotHud = useRef(new Set<string>())
   const [captureRoundId, setCaptureRoundId] = useState<string | null>(
     () => loadActiveLiveCaddieRound()?.id ?? null,
   )
@@ -524,6 +525,7 @@ export default function LiveCaddiePage() {
       if (!isNewLooperRoundForCapture(lastCaptureRoundIdRef.current, id)) return
       lastCaptureRoundIdRef.current = id
       triedProvisionalTeeNative.current.clear()
+      triedShotHud.current.clear()
       setCaptureRoundId(id)
       setTeeCaptureProgress(null)
       setFallbackApprovedKey(null)
@@ -758,6 +760,39 @@ export default function LiveCaddiePage() {
     liveSnapshot?.nextShotNumber, liveSnapshot?.teePlacement,
     companionStatus?.gspro.status, nativeVisualActive,
     teeCaptureKey, captureRetryNonce,
+  ])
+
+  // Wind and lie for every other shot. The tee capture above only runs for a
+  // provisional first tee, so after shot 1 (and on tees placed by native
+  // positions) nothing refreshed wind or lie unless the golfer started the
+  // 16-second polling or browser visuals. Read the companion HUD once per
+  // shot, a few seconds after GSPro moves on so the HUD shows the new lie.
+  const hudShotNumber = liveSnapshot?.nextShotNumber ?? null
+  useEffect(() => {
+    if (!liveSnapshot || liveSnapshot.holeNumber !== holeNumber || hudShotNumber == null
+      || companionStatus?.gspro.status !== 'connected'
+      || nativeVisualActive || visualCaptureStatus === 'connected') return
+    // The provisional first-tee capture above covers that case.
+    if (liveSnapshot.teePlacement === 'provisional' && hudShotNumber === 1) return
+    const key = `${captureRoundId ?? 'round'}|${courseId}|${holeNumber}|${hudShotNumber}`
+    if (triedShotHud.current.has(key)) return
+    triedShotHud.current.add(key)
+    let cancelled = false
+    let started = false
+    const timer = window.setTimeout(() => {
+      started = true
+      void readLooperCompanionObservations(45000)
+        .then(obs => { if (!cancelled) publishOneShotCompanionHud(obs) })
+        .catch(error => console.warn('[Live Caddie] Companion wind/lie read failed.', error))
+    }, hudShotNumber === 1 ? 500 : 3000)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (!started) triedShotHud.current.delete(key)
+    }
+  }, [
+    liveSnapshot?.holeNumber, liveSnapshot?.teePlacement, holeNumber, hudShotNumber,
+    companionStatus?.gspro.status, nativeVisualActive, visualCaptureStatus, captureRoundId, courseId,
   ])
 
   // The ball and pin plus a native waypoint scale produce a STRAIGHT distance,
