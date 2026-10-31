@@ -26,7 +26,7 @@ const FETCH_RETRY_DELAYS_MS = [0, 300, 900] as const
 
 type RawBounds = { minX?: unknown; maxX?: unknown; minY?: unknown; maxY?: unknown }
 type RawContour = { elevationFt?: unknown; points?: unknown }
-type RawTerrain = {
+export type RawTerrain = {
   source?: unknown
   sourceResolutionMeters?: unknown
   runtimeSpacingYds?: unknown
@@ -287,7 +287,7 @@ const decodeDeflateUint16 = async (
   return values
 }
 
-const parseTerrain = async (
+export const parsePackageTerrain = async (
   raw: RawTerrain | undefined,
   courseName: string,
   holeNumber: number,
@@ -426,7 +426,7 @@ const parseHole = async (
       : layer)
   const mapFeatures = parseMapFeatures(courseId, holeNumber, raw.mapFeatures)
   const contours = parseContours(raw.contours, courseName, holeNumber)
-  const terrain = await parseTerrain(raw.terrain, courseName, holeNumber)
+  const terrain = await parsePackageTerrain(raw.terrain, courseName, holeNumber)
   const greenPolygons = surfaces.find((surface) => surface.kind === 'green')?.polygons ?? []
   const pin = greenPolygons
     .map((polygon) => centroid(polygon))
