@@ -82,6 +82,14 @@ jobs:
       - name: Map yardages (hazard reach/carry, green F/M/B)
         run: node tools/test-map-yardages.mjs
 
+      - name: Live map hillshade
+        run: node tools/test-hillshade.mjs
+
+      - name: Course enrichment keeps islands and clearings
+        run: |
+          python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest
+          python3 -m pytest -q tests/test_enriched_package_holes.py
+
       - name: Browser registration fit (new courses)
         run: node tools/test-native-registration-fit.mjs
 

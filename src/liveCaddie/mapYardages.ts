@@ -40,6 +40,20 @@ const crossingsAt = (poly: readonly (readonly [number, number])[], v: number): n
   return out
 }
 
+/**
+ * Keyhole rings (a pond with an island, woods with a clearing) join a hole to
+ * its outline with a zero-width cut. A ray crossing the cut sees two identical
+ * crossings; drop them so they don't split a stretch of hazard in two.
+ */
+const dropBridgePairs = (sorted: number[]): number[] => {
+  const out: number[] = []
+  for (const u of sorted) {
+    if (out.length && Math.abs(out[out.length - 1] - u) < 1e-6) out.pop()
+    else out.push(u)
+  }
+  return out
+}
+
 /** A winding creek's far sections don't count toward "carry" for the near crossing. */
 const SAME_SECTION_YDS = 25
 /** Hazards of one kind this close together are one carry (a pond and its inlet, a bunker complex). */
@@ -84,7 +98,7 @@ export const hazardYardages = ({
       const n = Math.ceil(w / STEP_YDS)
       for (let k = -n; k <= n; k += 1) {
         const v = (k / n) * w
-        const us = crossingsAt(poly, v).sort((x, y) => x - y)
+        const us = dropBridgePairs(crossingsAt(poly, v).sort((x, y) => x - y))
         for (let i = 0; i + 1 < us.length; i += 2) {
           if (us[i + 1] <= 0) continue
           rays.push({ v, enter: us[i], exit: us[i + 1] })
