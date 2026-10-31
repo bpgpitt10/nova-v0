@@ -91,6 +91,9 @@ jobs:
       - name: Green read (steepness, tilt, tiers, spines)
         run: node tools/test-green-read.mjs
 
+      - name: Bag yardage book matches Club Detail (Stock/Pure, variants, mishit rate)
+        run: node tools/test-bag-yardage-book.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest

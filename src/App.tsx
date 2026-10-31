@@ -24,6 +24,9 @@ import {
 } from './adapters/simreadLive'
 import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
+import BagYardageBook from './pages/BagYardageBook'
+import { BagTopBar, ClubSwitcher } from './components/BagNav'
+import { buildYardageBook } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
 import './App.css'
 import ClubDetailV2, {
@@ -880,6 +883,10 @@ function App({
     const param = new URLSearchParams(window.location.search).get('clubDetail')
     return param !== 'v1'
   })()
+  // Preview: the bag "yardage book" table and top-bar nav (/dashboard?bag=book).
+  const useBagYardageBook =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('bag') === 'book'
   const sessionIntelligenceSearch = forceSessionIntelligenceRoute
     ? new URLSearchParams(window.location.search)
     : null
@@ -1733,6 +1740,21 @@ function App({
     () => new Map(dashboardSummaries.map((summary) => [summary.club, summary])),
     [dashboardSummaries],
   )
+
+  const yardageBook = useMemo(
+    () =>
+      useBagYardageBook && sessionState === 'review'
+        ? buildYardageBook(analysisSessions, activeBagClubIds)
+        : null,
+    [analysisSessions, sessionState, useBagYardageBook],
+  )
+
+  const openYardageBookClub = (club: Club, variantId: string) => {
+    setSelectedDetailClub(club)
+    setSelectedDetailShotVariantId(variantId)
+    setReviewView('clubDetail')
+    window.scrollTo({ top: 0 })
+  }
 
   const latestSessionSummariesByClub = useMemo(() => {
     const summaries = new Map<Club, ReviewClubSummary>()
@@ -5540,7 +5562,27 @@ function App({
       )}
 
       {sessionState === 'review' && (
-        <section className="dashboard-layout">
+        <section className={useBagYardageBook ? 'bagbook-layout' : 'dashboard-layout'}>
+          {useBagYardageBook ? (
+            <BagTopBar
+              active={
+                reviewView === 'clubDetail'
+                  ? 'club'
+                  : dashboardNavTarget === 'lastSession'
+                    ? 'lastSession'
+                    : 'bag'
+              }
+              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard?bag=book')}`}
+              onBag={() => {
+                setDashboardNavTarget('bag')
+                setReviewView('dashboard')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              onLastSession={() =>
+                navigateDashboardSection('dashboard-review', 'lastSession', true)
+              }
+            />
+          ) : (
           <aside className="dashboard-rail">
             <div className="dashboard-rail-brand">
               <a aria-label="Go to Looper Landing" href="/looper">
@@ -5611,11 +5653,16 @@ function App({
             </div>
 
           </aside>
+          )}
 
           <div className="dashboard-screen">
             {dashboardSummaryLead ? (
               <>
-                {reviewView === 'dashboard' && (
+                {reviewView === 'dashboard' && yardageBook && (
+                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} />
+                )}
+
+                {reviewView === 'dashboard' && !yardageBook && (
                   <>
                 <section
                   aria-labelledby="dashboard-game-status-title"
@@ -5822,6 +5869,25 @@ function App({
                   </article>
                 </section>
                   </>
+                )}
+
+                {reviewView === 'clubDetail' && yardageBook && (
+                  <ClubSwitcher
+                    clubs={yardageBook.clubs.map((entry) => ({
+                      club: entry.club,
+                      label: entry.label,
+                    }))}
+                    current={selectedDetailClub}
+                    onBack={() => {
+                      setDashboardNavTarget('bag')
+                      setReviewView('dashboard')
+                      window.scrollTo({ top: 0 })
+                    }}
+                    onSelect={(club) => {
+                      setSelectedDetailClub(club)
+                      setSelectedDetailShotVariantId(STOCK_SHOT_VARIANT_ID)
+                    }}
+                  />
                 )}
 
                 {reviewView === 'clubDetail' && useClubDetailV2 && (
