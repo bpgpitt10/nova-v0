@@ -40,6 +40,7 @@ import {
 } from '../courseGeometry/courseGreenDetail'
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
+import { minimapFrame } from '../liveCaddie/minimapFrame'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -294,7 +295,29 @@ function LiveCaddieMap({
 }) {
   const viewSize = 100
   const pad = 4
-  const displayBounds = buildTacticalMapBounds(hole, ball, target, pinEstimate, candidate, provisionalTeeRadiusYds)
+  // Orient like GSPro's minimap: ball at the bottom, pin straight up, so the
+  // two pictures (and an aim point on either) line up at a glance. Falls back
+  // to the target when the hole has no pin.
+  const viewFrame = useMemo(() => {
+    const toView = minimapFrame(ball, pinEstimate ?? hole.markers.pin ?? target)
+    const viewHole: CourseHoleGeometry = {
+      ...hole,
+      surfaces: hole.surfaces.map((surface) => ({
+        ...surface,
+        polygons: surface.polygons.map((polygon) => polygon.map(toView)),
+      })),
+    }
+    return { toView, viewHole }
+  }, [hole, ball, pinEstimate, target])
+  const { toView, viewHole } = viewFrame
+  const displayBounds = buildTacticalMapBounds(
+    viewHole,
+    toView(ball),
+    toView(target),
+    pinEstimate ? toView(pinEstimate) : null,
+    candidate ? { ...candidate, aimPoint: toView(candidate.aimPoint), meanLanding: toView(candidate.meanLanding) } : null,
+    provisionalTeeRadiusYds,
+  )
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
   const spanY = Math.max(1, displayBounds.maxY - displayBounds.minY)
   const scale = Math.min((viewSize - pad * 2) / spanX, (viewSize - pad * 2) / spanY)
@@ -303,10 +326,13 @@ function LiveCaddieMap({
   const offsetX = (viewSize - usedWidth) / 2
   const offsetY = (viewSize - usedHeight) / 2
 
-  const project = (point: CoursePointYds): [number, number] => [
-    offsetX + (point[0] - displayBounds.minX) * scale,
-    viewSize - (offsetY + (point[1] - displayBounds.minY) * scale),
-  ]
+  const project = (point: CoursePointYds): [number, number] => {
+    const [x, y] = toView(point)
+    return [
+      offsetX + (x - displayBounds.minX) * scale,
+      viewSize - (offsetY + (y - displayBounds.minY) * scale),
+    ]
+  }
 
   const ballSvg = project(ball)
   const targetSvg = project(target)
