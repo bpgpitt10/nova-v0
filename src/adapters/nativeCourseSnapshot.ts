@@ -42,6 +42,7 @@ export type NativeSnapshotInputs = Readonly<{
 }>
 
 const LEGACY_TEE_MATCH_YDS = 10
+const LEGACY_TEE_NOTE = /^Provisional Hole \d+ tee \(/
 
 export type NativeSnapshotResult = Readonly<{
   snapshot: BrowserGsproCourseSnapshot
@@ -133,7 +134,9 @@ export const applyNativeCourseSnapshot = ({
       surfaceSource: preShotStart ? 'gspro-startingpos' : 'cached-tee',
       distanceToPinYds,
       nextShotNumber: 1,
-      warnings: [...new Set([...withPin.warnings, NATIVE_NOTE])],
+      // The tee is now GSPro's own; drop the legacy "Provisional Hole N tee"
+      // estimate note that described the position this replaces.
+      warnings: [...new Set([...withPin.warnings.filter((w) => !LEGACY_TEE_NOTE.test(w)), NATIVE_NOTE])],
     },
   }
 }

@@ -247,6 +247,13 @@ try {
     normalizedTeeSet: plainWhite.normalizedTeeSet, rememberedPinSlot: null,
   })
   assert.equal(mainTee.snapshot.teePlacement, 'mapped', 'White placed without a pre-shot record')
+  const legacyNote = 'Provisional Hole 1 tee (existing-map-tee-anchor), ±50 yd. Existing approximate mapped tee anchor only.'
+  const cleaned = snap.applyNativeCourseSnapshot({
+    base: { ...base, warnings: [legacyNote, 'keep me'] }, context: plainWhite.context, holeNumber: 1, teeContext: true,
+    preShotStart: null, normalizedTeeSet: 'white', rememberedPinSlot: null,
+  })
+  assert.ok(!cleaned.snapshot.warnings.includes(legacyNote) && cleaned.snapshot.warnings.includes('keep me'),
+    'legacy provisional-tee note dropped once the native tee is placed')
   const byTeeSet = pick({ normalizedTeeSet: 'white (synthetic kids)' })
   assert.equal(byTeeSet.context.layoutName, 'Synthetic Kids')
   assert.equal(byTeeSet.normalizedTeeSet, 'white')
