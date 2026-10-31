@@ -17,7 +17,7 @@
     "exportUrl": "6 tiles of <= 1500 m; first: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=632601%2C4233970%2C634101%2C4235470&bboxSR=26916&imageSR=26916&size=1500%2C1500&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=RSP_BilinearInterpolation&f=image",
     "requestedPixelMeters": 1.0,
     "license": "Public domain (USGS)",
-    "fetchedAt": "2026-10-30T21:05:30Z",
+    "fetchedAt": "2026-10-31T01:53:12Z",
     "rasterioTransform": [
       1.0,
       0.0,

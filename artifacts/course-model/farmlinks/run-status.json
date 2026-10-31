@@ -1,13 +1,13 @@
 {
   "course": "farmlinks",
-  "finishedAt": "2026-10-30T21:03:25Z",
-  "runId": "41127785212",
-  "commit": "b66486a663f42163aa46bd677d61600c24a0af86",
+  "finishedAt": "2026-10-31T01:51:04Z",
+  "runId": "41157135257",
+  "commit": "83bd63894a4d917fc93f1f5b1160e2135b7c43dd",
   "stages": [
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 39
+      "seconds": 35
     },
     {
       "stage": "dem",
@@ -17,7 +17,7 @@
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 37
+      "seconds": 36
     },
     {
       "stage": "trees",

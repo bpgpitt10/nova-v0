@@ -1,38 +1,38 @@
 {
   "course": "valhalla",
-  "finishedAt": "2026-10-30T21:06:19Z",
-  "runId": "41127785212",
-  "commit": "b66486a663f42163aa46bd677d61600c24a0af86",
+  "finishedAt": "2026-10-31T01:54:03Z",
+  "runId": "41157135257",
+  "commit": "83bd63894a4d917fc93f1f5b1160e2135b7c43dd",
   "stages": [
     {
       "stage": "find",
       "rc": 0,
-      "seconds": 75
+      "seconds": 85
     },
     {
       "stage": "osm",
       "rc": 0,
-      "seconds": 49
+      "seconds": 42
     },
     {
       "stage": "dem",
       "rc": 0,
-      "seconds": 1
+      "seconds": 2
     },
     {
       "stage": "lidar-chm",
       "rc": 0,
-      "seconds": 30
+      "seconds": 28
     },
     {
       "stage": "trees",
       "rc": 0,
-      "seconds": 4
+      "seconds": 5
     },
     {
       "stage": "render",
       "rc": 0,
-      "seconds": 15
+      "seconds": 17
     }
   ],
   "outputBytes": {
@@ -42,7 +42,7 @@
     "dem-utm-1m.i16.gz": 8725185,
     "dem-utm-1m.json": 1043,
     "lidar-stats.json": 821,
-    "osm-full.json.gz": 866444,
+    "osm-full.json.gz": 866445,
     "osm-golf-values.json": 135,
     "osm-summary.json": 1813,
     "preview-course.png": 9612519,
