@@ -26,7 +26,7 @@ import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
 import looperLogoWhite from './assets/LooperLogoWhite.png'
 import BagYardageBook from './pages/BagYardageBook'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
-import { buildYardageBook } from './lib/bagYardageBook'
+import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
 import './App.css'
 import ClubDetailV2, {
@@ -1747,6 +1747,11 @@ function App({
         ? buildYardageBook(analysisSessions, activeBagClubIds)
         : null,
     [analysisSessions, sessionState, useBagYardageBook],
+  )
+
+  const mishitPressurePoint = useMemo(
+    () => (yardageBook ? findMishitPressurePoint(yardageBook) : null),
+    [yardageBook],
   )
 
   const openYardageBookClub = (club: Club, variantId: string) => {
@@ -5658,12 +5663,7 @@ function App({
           <div className="dashboard-screen">
             {dashboardSummaryLead ? (
               <>
-                {reviewView === 'dashboard' && yardageBook && (
-                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} />
-                )}
-
-                {reviewView === 'dashboard' && !yardageBook && (
-                  <>
+                {reviewView === 'dashboard' && (
                 <section
                   aria-labelledby="dashboard-game-status-title"
                   className="dashboard-hero-card"
@@ -5693,10 +5693,23 @@ function App({
                           {formatScore(biggestMover.delta)}
                         </div>
                       )}
+                      {mishitPressurePoint && (
+                        <div className="dashboard-hero-chip">
+                          Most mishits: {getClubLabel(mishitPressurePoint.club)}{' '}
+                          {Math.round(mishitPressurePoint.rate * 100)}%
+                        </div>
+                      )}
                     </div>
                   </div>
                 </section>
+                )}
 
+                {reviewView === 'dashboard' && yardageBook && (
+                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} />
+                )}
+
+                {reviewView === 'dashboard' && !yardageBook && (
+                  <>
                 {featuredDriverCard && featuredDriverSummary && featuredDriverRead && (
                   <section
                     className="driver-feature-card"

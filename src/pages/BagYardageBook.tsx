@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Club } from '../lib/bagConfig'
-import {
-  findMishitPressurePoint,
-  formatMiss,
-  type YardageBook,
-  type YardageBookRow,
-} from '../lib/bagYardageBook'
+import { formatMiss, type YardageBook, type YardageBookRow } from '../lib/bagYardageBook'
 import './BagYardageBook.css'
 
 type BagYardageBookProps = {
@@ -191,7 +186,6 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
   const [showAllVariants, setShowAllVariants] = useState(false)
   const [expanded, setExpanded] = useState<Set<Club>>(() => new Set())
   const scale = useMemo(() => buildScale(book), [book])
-  const pressurePoint = useMemo(() => findMishitPressurePoint(book), [book])
   const anyVariants = book.clubs.some((entry) => entry.variants.length > 0)
   const lastSession = formatDate(book.lastSessionEndedAt)
   const span = scale.max - scale.min || 1
@@ -227,16 +221,6 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
           </button>
         ) : null}
       </header>
-
-      {pressurePoint ? (
-        <section aria-label="Pressure point" className="bagbook-pressure">
-          <span className="bagbook-pressure-kicker">Pressure point</span>
-          <span>
-            {pressurePoint.label} is mishit on {pct(pressurePoint.rate)} of swings, against a bag
-            average of {pct(pressurePoint.average)}.
-          </span>
-        </section>
-      ) : null}
 
       <div className="bagbook-legend">
         <span>

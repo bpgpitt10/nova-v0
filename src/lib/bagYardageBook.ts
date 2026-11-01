@@ -1,5 +1,5 @@
 import type { Club } from './bagConfig'
-import { getClubDisplayName } from './bagConfig'
+import { getClubLabel } from './bagConfig'
 import { confidenceConfig } from './confidenceConfig'
 import {
   isShotIncludedInAnalysis,
@@ -241,7 +241,7 @@ export const buildYardageBook = (
       .map((variant) =>
         buildYardageBookRow(analysisSessions, club, variant.id, variant.name, nowMs),
       )
-    return { club, label: getClubDisplayName(club), row, variants }
+    return { club, label: getClubLabel(club), row, variants }
   })
 
   const lastSessionEndedAt =
