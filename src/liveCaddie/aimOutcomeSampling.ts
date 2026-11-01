@@ -4,7 +4,7 @@ import type {
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
-import { resolveCarryAwareLanding } from './carryAwareLanding'
+import { penaltyReliefPoint, resolveCarryAwareLanding } from './carryAwareLanding'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -233,12 +233,15 @@ export const sampleModeledAimDistribution = ({
       ? landingTransform(carryLanding, baselineLanding)
       : baselineLanding
     const { landing, classification } = resolveCarryAwareLanding(hole, carryLanding, restLanding)
+    const relief = classification.kind === 'water' || classification.kind === 'penalty'
+      ? penaltyReliefPoint(hole, ball, landing)
+      : null
     return {
       carryLanding,
       landing,
       unobstructedLanding: restLanding,
       kind: classification.kind,
-      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds),
+      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds, relief),
     }
   })
 

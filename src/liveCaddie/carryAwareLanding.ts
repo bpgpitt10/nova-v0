@@ -116,6 +116,54 @@ const firstHazardEntryT = (
   return best
 }
 
+/** How far outside the entry edge the relief point sits. */
+const RELIEF_BACKOFF_YDS = 1
+
+/**
+ * Where a ball that finished in water / a penalty area takes relief: the point
+ * where it LAST crossed into the hazard along its line from the ball, backed
+ * off a yard. Valuing the next shot from the splash point instead made a pond
+ * in front of a green look cheap (the splash is nearly on the green).
+ * Returns null when no crossing is found (e.g. the ball started inside).
+ */
+export const penaltyReliefPoint = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  landing: CoursePointYds,
+): CoursePointYds | null => {
+  const dx = landing[0] - ball[0]
+  const dy = landing[1] - ball[1]
+  const length = Math.hypot(dx, dy)
+  if (length < 1e-6) return null
+  const segMinX = Math.min(ball[0], landing[0])
+  const segMaxX = Math.max(ball[0], landing[0])
+  const segMinY = Math.min(ball[1], landing[1])
+  const segMaxY = Math.max(ball[1], landing[1])
+  let last: number | null = null
+  for (const hazard of hazardIndex(hole)) {
+    if (hazard.kind === 'bunker') continue
+    if (hazard.maxX < segMinX || hazard.minX > segMaxX || hazard.maxY < segMinY || hazard.minY > segMaxY) continue
+    const { polygon } = hazard
+    for (let index = 0; index < polygon.length; index += 1) {
+      const p = polygon[index]
+      const q = polygon[(index + 1) % polygon.length]
+      const ex = q[0] - p[0]
+      const ey = q[1] - p[1]
+      const denominator = dx * ey - dy * ex
+      if (Math.abs(denominator) < 1e-12) continue
+      const wx = p[0] - ball[0]
+      const wy = p[1] - ball[1]
+      const t = (wx * ey - wy * ex) / denominator
+      const u = (wx * dy - wy * dx) / denominator
+      if (t <= 0 || t >= 1 || u < 0 || u > 1) continue
+      if (last === null || t > last) last = t
+    }
+  }
+  if (last === null) return null
+  const t = Math.max(0, last - RELIEF_BACKOFF_YDS / length)
+  return [ball[0] + dx * t, ball[1] + dy * t]
+}
+
 export const resolveCarryAwareLanding = (
   hole: CourseHoleGeometry,
   carryLanding: CoursePointYds,

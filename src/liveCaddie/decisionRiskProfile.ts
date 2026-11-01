@@ -1,4 +1,4 @@
-import { resolveCarryAwareLanding } from './carryAwareLanding'
+import { penaltyReliefPoint, resolveCarryAwareLanding } from './carryAwareLanding'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -268,7 +268,10 @@ export const buildDecisionRiskProfile = ({
       const { landing, classification } = resolveCarryAwareLanding(hole, carryLanding, restLanding)
       const kind = classification.kind
       const tier = decisionRiskTierForSurface(kind, goal)
-      const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds)
+      const relief = kind === 'water' || kind === 'penalty'
+        ? penaltyReliefPoint(hole, ball, landing)
+        : null
+      const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds, relief)
       // Normalize inside the empirical tail, then allocate only the learned tail mass.
       const weight = (Math.max(0, sample.weight) / tailWeight) * tailProbability
       const tailLanding: DecisionRiskTailLanding = {

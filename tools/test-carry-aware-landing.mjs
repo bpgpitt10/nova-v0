@@ -68,6 +68,36 @@ try {
   assert.ok(waterSamples >= touchdownInPond, `${waterSamples} water < ${touchdownInPond} touchdowns in the pond`)
   assert.ok(sampled.samples.every((s) => s.unobstructedLanding), 'unobstructed rest point is kept for rollout stats')
 
+  // 7b. Water is valued from where the ball last crossed into it (backed off 1 yd),
+  //     not from the splash point. Pin at [0,300]: entry edge y=200 → relief y≈199.
+  const { penaltyReliefPoint } = await vite.ssrLoadModule('/src/liveCaddie/carryAwareLanding.ts')
+  const relief = penaltyReliefPoint(hole, [0, 0], [0, 205])
+  assert.ok(Math.abs(relief[0]) < 1e-9 && Math.abs(relief[1] - 199) < 1e-6, JSON.stringify(relief))
+  assert.equal(penaltyReliefPoint(hole, [0, 0], [0, 150]), null, 'no crossing → no relief point')
+  const wet = sampled.samples.find((s) => s.kind === 'water')
+  assert.ok(Math.abs(wet.state.distanceToPinYds - Math.hypot(wet.landing[0] * 199 / wet.landing[1], 101)) < 0.5,
+    `water next-shot distance should be from the entry point (got ${wet.state.distanceToPinYds})`)
+  assert.ok(wet.state.distanceToPinYds > Math.hypot(wet.landing[0], 300 - wet.landing[1]),
+    'relief is farther from the pin than the splash point')
+  // Bunkers are not relief: still valued where the ball sits.
+  const sandy = sampled.samples.find((s) => s.kind === 'bunker')
+  if (sandy) assert.ok(Math.abs(sandy.state.distanceToPinYds - Math.hypot(sandy.landing[0], 300 - sandy.landing[1])) < 1e-6)
+
+  // 7c. Ranking is pure expected strokes: more water no longer vetoes a club that saves strokes.
+  const { rankRiskAwareClubChoices } = await vite.ssrLoadModule('/src/liveCaddie/aimDecisionRanking.ts')
+  const riskOf = (catastrophe) => ({
+    bySurface: { water: catastrophe }, success: 0.8 - catastrophe, manageable: 0.2, seriousTrouble: 0, catastrophe,
+    unknown: 0, expectedSeverity: 0, coreProbability: 1, tailProbability: 0, mishitProbability: 0,
+    severeMishitProbability: 0, coreSampleCount: 1, tailSampleCount: 0, tailLandings: [],
+  })
+  const option = (club, catastrophe, strokes) => ({
+    club, modeledCarryYds: 180, targetDistanceYds: 186, supportShots: 24, supportingSessions: 3,
+    bestCandidate: { aimOffsetYds: 0, score: 0, riskProfile: riskOf(catastrophe), stateValue: { expectedFutureStrokes: strokes } },
+  })
+  const ranked = rankRiskAwareClubChoices([option('Driver', 0, 3.45), option('5i', 0.115, 2.28)])
+  assert.equal(ranked[0].evaluation.club, '5i', 'FarmLinks 17: 5i (11.5% water, E 2.28) beats Driver (E 3.45)')
+  assert.ok(ranked.every((row) => row.withinCatastropheGuardrail), 'no option is screened by default')
+
   // 8. Real course packages (LiDAR enrichment, as the app loads them), same stand-in
   //    dispersion as the review's offline analysis.
   globalThis.fetch = async (url) => {

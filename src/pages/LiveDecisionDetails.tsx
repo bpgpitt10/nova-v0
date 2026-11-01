@@ -191,7 +191,7 @@ export default function LiveDecisionDetails({
               <span className="live-kicker">CLUB OPTIONS</span>
               <h3>Club comparison</h3>
             </div>
-            <small>After risk guardrails, lowest confidence-adjusted strokes wins</small>
+            <small>Lowest confidence-adjusted strokes wins (water is charged its penalty stroke and drop)</small>
           </div>
           <div className="live-decision-table-scroll">
             <table className="live-decision-table live-club-decision-table">
