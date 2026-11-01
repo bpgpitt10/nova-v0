@@ -4,64 +4,40 @@
   --bagbook-muted: #9fb3a4;
   --bagbook-faint: #7f9585;
   --bagbook-line: rgba(255, 255, 255, 0.08);
-  --bagbook-surface: rgba(20, 33, 24, 0.92);
+  /* Same glass as The Looper's Read box (.dashboard-hero-card on the dashboard). */
+  --bagbook-surface: rgba(19, 30, 22, 0.62);
+  --bagbook-border: #314233;
   --bagbook-pure: #86efac;
   --bagbook-warn: #fdba74;
   --bagbook-columns: 170px 112px 112px minmax(240px, 1fr) 76px 128px 96px;
 
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
   /* Let the table scroll inside its box instead of widening the page. */
   min-width: 0;
   color: var(--bagbook-ink);
   font-variant-numeric: tabular-nums;
 }
 
-.bagbook-header {
+.bagbook-head-club {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.bagbook-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bagbook-kicker {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--bagbook-muted);
-}
-
-.bagbook-heading h1 {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.bagbook-meta {
-  font-size: 14px;
-  color: var(--bagbook-muted);
+  align-items: center;
+  gap: 10px;
 }
 
 .bagbook-all-variants {
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 10px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
   color: var(--bagbook-ink-2);
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -71,27 +47,7 @@
   color: #0b130d;
 }
 
-.bagbook-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 18px;
-  font-size: 12px;
-  color: var(--bagbook-muted);
-}
-
-.bagbook-legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bagbook-legend strong {
-  font-size: 15px;
-  color: var(--bagbook-ink);
-}
-
-.bagbook-legend i {
+.bagbook-footnote i {
   display: inline-block;
 }
 
@@ -120,9 +76,27 @@
 
 .bagbook-table-wrap {
   overflow-x: auto;
-  border-radius: 14px;
-  border: 1px solid var(--bagbook-line);
+  border-radius: 10px;
+  border: 1px solid var(--bagbook-border);
   background: var(--bagbook-surface);
+}
+
+.bagbook-row.is-clickable {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.bagbook-row.is-clickable:hover {
+  background: rgba(134, 239, 172, 0.08);
+}
+
+.bagbook-row.is-variant.is-clickable:hover {
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.bagbook-row.is-clickable:hover .bagbook-club-name,
+.bagbook-row.is-clickable:focus-within .bagbook-club-name {
+  color: var(--bagbook-pure);
 }
 
 .bagbook-table {
@@ -380,9 +354,23 @@
 }
 
 .bagbook-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
   margin: 0;
   font-size: 12px;
   color: var(--bagbook-muted);
+}
+
+.bagbook-footnote > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bagbook-footnote strong {
+  color: var(--bagbook-ink);
 }
 
 /* ---- Top bar + club switcher (replaces the dashboard rail under ?bag=book) ---- */
@@ -390,7 +378,7 @@
 .bagbook-layout {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   width: min(1240px, 100%);
   margin: 0 auto;
   padding: 16px 16px 48px;
@@ -414,8 +402,19 @@
   min-height: 44px;
 }
 
+/* Spacing between the bar and the page is the layout gap, not the old rail's margin. */
+.bagbook-layout > .dashboard-screen {
+  margin-top: 0;
+  gap: 16px;
+}
+
+/* Let The Looper's Read use the full width, stopping short of Looper Man. */
+.bagbook-layout .dashboard-hero-narrative {
+  max-width: min(1080px, calc(100% - 260px));
+}
+
 .bagbook-topbar-logo img {
-  height: 30px;
+  height: 38px;
   width: auto;
 }
 
@@ -423,7 +422,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  flex: 1 1 auto;
 }
 
 .bagbook-topbar nav button,
@@ -456,6 +454,7 @@
 }
 
 .bagbook-topbar-actions {
+  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -472,66 +471,42 @@
 }
 
 .bagbook-switcher {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-}
-
-.bagbook-switcher-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(20, 33, 24, 0.92);
-  color: #e3ebe5;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.bagbook-switcher-step {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--bagbook-border, #314233);
 }
 
-.bagbook-switcher-step button {
+.bagbook-switcher button {
   width: 44px;
   height: 44px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(20, 33, 24, 0.92);
+  background: transparent;
   color: #e3ebe5;
   font: inherit;
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.bagbook-switcher-step button:disabled {
+.bagbook-switcher button:hover:not(:disabled) {
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.bagbook-switcher button:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-.bagbook-switcher label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #9fb3a4;
-}
-
 .bagbook-switcher select {
   min-height: 44px;
+  min-width: 96px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(20, 33, 24, 0.92);
+  background: rgba(19, 30, 22, 0.9);
   color: #ffffff;
   font: inherit;
   font-size: 15px;
@@ -539,11 +514,12 @@
 }
 
 @media (max-width: 760px) {
-  .bagbook-heading h1 {
-    font-size: 26px;
+  .bagbook-layout .dashboard-hero-narrative {
+    max-width: none;
   }
 
-  .bagbook-switcher-step {
-    margin-left: 0;
+  .bagbook-switcher {
+    padding-left: 0;
+    border-left: 0;
   }
 }

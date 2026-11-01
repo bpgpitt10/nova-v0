@@ -5577,6 +5577,21 @@ function App({
                     ? 'lastSession'
                     : 'bag'
               }
+              clubSwitcher={
+                reviewView === 'clubDetail' && yardageBook ? (
+                  <ClubSwitcher
+                    clubs={yardageBook.clubs.map((entry) => ({
+                      club: entry.club,
+                      label: entry.label,
+                    }))}
+                    current={selectedDetailClub}
+                    onSelect={(club) => {
+                      setSelectedDetailClub(club)
+                      setSelectedDetailShotVariantId(STOCK_SHOT_VARIANT_ID)
+                    }}
+                  />
+                ) : null
+              }
               editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard?bag=book')}`}
               onBag={() => {
                 setDashboardNavTarget('bag')
@@ -5882,25 +5897,6 @@ function App({
                   </article>
                 </section>
                   </>
-                )}
-
-                {reviewView === 'clubDetail' && yardageBook && (
-                  <ClubSwitcher
-                    clubs={yardageBook.clubs.map((entry) => ({
-                      club: entry.club,
-                      label: entry.label,
-                    }))}
-                    current={selectedDetailClub}
-                    onBack={() => {
-                      setDashboardNavTarget('bag')
-                      setReviewView('dashboard')
-                      window.scrollTo({ top: 0 })
-                    }}
-                    onSelect={(club) => {
-                      setSelectedDetailClub(club)
-                      setSelectedDetailShotVariantId(STOCK_SHOT_VARIANT_ID)
-                    }}
-                  />
                 )}
 
                 {reviewView === 'clubDetail' && useClubDetailV2 && (

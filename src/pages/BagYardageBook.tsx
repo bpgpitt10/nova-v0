@@ -32,14 +32,6 @@ const buildScale = (book: YardageBook): CarryScale => {
   return { min, max, ticks }
 }
 
-const formatDate = (iso: string | null) => {
-  if (!iso) return null
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime())
-    ? null
-    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
 const pct = (value: number) => `${Math.round(value * 100)}%`
 
 function CarryCell({
@@ -108,9 +100,19 @@ function DataRow({
   const call = row.trust?.call ?? 'Insufficient Data'
   const callSlug = call.toLowerCase().replace(/\s+/g, '-')
   return (
-    <div className={`bagbook-row ${isVariant ? 'is-variant' : ''}`} role="row">
+    // The whole row opens the club for mouse users; the name button is the
+    // keyboard/screen-reader target, and its click simply bubbles to the row.
+    <div
+      className={`bagbook-row is-clickable ${isVariant ? 'is-variant' : ''}`}
+      onClick={onOpen}
+      role="row"
+    >
       <div className="bagbook-cell bagbook-club" role="cell">
-        <button className="bagbook-club-open" onClick={onOpen} type="button">
+        <button
+          aria-label={`Open ${label} details`}
+          className="bagbook-club-open"
+          type="button"
+        >
           <span className="bagbook-club-name">
             {isVariant ? '↳ ' : ''}
             {label}
@@ -124,7 +126,10 @@ function DataRow({
           <button
             aria-expanded={variantToggle.open}
             className="bagbook-variant-chip"
-            onClick={variantToggle.onToggle}
+            onClick={(event) => {
+              event.stopPropagation()
+              variantToggle.onToggle()
+            }}
             type="button"
           >
             {variantToggle.open
@@ -187,7 +192,6 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
   const [expanded, setExpanded] = useState<Set<Club>>(() => new Set())
   const scale = useMemo(() => buildScale(book), [book])
   const anyVariants = book.clubs.some((entry) => entry.variants.length > 0)
-  const lastSession = formatDate(book.lastSessionEndedAt)
   const span = scale.max - scale.min || 1
 
   const toggleClub = (club: Club) =>
@@ -199,51 +203,23 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
     })
 
   return (
-    <section className="bagbook" aria-labelledby="bagbook-title">
-      <header className="bagbook-header">
-        <div className="bagbook-heading">
-          <span className="bagbook-kicker">Your bag</span>
-          <h1 id="bagbook-title">
-            {book.clubs.length} clubs · {book.totalSwings.toLocaleString()} swings
-          </h1>
-          <span className="bagbook-meta">
-            Last 180 days, recency weighted{lastSession ? ` · last session ${lastSession}` : ''}
-          </span>
-        </div>
-        {anyVariants ? (
-          <button
-            aria-pressed={showAllVariants}
-            className={`bagbook-all-variants ${showAllVariants ? 'is-on' : ''}`}
-            onClick={() => setShowAllVariants((value) => !value)}
-            type="button"
-          >
-            {showAllVariants ? 'Hide all variants' : 'Show all variants'}
-          </button>
-        ) : null}
-      </header>
-
-      <div className="bagbook-legend">
-        <span>
-          <strong>150</strong> / 157 = carry / total
-        </span>
-        <span>
-          <i className="bagbook-legend-band" aria-hidden="true" />
-          Middle 50% of carries
-        </span>
-        <span>
-          <i className="bagbook-legend-stock" aria-hidden="true" />
-          Stock (most likely)
-        </span>
-        <span>
-          <i className="bagbook-legend-pure" aria-hidden="true" />
-          Pure (best available)
-        </span>
-      </div>
-
+    <section aria-label="Your bag" className="bagbook">
       <div className="bagbook-table-wrap">
         <div aria-label="Club yardages" className="bagbook-table" role="table">
           <div className="bagbook-row bagbook-head" role="row">
-            <span role="columnheader">Club</span>
+            <span className="bagbook-head-club" role="columnheader">
+              Club
+              {anyVariants ? (
+                <button
+                  aria-pressed={showAllVariants}
+                  className={`bagbook-all-variants ${showAllVariants ? 'is-on' : ''}`}
+                  onClick={() => setShowAllVariants((value) => !value)}
+                  type="button"
+                >
+                  {showAllVariants ? 'Hide variants' : 'All variants'}
+                </button>
+              ) : null}
+            </span>
             <span role="columnheader">Stock</span>
             <span role="columnheader">Pure</span>
             <span aria-label="Carry range" className="bagbook-scale" role="columnheader">
@@ -298,8 +274,22 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
       </div>
 
       <p className="bagbook-footnote">
-        Stock and Pure are the same profiles as each club’s detail page. Mishits are swings the
-        classifier flagged; they are left out of Stock and Pure. Trust is the Caddie Score.
+        <span>
+          <strong>150</strong> / 157 = carry / total
+        </span>
+        <span>
+          <i className="bagbook-legend-band" aria-hidden="true" />
+          middle 50% of carries
+        </span>
+        <span>
+          <i className="bagbook-legend-stock" aria-hidden="true" />
+          Stock
+        </span>
+        <span>
+          <i className="bagbook-legend-pure" aria-hidden="true" />
+          Pure
+        </span>
+        <span>Mishits are left out of Stock and Pure. Trust is the Caddie Score.</span>
       </p>
     </section>
   )
