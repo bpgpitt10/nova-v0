@@ -883,10 +883,11 @@ function App({
     const param = new URLSearchParams(window.location.search).get('clubDetail')
     return param !== 'v1'
   })()
-  // Preview: the bag "yardage book" table and top-bar nav (/dashboard?bag=book).
+  // The bag "yardage book" table and top-bar nav are the dashboard.
+  // Fallback to the previous card layout and rail: /dashboard?bag=cards
   const useBagYardageBook =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('bag') === 'book'
+    typeof window === 'undefined' ||
+    new URLSearchParams(window.location.search).get('bag') !== 'cards'
   const sessionIntelligenceSearch = forceSessionIntelligenceRoute
     ? new URLSearchParams(window.location.search)
     : null
@@ -5592,7 +5593,7 @@ function App({
                   />
                 ) : null
               }
-              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard?bag=book')}`}
+              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard')}`}
               onBag={() => {
                 setDashboardNavTarget('bag')
                 setReviewView('dashboard')

@@ -373,7 +373,7 @@
   color: var(--bagbook-ink);
 }
 
-/* ---- Top bar + club switcher (replaces the dashboard rail under ?bag=book) ---- */
+/* ---- Top bar + club switcher (replaces the dashboard rail; ?bag=cards restores it) ---- */
 
 .bagbook-layout {
   display: flex;
