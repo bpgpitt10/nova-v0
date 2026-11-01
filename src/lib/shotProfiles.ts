@@ -147,7 +147,7 @@ const payloadNumber = (payload: OpenGolfCoachPayload | undefined, keys: string[]
   return undefined
 }
 
-const carryValue = (shot: Shot) =>
+export const carryValue = (shot: Shot) =>
   typeof shot.carryYards === 'number'
     ? shot.carryYards
     : payloadNumber(shot.openGolfCoach, [
