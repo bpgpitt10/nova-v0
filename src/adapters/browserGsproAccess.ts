@@ -1,3 +1,8 @@
+import {
+  isCompanionGsproFilesAvailable,
+  loadCompanionGsproDirectoryHandle,
+} from './companionGsproFiles'
+
 type BrowserPermissionMode = 'read' | 'readwrite'
 type BrowserPermissionState = 'granted' | 'denied' | 'prompt'
 
@@ -177,7 +182,23 @@ export const saveGsproDirectoryHandle = async (handle: BrowserDirectoryHandle) =
   }
 }
 
-export const loadGsproDirectoryHandle = async () => {
+/**
+ * The GSPro data folder Looper reads from: the Looper Companion when it is
+ * running (no browser folder grant needed), otherwise a folder the player
+ * granted earlier in this browser.
+ */
+export const loadGsproDirectoryHandle = async (): Promise<BrowserDirectoryHandle | null> => {
+  const companion = await loadCompanionGsproDirectoryHandle().catch(() => null)
+  if (companion) return companion
+  return loadSavedGsproDirectoryHandle()
+}
+
+/** True when GSPro can be read here, through the companion or a folder grant. */
+export const isGsproAccessAvailable = async () =>
+  isBrowserGsproAccessSupported() || (await isCompanionGsproFilesAvailable().catch(() => false))
+
+export const loadSavedGsproDirectoryHandle = async () => {
+  if (typeof indexedDB === 'undefined') return null
   const database = await openHandleDatabase()
 
   try {

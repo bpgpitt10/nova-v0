@@ -134,9 +134,12 @@ const parseRoundCandidates = (text: string): RoundShotRecord[] => {
   })
 }
 
-const parsePhysicalRoundRecords = (text: string): RoundShotRecord[] => {
+const parsePhysicalRoundRecords = (text: string): RoundShotRecord[] =>
+  filterPhysicalRoundRecords(parseRoundCandidates(text))
+
+const filterPhysicalRoundRecords = (candidates: readonly RoundShotRecord[]): RoundShotRecord[] => {
   const seen = new Set<string>()
-  return parseRoundCandidates(text).flatMap((record): RoundShotRecord[] => {
+  return candidates.flatMap((record): RoundShotRecord[] => {
     const shotId = asString(record.ShotID)
     if (!shotId || seen.has(shotId) || !vec3(record.StartingPOS) || !vec3(record.EndingPOS)) return []
     const ballSpeed = asNumber(record.BallSpeed) ?? 0
@@ -283,4 +286,47 @@ export const readBrowserGsproCourseRoundArchive = async (): Promise<BrowserGspro
     courseKey: asString(activeRoundRecords[activeRoundRecords.length - 1]?.CourseKey),
     shots,
   }
+}
+
+/**
+ * Rounds from raw currentRound.dat records kept by the Looper Companion's
+ * round recorder. Same filters and shot mapping as the live file, every round
+ * (not only the newest). Later entries win for a repeated ShotID.
+ */
+export const archiveRoundsFromRecords = (
+  records: readonly unknown[],
+): BrowserGsproCourseArchiveRound[] => {
+  const latestByShot = new Map<string, RoundShotRecord>()
+  for (const candidate of records) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const record = candidate as RoundShotRecord
+    const key = `${asNumber(record.RoundID)}:${asString(record.ShotID)}`
+    latestByShot.delete(key)
+    latestByShot.set(key, record)
+  }
+
+  const byRound = new Map<number, RoundShotRecord[]>()
+  for (const record of latestByShot.values()) {
+    const roundId = asNumber(record.RoundID)
+    if (roundId == null) continue
+    const list = byRound.get(roundId) ?? []
+    list.push(record)
+    byRound.set(roundId, list)
+  }
+
+  return [...byRound.entries()].flatMap(([roundId, candidates]) => {
+    // Filter per round: shot IDs are only guaranteed unique within a round.
+    const roundRecords = filterPhysicalRoundRecords(candidates)
+    roundRecords.sort((left, right) => recordSortValue(left) - recordSortValue(right))
+    const shots = roundRecords.flatMap((record): BrowserGsproCourseArchiveShot[] => {
+      const shot = buildArchiveShot(record)
+      return shot ? [shot] : []
+    })
+    if (shots.length === 0) return []
+    return [{
+      roundId,
+      courseKey: asString(roundRecords[roundRecords.length - 1]?.CourseKey),
+      shots,
+    }]
+  })
 }

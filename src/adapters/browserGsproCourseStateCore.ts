@@ -24,7 +24,7 @@ import {
 import { setLearnedSurfaceFactors } from '../liveCaddie/surfaceResponse'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
-  isBrowserGsproAccessSupported,
+  isGsproAccessAvailable,
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
   requestGsproDirectoryPermission,
@@ -241,7 +241,7 @@ const canReadCurrentRound = async (handle: BrowserDirectoryHandle) => {
 
 export const prepareBrowserGsproCourseStateRuntime = async () => {
   preparedStateHandle = null
-  if (!isBrowserGsproAccessSupported()) return false
+  if (!(await isGsproAccessAvailable())) return false
 
   const primaryHandle = await loadGsproDirectoryHandle().catch(() => null)
   if (primaryHandle) {

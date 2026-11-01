@@ -3,15 +3,21 @@
 
 Stage C: keep read-only GSPro discovery plus on-demand capture diagnostics,
 and package the proven offline minimap registration/preflight library.
-No desktop input, no file writes, and no HTTP aim commands.
+No desktop input and no HTTP aim commands. GSPro's folder is never written;
+the only file writes are the round recorder's own records under
+%LOCALAPPDATA%\\Looper\\Companion\\rounds.
 The existing /health, /wind, /lie and /derive endpoints remain compatible.
 /companion/v1/course-layouts serves the course's GKD/GKDalt text (read-only, no paths)
 so the web app can place native positions without a browser folder grant.
+/companion/v1/gspro-file serves GSPro's currentRound.dat, output_log.txt and GSPro.db
+(read-only, allowlisted names, no paths) so the web app needs no GSPro folder grant.
+/companion/v1/round-records serves every round the recorder has kept.
 """
 
 import json
 import math
 import re
+import threading
 from urllib.parse import parse_qs, urlsplit
 
 import open_golf_coach_helper_lie_footer as lie_footer
@@ -24,6 +30,7 @@ import gspro_minimap_pipeline as minimap_pipeline  # CV core; only capture_nativ
 import gspro_live_observations as observations  # read-only diagnostic; no desktop input
 import gspro_native_lie_ocr as native_lie
 import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
+import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
 
 base = lie_footer.base
 COMPANION_VERSION = "autoaim-stage-c-preflight.1"
@@ -33,7 +40,11 @@ COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
 COMPANION_COURSE_LAYOUTS_PATH = "/companion/v1/course-layouts"
 COMPANION_AIM_PREVIEW_PATH = "/companion/v1/aim-preview"
 COMPANION_COURSE_LIBRARY_PATH = "/companion/v1/course-library"
+COMPANION_GSPRO_FILE_PATH = "/companion/v1/gspro-file"
+COMPANION_ROUND_RECORDS_PATH = "/companion/v1/round-records"
 COMPANION_READ_PATHS = (
+    COMPANION_GSPRO_FILE_PATH,
+    COMPANION_ROUND_RECORDS_PATH,
     COMPANION_COURSE_LIBRARY_PATH,
     COMPANION_AIM_PREVIEW_PATH,
     COMPANION_STATUS_PATH,
@@ -63,6 +74,31 @@ def is_allowed_origin(origin: str | None) -> bool:
     return origin in EXACT_ALLOWED_ORIGINS or bool(
         LOOPER_PREVIEW_ORIGIN.fullmatch(origin)
     )
+
+
+def _gspro_image_path() -> str | None:
+    try:
+        window = native.find_gspro_window()
+    except Exception:
+        return None
+    return window.get("imagePath") if isinstance(window, dict) else None
+
+
+GSPRO_DATA_FOLDER = file_bridge.DataFolder(
+    lambda: native.discover_gspro_data_directory(image_path=_gspro_image_path())
+)
+ROUND_RECORDER: "file_bridge.RoundRecorder | None" = None
+
+
+def _query_int(query: dict, key: str) -> int | None:
+    raw = (query.get(key) or [None])[0]
+    if raw is None or raw == "":
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value >= 0 else None
 
 
 def discover_gspro_context() -> dict:
@@ -117,6 +153,28 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         if body:
             self.wfile.write(body)
 
+    def _send_companion_bytes(self, info: dict, data: bytes) -> None:
+        """Raw bytes for an allowlisted GSPro file, with size/time headers."""
+        origin = self.headers.get("Origin")
+        self.send_response(200)
+        if origin and is_allowed_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Private-Network", "true")
+            self.send_header(
+                "Access-Control-Expose-Headers",
+                "X-Looper-File-Size, X-Looper-Last-Modified, X-Looper-Range-Start",
+            )
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("X-Looper-File-Size", str(info["size"]))
+        self.send_header("X-Looper-Last-Modified", str(info["lastModified"]))
+        self.send_header("X-Looper-Range-Start", str(info.get("start", 0)))
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def _companion_authorized(self) -> bool:
         return self._is_loopback_host() and is_allowed_origin(
             self.headers.get("Origin")
@@ -162,6 +220,8 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "courseLayouts": True,
                     "aimPreview": True,
                     "courseLibrary": True,
+                    "gsproFiles": True,
+                    "roundRecorder": ROUND_RECORDER is not None,
                     "nativeCapture": False,
                     "autoAim": False,
                 },
@@ -177,6 +237,43 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 "version": COMPANION_VERSION,
                 "windowCapture": capture.probe_gspro_capture(context["_window"]),
             })
+            return
+        if urlsplit(self.path).path == COMPANION_GSPRO_FILE_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            # Read-only, allowlisted names only; never a path from the browser.
+            query = parse_qs(urlsplit(self.path).query)
+            name = (query.get("name") or [""])[0]
+            directory = GSPRO_DATA_FOLDER.directory()
+            if (query.get("stat") or [""])[0] == "1":
+                info = file_bridge.stat_gspro_file(directory, name)
+                self._send_companion(200, {"service": "looper-companion",
+                                           "version": COMPANION_VERSION, **info})
+                return
+            info, data = file_bridge.read_gspro_file(
+                directory, name, _query_int(query, "start"), _query_int(query, "end"))
+            if info["status"] != "ok":
+                code = 403 if info["status"] == "forbidden" else 404
+                self._send_companion(code, {"service": "looper-companion",
+                                            "version": COMPANION_VERSION, **info})
+                return
+            self._send_companion_bytes(info, data)
+            return
+        if urlsplit(self.path).path == COMPANION_ROUND_RECORDS_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            base_payload = {"service": "looper-companion", "version": COMPANION_VERSION,
+                            "schemaVersion": "looper-companion-round-records-v1"}
+            if ROUND_RECORDER is None:
+                self._send_companion(200, {**base_payload, "status": "unavailable",
+                                           "records": [], "nextAfter": 0, "more": False})
+                return
+            query = parse_qs(urlsplit(self.path).query)
+            page = ROUND_RECORDER.records_after(
+                _query_int(query, "after") or 0, _query_int(query, "limit") or 500)
+            self._send_companion(200, {**base_payload, "status": "ok", **page})
             return
         if urlsplit(self.path).path == COMPANION_COURSE_LIBRARY_PATH:
             if not self._companion_authorized():
@@ -292,7 +389,25 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
 base.HELPER_HEALTH_VERSION = "6-looper-companion"
 
 
+def start_round_recorder() -> "threading.Event":
+    """Keep every round from Windows start, whether or not a browser is open."""
+    global ROUND_RECORDER
+    stop = threading.Event()
+    try:
+        ROUND_RECORDER = file_bridge.RoundRecorder(
+            file_bridge.default_store_dir(),
+            file_bridge.current_round_reader(GSPRO_DATA_FOLDER),
+        )
+    except Exception:
+        ROUND_RECORDER = None  # never stop the companion over the recorder
+        return stop
+    threading.Thread(target=ROUND_RECORDER.run_forever, args=(stop,),
+                     name="looper-round-recorder", daemon=True).start()
+    return stop
+
+
 if __name__ == "__main__":
+    start_round_recorder()
     # Force loopback even if OPEN_GOLF_COACH_HOST is overridden.
     server = base.ThreadingHTTPServer(("127.0.0.1", base.PORT), LooperCompanionHandler)
     server.serve_forever()

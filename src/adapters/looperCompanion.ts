@@ -39,6 +39,8 @@ export type LooperCompanionStatus = {
     courseLayouts?: boolean
     aimPreview?: boolean
     courseLibrary?: boolean
+    gsproFiles?: boolean
+    roundRecorder?: boolean
     nativeCapture: boolean
     autoAim: boolean
   }

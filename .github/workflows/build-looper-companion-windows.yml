@@ -10,7 +10,10 @@ on:
       - companion-course-layouts-v1
       - web-native-aim-preview-v1
       - web-course-load-v1
+      - web-companion-gspro-files-v1
     paths:
+      - "helpers/gspro_file_bridge.py"
+      - "tests/test_companion_gspro_files.py"
       - "helpers/gspro_native_aim.py"
       - "tests/test_gspro_companion_aim_preview.py"
       - "helpers/looper_companion.py"
@@ -178,6 +181,23 @@ jobs:
             if ($companion.capabilities.autoAim -ne $false) {
               throw "Stage B must never enable Auto Aim."
             }
+            if ($companion.capabilities.gsproFiles -ne $true -or $companion.capabilities.roundRecorder -ne $true) {
+              throw "GSPro file bridge or round recorder missing from packaged build."
+            }
+            $fileStat = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/gspro-file?name=currentRound.dat&stat=1" -Headers $headers -TimeoutSec 10
+            if ($fileStat.status -ne "gspro-folder-not-found" -and $fileStat.status -ne "not-found") {
+              throw "GSPro file stat must fail closed without GSPro: $($fileStat | ConvertTo-Json -Compress)"
+            }
+            try {
+              Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/gspro-file?name=..%5Cnotes.txt" -Headers $headers -TimeoutSec 5 | Out-Null
+              throw "Non-allowlisted file name was served."
+            } catch {
+              if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw }
+            }
+            $records = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/round-records?after=0" -Headers $headers -TimeoutSec 10
+            if ($records.schemaVersion -ne "looper-companion-round-records-v1" -or $records.status -ne "ok") {
+              throw "Round records endpoint missing: $($records | ConvertTo-Json -Compress)"
+            }
 
             # Tesseract must ship next to packaged executable, and be capable
             # of OCR without relying on a system-wide install.
@@ -283,6 +303,20 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: course library + aim preview ($shortSha)" `
             --notes "Course layouts, read-only Auto Aim preview, and read-only /companion/v1/course-library (names, locations and keys of installed GSPro courses for one-click loading). No mouse or keyboard input." `
+            --prerelease
+
+      - name: Publish GSPro-files companion installer
+        if: github.ref == 'refs/heads/web-companion-gspro-files-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-gspro-files-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: GSPro files + round recorder ($shortSha)" `
+            --notes "Serves GSPro's currentRound.dat, output_log.txt and GSPro.db to the Looper web app (read-only, allowlisted, no paths), so no GSPro folder picker is needed. Keeps every round's raw records under %LOCALAPPDATA%\Looper\Companion\rounds. No mouse or keyboard input." `
             --prerelease
 
       - name: Publish rolling companion prerelease

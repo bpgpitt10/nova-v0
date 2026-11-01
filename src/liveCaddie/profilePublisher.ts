@@ -1,3 +1,4 @@
+import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import {
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
@@ -28,7 +29,7 @@ export type LiveCaddieProfilePublishResult =
     }
   | {
       status: 'skipped'
-      reason: 'no-gspro-handle' | 'permission-not-granted' | 'no-player-profiles'
+      reason: 'no-gspro-handle' | 'companion-reads-gspro' | 'permission-not-granted' | 'no-player-profiles'
     }
   | {
       status: 'failed'
@@ -71,6 +72,10 @@ export const publishLiveCaddieProfilesToGsproFolder = async (): Promise<LiveCadd
     const handle = await loadGsproDirectoryHandle()
     if (!handle) {
       return { status: 'skipped', reason: 'no-gspro-handle' }
+    }
+    if (isCompanionGsproDirectoryHandle(handle)) {
+      // The companion never writes to the GSPro folder.
+      return { status: 'skipped', reason: 'companion-reads-gspro' }
     }
 
     const permission = await queryGsproDirectoryPermission(handle, 'readwrite')
