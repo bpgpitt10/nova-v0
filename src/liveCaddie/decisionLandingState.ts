@@ -14,9 +14,10 @@ export type DecisionLandingObstruction = 'none' | 'woods-or-scrub' | 'unknown'
  * strokes gained. Tactical buckets remain useful summaries, but downstream
  * evaluators should not need to reconstruct the raw landing state from them.
  *
- * For penalty outcomes, distanceToPinYds is the raw splash/crossing-point
- * distance only. The eventual SG evaluator must model relief/drop location
- * before treating that distance as the next-shot state.
+ * For penalty outcomes, `landing` is the splash point (for display), but
+ * distanceToPinYds is measured from the relief point when one is supplied:
+ * where the ball last crossed into the hazard, backed off a yard
+ * (carryAwareLanding.penaltyReliefPoint). Without it, the splash distance.
  */
 export type DecisionLandingState = {
   landing: CoursePointYds
@@ -51,6 +52,8 @@ export const buildDecisionLandingState = (
   pinOverride?: CoursePointYds | null,
   /** Where the shot is played from: an out-of-bounds outcome is replayed from here. */
   replayFrom?: CoursePointYds | null,
+  /** Water/penalty only: where relief is taken. Ignored for other surfaces. */
+  reliefPoint?: CoursePointYds | null,
 ): DecisionLandingState => {
   const semantics = TACTICAL_SURFACE_SEMANTICS[classification.kind]
   const penalty = classification.kind === 'water' || classification.kind === 'penalty'
@@ -67,7 +70,9 @@ export const buildDecisionLandingState = (
     surface: classification.kind,
     surfaceId: classification.surfaceId,
     surfaceConfidence: classification.confidence,
-    distanceToPinYds: pin ? distance(outOfBounds ? replayFrom! : landing, pin) : null,
+    distanceToPinYds: pin
+      ? distance(outOfBounds ? replayFrom! : penalty && reliefPoint ? reliefPoint : landing, pin)
+      : null,
     penaltyStrokeCount: penalty ? 1 : 0,
     requiresRelief: penalty,
     obstruction,
