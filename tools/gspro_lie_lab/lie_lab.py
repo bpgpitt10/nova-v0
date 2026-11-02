@@ -306,7 +306,7 @@ class Runner:
 
     def spot_header(self, spot: dict[str, Any], total: int) -> dict[str, Any] | None:
         print(f"\n=== Spot {spot['spot']}/{total}: {spot['targetLie']} ({spot.get('note', '')}) ===")
-        print("In GSPro: click a matching spot on the minimap (Encore practice), so the ball sits there.")
+        print("In GSPro On Course practice: drop the ball on a matching spot (any hole), ready to rehit.")
         command = ask("Press Enter when placed ('s' skip spot, 'q' quit)")
         if command.lower() == "q":
             return None
@@ -360,7 +360,7 @@ class Runner:
                     moved = ((start["x"] - first_start["x"]) ** 2 + (start["z"] - first_start["z"]) ** 2) ** 0.5
                     if moved > 1.0:
                         print(f"  WARNING: the ball started {moved:.1f} m from this spot's first shot. "
-                              "Encore may have stopped returning the ball.")
+                              "Practice may have stopped rehitting from the dropped spot.")
                         if ask("  Continue this spot? (y/n)", "y").lower() != "y":
                             break
         print("\nAll spots done.")
@@ -382,7 +382,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     total = sum(len(s["shots"]) for s in plan["spots"] if s["spot"] >= args.start_spot)
     print(f"Session folder: {out}\nGSPro folder: {gspro_dir}\n{total} shots planned "
           f"(about {total * 14 / 3600:.1f} h of firing plus your clicks).")
-    print("Checklist: Uneekor launcher closed, GSPro wind calm, practice mode (Encore), not a handicap round.")
+    print("Checklist: Uneekor launcher closed, GSPro wind calm, On Course practice (rehit from a dropped ball), not a handicap round.")
     if msvcrt is not None:
         print("Press 'p' any time to pause after the current shot.")
     ask("Press Enter to connect")

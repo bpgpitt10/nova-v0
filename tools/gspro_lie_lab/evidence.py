@@ -171,7 +171,7 @@ PENALTY_RE = re.compile(
     r"\s*,\s*VLA\s*(\d+(?:\.\d+)?)%", re.I)
 TYPE_RE = re.compile(r"corrected type\s+(-?\d+)", re.I)
 # Lines worth keeping verbatim even when we don't understand them yet.
-INTEREST_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|club|encore|practice", re.I)
+INTEREST_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|club|practice|drop", re.I)
 
 
 def parse_log_slice(text: str) -> dict[str, Any]:

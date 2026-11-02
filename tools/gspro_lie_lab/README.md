@@ -39,7 +39,7 @@ Fires one 7i through API version 1 and then version 2, and prints GSPro's replie
 
 ## Step 2: discover (5 min)
 
-Open a course in Encore practice, put the ball in rough, then:
+Open any course in On Course practice, drop the ball in rough, then:
 
 ```
 python lie_lab.py discover --fire 3 --api-version 2
@@ -63,7 +63,7 @@ Do the club label check and the first two spots, then type `q` at the next spot 
 
 ## Step 4: the full run (about 3 hours of firing, about 45 clicks from you)
 
-At each spot the lab asks you to click a spot in Encore practice and type what GSPro's HUD shows: surface, up/down (`3U`, `2D`, `0`) and left/right (`2L`, `1R`, `0`). Then it fires 18 shots by itself and moves on.
+At each spot the lab asks you to drop the ball somewhere new in On Course practice (any spot, any hole) and type what GSPro's HUD shows: surface, up/down (`3U`, `2D`, `0`) and left/right (`2L`, `1R`, `0`). Then it fires 18 shots by itself and moves on.
 
 | Lie | Spots | Notes |
 |---|---|---|
@@ -89,7 +89,7 @@ No 3W data yet, so the 3H stands in for the woods. `python lie_lab.py plan` writ
 
 **Club label check** (once, before the spots): the same 7i shot three times each with 7i, PW and Driver selected in GSPro. If the penalty doesn't change, labels don't matter. If it does, we'll rerun grouped by club.
 
-**Spot tips:** vary slopes; stay a few yards clear of trees (the penalty is unaffected, but carry comparisons get messy); the first shot at each spot should show the surface you expected. The lab warns if the ball stops returning to the same spot (Encore off). Press `p` to pause after the current shot. Ctrl+C stops safely; resume with `--out <same folder> --start-spot N`.
+**Spot tips:** vary slopes; stay a few yards clear of trees (the penalty is unaffected, but carry comparisons get messy); the first shot at each spot should show the surface you expected. The lab warns if the ball stops returning to the same spot (rehit off, or the ball got moved). Press `p` to pause after the current shot. Ctrl+C stops safely; resume with `--out <same folder> --start-spot N`.
 
 ## Step 5: analyze
 
