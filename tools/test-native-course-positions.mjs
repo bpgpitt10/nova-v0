@@ -176,6 +176,20 @@ try {
   })
   assert.equal(tooFar.snapshot.ballSource, 'unavailable', 'no GKD tee within 10 yd -> unchanged')
 
+  // Round Setup before GSPro is on the course: find it in the installed library by name.
+  const library = [
+    { courseKey: 'valhalla_gsp', courseName: 'Valhalla' },
+    { courseKey: 'farmlinks_al_2_7_gsp', courseName: 'FarmLinks' },
+    { courseKey: 'kiawah_b_01_gsp', courseName: 'Kiawah Island Ocean Course' },
+    { courseKey: 'valley_club_gsp', courseName: 'The Valley Club' },
+  ]
+  assert.equal(runtime.pickInstalledCourseKey(['Valhalla Golf Club'], library), 'valhalla_gsp')
+  assert.equal(runtime.pickInstalledCourseKey(['Kiawah Island Golf Resort - The Ocean Course', 'kiawah_b_01_gsp'], library),
+    'kiawah_b_01_gsp')
+  assert.equal(runtime.pickInstalledCourseKey(['Muirfield Village Golf Club'], library), null, 'not installed')
+  assert.equal(runtime.pickInstalledCourseKey(['Valhalla'], [...library, { courseKey: 'valhalla2_gsp', courseName: 'Valhalla' }]),
+    null, 'two equally good matches: do not guess')
+
   // GSPro tee sets for the round picker (synthetic course has one hole, so
   // the nine-hole floor filters everything; a 9-hole copy lists them).
   assert.deepEqual(gkd.nativeTeeSetOptions(layout), [])

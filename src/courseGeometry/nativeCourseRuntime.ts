@@ -1,5 +1,6 @@
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { courseNameMatchScore } from '../courseLoading/courseNameMatch'
 import {
   findNativeSceneFolder,
   listNativeLayoutFiles,
@@ -385,16 +386,31 @@ const registerInBrowser = async (
   return { registration: result.registration, reason: `grade ${result.fit.grade}` }
 }
 
-const comparableName = (value: string) => value.toLowerCase()
-  .replace(/_gsp$/, '').replace(/[^a-z0-9]+/g, ' ').trim()
+const keyAsName = (key: string) => key.replace(/_gsp$/i, '').replace(/[_-]+/g, ' ')
+
+/** The installed GSPro course for a Looper course, by name ("Valhalla" in
+ * GSPro vs "Valhalla Golf Club" here). Only a clear, unique best match counts. */
+export const pickInstalledCourseKey = (
+  names: readonly string[],
+  courses: readonly Readonly<{ courseKey: string; courseName: string }>[],
+): string | null => {
+  const scored = courses.map((course) => ({
+    key: course.courseKey,
+    score: Math.max(0, ...names.flatMap((name) => [
+      courseNameMatchScore(name, course.courseName),
+      courseNameMatchScore(name, keyAsName(course.courseKey)),
+    ])),
+  })).sort((a, b) => b.score - a.score)
+  const [best, next] = scored
+  if (!best || best.score < 0.8) return null
+  if (next && next.score >= best.score) return null
+  return best.key
+}
 
 const installedCourseKeyFor = async (courseId: CourseId): Promise<string | null> => {
   const entry = getCourseCatalogEntry(courseId)
-  const names = new Set([entry.name, ...entry.gsproAliases].map(comparableName).filter(Boolean))
   const library = await readLooperCompanionCourseLibrary().catch(() => null)
-  const hits = (library?.courses ?? []).filter((course) =>
-    names.has(comparableName(course.courseName)) || names.has(comparableName(course.courseKey)))
-  return hits.length === 1 ? hits[0].courseKey : null
+  return pickInstalledCourseKey([entry.name, ...entry.gsproAliases], library?.courses ?? [])
 }
 
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
