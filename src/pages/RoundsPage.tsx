@@ -22,6 +22,7 @@ import {
   loadRoundRecords,
   saveRoundFlags,
   toCourseInfoMap,
+  unresolvedCourseKeys,
   type RangeClubNumbers,
   type StoredCourseInfo,
 } from '../lib/roundHistoryData'
@@ -141,6 +142,7 @@ type LoadState =
       source: string
       cloudError: string | null
       courses: Record<string, StoredCourseInfo>
+      coursesLoaded: boolean
     }
 
 function useRoundData() {
@@ -153,9 +155,9 @@ function useRoundData() {
         if (cancelled) return
         const keys = [...new Set(result.records.map((record) => record.courseKey ?? '').filter(Boolean))]
         // Show rounds right away; names and pars fill in when the course files answer.
-        setState({ status: 'ready', ...result, courses: {} })
+        setState({ status: 'ready', ...result, courses: {}, coursesLoaded: false })
         const courses = await loadCourseInfo(keys)
-        if (!cancelled) setState({ status: 'ready', ...result, courses })
+        if (!cancelled) setState({ status: 'ready', ...result, courses, coursesLoaded: true })
       } catch (error) {
         if (!cancelled) {
           setState({ status: 'error', message: error instanceof Error ? error.message : 'Could not load rounds.' })
@@ -211,7 +213,15 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
           />
         ) : null}
         {data.status === 'ready' && roundIdParam == null ? (
-          <RoundsList cloudError={data.cloudError} rounds={rounds} />
+          <RoundsList
+            cloudError={data.cloudError}
+            coursesLoaded={data.coursesLoaded}
+            rounds={rounds}
+            unnamedCourses={unresolvedCourseKeys(
+              rounds.filter((round) => round.status === 'full' || round.status === 'partial').map((round) => round.courseKey ?? ''),
+              data.courses,
+            ).length}
+          />
         ) : null}
       </div>
     </div>
@@ -222,7 +232,17 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
 
 type ListFilter = 'full' | 'all' | 'live-caddie'
 
-function RoundsList({ rounds, cloudError }: { rounds: RoundSummary[]; cloudError: string | null }) {
+function RoundsList({
+  rounds,
+  cloudError,
+  unnamedCourses,
+  coursesLoaded,
+}: {
+  rounds: RoundSummary[]
+  cloudError: string | null
+  unnamedCourses: number
+  coursesLoaded: boolean
+}) {
   const [filter, setFilter] = useState<ListFilter>('full')
   const onCourse = rounds.filter((round) => round.status !== 'range')
   const fullRounds = onCourse.filter((round) => round.status === 'full')
@@ -265,6 +285,12 @@ function RoundsList({ rounds, cloudError }: { rounds: RoundSummary[]; cloudError
 
       {cloudError ? (
         <p className="rounds-note">Couldn’t reach your cloud history ({cloudError}); showing rounds saved in this browser.</p>
+      ) : null}
+
+      {coursesLoaded && unnamedCourses > 0 ? (
+        <p className="rounds-note">
+          Course names and pars come from GSPro’s course files, which the companion reads on your sim PC. Open Rounds on that PC, with the companion running, to see them.
+        </p>
       ) : null}
 
       <section className="rounds-tiles">

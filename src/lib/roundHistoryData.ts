@@ -3,6 +3,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import { readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
 import { courseRegistry, resolveCourseIdFromGsproName } from '../courseGeometry/courseCatalog'
 import { companionSceneLayouts } from '../courseGeometry/nativeCourseRuntime'
 import { getActiveBagClubIds } from './bagConfig'
@@ -195,9 +196,32 @@ export const loadCourseInfo = async (
       }
     }
   }))
+
+  // Still nameless: the companion's installed-course list has every course's
+  // name in one call, even when a course file couldn't be read for par.
+  const nameless = keys.filter((key) => !cache[key]?.name && !/range/i.test(key))
+  if (nameless.length > 0) {
+    try {
+      const library = await readLooperCompanionCourseLibrary(8000)
+      const byKey = new Map(library.courses.map((course) => [course.courseKey.toLowerCase(), course]))
+      nameless.forEach((key) => {
+        const course = byKey.get(key.toLowerCase())
+        if (!course?.courseName) return
+        cache[key] = { name: course.courseName, pars: cache[key]?.pars ?? {}, parSource: cache[key]?.parSource ?? null }
+      })
+    } catch {
+      // No companion on this device: names stay as cached or derived from the key.
+    }
+  }
   writeCourseCache(cache)
   return cache
 }
+
+/** Course keys the page couldn't name: the sim PC with the companion hasn't seen them yet. */
+export const unresolvedCourseKeys = (
+  courseKeys: readonly string[],
+  stored: Record<string, StoredCourseInfo>,
+) => [...new Set(courseKeys)].filter((key) => key && !/range/i.test(key) && !stored[key]?.name)
 
 export const toCourseInfoMap = (
   stored: Record<string, StoredCourseInfo>,
