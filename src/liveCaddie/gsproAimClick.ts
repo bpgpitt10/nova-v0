@@ -53,7 +53,12 @@ export const aimInGspro = async ({
     }
     if (result.verified === 'match') return { outcome: 'aimed', message: 'Aimed in GSPro.' }
     if (result.verified === 'mismatch') {
-      return { outcome: 'clicked-mismatch', message: "Clicked GSPro, but its aim marker isn't where Looper aimed. Check the aim." }
+      return {
+        outcome: 'clicked-mismatch',
+        message: "Clicked GSPro, but its aim marker isn't where Looper aimed"
+          + (result.markerOffsetPx != null ? ` (${Math.round(result.markerOffsetPx)} px off on the minimap)` : '')
+          + '. Check the aim.',
+      }
     }
     return { outcome: 'clicked-unverified', message: "Clicked GSPro's minimap. Glance at the aim to confirm." }
   } catch (error) {

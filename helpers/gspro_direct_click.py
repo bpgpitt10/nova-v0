@@ -17,6 +17,10 @@ import time
 MAX_CAPTURE_AGE_MS = 1000
 MAX_PIN_REGISTRATION_ERROR_PX = 3.0
 MIN_MINIMAP_MARGIN_PX = 5.0
+# A few frames at 60 fps each, so the game reads the cursor on the target.
+CLICK_SETTLE_S = 0.05
+CLICK_HOLD_S = 0.06
+CLICK_RELEASE_S = 0.12
 
 
 @dataclass(frozen=True)
@@ -164,9 +168,18 @@ def execute_prepared_click(
     try:
         if not user32.SetCursorPos(plan.desktop_x, plan.desktop_y):
             raise RuntimeError("Could not set cursor to GSPro minimap target")
-        # This matches the primitive proven on the simulator in click lab.
+        # GSPro (Unity) samples the mouse once per rendered frame. A click sent
+        # in the same instant as the move, with the cursor restored right
+        # after, registered at the wrong place on the sim (2 Nov: the aim
+        # marker landed beside the ball). Hold the cursor on the target for a
+        # few frames around the press.
+        time.sleep(CLICK_SETTLE_S)
+        user32.mouse_event(0x0001, 0, 0, 0, 0)  # MOVE (0,0): make sure GSPro sees the cursor here
+        time.sleep(CLICK_SETTLE_S)
         user32.mouse_event(0x0002, 0, 0, 0, 0)  # LEFTDOWN
+        time.sleep(CLICK_HOLD_S)
         user32.mouse_event(0x0004, 0, 0, 0, 0)  # LEFTUP
+        time.sleep(CLICK_RELEASE_S)
     finally:
         user32.SetCursorPos(old_cursor.x, old_cursor.y)
 

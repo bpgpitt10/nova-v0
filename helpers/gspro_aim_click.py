@@ -147,5 +147,6 @@ def aim_click(
         return result
     offset = math.hypot(marker.x - mini["target"][0], marker.y - mini["target"][1])
     result["markerOffsetPx"] = round(offset, 1)
+    result["markerPixel"] = [round(marker.x, 1), round(marker.y, 1)]
     result["verified"] = "match" if offset <= VERIFY_MATCH_PX else "mismatch"
     return result
