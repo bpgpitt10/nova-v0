@@ -84,10 +84,22 @@ type LayoutReader = ((file: SliceableFile | null) => Promise<GsproCourseLayoutRo
 export const createOutputLogLayoutReader = (): LayoutReader => {
   let state: { size: number; head: string; rows: GsproCourseLayoutRow[] | null; scanned: number } | null = null
   let lastFileSeen = false
+  let lastError: string | null = null
   const read = async (file: SliceableFile | null): Promise<GsproCourseLayoutRow[] | null> => {
     lastFileSeen = Boolean(file)
     if (!file) return state?.rows ?? null
+    try {
+      const rows = await scan(file)
+      lastError = null
+      return rows
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+      throw error
+    }
+  }
+  const scan = async (file: SliceableFile): Promise<GsproCourseLayoutRow[] | null> => {
     const size = file.size
+    if (!(size > 0)) throw new Error('output_log.txt is empty')
     if (state && size === state.size) return state.rows
     const head = await file.slice(0, Math.min(HEAD_BYTES, size)).text()
     const fresh = !state || size < state.size || head !== state.head
@@ -104,6 +116,8 @@ export const createOutputLogLayoutReader = (): LayoutReader => {
   return Object.assign(read, {
     summary: () => !lastFileSeen
       ? 'output_log.txt not readable'
-      : `log ${((state?.size ?? 0) / 1e6).toFixed(1)} MB, scanned ${((state?.scanned ?? 0) / 1e6).toFixed(1)} MB`,
+      : lastError
+        ? `reading output_log failed: ${lastError.slice(0, 120)}`
+        : `log ${((state?.size ?? 0) / 1e6).toFixed(1)} MB, scanned ${((state?.scanned ?? 0) / 1e6).toFixed(1)} MB`,
   })
 }

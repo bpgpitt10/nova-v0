@@ -49,7 +49,7 @@ export const aimInGspro = async ({
       { ball: points.ball, pin: points.pin, target: points.target }, shotKey)
     if (result.status !== 'clicked') {
       const why = REASONS[result.reason ?? ''] ?? result.reason ?? 'unknown reason'
-      return { outcome: 'not-sent', message: `Aim by hand: ${why}.` }
+      return { outcome: 'not-sent', message: `Aim by hand: ${why}${result.detail ? ` (${result.detail})` : ''}.` }
     }
     if (result.verified === 'match') return { outcome: 'aimed', message: 'Aimed in GSPro.' }
     if (result.verified === 'mismatch') {

@@ -149,14 +149,14 @@ def execute_prepared_click(
     ]
 
     if int(user32.GetForegroundWindow() or 0) != plan.hwnd:
-        user32.SetForegroundWindow(plan.hwnd)
-        # Windows foreground activation restrictions can deny focus.
-        for _ in range(4):
-            if int(user32.GetForegroundWindow() or 0) == plan.hwnd:
-                break
-            time.sleep(0.04)
+        _bring_to_front(user32, plan.hwnd)
     if int(user32.GetForegroundWindow() or 0) != plan.hwnd:
-        raise RuntimeError("Could not focus GSPro; no input sent")
+        # Windows refuses focus changes from background apps (the browser was
+        # the one clicked). Still safe to click if the target pixel is GSPro's
+        # own window, i.e. the minimap is visible and nothing covers it: the
+        # click then lands in GSPro and activates it.
+        if _root_window_at(user32, plan.desktop_x, plan.desktop_y) != plan.hwnd:
+            raise RuntimeError("GSPro is behind another window at the minimap; no input sent")
 
     old_cursor = wintypes.POINT()
     if not user32.GetCursorPos(ctypes.byref(old_cursor)):
@@ -169,3 +169,46 @@ def execute_prepared_click(
         user32.mouse_event(0x0004, 0, 0, 0, 0)  # LEFTUP
     finally:
         user32.SetCursorPos(old_cursor.x, old_cursor.y)
+
+
+def _bring_to_front(user32, hwnd: int) -> None:
+    """SetForegroundWindow, with the input-attach workaround Windows allows
+    when the caller is not the foreground app. Best effort; caller re-checks."""
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+    user32.AttachThreadInput.restype = wintypes.BOOL
+    user32.BringWindowToTop.argtypes = [wintypes.HWND]
+    user32.BringWindowToTop.restype = wintypes.BOOL
+    user32.SetForegroundWindow(hwnd)
+    if int(user32.GetForegroundWindow() or 0) == hwnd:
+        return
+    foreground = user32.GetForegroundWindow()
+    foreground_thread = user32.GetWindowThreadProcessId(foreground, None) if foreground else 0
+    own_thread = kernel32.GetCurrentThreadId()
+    attached = bool(foreground_thread) and foreground_thread != own_thread and bool(
+        user32.AttachThreadInput(own_thread, foreground_thread, True))
+    try:
+        user32.BringWindowToTop(hwnd)
+        user32.SetForegroundWindow(hwnd)
+    finally:
+        if attached:
+            user32.AttachThreadInput(own_thread, foreground_thread, False)
+    for _ in range(4):
+        if int(user32.GetForegroundWindow() or 0) == hwnd:
+            return
+        time.sleep(0.04)
+
+
+def _root_window_at(user32, x: int, y: int) -> int:
+    """Top-level window under a desktop point (0 if none)."""
+    user32.WindowFromPoint.argtypes = [wintypes.POINT]
+    user32.WindowFromPoint.restype = wintypes.HWND
+    user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+    user32.GetAncestor.restype = wintypes.HWND
+    hit = user32.WindowFromPoint(wintypes.POINT(x, y))
+    if not hit:
+        return 0
+    return int(user32.GetAncestor(hit, 2) or 0)  # GA_ROOT
+

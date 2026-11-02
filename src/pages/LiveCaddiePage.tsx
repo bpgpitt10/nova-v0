@@ -1412,9 +1412,6 @@ export default function LiveCaddiePage() {
           </button>
           <div className="live-caddie-secondary-context">
             {showDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
-            {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY'
-              ? <span>Wind OCR read: {nativeObservations.ocr.wind.rawText ?? nativeObservations.ocr.wind.note ?? 'nothing'}</span>
-              : null}
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
             {showDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
@@ -1590,6 +1587,14 @@ export default function LiveCaddiePage() {
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
+        {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY' ? (
+          <div className="live-caddie-alert">
+            Wind OCR read: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+          </div>
+        ) : null}
+        {showDiagnostics && aimResult ? (
+          <div className="live-caddie-alert">Last Arm: {aimResult.message}</div>
+        ) : null}
         {showDiagnostics && liveSnapshot?.warnings
           .filter(warning => !(measuredPreShotTee
             && warning.startsWith('Provisional Hole ')
