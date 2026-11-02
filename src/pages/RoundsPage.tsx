@@ -289,7 +289,7 @@ function RoundsList({
 
       {coursesLoaded && unnamedCourses > 0 ? (
         <p className="rounds-note">
-          Course names and pars come from GSPro’s course files, which the companion reads on your sim PC. Open Rounds on that PC, with the companion running, to see them.
+          Course names and pars come from GSPro’s course files, which the companion reads on your sim PC. Open Rounds there once with the companion running and they’ll show on every device.
         </p>
       ) : null}
 

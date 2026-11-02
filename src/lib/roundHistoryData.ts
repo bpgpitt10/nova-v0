@@ -170,36 +170,111 @@ const parsFromCourseFile = async (courseKey: string): Promise<StoredCourseInfo |
   }
 }
 
+type CourseInfoRow = {
+  course_key: string
+  course_name: string | null
+  pars: Record<string, number> | null
+  par_source: string | null
+}
+
+const sourceRank = (source: StoredCourseInfo['parSource']) =>
+  source === 'course-file' ? 2 : source === 'course-package' ? 1 : 0
+
+const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
+  const pars: Record<number, number> = {}
+  Object.entries(row.pars ?? {}).forEach(([hole, par]) => {
+    if (typeof par === 'number' && Number.isFinite(par)) pars[Number(hole)] = par
+  })
+  const parSource = row.par_source === 'course-file' || row.par_source === 'course-package' ? row.par_source : null
+  return { name: row.course_name, pars, parSource }
+}
+
+/** Better of two records: a stronger par source wins; a name is never lost. */
+const mergeInfo = (a: StoredCourseInfo | undefined, b: StoredCourseInfo | undefined): StoredCourseInfo | undefined => {
+  if (!a) return b
+  if (!b) return a
+  const winner = sourceRank(b.parSource) > sourceRank(a.parSource) ? b : a
+  const other = winner === a ? b : a
+  return {
+    name: winner.name ?? other.name,
+    pars: Object.keys(winner.pars).length > 0 ? winner.pars : other.pars,
+    parSource: winner.parSource ?? other.parSource,
+  }
+}
+
+const sameInfo = (a: StoredCourseInfo | undefined, b: StoredCourseInfo | undefined) =>
+  JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+/** Course info saved to the player's account, so every device sees it. */
+const loadCloudCourseInfo = async (): Promise<{ userId: string; rows: Record<string, StoredCourseInfo> } | null> => {
+  if (!isSupabaseConfigured()) return null
+  const user = await getCurrentLooperUser()
+  if (!user) return null
+  const client = await getSupabaseClient()
+  const rows = await awaitQuery<CourseInfoRow[]>(
+    client
+      .from<CourseInfoRow[]>('live_course_info')
+      .select('course_key,course_name,pars,par_source')
+      .eq('user_id', user.id),
+  )
+  return { userId: user.id, rows: Object.fromEntries(rows.map((row) => [row.course_key, storedFromRow(row)])) }
+}
+
+const saveCloudCourseInfo = async (userId: string, entries: Record<string, StoredCourseInfo>) => {
+  const values = Object.entries(entries).map(([courseKey, info]) => ({
+    user_id: userId,
+    course_key: courseKey,
+    course_name: info.name,
+    pars: Object.fromEntries(Object.entries(info.pars).map(([hole, par]) => [String(hole), par])),
+    par_source: info.parSource,
+    updated_at: new Date().toISOString(),
+  }))
+  if (values.length === 0) return
+  const client = await getSupabaseClient()
+  const result = await client.from<unknown>('live_course_info').upsert(values, { onConflict: 'user_id,course_key' })
+  if (result.error) throw new Error(result.error.message)
+}
+
 /**
  * Course name and par per hole. The GSPro course file (read by the companion
- * on the sim PC) wins; a loaded course package is the fallback. Results are
- * cached so other devices still show par once the sim PC has seen the course.
+ * on the sim PC) wins; a loaded course package is next; the companion's course
+ * list can still supply a name. Whatever a device works out is saved to the
+ * player's account (live_course_info), so a MacBook or phone shows the same
+ * names and pars the sim PC found.
  */
 export const loadCourseInfo = async (
   courseKeys: readonly string[],
 ): Promise<Record<string, StoredCourseInfo>> => {
   const cache = readCourseCache()
-  const keys = [...new Set(courseKeys.filter(Boolean))]
+  const keys = [...new Set(courseKeys.filter((key) => key && !/range/i.test(key)))]
+
+  let cloud: Awaited<ReturnType<typeof loadCloudCourseInfo>> = null
+  try {
+    cloud = await loadCloudCourseInfo()
+  } catch {
+    cloud = null
+  }
+  const before: Record<string, StoredCourseInfo | undefined> = {}
+  keys.forEach((key) => {
+    before[key] = cloud?.rows[key]
+    const merged = mergeInfo(cache[key], cloud?.rows[key])
+    if (merged) cache[key] = merged
+  })
+
   await Promise.all(keys.map(async (key) => {
     const cached = cache[key]
-    if (cached?.parSource === 'course-file') return
+    if (cached?.parSource === 'course-file' && cached.name) return
     const [fromFile, fromPackage] = await Promise.all([
       parsFromCourseFile(key).catch(() => null),
       cached?.parSource === 'course-package' ? Promise.resolve(null) : parsFromPackage(key).catch(() => null),
     ])
-    const best = fromFile?.parSource ? fromFile : fromPackage ?? fromFile
-    if (best) {
-      cache[key] = {
-        name: fromFile?.name ?? best.name ?? cached?.name ?? null,
-        pars: Object.keys(best.pars).length > 0 ? best.pars : cached?.pars ?? {},
-        parSource: best.parSource ?? cached?.parSource ?? null,
-      }
-    }
+    const merged = mergeInfo(mergeInfo(cached, fromPackage ?? undefined), fromFile ?? undefined)
+    if (merged) cache[key] = { ...merged, name: fromFile?.name || merged.name }
   }))
 
   // Still nameless: the companion's installed-course list has every course's
   // name in one call, even when a course file couldn't be read for par.
-  const nameless = keys.filter((key) => !cache[key]?.name && !/range/i.test(key))
+  const nameless = keys.filter((key) => !cache[key]?.name)
   if (nameless.length > 0) {
     try {
       const library = await readLooperCompanionCourseLibrary(8000)
@@ -210,10 +285,22 @@ export const loadCourseInfo = async (
         cache[key] = { name: course.courseName, pars: cache[key]?.pars ?? {}, parSource: cache[key]?.parSource ?? null }
       })
     } catch {
-      // No companion on this device: names stay as cached or derived from the key.
+      // No companion on this device: names stay as saved or derived from the key.
     }
   }
   writeCourseCache(cache)
+
+  // Share anything this device learned that the account didn't have yet.
+  if (cloud) {
+    const improved = Object.fromEntries(
+      keys
+        .filter((key) => cache[key] && (cache[key].name || cache[key].parSource) && !sameInfo(mergeInfo(before[key], cache[key]), before[key]))
+        .map((key) => [key, mergeInfo(before[key], cache[key]) as StoredCourseInfo]),
+    )
+    await saveCloudCourseInfo(cloud.userId, improved).catch((error) => {
+      console.warn('[Rounds] could not save course info to the account.', error)
+    })
+  }
   return cache
 }
 
