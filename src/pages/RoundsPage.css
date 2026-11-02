@@ -1,0 +1,822 @@
+/* Rounds: list and round detail. Locked dark tokens from src/design/designsystem.md. */
+.rounds-page {
+  --rounds-bg: #0e1710;
+  --rounds-card: #142118;
+  --rounds-elevated: #1e3123;
+  --rounds-inset: #172419;
+  --rounds-line: #314233;
+  --rounds-text: #ffffff;
+  --rounds-secondary: #cfd8cd;
+  --rounds-muted: #9fb09f;
+  --rounds-accent: #86efac;
+  --rounds-gain: #86efac;
+  --rounds-loss: #fb923c;
+  min-height: 100vh;
+  background: var(--rounds-bg);
+  color: var(--rounds-text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.rounds-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+  box-sizing: border-box;
+}
+
+.rounds-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rounds-page h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rounds-page h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.rounds-muted {
+  color: var(--rounds-muted);
+}
+
+.rounds-small {
+  font-size: 12px;
+}
+
+.rounds-page p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.rounds-page a {
+  color: var(--rounds-accent);
+}
+
+.rounds-card {
+  background: var(--rounds-card);
+  border: 1px solid var(--rounds-line);
+  border-radius: 10px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.rounds-card.is-dashed {
+  background: transparent;
+  border-style: dashed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rounds-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 0;
+  color: var(--rounds-secondary);
+}
+
+.rounds-note {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--rounds-inset);
+  border: 1px solid var(--rounds-line);
+  color: var(--rounds-secondary);
+  font-size: 13px;
+}
+
+.rounds-header,
+.rounds-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.rounds-header > div:first-child,
+.rounds-detail-title > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rounds-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rounds-segment button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rounds-line);
+  background: var(--rounds-card);
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rounds-segment button.is-active {
+  background: rgba(134, 239, 172, 0.14);
+  border-color: rgba(134, 239, 172, 0.4);
+  color: #ffffff;
+}
+
+.rounds-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.rounds-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--rounds-card);
+  border: 1px solid var(--rounds-line);
+}
+
+.rounds-tile span {
+  font-size: 13px;
+  color: var(--rounds-muted);
+}
+
+.rounds-tile strong {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-tile.is-progress {
+  border-style: dashed;
+  gap: 8px;
+}
+
+.rounds-progress {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rounds-inset);
+}
+
+.rounds-progress > div {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rounds-accent);
+}
+
+.rounds-table-wrap,
+.rounds-shots-table-wrap,
+.rounds-scorecard-wrap {
+  overflow-x: auto;
+}
+
+.rounds-table-wrap {
+  padding: 0;
+}
+
+.rounds-table,
+.rounds-shots-table,
+.rounds-clubs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.rounds-table {
+  min-width: 860px;
+}
+
+.rounds-table th,
+.rounds-shots-table th,
+.rounds-clubs-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rounds-muted);
+  padding: 12px 16px 8px;
+}
+
+.rounds-table thead tr {
+  background: var(--rounds-inset);
+}
+
+.rounds-table td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--rounds-line);
+  vertical-align: middle;
+}
+
+.rounds-table tr.is-dim td {
+  color: var(--rounds-muted);
+}
+
+.rounds-table .is-num,
+.rounds-shots-table .is-num,
+.rounds-clubs-table .is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-row-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit !important;
+}
+
+.rounds-row-link strong {
+  font-size: 15px;
+}
+
+.rounds-row-link span {
+  font-size: 12px;
+}
+
+.rounds-row-link:hover strong {
+  text-decoration: underline;
+}
+
+.rounds-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--rounds-elevated);
+  color: var(--rounds-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rounds-table-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--rounds-line);
+  font-size: 13px;
+}
+
+.rounds-link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--rounds-accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.is-gain {
+  color: var(--rounds-gain);
+}
+
+.is-loss {
+  color: var(--rounds-loss);
+}
+
+.is-even {
+  color: var(--rounds-muted);
+}
+
+.is-gain-bar,
+.is-loss-bar {
+  display: block;
+  border-radius: 2px;
+}
+
+.is-gain-bar {
+  background: var(--rounds-gain);
+}
+
+.is-loss-bar {
+  background: var(--rounds-loss);
+}
+
+/* ---- detail ---- */
+
+.rounds-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rounds-back {
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.rounds-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.rounds-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--rounds-line);
+  font-size: 12px;
+  color: var(--rounds-secondary);
+  cursor: pointer;
+}
+
+.rounds-scoreblock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.rounds-scoreblock > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rounds-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rounds-muted);
+}
+
+.rounds-big {
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-big-ish {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.rounds-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rounds-cat p {
+  font-size: 13px;
+}
+
+.rounds-cat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.rounds-cat-top strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-diverge {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rounds-inset);
+}
+
+.rounds-diverge-half {
+  width: 50%;
+  display: flex;
+}
+
+.rounds-diverge-half.is-left {
+  justify-content: flex-end;
+}
+
+.rounds-diverge-half > div {
+  height: 8px;
+  border-radius: 2px;
+}
+
+.rounds-diverge-axis {
+  width: 2px;
+  background: #5b6b5c;
+}
+
+.rounds-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rounds-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rounds-section-head span {
+  font-size: 13px;
+}
+
+.rounds-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.rounds-highlight {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rounds-highlight:hover {
+  border-color: rgba(134, 239, 172, 0.5);
+}
+
+.rounds-highlight-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.rounds-highlight .rounds-muted {
+  font-size: 13px;
+}
+
+.rounds-open {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rounds-accent);
+}
+
+.rounds-scorecard {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(44px, 1fr));
+  gap: 4px;
+  min-width: 840px;
+}
+
+.rounds-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rounds-cell:hover {
+  background: var(--rounds-inset);
+}
+
+.rounds-cell.is-on {
+  background: var(--rounds-elevated);
+  border-color: rgba(134, 239, 172, 0.45);
+}
+
+.rounds-cell.is-incomplete {
+  opacity: 0.55;
+}
+
+.rounds-cell-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rounds-secondary);
+}
+
+.rounds-cell-par {
+  font-size: 11px;
+  color: var(--rounds-muted);
+}
+
+.rounds-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  font-weight: 600;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-mark.is-large {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  border-radius: 8px;
+  background: var(--rounds-inset);
+}
+
+.rounds-mark.is-birdie {
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.rounds-mark.is-eagle {
+  border: 3px double currentColor;
+  border-radius: 50%;
+}
+
+.rounds-mark.is-bogey {
+  border: 1.5px solid currentColor;
+}
+
+.rounds-mark.is-double {
+  border: 3px double currentColor;
+}
+
+.rounds-cell-bar {
+  display: flex;
+  justify-content: center;
+  width: 10px;
+  height: 26px;
+}
+
+.rounds-cell-bar.is-up {
+  align-items: flex-end;
+}
+
+.rounds-cell-bar.is-down {
+  align-items: flex-start;
+}
+
+.rounds-cell-bar > span {
+  width: 10px;
+}
+
+.rounds-cell-axis {
+  width: 18px;
+  height: 1px;
+  background: #5b6b5c;
+}
+
+.rounds-cell-sg {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-hole {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  scroll-margin-top: 16px;
+}
+
+.rounds-map-card {
+  flex: 0 1 360px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rounds-hole-side {
+  flex: 999 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rounds-map {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border-radius: 8px;
+  background: #18281c;
+}
+
+.rounds-map-axis {
+  stroke: #2c3f30;
+  stroke-dasharray: 4 4;
+}
+
+.rounds-map-shot {
+  stroke: #e7efe6;
+  stroke-width: 2;
+}
+
+.rounds-map-putt {
+  stroke: var(--rounds-accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.rounds-map-dot {
+  fill: var(--rounds-bg);
+  stroke: #e7efe6;
+  stroke-width: 2;
+}
+
+.rounds-map-tee {
+  fill: #e7efe6;
+}
+
+.rounds-map-pin {
+  fill: var(--rounds-loss);
+  stroke: var(--rounds-bg);
+  stroke-width: 2;
+}
+
+.rounds-map-scale line {
+  stroke: #cfd8cd;
+  stroke-width: 3;
+}
+
+.rounds-map-scale text {
+  fill: #cfd8cd;
+  font-size: 11px;
+}
+
+.rounds-shots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rounds-hole-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rounds-hole-title > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rounds-hole-title strong {
+  font-size: 17px;
+}
+
+.rounds-hole-title .rounds-muted {
+  font-size: 13px;
+}
+
+.rounds-shots-table {
+  min-width: 620px;
+}
+
+.rounds-shots-table th,
+.rounds-clubs-table th {
+  padding: 8px 8px 6px;
+}
+
+.rounds-shots-table td,
+.rounds-clubs-table td {
+  padding: 10px 8px;
+  border-top: 1px solid var(--rounds-line);
+  vertical-align: middle;
+}
+
+.rounds-sgcell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+}
+
+.rounds-sgbar {
+  display: flex;
+  width: 60px;
+}
+
+.rounds-sgbar.is-left {
+  justify-content: flex-end;
+}
+
+.rounds-sgbar > span {
+  height: 8px;
+}
+
+.rounds-sgaxis {
+  width: 2px;
+  height: 16px;
+  background: #5b6b5c;
+}
+
+.rounds-sgnum {
+  width: 52px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.rounds-caddie-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--rounds-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rounds-card.is-dashed p {
+  font-size: 13px;
+}
+
+.rounds-clubs-table {
+  min-width: 760px;
+}
+
+.rounds-strip {
+  position: relative;
+  height: 28px;
+  min-width: 200px;
+  border-radius: 6px;
+  background: var(--rounds-inset);
+}
+
+.rounds-strip-band {
+  position: absolute;
+  top: 6px;
+  height: 16px;
+  border-radius: 4px;
+  background: #2f4a36;
+}
+
+.rounds-strip-line {
+  position: absolute;
+  top: 2px;
+  width: 2px;
+  height: 24px;
+  background: var(--rounds-accent);
+}
+
+.rounds-strip-dot {
+  position: absolute;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--rounds-bg);
+  box-sizing: border-box;
+}
+
+.rounds-footnote {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.5;
+}
+
+.rounds-footnote strong {
+  color: var(--rounds-secondary);
+}
+
+@media (max-width: 640px) {
+  .rounds-big {
+    font-size: 32px;
+  }
+
+  .rounds-scoreblock {
+    gap: 20px;
+  }
+}
