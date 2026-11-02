@@ -275,7 +275,9 @@ class Runner:
         self.out = out
         self.shots_path = out / "shots.jsonl"
         self.spots_path = out / "spots.jsonl"
-        self.count = 0
+        # Continue numbering when resuming into the same folder, so evidence files never collide.
+        self.count = sum(1 for line in self.shots_path.open(encoding="utf-8") if line.strip()) \
+            if self.shots_path.exists() else 0
 
     def fire(self, spot: dict[str, Any], shot: dict[str, Any], extra: dict[str, Any] | None = None) -> dict[str, Any]:
         maybe_pause()
