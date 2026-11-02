@@ -28,3 +28,6 @@ helpers/*.spec
 nova-tester/
 
 release/
+
+__pycache__/
+*.pyc
