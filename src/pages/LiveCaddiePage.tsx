@@ -1257,6 +1257,10 @@ export default function LiveCaddiePage() {
               </div>
             ) : null}
             {/* Diagnostics remain available at /dev/aim-lab, without a primary Live Caddie header link. */}
+            <button type="button" className="live-diagnostics-toggle" onClick={toggleDiagnostics}
+              aria-pressed={showDiagnostics}>
+              {showDiagnostics ? 'Hide details' : 'Details'}
+            </button>
           </div>
         </header>
 
@@ -1295,9 +1299,6 @@ export default function LiveCaddiePage() {
                 : visualCaptureStatus === 'loading-ocr'
                   ? 'Loading Visual OCR…'
                   : 'Connect GSPro Visuals'}
-          </button>
-          <button type="button" className="live-diagnostics-toggle" onClick={toggleDiagnostics}>
-            {showDiagnostics ? 'Hide details' : 'Details'}
           </button>
           <div className="live-caddie-secondary-context">
             {showDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
