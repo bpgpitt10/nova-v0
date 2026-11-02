@@ -42,6 +42,7 @@ import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
+import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
@@ -589,13 +590,18 @@ export default function LiveCaddiePage() {
     const roiHeight = mini?.minimapRoiWindowPixels?.[3]
     if (!mini?.ballPixel || !Number.isFinite(roiHeight) || roiHeight! <= 0
       || mini.ballPixel.y < roiHeight! * 0.70) return null
-    const distance = readTeeBallPinDistanceYds({
+    const rulerDistance = readTeeBallPinDistanceYds({
       ballPixel: mini.ballPixel, pinPixel: mini.pinPixel,
       yardsPerPixel: mini.scale?.yardsPerPixel,
       waypointCount: mini.scale?.waypointCount,
       scaleStatus: mini.scale?.status, markerStatus: mini.status,
     })
-    if (distance == null) return null
+    if (rulerDistance == null) return null
+    // The ruler is pixel-measured (FarmLinks H1: 497 vs GSPro's 492.6). When
+    // GSPro's own round layout agrees with it, use GSPro's exact number.
+    const distance = refineTeeDistanceWithLayout(
+      rulerDistance, liveSnapshot.gsproLayoutTee, hole.holeNumber, hole.par,
+    ).distanceYds
     // Use the real imported OSM tee *polygon* when it is uniquely consistent
     // with the live GSPro ruler; only if not, project along the approximate
     // route-start-to-green axis. White remains White, not permanently Tee 3.
@@ -1286,7 +1292,9 @@ export default function LiveCaddiePage() {
           courseKey={liveSnapshot?.courseKey ?? null}
         />
 
-        {nativeVisualActive ? (
+        {/* Developer readout for the native aim pipeline; the floating
+            "Show where Looper would click" preview is the player-facing one. */}
+        {nativeVisualActive && showDiagnostics ? (
           <section className="live-native-aim-diagnostic" data-native-input-authorized="false">
             <div className="live-native-aim-diagnostic-heading">
               <span className="live-kicker">READ-ONLY NATIVE AIM CHECK</span>
