@@ -463,3 +463,10 @@
 .live-expected-shot-heading > span {
   font-size: 11px;
 }
+
+/* "15.8 yd left" must stay on one line: a little smaller than carry/total. */
+.live-expected-shot-block:not(.live-strategy-shot-block) .live-shot-stat-grid > div:nth-child(3) strong {
+  font-size: clamp(16px, 1.45vw, 22px);
+  white-space: nowrap;
+  align-self: end;
+}
