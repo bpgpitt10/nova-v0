@@ -97,6 +97,9 @@ jobs:
       - name: GSPro files through the Looper Companion (no folder grant)
         run: node tools/test-companion-gspro-files.mjs
 
+      - name: Course loading matches GSPro course names to OpenStreetMap
+        run: node tools/test-course-name-match.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest

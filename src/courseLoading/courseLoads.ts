@@ -162,12 +162,72 @@ export const searchGolfCourses = async (query: string): Promise<GolfCourseSearch
   return out
 }
 
-/** Best OpenStreetMap match for an installed GSPro course ("Name", "Town, ST"). */
-export const findGolfCourseFor = async (name: string, location: string) => {
-  const attempts = [location ? `${name} ${location}` : name, name]
-  for (const query of attempts) {
-    const results = await searchGolfCourses(query).catch(() => [])
-    if (results.length) return results[0]
+const MATCH_FILLER_WORDS = new Set([
+  'the', 'golf', 'club', 'course', 'courses', 'country', 'cc', 'gc', 'links', 'resort', 'at', 'and', 'of',
+])
+
+/** Name tokens for matching: punctuation dropped, so "Payne's" and "Paynes" agree. */
+const matchTokens = (name: string) =>
+  name.normalize('NFKD').toLowerCase()
+    .replace(/['\u2019`]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    .filter((word) => word && !MATCH_FILLER_WORDS.has(word))
+
+/** 1 = same name, ~0.8 = one name contains the other, otherwise word overlap. */
+export const courseNameMatchScore = (candidate: string, target: string) => {
+  const a = matchTokens(candidate)
+  const b = matchTokens(target)
+  if (!a.length || !b.length) return 0
+  const joinedA = a.join('')
+  const joinedB = b.join('')
+  if (joinedA === joinedB) return 1
+  if (joinedA.includes(joinedB) || joinedB.includes(joinedA)) return 0.8
+  const setA = new Set(a)
+  const shared = b.filter((word) => setA.has(word)).length
+  return shared / new Set([...a, ...b]).size
+}
+
+/** "Paynes Valley" -> also try "Payne's Valley", the way OpenStreetMap often spells it. */
+const nameVariants = (name: string) => {
+  const plain = name.replace(/[^\p{L}\p{N}'\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const possessive = plain.replace(/\b([A-Za-z]{3,})s\b/g, "$1's")
+  return [...new Set([name.trim(), plain, possessive].filter(Boolean))]
+}
+
+const NOMINATIM_SPACING_MS = 1100 // Nominatim usage policy: at most one request per second.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Best OpenStreetMap match for an installed GSPro course ("Name", "Town, ST").
+ * Tries the name with and without the location, a possessive spelling, then
+ * golf courses near the location, and keeps the closest name. A location-only
+ * result is accepted only when its name clearly matches.
+ */
+export const findGolfCourseFor = async (
+  name: string,
+  location: string,
+  { spacingMs = NOMINATIM_SPACING_MS }: { spacingMs?: number } = {},
+) => {
+  const queries: Array<{ query: string; byName: boolean }> = []
+  for (const variant of nameVariants(name)) {
+    if (location) queries.push({ query: `${variant} ${location}`, byName: true })
+    queries.push({ query: variant, byName: true })
   }
-  return null
+  if (location) queries.push({ query: `golf course ${location}`, byName: false })
+
+  let best: { result: GolfCourseSearchResult; score: number } | null = null
+  let fallback: GolfCourseSearchResult | null = null
+  for (const [index, { query, byName }] of queries.entries()) {
+    if (index > 0) await pause(spacingMs)
+    const results = await searchGolfCourses(query).catch(() => [])
+    for (const result of results) {
+      const score = courseNameMatchScore(result.name, name)
+      if (!best || score > best.score) best = { result, score }
+    }
+    if (byName && !fallback && results.length) fallback = results[0]
+    if (best && best.score >= 1) break
+  }
+  if (best && best.score >= 0.5) return best.result
+  return fallback
 }
