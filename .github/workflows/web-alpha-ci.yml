@@ -94,6 +94,9 @@ jobs:
       - name: Bag yardage book matches Club Detail (Stock/Pure, variants, mishit rate)
         run: node tools/test-bag-yardage-book.mjs
 
+      - name: Course loading matches GSPro course names to OpenStreetMap
+        run: node tools/test-course-name-match.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest

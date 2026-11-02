@@ -135,3 +135,13 @@
   color: #e8efe6;
   font-size: 15px;
 }
+
+.load-course-unlink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
