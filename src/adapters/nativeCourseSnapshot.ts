@@ -44,7 +44,8 @@ export type NativeSnapshotInputs = Readonly<{
   roundLayout?: Readonly<{ tee: NativeXYZ; pin: NativeXYZ }> | null
 }>
 
-const LAYOUT_PIN_MATCH_M = 1
+// GKD pin slots on one green sit metres apart; allow for cup vs flag base.
+const LAYOUT_PIN_MATCH_M = 2
 
 
 const LEGACY_TEE_MATCH_YDS = 10

@@ -37,6 +37,7 @@ import {
   type GsproStartingPositionObservation,
 } from './gsproStartingPosition'
 import { applyNativeCourseSnapshot } from './nativeCourseSnapshot'
+import { nativeHole } from '../courseGeometry/nativeGkd'
 import {
   createOutputLogLayoutReader,
   layoutTeeForHole,
@@ -92,6 +93,7 @@ const CURRENT_ROUND_FILE = 'currentRound.dat'
 const OUTPUT_LOG_FILE = 'output_log.txt'
 const liveTeeGeometryCache = new Map<string, Promise<CourseHoleGeometry>>()
 const readOutputLogLayout = createOutputLogLayoutReader()
+const outputLogLayoutScanSummary = () => readOutputLogLayout.summary()
 
 // A manual Start Round is a runtime override, not a property of one watcher
 // instance. Keep the quarantine above the connection lifecycle so route/hole
@@ -284,7 +286,21 @@ const applyNativeIfReady = async (
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
-    return next
+    if (!teeContext) return next
+    // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
+    const gkdHole = nativeHole(context.layout, snapshot.holeNumber)
+    const nearestPinM = layoutRow && gkdHole && gkdHole.pins.length > 0
+      ? Math.min(...gkdHole.pins.map((p) => Math.hypot(p.x - layoutRow.pinPos.x, p.z - layoutRow.pinPos.z)))
+      : null
+    const layoutNote = !layoutRows
+      ? `GSPro round layout: not found in output_log (${outputLogLayoutScanSummary()}).`
+      : !layoutRow
+        ? `GSPro round layout: ${layoutRows.length} holes, none for hole ${snapshot.holeNumber}.`
+        : `GSPro round layout: hole ${snapshot.holeNumber} tee->pin ${(Math.hypot(
+            layoutRow.pinPos.x - layoutRow.teePos.x, layoutRow.pinPos.z - layoutRow.teePos.z) * 1.0936133).toFixed(1)} yd;`
+          + ` nearest GKD pin ${nearestPinM == null ? 'n/a' : nearestPinM.toFixed(2) + ' m'}`
+          + `; pin ${next.pinSource === 'native-gkd' ? 'slot ' + pinSlot : 'unknown'}.`
+    return { ...next, warnings: [...next.warnings.filter((w) => !w.startsWith('GSPro round layout:')), layoutNote] }
   } catch (error) {
     console.warn('[Browser GSPro course state] Native positions unavailable; using existing positioning.', error)
     return snapshot

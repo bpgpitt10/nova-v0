@@ -1666,7 +1666,6 @@ export default function LiveCaddiePage() {
                   <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim'}</span>
                   {!isShotStrategy ? <span><i className="mean" />Expected finish</span> : null}
                   <span><i className="pin" />Pin</span>
-                  <span><b className="yardage">123</b>Yards to reach hazard</span>
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
@@ -1675,7 +1674,9 @@ export default function LiveCaddiePage() {
                   courseKey={liveSnapshot?.courseKey ?? null}
                   holeNumber={holeNumber}
                   ball={liveMatchesHole ? ball : null}
-                  pin={trustedLivePin ?? null}
+                  // Exact pin when known; before Shot 1 without one, the estimate
+                  // (green centre) still lets the preview run.
+                  pin={trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)}
                   target={isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null}
                   companionReady={companionStatus?.gspro.status === 'connected'}
                 />

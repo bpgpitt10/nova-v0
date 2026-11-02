@@ -65,26 +65,45 @@ type SliceableFile = Readonly<{
 }>
 
 const INITIAL_SCAN_BYTES = 8_000_000
+/** One full read when the layout is older than the tail (long sessions). */
+const FULL_SCAN_LIMIT_BYTES = 96_000_000
 const OVERLAP_BYTES = 64_000
 const HEAD_BYTES = 256
 
+type LayoutReader = ((file: SliceableFile | null) => Promise<GsproCourseLayoutRow[] | null>) & {
+  summary: () => string
+}
+
 /**
  * Keeps the latest layout in output_log.txt without re-reading a multi-MB log
- * on every poll: the first call scans the last 8 MB, later calls only the bytes
- * GSPro appended (a new round on the same course appends a new layout with the
- * new pins). A smaller file, or a different first line, is a new GSPro session.
+ * on every poll: the first call scans the last 8 MB (the whole log once if the
+ * layout is older), later calls only the bytes GSPro appended (a new round on
+ * the same course appends a new layout with the new pins). A smaller file, or a
+ * different first line, is a new GSPro session.
  */
-export const createOutputLogLayoutReader = () => {
-  let state: { size: number; head: string; rows: GsproCourseLayoutRow[] | null } | null = null
-  return async (file: SliceableFile | null): Promise<GsproCourseLayoutRow[] | null> => {
+export const createOutputLogLayoutReader = (): LayoutReader => {
+  let state: { size: number; head: string; rows: GsproCourseLayoutRow[] | null; scanned: number } | null = null
+  let lastFileSeen = false
+  const read = async (file: SliceableFile | null): Promise<GsproCourseLayoutRow[] | null> => {
+    lastFileSeen = Boolean(file)
     if (!file) return state?.rows ?? null
     const size = file.size
     if (state && size === state.size) return state.rows
     const head = await file.slice(0, Math.min(HEAD_BYTES, size)).text()
     const fresh = !state || size < state.size || head !== state.head
     const start = fresh ? Math.max(0, size - INITIAL_SCAN_BYTES) : Math.max(0, state!.size - OVERLAP_BYTES)
-    const found = parseLatestGsproCourseLayout(await file.slice(start, size).text())
-    state = { size, head, rows: found ?? (fresh ? null : state!.rows) }
+    let found = parseLatestGsproCourseLayout(await file.slice(start, size).text())
+    let scanned = size - start
+    if (!found && fresh && start > 0 && size <= FULL_SCAN_LIMIT_BYTES) {
+      found = parseLatestGsproCourseLayout(await file.slice(0, size).text())
+      scanned = size
+    }
+    state = { size, head, rows: found ?? (fresh ? null : state!.rows), scanned: fresh ? scanned : state!.scanned + scanned }
     return state.rows
   }
+  return Object.assign(read, {
+    summary: () => !lastFileSeen
+      ? 'output_log.txt not readable'
+      : `log ${((state?.size ?? 0) / 1e6).toFixed(1)} MB, scanned ${((state?.scanned ?? 0) / 1e6).toFixed(1)} MB`,
+  })
 }
