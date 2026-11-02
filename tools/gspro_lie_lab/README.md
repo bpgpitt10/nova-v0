@@ -47,8 +47,8 @@ python lie_lab.py discover --fire 3 --api-version 2
 
 It snapshots the GSPro folder, fires 3 shots, and lists every file that changed, with the new log lines and any new `GSPro.db` rows. What we're looking for:
 
-- `output_log.txt` gets `Penalty Surface` lines in practice mode: **go**.
-- `currentRound.dat` updates: we also get positions, carry and rest (needed for the slope checks).
+- The log gets `Penalty Surface` lines in practice mode: **go**. Release GSPro logs to `output_log.txt`; the Public Beta logs to `Player.log` in the same folder, with a different per-shot format (a "Shot Fired!" block with bounce physics, surface and elevation). The lab follows whichever log GSPro is writing and saves every shot's raw lines, so a beta format we don't parse yet still gets captured (it shows up under "log lines we don't parse yet").
+- `currentRound.dat` updates: per another developer, practice mode writes one entry per shot with the full flight, bounce and roll path, plus the start position and lie. That gives positions, carry and rest (needed for the slope checks), and possibly the lie angles too, which would make typing them optional.
 - A `GSPro.db` table gains a row per shot: pass it to `run` with `--db-table NAME`.
 
 If no penalty lines appear in practice mode, stop and send me `discovery-report.json`.
