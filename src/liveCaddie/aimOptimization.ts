@@ -371,7 +371,7 @@ export const evaluateAimLab = (
     const support = profileSet.club_support.find((item) => item.club === profile.club)
     const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null
     const {
-      planningTarget, decisionGoal, targetDistanceYds, aimOffsetsYds, launch,
+      planningTarget, decisionGoal, targetDistanceYds, aimOffsetsYds,
       modeled, altitudeAdjustment, modeledCarryYds,
     } = modelClubCarry({ profile, support, environment, target, ball, hole, ballSurface })
     const stockTotalYds =
