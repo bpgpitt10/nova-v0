@@ -88,6 +88,10 @@ class NativeWindTests(unittest.TestCase):
         self.assertEqual(wind._parse_split_wind("0 MPH", "")["directionDegrees"], 0)
         self.assertEqual(wind._parse_split_wind("12 MPH", "NN")["directionDegrees"], 0)
         self.assertEqual(wind._parse_split_wind("12 MPH", "NEE")["directionDegrees"], 45)
+        # GSPro 16-point labels: these used to read UNKNOWN (WNW) or 22.5 deg off (NNE).
+        self.assertEqual(wind._parse_split_wind("10 MPH", "WNW")["directionDegrees"], 292.5)
+        self.assertEqual(wind._parse_split_wind("10 MPH", "NNE")["directionDegrees"], 22.5)
+        self.assertEqual(wind._parse_split_wind("10 MPH", "E S E")["status"], "READY")
 
     def test_fail_closed_missing_black_or_malformed_native_pixels(self):
         for bad in [

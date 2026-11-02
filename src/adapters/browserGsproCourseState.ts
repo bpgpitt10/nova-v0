@@ -264,6 +264,8 @@ const applyNativeIfReady = async (
     if (selection.learnedLayoutName) rememberNativeLayout(context.courseKey, snapshot.roundId, selection.learnedLayoutName)
     // Legacy OSM tee picks ("Tee 3") carry no GSPro name; pass their map spot
     // so the overlay can use the GKD tee standing there.
+    const layoutRows = await loadGsproCourseLayout().catch(() => null)
+    const layoutRow = layoutRows?.[snapshot.holeNumber - 1] ?? null
     let legacyTeeLocal: CoursePointYds | null = null
     if (teeContext && normalizedTeeSet) {
       const geometry = await loadLiveTeeGeometry(selectedCourseId, snapshot.holeNumber).catch(() => null)
@@ -279,6 +281,7 @@ const applyNativeIfReady = async (
       normalizedTeeSet,
       rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
       legacyTeeLocal,
+      roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
     return next

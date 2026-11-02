@@ -1267,7 +1267,10 @@ export default function LiveCaddiePage() {
             {showDiagnostics ? 'Hide details' : 'Details'}
           </button>
           <div className="live-caddie-secondary-context">
-            {nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
+            {showDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
+            {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY'
+              ? <span>Wind OCR read: {nativeObservations.ocr.wind.rawText ?? nativeObservations.ocr.wind.note ?? 'nothing'}</span>
+              : null}
             <span>{shotContext}</span>
             {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
             {showDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}

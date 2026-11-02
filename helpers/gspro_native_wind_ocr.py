@@ -93,6 +93,10 @@ WIND_BINARY_THRESHOLD = 190
 WIND_CARDINAL_DEGREES = {
     "N": 0, "NE": 45, "E": 90, "SE": 135,
     "S": 180, "SW": 225, "W": 270, "NW": 315,
+    # 16-point labels. Without these, a WNW/ENE/ESE/WSW wind never read and
+    # NNE/NNW/SSE/SSW were collapsed to their 8-point neighbour (22.5 deg off).
+    "NNE": 22.5, "ENE": 67.5, "ESE": 112.5, "SSE": 157.5,
+    "SSW": 202.5, "WSW": 247.5, "WNW": 292.5, "NNW": 337.5,
 }
 
 
@@ -165,7 +169,8 @@ def _parse_split_wind(speed_text: str, direction_text: str) -> dict:
     compact_direction = re.sub(r"\s+", "", direction_text.upper())
     # Match browser duplicate-glyph tolerance without guessing cardinals.
     collapsed = re.sub(r"(.)\1+", r"\1", compact_direction)
-    cardinal = collapsed if collapsed in WIND_CARDINAL_DEGREES else None
+    letters = re.sub(r"[^NESW]", "", compact_direction)
+    cardinal = next((c for c in (compact_direction, letters, collapsed) if c in WIND_CARDINAL_DEGREES), None)
     calm = speed == 0
     direction = WIND_CARDINAL_DEGREES.get(cardinal)
     if calm and direction is None:

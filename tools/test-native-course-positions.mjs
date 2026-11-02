@@ -137,6 +137,32 @@ try {
   assert.equal(later.pinSlot, 1, 'slot from the latest shot end and GSPro distance')
   assert.equal(later.snapshot.ballSource, 'unavailable', 'after shot 1 the core owns ball placement')
 
+  // Before Shot 1 GSPro's round layout (output_log) names the day's pin and the
+  // tee, so the distance is exact rather than tee -> green centre. With two
+  // layouts unconfirmed, by-name tee lookup is off; the layout tee still places it.
+  const fromLayout = snap.applyNativeCourseSnapshot({
+    base, context: { ...context, layoutConfirmed: false }, holeNumber: 1, teeContext: true, preShotStart: null,
+    normalizedTeeSet: 'white', rememberedPinSlot: null,
+    roundLayout: { tee: pos(0, 20, 9), pin: pos(36.2, 150.1, 8) },
+  })
+  assert.equal(fromLayout.pinSlot, 2, 'layout pin -> Friday slot')
+  assert.equal(fromLayout.snapshot.pinSource, 'native-gkd')
+  assert.equal(fromLayout.snapshot.teePlacement, 'mapped')
+  assert.ok(Math.abs(fromLayout.snapshot.distanceToPinYds - Math.hypot(36, 130) * Y) < 1e-6,
+    `exact tee -> pin, got ${fromLayout.snapshot.distanceToPinYds}`)
+  const strayLayout = snap.applyNativeCourseSnapshot({
+    base, context: { ...context, layoutConfirmed: false }, holeNumber: 1, teeContext: true, preShotStart: null,
+    normalizedTeeSet: 'white', rememberedPinSlot: null,
+    roundLayout: { tee: pos(0, 20, 9), pin: pos(60, 170, 8) },
+  })
+  assert.equal(strayLayout.pinSlot, null, 'a layout pin that is not a GKD pin is ignored (other course or hole)')
+  assert.equal(strayLayout.snapshot.ballSource, 'unavailable', 'and its tee is not trusted either')
+  const observedWins = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart, normalizedTeeSet: 'black', rememberedPinSlot: null,
+    roundLayout: { tee: pos(0, 20, 9), pin: pos(36, 150, 8) },
+  })
+  assert.equal(observedWins.pinSlot, 1, "GSPro's own DistanceToPin beats the layout")
+
   // Legacy OSM tee pick ("Tee 2") maps to the GKD tee at that map spot.
   const whiteLocal = reg.nativeWorldToHoleLocalYds(synthReg, 1, { x: 0, z: 20 })
   const legacy = snap.applyNativeCourseSnapshot({
