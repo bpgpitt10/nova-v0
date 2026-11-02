@@ -43,6 +43,8 @@ export type LooperCompanionStatus = {
     roundRecorder?: boolean
     nativeCapture: boolean
     autoAim: boolean
+    /** One minimap click per explicit Arm (companion aim-click.1+). */
+    aimClick?: boolean
   }
 }
 
@@ -207,6 +209,60 @@ export const readLooperCompanionAimPreview = async (
     throw new Error('Looper Companion does not support the aim preview yet (update the companion).')
   }
   return data
+}
+
+export type LooperCompanionAimClick = {
+  service: 'looper-companion'
+  version: string
+  schemaVersion: 'looper-companion-aim-click-v1'
+  status: 'clicked' | 'blocked'
+  reason?: string
+  detail?: string
+  verified?: 'match' | 'mismatch' | 'marker-not-seen' | 'not-checked'
+  markerOffsetPx?: number
+}
+
+/**
+ * Auto Aim: ask the companion to click Looper's aim into GSPro's minimap.
+ * The ONLY input the companion performs, and only for an explicit Arm. POST
+ * with a JSON body and an intent header, so the browser preflights it and no
+ * other site can trigger it.
+ */
+export const sendLooperCompanionAimClick = async (
+  points: Readonly<{
+    ball: Readonly<{ x: number; z: number }>
+    pin: Readonly<{ x: number; z: number }>
+    target: Readonly<{ x: number; z: number }>
+  }>,
+  shotKey: string,
+  timeoutMs = 15000,
+): Promise<LooperCompanionAimClick> => {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(new Request(`${LOCAL_BASE}/aim-click`, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'X-Looper-Intent': 'aim-click' },
+      body: JSON.stringify({
+        ballX: points.ball.x, ballZ: points.ball.z,
+        pinX: points.pin.x, pinZ: points.pin.z,
+        targetX: points.target.x, targetZ: points.target.z,
+        shotKey,
+      }),
+      targetAddressSpace: 'loopback',
+    } as RequestInit & { targetAddressSpace: 'loopback' }))
+    if (!response.ok) throw new Error(`Looper Companion responded with HTTP ${response.status}.`)
+    const data = await response.json() as LooperCompanionAimClick
+    if (data?.service !== 'looper-companion' || data.schemaVersion !== 'looper-companion-aim-click-v1') {
+      throw new Error('Looper Companion does not support aiming yet (update the companion).')
+    }
+    return data
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 export type LooperCompanionInstalledCourse = {

@@ -18,6 +18,7 @@ import json
 import math
 import re
 import threading
+import time
 from urllib.parse import parse_qs, urlsplit
 
 import open_golf_coach_helper_lie_footer as lie_footer
@@ -25,7 +26,8 @@ import gspro_native_discovery as native
 import gspro_course_library as course_library  # read-only GKD/GKDalt access
 import gspro_native_aim as native_aim  # Auto Aim step 1: where Looper would click; no input
 import gspro_window_capture as capture
-import gspro_direct_click as native_click  # disabled native actuator; no HTTP callers
+import gspro_direct_click as native_click  # one-click actuator, used only by aim-click
+import gspro_aim_click as aim_click
 import gspro_minimap_pipeline as minimap_pipeline  # CV core; only capture_native_bgr is used by HTTP (aim preview)
 import gspro_live_observations as observations  # read-only diagnostic; no desktop input
 import gspro_native_lie_ocr as native_lie
@@ -33,12 +35,16 @@ import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop sc
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
 
 base = lie_footer.base
-COMPANION_VERSION = "autoaim-stage-c-preflight.1"
+COMPANION_VERSION = "aim-click.1"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
 COMPANION_COURSE_LAYOUTS_PATH = "/companion/v1/course-layouts"
 COMPANION_AIM_PREVIEW_PATH = "/companion/v1/aim-preview"
+# The one input endpoint: POST only, explicit intent header, allowlisted Origin.
+COMPANION_AIM_CLICK_PATH = "/companion/v1/aim-click"
+AIM_CLICK_INTENT = "aim-click"
+AIM_CLICK_MIN_INTERVAL_S = 1.5
 COMPANION_COURSE_LIBRARY_PATH = "/companion/v1/course-library"
 COMPANION_GSPRO_FILE_PATH = "/companion/v1/gspro-file"
 COMPANION_ROUND_RECORDS_PATH = "/companion/v1/round-records"
@@ -88,6 +94,8 @@ GSPRO_DATA_FOLDER = file_bridge.DataFolder(
     lambda: native.discover_gspro_data_directory(image_path=_gspro_image_path())
 )
 ROUND_RECORDER: "file_bridge.RoundRecorder | None" = None
+AIM_CLICK_LOCK = threading.Lock()
+LAST_AIM_CLICK_AT = float("-inf")
 
 
 def _query_int(query: dict, key: str) -> int | None:
@@ -135,15 +143,16 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         port = self.server.server_port
         return host in {f"127.0.0.1:{port}", f"localhost:{port}"}
 
-    def _send_companion(self, status_code: int, payload: dict) -> None:
+    def _send_companion(self, status_code: int, payload: dict, *,
+                        methods: str = "GET, OPTIONS", headers: str = "Content-Type") -> None:
         origin = self.headers.get("Origin")
         body = b"" if status_code == 204 else json.dumps(payload).encode("utf-8")
         self.send_response(status_code)
         if origin and is_allowed_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
-            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", methods)
+            self.send_header("Access-Control-Allow-Headers", headers)
             self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -180,7 +189,73 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
             self.headers.get("Origin")
         )
 
+    def _aim_click_authorized(self) -> bool:
+        """Stricter than reads: a real allowlisted Origin (no header-less
+        callers), JSON body, and the explicit intent header, which also forces
+        a CORS preflight so no other site can trigger a click."""
+        origin = self.headers.get("Origin")
+        return (
+            self._is_loopback_host()
+            and origin is not None
+            and is_allowed_origin(origin)
+            and (self.headers.get("Content-Type") or "").split(";")[0].strip() == "application/json"
+            and self.headers.get("X-Looper-Intent") == AIM_CLICK_INTENT
+        )
+
+    def _handle_aim_click(self) -> None:
+        if not self._aim_click_authorized():
+            self._send_companion(403, {"error": "origin_or_intent_forbidden"}, methods="POST, OPTIONS",
+                                 headers="Content-Type, X-Looper-Intent")
+            return
+        base_payload = {"service": "looper-companion", "version": COMPANION_VERSION,
+                        "schemaVersion": aim_click.SCHEMA_VERSION}
+
+        def reply(payload: dict) -> None:
+            self._send_companion(200, {**base_payload, **payload}, methods="POST, OPTIONS",
+                                 headers="Content-Type, X-Looper-Intent")
+
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if not 0 < length <= 4096:
+            reply({"status": "blocked", "reason": "invalid-request"})
+            return
+        try:
+            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            ball = (float(body["ballX"]), float(body["ballZ"]))
+            pin = (float(body["pinX"]), float(body["pinZ"]))
+            target = (float(body["targetX"]), float(body["targetZ"]))
+            shot_key = str(body["shotKey"])
+        except (ValueError, KeyError, TypeError, UnicodeDecodeError):
+            reply({"status": "blocked", "reason": "invalid-request"})
+            return
+        global LAST_AIM_CLICK_AT
+        with AIM_CLICK_LOCK:
+            if time.monotonic() - LAST_AIM_CLICK_AT < AIM_CLICK_MIN_INTERVAL_S:
+                reply({"status": "blocked", "reason": "too-soon"})
+                return
+            try:
+                result = aim_click.aim_click(
+                    ball_world=ball, pin_world=pin, target_world=target, shot_key=shot_key,
+                    find_window=native.find_gspro_window,
+                    capture=minimap_pipeline.capture_native_bgr,
+                    click=native_click.execute_prepared_click,
+                )
+            except Exception as error:  # never let an input request crash the server
+                result = {"status": "blocked", "reason": "unavailable", "detail": type(error).__name__}
+            if result.get("status") == "clicked":
+                LAST_AIM_CLICK_AT = time.monotonic()
+        reply(result)
+
     def do_OPTIONS(self) -> None:
+        if urlsplit(self.path).path == COMPANION_AIM_CLICK_PATH:
+            if not (self._is_loopback_host() and self.headers.get("Origin")
+                    and is_allowed_origin(self.headers.get("Origin"))):
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            self._send_companion(204, {}, methods="POST, OPTIONS", headers="Content-Type, X-Looper-Intent")
+            return
         if urlsplit(self.path).path in COMPANION_READ_PATHS:
             if not self._companion_authorized():
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
@@ -223,7 +298,10 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "gsproFiles": True,
                     "roundRecorder": ROUND_RECORDER is not None,
                     "nativeCapture": False,
+                    # Auto Aim as a background feature stays off; the only input
+                    # is one minimap click per explicit Arm (aim-click).
                     "autoAim": False,
+                    "aimClick": True,
                 },
             })
             return
@@ -380,6 +458,9 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         super().do_GET()
 
     def do_POST(self) -> None:
+        if urlsplit(self.path).path == COMPANION_AIM_CLICK_PATH:
+            self._handle_aim_click()
+            return
         if urlsplit(self.path).path.startswith("/companion/"):
             self._send_companion(405, {"error": "actuation_not_implemented"})
             return

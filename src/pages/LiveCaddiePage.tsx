@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   connectBrowserGsproCourseStateFolder,
   connectToBrowserGsproCourseState,
@@ -43,6 +43,7 @@ import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
+import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
@@ -261,6 +262,22 @@ export default function LiveCaddiePage() {
   const [showPracticeShots, setShowPracticeShots] = useState(false)
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
+  // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
+  const [previewClub, setPreviewClub] = useState<string | null>(null)
+  const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
+  const [aimResult, setAimResult] = useState<AimInGsproResult | null>(null)
+  const [armedAimKey, setArmedAimKey] = useState<string | null>(null)
+  const armTimerRef = useRef<number | null>(null)
+  const armRunRef = useRef(0)
+  const resetArm = () => {
+    if (armTimerRef.current != null) window.clearTimeout(armTimerRef.current)
+    armTimerRef.current = null
+    armRunRef.current += 1 // drop any aim result still in flight
+    setPreviewClub(null)
+    setArmPhase('idle')
+    setAimResult(null)
+    setArmedAimKey(null)
+  }
   const lastShotKeyRef = useRef<string | null>(null)
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
@@ -285,6 +302,7 @@ export default function LiveCaddiePage() {
       setLiveSnapshot(null)
       setManualShotLie(null)
       setArmedClub(null)
+      resetArm()
     }
     window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
     return () => window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
@@ -403,6 +421,7 @@ export default function LiveCaddiePage() {
         if (snapshot.latestShotKey) {
           if (lastShotKeyRef.current && lastShotKeyRef.current !== snapshot.latestShotKey) {
             setArmedClub(null)
+            resetArm()
           }
           lastShotKeyRef.current = snapshot.latestShotKey
         }
@@ -905,6 +924,7 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     if (isGreenSurface) {
       setArmedClub(null)
+      resetArm()
       setInspectedAimOffset(null)
     }
   }, [isGreenSurface])
@@ -1047,10 +1067,13 @@ export default function LiveCaddiePage() {
   // modeled partial-flight recommendation; tee-only clubs remain prohibited.
   const eligibleArmedClub = armedClub && clubEligibleForShot(armedClub, shotOrigin)
     ? armedClub : null
+  const eligiblePreviewClub = previewClub && clubEligibleForShot(previewClub, shotOrigin)
+    ? previewClub : null
+  const chosenClub = eligibleArmedClub ?? eligiblePreviewClub
   const viewedEvaluation = isShotStrategy
     ? shotStrategy?.referenceEvaluation ?? null
-    : eligibleArmedClub
-      ? evaluations.find((evaluation) => evaluation.club === eligibleArmedClub) ?? null
+    : chosenClub
+      ? evaluations.find((evaluation) => evaluation.club === chosenClub) ?? null
       : recommendation
   const viewedBestCandidate = viewedEvaluation?.bestCandidate ?? null
   const inspectedCandidate = !isShotStrategy && viewedEvaluation
@@ -1088,12 +1111,97 @@ export default function LiveCaddiePage() {
     : null
   const displayedClub = isShotStrategy
     ? eligibleArmedClub
-    : eligibleArmedClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
+    : chosenClub ?? viewedEvaluation?.club ?? recommendation?.club ?? null
   const isAlternateClub = Boolean(
-    !isShotStrategy && eligibleArmedClub && recommendation?.club
-      && eligibleArmedClub !== recommendation.club,
+    !isShotStrategy && chosenClub && recommendation?.club
+      && chosenClub !== recommendation.club,
   )
   const viewedClubRank = isShotStrategy ? null : viewedEvaluation?.decisionRank ?? null
+
+  // ---- Arm: a half-second fill (let go of the mouse), then aim in GSPro ----
+  const ARM_FILL_MS = 600
+  const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null
+  const aimPin = trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)
+  const currentAimKey = displayedClub && aimTarget
+    ? `${shotConditionsKey ?? 'shot'}|${displayedClub}|${aimTarget[0].toFixed(0)},${aimTarget[1].toFixed(0)}`
+    : null
+  const companionCanAim = Boolean(companionStatus?.capabilities?.aimClick)
+    && companionStatus?.gspro.status === 'connected'
+  const latestAimRef = useRef({
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+  })
+  latestAimRef.current = {
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+  }
+  const armedHere = armPhase === 'armed' && eligibleArmedClub != null && eligibleArmedClub === displayedClub
+  const aimChanged = armedHere && aimResult?.outcome !== 'not-sent'
+    && armedAimKey != null && currentAimKey != null && armedAimKey !== currentAimKey
+
+  const pressArm = () => {
+    if (isShotStrategy || !displayedClub) return
+    if (armPhase === 'aiming') return
+    if (armPhase === 'filling') {
+      if (armTimerRef.current != null) window.clearTimeout(armTimerRef.current)
+      armTimerRef.current = null
+      armRunRef.current += 1
+      setArmPhase(eligibleArmedClub ? 'armed' : 'idle')
+      return
+    }
+    const run = ++armRunRef.current
+    setArmPhase('filling')
+    armTimerRef.current = window.setTimeout(() => {
+      armTimerRef.current = null
+      if (run !== armRunRef.current) return
+      const snap = latestAimRef.current
+      if (!snap.club) { setArmPhase('idle'); return }
+      setArmedClub(snap.club)
+      setPreviewClub(snap.club)
+      setArmPhase('aiming')
+      const finish = (result: AimInGsproResult) => {
+        if (run !== armRunRef.current) return
+        setAimResult(result)
+        setArmedAimKey(snap.aimKey)
+        setArmPhase('armed')
+      }
+      if (!snap.companionCanAim) {
+        finish({
+          outcome: 'not-sent',
+          message: snap.companionConnected
+            ? 'Aim by hand: update the Looper Companion so Looper can aim for you.'
+            : 'Aim by hand: Looper Companion or GSPro not connected.',
+        })
+        return
+      }
+      void aimInGspro({
+        courseId: snap.courseId, courseKey: snap.courseKey, holeNumber: snap.holeNumber,
+        ball: snap.ball, pin: snap.pin, target: snap.target,
+        shotKey: snap.shotKey ?? `${snap.courseId}|${snap.holeNumber}`,
+      }).then(finish)
+    }, ARM_FILL_MS)
+  }
+
+  const pickClub = (club: string) => {
+    if (isShotStrategy) { setArmedClub(club); return }
+    setPreviewClub(club)
+    if (eligibleArmedClub && eligibleArmedClub !== club) {
+      if (armTimerRef.current != null) window.clearTimeout(armTimerRef.current)
+      armTimerRef.current = null
+      armRunRef.current += 1
+      setArmedClub(null)
+      setArmPhase('idle')
+      setAimResult(null)
+      setArmedAimKey(null)
+    }
+  }
+
+  const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED IN GSPRO'
+    : aimResult?.outcome === 'clicked-unverified' ? 'AIM SENT TO GSPRO'
+      : aimResult?.outcome === 'clicked-mismatch' ? 'CHECK AIM IN GSPRO'
+        : 'AIM BY HAND'
   const aimDescriptor = !isShotStrategy && hole && viewedEvaluation && inspectedCandidate
     ? buildAimDescriptor({
         hole,
@@ -1130,6 +1238,7 @@ export default function LiveCaddiePage() {
   // A new physical shot must never inherit a previous club's "armed" state.
   useEffect(() => {
     setArmedClub(null)
+    resetArm()
   }, [courseId, holeNumber, liveSnapshot?.roundId, liveSnapshot?.nextShotNumber])
 
   const connectGspro = async () => {
@@ -1215,6 +1324,7 @@ export default function LiveCaddiePage() {
     setLiveSnapshot(null)
     setNativeObservations(null)
     setArmedClub(null)
+    resetArm()
     lastShotKeyRef.current = null
   }
 
@@ -1621,20 +1731,32 @@ export default function LiveCaddiePage() {
 
                   <button
                     type="button"
-                    className={`live-arm-recommendation${eligibleArmedClub && eligibleArmedClub === displayedClub ? ' armed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    className={`live-arm-recommendation${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    style={{ '--arm-fill-ms': `${ARM_FILL_MS}ms` } as CSSProperties}
                     disabled={isShotStrategy || !displayedClub}
-                    onClick={() => { if (!isShotStrategy && displayedClub) setArmedClub(displayedClub) }}
+                    onClick={pressArm}
                   >
-                    {isShotStrategy
-                      ? eligibleArmedClub ? `${eligibleArmedClub} PLAYER SELECTION` : 'CHOOSE ACTUAL CLUB BELOW'
-                      : eligibleArmedClub && eligibleArmedClub === displayedClub
-                        ? `${displayedClub} ARMED FOR NEXT SHOT`
-                        : displayedClub
-                          ? `HITTING ${displayedClub} · TAP TO ARM`
-                          : evaluationPending
-                            ? 'CALCULATING RECOMMENDATION…'
-                            : 'WAITING FOR RECOMMENDATION'}
+                    <span className="live-arm-label">
+                      {isShotStrategy
+                        ? eligibleArmedClub ? `${eligibleArmedClub} PLAYER SELECTION` : 'CHOOSE ACTUAL CLUB BELOW'
+                        : armPhase === 'filling'
+                          ? `ARMING ${displayedClub}… TAP TO CANCEL`
+                          : armPhase === 'aiming'
+                            ? `${displayedClub} ARMED · AIMING IN GSPRO…`
+                            : aimChanged
+                              ? `${displayedClub} ARMED · AIM CHANGED, TAP TO RE-AIM`
+                              : armedHere
+                                ? `${displayedClub} ARMED · ${aimShort}`
+                                : displayedClub
+                                  ? `HITTING ${displayedClub} · TAP TO ARM`
+                                  : evaluationPending
+                                    ? 'CALCULATING RECOMMENDATION…'
+                                    : 'WAITING FOR RECOMMENDATION'}
+                    </span>
                   </button>
+                  {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
+                    <p className="live-arm-note">{aimResult.message}</p>
+                  ) : null}
                 </article>
 
                 {!isShotStrategy ? <article className="live-outcomes-card">
@@ -1731,7 +1853,7 @@ export default function LiveCaddiePage() {
                   <span className="live-kicker">ACTUAL CLUB</span>
                   <strong>{eligibleArmedClub ? `${eligibleArmedClub} armed for the next physical shot` : 'Tap the club you are actually hitting'}</strong>
                 </div>
-                {eligibleArmedClub ? <button type="button" onClick={() => setArmedClub(null)}>Clear</button> : null}
+                {eligibleArmedClub ? <button type="button" onClick={() => { setArmedClub(null); resetArm() }}>Clear</button> : null}
               </div>
               <div className="live-club-strip">
                 {bagClubs.map((club) => {
@@ -1743,8 +1865,8 @@ export default function LiveCaddiePage() {
                       key={club}
                       disabled={!eligible}
                       title={!eligible ? 'Tee-only club: excluded from all non-tee recommendations' : undefined}
-                      className={`${!eligible ? 'ineligible ' : ''}${eligibleArmedClub === club ? 'armed ' : ''}${!isShotStrategy && recommendation?.club === club ? 'recommended' : ''}`}
-                      onClick={() => { if (eligible) setArmedClub(club) }}
+                      className={`${!eligible ? 'ineligible ' : ''}${eligibleArmedClub === club ? 'armed ' : ''}${!eligibleArmedClub && eligiblePreviewClub === club ? 'previewing ' : ''}${!isShotStrategy && recommendation?.club === club ? 'recommended' : ''}`}
+                      onClick={() => { if (eligible) pickClub(club) }}
                     >
                       <strong>{club}</strong>
                       {!eligible
@@ -1760,7 +1882,7 @@ export default function LiveCaddiePage() {
               </div>
               <p>{isShotStrategy
                 ? 'Looper is not choosing a club at this distance. Selecting a club records what you intend to hit without assigning it full-shot dispersion or outcome probabilities.'
-                : "Selecting a club arms it for the next GSPro shot and switches the screen to that club's best modeled line. REC remains Looper's preferred club."}</p>
+                : "Tap a club to see its best line. Press Arm to commit: Looper aims it in GSPro. REC remains Looper's preferred club."}</p>
             </section>
           </>
         )}

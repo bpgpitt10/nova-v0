@@ -31,6 +31,8 @@ on:
       - "helpers/minimap_registration.py"
       - "tests/test_gspro_companion_waypoint.py"
       - "helpers/gspro_direct_click.py"
+      - "helpers/gspro_aim_click.py"
+      - "tests/test_gspro_companion_aim_click.py"
       - "helpers/gspro_minimap_markers.py"
       - "helpers/gspro_minimap_pipeline.py"
       - "helpers/auto_aim_transform.py"
@@ -140,7 +142,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-c-preflight.1") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.1") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
@@ -170,6 +172,15 @@ jobs:
             $preview = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/aim-preview?ballX=0&ballZ=0&pinX=0&pinZ=100&targetX=0&targetZ=50" -Headers $headers -TimeoutSec 10
             if ($preview.schemaVersion -ne "looper-companion-aim-preview-v1" -or $preview.input -ne "none" -or $preview.status -ne "gspro-not-connected") {
               throw "Aim preview must answer gspro-not-connected without GSPro: $($preview | ConvertTo-Json -Compress)"
+            }
+            if ($companion.capabilities.aimClick -ne $true -or $companion.capabilities.autoAim -ne $false) {
+              throw "Aim click capability missing (or background auto aim unexpectedly on)."
+            }
+            $clickHeaders = @{ Origin = "https://thelooper.golf"; "X-Looper-Intent" = "aim-click" }
+            $clickBody = '{"ballX":0,"ballZ":0,"pinX":0,"pinZ":100,"targetX":0,"targetZ":50,"shotKey":"smoke"}'
+            $click = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8787/companion/v1/aim-click" -Headers $clickHeaders -ContentType "application/json" -Body $clickBody -TimeoutSec 10
+            if ($click.schemaVersion -ne "looper-companion-aim-click-v1" -or $click.status -ne "blocked" -or $click.reason -ne "gspro-not-connected") {
+              throw "Aim click must refuse without GSPro: $($click | ConvertTo-Json -Compress)"
             }
             if ($companion.capabilities.courseLibrary -ne $true) {
               throw "Course library capability missing."
