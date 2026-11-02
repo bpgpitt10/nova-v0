@@ -25,6 +25,10 @@ on:
       - "helpers/gspro_native_wind_ocr.py"
       - "tests/fixtures/gspro_wind_8mph_se_band.png"
       - "tests/fixtures/gspro_lie_2down_09right_footer.png"
+      - "tests/fixtures/gspro_hud_shot1_4926.png"
+      - "tests/fixtures/gspro_hud_shot3_2830.png"
+      - "helpers/gspro_native_hud_ocr.py"
+      - "tests/test_gspro_companion_hud.py"
       - "helpers/install_looper_companion.ps1"
       - "helpers/gspro_native_lie_ocr.py"
       - "helpers/gspro_companion_minimap_calibration.py"
@@ -147,7 +151,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.4") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.5") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {

@@ -20,6 +20,7 @@ import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_native_wind_ocr as wind_ocr
 import gspro_native_lie_ocr as lie_ocr
+import gspro_native_hud_ocr as hud_ocr
 import gspro_companion_minimap_calibration as waypoint_diagnostics
 from waypoint_scale import Point, resolve_minimap_scale
 
@@ -315,6 +316,7 @@ def collect_observations(*, include_ocr=True, include_waypoints=True):
     minimap_ms = round((time.perf_counter() - minimap_started) * 1000, 2)
     wind_ms = 0.0
     lie_ms = 0.0
+    hud_ms = 0.0
     result = {
         "service": "looper-companion",
         "schemaVersion": "native-observations-v1",
@@ -348,6 +350,14 @@ def collect_observations(*, include_ocr=True, include_waypoints=True):
                 "note": type(error).__name__}
         finally:
             wind_ms = round((time.perf_counter() - wind_started) * 1000, 2)
+        hud_started = time.perf_counter()
+        try:
+            result["ocr"]["hud"] = hud_ocr.read_hud_from_capture(frame_report)
+        except Exception as error:
+            result["ocr"]["hud"] = {"status": "UNAVAILABLE", "observedAt": now(),
+                                    "note": type(error).__name__}
+        finally:
+            hud_ms = round((time.perf_counter() - hud_started) * 1000, 2)
         # Lie now reads the same GSPro HWND frame as wind and minimap.
         lie_started = time.perf_counter()
         try:
@@ -378,6 +388,7 @@ def collect_observations(*, include_ocr=True, include_waypoints=True):
         "zoomRegistration": minimap.get("timingMs", {}).get("zoomRegistration"),
         "windOcr": wind_ms,
         "lieOcr": lie_ms,
+        "hudOcr": hud_ms,
         "total": round((time.perf_counter() - started) * 1000, 2),
     }
     return result

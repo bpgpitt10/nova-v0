@@ -106,6 +106,9 @@ jobs:
       - name: Outcome tiles add to 100 (off-map landings count as Trouble)
         run: node tools/test-outcome-tiles.mjs
 
+      - name: Parallel club evaluation ranks exactly like one worker
+        run: node tools/test-parallel-club-evaluation.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest

@@ -44,6 +44,8 @@ import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
+import { pinFromHudDistance } from '../liveCaddie/hudPin'
+import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
@@ -619,11 +621,14 @@ export default function LiveCaddiePage() {
       waypointCount: mini.scale?.waypointCount,
       scaleStatus: mini.scale?.status, markerStatus: mini.status,
     })
-    if (rulerDistance == null) return null
-    // The ruler is pixel-measured (FarmLinks H1: 497 vs GSPro's 492.6). When
-    // GSPro's own round layout agrees with it, use GSPro's exact number.
-    const distance = refineTeeDistanceWithLayout(
-      rulerDistance, liveSnapshot.gsproLayoutTee, hole.holeNumber, hole.par,
+    // GSPro's own player box ("Shot 1  492.6 YDS") is exact; the ruler is
+    // pixel-measured (FarmLinks H1: 497 vs 492.6).
+    const hud = nativeObservations.ocr?.hud
+    const hudYds = hud?.status === 'READY' && hud.shotNumber === 1 && hud.distanceToPinYds != null
+      && hud.distanceToPinYds > 45 ? hud.distanceToPinYds : null
+    if (rulerDistance == null && hudYds == null) return null
+    const distance = hudYds ?? refineTeeDistanceWithLayout(
+      rulerDistance!, liveSnapshot.gsproLayoutTee, hole.holeNumber, hole.par,
     ).distanceYds
     // Use the real imported OSM tee *polygon* when it is uniquely consistent
     // with the live GSPro ruler; only if not, project along the approximate
@@ -755,10 +760,31 @@ export default function LiveCaddiePage() {
   const effectiveDistanceToPinYds = liveMatchesHole
     ? firstTeeDisplay.distanceToPinYds
     : null
+  // GSPro's own "Shot 1  492.6 YDS" before the first shot (companion HUD read).
+  const hudReading = nativeObservations?.ocr?.hud?.status === 'READY'
+    && Math.abs(Date.now() - Date.parse(nativeObservations.observedAt ?? '')) < 30_000
+    ? nativeObservations.ocr.hud : null
+  const hudShotOneYds = liveMatchesHole && liveSnapshot?.nextShotNumber === 1
+    && hudReading?.shotNumber === 1 && hudReading.distanceToPinYds != null
+    ? hudReading.distanceToPinYds : null
+  const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
+    && liveSnapshot.ballLocalYds && hudShotOneYds != null
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
+  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds } | null>(null)
+  useEffect(() => {
+    if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
+    let alive = true
+    void pinFromHudDistance({
+      courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
+      roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
+    }).then((found) => { if (alive && found) setHudPin({ key: hudPinKey, pinLocal: found.pinLocal }) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hudPinKey])
   const trustedLivePin = liveMatchesHole
     && liveSnapshot != null && liveSnapshot.pinSource !== 'unavailable'
     ? liveSnapshot.pinLocalYds ?? null
-    : null
+    : hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null
   const pinEstimate = hole
     ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
     : null
@@ -972,7 +998,7 @@ export default function LiveCaddiePage() {
   // How long each step took for this shot (shown under Details).
   const shotTimingRef = useRef<{ key: string | null; shotAt: number; conditionsAt: number | null; recStartAt: number | null; recorded: boolean }>(
     { key: null, shotAt: 0, conditionsAt: null, recStartAt: null, recorded: false })
-  const [recTiming, setRecTiming] = useState<{ conditionsMs: number | null; recMs: number; totalMs: number } | null>(null)
+  const [recTiming, setRecTiming] = useState<{ conditionsMs: number | null; recMs: number; totalMs: number; workers: number } | null>(null)
   if (shotConditionsKey && shotTimingRef.current.key !== shotConditionsKey) {
     shotTimingRef.current = { key: shotConditionsKey, shotAt: performance.now(), conditionsAt: null, recStartAt: null, recorded: false }
   }
@@ -997,46 +1023,50 @@ export default function LiveCaddiePage() {
     let cancelled = false
     const recStartAt = performance.now()
     shotTimingRef.current.recStartAt = recStartAt
-    const worker = new Worker(new URL('./LiveCaddieWorker.ts', import.meta.url), {
-      type: 'module',
-    })
     setEvaluations([])
     setEvaluationError(null)
     setEvaluationPending(true)
 
-    worker.onmessage = (event: MessageEvent<LiveCaddieWorkerMessage>) => {
+    // Each club's evaluation is independent, so the bag is split across a few
+    // workers (one per spare core, up to 4) and ranked once here. Same result
+    // as one worker, a fraction of the wait (5.9 s single-threaded on the sim).
+    const clubIds = Array.from(new Set(sessions.flatMap((session) => session.shots.map((shot) => shot.club))))
+    const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2
+    const parallelism = Math.max(1, Math.min(4, cores - 1, clubIds.length))
+    const groups: (string[] | undefined)[] = parallelism > 1
+      ? Array.from({ length: parallelism }, (_, g) => clubIds.filter((_, i) => i % parallelism === g))
+      : [undefined]
+    const workers = groups.map(() => new Worker(new URL('./LiveCaddieWorker.ts', import.meta.url), {
+      type: 'module',
+    }))
+    const parts: ClubAimEvaluation[][] = []
+    let remaining = groups.length
+    const stopAll = () => workers.forEach((worker) => worker.terminate())
+    const fail = (error: string) => {
       if (cancelled) return
-      const message = event.data
-      if (message.type === 'success') {
-        setEvaluations(message.evaluations)
-        setEvaluationError(null)
-        const done = performance.now()
-        const t = shotTimingRef.current
-        // The first recommendation for a shot is the one that matters; later
-        // recalculations (another aim inspected) don't reset the clock.
-        if (!t.recorded) setRecTiming({
-          conditionsMs: t.conditionsAt != null ? t.conditionsAt - t.shotAt : null,
-          recMs: done - recStartAt,
-          totalMs: done - t.shotAt,
-        })
-        t.recorded = true
-      } else {
-        setEvaluations([])
-        setEvaluationError(message.error)
-      }
-      setEvaluationPending(false)
-      worker.terminate()
-    }
-
-    worker.onerror = (event) => {
-      if (cancelled) return
+      cancelled = true
+      stopAll()
       setEvaluations([])
-      setEvaluationError(event.message || 'Live Caddie decision worker failed.')
+      setEvaluationError(error)
       setEvaluationPending(false)
-      worker.terminate()
     }
-
-    worker.postMessage({
+    const finish = (evaluations: ClubAimEvaluation[]) => {
+      setEvaluations(evaluations)
+      setEvaluationError(null)
+      const done = performance.now()
+      const t = shotTimingRef.current
+      // The first recommendation for a shot is the one that matters; later
+      // recalculations (another aim inspected) don't reset the clock.
+      if (!t.recorded) setRecTiming({
+        conditionsMs: t.conditionsAt != null ? t.conditionsAt - t.shotAt : null,
+        recMs: done - recStartAt,
+        totalMs: done - t.shotAt,
+        workers: groups.length,
+      })
+      t.recorded = true
+      setEvaluationPending(false)
+    }
+    const request = {
       learnedSurfaceFactors: learnedSurfaceFactors(),
       sessions,
       hole,
@@ -1059,11 +1089,25 @@ export default function LiveCaddiePage() {
           ? greenDetail : null,
       },
       nowMs: Date.now(),
+    }
+    workers.forEach((worker, index) => {
+      worker.onmessage = (event: MessageEvent<LiveCaddieWorkerMessage>) => {
+        if (cancelled) return
+        const message = event.data
+        worker.terminate()
+        if (message.type !== 'success') { fail(message.error); return }
+        parts[index] = message.evaluations
+        remaining -= 1
+        if (remaining > 0) return
+        finish(groups[0] ? rerankClubs(parts.flat()) : parts[0])
+      }
+      worker.onerror = (event) => fail(event.message || 'Live Caddie decision worker failed.')
+      worker.postMessage({ ...request, onlyClubs: groups[index] })
     })
 
     return () => {
       cancelled = true
-      worker.terminate()
+      stopAll()
     }
   }, [
     sessions,
@@ -1637,7 +1681,7 @@ export default function LiveCaddiePage() {
         {showDiagnostics && recTiming ? (
           <div className="live-caddie-alert">
             Timing this shot: {recTiming.conditionsMs != null ? `wind & lie ${(recTiming.conditionsMs / 1000).toFixed(1)} s · ` : ''}
-            recommendation {(recTiming.recMs / 1000).toFixed(1)} s · total {(recTiming.totalMs / 1000).toFixed(1)} s
+            recommendation {(recTiming.recMs / 1000).toFixed(1)} s ({recTiming.workers} worker{recTiming.workers === 1 ? '' : 's'}) · total {(recTiming.totalMs / 1000).toFixed(1)} s
             {nativeObservations?.timingMs ? ` · last GSPro read ${((nativeObservations.timingMs.total ?? 0) / 1000).toFixed(1)} s`
               + ` (capture ${((nativeObservations.timingMs.nativeCapture ?? 0) / 1000).toFixed(1)}`
               + `, waypoints ${((nativeObservations.timingMs.waypointOcr ?? 0) / 1000).toFixed(1)}`

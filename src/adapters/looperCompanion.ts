@@ -369,6 +369,14 @@ export type LooperCompanionLiveObservations = {
   ocr?: {
     wind?: import('./gsproWindObservation').GsproWindOcrPayload
     lie?: import('./gsproLieObservation').GsproLieOcrPayload
+    /** GSPro player box: 'Shot 1  492.6 YDS' (companion aim-click.5+). */
+    hud?: {
+      status: 'READY' | 'UNKNOWN' | 'UNAVAILABLE'
+      shotNumber: number | null
+      distanceToPinYds: number | null
+      rawText?: string | null
+      note?: string | null
+    }
   }
   capabilities?: { autoAim: false }
 }
