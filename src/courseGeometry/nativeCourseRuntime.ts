@@ -376,11 +376,17 @@ const registerInBrowser = async (
   const { fitRegistrationFromPackage } = await import('./nativeRegistrationAuto')
   const result = await fitRegistrationFromPackage({ courseId, gsproCourseKey: courseKey, layout: main.layout, packageJson })
   if (!result.registration) {
+    const g = result.greenSimilarity
+    const m = (v: number) => Number.isFinite(v) ? `${v.toFixed(2)} m` : 'n/a'
+    // Numbers to diagnose the failure from a screenshot.
+    const detail = ` [${courseKey}: ${result.greensChecked} greens`
+      + (g ? `; greens rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
+      + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points]`
     return {
       registration: null,
-      reason: result.fit.grade === 'C'
+      reason: (result.fit.grade === 'C'
         ? 'GSPro course does not match the map closely enough'
-        : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`,
+        : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
     }
   }
   return { registration: result.registration, reason: `grade ${result.fit.grade}` }
