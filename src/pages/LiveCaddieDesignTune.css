@@ -435,3 +435,31 @@
     white-space: normal;
   }
 }
+
+/* Expected shot: carry / total / finish are the numbers a golfer looks for
+   first, so they read larger than the outcome percentages below them. */
+.live-expected-shot-block:not(.live-strategy-shot-block) .live-shot-stat-grid {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.live-expected-shot-block:not(.live-strategy-shot-block) .live-shot-stat-grid > div {
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.live-expected-shot-block:not(.live-strategy-shot-block) .live-shot-stat-grid span {
+  font-size: 10px;
+}
+
+.live-expected-shot-block:not(.live-strategy-shot-block) .live-shot-stat-grid strong {
+  font-size: clamp(20px, 1.9vw, 28px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  white-space: normal;
+}
+
+.live-expected-shot-heading > span {
+  font-size: 11px;
+}
