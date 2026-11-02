@@ -23,6 +23,7 @@ on:
       - "helpers/gspro_window_capture.py"
       - "helpers/gspro_live_observations.py"
       - "helpers/gspro_native_wind_ocr.py"
+      - "tests/fixtures/gspro_wind_8mph_se_band.png"
       - "helpers/install_looper_companion.ps1"
       - "helpers/gspro_native_lie_ocr.py"
       - "helpers/gspro_companion_minimap_calibration.py"
@@ -107,6 +108,9 @@ jobs:
       - name: Test Stage C read-only registration, safety, discovery and handshake
         shell: pwsh
         run: |
+          # The pinned portable OCR lets the real FarmLinks wind-box fixture run.
+          $env:PATH = "$((Resolve-Path portable-ocr).Path);$env:PATH"
+          $env:TESSDATA_PREFIX = "$((Resolve-Path portable-ocr/tessdata).Path)"
           python -m unittest discover -s tests -p "test_*companion*.py" -v
 
       - name: Build Looper Companion
@@ -142,7 +146,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.1") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.2") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {

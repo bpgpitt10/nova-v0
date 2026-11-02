@@ -35,7 +35,7 @@ import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop sc
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
 
 base = lie_footer.base
-COMPANION_VERSION = "aim-click.1"
+COMPANION_VERSION = "aim-click.2"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"

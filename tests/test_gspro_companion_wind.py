@@ -33,17 +33,21 @@ class NativeWindTests(unittest.TestCase):
         calls = []
 
         def stub(png, *, psm, whitelist):
-            self.assertIn(psm, (7, 8))
             decoded = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-            calls.append((decoded.shape, np.unique(decoded).tolist()))
-            return {"status": "ok", "rawText": "8 MPH" if len(calls) == 1 else "W"}
+            calls.append(("speed" if "0123456789" in whitelist else "direction", psm, decoded))
+            return {"status": "ok", "rawText": "8 MPH" if "0123456789" in whitelist else "W"}
 
         with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=stub):
             result = wind.read_wind_from_capture(image)
 
-        # 800x500 scales to pixel ROIs 26x13 and 16x13, then 8x.
-        self.assertEqual([x[0] for x in calls], [(104, 208), (104, 128)])
-        self.assertTrue(all(set(x[1]).issubset({0, 255}) for x in calls))
+        # Speed read at three heights (psm 7); direction until two reads agree (psm 8).
+        self.assertEqual([(k, p) for k, p, _ in calls],
+                         [("speed", 7)] * 3 + [("direction", 8)] * 2)
+        for _, _, decoded in calls:
+            self.assertTrue(set(np.unique(decoded).tolist()).issubset({0, 255}))
+            pad = wind.OCR_PAD_PX
+            self.assertTrue((decoded[:pad] == 255).all() and (decoded[:, :pad] == 255).all(),
+                            "white margin around the text")
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["speedMph"], 8.0)
         self.assertEqual(result["directionDegrees"], 270)
@@ -55,7 +59,8 @@ class NativeWindTests(unittest.TestCase):
         self.assertNotIn("_private_bgra", result)
 
     def test_4k_geometry_recovers_precise_browser_rois(self):
-        # Browser production geometry x .444/.532 and y .011 at 3840x2160.
+        # No wind box found (all black): browser production geometry
+        # x .444/.532 and y .011 at 3840x2160, 8x, plus the white margin.
         frame = np.zeros((2160, 3840, 4), dtype=np.uint8)
         frame[:, :, 3] = 255
         report = {"status": "captured", "quality": {"nonblank": True},
@@ -66,8 +71,33 @@ class NativeWindTests(unittest.TestCase):
             "x": 1704, "y": 23, "width": 126, "height": 56})
         self.assertEqual(regions["direction"][1], {
             "x": 2042, "y": 23, "width": 76, "height": 56})
-        self.assertEqual(regions["speed"][0].shape, (448, 1008))
-        self.assertEqual(regions["direction"][0].shape, (448, 608))
+        pad = 2 * wind.OCR_PAD_PX
+        self.assertEqual(regions["speed"][0].shape, (448 + pad, 1008 + pad))
+        self.assertEqual(regions["direction"][0].shape, (448 + pad, 608 + pad))
+        # Scaled to a target height for the voting reads.
+        sized = wind.extract_wind_hud_regions(report, target_height=100)
+        self.assertEqual(sized["speed"][0].shape[0], 100 + pad)
+
+    def test_real_farmlinks_wind_box_8mph_se(self):
+        # Brian's screenshot (3776x2138): the old 8x crops read "0 MP".
+        bundle = wind._tesseract_bundle()
+        if bundle is None:
+            self.skipTest("tesseract not installed")
+        import subprocess
+        langs = subprocess.run([str(bundle[0]), "--list-langs"], capture_output=True, text=True)
+        if "eng" not in (langs.stdout + langs.stderr):
+            self.skipTest("tesseract has no English data here")
+        band = cv2.imread(str(Path(__file__).resolve().parent / "fixtures" / "gspro_wind_8mph_se_band.png"))
+        frame = np.full((2138, 3776, 3), 150, np.uint8)
+        frame[0:band.shape[0], 1510:1510 + band.shape[1]] = band
+        bgra = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)
+        report = {"status": "captured", "quality": {"nonblank": True}, "method": "PrintWindow",
+                  "windowWidth": 3776, "windowHeight": 2138, "_private_bgra": bgra.tobytes()}
+        crops = wind._measured_wind_crops(frame)
+        self.assertIsNotNone(crops, "wind box edges found")
+        result = wind.read_wind_from_capture(report)
+        self.assertEqual((result["status"], result["speedMph"], result["directionDegrees"]),
+                         ("READY", 8.0, 135), result.get("rawText"))
 
     def test_observed_io_mph_and_missing_direction_fails_closed(self):
         # User's 2026-10-12 physical sim trace: OCR returned "IO MPH",
@@ -106,29 +136,39 @@ class NativeWindTests(unittest.TestCase):
                 f.assert_not_called()
 
     def test_incomplete_or_failed_ocr_never_invents_wind(self):
-        cases = [
-            ([{"status": "ok", "rawText": "8 MPH"}] +
-             [{"status": "ok", "rawText": ""}] * 3, "UNKNOWN"),
-            ([{"status": "ok", "rawText": "8 MPH"},
-              {"status": "error", "note": "tesseract_timeout"}], "UNAVAILABLE"),
-        ]
-        for outputs, status in cases:
-            with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=outputs):
+        def blank_direction(png, *, psm, whitelist):
+            return {"status": "ok", "rawText": "8 MPH" if "0123456789" in whitelist else ""}
+
+        def failing_direction(png, *, psm, whitelist):
+            if "0123456789" in whitelist:
+                return {"status": "ok", "rawText": "8 MPH"}
+            return {"status": "error", "note": "tesseract_timeout"}
+
+        def disagreeing_speed(png, *, psm, whitelist):
+            disagreeing_speed.n = getattr(disagreeing_speed, "n", 0) + 1
+            if "0123456789" in whitelist:
+                return {"status": "ok", "rawText": ["8 MPH", "3 MPH", "0 MPH", "MPH", "6 MPH"][disagreeing_speed.n - 1]}
+            return {"status": "ok", "rawText": "SE"}
+
+        for stub, status in ((blank_direction, "UNKNOWN"), (failing_direction, "UNAVAILABLE"),
+                             (disagreeing_speed, "UNKNOWN")):
+            with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=stub):
                 result = wind.read_wind_from_capture(fake_native_frame())
-            self.assertEqual(result["status"], status)
-            self.assertIsNone(result.get("directionDegrees"))
+            self.assertEqual(result["status"], status, stub.__name__)
+            if stub is not disagreeing_speed:
+                self.assertIsNone(result.get("directionDegrees"))
+            else:
+                self.assertIsNone(result.get("speedMph"), "reads that never agree give no speed")
 
     def test_tesseract_uses_proven_speed_line_and_compass_word_modes(self):
         calls = []
         def fake(png, *, psm, whitelist):
             calls.append((psm, whitelist))
-            return {"status": "ok", "rawText": "9 MPH" if len(calls) == 1 else "NW"}
+            return {"status": "ok", "rawText": "9 MPH" if "0123456789" in whitelist else "NW"}
         with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=fake):
             result = wind.read_wind_from_capture(fake_native_frame())
-        self.assertEqual(calls[0][0], 7)
-        self.assertEqual(calls[1][0], 8)
-        self.assertIn("0123456789", calls[0][1])
-        self.assertIn("NSEW", calls[1][1])
+        self.assertTrue(all(p == 7 and "0123456789" in w for p, w in calls[:3]))
+        self.assertTrue(all(p == 8 and "NSEW" in w for p, w in calls[3:]))
         self.assertEqual(result["speedMph"], 9)
         self.assertEqual(result["directionDegrees"], 315)
         self.assertEqual(result["convention"], "from")
@@ -138,31 +178,28 @@ class NativeWindTests(unittest.TestCase):
     def test_compass_retry_uses_browser_page_segmentation_modes(self):
         calls = []
         def fake(png, *, psm, whitelist):
+            if "0123456789" in whitelist:
+                return {"status": "ok", "rawText": "9 MPH"}
             calls.append(psm)
-            return {"status": "ok", "rawText": {
-                7: "9 MPH" if len(calls) == 1 else "",
-                8: "",
-                10: "NW",
-            }[psm]}
+            return {"status": "ok", "rawText": "" if psm == 8 else "NW"}
         with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=fake):
             result = wind.read_wind_from_capture(fake_native_frame())
-        self.assertEqual(calls, [7, 8, 7, 10])
+        self.assertEqual(calls, [8, 8, 8, 7, 10])
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["directionDegrees"], 315)
-        self.assertEqual(result["directionOcrStrategy"], "fallback-psm10")
+        self.assertEqual(result["directionOcrStrategy"], "fallback-psm")
 
     def test_fallback_speed_region_only_if_reference_crop_misses_number(self):
         calls = []
         def fake(png, *, psm, whitelist):
+            if "0123456789" not in whitelist:
+                return {"status": "ok", "rawText": "NW"}
             decoded = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
             calls.append(decoded.shape)
-            if len(calls) == 1: return {"status": "ok", "rawText": "MPH"}
-            if len(calls) == 2: return {"status": "ok", "rawText": "9 MPH"}
-            return {"status": "ok", "rawText": "NW"}
+            return {"status": "ok", "rawText": "MPH" if len(calls) <= 3 else "9 MPH"}
         with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=fake):
             result = wind.read_wind_from_capture(fake_native_frame())
-        self.assertEqual(len(calls), 3)
-        self.assertGreater(calls[1][1], calls[0][1])
+        self.assertEqual(len(calls), 5)
         self.assertEqual(result["speedOcrStrategy"], "expanded-crop")
         self.assertEqual(result["speedMph"], 9)
         self.assertEqual(result["directionDegrees"], 315)
