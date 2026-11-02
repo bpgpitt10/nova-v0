@@ -1,0 +1,1120 @@
+=== [kiawah-island-ocean:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Kiawah.*Island --lat 32.6116466 --lon -80.0287931 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model --osm-id 17647608
+[{"type": "way", "id": 1557222314, "name": "Osprey Point Golf Course", "areaHa": 355.0, "nameMatch": false}, {"type": "way", "id": 1557505692, "name": "Cougar Point Golf Course", "areaHa": 149.0, "nameMatch": false}, {"type": "relation", "id": 17647608, "name": "Kiawah Island Golf Resort - The Ocean Course", "areaHa": 122.2, "nameMatch": true}, {"type": "relation", "id": 17702344, "name": "Kiawah Island Club - River Course", "areaHa": 98.8, "nameMatch": true}, {"type": "relation", "id": 21460708, "name": "Turtle Point Golf Course", "areaHa": 51.5, "nameMatch": false}]
+grew bbox with 5771 vertices from nearby golf features
+{"bboxLonLat": [-80.06109300515739, 32.60788892514927, -79.99650299484261, 32.61985137485073], "crs": "EPSG:26917", "osm": {"type": "relation", "id": 17647608, "name": "Kiawah Island Golf Resort - The Ocean Course", "areaHa": 122.2}} {"name": "USGS_LPC_SC_Charleston_2016_LAS_2019", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_SC_Charleston_2016_LAS_2019/ept.json", "count": 26124486247, "year": 2019}
+=== [kiawah-island-ocean:find] rc=0 seconds=34.2
+=== [kiawah-island-ocean:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/kiawah-island-ocean-v1.json --slug kiawah-island-ocean --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 4 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/kiawah-island-ocean-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/osm-snapshot.json
+{
+  "course": "Kiawah Island Golf Resort - The Ocean Course",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 382,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 78,
+    "golf=cartpath": 10,
+    "golf=clubhouse": 1,
+    "golf=driving_range": 1,
+    "golf=fairway": 22,
+    "golf=green": 21,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 12,
+    "golf=path": 123,
+    "golf=tee": 68,
+    "golf=water_hazard": 17,
+    "landuse=grass": 111,
+    "natural=beach": 1,
+    "natural=sand": 78,
+    "natural=water": 30,
+    "natural=wood": 7
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-80.04400970,32.60864590,-79.99788920,32.61621080",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 78,
+    "golf=cartpath": 10,
+    "golf=clubhouse": 1,
+    "golf=driving_range": 1,
+    "golf=fairway": 22,
+    "golf=green": 21,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 12,
+    "golf=path": 123,
+    "golf=tee": 68,
+    "golf=water_hazard": 17,
+    "landuse=grass": 111,
+    "natural=beach": 4,
+    "natural=sand": 81,
+    "natural=water": 35,
+    "natural=wood": 7
+  },
+  "rawIncludedFeatures": 392,
+  "rawMapElements": 14876,
+  "sourceEndpoint": "https://overpass-api.de/api/interpreter"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,38.4,35.2,0.8,forward,0.8,73.6
+2,0.0,51.8,67.8,2.3,forward,2.3,119.6
+3,0.0,32.6,86.5,1.3,forward,1.3,119.1
+4,0.0,38.7,37.7,1.8,forward,1.8,76.3
+5,0.0,45.0,52.8,1.8,forward,1.8,97.8
+6,0.0,30.9,86.4,2.1,forward,2.1,117.3
+7,0.0,40.8,37.6,2.2,forward,2.2,78.4
+8,0.0,44.0,46.4,0.5,forward,0.5,90.4
+9,0.0,72.5,48.7,2.8,forward,2.8,121.1
+10,0.0,37.2,170.6,3.5,forward,3.5,207.8
+11,0.0,48.3,49.2,1.9,forward,1.9,97.6
+12,0.0,36.7,55.4,1.1,forward,1.1,92.1
+13,0.0,48.7,134.1,3.7,forward,3.7,182.9
+14,0.0,38.1,122.9,2.4,forward,2.4,161.0
+15,0.0,35.4,50.2,1.7,forward,1.7,85.5
+16,19.8,40.6,43.9,0.4,forward,20.1,84.5
+17,0.0,56.2,46.5,1.2,forward,1.2,102.7
+18,0.0,160.4,114.6,1.3,forward,1.3,275.0
+
+TEE OWNERSHIP H1 targetGreenOsmId=945818728
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+945818719,0.0,364.9,0.0,1,0.0
+945818720,84.3,301.6,10.9,1,10.9
+945830145,423.2,48.1,38.4,2,22.8
+945830144,412.8,57.4,47.7,2,0.0
+945818718,90.2,509.7,90.2,9,72.5
+882973314,304.4,196.5,164.8,9,2.0
+882973316,348.9,205.3,187.7,9,0.1
+882973318,424.0,228.9,218.5,9,0.0
+945617084,346.2,732.1,346.2,9,268.2
+
+TEE OWNERSHIP H9 targetGreenOsmId=945830176
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+882973318,0.0,456.4,0.0,9,0.0
+882973316,61.2,387.3,0.1,9,0.1
+882973314,134.9,329.5,2.0,9,2.0
+945818719,407.5,113.4,74.8,1,0.0
+945818720,389.1,172.2,93.8,1,10.9
+882973310,107.4,580.0,107.4,8,8.2
+837985544,123.5,630.3,123.5,8,0.0
+945830146,147.3,511.1,146.6,2,47.4
+945830145,190.9,481.6,177.6,2,22.8
+945830144,246.9,498.4,233.6,2,0.0
+882973300,438.2,887.1,438.2,3,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=884552438
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+884552443,0.0,531.3,0.0,11,0.0
+884552442,113.1,451.0,16.8,11,16.8
+884552441,167.3,397.8,17.9,11,17.9
+882877401,165.2,436.1,86.3,17,44.4
+882877400,209.4,409.7,111.7,17,28.6
+945568792,254.9,393.7,130.3,17,0.2
+884552407,156.7,613.9,156.7,18,28.3
+945568791,280.2,385.8,160.0,17,0.0
+945568793,216.7,456.8,163.7,17,12.9
+945874167,166.5,591.0,166.4,18,20.4
+882973321,167.4,683.0,167.4,18,31.9
+837985551,192.2,627.9,192.2,18,0.0
+837985549,214.0,544.1,197.6,18,0.0
+837985550,202.3,591.1,201.4,18,4.9
+884552408,283.8,858.8,283.8,10,26.3
+884552409,311.8,886.5,311.8,10,32.7
+884552410,338.4,926.7,338.4,10,14.5
+884552414,385.2,957.3,385.2,10,62.1
+
+TEE OWNERSHIP H13 targetGreenOsmId=884552416
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+884562631,0.0,461.5,0.0,13,0.0
+945568790,147.3,315.3,17.5,13,17.5
+884562629,79.3,393.1,24.2,13,24.2
+884562627,111.7,358.6,30.2,13,30.2
+945833948,374.9,138.4,71.5,15,0.0
+884562634,335.8,179.2,83.9,15,0.4
+884562633,370.5,161.9,96.6,15,13.4
+884562635,339.5,219.1,126.4,15,29.3
+884562636,293.7,299.4,164.2,15,33.4
+945874157,331.0,267.1,167.9,15,55.8
+884552401,229.4,608.2,229.4,16,4.3
+884570982,229.4,670.0,229.4,12,1.8
+884552402,271.8,646.9,271.8,16,33.5
+884570984,291.0,755.2,291.0,12,11.3
+945874161,343.7,713.7,343.7,16,67.3
+945568787,370.0,820.9,370.0,12,0.0
+945874162,381.8,755.3,381.8,16,72.9
+
+TEE OWNERSHIP H15 targetGreenOsmId=884552400
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+945833948,0.0,462.3,0.0,15,0.0
+884562634,39.6,417.9,0.4,15,0.4
+884562633,24.7,443.1,13.4,15,13.4
+884562635,78.7,390.3,29.3,15,29.3
+884562636,159.3,309.0,33.4,15,33.4
+945874157,117.2,357.4,55.8,15,55.8
+884568013,114.8,595.3,114.8,14,1.2
+945568790,205.5,308.7,119.1,13,17.5
+884568012,139.1,660.5,139.1,14,0.0
+884562627,273.8,327.2,198.1,13,30.2
+884562629,306.9,305.2,208.2,13,24.2
+884562631,350.6,258.6,212.2,13,0.0
+
+TEE OWNERSHIP H16 targetGreenOsmId=884552403
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+884552401,19.8,574.3,4.3,16,4.3
+945568787,221.8,365.4,29.5,12,0.0
+884552402,61.1,538.3,33.5,16,33.5
+884570982,85.8,517.8,50.8,12,1.8
+884570984,150.3,434.9,53.4,12,11.3
+945874161,135.7,477.3,67.3,16,67.3
+945874162,179.8,436.5,72.9,16,72.9
+884562631,203.9,767.3,203.9,13,0.0
+884562629,266.6,837.0,266.6,13,24.2
+945568790,273.4,879.8,273.4,13,17.5
+884562627,289.7,869.3,289.7,13,30.2
+884562636,301.0,901.6,301.0,15,33.4
+945874157,341.9,948.7,341.9,15,55.8
+884562635,380.3,983.4,380.3,15,29.3
+884562634,401.5,1010.7,401.4,15,0.4
+884562633,433.2,1036.2,433.2,15,13.4
+945833948,446.6,1055.2,446.6,15,0.0
+
+TEE OWNERSHIP H17 targetGreenOsmId=884552404
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+945568791,0.0,222.2,0.0,17,0.0
+945568792,24.2,196.3,0.2,17,0.2
+945568793,60.2,148.7,12.9,17,12.9
+882877400,64.5,162.7,28.6,17,28.6
+882877401,113.4,126.6,44.4,17,44.4
+945874167,220.0,61.4,55.0,18,20.4
+884552407,250.7,63.4,56.2,18,28.3
+837985549,147.0,109.6,65.0,18,0.0
+837985550,206.4,96.1,84.6,18,4.9
+837985551,247.4,96.1,87.2,18,0.0
+884552443,224.3,105.7,102.2,11,0.0
+884552442,184.5,129.9,105.2,11,16.8
+882973321,326.7,121.5,112.6,18,31.9
+884552441,156.0,172.5,118.3,11,17.9
+945568787,386.1,598.6,386.0,12,0.0
+884570984,445.4,664.7,445.4,12,11.3
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/kiawah-island-ocean-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Kiawah Island Golf Resort - The Ocean Course",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 24186882,
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "exportResolutionMeters": 1.0,
+  "height": 1054,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 5235
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-8910488.838%2C3843473.400%2C-8905254.363%2C3844526.694&bboxSR=3857&imageSR=3857&size=5235%2C1054&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N30W081_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N30W081_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 146050.5,
+      "knownAreaSqYd": 28490.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 54267.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 60107.4
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 133.8
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 238826.5,
+      "knownAreaSqYd": 31602.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 55372.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 90325.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 159189.2,
+      "knownAreaSqYd": 24410.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 3015.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 47864.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 179354.2,
+      "knownAreaSqYd": 26799.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 8959.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 50810.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 121.4
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 95192.9,
+      "knownAreaSqYd": 29783.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 6563.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 36337.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 175644.0,
+      "knownAreaSqYd": 40235.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 3934.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 83738.1
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 426.5
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 216524.9,
+      "knownAreaSqYd": 31632.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 8095.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 137277.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 172.6
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 93812.4,
+      "knownAreaSqYd": 15493.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 11208.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 50296.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 195529.9,
+      "knownAreaSqYd": 30349.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 29173.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 94949.4
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 47.8
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 155985.2,
+      "knownAreaSqYd": 33381.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 8325.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 73305.8
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 1331.8
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 193331.8,
+      "knownAreaSqYd": 39718.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 45368.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 112960.6
+        },
+        "landcover-bare": {
+          "polygons": 8,
+          "areaSqYd": 1924.3
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 156748.3,
+      "knownAreaSqYd": 44121.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 17689.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 89221.2
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 2442.6
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 167522.2,
+      "knownAreaSqYd": 27927.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 41446.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 61132.1
+        },
+        "landcover-bare": {
+          "polygons": 5,
+          "areaSqYd": 3357.6
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 108526.9,
+      "knownAreaSqYd": 25130.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 5817.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 50595.3
+        },
+        "landcover-bare": {
+          "polygons": 6,
+          "areaSqYd": 2395.2
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 160182.4,
+      "knownAreaSqYd": 52337.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 108519.2
+        },
+        "landcover-bare": {
+          "polygons": 8,
+          "areaSqYd": 8498.2
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 194855.8,
+      "knownAreaSqYd": 74219.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 139.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 138326.5
+        },
+        "landcover-bare": {
+          "polygons": 9,
+          "areaSqYd": 7363.2
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 99033.4,
+      "knownAreaSqYd": 35598.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 73932.2
+        },
+        "landcover-bare": {
+          "polygons": 6,
+          "areaSqYd": 991.3
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 212502.8,
+      "knownAreaSqYd": 59876.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 131537.4
+        },
+        "landcover-bare": {
+          "polygons": 9,
+          "areaSqYd": 19361.6
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/kiawah-island-ocean/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:260: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/green-detail-v1.json (100,425 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 529,
+      "validOnGreenNodes": 529,
+      "greenCoverage": 1.0,
+      "localFitCount": 529,
+      "trustedLocalFitCount": 529,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.122,
+      "localRmsP95Ft": 0.244,
+      "maxTrustedSlopePercent": 19.8
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 633,
+      "validOnGreenNodes": 633,
+      "greenCoverage": 1.0,
+      "localFitCount": 633,
+      "trustedLocalFitCount": 633,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.037,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 7.6
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 421,
+      "validOnGreenNodes": 421,
+      "greenCoverage": 1.0,
+      "localFitCount": 421,
+      "trustedLocalFitCount": 421,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.146,
+      "localRmsP95Ft": 0.254,
+      "maxTrustedSlopePercent": 30.5
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 606,
+      "validOnGreenNodes": 606,
+      "greenCoverage": 1.0,
+      "localFitCount": 606,
+      "trustedLocalFitCount": 606,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.089,
+      "maxTrustedSlopePercent": 4.8
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 958,
+      "validOnGreenNodes": 958,
+      "greenCoverage": 1.0,
+      "localFitCount": 958,
+      "trustedLocalFitCount": 841,
+      "trustedLocalFitRatio": 0.8779,
+      "localRmsP50Ft": 0.157,
+      "localRmsP95Ft": 0.39,
+      "maxTrustedSlopePercent": 37.3
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 822,
+      "validOnGreenNodes": 822,
+      "greenCoverage": 1.0,
+      "localFitCount": 822,
+      "trustedLocalFitCount": 822,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.09,
+      "maxTrustedSlopePercent": 12.9
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 683,
+      "validOnGreenNodes": 683,
+      "greenCoverage": 1.0,
+      "localFitCount": 683,
+      "trustedLocalFitCount": 683,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.079,
+      "maxTrustedSlopePercent": 12.6
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 611,
+      "validOnGreenNodes": 611,
+      "greenCoverage": 1.0,
+      "localFitCount": 611,
+      "trustedLocalFitCount": 611,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.059,
+      "localRmsP95Ft": 0.137,
+      "maxTrustedSlopePercent": 20.8
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 769,
+      "validOnGreenNodes": 769,
+      "greenCoverage": 1.0,
+      "localFitCount": 769,
+      "trustedLocalFitCount": 768,
+      "trustedLocalFitRatio": 0.9987,
+      "localRmsP50Ft": 0.113,
+      "localRmsP95Ft": 0.271,
+      "maxTrustedSlopePercent": 25.1
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 471,
+      "validOnGreenNodes": 471,
+      "greenCoverage": 1.0,
+      "localFitCount": 471,
+      "trustedLocalFitCount": 471,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.048,
+      "localRmsP95Ft": 0.072,
+      "maxTrustedSlopePercent": 10.7
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 487,
+      "validOnGreenNodes": 487,
+      "greenCoverage": 1.0,
+      "localFitCount": 487,
+      "trustedLocalFitCount": 459,
+      "trustedLocalFitRatio": 0.9425,
+      "localRmsP50Ft": 0.11,
+      "localRmsP95Ft": 0.355,
+      "maxTrustedSlopePercent": 29.2
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 594,
+      "validOnGreenNodes": 594,
+      "greenCoverage": 1.0,
+      "localFitCount": 594,
+      "trustedLocalFitCount": 594,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.054,
+      "localRmsP95Ft": 0.241,
+      "maxTrustedSlopePercent": 23.6
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 633,
+      "validOnGreenNodes": 633,
+      "greenCoverage": 1.0,
+      "localFitCount": 633,
+      "trustedLocalFitCount": 557,
+      "trustedLocalFitRatio": 0.8799,
+      "localRmsP50Ft": 0.126,
+      "localRmsP95Ft": 0.428,
+      "maxTrustedSlopePercent": 34.0
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 731,
+      "validOnGreenNodes": 731,
+      "greenCoverage": 1.0,
+      "localFitCount": 731,
+      "trustedLocalFitCount": 731,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.055,
+      "localRmsP95Ft": 0.22,
+      "maxTrustedSlopePercent": 35.1
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 406,
+      "validOnGreenNodes": 406,
+      "greenCoverage": 1.0,
+      "localFitCount": 406,
+      "trustedLocalFitCount": 313,
+      "trustedLocalFitRatio": 0.7709,
+      "localRmsP50Ft": 0.067,
+      "localRmsP95Ft": 0.572,
+      "maxTrustedSlopePercent": 52.7
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 466,
+      "validOnGreenNodes": 466,
+      "greenCoverage": 1.0,
+      "localFitCount": 466,
+      "trustedLocalFitCount": 466,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.062,
+      "maxTrustedSlopePercent": 10.0
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 647,
+      "validOnGreenNodes": 647,
+      "greenCoverage": 1.0,
+      "localFitCount": 647,
+      "trustedLocalFitCount": 647,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.0,
+      "localRmsP95Ft": 0.146,
+      "maxTrustedSlopePercent": 12.2
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 557,
+      "validOnGreenNodes": 557,
+      "greenCoverage": 1.0,
+      "localFitCount": 557,
+      "trustedLocalFitCount": 557,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.06,
+      "localRmsP95Ft": 0.104,
+      "maxTrustedSlopePercent": 12.9
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/kiawah-island-ocean-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/kiawah-island-ocean/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": true,
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "greenDetailSha256": "698256043a347510fc50bcd6b786e8022508ca1f04cc52ccd9cfff1e0676a3aa",
+  "packageSha256": "aac98460a2585ba10797e64bc45ec2b93be38957a9ce78a25c0ade1ee5988eb7",
+  "snapshotSha256": "b59444443b1671edda7e588059d1553250a99f99d0a274fd997965cc647b325e",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/kiawah-island-ocean-v1.json
+[course-import-contract] kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 2 canonical tee set(s): Tee 1 (Back), Tee 2 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 2 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 5 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina
+[runtime-smoke] Kiawah Island Golf Resort - The Ocean Course: 2 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 2 (Front), Tee 1 (Back).
+[runtime-smoke] Kiawah Island Golf Resort - The Ocean Course runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────────────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                                         │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────────────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 1    │ 6        │ 4             │ 2             │ 2               │ 1                      │ 10                │ 11.9           │ 3.7               │ -8.2             │
+│ 1       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 2    │ 6        │ 3             │ 2             │ 2               │ 1                      │ 10                │ 11.7           │ 6.5               │ -5.2             │
+│ 2       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 3    │ 6        │ 3             │ 3             │ 2               │ 1                      │ 10                │ 7.8            │ 6.4               │ -1.4             │
+│ 3       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 4    │ 5        │ 3             │ 3             │ 2               │ 1                      │ 10                │ 10.1           │ 3.5               │ -6.6             │
+│ 4       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 5    │ 5        │ 2             │ 2             │ 2               │ 1                      │ 10                │ 10.9           │ 4.8               │ -6.1             │
+│ 5       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 6    │ 6        │ 4             │ 5             │ 2               │ 1                      │ 10                │ 10.4           │ 5.5               │ -4.9             │
+│ 6       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 7    │ 5        │ 3             │ 2             │ 2               │ 1                      │ 10                │ 11.5           │ 9.8               │ -1.7             │
+│ 7       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 8    │ 6        │ 3             │ 2             │ 2               │ 1                      │ 10                │ 10.8           │ 5.5               │ -5.3             │
+│ 8       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 9    │ 6        │ 4             │ 3             │ 2               │ 1                      │ 10                │ 11.7           │ 7.6               │ -4.1             │
+│ 9       │ 'Kiawah Island Golf Resort - The Ocean Course' │ 10   │ 6        │ 4             │ 4             │ 2               │ 1                      │ 10                │ 6.9            │ 6.1               │ -0.8             │
+│ 10      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 11   │ 6        │ 4             │ 3             │ 2               │ 1                      │ 10                │ 12             │ 4.8               │ -7.2             │
+│ 11      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 12   │ 5        │ 4             │ 3             │ 2               │ 1                      │ 10                │ 14.3           │ 6.7               │ -7.6             │
+│ 12      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 13   │ 6        │ 4             │ 4             │ 2               │ 1                      │ 10                │ 8              │ 2.1               │ -5.9             │
+│ 13      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 14   │ 6        │ 5             │ 2             │ 2               │ 1                      │ 10                │ 9.7            │ 9.6               │ -0.1             │
+│ 14      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 15   │ 5        │ 3             │ 5             │ 2               │ 1                      │ 10                │ 11.2           │ 8.1               │ -3.1             │
+│ 15      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 16   │ 5        │ 4             │ 2             │ 2               │ 1                      │ 10                │ 8.7            │ 6.3               │ -2.4             │
+│ 16      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 17   │ 5        │ 3             │ 4             │ 2               │ 1                      │ 10                │ 12.1           │ 0.9               │ -11.2            │
+│ 17      │ 'Kiawah Island Golf Resort - The Ocean Course' │ 18   │ 5        │ 3             │ 6             │ 2               │ 1                      │ 10                │ 10.1           │ 9.4               │ -0.7             │
+└─────────┴────────────────────────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 5 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "kiawah-island-golf-resort-the-ocean-course-kiawah-island-south-carolina",
+  "courseSlug": "kiawah-island-ocean",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/kiawah-island-ocean/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/kiawah-island-ocean/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/kiawah-island-ocean/validation-v1.json"
+}
+=== [kiawah-island-ocean:import] rc=0 seconds=39.1
+=== [kiawah-island-ocean:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=3479317 seconds=43.0
+{"elementsByType": {"node": 16428, "way": 967, "relation": 47}, "taggedElements": 1126, "compressedBytes": 457640}
+=== [kiawah-island-ocean:osm] rc=0 seconds=43.3
+=== [kiawah-island-ocean:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/course-bbox.json --crs EPSG:26917 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=5 seconds=43.2 size=6073x1383
+{"width": 6073, "height": 1383, "pixel": 1.0, "validCells": 8398959, "elevMin": -1.5239601135253906, "elevMax": 8.107185363769531}
+=== [kiawah-island-ocean:dem] rc=0 seconds=44.0
+=== [kiawah-island-ocean:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_SC_Charleston_2016_LAS_2019/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model
+nodes=1320 pointsInIntersectingNodes=55324292 hierarchySeconds=2.7
+tiles 25/1320 kept=614865 MB=7 seconds=4
+tiles 50/1320 kept=1594152 MB=12 seconds=5
+tiles 75/1320 kept=2616977 MB=18 seconds=6
+tiles 100/1320 kept=3129580 MB=21 seconds=6
+tiles 125/1320 kept=3723426 MB=27 seconds=7
+tiles 150/1320 kept=4519310 MB=33 seconds=8
+tiles 175/1320 kept=5868908 MB=40 seconds=9
+tiles 200/1320 kept=7372918 MB=47 seconds=10
+tiles 225/1320 kept=7957817 MB=52 seconds=11
+tiles 250/1320 kept=8897453 MB=58 seconds=12
+tiles 275/1320 kept=10223925 MB=66 seconds=13
+tiles 300/1320 kept=11662509 MB=75 seconds=14
+tiles 325/1320 kept=13099144 MB=85 seconds=15
+tiles 350/1320 kept=13852597 MB=91 seconds=16
+tiles 375/1320 kept=14366280 MB=94 seconds=17
+tiles 400/1320 kept=14889699 MB=98 seconds=18
+tiles 425/1320 kept=15409580 MB=101 seconds=19
+tiles 450/1320 kept=15939123 MB=105 seconds=19
+tiles 475/1320 kept=16459409 MB=109 seconds=20
+tiles 500/1320 kept=16987580 MB=112 seconds=21
+tiles 525/1320 kept=17545574 MB=117 seconds=22
+tiles 550/1320 kept=18526212 MB=126 seconds=23
+tiles 575/1320 kept=19968687 MB=134 seconds=24
+tiles 600/1320 kept=21251198 MB=140 seconds=25
+tiles 625/1320 kept=22352577 MB=145 seconds=26
+tiles 650/1320 kept=22867690 MB=148 seconds=26
+tiles 675/1320 kept=23806872 MB=154 seconds=27
+tiles 700/1320 kept=25136440 MB=162 seconds=28
+tiles 725/1320 kept=26703359 MB=171 seconds=29
+tiles 750/1320 kept=28202587 MB=180 seconds=30
+tiles 775/1320 kept=29474054 MB=187 seconds=31
+tiles 800/1320 kept=30105327 MB=191 seconds=32
+tiles 825/1320 kept=30589258 MB=194 seconds=33
+tiles 850/1320 kept=31085371 MB=200 seconds=34
+tiles 875/1320 kept=31846618 MB=207 seconds=35
+tiles 900/1320 kept=33245844 MB=214 seconds=36
+tiles 925/1320 kept=34493550 MB=221 seconds=37
+tiles 950/1320 kept=36079579 MB=229 seconds=38
+tiles 975/1320 kept=36570304 MB=232 seconds=38
+tiles 1000/1320 kept=37310242 MB=239 seconds=39
+tiles 1025/1320 kept=38402079 MB=246 seconds=40
+tiles 1050/1320 kept=39659610 MB=255 seconds=42
+tiles 1075/1320 kept=40978338 MB=263 seconds=42
+tiles 1100/1320 kept=41924016 MB=269 seconds=43
+tiles 1125/1320 kept=42856525 MB=279 seconds=44
+tiles 1150/1320 kept=44033714 MB=288 seconds=45
+tiles 1175/1320 kept=45493803 MB=299 seconds=47
+tiles 1200/1320 kept=46996634 MB=309 seconds=48
+tiles 1225/1320 kept=47374926 MB=313 seconds=48
+tiles 1250/1320 kept=47824236 MB=316 seconds=49
+tiles 1275/1320 kept=48285165 MB=319 seconds=50
+tiles 1300/1320 kept=48784736 MB=324 seconds=51
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_SC_Charleston_2016_LAS_2019/ept.json", "eptSrs": "3857", "octreeNodesRead": 1320, "downloadedMB": 332.3, "pointsKeptInBbox": 49787327, "pointsPerSquareMetre": 5.93, "firstReturnsPerSquareMetre": 4.31, "classificationHistogram": {"1": 29877210, "2": 18599517, "9": 1302516, "10": 4851, "17": 3730}, "chm": {"width": 6073, "height": 1383, "pixelMeters": 1.0, "cellsWithReturns": 7474580, "emptyCells": 924379, "cellsOver3m": 1786413, "cellsOver10m": 1068382, "p50": 0.09999999999999998, "p95": 15.057999999999998, "max": 67.249}, "seconds": 60.1}
+=== [kiawah-island-ocean:lidar] rc=0 seconds=60.3
+=== [kiawah-island-ocean:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26917", "treeCount": 22378, "heightM": {"p10": 4.4, "p50": 11.6, "p90": 19.4, "max": 67.2}, "crownRadiusM": {"p10": 2.0, "p50": 4.3, "p90": 7.8}, "woodlandPolygons": 1233, "woodlandAreaHa": 156.75, "maskedCellsBuildingsAndPower": 159348, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 3.2}
+=== [kiawah-island-ocean:trees] rc=0 seconds=3.7
+=== [kiawah-island-ocean:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/kiawah-island-ocean/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/kiawah-island-ocean/course-v1-lidar.json
+{
+ "bytes": 1460506,
+ "originalBytes": 345401,
+ "holes": {
+  "woodsPolygons": 43,
+  "bunker": "9->4",
+  "water": "1->3",
+  "mapFeatures": {
+   "cartpath": 11,
+   "road": 4,
+   "building": 1
+  },
+  "terrainCells": 37389
+ },
+ "woodsTotal": 675
+}
+=== [kiawah-island-ocean:enrich] rc=0 seconds=22.2
