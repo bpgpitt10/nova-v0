@@ -38,6 +38,7 @@ def load_rows(session_dirs: Iterable[Path]) -> list[dict[str, Any]]:
             if line.strip():
                 raw = json.loads(line)
                 raw["_session"] = Path(session).name
+                raw["_sessionDir"] = str(Path(session))
                 rows.append(raw)
     return rows
 
@@ -364,6 +365,86 @@ def label_check(rows: list[dict[str, Any]]) -> dict[str, Any]:
             for label, v in out.items()}
 
 
+def numeric_leaves(value: Any, prefix: str = "", out: dict[str, float] | None = None,
+                   max_list: int = 8) -> dict[str, float]:
+    """Every number in a JSON value, by path. Long arrays (flight paths) are skipped."""
+    out = {} if out is None else out
+    if isinstance(value, bool):
+        return out
+    if isinstance(value, (int, float)):
+        out[prefix or "."] = float(value)
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            numeric_leaves(child, f"{prefix}.{key}" if prefix else str(key), out, max_list)
+    elif isinstance(value, list) and len(value) <= max_list:
+        for index, child in enumerate(value):
+            numeric_leaves(child, f"{prefix}[{index}]", out, max_list)
+    return out
+
+
+def _pearson(xs: list[float], ys: list[float]) -> float | None:
+    n = len(xs)
+    if n < 3:
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    syy = sum((y - my) ** 2 for y in ys)
+    if sxx < 1e-12 or syy < 1e-12:
+        return None
+    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / (sxx * syy) ** 0.5
+
+
+def lie_field_finder(raw_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Does currentRound.dat hold the lie angles? Search every numeric field.
+
+    For each spot, take the first shot's currentRound.dat record (saved per
+    shot under evidence/) and correlate every numeric field with the HUD
+    up/down and left/right angles typed at that spot. A field that tracks a
+    HUD angle across many spots is a candidate for reading the lie directly,
+    without screen OCR.
+    """
+    import gzip
+
+    from evidence import latest_record
+
+    per_spot: dict[tuple, dict[str, Any]] = {}
+    for raw in raw_rows:
+        key = (raw.get("_session"), raw.get("spot"))
+        info = raw.get("spotInfo") or {}
+        if key in per_spot or raw.get("spot") in (None, 0):
+            continue
+        path = Path(raw.get("_sessionDir", "")) / "evidence" / f"{raw.get('tag')}.currentRound.dat.gz"
+        if not path.exists():
+            continue
+        try:
+            record = latest_record(gzip.open(path, "rt", encoding="utf-8", errors="replace").read())
+        except (OSError, ValueError):
+            continue
+        if record is None:
+            continue
+        per_spot[key] = {"fields": numeric_leaves(record), "upDown": info.get("hudUpDownDeg"),
+                         "leftRight": info.get("hudLeftRightDeg")}
+    result: dict[str, Any] = {"spots": len(per_spot)}
+    for angle in ("upDown", "leftRight"):
+        spots = [v for v in per_spot.values() if v[angle] is not None]
+        ranked = []
+        if len(spots) >= 3 and len({v[angle] for v in spots}) >= 2:
+            common = set.intersection(*(set(v["fields"]) for v in spots))
+            ys = [float(v[angle]) for v in spots]
+            for field in common:
+                xs = [v["fields"][field] for v in spots]
+                r = _pearson(xs, ys)
+                if r is None:
+                    continue
+                fit = least_squares([[x] for x in xs], ys)
+                ranked.append({"field": field, "r": r,
+                               "hudDegPerUnit": fit[0][1] if fit else None,
+                               "examples": [[round(x, 4), y] for x, y in list(zip(xs, ys))[:6]]})
+            ranked.sort(key=lambda d: -abs(d["r"]))
+        result[angle] = {"spotsWithAngle": len(spots), "candidates": ranked[:6]}
+    return result
+
+
 def unknown_log_lines(raw_rows: list[dict[str, Any]]) -> list[tuple[str, int]]:
     """Log lines that look relevant but that we don't parse yet, by frequency."""
     counter: Counter[str] = Counter()
@@ -405,6 +486,7 @@ def write_report(out_dir: Path, raw_rows: list[dict[str, Any]]) -> dict[str, Any
         "carryVsFairway": carry_ratios(rows),
         "labelCheck": label_check(rows),
         "unparsedLogLines": unknown_log_lines(raw_rows),
+        "lieFieldCandidates": lie_field_finder(raw_rows),
     }
     (out_dir / "lie-model.json").write_text(json.dumps(model, indent=2, default=str), encoding="utf-8")
 
@@ -470,6 +552,20 @@ def write_report(out_dir: Path, raw_rows: list[dict[str, Any]]) -> dict[str, Any
         for label, d in model["labelCheck"].items():
             md.append(f"| {label} | {d['n']} | {pct(d['speed'])} | {pct(d['spin'])} | {pct(d['vla'])} | "
                       f"{', '.join(d['gsproReported']) or '—'} |")
+    finder = model["lieFieldCandidates"]
+    md += ["", "## Does currentRound.dat hold the lie angles?", "",
+           "Every numeric field in each spot's record, correlated with the HUD angles you typed. "
+           "|r| near 1 across many spots = GSPro stores that angle and Looper can read it without OCR.", ""]
+    for angle, label in (("upDown", "Up/down"), ("leftRight", "Left/right")):
+        d = finder.get(angle) or {}
+        if not d.get("candidates"):
+            md.append(f"- {label}: not enough spots with varied angles yet ({d.get('spotsWithAngle', 0)}).")
+            continue
+        best = d["candidates"][0]
+        verdict = "likely found" if abs(best["r"]) >= 0.95 and d["spotsWithAngle"] >= 6 else "not found yet"
+        md.append(f"- {label} ({d['spotsWithAngle']} spots): {verdict}. Best field `{best['field']}`, r {best['r']:+.2f}.")
+        for c in d["candidates"][1:4]:
+            md.append(f"  - `{c['field']}` r {c['r']:+.2f}")
     if model["unparsedLogLines"]:
         md += ["", "## Log lines we don't parse yet (numbers collapsed to #)", ""]
         md += [f"- {count}× `{line}`" for line, count in model["unparsedLogLines"]]

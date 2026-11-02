@@ -31,6 +31,7 @@ class FakeGSPro:
         self.send_202 = send_202
         self.lie = "fairway"
         self.side = 0.0  # HUD left/right degrees (+ = Left)
+        self.updown = 0.0
         self.club = "7I"
         self.shots = 0
         self.heartbeats = 0
@@ -93,6 +94,7 @@ class FakeGSPro:
         record = {"RoundID": 7, "ShotID": self.shots, "GlobalShotNumber": self.shots, "Hole": 1,
                   "StartingSurface": code, "EndingSurface": 2, "TotalDistance": carry_m + 5,
                   "StartingPOS": {"x": 10.0, "y": 0.0, "z": 20.0},
+                  "BallLie": {"UpDown": self.updown, "LeftRight": self.side},
                   "EndingPOS": {"x": 10.0, "y": 0.0, "z": 25.0 + carry_m},
                   "GhostData": {"lmfSP": ball["Speed"], "atShotData": {"tdpoint": td}}}
         (self.folder / "currentRound.dat").write_text(json.dumps({"shots": [record]}), encoding="utf-8")
@@ -100,16 +102,25 @@ class FakeGSPro:
             conn.sendall(b'{"Code":202,"Message":"Ball stopped"}')
 
 
+UP_DOWN = [0, 2, -3, 1, 4]
+LEFT_RIGHT = [0, 4, -2, 3, 1]
+
+
 def scripted_ask(fake: FakeGSPro):
+    calls = {"ud": 0, "lr": 0}
+
     def ask(prompt, default=""):
         if "Surface" in prompt:
             fake.lie = default
             return default
         if "up/down" in prompt:
-            return "2U" if fake.lie != "fairway" else "0"
+            fake.updown = float(UP_DOWN[calls["ud"] % len(UP_DOWN)])
+            calls["ud"] += 1
+            return f"{abs(fake.updown):g}{'U' if fake.updown >= 0 else 'D'}"
         if "left/right" in prompt:
-            fake.side = 4.0 if fake.lie != "fairway" else 0.0
-            return "4L" if fake.lie != "fairway" else "0"
+            fake.side = float(LEFT_RIGHT[calls["lr"] % len(LEFT_RIGHT)])
+            calls["lr"] += 1
+            return f"{abs(fake.side):g}{'L' if fake.side >= 0 else 'R'}"
         if prompt.strip().startswith("Select"):
             fake.club = prompt.split("Select ")[1].split(" ")[0].upper()
             return ""
@@ -184,6 +195,10 @@ class LieLabTests(unittest.TestCase):
         self.assertEqual(labels["PW"]["gsproReported"], ["PW"])
         self.assertIn("TVGrough", model["slope"]["byLie"])
         self.assertAlmostEqual(model["sidehill"]["gain"], 0.5, places=2)
+        finder = model["lieFieldCandidates"]
+        self.assertEqual(finder["upDown"]["candidates"][0]["field"], "BallLie.UpDown")
+        self.assertAlmostEqual(finder["upDown"]["candidates"][0]["r"], 1.0, places=6)
+        self.assertEqual(finder["leftRight"]["candidates"][0]["field"], "BallLie.LeftRight")
         summary = (out / "summary.md").read_text()
         self.assertIn("deterministic", summary)
 

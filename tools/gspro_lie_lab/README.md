@@ -48,7 +48,7 @@ python lie_lab.py discover --fire 3 --api-version 2
 It snapshots the GSPro folder, fires 3 shots, and lists every file that changed, with the new log lines and any new `GSPro.db` rows. What we're looking for:
 
 - `output_log.txt` gets `Penalty Surface` lines in practice mode: **go**.
-- `currentRound.dat` updates: we also get positions, carry and rest (needed for the slope checks).
+- `currentRound.dat` updates: we also get positions, carry and rest (needed for the slope checks). Another developer says practice mode writes one entry per shot with start position and lie. Whether "lie" includes the slope angles (not just the surface code) is unconfirmed; an earlier look found no lie or wind fields. The analysis checks this for us (below).
 - A `GSPro.db` table gains a row per shot: pass it to `run` with `--db-table NAME`.
 
 If no penalty lines appear in practice mode, stop and send me `discovery-report.json`.
@@ -102,6 +102,8 @@ Writes into the first folder:
 - `summary.md`: penalty factors per lie and per club, randomness verdict, how factors move with speed/launch/spin, variant-minus-stock deltas, slope fits, sidehill start-line gain, carry vs fairway, club label check, and any log lines we don't parse yet.
 - `lie-model.json`: the same numbers, shaped for `surfaceResponse.ts`.
 - `shots.csv`: one row per shot.
+
+The summary also answers **"does `currentRound.dat` hold the lie angles?"** It correlates every numeric field in each spot's record with the HUD angles you typed. A field that tracks the HUD across many spots means Looper can read the lie straight from the file instead of by screen OCR. That's why typing the angles at each spot is worth the few seconds, at least for the first run.
 
 Send me the folder (or just those three files) and I'll turn it into the Live Caddie lie model.
 
