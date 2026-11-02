@@ -217,6 +217,9 @@ export default function LiveCaddiePage() {
   const [nativeVisualMessage, setNativeVisualMessage] = useState<string | null>(null)
   const [nativeObservations, setNativeObservations] = useState<LooperCompanionLiveObservations | null>(null)
   const nativeVisualRef = useRef<LooperNativeObservationConnection | null>(null)
+  // The companion is required, so its wind/lie read starts on its own; only an
+  // explicit "Stop Native Observations" (or a shared GSPro screen) keeps it off.
+  const nativeStoppedByPlayerRef = useRef(false)
   const triedProvisionalTeeNative = useRef(new Set<string>())
   const triedShotHud = useRef(new Set<string>())
   // Status notes (yellow banners, raw codes, LiDAR internals) are for
@@ -1127,6 +1130,7 @@ export default function LiveCaddiePage() {
 
   const toggleNativeVisuals = () => {
     if (nativeVisualRef.current) {
+      nativeStoppedByPlayerRef.current = true
       nativeVisualRef.current.disconnect()
       nativeVisualRef.current = null
       setNativeVisualActive(false)
@@ -1153,6 +1157,17 @@ export default function LiveCaddiePage() {
       ),
     })
   }
+
+  useEffect(() => {
+    if (nativeVisualRef.current || nativeStoppedByPlayerRef.current) return
+    if (!companionStatus?.capabilities?.liveObservations) return
+    if (companionStatus.gspro.status !== 'connected') return
+    if (visualCaptureStatus === 'connected' || visualCaptureStatus === 'requesting'
+      || visualCaptureStatus === 'loading-ocr') return
+    toggleNativeVisuals()
+    // toggleNativeVisuals only reads refs and setters; re-running on its identity is not wanted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companionStatus?.capabilities?.liveObservations, companionStatus?.gspro.status, visualCaptureStatus])
 
   const selectCourse = (nextCourseId: CourseId) => {
     setCourseId(nextCourseId)
