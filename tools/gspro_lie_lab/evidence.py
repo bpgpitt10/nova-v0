@@ -21,9 +21,6 @@ from typing import Any
 
 METERS_TO_YARDS = 1.0936132983377078
 LOG_FILE = "output_log.txt"
-# Release GSPro logs to output_log.txt; the Public Beta logs to Player.log
-# (same folder, different per-shot format: a "Shot Fired!" block).
-LOG_FILES = ("output_log.txt", "Player.log")
 ROUND_FILE = "currentRound.dat"
 DB_FILE = "GSPro.db"
 HASH_LIMIT_BYTES = 64 * 1024 * 1024
@@ -44,17 +41,9 @@ def default_gspro_dir() -> Path | None:
     home = Path.home()
     candidates += [home / "AppData" / "LocalLow" / "GSPro" / "GSPro", home / "AppData" / "LocalLow" / "GSPro"]
     for path in candidates:
-        if any((path / name).exists() for name in LOG_FILES) or (path / ROUND_FILE).exists():
+        if (path / LOG_FILE).exists() or (path / ROUND_FILE).exists():
             return path
     return None
-
-
-def active_log(gspro_dir: Path) -> Path:
-    """The GSPro log being written now: the most recently modified of the known names."""
-    existing = [gspro_dir / name for name in LOG_FILES if (gspro_dir / name).exists()]
-    if not existing:
-        return gspro_dir / LOG_FILE
-    return max(existing, key=lambda path: path.stat().st_mtime_ns)
 
 
 # --------------------------------------------------------------------------
@@ -182,7 +171,7 @@ PENALTY_RE = re.compile(
     r"\s*,\s*VLA\s*(\d+(?:\.\d+)?)%", re.I)
 TYPE_RE = re.compile(r"corrected type\s+(-?\d+)", re.I)
 # Lines worth keeping verbatim even when we don't understand them yet.
-INTEREST_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|club|practice|drop|shot fired|bounce|elevation", re.I)
+INTEREST_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|club|practice|drop", re.I)
 
 
 def parse_log_slice(text: str) -> dict[str, Any]:
@@ -300,7 +289,7 @@ class ShotWatcher:
         self.evidence_dir = evidence_dir
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self.db_table = db_table
-        self.log_path = active_log(gspro_dir)
+        self.log_path = gspro_dir / LOG_FILE
         self.round_path = gspro_dir / ROUND_FILE
         self.db_path = gspro_dir / DB_FILE
         self.log_offset = self._size(self.log_path)

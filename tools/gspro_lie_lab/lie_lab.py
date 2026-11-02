@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from evidence import (  # noqa: E402
-    DB_FILE, LOG_FILE, ROUND_FILE, ShotWatcher, active_log, default_gspro_dir, diff_snapshots, read_from,
+    DB_FILE, LOG_FILE, ROUND_FILE, ShotWatcher, default_gspro_dir, diff_snapshots, read_from,
     snapshot_folder, sqlite_rows_after, sqlite_table_state, parse_log_slice,
 )
 from open_connect import DEFAULT_HOST, DEFAULT_PORT, Launch, OpenConnectClient, OpenConnectError  # noqa: E402
@@ -91,7 +91,7 @@ def parse_angle(text: str, positive: str, negative: str) -> float | None:
 
 
 def gspro_version(gspro_dir: Path) -> str | None:
-    log = active_log(gspro_dir)
+    log = gspro_dir / LOG_FILE
     if not log.exists():
         return None
     head = read_from(log, 0, 64 * 1024)
@@ -374,16 +374,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     session = {
         "schema": "looper-gspro-lie-lab-session-v1", "startedAt": utc_now(), "gsproDir": str(gspro_dir),
         "gsproVersionLine": gspro_version(gspro_dir), "apiVersion": args.api_version,
-        "dbTable": args.db_table, "logFile": active_log(gspro_dir).name,
-        "wind": "calm (set manually)", "plan": plan,
+        "dbTable": args.db_table, "wind": "calm (set manually)", "plan": plan,
     }
     session_file = out / "session.json"
     if not session_file.exists():
         session_file.write_text(json.dumps(session, indent=2), encoding="utf-8")
     total = sum(len(s["shots"]) for s in plan["spots"] if s["spot"] >= args.start_spot)
-    log_name = active_log(gspro_dir).name
-    print(f"Session folder: {out}\nGSPro folder: {gspro_dir}\nGSPro log: {log_name}"
-          f"{' (Public Beta)' if log_name == 'Player.log' else ''}\n{total} shots planned "
+    print(f"Session folder: {out}\nGSPro folder: {gspro_dir}\n{total} shots planned "
           f"(about {total * 14 / 3600:.1f} h of firing plus your clicks).")
     print("Checklist: Uneekor launcher closed, GSPro wind calm, On Course practice (rehit from a dropped ball), not a handicap round.")
     if msvcrt is not None:

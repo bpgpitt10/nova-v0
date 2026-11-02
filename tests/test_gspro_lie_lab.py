@@ -26,9 +26,8 @@ PENALTY = {  # GSPro name, base factors, code
 class FakeGSPro:
     """Accepts one launch monitor, writes output_log.txt and currentRound.dat per shot."""
 
-    def __init__(self, folder: Path, send_202: bool = True, log_name: str = "output_log.txt"):
+    def __init__(self, folder: Path, send_202: bool = True):
         self.folder = folder
-        self.log_name = log_name
         self.send_202 = send_202
         self.lie = "fairway"
         self.side = 0.0  # HUD left/right degrees (+ = Left)
@@ -36,7 +35,7 @@ class FakeGSPro:
         self.shots = 0
         self.heartbeats = 0
         self.disconnected = False
-        (folder / log_name).write_text("GSPro version 1.2.3 test\n", encoding="utf-8")
+        (folder / "output_log.txt").write_text("GSPro version 1.2.3 test\n", encoding="utf-8")
         self.server = socket.socket()
         self.server.bind(("127.0.0.1", 0))
         self.server.listen(1)
@@ -82,7 +81,7 @@ class FakeGSPro:
             name, sp, spin, vla, code = f
             lines += [f"Penalty Surface {name}, Spin{spin * 100:g}%, Speed {sp * 100:g}%, VLA {vla * 100:g}%",
                       f" ... corrected type {code}"]
-        with (self.folder / self.log_name).open("a", encoding="utf-8") as h:
+        with (self.folder / "output_log.txt").open("a", encoding="utf-8") as h:
             h.write("\n".join(lines) + "\n")
         time.sleep(0.15)
         carry_m = ball["Speed"] * 1.2 * (f[1] if f else 1.0)
@@ -142,13 +141,12 @@ class LieLabTests(unittest.TestCase):
         self.assertEqual(first[0]["kind"], "stock")
         self.assertEqual(first[0]["ballSpeedMph"], first[1]["ballSpeedMph"])
 
-    def _run(self, send_202: bool, api_version: str, log_name: str = "output_log.txt", lies=None):
+    def _run(self, send_202: bool, api_version: str):
         tmp = Path(tempfile.mkdtemp())
         gspro = tmp / "GSPro"
         gspro.mkdir()
-        fake = FakeGSPro(gspro, send_202=send_202, log_name=log_name)
-        plan = planlib.build_plan(lies=lies or [("fairway", 1), ("rough", 2), ("deep rough", 1)],
-                                  clubs=["7i", "PW", "SW"])
+        fake = FakeGSPro(gspro, send_202=send_202)
+        plan = planlib.build_plan(lies=[("fairway", 1), ("rough", 2), ("deep rough", 1)], clubs=["7i", "PW", "SW"])
         plan_path = planlib.write_plan(tmp / "plan.json", plan)
         out = tmp / "session"
         argv = ["run", "--gspro-dir", str(gspro), "--plan", str(plan_path), "--out", str(out),
@@ -197,18 +195,6 @@ class LieLabTests(unittest.TestCase):
         # Every shot's own log slice: one launch line each, nothing bleeding across shots.
         self.assertTrue(all(len(r["evidence"]["log"]["launches"]) == 1 for r in rows))
         self.assertGreater(fake.heartbeats, 0)
-
-
-class BetaLogTests(unittest.TestCase):
-    def test_public_beta_player_log_is_followed(self):
-        tc = LieLabTests()
-        fake, out = tc._run(send_202=True, api_version="2", log_name="Player.log", lies=[("rough", 1)])
-        session = json.loads((out / "session.json").read_text())
-        self.assertEqual(session["logFile"], "Player.log")
-        rows = [json.loads(l) for l in (out / "shots.jsonl").read_text().splitlines()]
-        spot_rows = [r for r in rows if r["spot"] == 1]
-        self.assertTrue(spot_rows)
-        self.assertTrue(all(len(r["evidence"]["log"]["launches"]) == 1 for r in spot_rows))
 
 
 if __name__ == "__main__":
