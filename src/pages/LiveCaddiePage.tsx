@@ -101,6 +101,10 @@ import NativeAimPreview from '../components/NativeAimPreview'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
+import { outcomeTiles } from '../liveCaddie/outcomeShares'
+
+const OUTCOME_PLACEHOLDER = ['Success', 'Manageable', 'Trouble', 'Catastrophe']
+  .map((label) => ({ label, percent: 0, text: '—' }))
 
 
 type LiveCaddieWorkerMessage =
@@ -1184,7 +1188,6 @@ export default function LiveCaddiePage() {
     lastShotKeyRef.current = null
   }
 
-  const playerFacingTrouble = risk ? risk.seriousTrouble + risk.unknown : null
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
@@ -1612,10 +1615,9 @@ export default function LiveCaddiePage() {
                     {risk ? <small>full-risk distribution</small> : null}
                   </div>
                   <div className="live-outcome-grid">
-                    <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
-                    <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
-                    <div className="outcome-trouble"><strong>{pct(playerFacingTrouble)}</strong><span>Trouble</span></div>
-                    <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
+                    {(outcomeTiles(risk) ?? OUTCOME_PLACEHOLDER).map((tile) => (
+                      <div key={tile.label} className={`outcome-${tile.label.toLowerCase()}`}><strong>{tile.text}</strong><span>{tile.label}</span></div>
+                    ))}
                   </div>
                   {outcomeDetails.length ? (
                     <div className="live-outcome-details">

@@ -103,6 +103,9 @@ jobs:
       - name: Shot 1 distance uses GSPro's round layout over the minimap ruler
         run: node tools/test-gspro-round-layout-distance.mjs
 
+      - name: Outcome tiles add to 100 (off-map landings count as Trouble)
+        run: node tools/test-outcome-tiles.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest

@@ -1,4 +1,4 @@
-import { readLooperCompanionCourseLayouts } from '../adapters/looperCompanion'
+import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
 import {
   findNativeSceneFolder,
@@ -107,11 +107,25 @@ type LoadResult = Readonly<{ context: NativeCourseContext | null; status: Native
 let lastStatus: NativeCourseStatus = { state: 'off' }
 const contextCache = new Map<string, Promise<LoadResult>>()
 
-const announce = (status: NativeCourseStatus) => {
+/** Event detail: the status plus which course it is about (null = all). Live
+ * Caddie's poller (GSPro's course) and Round Setup (the course being picked)
+ * can load different courses at once; listeners must ignore the other one's,
+ * or the status line flips between them. */
+export type NativeCourseStatusEvent = NativeCourseStatus & { forCourseId?: CourseId | null }
+
+const announce = (status: NativeCourseStatus, courseId: CourseId | null = null) => {
   lastStatus = status
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(NATIVE_POSITIONS_CHANGED_EVENT, { detail: status }))
+    window.dispatchEvent(new CustomEvent<NativeCourseStatusEvent>(NATIVE_POSITIONS_CHANGED_EVENT, {
+      detail: { ...status, forCourseId: courseId },
+    }))
   }
+}
+
+/** True when a status event concerns this course (or every course). */
+export const nativeStatusEventIsFor = (event: Event, courseId: CourseId | null) => {
+  const target = (event as CustomEvent<NativeCourseStatusEvent>).detail?.forCourseId ?? null
+  return target == null || target === courseId
 }
 
 export const getNativeCourseStatus = () => lastStatus
@@ -371,12 +385,27 @@ const registerInBrowser = async (
   return { registration: result.registration, reason: `grade ${result.fit.grade}` }
 }
 
+const comparableName = (value: string) => value.toLowerCase()
+  .replace(/_gsp$/, '').replace(/[^a-z0-9]+/g, ' ').trim()
+
+const installedCourseKeyFor = async (courseId: CourseId): Promise<string | null> => {
+  const entry = getCourseCatalogEntry(courseId)
+  const names = new Set([entry.name, ...entry.gsproAliases].map(comparableName).filter(Boolean))
+  const library = await readLooperCompanionCourseLibrary().catch(() => null)
+  const hits = (library?.courses ?? []).filter((course) =>
+    names.has(comparableName(course.courseName)) || names.has(comparableName(course.courseKey)))
+  return hits.length === 1 ? hits[0].courseKey : null
+}
+
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
   const entry = getCourseCatalogEntry(courseId)
   const url = registrationUrl(courseId)
   const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
   let registration = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
   let fitted = false
+  // Not in GSPro yet (Round Setup): find the course in the companion's library
+  // by name, so GSPro's tee sets can be offered before the round starts.
+  if (!registration && !courseKey) courseKey = await installedCourseKeyFor(courseId)
   if (!registration && courseKey) registration = await loadCachedRegistration(courseId, courseKey)
   if (!registration && !courseKey) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
   const key = registration?.gsproCourseKey ?? courseKey!
@@ -384,7 +413,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   if (!lookup.ok) return { context: null, status: lookup.status }
   const { sceneLayouts, via } = lookup
   if (!registration) {
-    announce({ state: 'registering', courseKey: key })
+    announce({ state: 'registering', courseKey: key }, courseId)
     const result = await registerInBrowser(courseId, key, sceneLayouts)
     if (!result.registration) {
       return { context: null, status: { state: 'registration-failed', courseKey: key, reason: result.reason } }
@@ -502,7 +531,7 @@ export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: st
     })
   }
   return pending.then((result) => {
-    if (JSON.stringify(result.status) !== JSON.stringify(lastStatus)) announce(result.status)
+    if (JSON.stringify(result.status) !== JSON.stringify(lastStatus)) announce(result.status, courseId)
     return result
   })
 }
