@@ -365,9 +365,33 @@ export const greenReadLine = (
   if (Number.isFinite(pinSlope) && pinSlope >= 2) {
     const down: CoursePointYds = [sampleGrid(a, a.downhillX, pin), sampleGrid(a, a.downhillY, pin)]
     const low = relative(down, shot)
-    parts.push(`Leave it ${low === 'past' ? 'past' : `${low} of`} the hole for an uphill putt.`)
+    // Only worth aiming for if there is green to land on there: a pin cut near
+    // the low edge (often next to water or a bunker) leaves no room.
+    if (greenRoomYds(a, pin, down) >= MIN_PUTT_SIDE_ROOM_YDS) {
+      parts.push(`Leave it ${low === 'past' ? 'past' : `${low} of`} the hole for an uphill putt.`)
+    } else {
+      parts.push(`Pin is near the ${low === 'past' ? 'back' : low === 'short' ? 'front' : low} edge: favor the middle of the green.`)
+    }
   }
   return parts.join(' ')
+}
+
+/** Green needed on the low side of the pin before "leave it there" is advice. */
+const MIN_PUTT_SIDE_ROOM_YDS = 5
+
+/** Yards of green from `from` along `dir` before the edge (capped at 12). */
+export const greenRoomYds = (a: GreenReadAnalysis, from: CoursePointYds, dir: CoursePointYds) => {
+  const len = Math.hypot(dir[0], dir[1])
+  if (!Number.isFinite(len) || len < 1e-6) return 0
+  const ux = dir[0] / len
+  const uy = dir[1] / len
+  const { minX, minY, spacingYds, width, height } = a.grid
+  for (let d = 0.5; d <= 12; d += 0.5) {
+    const x = Math.round((from[0] + ux * d - minX) / spacingYds)
+    const y = Math.round((from[1] + uy * d - minY) / spacingYds)
+    if (x < 0 || y < 0 || x >= width || y >= height || !a.inside[y * width + x]) return d - 0.5
+  }
+  return 12
 }
 
 /** Slope colours, by how much the ball reacts: clear under 1%, then green, yellow, orange, red (4%+). */
@@ -399,5 +423,52 @@ export const greenSlopeImage = (a: GreenReadAnalysis) => {
     y: minY - s / 2,
     width: w * s,
     height: h * s,
+  }
+}
+
+/** GSPro-style height ramp, low to high: blue, cyan, green, yellow, orange, red. */
+const HEIGHT_STOPS: readonly (readonly [number, number, number])[] = [
+  [52, 101, 214], [64, 196, 222], [118, 206, 108], [236, 222, 74], [240, 150, 56], [222, 64, 52],
+]
+
+const heightColour = (t: number): [number, number, number] => {
+  const u = Math.min(1, Math.max(0, t)) * (HEIGHT_STOPS.length - 1)
+  const i = Math.min(Math.floor(u), HEIGHT_STOPS.length - 2)
+  const f = u - i
+  const [a, b] = [HEIGHT_STOPS[i], HEIGHT_STOPS[i + 1]]
+  return [0, 1, 2].map((k) => Math.round(a[k] + (b[k] - a[k]) * f)) as [number, number, number]
+}
+
+/**
+ * Height map of the green like GSPro's minimap heatmap: blue = lowest part of
+ * the green, red = highest, scaled to this green's own range (2nd-98th
+ * percentile, so one odd cell does not wash it out). Nearly flat greens
+ * (under 0.3 ft of relief) stay uncoloured.
+ */
+export const greenHeightImage = (a: GreenReadAnalysis) => {
+  const { minX, minY, spacingYds: s, width: w, height: h } = a.grid
+  const values: number[] = []
+  for (let i = 0; i < w * h; i += 1) if (a.inside[i] && Number.isFinite(a.elevationFt[i])) values.push(a.elevationFt[i])
+  if (values.length < 10) return null
+  values.sort((x, y) => x - y)
+  const lo = values[Math.floor(values.length * 0.02)]
+  const hi = values[Math.ceil(values.length * 0.98) - 1]
+  if (!(hi - lo >= 0.3)) return null
+  const rgba = new Uint8Array(w * h * 4)
+  for (let i = 0; i < w * h; i += 1) {
+    if (!a.inside[i] || !Number.isFinite(a.elevationFt[i])) continue
+    const [r, g, b] = heightColour((a.elevationFt[i] - lo) / (hi - lo))
+    rgba.set([r, g, b, 175], i * 4)
+  }
+  let binary = ''
+  const png = encodePngRgba(w, h, rgba)
+  for (let i = 0; i < png.length; i += 0x8000) binary += String.fromCharCode(...png.subarray(i, i + 0x8000))
+  return {
+    dataUrl: `data:image/png;base64,${btoa(binary)}`,
+    x: minX - s / 2,
+    y: minY - s / 2,
+    width: w * s,
+    height: h * s,
+    reliefFt: hi - lo,
   }
 }

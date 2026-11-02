@@ -909,11 +909,40 @@ export default function LiveCaddiePage() {
     }
   }, [isGreenSurface])
 
+  // Wind and lie arrive a few seconds after a shot becomes current (companion
+  // HUD read). Calculating before then produced a calm/flat recommendation that
+  // was replaced moments later. Hold the first calculation for each shot until
+  // both are read, or CONDITIONS_WAIT_MS passes (then go without them).
+  const CONDITIONS_WAIT_MS = 12_000
+  const shotConditionsKey = liveMatchesHole
+    ? `${captureRoundId ?? 'round'}|${courseId}|${holeNumber}|${nextShotNumber ?? '?'}|${liveSnapshot?.latestShotKey ?? 'start'}`
+    : null
+  const [conditionsWait, setConditionsWait] = useState<{ key: string; expired: boolean } | null>(null)
+  useEffect(() => {
+    if (!shotConditionsKey) return
+    setConditionsWait({ key: shotConditionsKey, expired: false })
+    const timer = window.setTimeout(
+      () => setConditionsWait({ key: shotConditionsKey, expired: true }), CONDITIONS_WAIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [shotConditionsKey])
+  const companionReadsConditions = Boolean(companionStatus?.capabilities?.liveObservations)
+    && companionStatus?.gspro.status === 'connected'
+  const waitingForConditions = companionReadsConditions
+    && shotConditionsKey != null
+    && !(conditionsWait?.key === shotConditionsKey && conditionsWait.expired)
+    && !(hasLiveWind && hasLiveLie)
+
   useEffect(() => {
     if (!hole || isGreenSurface || spatialPositionUnavailable || holdFirstTeeRecommendation) {
       setEvaluations([])
       setEvaluationError(null)
       setEvaluationPending(false)
+      return
+    }
+    if (waitingForConditions) {
+      setEvaluations([])
+      setEvaluationError(null)
+      setEvaluationPending(true)
       return
     }
 
@@ -984,6 +1013,7 @@ export default function LiveCaddiePage() {
     isGreenSurface,
     spatialPositionUnavailable,
     holdFirstTeeRecommendation,
+    waitingForConditions,
     windMph,
     windRelativeDeg,
     elevationDeltaFt,
@@ -1519,7 +1549,7 @@ export default function LiveCaddiePage() {
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
                       {evaluationPending
-                        ? 'CALCULATING'
+                        ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
                           ? 'SHOT STRATEGY'
                         : spatialPositionProvisional

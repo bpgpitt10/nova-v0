@@ -9,7 +9,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
   }
   return server.ssrLoadModule(path)
 })
-const { analyzeGreen, greenReadLine, greenSlopeImage } = await load('/src/liveCaddie/greenRead.ts')
+const { analyzeGreen, greenReadLine, greenSlopeImage, greenHeightImage } = await load('/src/liveCaddie/greenRead.ts')
 
 const W = 40; const H = 40
 const make = (fz) => {
@@ -41,6 +41,11 @@ assert.match(greenReadLine(a, [0, 240], pin), /^Tilts [34]\.\d% away from you: i
 // From the side: it feeds.
 assert.match(greenReadLine(a, [-120, 120], pin), /^Tilts [34]\.\d% left to right: it will feed right after it lands\. Leave it right of the hole/)
 
+// Pin cut 2 yd from the low (front) edge: no room to leave it short of the hole.
+const edgeLine = greenReadLine(a, ball, [0, 106])
+assert.doesNotMatch(edgeLine, /uphill putt/, edgeLine)
+assert.match(edgeLine, /Pin is near the front edge: favor the middle of the green\./)
+
 // 3. A 1.2 ft tier across the middle: flat below, a 6-yd face, flat above.
 const tierZ = (x, y) => (y < 17 ? 0 : y > 23 ? 1.2 : ((y - 17) / 6) * 1.2)
 a = analyzeGreen(make(tierZ), green)
@@ -60,6 +65,11 @@ assert.match(greenReadLine(a, ball, pin), /Spine in the green/)
 const img = greenSlopeImage(analyzeGreen(make((x, y) => y * 3 * 0.04), green))
 assert.ok(img.dataUrl.startsWith('data:image/png;base64,'))
 assert.deepEqual([img.x, img.y, img.width, img.height], [-20.5, 99.5, 40, 40])
+
+// Height map (GSPro style): coloured on a tilted green, nothing on a flat one.
+const tilted = greenHeightImage(analyzeGreen(make((x, y) => y * 3 * 0.04), green))
+assert.ok(tilted && tilted.dataUrl.startsWith('data:image/png;base64,') && tilted.reliefFt > 3, String(tilted?.reliefFt))
+assert.equal(greenHeightImage(analyzeGreen(make(() => 0), green)), null)
 
 console.log('green read: ok')
 await server?.close()
