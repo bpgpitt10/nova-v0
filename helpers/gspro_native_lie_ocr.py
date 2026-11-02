@@ -1,13 +1,15 @@
 """Read-only lie footer OCR from the same GSPro HWND image used for wind."""
 from __future__ import annotations
 
+import re
+
 import cv2
 import numpy as np
 
 import gspro_native_wind_ocr as wind
 import gspro_window_capture as capture
 from open_golf_coach_helper import utc_now_iso
-from open_golf_coach_helper_lie_footer import _parse_candidate, RIGHT_FOOTER, LEFT_FOOTER
+from open_golf_coach_helper_lie_footer import _component, _parse_candidate, RIGHT_FOOTER, LEFT_FOOTER
 
 
 def _unavailable(note: str) -> dict:
@@ -58,6 +60,85 @@ def _read_region(image):
         return {"status": "error", "note": "lie_crop_invalid"}
 
 
+# Tesseract first: one footer half takes ~0.1-0.2 s, against ~1 s per half
+# for the Windows OCR, which starts PowerShell each time (3.8 s per lie read
+# on Brian's sim, 2 Nov 2026). Each half is read at a few heights and a value
+# counts when two reads agree; otherwise that side falls back to Windows OCR.
+LIE_TARGET_HEIGHTS = (40, 60, 80)
+LIE_PAD_PX = 16
+LIE_BINARY_THRESHOLD = 170
+LIE_WHITELIST = "0123456789.UPDOWNRIGHTLEF "
+_TOLERANT = (
+    (re.compile(r"D\s*O\s*W\s*N|D\s*O\s*W|D\s*O\s*N|O\s*W\s*N"), "DOWN"),
+    (re.compile(r"R\s*I\s*G\s*H\s*T|R\s*I\s*G\s*H|I\s*G\s*H\s*T|R\s*I\s*G"), "RIGHT"),
+    (re.compile(r"L\s*E\s*F\s*T|L\s*E\s*F|E\s*F\s*T"), "LEFT"),
+)
+
+
+def _canonical_lie_text(text: str) -> str:
+    out = (text or "").upper()
+    for pattern, word in _TOLERANT:
+        out = pattern.sub(word, out)
+    return out
+
+
+def _tesseract_half(image, target_height: int) -> dict:
+    try:
+        scale = target_height / max(1, image.shape[0])
+        enlarged = cv2.resize(image, None, fx=scale, fy=scale,
+                              interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
+        b, g, red = cv2.split(enlarged)
+        luminance = 0.0722 * b.astype(np.float32) + 0.7152 * g.astype(np.float32) + 0.2126 * red.astype(np.float32)
+        binary = np.where(luminance >= LIE_BINARY_THRESHOLD, 0, 255).astype(np.uint8)
+        binary = cv2.copyMakeBorder(binary, LIE_PAD_PX, LIE_PAD_PX, LIE_PAD_PX, LIE_PAD_PX,
+                                    cv2.BORDER_CONSTANT, value=255)
+        ok, encoded = cv2.imencode(".png", binary)
+        if not ok:
+            return {"status": "error", "note": "lie_crop_encode_failed"}
+        return wind._ocr_png_with_tesseract(encoded.tobytes(), psm=7, whitelist=LIE_WHITELIST)
+    except (ValueError, cv2.error):
+        return {"status": "error", "note": "lie_crop_invalid"}
+
+
+def _agreed_component(image, positive: str, negative: str):
+    """(signed value, direction, text) once two reads agree, else None."""
+    seen: dict[tuple, int] = {}
+    for height in LIE_TARGET_HEIGHTS:
+        result = _tesseract_half(image, height)
+        if result.get("status") != "ok":
+            return None
+        text = _canonical_lie_text(result.get("rawText") or "")
+        value, direction = _component(text, positive, negative)
+        if value is None:
+            continue
+        key = (value, direction)
+        seen[key] = seen.get(key, 0) + 1
+        if seen[key] >= 2:
+            return value, direction, text
+    return None
+
+
+def _tesseract_candidate(side, footer, long_image, lat_image):
+    if wind._tesseract_bundle() is None:
+        return None
+    longitudinal = _agreed_component(long_image, "UP", "DOWN")
+    lateral = _agreed_component(lat_image, "RIGHT", "LEFT")
+    if longitudinal is None or lateral is None:
+        return None
+    up_down, up_down_dir, long_text = longitudinal
+    left_right, left_right_dir, lat_text = lateral
+    x, y, width, height = footer
+    return {
+        "score": 2,
+        "upDownDegrees": up_down,
+        "leftRightDegrees": left_right,
+        "rawText": f"{abs(up_down):.1f} {up_down_dir} {abs(left_right):.1f} {left_right_dir}",
+        "ocrRawText": {"longitudinal": long_text, "lateral": lat_text},
+        "capture": {"side": side, "footer": {"x": x, "y": y, "width": width, "height": height}},
+        "engine": "tesseract-cli",
+    }
+
+
 def read_lie_from_capture(report: dict) -> dict:
     regions = extract_footer_crops(report)
     if not regions:
@@ -65,6 +146,10 @@ def read_lie_from_capture(report: dict) -> dict:
     candidates = []
     errors = []
     for side, (x, y, width, height), (long_image, lat_image) in regions:
+        fast = _tesseract_candidate(side, (x, y, width, height), long_image, lat_image)
+        if fast:
+            candidates.append(fast)
+            break  # both values agreed on this side: no need to read the other
         longitudinal = _read_region(long_image)
         lateral = _read_region(lat_image)
         if longitudinal.get("status") != "ok" or lateral.get("status") != "ok":
@@ -76,6 +161,8 @@ def read_lie_from_capture(report: dict) -> dict:
         })
         if candidate:
             candidates.append(candidate)
+            if candidate["score"] == 2:
+                break
     if not candidates:
         return _unavailable("; ".join(errors)[:240] or "GSPro lie OCR returned no usable candidates.")
     best = max(candidates, key=lambda item: item["score"])
@@ -90,6 +177,7 @@ def read_lie_from_capture(report: dict) -> dict:
         "leftRightDegrees": best["leftRightDegrees"],
         "observedAt": utc_now_iso(), "confidence": None,
         "rawText": best["rawText"], "ocrSource": "gspro-native-window",
+        "ocrEngine": best.get("engine", "windows-winrt"),
         "captureFreshness": "single_capture_unverified",
         "note": ("Lie footer read from GSPro native window. Signed +UP/-DOWN, +RIGHT/-LEFT."
                  if not missing else "Incomplete lie OCR: " + ", ".join(missing)),

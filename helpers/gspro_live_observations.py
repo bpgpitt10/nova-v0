@@ -188,7 +188,7 @@ def read_structured_state(discovery):
     }
 
 
-def _image_observation(window, state, *, report=None):
+def _image_observation(window, state, *, report=None, include_waypoints=True):
     report = report if report is not None else capture.probe_gspro_capture(window, keep_pixels=True)
     result = {
         "status": report.get("status", "unavailable"),
@@ -225,6 +225,11 @@ def _image_observation(window, state, *, report=None):
             result["pinPixel"] = {"x": round(pin.x, 2), "y": round(pin.y, 2)}
             result["minimapRoiWindowPixels"] = list(box)
             result["ballToPinPixels"] = round(gap, 2)
+            if not include_waypoints:
+                # Waypoint OCR (~3.4 s) only measures a tee Looper can't place;
+                # the page asks for it only then.
+                result["scale"] = {"status": "unavailable", "reason": "waypoints_not_requested"}
+                return result
             # Reuse the already-proven gray waypoint ruler (par 4/5/doglegs)
             # and cached tee feature registration. These are local, provisional
             # observations independent of Python's limited course-layout scan.
@@ -292,7 +297,7 @@ def _image_observation(window, state, *, report=None):
     return result
 
 
-def collect_observations(*, include_ocr=True):
+def collect_observations(*, include_ocr=True, include_waypoints=True):
     """Public JSON without full file paths, images, local usernames, or raw log."""
     started = time.perf_counter()
     observed = now()
@@ -306,7 +311,7 @@ def collect_observations(*, include_ocr=True):
     frame_report = capture.probe_gspro_capture(window, keep_pixels=True)
     capture_ms = round((time.perf_counter() - capture_started) * 1000, 2)
     minimap_started = time.perf_counter()
-    minimap = _image_observation(window, state, report=frame_report)
+    minimap = _image_observation(window, state, report=frame_report, include_waypoints=include_waypoints)
     minimap_ms = round((time.perf_counter() - minimap_started) * 1000, 2)
     wind_ms = 0.0
     lie_ms = 0.0

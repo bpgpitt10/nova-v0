@@ -35,7 +35,7 @@ import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop sc
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
 
 base = lie_footer.base
-COMPANION_VERSION = "aim-click.2"
+COMPANION_VERSION = "aim-click.3"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
@@ -438,7 +438,8 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
             try:
-                payload = observations.collect_observations()
+                waypoints = (parse_qs(urlsplit(self.path).query).get("waypoints") or ["1"])[0] != "0"
+                payload = observations.collect_observations(include_waypoints=waypoints)
                 # This is read-only evidence, NOT a second live shot-state
                 # authority. The existing browser Live Caddie owns transitions.
                 payload["version"] = COMPANION_VERSION

@@ -72,7 +72,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations' | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
+  path: 'status' | 'capture-check' | 'observations' | `observations?${string}` | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -373,8 +373,13 @@ export type LooperCompanionLiveObservations = {
   capabilities?: { autoAim: false }
 }
 
-export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
-  const data = await getCompanionReadOnly<LooperCompanionLiveObservations>('observations', timeoutMs)
+export const readLooperCompanionObservations = async (
+  timeoutMs = 45000,
+  /** False skips the minimap waypoint OCR (~3.4 s); only a tee Looper can't place needs it. */
+  includeWaypoints = true,
+) => {
+  const data = await getCompanionReadOnly<LooperCompanionLiveObservations>(
+    includeWaypoints ? 'observations' : 'observations?waypoints=0', timeoutMs)
   if (data.schemaVersion !== 'native-observations-v1' ||
       data.stateAuthority !== 'diagnostic-only' ||
       data.capabilities?.autoAim !== false ||
@@ -385,22 +390,33 @@ export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
   return data
 }
 
-export type LooperNativeObservationConnection = { disconnect: () => void }
+export type LooperNativeObservationConnection = {
+  disconnect: () => void
+  /** Read GSPro now (new shot) instead of waiting for the 16 s cycle. */
+  refreshNow: () => void
+}
 
 export const connectToLooperNativeObservations = ({
-  onObservation, onError,
+  onObservation, onError, includeWaypoints,
 }: {
   onObservation?: (value: LooperCompanionLiveObservations) => void
   onError?: (error: unknown) => void
+  includeWaypoints?: () => boolean
 }): LooperNativeObservationConnection => {
   let stopped = false
   let pending = false
+  let again = false
   let timer: number | null = null
   const refresh = async () => {
-    if (stopped || pending || document.hidden) return
+    if (stopped || document.hidden) return
+    if (pending) {
+      // A read already in flight may have captured the previous shot's screen.
+      again = true
+      return
+    }
     pending = true
     try {
-      const result = await readLooperCompanionObservations()
+      const result = await readLooperCompanionObservations(45000, includeWaypoints?.() ?? true)
       if (stopped) return
       onObservation?.(result)
       // Do not consume unproven ball or pin pixel readings as world/OSM positions.
@@ -416,6 +432,10 @@ export const connectToLooperNativeObservations = ({
       if (!stopped) onError?.(error)
     } finally {
       pending = false
+      if (again && !stopped) {
+        again = false
+        void refresh()
+      }
     }
   }
   void refresh()
@@ -425,5 +445,6 @@ export const connectToLooperNativeObservations = ({
       stopped = true
       if (timer != null) window.clearInterval(timer)
     },
+    refreshNow: () => { void refresh() },
   }
 }

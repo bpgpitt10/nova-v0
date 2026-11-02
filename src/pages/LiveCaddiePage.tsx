@@ -952,6 +952,34 @@ export default function LiveCaddiePage() {
     && !(conditionsWait?.key === shotConditionsKey && conditionsWait.expired)
     && !(hasLiveWind && hasLiveLie)
 
+  const needsWaypointsRef = useRef(true)
+  needsWaypointsRef.current = !liveSnapshot
+    || (liveSnapshot.teePlacement === 'provisional' && liveSnapshot.nextShotNumber === 1)
+
+  // A new shot: read GSPro now (not at the next 16 s poll), and again every
+  // 3 s while wind or lie is still missing.
+  useEffect(() => {
+    if (!shotConditionsKey) return
+    const first = window.setTimeout(() => nativeVisualRef.current?.refreshNow(), 800)
+    return () => window.clearTimeout(first)
+  }, [shotConditionsKey])
+  useEffect(() => {
+    if (!waitingForConditions) return
+    const retry = window.setInterval(() => nativeVisualRef.current?.refreshNow(), 3000)
+    return () => window.clearInterval(retry)
+  }, [waitingForConditions, shotConditionsKey])
+
+  // How long each step took for this shot (shown under Details).
+  const shotTimingRef = useRef<{ key: string | null; shotAt: number; conditionsAt: number | null; recStartAt: number | null; recorded: boolean }>(
+    { key: null, shotAt: 0, conditionsAt: null, recStartAt: null, recorded: false })
+  const [recTiming, setRecTiming] = useState<{ conditionsMs: number | null; recMs: number; totalMs: number } | null>(null)
+  if (shotConditionsKey && shotTimingRef.current.key !== shotConditionsKey) {
+    shotTimingRef.current = { key: shotConditionsKey, shotAt: performance.now(), conditionsAt: null, recStartAt: null, recorded: false }
+  }
+  if (shotConditionsKey && !waitingForConditions && shotTimingRef.current.conditionsAt == null) {
+    shotTimingRef.current.conditionsAt = performance.now()
+  }
+
   useEffect(() => {
     if (!hole || isGreenSurface || spatialPositionUnavailable || holdFirstTeeRecommendation) {
       setEvaluations([])
@@ -967,6 +995,8 @@ export default function LiveCaddiePage() {
     }
 
     let cancelled = false
+    const recStartAt = performance.now()
+    shotTimingRef.current.recStartAt = recStartAt
     const worker = new Worker(new URL('./LiveCaddieWorker.ts', import.meta.url), {
       type: 'module',
     })
@@ -980,6 +1010,16 @@ export default function LiveCaddiePage() {
       if (message.type === 'success') {
         setEvaluations(message.evaluations)
         setEvaluationError(null)
+        const done = performance.now()
+        const t = shotTimingRef.current
+        // The first recommendation for a shot is the one that matters; later
+        // recalculations (another aim inspected) don't reset the clock.
+        if (!t.recorded) setRecTiming({
+          conditionsMs: t.conditionsAt != null ? t.conditionsAt - t.shotAt : null,
+          recMs: done - recStartAt,
+          totalMs: done - t.shotAt,
+        })
+        t.recorded = true
       } else {
         setEvaluations([])
         setEvaluationError(message.error)
@@ -1294,6 +1334,8 @@ export default function LiveCaddiePage() {
     setNativeVisualActive(true)
     setNativeVisualMessage('Requesting a fresh read-only companion snapshot…')
     nativeVisualRef.current = connectToLooperNativeObservations({
+      // Waypoint OCR only measures a tee Looper can't place yet (~3.4 s per read).
+      includeWaypoints: () => needsWaypointsRef.current,
       onObservation: (data) => {
         setNativeObservations(data)
         const wind = data.ocr?.wind?.status ?? 'UNAVAILABLE'
@@ -1590,6 +1632,17 @@ export default function LiveCaddiePage() {
         {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY' ? (
           <div className="live-caddie-alert">
             Wind OCR read: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+          </div>
+        ) : null}
+        {showDiagnostics && recTiming ? (
+          <div className="live-caddie-alert">
+            Timing this shot: {recTiming.conditionsMs != null ? `wind & lie ${(recTiming.conditionsMs / 1000).toFixed(1)} s · ` : ''}
+            recommendation {(recTiming.recMs / 1000).toFixed(1)} s · total {(recTiming.totalMs / 1000).toFixed(1)} s
+            {nativeObservations?.timingMs ? ` · last GSPro read ${((nativeObservations.timingMs.total ?? 0) / 1000).toFixed(1)} s`
+              + ` (capture ${((nativeObservations.timingMs.nativeCapture ?? 0) / 1000).toFixed(1)}`
+              + `, waypoints ${((nativeObservations.timingMs.waypointOcr ?? 0) / 1000).toFixed(1)}`
+              + `, wind ${((nativeObservations.timingMs.windOcr ?? 0) / 1000).toFixed(1)}`
+              + `, lie ${((nativeObservations.timingMs.lieOcr ?? 0) / 1000).toFixed(1)})` : ''}
           </div>
         ) : null}
         {showDiagnostics && aimResult ? (
