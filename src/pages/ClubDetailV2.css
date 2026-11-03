@@ -1172,3 +1172,139 @@
 .club-detail-v2 .club-v2-score-club {
   justify-self: start;
 }
+
+/* Trend chart: drawn at the panel's own width (see chartHostRef), shown 1:1. */
+.club-v2-chart-host {
+  width: 100%;
+  min-width: 0;
+}
+
+.club-detail-v2 .club-v2-chart-host .club-v2-trend-svg {
+  height: 304px;
+}
+
+/* Landing window: how much room this club needs (under the miss pattern lines). */
+.club-v2-landing {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem 0 0.9rem;
+  border-bottom: 1px solid var(--club-v2-rule, rgba(207, 216, 205, 0.16));
+}
+
+.club-v2-landing-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.club-v2-landing-title {
+  color: rgba(181, 196, 184, 0.85);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.club-v2-landing-swings {
+  color: rgba(181, 196, 184, 0.7);
+  font-size: 0.72rem;
+}
+
+.club-v2-landing-size {
+  display: flex;
+  gap: 1.1rem;
+  color: rgba(214, 224, 216, 0.85);
+  font-size: 0.9rem;
+}
+
+.club-v2-landing-size b {
+  color: #f8fbf8;
+  font-size: 1.35rem;
+  font-weight: 650;
+  margin-right: 0.15rem;
+}
+
+.club-v2-landing-note {
+  margin: 0;
+  color: rgba(214, 224, 216, 0.8);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.club-v2-landing-bar {
+  display: flex;
+  height: 6px;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(211, 220, 212, 0.1);
+}
+
+.club-v2-landing-bar .left,
+.club-v2-landing-bar .right {
+  background: rgba(244, 206, 96, 0.85);
+}
+
+.club-v2-landing-bar .online {
+  background: rgba(118, 170, 136, 0.92);
+}
+
+.club-v2-landing-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  color: rgba(202, 212, 204, 0.8);
+  font-size: 0.8rem;
+}
+
+.club-v2-landing-legend b {
+  color: rgba(236, 242, 237, 0.93);
+  font-weight: 580;
+}
+
+.club-v2-landing-legend > span:nth-child(2) {
+  text-align: center;
+}
+
+.club-v2-landing-legend > span:nth-child(3) {
+  text-align: right;
+}
+
+/* Stock vs Pure: one line per metric (stock | label | pure) so the panel stays about
+   as tall as the shot chart with the landing window and the extra rows. */
+.club-detail-v2 .club-v2-stock-pure-rows {
+  gap: 0;
+}
+
+.club-detail-v2 .club-v2-stock-pure-row {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'stock label pure';
+  align-items: baseline;
+  column-gap: 0.8rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(207, 216, 205, 0.08);
+}
+
+.club-detail-v2 .club-v2-stock-pure-row:last-child {
+  border-bottom: 0;
+}
+
+.club-detail-v2 .club-v2-stock-pure-values {
+  display: contents;
+}
+
+.club-detail-v2 .club-v2-stock-pure-label {
+  grid-area: label;
+  justify-self: center;
+  text-align: center;
+}
+
+.club-detail-v2 .club-v2-stock-pure-value.stock {
+  grid-area: stock;
+  justify-self: start;
+}
+
+.club-detail-v2 .club-v2-stock-pure-value.pure {
+  grid-area: pure;
+  justify-self: end;
+}

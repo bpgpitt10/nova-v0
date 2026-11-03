@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ShotProfiles } from '../lib/shotProfiles'
 import type { ShotVariant } from '../lib/shotVariants'
 import ClubBehaviorPreview from './ClubBehaviorPreview'
+import { buildLandingWindow, LANDING_WINDOW_MIN_SWINGS, type LandingPoint } from '../lib/landingWindow'
 import './ClubDetailV2.css'
 
 type ComparisonDirection = 'up' | 'down'
@@ -122,6 +123,8 @@ type ClubDetailV2Props = {
   variantLabel: string
   variants: ShotVariant[]
   onVariantChange: (variantId: string) => void
+  /** This club's swings (carry, offline) for the landing window. */
+  landingPoints?: readonly LandingPoint[]
 }
 
 const linePath = (
@@ -199,7 +202,7 @@ const metricUnitLabel = (key: MetricKey) => {
 
 const comparisonValue = (
   value: number | undefined,
-  unit: 'yd' | 'rpm' | 'deg',
+  unit: 'yd' | 'rpm' | 'deg' | 'mph',
   digits = 1,
 ) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -207,6 +210,9 @@ const comparisonValue = (
   }
   if (unit === 'rpm') {
     return `${Math.round(value)} rpm`
+  }
+  if (unit === 'mph') {
+    return `${value.toFixed(digits)} mph`
   }
   if (unit === 'deg') {
     return `${value.toFixed(digits)}°`
@@ -219,6 +225,12 @@ const comparisonRatioValue = (value: number | undefined) => {
     return '—'
   }
   return value.toFixed(2)
+}
+
+const formatLandingOffline = (value: number) => {
+  const yards = Math.round(Math.abs(value))
+  if (yards === 0) return 'on line'
+  return `${yards} ${value < 0 ? 'L' : 'R'}`
 }
 
 const variabilityValue = (
@@ -267,7 +279,9 @@ export default function ClubDetailV2({
   variantLabel,
   variants,
   onVariantChange,
+  landingPoints = [],
 }: ClubDetailV2Props) {
+  const landing = useMemo(() => buildLandingWindow(landingPoints), [landingPoints])
   const metricGroupOrder: MetricGroup[] = [
     'distance',
     'direction',
@@ -362,6 +376,20 @@ export default function ClubDetailV2({
   }
 
   const selectedSeries = selectedModel?.series ?? []
+  // The trend chart draws at the panel's real width so it fills the row instead of
+  // sitting centred inside a fixed 920-wide drawing.
+  const chartHostRef = useRef<HTMLDivElement | null>(null)
+  const [chartHostWidth, setChartHostWidth] = useState(920)
+  useEffect(() => {
+    const host = chartHostRef.current
+    if (!host || typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver((entries) => {
+      const next = Math.round(entries[0]?.contentRect.width ?? 0)
+      if (next > 0) setChartHostWidth(next)
+    })
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [])
   const chartSvg = useMemo(() => {
     if (!selectedModel) {
       return <div className="club-v2-empty">Not enough points yet.</div>
@@ -377,9 +405,9 @@ export default function ClubDetailV2({
       return <div className="club-v2-empty">Not enough points yet.</div>
     }
 
-    const width = 920
+    const width = Math.max(480, chartHostWidth)
     const height = 304
-    const padding = { top: 18, right: 10, bottom: 44, left: 42 }
+    const padding = { top: 18, right: 10, bottom: 44, left: 62 }
     const chartWidth = width - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
 
@@ -537,13 +565,13 @@ export default function ClubDetailV2({
         </text>
         <text
           className="club-v2-trend-axis-title"
-          transform={`translate(14 ${height / 2}) rotate(-90)`}
+          transform={`translate(12 ${height / 2}) rotate(-90)`}
         >
           {metricUnitLabel(selectedModel.key)}
         </text>
       </svg>
     )
-  }, [chartMode, metricSessionSeries, selectedModel, selectedSeries])
+  }, [chartHostWidth, chartMode, metricSessionSeries, selectedModel, selectedSeries])
 
   const stockPureRows = useMemo<StockPureMetricRow[]>(
     () => [
@@ -584,6 +612,18 @@ export default function ClubDetailV2({
         },
       },
       {
+        key: 'ball-speed',
+        label: 'Ball Speed',
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.ballSpeed, 'mph', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.ballSpeedVariability, 1),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.ballSpeed, 'mph', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.ballSpeedVariability, 1),
+        },
+      },
+      {
         key: 'launch-vla',
         label: 'Launch (VLA)',
         stock: {
@@ -617,6 +657,30 @@ export default function ClubDetailV2({
         pure: {
           primary: comparisonValue(shotProfiles.bestAvailable?.spin, 'rpm'),
           variability: variabilityValue(shotProfiles.bestAvailable?.spinVariability),
+        },
+      },
+      {
+        key: 'peak-height',
+        label: 'Peak Height',
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.peakHeight, 'yd', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.peakHeightVariability, 1),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.peakHeight, 'yd', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.peakHeightVariability, 1),
+        },
+      },
+      {
+        key: 'descent',
+        label: 'Descent Angle',
+        stock: {
+          primary: comparisonValue(shotProfiles.mostLikely?.descentAngle, 'deg', 1),
+          variability: variabilityValue(shotProfiles.mostLikely?.descentAngleVariability, 1),
+        },
+        pure: {
+          primary: comparisonValue(shotProfiles.bestAvailable?.descentAngle, 'deg', 1),
+          variability: variabilityValue(shotProfiles.bestAvailable?.descentAngleVariability, 1),
         },
       },
       {
@@ -724,6 +788,39 @@ export default function ClubDetailV2({
               ))}
             </div>
           </div>
+          <div className="club-v2-landing">
+            <div className="club-v2-landing-head">
+              <span className="club-v2-landing-title">Landing window</span>
+              {landing ? <span className="club-v2-landing-swings">{landing.swings} swings</span> : null}
+            </div>
+            {landing ? (
+              <>
+                <div className="club-v2-landing-size">
+                  <span><b>{Math.round(landing.width)}</b> yd wide</span>
+                  <span><b>{Math.round(landing.depth)}</b> yd deep</span>
+                </div>
+                <p className="club-v2-landing-note">
+                  Middle 80% lands {formatLandingOffline(landing.offlineLow)} to{' '}
+                  {formatLandingOffline(landing.offlineHigh)}, carrying {Math.round(landing.carryLow)}–
+                  {Math.round(landing.carryHigh)}.
+                </p>
+                <div className="club-v2-landing-bar" aria-hidden="true">
+                  <span className="left" style={{ width: `${landing.leftPct}%` }} />
+                  <span className="online" style={{ width: `${landing.onLinePct}%` }} />
+                  <span className="right" style={{ width: `${landing.rightPct}%` }} />
+                </div>
+                <div className="club-v2-landing-legend">
+                  <span><b>Left</b> {landing.leftPct}%</span>
+                  <span title={`Within ${landing.onLineBand} yd of the target line`}>
+                    <b>On line</b> {landing.onLinePct}%
+                  </span>
+                  <span><b>Right</b> {landing.rightPct}%</span>
+                </div>
+              </>
+            ) : (
+              <p className="club-v2-landing-note">Fills in at {LANDING_WINDOW_MIN_SWINGS} swings.</p>
+            )}
+          </div>
           <div className="club-v2-stock-pure-panel">
             <div className="club-v2-stock-pure-header">
               <span>Stock</span>
@@ -731,7 +828,9 @@ export default function ClubDetailV2({
             </div>
             <div className="club-v2-stock-pure-divider" />
             <div className="club-v2-stock-pure-rows">
-              {stockPureRows.map((row) => (
+              {stockPureRows
+                .filter((row) => row.stock.primary !== '—' || row.pure.primary !== '—')
+                .map((row) => (
                 <div className="club-v2-stock-pure-row" key={row.key}>
                   <div className="club-v2-stock-pure-label">{row.label}</div>
                   <div className="club-v2-stock-pure-values">
@@ -900,7 +999,9 @@ export default function ClubDetailV2({
                 </button>
               </div>
             </div>
-            {selectedModel ? chartSvg : <div className="club-v2-empty">No selected metric.</div>}
+            <div className="club-v2-chart-host" ref={chartHostRef}>
+              {selectedModel ? chartSvg : <div className="club-v2-empty">No selected metric.</div>}
+            </div>
           </div>
         </article>
       </section>

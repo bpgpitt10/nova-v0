@@ -2897,6 +2897,11 @@ function App({
     [selectedClubHistoricalShots],
   )
 
+  const clubDetailLandingPoints = useMemo(
+    () => selectedClubDispersionPoints.filter((point) => point.included),
+    [selectedClubDispersionPoints],
+  )
+
   const looperRead = useMemo(() => {
     if (!selectedClubSummary) {
       return {
@@ -5910,6 +5915,7 @@ function App({
                     )}
                     variants={selectedDetailShotVariants}
                     onVariantChange={setSelectedDetailShotVariantId}
+                    landingPoints={clubDetailLandingPoints}
                     dispersionChart={
                       selectedClubDispersionPoints.length === 0 ? (
                         <p className="support-card-copy">No shot data available for this club yet</p>
@@ -6263,6 +6269,10 @@ function App({
                       </section>
                     </details>
                   </section>
+                )}
+
+                {reviewView === 'dashboard' && yardageBook && (
+                  <p className="bagbook-tagline">Every club holds a truth.</p>
                 )}
               </>
             ) : (

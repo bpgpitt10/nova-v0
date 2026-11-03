@@ -179,5 +179,19 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(pickBackdrop({ override: 'nonsense', keywords: ['heathland'] }).backdrop, 'heathland')
 }
 
+// Landing window (Club Detail): middle 80% box and the left / on line / right split.
+{
+  const { buildLandingWindow } = await load('/src/lib/landingWindow.ts')
+  assert.equal(buildLandingWindow([{ carry: 240, offline: 0 }]), null, 'needs 8 swings')
+  const offlines = [-30, -20, -12, -8, -2, 0, 4, 9, 11, 25]
+  const window = buildLandingWindow(offlines.map((offline, i) => ({ carry: 220 + i * 4, offline })))
+  assert.equal(window.swings, 10)
+  assert.equal(window.onLineBand, 10, '±4% of a ~238 median carry')
+  assert.deepEqual([window.leftPct, window.onLinePct, window.rightPct], [30, 50, 20])
+  assert.ok(Math.abs(window.offlineLow - -21) < 0.01 && Math.abs(window.offlineHigh - 12.4) < 0.01)
+  assert.ok(Math.abs(window.depth - 28.8) < 0.01)
+  assert.equal(window.leftPct + window.onLinePct + window.rightPct, 100)
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()

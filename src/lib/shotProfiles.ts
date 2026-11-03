@@ -31,9 +31,12 @@ export type ShotProfileSnapshot = {
   smashFactor?: number
   smashFactorVariability?: number
   ballSpeed?: number
+  ballSpeedVariability?: number
   clubSpeed?: number
   peakHeight?: number
+  peakHeightVariability?: number
   descentAngle?: number
+  descentAngleVariability?: number
   clubPath?: number
   faceToPath?: number
   faceToTarget?: number
@@ -342,6 +345,9 @@ const buildProfile = (
   const hla = shots.map(hlaValue)
   const spin = shots.map(spinValue)
   const smashFactor = shots.map(smashFactorValue)
+  const ballSpeed = shots.map(ballSpeedMphValue)
+  const peakHeight = shots.map(peakHeightValue)
+  const descentAngle = shots.map(descentValue)
 
   return {
     key,
@@ -374,10 +380,13 @@ const buildProfile = (
     spinAxis: weightedAverageNumbers(shots.map(spinAxisValue), weights),
     smashFactor: weightedAverageNumbers(smashFactor, weights),
     smashFactorVariability: weightedStandardDeviationNumbers(smashFactor, weights),
-    ballSpeed: weightedAverageNumbers(shots.map(ballSpeedMphValue), weights),
+    ballSpeed: weightedAverageNumbers(ballSpeed, weights),
+    ballSpeedVariability: weightedStandardDeviationNumbers(ballSpeed, weights),
     clubSpeed: weightedAverageNumbers(shots.map(clubSpeedValue), weights),
-    peakHeight: weightedAverageNumbers(shots.map(peakHeightValue), weights),
-    descentAngle: weightedAverageNumbers(shots.map(descentValue), weights),
+    peakHeight: weightedAverageNumbers(peakHeight, weights),
+    peakHeightVariability: weightedStandardDeviationNumbers(peakHeight, weights),
+    descentAngle: weightedAverageNumbers(descentAngle, weights),
+    descentAngleVariability: weightedStandardDeviationNumbers(descentAngle, weights),
     clubPath: weightedAverageNumbers(shots.map(clubPathValue), weights),
     faceToPath: weightedAverageNumbers(shots.map(faceToPathValue), weights),
     faceToTarget: weightedAverageNumbers(shots.map(faceToTargetValue), weights),
