@@ -145,3 +145,10 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+.load-course-actions .load-course-failed,
+.load-course-actions .load-course-progress {
+  max-width: 560px;
+  font-size: 13px;
+  line-height: 1.35;
+}

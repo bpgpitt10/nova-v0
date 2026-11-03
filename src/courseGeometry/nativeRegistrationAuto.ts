@@ -34,9 +34,13 @@ export type AutoRegistrationResult = Readonly<{
    * built this course off true north / not in metres; a large rms means the
    * holes or greens do not correspond (wrong course, renumbered holes). */
   greenSimilarity: GreenSimilarity | null
+  /** Greens matched mirror-image (scene x runs west); greenSimilarity is that fit. */
+  mirrored: boolean
+  /** Best mirror-image fit, for diagnostics when nothing registers. */
+  mirroredSimilarity: GreenSimilarity | null
   /** Diagnostic when the greens don't pair up by hole number: the hole offset
    * (GSPro hole = Looper hole + shift, wrapping) whose greens do line up. */
-  holeShift: Readonly<{ shift: number; rmsM: number; rotationDeg: number; scale: number }> | null
+  holeShift: Readonly<{ shift: number; rmsM: number; rotationDeg: number; scale: number; label: string }> | null
   registration: NativeRegistration | null
 }>
 
@@ -47,6 +51,7 @@ const ROTATION_TRUST_RMS_M = 25
 
 export const greenSimilarity = (
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>,
+  mirrored = false,
 ): GreenSimilarity | null => {
   if (greens.length < 3) return null
   const lat0 = greens.reduce((s, g) => s + g.latLon[0], 0) / greens.length
@@ -54,7 +59,7 @@ export const greenSimilarity = (
   const map = greens.map((g) => groundOffsetMeters(lat0, lon0, g.latLon[0], g.latLon[1]))
   const wx = greens.reduce((s, g) => s + g.world.x, 0) / greens.length
   const wz = greens.reduce((s, g) => s + g.world.z, 0) / greens.length
-  const world = greens.map((g) => [g.world.x - wx, g.world.z - wz] as const)
+  const world = greens.map((g) => [(mirrored ? -1 : 1) * (g.world.x - wx), g.world.z - wz] as const)
   // Least-squares similarity world -> map (east, north), complex-number form.
   let a = 0, b = 0, norm = 0
   for (let i = 0; i < greens.length; i += 1) {
@@ -77,19 +82,32 @@ export const greenSimilarity = (
   return { rotationDeg: theta / DEG, scale, rmsM: Math.sqrt(sq / greens.length), n: greens.length }
 }
 
-/** Try pairing Looper hole h with GSPro hole h + shift (wrapping over the
- * GKD's holes), e.g. nines swapped. Diagnostic only. */
+/** Try other hole pairings (nines swapped / offset numbering, or numbered
+ * backwards), plain and mirror-image. Diagnostic only: tells why greens don't
+ * pair when the course itself is right. */
 const bestHoleShift = (layout: NativeCourseLayout, mapped: ReadonlyMap<number, readonly [number, number]>) => {
   const count = layout.holes.length
-  let best: { shift: number; rmsM: number; rotationDeg: number; scale: number } | null = null
+  let best: { shift: number; rmsM: number; rotationDeg: number; scale: number; label: string } | null = null
+  const pairings: Array<{ label: string; shift: number; map: (hole: number) => number }> = []
   for (let shift = 1; shift < count; shift += 1) {
+    pairings.push({ label: `GSPro hole = Looper hole + ${shift}`, shift, map: (h) => ((h - 1 + shift) % count) + 1 })
+  }
+  for (let shift = 0; shift < count; shift += 1) {
+    pairings.push({ label: `GSPro holes numbered backwards (+${shift})`, shift, map: (h) => ((count - h + shift) % count) + 1 })
+  }
+  for (const pairing of pairings) {
     const pairs: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
     for (const [hole, latLon] of mapped) {
-      const gkd = nativeHole(layout, ((hole - 1 + shift) % count) + 1)
+      const gkd = nativeHole(layout, pairing.map(hole))
       if (gkd?.greenCenter) pairs.push({ world: gkd.greenCenter, latLon })
     }
-    const sim = greenSimilarity(pairs)
-    if (sim && (!best || sim.rmsM < best.rmsM)) best = { shift, rmsM: sim.rmsM, rotationDeg: sim.rotationDeg, scale: sim.scale }
+    for (const mirrored of [false, true]) {
+      const sim = greenSimilarity(pairs, mirrored)
+      if (sim && (!best || sim.rmsM < best.rmsM)) {
+        best = { shift: pairing.shift, rmsM: sim.rmsM, rotationDeg: sim.rotationDeg, scale: sim.scale,
+          label: pairing.label + (mirrored ? ', mirror-image' : '') }
+      }
+    }
   }
   return best && best.rmsM <= ROTATION_TRUST_RMS_M ? best : null
 }
@@ -130,11 +148,18 @@ export const fitRegistrationFromPackage = async ({
   // Some GSPro scenes are built turned or scaled (Valhalla 180°, Royal New Kent
   // -12°); the greens give that directly. Near 0° / 1 (FarmLinks) keep the
   // true-north model exactly as before.
-  const similarity = greenSimilarity(greens)
+  // Some scenes are also built mirror-image (x running west): use that only
+  // when the greens fit far better mirrored.
+  const plain = greenSimilarity(greens)
+  const flipped = greenSimilarity(greens, true)
+  const mirrored = flipped != null && flipped.rmsM <= ROTATION_TRUST_RMS_M
+    && (plain == null || flipped.rmsM < plain.rmsM / 3)
+  const similarity = mirrored ? flipped : plain
   const turned = similarity != null && similarity.rmsM <= ROTATION_TRUST_RMS_M
-    && (Math.abs(similarity.rotationDeg) > ROTATION_MIN_DEG || Math.abs(similarity.scale - 1) > SCALE_MIN_DEVIATION)
+    && (mirrored || Math.abs(similarity.rotationDeg) > ROTATION_MIN_DEG || Math.abs(similarity.scale - 1) > SCALE_MIN_DEVIATION)
   const fit = fitNativeRegistration({
     ...(turned ? { rotationDeg: similarity!.rotationDeg, scale: similarity!.scale } : {}),
+    ...(mirrored ? { mirrored: true } : {}),
     courseId,
     gsproCourseKey,
     layoutFingerprint: await sha256Hex(layout.fingerprintText),
@@ -158,6 +183,8 @@ export const fitRegistrationFromPackage = async ({
     greensWithin25m: within,
     greensChecked: greens.length,
     greenSimilarity: similarity,
+    mirrored,
+    mirroredSimilarity: flipped,
     holeShift: similarity && similarity.rmsM > ROTATION_TRUST_RMS_M ? bestHoleShift(layout, mappedGreens) : null,
     registration: fit.registration && sameCourse ? fit.registration : null,
   }

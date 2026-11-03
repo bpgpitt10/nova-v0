@@ -64,13 +64,13 @@ export const terrainSamplerFromHoles = (
  * (degrees, counter-clockwise from GSPro +x/+z onto east/north) and scale. */
 type Params = Readonly<{ x0: number; z0: number; rotationDeg: number; scale: number }>
 
-const makeProjector = (refLat: number, refLon: number) => {
+const makeProjector = (refLat: number, refLon: number, mirrored = false) => {
   const { meridian, primeVertical } = radii(refLat)
   const cosLat = Math.cos(refLat * DEG)
   return (p: Params, x: number, z: number): readonly [number, number] => {
     const c = Math.cos(p.rotationDeg * DEG) * p.scale
     const s = Math.sin(p.rotationDeg * DEG) * p.scale
-    const dx = x - p.x0
+    const dx = (mirrored ? -1 : 1) * (x - p.x0)
     const dz = z - p.z0
     const east = c * dx - s * dz
     const north = s * dx + c * dz
@@ -234,6 +234,8 @@ export type NativeRegistrationFitInput = Readonly<{
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>
   holes: Readonly<Record<string, NativeHoleFrame>>
   sampler: TerrainSampler
+  /** Scene built mirror-image (x runs west). */
+  mirrored?: boolean
   /** Scene rotation and scale from the green-to-green fit (default 0° / 1). */
   rotationDeg?: number
   scale?: number
@@ -255,7 +257,7 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
   const refLat = input.greens.reduce((s, g) => s + g.latLon[0], 0) / input.greens.length
   const refLon = input.greens.reduce((s, g) => s + g.latLon[1], 0) / input.greens.length
   const turn = input.rotationDeg != null || input.scale != null
-  const project = makeProjector(refLat, refLon)
+  const project = makeProjector(refLat, refLon, input.mirrored === true)
   const start: Params = {
     x0: input.greens.reduce((s, g) => s + g.world.x, 0) / input.greens.length,
     z0: input.greens.reduce((s, g) => s + g.world.z, 0) / input.greens.length,
@@ -297,6 +299,7 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
       grade,
       reference: { latLon: [refLat, refLon], worldXZ: [full.p.x0, full.p.z0] },
       ...(turn ? { rotationDeg: full.p.rotationDeg, scale: full.p.scale } : {}),
+      ...(input.mirrored ? { mirrored: true } : {}),
       worldYToElevationOffsetM: full.dy,
       holes: input.holes,
     },

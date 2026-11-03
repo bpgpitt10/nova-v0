@@ -41,16 +41,26 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def run(*args: str) -> None:
-    command = [sys.executable, *args]
+def _run_reporting(command: list[str]) -> None:
+    """Run a step and, if it fails, end with the step's own last lines (not a
+    CalledProcessError traceback), so the course-load page shows the reason."""
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True)
+    proc = subprocess.run(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    sys.stdout.write(proc.stdout)
+    sys.stdout.flush()
+    if proc.returncode != 0:
+        step = Path(command[1]).name if len(command) > 1 else command[0]
+        lines = [line.strip() for line in proc.stdout.strip().splitlines() if line.strip()]
+        reason = " | ".join(lines[-3:])[-500:] or f"exit status {proc.returncode}"
+        raise SystemExit(f"{step} failed: {reason}")
+
+
+def run(*args: str) -> None:
+    _run_reporting([sys.executable, *args])
 
 
 def run_node(*args: str) -> None:
-    command = ["node", *args]
-    print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=ROOT, check=True)
+    _run_reporting(["node", *args])
 
 
 def worldcover_url(config: dict[str, Any]) -> str:
