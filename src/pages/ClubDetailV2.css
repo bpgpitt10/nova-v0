@@ -1042,3 +1042,93 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---- Open layout (3 Nov), matching Bag and Rounds: no boxes over the backdrop.
+   Sections are split by thin rules. Controls you pick from (driver tiles, metric rows)
+   lose their boxes too and show the selection with gold instead. Floating menus,
+   pills and toggles keep their shapes. ---- */
+
+.club-detail-v2 {
+  --club-v2-rule: rgba(207, 216, 205, 0.16);
+}
+
+.dashboard-page .club-detail-v2 .dashboard-card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--club-v2-rule);
+  border-radius: 0;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.dashboard-page .club-detail-v2 .dashboard-card::before {
+  content: none;
+}
+
+/* The dispersion plot keeps a faint plot area so the shots read against something. */
+.club-detail-v2 .club-detail-plot-surface {
+  fill: rgba(10, 20, 13, 0.32);
+}
+
+.club-detail-v2 .club-v2-heatmap-card {
+  min-height: 0;
+}
+
+/* Miss pattern / Stock vs Pure column: a rule on its left instead of a box. */
+.dashboard-page .club-detail-v2 .club-v2-heatmap-metrics {
+  padding-left: 18px;
+  border-left: 1px solid var(--club-v2-rule);
+}
+
+/* Shape, movement, mix, strike strip. */
+.dashboard-page .club-detail-v2 .club-v2-behavior-preview {
+  padding-top: 0.7rem;
+}
+
+.club-detail-v2 .club-v2-behavior-cell:first-child {
+  padding-left: 0;
+}
+
+/* Performance drivers: open tiles; the active one gets a gold underline. */
+.club-detail-v2 .club-v2-driver-selector-tile {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.club-detail-v2 .club-v2-driver-selector-tile:hover {
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.club-detail-v2 .club-v2-driver-selector-tile.is-active {
+  background: rgba(234, 179, 8, 0.07);
+  border-bottom-color: #eab308;
+  box-shadow: none;
+}
+
+/* What's driving this: metric rows as ruled lines, the selected one in gold. */
+.club-detail-v2 .club-v2-metric-row {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--club-v2-rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.club-detail-v2 .club-v2-metric-row:hover {
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.club-detail-v2 .club-v2-metric-row.is-active {
+  background: rgba(234, 179, 8, 0.07);
+  box-shadow: inset 2px 0 0 #eab308;
+}
+
+/* The top bar already draws a rule above the read; keep the Careful/Play pill inside the edge. */
+.dashboard-page .club-detail-v2 .club-detail-looper-read {
+  border-top: 0;
+  padding-left: 10px;
+}
