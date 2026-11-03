@@ -12,6 +12,7 @@ on:
       - web-course-load-v1
       - web-companion-gspro-files-v1
       - web-native-rotated-courses-v1
+      - web-rounds-history-v1
     paths:
       - "helpers/gspro_file_bridge.py"
       - "tests/test_companion_gspro_files.py"
@@ -338,6 +339,20 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: finds your courses with GSPro closed ($shortSha)" `
             --notes "Remembers where GSPro is installed, so Round Setup can list courses and tees and match them to the map while GSPro is closed. Otherwise the same as the GSPro-files companion (aim click, wind/lie/HUD reads, round recorder)." `
+            --prerelease
+
+      - name: Publish Rounds companion installer
+        if: github.ref == 'refs/heads/web-rounds-history-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-rounds-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: par for Rounds ($shortSha)" `
+            --notes "Version courses.7. The course list now includes each hole's par, so Rounds can show the scorecard; single-course lookups search as far as the course list (large libraries). Otherwise the same as courses.6 (finds courses with GSPro closed, aim click, wind/lie/HUD reads, round recorder)." `
             --prerelease
 
       - name: Publish GSPro-files companion installer
