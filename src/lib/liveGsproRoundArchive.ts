@@ -1,7 +1,13 @@
 import {
+  archiveRoundsFromRecords,
   readBrowserGsproCourseRoundArchive,
   type BrowserGsproCourseArchiveShot,
 } from '../adapters/browserGsproCourseArchive'
+import {
+  isCompanionGsproFilesAvailable,
+  readCompanionRoundRecords,
+  type CompanionRoundRecordEntry,
+} from '../adapters/companionGsproFiles'
 import {
   getAllowedUserRecord,
   getCurrentLooperUser,
@@ -174,11 +180,14 @@ export const upsertLiveGsproRoundArchive = ({
   courseKey,
   shots,
   observedAt,
+  observedAtByKey,
 }: {
   roundId: number | null
   courseKey: string | null
   shots: readonly BrowserGsproCourseArchiveShot[]
   observedAt: string
+  /** When each shot was first seen (companion backlog); defaults to observedAt. */
+  observedAtByKey?: ReadonlyMap<string, string>
 }): { round: ArchivedGsproRound | null; changed: boolean } => {
   if (roundId == null || !Number.isFinite(roundId) || shots.length === 0) {
     return { round: null, changed: false }
@@ -193,7 +202,10 @@ export const upsertLiveGsproRoundArchive = ({
   for (const incoming of shots) {
     const prior = existingByKey.get(incoming.key)
     if (!prior || shotPayloadFingerprint(prior) !== shotPayloadFingerprint(incoming)) {
-      existingByKey.set(incoming.key, archivedFromIncoming(incoming, observedAt, prior))
+      existingByKey.set(
+        incoming.key,
+        archivedFromIncoming(incoming, observedAtByKey?.get(incoming.key) ?? observedAt, prior),
+      )
       changed = true
     }
   }
@@ -206,7 +218,9 @@ export const upsertLiveGsproRoundArchive = ({
     id: `gspro-course-round-${roundId}`,
     roundId,
     courseKey: courseKey ?? existing?.courseKey ?? null,
-    firstObservedAt: existing?.firstObservedAt ?? observedAt,
+    firstObservedAt: existing?.firstObservedAt
+      ?? [...(observedAtByKey?.values() ?? [])].sort()[0]
+      ?? observedAt,
     lastObservedAt: observedAt,
     shots: [...existingByKey.values()].sort(shotOrder),
     schemaVersion: 1,
@@ -317,15 +331,18 @@ const annotateNewShots = ({
   round,
   newShots,
   observedAt,
+  allowArm = true,
 }: {
   round: ArchivedGsproRound
   newShots: readonly BrowserGsproCourseArchiveShot[]
   observedAt: string
+  /** False for rounds from the companion backlog: never touch the player's armed club. */
+  allowArm?: boolean
 }): { round: ArchivedGsproRound; changed: boolean; consumedArmedClub: boolean } => {
   if (newShots.length === 0) return { round, changed: false, consumedArmedClub: false }
 
   const sessions = loadSavedSessions()
-  const armed = loadArmedLiveClub()
+  const armed = allowArm ? loadArmedLiveClub() : null
   const usableArmed = armed && isFreshArmedSelection(armed.armedAt, observedAt) ? armed : null
   if (armed && !usableArmed) clearArmedLiveClub()
 
@@ -365,7 +382,10 @@ const annotateNewShots = ({
   return { round: annotated, changed, consumedArmedClub }
 }
 
-const syncRoundToCloud = async (round: ArchivedGsproRound) => {
+const syncRoundToCloud = async (
+  round: ArchivedGsproRound,
+  { preserveAttribution = false }: { preserveAttribution?: boolean } = {},
+) => {
   if (!isSupabaseConfigured()) return
 
   const user = await getCurrentLooperUser()
@@ -414,11 +434,15 @@ const syncRoundToCloud = async (round: ArchivedGsproRound) => {
       side_spin_rpm: shot.sideSpinRpm,
       gspro_club_index: shot.gsproClubIndex,
       raw_metrics: shot.rawMetrics,
-      actual_club: shot.actualClub,
-      recommended_club: shot.recommendedClub,
-      club_source: shot.clubSource,
-      include_in_analysis: shot.includeInAnalysis,
-      attributed_at: shot.attributedAt,
+      // Columns left out of an upsert keep their stored values, so a backlog
+      // sync can never erase a club the player attributed by arming.
+      ...(preserveAttribution ? {} : {
+        actual_club: shot.actualClub,
+        recommended_club: shot.recommendedClub,
+        club_source: shot.clubSource,
+        include_in_analysis: shot.includeInAnalysis,
+        attributed_at: shot.attributedAt,
+      }),
       inferred_club: shot.clubInference?.predictedClub ?? null,
       inference_confidence: shot.clubInference?.confidence ?? null,
       inference_alternatives: shot.clubInference?.alternatives ?? [],
@@ -471,6 +495,138 @@ export const captureAndPersistLiveGsproCourseRound = async (
   return finalRound
 }
 
+const COMPANION_ROUND_CURSOR_PREFIX = 'looper-companion-round-cursor-v1:'
+const ACTIVE_ROUND_QUIET_MS = 30 * 60 * 1000
+const COMPANION_BACKLOG_INTERVAL_MS = 60 * 1000
+const MAX_BACKLOG_PAGES = 50
+let backlogBusy = false
+
+const readBacklogCursor = (key: string) => {
+  try {
+    const value = Number(window.localStorage.getItem(key))
+    return Number.isSafeInteger(value) && value > 0 ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+const writeBacklogCursor = (key: string, value: number) => {
+  try {
+    window.localStorage.setItem(key, String(value))
+  } catch {
+    // Re-ingesting is idempotent; a lost cursor only costs a re-read.
+  }
+}
+
+const recordNumber = (value: unknown) => {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+/**
+ * Rounds the Looper Companion kept while this browser was closed.
+ *
+ * Idempotent: shots already archived are unchanged. The round GSPro may still
+ * be playing is left to the live archiver, so arming keeps working there;
+ * backlog rounds get club inference only and never touch the armed club.
+ */
+export const ingestCompanionRoundBacklog = async (nowMs = Date.now()) => {
+  if (backlogBusy) return { rounds: 0 }
+  backlogBusy = true
+  try {
+    if (!(await isCompanionGsproFilesAvailable())) return { rounds: 0 }
+    const user = await getCurrentLooperUser()
+    if (!user || !(await getAllowedUserRecord(user))) return { rounds: 0 }
+
+    const cursorKey = `${COMPANION_ROUND_CURSOR_PREFIX}${user.id}`
+    const startCursor = readBacklogCursor(cursorKey)
+    let after = startCursor
+    let activeRoundId: number | null = null
+    const entries: CompanionRoundRecordEntry[] = []
+    for (let page = 0; page < MAX_BACKLOG_PAGES; page += 1) {
+      const result = await readCompanionRoundRecords(after, 1000)
+      if (result.status !== 'ok') return { rounds: 0 }
+      entries.push(...result.records)
+      activeRoundId = recordNumber(result.activeRoundId)
+      after = result.nextAfter
+      if (!result.more) break
+    }
+    if (entries.length === 0) return { rounds: 0 }
+
+    const entryRound = (entry: CompanionRoundRecordEntry) => recordNumber(entry.record.RoundID)
+    const latestSeenByRound = new Map<number | null, number>()
+    for (const entry of entries) {
+      const round = entryRound(entry)
+      latestSeenByRound.set(
+        round,
+        Math.max(latestSeenByRound.get(round) ?? 0, Date.parse(entry.observedAt) || 0),
+      )
+    }
+    // Hold back the round GSPro may still be playing (the live archiver owns it,
+    // so arming applies). If the companion can't say which one that is, hold any
+    // round with a shot in the last 30 minutes.
+    const held = new Set(
+      [...latestSeenByRound.entries()]
+        .filter(([round, seen]) => (
+          nowMs - seen < ACTIVE_ROUND_QUIET_MS
+          && (activeRoundId == null || round === activeRoundId)
+        ))
+        .map(([round]) => round),
+    )
+    const heldSeqs = entries.filter((entry) => held.has(entryRound(entry))).map((entry) => entry.seq)
+    const usable = entries.filter((entry) => !held.has(entryRound(entry)))
+
+    const firstSeen = new Map<string, string>()
+    for (const entry of usable) {
+      const key = `${entryRound(entry)}:${String(entry.record.ShotID)}`
+      const prior = firstSeen.get(key)
+      if (!prior || entry.observedAt < prior) firstSeen.set(key, entry.observedAt)
+    }
+
+    let rounds = 0
+    for (const incoming of archiveRoundsFromRecords(usable.map((entry) => entry.record))) {
+      const known = new Set(
+        loadLiveGsproRoundArchive().rounds
+          .find((round) => round.roundId === incoming.roundId)
+          ?.shots.map((shot) => shot.key) ?? [],
+      )
+      const observedAtByKey = new Map(incoming.shots.flatMap((shot) => {
+        const seen = firstSeen.get(`${shot.roundId}:${shot.shotId}`)
+        return seen ? [[shot.key, seen] as const] : []
+      }))
+      const observedAt = [...observedAtByKey.values()].sort().at(-1) ?? new Date(nowMs).toISOString()
+      const result = upsertLiveGsproRoundArchive({
+        roundId: incoming.roundId,
+        courseKey: incoming.courseKey,
+        shots: incoming.shots,
+        observedAt,
+        observedAtByKey,
+      })
+      if (!result.round) continue
+      const annotated = annotateNewShots({
+        round: result.round,
+        newShots: incoming.shots.filter((shot) => !known.has(shot.key)),
+        observedAt,
+        allowArm: false,
+      })
+      if (result.changed || annotated.changed) {
+        await syncRoundToCloud(annotated.round, { preserveAttribution: true })
+        rounds += 1
+      }
+    }
+
+    // Re-read a held round next time; everything before it is done.
+    const nextCursor = heldSeqs.length > 0 ? Math.max(startCursor, Math.min(...heldSeqs) - 1) : after
+    writeBacklogCursor(cursorKey, nextCursor)
+    return { rounds }
+  } catch (error) {
+    console.warn('[GSPro course archive] companion backlog not ingested yet; will retry.', error)
+    return { rounds: 0 }
+  } finally {
+    backlogBusy = false
+  }
+}
+
 export const startLiveGsproCourseRoundArchiver = () => {
   let stopped = false
   let busy = false
@@ -489,10 +645,16 @@ export const startLiveGsproCourseRoundArchiver = () => {
 
   poll()
   const timer = window.setInterval(poll, ARCHIVE_POLL_INTERVAL_MS)
+  const backlog = () => {
+    if (!stopped) void ingestCompanionRoundBacklog()
+  }
+  backlog()
+  const backlogTimer = window.setInterval(backlog, COMPANION_BACKLOG_INTERVAL_MS)
 
   return () => {
     if (stopped) return
     stopped = true
     window.clearInterval(timer)
+    window.clearInterval(backlogTimer)
   }
 }

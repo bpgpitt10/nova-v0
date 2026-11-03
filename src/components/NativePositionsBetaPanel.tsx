@@ -7,6 +7,7 @@ import {
   isNativePositionsSupported,
   loadNativeCourseContext,
   NATIVE_POSITIONS_CHANGED_EVENT,
+  nativeStatusEventIsFor,
   regrantGsproCoursesFolder,
   setNativePositionsEnabled,
   type NativeCourseStatus,
@@ -24,14 +25,17 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
       return {
         text: `Active · ${status.courseName} · registration grade ${status.grade}`
           + (status.via === 'companion' ? ' · course files via Looper Companion' : '')
-          + (status.fittedHere ? ' · matched to the map on this PC' : '')
+          + (status.fittedHere ? ` · matched to the map on this PC${status.fitDetail ? ` (${status.fitDetail})` : ''}` : '')
           + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
         tone: 'ok',
       }
     case 'no-registration':
       return { text: `${status.courseName}: start the round in GSPro so Looper can match your course files to the map.`, tone: 'warn' }
     case 'other-course':
-      return { text: `GSPro is on ${status.courseKey}, not ${status.expectedKey}; using current positioning.`, tone: 'warn' }
+      return status.grade
+        ? { text: `${status.courseName ?? status.expectedKey} matched to the map (registration grade ${status.grade}). `
+            + `GSPro's last round was on ${status.courseKey}; native positions turn on once you start this course in GSPro.`, tone: 'ok' }
+        : { text: `GSPro is on ${status.courseKey}, not ${status.expectedKey}; using current positioning.`, tone: 'warn' }
     case 'no-folder':
       return { text: 'Start the Looper Companion (reads the course files for you), or choose your GSPro folder (e.g. C:\\GSProV1). Read-only; files stay on this PC.', tone: 'warn' }
     case 'needs-permission':
@@ -62,10 +66,12 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const onChange = (event: Event) => setStatus((event as CustomEvent<NativeCourseStatus>).detail)
+    const onChange = (event: Event) => {
+      if (nativeStatusEventIsFor(event, courseId)) setStatus((event as CustomEvent<NativeCourseStatus>).detail)
+    }
     window.addEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
     return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
-  }, [])
+  }, [courseId])
 
   useEffect(() => {
     if (!enabled) return

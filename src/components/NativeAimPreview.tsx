@@ -81,9 +81,15 @@ export default function NativeAimPreview({ courseId, courseKey, holeNumber, ball
     <section className="native-aim-preview" aria-label="GSPro aim preview">
       <div className="native-aim-preview-row">
         <span className="native-aim-preview-title">GSPro aim preview <em>beta · no clicking</em></span>
-        <button type="button" disabled={!ready || busy} onClick={() => void run()}>
-          {busy ? 'Reading GSPro…' : result ? 'Check again' : 'Show where Looper would click'}
-        </button>
+        <span className="native-aim-preview-actions">
+          <button type="button" disabled={!ready || busy} onClick={() => void run()}
+            title={ready ? undefined : 'Waiting for the ball, pin and aim positions for this shot.'}>
+            {busy ? 'Reading GSPro…' : result ? 'Check again' : 'Show where Looper would click'}
+          </button>
+          {result || error ? (
+            <button type="button" onClick={() => { setResult(null); setError(null) }}>Hide</button>
+          ) : null}
+        </span>
       </div>
       {result?.previewPng ? (
         <img

@@ -1,4 +1,4 @@
-import { classifyPoint } from '../courseGeometry/geometry'
+import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
@@ -94,6 +94,15 @@ export type AimLabEnvironment = {
    * Default/live behavior remains unchanged when omitted.
    */
   clubTargets?: Readonly<Record<string, CoursePointYds | undefined>>
+  /**
+   * Green out of reach (tee shots, long second shots): the pin. Each club then
+   * plans around its own spot, the fairway centre at that club's modeled carry
+   * toward the pin, instead of one shared lay-up spot (min(220, 65%)) that sat
+   * short of the driver and pointed the wrong way on doglegs.
+   */
+  layupPin?: CoursePointYds | null
+  /** Evaluate only these clubs (parallel workers each take a share of the bag). */
+  onlyClubs?: readonly string[]
 }
 
 export type { AimSurfaceDistribution } from './aimOutcomeSampling'
@@ -103,6 +112,8 @@ export type AimCandidateEvaluation = {
   aimPoint: CoursePointYds
   /** Resting/final expected center after historical rollout. */
   meanLanding: CoursePointYds
+  /** Expected touchdown (carry) point on the aim line, before roll. */
+  meanCarryLanding?: CoursePointYds
   /** Probabilities and the map cloud come from this exact deterministic sample set. */
   surfaceOutcomes: AimSurfaceDistribution | null
   modeledSamples: ModeledAimSample[]
@@ -225,6 +236,143 @@ const scoreCandidate = (
   }
 }
 
+type ModelClubCarryInput = Readonly<{
+  profile: ReturnType<typeof buildLiveCaddieProfileSet>['clubs'][number]
+  support: ReturnType<typeof buildLiveCaddieProfileSet>['club_support'][number] | undefined
+  environment: AimLabEnvironment
+  target: CoursePointYds
+  ball: CoursePointYds
+  hole: CourseHoleGeometry
+  ballSurface: string
+}>
+
+/** One club's modeled carry for this shot (physics + altitude), shared by the
+ * full evaluation and by the cheap all-club carry check used when clubs are
+ * evaluated in parallel workers. */
+/** Fairway centre at this carry toward the pin (never past the pin). */
+export const clubLayupTarget = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  pin: CoursePointYds,
+  carryYds: number,
+): CoursePointYds | null => {
+  const dx = pin[0] - ball[0]
+  const dy = pin[1] - ball[1]
+  const distance = Math.hypot(dx, dy)
+  if (!(distance > 0) || !(carryYds > 0)) return null
+  const depth = Math.min(carryYds, distance)
+  const raw: CoursePointYds = [ball[0] + (dx / distance) * depth, ball[1] + (dy / distance) * depth]
+  const corridor = fairwayCorridorAtForwardY(hole, raw[1], raw[0])
+  return corridor ? [corridor.centerRightYds, raw[1]] : raw
+}
+
+const modelClubCarry = (input: ModelClubCarryInput) => {
+  const { profile, environment, target, ball, hole } = input
+  const fixed = environment.clubTargets?.[profile.club]
+  const shared = modelClubCarryAt(input, fixed ?? target)
+  if (fixed || !environment.layupPin) return shared
+  // Second pass at the club's own lay-up spot (carry barely depends on it).
+  const own = clubLayupTarget(hole, ball, environment.layupPin, shared.modeledCarryYds)
+  return own ? modelClubCarryAt(input, own) : shared
+}
+
+const modelClubCarryAt = (
+  { profile, support, environment, ball, hole, ballSurface }: ModelClubCarryInput,
+  planningTarget: CoursePointYds,
+) => {
+  const decisionGoal = inferDecisionShotGoal(hole, planningTarget)
+  const targetDistanceYds = Math.hypot(
+    planningTarget[0] - ball[0],
+    planningTarget[1] - ball[1],
+  )
+  const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)
+  const launch = profile.launch_profile
+  const hasLieMeasurement =
+    (typeof environment.lieUpDownDeg === 'number' && Number.isFinite(environment.lieUpDownDeg)) ||
+    (typeof environment.lieLeftRightDeg === 'number' && Number.isFinite(environment.lieLeftRightDeg))
+  const modeled = modelShotContext(
+    {
+      club: profile.club,
+      variant: 'Stock',
+      stockCarryYds: profile.stock_carry_yds,
+      carrySigmaYds: profile.carry_sigma_yds ?? null,
+      lateralBiasYds: profile.lateral_bias_yds ?? 0,
+      lateralSigmaYds: profile.lateral_sigma_yds ?? null,
+      supportShots: support?.included_stock_shots ?? 0,
+      launchBallSpeedMph: launch?.ball_speed_mph ?? null,
+      launchVlaDeg: launch?.vla_deg ?? null,
+      launchHlaDeg: launch?.hla_deg ?? null,
+      launchSpinRpm: launch?.total_spin_rpm ?? null,
+      launchSpinAxisDeg: launch?.spin_axis_deg ?? null,
+    },
+    {
+      targetDistanceYds,
+      surface: ballSurface,
+      windMph: environment.windMph ?? 0,
+      windRelativeDeg: environment.windRelativeDeg ?? 0,
+      elevationDeltaFt: environment.elevationDeltaFt ?? 0,
+      elevationSource: environment.elevationSource ?? 'Aim Lab target terrain',
+      elevationConfidence: environment.elevationDeltaFt == null ? 'unknown' : 'medium',
+      lieUpDownDeg: environment.lieUpDownDeg ?? null,
+      lieLeftRightDeg: environment.lieLeftRightDeg ?? null,
+      lieSource: environment.lieSource ?? 'GSPro lie OCR',
+      lieConfidence: hasLieMeasurement ? 'high' : 'unknown',
+    },
+  )
+
+  const altitudeLaunch =
+    launch &&
+    typeof launch.ball_speed_mph === 'number' && Number.isFinite(launch.ball_speed_mph) &&
+    typeof launch.vla_deg === 'number' && Number.isFinite(launch.vla_deg) &&
+    typeof launch.total_spin_rpm === 'number' && Number.isFinite(launch.total_spin_rpm)
+      ? {
+          ballSpeedMph: launch.ball_speed_mph,
+          vlaDeg: launch.vla_deg,
+          hlaDeg: launch.hla_deg ?? 0,
+          totalSpinRpm: launch.total_spin_rpm,
+          spinAxisDeg: launch.spin_axis_deg ?? 0,
+        }
+      : null
+  const altitudeAdjustment = buildAirAltitudeAdjustment(
+    altitudeLaunch,
+    environment.airAltitudeFt,
+  )
+
+  const baseModeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
+  const modeledCarryYds = baseModeledCarryYds + altitudeAdjustment.carryDeltaYds
+  return {
+    planningTarget, decisionGoal, targetDistanceYds, aimOffsetsYds, launch,
+    hasLieMeasurement, modeled, altitudeAdjustment, baseModeledCarryYds, modeledCarryYds,
+  }
+}
+
+/**
+ * Shortest modeled carry among all eligible clubs with support, exactly as
+ * evaluateAimLab would compute it, without the 2,048-sample aim search. Lets a
+ * worker that evaluates only part of the bag make the bag-wide short-game check.
+ */
+export const shortestSupportedModeledCarryYds = (
+  sessions: SavedSession[],
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  target: CoursePointYds,
+  environment: AimLabEnvironment,
+  nowMs: number,
+): number => {
+  const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
+  const ballSurface = environment.surfaceOverride?.trim() || classifyPoint(hole, ball).kind
+  const shotOrigin = resolveShotOriginEligibility(environment.shotOrigin, ballSurface)
+  let shortest = Number.POSITIVE_INFINITY
+  for (const profile of profileSet.clubs) {
+    if (!clubEligibleForShot(profile.club, shotOrigin)) continue
+    const support = profileSet.club_support.find((item) => item.club === profile.club)
+    if (!((support?.included_stock_shots ?? 0) > 0)) continue
+    const { modeledCarryYds } = modelClubCarry({ profile, support, environment, target, ball, hole, ballSurface })
+    if (Number.isFinite(modeledCarryYds)) shortest = Math.min(shortest, modeledCarryYds)
+  }
+  return shortest
+}
+
 export const evaluateAimLab = (
   sessions: SavedSession[],
   hole: CourseHoleGeometry,
@@ -254,72 +402,16 @@ export const evaluateAimLab = (
   // Hard exclusion BEFORE club physics, aim exploration, cache and ranking.
   // Never let the expected-value ranker select a non-tee Driver or Mini Driver.
   const eligibleProfiles = profileSet.clubs.filter(profile =>
-    clubEligibleForShot(profile.club, shotOrigin),
+    clubEligibleForShot(profile.club, shotOrigin)
+      && (!environment.onlyClubs || environment.onlyClubs.includes(profile.club)),
   )
   const evaluations = eligibleProfiles.map((profile): ClubAimEvaluation => {
     const support = profileSet.club_support.find((item) => item.club === profile.club)
     const decisionPlayer = decisionPlayers.find((item) => item.club === profile.club) ?? null
-    const planningTarget = environment.clubTargets?.[profile.club] ?? target
-    const decisionGoal = inferDecisionShotGoal(hole, planningTarget)
-    const targetDistanceYds = Math.hypot(
-      planningTarget[0] - ball[0],
-      planningTarget[1] - ball[1],
-    )
-    const aimOffsetsYds = buildAimOffsetsYds(profile.lateral_sigma_yds)
-    const launch = profile.launch_profile
-    const hasLieMeasurement =
-      (typeof environment.lieUpDownDeg === 'number' && Number.isFinite(environment.lieUpDownDeg)) ||
-      (typeof environment.lieLeftRightDeg === 'number' && Number.isFinite(environment.lieLeftRightDeg))
-    const modeled = modelShotContext(
-      {
-        club: profile.club,
-        variant: 'Stock',
-        stockCarryYds: profile.stock_carry_yds,
-        carrySigmaYds: profile.carry_sigma_yds ?? null,
-        lateralBiasYds: profile.lateral_bias_yds ?? 0,
-        lateralSigmaYds: profile.lateral_sigma_yds ?? null,
-        supportShots: support?.included_stock_shots ?? 0,
-        launchBallSpeedMph: launch?.ball_speed_mph ?? null,
-        launchVlaDeg: launch?.vla_deg ?? null,
-        launchHlaDeg: launch?.hla_deg ?? null,
-        launchSpinRpm: launch?.total_spin_rpm ?? null,
-        launchSpinAxisDeg: launch?.spin_axis_deg ?? null,
-      },
-      {
-        targetDistanceYds,
-        surface: ballSurface,
-        windMph: environment.windMph ?? 0,
-        windRelativeDeg: environment.windRelativeDeg ?? 0,
-        elevationDeltaFt: environment.elevationDeltaFt ?? 0,
-        elevationSource: environment.elevationSource ?? 'Aim Lab target terrain',
-        elevationConfidence: environment.elevationDeltaFt == null ? 'unknown' : 'medium',
-        lieUpDownDeg: environment.lieUpDownDeg ?? null,
-        lieLeftRightDeg: environment.lieLeftRightDeg ?? null,
-        lieSource: environment.lieSource ?? 'GSPro lie OCR',
-        lieConfidence: hasLieMeasurement ? 'high' : 'unknown',
-      },
-    )
-
-    const altitudeLaunch =
-      launch &&
-      typeof launch.ball_speed_mph === 'number' && Number.isFinite(launch.ball_speed_mph) &&
-      typeof launch.vla_deg === 'number' && Number.isFinite(launch.vla_deg) &&
-      typeof launch.total_spin_rpm === 'number' && Number.isFinite(launch.total_spin_rpm)
-        ? {
-            ballSpeedMph: launch.ball_speed_mph,
-            vlaDeg: launch.vla_deg,
-            hlaDeg: launch.hla_deg ?? 0,
-            totalSpinRpm: launch.total_spin_rpm,
-            spinAxisDeg: launch.spin_axis_deg ?? 0,
-          }
-        : null
-    const altitudeAdjustment = buildAirAltitudeAdjustment(
-      altitudeLaunch,
-      environment.airAltitudeFt,
-    )
-
-    const baseModeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
-    const modeledCarryYds = baseModeledCarryYds + altitudeAdjustment.carryDeltaYds
+    const {
+      planningTarget, decisionGoal, targetDistanceYds, aimOffsetsYds,
+      modeled, altitudeAdjustment, modeledCarryYds,
+    } = modelClubCarry({ profile, support, environment, target, ball, hole, ballSurface })
     const stockTotalYds =
       typeof profile.stock_total_yds === 'number' && Number.isFinite(profile.stock_total_yds)
         ? Math.max(profile.stock_carry_yds, profile.stock_total_yds)
@@ -428,6 +520,7 @@ export const evaluateAimLab = (
         aimOffsetYds,
         aimPoint,
         meanLanding: sampled.meanLanding,
+        meanCarryLanding: sampled.meanCarryLanding,
         surfaceOutcomes: sampled.distribution,
         modeledSamples: sampled.samples,
         probabilityContours: sampled.probabilityContours,

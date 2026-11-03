@@ -242,8 +242,12 @@ const sanitizeSnapshot = (
   const roundModifiedMs = health.currentRound.modifiedAt
     ? new Date(health.currentRound.modifiedAt).getTime()
     : null
+  // Looper's own Start Round (Hole 1, Shot 1) does not come from the
+  // pre-restart file, so it is never quarantined: after a GSPro restart with
+  // no shot yet, that is exactly the state to show.
   const quarantinePreRestartRound =
-    restartBoundaryMs != null
+    snapshot.publishedFrom !== 'manual-start'
+    && restartBoundaryMs != null
     && roundModifiedMs != null
     && roundModifiedMs < restartBoundaryMs
     && health.outputLog.holeNumber == null

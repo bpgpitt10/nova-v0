@@ -1,4 +1,7 @@
 import { getSupabaseClient } from '../cloud/supabaseClient'
+import { courseNameMatchScore } from './courseNameMatch'
+
+export { courseNameMatchScore }
 
 /**
  * One-click course loading (client side): search OpenStreetMap for golf
@@ -162,12 +165,46 @@ export const searchGolfCourses = async (query: string): Promise<GolfCourseSearch
   return out
 }
 
-/** Best OpenStreetMap match for an installed GSPro course ("Name", "Town, ST"). */
-export const findGolfCourseFor = async (name: string, location: string) => {
-  const attempts = [location ? `${name} ${location}` : name, name]
-  for (const query of attempts) {
-    const results = await searchGolfCourses(query).catch(() => [])
-    if (results.length) return results[0]
+/** "Paynes Valley" -> also try "Payne's Valley", the way OpenStreetMap often spells it. */
+const nameVariants = (name: string) => {
+  const plain = name.replace(/[^\p{L}\p{N}'\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const possessive = plain.replace(/\b([A-Za-z]{3,})s\b/g, "$1's")
+  return [...new Set([name.trim(), plain, possessive].filter(Boolean))]
+}
+
+const NOMINATIM_SPACING_MS = 1100 // Nominatim usage policy: at most one request per second.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Best OpenStreetMap match for an installed GSPro course ("Name", "Town, ST").
+ * Tries the name with and without the location, a possessive spelling, then
+ * golf courses near the location, and keeps the closest name. A location-only
+ * result is accepted only when its name clearly matches.
+ */
+export const findGolfCourseFor = async (
+  name: string,
+  location: string,
+  { spacingMs = NOMINATIM_SPACING_MS }: { spacingMs?: number } = {},
+) => {
+  const queries: Array<{ query: string; byName: boolean }> = []
+  for (const variant of nameVariants(name)) {
+    if (location) queries.push({ query: `${variant} ${location}`, byName: true })
+    queries.push({ query: variant, byName: true })
   }
-  return null
+  if (location) queries.push({ query: `golf course ${location}`, byName: false })
+
+  let best: { result: GolfCourseSearchResult; score: number } | null = null
+  let fallback: GolfCourseSearchResult | null = null
+  for (const [index, { query, byName }] of queries.entries()) {
+    if (index > 0) await pause(spacingMs)
+    const results = await searchGolfCourses(query).catch(() => [])
+    for (const result of results) {
+      const score = courseNameMatchScore(result.name, name)
+      if (!best || score > best.score) best = { result, score }
+    }
+    if (byName && !fallback && results.length) fallback = results[0]
+    if (best && best.score >= 1) break
+  }
+  if (best && best.score >= 0.5) return best.result
+  return fallback
 }

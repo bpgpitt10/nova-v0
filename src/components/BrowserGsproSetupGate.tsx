@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   chooseGsproDirectory,
-  isBrowserGsproAccessSupported,
+  isGsproAccessAvailable,
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
   requestGsproDirectoryPermission,
@@ -9,6 +9,10 @@ import {
   type BrowserDirectoryHandle,
 } from '../adapters/browserGsproAccess'
 import { prepareBrowserGsproRuntime } from '../adapters/browserGsproLive'
+import {
+  isCompanionGsproDirectoryHandle,
+  loadCompanionGsproDirectoryHandle,
+} from '../adapters/companionGsproFiles'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import { SESSION_HISTORY_UPDATED_EVENT } from '../lib/sessions'
 import { publishLiveCaddieProfilesToGsproFolder } from '../liveCaddie/profilePublisher'
@@ -28,6 +32,7 @@ type BrowserGsproSetupGateProps = {
 }
 
 const DEFAULT_GSPRO_PATH = '%USERPROFILE%\\AppData\\LocalLow\\GSPro\\GSPro'
+const COMPANION_RECHECK_MS = 5000
 const GSPRO_ONBOARDING_KEY = 'looper-gspro-onboarding-complete-v1'
 
 const isWindowsBrowser = () =>
@@ -85,18 +90,22 @@ export default function BrowserGsproSetupGate({
   }
 
   useEffect(() => {
-    // Direct folder access is only needed for the hosted Windows browser.
-    // Non-Windows viewers can still use the rest of Looper normally.
-    if (!isWindowsBrowser() || !isBrowserGsproAccessSupported()) {
-      setSetupState('unsupported')
-      return
-    }
-
     let cancelled = false
 
     const restore = async () => {
       try {
-        const handle = await loadGsproDirectoryHandle()
+        // The Looper Companion reads GSPro for us: no folder grant, any browser.
+        // Without it, direct folder access needs Chrome/Edge on Windows.
+        const companionHandle = await loadCompanionGsproDirectoryHandle().catch(() => null)
+        if (cancelled) {
+          return
+        }
+        if (!companionHandle && (!isWindowsBrowser() || !(await isGsproAccessAvailable()))) {
+          setSetupState('unsupported')
+          return
+        }
+
+        const handle = companionHandle ?? await loadGsproDirectoryHandle()
         if (cancelled) {
           return
         }
@@ -246,6 +255,32 @@ export default function BrowserGsproSetupGate({
     }
   }
 
+  // While asking for a folder (or permission), keep checking for the companion:
+  // as soon as it is running, connect through it with no further clicks.
+  useEffect(() => {
+    if (setupState !== 'needs-folder' && setupState !== 'needs-permission') {
+      return
+    }
+    let cancelled = false
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        const handle = await loadCompanionGsproDirectoryHandle().catch(() => null)
+        if (handle && !cancelled) {
+          setDirectoryHandle(handle)
+          void prepareAndEnterLooper()
+        }
+      })()
+    }, COMPANION_RECHECK_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+    // prepareAndEnterLooper is a one-shot hand-off; re-arming on its identity is not wanted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupState])
+
+  const viaCompanion = isCompanionGsproDirectoryHandle(directoryHandle)
+
   const copyPath = async () => {
     try {
       await navigator.clipboard.writeText(DEFAULT_GSPRO_PATH)
@@ -301,22 +336,26 @@ export default function BrowserGsproSetupGate({
           <span className="gspro-setup__eyebrow">GSPro setup</span>
           <h1>GSPro connected</h1>
           <p className="gspro-setup__lead">
-            Looper can read the GSPro folder on this simulator PC.
+            {viaCompanion
+              ? 'Looper reads GSPro through the Looper Companion on this simulator PC.'
+              : 'Looper can read the GSPro folder on this simulator PC.'}
           </p>
           <div className="gspro-setup__actions">
             <button type="button" className="gspro-setup__primary" onClick={finishSetup}>
               {returnToRange ? 'Continue to Practice Range' : 'Return to Looper'}
             </button>
-            <button
-              type="button"
-              className="gspro-setup__secondary"
-              onClick={() => {
-                setError(null)
-                setSetupState('needs-folder')
-              }}
-            >
-              Choose a different folder
-            </button>
+            {viaCompanion ? null : (
+              <button
+                type="button"
+                className="gspro-setup__secondary"
+                onClick={() => {
+                  setError(null)
+                  setSetupState('needs-folder')
+                }}
+              >
+                Choose a different folder
+              </button>
+            )}
           </div>
         </section>
       </main>
@@ -333,9 +372,13 @@ export default function BrowserGsproSetupGate({
           <>
             <h1>Connect GSPro</h1>
             <p className="gspro-setup__lead">
-              Looper reads your GSPro shot data directly from this simulator PC. Nothing needs to be
-              uploaded manually, and you should only need to choose this folder once.
+              Looper reads your GSPro shot data directly from this simulator PC.
             </p>
+            <div className="gspro-setup__callout">
+              <strong>Easiest: start the Looper Companion.</strong> It finds GSPro for you, so there
+              is no folder to choose. This page connects on its own a few seconds after it starts.
+            </div>
+            <p className="gspro-setup__lead">No companion yet? Choose the GSPro folder instead:</p>
 
             <div className="gspro-setup__step">
               <strong>1. Copy your GSPro folder location</strong>

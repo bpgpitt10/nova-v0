@@ -39,7 +39,14 @@ export type NativeSnapshotInputs = Readonly<{
   rememberedPinSlot: number | null
   /** Map position of the round's OSM tee pick, for legacy names like "Tee 3". */
   legacyTeeLocal?: CoursePointYds | null
+  /** This hole's tee and pin from GSPro's round layout (output_log). Trusted
+   * only when its pin is one of this hole's GKD pins. */
+  roundLayout?: Readonly<{ tee: NativeXYZ; pin: NativeXYZ }> | null
 }>
+
+// GKD pin slots on one green sit metres apart; allow for cup vs flag base.
+const LAYOUT_PIN_MATCH_M = 2
+
 
 const LEGACY_TEE_MATCH_YDS = 10
 const LEGACY_TEE_NOTE = /^Provisional Hole \d+ tee \(/
@@ -62,6 +69,7 @@ export const applyNativeCourseSnapshot = ({
   normalizedTeeSet,
   rememberedPinSlot,
   legacyTeeLocal = null,
+  roundLayout = null,
 }: NativeSnapshotInputs): NativeSnapshotResult => {
   const hole = nativeHole(context.layout, holeNumber)
   if (!hole) return { snapshot: base, pinSlot: rememberedPinSlot }
@@ -81,9 +89,18 @@ export const applyNativeCourseSnapshot = ({
       : null
     : null
   const observed = preShotPin?.status === 'matched' ? preShotPin : latestPin?.status === 'matched' ? latestPin : null
+  // GSPro's round layout names the day's pin outright; before Shot 1 it is the
+  // only exact source (without it the tee distance falls back to green centre).
+  const layoutPins = roundLayout
+    ? hole.pins.filter((p) => Math.hypot(p.x - roundLayout.pin.x, p.z - roundLayout.pin.z) <= LAYOUT_PIN_MATCH_M)
+    : []
+  const layoutPin = layoutPins.length === 1 ? layoutPins[0] : null
   if (observed) {
     pinSlot = observed.pin.slot
     pinErrorYds = yards(observed.errorM)
+  } else if (layoutPin) {
+    pinSlot = layoutPin.slot
+    pinErrorYds = yards(Math.hypot(layoutPin.x - roundLayout!.pin.x, layoutPin.z - roundLayout!.pin.z))
   }
   const pin = pinSlot != null ? hole.pins.find((p) => p.slot === pinSlot) ?? null : null
   const pinLocal = pin ? toLocal(pin) : null
@@ -110,7 +127,10 @@ export const applyNativeCourseSnapshot = ({
     ? preShotStart.world : null
   // By-name lookup only once the layout is known: an alternate layout's
   // "White" can be 70 m from the main layout's "White".
+  const layoutTee = layoutPin && roundLayout && resolveNativeTee(hole, roundLayout.tee).status !== 'no-match'
+    ? roundLayout.tee : null
   const teeWorld: NativeXYZ | null = preShotOnTee
+    ?? layoutTee
     ?? (context.layoutConfirmed ? gkdTeeForTeeSet(hole, normalizedTeeSet) : null)
     ?? nearestGkdTeeTo(legacyTeeLocal)
   const ball = teeWorld ? toLocal(teeWorld) : null

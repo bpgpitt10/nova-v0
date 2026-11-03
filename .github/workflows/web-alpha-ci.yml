@@ -94,6 +94,21 @@ jobs:
       - name: Bag yardage book matches Club Detail (Stock/Pure, variants, mishit rate)
         run: node tools/test-bag-yardage-book.mjs
 
+      - name: GSPro files through the Looper Companion (no folder grant)
+        run: node tools/test-companion-gspro-files.mjs
+
+      - name: Course loading matches GSPro course names to OpenStreetMap
+        run: node tools/test-course-name-match.mjs
+
+      - name: Shot 1 distance uses GSPro's round layout over the minimap ruler
+        run: node tools/test-gspro-round-layout-distance.mjs
+
+      - name: Outcome tiles add to 100 (off-map landings count as Trouble)
+        run: node tools/test-outcome-tiles.mjs
+
+      - name: Parallel club evaluation ranks exactly like one worker
+        run: node tools/test-parallel-club-evaluation.mjs
+
       - name: Round history (Old Game rebuilds to 71, test sessions not scored)
         run: node tools/test-round-history.mjs
 
@@ -104,6 +119,12 @@ jobs:
 
       - name: Browser registration fit (new courses)
         run: node tools/test-native-registration-fit.mjs
+
+      - name: Aim click point at expected carry
+        run: node tools/test-aim-click-point.mjs
+
+      - name: Per-club lay-up targets
+        run: node tools/test-club-layup-target.mjs
 
       - name: Build web app
         run: npm run build

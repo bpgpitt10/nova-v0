@@ -9,12 +9,11 @@ import {
   buildAimContextSentence,
   buildAimDescriptor,
 } from '../liveCaddie/aimDescriptor'
-import {
-  nextStateValueForAimCandidate,
-  rankRiskAwareClubChoices,
-} from '../liveCaddie/aimDecisionRanking'
+import { nextStateValueForAimCandidate } from '../liveCaddie/aimDecisionRanking'
+import { rerankClubs } from '../liveCaddie/clubRerank'
 import {
   evaluateAimLab,
+  shortestSupportedModeledCarryYds as shortestBagCarryYds,
   type AimCandidateEvaluation,
   type AimLabEnvironment,
   type ClubAimEvaluation,
@@ -33,6 +32,9 @@ type LiveCaddieWorkerRequest = {
   target: CoursePointYds
   environment: AimLabEnvironment
   nowMs: number
+  /** Parallel mode: evaluate only these clubs and leave the bag-wide ranking
+   * to the page, which merges every worker's clubs and ranks once. */
+  onlyClubs?: string[]
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -298,23 +300,7 @@ const sessionsForClub = (sessions: SavedSession[], club: string): SavedSession[]
 
 const rerankCorrectedClubs = (
   evaluations: LandingElevationAwareEvaluation[],
-): LandingElevationAwareEvaluation[] => {
-  const reset: LandingElevationAwareEvaluation[] = evaluations.map((evaluation) => ({
-    ...evaluation,
-    decisionRank: null,
-    targetFit: null,
-    withinCatastropheGuardrail: null,
-    decisionReason: null,
-  }))
-  const ranked = rankRiskAwareClubChoices(reset)
-  ranked.forEach((row) => {
-    row.evaluation.decisionRank = row.rank
-    row.evaluation.targetFit = row.targetFit
-    row.evaluation.withinCatastropheGuardrail = row.withinCatastropheGuardrail
-    row.evaluation.decisionReason = row.decisionReason
-  })
-  return ranked.map((row) => row.evaluation)
-}
+): LandingElevationAwareEvaluation[] => rerankClubs(evaluations)
 
 /**
  * Elevation belongs to the modeled shot, not the shared strategic planning target.
@@ -331,17 +317,22 @@ const resolveClubLandingElevations = (
   target: CoursePointYds,
   environment: AimLabEnvironment,
   nowMs: number,
+  onlyClubs?: string[],
 ): LandingElevationAwareEvaluation[] => {
-  const baseline = evaluateAimLab(sessions, hole, ball, target, environment, nowMs)
+  const baseline = evaluateAimLab(sessions, hole, ball, target,
+    onlyClubs ? { ...environment, onlyClubs } : environment, nowMs)
 
   // Short game has no calibrated stock trajectory; calculating landing
   // elevation at the hypothetical full-stock carry is misleading. Preserve
   // the actual tactical-target elevation so the shot-requirement ledger
   // describes this shot, not a different (longer) club trajectory.
   const targetDistanceYds = Math.hypot(target[0] - ball[0], target[1] - ball[1])
-  const shortestSupportedModeledCarryYds = baseline
-    .filter(evaluation => evaluation.supportShots > 0 && Number.isFinite(evaluation.modeledCarryYds))
-    .reduce((minimum, evaluation) => Math.min(minimum, evaluation.modeledCarryYds), Number.POSITIVE_INFINITY)
+  // Bag-wide, even when this worker holds only some of the clubs.
+  const shortestSupportedModeledCarryYds = onlyClubs
+    ? shortestBagCarryYds(sessions, hole, ball, target, environment, nowMs)
+    : baseline
+      .filter(evaluation => evaluation.supportShots > 0 && Number.isFinite(evaluation.modeledCarryYds))
+      .reduce((minimum, evaluation) => Math.min(minimum, evaluation.modeledCarryYds), Number.POSITIVE_INFINITY)
   if (Number.isFinite(shortestSupportedModeledCarryYds)
     && targetDistanceYds < shortestSupportedModeledCarryYds - 0.5) {
     return baseline.map((evaluation): LandingElevationAwareEvaluation => ({
@@ -405,7 +396,7 @@ const resolveClubLandingElevations = (
     }
   })
 
-  return rerankCorrectedClubs(corrected)
+  return onlyClubs ? corrected : rerankCorrectedClubs(corrected)
 }
 
 /**
@@ -478,6 +469,7 @@ const buildEvaluationCacheKey = ({
   target,
   environment,
   learnedSurfaceFactors,
+  onlyClubs,
 }: LiveCaddieWorkerRequest) => {
   const playerSignature = sessions.map((session) => ({
     id: session.id,
@@ -525,6 +517,7 @@ const buildEvaluationCacheKey = ({
   }
 
   const stateSignature = JSON.stringify({
+    onlyClubs: onlyClubs ?? null,
     learnedSurfaceFactors: learnedSurfaceFactors ?? null,
     playerSignature,
     geometrySignature,
@@ -539,6 +532,9 @@ const buildEvaluationCacheKey = ({
       shotOrigin: environment.shotOrigin ?? null,
       lieUpDownDeg: finiteKeyNumber(environment.lieUpDownDeg),
       lieLeftRightDeg: finiteKeyNumber(environment.lieLeftRightDeg),
+      layupPin: environment.layupPin
+        ? [finiteKeyNumber(environment.layupPin[0]), finiteKeyNumber(environment.layupPin[1])]
+        : null,
       exactPinLocalYds: environment.exactPinLocalYds
         ? [
             finiteKeyNumber(environment.exactPinLocalYds[0]),
@@ -627,20 +623,20 @@ self.onmessage = (event: MessageEvent<LiveCaddieWorkerRequest>) => {
       const cacheKey = buildEvaluationCacheKey(request)
       const cached = await readCachedEvaluations(cacheKey)
       if (cached) {
-        logAimDescriptorShadow(request, cached, 'cache')
+        if (!request.onlyClubs) logAimDescriptorShadow(request, cached, 'cache')
         const response: LiveCaddieWorkerResponse = { type: 'success', evaluations: cached }
         self.postMessage(response)
         return
       }
 
-      const { sessions, hole, ball, target, environment, nowMs } = request
+      const { sessions, hole, ball, target, environment, nowMs, onlyClubs } = request
       const evaluations = makePlayerFacingAimGeometry(
         stripHeavySamples(
-          resolveClubLandingElevations(sessions, hole, ball, target, environment, nowMs),
+          resolveClubLandingElevations(sessions, hole, ball, target, environment, nowMs, onlyClubs),
         ),
         ball,
       )
-      logAimDescriptorShadow(request, evaluations, 'fresh')
+      if (!onlyClubs) logAimDescriptorShadow(request, evaluations, 'fresh')
       await writeCachedEvaluations(cacheKey, evaluations)
       const response: LiveCaddieWorkerResponse = { type: 'success', evaluations }
       self.postMessage(response)

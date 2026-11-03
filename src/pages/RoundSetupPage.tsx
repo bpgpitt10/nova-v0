@@ -14,6 +14,7 @@ import { loadCourseTeeCandidates } from '../courseGeometry/teeCandidateProvider'
 import {
   loadNativeCourseContext,
   NATIVE_POSITIONS_CHANGED_EVENT,
+  nativeStatusEventIsFor,
   nativeTeeSetValue,
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
@@ -73,12 +74,13 @@ export default function RoundSetupPage() {
   const [nativeState, setNativeState] = useState<NativeCourseStatus['state'] | null>(null)
   useEffect(() => {
     const onChange = (event: Event) => {
+      if (!nativeStatusEventIsFor(event, courseId)) return
       const state = (event as CustomEvent<NativeCourseStatus>).detail?.state ?? null
       if (state === 'ready' || state === 'off') setNativeState(state)
     }
     window.addEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
     return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
-  }, [])
+  }, [courseId])
 
   useEffect(() => {
     let cancelled = false
