@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BagTopBar } from '../components/BagNav'
+import type { CourseHoleGeometry, CoursePointYds, CourseSurfaceKind } from '../courseGeometry/types'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import {
   buildRounds,
@@ -26,6 +27,7 @@ import {
   type RangeClubNumbers,
   type StoredCourseInfo,
 } from '../lib/roundHistoryData'
+import { loadHoleMap } from '../lib/roundHoleMap'
 import type { RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
 
@@ -52,6 +54,7 @@ const vsPar = (strokes: number, par: number) => {
 const LIE_LABEL: Record<ShotLie | 'holed', string> = {
   tee: 'Tee',
   fairway: 'Fairway',
+  fringe: 'Fringe',
   rough: 'Rough',
   'deep-rough': 'Deep rough',
   sand: 'Sand',
@@ -95,11 +98,6 @@ const keyShotHeadline = (shot: RoundShot) => {
   if (shot.startYds == null) return `Hole ${shot.holeNumber} · ${clubName(shot.club)}`
   const lie = shot.startLie === 'tee' || shot.startLie === 'fairway' ? '' : ` in ${LIE_LABEL[shot.startLie].toLowerCase()}`
   return `Hole ${shot.holeNumber} · ${clubName(shot.club)} from ${distance(shot.startYds, shot.startLie)}${lie}`
-}
-
-const keyShotDetail = (shot: RoundShot) => {
-  if (shot.isPutt && shot.holed) return 'One putt where the baseline expects more.'
-  return `Finished ${shotTo(shot).replace(' · ', ', ').toLowerCase()}.`
 }
 
 const isLiveCaddieRound = (round: RoundSummary) =>
@@ -396,6 +394,7 @@ function RoundDetail({
 }) {
   const scoredHoles = round.holes.filter((hole) => hole.complete)
   const [selectedHole, setSelectedHole] = useState<number | null>(null)
+  const [focus, setFocus] = useState<ShotCategory | null>(null)
   const worstHole = [...scoredHoles].sort((a, b) => (a.sg ?? 0) - (b.sg ?? 0))[0]
   const holeNumber = selectedHole ?? worstHole?.holeNumber ?? round.holes[0]?.holeNumber ?? null
   const hole = round.holes.find((entry) => entry.holeNumber === holeNumber) ?? null
@@ -416,10 +415,10 @@ function RoundDetail({
   const cats = round.sg.categories
   const parKnown = round.par != null
   const parNote = course?.parSource === 'course-file'
-    ? 'Par from the GSPro course file'
+    ? 'par from GSPro'
     : course?.parSource === 'course-package'
-      ? 'Par from the loaded course'
-      : 'Par unknown until the companion reads the course file on your sim PC'
+      ? 'par from the loaded course'
+      : 'par unknown until Rounds is opened on your sim PC'
   const front = scoredHoles.filter((entry) => entry.holeNumber <= 9)
   const back = scoredHoles.filter((entry) => entry.holeNumber >= 10)
   const half = (holes: RoundHole[], label: string) => {
@@ -441,37 +440,45 @@ function RoundDetail({
   }
 
   const liveCaddieShots = shots.filter((shot) => shot.recommendedClub)
+  const keyHoles = new Map<number, 'gain' | 'loss'>()
+  best.forEach((shot) => keyHoles.set(shot.holeNumber, 'gain'))
+  worst.forEach((shot) => { if (!keyHoles.has(shot.holeNumber)) keyHoles.set(shot.holeNumber, 'loss') })
+  const holeValue = (entry: RoundHole) => {
+    if (!focus) return entry.sg
+    if (!entry.complete) return null
+    const inCategory = entry.shots.filter((shot) => shot.category === focus && shot.sg != null)
+    return inCategory.length > 0 ? inCategory.reduce((sum, shot) => sum + (shot.sg ?? 0), 0) : null
+  }
+  const facts = [
+    `${round.putts} putts`,
+    round.fir.of > 0 ? `${round.fir.hit}/${round.fir.of} fairways` : null,
+    round.gir.of > 0 ? `${round.gir.hit}/${round.gir.of} greens` : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <main className="rounds-main">
       <section className="rounds-detail-head">
-        <a className="rounds-back" href="/rounds">← All rounds</a>
-        <div className="rounds-detail-title">
-          <div>
+        <div className="rounds-titlebar">
+          <div className="rounds-titlebar-left">
+            <a className="rounds-back" href="/rounds">← All rounds</a>
             <h1>{round.courseName}</h1>
-            <p className="rounds-muted">
-              {formatDate(round.playedAt)} · {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · every putt and lie captured by the companion
+            <p className="rounds-muted rounds-meta">
+              {formatDate(round.playedAt)} · {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · {STATUS_LABEL[round.status].toLowerCase()} · {isLiveCaddieRound(round) ? 'Live Caddie' : 'no Live Caddie'} · {parNote}
             </p>
-            <div className="rounds-chips">
-              <span className="rounds-pill">{STATUS_LABEL[round.status]}</span>
-              <span className="rounds-pill">{isLiveCaddieRound(round) ? 'Live Caddie round' : 'Played without Live Caddie'}</span>
-              <span className="rounds-pill">{parNote}</span>
-              <label className="rounds-toggle">
-                <input checked={round.autoPutt} onChange={(event) => onAutoPutt(event.target.checked)} type="checkbox" />
-                Auto putt was on
-              </label>
-            </div>
           </div>
-          <div className="rounds-scoreblock">
+          <div className="rounds-score-inline">
             <div>
               <span className="rounds-label">Score</span>
-              <strong className="rounds-big">{round.strokes}</strong>
-              <span className="rounds-muted">{parKnown ? `${vsPar(round.strokes, round.par ?? 0)}, par ${round.par}` : `${round.completeHoles} holes`}</span>
+              <span className="rounds-score-line">
+                <strong>{round.strokes}</strong>
+                <span className="rounds-muted">{parKnown ? vsPar(round.strokes, round.par ?? 0) : `${round.completeHoles} holes`}</span>
+              </span>
             </div>
             <div>
-              <span className="rounds-label">Strokes gained</span>
-              <strong className={`rounds-big ${tone(round.sg.total)}`}>{round.sg.total != null ? signed(round.sg.total) : '–'}</strong>
-              <span className="rounds-muted">vs PGA Tour baseline</span>
+              <span className="rounds-label">SG vs tour</span>
+              <span className="rounds-score-line">
+                <strong className={tone(round.sg.total)}>{round.sg.total != null ? signed(round.sg.total) : '–'}</strong>
+              </span>
             </div>
           </div>
         </div>
@@ -480,66 +487,80 @@ function RoundDetail({
         ) : null}
       </section>
 
-      <section className="rounds-cats">
-        {(Object.keys(CATEGORY_LABEL) as ShotCategory[]).map((category) => {
-          const value = cats[category].shots > 0 ? cats[category].sg : null
-          const width = value == null ? 0 : Math.min(Math.abs(value), 3) / 3 * 50
-          return (
-            <div className="rounds-card rounds-cat" key={category}>
-              <div className="rounds-cat-top">
-                <span>{CATEGORY_LABEL[category]}</span>
-                <strong className={tone(value)}>{value == null ? '–' : signed(value)}</strong>
-              </div>
-              <div className="rounds-diverge" aria-hidden="true">
-                <div className="rounds-diverge-half is-left">
-                  {value != null && value < 0 ? <div className="is-loss-bar" style={{ width: `${width * 2}%` }} /> : null}
-                </div>
-                <div className="rounds-diverge-axis" />
-                <div className="rounds-diverge-half">
-                  {value != null && value > 0 ? <div className="is-gain-bar" style={{ width: `${width * 2}%` }} /> : null}
-                </div>
-              </div>
-              <p className="rounds-muted">{captions[category]}</p>
-            </div>
-          )
-        })}
+      <section className="rounds-card rounds-catstrip">
+        <div className="rounds-catstrip-row" role="group" aria-label="Strokes gained by category">
+          {(Object.keys(CATEGORY_LABEL) as ShotCategory[]).map((category) => {
+            const value = cats[category].shots > 0 ? cats[category].sg : null
+            const width = value == null ? 0 : Math.min(Math.abs(value), 3) / 3 * 100
+            const on = focus === category
+            return (
+              <button
+                aria-pressed={on}
+                className={`rounds-catcell${on ? ' is-on' : ''}`}
+                key={category}
+                onClick={() => setFocus(on ? null : category)}
+                type="button"
+              >
+                <span className="rounds-catcell-top">
+                  <span>{CATEGORY_LABEL[category]}</span>
+                  <strong className={tone(value)}>{value == null ? '–' : signed(value)}</strong>
+                </span>
+                <span className="rounds-diverge" aria-hidden="true">
+                  <span className="rounds-diverge-half is-left">
+                    {value != null && value < 0 ? <span className="is-loss-bar" style={{ width: `${width}%` }} /> : null}
+                  </span>
+                  <span className="rounds-diverge-axis" />
+                  <span className="rounds-diverge-half">
+                    {value != null && value > 0 ? <span className="is-gain-bar" style={{ width: `${width}%` }} /> : null}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="rounds-catstrip-foot">
+          <span className="rounds-muted">{focus ? captions[focus] : `${facts}. Pick a category to see it hole by hole.`}</span>
+          <label className="rounds-toggle">
+            <input checked={round.autoPutt} onChange={(event) => onAutoPutt(event.target.checked)} type="checkbox" />
+            Auto putt was on
+          </label>
+        </div>
       </section>
 
       {highlights.length > 0 ? (
-        <section className="rounds-section">
-          <h2>The round in {highlights.length === 3 ? 'three' : highlights.length} shots</h2>
-          <div className="rounds-highlights">
-            {highlights.map((shot) => (
-              <button
-                className="rounds-card rounds-highlight"
-                key={`${shot.holeNumber}-${shot.number}`}
-                onClick={() => {
-                  setSelectedHole(shot.holeNumber)
-                  document.getElementById('rounds-hole-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-                type="button"
-              >
-                <strong className={`rounds-big-ish ${tone(shot.sg)}`}>{shot.sg != null ? signed(shot.sg) : '–'}</strong>
-                <span className="rounds-highlight-title">{keyShotHeadline(shot)}</span>
-                <span className="rounds-muted">{keyShotDetail(shot)}</span>
-                <span className="rounds-open">Open hole {shot.holeNumber} →</span>
-              </button>
-            ))}
-          </div>
+        <section className="rounds-keyshots" aria-label="The round in three shots">
+          {highlights.map((shot) => (
+            <button
+              className="rounds-keyshot"
+              key={`${shot.holeNumber}-${shot.number}`}
+              onClick={() => {
+                setSelectedHole(shot.holeNumber)
+                document.getElementById('rounds-hole-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              type="button"
+            >
+              <strong className={tone(shot.sg)}>{shot.sg != null ? signed(shot.sg) : '–'}</strong>
+              <span>{keyShotHeadline(shot)}</span>
+            </button>
+          ))}
         </section>
       ) : null}
 
       <section className="rounds-card rounds-section">
         <div className="rounds-section-head">
           <h2>Hole by hole</h2>
-          <span className="rounds-muted">Bar = strokes gained on the hole. {[half(front, 'Out'), half(back, 'In')].filter(Boolean).join(' · ')}</span>
+          <span className="rounds-muted">
+            {focus ? `Bar = ${CATEGORY_LABEL[focus].toLowerCase()} strokes gained on each hole.` : 'Bar = strokes gained on the hole.'} {[half(front, 'Out'), half(back, 'In')].filter(Boolean).join(' · ')}
+          </span>
         </div>
         <div className="rounds-scorecard-wrap">
           <div className="rounds-scorecard">
             {round.holes.map((entry) => {
               const diff = entry.par != null ? entry.strokes - entry.par : null
               const mark = diff == null ? '' : diff <= -2 ? 'is-eagle' : diff === -1 ? 'is-birdie' : diff === 1 ? 'is-bogey' : diff >= 2 ? 'is-double' : ''
-              const sgHeight = entry.sg == null ? 0 : Math.max(2, Math.min(Math.abs(entry.sg), 1.1) / 1.1 * 26)
+              const value = holeValue(entry)
+              const sgHeight = value == null ? 0 : Math.max(2, Math.min(Math.abs(value), 1.1) / 1.1 * 26)
+              const key = keyHoles.get(entry.holeNumber)
               return (
                 <button
                   aria-label={`Hole ${entry.holeNumber}`}
@@ -549,17 +570,20 @@ function RoundDetail({
                   onClick={() => setSelectedHole(entry.holeNumber)}
                   type="button"
                 >
-                  <span className="rounds-cell-num">{entry.holeNumber}</span>
-                  <span className="rounds-cell-par">{entry.par != null ? `P${entry.par}` : ' '}</span>
+                  <span className="rounds-cell-num">
+                    {entry.holeNumber}
+                    {key ? <span aria-label="key shot" className={`rounds-cell-key is-${key}`} /> : null}
+                  </span>
+                  <span className="rounds-cell-par">{entry.par != null ? `P${entry.par}` : '\u00a0'}</span>
                   <span className={`rounds-mark ${mark}`}>{entry.complete ? entry.strokes : '–'}</span>
                   <span className="rounds-cell-bar is-up">
-                    {entry.sg != null && entry.sg > 0 ? <span className="is-gain-bar" style={{ height: sgHeight }} /> : null}
+                    {value != null && value > 0 ? <span className="is-gain-bar" style={{ height: sgHeight }} /> : null}
                   </span>
                   <span className="rounds-cell-axis" />
                   <span className="rounds-cell-bar is-down">
-                    {entry.sg != null && entry.sg < 0 ? <span className="is-loss-bar" style={{ height: sgHeight }} /> : null}
+                    {value != null && value < 0 ? <span className="is-loss-bar" style={{ height: sgHeight }} /> : null}
                   </span>
-                  <span className={`rounds-cell-sg ${tone(entry.sg)}`}>{entry.sg != null ? signed(entry.sg) : ''}</span>
+                  <span className={`rounds-cell-sg ${tone(value)}`}>{value != null ? signed(value) : ''}</span>
                 </button>
               )
             })}
@@ -570,14 +594,7 @@ function RoundDetail({
       {hole ? (
         <section className="rounds-hole" id="rounds-hole-panel">
           <div className="rounds-card rounds-map-card">
-            <div className="rounds-section-head">
-              <strong>Shot map · hole {hole.holeNumber}</strong>
-              <span className="rounds-muted">Tee at bottom, pin at top</span>
-            </div>
-            <ShotMap hole={hole} />
-            <p className="rounds-muted rounds-small">
-              Drawn from GSPro’s own shot positions, so it works on any course. Dashed lines are putts.
-            </p>
+            <ShotMap courseKey={round.courseKey} courseName={round.courseName} hole={hole} />
           </div>
           <div className="rounds-hole-side">
             <div className="rounds-card rounds-shots">
@@ -605,7 +622,7 @@ function RoundDetail({
                     {hole.shots.map((shot) => {
                       const width = shot.sg == null ? 0 : Math.round(Math.min(Math.abs(shot.sg), 1.2) / 1.2 * 56)
                       return (
-                        <tr key={shot.number}>
+                        <tr className={focus && shot.category !== focus ? 'is-dim' : undefined} key={shot.number}>
                           <td className="rounds-muted">{shot.number}</td>
                           <td>
                             <strong>{clubName(shot.club)}</strong>
@@ -656,14 +673,123 @@ function RoundDetail({
       <section className="rounds-small rounds-muted rounds-footnote">
         <strong>What this page knows and doesn’t</strong>
         <span>
-          Strokes gained uses the PGA Tour baseline (Broadie tables, tour putting). {round.unknownLieShots > 0 ? `${round.unknownLieShots} shot${round.unknownLieShots === 1 ? '' : 's'} (*) started or finished on a GSPro surface we haven’t identified yet; they’re valued as rough. ` : ''}Chips from just off the green may show as fairway until GSPro’s fringe code is confirmed. Penalty strokes are not verified yet.
+          Strokes gained uses the PGA Tour baseline (Broadie tables, tour putting). {round.unknownLieShots > 0 ? `${round.unknownLieShots} shot${round.unknownLieShots === 1 ? '' : 's'} (*) started or finished on a GSPro surface we haven’t identified yet; they’re valued as rough. ` : ''}Fringe is valued like the fairway. Penalty strokes are not verified yet.
         </span>
       </section>
     </main>
   )
 }
 
-function ShotMap({ hole }: { hole: RoundHole }) {
+type MapState =
+  | { status: 'loading' }
+  | { status: 'plain'; reason: string }
+  | { status: 'real'; geometry: CourseHoleGeometry; toLocal: (world: { x: number; z: number }) => CoursePointYds | null; source: string }
+
+function ShotMap({ hole, courseKey, courseName }: { hole: RoundHole; courseKey: string | null; courseName: string }) {
+  const [state, setState] = useState<MapState>({ status: 'loading' })
+  const worldPoints = useMemo(
+    () => hole.shots.flatMap((shot) => [shot.start, shot.end]).filter((point): point is NonNullable<typeof point> => point != null),
+    [hole],
+  )
+  useEffect(() => {
+    let cancelled = false
+    setState({ status: 'loading' })
+    void loadHoleMap(courseKey, courseName, hole.holeNumber, worldPoints)
+      .then((result) => {
+        if (cancelled) return
+        setState(result.status === 'ready'
+          ? { status: 'real', geometry: result.geometry, toLocal: result.toLocal, source: result.source }
+          : { status: 'plain', reason: result.reason })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'plain', reason: 'could not load the course' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [courseKey, courseName, hole, worldPoints])
+
+  return (
+    <>
+      <div className="rounds-section-head">
+        <strong>Shot map · hole {hole.holeNumber}</strong>
+        <span className="rounds-muted">Tee at bottom</span>
+      </div>
+      {state.status === 'real'
+        ? <RealHoleMap geometry={state.geometry} hole={hole} toLocal={state.toLocal} />
+        : <PlainShotMap hole={hole} />}
+      <p className="rounds-muted rounds-small">
+        {state.status === 'real'
+          ? 'Your shots on the course Looper loaded, placed with the same alignment Live Caddie uses. Dashed lines are putts.'
+          : state.status === 'loading'
+            ? 'Looking for this hole’s map…'
+            : 'Drawn from GSPro’s own shot positions. Courses Looper has loaded show the real hole once your sim PC has opened Rounds. Dashed lines are putts.'}
+      </p>
+    </>
+  )
+}
+
+const SURFACE_ORDER: readonly CourseSurfaceKind[] = ['rough', 'deep-rough', 'fairway', 'tee', 'penalty', 'water', 'bunker', 'green']
+
+function RealHoleMap({
+  hole,
+  geometry,
+  toLocal,
+}: {
+  hole: RoundHole
+  geometry: CourseHoleGeometry
+  toLocal: (world: { x: number; z: number }) => CoursePointYds | null
+}) {
+  const segments = hole.shots
+    .map((shot) => ({ shot, from: shot.start ? toLocal(shot.start) : null, to: shot.end ? toLocal(shot.end) : null }))
+    .filter((segment): segment is { shot: RoundShot; from: CoursePointYds; to: CoursePointYds } => segment.from != null && segment.to != null)
+  if (segments.length === 0) return <PlainShotMap hole={hole} />
+  const pin = hole.pin ? toLocal(hole.pin) : segments[segments.length - 1].to
+  const base = geometry.viewBounds ?? geometry.bounds
+  const points = [...segments.flatMap((segment) => [segment.from, segment.to]), ...(pin ? [pin] : [])]
+  const pad = 12
+  const minX = Math.min(base.minX, ...points.map((p) => p[0])) - pad
+  const maxX = Math.max(base.maxX, ...points.map((p) => p[0])) + pad
+  const minY = Math.min(base.minY, ...points.map((p) => p[1])) - pad
+  const maxY = Math.max(base.maxY, ...points.map((p) => p[1])) + pad
+  const width = 320
+  const scale = width / (maxX - minX)
+  const height = Math.max(260, Math.min(560, (maxY - minY) * scale))
+  // Keep yards square: if the hole is taller than the frame allows, fit by height.
+  const s = Math.min(scale, height / (maxY - minY))
+  const offsetX = (width - (maxX - minX) * s) / 2
+  const offsetY = (height - (maxY - minY) * s) / 2
+  const x = (p: CoursePointYds) => offsetX + (p[0] - minX) * s
+  const y = (p: CoursePointYds) => offsetY + (maxY - p[1]) * s
+  const path = (polygon: readonly CoursePointYds[]) =>
+    polygon.length < 3 ? '' : `M${polygon.map((p) => `${x(p).toFixed(1)},${y(p).toFixed(1)}`).join('L')}Z`
+  const surfaces = [...geometry.surfaces].sort((a, b) => SURFACE_ORDER.indexOf(a.kind) - SURFACE_ORDER.indexOf(b.kind))
+  const fifty = 50 * s
+  return (
+    <svg className="rounds-map is-real" role="img" aria-label={`Shots on hole ${hole.holeNumber}, drawn on the course`} viewBox={`0 0 ${width} ${height.toFixed(0)}`}>
+      <rect className="rounds-map-ground" height={height} width={width} x={0} y={0} />
+      {surfaces.map((surface) => (
+        <path className={`rounds-surf is-${surface.kind}`} d={surface.polygons.map(path).join(' ')} key={surface.id} />
+      ))}
+      {segments.map(({ shot, from, to }) => (
+        <line className={shot.isPutt ? 'rounds-map-putt' : 'rounds-map-shot'} key={`l-${shot.number}`} x1={x(from)} x2={x(to)} y1={y(from)} y2={y(to)} />
+      ))}
+      {segments.slice(0, -1).map(({ shot, to }) => (
+        <circle className="rounds-map-dot" cx={x(to)} cy={y(to)} key={`d-${shot.number}`} r={4} />
+      ))}
+      <rect className="rounds-map-tee" height={10} width={10} x={x(segments[0].from) - 5} y={y(segments[0].from) - 5} />
+      {pin ? <circle className="rounds-map-pin" cx={x(pin)} cy={y(pin)} r={6} /> : null}
+      {fifty > 12 ? (
+        <g className="rounds-map-scale">
+          <line x1={12} x2={12 + fifty} y1={height - 12} y2={height - 12} />
+          <text x={12} y={height - 18}>50 yd</text>
+        </g>
+      ) : null}
+    </svg>
+  )
+}
+
+function PlainShotMap({ hole }: { hole: RoundHole }) {
   const map = holeShotMap(hole)
   if (!map) return <p className="rounds-muted">No positions recorded for this hole.</p>
   const width = 320

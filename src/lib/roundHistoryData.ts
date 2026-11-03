@@ -3,9 +3,12 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
-import { readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
+import {
+  readLooperCompanionCourseLayouts,
+  readLooperCompanionCourseLibrary,
+} from '../adapters/looperCompanion'
 import { courseRegistry, resolveCourseIdFromGsproName } from '../courseGeometry/courseCatalog'
-import { companionSceneLayouts } from '../courseGeometry/nativeCourseRuntime'
+import { NativeGkdError, parseGkdLayout } from '../courseGeometry/nativeGkd'
 import { getActiveBagClubIds } from './bagConfig'
 import { buildYardageBook } from './bagYardageBook'
 import { getActiveLocalUserId } from './localUserScope'
@@ -155,18 +158,49 @@ const parsFromPackage = async (courseKey: string): Promise<StoredCourseInfo | nu
   return { name: entry.name, pars, parSource: Object.keys(pars).length > 0 ? 'course-package' : null }
 }
 
+const COURSE_FILE_TIMEOUT_MS = 12000
+const COURSE_LIST_TIMEOUT_MS = 20000
+
+/** One course's GKD via the companion; the slow path when the course list has no par. */
 const parsFromCourseFile = async (courseKey: string): Promise<StoredCourseInfo | null> => {
-  const layouts = await companionSceneLayouts(courseKey)
-  const main = layouts?.find((entry) => entry.file.kind === 'main') ?? layouts?.[0]
-  if (!main) return null
+  const response = await readLooperCompanionCourseLayouts(courseKey, COURSE_FILE_TIMEOUT_MS)
+  if (response.status !== 'ready') return null
+  const file = response.layouts.find((entry) => entry.kind === 'main') ?? response.layouts[0]
+  if (!file) return null
+  let layout
+  try {
+    layout = parseGkdLayout(file.text)
+  } catch (error) {
+    if (error instanceof NativeGkdError) return null
+    throw error
+  }
   const pars: Record<number, number> = {}
-  main.layout.holes.forEach((hole) => {
+  layout.holes.forEach((hole) => {
     if (typeof hole.par === 'number') pars[hole.hole] = hole.par
   })
-  return {
-    name: main.layout.courseName,
-    pars,
-    parSource: Object.keys(pars).length > 0 ? 'course-file' : null,
+  return { name: layout.courseName, pars, parSource: Object.keys(pars).length > 0 ? 'course-file' : null }
+}
+
+/**
+ * Every installed course's name (and, from companion courses.7, par per hole)
+ * in one request. null when no companion answers on this device.
+ */
+const courseLibraryInfo = async (): Promise<Map<string, StoredCourseInfo> | null> => {
+  try {
+    const library = await readLooperCompanionCourseLibrary(COURSE_LIST_TIMEOUT_MS)
+    return new Map(library.courses.map((course) => {
+      const pars: Record<number, number> = {}
+      Object.entries(course.pars ?? {}).forEach(([hole, par]) => {
+        if (Number.isFinite(par)) pars[Number(hole)] = par
+      })
+      return [course.courseKey.toLowerCase(), {
+        name: course.courseName || null,
+        pars,
+        parSource: Object.keys(pars).length > 0 ? 'course-file' as const : null,
+      }]
+    }))
+  } catch {
+    return null
   }
 }
 
@@ -261,31 +295,32 @@ export const loadCourseInfo = async (
     if (merged) cache[key] = merged
   })
 
-  await Promise.all(keys.map(async (key) => {
-    const cached = cache[key]
-    if (cached?.parSource === 'course-file' && cached.name) return
-    const [fromFile, fromPackage] = await Promise.all([
-      parsFromCourseFile(key).catch(() => null),
-      cached?.parSource === 'course-package' ? Promise.resolve(null) : parsFromPackage(key).catch(() => null),
-    ])
-    const merged = mergeInfo(mergeInfo(cached, fromPackage ?? undefined), fromFile ?? undefined)
-    if (merged) cache[key] = { ...merged, name: fromFile?.name || merged.name }
+  const needsLookup = (key: string) => !(cache[key]?.parSource === 'course-file' && cache[key]?.name)
+
+  // 1. The companion's course list: every name, and par from courses.7 on.
+  const library = keys.some(needsLookup) ? await courseLibraryInfo() : null
+  if (library) {
+    keys.forEach((key) => {
+      const merged = mergeInfo(cache[key], library.get(key.toLowerCase()))
+      if (merged) cache[key] = { ...merged, name: library.get(key.toLowerCase())?.name || merged.name }
+    })
+  }
+
+  // 2. Loaded course packages (FarmLinks…): par without the companion.
+  await Promise.all(keys.filter((key) => !cache[key]?.parSource).map(async (key) => {
+    const fromPackage = await parsFromPackage(key).catch(() => null)
+    const merged = mergeInfo(cache[key], fromPackage ?? undefined)
+    if (merged) cache[key] = merged
   }))
 
-  // Still nameless: the companion's installed-course list has every course's
-  // name in one call, even when a course file couldn't be read for par.
-  const nameless = keys.filter((key) => !cache[key]?.name)
-  if (nameless.length > 0) {
-    try {
-      const library = await readLooperCompanionCourseLibrary(8000)
-      const byKey = new Map(library.courses.map((course) => [course.courseKey.toLowerCase(), course]))
-      nameless.forEach((key) => {
-        const course = byKey.get(key.toLowerCase())
-        if (!course?.courseName) return
-        cache[key] = { name: course.courseName, pars: cache[key]?.pars ?? {}, parSource: cache[key]?.parSource ?? null }
-      })
-    } catch {
-      // No companion on this device: names stay as saved or derived from the key.
+  // 3. Older companions: read each course file, one at a time (the companion
+  //    walks the library per request; six at once overran their timeouts).
+  if (library) {
+    for (const key of keys.filter(needsLookup)) {
+      if (Object.keys(library.get(key.toLowerCase())?.pars ?? {}).length > 0) continue
+      const fromFile = await parsFromCourseFile(key).catch(() => null)
+      const merged = mergeInfo(cache[key], fromFile ?? undefined)
+      if (merged) cache[key] = { ...merged, name: fromFile?.name || merged.name }
     }
   }
   writeCourseCache(cache)

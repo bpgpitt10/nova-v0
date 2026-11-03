@@ -820,3 +820,247 @@
     gap: 20px;
   }
 }
+
+/* ---- compact round header (3 Nov) ---- */
+
+.rounds-titlebar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px 24px;
+}
+
+.rounds-titlebar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rounds-meta {
+  font-size: 13px;
+}
+
+.rounds-score-inline {
+  display: flex;
+  gap: 24px;
+}
+
+.rounds-score-inline > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rounds-score-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rounds-score-line strong {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-catstrip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.rounds-catstrip-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.rounds-catcell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rounds-catcell:hover {
+  background: var(--rounds-inset);
+}
+
+.rounds-catcell.is-on {
+  background: var(--rounds-elevated);
+  border-color: rgba(134, 239, 172, 0.45);
+}
+
+.rounds-catcell-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rounds-catcell-top strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-catcell .rounds-diverge,
+.rounds-catcell .rounds-diverge-half {
+  display: flex;
+}
+
+.rounds-catcell .rounds-diverge-half > span {
+  height: 8px;
+}
+
+.rounds-catcell .rounds-diverge-axis {
+  display: block;
+}
+
+.rounds-catstrip-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 4px;
+  font-size: 13px;
+}
+
+.rounds-keyshots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rounds-keyshot {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rounds-line);
+  background: var(--rounds-card);
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rounds-keyshot:hover {
+  border-color: rgba(134, 239, 172, 0.5);
+  color: #ffffff;
+}
+
+.rounds-keyshot strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-cell-num {
+  position: relative;
+}
+
+.rounds-cell-key {
+  position: absolute;
+  top: -1px;
+  right: -8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.rounds-cell-key.is-gain {
+  background: var(--rounds-gain);
+}
+
+.rounds-cell-key.is-loss {
+  background: var(--rounds-loss);
+}
+
+.rounds-shots-table tr.is-dim td {
+  opacity: 0.4;
+}
+
+/* ---- real hole map ---- */
+
+.rounds-map.is-real {
+  background: #142017;
+}
+
+.rounds-map-ground {
+  fill: #18281c;
+}
+
+.rounds-surf {
+  fill-rule: evenodd;
+}
+
+.rounds-surf.is-rough {
+  fill: #1f3824;
+}
+
+.rounds-surf.is-deep-rough {
+  fill: #1a3020;
+}
+
+.rounds-surf.is-fairway,
+.rounds-surf.is-tee {
+  fill: #2f5d37;
+}
+
+.rounds-surf.is-green {
+  fill: #4a9a56;
+}
+
+.rounds-surf.is-bunker {
+  fill: #cdbf8e;
+}
+
+.rounds-surf.is-water {
+  fill: #2b5d86;
+}
+
+.rounds-surf.is-penalty {
+  fill: none;
+  stroke: #f87171;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.rounds-map.is-real .rounds-map-shot {
+  stroke: #ffffff;
+  stroke-width: 2.25;
+}
+
+.rounds-map.is-real .rounds-map-putt {
+  stroke: #ffffff;
+}
+
+.rounds-map.is-real .rounds-map-dot {
+  fill: #ffffff;
+  stroke: #0e1710;
+}
+
+@media (max-width: 760px) {
+  .rounds-catstrip-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rounds-score-line strong {
+    font-size: 24px;
+  }
+}

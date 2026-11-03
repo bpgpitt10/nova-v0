@@ -49,7 +49,7 @@ export type RoundShotRecord = {
   recommendedClub: string | null
 }
 
-export type ShotLie = 'tee' | 'fairway' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
+export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
 
 export type ShotCategory = 'off-the-tee' | 'approach' | 'around-green' | 'putting'
 
@@ -145,6 +145,10 @@ const SURFACE_LIES: Readonly<Record<number, ShotLie>> = {
   3: 'deep-rough',
   11: 'sand',
   5: 'green',
+  // Brian, 3 Nov 2026: Royal New Kent round 279, hole 2 shot 3 finished on the
+  // fringe (21 yd out, then chipped). Rounds only; Live Caddie's surface library
+  // (src/adapters/gsproSurfaceCodes.ts) waits for a paired HUD confirmation.
+  12: 'fringe',
 }
 
 export const lieFromSurface = (code: number | null): ShotLie =>
@@ -220,7 +224,8 @@ export const tourExpectedStrokes = (lie: ShotLie, yards: number): number => {
     // The tee table starts at 100 yd; shorter tee shots are valued from the fairway.
     return yards >= 100 ? interpolate(yards, BASELINES.tee) : interpolate(yards, BASELINES.fairway)
   }
-  if (lie === 'fairway') return interpolate(yards, BASELINES.fairway)
+  // Fringe has no tour table of its own; it plays like the fairway.
+  if (lie === 'fairway' || lie === 'fringe') return interpolate(yards, BASELINES.fairway)
   if (lie === 'sand') return interpolate(yards, BASELINES.sand)
   return interpolate(yards, BASELINES.rough)
 }
