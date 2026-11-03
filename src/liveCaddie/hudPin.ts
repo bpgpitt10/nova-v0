@@ -48,7 +48,7 @@ export const pinFromHudDistance = async ({
   }
   const pinLocal = nativeWorldToHoleLocalYds(context.registration, holeNumber, best.pin)
   if (!pinLocal) return { slot: null, pinLocal: null, note }
-  rememberNativePinSlot(context.courseKey, roundId, best.pin.slot)
+  rememberNativePinSlot(context.courseKey, roundId, holeNumber, best.pin.slot)
   return { slot: best.pin.slot, pinLocal, note }
 }
 

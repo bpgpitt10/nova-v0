@@ -640,15 +640,18 @@ export const nativeCourseContextForLive = async (
   courseKey: string | null,
 ): Promise<NativeCourseContext | null> => (await loadNativeCourseContext(courseId, courseKey)).context
 
-// Pin slot for the active GSPro round. Learned from GSPro's own distance to
-// pin; assumed to stay the same for the whole round (verify on the sim).
+// Pin slot for each hole of the active GSPro round, learned from GSPro's own
+// distance to pin. Per hole: on Royal New Kent the slot learned on one hole put
+// the next hole's pin at the front when GSPro had it at the back (11/3).
 const pinSlots = new Map<string, number>()
 const slotKey = (courseKey: string, roundId: number | null) => `${courseKey}|${roundId ?? 'round'}`
+const pinSlotKey = (courseKey: string, roundId: number | null, holeNumber: number) =>
+  `${slotKey(courseKey, roundId)}|h${holeNumber}`
 
-export const rememberNativePinSlot = (courseKey: string, roundId: number | null, slot: number) => {
-  pinSlots.set(slotKey(courseKey, roundId), slot)
+export const rememberNativePinSlot = (courseKey: string, roundId: number | null, holeNumber: number, slot: number) => {
+  pinSlots.set(pinSlotKey(courseKey, roundId, holeNumber), slot)
   try {
-    window.sessionStorage.setItem(`looper.native-pin-slot.${slotKey(courseKey, roundId)}`, String(slot))
+    window.sessionStorage.setItem(`looper.native-pin-slot.${pinSlotKey(courseKey, roundId, holeNumber)}`, String(slot))
   } catch {
     // memory copy is enough
   }
@@ -670,8 +673,8 @@ export const recallNativeLayout = (courseKey: string, roundId: number | null): s
   }
 }
 
-export const recallNativePinSlot = (courseKey: string, roundId: number | null): number | null => {
-  const key = slotKey(courseKey, roundId)
+export const recallNativePinSlot = (courseKey: string, roundId: number | null, holeNumber: number): number | null => {
+  const key = pinSlotKey(courseKey, roundId, holeNumber)
   const cached = pinSlots.get(key)
   if (cached != null) return cached
   try {
