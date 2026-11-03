@@ -27,7 +27,6 @@ import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import {
-  courseCatalog,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
   GREYWOLF_COURSE_ID,
@@ -105,6 +104,8 @@ import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
+
+const AIM_WIDTH_FACT = /^(Fairway|Green) width: /
 
 const OUTCOME_PLACEHOLDER = ['Success', 'Manageable', 'Trouble', 'Catastrophe']
   .map((label) => ({ label, percent: 0, text: '—' }))
@@ -193,7 +194,8 @@ const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'gr
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
-  const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
+  // The course is chosen in Round Setup (display only here).
+  const [courseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
@@ -1315,7 +1317,29 @@ export default function LiveCaddiePage() {
     ? shotStrategy?.aimInstruction ?? 'target line'
     : aimDescriptor?.text
       ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
-  const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
+  // Header status sits on the account-chip row, just left of the chip.
+  useEffect(() => {
+    const chip = document.querySelector('.looper-account-control')
+    if (!chip) return
+    const apply = () => document.documentElement.style.setProperty(
+      '--looper-account-w', `${Math.ceil(chip.getBoundingClientRect().width)}px`)
+    apply()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null
+    observer?.observe(chip)
+    return () => observer?.disconnect()
+  }, [])
+
+  // "Fairway width: 26 yd" sits right under the aim line; any other fact
+  // (hazard start) stays in the reason line below.
+  const aimWidthFact = aimDescriptor && aimDescriptor.confidence !== 'low'
+    ? aimDescriptor.contextFacts.find((fact) => AIM_WIDTH_FACT.test(fact)) ?? null
+    : null
+  const otherAimFacts = aimDescriptor?.contextFacts.filter((fact) => !AIM_WIDTH_FACT.test(fact)) ?? []
+  const aimContext = !aimDescriptor
+    ? null
+    : aimWidthFact && otherAimFacts.length === 0
+      ? ''
+      : buildAimContextSentence({ ...aimDescriptor, contextFacts: otherAimFacts })
 
   useEffect(() => {
     setInspectedAimOffset(null)
@@ -1406,16 +1430,6 @@ export default function LiveCaddiePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companionStatus?.capabilities?.liveObservations, companionStatus?.gspro.status, visualCaptureStatus])
 
-  const selectCourse = (nextCourseId: CourseId) => {
-    setCourseId(nextCourseId)
-    setHoleNumber(1)
-    setLiveSnapshot(null)
-    setNativeObservations(null)
-    setArmedClub(null)
-    resetArm()
-    lastShotKeyRef.current = null
-  }
-
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
@@ -1463,20 +1477,10 @@ export default function LiveCaddiePage() {
         </header>
 
         <section className="live-caddie-setup-row">
-          <select value={courseId} onChange={(event) => selectCourse(event.target.value as CourseId)}>
-            {courseCatalog.map((entry) => (
-              <option key={entry.id} value={entry.id}>{entry.name}</option>
-            ))}
-          </select>
-          <select
-            value={holeNumber}
-            disabled={livePrepared}
-            onChange={(event) => setHoleNumber(Number(event.target.value))}
-          >
-            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-              <option key={number} value={number}>Hole {number}</option>
-            ))}
-          </select>
+          {/* Course and hole are chosen in Round Setup and by GSPro; here they
+              are display only. */}
+          <strong className="live-caddie-course-name">{selectedCourse?.name ?? 'No course'}</strong>
+          <span className="live-caddie-hole-name">Hole {holeNumber}</span>
           {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
           {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
           {companionStatus?.capabilities?.liveObservations ? (
@@ -1521,10 +1525,12 @@ export default function LiveCaddiePage() {
             ) : null}
           </div>
         </section>
-        <NativePositionsBetaPanel
-          courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
-          courseKey={liveSnapshot?.courseKey ?? null}
-        />
+        {showDiagnostics ? (
+          <NativePositionsBetaPanel
+            courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
+            courseKey={liveSnapshot?.courseKey ?? null}
+          />
+        ) : null}
 
         {/* Developer readout for the native aim pipeline; the floating
             "Show where Looper would click" preview is the player-facing one. */}
@@ -1803,6 +1809,7 @@ export default function LiveCaddiePage() {
                     : displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
                     {playerFacingAim}
+                    {aimWidthFact && !isShotStrategy ? <span className="live-aim-width">{aimWidthFact}</span> : null}
                   </div>
                   {isShotStrategy && shotStrategy ? (
                     <div className="live-strategy-read">
