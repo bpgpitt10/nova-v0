@@ -1677,9 +1677,13 @@ export default function LiveCaddiePage() {
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
-        {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY' ? (
+        {showDiagnostics && nativeObservations?.ocr?.wind?.status ? (
           <div className="live-caddie-alert">
-            Wind OCR read: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+            Wind OCR {nativeObservations.ocr.wind.status}: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+            {` · Looper uses ${windObservation?.status ?? 'no wind'}`
+              + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
+              + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
+              + (liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg ? `, course turned ${liveSnapshot.gsproSceneRotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
         {showDiagnostics && recTiming ? (
