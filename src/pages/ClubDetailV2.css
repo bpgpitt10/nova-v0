@@ -1145,3 +1145,30 @@
   color: #eab308;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
 }
+
+/* Read header: score column sizes to "58 Driver" (with room between them), the read
+   takes the middle, and the driver scores sit against the right edge. */
+.dashboard-page .club-detail-v2 .club-detail-looper-read {
+  grid-template-columns: max-content minmax(320px, 1fr) minmax(220px, 280px);
+  justify-content: stretch;
+  gap: 24px;
+}
+
+.club-detail-v2 .club-v2-score-line {
+  column-gap: 0.9rem;
+}
+
+.club-detail-v2 .club-detail-read-col {
+  margin-left: 0;
+  padding-left: 22px;
+}
+
+.dashboard-page .club-detail-v2 .club-detail-drivers-col {
+  justify-self: end;
+  width: 100%;
+  padding-left: 22px;
+}
+
+.club-detail-v2 .club-v2-score-club {
+  justify-self: start;
+}
