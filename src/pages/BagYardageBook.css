@@ -638,3 +638,36 @@
     font-size: 30px;
   }
 }
+
+/* Club Ladder PDF: small button at the end of the legend line. */
+.bagbook-ladder-pdf {
+  margin: 0 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid rgba(134, 239, 172, 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bagbook-pure);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bagbook-ladder-pdf:hover:not(:disabled) {
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.bagbook-ladder-pdf:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Off-screen copy of the ladder card that the PDF is made from. */
+.bagbook-export-capture {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  pointer-events: none;
+}
