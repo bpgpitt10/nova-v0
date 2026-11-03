@@ -56,7 +56,7 @@ const integer = (value: unknown): value is number =>
 
 const fetchTerrainPackage = async (): Promise<RawTerrainPackage | null> => {
   try {
-    const response = await fetch(TERRAIN_PACKAGE_URL, { cache: 'force-cache' })
+    const response = await fetch(TERRAIN_PACKAGE_URL, { cache: 'no-cache' })
     if (!response.ok) {
       throw new Error(`Greywolf terrain package returned ${response.status}.`)
     }

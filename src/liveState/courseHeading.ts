@@ -43,7 +43,7 @@ const loadGreywolfHeadingDegreesTrue = (holeNumber: number) => {
 
   const promise = fetch(
     `/course-geometry/greywolf/local-geometry/greywolf-hole-${String(normalizedHole).padStart(2, '0')}.json`,
-    { cache: 'force-cache' },
+    { cache: 'no-cache' },
   )
     .then(async (response) => {
       if (!response.ok) return null

@@ -128,7 +128,7 @@ const contextKind = (kind: string): CourseContextLayer['kind'] | null => {
 }
 
 const fetchEnvironmentPackage = async (): Promise<RawPackage> => {
-  const response = await fetch(ENVIRONMENT_PACKAGE_URL, { cache: 'force-cache' })
+  const response = await fetch(ENVIRONMENT_PACKAGE_URL, { cache: 'no-cache' })
   if (!response.ok) {
     throw new Error(`Greywolf environment package returned ${response.status}.`)
   }

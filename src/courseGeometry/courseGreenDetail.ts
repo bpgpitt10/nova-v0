@@ -97,7 +97,7 @@ const fetchPackage = async (courseSlug: string): Promise<RawPackage | null> => {
   const slug = normalizedSlug(courseSlug)
   if (!slug) return null
   try {
-    const response = await fetch(greenDetailUrl(slug), { cache: 'force-cache' })
+    const response = await fetch(greenDetailUrl(slug), { cache: 'no-cache' })
     if (response.status === 404) return null
     if (!response.ok) throw new Error(`Green detail package returned ${response.status}.`)
     const payload = await response.json() as RawPackage
