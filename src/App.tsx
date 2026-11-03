@@ -28,6 +28,7 @@ import BagYardageBook from './pages/BagYardageBook'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
+import { attackAngleValue } from './lib/attackAngle'
 import './App.css'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
@@ -3717,6 +3718,7 @@ function App({
     const hlaSeries = seriesFromExtractor(hlaValue)
     const spinAxisSeries = seriesFromExtractor(spinAxisValue)
     const clubPathSeries = seriesFromExtractor(clubPathValue)
+    const attackAngleSeries = seriesFromExtractor(attackAngleValue)
     const faceToPathSeries = seriesFromExtractor(faceToPathValue)
     const faceToTargetSeries = seriesFromExtractor(faceToTargetValue)
     const launchSeries = seriesFromExtractor(launchValue)
@@ -3774,6 +3776,34 @@ function App({
       negative: 'In-to-Out',
       neutral: 'Neutral Path',
     })
+    const attackAngleCurrent = sessionWeightedMetric(attackAngleValue)
+    const attackAngleRead = (() => {
+      if (typeof attackAngleCurrent !== 'number') {
+        return {
+          status: 'Building',
+          read: 'Attack angle needs swings where the launch monitor read the club.',
+          trendRead: 'Trend is still forming.',
+        }
+      }
+      const isDriver = selectedDetailClub === 'Driver'
+      const status =
+        attackAngleCurrent >= 1 ? 'Hitting Up' : attackAngleCurrent <= -1 ? 'Hitting Down' : 'Level'
+      const read = isDriver
+        ? attackAngleCurrent >= 1
+          ? 'Hitting up on the driver: more carry with less spin.'
+          : 'Level or down on the driver costs carry and adds spin; tee it higher and move the ball forward.'
+        : attackAngleCurrent <= -1
+          ? 'Hitting down, ball first: the strike irons and wedges want.'
+          : 'Level or up on this club brings in thin and heavy contact.'
+      return {
+        status,
+        read,
+        trendRead:
+          attackAngleSeries.length > 2
+            ? 'Attack angle moves with ball position and setup.'
+            : 'Trend is still forming.',
+      }
+    })()
     const facePathCurrent = sessionWeightedMetric(faceToPathValue)
     const facePathRead = directionRead('Face to path', facePathCurrent, 1.5, {
       positive: 'Open Face',
@@ -3803,6 +3833,7 @@ function App({
     const hlaDelta = sessionDeltaForMetric(hlaValue)
     const spinAxisDelta = sessionDeltaForMetric(spinAxisValue)
     const clubPathDelta = sessionDeltaForMetric(clubPathValue)
+    const attackAngleDelta = sessionDeltaForMetric(attackAngleValue)
     const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
     const faceToTargetDelta = sessionDeltaForMetric(faceToTargetValue)
     const carryDelta = sessionDeltaForMetric(carryValue, sessionWeightedCarryForMetric)
@@ -4048,6 +4079,19 @@ function App({
             : 'Trend is still forming.',
         chartType: 'trend',
         series: descentSeries,
+      },
+      {
+        key: 'attackAngle',
+        group: 'path',
+        label: 'Attack Angle',
+        valueText: valueText(attackAngleCurrent, '°', 1, true),
+        deltaText: deltaText(attackAngleDelta, '°', 1),
+        trendTone: trendToneForDelta(attackAngleDelta, 0.8),
+        status: attackAngleRead.status,
+        read: attackAngleRead.read,
+        trendRead: attackAngleRead.trendRead,
+        chartType: 'trend',
+        series: attackAngleSeries,
       },
       {
         key: 'clubPath',
@@ -4301,6 +4345,7 @@ function App({
       pushPoint('hla', label, averageFor(hlaValue))
       pushPoint('spinAxis', label, averageFor(spinAxisValue))
       pushPoint('clubPath', label, averageFor(clubPathValue))
+      pushPoint('attackAngle', label, averageFor(attackAngleValue))
       pushPoint('faceToPath', label, averageFor(faceToPathValue))
       pushPoint('faceToTarget', label, averageFor(faceToTargetValue))
       pushPoint('carry', label, averageFor(carryValue))

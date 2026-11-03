@@ -32,6 +32,7 @@ export type MetricKey =
   | 'hla'
   | 'spinAxis'
   | 'clubPath'
+  | 'attackAngle'
   | 'faceToPath'
   | 'faceToTarget'
   | 'offline'
@@ -192,6 +193,7 @@ const metricUnitLabel = (key: MetricKey) => {
     case 'hla':
     case 'spinAxis':
     case 'clubPath':
+    case 'attackAngle':
     case 'faceToPath':
     case 'faceToTarget':
     case 'launch':
@@ -225,6 +227,12 @@ const comparisonRatioValue = (value: number | undefined) => {
     return '—'
   }
   return value.toFixed(2)
+}
+
+/** Attack angle reads as signed degrees: +2.1° is hitting up, -4.5° hitting down. */
+const signedDegreesValue = (value: number | undefined) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '—'
+  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(1)}°`
 }
 
 const formatLandingOffline = (value: number) => {
@@ -270,7 +278,7 @@ export default function ClubDetailV2({
   dispersionChart,
   shotProfiles,
   heatmapMetrics: _heatmapMetrics,
-  patternInsight,
+  patternInsight: _patternInsight,
   performanceDrivers,
   metricModels,
   metricSessionSeries,
@@ -636,6 +644,18 @@ export default function ClubDetailV2({
         },
       },
       {
+        key: 'attack-angle',
+        label: 'Attack Angle',
+        stock: {
+          primary: signedDegreesValue(shotProfiles.mostLikely?.attackAngle),
+          variability: variabilityValue(shotProfiles.mostLikely?.attackAngleVariability, 1),
+        },
+        pure: {
+          primary: signedDegreesValue(shotProfiles.bestAvailable?.attackAngle),
+          variability: variabilityValue(shotProfiles.bestAvailable?.attackAngleVariability, 1),
+        },
+      },
+      {
         key: 'start-line-hla',
         label: 'Start Line (HLA)',
         stock: {
@@ -780,14 +800,6 @@ export default function ClubDetailV2({
         </article>
         <ClubBehaviorPreview clubLabel={clubLabel} selectedVariantId={selectedVariantId} />
         <article className="dashboard-card club-v2-heatmap-metrics">
-          <div className="club-v2-pattern-insight">
-            <div className="club-v2-pattern-title">Miss Pattern</div>
-            <div className="club-v2-pattern-lines">
-              {patternInsight.lines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
-          </div>
           <div className="club-v2-landing">
             <div className="club-v2-landing-head">
               <span className="club-v2-landing-title">Landing window</span>

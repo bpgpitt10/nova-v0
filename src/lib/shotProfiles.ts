@@ -11,6 +11,7 @@ import { weightedAverage, weightedStandardDeviation } from './recency'
 import { weightedTrimmedMean, weightedWinsorizedStdDev } from './robustStats'
 import { normalizeShotRank, shotRankWeight } from './shotRank'
 import type { OpenGolfCoachPayload, Shot } from '../types'
+import { attackAngleValue } from './attackAngle'
 
 export type ShotProfileSnapshot = {
   key: 'best' | 'likely'
@@ -23,6 +24,8 @@ export type ShotProfileSnapshot = {
   dispersionVariability?: number
   launch?: number
   launchVariability?: number
+  attackAngle?: number
+  attackAngleVariability?: number
   hla?: number
   hlaVariability?: number
   spin?: number
@@ -348,6 +351,7 @@ const buildProfile = (
   const ballSpeed = shots.map(ballSpeedMphValue)
   const peakHeight = shots.map(peakHeightValue)
   const descentAngle = shots.map(descentValue)
+  const attackAngle = shots.map(attackAngleValue)
 
   return {
     key,
@@ -373,6 +377,8 @@ const buildProfile = (
     dispersionVariability: weightedWinsorizedStdDev(offline, weights, 0.1),
     launch: weightedAverageNumbers(launch, weights),
     launchVariability: weightedStandardDeviationNumbers(launch, weights),
+    attackAngle: weightedAverageNumbers(attackAngle, weights),
+    attackAngleVariability: weightedStandardDeviationNumbers(attackAngle, weights),
     hla: weightedAverageNumbers(hla, weights),
     hlaVariability: weightedStandardDeviationNumbers(hla, weights),
     spin: weightedAverageNumbers(spin, weights),
