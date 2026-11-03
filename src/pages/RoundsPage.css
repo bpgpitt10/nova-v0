@@ -1473,3 +1473,114 @@
   color: #ffffff;
   font: inherit;
 }
+
+/* ---- 3 Nov evening: tables without boxes, gold score, a touch darker ---- */
+
+/* The app's global table rules (App.css: dark fill, every cell bordered) stop here. */
+.rounds-page table {
+  margin-top: 0;
+  background: transparent;
+}
+
+.rounds-page th,
+.rounds-page td {
+  border: 0;
+  background: transparent;
+  vertical-align: middle;
+}
+
+.rounds-page .rounds-table td,
+.rounds-page .rounds-shots-table td,
+.rounds-page .rounds-clubs-table td {
+  border-top: 1px solid var(--rounds-rule);
+}
+
+.rounds-page .rounds-shots-table tr:first-child td {
+  border-top: 0;
+}
+
+.rounds-page .rounds-shots-table td:first-child,
+.rounds-page .rounds-clubs-table th:first-child,
+.rounds-page .rounds-clubs-table td:first-child {
+  padding-left: 0;
+}
+
+.rounds-page .rounds-shots-table td:last-child,
+.rounds-page .rounds-clubs-table th:last-child,
+.rounds-page .rounds-clubs-table td:last-child {
+  padding-right: 0;
+}
+
+/* Column headers: small spaced caps, like the ROUND eyebrow (not gold: gold
+   is kept for the course name, Hero shots and the score). */
+.rounds-page .rounds-table th,
+.rounds-page .rounds-clubs-table th {
+  padding-top: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rounds-muted);
+}
+
+/* The app's global button hover fill stays off Rounds' text-like buttons. */
+.rounds-page .rounds-catcell:hover,
+.rounds-page .rounds-keyshot:hover,
+.rounds-page .rounds-meta-toggle:hover,
+.rounds-page .rounds-link-button:hover {
+  background: transparent;
+}
+
+/* Score: vs par in gold beside it, same size, lighter. */
+.rounds-score-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.rounds-score-vspar {
+  font-size: 64px;
+  font-weight: 400;
+  line-height: 0.95;
+  color: var(--rounds-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The hole's own score: gold, scorecard shape once par is known. */
+.rounds-mark.is-large {
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  color: var(--rounds-gold);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.rounds-mark.is-large.is-birdie,
+.rounds-mark.is-large.is-eagle {
+  border-radius: 50%;
+}
+
+.rounds-mark.is-large.is-bogey,
+.rounds-mark.is-large.is-double {
+  border-radius: 4px;
+}
+
+/* A small nudge darker behind the content. */
+.rounds-page::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 14, 11, 0.86) 0%,
+      rgba(11, 19, 15, 0.64) 45%,
+      rgba(11, 19, 15, 0.42) 75%,
+      rgba(9, 15, 12, 0.36) 100%
+    ),
+    linear-gradient(180deg, rgba(7, 12, 10, 0.18) 0%, rgba(7, 12, 10, 0.6) 100%);
+}
+
+@media (max-width: 760px) {
+  .rounds-score-vspar {
+    font-size: 48px;
+  }
+}

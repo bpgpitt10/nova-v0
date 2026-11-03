@@ -104,6 +104,13 @@ const keyShotHeadline = (shot: RoundShot) => {
   return `Hole ${shot.holeNumber} · ${clubName(shot.club)} from ${distance(shot.startYds, shot.startLie)}${lie}`
 }
 
+/** Scorecard shape for a finished hole with a known par: circle under par, square over. */
+const holeMarkClass = (hole: RoundHole) => {
+  if (!hole.complete || hole.par == null) return ''
+  const diff = hole.strokes - hole.par
+  return diff <= -2 ? 'is-eagle' : diff === -1 ? 'is-birdie' : diff === 1 ? 'is-bogey' : diff >= 2 ? 'is-double' : ''
+}
+
 const isLiveCaddieRound = (round: RoundSummary) =>
   round.holes.some((hole) => hole.shots.some((shot) => shot.recommendedClub || shot.clubSource === 'armed'))
 
@@ -505,8 +512,14 @@ function RoundDetail({
           <div className="rounds-score-inline">
             <div className="rounds-score-main">
               <span className="rounds-label">Score</span>
-              <strong>{round.completeHoles > 0 ? round.strokes : '–'}</strong>
-              <span className="rounds-muted">{round.completeHoles === 0 ? 'not scored' : parKnown ? `${vsPar(round.strokes, round.par ?? 0)} · par ${round.par}` : `${round.completeHoles} holes`}</span>
+              <span className="rounds-score-pair">
+                {parKnown && round.completeHoles > 0 ? (
+                  <span aria-label={`${vsPar(round.strokes, round.par ?? 0)} against par ${round.par}`} className="rounds-score-vspar">
+                    {vsPar(round.strokes, round.par ?? 0)}
+                  </span>
+                ) : null}
+                <strong>{round.completeHoles > 0 ? round.strokes : '–'}</strong>
+              </span>
             </div>
             <div className="rounds-score-side">
               <span className="rounds-label">SG vs tour</span>
@@ -638,7 +651,7 @@ function RoundDetail({
           <div className="rounds-hole-side">
             <div className="rounds-card rounds-shots">
               <div className="rounds-hole-title">
-                <span className="rounds-mark is-large">{hole.complete ? hole.strokes : '–'}</span>
+                <span className={`rounds-mark is-large ${holeMarkClass(hole)}`}>{hole.complete ? hole.strokes : '–'}</span>
                 <div>
                   <strong>Hole {hole.holeNumber}{hole.par != null ? ` · Par ${hole.par}` : ''}{hole.shots[0]?.startYds != null ? ` · ${Math.round(hole.shots[0].startYds)} yd` : ''}</strong>
                   <span className="rounds-muted">
@@ -648,15 +661,6 @@ function RoundDetail({
               </div>
               <div className="rounds-shots-table-wrap">
                 <table className="rounds-shots-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Club</th>
-                      <th scope="col">Type</th>
-                      <th scope="col">From → to</th>
-                      <th className="is-num" scope="col">Strokes gained</th>
-                    </tr>
-                  </thead>
                   <tbody>
                     {hole.shots.map((shot) => {
                       const width = shot.sg == null ? 0 : Math.round(Math.min(Math.abs(shot.sg), 1.2) / 1.2 * 56)
