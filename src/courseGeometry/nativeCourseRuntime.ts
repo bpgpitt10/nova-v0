@@ -382,9 +382,10 @@ const registerInBrowser = async (
     const m = (v: number) => Number.isFinite(v) ? `${v.toFixed(2)} m` : 'n/a'
     // Numbers to diagnose the failure from a screenshot.
     const detail = ` [${courseKey}: ${result.greensChecked} greens`
-      + (g ? `; greens rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
+      + (g ? `; greens${result.mirrored ? ' (mirrored)' : ''} rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
+      + (!result.mirrored && result.mirroredSimilarity ? `; mirrored rms ${result.mirroredSimilarity.rmsM.toFixed(1)} m` : '')
       + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points`
-      + (result.holeShift ? `; greens line up if GSPro hole = Looper hole + ${result.holeShift.shift}`
+      + (result.holeShift ? `; greens line up if ${result.holeShift.label}`
         + ` (rms ${result.holeShift.rmsM.toFixed(1)} m, rotate ${result.holeShift.rotationDeg.toFixed(1)}°)` : '')
       + ']'
     return {
@@ -394,7 +395,8 @@ const registerInBrowser = async (
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
     }
   }
-  const turn = result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : ''
+  const turn = (result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : '')
+    + (result.registration.mirrored ? ', mirror-image scene' : '')
   return {
     registration: result.registration,
     reason: `fit ${result.fit.medianAbsM.toFixed(2)} m, halves ${result.fit.halvesAgreeM.toFixed(1)} m${turn}`,

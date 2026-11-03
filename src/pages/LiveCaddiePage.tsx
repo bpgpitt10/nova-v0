@@ -928,7 +928,8 @@ export default function LiveCaddiePage() {
     localAimBearingDeg,
   )
   const projectedWind = projectWindObservation(
-    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null),
+    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null,
+      liveMatchesHole && liveSnapshot?.gsproSceneMirrored === true),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )

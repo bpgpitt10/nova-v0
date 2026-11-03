@@ -129,15 +129,54 @@ try {
       `saved turn ${parsed.rotationDeg} / ${parsed.scale}`)
   }
 
+  // Mirror-image scene (x runs west), turned -82°: greens only fit mirrored.
+  {
+    const mir = reg.parseNativeRegistration({
+      schemaVersion: 'looper-native-registration-v1', courseId: 't', gsproCourseKey: 't_gsp',
+      layoutFingerprint: 'a'.repeat(64), grade: 'A',
+      reference: { latLon: truth.latLon, worldXZ: truth.worldXZ }, rotationDeg: -82.5, scale: 1.0, mirrored: true,
+      worldYToElevationOffsetM: truth.dy, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+    })
+    const back = reg.nativeLatLonToWorld(mir, ...reg.nativeWorldToLatLon(mir, { x: 1500, z: 400 }))
+    assert.ok(Math.hypot(back.x - 1500, back.z - 400) < 1e-6, 'mirrored round trip')
+    const mPoints = [], mGreens = []
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160, cz = 500 + Math.floor(i / 6) * 300
+      for (const [dx, dz] of [[0, 0], [6, 3], [-5, 4], [3, -6], [-4, -5]]) {
+        const [lat, lon] = reg.nativeWorldToLatLon(mir, { x: cx + dx, z: cz + dz })
+        mPoints.push({ x: cx + dx, y: ground(lat, lon) - truth.dy, z: cz + dz })
+      }
+      mGreens.push({ world: { x: cx, z: cz }, latLon: reg.nativeWorldToLatLon(mir, { x: cx, z: cz }) })
+    }
+    assert.ok(auto.greenSimilarity(mGreens).rmsM > 50, 'unmirrored greens do not fit')
+    const ms = auto.greenSimilarity(mGreens, true)
+    assert.ok(ms.rmsM < 1 && Math.abs(ms.rotationDeg + 82.5) < 0.5, `mirrored greens fit: ${JSON.stringify(ms)}`)
+    const r = fit.fitNativeRegistration({
+      courseId: 't', gsproCourseKey: 't_gsp', layoutFingerprint: 'a'.repeat(64), sceneFingerprint: 'b'.repeat(64),
+      points: mPoints, greens: mGreens, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+      sampler: ground, rotationDeg: ms.rotationDeg, scale: ms.scale, mirrored: true,
+    })
+    assert.equal(r.grade, 'A', `mirrored grade ${r.grade} ${r.medianAbsM} ${r.halvesAgreeM}`)
+    assert.equal(r.registration.mirrored, true)
+    let worst = 0
+    for (const p of mPoints) {
+      const a = reg.nativeWorldToLatLon(mir, p), b = reg.nativeWorldToLatLon(r.registration, p)
+      worst = Math.max(worst, Math.hypot((a[0] - b[0]) * 111000, (a[1] - b[1]) * 87000))
+    }
+    assert.ok(worst < 0.15, `mirrored worst ${worst}`)
+  }
+
   // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
   const wind = await load('/src/liveState/windProjection.ts')
   const w = { status: 'READY', speedMph: 10, directionDegrees: 0, convention: 'from', referenceFrame: 'compass' }
   assert.equal(wind.windInTrueCompass(w, 179.92).directionDegrees.toFixed(2), '180.08')
   assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, -11.78).directionDegrees.toFixed(2), '101.78')
   assert.equal(wind.windInTrueCompass(w, 0), w, 'true-north scene unchanged')
+  // Mirror-image scene: GSPro's "E" (90) is real west before the turn.
+  assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, 0, true).directionDegrees, 270)
   assert.equal(wind.windInTrueCompass({ ...w, referenceFrame: 'shot-relative' }, 180).directionDegrees, 0)
 
-  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) register within 15 cm.')
+  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm.')
 } finally {
   await server?.close()
 }
