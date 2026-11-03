@@ -137,6 +137,21 @@ const buildStandardizedSamples = (): StandardizedSample[] => {
 }
 
 const STANDARDIZED_SAMPLES = buildStandardizedSamples()
+
+/** The deterministic standard-normal pairs behind every modeled cloud (read-only). */
+export const standardizedAimSamples = (): readonly StandardizedSample[] => STANDARDIZED_SAMPLES
+
+/**
+ * One simulated shot, already in live conditions: touchdown distance, rest
+ * distance and offline (yards right of the aim line). Supplied when the core
+ * is built from the player's own shots (empiricalShotCore) instead of the
+ * bell curve around Stock.
+ */
+export type ShotDraw = {
+  carryYds: number
+  totalYds: number
+  offlineYds: number
+}
 const SORTED_RADII = STANDARDIZED_SAMPLES.map((sample) => sample.radius).sort((a, b) => a - b)
 
 const sampledQuantile = (probability: number) => {
@@ -243,6 +258,7 @@ export const sampleModeledAimDistribution = ({
   pinLocalYds,
   landingTransform,
   flightCheck,
+  shotDraws,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -261,6 +277,11 @@ export const sampleModeledAimDistribution = ({
   landingTransform?: LandingTransform
   /** Check the flight against woods right after launch and on the way down (spec piece 3). */
   flightCheck?: Readonly<{ descentDeg: number | null }> | null
+  /**
+   * The player's own shot shape (empiricalShotCore). When present these draws
+   * replace the bell curve; carry/lateral sigmas still size the map's rings.
+   */
+  shotDraws?: readonly ShotDraw[] | null
 }): {
   distribution: AimSurfaceDistribution
   meanCarryLanding: CoursePointYds
@@ -289,18 +310,30 @@ export const sampleModeledAimDistribution = ({
     typeof totalSigmaYds === 'number' && Number.isFinite(totalSigmaYds) && totalSigmaYds > 0
       ? totalSigmaYds
       : carrySigmaYds
-  const meanCarryLanding = addScaled(ball, forward, carryMeanYds, right, lateralMeanYds)
-  const baselineMeanLanding = addScaled(ball, forward, resolvedTotalMean, right, lateralMeanYds)
+  const draws: readonly ShotDraw[] = shotDraws && shotDraws.length > 0
+    ? shotDraws
+    : STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }) => {
+        const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
+        // Use the same longitudinal quantile for carry and total so the modeled
+        // rollout does not invent an independent second source of shot-length noise.
+        return {
+          carryYds: carry,
+          totalYds: Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma),
+          offlineYds: lateralMeanYds + lateralZ * lateralSigmaYds,
+        }
+      })
+  const average = (pick: (draw: ShotDraw) => number) =>
+    draws.reduce((sum, draw) => sum + pick(draw), 0) / draws.length
+  const centerCarry = shotDraws?.length ? average((draw) => draw.carryYds) : carryMeanYds
+  const centerTotal = shotDraws?.length ? average((draw) => draw.totalYds) : resolvedTotalMean
+  const centerOffline = shotDraws?.length ? average((draw) => draw.offlineYds) : lateralMeanYds
+  const meanCarryLanding = addScaled(ball, forward, centerCarry, right, centerOffline)
+  const baselineMeanLanding = addScaled(ball, forward, centerTotal, right, centerOffline)
   const meanLanding = landingTransform
     ? landingTransform(meanCarryLanding, baselineMeanLanding)
     : baselineMeanLanding
 
-  const samples = STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }): ModeledAimSample => {
-    const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
-    // Use the same longitudinal quantile for carry and total so the modeled
-    // rollout does not invent an independent second source of shot-length noise.
-    const total = Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma)
-    const offline = lateralMeanYds + lateralZ * lateralSigmaYds
+  const samples = draws.map(({ carryYds: carry, totalYds: total, offlineYds: offline }): ModeledAimSample => {
     const carryLanding = addScaled(ball, forward, carry, right, offline)
     const baselineLanding = addScaled(ball, forward, total, right, offline)
     const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
