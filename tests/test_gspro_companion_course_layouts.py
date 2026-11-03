@@ -23,6 +23,10 @@ ORIGIN = {"Origin": "https://thelooper.golf"}
 def gkd(name, scene=None, tee_x=0.0):
     raw = {
         "CourseName": name,
+        "KeywordLinks": True,
+        "KeywordMountain": False,
+        "KeywordsString": "Links",
+        "altitudeV2": 545.0,
         "Holes": [{
             "HoleNumber": 1,
             "Par": 4,
@@ -125,6 +129,8 @@ class CourseLibraryTests(unittest.TestCase):
         self.assertEqual(synth["holes"], 1)
         self.assertEqual(synth["alternateLayouts"], ["Synthetic Kids"], "other scenes' GKDalt not attached")
         self.assertEqual(synth["pars"], {"1": 4}, "par per hole for the Rounds scorecard")
+        self.assertEqual(synth["keywords"], ["links"], "designer style tags, true ones only")
+        self.assertEqual(synth["altitude"], 545.0)
         self.assertNotIn(str(self.root), json.dumps(listing), "no local paths")
         self.assertEqual(library.list_installed_courses(env={"LOOPER_GSPRO_COURSES_DIR": str(self.root / "nope")})["status"],
                          "not-found")

@@ -273,6 +273,9 @@ export type LooperCompanionInstalledCourse = {
   holes: number
   /** Par per hole number ("1" → 4), from the main GKD. Companion courses.7+. */
   pars?: Record<string, number>
+  /** Designer style tags from the GKD (links, parkland, mountain…). courses.8+. */
+  keywords?: string[]
+  altitude?: number | null
   alternateLayouts: string[]
 }
 

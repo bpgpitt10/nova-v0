@@ -153,7 +153,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.7") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.8") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
@@ -352,7 +352,7 @@ jobs:
             --repo "$env:GITHUB_REPOSITORY" `
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: par for Rounds ($shortSha)" `
-            --notes "Version courses.7. The course list now includes each hole's par, so Rounds can show the scorecard; single-course lookups search as far as the course list (large libraries). Otherwise the same as courses.6 (finds courses with GSPro closed, aim click, wind/lie/HUD reads, round recorder)." `
+            --notes "Version courses.8. The course list now includes each hole's par (for the Rounds scorecard) and the designer's style tags (links, parkland, mountain...); single-course lookups search as far as the course list (large libraries). Otherwise the same as courses.6 (finds courses with GSPro closed, aim click, wind/lie/HUD reads, round recorder)." `
             --prerelease
 
       - name: Publish GSPro-files companion installer

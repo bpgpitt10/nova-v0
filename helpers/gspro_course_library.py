@@ -263,8 +263,18 @@ def _header(path: Path) -> dict | None:
         if isinstance(number, int) and not isinstance(number, bool) and isinstance(par, int) \
                 and not isinstance(par, bool) and 1 <= number <= 36 and 2 <= par <= 7:
             pars[str(number)] = par
+    # The designer's own style tags (KeywordLinks, KeywordMountain, ...): Rounds
+    # picks a backdrop to match the course.
+    keywords = sorted(
+        key[len("Keyword"):].lower()
+        for key, value in raw.items()
+        if isinstance(key, str) and key.startswith("Keyword") and key != "KeywordsString" and value is True
+    )[:16]
+    altitude = raw.get("altitudeV2", raw.get("altitude"))
     return {
         "courseName": str(raw.get("CourseName") or "")[:120],
+        "keywords": keywords,
+        "altitude": float(altitude) if isinstance(altitude, (int, float)) and not isinstance(altitude, bool) else None,
         "location": str(raw.get("Location") or "")[:120],
         "designer": str(raw.get("Designer") or "")[:80],
         "holes": len(raw["Holes"]),

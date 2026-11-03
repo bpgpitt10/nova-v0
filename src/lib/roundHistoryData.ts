@@ -123,6 +123,9 @@ export type StoredCourseInfo = {
   name: string | null
   pars: Record<number, number>
   parSource: 'course-file' | 'course-package' | null
+  /** GSPro designer style tags (links, parkland, mountain…), from companion courses.8+. */
+  keywords?: string[]
+  altitudeFt?: number | null
 }
 
 const readCourseCache = (): Record<string, StoredCourseInfo> => {
@@ -197,6 +200,8 @@ const courseLibraryInfo = async (): Promise<Map<string, StoredCourseInfo> | null
         name: course.courseName || null,
         pars,
         parSource: Object.keys(pars).length > 0 ? 'course-file' as const : null,
+        ...(course.keywords?.length ? { keywords: course.keywords } : {}),
+        ...(typeof course.altitude === 'number' ? { altitudeFt: course.altitude } : {}),
       }]
     }))
   } catch {
@@ -209,6 +214,8 @@ type CourseInfoRow = {
   course_name: string | null
   pars: Record<string, number> | null
   par_source: string | null
+  style_keywords: string[] | null
+  altitude_ft: number | null
 }
 
 const sourceRank = (source: StoredCourseInfo['parSource']) =>
@@ -220,7 +227,13 @@ const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
     if (typeof par === 'number' && Number.isFinite(par)) pars[Number(hole)] = par
   })
   const parSource = row.par_source === 'course-file' || row.par_source === 'course-package' ? row.par_source : null
-  return { name: row.course_name, pars, parSource }
+  return {
+    name: row.course_name,
+    pars,
+    parSource,
+    ...(Array.isArray(row.style_keywords) ? { keywords: row.style_keywords.filter((k) => typeof k === 'string') } : {}),
+    ...(typeof row.altitude_ft === 'number' ? { altitudeFt: row.altitude_ft } : {}),
+  }
 }
 
 /** Better of two records: a stronger par source wins; a name is never lost. */
@@ -229,10 +242,14 @@ const mergeInfo = (a: StoredCourseInfo | undefined, b: StoredCourseInfo | undefi
   if (!b) return a
   const winner = sourceRank(b.parSource) > sourceRank(a.parSource) ? b : a
   const other = winner === a ? b : a
+  const keywords = b.keywords?.length ? b.keywords : a.keywords
+  const altitudeFt = b.altitudeFt ?? a.altitudeFt
   return {
     name: winner.name ?? other.name,
     pars: Object.keys(winner.pars).length > 0 ? winner.pars : other.pars,
     parSource: winner.parSource ?? other.parSource,
+    ...(keywords?.length ? { keywords } : {}),
+    ...(altitudeFt != null ? { altitudeFt } : {}),
   }
 }
 
@@ -248,7 +265,7 @@ const loadCloudCourseInfo = async (): Promise<{ userId: string; rows: Record<str
   const rows = await awaitQuery<CourseInfoRow[]>(
     client
       .from<CourseInfoRow[]>('live_course_info')
-      .select('course_key,course_name,pars,par_source')
+      .select('course_key,course_name,pars,par_source,style_keywords,altitude_ft')
       .eq('user_id', user.id),
   )
   return { userId: user.id, rows: Object.fromEntries(rows.map((row) => [row.course_key, storedFromRow(row)])) }
@@ -261,6 +278,10 @@ const saveCloudCourseInfo = async (userId: string, entries: Record<string, Store
     course_name: info.name,
     pars: Object.fromEntries(Object.entries(info.pars).map(([hole, par]) => [String(hole), par])),
     par_source: info.parSource,
+    // Every row carries every column (a key missing from one row of a batch
+    // becomes NULL); rows are already merged with what the account had.
+    style_keywords: info.keywords?.length ? info.keywords : null,
+    altitude_ft: info.altitudeFt ?? null,
     updated_at: new Date().toISOString(),
   }))
   if (values.length === 0) return
