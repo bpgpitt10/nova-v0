@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import shutil
 import sys
 from pathlib import Path
@@ -418,6 +419,45 @@ def _agreed(reads: list[tuple[object, str]]):
     return best, next(text for value, text in reads if value == best)
 
 
+_last_diagnostic_at = 0.0
+DIAGNOSTIC_INTERVAL_S = 30.0
+DIAGNOSTIC_KEEP = 6
+
+
+def _diagnostics_dir() -> Path | None:
+    override = os.environ.get("LOOPER_COMPANION_SETTINGS_DIR")
+    base = Path(override) if override else (
+        Path(os.environ["LOCALAPPDATA"]) / "Looper" / "Companion" if os.environ.get("LOCALAPPDATA") else None)
+    return base / "diagnostics" if base else None
+
+
+def _save_wind_diagnostic(report: dict) -> str | None:
+    """When the speed can't be read, keep the wind box as GSPro drew it (top
+    centre of the window only: HUD pixels, no paths) so it can be checked.
+    At most one every 30 s; the newest few are kept. Returns the file name."""
+    global _last_diagnostic_at
+    folder = _diagnostics_dir()
+    now = time.monotonic()
+    if folder is None or now - _last_diagnostic_at < DIAGNOSTIC_INTERVAL_S:
+        return None
+    try:
+        width, height = int(report["windowWidth"]), int(report["windowHeight"])
+        frame = np.frombuffer(report["_private_bgra"], dtype=np.uint8).reshape(height, width, 4)[:, :, :3]
+        band = frame[0:max(1, int(height * 0.05)), int(width * 0.35):int(width * 0.65)]
+        folder.mkdir(parents=True, exist_ok=True)
+        name = time.strftime("wind-%Y%m%d-%H%M%S.png")
+        ok, encoded = cv2.imencode(".png", band)
+        if not ok:
+            return None
+        (folder / name).write_bytes(encoded.tobytes())
+        _last_diagnostic_at = now
+        for old in sorted(folder.glob("wind-*.png"))[:-DIAGNOSTIC_KEEP]:
+            old.unlink(missing_ok=True)
+        return name
+    except (OSError, KeyError, ValueError, TypeError, cv2.error):
+        return None
+
+
 def read_wind_from_capture(report: dict) -> dict:
     """Read speed and direction from GSPro's wind box: each crop is read at a
     few sizes and a value is used only when two reads agree."""
@@ -501,7 +541,19 @@ def read_wind_from_capture(report: dict) -> dict:
     parsed["capture"] = {
         "method": report.get("method"),
         "crops": {name: roi[1] for name, roi in regions.items()},
+        "measuredBox": _measured_wind_crops(
+            np.frombuffer(report["_private_bgra"], dtype=np.uint8).reshape(
+                int(report["windowHeight"]), int(report["windowWidth"]), 4)[:, :, :3]) is not None,
     }
+    if parsed.get("speedMph") is None:
+        sc = regions["speed"][1]
+        parsed["note"] = (parsed.get("note") or "") + (
+            f" Speed crop x {sc['x']} w {sc['width']} of {report.get('windowWidth')}"
+            f" ({'box edges found' if parsed['capture']['measuredBox'] else 'fixed crop'}).")
+        saved = _save_wind_diagnostic(report)
+        if saved:
+            parsed["diagnosticFile"] = saved
+            parsed["note"] = (parsed.get("note") or "") + f" Wind box saved as {saved} in the companion's diagnostics folder."
     return parsed
 
 
