@@ -148,8 +148,17 @@ const normalizeOgcDerivedShotFields = (shot: Shot): Shot => {
   }
 }
 
+/**
+ * Course rounds used to be copied into session history (one "gspro-live-round-N"
+ * session per round, from armed clubs), which put on-course shots into the bag's
+ * club numbers and Live Caddie's dispersion. The bag is range data only; course
+ * shots stay in the round archive and Supabase (live_course_rounds/shots).
+ */
+export const isCourseRoundSession = (session: Pick<SavedSession, 'id'>) =>
+  session.id.startsWith('gspro-live-round-')
+
 const normalizeSessions = (sessions: SavedSession[]) =>
-  sessions.map((session) => ({
+  sessions.filter((session) => !isCourseRoundSession(session)).map((session) => ({
     ...session,
     shots: session.shots.map(normalizeOgcDerivedShotFields),
   }))

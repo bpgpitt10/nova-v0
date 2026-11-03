@@ -123,5 +123,8 @@ jobs:
       - name: Per-club lay-up targets
         run: node tools/test-club-layup-target.mjs
 
+      - name: Bag is range data only
+        run: node tools/test-range-only-bag.mjs
+
       - name: Build web app
         run: npm run build
