@@ -1132,3 +1132,16 @@
   border-top: 0;
   padding-left: 10px;
 }
+
+/* The Looper's Read title: gold display serif, same as the Bag page and Rounds course names. */
+.dashboard-page .club-detail-v2 .club-detail-read-title {
+  margin: 2px 0 10px;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: #eab308;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
