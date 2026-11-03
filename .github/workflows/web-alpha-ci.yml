@@ -76,6 +76,9 @@ jobs:
       - name: Carry-aware hazards (touchdown or roll-in counts as water / bunker)
         run: node tools/test-carry-aware-landing.mjs
 
+      - name: Shot shape from your own shots (flushed and thin at their real frequency)
+        run: node tools/test-empirical-shot-shape.mjs
+
       - name: Native course positions (beta)
         run: node tools/test-native-course-positions.mjs
 

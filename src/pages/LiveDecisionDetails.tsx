@@ -118,9 +118,25 @@ const surfaceProbability = (
   0,
 )
 
+const FLUSHED_SURFACE_LABEL: Partial<Record<CourseSurfaceClassification, string>> = {
+  green: 'Green', fairway: 'Fairway', tee: 'Fairway', rough: 'Rough', bunker: 'Bunker',
+  water: 'Water', penalty: 'Hazard', 'deep-rough': 'Trees / deep rough', unknown: 'Off map',
+}
+
+/** Where the yardage-book Pure shot finishes on this line (explanation only). */
+const flushedLabel = (candidate: AimCandidateEvaluation | null | undefined) => {
+  const finish = candidate?.pureFinish
+  if (!finish) return '—'
+  const surface = FLUSHED_SURFACE_LABEL[finish.kind] ?? finish.kind
+  return finish.kind === 'green' && typeof finish.distanceToPinYds === 'number'
+    ? `${surface} · ${Math.round(finish.distanceToPinYds)} yd`
+    : surface
+}
+
 const modelConfidenceLabel = (evaluation: ClubAimEvaluation) => {
   const confidence = Math.round(modelConfidenceFor(evaluation) * 100)
-  return `${confidence}% · ${evaluation.supportShots} shots · ${evaluation.supportingSessions} sess`
+  const shape = evaluation.shotShape?.source === 'your-shots' ? ' · your shot shape' : evaluation.shotShape ? ' · bell curve' : ''
+  return `${confidence}% · ${evaluation.supportShots} shots · ${evaluation.supportingSessions} sess${shape}`
 }
 
 const conditionPart = (label: string, detail: string) => (
@@ -202,6 +218,7 @@ export default function LiveDecisionDetails({
                   <th className="numeric">Carry</th>
                   <th>Best aim</th>
                   <th className="numeric">Exp. leave</th>
+                  <th>If flushed</th>
                   <th className="numeric">Success</th>
                   <th className="numeric">Manageable</th>
                   <th className="numeric">Known trouble</th>
@@ -236,6 +253,7 @@ export default function LiveDecisionDetails({
                       <td className="numeric">{formatYards(evaluation.modeledCarryYds)}</td>
                       <td>{aimLabel(candidate?.aimOffsetYds)}</td>
                       <td className="numeric strong">{formatYards(stateValue?.meanDistanceToPinYds)}</td>
+                      <td>{flushedLabel(candidate)}</td>
                       <td className="numeric">{pct(risk?.success)}</td>
                       <td className="numeric">{pct(risk?.manageable)}</td>
                       <td className="numeric">{pct(risk?.seriousTrouble)}</td>
