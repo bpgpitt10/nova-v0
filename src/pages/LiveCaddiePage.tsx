@@ -793,6 +793,14 @@ export default function LiveCaddiePage() {
   const pinEstimate = hole
     ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
     : null
+  // Green out of reach (same 260-yd rule as the shared target): each club
+  // plans around the fairway centre at its own carry toward this pin.
+  const layupPinX = pinEstimate?.[0] ?? null
+  const layupPinY = pinEstimate?.[1] ?? null
+  const layupPin = useMemo<CoursePointYds | null>(() =>
+    layupPinX != null && layupPinY != null && Math.hypot(layupPinX - ball[0], layupPinY - ball[1]) > 260
+      ? [layupPinX, layupPinY] : null,
+  [layupPinX, layupPinY, ball])
   const liveLieSurface = lieObservation?.status === 'READY' && lieObservation.surface?.trim()
     ? lieObservation.surface.trim()
     : null
@@ -1090,6 +1098,7 @@ export default function LiveCaddiePage() {
         lieLeftRightDeg,
         lieSource,
         exactPinLocalYds: trustedLivePin,
+        layupPin,
         greenDetail: trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'
           ? greenDetail : null,
       },
@@ -1134,7 +1143,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    trustedLivePin, greenDetail,
+    trustedLivePin, greenDetail, layupPin,
   ])
 
   const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation

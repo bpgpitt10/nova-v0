@@ -52,5 +52,20 @@ const full = evaluateAimLab(sessions, hole, tee, target, environment, now)
 const expected = Math.min(...full.filter((e) => e.supportShots > 0).map((e) => e.modeledCarryYds))
 assert.ok(Math.abs(shortestSupportedModeledCarryYds(sessions, hole, tee, target, environment, now) - expected) < 1e-9)
 
+// Out of reach of the green: every club plans at the fairway centre at its own
+// carry toward the pin (Driver deeper than 7i), parallel still identical.
+const pin = hole.markers.pin
+const layup = { ...environment, layupPin: pin }
+const own = evaluateAimLab(sessions, hole, tee, target, layup, now)
+const depth = (e) => Math.hypot(e.planningTarget[0] - tee[0], e.planningTarget[1] - tee[1])
+const byClub = Object.fromEntries(own.map((e) => [e.club, e]))
+assert.ok(Math.abs(depth(byClub.Driver) - Math.min(byClub.Driver.modeledCarryYds, Math.hypot(pin[0] - tee[0], pin[1] - tee[1]))) < 3,
+  `Driver plans at its carry: ${depth(byClub.Driver)} vs ${byClub.Driver.modeledCarryYds}`)
+assert.ok(depth(byClub.Driver) > depth(byClub['7i']) + 50, 'each club at its own depth')
+const ownSingle = rerankClubs(own)
+const ownMerged = rerankClubs([['Driver', '5i', '9i'], ['3W', '7i', 'PW']].flatMap((onlyClubs) =>
+  evaluateAimLab(sessions, hole, tee, target, { ...layup, onlyClubs }, now)))
+assert.deepEqual(summary(ownMerged), summary(ownSingle), 'per-club targets, 2 workers')
+
 if (server) await server.close()
-console.log('parallel club evaluation: identical to one worker')
+console.log('parallel club evaluation: identical to one worker; per-club lay-up targets at each carry')
