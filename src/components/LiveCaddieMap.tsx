@@ -172,7 +172,12 @@ export default function LiveCaddieMap({
     toView(ball),
     toView(target),
     pinEstimate ? toView(pinEstimate) : null,
-    candidate ? { ...candidate, aimPoint: toView(candidate.aimPoint), meanLanding: toView(candidate.meanLanding) } : null,
+    candidate ? {
+      ...candidate,
+      aimPoint: toView(candidate.aimPoint),
+      meanLanding: toView(candidate.meanLanding),
+      meanCarryLanding: candidate.meanCarryLanding ? toView(candidate.meanCarryLanding) : undefined,
+    } : null,
     provisionalTeeRadiusYds,
   )
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
@@ -295,6 +300,7 @@ export default function LiveCaddieMap({
   const pinSvg = pinEstimate ? project(pinEstimate) : null
   const aimSvg = candidate ? project(candidate.aimPoint) : null
   const meanSvg = candidate ? project(candidate.meanLanding) : null
+  const carrySvg = candidate?.meanCarryLanding ? project(candidate.meanCarryLanding) : null
   const strategyAimSvg = strategyAimPoint ? project(strategyAimPoint) : null
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
@@ -451,6 +457,7 @@ export default function LiveCaddieMap({
               )
             })}
             <circle className="live-mean-marker" cx={meanSvg[0]} cy={meanSvg[1]} r="1.05" />
+            {carrySvg ? <circle className="live-carry-marker" cx={carrySvg[0]} cy={carrySvg[1]} r="0.85" /> : null}
             <circle className="live-aim-marker" cx={aimSvg[0]} cy={aimSvg[1]} r="0.82" />
           </>
         ) : null}

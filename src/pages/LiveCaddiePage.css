@@ -818,6 +818,12 @@
   stroke-width: 0.25;
 }
 
+.live-carry-marker {
+  fill: rgba(11, 19, 13, 0.35);
+  stroke: #ffffff;
+  stroke-width: 0.32;
+}
+
 .live-mean-marker {
   fill: #76d39b;
   stroke: #0b130d;
@@ -928,6 +934,7 @@
 .live-map-legend i.ball { background: #ffffff; }
 .live-map-legend i.aim { background: #eab308; }
 .live-map-legend i.mean { background: #76d39b; }
+.live-map-legend i.carry { background: transparent; box-shadow: inset 0 0 0 2px #ffffff; }
 .live-map-legend i.pin { background: #ef6461; }
 .live-map-legend i.practice { background: #cfd8cd; }
 .live-map-legend i.core {

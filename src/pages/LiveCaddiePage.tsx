@@ -1943,7 +1943,8 @@ export default function LiveCaddiePage() {
 
                 <div className="live-map-legend">
                   <span><i className="ball" />Ball</span>
-                  <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim'}</span>
+                  <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim (GSPro click)'}</span>
+                  {!isShotStrategy ? <span><i className="carry" />Landing</span> : null}
                   {!isShotStrategy ? <span><i className="mean" />Expected finish</span> : null}
                   <span><i className="pin" />Pin</span>
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
