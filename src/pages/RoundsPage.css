@@ -1604,3 +1604,16 @@
 .rounds-page .rounds-map:not(.is-real) .rounds-map-axis {
   stroke: rgba(207, 216, 205, 0.22);
 }
+
+/* Rounds list: vs par in gold just left of the score, both under one Score header. */
+.rounds-page .rounds-table td.rounds-list-vspar {
+  padding-right: 6px;
+  color: var(--rounds-gold);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rounds-page .rounds-table td.rounds-list-score {
+  padding-left: 0;
+  width: 1%;
+}

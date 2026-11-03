@@ -349,9 +349,10 @@ function RoundsList({
                 <th scope="col">Course</th>
                 <th scope="col">Date</th>
                 <th scope="col">Holes</th>
-                <th className="is-num" scope="col">Score</th>
-                <th className="is-num" scope="col">Putts</th>
+                <th className="is-num" colSpan={2} scope="colgroup">Score</th>
+                <th className="is-num" scope="col">Fairways</th>
                 <th className="is-num" scope="col">Greens</th>
+                <th className="is-num" scope="col">Putts</th>
                 <th className="is-num" scope="col">SG vs Tour</th>
               </tr>
             </thead>
@@ -376,16 +377,19 @@ function RoundsList({
                     </td>
                     <td>{formatDate(round.playedAt)}</td>
                     <td><span className="rounds-pill">{holesLabel(round)}</span></td>
-                    <td className="is-num">
-                      {scored && round.completeHoles > 0 ? (
-                        <>
-                          <strong>{round.strokes}</strong>
-                          {round.par != null ? <span className="rounds-muted"> {vsPar(round.strokes, round.par)}</span> : null}
-                        </>
-                      ) : '–'}
+                    <td className="is-num rounds-list-vspar">
+                      {scored && round.completeHoles > 0 && round.par != null ? vsPar(round.strokes, round.par) : ''}
+                    </td>
+                    <td className="is-num rounds-list-score">
+                      {scored && round.completeHoles > 0 ? <strong>{round.strokes}</strong> : '–'}
+                    </td>
+                    <td className="is-num" title={scored && round.fir.of === 0 ? 'Needs the course par' : undefined}>
+                      {round.fir.of > 0 ? `${round.fir.hit}/${round.fir.of}` : '–'}
+                    </td>
+                    <td className="is-num" title={scored && round.gir.of === 0 ? 'Needs the course par' : undefined}>
+                      {round.gir.of > 0 ? `${round.gir.hit}/${round.gir.of}` : '–'}
                     </td>
                     <td className="is-num">{scored && round.completeHoles > 0 ? round.putts : '–'}</td>
-                    <td className="is-num">{round.gir.of > 0 ? `${round.gir.hit}/${round.gir.of}` : '–'}</td>
                     <td className={`is-num ${tone(round.sg.total)}`}>
                       {round.status === 'full' && round.sg.total != null ? signed(round.sg.total) : scored ? 'Partial' : '–'}
                     </td>
