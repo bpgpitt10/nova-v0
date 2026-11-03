@@ -3,7 +3,7 @@ import {
   nativeCourseContextForLive,
   rememberNativePinSlot,
 } from '../courseGeometry/nativeCourseRuntime'
-import { NATIVE_METERS_TO_YARDS, nativeHole } from '../courseGeometry/nativeGkd'
+import { NATIVE_METERS_TO_YARDS, nativeHole, nativeRouteDistanceM } from '../courseGeometry/nativeGkd'
 import { nativeHoleLocalYdsToWorld, nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import type { CoursePointYds } from '../courseGeometry/types'
 
@@ -34,8 +34,15 @@ export const pinFromHudDistance = async ({
   // a couple of metres apart), so an exact 0.5 m match failed. Take the pin
   // whose distance is clearly closest: within 6 m, and 3 m better than the next.
   const wantedM = distanceYds / NATIVE_METERS_TO_YARDS
+  // On doglegs GSPro's tee distance follows the hole's aim route (tee ->
+  // AimPoint1 -> AimPoint2 -> pin), not the straight line: RNK 4 read 371 yd
+  // and no pin was within 29 m in a straight line. Take the better of the two.
   const ranked = hole.pins
-    .map((pin) => ({ pin, errorM: Math.abs(Math.hypot(pin.x - tee.x, pin.z - tee.z) - wantedM) }))
+    .map((pin) => {
+      const straightM = Math.hypot(pin.x - tee.x, pin.z - tee.z)
+      const routeM = hole.aimPoints.length ? nativeRouteDistanceM({ ...tee, y: 0 }, hole.aimPoints, pin) : straightM
+      return { pin, errorM: Math.min(Math.abs(straightM - wantedM), Math.abs(routeM - wantedM)) }
+    })
     .sort((a, b) => a.errorM - b.errorM)
   const [best, next] = ranked
   const note = best
