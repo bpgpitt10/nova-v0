@@ -422,10 +422,33 @@ export const pickInstalledCourseKey = (
   return best.key
 }
 
-const installedCourseKeyFor = async (courseId: CourseId): Promise<string | null> => {
+/** Every installed course that matches the name equally well (best first),
+ * e.g. two Valhalla installs. The map fit decides between them. */
+export const installedCourseCandidates = (
+  names: readonly string[],
+  courses: readonly Readonly<{ courseKey: string; courseName: string }>[],
+  limit = 4,
+): string[] => {
+  const scored = courses.map((course) => ({
+    key: course.courseKey,
+    score: Math.max(0, ...names.flatMap((name) => [
+      courseNameMatchScore(name, course.courseName),
+      courseNameMatchScore(name, keyAsName(course.courseKey)),
+    ])),
+  })).filter((c) => c.score >= 0.8).sort((a, b) => b.score - a.score)
+  const top = scored[0]?.score ?? 0
+  const keys: string[] = []
+  for (const c of scored) {
+    if (c.score < top - 0.05 || keys.length >= limit) break
+    if (!keys.some((k) => sameName(k, c.key))) keys.push(c.key)
+  }
+  return keys
+}
+
+const installedCourseKeysFor = async (courseId: CourseId): Promise<string[]> => {
   const entry = getCourseCatalogEntry(courseId)
   const library = await readLooperCompanionCourseLibrary().catch(() => null)
-  return pickInstalledCourseKey([entry.name, ...entry.gsproAliases], library?.courses ?? [])
+  return installedCourseCandidates([entry.name, ...entry.gsproAliases], library?.courses ?? [])
 }
 
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
@@ -442,32 +465,57 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   // A key that is clearly another course must not be fitted to this map: use
   // this course's installed key, and report that GSPro is elsewhere.
   let gsproElsewhere: string | null = null
+  let candidates: string[] = []
   if (!registration) {
-    const installed = await installedCourseKeyFor(courseId)
-    if (!courseKey) courseKey = installed
-    else if (installed && !sameName(courseKey, installed)
-      && !pickInstalledCourseKey([entry.name, ...entry.gsproAliases], [{ courseKey, courseName: keyAsName(courseKey) }])) {
-      gsproElsewhere = courseKey
-      courseKey = installed
+    const installed = await installedCourseKeysFor(courseId)
+    const gsproKeyIsThisCourse = courseKey != null && (installed.length === 0
+      || installed.some((k) => sameName(k, courseKey!))
+      || installedCourseCandidates([entry.name, ...entry.gsproAliases], [{ courseKey, courseName: keyAsName(courseKey) }]).length > 0)
+    if (courseKey && gsproKeyIsThisCourse) candidates = [courseKey]
+    else {
+      if (courseKey) gsproElsewhere = courseKey
+      candidates = installed
+    }
+    if (candidates.length === 0) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
+  }
+  let found: Readonly<{ key: string; sceneLayouts: readonly NativeSceneLayout[]; via: 'companion' | 'folder' }> | null = null
+  if (registration) {
+    const lookup = await findSceneLayouts(registration.gsproCourseKey)
+    if (!lookup.ok) return { context: null, status: lookup.status }
+    found = { key: registration.gsproCourseKey, sceneLayouts: lookup.sceneLayouts, via: lookup.via }
+  } else {
+    // Several installs with the same name (two Valhallas): the one whose
+    // greens fit the map wins. Report the first failure if none does.
+    let failure: NativeCourseStatus | null = null
+    for (const candidate of candidates) {
+      const lookup = await findSceneLayouts(candidate)
+      if (!lookup.ok) { failure ??= lookup.status; continue }
+      const cached = await loadCachedRegistration(courseId, candidate)
+      if (cached) {
+        registration = cached
+      } else {
+        announce({ state: 'registering', courseKey: candidate }, courseId)
+        const result = await registerInBrowser(courseId, candidate, lookup.sceneLayouts)
+        if (!result.registration) {
+          if (!failure || failure.state !== 'registration-failed') {
+            failure = { state: 'registration-failed', courseKey: candidate, reason: result.reason }
+          }
+          continue
+        }
+        registration = result.registration
+        fitted = true
+        fitDetail = result.reason + (candidates.length > 1 ? ` (picked from ${candidates.join(', ')})` : '')
+        await saveCachedRegistration(courseId, candidate, registration)
+      }
+      found = { key: candidate, sceneLayouts: lookup.sceneLayouts, via: lookup.via }
+      courseKey = candidate
+      break
+    }
+    if (!found || !registration) {
+      return { context: null, status: failure ?? { state: 'no-registration', courseName: entry.name } }
     }
   }
-  if (!registration && courseKey) registration = await loadCachedRegistration(courseId, courseKey)
-  if (!registration && !courseKey) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
-  const key = registration?.gsproCourseKey ?? courseKey!
-  const lookup = await findSceneLayouts(key)
-  if (!lookup.ok) return { context: null, status: lookup.status }
-  const { sceneLayouts, via } = lookup
-  if (!registration) {
-    announce({ state: 'registering', courseKey: key }, courseId)
-    const result = await registerInBrowser(courseId, key, sceneLayouts)
-    if (!result.registration) {
-      return { context: null, status: { state: 'registration-failed', courseKey: key, reason: result.reason } }
-    }
-    registration = result.registration
-    fitted = true
-    fitDetail = result.reason
-    await saveCachedRegistration(courseId, key, registration)
-  }
+  const { key, sceneLayouts, via } = found
   const layouts = await verifyNativeLayouts(sceneLayouts, registration)
   if (layouts.length === 0) {
     // A course update can change the greens; a locally fitted registration is
