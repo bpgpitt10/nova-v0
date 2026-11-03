@@ -120,12 +120,53 @@ assert.equal(farmlinksTest.strokes, 0)
 assert.equal(farmlinksTest.sg.total, null)
 
 // --- Small rules --------------------------------------------------------------
-assert.equal(history.lieFromSurface(12), 'unknown')
+assert.equal(history.lieFromSurface(12), 'fringe', 'Brian: RNK R279 H2 shot 3 was on the fringe')
+assert.equal(history.lieFromSurface(0), 'unknown')
+assert.equal(history.tourExpectedStrokes('fringe', 20), history.tourExpectedStrokes('fairway', 20))
 assert.equal(history.isRangeRound('multi_range_gsp', -1), true)
 assert.equal(history.prettifyCourseKey('GreyWolf_gsp'), 'Grey Wolf')
 assert.equal(history.prettifyCourseKey('farmlinks_al_2_7_gsp'), 'Farmlinks')
 assert.ok(Math.abs(history.tourExpectedStrokes('green', 1) - 1.053) < 1e-9, '3 ft putt')
 assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes('fairway', 400))
+
+// --- Uploads never erase a club another tab armed -----------------------------
+// Every Looper page runs the round archiver, and thelooper.golf and a preview
+// keep separate storage. A tab that never saw the arm must not send the club
+// columns at all (a key missing from one row of a batch would become NULL).
+{
+  // Real browser storage stand-in: liveGsproRoundArchive reads localStorage on load.
+  globalThis.window ??= { localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} }, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => true, location: { hostname: 'localhost', pathname: '/', search: '', hash: '', origin: 'http://localhost' } }
+  const archive = await load('/src/lib/liveGsproRoundArchive.ts')
+  const shot = (shotId, armed) => ({
+    key: shotId, roundId: 279, holeNumber: 3, holeShot: 1, globalShotNumber: null, shotId, courseKey: 'royal_new_kent_gsp',
+    startingSurfaceRaw: 18, endingSurfaceRaw: 3, distanceToPinYds: 36.5, isHoled: false, isGimme: false,
+    ballSpeedMph: null, carryYards: 140, totalYards: 150, verticalLaunchAngleDegrees: null, horizontalLaunchAngleDegrees: null,
+    totalSpinRpm: null, spinAxisDegrees: null, backSpinRpm: null, sideSpinRpm: null, gsproClubIndex: 0, rawMetrics: {},
+    observedAt: '2026-11-03T20:41:29Z', actualClub: armed ? '9i' : null, recommendedClub: armed ? '8i' : null,
+    clubSource: armed ? 'user' : null, includeInAnalysis: armed, attributedAt: armed ? '2026-11-03T20:41:29Z' : null, clubInference: null,
+  })
+  const round = { id: '279', roundId: 279, courseKey: 'royal_new_kent_gsp', firstObservedAt: '', lastObservedAt: '', schemaVersion: 1, shots: [shot('a', true), shot('b', false)] }
+  const attributionKeys = ['actual_club', 'recommended_club', 'club_source', 'include_in_analysis', 'attributed_at']
+  const batches = archive.shotUploadBatches(round, 'user-1')
+  assert.equal(batches.length, 2, 'armed and unarmed shots go in separate requests')
+  assert.equal(batches[0][0].actual_club, '9i')
+  assert.equal(batches[0][0].recommended_club, '8i')
+  assert.ok(batches[1].every((row) => attributionKeys.every((key) => !(key in row))), 'unarmed rows carry no club columns')
+  const otherTab = archive.shotUploadBatches({ ...round, shots: [shot('a', false)] }, 'user-1')
+  assert.ok(otherTab.flat().every((row) => attributionKeys.every((key) => !(key in row))), 'a tab without the arm cannot erase it')
+  const backlog = archive.shotUploadBatches(round, 'user-1', true)
+  assert.ok(backlog.flat().every((row) => attributionKeys.every((key) => !(key in row))), 'backlog sync never writes attribution')
+}
+
+// --- GSPro course keys find the loaded Looper course for the real hole map ----
+{
+  const holeMap = await load('/src/lib/roundHoleMap.ts')
+  assert.equal(holeMap.loadedCourseIdFor('royal_new_kent_gsp', 'Royal New Kent'), 'royal-new-kent-golf-club-providence-forge-va')
+  assert.equal(holeMap.loadedCourseIdFor('valhalla_v3_gsp', 'Valhalla'), 'valhalla-golf-club-louisville-ky')
+  assert.equal(holeMap.loadedCourseIdFor('farmlinks_al_2_7_gsp', null), 'farmlinks-pursell-farms-sylacauga-al')
+  assert.equal(holeMap.loadedCourseIdFor('Links_v1', 'The Old Game'), null, 'not a loaded course: plain lines')
+  assert.equal(holeMap.loadedCourseIdFor('GreyWolf_gsp', 'Greywolf Golf Course'), null, 'no package to draw from')
+}
 
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()
