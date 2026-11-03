@@ -1,4 +1,4 @@
-import { classifyPoint } from '../courseGeometry/geometry'
+import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
@@ -94,6 +94,13 @@ export type AimLabEnvironment = {
    * Default/live behavior remains unchanged when omitted.
    */
   clubTargets?: Readonly<Record<string, CoursePointYds | undefined>>
+  /**
+   * Green out of reach (tee shots, long second shots): the pin. Each club then
+   * plans around its own spot, the fairway centre at that club's modeled carry
+   * toward the pin, instead of one shared lay-up spot (min(220, 65%)) that sat
+   * short of the driver and pointed the wrong way on doglegs.
+   */
+  layupPin?: CoursePointYds | null
   /** Evaluate only these clubs (parallel workers each take a share of the bag). */
   onlyClubs?: readonly string[]
 }
@@ -242,8 +249,37 @@ type ModelClubCarryInput = Readonly<{
 /** One club's modeled carry for this shot (physics + altitude), shared by the
  * full evaluation and by the cheap all-club carry check used when clubs are
  * evaluated in parallel workers. */
-const modelClubCarry = ({ profile, support, environment, target, ball, hole, ballSurface }: ModelClubCarryInput) => {
-  const planningTarget = environment.clubTargets?.[profile.club] ?? target
+/** Fairway centre at this carry toward the pin (never past the pin). */
+export const clubLayupTarget = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  pin: CoursePointYds,
+  carryYds: number,
+): CoursePointYds | null => {
+  const dx = pin[0] - ball[0]
+  const dy = pin[1] - ball[1]
+  const distance = Math.hypot(dx, dy)
+  if (!(distance > 0) || !(carryYds > 0)) return null
+  const depth = Math.min(carryYds, distance)
+  const raw: CoursePointYds = [ball[0] + (dx / distance) * depth, ball[1] + (dy / distance) * depth]
+  const corridor = fairwayCorridorAtForwardY(hole, raw[1], raw[0])
+  return corridor ? [corridor.centerRightYds, raw[1]] : raw
+}
+
+const modelClubCarry = (input: ModelClubCarryInput) => {
+  const { profile, environment, target, ball, hole } = input
+  const fixed = environment.clubTargets?.[profile.club]
+  const shared = modelClubCarryAt(input, fixed ?? target)
+  if (fixed || !environment.layupPin) return shared
+  // Second pass at the club's own lay-up spot (carry barely depends on it).
+  const own = clubLayupTarget(hole, ball, environment.layupPin, shared.modeledCarryYds)
+  return own ? modelClubCarryAt(input, own) : shared
+}
+
+const modelClubCarryAt = (
+  { profile, support, environment, ball, hole, ballSurface }: ModelClubCarryInput,
+  planningTarget: CoursePointYds,
+) => {
   const decisionGoal = inferDecisionShotGoal(hole, planningTarget)
   const targetDistanceYds = Math.hypot(
     planningTarget[0] - ball[0],

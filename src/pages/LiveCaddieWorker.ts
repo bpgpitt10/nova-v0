@@ -532,6 +532,9 @@ const buildEvaluationCacheKey = ({
       shotOrigin: environment.shotOrigin ?? null,
       lieUpDownDeg: finiteKeyNumber(environment.lieUpDownDeg),
       lieLeftRightDeg: finiteKeyNumber(environment.lieLeftRightDeg),
+      layupPin: environment.layupPin
+        ? [finiteKeyNumber(environment.layupPin[0]), finiteKeyNumber(environment.layupPin[1])]
+        : null,
       exactPinLocalYds: environment.exactPinLocalYds
         ? [
             finiteKeyNumber(environment.exactPinLocalYds[0]),
