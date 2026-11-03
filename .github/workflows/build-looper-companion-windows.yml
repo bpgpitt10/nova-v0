@@ -11,6 +11,7 @@ on:
       - web-native-aim-preview-v1
       - web-course-load-v1
       - web-companion-gspro-files-v1
+      - web-native-rotated-courses-v1
     paths:
       - "helpers/gspro_file_bridge.py"
       - "tests/test_companion_gspro_files.py"
@@ -151,7 +152,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "aim-click.5") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.6") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
@@ -323,6 +324,20 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: course library + aim preview ($shortSha)" `
             --notes "Course layouts, read-only Auto Aim preview, and read-only /companion/v1/course-library (names, locations and keys of installed GSPro courses for one-click loading). No mouse or keyboard input." `
+            --prerelease
+
+      - name: Publish courses companion installer
+        if: github.ref == 'refs/heads/web-native-rotated-courses-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-courses-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: finds your courses with GSPro closed ($shortSha)" `
+            --notes "Remembers where GSPro is installed, so Round Setup can list courses and tees and match them to the map while GSPro is closed. Otherwise the same as the GSPro-files companion (aim click, wind/lie/HUD reads, round recorder)." `
             --prerelease
 
       - name: Publish GSPro-files companion installer

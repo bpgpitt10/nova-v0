@@ -1,6 +1,6 @@
 import { nativeHole, sha256Hex, type NativeCourseLayout } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
-import { nativeWorldToLatLon } from './nativeRegistration'
+import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
 import { fitNativeRegistration, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
 import { parsePackageTerrain, type RawTerrain } from './routePackagedCourseLoader'
 import type { CourseTerrainGrid } from './types'
@@ -34,10 +34,16 @@ export type AutoRegistrationResult = Readonly<{
    * built this course off true north / not in metres; a large rms means the
    * holes or greens do not correspond (wrong course, renumbered holes). */
   greenSimilarity: GreenSimilarity | null
+  /** Diagnostic when the greens don't pair up by hole number: the hole offset
+   * (GSPro hole = Looper hole + shift, wrapping) whose greens do line up. */
+  holeShift: Readonly<{ shift: number; rmsM: number; rotationDeg: number; scale: number }> | null
   registration: NativeRegistration | null
 }>
 
 const DEG = Math.PI / 180
+const ROTATION_MIN_DEG = 0.5
+const SCALE_MIN_DEVIATION = 0.003
+const ROTATION_TRUST_RMS_M = 25
 
 export const greenSimilarity = (
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>,
@@ -45,10 +51,7 @@ export const greenSimilarity = (
   if (greens.length < 3) return null
   const lat0 = greens.reduce((s, g) => s + g.latLon[0], 0) / greens.length
   const lon0 = greens.reduce((s, g) => s + g.latLon[1], 0) / greens.length
-  const map = greens.map((g) => [
-    (g.latLon[1] - lon0) * 111_320 * Math.cos(lat0 * DEG),
-    (g.latLon[0] - lat0) * 111_320,
-  ] as const)
+  const map = greens.map((g) => groundOffsetMeters(lat0, lon0, g.latLon[0], g.latLon[1]))
   const wx = greens.reduce((s, g) => s + g.world.x, 0) / greens.length
   const wz = greens.reduce((s, g) => s + g.world.z, 0) / greens.length
   const world = greens.map((g) => [g.world.x - wx, g.world.z - wz] as const)
@@ -74,6 +77,23 @@ export const greenSimilarity = (
   return { rotationDeg: theta / DEG, scale, rmsM: Math.sqrt(sq / greens.length), n: greens.length }
 }
 
+/** Try pairing Looper hole h with GSPro hole h + shift (wrapping over the
+ * GKD's holes), e.g. nines swapped. Diagnostic only. */
+const bestHoleShift = (layout: NativeCourseLayout, mapped: ReadonlyMap<number, readonly [number, number]>) => {
+  const count = layout.holes.length
+  let best: { shift: number; rmsM: number; rotationDeg: number; scale: number } | null = null
+  for (let shift = 1; shift < count; shift += 1) {
+    const pairs: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+    for (const [hole, latLon] of mapped) {
+      const gkd = nativeHole(layout, ((hole - 1 + shift) % count) + 1)
+      if (gkd?.greenCenter) pairs.push({ world: gkd.greenCenter, latLon })
+    }
+    const sim = greenSimilarity(pairs)
+    if (sim && (!best || sim.rmsM < best.rmsM)) best = { shift, rmsM: sim.rmsM, rotationDeg: sim.rotationDeg, scale: sim.scale }
+  }
+  return best && best.rmsM <= ROTATION_TRUST_RMS_M ? best : null
+}
+
 export const fitRegistrationFromPackage = async ({
   courseId,
   gsproCourseKey,
@@ -90,6 +110,7 @@ export const fitRegistrationFromPackage = async ({
   const holes: Array<{ frame: NativeHoleFrame; terrain: CourseTerrainGrid }> = []
   const frames: Record<string, NativeHoleFrame> = {}
   const greens: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+  const mappedGreens = new Map<number, readonly [number, number]>()
   for (const [key, raw] of Object.entries(pkg.holes ?? {})) {
     const cf = raw.coordinateFrame
     const anchor = pair(cf?.anchorLatLon)
@@ -101,11 +122,19 @@ export const fitRegistrationFromPackage = async ({
     const terrain = raw.terrain ? await parsePackageTerrain(raw.terrain, courseId, Number(key)).catch(() => null) : null
     if (terrain) holes.push({ frame, terrain })
     const green = pair(cf?.targetGreenLatLon)
+    if (green) mappedGreens.set(Number(key), green)
     const gkdHole = nativeHole(layout, Number(key))
     if (green && gkdHole?.greenCenter) greens.push({ world: gkdHole.greenCenter, latLon: green })
   }
   const points = layout.holes.flatMap((h) => [...h.pins, ...(h.greenCenter ? [h.greenCenter] : [])])
+  // Some GSPro scenes are built turned or scaled (Valhalla 180°, Royal New Kent
+  // -12°); the greens give that directly. Near 0° / 1 (FarmLinks) keep the
+  // true-north model exactly as before.
+  const similarity = greenSimilarity(greens)
+  const turned = similarity != null && similarity.rmsM <= ROTATION_TRUST_RMS_M
+    && (Math.abs(similarity.rotationDeg) > ROTATION_MIN_DEG || Math.abs(similarity.scale - 1) > SCALE_MIN_DEVIATION)
   const fit = fitNativeRegistration({
+    ...(turned ? { rotationDeg: similarity!.rotationDeg, scale: similarity!.scale } : {}),
     courseId,
     gsproCourseKey,
     layoutFingerprint: await sha256Hex(layout.fingerprintText),
@@ -128,7 +157,8 @@ export const fitRegistrationFromPackage = async ({
     fit,
     greensWithin25m: within,
     greensChecked: greens.length,
-    greenSimilarity: greenSimilarity(greens),
+    greenSimilarity: similarity,
+    holeShift: similarity && similarity.rmsM > ROTATION_TRUST_RMS_M ? bestHoleShift(layout, mappedGreens) : null,
     registration: fit.registration && sameCourse ? fit.registration : null,
   }
 }

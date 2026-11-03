@@ -197,7 +197,7 @@ const fetchRawHole = async (holeNumber: number): Promise<RawGreywolfHole> => {
   for (const delayMs of FETCH_RETRY_DELAYS_MS) {
     await wait(delayMs)
     try {
-      const response = await fetch(`${RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`, { cache: 'force-cache' })
+      const response = await fetch(`${RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`, { cache: 'no-cache' })
       if (!response.ok) {
         throw new Error(`Greywolf Hole ${holeNumber} package returned ${response.status}.`)
       }

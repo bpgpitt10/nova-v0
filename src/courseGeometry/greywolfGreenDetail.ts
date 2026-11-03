@@ -86,7 +86,7 @@ const numericTuple = <T extends number>(value: unknown, length: T): number[] | n
 
 const fetchPackage = async (): Promise<RawPackage | null> => {
   try {
-    const response = await fetch(GREEN_DETAIL_URL, { cache: 'force-cache' })
+    const response = await fetch(GREEN_DETAIL_URL, { cache: 'no-cache' })
     if (!response.ok) throw new Error(`Greywolf green detail package returned ${response.status}.`)
     const payload = await response.json() as RawPackage
     if (payload.schemaVersion !== 'looper-greywolf-green-detail-v1' || !payload.holes) {

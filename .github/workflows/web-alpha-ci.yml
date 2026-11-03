@@ -117,5 +117,8 @@ jobs:
       - name: Browser registration fit (new courses)
         run: node tools/test-native-registration-fit.mjs
 
+      - name: Aim click point at expected carry
+        run: node tools/test-aim-click-point.mjs
+
       - name: Build web app
         run: npm run build

@@ -33,6 +33,12 @@ export type NativeRegistration = Readonly<{
   sceneFingerprint: string | null
   grade: string
   reference: Readonly<{ latLon: readonly [number, number]; worldXZ: readonly [number, number] }>
+  /** How the GSPro scene is turned and scaled against true-north metres:
+   * (east + i·north) = scale · e^(i·rotation) · (dx + i·dz). FarmLinks is 0° / 1;
+   * Valhalla's designer built it upside down (180°), Royal New Kent about -12°.
+   * Older files omit both (0° / 1). */
+  rotationDeg?: number
+  scale?: number
   worldYToElevationOffsetM: number
   holes: Readonly<Record<string, NativeHoleFrame>>
 }>
@@ -85,6 +91,8 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
       ? v.sceneFingerprint : null,
     grade: v.grade,
     reference: { latLon, worldXZ },
+    ...(finite(v.rotationDeg) && Math.abs(v.rotationDeg) > 1e-9 ? { rotationDeg: v.rotationDeg } : {}),
+    ...(finite(v.scale) && v.scale > 0.5 && v.scale < 2 && Math.abs(v.scale - 1) > 1e-12 ? { scale: v.scale } : {}),
     worldYToElevationOffsetM: v.worldYToElevationOffsetM,
     holes,
   }
@@ -96,6 +104,15 @@ const radii = (latDeg: number) => {
   return { meridian: ELLIPSOID_A * (1 - ELLIPSOID_E2) / (w * w * w), primeVertical: ELLIPSOID_A / w }
 }
 
+/** (east, north) metres of lat/lon from a reference point, on the same
+ * ellipsoid the GSPro <-> lat/lon step uses. */
+export const groundOffsetMeters = (
+  lat0: number, lon0: number, lat: number, lon: number,
+): readonly [number, number] => {
+  const { meridian, primeVertical } = radii(lat0)
+  return [(lon - lon0) * DEG * primeVertical * Math.cos(lat0 * DEG), (lat - lat0) * DEG * meridian]
+}
+
 export const nativeWorldToLatLon = (
   registration: NativeRegistration,
   world: Readonly<{ x: number; z: number }>,
@@ -103,10 +120,31 @@ export const nativeWorldToLatLon = (
   const [lat0, lon0] = registration.reference.latLon
   const [x0, z0] = registration.reference.worldXZ
   const { meridian, primeVertical } = radii(lat0)
+  const [east, north] = sceneToGround(registration, world.x - x0, world.z - z0)
   return [
-    lat0 + ((world.z - z0) / meridian) / DEG,
-    lon0 + ((world.x - x0) / (primeVertical * Math.cos(lat0 * DEG))) / DEG,
+    lat0 + (north / meridian) / DEG,
+    lon0 + (east / (primeVertical * Math.cos(lat0 * DEG))) / DEG,
   ]
+}
+
+/** GSPro scene offset (dx, dz) -> ground (east, north) metres. */
+const sceneToGround = (registration: NativeRegistration, dx: number, dz: number): readonly [number, number] => {
+  const theta = (registration.rotationDeg ?? 0) * DEG
+  const k = registration.scale ?? 1
+  if (theta === 0 && k === 1) return [dx, dz]
+  const c = Math.cos(theta) * k
+  const s = Math.sin(theta) * k
+  return [c * dx - s * dz, s * dx + c * dz]
+}
+
+/** Inverse of sceneToGround. */
+const groundToScene = (registration: NativeRegistration, east: number, north: number): readonly [number, number] => {
+  const theta = (registration.rotationDeg ?? 0) * DEG
+  const k = registration.scale ?? 1
+  if (theta === 0 && k === 1) return [east, north]
+  const c = Math.cos(theta) / k
+  const s = Math.sin(theta) / k
+  return [c * east + s * north, -s * east + c * north]
 }
 
 export const latLonToHoleLocalYds = (
@@ -164,10 +202,10 @@ export const nativeLatLonToWorld = (
   const [lat0, lon0] = registration.reference.latLon
   const [x0, z0] = registration.reference.worldXZ
   const { meridian, primeVertical } = radii(lat0)
-  return {
-    x: x0 + (lon - lon0) * DEG * primeVertical * Math.cos(lat0 * DEG),
-    z: z0 + (lat - lat0) * DEG * meridian,
-  }
+  const [dx, dz] = groundToScene(registration,
+    (lon - lon0) * DEG * primeVertical * Math.cos(lat0 * DEG),
+    (lat - lat0) * DEG * meridian)
+  return { x: x0 + dx, z: z0 + dz }
 }
 
 /** Looper hole-local yards -> GSPro world metres (for Auto Aim targets). */

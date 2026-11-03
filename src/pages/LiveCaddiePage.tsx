@@ -27,7 +27,6 @@ import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import {
-  courseCatalog,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
   GREYWOLF_COURSE_ID,
@@ -87,7 +86,7 @@ import {
   shotCompassBearingDegrees,
 } from '../liveState/courseHeading'
 import type { GsproLieObservation, WindObservation } from '../liveState/types'
-import { projectWindObservation } from '../liveState/windProjection'
+import { projectWindObservation, windInTrueCompass } from '../liveState/windProjection'
 import {
   activeBagClubIds,
   BAG_CONFIG_UPDATED_EVENT,
@@ -105,6 +104,9 @@ import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
+import { aimClickPoint } from '../liveCaddie/aimClickPoint'
+
+const AIM_WIDTH_FACT = /^(Fairway|Green) width: /
 
 const OUTCOME_PLACEHOLDER = ['Success', 'Manageable', 'Trouble', 'Catastrophe']
   .map((label) => ({ label, percent: 0, text: '—' }))
@@ -193,7 +195,8 @@ const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'gr
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
-  const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
+  // The course is chosen in Round Setup (display only here).
+  const [courseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
@@ -896,7 +899,7 @@ export default function LiveCaddiePage() {
     localAimBearingDeg,
   )
   const projectedWind = projectWindObservation(
-    windObservation,
+    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )
@@ -1206,8 +1209,12 @@ export default function LiveCaddiePage() {
 
   // ---- Arm: a half-second fill (let go of the mouse), then aim in GSPro ----
   const ARM_FILL_MS = 600
-  const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null
   const aimPin = trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)
+  // Yellow aim = GSPro click: on the aim line at the expected carry.
+  const aimClick = !isShotStrategy && inspectedCandidate
+    ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
+    : null
+  const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : aimClick
   const currentAimKey = displayedClub && aimTarget
     ? `${shotConditionsKey ?? 'shot'}|${displayedClub}|${aimTarget[0].toFixed(0)},${aimTarget[1].toFixed(0)}`
     : null
@@ -1306,7 +1313,7 @@ export default function LiveCaddiePage() {
     holeNumber,
     club: isShotStrategy ? null : displayedClub,
     teeLocalYds: hole?.markers.tee ?? null,
-    targetLocalYds: isShotStrategy ? null : inspectedCandidate?.aimPoint ?? null,
+    targetLocalYds: isShotStrategy ? null : aimClick,
   })
   const nativeAimPreview = !isShotStrategy && nativeVisualActive
     ? prepareReadOnlyNativeAimPreview(nativeAimIntent, nativeObservations)
@@ -1315,7 +1322,29 @@ export default function LiveCaddiePage() {
     ? shotStrategy?.aimInstruction ?? 'target line'
     : aimDescriptor?.text
       ?? (viewedEvaluation ? aimLabel(inspectedCandidate?.aimOffsetYds) : 'No modeled line')
-  const aimContext = aimDescriptor ? buildAimContextSentence(aimDescriptor) : null
+  // Header status sits on the account-chip row, just left of the chip.
+  useEffect(() => {
+    const chip = document.querySelector('.looper-account-control')
+    if (!chip) return
+    const apply = () => document.documentElement.style.setProperty(
+      '--looper-account-w', `${Math.ceil(chip.getBoundingClientRect().width)}px`)
+    apply()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null
+    observer?.observe(chip)
+    return () => observer?.disconnect()
+  }, [])
+
+  // "Fairway width: 26 yd" sits right under the aim line; any other fact
+  // (hazard start) stays in the reason line below.
+  const aimWidthFact = aimDescriptor && aimDescriptor.confidence !== 'low'
+    ? aimDescriptor.contextFacts.find((fact) => AIM_WIDTH_FACT.test(fact)) ?? null
+    : null
+  const otherAimFacts = aimDescriptor?.contextFacts.filter((fact) => !AIM_WIDTH_FACT.test(fact)) ?? []
+  const aimContext = !aimDescriptor
+    ? null
+    : aimWidthFact && otherAimFacts.length === 0
+      ? ''
+      : buildAimContextSentence({ ...aimDescriptor, contextFacts: otherAimFacts })
 
   useEffect(() => {
     setInspectedAimOffset(null)
@@ -1406,16 +1435,6 @@ export default function LiveCaddiePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companionStatus?.capabilities?.liveObservations, companionStatus?.gspro.status, visualCaptureStatus])
 
-  const selectCourse = (nextCourseId: CourseId) => {
-    setCourseId(nextCourseId)
-    setHoleNumber(1)
-    setLiveSnapshot(null)
-    setNativeObservations(null)
-    setArmedClub(null)
-    resetArm()
-    lastShotKeyRef.current = null
-  }
-
   const outcomeDetails = risk ? [
     ['Bunker', risk.bySurface.bunker ?? 0],
     ['Deep rough / woods', risk.bySurface['deep-rough'] ?? 0],
@@ -1463,20 +1482,10 @@ export default function LiveCaddiePage() {
         </header>
 
         <section className="live-caddie-setup-row">
-          <select value={courseId} onChange={(event) => selectCourse(event.target.value as CourseId)}>
-            {courseCatalog.map((entry) => (
-              <option key={entry.id} value={entry.id}>{entry.name}</option>
-            ))}
-          </select>
-          <select
-            value={holeNumber}
-            disabled={livePrepared}
-            onChange={(event) => setHoleNumber(Number(event.target.value))}
-          >
-            {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-              <option key={number} value={number}>Hole {number}</option>
-            ))}
-          </select>
+          {/* Course and hole are chosen in Round Setup and by GSPro; here they
+              are display only. */}
+          <strong className="live-caddie-course-name">{selectedCourse?.name ?? 'No course'}</strong>
+          <span className="live-caddie-hole-name">Hole {holeNumber}</span>
           {!livePrepared ? <button type="button" onClick={() => void connectGspro()}>Connect GSPro</button> : null}
           {liveStatus === 'error' ? <button type="button" onClick={() => void connectGspro()}>Reconnect</button> : null}
           {companionStatus?.capabilities?.liveObservations ? (
@@ -1521,10 +1530,12 @@ export default function LiveCaddiePage() {
             ) : null}
           </div>
         </section>
-        <NativePositionsBetaPanel
-          courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
-          courseKey={liveSnapshot?.courseKey ?? null}
-        />
+        {showDiagnostics ? (
+          <NativePositionsBetaPanel
+            courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
+            courseKey={liveSnapshot?.courseKey ?? null}
+          />
+        ) : null}
 
         {/* Developer readout for the native aim pipeline; the floating
             "Show where Looper would click" preview is the player-facing one. */}
@@ -1677,9 +1688,13 @@ export default function LiveCaddiePage() {
         ) : null}
         {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
         {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
-        {showDiagnostics && nativeObservations?.ocr?.wind?.status && nativeObservations.ocr.wind.status !== 'READY' ? (
+        {showDiagnostics && nativeObservations?.ocr?.wind?.status ? (
           <div className="live-caddie-alert">
-            Wind OCR read: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+            Wind OCR {nativeObservations.ocr.wind.status}: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
+            {` · Looper uses ${windObservation?.status ?? 'no wind'}`
+              + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
+              + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
+              + (liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg ? `, course turned ${liveSnapshot.gsproSceneRotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
         {showDiagnostics && recTiming ? (
@@ -1799,6 +1814,7 @@ export default function LiveCaddiePage() {
                     : displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
                     {playerFacingAim}
+                    {aimWidthFact && !isShotStrategy ? <span className="live-aim-width">{aimWidthFact}</span> : null}
                   </div>
                   {isShotStrategy && shotStrategy ? (
                     <div className="live-strategy-read">
@@ -1921,7 +1937,8 @@ export default function LiveCaddiePage() {
                   ball={ball}
                   target={isShotStrategy && shotStrategy ? shotStrategy.target : target}
                   pinEstimate={pinEstimate}
-                  candidate={isShotStrategy ? null : inspectedCandidate}
+                  candidate={isShotStrategy || !inspectedCandidate ? null
+                    : aimClick ? { ...inspectedCandidate, aimPoint: aimClick } : inspectedCandidate}
                   strategyAimPoint={isShotStrategy ? shotStrategy?.target ?? null : null}
                   show95={show95}
                   showRiskTail={showRiskTail}
@@ -1932,7 +1949,8 @@ export default function LiveCaddiePage() {
 
                 <div className="live-map-legend">
                   <span><i className="ball" />Ball</span>
-                  <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim'}</span>
+                  <span><i className="aim" />{isShotStrategy ? 'Strategy target' : 'Aim (GSPro click)'}</span>
+                  {!isShotStrategy ? <span><i className="carry" />Landing</span> : null}
                   {!isShotStrategy ? <span><i className="mean" />Expected finish</span> : null}
                   <span><i className="pin" />Pin</span>
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
@@ -1946,7 +1964,7 @@ export default function LiveCaddiePage() {
                   // Exact pin when known; before Shot 1 without one, the estimate
                   // (green centre) still lets the preview run.
                   pin={trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)}
-                  target={isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null}
+                  target={aimTarget}
                   companionReady={companionStatus?.gspro.status === 'connected'}
                 />
               </article>

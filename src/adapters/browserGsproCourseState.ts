@@ -74,6 +74,12 @@ export type BrowserGsproCourseSnapshot = Omit<
   gsproLayoutTee?: GsproRoundLayoutTee | null
   teePlacement?: 'mapped' | 'locked' | 'provisional' | null
   teeUncertaintyYds?: number | null
+  /** Native positions: how GSPro's scene is turned against true north
+   * (Valhalla 180°). GSPro's wind compass is scene-relative. */
+  gsproSceneRotationDeg?: number | null
+  /** 'manual-start': Looper's Start Round (Hole 1, Shot 1) before GSPro has
+   * written any shot of this round; 'gspro': read from GSPro's files. */
+  publishedFrom?: 'manual-start' | 'gspro'
 }
 
 type SnapshotHandler = (snapshot: BrowserGsproCourseSnapshot) => void
@@ -286,7 +292,8 @@ const applyNativeIfReady = async (
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
-    if (!teeContext) return next
+    const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0 }
+    if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)
     const nearestPinM = layoutRow && gkdHole && gkdHole.pins.length > 0
@@ -300,7 +307,7 @@ const applyNativeIfReady = async (
             layoutRow.pinPos.x - layoutRow.teePos.x, layoutRow.pinPos.z - layoutRow.teePos.z) * 1.0936133).toFixed(1)} yd;`
           + ` nearest GKD pin ${nearestPinM == null ? 'n/a' : nearestPinM.toFixed(2) + ' m'}`
           + `; pin ${next.pinSource === 'native-gkd' ? 'slot ' + pinSlot : 'unknown'}.`
-    return { ...next, warnings: [...next.warnings.filter((w) => !w.startsWith('GSPro round layout:')), layoutNote] }
+    return { ...turned, warnings: [...next.warnings.filter((w) => !w.startsWith('GSPro round layout:')), layoutNote] }
   } catch (error) {
     console.warn('[Browser GSPro course state] Native positions unavailable; using existing positioning.', error)
     return snapshot
@@ -459,9 +466,12 @@ const buildManualStartSnapshot = async (
   }, true), true)
 }
 
+// The shot's own id (last part of "round:hole:shotId"). A read where the
+// RoundID was briefly missing ("round:2:<id>" vs "273:2:<id>") is the same
+// stale shot, not a new one, and must not end the manual Start Round hold.
 const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | null) =>
   snapshot?.latestShotKey
-    ? `${snapshot.roundId ?? 'round'}:${snapshot.latestShotKey}`
+    ? snapshot.latestShotKey.split(':').pop() || snapshot.latestShotKey
     : null
 
 const snapshotSignature = (
@@ -509,7 +519,7 @@ export const connectToBrowserGsproCourseState = ({
     const signature = snapshotSignature(snapshot, source)
     if (signature !== lastPublishedSnapshotSignature) {
       lastPublishedSnapshotSignature = signature
-      onSnapshot(snapshot)
+      onSnapshot({ ...snapshot, publishedFrom: source })
     }
 
     const key = source === 'manual-start'

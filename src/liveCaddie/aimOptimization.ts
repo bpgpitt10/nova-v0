@@ -105,6 +105,8 @@ export type AimCandidateEvaluation = {
   aimPoint: CoursePointYds
   /** Resting/final expected center after historical rollout. */
   meanLanding: CoursePointYds
+  /** Expected touchdown (carry) point on the aim line, before roll. */
+  meanCarryLanding?: CoursePointYds
   /** Probabilities and the map cloud come from this exact deterministic sample set. */
   surfaceOutcomes: AimSurfaceDistribution | null
   modeledSamples: ModeledAimSample[]
@@ -482,6 +484,7 @@ export const evaluateAimLab = (
         aimOffsetYds,
         aimPoint,
         meanLanding: sampled.meanLanding,
+        meanCarryLanding: sampled.meanCarryLanding,
         surfaceOutcomes: sampled.distribution,
         modeledSamples: sampled.samples,
         probabilityContours: sampled.probabilityContours,

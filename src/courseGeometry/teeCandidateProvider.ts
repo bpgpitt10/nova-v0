@@ -166,7 +166,7 @@ const rebaseAnchorForRouteStartPackage = (hole: Record<string, unknown>): Course
 const loadGenericCandidates = async (courseId: CourseId, holeNumber: number) => {
   const entry = getCourseCatalogEntry(courseId)
   if (!entry.staticPackageUrl) return []
-  const response = await fetch(entry.staticPackageUrl, { cache: 'force-cache' })
+  const response = await fetch(entry.staticPackageUrl, { cache: 'no-cache' })
   if (!response.ok) throw new Error(`${entry.name} tee metadata returned ${response.status}.`)
   const payload = record(await response.json())
   const holes = record(payload.holes)
@@ -199,7 +199,7 @@ const greywolfPoint = (value: unknown): CoursePointYds | null => {
 const loadGreywolfCandidates = async (holeNumber: number) => {
   const response = await fetch(
     `${GREYWOLF_RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`,
-    { cache: 'force-cache' },
+    { cache: 'no-cache' },
   )
   if (!response.ok) throw new Error(`Greywolf Hole ${holeNumber} tee metadata returned ${response.status}.`)
   const payload = record(await response.json())

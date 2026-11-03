@@ -172,7 +172,12 @@ export default function LiveCaddieMap({
     toView(ball),
     toView(target),
     pinEstimate ? toView(pinEstimate) : null,
-    candidate ? { ...candidate, aimPoint: toView(candidate.aimPoint), meanLanding: toView(candidate.meanLanding) } : null,
+    candidate ? {
+      ...candidate,
+      aimPoint: toView(candidate.aimPoint),
+      meanLanding: toView(candidate.meanLanding),
+      meanCarryLanding: candidate.meanCarryLanding ? toView(candidate.meanCarryLanding) : undefined,
+    } : null,
     provisionalTeeRadiusYds,
   )
   const spanX = Math.max(1, displayBounds.maxX - displayBounds.minX)
@@ -217,39 +222,9 @@ export default function LiveCaddieMap({
     const ys = pts.map((p) => p[1])
     const box = { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) }
     if (box.maxX < 0 || box.minX > viewSize || box.maxY < 0 || box.minY > viewSize) return null
-    // The two biggest features, never stacked on each other.
-    const tags: { key: string; x: number; y: number; text: string }[] = []
-    for (const [index, feature] of greenRead.features.entries()) {
-      if (tags.length >= 2) break
-      const [px, py] = project(feature.at)
-      const x = Math.min(viewSize - 6, Math.max(6, px))
-      const y = Math.min(viewSize - 2, Math.max(3, py))
-      if (tags.some((t) => Math.abs(t.x - x) < 11 && Math.abs(t.y - y) < 3)) continue
-      tags.push({
-        key: `${feature.kind}-${index}`,
-        x,
-        y,
-        text: feature.kind === 'tier' ? `tier \u2191${feature.riseFt.toFixed(1)} ft` : 'spine',
-      })
-    }
-    let arrow: { x1: number; y1: number; x2: number; y2: number; lx: number; ly: number; text: string } | null = null
-    if (greenRead.tiltDownhill && greenRead.tiltPercent >= 1) {
-      const at = greenRead.features[0]?.at ?? hole.markers.pin ?? [0, 0]
-      const [ax, ay] = project(at)
-      const [bx, by] = project([at[0] + greenRead.tiltDownhill[0], at[1] + greenRead.tiltDownhill[1]])
-      const len = Math.hypot(bx - ax, by - ay) || 1
-      const ux = (bx - ax) / len
-      const uy = (by - ay) / len
-      const size = 6
-      // Just outside the green's top-left corner (or top-right if no room).
-      const cx = box.minX - 4 >= size / 2 + 1 ? box.minX - 4 : Math.min(viewSize - size / 2 - 1, box.maxX + 4)
-      const cy = Math.min(viewSize - size / 2 - 1, Math.max(size / 2 + 3, box.minY + 2))
-      arrow = {
-        x1: cx - (ux * size) / 2, y1: cy - (uy * size) / 2, x2: cx + (ux * size) / 2, y2: cy + (uy * size) / 2,
-        lx: cx, ly: cy + size / 2 + 2.6, text: `${greenRead.tiltPercent.toFixed(1)}%`,
-      }
-    }
-    return { tags, arrow }
+    // Tier/spine labels and the tilt arrow were too noisy on the map; the
+    // green read stays in words under the aim line.
+    return { box }
   })()
 
   // Yardage-book numbers: reach / carry for hazards in play on this shot, and
@@ -295,6 +270,7 @@ export default function LiveCaddieMap({
   const pinSvg = pinEstimate ? project(pinEstimate) : null
   const aimSvg = candidate ? project(candidate.aimPoint) : null
   const meanSvg = candidate ? project(candidate.meanLanding) : null
+  const carrySvg = candidate?.meanCarryLanding ? project(candidate.meanCarryLanding) : null
   const strategyAimSvg = strategyAimPoint ? project(strategyAimPoint) : null
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
@@ -341,9 +317,6 @@ export default function LiveCaddieMap({
               ))}
             </clipPath>
           ) : null}
-          <marker id="liveTiltArrowHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#f3ecd6" />
-          </marker>
         </defs>
 
         {/* Ground outside the hole first (open grass under scrub under trees), */}
@@ -451,6 +424,7 @@ export default function LiveCaddieMap({
               )
             })}
             <circle className="live-mean-marker" cx={meanSvg[0]} cy={meanSvg[1]} r="1.05" />
+            {carrySvg ? <circle className="live-carry-marker" cx={carrySvg[0]} cy={carrySvg[1]} r="0.85" /> : null}
             <circle className="live-aim-marker" cx={aimSvg[0]} cy={aimSvg[1]} r="0.82" />
           </>
         ) : null}
@@ -460,16 +434,6 @@ export default function LiveCaddieMap({
               x2={strategyAimSvg[0]} y2={strategyAimSvg[1]} />
             <circle className="live-aim-marker" cx={strategyAimSvg[0]} cy={strategyAimSvg[1]} r="0.9" />
           </>
-        ) : null}
-        {greenOverlay?.tags.map((tag) => (
-          <text key={tag.key} className="live-green-tag" x={tag.x} y={tag.y} textAnchor="middle">{tag.text}</text>
-        ))}
-        {greenOverlay?.arrow ? (
-          <g className="live-green-tilt">
-            <line x1={greenOverlay.arrow.x1} y1={greenOverlay.arrow.y1} x2={greenOverlay.arrow.x2} y2={greenOverlay.arrow.y2}
-              markerEnd="url(#liveTiltArrowHead)" />
-            <text x={greenOverlay.arrow.lx} y={greenOverlay.arrow.ly} textAnchor="middle">{greenOverlay.arrow.text}</text>
-          </g>
         ) : null}
         {yardageLabels.map((label) => (
           <text key={label.key} className={`live-map-yardage yardage-${label.kind}`}

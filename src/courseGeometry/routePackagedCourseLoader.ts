@@ -376,7 +376,7 @@ const fetchPackage = async (courseId: CourseId, enriched: boolean): Promise<RawP
   for (const delayMs of FETCH_RETRY_DELAYS_MS) {
     await wait(delayMs)
     try {
-      const response = await fetch(entry.staticPackageUrl, { cache: 'force-cache' })
+      const response = await fetch(entry.staticPackageUrl, { cache: 'no-cache' })
       if (!response.ok) throw new Error(`${entry.name} package returned ${response.status}.`)
       const payload = await response.json() as RawPackage
       if (payload.schemaVersion !== 'looper-static-course-package-v1') {
