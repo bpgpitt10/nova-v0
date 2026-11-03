@@ -770,21 +770,23 @@ export default function LiveCaddiePage() {
   const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
     && liveSnapshot.ballLocalYds && hudShotOneYds != null
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
-  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds } | null>(null)
+  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds | null; note: string } | null>(null)
   useEffect(() => {
     if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
     let alive = true
     void pinFromHudDistance({
       courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
       roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
-    }).then((found) => { if (alive && found) setHudPin({ key: hudPinKey, pinLocal: found.pinLocal }) })
+    }).then((found) => {
+      if (alive) setHudPin({ key: hudPinKey, pinLocal: found?.pinLocal ?? null, note: found?.note ?? 'native course not ready' })
+    })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hudPinKey])
   const trustedLivePin = liveMatchesHole
     && liveSnapshot != null && liveSnapshot.pinSource !== 'unavailable'
     ? liveSnapshot.pinLocalYds ?? null
-    : hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null
+    : hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal ?? null : null
   const pinEstimate = hole
     ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
     : null
@@ -1499,7 +1501,9 @@ export default function LiveCaddiePage() {
           <div className="live-caddie-secondary-context">
             {showDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
             <span>{shotContext}</span>
-            {pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
+            {hudShotOneYds != null
+              ? <span>{Math.round(hudShotOneYds)} yd to pin</span>
+              : pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
             {showDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
@@ -1687,6 +1691,14 @@ export default function LiveCaddiePage() {
               + `, waypoints ${((nativeObservations.timingMs.waypointOcr ?? 0) / 1000).toFixed(1)}`
               + `, wind ${((nativeObservations.timingMs.windOcr ?? 0) / 1000).toFixed(1)}`
               + `, lie ${((nativeObservations.timingMs.lieOcr ?? 0) / 1000).toFixed(1)})` : ''}
+          </div>
+        ) : null}
+        {showDiagnostics ? (
+          <div className="live-caddie-alert">
+            GSPro player box: {nativeObservations?.ocr?.hud
+              ? `${nativeObservations.ocr.hud.status}${nativeObservations.ocr.hud.shotNumber != null ? ` · Shot ${nativeObservations.ocr.hud.shotNumber}` : ''}${nativeObservations.ocr.hud.distanceToPinYds != null ? ` · ${nativeObservations.ocr.hud.distanceToPinYds} yd` : ''} · read "${nativeObservations.ocr.hud.rawText ?? ''}"`
+              : 'not read (companion older than aim-click.5?)'}
+            {hudPin ? ` · ${hudPin.note}` : ''}
           </div>
         ) : null}
         {showDiagnostics && aimResult ? (

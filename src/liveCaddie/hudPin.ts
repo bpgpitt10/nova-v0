@@ -3,7 +3,7 @@ import {
   nativeCourseContextForLive,
   rememberNativePinSlot,
 } from '../courseGeometry/nativeCourseRuntime'
-import { NATIVE_METERS_TO_YARDS, nativeHole, resolveNativePinSlot } from '../courseGeometry/nativeGkd'
+import { NATIVE_METERS_TO_YARDS, nativeHole } from '../courseGeometry/nativeGkd'
 import { nativeHoleLocalYdsToWorld, nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import type { CoursePointYds } from '../courseGeometry/types'
 
@@ -23,18 +23,34 @@ export const pinFromHudDistance = async ({
   roundId: number | null
   teeLocal: CoursePointYds
   distanceYds: number
-}>): Promise<Readonly<{ slot: number; pinLocal: CoursePointYds }> | null> => {
+}>): Promise<Readonly<{ slot: number | null; pinLocal: CoursePointYds | null; note: string }> | null> => {
   if (!Number.isFinite(distanceYds) || distanceYds <= 0) return null
   const context = await nativeCourseContextForLive(courseId, courseKey).catch(() => null)
   if (!context) return null
   const hole = nativeHole(context.layout, holeNumber)
   const tee = nativeHoleLocalYdsToWorld(context.registration, holeNumber, teeLocal)
   if (!hole || !tee) return null
-  // GSPro shows 0.1 yd; the GKD tee and pins are exact.
-  const match = resolveNativePinSlot(hole, tee, distanceYds / NATIVE_METERS_TO_YARDS, 0.5)
-  if (match.status !== 'matched') return null
-  const pinLocal = nativeWorldToHoleLocalYds(context.registration, holeNumber, match.pin)
-  if (!pinLocal) return null
-  rememberNativePinSlot(context.courseKey, roundId, match.pin.slot)
-  return { slot: match.pin.slot, pinLocal }
+  // The GKD tee is the tee-marker point, not where the ball is teed (FarmLinks:
+  // a couple of metres apart), so an exact 0.5 m match failed. Take the pin
+  // whose distance is clearly closest: within 6 m, and 3 m better than the next.
+  const wantedM = distanceYds / NATIVE_METERS_TO_YARDS
+  const ranked = hole.pins
+    .map((pin) => ({ pin, errorM: Math.abs(Math.hypot(pin.x - tee.x, pin.z - tee.z) - wantedM) }))
+    .sort((a, b) => a.errorM - b.errorM)
+  const [best, next] = ranked
+  const note = best
+    ? `nearest pin slot ${best.pin.slot} ${best.errorM.toFixed(1)} m off`
+      + (next ? `, next ${next.errorM.toFixed(1)} m` : '')
+    : 'no GKD pins for this hole'
+  if (!best || best.errorM > HUD_PIN_MAX_ERROR_M
+    || (next && next.errorM - best.errorM < HUD_PIN_MIN_MARGIN_M)) {
+    return { slot: null, pinLocal: null, note }
+  }
+  const pinLocal = nativeWorldToHoleLocalYds(context.registration, holeNumber, best.pin)
+  if (!pinLocal) return { slot: null, pinLocal: null, note }
+  rememberNativePinSlot(context.courseKey, roundId, best.pin.slot)
+  return { slot: best.pin.slot, pinLocal, note }
 }
+
+const HUD_PIN_MAX_ERROR_M = 6
+const HUD_PIN_MIN_MARGIN_M = 3
