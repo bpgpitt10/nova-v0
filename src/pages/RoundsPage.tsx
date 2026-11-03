@@ -263,7 +263,7 @@ function RoundsList({
     <main className="rounds-main">
       <header className="rounds-header">
         <div>
-          <h1>Rounds</h1>
+          <h1 className="rounds-display-title">Rounds</h1>
           <p className="rounds-muted">Every round the companion saw, with each shot, lie and putt.</p>
         </div>
         <div className="rounds-segment" role="group" aria-label="Filter rounds">
@@ -461,9 +461,10 @@ function RoundDetail({
         <div className="rounds-titlebar">
           <div className="rounds-titlebar-left">
             <a className="rounds-back" href="/rounds">← All rounds</a>
-            <h1>{round.courseName}</h1>
+            <span className="rounds-eyebrow">Round · {formatDate(round.playedAt)}</span>
+            <h1 className="rounds-course-title">{round.courseName}</h1>
             <p className="rounds-muted rounds-meta">
-              {formatDate(round.playedAt)} · {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · {STATUS_LABEL[round.status].toLowerCase()} · {isLiveCaddieRound(round) ? 'Live Caddie' : 'no Live Caddie'} · {parNote}
+              {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · {STATUS_LABEL[round.status].toLowerCase()} · {isLiveCaddieRound(round) ? 'Live Caddie' : 'no Live Caddie'} · {parNote}
             </p>
           </div>
           <div className="rounds-score-inline">

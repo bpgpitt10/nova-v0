@@ -11,6 +11,11 @@
   --rounds-accent: #86efac;
   --rounds-gain: #86efac;
   --rounds-loss: #fb923c;
+  --rounds-gold: #eab308;
+  --rounds-surface: rgba(18, 30, 22, 0.66);
+  --rounds-surface-line: rgba(207, 216, 205, 0.12);
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   background: var(--rounds-bg);
   color: var(--rounds-text);
@@ -1062,5 +1067,94 @@
 
   .rounds-score-line strong {
     font-size: 24px;
+  }
+}
+
+
+/* ---- backdrop and type (3 Nov): same treatment as the dashboard and Live Caddie ---- */
+
+.rounds-page::before,
+.rounds-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.rounds-page::before {
+  background-image: url('../assets/Backgrounds/golfscene2.png');
+  background-position: center 30%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.6;
+}
+
+.rounds-page::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 14, 11, 0.8) 0%,
+      rgba(11, 19, 15, 0.56) 45%,
+      rgba(11, 19, 15, 0.32) 75%,
+      rgba(9, 15, 12, 0.26) 100%
+    ),
+    linear-gradient(180deg, rgba(14, 21, 17, 0.05) 0%, rgba(7, 12, 10, 0.55) 100%);
+}
+
+.rounds-card,
+.rounds-tile,
+.rounds-keyshot {
+  background: var(--rounds-surface);
+  border-color: var(--rounds-surface-line);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.rounds-card.is-dashed,
+.rounds-tile.is-progress {
+  background: rgba(20, 33, 24, 0.45);
+}
+
+.rounds-table thead tr,
+.rounds-note {
+  background: rgba(23, 36, 25, 0.7);
+}
+
+.rounds-note {
+  border-color: var(--rounds-surface-line);
+}
+
+.rounds-eyebrow {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rounds-secondary);
+}
+
+.rounds-page h1.rounds-course-title,
+.rounds-page h1.rounds-display-title {
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+
+.rounds-page h1.rounds-course-title {
+  font-size: 44px;
+  color: var(--rounds-gold);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+.rounds-page h1.rounds-display-title {
+  font-size: 36px;
+}
+
+@media (max-width: 640px) {
+  .rounds-page h1.rounds-course-title {
+    font-size: 34px;
   }
 }
