@@ -104,6 +104,7 @@ import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
+import { aimClickPoint } from '../liveCaddie/aimClickPoint'
 
 const AIM_WIDTH_FACT = /^(Fairway|Green) width: /
 
@@ -1208,8 +1209,12 @@ export default function LiveCaddiePage() {
 
   // ---- Arm: a half-second fill (let go of the mouse), then aim in GSPro ----
   const ARM_FILL_MS = 600
-  const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null
   const aimPin = trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)
+  // Yellow aim = GSPro click: on the aim line at the expected carry.
+  const aimClick = !isShotStrategy && inspectedCandidate
+    ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
+    : null
+  const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : aimClick
   const currentAimKey = displayedClub && aimTarget
     ? `${shotConditionsKey ?? 'shot'}|${displayedClub}|${aimTarget[0].toFixed(0)},${aimTarget[1].toFixed(0)}`
     : null
@@ -1308,7 +1313,7 @@ export default function LiveCaddiePage() {
     holeNumber,
     club: isShotStrategy ? null : displayedClub,
     teeLocalYds: hole?.markers.tee ?? null,
-    targetLocalYds: isShotStrategy ? null : inspectedCandidate?.aimPoint ?? null,
+    targetLocalYds: isShotStrategy ? null : aimClick,
   })
   const nativeAimPreview = !isShotStrategy && nativeVisualActive
     ? prepareReadOnlyNativeAimPreview(nativeAimIntent, nativeObservations)
@@ -1932,7 +1937,8 @@ export default function LiveCaddiePage() {
                   ball={ball}
                   target={isShotStrategy && shotStrategy ? shotStrategy.target : target}
                   pinEstimate={pinEstimate}
-                  candidate={isShotStrategy ? null : inspectedCandidate}
+                  candidate={isShotStrategy || !inspectedCandidate ? null
+                    : aimClick ? { ...inspectedCandidate, aimPoint: aimClick } : inspectedCandidate}
                   strategyAimPoint={isShotStrategy ? shotStrategy?.target ?? null : null}
                   show95={show95}
                   showRiskTail={showRiskTail}
@@ -1958,7 +1964,7 @@ export default function LiveCaddiePage() {
                   // Exact pin when known; before Shot 1 without one, the estimate
                   // (green centre) still lets the preview run.
                   pin={trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)}
-                  target={isShotStrategy ? shotStrategy?.target ?? null : inspectedCandidate?.aimPoint ?? null}
+                  target={aimTarget}
                   companionReady={companionStatus?.gspro.status === 'connected'}
                 />
               </article>
