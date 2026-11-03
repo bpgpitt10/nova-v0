@@ -95,10 +95,10 @@ export type AimLabEnvironment = {
    */
   clubTargets?: Readonly<Record<string, CoursePointYds | undefined>>
   /**
-   * Green out of reach (tee shots, long second shots): the pin. Each club then
-   * plans around its own spot, the fairway centre at that club's modeled carry
-   * toward the pin, instead of one shared lay-up spot (min(220, 65%)) that sat
-   * short of the driver and pointed the wrong way on doglegs.
+   * The pin. A club that can't reach the green (carry more than 25 yd short)
+   * plans around its own spot, the fairway centre at its modeled carry toward
+   * the pin, instead of the shared target (a min(220, 65%) lay-up spot far
+   * out, the pin or a green spot within 260 yd).
    */
   layupPin?: CoursePointYds | null
   /** Evaluate only these clubs (parallel workers each take a share of the bag). */
@@ -266,11 +266,20 @@ export const clubLayupTarget = (
   return corridor ? [corridor.centerRightYds, raw[1]] : raw
 }
 
+/** Carry this far short of the pin still counts as going for the green. */
+const LAYUP_REACH_SHORT_YDS = 25
+
 const modelClubCarry = (input: ModelClubCarryInput) => {
   const { profile, environment, target, ball, hole } = input
   const fixed = environment.clubTargets?.[profile.club]
   const shared = modelClubCarryAt(input, fixed ?? target)
   if (fixed || !environment.layupPin) return shared
+  // A club that can reach the green keeps the shared target (pin / green spot).
+  // One that can't plays to the fairway at its own carry, even inside 260 yd:
+  // otherwise a 7i from 247 out aimed at the pin through the trees and never
+  // looked at the fairway slot short of the green (RNK 2, shot 2).
+  const pinDistance = Math.hypot(environment.layupPin[0] - ball[0], environment.layupPin[1] - ball[1])
+  if (shared.modeledCarryYds >= pinDistance - LAYUP_REACH_SHORT_YDS) return shared
   // Second pass at the club's own lay-up spot (carry barely depends on it).
   const own = clubLayupTarget(hole, ball, environment.layupPin, shared.modeledCarryYds)
   return own ? modelClubCarryAt(input, own) : shared

@@ -62,6 +62,16 @@ const byClub = Object.fromEntries(own.map((e) => [e.club, e]))
 assert.ok(Math.abs(depth(byClub.Driver) - Math.min(byClub.Driver.modeledCarryYds, Math.hypot(pin[0] - tee[0], pin[1] - tee[1]))) < 3,
   `Driver plans at its carry: ${depth(byClub.Driver)} vs ${byClub.Driver.modeledCarryYds}`)
 assert.ok(depth(byClub.Driver) > depth(byClub['7i']) + 50, 'each club at its own depth')
+// Inside reach of the green: clubs that get there keep the shared target, the
+// rest lay up at their own carry.
+const near = [tee[0] + (pin[0] - tee[0]) * 0.5, tee[1] + (pin[1] - tee[1]) * 0.5]
+const nearDist = Math.hypot(pin[0] - near[0], pin[1] - near[1])
+const nearEval = Object.fromEntries(evaluateAimLab(sessions, hole, near, pin, { ...environment, shotOrigin: 'fairway', surfaceOverride: 'fairway', layupPin: pin }, now).map((e) => [e.club, e]))
+for (const e of Object.values(nearEval)) {
+  const d = Math.hypot(e.planningTarget[0] - near[0], e.planningTarget[1] - near[1])
+  if (e.modeledCarryYds >= nearDist - 25) assert.deepEqual(e.planningTarget, pin, `${e.club} goes for the green`)
+  else assert.ok(Math.abs(d - e.modeledCarryYds) < 3, `${e.club} lays up at its carry: ${d} vs ${e.modeledCarryYds}`)
+}
 const ownSingle = rerankClubs(own)
 const ownMerged = rerankClubs([['Driver', '5i', '9i'], ['3W', '7i', 'PW']].flatMap((onlyClubs) =>
   evaluateAimLab(sessions, hole, tee, target, { ...layup, onlyClubs }, now)))
