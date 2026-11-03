@@ -601,3 +601,40 @@
 .bagbook-layout .bagbook-footnote {
   padding-inline: 0;
 }
+
+/* The Looper's Read title: gold display serif, same style as the course name on Rounds. */
+.dashboard-page .bagbook-layout .dashboard-hero-title {
+  margin-bottom: 14px;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: #eab308;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* Looper Man: stronger, sitting lower and further right; fades out to the left and
+   at the bottom so he doesn't run into the table. */
+.dashboard-page .bagbook-layout .looper-read-visual {
+  right: -56px;
+  bottom: -72px;
+  height: 135%;
+  opacity: 0.34;
+  filter: grayscale(20%);
+  mask-image:
+    linear-gradient(to left, #000 30%, rgba(0, 0, 0, 0.55) 55%, transparent 85%),
+    linear-gradient(to top, transparent 0%, #000 28%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to left, #000 30%, rgba(0, 0, 0, 0.55) 55%, transparent 85%),
+    linear-gradient(to top, transparent 0%, #000 28%);
+  -webkit-mask-composite: source-in;
+}
+
+@media (max-width: 640px) {
+  .dashboard-page .bagbook-layout .dashboard-hero-title {
+    font-size: 30px;
+  }
+}

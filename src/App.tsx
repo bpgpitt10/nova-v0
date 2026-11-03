@@ -5571,13 +5571,7 @@ function App({
         <section className={useBagYardageBook ? 'bagbook-layout' : 'dashboard-layout'}>
           {useBagYardageBook ? (
             <BagTopBar
-              active={
-                reviewView === 'clubDetail'
-                  ? 'club'
-                  : dashboardNavTarget === 'lastSession'
-                    ? 'lastSession'
-                    : 'bag'
-              }
+              active={reviewView === 'clubDetail' ? 'club' : 'bag'}
               clubSwitcher={
                 reviewView === 'clubDetail' && yardageBook ? (
                   <ClubSwitcher
@@ -5599,9 +5593,6 @@ function App({
                 setReviewView('dashboard')
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
-              onLastSession={() =>
-                navigateDashboardSection('dashboard-review', 'lastSession', true)
-              }
             />
           ) : (
           <aside className="dashboard-rail">
