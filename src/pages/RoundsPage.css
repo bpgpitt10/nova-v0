@@ -1158,3 +1158,274 @@
     font-size: 34px;
   }
 }
+
+/* ---- open layout (3 Nov): no boxes over the photo; sections split by thin rules ---- */
+
+.rounds-page {
+  --rounds-rule: rgba(207, 216, 205, 0.16);
+}
+
+/* The Looper bar: no box on Rounds, just a rule under it. */
+.rounds-page .bagbook-topbar {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rounds-rule);
+  border-radius: 0;
+  padding: 4px 0 8px;
+}
+
+.rounds-card,
+.rounds-tile,
+.rounds-tile.is-progress,
+.rounds-card.is-dashed {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.rounds-main {
+  gap: 20px;
+}
+
+.rounds-section,
+.rounds-hole,
+.rounds-table-wrap {
+  border-top: 1px solid var(--rounds-rule);
+  padding-top: 16px;
+}
+
+.rounds-table thead tr {
+  background: transparent;
+}
+
+.rounds-table th:first-child,
+.rounds-table td:first-child {
+  padding-left: 0;
+}
+
+.rounds-table th:last-child,
+.rounds-table td:last-child {
+  padding-right: 0;
+}
+
+.rounds-table td,
+.rounds-shots-table td,
+.rounds-clubs-table td,
+.rounds-table-foot {
+  border-top-color: var(--rounds-rule);
+}
+
+.rounds-table-foot {
+  padding-left: 0;
+}
+
+.rounds-tiles {
+  gap: 24px;
+}
+
+.rounds-tile {
+  gap: 2px;
+}
+
+.rounds-card.is-dashed {
+  border-top: 1px dashed var(--rounds-rule);
+  padding-top: 12px;
+}
+
+.rounds-hole-side {
+  gap: 20px;
+}
+
+.rounds-map-card .rounds-map {
+  max-width: 100%;
+}
+
+/* Header: big score, smaller SG; auto putt lives in the details line. */
+.rounds-detail-head {
+  gap: 8px;
+}
+
+.rounds-score-inline {
+  align-items: flex-end;
+  gap: 32px;
+}
+
+.rounds-score-main,
+.rounds-score-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rounds-score-main strong {
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.rounds-score-main .rounds-muted {
+  font-size: 13px;
+}
+
+.rounds-score-side strong {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rounds-meta-toggle {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--rounds-secondary);
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rounds-meta-toggle[aria-pressed='true'] {
+  color: var(--rounds-gold);
+}
+
+/* Categories: open strip, thicker bars on a visible track. */
+.rounds-catstrip {
+  gap: 4px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--rounds-rule);
+}
+
+.rounds-catstrip-row {
+  gap: 24px;
+}
+
+.rounds-catcell {
+  gap: 8px;
+  padding: 4px 0 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+
+.rounds-catcell:hover {
+  background: transparent;
+  border-bottom-color: rgba(207, 216, 205, 0.3);
+}
+
+.rounds-catcell.is-on {
+  background: transparent;
+  border-color: transparent;
+  border-bottom-color: var(--rounds-accent);
+}
+
+.rounds-catcell-top {
+  font-size: 14px;
+}
+
+.rounds-catcell-top strong {
+  font-size: 20px;
+}
+
+.rounds-catcell .rounds-diverge {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(207, 216, 205, 0.14);
+}
+
+.rounds-catcell .rounds-diverge-half > span {
+  height: 10px;
+  border-radius: 5px;
+}
+
+.rounds-catcell .rounds-diverge-axis {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.rounds-catstrip-foot {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+/* Key shots: plain links, not pills. */
+.rounds-keyshots {
+  gap: 4px 28px;
+}
+
+.rounds-keyshot {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--rounds-secondary);
+}
+
+.rounds-keyshot:hover span {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .rounds-score-main strong {
+    font-size: 48px;
+  }
+
+  .rounds-catstrip-row {
+    gap: 12px 20px;
+  }
+}
+
+/* Hero shots / Carnage: two labelled lines. */
+.rounds-keyshots {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rounds-keyline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+}
+
+.rounds-keyline-label {
+  width: 96px;
+  flex: none;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.rounds-keyline-label.is-hero {
+  color: var(--rounds-gold);
+}
+
+.rounds-keyline-label.is-carnage {
+  color: var(--rounds-loss);
+}
+
+.rounds-keyline-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 28px;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .rounds-keyline-label {
+    width: 100%;
+  }
+}

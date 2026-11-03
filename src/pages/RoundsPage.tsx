@@ -32,6 +32,8 @@ import type { RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
 
 const FULL_ROUNDS_FOR_TRENDS = 5
+/** A shot that lost at least half a stroke is carnage; anything milder just got away. */
+const CARNAGE_SG = -0.5
 
 const navigate = (path: string) => {
   window.history.pushState({}, '', path)
@@ -398,8 +400,9 @@ function RoundDetail({
   const worstHole = [...scoredHoles].sort((a, b) => (a.sg ?? 0) - (b.sg ?? 0))[0]
   const holeNumber = selectedHole ?? worstHole?.holeNumber ?? round.holes[0]?.holeNumber ?? null
   const hole = round.holes.find((entry) => entry.holeNumber === holeNumber) ?? null
-  const { best, worst } = keyShots(round)
-  const highlights = [...best, ...worst]
+  const { best, worst: worstTwo } = keyShots(round, 2, 2)
+  // A second bad shot only earns a place if it really hurt.
+  const worst = worstTwo.filter((shot, index) => index === 0 || (shot.sg ?? 0) <= CARNAGE_SG)
   const shots = scoredShots(round)
   const conceded = shots.filter((shot) => shot.conceded).length
   const longMakes = shots
@@ -464,22 +467,27 @@ function RoundDetail({
             <span className="rounds-eyebrow">Round · {formatDate(round.playedAt)}</span>
             <h1 className="rounds-course-title">{round.courseName}</h1>
             <p className="rounds-muted rounds-meta">
-              {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · {STATUS_LABEL[round.status].toLowerCase()} · {isLiveCaddieRound(round) ? 'Live Caddie' : 'no Live Caddie'} · {parNote}
+              {round.completeHoles === round.holesPlayed ? `${round.completeHoles} holes` : `${round.completeHoles} of ${round.holesPlayed} holes finished`} · {STATUS_LABEL[round.status].toLowerCase()} · {isLiveCaddieRound(round) ? 'Live Caddie' : 'no Live Caddie'} · {parNote} ·{' '}
+              <button
+                aria-pressed={round.autoPutt}
+                className="rounds-meta-toggle"
+                onClick={() => onAutoPutt(!round.autoPutt)}
+                title="Turn on if GSPro putted for you this round; putting then stays out of strokes gained."
+                type="button"
+              >
+                auto putt {round.autoPutt ? 'on' : 'off'}
+              </button>
             </p>
           </div>
           <div className="rounds-score-inline">
-            <div>
+            <div className="rounds-score-main">
               <span className="rounds-label">Score</span>
-              <span className="rounds-score-line">
-                <strong>{round.strokes}</strong>
-                <span className="rounds-muted">{parKnown ? vsPar(round.strokes, round.par ?? 0) : `${round.completeHoles} holes`}</span>
-              </span>
+              <strong>{round.strokes}</strong>
+              <span className="rounds-muted">{parKnown ? `${vsPar(round.strokes, round.par ?? 0)} · par ${round.par}` : `${round.completeHoles} holes`}</span>
             </div>
-            <div>
+            <div className="rounds-score-side">
               <span className="rounds-label">SG vs tour</span>
-              <span className="rounds-score-line">
-                <strong className={tone(round.sg.total)}>{round.sg.total != null ? signed(round.sg.total) : '–'}</strong>
-              </span>
+              <strong className={tone(round.sg.total)}>{round.sg.total != null ? signed(round.sg.total) : '–'}</strong>
             </div>
           </div>
         </div>
@@ -488,7 +496,7 @@ function RoundDetail({
         ) : null}
       </section>
 
-      <section className="rounds-card rounds-catstrip">
+      <section className="rounds-catstrip">
         <div className="rounds-catstrip-row" role="group" aria-label="Strokes gained by category">
           {(Object.keys(CATEGORY_LABEL) as ShotCategory[]).map((category) => {
             const value = cats[category].shots > 0 ? cats[category].sg : null
@@ -519,30 +527,37 @@ function RoundDetail({
             )
           })}
         </div>
-        <div className="rounds-catstrip-foot">
-          <span className="rounds-muted">{focus ? captions[focus] : `${facts}. Pick a category to see it hole by hole.`}</span>
-          <label className="rounds-toggle">
-            <input checked={round.autoPutt} onChange={(event) => onAutoPutt(event.target.checked)} type="checkbox" />
-            Auto putt was on
-          </label>
-        </div>
+        <p className="rounds-catstrip-foot rounds-muted">
+          {focus ? captions[focus] : `${facts}. Pick a category to see it hole by hole.`}
+        </p>
       </section>
 
-      {highlights.length > 0 ? (
-        <section className="rounds-keyshots" aria-label="The round in three shots">
-          {highlights.map((shot) => (
-            <button
-              className="rounds-keyshot"
-              key={`${shot.holeNumber}-${shot.number}`}
-              onClick={() => {
-                setSelectedHole(shot.holeNumber)
-                document.getElementById('rounds-hole-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-              type="button"
-            >
-              <strong className={tone(shot.sg)}>{shot.sg != null ? signed(shot.sg) : '–'}</strong>
-              <span>{keyShotHeadline(shot)}</span>
-            </button>
+      {best.length + worst.length > 0 ? (
+        <section className="rounds-keyshots" aria-label="Key shots">
+          {[
+            { label: 'Hero shots', shots: best },
+            // Voice guide: light ragging is fine, hype isn't. "Carnage" only for a real blow-up.
+            { label: (worst[0]?.sg ?? 0) <= CARNAGE_SG ? 'Carnage' : 'Got away', shots: worst },
+          ].filter((line) => line.shots.length > 0).map((line) => (
+            <div className="rounds-keyline" key={line.label}>
+              <span className={`rounds-keyline-label ${line.label === 'Hero shots' ? 'is-hero' : 'is-carnage'}`}>{line.label}</span>
+              <div className="rounds-keyline-shots">
+                {line.shots.map((shot) => (
+                  <button
+                    className="rounds-keyshot"
+                    key={`${shot.holeNumber}-${shot.number}`}
+                    onClick={() => {
+                      setSelectedHole(shot.holeNumber)
+                      document.getElementById('rounds-hole-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }}
+                    type="button"
+                  >
+                    <strong className={tone(shot.sg)}>{shot.sg != null ? signed(shot.sg) : '–'}</strong>
+                    <span>{keyShotHeadline(shot)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </section>
       ) : null}
