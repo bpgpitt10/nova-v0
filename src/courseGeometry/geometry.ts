@@ -142,22 +142,32 @@ export function pointInPolygon(point: CoursePointYds, polygon: CoursePolygonYds)
     return false
   }
 
+  // Hot path (2,048 samples x aim lines x clubs): no allocation per edge.
+  // On-edge test is the same 1e-7 yd tolerance as pointOnSegment, done with
+  // a cross product first so ordinary edges cost a few multiplications.
+  const px = point[0]
+  const py = point[1]
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[j]
     const b = polygon[i]
+    const ax = a[0]
+    const ay = a[1]
+    const bx = b[0]
+    const by = b[1]
+    const dx = bx - ax
+    const dy = by - ay
+    const cross = dx * (py - ay) - dy * (px - ax)
+    if (Math.abs(cross) <= ON_EDGE_YDS * Math.hypot(dx, dy) + ON_EDGE_YDS * ON_EDGE_YDS
+      && pointOnSegment(point, a, b)) return true
 
-    if (pointOnSegment(point, a, b)) return true
-
-    const intersects =
-      (a[1] > point[1]) !== (b[1] > point[1]) &&
-      point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / (b[1] - a[1]) + a[0]
-
-    if (intersects) inside = !inside
+    if ((ay > py) !== (by > py) && px < (dx * (py - ay)) / dy + ax) inside = !inside
   }
 
   return inside
 }
+
+const ON_EDGE_YDS = 1e-7
 
 export function classifyPoint(
   hole: CourseHoleGeometry,

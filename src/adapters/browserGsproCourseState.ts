@@ -287,11 +287,11 @@ const applyNativeIfReady = async (
       teeContext,
       preShotStart: snapshot.preShotStart?.holeNumber === snapshot.holeNumber ? snapshot.preShotStart : null,
       normalizedTeeSet,
-      rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
+      rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber),
       legacyTeeLocal,
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
-    if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
+    if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
     const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0 }
     if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
