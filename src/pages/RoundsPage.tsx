@@ -21,6 +21,7 @@ import {
   loadRangeCarries,
   loadRoundFlags,
   loadRoundRecords,
+  saveCourseBackdrop,
   saveRoundFlags,
   toCourseInfoMap,
   unresolvedCourseKeys,
@@ -28,6 +29,7 @@ import {
   type StoredCourseInfo,
 } from '../lib/roundHistoryData'
 import { loadHoleMap } from '../lib/roundHoleMap'
+import { BACKDROP_LABEL, BACKDROPS, isBackdrop, pickBackdrop, type Backdrop } from '../lib/roundBackdrop'
 import type { RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
 
@@ -181,6 +183,21 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
   const roundIdParam = pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
 
+  // Backdrop choices made on this visit (saved to the account in the background).
+  const [backdropChoices, setBackdropChoices] = useState<Record<string, Backdrop | null>>({})
+  const selectedCourse = selected?.courseKey && data.status === 'ready'
+    ? { ...(data.courses[selected.courseKey] ?? null), ...(selected.courseKey in backdropChoices ? { backdrop: backdropChoices[selected.courseKey] } : {}) }
+    : null
+  const scene = selected
+    ? pickBackdrop({ override: selectedCourse?.backdrop ?? null, keywords: selectedCourse?.keywords, altitudeFt: selectedCourse?.altitudeFt })
+    : { backdrop: 'links' as const, reason: 'default' as const }
+  const chooseBackdrop = useCallback((courseKey: string, backdrop: Backdrop | null) => {
+    setBackdropChoices((current) => ({ ...current, [courseKey]: backdrop }))
+    void saveCourseBackdrop(courseKey, backdrop).catch((error) => {
+      console.warn('[Rounds] could not save the backdrop choice.', error)
+    })
+  }, [])
+
   const setAutoPutt = useCallback((roundId: number, autoPutt: boolean) => {
     setFlags((current) => {
       const next = { ...current, [roundId]: { ...current[roundId], autoPutt } }
@@ -190,7 +207,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
   }, [])
 
   return (
-    <div className="rounds-page">
+    <div className={`rounds-page is-scene-${scene.backdrop}`}>
       <div className="rounds-shell">
         <BagTopBar
           active="rounds"
@@ -208,6 +225,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
         {data.status === 'ready' && selected ? (
           <RoundDetail
             course={selected.courseKey ? data.courses[selected.courseKey] ?? null : null}
+            onBackdrop={(backdrop) => selected.courseKey && chooseBackdrop(selected.courseKey, backdrop)}
+            scene={scene}
             onAutoPutt={(value) => setAutoPutt(selected.roundId, value)}
             round={selected}
           />
@@ -389,10 +408,14 @@ function RoundDetail({
   round,
   course,
   onAutoPutt,
+  scene,
+  onBackdrop,
 }: {
   round: RoundSummary
   course: StoredCourseInfo | null
   onAutoPutt: (value: boolean) => void
+  scene: ReturnType<typeof pickBackdrop>
+  onBackdrop: (backdrop: Backdrop | null) => void
 }) {
   const scoredHoles = round.holes.filter((hole) => hole.complete)
   const [selectedHole, setSelectedHole] = useState<number | null>(null)
@@ -482,8 +505,8 @@ function RoundDetail({
           <div className="rounds-score-inline">
             <div className="rounds-score-main">
               <span className="rounds-label">Score</span>
-              <strong>{round.strokes}</strong>
-              <span className="rounds-muted">{parKnown ? `${vsPar(round.strokes, round.par ?? 0)} · par ${round.par}` : `${round.completeHoles} holes`}</span>
+              <strong>{round.completeHoles > 0 ? round.strokes : '–'}</strong>
+              <span className="rounds-muted">{round.completeHoles === 0 ? 'not scored' : parKnown ? `${vsPar(round.strokes, round.par ?? 0)} · par ${round.par}` : `${round.completeHoles} holes`}</span>
             </div>
             <div className="rounds-score-side">
               <span className="rounds-label">SG vs tour</span>
@@ -572,7 +595,7 @@ function RoundDetail({
         <div className="rounds-scorecard-wrap">
           <div className="rounds-scorecard">
             {round.holes.map((entry) => {
-              const diff = entry.par != null ? entry.strokes - entry.par : null
+              const diff = entry.par != null && entry.complete ? entry.strokes - entry.par : null
               const mark = diff == null ? '' : diff <= -2 ? 'is-eagle' : diff === -1 ? 'is-birdie' : diff === 1 ? 'is-bogey' : diff >= 2 ? 'is-double' : ''
               const value = holeValue(entry)
               const sgHeight = value == null ? 0 : Math.max(2, Math.min(Math.abs(value), 1.1) / 1.1 * 26)
@@ -687,6 +710,23 @@ function RoundDetail({
       <ClubsVsRange round={round} />
 
       <section className="rounds-small rounds-muted rounds-footnote">
+        {round.courseKey ? (
+          <label className="rounds-backdrop-pick">
+            Backdrop
+            <select
+              onChange={(event) => onBackdrop(isBackdrop(event.target.value) ? event.target.value : null)}
+              value={scene.reason === 'override' ? scene.backdrop : 'auto'}
+            >
+              <option value="auto">
+                Automatic ({BACKDROP_LABEL[pickBackdrop({ keywords: course?.keywords, altitudeFt: course?.altitudeFt }).backdrop].toLowerCase()}
+                {course?.keywords?.length ? ', from the course designer' : ''})
+              </option>
+              {BACKDROPS.map((backdrop) => (
+                <option key={backdrop} value={backdrop}>{BACKDROP_LABEL[backdrop]}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <strong>What this page knows and doesn’t</strong>
         <span>
           Strokes gained uses the PGA Tour baseline (Broadie tables, tour putting). {round.unknownLieShots > 0 ? `${round.unknownLieShots} shot${round.unknownLieShots === 1 ? '' : 's'} (*) started or finished on a GSPro surface we haven’t identified yet; they’re valued as rough. ` : ''}Fringe is valued like the fairway. Penalty strokes are not verified yet.

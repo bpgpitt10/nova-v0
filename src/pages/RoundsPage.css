@@ -1429,3 +1429,47 @@
     width: 100%;
   }
 }
+
+/* ---- course backdrops (3 Nov): the scene follows the course's style ---- */
+
+.rounds-page.is-scene-parkland::before {
+  background-image: url('../assets/Backgrounds/course-parkland.webp');
+}
+
+.rounds-page.is-scene-mountain::before {
+  background-image: url('../assets/Backgrounds/course-mountain.webp');
+}
+
+.rounds-page.is-scene-coastal::before {
+  background-image: url('../assets/Backgrounds/golfscenedashboard.png');
+}
+
+.rounds-page.is-scene-desert::before {
+  background-image: url('../assets/Backgrounds/course-desert.webp');
+}
+
+.rounds-page.is-scene-heathland::before {
+  background-image: url('../assets/Backgrounds/course-heathland.webp');
+}
+
+.rounds-page.is-scene-tropical::before {
+  background-image: url('../assets/Backgrounds/course-tropical.webp');
+}
+
+.rounds-backdrop-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--rounds-secondary);
+}
+
+.rounds-backdrop-pick select {
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--rounds-rule);
+  background: rgba(14, 23, 16, 0.8);
+  color: #ffffff;
+  font: inherit;
+}

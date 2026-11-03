@@ -168,5 +168,16 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(holeMap.loadedCourseIdFor('GreyWolf_gsp', 'Greywolf Golf Course'), null, 'no package to draw from')
 }
 
+// --- Backdrop follows the course designer's tags, then altitude, then override ---
+{
+  const { pickBackdrop } = await load('/src/lib/roundBackdrop.ts')
+  assert.equal(pickBackdrop({ keywords: ['parkland'] }).backdrop, 'parkland', 'FarmLinks is tagged parkland')
+  assert.equal(pickBackdrop({ keywords: ['links', 'mountain'] }).backdrop, 'mountain', 'most distinctive tag wins')
+  assert.equal(pickBackdrop({ keywords: [], altitudeFt: 3700 }).backdrop, 'mountain', 'high altitude without tags')
+  assert.equal(pickBackdrop({ keywords: ['majorvenue'], altitudeFt: 545 }).backdrop, 'links', 'nothing to go on: links')
+  assert.deepEqual(pickBackdrop({ override: 'desert', keywords: ['links'] }), { backdrop: 'desert', reason: 'override' })
+  assert.equal(pickBackdrop({ override: 'nonsense', keywords: ['heathland'] }).backdrop, 'heathland')
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()

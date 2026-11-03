@@ -22,6 +22,7 @@ import {
   type RoundShotRecord,
 } from './roundHistory'
 import { isSessionEligibleForAnalysis, loadSavedSessions } from './sessions'
+import { isBackdrop, type Backdrop } from './roundBackdrop'
 
 /**
  * Where round pages get their data: every captured shot from Supabase (all
@@ -126,6 +127,8 @@ export type StoredCourseInfo = {
   /** GSPro designer style tags (links, parkland, mountain…), from companion courses.8+. */
   keywords?: string[]
   altitudeFt?: number | null
+  /** The player's backdrop choice for this course; null = pick automatically. */
+  backdrop?: Backdrop | null
 }
 
 const readCourseCache = (): Record<string, StoredCourseInfo> => {
@@ -216,6 +219,7 @@ type CourseInfoRow = {
   par_source: string | null
   style_keywords: string[] | null
   altitude_ft: number | null
+  backdrop: string | null
 }
 
 const sourceRank = (source: StoredCourseInfo['parSource']) =>
@@ -233,6 +237,7 @@ const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
     parSource,
     ...(Array.isArray(row.style_keywords) ? { keywords: row.style_keywords.filter((k) => typeof k === 'string') } : {}),
     ...(typeof row.altitude_ft === 'number' ? { altitudeFt: row.altitude_ft } : {}),
+    backdrop: isBackdrop(row.backdrop) ? row.backdrop : null,
   }
 }
 
@@ -244,12 +249,15 @@ const mergeInfo = (a: StoredCourseInfo | undefined, b: StoredCourseInfo | undefi
   const other = winner === a ? b : a
   const keywords = b.keywords?.length ? b.keywords : a.keywords
   const altitudeFt = b.altitudeFt ?? a.altitudeFt
+  // The newer record's choice wins, including an explicit null (back to automatic).
+  const backdrop = b.backdrop !== undefined ? b.backdrop : a.backdrop
   return {
     name: winner.name ?? other.name,
     pars: Object.keys(winner.pars).length > 0 ? winner.pars : other.pars,
     parSource: winner.parSource ?? other.parSource,
     ...(keywords?.length ? { keywords } : {}),
     ...(altitudeFt != null ? { altitudeFt } : {}),
+    ...(backdrop !== undefined ? { backdrop } : {}),
   }
 }
 
@@ -265,7 +273,7 @@ const loadCloudCourseInfo = async (): Promise<{ userId: string; rows: Record<str
   const rows = await awaitQuery<CourseInfoRow[]>(
     client
       .from<CourseInfoRow[]>('live_course_info')
-      .select('course_key,course_name,pars,par_source,style_keywords,altitude_ft')
+      .select('course_key,course_name,pars,par_source,style_keywords,altitude_ft,backdrop')
       .eq('user_id', user.id),
   )
   return { userId: user.id, rows: Object.fromEntries(rows.map((row) => [row.course_key, storedFromRow(row)])) }
@@ -282,6 +290,7 @@ const saveCloudCourseInfo = async (userId: string, entries: Record<string, Store
     // becomes NULL); rows are already merged with what the account had.
     style_keywords: info.keywords?.length ? info.keywords : null,
     altitude_ft: info.altitudeFt ?? null,
+    backdrop: info.backdrop ?? null,
     updated_at: new Date().toISOString(),
   }))
   if (values.length === 0) return
@@ -358,6 +367,25 @@ export const loadCourseInfo = async (
     })
   }
   return cache
+}
+
+/**
+ * Save the player's backdrop for a course (null = automatic) here and to the
+ * account. One row, only this column: name, par and alignment stay as stored.
+ */
+export const saveCourseBackdrop = async (courseKey: string, backdrop: Backdrop | null) => {
+  const cache = readCourseCache()
+  cache[courseKey] = { ...(cache[courseKey] ?? { name: null, pars: {}, parSource: null }), backdrop }
+  writeCourseCache(cache)
+  if (!isSupabaseConfigured()) return
+  const user = await getCurrentLooperUser()
+  if (!user) return
+  const client = await getSupabaseClient()
+  const result = await client.from<unknown>('live_course_info').upsert(
+    { user_id: user.id, course_key: courseKey, backdrop, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,course_key' },
+  )
+  if (result.error) throw new Error(result.error.message)
 }
 
 /** Course keys the page couldn't name: the sim PC with the companion hasn't seen them yet. */
