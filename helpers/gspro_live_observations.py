@@ -20,6 +20,7 @@ import gspro_native_discovery as native
 import gspro_window_capture as capture
 import gspro_native_wind_ocr as wind_ocr
 import gspro_native_lie_ocr as lie_ocr
+import gspro_native_hud_ocr as hud_ocr
 import gspro_companion_minimap_calibration as waypoint_diagnostics
 from waypoint_scale import Point, resolve_minimap_scale
 
@@ -188,7 +189,7 @@ def read_structured_state(discovery):
     }
 
 
-def _image_observation(window, state, *, report=None):
+def _image_observation(window, state, *, report=None, include_waypoints=True):
     report = report if report is not None else capture.probe_gspro_capture(window, keep_pixels=True)
     result = {
         "status": report.get("status", "unavailable"),
@@ -225,6 +226,11 @@ def _image_observation(window, state, *, report=None):
             result["pinPixel"] = {"x": round(pin.x, 2), "y": round(pin.y, 2)}
             result["minimapRoiWindowPixels"] = list(box)
             result["ballToPinPixels"] = round(gap, 2)
+            if not include_waypoints:
+                # Waypoint OCR (~3.4 s) only measures a tee Looper can't place;
+                # the page asks for it only then.
+                result["scale"] = {"status": "unavailable", "reason": "waypoints_not_requested"}
+                return result
             # Reuse the already-proven gray waypoint ruler (par 4/5/doglegs)
             # and cached tee feature registration. These are local, provisional
             # observations independent of Python's limited course-layout scan.
@@ -292,7 +298,7 @@ def _image_observation(window, state, *, report=None):
     return result
 
 
-def collect_observations(*, include_ocr=True):
+def collect_observations(*, include_ocr=True, include_waypoints=True):
     """Public JSON without full file paths, images, local usernames, or raw log."""
     started = time.perf_counter()
     observed = now()
@@ -306,10 +312,11 @@ def collect_observations(*, include_ocr=True):
     frame_report = capture.probe_gspro_capture(window, keep_pixels=True)
     capture_ms = round((time.perf_counter() - capture_started) * 1000, 2)
     minimap_started = time.perf_counter()
-    minimap = _image_observation(window, state, report=frame_report)
+    minimap = _image_observation(window, state, report=frame_report, include_waypoints=include_waypoints)
     minimap_ms = round((time.perf_counter() - minimap_started) * 1000, 2)
     wind_ms = 0.0
     lie_ms = 0.0
+    hud_ms = 0.0
     result = {
         "service": "looper-companion",
         "schemaVersion": "native-observations-v1",
@@ -343,6 +350,14 @@ def collect_observations(*, include_ocr=True):
                 "note": type(error).__name__}
         finally:
             wind_ms = round((time.perf_counter() - wind_started) * 1000, 2)
+        hud_started = time.perf_counter()
+        try:
+            result["ocr"]["hud"] = hud_ocr.read_hud_from_capture(frame_report)
+        except Exception as error:
+            result["ocr"]["hud"] = {"status": "UNAVAILABLE", "observedAt": now(),
+                                    "note": type(error).__name__}
+        finally:
+            hud_ms = round((time.perf_counter() - hud_started) * 1000, 2)
         # Lie now reads the same GSPro HWND frame as wind and minimap.
         lie_started = time.perf_counter()
         try:
@@ -373,6 +388,7 @@ def collect_observations(*, include_ocr=True):
         "zoomRegistration": minimap.get("timingMs", {}).get("zoomRegistration"),
         "windOcr": wind_ms,
         "lieOcr": lie_ms,
+        "hudOcr": hud_ms,
         "total": round((time.perf_counter() - started) * 1000, 2),
     }
     return result

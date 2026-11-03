@@ -11,7 +11,11 @@ import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistanc
 import { matchingTeeCandidates, courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
 import { loadTeeCalibration } from '../courseGeometry/teeCalibrationStore'
 import { loadCourseHoleHeadingDegreesTrue } from '../liveState/courseHeading'
-import { nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntime'
+import {
+  installedCourseCandidates,
+  isNativePositionsEnabled,
+  nativeCourseContextForLive,
+} from '../courseGeometry/nativeCourseRuntime'
 import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
@@ -24,7 +28,7 @@ import {
 import { setLearnedSurfaceFactors } from '../liveCaddie/surfaceResponse'
 import type { CoursePointYds } from '../courseGeometry/types'
 import {
-  isBrowserGsproAccessSupported,
+  isGsproAccessAvailable,
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
   requestGsproDirectoryPermission,
@@ -241,7 +245,7 @@ const canReadCurrentRound = async (handle: BrowserDirectoryHandle) => {
 
 export const prepareBrowserGsproCourseStateRuntime = async () => {
   preparedStateHandle = null
-  if (!isBrowserGsproAccessSupported()) return false
+  if (!(await isGsproAccessAvailable())) return false
 
   const primaryHandle = await loadGsproDirectoryHandle().catch(() => null)
   if (primaryHandle) {
@@ -714,6 +718,13 @@ const buildSnapshot = async (
     warnings.push(
       `Selected ${selectedCourse.name}, but GSPro reports ${courseKey}. Keeping the user-selected course until confirmed.`,
     )
+  } else if (courseKey && !observedCourseId && isNativePositionsEnabled()
+    && installedCourseCandidates([selectedCourse.name, ...selectedCourse.gsproAliases],
+      [{ courseKey, courseName: courseKey }]).length > 0) {
+    // Native positions check the GKD against this course's registration, so
+    // a name match ("valhalla_v3_gsp" for Valhalla Golf Club) is enough to
+    // place shots. Without this only Shot 1 (tee) was placed.
+    coordinateCourseId = selectedCourseId
   } else if (courseKey && !observedCourseId) {
     warnings.push(
       `GSPro reports ${courseKey}, which is not a reviewed Looper alias yet. Keeping the user-selected ${selectedCourse.name}.`,

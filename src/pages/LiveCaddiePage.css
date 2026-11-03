@@ -396,10 +396,57 @@
   letter-spacing: 0.04em;
 }
 
-.live-arm-recommendation:hover,
-.live-arm-recommendation.armed {
+.live-arm-recommendation {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.live-arm-recommendation .live-arm-label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hover only tints: full yellow means armed, so it must not be mistaken for it. */
+.live-arm-recommendation:hover:not(:disabled) {
+  background: rgba(234, 179, 8, 0.2);
+}
+
+.live-arm-recommendation.armed,
+.live-arm-recommendation.aiming {
   background: #eab308;
   color: #12180f;
+}
+
+/* The countdown: yellow sweeps left to right; let go of the mouse. */
+.live-arm-recommendation.filling::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #eab308;
+  transform-origin: left center;
+  animation: live-arm-fill var(--arm-fill-ms, 600ms) linear forwards;
+}
+
+.live-arm-recommendation.filling {
+  color: #12180f;
+}
+
+@keyframes live-arm-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.live-arm-recommendation.aim-changed {
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.22);
+}
+
+.live-arm-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #d9c27a;
 }
 
 .live-arm-recommendation:disabled {
@@ -771,6 +818,12 @@
   stroke-width: 0.25;
 }
 
+.live-carry-marker {
+  fill: rgba(11, 19, 13, 0.35);
+  stroke: #ffffff;
+  stroke-width: 0.32;
+}
+
 .live-mean-marker {
   fill: #76d39b;
   stroke: #0b130d;
@@ -881,6 +934,7 @@
 .live-map-legend i.ball { background: #ffffff; }
 .live-map-legend i.aim { background: #eab308; }
 .live-map-legend i.mean { background: #76d39b; }
+.live-map-legend i.carry { background: transparent; box-shadow: inset 0 0 0 2px #ffffff; }
 .live-map-legend i.pin { background: #ef6461; }
 .live-map-legend i.practice { background: #cfd8cd; }
 .live-map-legend i.core {
@@ -1159,5 +1213,27 @@
 }
 
 .live-diagnostics-toggle {
-  opacity: 0.7;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: #b8c7bb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.live-diagnostics-toggle:hover,
+.live-diagnostics-toggle[aria-pressed='true'] {
+  color: #ffffff;
+  border-color: rgba(134, 239, 172, 0.5);
+}
+
+/* A club being looked at (not armed): white outline; yellow stays for REC/armed. */
+.live-club-strip button.previewing {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  color: #ffffff !important;
 }

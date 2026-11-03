@@ -60,15 +60,22 @@ export const terrainSamplerFromHoles = (
   return null
 }
 
-type Params = Readonly<{ x0: number; z0: number }>
+/** Scene placement: reference point in world metres, plus the scene's turn
+ * (degrees, counter-clockwise from GSPro +x/+z onto east/north) and scale. */
+type Params = Readonly<{ x0: number; z0: number; rotationDeg: number; scale: number }>
 
 const makeProjector = (refLat: number, refLon: number) => {
   const { meridian, primeVertical } = radii(refLat)
   const cosLat = Math.cos(refLat * DEG)
-  return (p: Params, x: number, z: number): readonly [number, number] => [
-    refLat + ((z - p.z0) / meridian) / DEG,
-    refLon + ((x - p.x0) / (primeVertical * cosLat)) / DEG,
-  ]
+  return (p: Params, x: number, z: number): readonly [number, number] => {
+    const c = Math.cos(p.rotationDeg * DEG) * p.scale
+    const s = Math.sin(p.rotationDeg * DEG) * p.scale
+    const dx = x - p.x0
+    const dz = z - p.z0
+    const east = c * dx - s * dz
+    const north = s * dx + c * dz
+    return [refLat + (north / meridian) / DEG, refLon + (east / (primeVertical * cosLat)) / DEG]
+  }
 }
 
 const median = (values: number[]) => {
@@ -109,18 +116,20 @@ const pseudoHuber = (r: number[], delta = 1) => {
   return n ? sum / n : Number.POSITIVE_INFINITY
 }
 
-/** Fit (x0, z0, dy). Returns null if too few points land on terrain. */
+/** Fit (x0, z0, dy), and with `turn` also the scene's rotation and scale.
+ * Returns null if too few points land on terrain. */
 const fitParams = (
   project: ReturnType<typeof makeProjector>,
   sampler: TerrainSampler,
   points: readonly NativeXYZ[],
   start: Params,
   searchM = 15,
+  turn = false,
 ): { p: Params; dy: number } | null => {
   let best: { cost: number; p: Params } | null = null
   for (let dx = -searchM; dx <= searchM + 1e-9; dx += 0.5) {
     for (let dz = -searchM; dz <= searchM + 1e-9; dz += 0.5) {
-      const p = { x0: start.x0 + dx, z0: start.z0 + dz }
+      const p = { ...start, x0: start.x0 + dx, z0: start.z0 + dz }
       const res = residualsFor(project, sampler, points, p)
       if (res.valid < 0.8 * points.length) continue
       const cost = pseudoHuber(res.r)
@@ -128,32 +137,42 @@ const fitParams = (
     }
   }
   if (!best) return null
-  // Robust Gauss-Newton on (x0, z0, dy) with numeric derivatives.
+  // Robust Gauss-Newton with numeric derivatives on (x0, z0, dy), then (for a
+  // turned scene) on (x0, z0, rotation, scale, dy): the greens only give the
+  // turn to ~0.1-0.2°, which is ~2-3 m at the far end of a course.
   let p = best.p
   let dy = residualsFor(project, sampler, points, p).dy
-  const h = 0.05
-  for (let iter = 0; iter < 25; iter += 1) {
-    const base = residualsFor(project, sampler, points, p, dy).r
-    const rx = residualsFor(project, sampler, points, { x0: p.x0 + h, z0: p.z0 }, dy).r
-    const rz = residualsFor(project, sampler, points, { x0: p.x0, z0: p.z0 + h }, dy).r
-    // Normal equations J^T W J d = -J^T W r, J columns: d/dx0, d/dz0, d/ddy (= -1).
-    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
-    const b = [0, 0, 0]
-    for (let i = 0; i < base.length; i += 1) {
-      const r = base[i]
-      if (!Number.isFinite(r) || !Number.isFinite(rx[i]) || !Number.isFinite(rz[i])) continue
-      const j = [(rx[i] - r) / h, (rz[i] - r) / h, -1]
-      const w = 1 / Math.sqrt(1 + (r / 0.5) ** 2) // soft-L1 weight, f_scale 0.5 m
-      for (let a = 0; a < 3; a += 1) {
-        b[a] -= w * j[a] * r
-        for (let c = 0; c < 3; c += 1) A[a][c] += w * j[a] * j[c]
+  const stages: ReadonlyArray<ReadonlyArray<keyof Params>> = turn
+    ? [['x0', 'z0'], ['x0', 'z0', 'rotationDeg', 'scale']]
+    : [['x0', 'z0']]
+  const steps: Readonly<Record<keyof Params, number>> = { x0: 0.05, z0: 0.05, rotationDeg: 0.002, scale: 2e-5 }
+  const done: Readonly<Record<keyof Params, number>> = { x0: 1e-4, z0: 1e-4, rotationDeg: 1e-6, scale: 1e-8 }
+  for (const keys of stages) {
+    for (let iter = 0; iter < 25; iter += 1) {
+      const base = residualsFor(project, sampler, points, p, dy).r
+      const nudged = keys.map((k) => residualsFor(project, sampler, points, { ...p, [k]: p[k] + steps[k] }, dy).r)
+      // Normal equations J^T W J d = -J^T W r; last column d/ddy = -1.
+      const n = keys.length + 1
+      const A = Array.from({ length: n }, () => new Array<number>(n).fill(0))
+      const b = new Array<number>(n).fill(0)
+      for (let i = 0; i < base.length; i += 1) {
+        const r = base[i]
+        if (!Number.isFinite(r) || nudged.some((rk) => !Number.isFinite(rk[i]))) continue
+        const j = [...keys.map((k, c) => (nudged[c][i] - r) / steps[k]), -1]
+        const w = 1 / Math.sqrt(1 + (r / 0.5) ** 2) // soft-L1 weight, f_scale 0.5 m
+        for (let a = 0; a < n; a += 1) {
+          b[a] -= w * j[a] * r
+          for (let c = 0; c < n; c += 1) A[a][c] += w * j[a] * j[c]
+        }
       }
+      const step = solveLinear(A, b)
+      if (!step) break
+      const next: { -readonly [K in keyof Params]: number } = { ...p }
+      keys.forEach((k, c) => { next[k] = p[k] + step[c] })
+      p = next
+      dy += step[n - 1]
+      if (keys.every((k, c) => Math.abs(step[c]) < done[k]) && Math.abs(step[n - 1]) < 1e-4) break
     }
-    const step = solve3(A, b)
-    if (!step) break
-    p = { x0: p.x0 + step[0], z0: p.z0 + step[1] }
-    dy += step[2]
-    if (Math.hypot(step[0], step[1]) < 1e-4 && Math.abs(step[2]) < 1e-4) break
   }
   return { p, dy }
 }
@@ -170,8 +189,8 @@ const horizontalInformation = (
 ) => {
   const h = 0.25
   const base = residualsFor(project, sampler, points, p, dy).r
-  const rx = residualsFor(project, sampler, points, { x0: p.x0 + h, z0: p.z0 }, dy).r
-  const rz = residualsFor(project, sampler, points, { x0: p.x0, z0: p.z0 + h }, dy).r
+  const rx = residualsFor(project, sampler, points, { ...p, x0: p.x0 + h }, dy).r
+  const rz = residualsFor(project, sampler, points, { ...p, z0: p.z0 + h }, dy).r
   let a = 0, b = 0, c = 0, n = 0
   for (let i = 0; i < base.length; i += 1) {
     if (![base[i], rx[i], rz[i]].every(Number.isFinite)) continue
@@ -187,20 +206,21 @@ const horizontalInformation = (
 /** Required slope signal: about 1% rms grade in the weakest direction. */
 const MIN_HORIZONTAL_INFORMATION = 1e-4
 
-const solve3 = (A: number[][], b: number[]): number[] | null => {
+const solveLinear = (A: number[][], b: number[]): number[] | null => {
+  const n = b.length
   const m = A.map((row, i) => [...row, b[i]])
-  for (let c = 0; c < 3; c += 1) {
+  for (let c = 0; c < n; c += 1) {
     let pivot = c
-    for (let r = c + 1; r < 3; r += 1) if (Math.abs(m[r][c]) > Math.abs(m[pivot][c])) pivot = r
+    for (let r = c + 1; r < n; r += 1) if (Math.abs(m[r][c]) > Math.abs(m[pivot][c])) pivot = r
     if (Math.abs(m[pivot][c]) < 1e-12) return null
     ;[m[c], m[pivot]] = [m[pivot], m[c]]
-    for (let r = 0; r < 3; r += 1) {
+    for (let r = 0; r < n; r += 1) {
       if (r === c) continue
       const f = m[r][c] / m[c][c]
-      for (let k = c; k < 4; k += 1) m[r][k] -= f * m[c][k]
+      for (let k = c; k <= n; k += 1) m[r][k] -= f * m[c][k]
     }
   }
-  return [m[0][3] / m[0][0], m[1][3] / m[1][1], m[2][3] / m[2][2]]
+  return m.map((row, i) => row[n] / row[i])
 }
 
 export type NativeRegistrationFitInput = Readonly<{
@@ -214,6 +234,9 @@ export type NativeRegistrationFitInput = Readonly<{
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>
   holes: Readonly<Record<string, NativeHoleFrame>>
   sampler: TerrainSampler
+  /** Scene rotation and scale from the green-to-green fit (default 0° / 1). */
+  rotationDeg?: number
+  scale?: number
 }>
 
 export type NativeRegistrationFitResult = Readonly<{
@@ -231,12 +254,15 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
   if (input.greens.length < 3 || input.points.length < 20) return fail()
   const refLat = input.greens.reduce((s, g) => s + g.latLon[0], 0) / input.greens.length
   const refLon = input.greens.reduce((s, g) => s + g.latLon[1], 0) / input.greens.length
+  const turn = input.rotationDeg != null || input.scale != null
   const project = makeProjector(refLat, refLon)
-  const start = {
+  const start: Params = {
     x0: input.greens.reduce((s, g) => s + g.world.x, 0) / input.greens.length,
     z0: input.greens.reduce((s, g) => s + g.world.z, 0) / input.greens.length,
+    rotationDeg: input.rotationDeg ?? 0,
+    scale: input.scale ?? 1,
   }
-  const full = fitParams(project, input.sampler, input.points, start)
+  const full = fitParams(project, input.sampler, input.points, start, 15, turn)
   if (!full) return fail()
   const res = residualsFor(project, input.sampler, input.points, full.p, full.dy)
   const medianAbsM = median(res.r.filter(Number.isFinite).map(Math.abs))
@@ -251,8 +277,11 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
   if (horizontalInformation(project, input.sampler, input.points, full.p, full.dy) < MIN_HORIZONTAL_INFORMATION) {
     return fail(medianAbsM, halvesAgreeM)
   }
+  // Pins and green centres sit on fairly flat greens, so half a course pins
+  // its own position less firmly than the whole: a very tight height fit
+  // (Royal New Kent: 7 cm median) with halves ~2 m apart is still grade B.
   const grade = medianAbsM <= 0.15 && halvesAgreeM <= 0.5 ? 'A'
-    : medianAbsM <= 0.35 && halvesAgreeM <= 1.5 ? 'B' : 'C'
+    : (medianAbsM <= 0.35 && halvesAgreeM <= 1.5) || (medianAbsM <= 0.15 && halvesAgreeM <= 2.5) ? 'B' : 'C'
   if (grade === 'C') return fail(medianAbsM, halvesAgreeM)
   return {
     grade,
@@ -267,6 +296,7 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
       sceneFingerprint: input.sceneFingerprint,
       grade,
       reference: { latLon: [refLat, refLon], worldXZ: [full.p.x0, full.p.z0] },
+      ...(turn ? { rotationDeg: full.p.rotationDeg, scale: full.p.scale } : {}),
       worldYToElevationOffsetM: full.dy,
       holes: input.holes,
     },

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "kiawah-island-ocean",
+  "request": {
+    "slug": "kiawah-island-ocean",
+    "name": "Kiawah Island Golf Resort - The Ocean Course",
+    "location": "Kiawah Island, South Carolina",
+    "lat": 32.6116466,
+    "lon": -80.0287931,
+    "nameRegex": "Kiawah.*Island",
+    "osmId": 17647608,
+    "gsproAliases": [
+      "kiawah_b_01_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 248.7,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 34.2
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/kiawah-island-ocean-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 39.1
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 43.3
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 44.0
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 60.3
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 3.7
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 22.2
+    }
+  ],
+  "finishedAt": "2026-11-02T01:53:14Z",
+  "runId": "41374394100",
+  "osmCourse": {
+    "type": "relation",
+    "id": 17647608,
+    "name": "Kiawah Island Golf Resort - The Ocean Course",
+    "areaHa": 122.2
+  },
+  "lidar": {
+    "name": "USGS_LPC_SC_Charleston_2016_LAS_2019",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_SC_Charleston_2016_LAS_2019/ept.json",
+    "count": 26124486247,
+    "year": 2019
+  },
+  "crs": "EPSG:26917",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_SC_Charleston_2016_LAS_2019/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 1320,
+    "downloadedMB": 332.3,
+    "pointsKeptInBbox": 49787327,
+    "pointsPerSquareMetre": 5.93,
+    "firstReturnsPerSquareMetre": 4.31,
+    "classificationHistogram": {
+      "1": 29877210,
+      "2": 18599517,
+      "9": 1302516,
+      "10": 4851,
+      "17": 3730
+    },
+    "chm": {
+      "width": 6073,
+      "height": 1383,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 7474580,
+      "emptyCells": 924379,
+      "cellsOver3m": 1786413,
+      "cellsOver10m": 1068382,
+      "p50": 0.09999999999999998,
+      "p95": 15.057999999999998,
+      "max": 67.249
+    },
+    "seconds": 60.1
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26917",
+    "treeCount": 22378,
+    "heightM": {
+      "p10": 4.4,
+      "p50": 11.6,
+      "p90": 19.4,
+      "max": 67.2
+    },
+    "crownRadiusM": {
+      "p10": 2.0,
+      "p50": 4.3,
+      "p90": 7.8
+    },
+    "woodlandPolygons": 1233,
+    "woodlandAreaHa": 156.75,
+    "maskedCellsBuildingsAndPower": 159348,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 3.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 1460506,
+    "course-v1.json": 345401,
+    "green-detail-v1.json": 100425
+  }
+}

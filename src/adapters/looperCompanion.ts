@@ -39,8 +39,12 @@ export type LooperCompanionStatus = {
     courseLayouts?: boolean
     aimPreview?: boolean
     courseLibrary?: boolean
+    gsproFiles?: boolean
+    roundRecorder?: boolean
     nativeCapture: boolean
     autoAim: boolean
+    /** One minimap click per explicit Arm (companion aim-click.1+). */
+    aimClick?: boolean
   }
 }
 
@@ -68,7 +72,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations' | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
+  path: 'status' | 'capture-check' | 'observations' | `observations?${string}` | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -207,6 +211,60 @@ export const readLooperCompanionAimPreview = async (
   return data
 }
 
+export type LooperCompanionAimClick = {
+  service: 'looper-companion'
+  version: string
+  schemaVersion: 'looper-companion-aim-click-v1'
+  status: 'clicked' | 'blocked'
+  reason?: string
+  detail?: string
+  verified?: 'match' | 'mismatch' | 'marker-not-seen' | 'not-checked'
+  markerOffsetPx?: number
+}
+
+/**
+ * Auto Aim: ask the companion to click Looper's aim into GSPro's minimap.
+ * The ONLY input the companion performs, and only for an explicit Arm. POST
+ * with a JSON body and an intent header, so the browser preflights it and no
+ * other site can trigger it.
+ */
+export const sendLooperCompanionAimClick = async (
+  points: Readonly<{
+    ball: Readonly<{ x: number; z: number }>
+    pin: Readonly<{ x: number; z: number }>
+    target: Readonly<{ x: number; z: number }>
+  }>,
+  shotKey: string,
+  timeoutMs = 15000,
+): Promise<LooperCompanionAimClick> => {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(new Request(`${LOCAL_BASE}/aim-click`, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'X-Looper-Intent': 'aim-click' },
+      body: JSON.stringify({
+        ballX: points.ball.x, ballZ: points.ball.z,
+        pinX: points.pin.x, pinZ: points.pin.z,
+        targetX: points.target.x, targetZ: points.target.z,
+        shotKey,
+      }),
+      targetAddressSpace: 'loopback',
+    } as RequestInit & { targetAddressSpace: 'loopback' }))
+    if (!response.ok) throw new Error(`Looper Companion responded with HTTP ${response.status}.`)
+    const data = await response.json() as LooperCompanionAimClick
+    if (data?.service !== 'looper-companion' || data.schemaVersion !== 'looper-companion-aim-click-v1') {
+      throw new Error('Looper Companion does not support aiming yet (update the companion).')
+    }
+    return data
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
 export type LooperCompanionInstalledCourse = {
   courseKey: string
   courseName: string
@@ -311,12 +369,25 @@ export type LooperCompanionLiveObservations = {
   ocr?: {
     wind?: import('./gsproWindObservation').GsproWindOcrPayload
     lie?: import('./gsproLieObservation').GsproLieOcrPayload
+    /** GSPro player box: 'Shot 1  492.6 YDS' (companion aim-click.5+). */
+    hud?: {
+      status: 'READY' | 'UNKNOWN' | 'UNAVAILABLE'
+      shotNumber: number | null
+      distanceToPinYds: number | null
+      rawText?: string | null
+      note?: string | null
+    }
   }
   capabilities?: { autoAim: false }
 }
 
-export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
-  const data = await getCompanionReadOnly<LooperCompanionLiveObservations>('observations', timeoutMs)
+export const readLooperCompanionObservations = async (
+  timeoutMs = 45000,
+  /** False skips the minimap waypoint OCR (~3.4 s); only a tee Looper can't place needs it. */
+  includeWaypoints = true,
+) => {
+  const data = await getCompanionReadOnly<LooperCompanionLiveObservations>(
+    includeWaypoints ? 'observations' : 'observations?waypoints=0', timeoutMs)
   if (data.schemaVersion !== 'native-observations-v1' ||
       data.stateAuthority !== 'diagnostic-only' ||
       data.capabilities?.autoAim !== false ||
@@ -327,22 +398,33 @@ export const readLooperCompanionObservations = async (timeoutMs = 45000) => {
   return data
 }
 
-export type LooperNativeObservationConnection = { disconnect: () => void }
+export type LooperNativeObservationConnection = {
+  disconnect: () => void
+  /** Read GSPro now (new shot) instead of waiting for the 16 s cycle. */
+  refreshNow: () => void
+}
 
 export const connectToLooperNativeObservations = ({
-  onObservation, onError,
+  onObservation, onError, includeWaypoints,
 }: {
   onObservation?: (value: LooperCompanionLiveObservations) => void
   onError?: (error: unknown) => void
+  includeWaypoints?: () => boolean
 }): LooperNativeObservationConnection => {
   let stopped = false
   let pending = false
+  let again = false
   let timer: number | null = null
   const refresh = async () => {
-    if (stopped || pending || document.hidden) return
+    if (stopped || document.hidden) return
+    if (pending) {
+      // A read already in flight may have captured the previous shot's screen.
+      again = true
+      return
+    }
     pending = true
     try {
-      const result = await readLooperCompanionObservations()
+      const result = await readLooperCompanionObservations(45000, includeWaypoints?.() ?? true)
       if (stopped) return
       onObservation?.(result)
       // Do not consume unproven ball or pin pixel readings as world/OSM positions.
@@ -358,6 +440,10 @@ export const connectToLooperNativeObservations = ({
       if (!stopped) onError?.(error)
     } finally {
       pending = false
+      if (again && !stopped) {
+        again = false
+        void refresh()
+      }
     }
   }
   void refresh()
@@ -367,5 +453,6 @@ export const connectToLooperNativeObservations = ({
       stopped = true
       if (timer != null) window.clearInterval(timer)
     },
+    refreshNow: () => { void refresh() },
   }
 }

@@ -14,6 +14,23 @@ export type WindProjectionResult =
 const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
 
 /**
+ * GSPro's wind compass is the scene's own (+z = "N"). Most scenes are built
+ * true north, but some are turned (Valhalla 180°, Royal New Kent about -12°);
+ * with the scene's rotation from native registration, turn a compass reading
+ * into a true bearing. A scene bearing b points true b - rotation.
+ */
+export const windInTrueCompass = (
+  wind: WindObservation | null,
+  sceneRotationDeg: number | null | undefined,
+): WindObservation | null => {
+  if (!wind || wind.referenceFrame !== 'compass' || wind.directionDegrees == null
+    || !Number.isFinite(wind.directionDegrees) || !sceneRotationDeg || !Number.isFinite(sceneRotationDeg)) {
+    return wind
+  }
+  return { ...wind, directionDegrees: normalizeDegrees(wind.directionDegrees - sceneRotationDeg) }
+}
+
+/**
  * Project a validated wind observation into shot-relative components.
  *
  * Direction contract:

@@ -10,7 +10,11 @@ on:
       - companion-course-layouts-v1
       - web-native-aim-preview-v1
       - web-course-load-v1
+      - web-companion-gspro-files-v1
+      - web-native-rotated-courses-v1
     paths:
+      - "helpers/gspro_file_bridge.py"
+      - "tests/test_companion_gspro_files.py"
       - "helpers/gspro_native_aim.py"
       - "tests/test_gspro_companion_aim_preview.py"
       - "helpers/looper_companion.py"
@@ -20,6 +24,12 @@ on:
       - "helpers/gspro_window_capture.py"
       - "helpers/gspro_live_observations.py"
       - "helpers/gspro_native_wind_ocr.py"
+      - "tests/fixtures/gspro_wind_8mph_se_band.png"
+      - "tests/fixtures/gspro_lie_2down_09right_footer.png"
+      - "tests/fixtures/gspro_hud_shot1_4926.png"
+      - "tests/fixtures/gspro_hud_shot3_2830.png"
+      - "helpers/gspro_native_hud_ocr.py"
+      - "tests/test_gspro_companion_hud.py"
       - "helpers/install_looper_companion.ps1"
       - "helpers/gspro_native_lie_ocr.py"
       - "helpers/gspro_companion_minimap_calibration.py"
@@ -28,6 +38,8 @@ on:
       - "helpers/minimap_registration.py"
       - "tests/test_gspro_companion_waypoint.py"
       - "helpers/gspro_direct_click.py"
+      - "helpers/gspro_aim_click.py"
+      - "tests/test_gspro_companion_aim_click.py"
       - "helpers/gspro_minimap_markers.py"
       - "helpers/gspro_minimap_pipeline.py"
       - "helpers/auto_aim_transform.py"
@@ -102,6 +114,9 @@ jobs:
       - name: Test Stage C read-only registration, safety, discovery and handshake
         shell: pwsh
         run: |
+          # The pinned portable OCR lets the real FarmLinks wind-box fixture run.
+          $env:PATH = "$((Resolve-Path portable-ocr).Path);$env:PATH"
+          $env:TESSDATA_PREFIX = "$((Resolve-Path portable-ocr/tessdata).Path)"
           python -m unittest discover -s tests -p "test_*companion*.py" -v
 
       - name: Build Looper Companion
@@ -137,7 +152,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "autoaim-stage-c-preflight.1") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.6") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
@@ -168,6 +183,15 @@ jobs:
             if ($preview.schemaVersion -ne "looper-companion-aim-preview-v1" -or $preview.input -ne "none" -or $preview.status -ne "gspro-not-connected") {
               throw "Aim preview must answer gspro-not-connected without GSPro: $($preview | ConvertTo-Json -Compress)"
             }
+            if ($companion.capabilities.aimClick -ne $true -or $companion.capabilities.autoAim -ne $false) {
+              throw "Aim click capability missing (or background auto aim unexpectedly on)."
+            }
+            $clickHeaders = @{ Origin = "https://thelooper.golf"; "X-Looper-Intent" = "aim-click" }
+            $clickBody = '{"ballX":0,"ballZ":0,"pinX":0,"pinZ":100,"targetX":0,"targetZ":50,"shotKey":"smoke"}'
+            $click = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8787/companion/v1/aim-click" -Headers $clickHeaders -ContentType "application/json" -Body $clickBody -TimeoutSec 10
+            if ($click.schemaVersion -ne "looper-companion-aim-click-v1" -or $click.status -ne "blocked" -or $click.reason -ne "gspro-not-connected") {
+              throw "Aim click must refuse without GSPro: $($click | ConvertTo-Json -Compress)"
+            }
             if ($companion.capabilities.courseLibrary -ne $true) {
               throw "Course library capability missing."
             }
@@ -177,6 +201,23 @@ jobs:
             }
             if ($companion.capabilities.autoAim -ne $false) {
               throw "Stage B must never enable Auto Aim."
+            }
+            if ($companion.capabilities.gsproFiles -ne $true -or $companion.capabilities.roundRecorder -ne $true) {
+              throw "GSPro file bridge or round recorder missing from packaged build."
+            }
+            $fileStat = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/gspro-file?name=currentRound.dat&stat=1" -Headers $headers -TimeoutSec 10
+            if ($fileStat.status -ne "gspro-folder-not-found" -and $fileStat.status -ne "not-found") {
+              throw "GSPro file stat must fail closed without GSPro: $($fileStat | ConvertTo-Json -Compress)"
+            }
+            try {
+              Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/gspro-file?name=..%5Cnotes.txt" -Headers $headers -TimeoutSec 5 | Out-Null
+              throw "Non-allowlisted file name was served."
+            } catch {
+              if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw }
+            }
+            $records = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/round-records?after=0" -Headers $headers -TimeoutSec 10
+            if ($records.schemaVersion -ne "looper-companion-round-records-v1" -or $records.status -ne "ok") {
+              throw "Round records endpoint missing: $($records | ConvertTo-Json -Compress)"
             }
 
             # Tesseract must ship next to packaged executable, and be capable
@@ -283,6 +324,34 @@ jobs:
             --target "$env:GITHUB_SHA" `
             --title "Looper Companion: course library + aim preview ($shortSha)" `
             --notes "Course layouts, read-only Auto Aim preview, and read-only /companion/v1/course-library (names, locations and keys of installed GSPro courses for one-click loading). No mouse or keyboard input." `
+            --prerelease
+
+      - name: Publish courses companion installer
+        if: github.ref == 'refs/heads/web-native-rotated-courses-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-courses-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: finds your courses with GSPro closed ($shortSha)" `
+            --notes "Remembers where GSPro is installed, so Round Setup can list courses and tees and match them to the map while GSPro is closed. Otherwise the same as the GSPro-files companion (aim click, wind/lie/HUD reads, round recorder)." `
+            --prerelease
+
+      - name: Publish GSPro-files companion installer
+        if: github.ref == 'refs/heads/web-companion-gspro-files-v1'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          gh release create "looper-companion-gspro-files-$shortSha" looper-windows-companion.zip `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "Looper Companion: GSPro files + round recorder ($shortSha)" `
+            --notes "Serves GSPro's currentRound.dat, output_log.txt and GSPro.db to the Looper web app (read-only, allowlisted, no paths), so no GSPro folder picker is needed. Keeps every round's raw records under %LOCALAPPDATA%\Looper\Companion\rounds. No mouse or keyboard input." `
             --prerelease
 
       - name: Publish rolling companion prerelease

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  isBrowserGsproAccessSupported,
+  isGsproAccessAvailable,
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
 } from '../adapters/browserGsproAccess'
+import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import {
   captureBrowserGsproSessionBaseline,
   GSPRO_SESSION_BASELINE_PARAM,
@@ -90,6 +91,7 @@ export default function LooperLandingPage({
     STOCK_SHOT_VARIANT_ID,
   )
   const [gsproState, setGsproState] = useState<GsproConnectionState>('checking')
+  const [gsproViaCompanion, setGsproViaCompanion] = useState(false)
   const [rangeOpen, setRangeOpen] = useState(
     () => new URLSearchParams(window.location.search).get('openRange') === '1',
   )
@@ -114,7 +116,7 @@ export default function LooperLandingPage({
   }, [selectedShotVariantId, shotVariants])
 
   const refreshGsproStatus = useCallback(async () => {
-    if (!isBrowserGsproAccessSupported()) {
+    if (!(await isGsproAccessAvailable())) {
       setGsproState('unsupported')
       setShowWelcome(false)
       return
@@ -124,6 +126,7 @@ export default function LooperLandingPage({
 
     try {
       const handle = await loadGsproDirectoryHandle()
+      setGsproViaCompanion(isCompanionGsproDirectoryHandle(handle))
       if (!handle) {
         setGsproState('not-connected')
         setShowWelcome(!readOnboardingComplete())
@@ -253,7 +256,7 @@ export default function LooperLandingPage({
           type="button"
         >
           <span className="looper-landing-status-dot" aria-hidden="true" />
-          GSPro connected
+          {gsproViaCompanion ? 'GSPro connected · Companion' : 'GSPro connected'}
         </button>
       )
     }
@@ -261,7 +264,7 @@ export default function LooperLandingPage({
     if (gsproState === 'unsupported') {
       return (
         <div className="looper-landing-gspro-status is-neutral">
-          GSPro direct connection is available on your simulator PC in Chrome or Edge.
+          Start the Looper Companion on your simulator PC to connect GSPro.
         </div>
       )
     }
@@ -279,8 +282,8 @@ export default function LooperLandingPage({
           <strong>{heading}</strong>
           <span>
             {gsproState === 'not-connected'
-              ? ' Connect your GSPro folder to use Practice Range.'
-              : ' Reconnect the saved GSPro folder to use Practice Range.'}
+              ? ' Start the Looper Companion (or connect your GSPro folder) to use Practice Range.'
+              : ' Start the Looper Companion, or reconnect the saved GSPro folder, to use Practice Range.'}
           </span>
         </div>
         <button onClick={() => connectGspro(false)} type="button">
@@ -428,13 +431,14 @@ export default function LooperLandingPage({
           >
             <img alt="The Looper" className="looper-welcome-logo" src={looperLogoWhite} />
             <span className="looper-welcome-kicker">Welcome to The Looper</span>
-            <h1 id="looper-welcome-title">Connect GSPro once. Then just play.</h1>
+            <h1 id="looper-welcome-title">Start the companion. Then just play.</h1>
             <p>
-              Looper reads your GSPro shot data directly from this simulator PC. Choose the GSPro
-              folder once and Looper can use it for Practice Range and future simulator features.
+              Looper reads your GSPro shot data through the Looper Companion on this simulator PC,
+              so there is no folder to choose. Start the companion and this page connects on its
+              own. No companion yet? You can connect the GSPro folder instead.
             </p>
             <button className="looper-welcome-primary" onClick={() => connectGspro(true)} type="button">
-              Connect GSPro
+              Connect GSPro folder
             </button>
             <button
               className="looper-welcome-secondary"

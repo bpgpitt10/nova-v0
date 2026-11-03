@@ -22,15 +22,16 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-from pyproj import Geod
-from rasterio.warp import transform as transform_crs
 
 METERS_TO_YARDS = 1.0936133
 NODATA_ENCODED = 65535
 DEFAULT_SPACING_YDS = 1.0
 DEFAULT_MARGIN_YDS = 12.0
-GEOD = Geod(ellps="WGS84")
+
+
+def _geod():
+    from pyproj import Geod  # only for the --dem route
+    return Geod(ellps="WGS84")
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -82,7 +83,7 @@ def points_inside_polygon(xx: np.ndarray, yy: np.ndarray, polygon: np.ndarray) -
     return inside
 
 
-def hole_basis_in_dem_crs(ds: rasterio.DatasetReader, hole: dict[str, Any]):
+def hole_basis_in_dem_crs(ds, hole: dict[str, Any]):
     frame = hole.get("coordinateFrame") or {}
     anchor_ll = frame.get("anchorLatLon") or frame.get("selectedTeeLatLon")
     heading = frame.get("headingDegreesTrue")
@@ -97,7 +98,8 @@ def hole_basis_in_dem_crs(ds: rasterio.DatasetReader, hole: dict[str, Any]):
 
     anchor_lat = float(anchor_ll[0])
     anchor_lon = float(anchor_ll[1])
-    forward_lon, forward_lat, _ = GEOD.fwd(anchor_lon, anchor_lat, float(heading), 20.0)
+    from rasterio.warp import transform as transform_crs
+    forward_lon, forward_lat, _ = _geod().fwd(anchor_lon, anchor_lat, float(heading), 20.0)
     xs, ys = transform_crs(
         "EPSG:4326",
         ds.crs,
@@ -111,11 +113,17 @@ def hole_basis_in_dem_crs(ds: rasterio.DatasetReader, hole: dict[str, Any]):
         raise ValueError("projected heading basis is degenerate")
     forward = delta / length
     right = np.asarray([forward[1], -forward[0]], dtype=float)
-    return anchor, forward, right
+    # Projected CRS units per ground metre along the hole. Web Mercator
+    # (EPSG:3857) stretches distances by 1/cos(latitude), 1.27 at 38°N.
+    # Treating ground metres as 3857 metres (before Nov 2026) sampled every
+    # green-detail grid at 0.79x its distance from the anchor, i.e. ~90 yd
+    # short of the green: the slope shown was the fairway's.
+    scale = length / 20.0
+    return anchor, forward * scale, right * scale
 
 
 def local_grid_to_dem_pixels(
-    ds: rasterio.DatasetReader,
+    ds,
     hole: dict[str, Any],
     xx_yds: np.ndarray,
     yy_yds: np.ndarray,
@@ -235,15 +243,44 @@ def sector_summaries(
     return output
 
 
+def package_terrain_sampler(lidar_package_path: Path):
+    """Sample each hole's packaged LiDAR terrain (hole-local yards, the same
+    frame as the green polygons), bilinear. No reprojection involved."""
+    package = read_json(lidar_package_path)
+    grids: dict[str, tuple[dict[str, Any], np.ndarray]] = {}
+    for key, hole in (package.get("holes") or {}).items():
+        terrain = hole.get("terrain") or {}
+        if terrain.get("compression") != "deflate" or "valuesBase64" not in terrain:
+            continue
+        raw = zlib.decompress(base64.b64decode(terrain["valuesBase64"]))
+        values = np.frombuffer(raw, dtype="<u2").reshape(int(terrain["height"]), int(terrain["width"])).astype(float)
+        values[values == float(terrain.get("nodata", NODATA_ENCODED))] = np.nan
+        grids[str(key)] = (terrain, values / 10.0 + float(terrain["elevationOffsetFt"]))
+
+    def sample(hole_number: int, xx: np.ndarray, yy: np.ndarray) -> np.ndarray:
+        entry = grids.get(str(hole_number))
+        if entry is None:
+            raise RuntimeError(f"H{hole_number}: LiDAR package has no terrain")
+        terrain, elevation = entry
+        step = float(terrain["runtimeSpacingYds"])
+        cols = (xx - float(terrain["minX"])) / step
+        rows = (yy - float(terrain["minY"])) / step
+        return bilinear_pixels(elevation, None, cols, rows)
+
+    meta = package.get("terrainSource") or {}
+    return sample, meta
+
+
 def build(
     course_path: Path,
-    dem_path: Path,
+    dem_path: Path | None,
     output_path: Path,
     spacing_yds: float,
     margin_yds: float,
     dataset_name: str,
     source_url: str | None,
     source_resolution_meters: float | None,
+    package_terrain_path: Path | None = None,
 ):
     course = read_json(course_path)
     if course.get("schemaVersion") != "looper-static-course-package-v1":
@@ -256,23 +293,48 @@ def build(
     if margin_yds < 0 or margin_yds > 30:
         raise SystemExit("Green detail margin must be between 0 and 30 yards")
 
-    with rasterio.open(dem_path) as ds:
-        dem = ds.read(1).astype(float)
-        nodata = None if ds.nodata is None else float(ds.nodata)
-        if ds.crs is None:
-            raise SystemExit("DEM must be georeferenced with a CRS")
-        package: dict[str, Any] = {
-            "schemaVersion": "looper-course-green-detail-v1",
-            "courseId": course.get("courseId"),
-            "courseName": course.get("courseName"),
-            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "source": {
+    if (dem_path is None) == (package_terrain_path is None):
+        raise SystemExit("Give exactly one of --dem or --package-terrain")
+    from contextlib import nullcontext
+    if dem_path is not None:
+        import rasterio
+        opened = rasterio.open(dem_path)
+    else:
+        opened = nullcontext(None)
+    with opened as ds:
+        if ds is not None:
+            dem = ds.read(1).astype(float)
+            nodata = None if ds.nodata is None else float(ds.nodata)
+            if ds.crs is None:
+                raise SystemExit("DEM must be georeferenced with a CRS")
+
+            def sample(hole_number: int, xx: np.ndarray, yy: np.ndarray) -> np.ndarray:
+                cols, rows = local_grid_to_dem_pixels(ds, holes[str(hole_number)], xx, yy)
+                return bilinear_pixels(dem, nodata, cols, rows) * 3.280839895
+
+            source = {
                 "dataset": dataset_name,
                 "tile": dem_path.name,
                 "crs": str(ds.crs),
                 "sourceResolutionMeters": source_resolution_meters,
                 "sourceUrl": source_url,
-            },
+            }
+        else:
+            sample, meta = package_terrain_sampler(package_terrain_path)
+            source = {
+                "dataset": dataset_name,
+                "tile": package_terrain_path.name,
+                "crs": "hole-local yards (packaged LiDAR terrain)",
+                "sourceResolutionMeters": source_resolution_meters,
+                "sourceUrl": source_url,
+                "note": "Resampled from the course package's 2-yd LiDAR terrain, which is in the same hole frame as the green polygons.",
+            }
+        package: dict[str, Any] = {
+            "schemaVersion": "looper-course-green-detail-v1",
+            "courseId": course.get("courseId"),
+            "courseName": course.get("courseName"),
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "source": source,
             "runtimeTerrain": {
                 "spacingYds": spacing_yds,
                 "marginYds": margin_yds,
@@ -302,8 +364,7 @@ def build(
             xs = np.arange(min_x, max_x + spacing_yds * 0.25, spacing_yds)
             ys = np.arange(min_y, max_y + spacing_yds * 0.25, spacing_yds)
             xx, yy = np.meshgrid(xs, ys)
-            cols, rows = local_grid_to_dem_pixels(ds, hole, xx, yy)
-            elevation_ft = bilinear_pixels(dem, nodata, cols, rows) * 3.280839895
+            elevation_ft = sample(hole_number, xx, yy)
             finite_values = elevation_ft[np.isfinite(elevation_ft)]
             if finite_values.size == 0:
                 raise RuntimeError(f"H{hole_number}: no valid DEM samples around green")
@@ -351,7 +412,10 @@ def build(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--course-package", type=Path, required=True)
-    parser.add_argument("--dem", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--dem", type=Path)
+    source.add_argument("--package-terrain", type=Path,
+                        help="course-v1-lidar.json: resample its hole-local LiDAR terrain (no DEM needed)")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--spacing-yards", type=float, default=DEFAULT_SPACING_YDS)
     parser.add_argument("--margin-yards", type=float, default=DEFAULT_MARGIN_YDS)
@@ -368,6 +432,7 @@ def main() -> int:
         args.dataset_name,
         args.source_url,
         args.source_resolution_meters,
+        args.package_terrain,
     )
     return 0
 

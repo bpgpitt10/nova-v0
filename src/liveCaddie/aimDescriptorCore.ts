@@ -444,14 +444,14 @@ const fairwayWidthFact = (input: BuildAimDescriptorInput) => {
   if (input.hole.availability.fairway === 'unavailable') return null
   const { interval } = corridorAtAim(input, 'fairway')
   if (!interval || interval.width < 10) return null
-  return `Fairway is ${Math.round(interval.width)} yd wide across the current shot line at this landing depth.`
+  return `Fairway width: ${Math.round(interval.width)} yd`
 }
 
 const greenWidthFact = (input: BuildAimDescriptorInput) => {
   if (input.hole.availability.green === 'unavailable') return null
   const { interval } = corridorAtAim(input, 'green')
   if (!interval || interval.width < 8) return null
-  return `Green is ${Math.round(interval.width)} yd wide across the current shot line here.`
+  return `Green width: ${Math.round(interval.width)} yd`
 }
 
 const greenTerrainShiftFact = ({
@@ -511,7 +511,9 @@ export const buildAimDescriptor = (input: BuildAimDescriptorInput): AimDescripto
 
 export const buildAimContextSentence = (descriptor: AimDescriptor): string | null => {
   if (descriptor.confidence === 'low') return null
-  if (descriptor.contextFacts.length > 0) return descriptor.contextFacts.join(' ')
+  if (descriptor.contextFacts.length > 0) {
+    return descriptor.contextFacts.map((fact) => (/[.!?]$/.test(fact) ? fact : `${fact}.`)).join(' ')
+  }
   if (descriptor.kind === 'landmark' && descriptor.anchorLabel) {
     return `Use the ${descriptor.anchorLabel} as the visual reference for the line.`
   }
