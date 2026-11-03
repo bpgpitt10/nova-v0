@@ -87,7 +87,7 @@ import {
   shotCompassBearingDegrees,
 } from '../liveState/courseHeading'
 import type { GsproLieObservation, WindObservation } from '../liveState/types'
-import { projectWindObservation } from '../liveState/windProjection'
+import { projectWindObservation, windInTrueCompass } from '../liveState/windProjection'
 import {
   activeBagClubIds,
   BAG_CONFIG_UPDATED_EVENT,
@@ -896,7 +896,7 @@ export default function LiveCaddiePage() {
     localAimBearingDeg,
   )
   const projectedWind = projectWindObservation(
-    windObservation,
+    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )

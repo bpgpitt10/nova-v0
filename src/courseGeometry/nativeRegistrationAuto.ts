@@ -1,6 +1,6 @@
 import { nativeHole, sha256Hex, type NativeCourseLayout } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
-import { nativeWorldToLatLon } from './nativeRegistration'
+import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
 import { fitNativeRegistration, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
 import { parsePackageTerrain, type RawTerrain } from './routePackagedCourseLoader'
 import type { CourseTerrainGrid } from './types'
@@ -38,6 +38,9 @@ export type AutoRegistrationResult = Readonly<{
 }>
 
 const DEG = Math.PI / 180
+const ROTATION_MIN_DEG = 0.5
+const SCALE_MIN_DEVIATION = 0.003
+const ROTATION_TRUST_RMS_M = 25
 
 export const greenSimilarity = (
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>,
@@ -45,10 +48,7 @@ export const greenSimilarity = (
   if (greens.length < 3) return null
   const lat0 = greens.reduce((s, g) => s + g.latLon[0], 0) / greens.length
   const lon0 = greens.reduce((s, g) => s + g.latLon[1], 0) / greens.length
-  const map = greens.map((g) => [
-    (g.latLon[1] - lon0) * 111_320 * Math.cos(lat0 * DEG),
-    (g.latLon[0] - lat0) * 111_320,
-  ] as const)
+  const map = greens.map((g) => groundOffsetMeters(lat0, lon0, g.latLon[0], g.latLon[1]))
   const wx = greens.reduce((s, g) => s + g.world.x, 0) / greens.length
   const wz = greens.reduce((s, g) => s + g.world.z, 0) / greens.length
   const world = greens.map((g) => [g.world.x - wx, g.world.z - wz] as const)
@@ -105,7 +105,14 @@ export const fitRegistrationFromPackage = async ({
     if (green && gkdHole?.greenCenter) greens.push({ world: gkdHole.greenCenter, latLon: green })
   }
   const points = layout.holes.flatMap((h) => [...h.pins, ...(h.greenCenter ? [h.greenCenter] : [])])
+  // Some GSPro scenes are built turned or scaled (Valhalla 180°, Royal New Kent
+  // -12°); the greens give that directly. Near 0° / 1 (FarmLinks) keep the
+  // true-north model exactly as before.
+  const similarity = greenSimilarity(greens)
+  const turned = similarity != null && similarity.rmsM <= ROTATION_TRUST_RMS_M
+    && (Math.abs(similarity.rotationDeg) > ROTATION_MIN_DEG || Math.abs(similarity.scale - 1) > SCALE_MIN_DEVIATION)
   const fit = fitNativeRegistration({
+    ...(turned ? { rotationDeg: similarity!.rotationDeg, scale: similarity!.scale } : {}),
     courseId,
     gsproCourseKey,
     layoutFingerprint: await sha256Hex(layout.fingerprintText),
@@ -128,7 +135,7 @@ export const fitRegistrationFromPackage = async ({
     fit,
     greensWithin25m: within,
     greensChecked: greens.length,
-    greenSimilarity: greenSimilarity(greens),
+    greenSimilarity: similarity,
     registration: fit.registration && sameCourse ? fit.registration : null,
   }
 }

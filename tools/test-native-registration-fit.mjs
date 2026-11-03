@@ -77,7 +77,67 @@ try {
   assert.ok(Math.abs(h - 405 * 0.3048) < 0.01, `sampled ${h}`)
   assert.equal(sampler(39, -85.48), null, 'outside every hole grid')
 
-  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok.')
+  // Turned / scaled GSPro scenes (Valhalla is built at 180°, Royal New Kent at
+  // about -12°). The greens give the turn roughly; the height fit refines it.
+  const auto = await load('/src/courseGeometry/nativeRegistrationAuto.ts')
+  for (const [rotationDeg, scale] of [[179.92, 1.0007], [-11.78, 1.0058]]) {
+    const turned = reg.parseNativeRegistration({
+      schemaVersion: 'looper-native-registration-v1', courseId: 't', gsproCourseKey: 't_gsp',
+      layoutFingerprint: 'a'.repeat(64), grade: 'A',
+      reference: { latLon: truth.latLon, worldXZ: truth.worldXZ }, rotationDeg, scale,
+      worldYToElevationOffsetM: truth.dy, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+    })
+    assert.equal(turned.rotationDeg, rotationDeg)
+    // Round trip world -> lat/lon -> world.
+    const back = reg.nativeLatLonToWorld(turned, ...reg.nativeWorldToLatLon(turned, { x: 1500, z: 400 }))
+    assert.ok(Math.hypot(back.x - 1500, back.z - 400) < 1e-6, 'round trip')
+    const tPoints = [], tGreens = []
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160, cz = 500 + Math.floor(i / 6) * 300
+      for (const [dx, dz] of [[0, 0], [6, 3], [-5, 4], [3, -6], [-4, -5]]) {
+        const x = cx + dx, z = cz + dz
+        const [lat, lon] = reg.nativeWorldToLatLon(turned, { x, z })
+        tPoints.push({ x, y: ground(lat, lon) - truth.dy, z })
+      }
+      const [glat, glon] = reg.nativeWorldToLatLon(turned, { x: cx, z: cz })
+      // Mapped greens: a few metres of scatter, so the greens' turn is a bit off.
+      const j = ((i * 7) % 5) - 2
+      tGreens.push({ world: { x: cx, z: cz }, latLon: [glat + (3 * j) / 111000, glon - (2 * ((i % 3) - 1)) / 87000] })
+    }
+    const sim = auto.greenSimilarity(tGreens)
+    assert.ok(Math.abs(sim.rotationDeg - rotationDeg) < 1, `greens rotation ${sim.rotationDeg}`)
+    // Without the turn the true-north fit cannot place it.
+    const plain = fit.fitNativeRegistration({
+      courseId: 't', gsproCourseKey: 't_gsp', layoutFingerprint: 'a'.repeat(64), sceneFingerprint: 'b'.repeat(64),
+      points: tPoints, greens: tGreens, holes: {}, sampler: ground,
+    })
+    assert.equal(plain.registration, null, `true-north fit should fail at ${rotationDeg}°`)
+    const r = fit.fitNativeRegistration({
+      courseId: 't', gsproCourseKey: 't_gsp', layoutFingerprint: 'a'.repeat(64), sceneFingerprint: 'b'.repeat(64),
+      points: tPoints, greens: tGreens, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+      sampler: ground, rotationDeg: sim.rotationDeg, scale: sim.scale,
+    })
+    assert.equal(r.grade, 'A', `grade at ${rotationDeg}°: ${r.grade} median ${r.medianAbsM} halves ${r.halvesAgreeM}`)
+    let worst = 0
+    for (const p of tPoints) {
+      const a = reg.nativeWorldToLatLon(turned, p), b = reg.nativeWorldToLatLon(r.registration, p)
+      worst = Math.max(worst, Math.hypot((a[0] - b[0]) * 111000, (a[1] - b[1]) * 87000))
+    }
+    assert.ok(worst < 0.15, `turned ${rotationDeg}°: worst point off by ${worst.toFixed(3)} m`)
+    const parsed = reg.parseNativeRegistration(JSON.parse(JSON.stringify(r.registration)))
+    assert.ok(Math.abs(parsed.rotationDeg - rotationDeg) < 0.01 && Math.abs(parsed.scale - scale) < 1e-4,
+      `saved turn ${parsed.rotationDeg} / ${parsed.scale}`)
+  }
+
+  // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
+  const wind = await load('/src/liveState/windProjection.ts')
+  const w = { status: 'READY', speedMph: 10, directionDegrees: 0, convention: 'from', referenceFrame: 'compass' }
+  assert.equal(wind.windInTrueCompass(w, 179.92).directionDegrees.toFixed(2), '180.08')
+  assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, -11.78).directionDegrees.toFixed(2), '101.78')
+  assert.equal(wind.windInTrueCompass(w, 0), w, 'true-north scene unchanged')
+  assert.equal(wind.windInTrueCompass({ ...w, referenceFrame: 'shot-relative' }, 180).directionDegrees, 0)
+
+  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) register within 15 cm.')
 } finally {
   await server?.close()
 }

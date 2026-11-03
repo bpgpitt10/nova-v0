@@ -74,6 +74,9 @@ export type BrowserGsproCourseSnapshot = Omit<
   gsproLayoutTee?: GsproRoundLayoutTee | null
   teePlacement?: 'mapped' | 'locked' | 'provisional' | null
   teeUncertaintyYds?: number | null
+  /** Native positions: how GSPro's scene is turned against true north
+   * (Valhalla 180°). GSPro's wind compass is scene-relative. */
+  gsproSceneRotationDeg?: number | null
 }
 
 type SnapshotHandler = (snapshot: BrowserGsproCourseSnapshot) => void
@@ -286,7 +289,8 @@ const applyNativeIfReady = async (
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
-    if (!teeContext) return next
+    const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0 }
+    if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)
     const nearestPinM = layoutRow && gkdHole && gkdHole.pins.length > 0
@@ -300,7 +304,7 @@ const applyNativeIfReady = async (
             layoutRow.pinPos.x - layoutRow.teePos.x, layoutRow.pinPos.z - layoutRow.teePos.z) * 1.0936133).toFixed(1)} yd;`
           + ` nearest GKD pin ${nearestPinM == null ? 'n/a' : nearestPinM.toFixed(2) + ' m'}`
           + `; pin ${next.pinSource === 'native-gkd' ? 'slot ' + pinSlot : 'unknown'}.`
-    return { ...next, warnings: [...next.warnings.filter((w) => !w.startsWith('GSPro round layout:')), layoutNote] }
+    return { ...turned, warnings: [...next.warnings.filter((w) => !w.startsWith('GSPro round layout:')), layoutNote] }
   } catch (error) {
     console.warn('[Browser GSPro course state] Native positions unavailable; using existing positioning.', error)
     return snapshot
