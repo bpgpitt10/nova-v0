@@ -523,3 +523,81 @@
     border-left: 0;
   }
 }
+
+/* ---- Open layout (3 Nov): no boxes over the backdrop, sections split by thin rules,
+   matching Rounds. ---- */
+
+.bagbook-layout {
+  --bagbook-rule: rgba(207, 216, 205, 0.16);
+}
+
+.bagbook-layout .bagbook-topbar {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  padding: 4px 0 8px;
+}
+
+/* The Looper's Read: open text, Looper Man still faint at the right. */
+/* Beats App.css's dashboard glass rule (.dashboard-page:not(.club-detail-page) ...). */
+.dashboard-page .bagbook-layout .dashboard-screen .dashboard-hero-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 8px 0 20px;
+  overflow: visible;
+}
+
+.bagbook-layout .dashboard-hero-card::before {
+  content: none;
+}
+
+.bagbook-layout .looper-read-visual {
+  right: 0;
+  bottom: 0;
+  height: 120%;
+}
+
+.bagbook-layout .dashboard-hero-title {
+  font-size: 22px;
+}
+
+.bagbook-layout .dashboard-hero-chip {
+  background: rgba(10, 20, 13, 0.35);
+  border-color: var(--bagbook-rule);
+}
+
+/* Yardage table: no box, light row rules, header kept in muted caps.
+   Rows keep a little side padding for the hover tint; the negative margin keeps the
+   text lined up with the page edge. */
+.bagbook-layout .bagbook-table-wrap {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  margin-inline: -12px;
+}
+
+.bagbook-layout .bagbook-row {
+  padding-inline: 12px;
+  border-bottom-color: var(--bagbook-rule);
+}
+
+.bagbook-layout .bagbook-head {
+  border-bottom-color: var(--bagbook-rule);
+}
+
+.bagbook-layout .bagbook-row.is-variant {
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-color: rgba(207, 216, 205, 0.08);
+}
+
+.bagbook-layout .bagbook-row.is-clickable:hover {
+  background: rgba(134, 239, 172, 0.06);
+}
+
+.bagbook-layout .bagbook-footnote {
+  padding-inline: 0;
+}
