@@ -99,6 +99,44 @@ class NativeWindTests(unittest.TestCase):
         self.assertEqual((result["status"], result["speedMph"], result["directionDegrees"]),
                          ("READY", 8.0, 135), result.get("rawText"))
 
+    def _real_band_report(self, name, x0, size):
+        bundle = wind._tesseract_bundle()
+        if bundle is None:
+            self.skipTest("tesseract not installed")
+        import subprocess
+        langs = subprocess.run([str(bundle[0]), "--list-langs"], capture_output=True, text=True)
+        if "eng" not in (langs.stdout + langs.stderr):
+            self.skipTest("tesseract has no English data here")
+        band = cv2.imread(str(Path(__file__).resolve().parent / "fixtures" / name))
+        width, height = size
+        frame = np.full((height, width, 3), 150, np.uint8)
+        frame[0:band.shape[0], x0:x0 + band.shape[1]] = band
+        return {"status": "captured", "quality": {"nonblank": True}, "method": "PrintWindow",
+                "windowWidth": width, "windowHeight": height,
+                "_private_bgra": cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA).tobytes()}
+
+    def test_real_valhalla_wind_box_6mph_s(self):
+        # Brian's Valhalla 4K window: the arrow disc's rim reached into the
+        # speed crop of the narrow "6 MPH" box and the companion read "MPH".
+        report = self._real_band_report("gspro_wind_6mph_s_band.png", 1560, (3840, 2160))
+        regions = wind.extract_wind_hud_regions(report, target_height=80)
+        speed = regions["speed"][0]
+        self.assertTrue((speed[:, -4:] == 255).all(), "arrow disc rim cleared from the speed crop")
+        result = wind.read_wind_from_capture(report)
+        self.assertEqual((result["status"], result["speedMph"], result["directionDegrees"]),
+                         ("READY", 6.0, 180), result.get("rawText"))
+        # If the full crop still loses the digit, the number is read on its own.
+        real = wind._ocr_png_with_tesseract
+
+        def drops_digit(png, *, psm, whitelist):
+            if whitelist == "0123456789.,MPH ":
+                return {"status": "ok", "rawText": "MPH"}
+            return real(png, psm=psm, whitelist=whitelist)
+
+        with mock.patch.object(wind, "_ocr_png_with_tesseract", side_effect=drops_digit):
+            result = wind.read_wind_from_capture(report)
+        self.assertEqual((result["speedMph"], result["speedOcrStrategy"]), (6.0, "number-only"), result.get("rawText"))
+
     def test_observed_io_mph_and_missing_direction_fails_closed(self):
         # User's 2026-10-12 physical sim trace: OCR returned "IO MPH",
         # no direction. Correct speed alone must NEVER activate wind.

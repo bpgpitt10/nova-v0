@@ -121,20 +121,41 @@ WIND_ARROW_CLEAR = (0.479, 0.522)  # keep the arrow disc out of both crops
 WIND_BOX_INSET = 0.003
 
 
-def _drop_edge_specks(binary: np.ndarray) -> np.ndarray:
+def _drop_edge_specks(binary: np.ndarray, disc_side: str | None = None) -> np.ndarray:
     """Clear small dark marks touching the crop's left/right edge: the wind
     box's anti-aliased rounded corner, which made Tesseract drop the '8'.
-    Real glyphs are far larger than these slivers."""
+    Real glyphs are far larger than these slivers. Anything touching the side
+    that faces the arrow disc is the disc's rim, whatever its size: on a
+    narrow "6 MPH" box it reached into the speed crop and the '6' read as
+    nothing (Valhalla, 2 Nov 2026)."""
     ink = (binary == 0).astype(np.uint8)
     count, labels, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     height, width = binary.shape[:2]
     out = binary.copy()
     for i in range(1, count):
         x, _, w, _, area = stats[i]
-        touches = x == 0 or x + w >= width
-        if touches and area < 0.02 * height * height:
+        left, right = x == 0, x + w >= width
+        disc = (disc_side == "right" and right) or (disc_side == "left" and left)
+        if disc or ((left or right) and area < 0.02 * height * height):
             out[labels == i] = 255
     return out
+
+
+def _number_only(binary: np.ndarray) -> np.ndarray | None:
+    """The glyphs left of the widest gap ("6" of "6 MPH"), padded, or None."""
+    ink = (binary == 0).astype(np.uint8)
+    count, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
+    height = binary.shape[0]
+    boxes = sorted((int(stats[i][0]), int(stats[i][0] + stats[i][2])) for i in range(1, count)
+                   if stats[i][3] >= 0.3 * (height - 2 * OCR_PAD_PX))
+    if len(boxes) < 2:
+        return None
+    gaps = [(boxes[i + 1][0] - max(b for _, b in boxes[:i + 1]), i) for i in range(len(boxes) - 1)]
+    _, split = max(gaps)
+    right = max(b for _, b in boxes[:split + 1])
+    left = boxes[0][0]
+    digits = binary[:, left:right]
+    return cv2.copyMakeBorder(digits, 0, 0, OCR_PAD_PX, OCR_PAD_PX, cv2.BORDER_CONSTANT, value=255)
 
 
 def _measured_wind_crops(frame: np.ndarray):
@@ -208,7 +229,7 @@ def extract_wind_hud_regions(report: dict, *, expanded_speed: bool = False,
             luminance = 0.0722 * b.astype(np.float32) + 0.7152 * g.astype(np.float32) + 0.2126 * red.astype(np.float32)
             binary = np.where(luminance >= WIND_BINARY_THRESHOLD, 0, 255).astype(np.uint8)
             if measured:
-                binary = _drop_edge_specks(binary)
+                binary = _drop_edge_specks(binary, "right" if name == "speed" else "left")
             binary = cv2.copyMakeBorder(binary, OCR_PAD_PX, OCR_PAD_PX, OCR_PAD_PX, OCR_PAD_PX,
                                         cv2.BORDER_CONSTANT, value=255)
             regions[name] = (
@@ -426,6 +447,24 @@ def read_wind_from_capture(report: dict) -> dict:
         speed, speed_text = _agreed(speed_reads)
         if speed is not None:
             speed_strategy = "expanded-crop"
+    if speed is None and any("MPH" in re.sub(r"\s+", "", t.upper()) for _, t in speed_reads):
+        # "MPH" read but the number dropped: read the number on its own.
+        digit_reads: list[tuple[object, str]] = []
+        for height in SPEED_TARGET_HEIGHTS:
+            regions_h = extract_wind_hud_regions(report, target_height=height)
+            number = _number_only(regions_h["speed"][0]) if regions_h else None
+            if number is None:
+                continue
+            ok, encoded = cv2.imencode(".png", number)
+            for psm in (7, 8):
+                result = _ocr_png_with_tesseract(encoded.tobytes(), psm=psm, whitelist="0123456789") if ok else {}
+                if result.get("status") == "ok":
+                    text = (result.get("rawText") or "").strip()
+                    digit_reads.append((_normalize_wind_speed(text) if text else None, text + " MPH"))
+        speed, speed_text = _agreed(digit_reads)
+        speed_reads.extend(digit_reads)
+        if speed is not None:
+            speed_strategy = "number-only"
 
     direction_reads: list[tuple[object, str]] = []
     direction_strategy = "word-psm8"
