@@ -65,6 +65,7 @@ import { clubEligibleForShot, type ShotOriginEligibility } from '../liveCaddie/c
 import { recordGsproSurfaceHudConfirmation } from '../adapters/gsproSurfaceEvidenceStore'
 import type { ManualLieSurface } from '../liveCaddie/currentShotLie'
 import {
+  COURSE_SELECTION_UPDATED_EVENT,
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
 } from '../courseGeometry/courseSelection'
@@ -195,8 +196,9 @@ const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'gr
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
-  // The course is chosen in Round Setup (display only here).
-  const [courseId] = useState<CourseId>(() => loadLastSelectedCourseId())
+  // The course is chosen in Round Setup (display only here); this page stays
+  // mounted, so it follows Round Setup's selection event.
+  const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
@@ -311,6 +313,26 @@ export default function LiveCaddiePage() {
     }
     window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
     return () => window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+  }, [])
+
+  const courseIdRef = useRef(courseId)
+  courseIdRef.current = courseId
+  useEffect(() => {
+    const onCourseSelected = (event: Event) => {
+      const next = (event as CustomEvent<{ courseId?: CourseId }>).detail?.courseId ?? loadLastSelectedCourseId()
+      if (next === courseIdRef.current) return
+      setCourseId(next)
+      setHoleNumber(1)
+      setLiveSnapshot(null)
+      setNativeObservations(null)
+      setArmedClub(null)
+      resetArm()
+      lastShotKeyRef.current = null
+    }
+    window.addEventListener(COURSE_SELECTION_UPDATED_EVENT, onCourseSelected)
+    return () => window.removeEventListener(COURSE_SELECTION_UPDATED_EVENT, onCourseSelected)
+  // resetArm only touches refs and setters.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Background discovery only. Existing browser data/visual connections remain
