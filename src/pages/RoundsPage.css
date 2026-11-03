@@ -1584,3 +1584,13 @@
     font-size: 48px;
   }
 }
+
+/* Table foot: keep the "Show everything" link on the same line as the counts. */
+.rounds-page .rounds-table-foot {
+  align-items: baseline;
+}
+
+.rounds-page .rounds-table-foot .rounds-link-button {
+  margin: 0;
+  line-height: inherit;
+}

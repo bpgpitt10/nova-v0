@@ -275,8 +275,9 @@ function RoundsList({
   const visible = onCourse.filter((round) => {
     if (filter === 'live-caddie') return isLiveCaddieRound(round) && round.status !== 'fragment'
     if (filter === 'all') return true
-    return round.status === 'full' || round.status === 'partial'
+    return round.status === 'full'
   })
+  const hiddenPartials = filter === 'full' ? onCourse.filter((round) => round.status === 'partial').length : 0
   const hiddenFragments = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'fragment').length
   const hiddenTests = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'test').length
   const rangeSessions = rounds.length - onCourse.length
@@ -334,7 +335,10 @@ function RoundsList({
 
       {visible.length === 0 ? (
         <div className="rounds-card rounds-empty">
-          <p>No {filter === 'full' ? 'full or partial ' : ''}rounds yet.</p>
+          <p>No {filter === 'full' ? 'full ' : filter === 'live-caddie' ? 'Live Caddie ' : ''}rounds yet.</p>
+          {filter !== 'all' && onCourse.length > 0 ? (
+            <button className="rounds-link-button" onClick={() => setFilter('all')} type="button">Show all {onCourse.length} rounds</button>
+          ) : null}
           <p className="rounds-muted">Play a round in GSPro with the companion running; it saves every shot, even with Looper closed.</p>
         </div>
       ) : (
@@ -390,12 +394,13 @@ function RoundsList({
               })}
             </tbody>
           </table>
-          {hiddenFragments + hiddenTests + rangeSessions > 0 ? (
+          {hiddenPartials + hiddenFragments + hiddenTests + rangeSessions > 0 ? (
             <div className="rounds-table-foot rounds-muted">
+              {hiddenPartials > 0 ? <span>{hiddenPartials} partial round{hiddenPartials === 1 ? '' : 's'} hidden</span> : null}
               {hiddenTests > 0 ? <span>{hiddenTests} test session{hiddenTests === 1 ? '' : 's'} hidden</span> : null}
               {hiddenFragments > 0 ? <span>{hiddenFragments} short fragment{hiddenFragments === 1 ? '' : 's'} hidden</span> : null}
               {rangeSessions > 0 ? <span>{rangeSessions} range session{rangeSessions === 1 ? '' : 's'} not shown</span> : null}
-              {filter !== 'all' && hiddenFragments + hiddenTests > 0 ? (
+              {filter !== 'all' && hiddenPartials + hiddenFragments + hiddenTests > 0 ? (
                 <button className="rounds-link-button" onClick={() => setFilter('all')} type="button">Show everything</button>
               ) : null}
             </div>
