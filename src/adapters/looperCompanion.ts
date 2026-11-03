@@ -271,6 +271,8 @@ export type LooperCompanionInstalledCourse = {
   location: string
   designer: string
   holes: number
+  /** Par per hole number ("1" → 4), from the main GKD. Companion courses.7+. */
+  pars?: Record<string, number>
   alternateLayouts: string[]
 }
 

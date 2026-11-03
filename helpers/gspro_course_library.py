@@ -32,6 +32,9 @@ SCHEMA_VERSION = "looper-companion-course-layouts-v1"
 MAX_LAYOUT_BYTES = 8 * 1024 * 1024
 MAX_LAYOUT_FILES = 12
 MAX_FOLDERS_VISITED = 1500
+# One course lookup may walk as far as the library listing does: big libraries
+# (two Valhallas) put a course past the first 1,500 folders (3 Nov 2026).
+MAX_LOOKUP_VISITED = MAX_FOLDERS_VISITED * 4
 MAX_DEPTH = 2
 # Course keys are file stems such as "farmlinks_al_2_7_gsp"; GKDalt stems can
 # hold spaces ("Farmlinks Kids"). No separators, no "..", no drive letters.
@@ -132,7 +135,7 @@ def _holds(files: Iterable[str], key: str) -> bool:
     return any(name.lower() in wanted for name in files)
 
 
-def find_scene_dir(roots: list[tuple[str, Path]], key: str, max_visited: int = MAX_FOLDERS_VISITED):
+def find_scene_dir(roots: list[tuple[str, Path]], key: str, max_visited: int = MAX_LOOKUP_VISITED):
     """(label, folder) of the first course folder holding <key>.GKD/.GKDalt."""
     visited = 0
     for label, root in roots:
@@ -252,18 +255,27 @@ def _header(path: Path) -> dict | None:
         return None
     if not isinstance(raw, dict) or not isinstance(raw.get("Holes"), list):
         return None
+    pars = {}
+    for hole in raw["Holes"]:
+        if not isinstance(hole, dict):
+            continue
+        number, par = hole.get("HoleNumber"), hole.get("Par")
+        if isinstance(number, int) and not isinstance(number, bool) and isinstance(par, int) \
+                and not isinstance(par, bool) and 1 <= number <= 36 and 2 <= par <= 7:
+            pars[str(number)] = par
     return {
         "courseName": str(raw.get("CourseName") or "")[:120],
         "location": str(raw.get("Location") or "")[:120],
         "designer": str(raw.get("Designer") or "")[:80],
         "holes": len(raw["Holes"]),
+        "pars": pars,
         "sceneFolderName": raw.get("SceneFolderName"),
     }
 
 
 def list_installed_courses(*, image_path: str | None = None, env: dict | None = None) -> dict:
     """Every course in the GSPro library: key (main GKD stem), name, location,
-    hole count and alternate layout names. No paths, no geometry."""
+    hole count, par per hole and alternate layout names. No paths, no geometry."""
     roots = library_roots(image_path=image_path, env=env)
     courses: dict[str, dict] = {}
     alternates: list[tuple[str, str]] = []
@@ -288,6 +300,8 @@ def list_installed_courses(*, image_path: str | None = None, env: dict | None = 
                     if header:
                         courses[key.lower()] = {"courseKey": key, **{k: v for k, v in header.items() if k != "sceneFolderName"},
                                                 "alternateLayouts": []}
+                        with _lock:  # the next layout request for this course goes straight here
+                            _scene_dirs.setdefault(key.lower(), folder)
                 elif lower.endswith(".gkdalt"):
                     header = _header(folder / name)
                     if header and header.get("sceneFolderName"):

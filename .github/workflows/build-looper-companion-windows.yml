@@ -152,7 +152,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.6") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.7") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {

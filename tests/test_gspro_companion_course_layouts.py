@@ -25,6 +25,7 @@ def gkd(name, scene=None, tee_x=0.0):
         "CourseName": name,
         "Holes": [{
             "HoleNumber": 1,
+            "Par": 4,
             "Tees": [{"TeeType": "White", "Position": {"x": tee_x, "y": 0, "z": 0}}],
             "Pins": [{"Day": "Thursday", "Position": {"x": 30, "y": 0, "z": 135}}],
         }],
@@ -123,9 +124,29 @@ class CourseLibraryTests(unittest.TestCase):
         self.assertEqual(synth["courseName"], "Synthetic Links")
         self.assertEqual(synth["holes"], 1)
         self.assertEqual(synth["alternateLayouts"], ["Synthetic Kids"], "other scenes' GKDalt not attached")
+        self.assertEqual(synth["pars"], {"1": 4}, "par per hole for the Rounds scorecard")
         self.assertNotIn(str(self.root), json.dumps(listing), "no local paths")
         self.assertEqual(library.list_installed_courses(env={"LOOPER_GSPRO_COURSES_DIR": str(self.root / "nope")})["status"],
                          "not-found")
+
+    def test_listing_remembers_course_folders(self):
+        env = {"LOOPER_GSPRO_COURSES_DIR": str(self.root / "Courses")}
+        library.list_installed_courses(env=env)
+        with mock.patch.object(library, "find_scene_dir", side_effect=AssertionError("searched again")):
+            found = library.course_layouts("aaa_gsp", env=env)
+        self.assertEqual(found["status"], "ready")
+        self.assertEqual(found["source"], "cached")
+
+    def test_lookup_reaches_as_far_as_the_listing(self):
+        # A library with more than 1,500 folders ahead of the course (3 Nov: every
+        # per-course lookup on the sim PC came back empty while the listing worked).
+        courses = self.root / "Courses"
+        for index in range(1600):
+            (courses / f"Aa Filler {index:04d}").mkdir()
+        (courses / "Zz Late").mkdir()
+        (courses / "Zz Late" / "late_gsp.GKD").write_text(gkd("Late Course"), encoding="utf-8")
+        env = {"LOOPER_GSPRO_COURSES_DIR": str(courses)}
+        self.assertEqual(library.course_layouts("late_gsp", env=env)["status"], "ready")
 
     def test_walk_is_bounded(self):
         env = {"LOOPER_GSPRO_COURSES_DIR": str(self.root / "Courses")}
