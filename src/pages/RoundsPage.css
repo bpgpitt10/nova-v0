@@ -1594,3 +1594,13 @@
   margin: 0;
   line-height: inherit;
 }
+
+/* Plain shot map (no real hole to draw): let the backdrop show through. */
+.rounds-page .rounds-map:not(.is-real) {
+  background: rgba(10, 20, 13, 0.22);
+  border: 1px solid var(--rounds-rule);
+}
+
+.rounds-page .rounds-map:not(.is-real) .rounds-map-axis {
+  stroke: rgba(207, 216, 205, 0.22);
+}
