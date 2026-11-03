@@ -137,6 +137,15 @@ class NativeWindTests(unittest.TestCase):
             result = wind.read_wind_from_capture(report)
         self.assertEqual((result["speedMph"], result["speedOcrStrategy"]), (6.0, "number-only"), result.get("rawText"))
 
+    def test_companion_capture_valhalla_6mph_se(self):
+        # The wind box exactly as Brian's companion captured it (its own
+        # diagnostic save): the edge walk stopped at the white "6", the crop
+        # began inside the digit and every read was "MPH".
+        report = self._real_band_report("gspro_wind_6mph_se_companion_capture.png", 1344, (3840, 2160))
+        result = wind.read_wind_from_capture(report)
+        self.assertEqual((result["status"], result["speedMph"], result["directionDegrees"]),
+                         ("READY", 6.0, 135), result.get("rawText"))
+
     def test_observed_io_mph_and_missing_direction_fails_closed(self):
         # User's 2026-10-12 physical sim trace: OCR returned "IO MPH",
         # no direction. Correct speed alone must NEVER activate wind.

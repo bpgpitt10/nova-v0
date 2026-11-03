@@ -116,6 +116,7 @@ MIN_AGREEING_READS = 2
 # (FarmLinks 3776 px: 0.4356-0.5649) instead of fixed boxes that cut the
 # leading digit (15 -> "5") or the last letter (WNW -> "WN").
 WIND_BOX_BAND = (0.012, 0.035)
+WIND_BOX_TOP_BAND = (0.002, 0.009)
 WIND_BOX_LEFT_RANGE = (0.40, 0.46)
 WIND_BOX_RIGHT_RANGE = (0.54, 0.60)
 WIND_ARROW_CLEAR = (0.479, 0.522)  # keep the arrow disc out of both crops
@@ -162,11 +163,17 @@ def _number_only(binary: np.ndarray) -> np.ndarray | None:
 def _measured_wind_crops(frame: np.ndarray):
     """Speed/direction crops from the wind box's actual edges, or None."""
     height, width = frame.shape[:2]
-    band = frame[int(height * WIND_BOX_BAND[0]):int(height * WIND_BOX_BAND[1])].astype(np.float32)
-    if band.size == 0:
+    def dark_fraction(rows):
+        band = frame[int(height * rows[0]):max(int(height * rows[0]) + 1, int(height * rows[1]))].astype(np.float32)
+        lum = 0.0722 * band[:, :, 0] + 0.7152 * band[:, :, 1] + 0.2126 * band[:, :, 2]
+        return (lum < 90).mean(axis=0)
+
+    if height * WIND_BOX_BAND[1] < 2:
         return None
-    lum = 0.0722 * band[:, :, 0] + 0.7152 * band[:, :, 1] + 0.2126 * band[:, :, 2]
-    dark = (lum < 90).mean(axis=0)
+    # The text rows alone stop the edge walk at a wide white glyph (the "6"
+    # of "6 MPH" on Valhalla), so the crop began inside the digit. The strip
+    # above the text is plain box: a column is box if either band is dark.
+    dark = np.maximum(dark_fraction(WIND_BOX_BAND), dark_fraction(WIND_BOX_TOP_BAND))
 
     def edge(start: int, step: int) -> int:
         x = start
