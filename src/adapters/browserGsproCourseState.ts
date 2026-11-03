@@ -77,6 +77,9 @@ export type BrowserGsproCourseSnapshot = Omit<
   /** Native positions: how GSPro's scene is turned against true north
    * (Valhalla 180°). GSPro's wind compass is scene-relative. */
   gsproSceneRotationDeg?: number | null
+  /** 'manual-start': Looper's Start Round (Hole 1, Shot 1) before GSPro has
+   * written any shot of this round; 'gspro': read from GSPro's files. */
+  publishedFrom?: 'manual-start' | 'gspro'
 }
 
 type SnapshotHandler = (snapshot: BrowserGsproCourseSnapshot) => void
@@ -463,9 +466,12 @@ const buildManualStartSnapshot = async (
   }, true), true)
 }
 
+// The shot's own id (last part of "round:hole:shotId"). A read where the
+// RoundID was briefly missing ("round:2:<id>" vs "273:2:<id>") is the same
+// stale shot, not a new one, and must not end the manual Start Round hold.
 const physicalSnapshotIdentity = (snapshot: CoreBrowserGsproCourseSnapshot | null) =>
   snapshot?.latestShotKey
-    ? `${snapshot.roundId ?? 'round'}:${snapshot.latestShotKey}`
+    ? snapshot.latestShotKey.split(':').pop() || snapshot.latestShotKey
     : null
 
 const snapshotSignature = (
@@ -513,7 +519,7 @@ export const connectToBrowserGsproCourseState = ({
     const signature = snapshotSignature(snapshot, source)
     if (signature !== lastPublishedSnapshotSignature) {
       lastPublishedSnapshotSignature = signature
-      onSnapshot(snapshot)
+      onSnapshot({ ...snapshot, publishedFrom: source })
     }
 
     const key = source === 'manual-start'
