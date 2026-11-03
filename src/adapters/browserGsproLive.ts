@@ -4,7 +4,7 @@ import type {
   SimReadResolvedShotFieldSource,
 } from './simreadFinalShot'
 import {
-  isBrowserGsproAccessSupported,
+  isGsproAccessAvailable,
   loadGsproDirectoryHandle,
   queryGsproDirectoryPermission,
   readGsproDatabaseState,
@@ -277,7 +277,7 @@ const buildFinalShotEvent = (
 }
 
 export const prepareBrowserGsproRuntime = async () => {
-  if (!isBrowserGsproAccessSupported()) {
+  if (!(await isGsproAccessAvailable())) {
     preparedDirectoryHandle = null
     return false
   }

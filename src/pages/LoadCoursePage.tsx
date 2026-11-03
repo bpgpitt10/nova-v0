@@ -45,6 +45,9 @@ export default function LoadCoursePage() {
   const [searching, setSearching] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  // When an installed GSPro course can't be matched automatically, loads picked
+  // from the search results stay linked to it, so Live Caddie recognizes the round.
+  const [linkedGspro, setLinkedGspro] = useState<{ courseKey: string; courseName: string } | null>(null)
   const slugs = useMemo(loadedSlugs, [])
 
   const refresh = useCallback(async () => {
@@ -97,7 +100,11 @@ export default function LoadCoursePage() {
     const match = await findGolfCourseFor(course.courseName, course.location)
     if (!match) {
       setBusyKey(null)
-      setMessage(`Couldn't find ${course.courseName} on OpenStreetMap. Try the search below with a different name.`)
+      const name = course.courseName || course.courseKey
+      setLinkedGspro({ courseKey: course.courseKey, courseName: name })
+      setQuery(name)
+      setMessage(`Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`)
+      void runSearch(name)
       return
     }
     await queue(course.courseKey, {
@@ -106,11 +113,10 @@ export default function LoadCoursePage() {
     })
   }
 
-  const runSearch = async () => {
+  const runSearch = async (text = query) => {
     setSearching(true)
-    setMessage(null)
     try {
-      setResults(await searchGolfCourses(query))
+      setResults(await searchGolfCourses(text))
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error))
       setResults([])
@@ -176,6 +182,13 @@ export default function LoadCoursePage() {
 
       <section>
         <h2>Search for a course</h2>
+        {linkedGspro ? (
+          <p className="load-course-note">
+            A course you load from these results will be linked to your GSPro course
+            {' '}<strong>{linkedGspro.courseName}</strong>.{' '}
+            <button type="button" className="load-course-unlink" onClick={() => setLinkedGspro(null)}>Don't link</button>
+          </p>
+        ) : null}
         <form className="load-course-search" onSubmit={(event) => { event.preventDefault(); void runSearch() }}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Erin Hills, Pinehurst No. 2" />
           <button type="submit" disabled={searching || query.trim().length < 3}>{searching ? 'Searching…' : 'Search'}</button>
@@ -193,7 +206,7 @@ export default function LoadCoursePage() {
                 </div>
                 {rowAction(slug, key, () => {
                   void queue(key, { name: result.name, location: result.location, lat: result.lat, lon: result.lon,
-                    osmType: result.osmType, osmId: result.osmId })
+                    osmType: result.osmType, osmId: result.osmId, gsproCourseKey: linkedGspro?.courseKey ?? null })
                 })}
               </li>
             )

@@ -7,6 +7,7 @@ import {
   isNativePositionsSupported,
   loadNativeCourseContext,
   NATIVE_POSITIONS_CHANGED_EVENT,
+  nativeStatusEventIsFor,
   regrantGsproCoursesFolder,
   setNativePositionsEnabled,
   type NativeCourseStatus,
@@ -62,10 +63,12 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const onChange = (event: Event) => setStatus((event as CustomEvent<NativeCourseStatus>).detail)
+    const onChange = (event: Event) => {
+      if (nativeStatusEventIsFor(event, courseId)) setStatus((event as CustomEvent<NativeCourseStatus>).detail)
+    }
     window.addEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
     return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
-  }, [])
+  }, [courseId])
 
   useEffect(() => {
     if (!enabled) return

@@ -2,6 +2,10 @@ import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import './LiveCaddieMapPolish.css'
 import './LiveCaddieIA.css'
 import './LiveCaddieDesignTune.css'
+import { outcomeTiles } from '../liveCaddie/outcomeShares'
+
+const OUTCOME_PLACEHOLDER = ['Success', 'Manageable', 'Trouble', 'Catastrophe']
+  .map((label) => ({ label, percent: 0, text: '—' }))
 
 type ConditionsMathPanelProps = {
   evaluation: ClubAimEvaluation | null
@@ -221,10 +225,9 @@ export default function ConditionsMathPanel({
         {!strategyMode ? (
           <>
             <div className="live-hero-outcomes">
-              <div className="outcome-success"><strong>{pct(risk?.success)}</strong><span>Success</span></div>
-              <div className="outcome-manageable"><strong>{pct(risk?.manageable)}</strong><span>Manageable</span></div>
-              <div className="outcome-trouble"><strong>{pct(risk?.seriousTrouble)}</strong><span>Trouble</span></div>
-              <div className="outcome-catastrophe"><strong>{pct(risk?.catastrophe)}</strong><span>Catastrophe</span></div>
+              {(outcomeTiles(risk) ?? OUTCOME_PLACEHOLDER).map((tile) => (
+                <div key={tile.label} className={`outcome-${tile.label.toLowerCase()}`}><strong>{tile.text}</strong><span>{tile.label}</span></div>
+              ))}
             </div>
 
             {outcomeDetails.length > 0 ? (

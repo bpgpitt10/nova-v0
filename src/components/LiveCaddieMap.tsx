@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { AimCandidateEvaluation } from '../liveCaddie/aimOptimization'
 import { greenYardage, hazardYardages } from '../liveCaddie/mapYardages'
-import { greenSlopeImage, type GreenReadAnalysis } from '../liveCaddie/greenRead'
+import { greenHeightImage, type GreenReadAnalysis } from '../liveCaddie/greenRead'
 import { buildHillshade } from '../liveCaddie/hillshade'
 import { minimapBasis, minimapFrame } from '../liveCaddie/minimapFrame'
 import type {
@@ -205,9 +205,10 @@ export default function LiveCaddieMap({
     return buildHillshade(hole.terrain, [u1, -u0], [u0, u1])
   }, [hole.terrain, upKey])
 
-  // Green read: the steepness image (once per green) and, in view space, the
+  // Green read: the height image (once per green) and, in view space, the
   // feature tags and an overall-tilt arrow placed just off the green.
-  const slopeImage = useMemo(() => (greenRead ? greenSlopeImage(greenRead) : null), [greenRead])
+  // Height (blue low -> red high), the way GSPro's minimap shows greens.
+  const slopeImage = useMemo(() => (greenRead ? greenHeightImage(greenRead) : null), [greenRead])
   const greenPolys = viewHole.surfaces.filter((surface) => surface.kind === 'green').flatMap((surface) => surface.polygons)
   const greenOverlay = (() => {
     if (!greenRead || !greenPolys.length) return null

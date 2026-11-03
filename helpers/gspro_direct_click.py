@@ -17,6 +17,10 @@ import time
 MAX_CAPTURE_AGE_MS = 1000
 MAX_PIN_REGISTRATION_ERROR_PX = 3.0
 MIN_MINIMAP_MARGIN_PX = 5.0
+# A few frames at 60 fps each, so the game reads the cursor on the target.
+CLICK_SETTLE_S = 0.05
+CLICK_HOLD_S = 0.06
+CLICK_RELEASE_S = 0.12
 
 
 @dataclass(frozen=True)
@@ -149,14 +153,14 @@ def execute_prepared_click(
     ]
 
     if int(user32.GetForegroundWindow() or 0) != plan.hwnd:
-        user32.SetForegroundWindow(plan.hwnd)
-        # Windows foreground activation restrictions can deny focus.
-        for _ in range(4):
-            if int(user32.GetForegroundWindow() or 0) == plan.hwnd:
-                break
-            time.sleep(0.04)
+        _bring_to_front(user32, plan.hwnd)
     if int(user32.GetForegroundWindow() or 0) != plan.hwnd:
-        raise RuntimeError("Could not focus GSPro; no input sent")
+        # Windows refuses focus changes from background apps (the browser was
+        # the one clicked). Still safe to click if the target pixel is GSPro's
+        # own window, i.e. the minimap is visible and nothing covers it: the
+        # click then lands in GSPro and activates it.
+        if _root_window_at(user32, plan.desktop_x, plan.desktop_y) != plan.hwnd:
+            raise RuntimeError("GSPro is behind another window at the minimap; no input sent")
 
     old_cursor = wintypes.POINT()
     if not user32.GetCursorPos(ctypes.byref(old_cursor)):
@@ -164,8 +168,60 @@ def execute_prepared_click(
     try:
         if not user32.SetCursorPos(plan.desktop_x, plan.desktop_y):
             raise RuntimeError("Could not set cursor to GSPro minimap target")
-        # This matches the primitive proven on the simulator in click lab.
+        # GSPro (Unity) samples the mouse once per rendered frame. A click sent
+        # in the same instant as the move, with the cursor restored right
+        # after, registered at the wrong place on the sim (2 Nov: the aim
+        # marker landed beside the ball). Hold the cursor on the target for a
+        # few frames around the press.
+        time.sleep(CLICK_SETTLE_S)
+        user32.mouse_event(0x0001, 0, 0, 0, 0)  # MOVE (0,0): make sure GSPro sees the cursor here
+        time.sleep(CLICK_SETTLE_S)
         user32.mouse_event(0x0002, 0, 0, 0, 0)  # LEFTDOWN
+        time.sleep(CLICK_HOLD_S)
         user32.mouse_event(0x0004, 0, 0, 0, 0)  # LEFTUP
+        time.sleep(CLICK_RELEASE_S)
     finally:
         user32.SetCursorPos(old_cursor.x, old_cursor.y)
+
+
+def _bring_to_front(user32, hwnd: int) -> None:
+    """SetForegroundWindow, with the input-attach workaround Windows allows
+    when the caller is not the foreground app. Best effort; caller re-checks."""
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+    user32.AttachThreadInput.restype = wintypes.BOOL
+    user32.BringWindowToTop.argtypes = [wintypes.HWND]
+    user32.BringWindowToTop.restype = wintypes.BOOL
+    user32.SetForegroundWindow(hwnd)
+    if int(user32.GetForegroundWindow() or 0) == hwnd:
+        return
+    foreground = user32.GetForegroundWindow()
+    foreground_thread = user32.GetWindowThreadProcessId(foreground, None) if foreground else 0
+    own_thread = kernel32.GetCurrentThreadId()
+    attached = bool(foreground_thread) and foreground_thread != own_thread and bool(
+        user32.AttachThreadInput(own_thread, foreground_thread, True))
+    try:
+        user32.BringWindowToTop(hwnd)
+        user32.SetForegroundWindow(hwnd)
+    finally:
+        if attached:
+            user32.AttachThreadInput(own_thread, foreground_thread, False)
+    for _ in range(4):
+        if int(user32.GetForegroundWindow() or 0) == hwnd:
+            return
+        time.sleep(0.04)
+
+
+def _root_window_at(user32, x: int, y: int) -> int:
+    """Top-level window under a desktop point (0 if none)."""
+    user32.WindowFromPoint.argtypes = [wintypes.POINT]
+    user32.WindowFromPoint.restype = wintypes.HWND
+    user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+    user32.GetAncestor.restype = wintypes.HWND
+    hit = user32.WindowFromPoint(wintypes.POINT(x, y))
+    if not hit:
+        return 0
+    return int(user32.GetAncestor(hit, 2) or 0)  # GA_ROOT
+
