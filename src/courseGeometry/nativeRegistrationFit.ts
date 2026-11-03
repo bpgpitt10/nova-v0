@@ -277,8 +277,11 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
   if (horizontalInformation(project, input.sampler, input.points, full.p, full.dy) < MIN_HORIZONTAL_INFORMATION) {
     return fail(medianAbsM, halvesAgreeM)
   }
+  // Pins and green centres sit on fairly flat greens, so half a course pins
+  // its own position less firmly than the whole: a very tight height fit
+  // (Royal New Kent: 7 cm median) with halves ~2 m apart is still grade B.
   const grade = medianAbsM <= 0.15 && halvesAgreeM <= 0.5 ? 'A'
-    : medianAbsM <= 0.35 && halvesAgreeM <= 1.5 ? 'B' : 'C'
+    : (medianAbsM <= 0.35 && halvesAgreeM <= 1.5) || (medianAbsM <= 0.15 && halvesAgreeM <= 2.5) ? 'B' : 'C'
   if (grade === 'C') return fail(medianAbsM, halvesAgreeM)
   return {
     grade,

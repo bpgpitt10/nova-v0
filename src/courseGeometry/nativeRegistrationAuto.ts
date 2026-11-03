@@ -34,6 +34,9 @@ export type AutoRegistrationResult = Readonly<{
    * built this course off true north / not in metres; a large rms means the
    * holes or greens do not correspond (wrong course, renumbered holes). */
   greenSimilarity: GreenSimilarity | null
+  /** Diagnostic when the greens don't pair up by hole number: the hole offset
+   * (GSPro hole = Looper hole + shift, wrapping) whose greens do line up. */
+  holeShift: Readonly<{ shift: number; rmsM: number; rotationDeg: number; scale: number }> | null
   registration: NativeRegistration | null
 }>
 
@@ -74,6 +77,23 @@ export const greenSimilarity = (
   return { rotationDeg: theta / DEG, scale, rmsM: Math.sqrt(sq / greens.length), n: greens.length }
 }
 
+/** Try pairing Looper hole h with GSPro hole h + shift (wrapping over the
+ * GKD's holes), e.g. nines swapped. Diagnostic only. */
+const bestHoleShift = (layout: NativeCourseLayout, mapped: ReadonlyMap<number, readonly [number, number]>) => {
+  const count = layout.holes.length
+  let best: { shift: number; rmsM: number; rotationDeg: number; scale: number } | null = null
+  for (let shift = 1; shift < count; shift += 1) {
+    const pairs: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+    for (const [hole, latLon] of mapped) {
+      const gkd = nativeHole(layout, ((hole - 1 + shift) % count) + 1)
+      if (gkd?.greenCenter) pairs.push({ world: gkd.greenCenter, latLon })
+    }
+    const sim = greenSimilarity(pairs)
+    if (sim && (!best || sim.rmsM < best.rmsM)) best = { shift, rmsM: sim.rmsM, rotationDeg: sim.rotationDeg, scale: sim.scale }
+  }
+  return best && best.rmsM <= ROTATION_TRUST_RMS_M ? best : null
+}
+
 export const fitRegistrationFromPackage = async ({
   courseId,
   gsproCourseKey,
@@ -90,6 +110,7 @@ export const fitRegistrationFromPackage = async ({
   const holes: Array<{ frame: NativeHoleFrame; terrain: CourseTerrainGrid }> = []
   const frames: Record<string, NativeHoleFrame> = {}
   const greens: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+  const mappedGreens = new Map<number, readonly [number, number]>()
   for (const [key, raw] of Object.entries(pkg.holes ?? {})) {
     const cf = raw.coordinateFrame
     const anchor = pair(cf?.anchorLatLon)
@@ -101,6 +122,7 @@ export const fitRegistrationFromPackage = async ({
     const terrain = raw.terrain ? await parsePackageTerrain(raw.terrain, courseId, Number(key)).catch(() => null) : null
     if (terrain) holes.push({ frame, terrain })
     const green = pair(cf?.targetGreenLatLon)
+    if (green) mappedGreens.set(Number(key), green)
     const gkdHole = nativeHole(layout, Number(key))
     if (green && gkdHole?.greenCenter) greens.push({ world: gkdHole.greenCenter, latLon: green })
   }
@@ -136,6 +158,7 @@ export const fitRegistrationFromPackage = async ({
     greensWithin25m: within,
     greensChecked: greens.length,
     greenSimilarity: similarity,
+    holeShift: similarity && similarity.rmsM > ROTATION_TRUST_RMS_M ? bestHoleShift(layout, mappedGreens) : null,
     registration: fit.registration && sameCourse ? fit.registration : null,
   }
 }

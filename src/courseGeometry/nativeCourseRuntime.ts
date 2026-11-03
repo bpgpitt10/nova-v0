@@ -54,7 +54,7 @@ export type NativeCourseStatus =
   | Readonly<{ state: 'off' }>
   | Readonly<{ state: 'no-course' }>
   | Readonly<{ state: 'no-registration'; courseName: string }>
-  | Readonly<{ state: 'other-course'; courseKey: string; expectedKey: string }>
+  | Readonly<{ state: 'other-course'; courseKey: string; expectedKey: string; grade?: string; courseName?: string }>
   | Readonly<{ state: 'no-folder' }>
   | Readonly<{ state: 'needs-permission' }>
   | Readonly<{ state: 'gkd-not-found'; courseKey: string }>
@@ -73,6 +73,8 @@ export type NativeCourseStatus =
       via: 'companion' | 'folder'
       /** Registration fitted on this PC (no published one yet). */
       fittedHere?: boolean
+      /** Fit numbers when fitted on this load ("fit 0.07 m, halves 2.1 m"). */
+      fitDetail?: string
     }>
 
 export type NativeLayoutOption = Readonly<{ name: string; kind: 'main' | 'alt'; layout: NativeCourseLayout }>
@@ -381,7 +383,10 @@ const registerInBrowser = async (
     // Numbers to diagnose the failure from a screenshot.
     const detail = ` [${courseKey}: ${result.greensChecked} greens`
       + (g ? `; greens rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
-      + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points]`
+      + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points`
+      + (result.holeShift ? `; greens line up if GSPro hole = Looper hole + ${result.holeShift.shift}`
+        + ` (rms ${result.holeShift.rmsM.toFixed(1)} m, rotate ${result.holeShift.rotationDeg.toFixed(1)}°)` : '')
+      + ']'
     return {
       registration: null,
       reason: (result.fit.grade === 'C'
@@ -389,7 +394,11 @@ const registerInBrowser = async (
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
     }
   }
-  return { registration: result.registration, reason: `grade ${result.fit.grade}` }
+  const turn = result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : ''
+  return {
+    registration: result.registration,
+    reason: `fit ${result.fit.medianAbsM.toFixed(2)} m, halves ${result.fit.halvesAgreeM.toFixed(1)} m${turn}`,
+  }
 }
 
 const keyAsName = (key: string) => key.replace(/_gsp$/i, '').replace(/[_-]+/g, ' ')
@@ -425,9 +434,23 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
   let registration = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
   let fitted = false
+  let fitDetail: string | undefined
   // Not in GSPro yet (Round Setup): find the course in the companion's library
   // by name, so GSPro's tee sets can be offered before the round starts.
-  if (!registration && !courseKey) courseKey = await installedCourseKeyFor(courseId)
+  // GSPro's course key comes from currentRound.dat, which still names the last
+  // course played until a round starts (FarmLinks while setting up Valhalla).
+  // A key that is clearly another course must not be fitted to this map: use
+  // this course's installed key, and report that GSPro is elsewhere.
+  let gsproElsewhere: string | null = null
+  if (!registration) {
+    const installed = await installedCourseKeyFor(courseId)
+    if (!courseKey) courseKey = installed
+    else if (installed && !sameName(courseKey, installed)
+      && !pickInstalledCourseKey([entry.name, ...entry.gsproAliases], [{ courseKey, courseName: keyAsName(courseKey) }])) {
+      gsproElsewhere = courseKey
+      courseKey = installed
+    }
+  }
   if (!registration && courseKey) registration = await loadCachedRegistration(courseId, courseKey)
   if (!registration && !courseKey) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
   const key = registration?.gsproCourseKey ?? courseKey!
@@ -442,6 +465,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
     }
     registration = result.registration
     fitted = true
+    fitDetail = result.reason
     await saveCachedRegistration(courseId, key, registration)
   }
   const layouts = await verifyNativeLayouts(sceneLayouts, registration)
@@ -459,6 +483,10 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   if (courseKey && !sameName(courseKey, key) && !named) {
     return { context: null, status: { state: 'other-course', courseKey, expectedKey: key } }
   }
+  if (gsproElsewhere) {
+    return { context: null, status: { state: 'other-course', courseKey: gsproElsewhere, expectedKey: key,
+      grade: registration.grade, courseName: entry.name } }
+  }
   const active = named ?? layouts.find((l) => l.kind === 'main') ?? layouts[0]
   return {
     context: {
@@ -472,7 +500,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
     },
     status: {
       state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name,
-      layoutNames: layouts.map((l) => l.name), via, fittedHere: fitted,
+      layoutNames: layouts.map((l) => l.name), via, fittedHere: fitted, ...(fitDetail ? { fitDetail } : {}),
     },
   }
 }
