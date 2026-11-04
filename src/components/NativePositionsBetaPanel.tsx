@@ -9,7 +9,6 @@ import {
   NATIVE_POSITIONS_CHANGED_EVENT,
   nativeStatusEventIsFor,
   regrantGsproCoursesFolder,
-  setNativePositionsEnabled,
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
 import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
@@ -32,7 +31,7 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
         }
       }
       return {
-        text: `Active · ${status.courseName} · registration grade ${status.grade}`
+        text: `Matched · ${status.courseName} · grade ${status.grade}`
           + (status.via === 'companion' ? ' · course files via Looper Companion' : '')
           + (status.fittedHere ? ` · matched to the map on this PC${status.fitDetail ? ` (${status.fitDetail})` : ''}` : '')
           + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
@@ -58,19 +57,21 @@ const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'war
     case 'registration-failed':
       return { text: `Could not match your GSPro course to the map: ${status.reason}. Using current positioning.`, tone: 'warn' }
     case 'error':
-      return { text: `Native positions unavailable: ${status.message}`, tone: 'warn' }
+      return { text: `Course match unavailable: ${status.message}. Using estimated positions.`, tone: 'warn' }
     case 'no-course':
       return { text: 'Checking…', tone: 'warn' }
     case 'off':
     default:
-      return { text: 'Off · using current positioning.', tone: 'warn' }
+      return { text: 'Off (turned off with ?native=0; ?native=1 turns it back on) · using estimated positions.', tone: 'warn' }
   }
 }
 
-/** Beta switch for GKD + LiDAR-registered positions. Off by default; when off
- * or not ready, Live Caddie behaves exactly as before. */
+/** "Course match": whether GSPro's course files are matched to the map, so
+ * positions come straight from GSPro's coordinates. Always on (no toggle);
+ * when it can't match, Live Caddie falls back to estimated positions and this
+ * line says why. ?native=0 turns it off for troubleshooting. */
 export default function NativePositionsBetaPanel({ courseId, courseKey }: Props) {
-  const [enabled, setEnabled] = useState(isNativePositionsEnabled)
+  const [enabled] = useState(isNativePositionsEnabled)
   const [status, setStatus] = useState<NativeCourseStatus>(getNativeCourseStatus)
   const [busy, setBusy] = useState(false)
 
@@ -98,11 +99,6 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   // fallback needs Chrome or Edge.
   const canPickFolder = isNativePositionsSupported()
 
-  const toggle = (next: boolean) => {
-    setNativePositionsEnabled(next)
-    setEnabled(next)
-  }
-
   const run = async (work: () => Promise<unknown>) => {
     setBusy(true)
     try {
@@ -122,15 +118,8 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   const needsPermission = canPickFolder && on && status.state === 'needs-permission'
 
   return (
-    <section className="native-positions-beta" aria-label="Native positions beta">
-      {gsproOnly ? (
-        <span className="native-positions-toggle">GSPro course file</span>
-      ) : (
-        <label className="native-positions-toggle">
-          <input type="checkbox" checked={enabled} onChange={(event) => toggle(event.target.checked)} />
-          <span>Native positions (beta)</span>
-        </label>
-      )}
+    <section className="native-positions-beta" aria-label="Course match">
+      <span className="native-positions-toggle">{gsproOnly ? 'GSPro course file' : 'Course match'}</span>
       <span className={`native-positions-status native-positions-${tone}`}>{text}</span>
       {needsFolder ? (
         <button type="button" disabled={busy} onClick={() => void run(chooseGsproCoursesFolder)}>

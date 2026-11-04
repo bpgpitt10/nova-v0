@@ -56,7 +56,7 @@ export type NativeSnapshotResult = Readonly<{
   pinSlot: number | null
 }>
 
-const NATIVE_NOTE = 'Native positions (beta): tee, ball and pin placed from GSPro coordinates using the LiDAR-verified course registration.'
+const NATIVE_NOTE = "Tee, ball and pin placed from GSPro's coordinates using the course's map match."
 
 const yards = (metres: number) => metres * NATIVE_METERS_TO_YARDS
 
