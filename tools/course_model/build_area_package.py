@@ -40,6 +40,7 @@ from grid_io import load_grid  # noqa: E402
 # tiles cover that box, so no extra margin (terrain needs 95% DEM coverage).
 AREA_MARGIN_YDS = 0.0
 MAX_TERRAIN_CELLS = 1_600_000
+AREA_MIN_DEM_COVERAGE = 0.5
 
 GOLF_SURFACES = {'fairway': 'fairway', 'green': 'green', 'tee': 'tee', 'rough': 'rough'}
 CONTEXT = {
@@ -170,7 +171,9 @@ def main() -> int:
         cells = ((view['maxX'] - view['minX']) / spacing) * ((view['maxY'] - view['minY']) / spacing)
     dem_json = md / 'dem-utm-1m.json' if (md / 'dem-utm-1m.json').exists() else md / 'dem-utm16n-1m.json'
     dem_h, dem = load_grid(dem_json)
-    terrain = build_terrain(frame, view, dem_h, dem, spacing)
+    # A coastal course's box takes in sea, which has no ground heights (Cape
+    # Kidnappers: 87%): cells off the DEM stay empty and the PC samples around them.
+    terrain = build_terrain(frame, view, dem_h, dem, spacing, min_coverage=AREA_MIN_DEM_COVERAGE)
     terrain['note'] = (f"{spacing:g}-yd course-area terrain from the {terrain['sourceResolutionMeters']:g} m "
                        f"{(dem_h.get('provenance') or {}).get('dataset') or 'DEM'} (course model).")
 

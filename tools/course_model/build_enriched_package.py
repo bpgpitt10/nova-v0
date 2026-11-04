@@ -298,7 +298,7 @@ def dem_source(dem_h: dict) -> tuple[str, float, str]:
     return ('global-dem' if res >= COARSE_DEM_METERS else 'lidar-dem'), res, dataset
 
 
-def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: float) -> dict:
+def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: float, min_coverage: float = 0.95) -> dict:
     from scipy.ndimage import map_coordinates
     min_x = math.floor(view['minX'] / spacing) * spacing
     min_y = math.floor(view['minY'] / spacing) * spacing
@@ -316,8 +316,8 @@ def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: floa
     z = map_coordinates(np.nan_to_num(dem, nan=-1e4), [rows, cols], order=1, mode='constant', cval=-1e4)
     z = np.where(z < -1e3, np.nan, z).reshape(xx.shape) * FT
     valid = np.isfinite(z)
-    if valid.mean() < 0.95:
-        raise RuntimeError(f'DEM coverage {valid.mean():.1%} < 95%')
+    if valid.mean() < min_coverage:
+        raise RuntimeError(f'DEM coverage {valid.mean():.1%} < {min_coverage:.0%}')
     offset = math.floor(float(np.nanmin(z)) * 10) / 10
     q = np.rint((z - offset) * 10)
     enc = np.full(z.shape, NODATA, dtype='<u2')
