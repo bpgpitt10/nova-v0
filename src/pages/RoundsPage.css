@@ -1531,19 +1531,31 @@
   background: transparent;
 }
 
-/* Score: vs par in gold beside it, same size, lighter. */
+/* Score: strokes big, to-par a smaller gold tag after it ("71 −1"), so the
+   two never read as one number. A partial round shows to-par "thru N". */
 .rounds-score-pair {
   display: flex;
   align-items: baseline;
-  gap: 16px;
+  gap: 14px;
 }
 
 .rounds-score-vspar {
-  font-size: 64px;
-  font-weight: 400;
-  line-height: 0.95;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
   color: var(--rounds-gold);
   font-variant-numeric: tabular-nums;
+}
+
+.rounds-score-main strong.is-topar {
+  color: var(--rounds-gold);
+}
+
+.rounds-score-thru {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--rounds-muted);
 }
 
 /* The hole's own score: gold, scorecard shape once par is known. */
@@ -1581,7 +1593,7 @@
 
 @media (max-width: 760px) {
   .rounds-score-vspar {
-    font-size: 48px;
+    font-size: 22px;
   }
 }
 
@@ -1605,17 +1617,20 @@
   stroke: rgba(207, 216, 205, 0.22);
 }
 
-/* Rounds list: vs par in gold just left of the score, both under one Score header. */
-.rounds-page .rounds-table td.rounds-list-vspar {
-  padding-right: 6px;
-  color: var(--rounds-gold);
-  font-weight: 500;
-  white-space: nowrap;
+/* Rounds list: the score, then to-par as a smaller gold tag, under one Score header. */
+.rounds-page .rounds-table td.rounds-list-score {
+  padding-right: 8px;
 }
 
-.rounds-page .rounds-table td.rounds-list-score {
+.rounds-page .rounds-table td.rounds-list-vspar {
   padding-left: 0;
   width: 1%;
+  color: var(--rounds-gold);
+  font-size: 0.82em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
 }
 
 /* Scorecard row labels (Hole / Par / Score / SG) in a narrow first column. */
