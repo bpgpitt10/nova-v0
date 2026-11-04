@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
 import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
+import { GSPRO_LINKS_UPDATED_EVENT, gsproLinks } from '../courseGeometry/gsproLinks'
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
   CourseSearchBusyError,
   courseNameMatchScore,
   courseSlugFromName,
   findGolfCourseFor,
+  linkGsproCourse,
   listCourseLoads,
+  refreshGsproLinks,
   minutesLeft,
   requestCourseLoad,
   searchGolfCourses,
   STAGE_LABELS,
   typicalLoadMinutes,
+  unlinkGsproCourse,
   type CourseLoadRow,
   type GolfCourseSearchResult,
 } from '../courseLoading/courseLoads'
@@ -86,6 +90,58 @@ const notARealCourse = (course: Readonly<{ courseName?: string | null; courseKey
     || /^\s*gspro\b/i.test(course.courseName ?? '')
 }
 
+/**
+ * GSPro names some courses differently from the map ("DPC Pebble" for Pebble
+ * Beach). For a GSPro course with no loaded match, pick the loaded course it
+ * is; the link is saved for everyone and the GSPro check runs right away, so
+ * a wrong pick shows up as "doesn't line up".
+ */
+function LinkToLoaded({ course, onLinked }: Readonly<{
+  course: LooperCompanionInstalledCourse
+  onLinked: (message: string) => void
+}>) {
+  const options = useMemo(() => {
+    const label = `${course.courseName} ${course.location}`
+    return courseRegistry
+      .map((entry) => ({ slug: entry.slug, name: entry.name, score: courseNameMatchScore(entry.name, label) }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+  }, [course.courseName, course.location])
+  const [open, setOpen] = useState(false)
+  const [choice, setChoice] = useState(() => (options[0]?.score ?? 0) >= 0.3 ? options[0].slug : '')
+  const [saving, setSaving] = useState(false)
+  if (!open) {
+    return (
+      <button type="button" className="load-course-link-toggle" onClick={() => setOpen(true)}>
+        Already loaded under another name?
+      </button>
+    )
+  }
+  const save = async () => {
+    if (!choice) return
+    setSaving(true)
+    try {
+      await linkGsproCourse({ gsproCourseKey: course.courseKey, gsproCourseName: course.courseName, courseSlug: choice })
+      const name = options.find((o) => o.slug === choice)?.name ?? choice
+      onLinked(`Linked your GSPro course ${course.courseName || course.courseKey} to ${name}. Checking it lines up…`)
+    } catch (error) {
+      onLinked(`Couldn't save the link: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <span className="load-course-link">
+      <select value={choice} onChange={(event) => setChoice(event.target.value)} aria-label="Loaded course">
+        <option value="">Same course as…</option>
+        {options.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+      </select>
+      <button type="button" disabled={!choice || saving} onClick={() => { void save() }}>
+        {saving ? 'Linking…' : 'Link'}
+      </button>
+    </span>
+  )
+}
+
 const loadedSlugs = () => new Set<string>(courseRegistry.map((entry) => entry.slug))
 
 const statusText = (row: CourseLoadRow) => {
@@ -118,6 +174,14 @@ export default function LoadCoursePage() {
   // from the search results stay linked to it, so Live Caddie recognizes the round.
   const [linkedGspro, setLinkedGspro] = useState<{ courseKey: string; courseName: string } | null>(null)
   const slugs = useMemo(loadedSlugs, [])
+  // Re-render when GSPro links change (Link / Unlink, or the shared list loads).
+  const [, setLinksVersion] = useState(0)
+  useEffect(() => {
+    const bump = () => setLinksVersion((v) => v + 1)
+    window.addEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+    void refreshGsproLinks().catch(() => undefined)
+    return () => window.removeEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+  }, [])
 
   const refresh = useCallback(async () => {
     try {
@@ -229,7 +293,8 @@ export default function LoadCoursePage() {
     const known = resolveCourseIdFromGsproName(course.courseKey) ?? resolveCourseIdFromGsproName(course.courseName)
     const slug = known ? courseRegistry.find((e) => e.id === known)?.slug ?? courseSlugFromName(course.courseName)
       : courseSlugFromName(course.courseName)
-    return { course, slug }
+    const link = gsproLinks().find((l) => l.gsproCourseKey === course.courseKey) ?? null
+    return { course, slug, link }
   })
 
   return (
@@ -258,16 +323,27 @@ export default function LoadCoursePage() {
           </p>
         ) : null}
         <ul className="load-course-list">
-          {installed.map(({ course, slug }) => (
+          {installed.map(({ course, slug, link }) => (
             <li key={course.courseKey}>
               <div>
                 <strong>{course.courseName || course.courseKey}</strong>
                 <span>{[course.location, `${course.holes} holes`].filter(Boolean).join(' · ')}</span>
+                {link && slugs.has(slug) ? (
+                  <span className="load-course-linked">
+                    Linked to {courseRegistry.find((e) => e.slug === slug)?.name ?? slug}
+                    {' '}<button type="button" className="load-course-unlink" onClick={() => {
+                      void unlinkGsproCourse(course.courseKey)
+                        .catch((error: unknown) => setMessage(`Couldn't unlink: ${error instanceof Error ? error.message : String(error)}`))
+                    }}>Unlink</button>
+                  </span>
+                ) : null}
               </div>
               <span className="load-course-actions">
                 {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
                 {slugs.has(slug) && courseIdFor(slug)
                   ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
+                {!slugs.has(slug) && !ACTIVE.has(latestFor(slug)?.status ?? '')
+                  ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}
               </span>
             </li>
           ))}

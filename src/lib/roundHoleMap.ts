@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
 import {
+  courseGsproAliases,
   courseRegistry,
   resolveCourseIdFromGsproName,
   type RegisteredCourseId,
@@ -64,7 +65,7 @@ export const loadedCourseIdFor = (courseKey: string, courseName: string | null):
     .filter((entry) => 'staticPackageUrl' in entry && entry.staticPackageUrl)
     .map((entry) => ({
       id: entry.id,
-      score: Math.max(0, ...[entry.name, ...entry.gsproAliases].flatMap((label) =>
+      score: Math.max(0, ...[entry.name, ...courseGsproAliases(entry)].flatMap((label) =>
         names.map((name) => courseNameMatchScore(name, label)))),
     }))
     .sort((a, b) => b.score - a.score)

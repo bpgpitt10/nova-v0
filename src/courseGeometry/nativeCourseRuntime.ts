@@ -1,5 +1,5 @@
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
-import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { courseGsproAliases, getCourseCatalogEntry, type CourseId } from './courseCatalog'
 import { courseNameMatchScore } from '../courseLoading/courseNameMatch'
 import {
   findNativeSceneFolder,
@@ -450,7 +450,7 @@ export const installedCourseCandidates = (
 const installedCourseKeysFor = async (courseId: CourseId): Promise<string[]> => {
   const entry = getCourseCatalogEntry(courseId)
   const library = await readLooperCompanionCourseLibrary().catch(() => null)
-  return installedCourseCandidates([entry.name, ...entry.gsproAliases], library?.courses ?? [])
+  return installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], library?.courses ?? [])
 }
 
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
@@ -472,7 +472,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
     const installed = await installedCourseKeysFor(courseId)
     const gsproKeyIsThisCourse = courseKey != null && (installed.length === 0
       || installed.some((k) => sameName(k, courseKey!))
-      || installedCourseCandidates([entry.name, ...entry.gsproAliases], [{ courseKey, courseName: keyAsName(courseKey) }]).length > 0)
+      || installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], [{ courseKey, courseName: keyAsName(courseKey) }]).length > 0)
     if (courseKey && gsproKeyIsThisCourse) candidates = [courseKey]
     else {
       if (courseKey) gsproElsewhere = courseKey

@@ -1,4 +1,5 @@
 import { generatedImportedCourseRegistry } from './generatedImportedCourseRegistry'
+import { gsproLinks } from './gsproLinks'
 
 export const GREYWOLF_COURSE_ID = 'greywolf-panorama-bc' as const
 export const UNSELECTED_COURSE_ID = '__no-course-selected__' as const
@@ -110,5 +111,18 @@ export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCours
       return entry.id
     }
   }
+  // Links players made on the Load page ("DPC Pebble" → Pebble Beach).
+  for (const link of gsproLinks()) {
+    if (normalizeCourseName(link.gsproCourseKey) !== normalized
+      && normalizeCourseName(link.gsproCourseName ?? '') !== normalized) continue
+    const entry = courseRegistry.find((candidate) => candidate.slug === link.courseSlug)
+    if (entry) return entry.id
+  }
   return null
 }
+
+/** Reviewed aliases plus GSPro courses players linked to this course. */
+export const courseGsproAliases = (entry: Readonly<{ slug: string; gsproAliases: readonly string[] }>): string[] => [
+  ...entry.gsproAliases,
+  ...gsproLinks().filter((link) => link.courseSlug === entry.slug).map((link) => link.gsproCourseKey),
+]

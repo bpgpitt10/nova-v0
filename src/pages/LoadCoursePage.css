@@ -152,3 +152,38 @@
   font-size: 13px;
   line-height: 1.35;
 }
+
+.load-course-link-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #8fd19e;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.load-course-link {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.load-course-link select {
+  max-width: 240px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(143, 209, 158, 0.35);
+  background: #0f1a12;
+  color: #e8efe6;
+  font: inherit;
+  font-size: 14px;
+}
+
+.load-course-linked {
+  display: block;
+  margin-top: 2px;
+  color: #8fd19e;
+  font-size: 13px;
+}
