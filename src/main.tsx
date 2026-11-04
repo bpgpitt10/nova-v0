@@ -37,6 +37,7 @@ import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
 import { refreshGsproLinks, refreshLoadedCourses } from './courseLoading/courseLoads.ts'
+import { refreshGsproOnlyCourses } from './courseGeometry/gsproOnlyCourses.ts'
 import { startLiveCaddieRoundTeeValidator } from './liveCaddie/roundTeeValidator.ts'
 import {
   loadActiveLiveCaddieRound,
@@ -143,6 +144,9 @@ function LiveGsproRoundArchiveBridge() {
     void refreshGsproLinks().catch(() => undefined)
     // Courses loaded since this build (published at run time, not in the code).
     void refreshLoadedCourses().catch(() => undefined)
+    // Every course installed in GSPro on this PC plays from its course file
+    // (no map needed); only answers on the sim PC, where the companion runs.
+    void refreshGsproOnlyCourses().catch(() => undefined)
     return () => {
       stopTeeValidator()
       stopLineage()

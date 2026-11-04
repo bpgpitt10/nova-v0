@@ -21,6 +21,14 @@ export type TerrainEstimate =
       nearestContourDistanceYds: number
       note: string
     }
+  | {
+      elevationFt: number
+      /** GSPro-only course: coarse terrain from the course file's heights. */
+      source: 'gspro-heights'
+      confidence: 'medium'
+      gridSpacingYds: number
+      note: string
+    }
 
 const pointSegmentDistance = (
   point: CoursePointYds,
@@ -96,6 +104,15 @@ const estimateFromGrid = (
 
   const top = z00 * (1 - dx) + z10 * dx
   const bottom = z01 * (1 - dx) + z11 * dx
+  if (terrain.source === 'gspro-heights') {
+    return {
+      elevationFt: top * (1 - dy) + bottom * dy,
+      source: 'gspro-heights',
+      confidence: 'medium',
+      gridSpacingYds: terrain.runtimeSpacingYds,
+      note: terrain.note ?? "Coarse terrain from GSPro's course-file heights.",
+    }
+  }
   return {
     elevationFt: top * (1 - dy) + bottom * dy,
     source: 'lidar-dem',

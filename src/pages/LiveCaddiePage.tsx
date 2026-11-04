@@ -35,6 +35,7 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
+import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
 import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenAnchorSummary } from '../courseGeometry/nativeGreenAnchor'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
@@ -527,7 +528,7 @@ export default function LiveCaddiePage() {
   // effect also re-runs once it's known.
   const gkdCourseKey = liveSnapshot?.courseKey ?? null
   useEffect(() => {
-    if (!rawHole || !isNativePositionsEnabled()) {
+    if (!rawHole || !(isNativePositionsEnabled() || isGsproOnlyCourseId(courseId))) {
       setGkdOverlay(null)
       return
     }
@@ -567,7 +568,8 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     let active = true
     setGreenDetail(null)
-    if (!selectedCourse) return () => { active = false }
+    // GSPro-only courses have no packaged green slopes.
+    if (!selectedCourse || selectedCourse.source === 'gspro-only') return () => { active = false }
     void loadCourseGreenDetail(selectedCourse.slug, holeNumber)
       .then(detail => { if (active) setGreenDetail(detail) })
       .catch(error => {
@@ -1010,13 +1012,17 @@ export default function LiveCaddiePage() {
   const elevationSource = ballTerrain && targetTerrain
     ? ballTerrain.source === 'lidar-dem' && targetTerrain.source === 'lidar-dem'
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
-      : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+      : ballTerrain.source === 'gspro-heights'
+        ? "GSPro course-file heights (coarse)"
+        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
   const airAltitudeFt = ballTerrain?.elevationFt ?? null
   const airAltitudeSource = ballTerrain
     ? ballTerrain.source === 'lidar-dem'
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
-      : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+      : ballTerrain.source === 'gspro-heights'
+        ? `GSPro course altitude${selectedCourse?.altitudeFt != null ? '' : ' unknown (sea level)'}`
+        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
   const surfaceOverride = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)

@@ -12,6 +12,7 @@ import {
   setNativePositionsEnabled,
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
+import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
 import './NativePositionsBetaPanel.css'
 
 type Props = {
@@ -22,6 +23,14 @@ type Props = {
 const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'warn' } => {
   switch (status.state) {
     case 'ready':
+      if (status.gsproOnly) {
+        return {
+          text: `Active · ${status.courseName} · from GSPro's course file (no map loaded): tees, pins, the green, `
+            + "GSPro's water and OB, and GSPro's heights. No fairway, bunker or tree map yet; load the course for those."
+            + (status.layoutNames.length > 1 ? ` · layouts: ${status.layoutNames.join(', ')}` : ''),
+          tone: 'ok',
+        }
+      }
       return {
         text: `Active · ${status.courseName} · registration grade ${status.grade}`
           + (status.via === 'companion' ? ' · course files via Looper Companion' : '')
@@ -73,14 +82,17 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
     return () => window.removeEventListener(NATIVE_POSITIONS_CHANGED_EVENT, onChange)
   }, [courseId])
 
+  // A GSPro-only course has no other positioning: always on.
+  const gsproOnly = isGsproOnlyCourseId(courseId)
+  const on = enabled || gsproOnly
   useEffect(() => {
-    if (!enabled) return
+    if (!on) return
     let active = true
     void loadNativeCourseContext(courseId, courseKey).then((result) => {
       if (active) setStatus(result.status)
     })
     return () => { active = false }
-  }, [enabled, courseId, courseKey, status.state])
+  }, [on, courseId, courseKey, status.state])
 
   // The companion serves course files in any browser; the folder picker
   // fallback needs Chrome or Edge.
@@ -105,16 +117,20 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
     }
   }
 
-  const { text, tone } = describe(enabled ? status : { state: 'off' })
-  const needsFolder = canPickFolder && enabled && (status.state === 'no-folder' || status.state === 'gkd-not-found')
-  const needsPermission = canPickFolder && enabled && status.state === 'needs-permission'
+  const { text, tone } = describe(on ? status : { state: 'off' })
+  const needsFolder = canPickFolder && on && (status.state === 'no-folder' || status.state === 'gkd-not-found')
+  const needsPermission = canPickFolder && on && status.state === 'needs-permission'
 
   return (
     <section className="native-positions-beta" aria-label="Native positions beta">
-      <label className="native-positions-toggle">
-        <input type="checkbox" checked={enabled} onChange={(event) => toggle(event.target.checked)} />
-        <span>Native positions (beta)</span>
-      </label>
+      {gsproOnly ? (
+        <span className="native-positions-toggle">GSPro course file</span>
+      ) : (
+        <label className="native-positions-toggle">
+          <input type="checkbox" checked={enabled} onChange={(event) => toggle(event.target.checked)} />
+          <span>Native positions (beta)</span>
+        </label>
+      )}
       <span className={`native-positions-status native-positions-${tone}`}>{text}</span>
       {needsFolder ? (
         <button type="button" disabled={busy} onClick={() => void run(chooseGsproCoursesFolder)}>

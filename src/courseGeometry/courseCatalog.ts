@@ -20,6 +20,10 @@ export type CourseCatalogEntry = {
   packageCacheStatus: CourseCacheStatus
   osmCacheStatus: CourseCacheStatus
   lidarCacheStatus: CourseCacheStatus
+  /** Built from the player's GSPro course file alone (no map loaded): gsproOnlyCourse.ts. */
+  source?: 'gspro-only'
+  /** GSPro's course altitude (feet), when known. */
+  altitudeFt?: number | null
 }
 
 /**
@@ -123,6 +127,11 @@ export const registerRuntimeCourses = (
   return added
 }
 
+/** Hole headings worked out on this device (GSPro-only courses, from the course file). */
+export const setRuntimeHoleHeadings = (courseId: string, headings: readonly (number | null)[]) => {
+  if (headings.some((h) => typeof h === 'number')) runtimeHoleHeadings.set(courseId, headings)
+}
+
 /** True heading of a runtime-loaded course's hole (tee to green), if published. */
 export const getRuntimeHoleHeadingDegreesTrue = (courseId: string, holeNumber: number): number | null => {
   const heading = runtimeHoleHeadings.get(courseId)?.[Math.max(1, Math.min(18, Math.round(holeNumber))) - 1]
@@ -161,11 +170,16 @@ const normalizeCourseName = (value: string) =>
  * build config; canonical imports carry those aliases into the generated
  * registry automatically.
  */
-export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCourseId | null => {
+export const resolveCourseIdFromGsproName = (
+  gsproName: string,
+  options: Readonly<{ includeGsproOnly?: boolean }> = {},
+): RegisteredCourseId | null => {
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
+  // A loaded map beats the GSPro-only entry for the same course.
   for (const entry of courseRegistry) {
+    if (entry.source === 'gspro-only') continue
     if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) {
       return entry.id
     }
@@ -176,6 +190,12 @@ export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCours
       && normalizeCourseName(link.gsproCourseName ?? '') !== normalized) continue
     const entry = courseRegistry.find((candidate) => candidate.slug === link.courseSlug)
     if (entry) return entry.id
+  }
+  if (options.includeGsproOnly !== false) {
+    for (const entry of courseRegistry) {
+      if (entry.source !== 'gspro-only') continue
+      if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) return entry.id
+    }
   }
   return null
 }

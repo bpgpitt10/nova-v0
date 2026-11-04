@@ -18,6 +18,7 @@ import {
   nativeCourseContextForLive,
 } from '../courseGeometry/nativeCourseRuntime'
 import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
+import { gsproOnlyCourseKey } from '../courseGeometry/gsproOnlyCourse'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
 import {
@@ -705,7 +706,13 @@ const buildSnapshot = async (
   const logHole = logState.holeNumber
 
   let coordinateCourseId: CourseId | null = null
+  const selectedGsproKey = gsproOnlyCourseKey(selectedCourseId)
   if (observedCourseId === selectedCourseId) {
+    coordinateCourseId = selectedCourseId
+  } else if (selectedGsproKey && courseKey && observedCourseId !== selectedCourseId
+    && (selectedGsproKey.toLowerCase() === courseKey.trim().toLowerCase() || !observedCourseId)) {
+    // GSPro-only course: the native context checks GSPro's key itself (a
+    // GKDalt key is fine; another course is refused there).
     coordinateCourseId = selectedCourseId
   } else if (
     selectedCourseId === GREYWOLF_COURSE_ID
@@ -734,7 +741,9 @@ const buildSnapshot = async (
 
   const latestShot = await buildShot(latestRecord, roundRecords, coordinateCourseId)
   if (latestShot?.positionSource === 'native-gkd') {
-    warnings.push('Native positions (beta): ball placed from GSPro coordinates using the LiDAR-verified course registration.')
+    warnings.push(selectedGsproKey
+      ? "Ball placed from GSPro coordinates on GSPro's own course file (no map loaded)."
+      : 'Native positions (beta): ball placed from GSPro coordinates using the LiDAR-verified course registration.')
   } else if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
     warnings.push(latestShot?.positionQuality === 'provisional'
       ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
