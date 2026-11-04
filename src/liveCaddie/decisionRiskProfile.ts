@@ -244,9 +244,11 @@ export const buildDecisionRiskProfile = ({
   // Tail records historically store carry but not a dedicated final-position vector.
   // Inherit the core model's observed Stock rollout distance so the mishit tail is
   // evaluated at a resting position too, rather than silently reverting to carry.
+  // Use the stock roll (before surface/slope scaling): the landing transform
+  // scales the tail's roll at its own touchdown point.
   const coreRolloutYds = coreSamples.length > 0
     ? coreSamples.reduce(
-        (sum, sample) => sum + distance(sample.carryLanding, sample.landing),
+        (sum, sample) => sum + (sample.stockRollYds ?? distance(sample.carryLanding, sample.landing)),
         0,
       ) / coreSamples.length
     : 0

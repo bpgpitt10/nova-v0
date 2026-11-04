@@ -1,5 +1,6 @@
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { makeRollLandingTransform } from './rollModel'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
@@ -148,6 +149,8 @@ export type ClubAimEvaluation = {
   stockTotalYds: number
   modeledCarryYds: number
   modeledTotalYds: number
+  /** Carry + mean roll of the best aim's outcomes after surface and slope (what the shot is expected to total). */
+  expectedTotalYds?: number | null
   rolloutYds: number
   airAltitudeFt: number | null
   altitudeCarryDeltaYds: number
@@ -455,7 +458,7 @@ export const evaluateAimLab = (
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
   const shotOrigin = resolveShotOriginEligibility(environment.shotOrigin, ballSurface)
   const exactPinLocalYds = environment.exactPinLocalYds ?? hole.markers.pin ?? null
-  const greenLandingTransform = environment.greenDetail
+  const greenRollout = environment.greenDetail
     ? (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) =>
         redirectCourseGreenRollout({
           hole,
@@ -464,6 +467,8 @@ export const evaluateAimLab = (
           baselineLanding,
         }).landing
     : undefined
+  // Roll scaled by surface and slope at touchdown, then the green rollout.
+  const greenLandingTransform = makeRollLandingTransform(hole, greenRollout)
 
   // Hard exclusion BEFORE club physics, aim exploration, cache and ranking.
   // Never let the expected-value ranker select a non-tee Driver or Mini Driver.
@@ -525,7 +530,7 @@ export const evaluateAimLab = (
       notes.push(`GSPro current lie (${environment.surfaceOverride}) overrides cached-map surface (${geometrySurface}) for launch response.`)
     }
     if (rolloutYds > 0) {
-      notes.push(`Final-position outcomes include ${rolloutYds.toFixed(1)} yd of observed Stock rollout beyond carry.`)
+      notes.push(`Final-position outcomes start from ${rolloutYds.toFixed(1)} yd of observed Stock rollout, scaled by the surface and slope where each ball lands.`)
     }
 
     const candidates = aimOffsetsYds.map((aimOffsetYds): AimCandidateEvaluation => {
@@ -608,6 +613,11 @@ export const evaluateAimLab = (
       ranked.candidate.decisionReason = ranked.decisionReason
     })
     const bestCandidate = rankedCandidates[0]?.candidate ?? null
+    const bestSamples = bestCandidate?.modeledSamples ?? []
+    const expectedTotalYds = bestSamples.length
+      ? modeledCarryYds + bestSamples.reduce((sum, sample) =>
+        sum + Math.hypot(sample.landing[0] - sample.carryLanding[0], sample.landing[1] - sample.carryLanding[1]), 0) / bestSamples.length
+      : null
 
     if (!bestCandidate) notes.push('No usable carry/lateral dispersion model for this club.')
 
@@ -618,6 +628,7 @@ export const evaluateAimLab = (
       stockTotalYds,
       modeledCarryYds,
       modeledTotalYds,
+      expectedTotalYds,
       rolloutYds,
       airAltitudeFt: altitudeAdjustment.altitudeFt,
       altitudeCarryDeltaYds: altitudeAdjustment.carryDeltaYds,
