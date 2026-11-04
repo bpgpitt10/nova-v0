@@ -12,14 +12,16 @@ never a town lookup by name ("Panorama, BC" geocoded to Vancouver and loaded
 Point Grey as Greywolf).
 
   1. Read SGT's manifest and course page feed (joined on the SGT id).
-  2. Fetch every leisure=golf_course on OSM near those courses, a few big
-     tiles at a time (Overpass, `out tags center`).
+  2. Fetch every leisure=golf_course on OSM within 8 km of those courses,
+     40 courses per Overpass query (`around`, `out tags center`).
   3. Match each course: the best-named OSM course within 8 km. Status
      matched / review / no-map / fictional, top candidates kept for review.
   4. GSPro keys: the manifest's CourseFolder, plus keys from players'
      libraries (gspro_library) for courses only the page feed lists.
-  5. Upsert public.course_crosswalk. Rows a person fixed (method 'manual') or
-     a course match confirmed (verified) keep their OSM course.
+  5. Upsert public.course_crosswalk after every batch (a failed batch is left
+     for the next run; reruns only match courses not in the table unless
+     --refresh). Rows a person fixed (method 'manual') or a course match
+     confirmed (verified) keep their OSM course.
 
 Writes need SUPABASE_SECRET_KEY (service role). --dry-run prints a summary.
 Data: course list (c) Simulator Golf Tour, credited in the app; OSM ODbL.
@@ -52,8 +54,6 @@ SGT_MANIFEST = 'https://simulatorgolftour.com/course_manifest.json'
 SGT_PAGE_DATA = 'https://simulatorgolftour.com/sgt-api/courses/page-data'
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://kdjfdchzfemjpmaqpobn.supabase.co')
 USER_AGENT = 'TheLooperCourseCrosswalk/1.0 (+https://thelooper.golf)'
-TILE_DEG = 4.0
-TILE_MARGIN_DEG = 0.1
 NEAR_KM = 3.0
 FAR_KM = 8.0
 MATCH_SCORE = 0.6
@@ -203,29 +203,23 @@ def overpass(query: str) -> dict:
     raise RuntimeError(f'overpass failed: {"; ".join(errors[-4:])}')
 
 
-def osm_courses_near(courses: list[dict]) -> list[dict]:
-    """Every leisure=golf_course in the tiles that hold SGT courses."""
-    tiles = defaultdict(int)
-    for c in courses:
-        if c['lat'] is not None:
-            tiles[(math.floor(c['lat'] / TILE_DEG), math.floor(c['lon'] / TILE_DEG))] += 1
-    found: dict[tuple[str, int], dict] = {}
-    for i, (ty, tx) in enumerate(sorted(tiles)):
-        s, w = ty * TILE_DEG - TILE_MARGIN_DEG, tx * TILE_DEG - TILE_MARGIN_DEG
-        n, e = s + TILE_DEG + 2 * TILE_MARGIN_DEG, w + TILE_DEG + 2 * TILE_MARGIN_DEG
-        q = (f'[out:json][timeout:180];(way["leisure"="golf_course"]({s},{w},{n},{e});'
-             f'relation["leisure"="golf_course"]({s},{w},{n},{e}););out tags center;')
-        payload = overpass(q)
-        for el in payload.get('elements', []):
-            center = el.get('center') or {}
-            if 'lat' not in center:
-                continue
-            found[(el['type'], el['id'])] = {'type': el['type'], 'id': el['id'],
-                                             'name': (el.get('tags') or {}).get('name') or '',
-                                             'lat': center['lat'], 'lon': center['lon']}
-        print(f'tile {i + 1}/{len(tiles)} ({ty * TILE_DEG:g},{tx * TILE_DEG:g}): {tiles[(ty, tx)]} SGT courses, '
-              f'{len(payload.get("elements", []))} OSM courses', flush=True)
-    return list(found.values())
+BATCH = 40
+
+
+def osm_courses_around(batch: list[dict]) -> list[dict]:
+    """Every leisure=golf_course within FAR_KM of these courses (one Overpass
+    query: a union of `around` clauses; 11/4 4-degree tiles took 40 s - 9 min each)."""
+    radius = int(FAR_KM * 1000)
+    parts = ''.join(f'way["leisure"="golf_course"](around:{radius},{c["lat"]},{c["lon"]});'
+                    f'relation["leisure"="golf_course"](around:{radius},{c["lat"]},{c["lon"]});' for c in batch)
+    payload = overpass(f'[out:json][timeout:180];({parts});out tags center;')
+    out = []
+    for el in payload.get('elements', []):
+        center = el.get('center') or {}
+        if 'lat' in center:
+            out.append({'type': el['type'], 'id': el['id'], 'name': (el.get('tags') or {}).get('name') or '',
+                        'lat': center['lat'], 'lon': center['lon']})
+    return out
 
 
 # ------------------------------------------------------------------ matching
@@ -308,6 +302,7 @@ def main() -> int:
     ap.add_argument('--manifest', type=Path, help='a saved course_manifest.json (tests)')
     ap.add_argument('--page-data', type=Path, help='a saved page-data JSON (tests)')
     ap.add_argument('--limit', type=int, default=0)
+    ap.add_argument('--refresh', action='store_true', help='re-match courses already in the table (else only new ones)')
     args = ap.parse_args()
     key = os.environ.get('SUPABASE_SECRET_KEY')
     if not args.dry_run and not key:
@@ -319,51 +314,78 @@ def main() -> int:
         courses = courses[:args.limit]
     print(f'SGT: {len(courses)} courses, {sum(1 for c in courses if c["gspro_folder"])} with a GSPro folder, '
           f'{sum(1 for c in courses if not fictional(c))} with a location', flush=True)
-    osm = osm_courses_near([c for c in courses if not fictional(c)])
-    grid = defaultdict(list)
-    for el in osm:
-        grid[(math.floor(el['lat'] / 0.1), math.floor(el['lon'] / 0.1))].append(el)
-    print(f'OSM: {len(osm)} golf courses near them', flush=True)
 
     library = rest('GET', 'gspro_library?select=course_key,course_name,location', key) if key else []
     keys = gspro_keys_by_course(courses, library or [])
-    existing = {r['sgt_id']: r for r in (rest('GET', 'course_crosswalk?select=sgt_id,method,verified,gspro_keys', key) or [])} \
+    existing = {r['sgt_id']: r for r in (rest('GET', 'course_crosswalk?select=sgt_id,method,verified,gspro_keys,status', key) or [])} \
         if key and not args.dry_run else {}
+    now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    source_cols = ('sgt_id', 'name', 'location', 'country', 'par', 'designer', 'elevation_ft', 'lat', 'lon',
+                   'sgt_updated', 'gspro_folder', 'gspro_keys', 'updated_at')
 
-    rows, tally = [], defaultdict(int)
-    for c in courses:
-        m = match(c, grid)
+    def base_row(c: dict) -> dict:
+        old = existing.get(c['sgt_id']) or {}
+        return {**c, 'gspro_keys': sorted(keys.get(c['sgt_id'], set()) | set(old.get('gspro_keys') or [])
+                                          | ({c['gspro_folder']} if c['gspro_folder'] else set())),
+                'updated_at': now}
+
+    def keep(c: dict) -> bool:
+        """A person's fix or a course match's confirmation is never overwritten."""
         old = existing.get(c['sgt_id'])
-        row = {**c, 'gspro_keys': sorted(keys.get(c['sgt_id'], set()) | set((old or {}).get('gspro_keys') or [])
-                                        | ({c['gspro_folder']} if c['gspro_folder'] else set())),
-               'updated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-        if not (old and (old.get('method') != 'auto' or old.get('verified'))):
-            row.update({'status': m['status'], 'osm_type': m.get('osm_type'), 'osm_id': m.get('osm_id'),
-                        'osm_name': m.get('osm_name'), 'distance_m': m.get('distance_m'),
-                        'name_score': m.get('name_score'), 'candidates': m['candidates'], 'method': 'auto'})
-        tally[row.get('status', 'kept')] += 1
-        rows.append(row)
+        return bool(old and (old.get('method') != 'auto' or old.get('verified')))
 
-    print(json.dumps({'courses': len(rows), 'status': dict(tally),
-                      'withGsproKeys': sum(1 for r in rows if r['gspro_keys'])}, indent=1), flush=True)
-    for r in rows:
-        if r['name'].lower().startswith(('greywolf', 'pinehurst 2', 'bandon dunes', 'cape kidnappers', 'dunstanburgh',
-                                          'detroit', 'valhalla', 'pebble', 'mammoth', 'kiawah', 'point grey')):
-            print(f"  {r['name']} ({r['location']}) folder={r['gspro_folder']} -> {r.get('status')} "
-                  f"{r.get('osm_type')}/{r.get('osm_id')} {r.get('osm_name')!r} {r.get('distance_m')} m "
-                  f"score {r.get('name_score')}", flush=True)
-    if args.dry_run:
-        return 0
-    # Same columns in every row of a batch (PostgREST requires it): kept rows send only the source fields.
-    full = [r for r in rows if 'status' in r]
-    kept = [{k: r[k] for k in ('sgt_id', 'name', 'location', 'country', 'par', 'designer', 'elevation_ft', 'lat',
-                               'lon', 'sgt_updated', 'gspro_folder', 'gspro_keys', 'updated_at')}
-            for r in rows if 'status' not in r]
-    for batch_rows in (full, kept):
-        for i in range(0, len(batch_rows), 500):
-            rest('POST', 'course_crosswalk?on_conflict=sgt_id', key, batch_rows[i:i + 500],
-                 prefer='resolution=merge-duplicates,return=minimal')
-    print(f'upserted {len(full)} matched rows, {len(kept)} kept (manual or verified)', flush=True)
+    tally: dict[str, int] = defaultdict(int)
+    shown: list[dict] = []
+
+    def write(rows: list[dict]) -> None:
+        full = [r for r in rows if 'status' in r]
+        kept = [{k: r[k] for k in source_cols} for r in rows if 'status' not in r]
+        for part in (full, kept):
+            if part and not args.dry_run:
+                rest('POST', 'course_crosswalk?on_conflict=sgt_id', key, part, prefer='resolution=merge-duplicates,return=minimal')
+        for r in rows:
+            tally[r.get('status', 'kept')] += 1
+            if r['name'].lower().startswith(('greywolf', 'pinehurst 2', 'bandon dunes', 'cape kidnappers', 'dunstanburgh',
+                                              'detroit golf', 'valhalla', 'pebble beach', 'mammoth', 'kiawah', 'needler')):
+                shown.append(r)
+
+    # Fictional courses: no map to look at.
+    write([{**base_row(c), **({} if keep(c) else {'status': 'fictional', 'osm_type': None, 'osm_id': None,
+            'osm_name': None, 'distance_m': None, 'name_score': None, 'candidates': [], 'method': 'auto'})}
+           for c in courses if fictional(c)])
+    todo = [c for c in courses if not fictional(c) and (args.refresh or c['sgt_id'] not in existing)]
+    todo.sort(key=lambda c: (math.floor(c['lat'] / 2), math.floor(c['lon'] / 2), c['lat'], c['lon']))
+    print(f'to match: {len(todo)} ({len(courses) - len(todo)} already in the table or fictional)', flush=True)
+    failed = 0
+    for i in range(0, len(todo), BATCH):
+        batch = todo[i:i + BATCH]
+        try:
+            osm = osm_courses_around(batch)
+        except RuntimeError as exc:
+            failed += len(batch)
+            print(f'batch {i // BATCH + 1}: Overpass failed, left for the next run ({exc})', flush=True)
+            continue
+        grid = defaultdict(list)
+        for el in osm:
+            grid[(math.floor(el['lat'] / 0.1), math.floor(el['lon'] / 0.1))].append(el)
+        rows = []
+        for c in batch:
+            row = base_row(c)
+            if not keep(c):
+                m = match(c, grid)
+                row.update({'status': m['status'], 'osm_type': m.get('osm_type'), 'osm_id': m.get('osm_id'),
+                            'osm_name': m.get('osm_name'), 'distance_m': m.get('distance_m'),
+                            'name_score': m.get('name_score'), 'candidates': m['candidates'], 'method': 'auto'})
+            rows.append(row)
+        write(rows)
+        print(f'batch {i // BATCH + 1}/{math.ceil(len(todo) / BATCH)}: {len(osm)} OSM courses; '
+              f'so far {dict(tally)}', flush=True)
+
+    print(json.dumps({'courses': len(courses), 'status': dict(tally), 'leftForNextRun': failed}, indent=1), flush=True)
+    for r in shown:
+        print(f"  {r['name']} ({r['location']}) folder={r['gspro_folder']} -> {r.get('status')} "
+              f"{r.get('osm_type')}/{r.get('osm_id')} {r.get('osm_name')!r} {r.get('distance_m')} m "
+              f"score {r.get('name_score')}", flush=True)
     return 0
 
 
