@@ -1,25 +1,38 @@
 {
-  "courseId": "cabot-cliffs-inverness-ns",
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
   "courseName": "Cabot Cliffs",
   "freshness": {
-    "ageDays": 0.37,
-    "evaluatedAt": "2026-09-18T09:44:16.648706Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-11-04T05:07:20.863196Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "one-click-course-load",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T09:44:16.648706Z",
+    "builderFingerprintSha256": "0f4885e59a0ce851cbf4a697d474c08ac45cc2fc0f99ed01e4422e090740dd65",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-11-04T05:07:20.863196Z",
     "configPath": "config/course-geometry/cabot-cliffs-v1.json",
-    "configSha256": "3acf09b2440fd91ec9fd6e4726accec774dfcc9b09fe992c0bf3acaba4d23509",
+    "configSha256": "7a189ad62155ed0d32d321b3442c98c55efdd4ebff40df62a4094866face5fef",
+    "greenDetail": {
+      "marginYds": 12.0,
+      "schemaVersion": "looper-course-green-detail-v1",
+      "sha256": "b46dd24c030aeea495df2af87d408f107bb5190876ae24aca3d2fbc043cd404c",
+      "sourceDataset": "NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM",
+      "spacingYds": 1.0
+    },
     "path": "public/course-geometry/cabot-cliffs/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "f4ce0b9398fecfd8935ce55e11c546583f6e683c042a29d88f905e8b31b6f42c",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "1bca1cc734dbd172023eeb708bdc2d1ede31d6245fda4f62b076056bfefadee4",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM",
+      "sourceProvider": "NRCan HRDEM",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -44,13 +57,12 @@
       "id": 676091202,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T00:55:56.308915Z",
+    "fetchedAt": "2026-11-04T05:07:20.863196Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T00:55:56.308915Z",
-    "provider": "openstreetmap-overpass",
+    "lastCheckedAt": "2026-11-04T05:07:20.863196Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
-    "snapshotSha256": "a7995100c8bf7ab690e7eb1e64198012e25ebbdb2a13ed852f49c03407aeb1a3",
-    "sourceBaseTimestamp": "2026-09-18T00:54:28Z"
+    "snapshotSha256": "55fdfe45aa4d410304780a1656ad64180b730b66f977835b67bb6947c4d21697"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",

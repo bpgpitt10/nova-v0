@@ -127,6 +127,9 @@ def cmd_dem(args: argparse.Namespace) -> int:
     minx, miny = math.floor(min(xs)), math.floor(min(ys))
     maxx, maxy = math.ceil(max(xs)), math.ceil(max(ys))
     width, height = int(maxx - minx), int(maxy - miny)
+    source = json.loads(Path(args.dem_source).read_text())
+    if source.get('demProvider') == 'nrcan-hrdem':
+        return _dem_from_hrdem(args, source, crs, minx, maxy, width, height)
     # The 3DEP ImageServer returns HTTP 500 for large exports (Muirfield's
     # 3.3 x 3.6 km box), so fetch <= TILE_M tiles and mosaic them.
     tmp = Path(args.tmp)
@@ -192,6 +195,89 @@ def cmd_dem(args: argparse.Namespace) -> int:
     return 0
 
 
+def _hrdem_grid(source: dict, kind: str, crs: str, minx: float, maxy: float, width: int, height: int):
+    """NRCan HRDEM `kind` ('dtm' or 'dsm') on the course's UTM 1 m grid."""
+    from affine import Affine
+    import nrcan_hrdem  # noqa: E402  (same folder)
+
+    hrefs = [i[kind] for i in (source.get('hrdem') or {}).get('items') or [] if i.get(kind)]
+    transform = Affine(1.0, 0.0, float(minx), 0.0, -1.0, float(maxy))
+    return nrcan_hrdem.read_to_grid(hrefs, crs, transform, width, height), transform, hrefs
+
+
+def _dem_from_hrdem(args, source: dict, crs: str, minx: float, maxy: float, width: int, height: int) -> int:
+    """Canada: the bare-earth 1 m DEM from NRCan HRDEM's DTM (find stage chose it)."""
+    import numpy as np
+    from grid_io import save_grid
+
+    t0 = time.time()
+    arr, transform, hrefs = _hrdem_grid(source, 'dtm', crs, minx, maxy, width, height)
+    bad = ~np.isfinite(arr) | (arr < -1000) | (arr > 9000)
+    if bad.mean() > 0.5:
+        raise SystemExit(f'NRCan HRDEM covers only {1 - bad.mean():.0%} of the course box')
+    collection = (source.get('hrdem') or {}).get('collection')
+    header = save_grid(
+        Path(args.out) / 'dem-utm-1m', arr, crs=crs,
+        origin_x=transform.c, origin_y=transform.f, pixel_size=1.0,
+        scale=0.01, nodata_mask=bad,
+        provenance={
+            'dataset': f'NRCan HRDEM ({collection}) bare-earth DTM',
+            'sources': hrefs, 'requestedPixelMeters': 1.0,
+            'license': 'Open Government Licence - Canada',
+            'fetchedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'rasterioTransform': list(transform)[:6],
+        },
+    )
+    valid = arr[~bad]
+    print(json.dumps({'provider': 'nrcan-hrdem', 'collection': collection, 'tiles': len(hrefs),
+                      'width': header['width'], 'height': header['height'], 'validCells': header['validCells'],
+                      'elevMin': float(valid.min()) if valid.size else None,
+                      'elevMax': float(valid.max()) if valid.size else None,
+                      'seconds': round(time.time() - t0, 1)}))
+    return 0
+
+
+def cmd_chm(args: argparse.Namespace) -> int:
+    """Canada: canopy heights from NRCan HRDEM's DSM minus the DTM grid,
+    aligned to dem-utm-1m (stands in for the USGS point-cloud lidar stage)."""
+    import numpy as np
+    from grid_io import load_grid, save_grid
+
+    source = json.loads(Path(args.dem_source).read_text())
+    dem_h, dem = load_grid(Path(args.dem))
+    height, width = dem.shape
+    t0 = time.time()
+    dsm, _, hrefs = _hrdem_grid(source, 'dsm', dem_h['crs'], dem_h['originX'], dem_h['originY'], width, height)
+    if not hrefs:
+        raise SystemExit('NRCan HRDEM has no DSM over this course, so no tree heights (needs the surface model)')
+    chm = np.clip(dsm - dem, 0, None)
+    chm[chm > 70] = np.nan  # birds, wires, artefacts
+    empty = ~np.isfinite(chm)
+    out = Path(args.out)
+    save_grid(out / 'chm-utm-1m', chm, crs=dem_h['crs'], origin_x=dem_h['originX'],
+              origin_y=dem_h['originY'], pixel_size=dem_h['pixelSize'], scale=0.1, nodata_mask=empty,
+              provenance={'source': hrefs, 'method': 'NRCan HRDEM DSM minus DTM (both LiDAR-derived), clipped at 0',
+                          'license': 'Open Government Licence - Canada', 'alignedTo': 'dem-utm-1m'})
+    valid = chm[~empty]
+    report = {
+        'schemaVersion': 'looper-course-model-lidar-stats-v1',
+        'source': 'nrcan-hrdem-dsm-minus-dtm',
+        'collection': (source.get('hrdem') or {}).get('collection'),
+        'chm': {
+            'width': width, 'height': height, 'pixelMeters': dem_h['pixelSize'],
+            'cellsWithReturns': int((~empty).sum()), 'emptyCells': int(empty.sum()),
+            'cellsOver3m': int((valid >= 3).sum()), 'cellsOver10m': int((valid >= 10).sum()),
+            'p50': float(np.percentile(valid, 50)) if valid.size else None,
+            'p95': float(np.percentile(valid, 95)) if valid.size else None,
+            'max': float(valid.max()) if valid.size else None,
+        },
+        'seconds': round(time.time() - t0, 1),
+    }
+    (out / 'lidar-stats.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps(report))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='cmd', required=True)
@@ -203,8 +289,14 @@ def main() -> int:
     p_dem.add_argument('--tmp', required=True)
     p_dem.add_argument('--out', required=True)
     p_dem.add_argument('--crs', help='target UTM CRS, e.g. EPSG:26917 (default zone 16)')
+    p_chm = sub.add_parser('chm', help='Canada: canopy heights from NRCan HRDEM DSM - DTM')
+    p_chm.add_argument('--dem-source', required=True)
+    p_chm.add_argument('--dem', required=True, help='dem-utm-1m.json from the dem stage')
+    p_chm.add_argument('--out', required=True)
     args = parser.parse_args()
-    return cmd_osm(args) if args.cmd == 'osm' else cmd_dem(args)
+    if args.cmd == 'osm':
+        return cmd_osm(args)
+    return cmd_chm(args) if args.cmd == 'chm' else cmd_dem(args)
 
 
 if __name__ == '__main__':

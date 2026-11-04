@@ -198,6 +198,74 @@ def fetch_usgs_3dep(
     }, indent=2, sort_keys=True))
 
 
+def fetch_nrcan_hrdem(
+    course: dict[str, Any],
+    output: Path,
+    metadata_path: Path,
+    requested_resolution_meters: float,
+    margin_meters: float,
+) -> None:
+    """Canada: NRCan HRDEM bare-earth DTM (LiDAR, 1-2 m), read from its
+    cloud-optimized GeoTIFFs onto the same EPSG:3857 grid the USGS path exports."""
+    import sys as _sys
+
+    import numpy as np
+    import rasterio
+    from affine import Affine
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parent / "course_model"))
+    import nrcan_hrdem  # noqa: E402
+
+    min_x, min_y, max_x, max_y = course_extent_3857(course, margin_meters)
+    width_m, height_m = max_x - min_x, max_y - min_y
+    effective_resolution = max(requested_resolution_meters, width_m / MAX_IMAGE_DIMENSION, height_m / MAX_IMAGE_DIMENSION)
+    width = max(2, int(math.ceil(width_m / effective_resolution)))
+    height = max(2, int(math.ceil(height_m / effective_resolution)))
+    to_ll = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+    w, s = to_ll.transform(min_x, min_y)
+    e, n = to_ll.transform(max_x, max_y)
+    found = nrcan_hrdem.search((w, s, e, n))
+    if not found:
+        raise SystemExit("NRCan HRDEM has no DTM tiles over this course")
+    transform = Affine(effective_resolution, 0.0, min_x, 0.0, -effective_resolution, max_y)
+    grid = nrcan_hrdem.read_to_grid([i["dtm"] for i in found["items"]], "EPSG:3857", transform, width, height)
+    valid = np.isfinite(grid)
+    coverage = float(valid.mean()) if grid.size else 0.0
+    if coverage < 0.5:
+        raise SystemExit(f"NRCan HRDEM covers only {coverage:.0%} of this course ({found['collection']})")
+    nodata = -9999.0
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        output, "w", driver="GTiff", width=width, height=height, count=1, dtype="float32",
+        crs="EPSG:3857", transform=transform, nodata=nodata, compress="deflate",
+    ) as dst:
+        dst.write(np.where(valid, grid, nodata).astype("float32"), 1)
+    info = nrcan_hrdem.describe(found)
+    metadata = {
+        "schemaVersion": "looper-course-dem-source-v1",
+        "courseId": course.get("courseId"),
+        "provider": info["provider"],
+        "providerKey": info["providerKey"],
+        "dataset": f"NRCan HRDEM ({info['collection']}) bare-earth DTM",
+        "serviceUrl": info["stacRoot"],
+        "items": info["items"],
+        "licence": info["licence"],
+        "crs": "EPSG:3857",
+        "requestedResolutionMeters": requested_resolution_meters,
+        "exportResolutionMeters": round(effective_resolution, 4),
+        "sourceResolutionMeters": 2.0 if info["collection"] == "hrdem-mosaic-2m" else 1.0,
+        "bbox3857": [round(min_x, 3), round(min_y, 3), round(max_x, 3), round(max_y, 3)],
+        "width": width,
+        "height": height,
+        "coverage": round(coverage, 4),
+        "fetchedAt": now_iso(),
+        "note": "Read from NRCan's High Resolution DEM (LiDAR-derived) cloud-optimized GeoTIFFs onto the course's EPSG:3857 grid (bilinear).",
+    }
+    write_metadata(metadata_path, metadata)
+    print(json.dumps({"courseId": course.get("courseId"), "provider": info["provider"], "collection": info["collection"],
+                      "tiles": len(found["items"]), "width": width, "height": height, "coverage": round(coverage, 4)}, indent=2))
+
+
 def fetch_geotiff_url(
     course: dict[str, Any],
     output: Path,
@@ -278,7 +346,7 @@ def main() -> int:
     parser.add_argument("--course-package", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--metadata", type=Path, required=True)
-    parser.add_argument("--provider", default="usgs-3dep", choices=["usgs-3dep", "geotiff-url", "geotiff-file"])
+    parser.add_argument("--provider", default="usgs-3dep", choices=["usgs-3dep", "geotiff-url", "geotiff-file", "nrcan-hrdem"])
     parser.add_argument("--resolution-meters", type=float, default=DEFAULT_RESOLUTION_METERS)
     parser.add_argument("--margin-meters", type=float, default=DEFAULT_MARGIN_METERS)
     parser.add_argument("--source-url")
@@ -298,6 +366,8 @@ def main() -> int:
 
     if args.provider == "usgs-3dep":
         fetch_usgs_3dep(course, args.output, args.metadata, args.resolution_meters, args.margin_meters)
+    elif args.provider == "nrcan-hrdem":
+        fetch_nrcan_hrdem(course, args.output, args.metadata, args.resolution_meters, args.margin_meters)
     elif args.provider == "geotiff-url":
         if not args.source_url:
             raise SystemExit("--provider geotiff-url requires --source-url")

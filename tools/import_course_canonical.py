@@ -149,7 +149,7 @@ def resolve_terrain_provider(config: dict[str, Any], config_path: Path) -> tuple
                 "The importer will not substitute low-resolution global terrain and call the course complete."
             )
 
-    if requested not in {"usgs-3dep", "geotiff-url", "geotiff-file"}:
+    if requested not in {"usgs-3dep", "geotiff-url", "geotiff-file", "nrcan-hrdem"}:
         raise SystemExit(f"Unsupported terrain provider {requested!r}")
 
     extra: list[str] = []

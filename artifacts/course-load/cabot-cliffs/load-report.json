@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "cabot-cliffs",
+  "request": {
+    "slug": "cabot-cliffs",
+    "name": "Cabot Cliffs",
+    "location": "Inverside, Nova Scotia",
+    "lat": 46.2526965,
+    "lon": -61.2848988,
+    "nameRegex": "Cabot.*Cliffs",
+    "osmId": 676091202,
+    "gsproAliases": []
+  },
+  "ready": true,
+  "totalSeconds": 183.3,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 59.5
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/cabot-cliffs-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 16.2
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 56.5
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 8.9
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 9.9
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 5.1
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 26.0
+    }
+  ],
+  "finishedAt": "2026-11-04T05:09:19Z",
+  "runId": "41777044272",
+  "osmCourse": {
+    "type": "way",
+    "id": 676091202,
+    "name": "Cabot Cliffs",
+    "areaHa": 102.7
+  },
+  "lidar": null,
+  "crs": "EPSG:26920",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "source": "nrcan-hrdem-dsm-minus-dtm",
+    "collection": "hrdem-mosaic-1m",
+    "chm": {
+      "width": 2730,
+      "height": 3112,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 6660567,
+      "emptyCells": 1835193,
+      "cellsOver3m": 2217957,
+      "cellsOver10m": 745045,
+      "p50": 0.16775093599472868,
+      "p95": 12.346071916479541,
+      "max": 26.44795645566483
+    },
+    "seconds": 9.7
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26920",
+    "treeCount": 26891,
+    "heightM": {
+      "p10": 4.7,
+      "p50": 9.6,
+      "p90": 14.4,
+      "max": 26.4
+    },
+    "crownRadiusM": {
+      "p10": 2.6,
+      "p50": 4.7,
+      "p90": 7.5
+    },
+    "woodlandPolygons": 527,
+    "woodlandAreaHa": 216.37,
+    "maskedCellsBuildingsAndPower": 83345,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 4.1
+  },
+  "publishedBytes": {
+    "course-v1.json": 388924,
+    "green-detail-v1.json": 150117,
+    "course-v1-lidar.json": 1442022
+  }
+}

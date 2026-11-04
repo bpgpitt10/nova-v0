@@ -773,8 +773,10 @@
 .live-map .surface-penalty { fill: #5b2928; stroke: #9b4b48; }
 /* GSPro's own penalty areas (from the course file): same colour, a firmer edge. */
 .live-map .surface-gspro { stroke: #c0605c; stroke-width: 1.2; }
-/* Out of bounds beyond GSPro's course boundary: a wash with a dashed line, not a solid block. */
-.live-map .surface-oob { fill: rgba(110, 30, 30, 0.32); stroke: #c0504c; stroke-width: 1.2; stroke-dasharray: 6 4; }
+/* Out of bounds beyond GSPro's course boundary: a wash, not a solid block. No
+   outline: the polygon is the frame with the course cut out, and its
+   zero-width seam would draw as a stray line across the hole. */
+.live-map .surface-oob { fill: rgba(110, 30, 30, 0.32); stroke: none; }
 
 .live-target-line {
   stroke: rgba(207, 216, 205, 0.42);

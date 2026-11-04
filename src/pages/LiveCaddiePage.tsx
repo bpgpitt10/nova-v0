@@ -217,6 +217,8 @@ export default function LiveCaddiePage() {
   // (both from the player's GKD through the registration), on this hole.
   const [gkdOverlay, setGkdOverlay] = useState<{
     key: string
+    /** The hole object the overlay was computed for: a reloaded hole gets a new overlay. */
+    source: CourseHoleGeometry
     hazardSurfaces: CourseSurface[]
     hazardSummary: GkdHazardSummary
     anchoredSurfaces: CourseSurface[] | null
@@ -227,7 +229,7 @@ export default function LiveCaddiePage() {
     ? { key: gkdOverlay.key, surfaces: gkdOverlay.hazardSurfaces, summary: gkdOverlay.hazardSummary }
     : null
   const hole = useMemo<CourseHoleGeometry | null>(() => {
-    if (!rawHole || !gkdOverlay || gkdOverlay.key !== `${rawHole.courseId}|${rawHole.holeNumber}`) return rawHole
+    if (!rawHole || !gkdOverlay || gkdOverlay.source !== rawHole) return rawHole
     const base = gkdOverlay.anchoredSurfaces ? { ...rawHole, surfaces: gkdOverlay.anchoredSurfaces } : rawHole
     return withGkdHazards(base, gkdOverlay.hazardSurfaces)
   }, [rawHole, gkdOverlay])
@@ -525,19 +527,30 @@ export default function LiveCaddiePage() {
   // effect also re-runs once it's known.
   const gkdCourseKey = liveSnapshot?.courseKey ?? null
   useEffect(() => {
-    if (!rawHole || !isNativePositionsEnabled()) return
+    if (!rawHole || !isNativePositionsEnabled()) {
+      setGkdOverlay(null)
+      return
+    }
     const key = `${rawHole.courseId}|${rawHole.holeNumber}`
     let alive = true
     void nativeCourseContextForLive(courseId, gkdCourseKey)
       .then((context) => {
-        if (!alive || !context) return
-        const layout = layoutWithHazards(context.layouts.map((l) => l.layout))
-        if (!layout) return
-        const hazards = gkdHazardSurfaces(layout, context.registration, rawHole)
+        if (!alive) return
+        if (!context) {
+          setGkdOverlay(null)
+          return
+        }
         // Greens and pins are shared by every layout of the scene: use the active one.
+        // Anchor the green first, so island-green cut-outs follow GSPro's green.
         const anchor = anchorGreenToGkd(rawHole, context.layout, context.registration)
+        const anchoredHole = anchor.surfaces ? { ...rawHole, surfaces: anchor.surfaces } : rawHole
+        const layout = layoutWithHazards(context.layouts.map((l) => l.layout))
+        const hazards = layout
+          ? gkdHazardSurfaces(layout, context.registration, anchoredHole)
+          : { surfaces: [], summary: { penaltyAreas: 0, innerOob: 0, obMode: null, obOnHole: false } }
         setGkdOverlay({
           key,
+          source: rawHole,
           hazardSurfaces: hazards.surfaces,
           hazardSummary: hazards.summary,
           anchoredSurfaces: anchor.surfaces,
@@ -1315,13 +1328,13 @@ export default function LiveCaddiePage() {
   // partial read: say so rather than present it as the whole green.
   const anchoredGreenOutside = useMemo(() => {
     if (!hole || !greenDetail || gkdOverlay?.greenSummary.status !== 'anchored') return null
-    if (gkdOverlay.key !== `${hole.courseId}|${hole.holeNumber}`) return null
+    if (gkdOverlay.source !== rawHole) return null
     const { minX, minY, spacingYds, width, height } = greenDetail.grid
     const ring = gkdOverlay.anchoredGreen
     return ring
       ? greenShareOutsideDetail(ring, [minX, minX + (width - 1) * spacingYds, minY, minY + (height - 1) * spacingYds])
       : null
-  }, [hole, greenDetail, gkdOverlay])
+  }, [hole, rawHole, greenDetail, gkdOverlay])
   const greenReadText = shownGreenRead && pinEstimate
     ? greenReadLine(shownGreenRead, ball, pinEstimate, Boolean(trustedLivePin))
       + (anchoredGreenOutside != null && anchoredGreenOutside > 0.15 ? ' (partial read: slope data covers part of the green)' : '')
@@ -1847,14 +1860,15 @@ export default function LiveCaddiePage() {
         ) : null}
         {showDiagnostics ? (
           <div className="live-caddie-alert">
-            GSPro hazards on this hole: {gkdHazards && gkdHazards.key === `${rawHole?.courseId}|${rawHole?.holeNumber}`
+            GSPro hazards on this hole: {gkdHazards && gkdOverlay?.source === rawHole
               ? `${gkdHazards.summary.penaltyAreas} penalty area${gkdHazards.summary.penaltyAreas === 1 ? '' : 's'}`
                 + (gkdHazards.summary.innerOob ? `, ${gkdHazards.summary.innerOob} internal OB` : '')
                 + (gkdHazards.summary.obMode
                   ? ` · OB ${gkdHazards.summary.obMode === 'boundary' ? 'beyond the course boundary' : 'region'}${gkdHazards.summary.obOnHole ? '' : ' (not near this hole)'}`
                   : ' · no OB polygon in the course file')
+                + (gkdHazards.summary.obSkipped ? ' · OB left off: it would have covered the tee or green' : '')
               : 'not loaded (needs the GSPro course file and a registration)'}
-            {gkdOverlay && gkdOverlay.key === `${rawHole?.courseId}|${rawHole?.holeNumber}`
+            {gkdOverlay && gkdOverlay.source === rawHole
               ? ` · Green: ${greenAnchorLine({ ...gkdOverlay.greenSummary, outsideDetail: anchoredGreenOutside })}` : ''}
           </div>
         ) : null}
@@ -1862,8 +1876,10 @@ export default function LiveCaddiePage() {
           const samples = inspectedCandidate.modeledSamples
           const early = samples.filter((q) => q.flightTag === 'trees-early').length / samples.length
           const late = samples.filter((q) => q.flightTag === 'trees-late').length / samples.length
-          const roll = samples.reduce((a, q) => a + Math.hypot(q.landing[0] - q.carryLanding[0], q.landing[1] - q.carryLanding[1]), 0) / samples.length
-          const stock = samples.reduce((a, q) => a + (q.stockRollYds ?? 0), 0) / samples.length
+          // Balls stopped by trees didn't roll: leave them out of the roll figure.
+          const flown = samples.filter((q) => !q.flightTag)
+          const roll = flown.length ? flown.reduce((a, q) => a + Math.hypot(q.landing[0] - q.carryLanding[0], q.landing[1] - q.carryLanding[1]), 0) / flown.length : 0
+          const stock = flown.length ? flown.reduce((a, q) => a + (q.stockRollYds ?? 0), 0) / flown.length : 0
           return (
             <div className="live-caddie-alert">
               Flight: {early || late

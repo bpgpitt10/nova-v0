@@ -593,6 +593,7 @@ export const evaluateAimLab = (
         lateralAdjustmentYds: empiricalLateralAdjustmentYds,
         pinLocalYds: exactPinLocalYds,
         landingTransform: greenLandingTransform,
+        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null },
       })
       const scored = scoreCandidate(sampled.distribution, carryGapYds)
       return {
@@ -621,7 +622,9 @@ export const evaluateAimLab = (
       ranked.candidate.decisionReason = ranked.decisionReason
     })
     const bestCandidate = rankedCandidates[0]?.candidate ?? null
-    const bestSamples = bestCandidate?.modeledSamples ?? []
+    // Total: where flown balls come to rest (balls stopped by trees are outcomes,
+    // not distance: they'd pull the number toward the tee).
+    const bestSamples = (bestCandidate?.modeledSamples ?? []).filter((sample) => !sample.flightTag)
     // Where the ball comes to rest, measured from the ball (a ball that comes
     // down short into a hill rolls less AND carries less).
     const expectedTotalYds = bestSamples.length && bestCandidate
