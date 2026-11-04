@@ -38,10 +38,25 @@ jobs:
           python tools/course_model/fetch_sources.py osm --dem-source .tmp/smoke/model/course-bbox.json --out .tmp/smoke/model
           python tools/course_model/build_trees.py --chm .tmp/smoke/model/chm-utm-1m.json --osm .tmp/smoke/model/osm-full.json.gz --out .tmp/smoke/model
           cat .tmp/smoke/model/trees-summary.json | head -c 1500
+      - name: Full one-click load of Cabot Cliffs (nothing committed)
+        run: |
+          npm ci
+          cat > .tmp/smoke/requests.json <<'JSON'
+          [{"name": "Cabot Cliffs", "location": "Inverness, Nova Scotia", "lat": 46.2487, "lon": -61.2921, "slug": "cabot-cliffs", "osmId": 676091202, "nameRegex": "Cabot"}]
+          JSON
+          python tools/course_model/load_course.py --requests .tmp/smoke/requests.json
+          python - <<'PY'
+          import json
+          r = json.load(open('artifacts/course-load/cabot-cliffs/load-report.json'))
+          print('READY', r.get('ready'), r.get('totalSeconds'))
+          for s in r.get('stages', []):
+              print(s.get('stage'), s.get('ok'), s.get('seconds'), (s.get('error') or [''])[-1][:300])
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: canada-dem-smoke
           path: |
             .tmp/smoke/model/*.json
+            artifacts/course-load/cabot-cliffs/load-report.json
           retention-days: 3
