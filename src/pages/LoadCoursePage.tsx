@@ -23,7 +23,7 @@ import {
   type CourseLoadRow,
   type GolfCourseSearchResult,
 } from '../courseLoading/courseLoads'
-import { crosswalkDecision, crosswalkForGsproKey } from '../courseLoading/courseCrosswalk'
+import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
@@ -37,27 +37,27 @@ const queuedCheck = <T,>(run: () => Promise<T>): Promise<T> => {
 }
 
 const matchText = (status: NativeCourseStatus | null): { text: string; tone: 'ok' | 'bad' | 'note' } | null => {
-  if (!status) return { text: 'Checking against your GSPro course…', tone: 'note' }
+  if (!status) return { text: 'Checking against GSPro…', tone: 'note' }
   switch (status.state) {
     case 'ready':
-      return { text: `Matches your GSPro course (grade ${status.grade})`, tone: 'ok' }
+      return { text: `Matches your GSPro course · grade ${status.grade}`, tone: 'ok' }
     case 'other-course':
-      return status.grade ? { text: `Matches your GSPro course (grade ${status.grade})`, tone: 'ok' } : null
+      return status.grade ? { text: `Matches your GSPro course · grade ${status.grade}`, tone: 'ok' } : null
     case 'registration-failed':
       // Greywolf (our first course) predates the package this check needs:
       // not a mismatch, just not set up.
       if (status.reason === 'no course package') {
         return { text: "Plays in Looper; the GSPro position match isn't set up for this course yet.", tone: 'note' }
       }
-      return { text: `Loaded, but doesn't line up with your GSPro course: ${status.reason}`, tone: 'bad' }
+      return { text: "Doesn't line up with your GSPro course", tone: 'bad' }
     case 'layout-mismatch':
-      return { text: 'Loaded, but your GSPro version has different greens or pins.', tone: 'bad' }
+      return { text: 'Your GSPro version has different greens or pins', tone: 'bad' }
     case 'gkd-not-found':
-      return { text: `Can't read ${status.courseKey} from your GSPro library to check it.`, tone: 'note' }
+      return { text: "Couldn't read it from your GSPro library", tone: 'note' }
     case 'registering':
-      return { text: 'Checking against your GSPro course…', tone: 'note' }
+      return { text: 'Checking against GSPro…', tone: 'note' }
     case 'error':
-      return { text: `Couldn't check against GSPro: ${status.message}`, tone: 'note' }
+      return { text: "Couldn't check against GSPro", tone: 'note' }
     default:
       return null
   }
@@ -152,14 +152,14 @@ function LinkToLoaded({ course, onLinked }: Readonly<{
 const loadedSlugs = () => new Set<string>(courseRegistry.filter((entry) => entry.source !== 'gspro-only').map((entry) => entry.slug))
 
 const statusText = (row: CourseLoadRow) => {
-  if (row.status === 'queued') return 'Queued · starting shortly'
+  if (row.status === 'queued') return 'Starting shortly'
   if (row.status === 'publishing') return `${STAGE_LABELS.publish} · ~${minutesLeft(row)} min left`
   if (row.status === 'running') {
     const step = row.stage_index && row.stage_count ? `Step ${row.stage_index} of ${row.stage_count}: ` : ''
     return `${step}${STAGE_LABELS[row.stage ?? ''] ?? 'Loading'} · ~${minutesLeft(row)} min left`
   }
   if (row.status === 'ready') return 'Ready to play'
-  return `Couldn't load: ${row.error ?? 'unknown error'}`
+  return "Didn't load" + (row.error ? `: ${row.error}` : '')
 }
 
 /**
@@ -238,6 +238,15 @@ export default function LoadCoursePage() {
         setLibraryNote('Start the Looper Companion on your GSPro PC to see your installed courses here.')
       })
   }, [])
+
+  // The course crosswalk for the installed courses: which ones are on the map at all.
+  const [crosswalk, setCrosswalk] = useState<Map<string, CrosswalkRow>>(() => new Map())
+  useEffect(() => {
+    if (!library?.length) return
+    void crosswalkForGsproKeys(library.map((course) => course.courseKey))
+      .then(setCrosswalk)
+      .catch(() => undefined)
+  }, [library])
 
   const latestFor = (slug: string) => loads.find((row) => row.slug === slug) ?? null
   const courseIdFor = (slug: string): CourseId | null =>
@@ -325,16 +334,16 @@ export default function LoadCoursePage() {
     }
   }
 
-  const rowAction = (slug: string, key: string, onLoad: () => void) => {
+  const rowAction = (slug: string, key: string, onLoad: () => void, label = 'Load') => {
     if (slugs.has(slug)) return <span className="load-course-ready">Ready to play</span>
     const row = latestFor(slug)
     if (row && ACTIVE.has(row.status)) return <span className="load-course-progress">{statusText(row)}</span>
     if (row?.status === 'ready') return <span className="load-course-ready">{statusText(row)}</span>
     return (
       <span className="load-course-actions">
-        {row?.status === 'failed' ? <span className="load-course-failed">{statusText(row)}</span> : null}
+        {row?.status === 'failed' ? <span className="load-course-failed" title={row.error ?? undefined}>Didn't load</span> : null}
         <button type="button" disabled={busyKey !== null} onClick={onLoad}>
-          {busyKey === key ? 'Starting…' : row?.status === 'failed' ? 'Try again' : 'Load'}
+          {busyKey === key ? 'Starting…' : row?.status === 'failed' ? 'Try again' : label}
         </button>
       </span>
     )
@@ -349,8 +358,45 @@ export default function LoadCoursePage() {
     const slug = known ? courseRegistry.find((e) => e.id === known)?.slug ?? courseSlugFromName(course.courseName)
       : courseSlugFromName(course.courseName)
     const link = gsproLinks().find((l) => l.gsproCourseKey === course.courseKey) ?? null
-    return { course, slug, link }
+    const decision = crosswalkDecision(crosswalk.get(course.courseKey) ?? null)
+    const group: 'ready' | 'loading' | 'load' | 'off-map' = slugs.has(slug) ? 'ready'
+      : ACTIVE.has(latestFor(slug)?.status ?? '') ? 'loading'
+        : decision.kind === 'not-on-map' ? 'off-map' : 'load'
+    return { course, slug, link, decision, group }
   })
+  const groups = [
+    { key: 'ready', title: 'Ready to play' },
+    { key: 'loading', title: 'Loading' },
+    { key: 'load', title: 'Not loaded yet' },
+    { key: 'off-map', title: 'Not on the map' },
+  ] as const
+
+  const installedRow = ({ course, slug, link, decision, group }: (typeof installed)[number]) => (
+    <li key={course.courseKey}>
+      <div>
+        <strong>{course.courseName || course.courseKey}</strong>
+        <span>{course.location}</span>
+        {link && group === 'ready' ? (
+          <span className="load-course-linked">
+            Linked to {courseRegistry.find((e) => e.slug === slug)?.name ?? slug}
+            {' '}<button type="button" className="load-course-unlink" onClick={() => {
+              void unlinkGsproCourse(course.courseKey)
+                .catch((error: unknown) => setMessage(`Couldn't unlink: ${error instanceof Error ? error.message : String(error)}`))
+            }}>Unlink</button>
+          </span>
+        ) : null}
+      </div>
+      <span className="load-course-actions">
+        {group === 'off-map' && decision.kind === 'not-on-map' ? (
+          <span className="load-course-note">{/fictional/.test(decision.reason) ? 'Fictional course' : 'Not on OpenStreetMap yet'}</span>
+        ) : rowAction(slug, course.courseKey, () => { void loadInstalled(course) },
+          decision.kind === 'pick' ? 'Choose the map course' : 'Load')}
+        {group === 'ready' && courseIdFor(slug) && !savedLibraryAt
+          ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
+        {group === 'load' ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}
+      </span>
+    </li>
+  )
 
   return (
     <main className="load-course-page">
@@ -358,9 +404,8 @@ export default function LoadCoursePage() {
         <span className="load-course-kicker">COURSES</span>
         <h1>Load a course</h1>
         <p>
-          Pick one of your GSPro courses or search by name, then click <strong>Load</strong>. Looper builds the
-          course (holes, hazards, trees and terrain from public map and LiDAR data) and adds it to thelooper.golf
-          for everyone. It usually takes about {typicalLoadMinutes()} minutes; you can close this page while it runs.
+          Load a course once and it's in Start a Round for everyone. It takes about {typicalLoadMinutes()} minutes;
+          you can leave this page while it runs.
         </p>
         <a className="load-course-back" href="/round-setup">← Back to Start a Round</a>
       </header>
@@ -369,54 +414,10 @@ export default function LoadCoursePage() {
       {loadsError ? <p className="load-course-message">Sign in to load courses ({loadsError}).</p> : null}
 
       <section>
-        <h2>Your GSPro courses</h2>
-        {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
-        {savedLibraryAt ? (
-          <p className="load-course-note">
-            Your GSPro courses as of {new Date(savedLibraryAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, saved from your
-            sim PC. Loading works from here; the check that GSPro's version lines up runs on the sim PC.
-          </p>
-        ) : null}
-        {library === null && !libraryNote ? <p className="load-course-note">Looking for your GSPro courses…</p> : null}
-        {skipped > 0 ? (
-          <p className="load-course-note">
-            {skipped} range, putting or fictional course{skipped === 1 ? '' : 's'} hidden: there's no real-world map to load for {skipped === 1 ? 'it' : 'them'}.
-          </p>
-        ) : null}
-        <ul className="load-course-list">
-          {installed.map(({ course, slug, link }) => (
-            <li key={course.courseKey}>
-              <div>
-                <strong>{course.courseName || course.courseKey}</strong>
-                <span>{[course.location, `${course.holes} holes`].filter(Boolean).join(' · ')}</span>
-                {link && slugs.has(slug) ? (
-                  <span className="load-course-linked">
-                    Linked to {courseRegistry.find((e) => e.slug === slug)?.name ?? slug}
-                    {' '}<button type="button" className="load-course-unlink" onClick={() => {
-                      void unlinkGsproCourse(course.courseKey)
-                        .catch((error: unknown) => setMessage(`Couldn't unlink: ${error instanceof Error ? error.message : String(error)}`))
-                    }}>Unlink</button>
-                  </span>
-                ) : null}
-              </div>
-              <span className="load-course-actions">
-                {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
-                {slugs.has(slug) && courseIdFor(slug) && !savedLibraryAt
-                  ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
-                {!slugs.has(slug) && !ACTIVE.has(latestFor(slug)?.status ?? '')
-                  ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>Search for a course</h2>
+        <h2>Find a course</h2>
         {linkedGspro ? (
           <p className="load-course-note">
-            A course you load from these results will be linked to your GSPro course
-            {' '}<strong>{linkedGspro.courseName}</strong>.{' '}
+            Loading one of these links it to your GSPro course <strong>{linkedGspro.courseName}</strong>.{' '}
             <button type="button" className="load-course-unlink" onClick={() => setLinkedGspro(null)}>Don't link</button>
           </p>
         ) : null}
@@ -428,10 +429,10 @@ export default function LoadCoursePage() {
           if (linkedGspro && courseNameMatchScore(query, linkedGspro.courseName) < 0.3) setLinkedGspro(null)
           void runSearch()
         }}>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Erin Hills, Pinehurst No. 2" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Course name, e.g. Erin Hills" />
           <button type="submit" disabled={searching || query.trim().length < 3}>{searching ? 'Searching…' : 'Search'}</button>
         </form>
-        {results && results.length === 0 ? <p className="load-course-note">No golf courses found on OpenStreetMap for that name.</p> : null}
+        {results && results.length === 0 ? <p className="load-course-note">No golf course on OpenStreetMap by that name.</p> : null}
         <ul className="load-course-list">
           {(results ?? []).map((result) => {
             const slug = courseSlugFromName(result.name)
@@ -454,6 +455,30 @@ export default function LoadCoursePage() {
         </ul>
       </section>
 
+      <section>
+        <h2>Your GSPro courses</h2>
+        {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
+        {savedLibraryAt ? (
+          <p className="load-course-note">
+            Saved from your sim PC on {new Date(savedLibraryAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}.
+            The check against your GSPro version runs on the sim PC.
+          </p>
+        ) : null}
+        {library === null && !libraryNote ? <p className="load-course-note">Looking for your GSPro courses…</p> : null}
+        {groups.map(({ key, title }) => {
+          const rows = installed.filter((row) => row.group === key)
+          return rows.length ? (
+            <div key={key} className="load-course-group">
+              <h3>{title} <span>{rows.length}</span></h3>
+              <ul className="load-course-list">{rows.map(installedRow)}</ul>
+            </div>
+          ) : null
+        })}
+        {skipped > 0 ? (
+          <p className="load-course-note">{skipped} range{skipped === 1 ? '' : 's'} and practice course{skipped === 1 ? '' : 's'} hidden.</p>
+        ) : null}
+      </section>
+
       {loads.length ? (
         <section>
           <h2>Recent loads</h2>
@@ -474,8 +499,8 @@ export default function LoadCoursePage() {
       ) : null}
 
       <p className="load-course-note">
-        Courses must be on OpenStreetMap. Trees and detailed terrain need USGS LiDAR (US courses). Map data © OpenStreetMap
-        contributors; search by Nominatim.
+        Courses come from OpenStreetMap (© OpenStreetMap contributors, ODbL), with elevation and trees from USGS, NRCan,
+        LINZ or Copernicus. GSPro course list: Simulator Golf Tour.
       </p>
     </main>
   )

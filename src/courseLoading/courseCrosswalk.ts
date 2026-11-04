@@ -49,6 +49,23 @@ export const crosswalkForGsproKey = async (courseKey: string): Promise<Crosswalk
   return data?.[0] ?? null
 }
 
+/** Crosswalk rows for many GSPro course keys at once (the Load page's list). */
+export const crosswalkForGsproKeys = async (courseKeys: readonly string[]): Promise<Map<string, CrosswalkRow>> => {
+  const keys = [...new Set(courseKeys.map((k) => k.trim()).filter(Boolean))]
+  const out = new Map<string, CrosswalkRow>()
+  if (!keys.length) return out
+  const client = await getSupabaseClient()
+  for (let i = 0; i < keys.length; i += 100) {
+    const { data, error } = await client
+      .from<CrosswalkRow[]>('course_crosswalk')
+      .select(COLUMNS)
+      .in('gspro_folder', keys.slice(i, i + 100))
+    if (error) throw new Error(error.message)
+    for (const row of data ?? []) if (row.gspro_folder) out.set(row.gspro_folder, row)
+  }
+  return out
+}
+
 export type CrosswalkDecision =
   | Readonly<{ kind: 'load'; name: string; location: string; lat: number; lon: number; osmType: 'way' | 'relation'; osmId: number }>
   | Readonly<{ kind: 'pick'; candidates: ReadonlyArray<{ name: string; location: string; lat: number; lon: number; osmType: 'way' | 'relation'; osmId: number }> }>
