@@ -19,6 +19,7 @@ export type CourseLoadRow = {
   location: string | null
   slug: string | null
   gspro_course_key: string | null
+  osm_id?: number | null
   status: CourseLoadStatus
   stage: string | null
   stage_index: number | null
@@ -81,7 +82,7 @@ export const listCourseLoads = async (): Promise<CourseLoadRow[]> => {
   const client = await getSupabaseClient()
   const { data, error } = await client
     .from<CourseLoadRow[]>('course_load_requests')
-    .select('id, created_at, course_name, location, slug, gspro_course_key, status, stage, stage_index, stage_count, started_at, finished_at, error')
+    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error')
     .order('created_at', { ascending: false })
     .limit(40)
   if (error) throw new Error(error.message)
@@ -312,4 +313,13 @@ export const unlinkGsproCourse = async (gsproCourseKey: string) => {
   const { error } = await client.from('course_gspro_links').delete().eq('gspro_course_key', gsproCourseKey)
   if (error) throw new Error(error.message)
   setGsproLinks(gsproLinks().filter((l) => l.gsproCourseKey !== gsproCourseKey))
+}
+
+/** Lat/lon of a place name ("Hollister, MO") via the same spaced Nominatim queue, or null. */
+export const geocodePlace = async (text: string): Promise<readonly [number, number] | null> => {
+  const q = text.trim()
+  if (q.length < 3) return null
+  const places = await nominatimSearch(q)
+  const hit = places.find((p) => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)))
+  return hit ? [Number(hit.lat), Number(hit.lon)] : null
 }

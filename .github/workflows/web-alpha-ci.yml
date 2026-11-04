@@ -132,6 +132,9 @@ jobs:
       - name: GSPro course links (Load page)
         run: node tools/test-gspro-links.mjs
 
+      - name: Course matching by green geometry
+        run: node tools/test-course-geometry-match.mjs
+
       - name: GSPro penalty areas and OB from the course file
         run: node tools/test-gkd-hazards.mjs
 
