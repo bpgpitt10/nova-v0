@@ -146,6 +146,9 @@ jobs:
       - name: Per-club lay-up targets
         run: node tools/test-club-layup-target.mjs
 
+      - name: Unmapped ground valued by landcover; next-state proofs
+        run: node tools/test-next-state-unknown.mjs
+
       - name: Bag is range data only
         run: node tools/test-range-only-bag.mjs
 

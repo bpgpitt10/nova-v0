@@ -1,4 +1,5 @@
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
+import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
@@ -250,6 +251,20 @@ type ModelClubCarryInput = Readonly<{
  * full evaluation and by the cheap all-club carry check used when clubs are
  * evaluated in parallel workers. */
 /** Fairway centre at this carry toward the pin (never past the pin). */
+/**
+ * Where a club that can't reach the green should plan to land: on the circle
+ * of its carry around the ball (the distance it actually flies), on fairway,
+ * turned toward the pin as far as the fairway allows (spec:
+ * claude/spec-long-shot-engine.md, piece 1). The old rule took the fairway
+ * slice at a hole-local forward distance, which on a dogleg is not where the
+ * club lands (RNK 2).
+ *
+ * Bearings out to ±60° from the pin line in 3° steps. Each spot scores its
+ * remaining distance to the pin, plus 15 for each side (±8 yd across) that
+ * isn't fairway (keeps it off the edge), plus 60 when anything within 10 yd is
+ * water, penalty or woods. Fairway/tee spots first; rough if there are none;
+ * the old corridor answer if neither.
+ */
 export const clubLayupTarget = (
   hole: CourseHoleGeometry,
   ball: CoursePointYds,
@@ -261,10 +276,52 @@ export const clubLayupTarget = (
   const distance = Math.hypot(dx, dy)
   if (!(distance > 0) || !(carryYds > 0)) return null
   const depth = Math.min(carryYds, distance)
+  const pinBearing = Math.atan2(dx, dy)
+  const at = (bearing: number, radius: number): CoursePointYds =>
+    [ball[0] + Math.sin(bearing) * radius, ball[1] + Math.cos(bearing) * radius]
+  const kindAt = (p: CoursePointYds) => classifyPoint(hole, p).kind
+  const hazardous = (p: CoursePointYds) => {
+    const kind = classifyTacticalLandingPoint(hole, p).kind
+    return kind === 'water' || kind === 'penalty' || kind === 'deep-rough'
+  }
+  type Spot = { point: CoursePointYds; score: number }
+  const fairwaySpots: Spot[] = []
+  const roughSpots: Spot[] = []
+  for (let deg = -LAYUP_SEARCH_DEG; deg <= LAYUP_SEARCH_DEG; deg += LAYUP_STEP_DEG) {
+    const bearing = pinBearing + (deg * Math.PI) / 180
+    const point = at(bearing, depth)
+    const kind = kindAt(point)
+    const onFairway = kind === 'fairway' || kind === 'tee'
+    if (!onFairway && kind !== 'rough') continue
+    const across = LAYUP_SIDE_YDS / depth
+    const sides = [at(bearing - across, depth), at(bearing + across, depth)]
+    const offSides = sides.filter((p) => {
+      const k = kindAt(p)
+      return k !== 'fairway' && k !== 'tee'
+    }).length
+    const clearance = [
+      at(bearing, depth - LAYUP_CLEARANCE_YDS), at(bearing, depth + LAYUP_CLEARANCE_YDS),
+      at(bearing - LAYUP_CLEARANCE_YDS / depth, depth), at(bearing + LAYUP_CLEARANCE_YDS / depth, depth),
+    ]
+    const score = Math.hypot(pin[0] - point[0], pin[1] - point[1])
+      + LAYUP_EDGE_PENALTY * offSides
+      + (clearance.some(hazardous) ? LAYUP_HAZARD_PENALTY : 0)
+    ;(onFairway ? fairwaySpots : roughSpots).push({ point, score })
+  }
+  const best = (spots: Spot[]) => spots.reduce<Spot | null>((b, s) => (!b || s.score < b.score ? s : b), null)
+  const pick = best(fairwaySpots) ?? best(roughSpots)
+  if (pick) return pick.point
   const raw: CoursePointYds = [ball[0] + (dx / distance) * depth, ball[1] + (dy / distance) * depth]
   const corridor = fairwayCorridorAtForwardY(hole, raw[1], raw[0])
   return corridor ? [corridor.centerRightYds, raw[1]] : raw
 }
+
+const LAYUP_SEARCH_DEG = 60
+const LAYUP_STEP_DEG = 3
+const LAYUP_SIDE_YDS = 8
+const LAYUP_CLEARANCE_YDS = 10
+const LAYUP_EDGE_PENALTY = 15
+const LAYUP_HAZARD_PENALTY = 60
 
 /** Carry this far short of the pin still counts as going for the green. */
 const LAYUP_REACH_SHORT_YDS = 25
