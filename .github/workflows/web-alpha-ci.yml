@@ -152,6 +152,9 @@ jobs:
       - name: Roll by surface and slope at touchdown
         run: node tools/test-roll-model.mjs
 
+      - name: Descent meets the terrain (hill faces)
+        run: node tools/test-descent-touchdown.mjs
+
       - name: Bag is range data only
         run: node tools/test-range-only-bag.mjs
 
