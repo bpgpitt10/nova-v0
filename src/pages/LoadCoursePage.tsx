@@ -146,7 +146,10 @@ function LinkToLoaded({ course, onLinked }: Readonly<{
   )
 }
 
-const loadedSlugs = () => new Set<string>(courseRegistry.map((entry) => entry.slug))
+// Courses with a loaded map. A course that only plays from GSPro's own file
+// (no map yet) is not loaded: it keeps its Load button (11/4, Brian: "it
+// doesn't let me load anything").
+const loadedSlugs = () => new Set<string>(courseRegistry.filter((entry) => entry.source !== 'gspro-only').map((entry) => entry.slug))
 
 const statusText = (row: CourseLoadRow) => {
   if (row.status === 'queued') return 'Queued · starting shortly'
@@ -341,7 +344,8 @@ export default function LoadCoursePage() {
   const loadable = (library ?? []).filter((course) => !notARealCourse(course))
   const skipped = (library ?? []).length - loadable.length
   const installed = loadable.map((course) => {
-    const known = resolveCourseIdFromGsproName(course.courseKey) ?? resolveCourseIdFromGsproName(course.courseName)
+    const known = resolveCourseIdFromGsproName(course.courseKey, { includeGsproOnly: false })
+      ?? resolveCourseIdFromGsproName(course.courseName, { includeGsproOnly: false })
     const slug = known ? courseRegistry.find((e) => e.id === known)?.slug ?? courseSlugFromName(course.courseName)
       : courseSlugFromName(course.courseName)
     const link = gsproLinks().find((l) => l.gsproCourseKey === course.courseKey) ?? null
