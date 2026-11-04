@@ -153,7 +153,7 @@ jobs:
 
             $headers = @{ Origin = "https://thelooper.golf" }
             $companion = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers $headers -TimeoutSec 3
-            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.9") {
+            if ($companion.service -ne "looper-companion" -or $companion.version -ne "courses.10") {
               throw "New companion status route is not available in packaged build."
             }
             if ($companion.capabilities.folderDiscovery -ne $true -or $companion.capabilities.captureDiagnostic -ne $true) {
@@ -337,8 +337,8 @@ jobs:
           gh release create "looper-companion-courses-$shortSha" looper-windows-companion.zip `
             --repo "$env:GITHUB_REPOSITORY" `
             --target "$env:GITHUB_SHA" `
-            --title "Looper Companion courses.9 ($shortSha)" `
-            --notes "Version courses.9. Saves GSPro's wind box to %LOCALAPPDATA%\Looper\Companion\diagnostics when the wind reads 0 MPH (Royal New Kent read 0 at ~10 MPH), as it already did when the speed couldn't be read. Otherwise the same as courses.8 (course list with pars and style tags, finds courses with GSPro closed, aim click, wind/lie/HUD reads, round recorder)." `
+            --title "Looper Companion courses.10 ($shortSha)" `
+            --notes "Version courses.10. Records GSPro's own par for every hole of each round (from the hole layout GSPro logs, checked against that round's pins) and serves it at /companion/v1/round-pars, so Rounds scores with GSPro's scorecard par (The Old Game: hole 7 is a par 5 in GSPro, a 4 in its course file). Read-only. Otherwise the same as courses.9 (wind diagnostic, course list with pars and style tags, aim click, wind/lie/HUD reads, round recorder)." `
             --prerelease
 
       - name: Publish Rounds companion installer

@@ -1531,19 +1531,31 @@
   background: transparent;
 }
 
-/* Score: vs par in gold beside it, same size, lighter. */
+/* Score: strokes big, to-par a smaller gold tag after it ("71 −1"), so the
+   two never read as one number. A partial round shows to-par "thru N". */
 .rounds-score-pair {
   display: flex;
   align-items: baseline;
-  gap: 16px;
+  gap: 14px;
 }
 
 .rounds-score-vspar {
-  font-size: 64px;
-  font-weight: 400;
-  line-height: 0.95;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
   color: var(--rounds-gold);
   font-variant-numeric: tabular-nums;
+}
+
+.rounds-score-main strong.is-topar {
+  color: var(--rounds-gold);
+}
+
+.rounds-score-thru {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--rounds-muted);
 }
 
 /* The hole's own score: gold, scorecard shape once par is known. */
@@ -1581,7 +1593,7 @@
 
 @media (max-width: 760px) {
   .rounds-score-vspar {
-    font-size: 48px;
+    font-size: 22px;
   }
 }
 
@@ -1605,17 +1617,20 @@
   stroke: rgba(207, 216, 205, 0.22);
 }
 
-/* Rounds list: vs par in gold just left of the score, both under one Score header. */
-.rounds-page .rounds-table td.rounds-list-vspar {
-  padding-right: 6px;
-  color: var(--rounds-gold);
-  font-weight: 500;
-  white-space: nowrap;
+/* Rounds list: the score, then to-par as a smaller gold tag, under one Score header. */
+.rounds-page .rounds-table td.rounds-list-score {
+  padding-right: 8px;
 }
 
-.rounds-page .rounds-table td.rounds-list-score {
+.rounds-page .rounds-table td.rounds-list-vspar {
   padding-left: 0;
   width: 1%;
+  color: var(--rounds-gold);
+  font-size: 0.82em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
 }
 
 /* Scorecard row labels (Hole / Par / Score / SG) in a narrow first column. */
@@ -1663,4 +1678,287 @@
   top: 50%;
   height: 1px;
   background: rgba(207, 216, 205, 0.18);
+}
+
+/* Landing stats: best round reads "71 −1" like the round page; course names
+   in the list take the round page's serif (white, not gold). */
+.rounds-tile-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rounds-tile-vspar {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--rounds-gold);
+}
+
+.rounds-page .rounds-tile span.rounds-tile-vspar {
+  font-size: 17px;
+  color: var(--rounds-gold);
+}
+
+.rounds-page .rounds-tile span.rounds-tile-sub {
+  font-size: 12px;
+  color: var(--rounds-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rounds-page .rounds-table .rounds-row-link strong {
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 600;
+  font-optical-sizing: auto;
+  letter-spacing: -0.005em;
+}
+
+/* ---- Your game (where you lose strokes) ---- */
+.yourgame-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 48px;
+}
+
+.yourgame-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 720px;
+}
+
+.yourgame-intro p {
+  margin: 4px 0 0;
+  line-height: 1.55;
+}
+
+.yourgame-data {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(320px, 100%);
+}
+
+.yourgame-data strong {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.yourgame-data .rounds-muted {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.yourgame-leaks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px 40px;
+  margin-top: 4px;
+}
+
+.yourgame-leak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.yourgame-leak strong {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.yourgame-leak-label {
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.yourgame-leak .rounds-muted {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.yourgame-tag {
+  display: inline-flex;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--rounds-rule, rgba(207, 216, 205, 0.16));
+  font-size: 12px;
+  color: var(--rounds-secondary);
+  white-space: nowrap;
+}
+
+.yourgame-tag.is-early {
+  border-color: rgba(234, 179, 8, 0.45);
+  color: var(--rounds-gold);
+}
+
+.yourgame-strengths {
+  margin-top: 18px;
+}
+
+.yourgame-strength {
+  font-size: 14px;
+}
+
+.yourgame-strength strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.yourgame-table-wrap {
+  overflow-x: auto;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.yourgame-ladder {
+  min-width: 760px;
+}
+
+.yourgame-bar-head {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.yourgame-bar-cell {
+  width: 32%;
+  min-width: 180px;
+}
+
+.yourgame-bar {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+
+.yourgame-bar > .is-gain-bar,
+.yourgame-bar > .is-loss-bar {
+  position: absolute;
+  top: 3px;
+  height: 8px;
+}
+
+.yourgame-bar-axis {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(207, 216, 205, 0.35);
+}
+
+.yourgame-bar-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--rounds-gold);
+}
+
+.yourgame-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.yourgame-dots > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(207, 216, 205, 0.2);
+}
+
+.yourgame-dots > span.is-on {
+  background: var(--rounds-gain);
+}
+
+.yourgame-foot {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.yourgame-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 20px 48px;
+}
+
+.yourgame-pair > section {
+  min-width: 0;
+}
+
+.yourgame-pair .rounds-table {
+  width: 100%;
+  min-width: 420px;
+}
+
+.rounds-page .rounds-table.yourgame-putts td:last-child {
+  white-space: normal;
+  font-size: 13px;
+}
+
+.rounds-page .rounds-table.yourgame-vs th,
+.rounds-page .rounds-table.yourgame-vs td,
+.rounds-page .rounds-table.yourgame-putts th,
+.rounds-page .rounds-table.yourgame-putts td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.yourgame-vs .yourgame-bar-cell {
+  width: 40%;
+  min-width: 110px;
+}
+
+.yourgame p.rounds-muted {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.yourgame-scroll {
+  overflow-x: auto;
+}
+
+.yourgame-coming {
+  border-top-style: dashed;
+}
+
+.yourgame-coming p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.yourgame-how {
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 880px;
+}
+
+.yourgame-how strong {
+  color: var(--rounds-secondary);
+}
+
+@media (max-width: 640px) {
+  .yourgame-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .yourgame-leak strong {
+    font-size: 28px;
+  }
+}
+
+.rounds-page .rounds-table th.yourgame-bar-head {
+  text-align: center;
 }

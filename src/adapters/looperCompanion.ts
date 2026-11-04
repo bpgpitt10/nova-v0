@@ -72,7 +72,7 @@ const LOCAL_BASE = 'http://127.0.0.1:8787/companion/v1'
 export const LOOPER_COMPANION_STATUS_URL = `${LOCAL_BASE}/status`
 
 const getCompanionReadOnly = async <T>(
-  path: 'status' | 'capture-check' | 'observations' | `observations?${string}` | 'course-library' | `course-layouts?${string}` | `aim-preview?${string}`,
+  path: 'status' | 'capture-check' | 'observations' | `observations?${string}` | 'course-library' | 'round-pars' | `course-layouts?${string}` | `aim-preview?${string}`,
   timeoutMs: number,
 ): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 200) {
@@ -287,6 +287,25 @@ export const readLooperCompanionCourseLibrary = async (timeoutMs = 20000) => {
     throw new Error('Looper Companion does not list courses yet (update the companion).')
   }
   return data
+}
+
+export type LooperCompanionRoundPars = Readonly<{
+  roundId: number | string
+  courseKey: string | null
+  /** GSPro's own par per hole number ("7" → 5), as its scorecard scores the round. */
+  pars: Record<string, number>
+  checkedHoles: number[]
+  observedAt: string
+}>
+
+/** GSPro's par per hole for each recorded round (companion courses.10+). */
+export const readLooperCompanionRoundPars = async (timeoutMs = 8000) => {
+  const data = await getCompanionReadOnly<{ schemaVersion: string; status: string; rounds: LooperCompanionRoundPars[] }>(
+    'round-pars', timeoutMs)
+  if (data.schemaVersion !== 'looper-companion-round-pars-v1' || !Array.isArray(data.rounds)) {
+    throw new Error('Looper Companion does not record round pars yet (update the companion).')
+  }
+  return data.rounds
 }
 
 /** Native companion live observations are separate from course/OSM registration.

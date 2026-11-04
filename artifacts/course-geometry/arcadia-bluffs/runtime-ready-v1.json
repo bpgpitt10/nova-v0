@@ -1,0 +1,22 @@
+{
+  "completedAt": "2026-11-04T11:57:14.478845Z",
+  "configPath": "config/course-geometry/arcadia-bluffs-v1.json",
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "courseName": "Arcadia Bluffs Golf Club",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Arcadia Bluffs Golf Club",
+    "arcadiabluffs_v1_gsp"
+  ],
+  "location": "Arcadia Township, Michigan",
+  "packagePath": "public/course-geometry/arcadia-bluffs/course-v1.json",
+  "packageSha256": "8c837c1d8f7f188c0953edcb8bf83f257efc5f921d041bf82c12cd0743179328",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "arcadia-bluffs",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json"
+}

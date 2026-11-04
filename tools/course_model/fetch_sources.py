@@ -28,7 +28,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 USER_AGENT = 'the-looper-course-model-prototype/0.1 (github.com/bpgpitt10)'
 OVERPASS_URLS = [
     'https://overpass-api.de/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
 ]
 DEM_EXPORT = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
 TARGET_CRS = 'EPSG:26916'  # NAD83 / UTM zone 16N (FarmLinks)
@@ -60,18 +62,18 @@ def cmd_osm(args: argparse.Namespace) -> int:
     query = f'[out:json][timeout:240];(nwr({s},{w},{n},{e}););out body geom qt;'
     payload = None
     errors = []
-    for url in OVERPASS_URLS:
-        for attempt in range(3):
+    for attempt in range(2):
+        for url in OVERPASS_URLS:
             try:
                 t0 = time.time()
-                body = http_get(url, urllib.parse.urlencode({'data': query}).encode(), timeout=300)
+                body = http_get(url, urllib.parse.urlencode({'data': query}).encode(), timeout=180)
                 payload = json.loads(body)
                 print(f'overpass ok url={url} bytes={len(body)} seconds={time.time() - t0:.1f}')
                 break
             except Exception as exc:  # noqa: BLE001 - record and retry
                 errors.append(f'{url} attempt {attempt + 1}: {exc}')
                 print(errors[-1])
-                time.sleep(10 * (attempt + 1))
+                time.sleep(5 * (attempt + 1))
         if payload is not None:
             break
     if payload is None:

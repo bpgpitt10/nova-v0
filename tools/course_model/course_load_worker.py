@@ -7,9 +7,11 @@ production branch. For each queued request, oldest first:
      shows "Loading - stage N of 8");
   2. run load_course.load_one (find -> import -> OSM -> DEM -> LiDAR -> trees
      -> LiDAR package), which fails closed;
-  3. on success commit the course to the production branch (Vercel deploys
-     it), mark it "publishing", wait until thelooper.golf serves the package,
-     then mark it "ready";
+  3. on success publish it: upload the package files to the public Supabase
+     storage bucket `course-packages` and write its `loaded_courses` row, which
+     every Looper app reads at start (no site redeploy), then mark it "ready".
+     PUBLISH_MODE=git (or a storage failure) falls back to the old path: commit
+     the course to the production branch, wait for thelooper.golf to serve it;
   4. on failure mark it "failed" with the stage and the last log lines.
 
 Needs SUPABASE_SECRET_KEY (a service-role secret key). Without it the worker
@@ -38,6 +40,9 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL') or 'https://kdjfdchzfemjpmaqpobn.s
 SITE_URL = os.environ.get('LOOPER_SITE_URL') or 'https://thelooper.golf'
 PUBLISH_BRANCH = os.environ.get('PUBLISH_BRANCH') or 'web-alpha-mishits'
 MAX_PER_RUN = int(os.environ.get('MAX_LOADS_PER_RUN') or 3)
+PUBLISH_MODE = (os.environ.get('PUBLISH_MODE') or 'storage').strip().lower()
+BUCKET = 'course-packages'
+PACKAGE_FILES = ('course-v1.json', 'course-v1-lidar.json', 'green-detail-v1.json')
 STOP_WORDS = {'the', 'golf', 'club', 'course', 'country', 'links', 'resort', 'at', 'of', 'and', 'gc', 'cc'}
 
 
@@ -69,6 +74,89 @@ def published(slug: str) -> bool:
         with urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=20) as resp:
             return resp.status == 200 and 'json' in (resp.headers.get('content-type') or '')
     except (urllib.error.URLError, TimeoutError):
+        return False
+
+
+def storage_upload(path: str, data: bytes, key: str) -> None:
+    """Upload (or replace) one file in the course-packages bucket. Secret keys
+    work in the apikey header alone; a legacy service-role JWT also needs it
+    as the bearer token, so retry with that on a refusal."""
+    url = f'{SUPABASE_URL}/storage/v1/object/{BUCKET}/{urllib.parse.quote(path)}'
+    headers = {'apikey': key, 'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'max-age=60'}
+    last: Exception | None = None
+    for extra in ({}, {'Authorization': f'Bearer {key}'}):
+        try:
+            req = urllib.request.Request(url, method='POST', data=data, headers={**headers, **extra})
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                resp.read()
+                return
+        except urllib.error.HTTPError as error:
+            last = RuntimeError(f'storage upload {path}: HTTP {error.code} {error.read()[:200]!r}')
+            if error.code not in (400, 401, 403):
+                break
+    raise last or RuntimeError(f'storage upload {path} failed')
+
+
+def public_url(path: str) -> str:
+    return f'{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{path}'
+
+
+def hole_headings(slug: str) -> list | None:
+    """Tee-to-green true headings per hole, from the validation manifest."""
+    path = ROOT / 'artifacts' / 'course-geometry' / slug / 'validation-v1.json'
+    try:
+        manifest = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    headings: list = [None] * 18
+    for hole in manifest.get('holes') or []:
+        try:
+            number, heading = int(hole.get('hole')), float(hole.get('headingDegreesTrue'))
+        except (TypeError, ValueError):
+            continue
+        if 1 <= number <= 18:
+            headings[number - 1] = round(heading, 2)
+    return headings if any(h is not None for h in headings) else None
+
+
+def publish_to_storage(request: dict, slug: str, key: str) -> None:
+    """Upload the package files and write the course's loaded_courses row."""
+    receipt = json.loads((ROOT / 'artifacts' / 'course-geometry' / slug / 'runtime-ready-v1.json').read_text())
+    if receipt.get('runtimeReady') is not True:
+        raise RuntimeError('the runtime-ready receipt is not ready')
+    folder = ROOT / 'public' / 'course-geometry' / slug
+    for name in PACKAGE_FILES:
+        if (folder / name).exists():
+            storage_upload(f'{slug}/{name}', (folder / name).read_bytes(), key)
+    if not (folder / 'course-v1.json').exists():
+        raise RuntimeError('course-v1.json was not built')
+    aliases = [str(a).strip() for a in receipt.get('gsproAliases') or [] if str(a).strip()]
+    row = {
+        'slug': slug,
+        'course_id': receipt['courseId'],
+        'name': receipt.get('courseName') or request['course_name'],
+        'location': receipt.get('location') or request.get('location') or '',
+        'gspro_aliases': list(dict.fromkeys(aliases)),
+        'package_url': public_url(f'{slug}/course-v1.json'),
+        'lidar': (folder / 'course-v1-lidar.json').exists(),
+        'hole_headings': hole_headings(slug),
+        'osm_type': request.get('osm_type'),
+        'osm_id': request.get('osm_id'),
+        'request_id': request.get('id'),
+        'published_at': now(),
+    }
+    req = urllib.request.Request(
+        f'{SUPABASE_URL}/rest/v1/loaded_courses?on_conflict=slug', method='POST', data=json.dumps(row).encode(),
+        headers={'apikey': key, 'Content-Type': 'application/json',
+                 'Prefer': 'resolution=merge-duplicates,return=minimal'})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        resp.read()
+
+
+def loaded_row_exists(slug: str, key: str) -> bool:
+    try:
+        return bool(rest('GET', f'loaded_courses?slug=eq.{urllib.parse.quote(slug)}&select=slug', key=key))
+    except Exception:
         return False
 
 
@@ -110,7 +198,8 @@ def work(request: dict, key: str) -> None:
     rid = request['id']
     patch = lambda **fields: rest('PATCH', f'course_load_requests?id=eq.{rid}', fields, key)  # noqa: E731
     slug = request.get('slug') or load_course.slugify(request['course_name'])
-    if (ROOT / 'public' / 'course-geometry' / slug / 'course-v1-lidar.json').exists() and published(slug):
+    if ((ROOT / 'public' / 'course-geometry' / slug / 'course-v1-lidar.json').exists() and published(slug)) \
+            or loaded_row_exists(slug, key):
         patch(status='ready', slug=slug, finished_at=now(), stage=None,
               report={'note': 'already loaded'})
         return
@@ -136,6 +225,14 @@ def work(request: dict, key: str) -> None:
               error=f"{failed.get('stage', 'load')} failed: {tail or 'see run log'}")
         return
     patch(status='publishing', stage='publish', report=summary)
+    if PUBLISH_MODE != 'git':
+        try:
+            publish_to_storage(request, slug, key)
+            patch(status='ready', stage=None, finished_at=now())
+            print(f'published {slug} to storage', flush=True)
+            return
+        except Exception as error:  # fall back to committing it
+            print(f'storage publish failed ({error}); committing instead', flush=True)
     commit_course(slug, request['course_name'])
     deadline = time.time() + 15 * 60
     while time.time() < deadline and not published(slug):

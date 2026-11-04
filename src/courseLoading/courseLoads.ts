@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../cloud/supabaseClient'
 import { courseNameMatchScore } from './courseNameMatch'
 import { gsproLinks, setGsproLinks } from '../courseGeometry/gsproLinks'
+import { applyLoadedCourseRows, type LoadedCourseRow } from '../courseGeometry/runtimeCourses'
 
 export { courseNameMatchScore }
 
@@ -204,12 +205,68 @@ const NEARBY_DEG = 0.06
 const GOLF_WORDS = /\b(golf|country club|links|cc|gc)\b/i
 const STRONG_NAME_MATCH = 0.75
 
+const PHOTON_URL = 'https://photon.komoot.io/api/'
+const photonCache = new Map<string, GolfCourseSearchResult[]>()
+
+type PhotonFeature = {
+  properties?: { osm_type?: string; osm_id?: number; name?: string; city?: string; county?: string; state?: string; country?: string }
+  geometry?: { coordinates?: [number, number] }
+}
+
+/**
+ * Golf courses by name from Photon (komoot's OpenStreetMap search). It
+ * filters to leisure=golf_course itself and tolerates partial names and
+ * spelling ("sand valley", "paynes valley"), where Nominatim's free text
+ * often answers with streets or towns (11/4: "bellerive" -> Rue du Golf;
+ * "sand valley" -> nothing on the sim PC). Null when Photon can't be reached.
+ */
+const photonGolfCourses = async (q: string): Promise<GolfCourseSearchResult[] | null> => {
+  const cached = photonCache.get(q)
+  if (cached) return cached
+  const params = new URLSearchParams({ q, limit: '15', osm_tag: 'leisure:golf_course' })
+  const response = await fetch(`${PHOTON_URL}?${params}`, { headers: { Accept: 'application/json' } }).catch(() => null)
+  if (!response?.ok) return null
+  const body = (await response.json().catch(() => null)) as { features?: PhotonFeature[] } | null
+  if (!body || !Array.isArray(body.features)) return null
+  const out: GolfCourseSearchResult[] = []
+  const seen = new Set<string>()
+  for (const feature of body.features) {
+    const props = feature.properties ?? {}
+    const osmType = props.osm_type === 'W' ? 'way' : props.osm_type === 'R' ? 'relation' : null
+    const [lon, lat] = feature.geometry?.coordinates ?? []
+    // Courses mapped only as a point can't be loaded (no outline).
+    if (!osmType || !props.osm_id || !props.name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue
+    const key = `${osmType}/${props.osm_id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({
+      name: props.name,
+      location: [props.city ?? props.county, props.state ?? props.country].filter(Boolean).join(', '),
+      lat: lat as number, lon: lon as number, osmType, osmId: props.osm_id,
+    })
+  }
+  photonCache.set(q, out)
+  return out
+}
+
+const byNameMatch = (results: readonly GolfCourseSearchResult[], q: string) => results
+  .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
+  .sort((a, b) => b.score - a.score)
+  .map(({ result }) => result)
+
 export const searchGolfCourses = async (
   query: string,
   { nearby = true }: Readonly<{ nearby?: boolean }> = {},
 ): Promise<GolfCourseSearchResult[]> => {
   const q = query.trim()
   if (q.length < 3) return []
+  // The search box (nearby = true) asks Photon first; the installed-course
+  // matcher stays on Nominatim's stricter name matching, so a fuzzy hit never
+  // stands in for a course.
+  if (nearby) {
+    const photon = await photonGolfCourses(q)
+    if (photon?.length) return byNameMatch(photon, q)
+  }
   // "bellerive golf" finds streets called Rue du Golf, not Bellerive Country
   // Club (11/4): search a few forms of the name and keep the golf courses,
   // closest name first. Stop as soon as one clearly matches.
@@ -221,10 +278,7 @@ export const searchGolfCourses = async (
     }
     if ([...found.values()].some((result) => courseNameMatchScore(result.name, q) >= STRONG_NAME_MATCH)) break
   }
-  const direct = [...found.values()]
-    .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
-    .sort((a, b) => b.score - a.score)
-    .map(({ result }) => result)
+  const direct = byNameMatch([...found.values()], q)
   if (direct.length || !nearby) return direct
   // Nothing tagged as a golf course by that name. OpenStreetMap often files a
   // resort course under the resort, or under a slightly different name: find
@@ -291,6 +345,72 @@ export const findGolfCourseFor = async (
   }
   if (best && best.score >= 0.5) return best.result
   return fallback
+}
+
+/** Courses published by the one-click loader (no site redeploy): add them to the catalog. */
+export const refreshLoadedCourses = async (): Promise<number> => {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from<LoadedCourseRow[]>('loaded_courses')
+    .select('slug, course_id, name, location, gspro_aliases, package_url, lidar, hole_headings')
+    .limit(2000)
+  if (error) throw new Error(error.message)
+  return applyLoadedCourseRows(data ?? [])
+}
+
+export type SavedGsproCourse = Readonly<{
+  courseKey: string
+  courseName: string
+  location: string
+  designer: string
+  holes: number
+}>
+
+type GsproLibraryRow = { course_key: string; course_name: string; location: string; designer: string; holes: number; seen_at: string }
+
+/**
+ * Save the player's installed GSPro courses (read from the companion on the
+ * sim PC) to their account, so the Load page can list them on any device.
+ * Names, locations and keys only.
+ */
+export const saveGsproLibrary = async (courses: readonly SavedGsproCourse[]) => {
+  if (!courses.length) return
+  const client = await getSupabaseClient()
+  const seenAt = new Date().toISOString()
+  const rows = courses.slice(0, 2000).map((course) => ({
+    course_key: course.courseKey.slice(0, 160),
+    course_name: (course.courseName ?? '').slice(0, 160),
+    location: (course.location ?? '').slice(0, 160),
+    designer: (course.designer ?? '').slice(0, 160),
+    holes: Math.max(1, Math.min(36, Math.round(course.holes || 18))),
+    seen_at: seenAt,
+  }))
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await client.from('gspro_library').upsert(rows.slice(i, i + 500), { onConflict: 'user_id,course_key' })
+    if (error) throw new Error(error.message)
+  }
+}
+
+/** The installed GSPro courses saved from the sim PC, newest sighting first. */
+export const loadSavedGsproLibrary = async (): Promise<{ courses: SavedGsproCourse[]; seenAt: string | null }> => {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from<GsproLibraryRow[]>('gspro_library')
+    .select('course_key, course_name, location, designer, holes, seen_at')
+    .order('seen_at', { ascending: false })
+    .limit(2000)
+  if (error) throw new Error(error.message)
+  const rows = data ?? []
+  // Only the latest sighting: courses uninstalled since then drop out.
+  const latest = rows[0]?.seen_at ?? null
+  const latestMs = latest ? Date.parse(latest) : 0
+  return {
+    seenAt: latest,
+    courses: rows
+      .filter((row) => !latest || Math.abs(Date.parse(row.seen_at) - latestMs) < 60_000)
+      .map((row) => ({ courseKey: row.course_key, courseName: row.course_name, location: row.location, designer: row.designer, holes: row.holes }))
+      .sort((a, b) => (a.courseName || a.courseKey).localeCompare(b.courseName || b.courseKey)),
+  }
 }
 
 type GsproLinkRow = { gspro_course_key: string; gspro_course_name: string | null; course_slug: string }

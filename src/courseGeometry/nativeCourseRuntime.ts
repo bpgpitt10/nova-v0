@@ -366,7 +366,25 @@ const unorderedText = (u: NonNullable<AutoRegistrationResult['unordered']>) => {
   return `; ignoring hole numbers: ${u.paired} of ${u.gkdGreens} greens line up (rms ${u.rmsM.toFixed(1)} m,`
     + ` rotate ${u.rotationDeg.toFixed(1)}°, scale ${u.scale.toFixed(3)}${u.mirrored ? ', mirror-image' : ''})`
     + (renumbered.length ? `; GSPro hole = map hole: ${renumbered.map(([a, b]) => `${a}=${b}`).join(', ')}` : '; same numbering')
+    + (u.paired < u.gkdGreens ? `; lined up: holes ${holeRanges(u.holes.map(([g]) => g))}` : '')
+    + (u.rest ? `; holes ${holeRanges(u.rest.holes)} fit each other at ${u.rest.rmsM.toFixed(1)} m`
+      + ` (rotate ${u.rest.rotationDeg.toFixed(1)}°, scale ${u.rest.scale.toFixed(3)})`
+      + ` but the map has them ${u.rest.offsetM.toFixed(0)} m ${compass(u.rest.bearingDeg)} of there` : '')
 }
+
+const holeRanges = (holes: readonly number[]) => {
+  const sorted = [...new Set(holes)].sort((a, b) => a - b)
+  const out: string[] = []
+  for (let i = 0; i < sorted.length; i += 1) {
+    let j = i
+    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j += 1
+    out.push(j > i ? `${sorted[i]}-${sorted[j]}` : `${sorted[i]}`)
+    i = j
+  }
+  return out.join(',')
+}
+
+const compass = (deg: number) => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]
 
 const registerInBrowser = async (
   courseId: CourseId,
@@ -404,6 +422,13 @@ const registerInBrowser = async (
       reason: (result.fit.grade === 'C'
         ? 'GSPro course does not match the map closely enough'
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
+    }
+  }
+  if (result.movedHoles.length) {
+    return {
+      registration: result.registration,
+      reason: `holes ${holeRanges(result.movedHoles)} placed on their own (GSPro's scene moved them)`
+        + (result.greensOnly ? '; placed from the greens' : ''),
     }
   }
   if (result.greensOnly) {

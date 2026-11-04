@@ -6,6 +6,8 @@ import {
 import {
   readLooperCompanionCourseLayouts,
   readLooperCompanionCourseLibrary,
+  readLooperCompanionRoundPars,
+  type LooperCompanionRoundPars,
 } from '../adapters/looperCompanion'
 import { courseRegistry, resolveCourseIdFromGsproName } from '../courseGeometry/courseCatalog'
 import { NativeGkdError, parseGkdLayout } from '../courseGeometry/nativeGkd'
@@ -123,7 +125,9 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
 export type StoredCourseInfo = {
   name: string | null
   pars: Record<number, number>
-  parSource: 'course-file' | 'course-package' | null
+  /** scorecard: GSPro's own scorecard (beats the course file: The Old Game's
+   * file says hole 7 is a par 4, GSPro scores it as a 5). */
+  parSource: 'scorecard' | 'course-file' | 'course-package' | null
   /** GSPro designer style tags (links, parkland, mountain…), from companion courses.8+. */
   keywords?: string[]
   altitudeFt?: number | null
@@ -188,6 +192,34 @@ const parsFromCourseFile = async (courseKey: string): Promise<StoredCourseInfo |
 }
 
 /**
+ * GSPro's own par per hole, per course, from the newest recorded round on it
+ * (companion courses.10+: read from the hole layout GSPro logs, checked against
+ * that round's pins). null when no companion answers or it's older.
+ */
+export const scorecardParsByCourse = (rounds: readonly LooperCompanionRoundPars[]): Map<string, Record<number, number>> => {
+  const byCourse = new Map<string, Record<number, number>>()
+  const newestFirst = [...rounds].sort((a, b) => (b.observedAt ?? '').localeCompare(a.observedAt ?? ''))
+  for (const round of newestFirst) {
+    const key = round.courseKey?.toLowerCase()
+    if (!key || byCourse.has(key)) continue
+    const pars: Record<number, number> = {}
+    Object.entries(round.pars ?? {}).forEach(([hole, par]) => {
+      if (Number.isInteger(par) && par >= 2 && par <= 7 && Number(hole) >= 1 && Number(hole) <= 36) pars[Number(hole)] = par
+    })
+    if (Object.keys(pars).length >= 9) byCourse.set(key, pars)
+  }
+  return byCourse
+}
+
+const scorecardInfo = async (): Promise<Map<string, Record<number, number>> | null> => {
+  try {
+    return scorecardParsByCourse(await readLooperCompanionRoundPars())
+  } catch {
+    return null
+  }
+}
+
+/**
  * Every installed course's name (and, from companion courses.7, par per hole)
  * in one request. null when no companion answers on this device.
  */
@@ -223,14 +255,15 @@ type CourseInfoRow = {
 }
 
 const sourceRank = (source: StoredCourseInfo['parSource']) =>
-  source === 'course-file' ? 2 : source === 'course-package' ? 1 : 0
+  source === 'scorecard' ? 3 : source === 'course-file' ? 2 : source === 'course-package' ? 1 : 0
 
 const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
   const pars: Record<number, number> = {}
   Object.entries(row.pars ?? {}).forEach(([hole, par]) => {
     if (typeof par === 'number' && Number.isFinite(par)) pars[Number(hole)] = par
   })
-  const parSource = row.par_source === 'course-file' || row.par_source === 'course-package' ? row.par_source : null
+  const parSource = row.par_source === 'scorecard' || row.par_source === 'course-file' || row.par_source === 'course-package'
+    ? row.par_source : null
   return {
     name: row.course_name,
     pars,
@@ -245,7 +278,9 @@ const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
 const mergeInfo = (a: StoredCourseInfo | undefined, b: StoredCourseInfo | undefined): StoredCourseInfo | undefined => {
   if (!a) return b
   if (!b) return a
-  const winner = sourceRank(b.parSource) > sourceRank(a.parSource) ? b : a
+  // A stronger source wins; between two GSPro scorecards, the newer (b).
+  const winner = sourceRank(b.parSource) > sourceRank(a.parSource)
+    || (b.parSource === 'scorecard' && a.parSource === 'scorecard') ? b : a
   const other = winner === a ? b : a
   const keywords = b.keywords?.length ? b.keywords : a.keywords
   const altitudeFt = b.altitudeFt ?? a.altitudeFt
@@ -325,7 +360,19 @@ export const loadCourseInfo = async (
     if (merged) cache[key] = merged
   })
 
-  const needsLookup = (key: string) => !(cache[key]?.parSource === 'course-file' && cache[key]?.name)
+  // 0. GSPro's own scorecard par (companion courses.10+) beats the course file.
+  const scorecards = await scorecardInfo()
+  if (scorecards) {
+    keys.forEach((key) => {
+      const pars = scorecards.get(key.toLowerCase())
+      if (!pars) return
+      const merged = mergeInfo(cache[key], { name: cache[key]?.name ?? null, pars, parSource: 'scorecard' })
+      if (merged) cache[key] = merged
+    })
+  }
+
+  const needsLookup = (key: string) =>
+    !((cache[key]?.parSource === 'course-file' || cache[key]?.parSource === 'scorecard') && cache[key]?.name)
 
   // 1. The companion's course list: every name, and par from courses.7 on.
   const library = keys.some(needsLookup) ? await courseLibraryInfo() : null

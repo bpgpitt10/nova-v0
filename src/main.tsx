@@ -36,7 +36,7 @@ import { deactivateLocalUserScope } from './lib/localUserScope.ts'
 import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.ts'
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
-import { refreshGsproLinks } from './courseLoading/courseLoads.ts'
+import { refreshGsproLinks, refreshLoadedCourses } from './courseLoading/courseLoads.ts'
 import { startLiveCaddieRoundTeeValidator } from './liveCaddie/roundTeeValidator.ts'
 import {
   loadActiveLiveCaddieRound,
@@ -136,6 +136,8 @@ function LiveGsproRoundArchiveBridge() {
     // GSPro → Looper course links made on the Load page ("DPC Pebble" is
     // Pebble Beach). A cached copy is used until this arrives.
     void refreshGsproLinks().catch(() => undefined)
+    // Courses loaded since this build (published at run time, not in the code).
+    void refreshLoadedCourses().catch(() => undefined)
     return () => {
       stopTeeValidator()
       stopLineage()

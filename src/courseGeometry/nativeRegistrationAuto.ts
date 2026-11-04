@@ -1,7 +1,7 @@
 import { effectiveGreenCenter, nativeHole, sha256Hex, type NativeCourseLayout, type NativeXYZ } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
-import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
-import { fitNativeRegistration, registrationFromGreens, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
+import { groundOffsetMeters, nativeWorldToLatLon, registrationForHole } from './nativeRegistration'
+import { fitHoleGroups, fitNativeRegistration, registrationFromGreens, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
 import { fitGreens, type Xy } from '../courseLoading/courseGeometryMatch'
 import { parsePackageTerrain, type RawTerrain } from './routePackagedCourseLoader'
 import type { CourseTerrainGrid } from './types'
@@ -48,6 +48,8 @@ export type AutoRegistrationResult = Readonly<{
   usedHazardPoints: boolean
   /** Placed from the greens alone: they line up to a few metres but the terrain doesn't match. */
   greensOnly: boolean
+  /** Holes placed on their own because GSPro's scene moved them (Kiawah's back nine). */
+  movedHoles: readonly number[]
   /** Diagnostic when greens don't pair by hole number: the best fit ignoring
    * hole numbers, and which GSPro hole's green landed on which map hole's. */
   unordered: Readonly<{
@@ -59,6 +61,10 @@ export type AutoRegistrationResult = Readonly<{
     mirrored: boolean
     /** [GSPro hole, map hole] for each paired green. */
     holes: ReadonlyArray<readonly [number, number]>
+    /** The holes that didn't line up, fitted on their own (same numbers): how
+     * well they fit each other, and how far (and which way, compass bearing)
+     * the map has them from where the first group's placement puts them. */
+    rest: Readonly<{ holes: number[]; rmsM: number; rotationDeg: number; scale: number; offsetM: number; bearingDeg: number }> | null
   }> | null
   registration: NativeRegistration | null
 }>
@@ -72,6 +78,8 @@ const HAZARD_POINTS_BELOW = 150
 /** Greens this close (rms, nearly true scale) place the course on their own when the height fit fails. */
 const GREENS_ONLY_RMS_M = 6
 const GREENS_ONLY_SCALE = 0.03
+/** Each group of a split scene must line up this well, at true scale. */
+const PIECE_RMS_M = 6
 
 /** Best fit of GSPro's greens onto the map's, ignoring hole numbers (diagnostic). */
 export const unorderedGreenFit = (layout: Pick<NativeCourseLayout, 'holes'>, mapped: ReadonlyMap<number, readonly [number, number]>) => {
@@ -87,11 +95,64 @@ export const unorderedGreenFit = (layout: Pick<NativeCourseLayout, 'holes'>, map
   const map: Xy[] = entries.map(([, g]) => groundOffsetMeters(lat0, lon0, g[0], g[1]))
   const fit = fitGreens(gkd.map((g) => g.p), map)
   if (!fit) return null
+  const holes = (fit.pairs ?? []).map(([i, j]) => [gkd[i].hole, entries[j][0]] as const).sort((a, b) => a[0] - b[0])
+  // The greens that didn't line up: do they fit each other (same numbers),
+  // just somewhere else? Kiawah (11/4): 9 of 18 line up to 1.7 m; a GSPro
+  // scene can place part of a course away from the rest.
+  const sign = fit.mirrored ? -1 : 1
+  const mapOf = new Map(entries.map(([hole], k) => [hole, map[k]] as const))
+  const paired = new Set(holes.map(([g]) => g))
+  const pairsFor = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([g, m]) => {
+    const w = gkd.find((x) => x.hole === g)?.p
+    const q = mapOf.get(m)
+    return w && q ? [[[sign * w[0], w[1]] as Xy, q] as const] : []
+  })
+  const first = similarityOf(pairsFor(holes))
+  const restHoles = gkd.filter((g) => !paired.has(g.hole) && mapOf.has(g.hole)).map((g) => [g.hole, g.hole] as const)
+  const rest = restHoles.length >= 3 ? similarityOf(pairsFor(restHoles)) : null
+  let restPiece: Readonly<{ holes: number[]; rmsM: number; rotationDeg: number; scale: number; offsetM: number; bearingDeg: number }> | null = null
+  if (first && rest) {
+    // Where the first group's placement puts the rest, vs where the map has them.
+    const restPairs = pairsFor(restHoles)
+    let ex = 0, ey = 0
+    for (const [w, q] of restPairs) {
+      const at = applySim(first, w)
+      ex += q[0] - at[0]; ey += q[1] - at[1]
+    }
+    ex /= restPairs.length; ey /= restPairs.length
+    restPiece = {
+      holes: restHoles.map(([g]) => g), rmsM: rest.rmsM, rotationDeg: rest.rotationDeg, scale: rest.scale,
+      offsetM: Math.hypot(ex, ey), bearingDeg: ((Math.atan2(ex, ey) * 180) / Math.PI + 360) % 360,
+    }
+  }
   return {
     paired: fit.paired, gkdGreens: fit.gkdGreens, rmsM: fit.rmsM, rotationDeg: fit.rotationDeg,
-    scale: fit.scale, mirrored: fit.mirrored,
-    holes: (fit.pairs ?? []).map(([i, j]) => [gkd[i].hole, entries[j][0]] as const).sort((a, b) => a[0] - b[0]),
+    scale: fit.scale, mirrored: fit.mirrored, holes, rest: restPiece,
   }
+}
+
+type Sim = { c: number; s: number; tx: number; ty: number; rmsM: number; rotationDeg: number; scale: number }
+
+const applySim = (t: Sim, p: Xy): Xy => [t.c * p[0] - t.s * p[1] + t.tx, t.s * p[0] + t.c * p[1] + t.ty]
+
+/** Least-squares similarity p -> q (rotation, scale, shift). */
+const similarityOf = (pairs: ReadonlyArray<readonly [Xy, Xy]>): Sim | null => {
+  const n = pairs.length
+  if (n < 3) return null
+  let px = 0, py = 0, qx = 0, qy = 0
+  for (const [p, q] of pairs) { px += p[0]; py += p[1]; qx += q[0]; qy += q[1] }
+  px /= n; py /= n; qx /= n; qy /= n
+  let a = 0, b = 0, norm = 0
+  for (const [p, q] of pairs) {
+    const ux = p[0] - px, uy = p[1] - py, vx = q[0] - qx, vy = q[1] - qy
+    a += ux * vx + uy * vy; b += ux * vy - uy * vx; norm += ux * ux + uy * uy
+  }
+  if (norm <= 0) return null
+  const c = a / norm, s = b / norm
+  const t = { c, s, tx: qx - (c * px - s * py), ty: qy - (s * px + c * py), rmsM: 0, rotationDeg: (Math.atan2(s, c) * 180) / Math.PI, scale: Math.hypot(c, s) }
+  let sq = 0
+  for (const [p, q] of pairs) { const m = applySim(t, p); sq += (m[0] - q[0]) ** 2 + (m[1] - q[1]) ** 2 }
+  return { ...t, rmsM: Math.sqrt(sq / n) }
 }
 
 export const greenSimilarity = (
@@ -173,7 +234,7 @@ export const fitRegistrationFromPackage = async ({
   const pkg = packageJson as RawPackage
   const holes: Array<{ frame: NativeHoleFrame; terrain: CourseTerrainGrid }> = []
   const frames: Record<string, NativeHoleFrame> = {}
-  const greens: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+  const greens: Array<{ hole: number; world: { x: number; z: number }; latLon: readonly [number, number] }> = []
   const mappedGreens = new Map<number, readonly [number, number]>()
   for (const [key, raw] of Object.entries(pkg.holes ?? {})) {
     const cf = raw.coordinateFrame
@@ -189,7 +250,7 @@ export const fitRegistrationFromPackage = async ({
     if (green) mappedGreens.set(Number(key), green)
     const gkdHole = nativeHole(layout, Number(key))
     const centre = gkdHole ? effectiveGreenCenter(gkdHole) : null
-    if (green && centre) greens.push({ world: centre.point, latLon: green })
+    if (green && centre) greens.push({ hole: Number(key), world: centre.point, latLon: green })
   }
   // Heights: pins, plus green centres the designer actually set (a replaced
   // centre is the pins' own average, so it adds nothing).
@@ -246,10 +307,49 @@ export const fitRegistrationFromPackage = async ({
     registration = registrationFromGreens(fitInput)
     greensOnly = registration != null
   }
+  // Still nothing, and the greens fit as separate groups at the same hole
+  // numbers (a designer moved part of the course): place each group on its own.
+  const needsDiagnosis = !registration && (!similarity || similarity.rmsM > ROTATION_TRUST_RMS_M)
+  const unordered = needsDiagnosis ? unorderedGreenFit(layout, mappedGreens) : null
+  let movedHoles: number[] = []
+  if (!registration && unordered?.rest && unordered.holes.every(([g, m]) => g === m)
+    && unordered.paired >= 6 && unordered.rmsM <= PIECE_RMS_M && Math.abs(unordered.scale - 1) <= GREENS_ONLY_SCALE
+    && unordered.rest.holes.length >= 3 && unordered.rest.rmsM <= PIECE_RMS_M
+    && Math.abs(unordered.rest.scale - 1) <= GREENS_ONLY_SCALE) {
+    const groupInput = (holes: readonly number[]) => {
+      const set = new Set(holes)
+      const groupGreens = greens.filter((g) => set.has(g.hole))
+      const plainFit = greenSimilarity(groupGreens)
+      const flippedFit = greenSimilarity(groupGreens, true)
+      const flip = flippedFit != null && (plainFit == null || flippedFit.rmsM < plainFit.rmsM / 3)
+      const fit = flip ? flippedFit : plainFit
+      const groupPoints = layout.holes.filter((h) => set.has(h.hole)).flatMap((h) => {
+        const centre = effectiveGreenCenter(h)
+        return [...h.pins, ...(centre && !centre.replaced ? [centre.point] : [])]
+      })
+      return {
+        holes,
+        input: {
+          ...fitInput,
+          greens: groupGreens,
+          points: groupPoints,
+          rotationDeg: fit?.rotationDeg ?? 0,
+          scale: fit?.scale ?? 1,
+          ...(flip ? { mirrored: true } : { mirrored: false }),
+        },
+      }
+    }
+    const first = unordered.holes.map(([g]) => g)
+    const pieces = fitHoleGroups([groupInput(first), groupInput(unordered.rest.holes)])
+    if (pieces) {
+      registration = pieces
+      movedHoles = [...unordered.rest.holes]
+    }
+  }
   let within = 0
   if (registration) {
     for (const g of greens) {
-      const [lat, lon] = nativeWorldToLatLon(registration, g.world)
+      const [lat, lon] = nativeWorldToLatLon(registrationForHole(registration, g.hole), g.world)
       const m = Math.hypot((lat - g.latLon[0]) * 111_320, (lon - g.latLon[1]) * 111_320 * Math.cos(lat * Math.PI / 180))
       if (m <= 25) within += 1
     }
@@ -266,7 +366,8 @@ export const fitRegistrationFromPackage = async ({
     greenCentresReplaced,
     usedHazardPoints,
     greensOnly,
-    unordered: !registration && (!similarity || similarity.rmsM > ROTATION_TRUST_RMS_M) ? unorderedGreenFit(layout, mappedGreens) : null,
+    movedHoles,
+    unordered: registration ? null : unordered,
     registration: registration && sameCourse ? registration : null,
   }
 }

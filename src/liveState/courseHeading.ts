@@ -1,4 +1,4 @@
-import { GREYWOLF_COURSE_ID } from '../courseGeometry/courseCatalog'
+import { GREYWOLF_COURSE_ID, getRuntimeHoleHeadingDegreesTrue } from '../courseGeometry/courseCatalog'
 import { getRouteHoleHeadingDegreesTrue } from '../courseGeometry/generatedRouteHoleHeadings'
 
 type GreywolfAnchorArtifact = {
@@ -63,6 +63,7 @@ export const loadCourseHoleHeadingDegreesTrue = async (
   holeNumber: number,
 ): Promise<number | null> => {
   const packagedHeading = getRouteHoleHeadingDegreesTrue(courseId, holeNumber)
+    ?? getRuntimeHoleHeadingDegreesTrue(courseId, holeNumber)
   if (packagedHeading != null) return packagedHeading
   if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfHeadingDegreesTrue(holeNumber)
   return null

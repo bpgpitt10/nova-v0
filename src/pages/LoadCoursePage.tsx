@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
 import { parseGkdLayout } from '../courseGeometry/nativeGkd'
-import { fetchCoursesAndGreens, gkdGreenPoints, matchCourseByGreens, type GeometryMatchResult } from '../courseLoading/courseGeometryMatch'
-import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
+import { fetchCoursesAndGreens, gkdGreenPoints, matchCourseByGreens, MapServerBusyError, type GeometryMatchResult } from '../courseLoading/courseGeometryMatch'
+import { COURSES_UPDATED_EVENT, courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
 import { GSPRO_LINKS_UPDATED_EVENT, gsproLinks } from '../courseGeometry/gsproLinks'
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
@@ -14,6 +14,9 @@ import {
   linkGsproCourse,
   listCourseLoads,
   refreshGsproLinks,
+  refreshLoadedCourses,
+  loadSavedGsproLibrary,
+  saveGsproLibrary,
   minutesLeft,
   requestCourseLoad,
   searchGolfCourses,
@@ -154,7 +157,7 @@ const statusText = (row: CourseLoadRow) => {
     const step = row.stage_index && row.stage_count ? `Step ${row.stage_index} of ${row.stage_count}: ` : ''
     return `${step}${STAGE_LABELS[row.stage ?? ''] ?? 'Loading'} · ~${minutesLeft(row)} min left`
   }
-  if (row.status === 'ready') return 'Ready — reload the page to play it'
+  if (row.status === 'ready') return 'Ready to play'
   return `Couldn't load: ${row.error ?? 'unknown error'}`
 }
 
@@ -176,20 +179,31 @@ export default function LoadCoursePage() {
   // When an installed GSPro course can't be matched automatically, loads picked
   // from the search results stay linked to it, so Live Caddie recognizes the round.
   const [linkedGspro, setLinkedGspro] = useState<{ courseKey: string; courseName: string } | null>(null)
-  const slugs = useMemo(loadedSlugs, [])
-  // Re-render when GSPro links change (Link / Unlink, or the shared list loads).
-  const [, setLinksVersion] = useState(0)
+  // Re-render when GSPro links change (Link / Unlink, or the shared list
+  // loads) or a loaded course arrives (published at run time).
+  const [catalogVersion, setCatalogVersion] = useState(0)
+  const slugs = useMemo(loadedSlugs, [catalogVersion])
   useEffect(() => {
-    const bump = () => setLinksVersion((v) => v + 1)
+    const bump = () => setCatalogVersion((v) => v + 1)
     window.addEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+    window.addEventListener(COURSES_UPDATED_EVENT, bump)
     void refreshGsproLinks().catch(() => undefined)
-    return () => window.removeEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+    void refreshLoadedCourses().catch(() => undefined)
+    return () => {
+      window.removeEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+      window.removeEventListener(COURSES_UPDATED_EVENT, bump)
+    }
   }, [])
 
   const refresh = useCallback(async () => {
     try {
-      setLoads(await listCourseLoads())
+      const rows = await listCourseLoads()
+      setLoads(rows)
       setLoadsError(null)
+      // A load just finished: its course is published, add it now.
+      if (rows.some((row) => row.status === 'ready' && row.slug && !loadedSlugs().has(row.slug))) {
+        void refreshLoadedCourses().catch(() => undefined)
+      }
     } catch (error) {
       setLoadsError(error instanceof Error ? error.message : String(error))
     }
@@ -203,13 +217,25 @@ export default function LoadCoursePage() {
     return () => window.clearInterval(timer)
   }, [anyActive, refresh])
 
+  // On the sim PC the companion lists the installed courses (and they're saved
+  // to the account); anywhere else, the list saved from the sim PC is shown.
+  const [savedLibraryAt, setSavedLibraryAt] = useState<string | null>(null)
   useEffect(() => {
     void readLooperCompanionCourseLibrary()
       .then((data) => {
         setLibrary(data.courses)
         if (!data.courses.length) setLibraryNote('The Looper Companion found no GSPro courses on this PC.')
+        void saveGsproLibrary(data.courses).catch(() => undefined)
       })
-      .catch(() => setLibraryNote('Start the Looper Companion on your GSPro PC to see your installed courses here.'))
+      .catch(async () => {
+        const saved = await loadSavedGsproLibrary().catch(() => null)
+        if (saved?.courses.length) {
+          setLibrary(saved.courses.map((course) => ({ ...course, alternateLayouts: [] })))
+          setSavedLibraryAt(saved.seenAt)
+          return
+        }
+        setLibraryNote('Start the Looper Companion on your GSPro PC to see your installed courses here.')
+      })
   }, [])
 
   const latestFor = (slug: string) => loads.find((row) => row.slug === slug) ?? null
@@ -235,7 +261,7 @@ export default function LoadCoursePage() {
   // GSPro file -> location -> nearby courses -> green fit. Null when any
   // step isn't available (companion too old, no location, Overpass down):
   // the name search then runs as before.
-  const matchInstalledByGeometry = async (course: LooperCompanionInstalledCourse): Promise<GeometryMatchResult | null> => {
+  const matchInstalledByGeometry = async (course: LooperCompanionInstalledCourse): Promise<GeometryMatchResult | 'busy' | null> => {
     try {
       const files = await readLooperCompanionCourseLayouts(course.courseKey)
       const main = files.layouts.find((f) => f.kind === 'main') ?? files.layouts[0]
@@ -249,8 +275,8 @@ export default function LoadCoursePage() {
       setMessage(`Checking GSPro's green layout against the courses near ${course.location || 'its location'}…`)
       const { candidates, greens: mapGreens } = await fetchCoursesAndGreens(centre)
       return matchCourseByGreens(greens, candidates, mapGreens)
-    } catch {
-      return null
+    } catch (error) {
+      return error instanceof MapServerBusyError ? 'busy' : null
     }
   }
 
@@ -260,7 +286,14 @@ export default function LoadCoursePage() {
     // 1. By geometry: GSPro's own greens against the golf courses near its
     //    location (spec: claude/spec-geometry-course-matching.md). Names fail
     //    ("DPC Pebble", resort-named courses); the green layout doesn't.
-    const geo = await matchInstalledByGeometry(course)
+    const found0 = await matchInstalledByGeometry(course)
+    if (found0 === 'busy') {
+      // A name search can't find resort courses either (Mammoth Dunes): say why and stop.
+      setBusyKey(null)
+      setMessage(`The OpenStreetMap server Looper checks GSPro's green layout against is busy right now, so ${course.courseName || course.courseKey} couldn't be matched. Try Load again in a few minutes.`)
+      return
+    }
+    const geo = found0
     if (geo?.status === 'matched' && geo.best) {
       const fit = geo.best.fit
       const found = `Found ${course.courseName || course.courseKey} on the map by its green layout: ${geo.best.name} `
@@ -388,6 +421,12 @@ export default function LoadCoursePage() {
       <section>
         <h2>Your GSPro courses</h2>
         {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
+        {savedLibraryAt ? (
+          <p className="load-course-note">
+            Your GSPro courses as of {new Date(savedLibraryAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, saved from your
+            sim PC. Loading works from here; the check that GSPro's version lines up runs on the sim PC.
+          </p>
+        ) : null}
         {library === null && !libraryNote ? <p className="load-course-note">Looking for your GSPro courses…</p> : null}
         {skipped > 0 ? (
           <p className="load-course-note">
@@ -412,7 +451,7 @@ export default function LoadCoursePage() {
               </div>
               <span className="load-course-actions">
                 {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
-                {slugs.has(slug) && courseIdFor(slug)
+                {slugs.has(slug) && courseIdFor(slug) && !savedLibraryAt
                   ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
                 {!slugs.has(slug) && !ACTIVE.has(latestFor(slug)?.status ?? '')
                   ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}

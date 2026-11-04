@@ -23,6 +23,18 @@ export type NativeHoleFrame = Readonly<{
   origin?: string | null
 }>
 
+/** A group of holes the designer placed apart from the rest of the scene
+ * (Kiawah, 11/4: holes 10–18 sit 2.8 km from where the map has them), with its
+ * own placement. Holes not in a group use the registration's own placement. */
+export type NativeRegistrationGroup = Readonly<{
+  holes: readonly number[]
+  reference: Readonly<{ latLon: readonly [number, number]; worldXZ: readonly [number, number] }>
+  rotationDeg?: number
+  scale?: number
+  mirrored?: boolean
+  worldYToElevationOffsetM: number
+}>
+
 export type NativeRegistration = Readonly<{
   schemaVersion: 'looper-native-registration-v1'
   courseId: string
@@ -43,6 +55,7 @@ export type NativeRegistration = Readonly<{
   mirrored?: boolean
   worldYToElevationOffsetM: number
   holes: Readonly<Record<string, NativeHoleFrame>>
+  holeGroups?: readonly NativeRegistrationGroup[]
 }>
 
 // Must match tools/build_osm_course_package.py
@@ -84,6 +97,25 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
       origin: typeof f.origin === 'string' ? f.origin : null,
     }
   }
+  const holeGroups: NativeRegistrationGroup[] = []
+  if (Array.isArray(v.holeGroups)) {
+    for (const groupValue of v.holeGroups as unknown[]) {
+      const g = groupValue as Record<string, unknown> | null
+      const gRef = g?.reference as Record<string, unknown> | undefined
+      const gLatLon = pair(gRef?.latLon)
+      const gWorld = pair(gRef?.worldXZ)
+      const gHoles = Array.isArray(g?.holes) ? (g!.holes as unknown[]).filter((h): h is number => Number.isInteger(h)) : []
+      if (!g || !gLatLon || !gWorld || !gHoles.length || !finite(g.worldYToElevationOffsetM)) return null
+      holeGroups.push({
+        holes: gHoles,
+        reference: { latLon: gLatLon, worldXZ: gWorld },
+        ...(finite(g.rotationDeg) && Math.abs(g.rotationDeg) > 1e-9 ? { rotationDeg: g.rotationDeg } : {}),
+        ...(finite(g.scale) && g.scale > 0.5 && g.scale < 2 && Math.abs(g.scale - 1) > 1e-12 ? { scale: g.scale } : {}),
+        ...(g.mirrored === true ? { mirrored: true } : {}),
+        worldYToElevationOffsetM: g.worldYToElevationOffsetM,
+      })
+    }
+  }
   return {
     schemaVersion: 'looper-native-registration-v1',
     courseId: v.courseId,
@@ -98,6 +130,22 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
     ...(v.mirrored === true ? { mirrored: true } : {}),
     worldYToElevationOffsetM: v.worldYToElevationOffsetM,
     holes,
+    ...(holeGroups.length ? { holeGroups } : {}),
+  }
+}
+
+/** The placement a hole uses: its group's, or the registration's own. */
+export const registrationForHole = (registration: NativeRegistration, holeNumber: number): NativeRegistration => {
+  const group = registration.holeGroups?.find((g) => g.holes.includes(holeNumber))
+  if (!group) return registration
+  const { rotationDeg: _r, scale: _s, mirrored: _m, holeGroups: _g, ...rest } = registration
+  return {
+    ...rest,
+    reference: group.reference,
+    worldYToElevationOffsetM: group.worldYToElevationOffsetM,
+    ...(group.rotationDeg != null ? { rotationDeg: group.rotationDeg } : {}),
+    ...(group.scale != null ? { scale: group.scale } : {}),
+    ...(group.mirrored ? { mirrored: true } : {}),
   }
 }
 
@@ -177,7 +225,7 @@ export const nativeWorldToHoleLocalYds = (
   if (!world || !finite(world.x) || !finite(world.z)) return null
   const frame = registration.holes[String(holeNumber)]
   if (!frame) return null
-  const [lat, lon] = nativeWorldToLatLon(registration, world)
+  const [lat, lon] = nativeWorldToLatLon(registrationForHole(registration, holeNumber), world)
   const local = latLonToHoleLocalYds(frame, lat, lon)
   return local.every(finite) ? local : null
 }
@@ -223,6 +271,6 @@ export const nativeHoleLocalYdsToWorld = (
   const frame = registration.holes[String(holeNumber)]
   if (!frame) return null
   const [lat, lon] = holeLocalYdsToLatLon(frame, local)
-  const world = nativeLatLonToWorld(registration, lat, lon)
+  const world = nativeLatLonToWorld(registrationForHole(registration, holeNumber), lat, lon)
   return finite(world.x) && finite(world.z) ? world : null
 }

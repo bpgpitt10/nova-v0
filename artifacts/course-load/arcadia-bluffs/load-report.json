@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "arcadia-bluffs",
+  "request": {
+    "slug": "arcadia-bluffs",
+    "name": "Arcadia Bluffs Golf Club",
+    "location": "Arcadia Township, Michigan",
+    "lat": 44.4563654,
+    "lon": -86.243365,
+    "nameRegex": "Arcadia.*Bluffs",
+    "osmId": 293247442,
+    "gsproAliases": [
+      "arcadiabluffs_v1_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 832.3,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 73.9
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/arcadia-bluffs-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 27.2
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 28.3
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 16.3
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 19.1
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 1.6
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 663.7
+    }
+  ],
+  "finishedAt": "2026-11-04T12:09:24Z",
+  "runId": "41824762346",
+  "osmCourse": {
+    "type": "way",
+    "id": 293247442,
+    "name": "Arcadia Bluffs Golf Club",
+    "areaHa": 106.1
+  },
+  "lidar": {
+    "name": "USGS_LPC_MI_ManisteeCo_2015_LAS_2017",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_MI_ManisteeCo_2015_LAS_2017/ept.json",
+    "count": 11158643415,
+    "year": 2017
+  },
+  "crs": "EPSG:26916",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_MI_ManisteeCo_2015_LAS_2017/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 399,
+    "downloadedMB": 122.9,
+    "pointsKeptInBbox": 12481698,
+    "pointsPerSquareMetre": 5.31,
+    "firstReturnsPerSquareMetre": 4.52,
+    "classificationHistogram": {
+      "1": 2674823,
+      "2": 7322255,
+      "9": 355887,
+      "10": 1830,
+      "11": 2126915
+    },
+    "chm": {
+      "width": 1811,
+      "height": 1297,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 2291241,
+      "emptyCells": 57626,
+      "cellsOver3m": 526428,
+      "cellsOver10m": 377938,
+      "p50": 0.06599999999997408,
+      "p95": 20.61500000000001,
+      "max": 32.47
+    },
+    "seconds": 18.9
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26916",
+    "treeCount": 8443,
+    "heightM": {
+      "p10": 4.2,
+      "p50": 16.2,
+      "p90": 25.5,
+      "max": 31.9
+    },
+    "crownRadiusM": {
+      "p10": 2.1,
+      "p50": 3.9,
+      "p90": 7.0
+    },
+    "woodlandPolygons": 520,
+    "woodlandAreaHa": 48.15,
+    "maskedCellsBuildingsAndPower": 1953,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 1.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 30213353,
+    "course-v1.json": 435669,
+    "green-detail-v1.json": 144821
+  }
+}

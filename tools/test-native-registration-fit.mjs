@@ -232,6 +232,72 @@ try {
     assert.equal(u.paired, 18)
     assert.ok(u.rmsM < 1, `rms ${u.rmsM}`)
     assert.deepEqual(u.holes.map(([g, m]) => [g, m]), perm.map((m, i) => [i + 1, m]))
+    assert.equal(u.rest, null)
+    // Kiawah, second look: holes 10-18 are a rigid piece placed 600 m away in
+    // GSPro's scene. Ignoring numbers finds 1-9; the rest fit each other.
+    const split = new Map()
+    const splitHoles = []
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160 + ((i * 37) % 50), cz = 500 + Math.floor(i / 6) * 300 + ((i * 53) % 70)
+      splitHoles.push({ hole: i + 1, par: 4, tees: {}, aimPoints: [], greenCenter: { x: cx + (i >= 9 ? 600 : 0), y: 0, z: cz }, pins: [] })
+      split.set(i + 1, reg.nativeWorldToLatLon(truthReg, { x: cx, z: cz }))
+    }
+    const v = auto.unorderedGreenFit({ holes: splitHoles }, split)
+    assert.ok(v.paired >= 9, `paired ${v.paired}`)
+    assert.ok(v.rest && v.rest.rmsM < 1, `rest fits itself: ${JSON.stringify(v.rest)}`)
+    assert.ok(Math.abs(v.rest.offsetM - 600) < 5, `rest offset ${v.rest.offsetM}`)
+  }
+
+  // Kiawah (11/4): the designer moved the back nine 2.8 km and built the front
+  // nine turned 180°. Each group is fitted on its own and joined: a hole uses
+  // its group's placement, both ways.
+  {
+    const front = reg.parseNativeRegistration({
+      schemaVersion: 'looper-native-registration-v1', courseId: 't', gsproCourseKey: 't_gsp',
+      layoutFingerprint: 'a'.repeat(64), grade: 'A', reference: { latLon: truth.latLon, worldXZ: truth.worldXZ },
+      rotationDeg: 179.4, worldYToElevationOffsetM: truth.dy, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+    })
+    const backLatLon = [truth.latLon[0] - 0.018, truth.latLon[1] - 0.02] // ~2.8 km SW
+    const back = reg.parseNativeRegistration({
+      schemaVersion: 'looper-native-registration-v1', courseId: 't', gsproCourseKey: 't_gsp',
+      layoutFingerprint: 'a'.repeat(64), grade: 'A', reference: { latLon: backLatLon, worldXZ: [truth.worldXZ[0] + 900, truth.worldXZ[1]] },
+      rotationDeg: -0.5, worldYToElevationOffsetM: truth.dy, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } },
+    })
+    const groundAt = (lat, lon) => {
+      const n = (lat - 38.25) * 111000, e = (lon + 85.48) * 87000
+      return 150 + 4 * Math.sin(e / 37) + 3 * Math.cos(n / 29) + 1.5 * Math.sin((e + n) / 11)
+    }
+    const groupFor = (placed, holes, x0) => {
+      const points = [], greens = []
+      for (let i = 0; i < 9; i += 1) {
+        const cx = x0 + (i % 3) * 160, cz = 500 + Math.floor(i / 3) * 300
+        for (const [dx, dz] of [[0, 0], [6, 3], [-5, 4], [3, -6], [-4, -5]]) {
+          const [lat, lon] = reg.nativeWorldToLatLon(placed, { x: cx + dx, z: cz + dz })
+          points.push({ x: cx + dx, y: groundAt(lat, lon) - truth.dy, z: cz + dz })
+        }
+        greens.push({ world: { x: cx, z: cz }, latLon: reg.nativeWorldToLatLon(placed, { x: cx, z: cz }) })
+      }
+      const sim = auto.greenSimilarity(greens)
+      return { holes, input: { courseId: 't', gsproCourseKey: 't_gsp', layoutFingerprint: 'a'.repeat(64), sceneFingerprint: 'b'.repeat(64),
+        points, greens, holes: Object.fromEntries([...Array(18)].map((_, i) => [String(i + 1), { anchorLatLon: truth.latLon, headingDegreesTrue: 0 }])),
+        sampler: groundAt, rotationDeg: sim.rotationDeg, scale: sim.scale } }
+    }
+    const joined = fit.fitHoleGroups([groupFor(front, [1, 2, 3, 4, 5, 6, 7, 8, 9], 900), groupFor(back, [10, 11, 12, 13, 14, 15, 16, 17, 18], 1800)])
+    assert.ok(joined, 'two groups placed')
+    assert.deepEqual(joined.holeGroups.map((g) => g.holes), [[10, 11, 12, 13, 14, 15, 16, 17, 18]])
+    const saved = reg.parseNativeRegistration(JSON.parse(JSON.stringify(joined)))
+    assert.ok(saved && saved.holeGroups.length === 1, 'groups survive a save')
+    const offBy = (truthReg, p, hole) => {
+      const a = reg.nativeWorldToLatLon(truthReg, p)
+      const b = reg.nativeWorldToLatLon(reg.registrationForHole(saved, hole), p)
+      return Math.hypot((a[0] - b[0]) * 111000, (a[1] - b[1]) * 87000)
+    }
+    assert.ok(offBy(front, { x: 1000, z: 700 }, 3) < 0.15, `front nine ${offBy(front, { x: 1000, z: 700 }, 3)}`)
+    assert.ok(offBy(back, { x: 1900, z: 700 }, 14) < 0.15, `back nine ${offBy(back, { x: 1900, z: 700 }, 14)}`)
+    // Hole-local round trip on a moved hole.
+    const local = reg.nativeWorldToHoleLocalYds(saved, 14, { x: 1900, z: 700 })
+    const backWorld = reg.nativeHoleLocalYdsToWorld(saved, 14, local)
+    assert.ok(Math.hypot(backWorld.x - 1900, backWorld.z - 700) < 1e-6)
   }
 
   // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
@@ -244,7 +310,7 @@ try {
   assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, 0, true).directionDegrees, 270)
   assert.equal(wind.windInTrueCompass({ ...w, referenceFrame: 'shot-relative' }, 180).directionDegrees, 0)
 
-  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm; placeholder green centres fall back to the pins; greens-only placement when the terrain differs; hole renumbering found ignoring numbers.')
+  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm; placeholder green centres fall back to the pins; greens-only placement when the terrain differs; hole renumbering found ignoring numbers; a moved back nine placed as its own group.')
 } finally {
   await server?.close()
 }

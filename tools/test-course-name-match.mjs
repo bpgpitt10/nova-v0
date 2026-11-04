@@ -102,6 +102,41 @@ assert.equal(match?.osmId, 105, 'found without the designer tag')
   assert.ok(!asked.includes('bellerive golf club'), 'stops once a name clearly matches')
 }
 
+// 9. Search box: Photon first (golf courses only, fuzzy names), closest name first.
+{
+  const asked = []
+  globalThis.fetch = async (url) => {
+    const u = new URL(url)
+    asked.push(u.host)
+    if (u.host === 'photon.komoot.io') {
+      assert.equal(u.searchParams.get('osm_tag'), 'leisure:golf_course')
+      const f = (type, id, name, lon, lat, city, state) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: { osm_type: type, osm_id: id, name, city, state, osm_key: 'leisure', osm_value: 'golf_course' } })
+      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [
+        f('W', 297393088, 'Pleasant Valley Golf Course', -91.5, 41.6, 'Iowa City', 'Iowa'),
+        f('W', 1304407129, 'Sand Valley Golf Resort', -89.85, 44.19, 'Adams', 'Wisconsin'),
+        f('N', 5, 'A point-only course', -89, 44, 'X', 'Y'),
+      ] }), { headers: { 'Content-Type': 'application/json' } })
+    }
+    return new Response('[]', { headers: { 'Content-Type': 'application/json' } })
+  }
+  const found = await searchGolfCourses('sand valley')
+  assert.equal(found[0]?.osmId, 1304407129, 'closest name first')
+  assert.equal(found[0].location, 'Adams, Wisconsin')
+  assert.equal(found.length, 2, 'point-only courses left out')
+  assert.ok(!asked.includes('nominatim.openstreetmap.org'), 'no Nominatim needed')
+  // Photon down: Nominatim as before.
+  asked.length = 0
+  globalThis.fetch = async (url) => {
+    const u = new URL(url)
+    asked.push(u.host)
+    if (u.host === 'photon.komoot.io') return new Response('down', { status: 502 })
+    return new Response(JSON.stringify([place('Erin Hills', 401, 'Erin')]), { headers: { 'Content-Type': 'application/json' } })
+  }
+  assert.equal((await searchGolfCourses('erin hills'))[0]?.osmId, 401)
+  assert.ok(asked.includes('nominatim.openstreetmap.org'))
+}
+
 // 6. OpenStreetMap refusing (429) is reported as busy, not as "no match".
 globalThis.fetch = async () => new Response('Too Many Requests', { status: 429 })
 await assert.rejects(findGolfCourseFor('Bethpage Black', 'Farmingdale, NY'), (error) => error instanceof CourseSearchBusyError)
