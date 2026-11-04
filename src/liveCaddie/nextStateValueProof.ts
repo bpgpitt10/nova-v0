@@ -57,6 +57,7 @@ export const runNextStateValueProofs = (): NextStateValueProofResult[] => {
   const green8Feet = evaluateDecisionLandingStateValue(state('green', 8 / 3))
   const water180 = evaluateDecisionLandingStateValue(state('water', 180))
   const unknown200 = evaluateDecisionLandingStateValue(state('unknown', 200))
+  const unknownOffGrass200 = evaluateDecisionLandingStateValue({ ...state('unknown', 200), unknownGround: 'other' })
 
   const aggregateCoreState = state('fairway', 180)
   const aggregateTailState = state('deep-rough', 200)
@@ -145,9 +146,16 @@ export const runNextStateValueProofs = (): NextStateValueProofResult[] => {
     {
       id: 'unknown-is-explicitly-provisional',
       description: 'Unmapped geometry is valued conservatively without hiding the assumption.',
-      expected: 'unknown-as-rough / 3.420',
+      expected: 'unknown-as-rough / 3.670',
       actual: `${unknownAssumption} / ${unknown200.expectedStrokes?.toFixed(3) ?? 'null'}`,
-      passed: unknownAssumption === 'unknown-as-rough' && close(unknown200.expectedStrokes, 3.42),
+      passed: unknownAssumption === 'unknown-as-rough' && close(unknown200.expectedStrokes, 3.67),
+    },
+    {
+      id: 'unknown-off-grass-is-deep-rough',
+      description: 'Unmapped ground outside mapped grass (tree cover) is valued as recovery plus the uncertainty adjustment.',
+      expected: 'unknown-as-deep-rough / 4.120',
+      actual: `${unknownOffGrass200.assumption} / ${unknownOffGrass200.expectedStrokes?.toFixed(3) ?? 'null'}`,
+      passed: unknownOffGrass200.assumption === 'unknown-as-deep-rough' && close(unknownOffGrass200.expectedStrokes, 4.12),
     },
   ]
 }

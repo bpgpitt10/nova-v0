@@ -15,6 +15,7 @@ export type NextStateValueAssumption =
   | 'distance-clamped-low'
   | 'distance-clamped-high'
   | 'unknown-as-rough'
+  | 'unknown-as-deep-rough'
   | 'water-relief-at-landing-distance'
   | 'penalty-relief-at-landing-distance'
 
@@ -192,6 +193,17 @@ const conditionForState = (
       note: 'V1 penalty approximation: one penalty stroke plus recovery value at the raw landing/crossing distance.',
     }
   }
+  // Unmapped ground off WorldCover grass on a hole that has landcover mapped
+  // is mostly tree cover between LiDAR-detected trees: deep rough. On grass,
+  // or with no landcover evidence, it stays rough (spec piece 2, refined by
+  // the 3 Nov corridor measurements).
+  if (state.unknownGround === 'other') {
+    return {
+      condition: 'recovery',
+      assumption: 'unknown-as-deep-rough',
+      note: `Unmapped ground outside mapped grass is valued as deep rough (recovery) plus a ${UNKNOWN_GEOMETRY_EXPECTED_STROKES_PENALTY.toFixed(2)}-stroke uncertainty adjustment.`,
+    }
+  }
   return {
     condition: 'rough',
     assumption: 'unknown-as-rough',
@@ -278,7 +290,7 @@ export const evaluateDecisionLandingStateValue = (
         : result.clamped === 'high'
           ? 'distance-clamped-high'
           : 'none'
-  const uncertaintyAdjustment = mapping.assumption === 'unknown-as-rough'
+  const uncertaintyAdjustment = mapping.assumption === 'unknown-as-rough' || mapping.assumption === 'unknown-as-deep-rough'
     ? UNKNOWN_GEOMETRY_EXPECTED_STROKES_PENALTY
     : 0
 

@@ -5,6 +5,7 @@ import type {
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type { SurfaceClassificationResult } from '../courseGeometry/geometry'
+import { unknownGroundAt, type UnknownGround } from '../courseGeometry/tacticalClassification'
 
 export type DecisionLandingObstruction = 'none' | 'woods-or-scrub' | 'unknown'
 
@@ -26,6 +27,8 @@ export type DecisionLandingState = {
   penaltyStrokeCount: 0 | 1
   requiresRelief: boolean
   obstruction: DecisionLandingObstruction
+  /** For unmapped landings: grass (valued as rough) or other (valued as deep rough). */
+  unknownGround?: UnknownGround | null
   tacticalSeverity: number
 }
 
@@ -56,6 +59,7 @@ export const buildDecisionLandingState = (
     penaltyStrokeCount: penalty ? 1 : 0,
     requiresRelief: penalty,
     obstruction,
+    unknownGround: classification.kind === 'unknown' ? unknownGroundAt(hole, landing) : null,
     tacticalSeverity: semantics.severity,
   }
 }

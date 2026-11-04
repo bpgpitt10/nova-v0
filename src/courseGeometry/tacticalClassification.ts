@@ -104,3 +104,20 @@ export function classifyTacticalLandingPoint(
 
   return surface
 }
+
+/**
+ * What unmapped ground most likely is. On loaded courses a large share of the
+ * hole is unmapped (Valhalla 2: ~75% of a ±45-yd corridor); about half of that
+ * lies on ESA WorldCover grass (rough, native grass), the rest between
+ * LiDAR-detected trees inside WorldCover tree cover. Measured 3 Nov 2026.
+ * - 'grass': inside a landcover-grass context layer
+ * - 'other': the hole has landcover grass mapped, and this point isn't in it
+ * - 'no-landcover': the hole has no landcover layer: no evidence either way
+ */
+export type UnknownGround = 'grass' | 'other' | 'no-landcover'
+
+export function unknownGroundAt(hole: CourseHoleGeometry, point: CoursePointYds): UnknownGround {
+  const grass = (hole.contextLayers ?? []).filter((layer) => layer.kind === 'landcover-grass')
+  if (!grass.length) return 'no-landcover'
+  return grass.some((layer) => insideContextLayer(layer.polygons, point)) ? 'grass' : 'other'
+}
