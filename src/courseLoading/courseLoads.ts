@@ -203,12 +203,68 @@ const NEARBY_DEG = 0.06
 const GOLF_WORDS = /\b(golf|country club|links|cc|gc)\b/i
 const STRONG_NAME_MATCH = 0.75
 
+const PHOTON_URL = 'https://photon.komoot.io/api/'
+const photonCache = new Map<string, GolfCourseSearchResult[]>()
+
+type PhotonFeature = {
+  properties?: { osm_type?: string; osm_id?: number; name?: string; city?: string; county?: string; state?: string; country?: string }
+  geometry?: { coordinates?: [number, number] }
+}
+
+/**
+ * Golf courses by name from Photon (komoot's OpenStreetMap search). It
+ * filters to leisure=golf_course itself and tolerates partial names and
+ * spelling ("sand valley", "paynes valley"), where Nominatim's free text
+ * often answers with streets or towns (11/4: "bellerive" -> Rue du Golf;
+ * "sand valley" -> nothing on the sim PC). Null when Photon can't be reached.
+ */
+const photonGolfCourses = async (q: string): Promise<GolfCourseSearchResult[] | null> => {
+  const cached = photonCache.get(q)
+  if (cached) return cached
+  const params = new URLSearchParams({ q, limit: '15', osm_tag: 'leisure:golf_course' })
+  const response = await fetch(`${PHOTON_URL}?${params}`, { headers: { Accept: 'application/json' } }).catch(() => null)
+  if (!response?.ok) return null
+  const body = (await response.json().catch(() => null)) as { features?: PhotonFeature[] } | null
+  if (!body || !Array.isArray(body.features)) return null
+  const out: GolfCourseSearchResult[] = []
+  const seen = new Set<string>()
+  for (const feature of body.features) {
+    const props = feature.properties ?? {}
+    const osmType = props.osm_type === 'W' ? 'way' : props.osm_type === 'R' ? 'relation' : null
+    const [lon, lat] = feature.geometry?.coordinates ?? []
+    // Courses mapped only as a point can't be loaded (no outline).
+    if (!osmType || !props.osm_id || !props.name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue
+    const key = `${osmType}/${props.osm_id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({
+      name: props.name,
+      location: [props.city ?? props.county, props.state ?? props.country].filter(Boolean).join(', '),
+      lat: lat as number, lon: lon as number, osmType, osmId: props.osm_id,
+    })
+  }
+  photonCache.set(q, out)
+  return out
+}
+
+const byNameMatch = (results: readonly GolfCourseSearchResult[], q: string) => results
+  .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
+  .sort((a, b) => b.score - a.score)
+  .map(({ result }) => result)
+
 export const searchGolfCourses = async (
   query: string,
   { nearby = true }: Readonly<{ nearby?: boolean }> = {},
 ): Promise<GolfCourseSearchResult[]> => {
   const q = query.trim()
   if (q.length < 3) return []
+  // The search box (nearby = true) asks Photon first; the installed-course
+  // matcher stays on Nominatim's stricter name matching, so a fuzzy hit never
+  // stands in for a course.
+  if (nearby) {
+    const photon = await photonGolfCourses(q)
+    if (photon?.length) return byNameMatch(photon, q)
+  }
   // "bellerive golf" finds streets called Rue du Golf, not Bellerive Country
   // Club (11/4): search a few forms of the name and keep the golf courses,
   // closest name first. Stop as soon as one clearly matches.
@@ -220,10 +276,7 @@ export const searchGolfCourses = async (
     }
     if ([...found.values()].some((result) => courseNameMatchScore(result.name, q) >= STRONG_NAME_MATCH)) break
   }
-  const direct = [...found.values()]
-    .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
-    .sort((a, b) => b.score - a.score)
-    .map(({ result }) => result)
+  const direct = byNameMatch([...found.values()], q)
   if (direct.length || !nearby) return direct
   // Nothing tagged as a golf course by that name. OpenStreetMap often files a
   // resort course under the resort, or under a slightly different name: find
