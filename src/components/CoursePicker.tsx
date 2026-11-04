@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CourseCatalogEntry } from '../courseGeometry/courseCatalog'
 import { courseSearchScore } from '../courseGeometry/courseSearch'
+import { gsproOnlyLoadedMatch } from '../courseGeometry/gsproOnlyCourses'
 
 /**
  * Course search box for Start a Round: type a few letters and pick from the
@@ -28,13 +29,16 @@ export function CoursePicker({
   const boxRef = useRef<HTMLDivElement>(null)
 
   const matches = useMemo(() => {
-    const ready = courses.filter((entry) => entry.packageStatus === 'ready')
+    // A course installed in GSPro shows once: its loaded map if there is one,
+    // else its GSPro course file ("GSPro file" tag).
+    const ready = courses.filter((entry) => entry.packageStatus === 'ready'
+      && (entry.source !== 'gspro-only' || entry.id === value || !gsproOnlyLoadedMatch(entry)))
     return ready
       .map((entry) => ({ entry, score: courseSearchScore(entry, query) }))
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name))
       .map((item) => item.entry)
-  }, [courses, query])
+  }, [courses, query, value])
   const shown = query ? matches.slice(0, MAX_SHOWN) : matches
 
   useEffect(() => { setActive(0) }, [query])
@@ -116,7 +120,14 @@ export function CoursePicker({
               onMouseEnter={() => setActive(index)}
               role="option"
             >
-              <span className="course-picker-name">{entry.name}</span>
+              <span className="course-picker-name">
+                {entry.name}
+                {entry.source === 'gspro-only' ? (
+                  <span className="course-picker-tag" title="Plays from your GSPro course file: tees, pins, GSPro's water and OB. Load the course for fairways, bunkers and trees.">
+                    GSPro file
+                  </span>
+                ) : null}
+              </span>
               {entry.location ? <span className="course-picker-location">{entry.location}</span> : null}
             </li>
           ))}

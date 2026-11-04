@@ -28,5 +28,11 @@ const tiny = outcomeTiles({ success: 0.995, manageable: 0.003, seriousTrouble: 0
 assert.equal(tiny[3].text, '<1%', 'a real but tiny chance is not shown as 0%')
 assert.equal(outcomeTiles(null), null)
 
+// GSPro-only course (no map): unmapped ground is "In play", not trouble (Pinehurst 2 tee showed 99% trouble).
+const unmapped = outcomeTiles({ success: 0, manageable: 0.002, seriousTrouble: 0, catastrophe: 0.01, unknown: 0.988 }, 'in-play')
+assert.deepEqual(unmapped.map((x) => x.label), ['Success', 'In play', 'Trouble', 'Catastrophe'])
+assert.equal(unmapped[1].percent, 99)
+assert.equal(unmapped[2].text, '0%')
+
 if (server) await server.close()
 console.log('outcome tiles: ok')

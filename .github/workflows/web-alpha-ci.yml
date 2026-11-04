@@ -76,6 +76,9 @@ jobs:
       - name: Native course positions (beta)
         run: node tools/test-native-course-positions.mjs
 
+      - name: GSPro-only courses (holes from the course file, no map)
+        run: node tools/test-gspro-only-course.mjs
+
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 

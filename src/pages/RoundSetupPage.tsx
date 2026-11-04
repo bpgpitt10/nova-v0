@@ -7,6 +7,7 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { CoursePicker } from '../components/CoursePicker'
+import { refreshGsproOnlyCourses } from '../courseGeometry/gsproOnlyCourses'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
 import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
@@ -65,6 +66,8 @@ export default function RoundSetupPage() {
   useEffect(() => {
     const bump = () => setCatalogVersion((v) => v + 1)
     window.addEventListener(COURSES_UPDATED_EVENT, bump)
+    // Courses installed in GSPro since the app started (sim PC only).
+    void refreshGsproOnlyCourses().catch(() => undefined)
     return () => window.removeEventListener(COURSES_UPDATED_EVENT, bump)
   }, [])
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')

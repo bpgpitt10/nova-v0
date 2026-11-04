@@ -287,7 +287,9 @@ const resolveLandingElevation = (
     source:
       ballTerrain.source === 'lidar-dem' && landingTerrain.source === 'lidar-dem'
         ? 'modeled carry landing · direct LiDAR DEM'
-        : 'modeled carry landing · terrain proxy',
+        : ballTerrain.source === 'gspro-heights'
+          ? "modeled carry landing · GSPro course-file heights (coarse)"
+          : 'modeled carry landing · terrain proxy',
     fromTerrain: true,
   }
 }

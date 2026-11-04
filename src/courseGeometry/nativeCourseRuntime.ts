@@ -1,5 +1,11 @@
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
-import { courseGsproAliases, getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { courseGsproAliases, getCourseCatalogEntry, setRuntimeHoleHeadings, type CourseId } from './courseCatalog'
+import {
+  gsproOnlyCourseKey,
+  gsproOnlyHoleHeadings,
+  gsproOnlyRegistration,
+  isGsproOnlyCourseId,
+} from './gsproOnlyCourse'
 import { courseNameMatchScore } from '../courseLoading/courseNameMatch'
 import {
   findNativeSceneFolder,
@@ -76,6 +82,8 @@ export type NativeCourseStatus =
       fittedHere?: boolean
       /** Fit numbers when fitted on this load ("fit 0.07 m, halves 2.1 m"). */
       fitDetail?: string
+      /** Placed from GSPro's course file alone (no map loaded): gsproOnlyCourse.ts. */
+      gsproOnly?: boolean
     }>
 
 export type NativeLayoutOption = Readonly<{ name: string; kind: 'main' | 'alt'; layout: NativeCourseLayout }>
@@ -499,7 +507,56 @@ const installedCourseKeysFor = async (courseId: CourseId): Promise<string[]> => 
   return installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], library?.courses ?? [])
 }
 
+/**
+ * A GSPro-only course (no map loaded): the registration comes from GSPro's
+ * course file itself, with no fit and no published file. Every layout of the
+ * scene is usable.
+ */
+const loadGsproOnlyContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
+  const entry = getCourseCatalogEntry(courseId)
+  const key = gsproOnlyCourseKey(courseId)!
+  const lookup = await findSceneLayouts(key)
+  if (!lookup.ok) return { context: null, status: lookup.status }
+  const layouts: NativeLayoutOption[] = lookup.sceneLayouts
+    .map((scene) => ({ name: nativeLayoutName(scene), kind: scene.file.kind, layout: scene.layout }))
+    .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1))
+  const main = layouts[0]
+  const registration = gsproOnlyRegistration({
+    courseId,
+    courseKey: key,
+    layout: main.layout,
+    layoutFingerprint: await sha256Hex(main.layout.fingerprintText),
+    sceneFingerprint: await sha256Hex(main.layout.sceneFingerprintText),
+    altitudeFt: entry.altitudeFt ?? null,
+  })
+  setRuntimeHoleHeadings(courseId, gsproOnlyHoleHeadings(registration))
+  // GSPro's CourseKey may name one of the scene's GKDalt layouts.
+  const named = courseKey && !sameName(courseKey, key)
+    ? layouts.find((l) => l.kind === 'alt' && sameName(l.name, courseKey)) ?? null
+    : null
+  if (courseKey && !sameName(courseKey, key) && !named) {
+    return { context: null, status: { state: 'other-course', courseKey, expectedKey: key } }
+  }
+  const active = named ?? main
+  return {
+    context: {
+      courseId,
+      courseKey: key,
+      layout: active.layout,
+      layoutName: active.name,
+      layoutConfirmed: Boolean(named) || layouts.length === 1,
+      layouts,
+      registration,
+    },
+    status: {
+      state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name,
+      layoutNames: layouts.map((l) => l.name), via: lookup.via, gsproOnly: true,
+    },
+  }
+}
+
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
+  if (isGsproOnlyCourseId(courseId)) return loadGsproOnlyContext(courseId, courseKey)
   const entry = getCourseCatalogEntry(courseId)
   const url = registrationUrl(courseId)
   const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
@@ -655,7 +712,8 @@ export const selectNativeLayout = (
 
 /** Status-reporting load; cached per course and GSPro course key. */
 export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: string | null): Promise<LoadResult> => {
-  if (!isNativePositionsEnabled()) {
+  // A GSPro-only course has no other positioning: it is always native.
+  if (!isNativePositionsEnabled() && !isGsproOnlyCourseId(courseId)) {
     if (lastStatus.state !== 'off') announce({ state: 'off' })
     return Promise.resolve({ context: null, status: { state: 'off' } })
   }
