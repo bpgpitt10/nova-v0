@@ -1,5 +1,5 @@
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import type { CourseHoleGeometry, CoursePointYds, CourseSurfaceClassification } from '../courseGeometry/types'
 import type { LandingTransform } from './aimOutcomeSampling'
 
@@ -68,23 +68,7 @@ export const gradeAlong = (hole: CourseHoleGeometry, p: CoursePointYds, dir: Cou
 
 export type RollBreakdown = Readonly<{ surface: CourseSurfaceClassification; surfaceFactor: number; grade: number | null; slopeFactor: number }>
 
-// Touchdown surface at 1-yd resolution, per hole (same reason as the terrain cache).
-const surfaceCache = new WeakMap<CourseHoleGeometry, Map<number, CourseSurfaceClassification>>()
-
-const surfaceAt = (hole: CourseHoleGeometry, p: CoursePointYds): CourseSurfaceClassification => {
-  let cache = surfaceCache.get(hole)
-  if (!cache) {
-    cache = new Map()
-    surfaceCache.set(hole, cache)
-  }
-  const qx = Math.round(p[0]), qy = Math.round(p[1])
-  const key = (qx + 4096) * 8192 + (qy + 4096)
-  const hit = cache.get(key)
-  if (hit !== undefined) return hit
-  const kind = classifyTacticalLandingPoint(hole, [qx, qy]).kind
-  cache.set(key, kind)
-  return kind
-}
+const surfaceAt = (hole: CourseHoleGeometry, p: CoursePointYds): CourseSurfaceClassification => tacticalKindNear(hole, p)
 
 export const rollFactorAt = (hole: CourseHoleGeometry, carryLanding: CoursePointYds, dir: CoursePointYds): RollBreakdown => {
   const surface = surfaceAt(hole, carryLanding)

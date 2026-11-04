@@ -121,3 +121,23 @@ export function unknownGroundAt(hole: CourseHoleGeometry, point: CoursePointYds)
   if (!grass.length) return 'no-landcover'
   return grass.some((layer) => insideContextLayer(layer.polygons, point)) ? 'grass' : 'other'
 }
+
+// Tactical surface at 1-yd resolution, per hole: the engine asks about the
+// same neighbourhood thousands of times per recommendation (roll surface,
+// flight checks). Not for the landing classification itself, which stays exact.
+const quantizedKinds = new WeakMap<CourseHoleGeometry, Map<number, SurfaceClassificationResult['kind']>>()
+
+export function tacticalKindNear(hole: CourseHoleGeometry, point: CoursePointYds): SurfaceClassificationResult['kind'] {
+  let cache = quantizedKinds.get(hole)
+  if (!cache) {
+    cache = new Map()
+    quantizedKinds.set(hole, cache)
+  }
+  const qx = Math.round(point[0]), qy = Math.round(point[1])
+  const key = (qx + 4096) * 8192 + (qy + 4096)
+  const hit = cache.get(key)
+  if (hit !== undefined) return hit
+  const kind = classifyTacticalLandingPoint(hole, [qx, qy]).kind
+  cache.set(key, kind)
+  return kind
+}

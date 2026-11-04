@@ -155,6 +155,9 @@ jobs:
       - name: Descent meets the terrain (hill faces)
         run: node tools/test-descent-touchdown.mjs
 
+      - name: Trees in the flight path
+        run: node tools/test-flight-trees.mjs
+
       - name: Bag is range data only
         run: node tools/test-range-only-bag.mjs
 
