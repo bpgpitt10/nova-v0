@@ -1,5 +1,11 @@
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
-import { courseGsproAliases, getCourseCatalogEntry, setRuntimeHoleHeadings, type CourseId } from './courseCatalog'
+import {
+  courseGsproAliases,
+  courseUsesGsproHoles,
+  getCourseCatalogEntry,
+  setRuntimeHoleHeadings,
+  type CourseId,
+} from './courseCatalog'
 import {
   gsproOnlyCourseKey,
   gsproOnlyHoleHeadings,
@@ -229,7 +235,10 @@ export const regrantGsproCoursesFolder = async () => {
 }
 
 const registrationUrl = (courseId: CourseId) => {
-  const packageUrl = getCourseCatalogEntry(courseId).staticPackageUrl
+  const entry = getCourseCatalogEntry(courseId)
+  // A map-area course is placed on this PC from GSPro's course file only.
+  if (entry.packageKind === 'area') return null
+  const packageUrl = entry.staticPackageUrl
   return packageUrl ? packageUrl.replace(/course-v1\.json$/, 'native-registration-v1.json') : null
 }
 
@@ -400,7 +409,17 @@ const registerInBrowser = async (
   sceneLayouts: readonly NativeSceneLayout[],
 ): Promise<{ registration: NativeRegistration | null; reason: string }> => {
   const main = sceneLayouts.find((l) => l.file.kind === 'main') ?? sceneLayouts[0]
-  const packageUrl = getCourseCatalogEntry(courseId).staticPackageUrl
+  const entry = getCourseCatalogEntry(courseId)
+  if (main && entry.packageKind === 'area') {
+    // Loaded as a map area: GSPro's greens find their match among the map's
+    // (no hole numbers), then the LiDAR terrain refines the placement.
+    const { fitRegistrationFromArea, loadCourseAreaPackage } = await import('./areaCourse')
+    const area = await loadCourseAreaPackage(entry).catch(() => null)
+    if (!area) return { registration: null, reason: "the course's map area could not be loaded" }
+    const result = await fitRegistrationFromArea({ courseId, gsproCourseKey: courseKey, layout: main.layout, area })
+    return { registration: result.registration, reason: result.reason }
+  }
+  const packageUrl = entry.staticPackageUrl
   if (!main || !packageUrl) return { registration: null, reason: 'no course package' }
   const fetchJson = async (url: string) => {
     const response = await fetch(url, { cache: 'no-cache' }).catch(() => null)
@@ -712,8 +731,8 @@ export const selectNativeLayout = (
 
 /** Status-reporting load; cached per course and GSPro course key. */
 export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: string | null): Promise<LoadResult> => {
-  // A GSPro-only course has no other positioning: it is always native.
-  if (!isNativePositionsEnabled() && !isGsproOnlyCourseId(courseId)) {
+  // GSPro-only and map-area courses have no other positioning: always native.
+  if (!isNativePositionsEnabled() && !courseUsesGsproHoles(courseId)) {
     if (lastStatus.state !== 'off') announce({ state: 'off' })
     return Promise.resolve({ context: null, status: { state: 'off' } })
   }
