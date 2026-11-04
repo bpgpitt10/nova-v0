@@ -29,11 +29,15 @@ export type DecisionLandingState = {
   obstruction: DecisionLandingObstruction
   /** For unmapped landings: grass (valued as rough) or other (valued as deep rough). */
   unknownGround?: UnknownGround | null
-  /** Out of bounds (GSPro's OB from the course file): replayed from where the
-   * shot was played, with one penalty stroke. distanceToPinYds is then the
-   * replay distance and replaySurface the lie it is replayed from. */
+  /** Out of bounds (GSPro's OB from the course file). The player chooses, as
+   * in real golf: rehit (one stroke, replayed from where the shot was played;
+   * distanceToPinYds is then the replay distance and replaySurface its lie) or
+   * drop (two strokes, near where the ball went out, on the fairway side:
+   * dropDistanceToPinYds and dropSurface). */
   outOfBounds?: boolean
   replaySurface?: CourseSurfaceClassification | null
+  dropDistanceToPinYds?: number | null
+  dropSurface?: 'fairway' | 'rough'
   tacticalSeverity: number
 }
 
@@ -68,7 +72,12 @@ export const buildDecisionLandingState = (
     requiresRelief: penalty,
     obstruction,
     unknownGround: classification.kind === 'unknown' ? unknownGroundAt(hole, landing) : null,
-    ...(outOfBounds ? { outOfBounds: true, replaySurface: tacticalKindNear(hole, replayFrom!) } : {}),
+    ...(outOfBounds ? {
+      outOfBounds: true,
+      replaySurface: tacticalKindNear(hole, replayFrom!),
+      dropDistanceToPinYds: pin ? distance(landing, pin) : null,
+      dropSurface: hole.surfaces.some((surface) => surface.kind === 'fairway') ? 'fairway' as const : 'rough' as const,
+    } : {}),
     tacticalSeverity: semantics.severity,
   }
 }
