@@ -193,5 +193,24 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(window.leftPct + window.onLinePct + window.rightPct, 100)
 }
 
+// GSPro's scorecard par (companion courses.10): the newest round per course
+// wins, and it ranks above the course file (Old Game hole 7: 5, not 4).
+{
+  const { scorecardParsByCourse } = await load('/src/lib/roundHistoryData.ts')
+  const card = Object.fromEntries([4, 5, 3, 5, 4, 4, 5, 4, 3, 4, 5, 3, 4, 3, 4, 5, 4, 4].map((par, i) => [String(i + 1), par]))
+  const byCourse = scorecardParsByCourse([
+    { roundId: 1, courseKey: 'Links_v1', pars: { ...card, 7: 4 }, checkedHoles: [1], observedAt: '2026-10-01T00:00:00Z' },
+    { roundId: 2, courseKey: 'Links_v1', pars: card, checkedHoles: [1, 2], observedAt: '2026-11-04T00:00:00Z' },
+    { roundId: 3, courseKey: 'short', pars: { 1: 3, 2: 3 }, checkedHoles: [1], observedAt: '2026-11-04T00:00:00Z' },
+  ])
+  assert.equal(byCourse.get('links_v1')[7], 5, 'the newer round wins')
+  assert.equal(Object.values(byCourse.get('links_v1')).reduce((a, b) => a + b, 0), 73)
+  assert.equal(byCourse.has('short'), false, 'fewer than 9 holes is not a scorecard')
+  const scored = history.buildRounds(records, { Links_v1: { name: 'The Old Game', pars: byCourse.get('links_v1') } })
+    .find((round) => round.roundId === 268)
+  assert.equal(scored.par, 73)
+  assert.equal(scored.strokes - scored.par, -2, 'The Old Game: 71 on a par 73')
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()

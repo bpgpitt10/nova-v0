@@ -125,6 +125,73 @@ class RoundRecorderTests(unittest.TestCase):
         self.assertEqual(broken.status()["lastError"], "OSError")
 
 
+def layout_log(pars, pins):
+    rows = [{"active": i == 0, "strokeIdx": i, "par": par, "teePos": {"x": 0, "y": 0, "z": 0},
+             "pinPos": {"x": pin[0], "y": 0, "z": pin[1]}} for i, (par, pin) in enumerate(zip(pars, pins))]
+    return "INFO round loaded\n" + json.dumps(rows) + "\nINFO more lines\n"
+
+
+OLD_GAME_PARS = [4, 5, 3, 5, 4, 4, 5, 4, 3, 4, 5, 3, 4, 3, 4, 5, 4, 4]  # GSPro's card: 73
+PINS = [(i * 50.0, 300.0 + i) for i in range(18)]
+
+
+class RoundParsTests(unittest.TestCase):
+    """GSPro's own par per hole (The Old Game's course file says hole 7 is a
+    par 4; GSPro's scorecard scores it as a 5)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = Path(self.tmp.name) / "rounds"
+        self.text = None
+        self.log = None
+        self.clock = [0.0]
+        self.recorder = bridge.RoundRecorder(self.store, lambda: self.text, lambda: self.log, clock=lambda: self.clock[0])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def on_hole(self, round_id, shot_id, hole, to_pin_m, pin):
+        # Ball stopped to_pin_m short of the pin, straight down the z axis.
+        return shot(round_id, shot_id, hole=hole - 1, EndingPOS={"x": pin[0], "y": 0, "z": pin[1] - to_pin_m},
+                    DistanceToPin=to_pin_m)
+
+    def test_pars_are_read_when_the_logged_pins_are_this_rounds(self):
+        self.log = "older lines\n" + layout_log([4] * 18, [(0, 0)] * 18) + layout_log(OLD_GAME_PARS, PINS)
+        self.text = json.dumps([self.on_hole(268, "a", 1, 120.0, PINS[0]), self.on_hole(268, "b", 1, 4.0, PINS[0])])
+        self.recorder.poll_once()
+        [entry] = self.recorder.round_pars()
+        self.assertEqual(entry["roundId"], 268)
+        self.assertEqual(entry["courseKey"], "Links_v1")
+        self.assertEqual(entry["pars"]["7"], 5)
+        self.assertEqual(sum(entry["pars"].values()), 73)
+        self.assertEqual(entry["checkedHoles"], [1])
+        # Kept across a restart; not written again while nothing changes.
+        self.clock[0] += bridge.PARS_CHECK_SECONDS + 1
+        self.recorder.poll_once()
+        restarted = bridge.RoundRecorder(self.store, lambda: self.text, lambda: self.log)
+        self.assertEqual(len(restarted.round_pars()), 1)
+        self.assertEqual(len(restarted.pars_path.read_text().splitlines()), 1)
+
+    def test_a_layout_from_another_course_or_hole_order_is_refused(self):
+        self.log = layout_log(OLD_GAME_PARS, PINS)
+        # The ball's distance to the pin doesn't fit the logged pin (wrong course).
+        wrong = shot(5, "x", hole=0, EndingPOS={"x": 900, "y": 0, "z": 900}, DistanceToPin=12.0)
+        self.text = json.dumps([wrong])
+        self.recorder.poll_once()
+        self.assertEqual(self.recorder.round_pars(), [])
+        # No shot to check against yet: nothing recorded either.
+        self.clock[0] += bridge.PARS_CHECK_SECONDS + 1
+        self.text = json.dumps([shot(6, "y", hole=0, EndingPOS=None)])
+        self.recorder.poll_once()
+        self.assertEqual(self.recorder.round_pars(), [])
+        self.assertIsNone(bridge.latest_hole_layout("no layout here"))
+
+    def test_without_a_log_reader_recording_is_unchanged(self):
+        plain = bridge.RoundRecorder(Path(self.tmp.name) / "plain", lambda: json.dumps([shot(1, "a")]))
+        self.assertEqual(plain.poll_once(), 1)
+        self.assertEqual(plain.round_pars(), [])
+
+
 @contextmanager
 def running_service():
     server = ThreadingHTTPServer(("127.0.0.1", 0), companion.LooperCompanionHandler)
@@ -192,6 +259,11 @@ class CompanionEndpointTests(unittest.TestCase):
             page = json.loads(body)
             self.assertEqual((status, page["status"], len(page["records"])), (200, "ok", 1))
             self.assertEqual(page["activeRoundId"], 7)
+            self.assertNotIn(self.tmp.name, body.decode("utf-8"))
+            status, _, body = get(port, "/companion/v1/round-pars")
+            pars = json.loads(body)
+            self.assertEqual((status, pars["schemaVersion"], pars["status"]), (200, "looper-companion-round-pars-v1", "ok"))
+            self.assertIsInstance(pars["rounds"], list)
             self.assertNotIn(self.tmp.name, body.decode("utf-8"))
 
 
