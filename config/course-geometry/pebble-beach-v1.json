@@ -1,17 +1,25 @@
 {
   "schemaVersion": "looper-course-build-config-v1",
-  "courseId": "pebble-beach-pebble-beach-ca",
-  "courseName": "Pebble Beach Golf Links",
-  "location": "Pebble Beach, CA",
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "courseName": "Pebble Beach Golf Course",
+  "location": "Del Monte Forest, California",
   "slug": "pebble-beach",
+  "gsproAliases": [
+    "Pebble Beach Golf Course",
+    "mammoth_dunes_gsp"
+  ],
   "osmCourseElement": {
     "type": "relation",
     "id": 3741806
   },
   "osmCenter": [
-    36.5642591,
-    -121.9394359
+    36.56588,
+    -121.94167
   ],
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
   "selection": {
     "teeStartRadiusYards": 220,
     "contextRouteDistanceYards": 110,

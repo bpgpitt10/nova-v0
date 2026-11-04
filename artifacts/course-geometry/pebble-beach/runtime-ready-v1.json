@@ -1,0 +1,22 @@
+{
+  "completedAt": "2026-11-04T02:18:03.601281Z",
+  "configPath": "config/course-geometry/pebble-beach-v1.json",
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "courseName": "Pebble Beach Golf Course",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Pebble Beach Golf Course",
+    "mammoth_dunes_gsp"
+  ],
+  "location": "Del Monte Forest, California",
+  "packagePath": "public/course-geometry/pebble-beach/course-v1.json",
+  "packageSha256": "9ae0e8f4ce38778b137382acb2ee032730ce0d0e560c6c267e09d4fbfb677e48",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "pebble-beach",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/pebble-beach/validation-v1.json"
+}

@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "pebble-beach",
+  "request": {
+    "slug": "pebble-beach",
+    "name": "Pebble Beach Golf Course",
+    "location": "Del Monte Forest, California",
+    "lat": 36.5642076,
+    "lon": -121.9378096,
+    "nameRegex": "Pebble.*Beach",
+    "osmId": 3741806,
+    "gsproAliases": [
+      "mammoth_dunes_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 296.6,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 63.2
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/pebble-beach-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 63.8
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 55.4
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 10.6
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 31.0
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 6.9
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 64.8
+    }
+  ],
+  "finishedAt": "2026-11-04T02:20:52Z",
+  "runId": "41759448707",
+  "osmCourse": {
+    "type": "relation",
+    "id": 3741806,
+    "name": "Pebble Beach Golf Course",
+    "areaHa": 72.4
+  },
+  "lidar": {
+    "name": "CA_FEMA_Z4_B1_2018",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/CA_FEMA_Z4_B1_2018/ept.json",
+    "count": 46246018795,
+    "year": 2018
+  },
+  "crs": "EPSG:26910",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/CA_FEMA_Z4_B1_2018/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 763,
+    "downloadedMB": 164.1,
+    "pointsKeptInBbox": 25161272,
+    "pointsPerSquareMetre": 4.48,
+    "firstReturnsPerSquareMetre": 3.38,
+    "classificationHistogram": {
+      "1": 13332596,
+      "2": 8886360,
+      "9": 2933190,
+      "10": 9857
+    },
+    "chm": {
+      "width": 2606,
+      "height": 2157,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 5116762,
+      "emptyCells": 504380,
+      "cellsOver3m": 1755250,
+      "cellsOver10m": 798039,
+      "p50": 0.27999999999995895,
+      "p95": 20.07999999999997,
+      "max": 69.19999999999996
+    },
+    "seconds": 30.8
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26910",
+    "treeCount": 23202,
+    "heightM": {
+      "p10": 4.4,
+      "p50": 9.9,
+      "p90": 24.0,
+      "max": 69.0
+    },
+    "crownRadiusM": {
+      "p10": 1.7,
+      "p50": 4.0,
+      "p90": 7.4
+    },
+    "woodlandPolygons": 1987,
+    "woodlandAreaHa": 136.43,
+    "maskedCellsBuildingsAndPower": 343302,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 6.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 1870879,
+    "course-v1.json": 469444,
+    "green-detail-v1.json": 109566
+  }
+}

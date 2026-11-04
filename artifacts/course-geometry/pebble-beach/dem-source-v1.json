@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -13575553.675,
+    4377483.142,
+    -13572909.293,
+    4379612.372
+  ],
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-13575553.675%2C4377483.142%2C-13572909.293%2C4379612.372&bboxSR=3857&imageSR=3857&size=2645%2C2130&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-11-04T02:17:57.215807Z",
+  "height": 2130,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 2645
+}

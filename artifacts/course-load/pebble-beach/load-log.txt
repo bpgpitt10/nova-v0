@@ -1,0 +1,1105 @@
+=== [pebble-beach:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Pebble.*Beach --lat 36.5642076 --lon -121.9378096 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model --osm-id 3741806
+[{"type": "way", "id": 27830611, "name": "Monterey Pines Golf Course", "areaHa": 44.4, "nameMatch": false}, {"type": "way", "id": 27830670, "name": "Del Monte Golf Course", "areaHa": 42.6, "nameMatch": false}, {"type": "way", "id": 36435651, "name": "Cypress Point Golf Course", "areaHa": 66.6, "nameMatch": false}, {"type": "way", "id": 36437304, "name": "Pacific Grove Golf Links", "areaHa": 40.8, "nameMatch": false}, {"type": "way", "id": 238036734, "name": "Monterey Peninsula Country Club - Dunes Course", "areaHa": 73.1, "nameMatch": false}, {"type": "way", "id": 281477606, "name": "Spyglass Hill Golf Course", "areaHa": 82.5, "nameMatch": false}, {"type": "way", "id": 397895551, "name": "Monterey Peninsula Country Club - Shore Course", "areaHa": 67.6, "nameMatch": false}, {"type": "way", "id": 1065983050, "name": "The Hay", "areaHa": 2.9, "nameMatch": false}, {"type": "relation", "id": 2744895, "name": "Quail Lodge Golf Club", "areaHa": 51.5, "nameMatch": false}, {"type": "relation", "id": 3741806, "name": "Pebble Beach Golf Course", "areaHa": 72.4, "nameMatch": true}, {"type": "relation", "id": 4073921, "name": "The Links at Spanish Bay", "areaHa": 78.4, "nameMatch": false}, {"type": "relation", "id": 11841797, "name": "Poppy Hills Golf Course", "areaHa": 72.1, "nameMatch": false}]
+grew bbox with 10591 vertices from nearby golf features
+{"bboxLonLat": [-121.9561021805923, 36.55629002514927, -121.9272444194077, 36.57546607485073], "crs": "EPSG:26910", "osm": {"type": "relation", "id": 3741806, "name": "Pebble Beach Golf Course", "areaHa": 72.4}} {"name": "CA_FEMA_Z4_B1_2018", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/CA_FEMA_Z4_B1_2018/ept.json", "count": 46246018795, "year": 2018}
+=== [pebble-beach:find] rc=0 seconds=63.2
+=== [pebble-beach:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/pebble-beach-v1.json --slug pebble-beach --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 5 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/pebble-beach-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/osm-snapshot.json
+{
+  "course": "Pebble Beach Golf Course",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 336,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 127,
+    "golf=cartpath": 40,
+    "golf=fairway": 28,
+    "golf=green": 21,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 1,
+    "golf=rough": 14,
+    "golf=tee": 70,
+    "landuse=grass": 106,
+    "natural=beach": 3,
+    "natural=sand": 125,
+    "natural=water": 3,
+    "natural=wood": 2
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-121.95054970,36.55704700,-121.92832210,36.57147110",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 131,
+    "golf=cartpath": 45,
+    "golf=fairway": 29,
+    "golf=green": 24,
+    "golf=hole": 21,
+    "golf=lateral_water_hazard": 1,
+    "golf=rough": 14,
+    "golf=tee": 70,
+    "landuse=grass": 109,
+    "natural=beach": 3,
+    "natural=sand": 129,
+    "natural=water": 3,
+    "natural=wood": 3
+  },
+  "rawIncludedFeatures": 352,
+  "rawMapElements": 21581,
+  "sourceEndpoint": "https://overpass-api.de/api/interpreter"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,40.3,61.5,0.8,forward,0.8,101.7
+2,0.0,47.4,100.4,1.6,forward,1.6,147.9
+3,0.0,48.6,80.3,5.4,forward,5.4,128.9
+4,0.0,21.7,53.2,0.2,forward,0.2,74.9
+5,0.0,90.4,28.6,0.9,forward,0.9,118.9
+6,0.0,33.5,125.4,2.8,forward,2.8,158.9
+7,0.0,17.7,47.3,0.7,forward,0.7,65.0
+8,0.0,33.5,21.0,2.8,forward,2.8,54.4
+9,0.0,21.3,63.1,0.7,forward,0.7,84.4
+10,0.0,33.1,139.7,1.7,forward,1.7,172.8
+11,0.0,28.9,36.1,2.1,forward,2.1,65.0
+12,0.0,46.9,60.1,1.8,forward,1.8,107.0
+13,0.0,42.8,55.4,3.2,forward,3.2,98.3
+14,0.0,20.8,48.4,3.0,forward,3.0,69.2
+15,0.0,34.3,39.1,1.4,forward,1.4,73.4
+16,0.0,72.3,63.3,1.4,forward,1.4,135.6
+17,0.0,27.1,61.2,0.5,forward,0.5,88.3
+18,0.0,209.6,43.0,1.2,forward,1.2,252.6
+
+TEE OWNERSHIP H1 targetGreenOsmId=244858455
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+244858460,0.0,357.8,0.0,1,0.0
+244858458,65.8,293.1,1.0,1,1.0
+244858461,28.0,321.6,1.9,1,1.9
+246357125,259.0,96.6,25.1,2,0.0
+246357126,279.7,76.6,31.4,2,1.6
+246357127,299.4,58.5,34.0,2,1.0
+914183178,334.2,43.6,38.0,2,2.8
+246357129,392.9,86.8,83.2,2,2.6
+
+TEE OWNERSHIP H9 targetGreenOsmId=789263041
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+914175661,0.0,520.6,0.0,9,0.0
+697848716,16.7,499.4,0.7,9,0.7
+244850764,40.2,478.5,7.2,9,7.2
+244850760,54.1,460.5,10.4,9,10.4
+244850766,81.0,433.7,11.3,9,11.3
+1132540212,29.9,510.8,25.1,9,25.1
+1132540211,163.6,356.7,26.3,14,19.4
+1543310953,68.8,467.8,40.7,14,13.9
+244850761,120.2,402.1,46.9,14,0.0
+244850009,398.7,144.9,50.5,10,0.0
+244850019,448.1,104.4,57.1,10,8.8
+244871285,218.5,740.3,218.5,6,21.5
+697848715,269.1,791.2,269.1,6,12.9
+938765017,279.6,796.4,279.6,6,1.1
+938765018,299.8,812.3,299.8,6,2.8
+938765019,321.0,825.4,321.0,6,0.0
+244860715,349.1,685.9,349.1,8,26.5
+244860714,372.7,704.8,372.7,7,32.8
+
+TEE OWNERSHIP H11 targetGreenOsmId=789284394
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+789279322,0.0,382.9,0.0,11,0.0
+1132540207,79.7,294.4,0.2,11,0.2
+244850010,19.6,361.8,17.4,11,17.4
+244850016,50.3,336.0,29.0,11,29.0
+244850015,413.4,38.8,30.0,12,1.5
+244850018,416.9,47.2,39.4,12,6.3
+789290910,431.4,59.4,55.2,12,0.0
+789301838,381.6,151.7,139.2,13,0.0
+938765025,400.3,191.7,178.3,13,1.9
+938765026,409.2,205.5,191.7,13,1.1
+938765027,419.6,226.3,207.2,13,0.2
+244850012,356.5,268.8,218.2,10,33.3
+244850017,423.6,324.6,287.0,10,13.4
+938755721,366.8,363.0,294.6,9,21.3
+244850021,440.1,336.6,301.2,10,12.4
+
+TEE OWNERSHIP H13 targetGreenOsmId=938770602
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+789301838,0.0,445.7,0.0,13,0.0
+938765027,64.7,368.9,0.2,13,0.2
+938765026,49.2,391.1,1.1,13,1.1
+938765025,35.8,405.3,1.9,13,1.9
+244850014,161.3,267.6,28.9,13,28.9
+244850009,236.5,223.8,60.4,10,0.0
+244850019,192.5,274.4,70.4,10,8.8
+244850021,176.6,290.2,71.9,10,12.4
+244850017,167.6,310.4,83.2,10,13.4
+244850012,125.5,384.7,98.2,10,33.3
+244850015,150.7,593.6,150.7,12,1.5
+938755721,224.4,365.7,182.4,9,21.3
+244850018,183.2,615.1,183.2,12,6.3
+789290910,195.3,621.5,195.3,12,0.0
+1132540207,299.8,682.0,299.8,11,0.2
+244850016,344.9,733.2,344.9,11,29.0
+244850010,365.0,737.3,365.0,11,17.4
+789279322,381.3,734.4,381.3,11,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=244859351
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+244872441,0.0,395.0,0.0,15,0.0
+244872438,11.4,356.7,0.8,15,0.8
+244872436,80.7,312.3,6.6,15,6.6
+244872437,50.5,337.1,7.2,15,7.2
+244872439,424.9,43.6,34.3,16,0.4
+1132540214,440.4,51.6,45.9,16,8.0
+244872440,421.8,61.2,53.7,16,0.0
+938765019,150.4,434.0,150.4,6,0.0
+938765018,172.5,449.7,172.5,6,2.8
+938765017,201.7,471.1,201.7,6,1.1
+697848715,250.9,490.9,250.9,6,12.9
+244871285,285.5,544.3,285.5,6,21.5
+244853199,361.1,356.1,300.3,5,0.0
+789031461,345.9,401.4,314.6,5,0.1
+246357141,348.3,418.3,324.4,5,4.5
+789031460,368.6,409.1,334.7,5,19.5
+1132540212,416.6,756.7,416.6,9,25.1
+914175661,430.5,757.0,430.5,9,0.0
+
+TEE OWNERSHIP H16 targetGreenOsmId=246357136
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+244872440,0.0,395.0,0.0,16,0.0
+244872439,23.0,366.0,0.4,16,0.4
+1132540214,77.3,315.1,8.0,16,8.0
+246357131,139.0,256.4,40.3,3,0.0
+246357132,153.5,245.1,49.2,3,2.0
+246357133,165.0,229.9,54.3,3,3.4
+246357139,430.2,78.6,74.5,4,8.4
+246357134,205.8,198.5,77.2,3,12.3
+246357140,401.9,114.1,105.9,4,21.6
+246357135,269.1,173.3,122.2,3,46.5
+244853199,409.9,324.3,267.7,5,0.0
+789031461,448.9,377.7,318.9,5,0.1
+244872436,335.9,559.9,336.0,15,6.6
+244872438,346.3,590.6,346.2,15,0.8
+244872437,356.1,581.6,356.1,15,7.2
+244872441,418.5,623.4,418.5,15,0.0
+
+TEE OWNERSHIP H17 targetGreenOsmId=244859354
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+244858465,0.0,170.7,0.0,17,0.0
+244858457,26.8,149.3,2.0,17,2.0
+246357137,25.1,211.5,25.1,4,0.0
+244858453,188.1,38.1,27.1,18,0.0
+246357138,38.2,218.9,38.2,4,0.0
+697848720,182.7,78.7,74.2,18,20.6
+246357139,87.1,242.6,87.1,4,8.4
+246357140,145.9,280.0,145.9,4,21.6
+246357135,283.3,464.4,283.3,3,46.5
+246357134,308.7,491.1,308.7,3,12.3
+246357133,340.0,519.8,340.0,3,3.4
+244853199,349.7,426.3,349.7,5,0.0
+246357132,358.2,533.7,358.3,3,2.0
+246357131,368.8,543.7,368.8,3,0.0
+246357129,382.1,520.2,382.1,2,2.6
+789031460,387.9,440.2,387.9,5,19.5
+789031461,388.7,453.0,388.8,5,0.1
+246357141,419.0,469.6,419.0,5,4.5
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/pebble-beach-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Pebble Beach Golf Course",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 23400354,
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "exportResolutionMeters": 1.0,
+  "height": 2130,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 2645
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-13575553.675%2C4377483.142%2C-13572909.293%2C4379612.372&bboxSR=3857&imageSR=3857&size=2645%2C2130&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W123_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W123_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 162651.9,
+      "knownAreaSqYd": 30500.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 12,
+          "areaSqYd": 59574.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 19247.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 163602.0,
+      "knownAreaSqYd": 51030.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 41481.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 49632.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 163760.7,
+      "knownAreaSqYd": 58265.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 12,
+          "areaSqYd": 35946.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 9,
+          "areaSqYd": 54466.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 126524.3,
+      "knownAreaSqYd": 36969.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 22881.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 44887.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 68.8
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 92724.1,
+      "knownAreaSqYd": 23906.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 19878.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 31556.8
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 126.3
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 165317.1,
+      "knownAreaSqYd": 48782.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 18682.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 9,
+          "areaSqYd": 59429.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 89.8
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 72390.6,
+      "knownAreaSqYd": 12882.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 2763.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 7661.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 163340.0,
+      "knownAreaSqYd": 49546.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 5256.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 47503.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 187523.6,
+      "knownAreaSqYd": 77210.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 15861.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 76220.5
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 548.7
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 179995.0,
+      "knownAreaSqYd": 93483.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 15357.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 57284.3
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 482.1
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 144450.1,
+      "knownAreaSqYd": 54781.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 46817.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 33020.2
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 892.8
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 94925.2,
+      "knownAreaSqYd": 25072.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 42648.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 22859.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 149073.7,
+      "knownAreaSqYd": 61756.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 27730.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 13,
+          "areaSqYd": 49517.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 250650.9,
+      "knownAreaSqYd": 55439.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 96094.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 76636.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 138611.7,
+      "knownAreaSqYd": 33192.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 62360.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 9,
+          "areaSqYd": 28280.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 156474.5,
+      "knownAreaSqYd": 56606.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 38414.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 43096.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 89605.3,
+      "knownAreaSqYd": 19952.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 7603.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 28498.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 217056.8,
+      "knownAreaSqYd": 55979.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 17450.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 29296.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 81.8
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/pebble-beach/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/green-detail-v1.json (109,566 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 391,
+      "validOnGreenNodes": 391,
+      "greenCoverage": 1.0,
+      "localFitCount": 391,
+      "trustedLocalFitCount": 391,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.066,
+      "maxTrustedSlopePercent": 7.9
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 323,
+      "validOnGreenNodes": 323,
+      "greenCoverage": 1.0,
+      "localFitCount": 323,
+      "trustedLocalFitCount": 323,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.046,
+      "localRmsP95Ft": 0.103,
+      "maxTrustedSlopePercent": 8.9
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 394,
+      "validOnGreenNodes": 394,
+      "greenCoverage": 1.0,
+      "localFitCount": 394,
+      "trustedLocalFitCount": 394,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.101,
+      "maxTrustedSlopePercent": 8.9
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 235,
+      "validOnGreenNodes": 235,
+      "greenCoverage": 1.0,
+      "localFitCount": 235,
+      "trustedLocalFitCount": 235,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.094,
+      "maxTrustedSlopePercent": 6.8
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 334,
+      "validOnGreenNodes": 334,
+      "greenCoverage": 1.0,
+      "localFitCount": 334,
+      "trustedLocalFitCount": 334,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.074,
+      "maxTrustedSlopePercent": 6.1
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 403,
+      "validOnGreenNodes": 403,
+      "greenCoverage": 1.0,
+      "localFitCount": 403,
+      "trustedLocalFitCount": 403,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.074,
+      "maxTrustedSlopePercent": 6.1
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 250,
+      "validOnGreenNodes": 250,
+      "greenCoverage": 1.0,
+      "localFitCount": 250,
+      "trustedLocalFitCount": 250,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 5.2
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 374,
+      "validOnGreenNodes": 374,
+      "greenCoverage": 1.0,
+      "localFitCount": 374,
+      "trustedLocalFitCount": 374,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.098,
+      "maxTrustedSlopePercent": 9.5
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 439,
+      "validOnGreenNodes": 439,
+      "greenCoverage": 1.0,
+      "localFitCount": 439,
+      "trustedLocalFitCount": 439,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.043,
+      "maxTrustedSlopePercent": 6.6
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 394,
+      "validOnGreenNodes": 394,
+      "greenCoverage": 1.0,
+      "localFitCount": 394,
+      "trustedLocalFitCount": 394,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.034,
+      "localRmsP95Ft": 0.05,
+      "maxTrustedSlopePercent": 5.0
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 347,
+      "validOnGreenNodes": 347,
+      "greenCoverage": 1.0,
+      "localFitCount": 347,
+      "trustedLocalFitCount": 347,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.063,
+      "localRmsP95Ft": 0.114,
+      "maxTrustedSlopePercent": 12.0
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 314,
+      "validOnGreenNodes": 314,
+      "greenCoverage": 1.0,
+      "localFitCount": 314,
+      "trustedLocalFitCount": 314,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.034,
+      "localRmsP95Ft": 0.068,
+      "maxTrustedSlopePercent": 6.1
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 441,
+      "validOnGreenNodes": 441,
+      "greenCoverage": 1.0,
+      "localFitCount": 441,
+      "trustedLocalFitCount": 441,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 8.0
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 413,
+      "validOnGreenNodes": 413,
+      "greenCoverage": 1.0,
+      "localFitCount": 413,
+      "trustedLocalFitCount": 413,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.082,
+      "maxTrustedSlopePercent": 10.4
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 354,
+      "validOnGreenNodes": 354,
+      "greenCoverage": 1.0,
+      "localFitCount": 354,
+      "trustedLocalFitCount": 354,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.067,
+      "maxTrustedSlopePercent": 8.8
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 365,
+      "validOnGreenNodes": 365,
+      "greenCoverage": 1.0,
+      "localFitCount": 365,
+      "trustedLocalFitCount": 365,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.031,
+      "localRmsP95Ft": 0.041,
+      "maxTrustedSlopePercent": 4.5
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 568,
+      "validOnGreenNodes": 568,
+      "greenCoverage": 1.0,
+      "localFitCount": 568,
+      "trustedLocalFitCount": 568,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.037,
+      "localRmsP95Ft": 0.07,
+      "maxTrustedSlopePercent": 7.1
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 417,
+      "validOnGreenNodes": 417,
+      "greenCoverage": 1.0,
+      "localFitCount": 417,
+      "trustedLocalFitCount": 417,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.037,
+      "localRmsP95Ft": 0.067,
+      "maxTrustedSlopePercent": 6.7
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/pebble-beach-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/pebble-beach/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "greenDetailSha256": "48c6cee95b19242c12204314cef5d7b3bacb1bb8dc4e9b8073ef74c51f07f823",
+  "packageSha256": "9ae0e8f4ce38778b137382acb2ee032730ce0d0e560c6c267e09d4fbfb677e48",
+  "snapshotSha256": "8ec85fed478086632562672d91d8ec153a9bb44e6f9fb884088758979ef2a5a5",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/pebble-beach-v1.json
+[course-import-contract] pebble-beach-golf-course-del-monte-forest-california: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 3 canonical tee set(s): Tee 1 (Back), Tee 2, Tee 3 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 2 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 6 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course pebble-beach-golf-course-del-monte-forest-california
+[runtime-smoke] Pebble Beach Golf Course: 3 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 3 (Front), Tee 2, Tee 1 (Back).
+[runtime-smoke] Pebble Beach Golf Course runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                     │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Pebble Beach Golf Course' │ 1    │ 5        │ 2             │ 3             │ 3               │ 1                      │ 10                │ 69.5           │ 81.5              │ 12               │
+│ 1       │ 'Pebble Beach Golf Course' │ 2    │ 5        │ 2             │ 5             │ 3               │ 1                      │ 10                │ 79.9           │ 74.7              │ -5.2             │
+│ 2       │ 'Pebble Beach Golf Course' │ 3    │ 5        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 79.8           │ 35.6              │ -44.2            │
+│ 3       │ 'Pebble Beach Golf Course' │ 4    │ 6        │ 4             │ 4             │ 3               │ 1                      │ 10                │ 31.5           │ 39.4              │ 7.9              │
+│ 4       │ 'Pebble Beach Golf Course' │ 5    │ 6        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 53.6           │ 47.7              │ -5.9             │
+│ 5       │ 'Pebble Beach Golf Course' │ 6    │ 6        │ 4             │ 5             │ 3               │ 1                      │ 10                │ 85.5           │ 58.7              │ -26.8            │
+│ 6       │ 'Pebble Beach Golf Course' │ 7    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 61.3           │ 29                │ -32.3            │
+│ 7       │ 'Pebble Beach Golf Course' │ 8    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 31.9           │ 3.8               │ -28.1            │
+│ 8       │ 'Pebble Beach Golf Course' │ 9    │ 6        │ 6             │ 6             │ 3               │ 1                      │ 10                │ 78.1           │ 40.6              │ -37.5            │
+│ 9       │ 'Pebble Beach Golf Course' │ 10   │ 6        │ 6             │ 5             │ 3               │ 1                      │ 10                │ 61.4           │ 34.5              │ -26.9            │
+│ 10      │ 'Pebble Beach Golf Course' │ 11   │ 6        │ 6             │ 4             │ 3               │ 1                      │ 10                │ 43.6           │ 99.9              │ 56.3             │
+│ 11      │ 'Pebble Beach Golf Course' │ 12   │ 6        │ 4             │ 3             │ 3               │ 1                      │ 10                │ 128.9          │ 102.8             │ -26.1            │
+│ 12      │ 'Pebble Beach Golf Course' │ 13   │ 6        │ 4             │ 5             │ 3               │ 1                      │ 10                │ 93.8           │ 89.4              │ -4.4             │
+│ 13      │ 'Pebble Beach Golf Course' │ 14   │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 86.4           │ 114               │ 27.6             │
+│ 14      │ 'Pebble Beach Golf Course' │ 15   │ 5        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 130.9          │ 90.3              │ -40.6            │
+│ 15      │ 'Pebble Beach Golf Course' │ 16   │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 100.6          │ 44.7              │ -55.9            │
+│ 16      │ 'Pebble Beach Golf Course' │ 17   │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 29.7           │ 20.1              │ -9.6             │
+│ 17      │ 'Pebble Beach Golf Course' │ 18   │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 11             │ 3.8               │ -7.2             │
+└─────────┴────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] pebble-beach-golf-course-del-monte-forest-california passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 6 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "pebble-beach-golf-course-del-monte-forest-california",
+  "courseSlug": "pebble-beach",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/pebble-beach/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/pebble-beach/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/pebble-beach/validation-v1.json"
+}
+=== [pebble-beach:import] rc=0 seconds=63.8
+=== [pebble-beach:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model
+https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway
+overpass ok url=https://overpass-api.de/api/interpreter bytes=8456640 seconds=43.6
+{"elementsByType": {"node": 27058, "way": 1494, "relation": 55}, "taggedElements": 1745, "compressedBytes": 1076897}
+=== [pebble-beach:osm] rc=0 seconds=55.4
+=== [pebble-beach:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/course-bbox.json --crs EPSG:26910 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=4 seconds=9.9 size=2606x2157
+{"width": 2606, "height": 2157, "pixel": 1.0, "validCells": 5621142, "elevMin": 1.1430022716522217, "elevMax": 173.2940216064453}
+=== [pebble-beach:dem] rc=0 seconds=10.6
+=== [pebble-beach:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/CA_FEMA_Z4_B1_2018/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model
+nodes=763 pointsInIntersectingNodes=28397119 hierarchySeconds=0.9
+tiles 25/763 kept=386629 MB=6 seconds=2
+tiles 50/763 kept=1056658 MB=10 seconds=3
+tiles 75/763 kept=1533644 MB=16 seconds=3
+tiles 100/763 kept=2412791 MB=23 seconds=4
+tiles 125/763 kept=3040988 MB=27 seconds=5
+tiles 150/763 kept=3567854 MB=36 seconds=6
+tiles 175/763 kept=4443698 MB=43 seconds=7
+tiles 200/763 kept=5752152 MB=49 seconds=8
+tiles 225/763 kept=6938192 MB=56 seconds=9
+tiles 250/763 kept=8223340 MB=62 seconds=10
+tiles 275/763 kept=9501656 MB=69 seconds=11
+tiles 300/763 kept=10781099 MB=76 seconds=12
+tiles 325/763 kept=12071863 MB=84 seconds=13
+tiles 350/763 kept=12909048 MB=89 seconds=14
+tiles 375/763 kept=13527097 MB=92 seconds=15
+tiles 400/763 kept=14251752 MB=96 seconds=15
+tiles 425/763 kept=14871822 MB=99 seconds=16
+tiles 450/763 kept=15520898 MB=103 seconds=17
+tiles 475/763 kept=16118528 MB=105 seconds=17
+tiles 500/763 kept=16715609 MB=109 seconds=17
+tiles 525/763 kept=17303430 MB=112 seconds=18
+tiles 550/763 kept=18033677 MB=116 seconds=18
+tiles 575/763 kept=18696451 MB=120 seconds=19
+tiles 600/763 kept=19367496 MB=124 seconds=20
+tiles 625/763 kept=20189440 MB=133 seconds=20
+tiles 650/763 kept=21214150 MB=140 seconds=21
+tiles 675/763 kept=22411129 MB=149 seconds=22
+tiles 700/763 kept=23243960 MB=152 seconds=23
+tiles 725/763 kept=24181689 MB=157 seconds=24
+tiles 750/763 kept=24772120 MB=161 seconds=24
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/CA_FEMA_Z4_B1_2018/ept.json", "eptSrs": "3857", "octreeNodesRead": 763, "downloadedMB": 164.1, "pointsKeptInBbox": 25161272, "pointsPerSquareMetre": 4.48, "firstReturnsPerSquareMetre": 3.38, "classificationHistogram": {"1": 13332596, "2": 8886360, "9": 2933190, "10": 9857}, "chm": {"width": 2606, "height": 2157, "pixelMeters": 1.0, "cellsWithReturns": 5116762, "emptyCells": 504380, "cellsOver3m": 1755250, "cellsOver10m": 798039, "p50": 0.27999999999995895, "p95": 20.07999999999997, "max": 69.19999999999996}, "seconds": 30.8}
+=== [pebble-beach:lidar] rc=0 seconds=31.0
+=== [pebble-beach:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26910", "treeCount": 23202, "heightM": {"p10": 4.4, "p50": 9.9, "p90": 24.0, "max": 69.0}, "crownRadiusM": {"p10": 1.7, "p50": 4.0, "p90": 7.4}, "woodlandPolygons": 1987, "woodlandAreaHa": 136.43, "maskedCellsBuildingsAndPower": 343302, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 6.2}
+=== [pebble-beach:trees] rc=0 seconds=6.9
+=== [pebble-beach:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/pebble-beach/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/pebble-beach/course-v1-lidar.json
+{
+ "bytes": 1870879,
+ "originalBytes": 469444,
+ "holes": {
+  "woodsPolygons": 122,
+  "bunker": "5->6",
+  "water": "0->0",
+  "mapFeatures": {
+   "road": 38,
+   "building": 59,
+   "cartpath": 51,
+   "parking": 10
+  },
+  "terrainCells": 41313
+ },
+ "woodsTotal": 1193
+}
+=== [pebble-beach:enrich] rc=0 seconds=64.8
