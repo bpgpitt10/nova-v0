@@ -337,8 +337,8 @@ jobs:
           gh release create "looper-companion-courses-$shortSha" looper-windows-companion.zip `
             --repo "$env:GITHUB_REPOSITORY" `
             --target "$env:GITHUB_SHA" `
-            --title "Looper Companion: finds your courses with GSPro closed ($shortSha)" `
-            --notes "Remembers where GSPro is installed, so Round Setup can list courses and tees and match them to the map while GSPro is closed. Otherwise the same as the GSPro-files companion (aim click, wind/lie/HUD reads, round recorder)." `
+            --title "Looper Companion courses.9 ($shortSha)" `
+            --notes "Version courses.9. Saves GSPro's wind box to %LOCALAPPDATA%\Looper\Companion\diagnostics when the wind reads 0 MPH (Royal New Kent read 0 at ~10 MPH), as it already did when the speed couldn't be read. Otherwise the same as courses.8 (course list with pars and style tags, finds courses with GSPro closed, aim click, wind/lie/HUD reads, round recorder)." `
             --prerelease
 
       - name: Publish Rounds companion installer
