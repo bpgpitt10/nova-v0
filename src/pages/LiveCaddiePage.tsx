@@ -35,6 +35,7 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
+import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenAnchorSummary } from '../courseGeometry/nativeGreenAnchor'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
@@ -76,6 +77,7 @@ import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeome
 import type {
   CourseHoleGeometry,
   CoursePointYds,
+  CoursePolygonYds,
   CourseSurface,
 } from '../courseGeometry/types'
 import { isNativePositionsEnabled, nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntime'
@@ -211,13 +213,24 @@ export default function LiveCaddiePage() {
   const [rawHole, setHole] = useState<CourseHoleGeometry | null>(() =>
     loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
   )
-  // GSPro's own penalty areas and OB (from the player's GKD) on this hole.
-  const [gkdHazards, setGkdHazards] = useState<{ key: string; surfaces: CourseSurface[]; summary: GkdHazardSummary } | null>(null)
-  const hole = useMemo<CourseHoleGeometry | null>(() =>
-    rawHole && gkdHazards && gkdHazards.key === `${rawHole.courseId}|${rawHole.holeNumber}`
-      ? withGkdHazards(rawHole, gkdHazards.surfaces)
-      : rawHole,
-  [rawHole, gkdHazards])
+  // GSPro's own penalty areas and OB, and the green anchored to GSPro's green
+  // (both from the player's GKD through the registration), on this hole.
+  const [gkdOverlay, setGkdOverlay] = useState<{
+    key: string
+    hazardSurfaces: CourseSurface[]
+    hazardSummary: GkdHazardSummary
+    anchoredSurfaces: CourseSurface[] | null
+    anchoredGreen: CoursePolygonYds | null
+    greenSummary: GreenAnchorSummary
+  } | null>(null)
+  const gkdHazards = gkdOverlay
+    ? { key: gkdOverlay.key, surfaces: gkdOverlay.hazardSurfaces, summary: gkdOverlay.hazardSummary }
+    : null
+  const hole = useMemo<CourseHoleGeometry | null>(() => {
+    if (!rawHole || !gkdOverlay || gkdOverlay.key !== `${rawHole.courseId}|${rawHole.holeNumber}`) return rawHole
+    const base = gkdOverlay.anchoredSurfaces ? { ...rawHole, surfaces: gkdOverlay.anchoredSurfaces } : rawHole
+    return withGkdHazards(base, gkdOverlay.hazardSurfaces)
+  }, [rawHole, gkdOverlay])
   const [ball, setBall] = useState<CoursePointYds>(() =>
     loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry.markers.tee : [0, 0],
   )
@@ -520,8 +533,17 @@ export default function LiveCaddiePage() {
         if (!alive || !context) return
         const layout = layoutWithHazards(context.layouts.map((l) => l.layout))
         if (!layout) return
-        const { surfaces, summary } = gkdHazardSurfaces(layout, context.registration, rawHole)
-        setGkdHazards({ key, surfaces, summary })
+        const hazards = gkdHazardSurfaces(layout, context.registration, rawHole)
+        // Greens and pins are shared by every layout of the scene: use the active one.
+        const anchor = anchorGreenToGkd(rawHole, context.layout, context.registration)
+        setGkdOverlay({
+          key,
+          hazardSurfaces: hazards.surfaces,
+          hazardSummary: hazards.summary,
+          anchoredSurfaces: anchor.surfaces,
+          anchoredGreen: anchor.green,
+          greenSummary: anchor.summary,
+        })
       })
       .catch(() => undefined)
     return () => { alive = false }
@@ -1278,8 +1300,20 @@ export default function LiveCaddiePage() {
     return reach >= front - 20
   })()
   const shownGreenRead = greenReachable ? greenReadAnalysis : null
+  // An anchored green that sits partly outside the packaged slope grid gets a
+  // partial read: say so rather than present it as the whole green.
+  const anchoredGreenOutside = useMemo(() => {
+    if (!hole || !greenDetail || gkdOverlay?.greenSummary.status !== 'anchored') return null
+    if (gkdOverlay.key !== `${hole.courseId}|${hole.holeNumber}`) return null
+    const { minX, minY, spacingYds, width, height } = greenDetail.grid
+    const ring = gkdOverlay.anchoredGreen
+    return ring
+      ? greenShareOutsideDetail(ring, [minX, minX + (width - 1) * spacingYds, minY, minY + (height - 1) * spacingYds])
+      : null
+  }, [hole, greenDetail, gkdOverlay])
   const greenReadText = shownGreenRead && pinEstimate
     ? greenReadLine(shownGreenRead, ball, pinEstimate, Boolean(trustedLivePin))
+      + (anchoredGreenOutside != null && anchoredGreenOutside > 0.15 ? ' (partial read: slope data covers part of the green)' : '')
     : null
   const displayedClub = isShotStrategy
     ? eligibleArmedClub
@@ -1809,6 +1843,8 @@ export default function LiveCaddiePage() {
                   ? ` · OB ${gkdHazards.summary.obMode === 'boundary' ? 'beyond the course boundary' : 'region'}${gkdHazards.summary.obOnHole ? '' : ' (not near this hole)'}`
                   : ' · no OB polygon in the course file')
               : 'not loaded (needs the GSPro course file and a registration)'}
+            {gkdOverlay && gkdOverlay.key === `${rawHole?.courseId}|${rawHole?.holeNumber}`
+              ? ` · Green: ${greenAnchorLine({ ...gkdOverlay.greenSummary, outsideDetail: anchoredGreenOutside })}` : ''}
           </div>
         ) : null}
         {showDiagnostics && aimResult ? (
