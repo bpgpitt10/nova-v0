@@ -261,7 +261,10 @@ export default function LoadCoursePage() {
   // GSPro file -> location -> nearby courses -> green fit. Null when any
   // step isn't available (companion too old, no location, Overpass down):
   // the name search then runs as before.
-  const matchInstalledByGeometry = async (course: LooperCompanionInstalledCourse): Promise<GeometryMatchResult | 'busy' | null> => {
+  const matchInstalledByGeometry = async (course: LooperCompanionInstalledCourse): Promise<GeometryMatchResult | 'busy' | 'no-course-file' | null> => {
+    // GSPro's course file is on the sim PC: on another device (the saved
+    // library) there is nothing to match by.
+    if (savedLibraryAt) return 'no-course-file'
     try {
       const files = await readLooperCompanionCourseLayouts(course.courseKey)
       const main = files.layouts.find((f) => f.kind === 'main') ?? files.layouts[0]
@@ -293,7 +296,10 @@ export default function LoadCoursePage() {
       setMessage(`The OpenStreetMap server Looper checks GSPro's green layout against is busy right now, so ${course.courseName || course.courseKey} couldn't be matched. Try Load again in a few minutes.`)
       return
     }
-    const geo = found0
+    const geo = found0 === 'no-course-file' ? null : found0
+    const awayNote = found0 === 'no-course-file'
+      ? 'Matching by green layout needs your sim PC (it reads GSPro\'s course file there); on this device only the name is searched. '
+      : ''
     if (geo?.status === 'matched' && geo.best) {
       const fit = geo.best.fit
       const found = `Found ${course.courseName || course.courseKey} on the map by its green layout: ${geo.best.name} `
@@ -350,7 +356,7 @@ export default function LoadCoursePage() {
       const name = course.courseName || course.courseKey
       setLinkedGspro({ courseKey: course.courseKey, courseName: name })
       setQuery(name)
-      setMessage(`${geoNote}${match
+      setMessage(`${awayNote}${geoNote}${match
         ? `By name it looks like ${match.name}, but GSPro's version may not line up with it. Pick from the search results below only if you're sure.`
         : `Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`}`)
       void runSearch(name)
