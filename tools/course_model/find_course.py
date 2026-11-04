@@ -164,6 +164,21 @@ def main() -> int:
                      'year': max(years) if years else 0})
     hits.sort(key=lambda h: (h['year'], h['count'] or 0), reverse=True)
 
+    # No USGS LiDAR (outside the US): Canada's NRCan HRDEM covers much of the
+    # country from LiDAR (Cabot Cliffs, 11/3). Its DTM replaces 3DEP and, where
+    # published, DSM - DTM replaces the point cloud's canopy heights.
+    hrdem = None
+    if not hits:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import nrcan_hrdem  # noqa: E402
+            hrdem = nrcan_hrdem.search((w, s, e, n))
+            if hrdem:
+                print(f"no USGS LiDAR; NRCan HRDEM {hrdem['collection']}: {len(hrdem['items'])} tile(s)"
+                      f"{' with DSM' if any(i.get('dsm') for i in hrdem['items']) else ' (no DSM: no tree heights)'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f'NRCan HRDEM search failed: {exc}', file=sys.stderr)
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     record = {
@@ -177,10 +192,14 @@ def main() -> int:
                 'chosen': hits[0] if hits else None,
                 'rule': 'newest year in dataset name, then most points',
                 'candidates': hits[:8]},
+        'demProvider': 'usgs-3dep' if hits or not hrdem else 'nrcan-hrdem',
+        **({'hrdem': hrdem} if hrdem else {}),
     }
     (out / 'course-bbox.json').write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({k: record[k] for k in ('bboxLonLat', 'crs', 'osm')}), json.dumps(record['ept']['chosen']))
-    return 0 if hits else 2
+    if not hits and not hrdem:
+        print('No elevation source covers this course: no USGS LiDAR, and NRCan HRDEM has no tiles here.', file=sys.stderr)
+    return 0 if hits or hrdem else 2
 
 
 if __name__ == '__main__':

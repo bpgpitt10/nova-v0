@@ -70,6 +70,38 @@ ROUTE_START_TEE_HALF_WIDTH_YDS = 5.0
 ROUTE_START_TEE_HALF_DEPTH_YDS = 4.0
 
 
+DEFAULT_TEE_SET = "Tee 1"
+
+
+def _default_tee_set_when_unmapped(model: dict[str, Any]) -> dict[str, Any]:
+    """Course-wide tee sets come from Hole 1's mapped tees. When OSM maps no
+    tee on Hole 1 (Cabot Cliffs, 11/4) there are none anywhere, the synthetic
+    route-start tee below had no tee set to carry, and the course failed the
+    import contract ("H1: no teeCandidates"). Use one generic tee set; each
+    hole's selected tee (mapped or synthetic) carries it. GSPro's own tees
+    replace these once the player's course file is read."""
+    contract = dict(model.get("teeSetContract") or {})
+    if [label for label in contract.get("teeSets") or [] if label]:
+        return model
+    model = dict(model)
+    contract.update({"version": 1, "sourceHole": 1,
+                     "mapping": contract.get("mapping") or "source-identity-then-normalized-back-to-front-position",
+                     "teeSets": [DEFAULT_TEE_SET]})
+    model["teeSetContract"] = contract
+    candidates = [dict(c) for c in model.get("teeCandidates") or []]
+    if candidates:
+        anchor = next((c for c in candidates if c.get("selectedAnchor")), candidates[0])
+        for c in candidates:
+            if c is anchor:
+                c["teeSet"] = DEFAULT_TEE_SET
+                c["teeAliases"] = [DEFAULT_TEE_SET]
+            elif c.get("teeSet") == DEFAULT_TEE_SET or DEFAULT_TEE_SET in (c.get("teeAliases") or []):
+                c["teeSet"] = None
+                c["teeAliases"] = []
+        model["teeCandidates"] = candidates
+    return model
+
+
 def _route_start_tee_fallback(model: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """OSM often maps only some tee boxes (Valhalla: 12 golf=tee for 18 holes).
     A hole with no owned tee polygon gets one small, clearly synthetic tee at
@@ -132,6 +164,7 @@ def model_for_hole(
 ):
     model, diagnostic = v6.model_for_hole(hole_number, config, features, hole_routes)
     model = apply_tactical_surface_semantics(model)
+    model = _default_tee_set_when_unmapped(model)
     model, synthesized = _route_start_tee_fallback(model)
     if synthesized:
         diagnostic = dict(diagnostic)

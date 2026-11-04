@@ -115,6 +115,8 @@ def write_config(slug: str, request: dict, bbox: dict) -> Path:
         'osmCourseElement': {'type': osm['type'], 'id': osm['id']},
         'osmCenter': [round((s + n) / 2, 5), round((w + e) / 2, 5)],
         'landcoverContext': {'enabled': True, 'provider': 'ESA WorldCover 2021 v200'},
+        # Outside USGS coverage the find stage picked NRCan HRDEM (Canada).
+        **({'terrain': {'provider': 'nrcan-hrdem'}} if bbox.get('demProvider') == 'nrcan-hrdem' else {}),
         'selection': {'teeStartRadiusYards': 220, 'contextRouteDistanceYards': 110,
                       'behindTeeToleranceYards': 35, 'pastGreenToleranceYards': 50},
     }
@@ -160,6 +162,12 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     if ok and bbox['ept'].get('url'):
         ok = (load.stage('lidar', py, str(HERE / 'lidar_pipeline.py'), '--ept', bbox['ept']['url'],
                          '--dem-source', bbox_path, '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model))
+              and load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
+                             '--osm', str(model / 'osm-full.json.gz'), '--out', str(model)))
+    elif ok and bbox.get('demProvider') == 'nrcan-hrdem':
+        # Canada: canopy heights from HRDEM DSM - DTM instead of a point cloud.
+        ok = (load.stage('lidar', py, str(HERE / 'fetch_sources.py'), 'chm', '--dem-source', bbox_path,
+                         '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model))
               and load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
                              '--osm', str(model / 'osm-full.json.gz'), '--out', str(model)))
     elif ok:
