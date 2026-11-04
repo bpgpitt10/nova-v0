@@ -335,7 +335,7 @@ export default function LooperLandingPage({
               <span className="looper-landing-mode-kicker">Review</span>
               <strong>Yardage Book</strong>
               <span className="looper-landing-mode-copy">
-                Your bag&apos;s yardages and every round, shot by shot.
+                Your bag&apos;s yardages, every round shot by shot, and where you lose strokes.
               </span>
               <span className="looper-landing-mode-links">
                 <a className="looper-landing-mode-action" href="/dashboard">
@@ -343,6 +343,9 @@ export default function LooperLandingPage({
                 </a>
                 <a className="looper-landing-mode-action" href="/rounds">
                   Rounds <span aria-hidden="true">→</span>
+                </a>
+                <a className="looper-landing-mode-action" href="/rounds/game">
+                  Your game <span aria-hidden="true">→</span>
                 </a>
               </span>
             </div>

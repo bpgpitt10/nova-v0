@@ -1,4 +1,4 @@
-import { buildYourGame, FIRM_SHOTS, SHOTS_PER_DOT, type LadderRung, type Segment } from '../lib/yourGame'
+import { buildYourGame, FIRM_SHOTS, GIMME_CIRCLE_FT, SHOTS_PER_DOT, type LadderRung, type Segment } from '../lib/yourGame'
 import type { RoundSummary } from '../lib/roundHistory'
 
 /** Full rounds (90 holes) before most calls here are firm. */
@@ -191,7 +191,10 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section">
               <div className="rounds-section-head">
                 <h2>Putting by length</h2>
-                <span className="rounds-muted">Gimmes and rounds with auto putt on are left out.</span>
+                <span className="rounds-muted">
+                  Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
+                  {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
+                </span>
               </div>
               <div className="yourgame-scroll">
               <table className="rounds-table yourgame-putts">

@@ -49,8 +49,10 @@ try {
   }
   assert.ok(game.leaks.every((s) => s.perRound < 0) && game.strengths.every((s) => s.perRound > 0))
   // Putting: 30 putts, 16 gimmes -> 14 real putts across the buckets.
+  assert.deepEqual(game.putting.map((b) => b.label), ['5–10 ft', '10–15 ft', '15–25 ft', '25–35 ft', '35–50 ft', '50 ft +'])
   assert.equal(game.putting.reduce((sum, b) => sum + b.putts, 0), 14)
-  assert.ok(game.putting[3].made >= 1, 'the 46-footer on 13')
+  assert.equal(game.gimmes, 16)
+  assert.ok(game.putting[4].made >= 1, 'the 46-footer on 13')
   // One round: nothing to compare with yet.
   assert.equal(game.vsNormal, null)
 

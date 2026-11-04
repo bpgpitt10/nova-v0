@@ -123,7 +123,9 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
 export type StoredCourseInfo = {
   name: string | null
   pars: Record<number, number>
-  parSource: 'course-file' | 'course-package' | null
+  /** scorecard: GSPro's own scorecard (beats the course file: The Old Game's
+   * file says hole 7 is a par 4, GSPro scores it as a 5). */
+  parSource: 'scorecard' | 'course-file' | 'course-package' | null
   /** GSPro designer style tags (links, parkland, mountain…), from companion courses.8+. */
   keywords?: string[]
   altitudeFt?: number | null
@@ -223,14 +225,15 @@ type CourseInfoRow = {
 }
 
 const sourceRank = (source: StoredCourseInfo['parSource']) =>
-  source === 'course-file' ? 2 : source === 'course-package' ? 1 : 0
+  source === 'scorecard' ? 3 : source === 'course-file' ? 2 : source === 'course-package' ? 1 : 0
 
 const storedFromRow = (row: CourseInfoRow): StoredCourseInfo => {
   const pars: Record<number, number> = {}
   Object.entries(row.pars ?? {}).forEach(([hole, par]) => {
     if (typeof par === 'number' && Number.isFinite(par)) pars[Number(hole)] = par
   })
-  const parSource = row.par_source === 'course-file' || row.par_source === 'course-package' ? row.par_source : null
+  const parSource = row.par_source === 'scorecard' || row.par_source === 'course-file' || row.par_source === 'course-package'
+    ? row.par_source : null
   return {
     name: row.course_name,
     pars,
@@ -325,7 +328,8 @@ export const loadCourseInfo = async (
     if (merged) cache[key] = merged
   })
 
-  const needsLookup = (key: string) => !(cache[key]?.parSource === 'course-file' && cache[key]?.name)
+  const needsLookup = (key: string) =>
+    !((cache[key]?.parSource === 'course-file' || cache[key]?.parSource === 'scorecard') && cache[key]?.name)
 
   // 1. The companion's course list: every name, and par from courses.7 on.
   const library = keys.some(needsLookup) ? await courseLibraryInfo() : null

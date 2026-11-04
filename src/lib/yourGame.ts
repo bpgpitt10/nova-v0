@@ -45,6 +45,9 @@ export type LadderRung = Readonly<{
   dots: number
 }>
 
+/** Sim golf's gimme circle: putts inside it are conceded, so there's nothing to read. */
+export const GIMME_CIRCLE_FT = 5
+
 export type PuttBucket = Readonly<{
   label: string
   /** Real putts: gimmes and rounds with GSPro's auto putt left out. */
@@ -73,6 +76,8 @@ export type YourGame = Readonly<{
   strengths: Segment[]
   ladder: LadderRung[]
   putting: PuttBucket[]
+  /** Gimmes (conceded putts) across the rounds: counted in the score, not in putting. */
+  gimmes: number
   /** The latest round against every round before it, or null with nothing to compare. */
   vsNormal: Readonly<{ courseName: string; playedAt: string | null; normalHoles: number; rows: VsNormalRow[] }> | null
 }>
@@ -89,7 +94,6 @@ const isGreenFinish = (shot: RoundShot) => shot.holed || shot.endLie === 'green'
 
 const fromRough = (shot: RoundShot) => shot.startLie === 'rough' || shot.startLie === 'deep-rough'
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /** Rounds whose shots can be trusted: full and partial, on complete holes. */
 const scored = (rounds: readonly RoundSummary[]) =>
@@ -167,8 +171,11 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
 
   // Putting by length.
   const putts = rounds.flatMap(realPutts)
+  // Sim golf plays a 5–6 ft gimme circle, so nothing inside 5 ft is read;
+  // long putts split finely (35 ft and 60 ft are different putts).
   const PUTT_BUCKETS: ReadonlyArray<readonly [string, number, number | null]> = [
-    ['Inside 6 ft', 0, 6], ['6–15 ft', 6, 15], ['15–30 ft', 15, 30], ['30 ft +', 30, null],
+    ['5–10 ft', 5, 10], ['10–15 ft', 10, 15], ['15–25 ft', 15, 25],
+    ['25–35 ft', 25, 35], ['35–50 ft', 35, 50], ['50 ft +', 50, null],
   ]
   const gimmes = rounds.filter((round) => !round.autoPutt).flatMap(shotsOf).filter((shot) => shot.isPutt && shot.conceded).length
   const putting: PuttBucket[] = PUTT_BUCKETS.map(([label, from, to]) => {
@@ -178,10 +185,13 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     })
     const made = inBucket.filter((shot) => shot.holed).length
     const longest = inBucket.filter((shot) => shot.holed).reduce((max, shot) => Math.max(max, (shot.startYds ?? 0) * 3), 0)
+    const twoPutts = inBucket.filter((shot) => !shot.holed && shot.endYds * 3 <= 6).length
     const note = inBucket.length === 0
-      ? (from === 0 && gimmes > 0 ? `${plural(gimmes, 'gimme')}, so no read on short putts yet` : 'None yet')
+      ? 'None yet'
       : made > 0 && to == null ? `Longest made: ${Math.round(longest)} ft`
-        : made === 0 ? 'None holed yet' : `${Math.round((made / inBucket.length) * 100)}% holed`
+        : from >= 25
+          ? `${twoPutts} of ${inBucket.length - made} misses left in gimme range`
+          : made === 0 ? 'None holed yet' : `${Math.round((made / inBucket.length) * 100)}% holed`
     return {
       label, putts: inBucket.length, made,
       sgPerPutt: mean(inBucket.map((shot) => shot.sg as number)),
@@ -229,6 +239,7 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     strengths,
     ladder,
     putting,
+    gimmes,
     vsNormal,
   }
 }
