@@ -1,0 +1,22 @@
+{
+  "completedAt": "2026-11-04T02:53:13.888316Z",
+  "configPath": "config/course-geometry/wynn-v1.json",
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "courseName": "Wynn Golf Course",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Bellerive_gsp",
+    "Wynn Golf Course"
+  ],
+  "location": "Las Vegas, Nevada",
+  "packagePath": "public/course-geometry/wynn/course-v1.json",
+  "packageSha256": "a3101c3038dbab7e1fcc38779697078136f19566f3072a5be1cff9c01a88d7f6",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "wynn",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/wynn/validation-v1.json"
+}

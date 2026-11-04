@@ -1,0 +1,1114 @@
+=== [wynn:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Wynn --lat 36.1256805 --lon -115.1595791 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model --osm-id 27910587
+[{"type": "way", "id": 27910587, "name": "Wynn Golf Course", "areaHa": 53.2, "nameMatch": true}, {"type": "way", "id": 80341618, "name": "Las Vegas Golf Club", "areaHa": 58.6, "nameMatch": false}, {"type": "way", "id": 134048326, "name": "Bali Hai Golf Club", "areaHa": 52.3, "nameMatch": false}, {"type": "way", "id": 1180764351, "name": "Desert Pines Golf Club", "areaHa": 40.8, "nameMatch": false}, {"type": "way", "id": 1201568404, "name": "Las Vegas Golf Center", "areaHa": 17.4, "nameMatch": false}, {"type": "relation", "id": 1809892, "name": "Las Vegas Country Club", "areaHa": 92.7, "nameMatch": false}, {"type": "relation", "id": 1823532, "name": "Las Vegas National Golf Club", "areaHa": 58.6, "nameMatch": false}]
+grew bbox with 4955 vertices from nearby golf features
+{"bboxLonLat": [-115.16604732742104, 36.12101252514927, -115.15352847257897, 36.13074827485073], "crs": "EPSG:26911", "osm": {"type": "way", "id": 27910587, "name": "Wynn Golf Course", "areaHa": 53.2}} {"name": "USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018/ept.json", "count": 30039283724, "year": 2018}
+=== [wynn:find] rc=0 seconds=73.1
+=== [wynn:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/wynn-v1.json --slug wynn --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 7 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/wynn-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/osm-snapshot.json
+{
+  "course": "Wynn Golf Course",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 216,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 39,
+    "golf=cartpath": 27,
+    "golf=fairway": 20,
+    "golf=green": 19,
+    "golf=hole": 18,
+    "golf=path": 1,
+    "golf=rough": 17,
+    "golf=tee": 69,
+    "golf=water_hazard": 4,
+    "landuse=grass": 1,
+    "natural=water": 4
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-115.16497910,36.12176950,-115.15459670,36.12999130",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 39,
+    "golf=cartpath": 27,
+    "golf=fairway": 20,
+    "golf=green": 19,
+    "golf=hole": 18,
+    "golf=path": 1,
+    "golf=rough": 17,
+    "golf=tee": 69,
+    "golf=water_hazard": 4,
+    "landuse=grass": 1,
+    "natural=water": 4
+  },
+  "rawIncludedFeatures": 215,
+  "rawMapElements": 14749,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/27910587/full"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,64.0,45.0,2.5,forward,2.5,109.0
+2,0.0,44.8,110.8,3.3,forward,3.3,155.6
+3,0.0,44.2,69.5,2.6,forward,2.6,113.7
+4,0.0,35.2,86.8,0.5,forward,0.5,121.9
+5,0.0,41.0,40.4,4.0,forward,4.0,81.3
+6,0.0,52.9,76.0,1.2,forward,1.2,128.9
+7,0.0,36.7,61.6,3.3,forward,3.3,98.3
+8,0.0,73.0,40.4,0.9,forward,0.9,113.3
+9,0.0,49.2,98.2,0.6,forward,0.6,147.4
+10,0.0,56.3,55.5,6.5,forward,6.5,111.9
+11,0.0,66.0,53.8,3.2,forward,3.2,119.9
+12,0.0,33.6,38.5,1.5,forward,1.5,72.2
+13,0.0,38.5,38.7,2.0,forward,2.0,77.2
+14,0.0,64.4,103.4,2.3,forward,2.3,167.8
+15,0.0,35.0,96.4,1.6,forward,1.6,131.4
+16,0.0,51.7,61.3,3.0,forward,3.0,113.0
+17,0.0,67.0,93.3,1.9,forward,1.9,160.3
+18,0.0,61.9,69.8,2.0,forward,2.0,131.7
+
+TEE OWNERSHIP H1 targetGreenOsmId=1315712857
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315729876,0.0,396.3,0.0,1,0.0
+1085923914,29.0,357.7,0.4,1,0.4
+1085923913,56.0,333.4,4.7,1,4.7
+1315712861,86.6,303.5,16.9,1,16.9
+1315712870,117.3,278.4,54.9,17,0.0
+1315729883,290.6,100.6,56.8,3,0.0
+1315712871,102.6,299.7,63.4,17,2.9
+1315723327,445.5,71.7,64.0,2,3.0
+1315712872,97.3,315.6,71.5,17,2.9
+1315729884,276.9,115.3,75.5,3,0.1
+1315742811,86.1,364.1,83.6,17,8.3
+1315729885,262.1,133.9,94.6,3,0.4
+1315742810,95.9,388.3,95.9,17,7.4
+1315725524,442.7,108.0,102.8,6,18.7
+1315725525,347.7,154.0,150.1,6,3.2
+1315725526,314.6,168.5,158.9,6,3.7
+1315729886,253.8,207.3,172.9,3,24.6
+1315725527,302.6,188.9,183.8,6,0.0
+
+TEE OWNERSHIP H9 targetGreenOsmId=1315736604
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315736607,0.0,463.7,0.0,9,0.0
+1315736608,17.9,436.3,3.4,9,3.4
+1315736609,97.0,362.1,5.1,9,5.1
+1315718636,60.4,410.3,25.5,15,0.0
+1315718635,70.5,411.5,41.1,15,1.9
+1315718634,99.2,415.9,76.8,15,1.0
+1315718633,117.3,419.1,97.1,15,0.9
+1315738806,339.2,195.6,105.2,13,11.5
+1315738804,235.1,329.0,142.4,13,0.3
+1315738805,216.6,354.2,145.3,13,0.0
+1315733728,387.0,363.5,270.1,4,20.9
+1315728532,336.9,449.0,293.2,12,26.2
+1315728531,372.6,452.8,317.6,4,0.0
+1315728533,356.9,477.6,321.1,12,15.6
+1315728534,378.9,490.6,341.9,12,20.7
+1315728536,374.0,507.6,347.8,12,0.7
+1315728537,380.5,524.2,358.0,12,3.8
+1315728535,395.2,537.6,373.4,12,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=1315735679
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315738124,0.0,580.6,0.0,11,0.0
+1315738121,49.4,523.6,1.5,11,1.5
+1315738123,9.9,563.9,2.1,11,2.1
+1315738122,94.7,489.9,20.5,11,20.5
+1315733731,231.2,397.3,85.8,5,3.7
+1315733732,244.9,386.4,87.4,5,6.9
+1315733733,261.1,375.1,92.0,5,6.9
+1315725524,105.1,552.1,93.2,6,18.7
+1315738806,424.9,171.7,93.9,13,11.5
+1315733734,275.8,364.3,99.8,5,0.0
+1315859330,269.8,328.8,111.6,14,26.9
+1315723329,114.6,634.6,114.6,2,0.0
+1315725525,200.1,455.5,115.4,6,3.2
+1315723328,117.5,622.2,117.5,2,3.4
+1315725526,215.0,440.1,121.5,6,3.7
+1315737651,184.7,435.8,122.3,14,0.0
+1315737652,204.1,409.4,124.7,14,2.7
+1315737655,159.9,479.1,127.1,10,5.6
+
+TEE OWNERSHIP H13 targetGreenOsmId=1315728521
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315738805,0.0,518.6,0.0,13,0.0
+1315738804,21.6,489.3,0.3,13,0.3
+1315738806,168.8,347.2,11.5,13,11.5
+1315859330,330.0,190.6,45.9,14,26.9
+1315737652,400.6,131.6,70.5,14,2.7
+1315737651,434.0,110.7,71.9,14,0.0
+1315718633,100.9,603.4,100.9,15,0.9
+1315718634,109.5,603.6,109.5,15,1.0
+1315737654,418.4,170.2,129.3,10,4.2
+1315718635,130.6,605.2,130.6,15,1.9
+1315737653,403.6,189.0,139.5,10,0.0
+1315733728,165.6,462.2,140.7,4,20.9
+1315728532,142.8,571.2,142.8,12,26.2
+1315733731,437.1,191.8,144.7,5,3.7
+1315733732,424.2,206.1,148.4,5,6.9
+1315718636,154.4,607.9,154.4,15,0.0
+1315733733,415.4,221.1,155.3,5,6.9
+1315733734,409.0,235.9,164.9,5,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=1315718629
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315718636,0.0,355.3,0.0,15,0.0
+1315718633,68.7,282.7,0.9,15,0.9
+1315718634,48.2,299.3,1.0,15,1.0
+1315718635,12.0,331.6,1.9,15,1.9
+1315728537,336.0,38.7,30.9,12,3.8
+1315736608,34.5,390.7,34.5,9,3.4
+1315728535,351.2,38.6,35.2,12,0.0
+1315728536,328.2,55.5,44.4,12,0.7
+1315736609,52.4,392.2,52.4,9,5.1
+1315736607,59.7,395.2,59.7,9,0.0
+1315728533,308.0,84.7,62.7,12,15.6
+1315728534,330.5,77.0,65.1,12,20.7
+1315728532,285.2,112.3,76.7,12,26.2
+1315738805,155.2,243.1,86.7,13,0.0
+1315728531,319.8,116.1,98.5,4,0.0
+1315738804,172.0,253.6,112.5,13,0.3
+1315741143,433.8,134.6,129.3,16,0.0
+1315865292,450.0,159.7,157.4,16,2.8
+
+TEE OWNERSHIP H16 targetGreenOsmId=1315729877
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315741143,0.0,478.7,0.0,16,0.0
+1315741140,83.1,397.0,0.4,16,0.4
+1315741141,60.1,415.4,1.1,16,1.1
+1315865292,24.9,455.6,2.8,16,2.8
+1315741142,37.8,435.0,3.1,16,3.1
+1315741139,181.2,303.7,9.0,16,9.0
+1315712872,376.7,129.6,51.0,17,2.9
+1315712871,392.5,113.6,52.0,17,2.9
+1315712870,419.6,93.2,53.2,17,0.0
+1315742810,309.0,203.9,57.9,17,7.4
+1315742811,334.6,178.8,60.1,17,8.3
+1315729886,424.8,92.3,79.5,3,24.6
+1315728535,90.8,557.4,90.8,12,0.0
+1315712861,432.8,124.4,93.3,1,16.9
+1315728534,99.2,527.0,99.2,12,20.7
+1315728531,110.1,496.2,110.1,4,0.0
+1315728536,110.2,549.9,110.2,12,0.7
+1315728537,112.5,563.0,112.5,12,3.8
+
+TEE OWNERSHIP H17 targetGreenOsmId=1315742805
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1315712870,0.0,373.9,0.0,17,0.0
+1315712872,38.6,330.7,2.9,17,2.9
+1315712871,18.7,349.1,2.9,17,2.9
+1315742810,116.7,252.9,7.4,17,7.4
+1315742811,88.9,279.9,8.3,17,8.3
+1315712861,36.8,370.7,36.8,1,16.9
+1315712866,296.8,74.6,38.1,18,34.5
+1315712867,278.3,94.2,49.8,18,36.1
+1085923913,59.3,350.1,57.0,1,4.7
+1315741139,238.7,179.1,57.5,16,9.0
+1315718640,372.1,70.4,67.2,18,0.0
+1315718639,344.2,74.4,68.6,18,2.9
+1085923914,78.2,330.4,69.8,1,0.4
+1315729876,119.2,300.1,95.1,1,0.0
+1315741140,335.6,155.0,98.1,16,0.4
+1315741141,352.4,158.8,112.3,16,1.1
+1315741142,371.4,165.1,128.6,16,3.1
+1315729886,139.7,438.6,139.7,3,24.6
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/wynn-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Wynn Golf Course",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 6555546,
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "exportResolutionMeters": 1.0,
+  "height": 1249,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 1186
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-12820126.211%2C4317347.836%2C-12818940.333%2C4318596.799&bboxSR=3857&imageSR=3857&size=1186%2C1249&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W117_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W117_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 184929.4,
+      "knownAreaSqYd": 57607.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 18,
+          "areaSqYd": 33461.1
+        },
+        "landcover-scrub": {
+          "polygons": 3,
+          "areaSqYd": 181.5
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 41352.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 93029.8,
+      "knownAreaSqYd": 4874.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 30778.9
+        },
+        "landcover-scrub": {
+          "polygons": 1,
+          "areaSqYd": 83.0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 42007.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 162037.2,
+      "knownAreaSqYd": 68310.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 20,
+          "areaSqYd": 12720.9
+        },
+        "landcover-scrub": {
+          "polygons": 6,
+          "areaSqYd": 3498.1
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 75289.5
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 2468.7
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 127938.6,
+      "knownAreaSqYd": 15125.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 31894.9
+        },
+        "landcover-scrub": {
+          "polygons": 3,
+          "areaSqYd": 1759.0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 88808.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 275.8
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 82455.8,
+      "knownAreaSqYd": 4485.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 22321.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 58852.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 160894.5,
+      "knownAreaSqYd": 10960.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 11,
+          "areaSqYd": 51557.8
+        },
+        "landcover-scrub": {
+          "polygons": 1,
+          "areaSqYd": 82.5
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 92300.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 84721.4,
+      "knownAreaSqYd": 11301.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 31710.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 11671.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 252.2
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 183402.0,
+      "knownAreaSqYd": 21184.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 66649.3
+        },
+        "landcover-scrub": {
+          "polygons": 1,
+          "areaSqYd": 298.7
+        },
+        "landcover-grass": {
+          "polygons": 9,
+          "areaSqYd": 50721.1
+        },
+        "landcover-bare": {
+          "polygons": 6,
+          "areaSqYd": 2428.0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 167863.9,
+      "knownAreaSqYd": 12324.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 49988.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 96291.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 101517.3,
+      "knownAreaSqYd": 10107.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 44816.9
+        },
+        "landcover-scrub": {
+          "polygons": 1,
+          "areaSqYd": 299.6
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 38459.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 214481.1,
+      "knownAreaSqYd": 70243.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 25,
+          "areaSqYd": 31287.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 108983.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 94216.8,
+      "knownAreaSqYd": 5623.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 42512.0
+        },
+        "landcover-scrub": {
+          "polygons": 2,
+          "areaSqYd": 3944.4
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 32685.4
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 6468.7
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 175990.3,
+      "knownAreaSqYd": 21585.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 11,
+          "areaSqYd": 49910.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 106927.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 158355.4,
+      "knownAreaSqYd": 15256.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 53560.0
+        },
+        "landcover-scrub": {
+          "polygons": 1,
+          "areaSqYd": 336.6
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 91936.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 128133.7,
+      "knownAreaSqYd": 9545.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 52928.4
+        },
+        "landcover-scrub": {
+          "polygons": 3,
+          "areaSqYd": 3422.9
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 30406.3
+        },
+        "landcover-bare": {
+          "polygons": 4,
+          "areaSqYd": 6165.2
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 181784.6,
+      "knownAreaSqYd": 65386.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 17,
+          "areaSqYd": 26323.2
+        },
+        "landcover-scrub": {
+          "polygons": 5,
+          "areaSqYd": 3898.3
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 79912.1
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 12962.4
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 157026.5,
+      "knownAreaSqYd": 14642.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 54486.4
+        },
+        "landcover-scrub": {
+          "polygons": 11,
+          "areaSqYd": 5227.3
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 68562.7
+        },
+        "landcover-bare": {
+          "polygons": 5,
+          "areaSqYd": 9120.8
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 100014.6,
+      "knownAreaSqYd": 32866.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 16970.0
+        },
+        "landcover-scrub": {
+          "polygons": 4,
+          "areaSqYd": 763.6
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 19334.4
+        },
+        "landcover-bare": {
+          "polygons": 4,
+          "areaSqYd": 3738.5
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/wynn/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/green-detail-v1.json (126,649 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 677,
+      "validOnGreenNodes": 677,
+      "greenCoverage": 1.0,
+      "localFitCount": 677,
+      "trustedLocalFitCount": 677,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.053,
+      "localRmsP95Ft": 0.096,
+      "maxTrustedSlopePercent": 10.0
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 647,
+      "validOnGreenNodes": 647,
+      "greenCoverage": 1.0,
+      "localFitCount": 647,
+      "trustedLocalFitCount": 647,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.102,
+      "maxTrustedSlopePercent": 13.6
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 656,
+      "validOnGreenNodes": 656,
+      "greenCoverage": 1.0,
+      "localFitCount": 656,
+      "trustedLocalFitCount": 656,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.044,
+      "localRmsP95Ft": 0.102,
+      "maxTrustedSlopePercent": 15.1
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 664,
+      "validOnGreenNodes": 664,
+      "greenCoverage": 1.0,
+      "localFitCount": 664,
+      "trustedLocalFitCount": 664,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.085,
+      "maxTrustedSlopePercent": 10.1
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 580,
+      "validOnGreenNodes": 580,
+      "greenCoverage": 1.0,
+      "localFitCount": 580,
+      "trustedLocalFitCount": 580,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.075,
+      "maxTrustedSlopePercent": 9.9
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 593,
+      "validOnGreenNodes": 593,
+      "greenCoverage": 1.0,
+      "localFitCount": 593,
+      "trustedLocalFitCount": 593,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.067,
+      "maxTrustedSlopePercent": 7.9
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 696,
+      "validOnGreenNodes": 696,
+      "greenCoverage": 1.0,
+      "localFitCount": 696,
+      "trustedLocalFitCount": 696,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.046,
+      "localRmsP95Ft": 0.128,
+      "maxTrustedSlopePercent": 18.5
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 619,
+      "validOnGreenNodes": 619,
+      "greenCoverage": 1.0,
+      "localFitCount": 619,
+      "trustedLocalFitCount": 619,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.13,
+      "maxTrustedSlopePercent": 21.2
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 807,
+      "validOnGreenNodes": 807,
+      "greenCoverage": 1.0,
+      "localFitCount": 807,
+      "trustedLocalFitCount": 807,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.071,
+      "maxTrustedSlopePercent": 13.3
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 901,
+      "validOnGreenNodes": 901,
+      "greenCoverage": 1.0,
+      "localFitCount": 901,
+      "trustedLocalFitCount": 901,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.089,
+      "maxTrustedSlopePercent": 12.6
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 678,
+      "validOnGreenNodes": 678,
+      "greenCoverage": 1.0,
+      "localFitCount": 678,
+      "trustedLocalFitCount": 678,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.16,
+      "maxTrustedSlopePercent": 13.8
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 614,
+      "validOnGreenNodes": 614,
+      "greenCoverage": 1.0,
+      "localFitCount": 614,
+      "trustedLocalFitCount": 614,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.053,
+      "localRmsP95Ft": 0.098,
+      "maxTrustedSlopePercent": 15.2
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 604,
+      "validOnGreenNodes": 604,
+      "greenCoverage": 1.0,
+      "localFitCount": 604,
+      "trustedLocalFitCount": 604,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.075,
+      "maxTrustedSlopePercent": 11.9
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 942,
+      "validOnGreenNodes": 942,
+      "greenCoverage": 1.0,
+      "localFitCount": 942,
+      "trustedLocalFitCount": 942,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.053,
+      "localRmsP95Ft": 0.109,
+      "maxTrustedSlopePercent": 19.2
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 588,
+      "validOnGreenNodes": 588,
+      "greenCoverage": 1.0,
+      "localFitCount": 588,
+      "trustedLocalFitCount": 588,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.093,
+      "maxTrustedSlopePercent": 9.5
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 701,
+      "validOnGreenNodes": 701,
+      "greenCoverage": 1.0,
+      "localFitCount": 701,
+      "trustedLocalFitCount": 701,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.074,
+      "maxTrustedSlopePercent": 9.3
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 768,
+      "validOnGreenNodes": 768,
+      "greenCoverage": 1.0,
+      "localFitCount": 768,
+      "trustedLocalFitCount": 768,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.044,
+      "localRmsP95Ft": 0.092,
+      "maxTrustedSlopePercent": 14.9
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 697,
+      "validOnGreenNodes": 697,
+      "greenCoverage": 1.0,
+      "localFitCount": 697,
+      "trustedLocalFitCount": 697,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.067,
+      "maxTrustedSlopePercent": 8.1
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/wynn-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/wynn/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": true,
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "greenDetailSha256": "c27ceb34e2ac175f368f158f92ffab0b74c51ad08579eb61feb9b571f41d3f38",
+  "packageSha256": "a3101c3038dbab7e1fcc38779697078136f19566f3072a5be1cff9c01a88d7f6",
+  "snapshotSha256": "2fbe93ad2dadd06e19114111a4691c179268da9af50ea08e08473c3c5608cf47",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/wynn-v1.json
+[course-import-contract] wynn-golf-course-las-vegas-nevada: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 4 canonical tee set(s): Tee 1 (Back), Tee 2, Tee 3, Tee 4 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 2 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 8 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course wynn-golf-course-las-vegas-nevada
+[runtime-smoke] Wynn Golf Course: 4 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 4 (Front), Tee 3, Tee 2, Tee 1 (Back).
+[runtime-smoke] Wynn Golf Course runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course             │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Wynn Golf Course' │ 1    │ 6        │ 4             │ 4             │ 4               │ 1                      │ 10                │ 2093.6         │ 2055.7            │ -37.9            │
+│ 1       │ 'Wynn Golf Course' │ 2    │ 5        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 2055.9         │ 2049              │ -6.9             │
+│ 2       │ 'Wynn Golf Course' │ 3    │ 6        │ 4             │ 4             │ 4               │ 1                      │ 10                │ 2068.6         │ 2053.4            │ -15.2            │
+│ 3       │ 'Wynn Golf Course' │ 4    │ 5        │ 4             │ 2             │ 4               │ 1                      │ 10                │ 2062.8         │ 2053.1            │ -9.7             │
+│ 4       │ 'Wynn Golf Course' │ 5    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 2062.5         │ 2045.4            │ -17.1            │
+│ 5       │ 'Wynn Golf Course' │ 6    │ 5        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 2065.1         │ 2056.5            │ -8.6             │
+│ 6       │ 'Wynn Golf Course' │ 7    │ 6        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 2055.9         │ 2036.1            │ -19.8            │
+│ 7       │ 'Wynn Golf Course' │ 8    │ 6        │ 4             │ 4             │ 4               │ 1                      │ 10                │ 2057.3         │ 2052.8            │ -4.5             │
+│ 8       │ 'Wynn Golf Course' │ 9    │ 4        │ 2             │ 3             │ 4               │ 1                      │ 10                │ 2063.6         │ 2045.9            │ -17.7            │
+│ 9       │ 'Wynn Golf Course' │ 10   │ 5        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 2061.4         │ 2042.1            │ -19.3            │
+│ 10      │ 'Wynn Golf Course' │ 11   │ 6        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 2060.9         │ 2046.6            │ -14.3            │
+│ 11      │ 'Wynn Golf Course' │ 12   │ 5        │ 4             │ 6             │ 4               │ 1                      │ 10                │ 2078.9         │ 2047.8            │ -31.1            │
+│ 12      │ 'Wynn Golf Course' │ 13   │ 5        │ 2             │ 3             │ 4               │ 1                      │ 10                │ 2061.2         │ 2042.9            │ -18.3            │
+│ 13      │ 'Wynn Golf Course' │ 14   │ 6        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 2061.1         │ 2049.3            │ -11.8            │
+│ 14      │ 'Wynn Golf Course' │ 15   │ 5        │ 4             │ 4             │ 4               │ 1                      │ 10                │ 2059.4         │ 2063.2            │ 3.8              │
+│ 15      │ 'Wynn Golf Course' │ 16   │ 6        │ 4             │ 6             │ 4               │ 1                      │ 10                │ 2066.6         │ 2063.5            │ -3.1             │
+│ 16      │ 'Wynn Golf Course' │ 17   │ 5        │ 4             │ 5             │ 4               │ 1                      │ 10                │ 2090.4         │ 2066.5            │ -23.9            │
+│ 17      │ 'Wynn Golf Course' │ 18   │ 6        │ 4             │ 3             │ 4               │ 1                      │ 10                │ 2073.2         │ 2052              │ -21.2            │
+└─────────┴────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] wynn-golf-course-las-vegas-nevada passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 8 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "wynn-golf-course-las-vegas-nevada",
+  "courseSlug": "wynn",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/wynn/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/wynn/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/wynn/validation-v1.json"
+}
+=== [wynn:import] rc=0 seconds=27.4
+=== [wynn:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=5699783 seconds=34.9
+{"elementsByType": {"node": 14562, "way": 1185, "relation": 110}, "taggedElements": 1636, "compressedBytes": 673396}
+=== [wynn:osm] rc=0 seconds=35.8
+=== [wynn:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/course-bbox.json --crs EPSG:26911 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=1 seconds=1.6 size=1148x1102
+{"width": 1148, "height": 1102, "pixel": 1.0, "validCells": 1265096, "elevMin": 617.8060913085938, "elevMax": 639.7294311523438}
+=== [wynn:dem] rc=0 seconds=2.0
+=== [wynn:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model
+nodes=733 pointsInIntersectingNodes=26110964 hierarchySeconds=0.7
+tiles 25/733 kept=0 MB=11 seconds=2
+tiles 50/733 kept=0 MB=14 seconds=2
+tiles 75/733 kept=0 MB=17 seconds=3
+tiles 100/733 kept=0 MB=20 seconds=3
+tiles 125/733 kept=0 MB=22 seconds=4
+tiles 150/733 kept=0 MB=25 seconds=4
+tiles 175/733 kept=0 MB=27 seconds=5
+tiles 200/733 kept=0 MB=30 seconds=5
+tiles 225/733 kept=0 MB=32 seconds=5
+tiles 250/733 kept=0 MB=34 seconds=6
+tiles 275/733 kept=0 MB=45 seconds=7
+tiles 300/733 kept=0 MB=56 seconds=8
+tiles 325/733 kept=0 MB=65 seconds=9
+tiles 350/733 kept=0 MB=73 seconds=11
+tiles 375/733 kept=0 MB=76 seconds=11
+tiles 400/733 kept=0 MB=79 seconds=12
+tiles 425/733 kept=0 MB=82 seconds=12
+tiles 450/733 kept=0 MB=88 seconds=13
+tiles 475/733 kept=0 MB=99 seconds=14
+tiles 500/733 kept=0 MB=103 seconds=15
+tiles 525/733 kept=0 MB=105 seconds=15
+tiles 550/733 kept=0 MB=107 seconds=15
+tiles 575/733 kept=0 MB=109 seconds=16
+tiles 600/733 kept=0 MB=111 seconds=16
+tiles 625/733 kept=0 MB=122 seconds=17
+tiles 650/733 kept=0 MB=128 seconds=18
+tiles 675/733 kept=0 MB=133 seconds=18
+tiles 700/733 kept=0 MB=135 seconds=19
+tiles 725/733 kept=0 MB=142 seconds=19
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018/ept.json", "eptSrs": "3857", "octreeNodesRead": 733, "downloadedMB": 144.6, "pointsKeptInBbox": 0, "pointsPerSquareMetre": 0.0, "firstReturnsPerSquareMetre": 15.53, "classificationHistogram": {"1": 9643914, "2": 11810220, "17": 277}, "chm": {"width": 1148, "height": 1102, "pixelMeters": 1.0, "cellsWithReturns": 0, "emptyCells": 1265096, "cellsOver3m": 0, "cellsOver10m": 0, "p50": null, "p95": null, "max": null}, "seconds": 19.6}
+=== [wynn:lidar] rc=0 seconds=19.9
+=== [wynn:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26911", "treeCount": 0, "heightM": {"p10": 0.0, "p50": 0.0, "p90": 0.0, "max": 0.0}, "crownRadiusM": {"p10": 0.0, "p50": 0.0, "p90": 0.0}, "woodlandPolygons": 0, "woodlandAreaHa": 0.0, "maskedCellsBuildingsAndPower": 287009, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 0.4}
+=== [wynn:trees] rc=0 seconds=1.2
+=== [wynn:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/wynn/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/wynn/course-v1-lidar.json
+{
+ "bytes": 859742,
+ "originalBytes": 677855,
+ "holes": {
+  "woodsPolygons": 0,
+  "bunker": "6->8",
+  "water": "1->3",
+  "mapFeatures": {
+   "building": 19,
+   "cartpath": 21,
+   "road": 38,
+   "parking": 1
+  },
+  "terrainCells": 47112
+ },
+ "woodsTotal": 0
+}
+=== [wynn:enrich] rc=0 seconds=5.1

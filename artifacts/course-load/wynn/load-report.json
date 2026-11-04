@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "wynn",
+  "request": {
+    "slug": "wynn",
+    "name": "Wynn Golf Course",
+    "location": "Las Vegas, Nevada",
+    "lat": 36.1256805,
+    "lon": -115.1595791,
+    "nameRegex": "Wynn",
+    "osmId": 27910587,
+    "gsproAliases": [
+      "Bellerive_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 165.8,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 73.1
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/wynn-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 27.4
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 35.8
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 2.0
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 19.9
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 1.2
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 5.1
+    }
+  ],
+  "finishedAt": "2026-11-04T02:54:18Z",
+  "runId": "41763156075",
+  "osmCourse": {
+    "type": "way",
+    "id": 27910587,
+    "name": "Wynn Golf Course",
+    "areaHa": 53.2
+  },
+  "lidar": {
+    "name": "USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018/ept.json",
+    "count": 30039283724,
+    "year": 2018
+  },
+  "crs": "EPSG:26911",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_NV_LasVegas_QL1_2016_LAS_2018/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 733,
+    "downloadedMB": 144.6,
+    "pointsKeptInBbox": 0,
+    "pointsPerSquareMetre": 0.0,
+    "firstReturnsPerSquareMetre": 15.53,
+    "classificationHistogram": {
+      "1": 9643914,
+      "2": 11810220,
+      "17": 277
+    },
+    "chm": {
+      "width": 1148,
+      "height": 1102,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 0,
+      "emptyCells": 1265096,
+      "cellsOver3m": 0,
+      "cellsOver10m": 0,
+      "p50": null,
+      "p95": null,
+      "max": null
+    },
+    "seconds": 19.6
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26911",
+    "treeCount": 0,
+    "heightM": {
+      "p10": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "max": 0.0
+    },
+    "crownRadiusM": {
+      "p10": 0.0,
+      "p50": 0.0,
+      "p90": 0.0
+    },
+    "woodlandPolygons": 0,
+    "woodlandAreaHa": 0.0,
+    "maskedCellsBuildingsAndPower": 287009,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 0.4
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 859742,
+    "course-v1.json": 677855,
+    "green-detail-v1.json": 126649
+  }
+}

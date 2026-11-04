@@ -102,4 +102,18 @@ export const generatedImportedCourseRegistry = [
     osmCacheStatus: 'cached',
     lidarCacheStatus: 'cached',
   },
+  {
+    id: 'wynn-golf-course-las-vegas-nevada',
+    name: 'Wynn Golf Course',
+    location: 'Las Vegas, Nevada',
+    slug: 'wynn',
+    gsproAliases: ['Bellerive_gsp', 'Wynn Golf Course'],
+    staticPackageUrl: '/course-geometry/wynn/course-v1.json',
+    status: 'validated',
+    packageStatus: 'ready',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'cached',
+  },
 ] as const
