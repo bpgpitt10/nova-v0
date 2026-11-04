@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
-import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
+import { COURSES_UPDATED_EVENT, courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
 import { GSPRO_LINKS_UPDATED_EVENT, gsproLinks } from '../courseGeometry/gsproLinks'
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
@@ -11,6 +11,7 @@ import {
   linkGsproCourse,
   listCourseLoads,
   refreshGsproLinks,
+  refreshLoadedCourses,
   minutesLeft,
   requestCourseLoad,
   searchGolfCourses,
@@ -151,7 +152,7 @@ const statusText = (row: CourseLoadRow) => {
     const step = row.stage_index && row.stage_count ? `Step ${row.stage_index} of ${row.stage_count}: ` : ''
     return `${step}${STAGE_LABELS[row.stage ?? ''] ?? 'Loading'} · ~${minutesLeft(row)} min left`
   }
-  if (row.status === 'ready') return 'Ready — reload the page to play it'
+  if (row.status === 'ready') return 'Ready to play'
   return `Couldn't load: ${row.error ?? 'unknown error'}`
 }
 
@@ -173,20 +174,31 @@ export default function LoadCoursePage() {
   // When an installed GSPro course can't be matched automatically, loads picked
   // from the search results stay linked to it, so Live Caddie recognizes the round.
   const [linkedGspro, setLinkedGspro] = useState<{ courseKey: string; courseName: string } | null>(null)
-  const slugs = useMemo(loadedSlugs, [])
-  // Re-render when GSPro links change (Link / Unlink, or the shared list loads).
-  const [, setLinksVersion] = useState(0)
+  // Re-render when GSPro links change (Link / Unlink, or the shared list
+  // loads) or a loaded course arrives (published at run time).
+  const [catalogVersion, setCatalogVersion] = useState(0)
+  const slugs = useMemo(loadedSlugs, [catalogVersion])
   useEffect(() => {
-    const bump = () => setLinksVersion((v) => v + 1)
+    const bump = () => setCatalogVersion((v) => v + 1)
     window.addEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+    window.addEventListener(COURSES_UPDATED_EVENT, bump)
     void refreshGsproLinks().catch(() => undefined)
-    return () => window.removeEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+    void refreshLoadedCourses().catch(() => undefined)
+    return () => {
+      window.removeEventListener(GSPRO_LINKS_UPDATED_EVENT, bump)
+      window.removeEventListener(COURSES_UPDATED_EVENT, bump)
+    }
   }, [])
 
   const refresh = useCallback(async () => {
     try {
-      setLoads(await listCourseLoads())
+      const rows = await listCourseLoads()
+      setLoads(rows)
       setLoadsError(null)
+      // A load just finished: its course is published, add it now.
+      if (rows.some((row) => row.status === 'ready' && row.slug && !loadedSlugs().has(row.slug))) {
+        void refreshLoadedCourses().catch(() => undefined)
+      }
     } catch (error) {
       setLoadsError(error instanceof Error ? error.message : String(error))
     }

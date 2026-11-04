@@ -29,7 +29,7 @@ export type CourseCatalogEntry = {
  * Bluffs and Oakmont were removed (2026-10-30): their packages never produced
  * usable live positions; git history keeps them.
  */
-export const courseRegistry = [
+const staticCourseRegistry = [
   {
     id: GREYWOLF_COURSE_ID,
     name: 'Greywolf Golf Course',
@@ -51,8 +51,16 @@ export const courseRegistry = [
   ...generatedImportedCourseRegistry,
 ] as const satisfies readonly CourseCatalogEntry[]
 
-export type RegisteredCourseId = (typeof courseRegistry)[number]['id']
+/**
+ * Course ids: the built-in courses above, plus courses the one-click loader
+ * published at run time (Supabase `loaded_courses`, added by
+ * registerRuntimeCourses), so any loaded course's id is a plain string.
+ */
+export type RegisteredCourseId = string
 export type CourseId = RegisteredCourseId | typeof UNSELECTED_COURSE_ID
+
+/** Every playable course: built in, then loaded at run time. Grows in place. */
+export const courseRegistry: CourseCatalogEntry[] = [...staticCourseRegistry]
 
 const unselectedCourseEntry = {
   id: UNSELECTED_COURSE_ID,
@@ -72,10 +80,61 @@ const unselectedCourseEntry = {
  * Runtime/player-facing catalog. The explicit unselected row is a UI state,
  * not a real course and never enters the runtime-supported registry.
  */
-export const courseCatalog = [
+export const courseCatalog: CourseCatalogEntry[] = [
   unselectedCourseEntry,
   ...courseRegistry,
 ]
+
+const runtimeHoleHeadings = new Map<string, readonly (number | null)[]>()
+export const COURSES_UPDATED_EVENT = 'looper:courses-updated'
+
+/**
+ * Add courses published at run time by the one-click loader. A course built
+ * into the site keeps its built-in entry (same id or slug). Returns how many
+ * were new.
+ */
+export const registerRuntimeCourses = (
+  entries: ReadonlyArray<CourseCatalogEntry & { holeHeadings?: readonly (number | null)[] | null }>,
+): number => {
+  let added = 0
+  for (const entry of entries) {
+    const { holeHeadings, ...course } = entry
+    if (holeHeadings?.length) runtimeHoleHeadings.set(course.id, holeHeadings)
+    const existing = courseRegistry.findIndex((candidate) => candidate.id === course.id || candidate.slug === course.slug)
+    if (existing >= 0) {
+      // A runtime copy may be replaced by a newer load; built-in ones stay.
+      if (staticCourseRegistry.some((candidate) => candidate.id === courseRegistry[existing].id)) continue
+      courseRegistry[existing] = course
+      const inCatalog = courseCatalog.findIndex((candidate) => candidate.id === course.id || candidate.slug === course.slug)
+      if (inCatalog >= 0) courseCatalog[inCatalog] = course
+      continue
+    }
+    courseRegistry.push(course)
+    courseCatalog.push(course)
+    added += 1
+  }
+  if (added) {
+    try {
+      window.dispatchEvent(new Event(COURSES_UPDATED_EVENT))
+    } catch {
+      // not in a browser (tests)
+    }
+  }
+  return added
+}
+
+/** True heading of a runtime-loaded course's hole (tee to green), if published. */
+export const getRuntimeHoleHeadingDegreesTrue = (courseId: string, holeNumber: number): number | null => {
+  const heading = runtimeHoleHeadings.get(courseId)?.[Math.max(1, Math.min(18, Math.round(holeNumber))) - 1]
+  return typeof heading === 'number' && Number.isFinite(heading) ? heading : null
+}
+
+/** A course's package folder (built in: /course-geometry/<slug>/; loaded: its storage folder). */
+export const coursePackageBaseUrl = (slug: string): string => {
+  const entry = courseRegistry.find((candidate) => candidate.slug === slug)
+  const url = entry?.staticPackageUrl
+  return url ? url.replace(/[^/]*$/, '') : `/course-geometry/${encodeURIComponent(slug)}/`
+}
 
 export const getCourseCatalogEntry = (courseId: CourseId): CourseCatalogEntry & { id: CourseId } => {
   if (courseId === UNSELECTED_COURSE_ID) return unselectedCourseEntry

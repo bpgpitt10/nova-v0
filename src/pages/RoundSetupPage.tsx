@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  COURSES_UPDATED_EVENT,
   GREYWOLF_COURSE_ID,
   courseRegistry,
   getCourseCatalogEntry,
@@ -58,6 +59,13 @@ export default function RoundSetupPage() {
   const savedTee = loadRoundTeeSelection(initialCourseId)
 
   const [courseId, setCourseId] = useState<CourseId>(initialCourseId)
+  // Courses loaded at run time can arrive after the first render.
+  const [, setCatalogVersion] = useState(0)
+  useEffect(() => {
+    const bump = () => setCatalogVersion((v) => v + 1)
+    window.addEventListener(COURSES_UPDATED_EVENT, bump)
+    return () => window.removeEventListener(COURSES_UPDATED_EVENT, bump)
+  }, [])
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])

@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../cloud/supabaseClient'
 import { courseNameMatchScore } from './courseNameMatch'
 import { gsproLinks, setGsproLinks } from '../courseGeometry/gsproLinks'
+import { applyLoadedCourseRows, type LoadedCourseRow } from '../courseGeometry/runtimeCourses'
 
 export { courseNameMatchScore }
 
@@ -343,6 +344,17 @@ export const findGolfCourseFor = async (
   }
   if (best && best.score >= 0.5) return best.result
   return fallback
+}
+
+/** Courses published by the one-click loader (no site redeploy): add them to the catalog. */
+export const refreshLoadedCourses = async (): Promise<number> => {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from<LoadedCourseRow[]>('loaded_courses')
+    .select('slug, course_id, name, location, gspro_aliases, package_url, lidar, hole_headings')
+    .limit(2000)
+  if (error) throw new Error(error.message)
+  return applyLoadedCourseRows(data ?? [])
 }
 
 type GsproLinkRow = { gspro_course_key: string; gspro_course_name: string | null; course_slug: string }
