@@ -138,7 +138,7 @@ def publish_to_storage(request: dict, slug: str, key: str) -> None:
         'location': receipt.get('location') or request.get('location') or '',
         'gspro_aliases': list(dict.fromkeys(aliases)),
         'package_url': public_url(f'{slug}/course-v1.json'),
-        'lidar': (folder / 'course-v1-lidar.json').exists(),
+        'lidar': lidar_trees(folder / 'course-v1-lidar.json'),
         'hole_headings': hole_headings(slug),
         'osm_type': request.get('osm_type'),
         'osm_id': request.get('osm_id'),
@@ -151,6 +151,16 @@ def publish_to_storage(request: dict, slug: str, key: str) -> None:
                  'Prefer': 'resolution=merge-duplicates,return=minimal'})
     with urllib.request.urlopen(req, timeout=30) as resp:
         resp.read()
+
+
+def lidar_trees(path: Path) -> bool:
+    """Enriched with LiDAR tree canopy (not just the map's woods)."""
+    if not path.exists():
+        return False
+    try:
+        return (json.loads(path.read_text()).get('enrichment') or {}).get('trees', 'lidar') == 'lidar'
+    except ValueError:
+        return False
 
 
 def publish_area_to_storage(request: dict, slug: str, key: str) -> None:

@@ -97,6 +97,24 @@ def bbox_intersects_polygon(bbox: tuple, geom: dict) -> bool:
     return False
 
 
+def in_usgs_3dep_coverage(w: float, s: float, e: float, n: float) -> bool:
+    """USGS 3DEP's bare-earth service covers the US (lower 48, Alaska,
+    Hawaii, Puerto Rico); a box test is enough to pick it over Copernicus."""
+    lon, lat = (w + e) / 2, (s + n) / 2
+    lower48 = 24.0 <= lat <= 49.5 and -125.0 <= lon <= -66.5
+    alaska = 51.0 <= lat <= 71.5 and -170.0 <= lon <= -129.5
+    hawaii = 18.5 <= lat <= 22.5 and -160.5 <= lon <= -154.5
+    puerto_rico = 17.8 <= lat <= 18.6 and -67.5 <= lon <= -65.2
+    return lower48 or alaska or hawaii or puerto_rico
+
+
+def utm_crs(zone: int, lat: float, lon: float) -> str:
+    """NAD83 UTM in North America (zones 1-23, as every course so far), else WGS84 UTM north/south."""
+    if lat > 0 and zone <= 23 and -170.0 <= lon <= -50.0:
+        return f'EPSG:{26900 + zone}'
+    return f'EPSG:{(32600 if lat >= 0 else 32700) + zone}'
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--name-regex', required=True)
@@ -188,27 +206,60 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(f'NRCan HRDEM search failed: {exc}', file=sys.stderr)
 
+    # New Zealand: national 1 m LiDAR from LINZ (DEM + DSM), same shape as HRDEM.
+    linz = None
+    if not hits and not hrdem:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import linz_elevation  # noqa: E402
+            linz = linz_elevation.search((w, s, e, n))
+            if linz:
+                print(f"LINZ {linz['collection']}: {len(linz['items'])} tile(s)"
+                      f"{' with DSM' if any(i.get('dsm') for i in linz['items']) else ' (no DSM)'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f'LINZ elevation search failed: {exc}', file=sys.stderr)
+
+    # Terrain without a LiDAR point cloud (11/4: Pinehurst, Tobacco Road, Cape
+    # Kidnappers, Dunstanburgh failed here):
+    #   US           USGS 3DEP's nationwide bare-earth service (the dem stage's
+    #                default), 1 m where flown; no point cloud means no LiDAR
+    #                trees, so the map's woods stand in.
+    #   New Zealand  LINZ 1 m DEM; DSM - DEM for trees (loads as a map area).
+    #   elsewhere    Copernicus GLO-30 (30 m, global): coarse, but plays-like
+    #                elevation everywhere. These load as map areas.
+    if hits:
+        provider = 'usgs-3dep'
+    elif hrdem:
+        provider = 'nrcan-hrdem'
+    elif linz:
+        provider = 'linz-1m'
+    elif in_usgs_3dep_coverage(w, s, e, n):
+        provider = 'usgs-3dep'
+        print('no USGS LiDAR point cloud here; terrain from the USGS 3DEP bare-earth service, trees from the map')
+    else:
+        provider = 'copernicus-30m'
+        print('outside USGS / NRCan coverage; terrain from Copernicus GLO-30 (30 m), trees from the map')
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     record = {
         'schemaVersion': 'looper-course-model-bbox-v1',
         'bbox3857': [round(x0, 3), round(y0, 3), round(x1, 3), round(y1, 3)],
         'bboxLonLat': [w, s, e, n],
-        'crs': f'EPSG:{26900 + zone}',
+        'crs': utm_crs(zone, (s + n) / 2, (w + e) / 2),
         'utmZone': zone,
         'osm': {k: best[k] for k in ('type', 'id', 'name', 'areaHa')},
         'ept': {'url': hits[0]['url'] if hits else None,
                 'chosen': hits[0] if hits else None,
                 'rule': 'newest year in dataset name, then most points',
                 'candidates': hits[:8]},
-        'demProvider': 'usgs-3dep' if hits or not hrdem else 'nrcan-hrdem',
+        'demProvider': provider,
         **({'hrdem': hrdem} if hrdem else {}),
+        **({'linz': linz} if linz else {}),
     }
     (out / 'course-bbox.json').write_text(json.dumps(record, indent=2) + '\n')
-    print(json.dumps({k: record[k] for k in ('bboxLonLat', 'crs', 'osm')}), json.dumps(record['ept']['chosen']))
-    if not hits and not hrdem:
-        print('No elevation source covers this course: no USGS LiDAR, and NRCan HRDEM has no tiles here.', file=sys.stderr)
-    return 0 if hits or hrdem else 2
+    print(json.dumps({k: record[k] for k in ('bboxLonLat', 'crs', 'osm', 'demProvider')}), json.dumps(record['ept']['chosen']))
+    return 0
 
 
 if __name__ == '__main__':

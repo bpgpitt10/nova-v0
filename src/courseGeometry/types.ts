@@ -57,8 +57,12 @@ export type CourseContourLine = {
 }
 
 export type CourseTerrainGrid = {
-  /** LiDAR bare earth, or (GSPro-only courses) scattered heights from GSPro's course file. */
-  source: 'lidar-dem' | 'gspro-heights'
+  /**
+   * LiDAR bare earth; a coarse global model (Copernicus GLO-30, area courses
+   * outside LiDAR coverage, corrected to GSPro's heights on the PC); or
+   * (GSPro-only courses) scattered heights from GSPro's course file.
+   */
+  source: 'lidar-dem' | 'global-dem' | 'gspro-heights'
   sourceResolutionMeters: number
   runtimeSpacingYds: number
   interpolation: 'bilinear'

@@ -171,7 +171,8 @@ def main() -> int:
     dem_json = md / 'dem-utm-1m.json' if (md / 'dem-utm-1m.json').exists() else md / 'dem-utm16n-1m.json'
     dem_h, dem = load_grid(dem_json)
     terrain = build_terrain(frame, view, dem_h, dem, spacing)
-    terrain['note'] = f'{spacing:g}-yd course-area terrain from the 1 m DEM (course model).'
+    terrain['note'] = (f"{spacing:g}-yd course-area terrain from the {terrain['sourceResolutionMeters']:g} m "
+                       f"{(dem_h.get('provenance') or {}).get('dataset') or 'DEM'} (course model).")
 
     lat0, lon0 = frame[0], frame[1]
     out = {
@@ -188,7 +189,8 @@ def main() -> int:
             'license': 'ODbL-1.0',
             'note': "Whole-area map package: holes come from the player's GSPro course file on their PC.",
         },
-        **({'enrichment': {'schemaVersion': 'looper-course-enrichment-v1', 'terrainSpacingYds': spacing}} if lidar_woods else {}),
+        **({'enrichment': {'schemaVersion': 'looper-course-enrichment-v1', 'terrainSpacingYds': spacing,
+                           'trees': 'lidar'}} if lidar_woods else {}),
         'area': {
             'coordinateFrame': {'anchorLatLon': [round(lat0, 8), round(lon0, 8)], 'headingDegreesTrue': 0.0,
                                 'origin': 'area-centre'},

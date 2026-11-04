@@ -1019,7 +1019,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? "GSPro course-file heights (coarse)"
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? "30 m global terrain fitted to GSPro's heights (coarse)"
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
   const airAltitudeFt = ballTerrain?.elevationFt ?? null
   const airAltitudeSource = ballTerrain
@@ -1027,7 +1029,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? `GSPro course altitude${selectedCourse?.altitudeFt != null ? '' : ' unknown (sea level)'}`
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? `${selectedCourse?.name ?? 'Course'} 30 m global terrain`
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
   const surfaceOverride = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
