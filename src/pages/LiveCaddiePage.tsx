@@ -820,7 +820,9 @@ export default function LiveCaddiePage() {
   const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
     && liveSnapshot.ballLocalYds && hudShotOneYds != null
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
-  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds | null; note: string } | null>(null)
+  const [hudPin, setHudPin] = useState<{
+    key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
+  } | null>(null)
   useEffect(() => {
     if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
     let alive = true
@@ -828,7 +830,14 @@ export default function LiveCaddiePage() {
       courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
       roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
     }).then((found) => {
-      if (alive) setHudPin({ key: hudPinKey, pinLocal: found?.pinLocal ?? null, note: found?.note ?? 'native course not ready' })
+      if (alive) {
+        setHudPin({
+          key: hudPinKey,
+          pinLocal: found?.pinLocal ?? null,
+          note: found?.note ?? 'native course not ready',
+          aimPointsLocal: found?.aimPointsLocal ?? [],
+        })
+      }
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -843,6 +852,8 @@ export default function LiveCaddiePage() {
     ball: liveSnapshot?.ballSource === 'native-gkd' ? liveSnapshot.ballLocalYds ?? null : null,
     hudYds: hudShotOneYds,
     hudPin: hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null,
+    aimPoints: hudPin && hudPin.key === hudPinKey ? hudPin.aimPointsLocal : [],
+    hudLookupDone: Boolean(hudPin && hudPin.key === hudPinKey),
   })
   const resolvedPinX = pinCheck.pin?.[0] ?? null
   const resolvedPinY = pinCheck.pin?.[1] ?? null
