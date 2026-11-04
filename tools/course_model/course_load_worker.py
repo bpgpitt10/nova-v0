@@ -95,6 +95,17 @@ def commit_course(slug: str, name: str) -> None:
     raise RuntimeError('git push to the production branch failed')
 
 
+def readable_reason(lines: list[str], limit: int = 400) -> str:
+    """The line that says what went wrong, from its start (the page used to
+    show the tail end of a long ValueError, cut mid-way)."""
+    clean = [line.strip() for line in lines if line and line.strip()]
+    for line in reversed(clean):
+        if re.search(r"(\b\w*(Error|Exception)\b: |\bfailed\b)", line):
+            return line if len(line) <= limit else line[: limit - 1] + '…'
+    tail = ' | '.join(clean[-2:])
+    return tail if len(tail) <= limit else '…' + tail[-(limit - 1):]
+
+
 def work(request: dict, key: str) -> None:
     rid = request['id']
     patch = lambda **fields: rest('PATCH', f'course_load_requests?id=eq.{rid}', fields, key)  # noqa: E731
@@ -120,7 +131,7 @@ def work(request: dict, key: str) -> None:
     summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'lidar', 'publishedBytes')}
     if not report['ready']:
         failed = next((s for s in report['stages'] if not s['ok']), {})
-        tail = ' | '.join((failed.get('error') or [])[-3:])[-600:]
+        tail = readable_reason(failed.get('error') or [])
         patch(status='failed', finished_at=now(), report=summary,
               error=f"{failed.get('stage', 'load')} failed: {tail or 'see run log'}")
         return

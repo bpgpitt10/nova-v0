@@ -150,16 +150,17 @@ let searchChain: Promise<unknown> = Promise.resolve()
 let lastSearchAt = 0
 const searchCache = new Map<string, NominatimPlace[]>()
 
-const nominatimSearch = (q: string): Promise<NominatimPlace[]> => {
-  const cached = searchCache.get(q)
+const nominatimSearch = (q: string, extra: Record<string, string> = {}): Promise<NominatimPlace[]> => {
+  const cacheKey = `${q}|${JSON.stringify(extra)}`
+  const cached = searchCache.get(cacheKey)
   if (cached) return Promise.resolve(cached)
   const run = async () => {
-    const again = searchCache.get(q)
+    const again = searchCache.get(cacheKey)
     if (again) return again
     const wait = lastSearchAt + NOMINATIM_SPACING_MS - Date.now()
     if (wait > 0) await pause(wait)
     lastSearchAt = Date.now()
-    const params = new URLSearchParams({ format: 'jsonv2', q, limit: '15', addressdetails: '1' })
+    const params = new URLSearchParams({ format: 'jsonv2', q, limit: '15', addressdetails: '1', ...extra })
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: 'application/json' } })
       .catch(() => { throw new CourseSearchBusyError('OpenStreetMap search did not answer.') })
     if (response.status === 429 || response.status === 403 || response.status === 503) {
@@ -168,7 +169,7 @@ const nominatimSearch = (q: string): Promise<NominatimPlace[]> => {
     }
     if (!response.ok) throw new Error(`Course search failed (${response.status}).`)
     const places = (await response.json()) as NominatimPlace[]
-    searchCache.set(q, places)
+    searchCache.set(cacheKey, places)
     return places
   }
   const next = searchChain.then(run, run)
@@ -176,10 +177,7 @@ const nominatimSearch = (q: string): Promise<NominatimPlace[]> => {
   return next
 }
 
-export const searchGolfCourses = async (query: string): Promise<GolfCourseSearchResult[]> => {
-  const q = query.trim()
-  if (q.length < 3) return []
-  const places = await nominatimSearch(/golf/i.test(q) ? q : `${q} golf`)
+const golfCoursesIn = (places: readonly NominatimPlace[]): GolfCourseSearchResult[] => {
   const seen = new Set<string>()
   const out: GolfCourseSearchResult[] = []
   for (const place of places) {
@@ -197,6 +195,35 @@ export const searchGolfCourses = async (query: string): Promise<GolfCourseSearch
     })
   }
   return out
+}
+
+// About 6 km around a place: a resort's courses (Sand Valley: Mammoth Dunes).
+const NEARBY_DEG = 0.06
+
+export const searchGolfCourses = async (
+  query: string,
+  { nearby = true }: Readonly<{ nearby?: boolean }> = {},
+): Promise<GolfCourseSearchResult[]> => {
+  const q = query.trim()
+  if (q.length < 3) return []
+  const direct = golfCoursesIn(await nominatimSearch(/golf/i.test(q) ? q : `${q} golf`))
+  if (direct.length || !nearby) return direct
+  // Nothing tagged as a golf course by that name. OpenStreetMap often files a
+  // resort course under the resort, or under a slightly different name: find
+  // the place by name (any kind), then list the golf courses around it, best
+  // name match first.
+  const anyPlace = (await nominatimSearch(q.replace(/\bgolf\b/gi, ' ').replace(/\s+/g, ' ').trim() || q))
+    .find((p) => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)))
+  if (!anyPlace) return []
+  const lat = Number(anyPlace.lat), lon = Number(anyPlace.lon)
+  const around = golfCoursesIn(await nominatimSearch('golf course', {
+    viewbox: `${lon - NEARBY_DEG},${lat + NEARBY_DEG},${lon + NEARBY_DEG},${lat - NEARBY_DEG}`,
+    bounded: '1',
+  }))
+  return around
+    .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ result }) => result)
 }
 
 /** "Paynes Valley" -> also try "Payne's Valley", the way OpenStreetMap often spells it. */
@@ -232,7 +259,8 @@ export const findGolfCourseFor = async (
   let fallback: GolfCourseSearchResult | null = null
   for (const { query, byName } of queries) {
     // A busy search is not "no match": let the page say so.
-    const results = await searchGolfCourses(query).catch((error: unknown) => {
+    // Name searches only: a nearby course must never stand in for this one.
+    const results = await searchGolfCourses(query, { nearby: false }).catch((error: unknown) => {
       if (error instanceof CourseSearchBusyError) throw error
       return []
     })

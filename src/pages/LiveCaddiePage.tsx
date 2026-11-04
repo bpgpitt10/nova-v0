@@ -106,6 +106,7 @@ import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
 import { aimClickPoint } from '../liveCaddie/aimClickPoint'
+import { reconcilePinWithHud } from '../liveCaddie/pinReconcile'
 
 const AIM_WIDTH_FACT = /^(Fairway|Green) width: /
 
@@ -153,6 +154,9 @@ const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
   const corridor = fairwayCorridorAtForwardY(hole, landingY)
   return [corridor?.centerRightYds ?? 0, landingY]
 }
+
+// Last GSPro player-box Shot 1 distance per course|hole|round.
+const lastHudShotOneYds = new Map<string, number>()
 
 const estimatePinFromGsproDistance = (
   hole: CourseHoleGeometry,
@@ -740,6 +744,59 @@ export default function LiveCaddiePage() {
     // repeatedly cancel and restart the expensive decision worker.
   }, [nativeProvisionalTee, hole, courseId])
 
+  const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
+  const provisionalTeeRadiusYds = liveMatchesHole && liveSnapshot?.teePlacement === 'provisional'
+    && liveSnapshot.nextShotNumber === 1
+    ? measuredPreShotTee?.uncertaintyYds ?? liveSnapshot.teeUncertaintyYds ?? 50
+    : null
+  const effectiveDistanceToPinYds = liveMatchesHole
+    ? firstTeeDisplay.distanceToPinYds
+    : null
+  // GSPro's own "Shot 1  492.6 YDS" before the first shot (companion HUD read).
+  const hudReading = nativeObservations?.ocr?.hud?.status === 'READY'
+    && Math.abs(Date.now() - Date.parse(nativeObservations.observedAt ?? '')) < 30_000
+    ? nativeObservations.ocr.hud : null
+  const freshHudShotOneYds = liveMatchesHole && liveSnapshot?.nextShotNumber === 1
+    && hudReading?.shotNumber === 1 && hudReading.distanceToPinYds != null
+    ? hudReading.distanceToPinYds : null
+  // Keep the last reading for this tee: the player box can drop out of a
+  // screenshot for a moment, and the pin must not flip back and forth.
+  const hudTeeKey = liveMatchesHole && liveSnapshot?.nextShotNumber === 1
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}` : null
+  if (hudTeeKey && freshHudShotOneYds != null) lastHudShotOneYds.set(hudTeeKey, freshHudShotOneYds)
+  const hudShotOneYds = freshHudShotOneYds ?? (hudTeeKey ? lastHudShotOneYds.get(hudTeeKey) ?? null : null)
+  const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
+    && liveSnapshot.ballLocalYds && hudShotOneYds != null
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
+  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds | null; note: string } | null>(null)
+  useEffect(() => {
+    if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
+    let alive = true
+    void pinFromHudDistance({
+      courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
+      roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
+    }).then((found) => {
+      if (alive) setHudPin({ key: hudPinKey, pinLocal: found?.pinLocal ?? null, note: found?.note ?? 'native course not ready' })
+    })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hudPinKey])
+  // Before Shot 1 GSPro's player box is the truth about the pin in play: a
+  // pin that disagrees with it (RNK 3: 15 yd deep) is replaced.
+  const snapshotExactPin = liveMatchesHole && liveSnapshot && liveSnapshot.pinSource !== 'unavailable'
+    ? liveSnapshot.pinLocalYds ?? null : null
+  const pinCheck = reconcilePinWithHud({
+    snapshotPin: snapshotExactPin,
+    // Only against an exact ball: a provisional tee can be yards off itself.
+    ball: liveSnapshot?.ballSource === 'native-gkd' ? liveSnapshot.ballLocalYds ?? null : null,
+    hudYds: hudShotOneYds,
+    hudPin: hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null,
+  })
+  const resolvedPinX = pinCheck.pin?.[0] ?? null
+  const resolvedPinY = pinCheck.pin?.[1] ?? null
+  const resolvedExactPin = useMemo<CoursePointYds | null>(() =>
+    resolvedPinX != null && resolvedPinY != null ? [resolvedPinX, resolvedPinY] : null,
+  [resolvedPinX, resolvedPinY])
   useEffect(() => {
     if (!hole || !liveSnapshot || liveSnapshot.holeNumber !== hole.holeNumber) return
     // Keep browser GSPro authoritative on hole/shot identity, but give the
@@ -749,10 +806,9 @@ export default function LiveCaddiePage() {
       ?? (liveSnapshot.ballSource === 'cached-tee' ? hole.markers.tee : null)
     if (!nextBall) return
     // Exact pins: GSPro output_log layout, or the GKD pin slot (native beta).
-    const exactPin = liveSnapshot.pinSource !== 'unavailable'
-      ? liveSnapshot.pinLocalYds : null
+    const exactPin = resolvedExactPin
     const nextPin = exactPin ?? estimatePinFromGsproDistance(
-      hole, nextBall, firstTeeDisplay.distanceToPinYds,
+      hole, nextBall, hudShotOneYds ?? firstTeeDisplay.distanceToPinYds,
     )
     const baselineTarget = chooseLiveLandingTarget(hole, nextBall, nextPin)
     const refinedGreenTarget = greenDetail && exactPin
@@ -774,46 +830,12 @@ export default function LiveCaddiePage() {
     hole, liveSnapshot,
     measuredPreShotTee?.point[0], measuredPreShotTee?.point[1],
     measuredPreShotTee?.distanceYds,
-    greenDetail, liveSnapshot?.pinSource, liveSnapshot?.pinLocalYds,
+    greenDetail, resolvedExactPin, hudShotOneYds,
   ])
 
-  const liveMatchesHole = Boolean(liveSnapshot?.holeNumber === holeNumber)
-  const provisionalTeeRadiusYds = liveMatchesHole && liveSnapshot?.teePlacement === 'provisional'
-    && liveSnapshot.nextShotNumber === 1
-    ? measuredPreShotTee?.uncertaintyYds ?? liveSnapshot.teeUncertaintyYds ?? 50
-    : null
-  const effectiveDistanceToPinYds = liveMatchesHole
-    ? firstTeeDisplay.distanceToPinYds
-    : null
-  // GSPro's own "Shot 1  492.6 YDS" before the first shot (companion HUD read).
-  const hudReading = nativeObservations?.ocr?.hud?.status === 'READY'
-    && Math.abs(Date.now() - Date.parse(nativeObservations.observedAt ?? '')) < 30_000
-    ? nativeObservations.ocr.hud : null
-  const hudShotOneYds = liveMatchesHole && liveSnapshot?.nextShotNumber === 1
-    && hudReading?.shotNumber === 1 && hudReading.distanceToPinYds != null
-    ? hudReading.distanceToPinYds : null
-  const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
-    && liveSnapshot.ballLocalYds && hudShotOneYds != null
-    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
-  const [hudPin, setHudPin] = useState<{ key: string; pinLocal: CoursePointYds | null; note: string } | null>(null)
-  useEffect(() => {
-    if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
-    let alive = true
-    void pinFromHudDistance({
-      courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
-      roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
-    }).then((found) => {
-      if (alive) setHudPin({ key: hudPinKey, pinLocal: found?.pinLocal ?? null, note: found?.note ?? 'native course not ready' })
-    })
-    return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hudPinKey])
-  const trustedLivePin = liveMatchesHole
-    && liveSnapshot != null && liveSnapshot.pinSource !== 'unavailable'
-    ? liveSnapshot.pinLocalYds ?? null
-    : hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal ?? null : null
+  const trustedLivePin = resolvedExactPin
   const pinEstimate = hole
-    ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, effectiveDistanceToPinYds)
+    ? trustedLivePin ?? estimatePinFromGsproDistance(hole, ball, hudShotOneYds ?? effectiveDistanceToPinYds)
     : null
   // Clubs that can't reach the green plan around the fairway centre at their
   // own carry toward this pin (the engine decides per club).
@@ -1745,6 +1767,7 @@ export default function LiveCaddiePage() {
               ? `${nativeObservations.ocr.hud.status}${nativeObservations.ocr.hud.shotNumber != null ? ` · Shot ${nativeObservations.ocr.hud.shotNumber}` : ''}${nativeObservations.ocr.hud.distanceToPinYds != null ? ` · ${nativeObservations.ocr.hud.distanceToPinYds} yd` : ''} · read "${nativeObservations.ocr.hud.rawText ?? ''}"`
               : 'not read (companion older than aim-click.5?)'}
             {hudPin ? ` · ${hudPin.note}` : ''}
+            {pinCheck.note ? ` · ${pinCheck.note}` : ''}
           </div>
         ) : null}
         {showDiagnostics && aimResult ? (

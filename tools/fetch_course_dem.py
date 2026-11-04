@@ -19,6 +19,8 @@ import argparse
 import json
 import math
 import shutil
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -35,6 +37,10 @@ USGS_3DEP_EXPORT = (
 DEFAULT_RESOLUTION_METERS = 1.0
 DEFAULT_MARGIN_METERS = 40.0
 MAX_IMAGE_DIMENSION = 7900
+
+
+DEM_FETCH_ATTEMPTS = 4
+DEM_RETRY_WAIT_S = 20.0
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -140,12 +146,22 @@ def fetch_usgs_3dep(
     url = USGS_3DEP_EXPORT + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(url, headers={"User-Agent": "LooperCourseImporter/1.0"})
     output.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with urllib.request.urlopen(request, timeout=180) as response:
-            payload = response.read()
-            content_type = response.headers.get("Content-Type", "")
-    except Exception as exc:
-        raise SystemExit(f"USGS 3DEP DEM fetch failed: {exc}") from exc
+    # USGS's export service has brief outages (Wynn, 11/3: 502 Bad Gateway).
+    # Retry server-side errors and timeouts a few times before giving up.
+    payload, content_type = b"", ""
+    for attempt in range(1, DEM_FETCH_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response:
+                payload = response.read()
+                content_type = response.headers.get("Content-Type", "")
+            break
+        except Exception as exc:
+            retryable = not isinstance(exc, urllib.error.HTTPError) or exc.code >= 500 or exc.code == 429
+            if not retryable or attempt == DEM_FETCH_ATTEMPTS:
+                raise SystemExit(f"USGS 3DEP DEM fetch failed after {attempt} tries: {exc}") from exc
+            wait = DEM_RETRY_WAIT_S * attempt
+            print(f"USGS 3DEP DEM fetch failed ({exc}); retrying in {wait:.0f} s", flush=True)
+            time.sleep(wait)
 
     validate_tiff_payload(payload, "USGS 3DEP", content_type)
     output.write_bytes(payload)
