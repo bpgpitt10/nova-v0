@@ -439,7 +439,7 @@ def _diagnostics_dir() -> Path | None:
 
 
 def _save_wind_diagnostic(report: dict) -> str | None:
-    """When the speed can't be read, keep the wind box as GSPro drew it (top
+    """When the speed can't be read (or reads 0), keep the wind box as GSPro drew it (top
     centre of the window only: HUD pixels, no paths) so it can be checked.
     At most one every 30 s; the newest few are kept. Returns the file name."""
     global _last_diagnostic_at
@@ -552,7 +552,10 @@ def read_wind_from_capture(report: dict) -> dict:
             np.frombuffer(report["_private_bgra"], dtype=np.uint8).reshape(
                 int(report["windowHeight"]), int(report["windowWidth"]), 4)[:, :, :3]) is not None,
     }
-    if parsed.get("speedMph") is None:
+    # Also keep the box when it reads exactly 0: on Royal New Kent (11/3) the
+    # wind read 0 where GSPro showed ~10 MPH, most likely a clipped leading
+    # "1". A real calm only costs one small PNG every 30 s.
+    if parsed.get("speedMph") is None or parsed.get("speedMph") == 0:
         sc = regions["speed"][1]
         parsed["note"] = (parsed.get("note") or "") + (
             f" Speed crop x {sc['x']} w {sc['width']} of {report.get('windowWidth')}"

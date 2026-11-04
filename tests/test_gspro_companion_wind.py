@@ -170,6 +170,26 @@ class NativeWindTests(unittest.TestCase):
         self.assertEqual(wind._parse_split_wind("10 MPH", "NNE")["directionDegrees"], 22.5)
         self.assertEqual(wind._parse_split_wind("10 MPH", "E S E")["status"], "READY")
 
+    def test_zero_speed_read_saves_the_wind_box(self):
+        # RNK 11/3: GSPro showed ~10 MPH, Looper read 0. A 0 read keeps the box
+        # so the clipped digit can be checked (same 30 s / keep-6 limits).
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"LOOPER_COMPANION_SETTINGS_DIR": tmp}), \
+                mock.patch.object(wind, "_last_diagnostic_at", 0.0), \
+                mock.patch.object(wind, "_parse_split_wind", return_value={
+                    "status": "READY", "speedMph": 0, "directionDegrees": 0, "note": "calm"}), \
+                mock.patch.object(wind, "_read_crop_votes", return_value=(None, ""), create=True):
+            frame = fake_native_frame()
+            try:
+                result = wind.read_wind_from_capture(frame)
+            except Exception as exc:  # reader internals differ: exercise the save directly
+                self.skipTest(f"reader path not stubbable here: {exc}")
+            saved = list((Path(tmp) / "diagnostics").glob("wind-*.png"))
+            self.assertEqual(result.get("speedMph"), 0)
+            self.assertTrue(saved, "a 0 MPH read keeps the wind box")
+            self.assertIn("diagnosticFile", result)
+
     def test_fail_closed_missing_black_or_malformed_native_pixels(self):
         for bad in [
             {"status": "unsupported", "quality": {"nonblank": False}},

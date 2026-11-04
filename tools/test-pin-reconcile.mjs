@@ -34,7 +34,23 @@ try {
   // No Looper pin yet, HUD pin found: use it, not an override.
   r = reconcilePinWithHud({ snapshotPin: null, ball, hudYds: 145, hudPin: [1, 145] })
   assert.deepEqual(r.pin, [1, 145]); assert.equal(r.overridden, false)
-  console.log('PASS: GSPro distance overrides a stale pin before Shot 1.')
+  // Dogleg (RNK 4): GSPro's 371 follows tee -> aim point -> pin; the straight line is ~342.
+  // The correct pin must be kept, not "29 yd off".
+  {
+    const aim = [0, 250]
+    const pin = [-110, 357]
+    const route = Math.hypot(...aim) + Math.hypot(pin[0] - aim[0], pin[1] - aim[1])
+    r = reconcilePinWithHud({ snapshotPin: pin, ball, hudYds: route, hudPin: pin, aimPoints: [aim] })
+    assert.deepEqual(r.pin, pin); assert.equal(r.overridden, false, 'route distance matches')
+    // Same reading before the course-file lookup (with the aim route) has finished: keep Looper's pin.
+    r = reconcilePinWithHud({ snapshotPin: pin, ball, hudYds: route, hudPin: null, aimPoints: [], hudLookupDone: false })
+    assert.deepEqual(r.pin, pin); assert.equal(r.overridden, false)
+    // A genuinely wrong pin on the dogleg is still replaced by the one at GSPro's route distance.
+    const deep = [-110, 380]
+    r = reconcilePinWithHud({ snapshotPin: deep, ball, hudYds: route, hudPin: pin, aimPoints: [aim] })
+    assert.deepEqual(r.pin, pin); assert.equal(r.overridden, true)
+  }
+  console.log('PASS: GSPro distance overrides a stale pin before Shot 1; doglegs use the aim route.')
 } finally {
   await server?.close()
 }

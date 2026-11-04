@@ -135,6 +135,9 @@ jobs:
       - name: GSPro penalty areas and OB from the course file
         run: node tools/test-gkd-hazards.mjs
 
+      - name: OB as stroke and distance; OB clipped, safe and fast
+        run: node tools/test-ob-stroke-distance.mjs
+
       - name: Green anchored to GSPro's green
         run: node tools/test-green-anchor.mjs
 
