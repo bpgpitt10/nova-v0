@@ -37,9 +37,11 @@ import { parseNativeRegistration, type NativeRegistration } from './nativeRegist
 import type { AutoRegistrationResult } from './nativeRegistrationAuto'
 
 /**
- * Native positions (beta): browser runtime.
+ * Native positions: browser runtime (the "Course match" line on Start a Round).
  *
- * - Off unless the golfer turns it on (Live Caddie toggle, or ?native=1).
+ * - Always on (11/4: the main positioning path, no longer a beta toggle).
+ *   ?native=0 turns it off for troubleshooting and is remembered; ?native=1
+ *   turns it back on.
  * - Reads the course's GKD from the GSPro course folder the golfer grants
  *   (read-only, stays on this machine), and only activates when its layout
  *   fingerprint matches the published registration for that course.
@@ -48,7 +50,9 @@ import type { AutoRegistrationResult } from './nativeRegistrationAuto'
  */
 
 export const NATIVE_POSITIONS_CHANGED_EVENT = 'looper:native-positions-changed'
+// Holds '0' only when turned off with ?native=0 (the old beta stored '1' for on).
 const STORAGE_KEY = 'looper.native-positions-beta.v1'
+const OFF = '0'
 const DB_NAME = 'looper-native-course'
 const DB_STORE = 'handles'
 const DB_KEY = 'gspro-courses-folder'
@@ -154,21 +158,21 @@ export const isNativePositionsSupported = () =>
 export const isNativePositionsEnabled = (): boolean => {
   if (typeof window === 'undefined') return false
   try {
-    // ?native=1 / ?native=0 also remembers the choice, so it survives the
-    // app's own navigation (Round Setup -> Live Caddie drops the query).
+    // On unless turned off with ?native=0. The URL choice is remembered, so it
+    // survives the app's own navigation (Round Setup -> Live Caddie drops the query).
     const param = new URLSearchParams(window.location.search).get('native')
     if (param === '1' || param === '0') {
       try {
-        if (param === '1') window.localStorage.setItem(STORAGE_KEY, '1')
+        if (param === '0') window.localStorage.setItem(STORAGE_KEY, OFF)
         else window.localStorage.removeItem(STORAGE_KEY)
       } catch {
         // storage blocked: the URL still decides for this page
       }
       return param === '1'
     }
-    return window.localStorage.getItem(STORAGE_KEY) === '1'
+    return window.localStorage.getItem(STORAGE_KEY) !== OFF
   } catch {
-    return false
+    return true
   }
 }
 
@@ -178,8 +182,8 @@ export const invalidateNativeCourseContext = () => {
 
 export const setNativePositionsEnabled = (enabled: boolean) => {
   try {
-    if (enabled) window.localStorage.setItem(STORAGE_KEY, '1')
-    else window.localStorage.removeItem(STORAGE_KEY)
+    if (enabled) window.localStorage.removeItem(STORAGE_KEY)
+    else window.localStorage.setItem(STORAGE_KEY, OFF)
   } catch {
     // Storage blocked: the toggle still applies for this page via the URL param.
   }
@@ -759,7 +763,7 @@ export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: st
   })
 }
 
-/** Live-path helper: the context when native positions are on and verified, else null. */
+/** Live-path helper: the context when native positions are verified (and not turned off), else null. */
 export const nativeCourseContextForLive = async (
   courseId: CourseId | null,
   courseKey: string | null,
