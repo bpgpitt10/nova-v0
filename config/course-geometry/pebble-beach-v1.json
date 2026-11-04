@@ -5,8 +5,7 @@
   "location": "Del Monte Forest, California",
   "slug": "pebble-beach",
   "gsproAliases": [
-    "Pebble Beach Golf Course",
-    "mammoth_dunes_gsp"
+    "Pebble Beach Golf Course"
   ],
   "osmCourseElement": {
     "type": "relation",

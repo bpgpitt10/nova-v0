@@ -4,6 +4,7 @@ import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
   CourseSearchBusyError,
+  courseNameMatchScore,
   courseSlugFromName,
   findGolfCourseFor,
   listCourseLoads,
@@ -282,7 +283,14 @@ export default function LoadCoursePage() {
             <button type="button" className="load-course-unlink" onClick={() => setLinkedGspro(null)}>Don't link</button>
           </p>
         ) : null}
-        <form className="load-course-search" onSubmit={(event) => { event.preventDefault(); void runSearch() }}>
+        <form className="load-course-search" onSubmit={(event) => {
+          event.preventDefault()
+          // A link to a GSPro course is for finding THAT course. A search for
+          // something else drops it: on 11/3 a Mammoth Dunes link stuck and a
+          // later Pebble Beach load was linked to Mammoth Dunes.
+          if (linkedGspro && courseNameMatchScore(query, linkedGspro.courseName) < 0.3) setLinkedGspro(null)
+          void runSearch()
+        }}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. Erin Hills, Pinehurst No. 2" />
           <button type="submit" disabled={searching || query.trim().length < 3}>{searching ? 'Searching…' : 'Search'}</button>
         </form>
@@ -300,6 +308,8 @@ export default function LoadCoursePage() {
                 {rowAction(slug, key, () => {
                   void queue(key, { name: result.name, location: result.location, lat: result.lat, lon: result.lon,
                     osmType: result.osmType, osmId: result.osmId, gsproCourseKey: linkedGspro?.courseKey ?? null })
+                  // One link, one load.
+                  setLinkedGspro(null)
                 })}
               </li>
             )
