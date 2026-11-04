@@ -1,7 +1,7 @@
 import { effectiveGreenCenter, nativeHole, sha256Hex, type NativeCourseLayout, type NativeXYZ } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
-import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
-import { fitNativeRegistration, registrationFromGreens, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
+import { groundOffsetMeters, nativeWorldToLatLon, registrationForHole } from './nativeRegistration'
+import { fitHoleGroups, fitNativeRegistration, registrationFromGreens, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
 import { fitGreens, type Xy } from '../courseLoading/courseGeometryMatch'
 import { parsePackageTerrain, type RawTerrain } from './routePackagedCourseLoader'
 import type { CourseTerrainGrid } from './types'
@@ -48,6 +48,8 @@ export type AutoRegistrationResult = Readonly<{
   usedHazardPoints: boolean
   /** Placed from the greens alone: they line up to a few metres but the terrain doesn't match. */
   greensOnly: boolean
+  /** Holes placed on their own because GSPro's scene moved them (Kiawah's back nine). */
+  movedHoles: readonly number[]
   /** Diagnostic when greens don't pair by hole number: the best fit ignoring
    * hole numbers, and which GSPro hole's green landed on which map hole's. */
   unordered: Readonly<{
@@ -76,6 +78,8 @@ const HAZARD_POINTS_BELOW = 150
 /** Greens this close (rms, nearly true scale) place the course on their own when the height fit fails. */
 const GREENS_ONLY_RMS_M = 6
 const GREENS_ONLY_SCALE = 0.03
+/** Each group of a split scene must line up this well, at true scale. */
+const PIECE_RMS_M = 6
 
 /** Best fit of GSPro's greens onto the map's, ignoring hole numbers (diagnostic). */
 export const unorderedGreenFit = (layout: Pick<NativeCourseLayout, 'holes'>, mapped: ReadonlyMap<number, readonly [number, number]>) => {
@@ -230,7 +234,7 @@ export const fitRegistrationFromPackage = async ({
   const pkg = packageJson as RawPackage
   const holes: Array<{ frame: NativeHoleFrame; terrain: CourseTerrainGrid }> = []
   const frames: Record<string, NativeHoleFrame> = {}
-  const greens: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
+  const greens: Array<{ hole: number; world: { x: number; z: number }; latLon: readonly [number, number] }> = []
   const mappedGreens = new Map<number, readonly [number, number]>()
   for (const [key, raw] of Object.entries(pkg.holes ?? {})) {
     const cf = raw.coordinateFrame
@@ -246,7 +250,7 @@ export const fitRegistrationFromPackage = async ({
     if (green) mappedGreens.set(Number(key), green)
     const gkdHole = nativeHole(layout, Number(key))
     const centre = gkdHole ? effectiveGreenCenter(gkdHole) : null
-    if (green && centre) greens.push({ world: centre.point, latLon: green })
+    if (green && centre) greens.push({ hole: Number(key), world: centre.point, latLon: green })
   }
   // Heights: pins, plus green centres the designer actually set (a replaced
   // centre is the pins' own average, so it adds nothing).
@@ -303,10 +307,49 @@ export const fitRegistrationFromPackage = async ({
     registration = registrationFromGreens(fitInput)
     greensOnly = registration != null
   }
+  // Still nothing, and the greens fit as separate groups at the same hole
+  // numbers (a designer moved part of the course): place each group on its own.
+  const needsDiagnosis = !registration && (!similarity || similarity.rmsM > ROTATION_TRUST_RMS_M)
+  const unordered = needsDiagnosis ? unorderedGreenFit(layout, mappedGreens) : null
+  let movedHoles: number[] = []
+  if (!registration && unordered?.rest && unordered.holes.every(([g, m]) => g === m)
+    && unordered.paired >= 6 && unordered.rmsM <= PIECE_RMS_M && Math.abs(unordered.scale - 1) <= GREENS_ONLY_SCALE
+    && unordered.rest.holes.length >= 3 && unordered.rest.rmsM <= PIECE_RMS_M
+    && Math.abs(unordered.rest.scale - 1) <= GREENS_ONLY_SCALE) {
+    const groupInput = (holes: readonly number[]) => {
+      const set = new Set(holes)
+      const groupGreens = greens.filter((g) => set.has(g.hole))
+      const plainFit = greenSimilarity(groupGreens)
+      const flippedFit = greenSimilarity(groupGreens, true)
+      const flip = flippedFit != null && (plainFit == null || flippedFit.rmsM < plainFit.rmsM / 3)
+      const fit = flip ? flippedFit : plainFit
+      const groupPoints = layout.holes.filter((h) => set.has(h.hole)).flatMap((h) => {
+        const centre = effectiveGreenCenter(h)
+        return [...h.pins, ...(centre && !centre.replaced ? [centre.point] : [])]
+      })
+      return {
+        holes,
+        input: {
+          ...fitInput,
+          greens: groupGreens,
+          points: groupPoints,
+          rotationDeg: fit?.rotationDeg ?? 0,
+          scale: fit?.scale ?? 1,
+          ...(flip ? { mirrored: true } : { mirrored: false }),
+        },
+      }
+    }
+    const first = unordered.holes.map(([g]) => g)
+    const pieces = fitHoleGroups([groupInput(first), groupInput(unordered.rest.holes)])
+    if (pieces) {
+      registration = pieces
+      movedHoles = [...unordered.rest.holes]
+    }
+  }
   let within = 0
   if (registration) {
     for (const g of greens) {
-      const [lat, lon] = nativeWorldToLatLon(registration, g.world)
+      const [lat, lon] = nativeWorldToLatLon(registrationForHole(registration, g.hole), g.world)
       const m = Math.hypot((lat - g.latLon[0]) * 111_320, (lon - g.latLon[1]) * 111_320 * Math.cos(lat * Math.PI / 180))
       if (m <= 25) within += 1
     }
@@ -323,7 +366,8 @@ export const fitRegistrationFromPackage = async ({
     greenCentresReplaced,
     usedHazardPoints,
     greensOnly,
-    unordered: !registration && (!similarity || similarity.rmsM > ROTATION_TRUST_RMS_M) ? unorderedGreenFit(layout, mappedGreens) : null,
+    movedHoles,
+    unordered: registration ? null : unordered,
     registration: registration && sameCourse ? registration : null,
   }
 }
