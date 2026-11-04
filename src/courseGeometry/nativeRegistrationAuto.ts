@@ -1,7 +1,8 @@
 import { effectiveGreenCenter, nativeHole, sha256Hex, type NativeCourseLayout, type NativeXYZ } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
 import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
-import { fitNativeRegistration, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
+import { fitNativeRegistration, registrationFromGreens, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
+import { fitGreens, type Xy } from '../courseLoading/courseGeometryMatch'
 import { parsePackageTerrain, type RawTerrain } from './routePackagedCourseLoader'
 import type { CourseTerrainGrid } from './types'
 
@@ -45,6 +46,20 @@ export type AutoRegistrationResult = Readonly<{
   greenCentresReplaced: number
   /** The height fit only passed with GSPro's penalty-area outlines added as extra points. */
   usedHazardPoints: boolean
+  /** Placed from the greens alone: they line up to a few metres but the terrain doesn't match. */
+  greensOnly: boolean
+  /** Diagnostic when greens don't pair by hole number: the best fit ignoring
+   * hole numbers, and which GSPro hole's green landed on which map hole's. */
+  unordered: Readonly<{
+    paired: number
+    gkdGreens: number
+    rmsM: number
+    rotationDeg: number
+    scale: number
+    mirrored: boolean
+    /** [GSPro hole, map hole] for each paired green. */
+    holes: ReadonlyArray<readonly [number, number]>
+  }> | null
   registration: NativeRegistration | null
 }>
 
@@ -54,6 +69,30 @@ const SCALE_MIN_DEVIATION = 0.003
 const ROTATION_TRUST_RMS_M = 25
 /** Retry the height fit with penalty-area outlines when there are fewer height points than this. */
 const HAZARD_POINTS_BELOW = 150
+/** Greens this close (rms, nearly true scale) place the course on their own when the height fit fails. */
+const GREENS_ONLY_RMS_M = 6
+const GREENS_ONLY_SCALE = 0.03
+
+/** Best fit of GSPro's greens onto the map's, ignoring hole numbers (diagnostic). */
+export const unorderedGreenFit = (layout: Pick<NativeCourseLayout, 'holes'>, mapped: ReadonlyMap<number, readonly [number, number]>) => {
+  const gkd: Array<{ hole: number; p: Xy }> = []
+  for (const h of layout.holes) {
+    const centre = effectiveGreenCenter(h)
+    if (centre) gkd.push({ hole: h.hole, p: [centre.point.x, centre.point.z] })
+  }
+  const entries = [...mapped.entries()]
+  if (gkd.length < 3 || entries.length < 3) return null
+  const lat0 = entries.reduce((s, [, g]) => s + g[0], 0) / entries.length
+  const lon0 = entries.reduce((s, [, g]) => s + g[1], 0) / entries.length
+  const map: Xy[] = entries.map(([, g]) => groundOffsetMeters(lat0, lon0, g[0], g[1]))
+  const fit = fitGreens(gkd.map((g) => g.p), map)
+  if (!fit) return null
+  return {
+    paired: fit.paired, gkdGreens: fit.gkdGreens, rmsM: fit.rmsM, rotationDeg: fit.rotationDeg,
+    scale: fit.scale, mirrored: fit.mirrored,
+    holes: (fit.pairs ?? []).map(([i, j]) => [gkd[i].hole, entries[j][0]] as const).sort((a, b) => a[0] - b[0]),
+  }
+}
 
 export const greenSimilarity = (
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>,
@@ -197,10 +236,20 @@ export const fitRegistrationFromPackage = async ({
       usedHazardPoints = true
     }
   }
+  // Greens line up to a few metres but the heights don't (terrain older than
+  // GSPro's course): place it from the greens.
+  let registration = fit.registration
+  let greensOnly = false
+  const minGreens = Math.max(6, Math.ceil((2 / 3) * layout.holes.length))
+  if (!registration && similarity && similarity.rmsM <= GREENS_ONLY_RMS_M
+    && Math.abs(similarity.scale - 1) <= GREENS_ONLY_SCALE && greens.length >= minGreens) {
+    registration = registrationFromGreens(fitInput)
+    greensOnly = registration != null
+  }
   let within = 0
-  if (fit.registration) {
+  if (registration) {
     for (const g of greens) {
-      const [lat, lon] = nativeWorldToLatLon(fit.registration, g.world)
+      const [lat, lon] = nativeWorldToLatLon(registration, g.world)
       const m = Math.hypot((lat - g.latLon[0]) * 111_320, (lon - g.latLon[1]) * 111_320 * Math.cos(lat * Math.PI / 180))
       if (m <= 25) within += 1
     }
@@ -216,6 +265,8 @@ export const fitRegistrationFromPackage = async ({
     holeShift: similarity && similarity.rmsM > ROTATION_TRUST_RMS_M ? bestHoleShift(layout, mappedGreens) : null,
     greenCentresReplaced,
     usedHazardPoints,
-    registration: fit.registration && sameCourse ? fit.registration : null,
+    greensOnly,
+    unordered: !registration && (!similarity || similarity.rmsM > ROTATION_TRUST_RMS_M) ? unorderedGreenFit(layout, mappedGreens) : null,
+    registration: registration && sameCourse ? registration : null,
   }
 }

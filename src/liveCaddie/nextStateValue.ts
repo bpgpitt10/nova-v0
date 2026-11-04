@@ -19,6 +19,7 @@ export type NextStateValueAssumption =
   | 'water-relief-at-landing-distance'
   | 'penalty-relief-at-landing-distance'
   | 'stroke-and-distance'
+  | 'ob-drop-two-strokes'
 
 export type NextStateValueResult = {
   modelId: 'broadie-2012-next-state-v1'
@@ -172,20 +173,6 @@ const conditionForState = (
     return { condition: 'recovery', assumption: 'none', note: null }
   }
 
-  // Out of bounds: one stroke, replayed from where it was played (the state's
-  // distance is already the replay distance), from that lie.
-  if (state.outOfBounds) {
-    const from = state.replaySurface
-    const condition: NextStateValueCondition = from === 'fairway' || from === 'tee' || from === 'green'
-      ? 'fairway'
-      : from === 'bunker' ? 'sand' : from === 'deep-rough' ? 'recovery' : 'rough'
-    return {
-      condition,
-      assumption: 'stroke-and-distance',
-      note: 'Out of bounds: stroke and distance (one penalty stroke, replayed from the same spot).',
-    }
-  }
-
   const surface: CourseSurfaceClassification = state.surface
   if (surface === 'green') return { condition: 'green', assumption: 'none', note: null }
   if (surface === 'fairway' || surface === 'tee') {
@@ -226,6 +213,48 @@ const conditionForState = (
   }
 }
 
+const offGreenValue = (condition: Exclude<NextStateValueCondition, 'green'>, distanceYds: number) =>
+  interpolate(distanceYds, BROADIE_2012_OFF_GREEN_TABLE.map((row) => ({ x: row.distanceYds, y: row[condition] })))
+
+const replayCondition = (from: CourseSurfaceClassification | null | undefined): Exclude<NextStateValueCondition, 'green'> =>
+  from === 'fairway' || from === 'tee' || from === 'green'
+    ? 'fairway'
+    : from === 'bunker' ? 'sand' : from === 'deep-rough' ? 'recovery' : 'rough'
+
+/**
+ * Out of bounds: GSPro lets the player rehit or drop, as in real golf, and a
+ * player takes the cheaper one. Rehit: one stroke, replayed from the same
+ * spot and lie (stroke and distance). Drop: two strokes, from the fairway (or
+ * rough on a hole with no fairway) at the distance where the ball went out
+ * (the Rules' local rule E-5).
+ */
+const outOfBoundsValue = (state: DecisionLandingState, replayDistanceYds: number): NextStateValueResult => {
+  const rehitCondition = replayCondition(state.replaySurface)
+  const rehit = offGreenValue(rehitCondition, replayDistanceYds)
+  const dropDistance = state.dropDistanceToPinYds
+  const dropCondition = state.dropSurface ?? 'rough'
+  const drop = typeof dropDistance === 'number' && Number.isFinite(dropDistance)
+    ? offGreenValue(dropCondition, dropDistance)
+    : null
+  const useDrop = drop != null && drop.value + 2 < rehit.value + 1
+  const chosen = useDrop ? drop! : rehit
+  return {
+    modelId: 'broadie-2012-next-state-v1',
+    expectedStrokes: chosen.value + (useDrop ? 2 : 1),
+    baseExpectedStrokes: chosen.value,
+    penaltyStrokes: useDrop ? 2 : 1,
+    condition: useDrop ? dropCondition : rehitCondition,
+    source: 'broadie-2012-table-b1',
+    distanceToPinYds: useDrop ? dropDistance! : replayDistanceYds,
+    lowerKnot: chosen.lower,
+    upperKnot: chosen.upper,
+    assumption: useDrop ? 'ob-drop-two-strokes' : 'stroke-and-distance',
+    note: useDrop
+      ? `Out of bounds: drop is cheaper (two strokes, ${dropCondition} at ${Math.round(dropDistance!)} yd) than rehitting.`
+      : 'Out of bounds: rehit is cheaper (one stroke, replayed from the same spot) than the two-stroke drop.',
+  }
+}
+
 export const evaluateDecisionLandingStateValue = (
   state: DecisionLandingState,
 ): NextStateValueResult => {
@@ -245,6 +274,8 @@ export const evaluateDecisionLandingStateValue = (
       note: 'Pin distance is unavailable; next-state value cannot be computed.',
     }
   }
+
+  if (state.outOfBounds) return outOfBoundsValue(state, distanceToPinYds)
 
   const mapping = conditionForState(state)
   const penaltyStrokes = state.penaltyStrokeCount

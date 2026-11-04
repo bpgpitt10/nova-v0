@@ -83,6 +83,25 @@ assert.equal(match?.osmId, 105, 'found without the designer tag')
   assert.equal(await findGolfCourseFor('Mammoth Dunes', ''), null)
 }
 
+// 8. Search box: "bellerive" finds Bellerive Country Club (Nominatim only
+// finds it by its full name; "bellerive golf" returns a French course on a
+// street called Rue du Golf), and it ranks first.
+{
+  const asked = []
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams.get('q').toLowerCase()
+    asked.push(q)
+    let hits = []
+    if (q === 'bellerive golf') hits = [place('Golf du Sporting Club de Vichy', 301, 'Bellerive-sur-Allier')]
+    if (q === 'bellerive country club') hits = [place('Bellerive Country Club', 302, 'Town and Country')]
+    return new Response(JSON.stringify(hits), { headers: { 'Content-Type': 'application/json' } })
+  }
+  const found = await searchGolfCourses('bellerive')
+  assert.equal(found[0]?.osmId, 302, 'Bellerive Country Club first')
+  assert.equal(found.length, 2)
+  assert.ok(!asked.includes('bellerive golf club'), 'stops once a name clearly matches')
+}
+
 // 6. OpenStreetMap refusing (429) is reported as busy, not as "no match".
 globalThis.fetch = async () => new Response('Too Many Requests', { status: 429 })
 await assert.rejects(findGolfCourseFor('Bethpage Black', 'Farmingdale, NY'), (error) => error instanceof CourseSearchBusyError)

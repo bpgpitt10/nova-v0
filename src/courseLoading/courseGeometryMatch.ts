@@ -22,6 +22,8 @@ export type GreenFit = Readonly<{
   scale: number
   rotationDeg: number
   mirrored: boolean
+  /** Final pairs: [index into the GSPro greens, index into the map greens]. */
+  pairs?: ReadonlyArray<readonly [number, number]>
 }>
 
 const PAIR_GATE_FINAL_M = 25
@@ -120,7 +122,8 @@ export const fitGreens = (gkd: readonly Xy[], map: readonly Xy[]): GreenFit | nu
         }
         const moved = pts.map((p) => apply(t, p))
         let sq = 0, paired = 0
-        for (const [i, j] of mutualPairs(moved, map, PAIR_GATE_FINAL_M)) {
+        const finalPairs = mutualPairs(moved, map, PAIR_GATE_FINAL_M)
+        for (const [i, j] of finalPairs) {
           sq += (moved[i][0] - map[j][0]) ** 2 + (moved[i][1] - map[j][1]) ** 2
           paired += 1
         }
@@ -136,6 +139,7 @@ export const fitGreens = (gkd: readonly Xy[], map: readonly Xy[]): GreenFit | nu
           scale: Math.hypot(t.c, t.s),
           rotationDeg: (Math.atan2(t.s, t.c) * 180) / Math.PI,
           mirrored,
+          pairs: finalPairs,
         }
         if (!best || fit.cost < best.cost) best = fit
       }
@@ -144,7 +148,7 @@ export const fitGreens = (gkd: readonly Xy[], map: readonly Xy[]): GreenFit | nu
   if (!best) return null
   return {
     rmsM: best.rmsM, paired: best.paired, gkdGreens: best.gkdGreens,
-    scale: best.scale, rotationDeg: best.rotationDeg, mirrored: best.mirrored,
+    scale: best.scale, rotationDeg: best.rotationDeg, mirrored: best.mirrored, pairs: best.pairs,
   }
 }
 
