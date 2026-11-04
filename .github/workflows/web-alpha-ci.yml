@@ -149,6 +149,9 @@ jobs:
       - name: Unmapped ground valued by landcover; next-state proofs
         run: node tools/test-next-state-unknown.mjs
 
+      - name: Roll by surface and slope at touchdown
+        run: node tools/test-roll-model.mjs
+
       - name: Bag is range data only
         run: node tools/test-range-only-bag.mjs
 

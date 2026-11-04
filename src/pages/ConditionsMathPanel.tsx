@@ -212,7 +212,7 @@ export default function ConditionsMathPanel({
               </div>
               <div>
                 <span>Total</span>
-                <strong>{evaluation ? `${Math.round(evaluation.modeledTotalYds)} yd` : '—'}</strong>
+                <strong>{evaluation ? `${Math.round(evaluation.expectedTotalYds ?? evaluation.modeledTotalYds)} yd` : '—'}</strong>
               </div>
               <div>
                 <span>Expected finish</span>

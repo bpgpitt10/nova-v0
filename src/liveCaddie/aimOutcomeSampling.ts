@@ -24,8 +24,10 @@ export type AimSurfaceDistribution = {
 export type ModeledAimSample = {
   /** Airborne touchdown point. */
   carryLanding: CoursePointYds
-  /** Resting/final position after historical rollout. */
+  /** Resting/final position after rollout (scaled by surface and slope when a roll model is applied). */
   landing: CoursePointYds
+  /** The player's stock rollout for this sample, before any surface/slope scaling. */
+  stockRollYds?: number
   kind: CourseSurfaceClassification
   /** Exact geometric state retained for later SG/value evaluation. */
   state: DecisionLandingState
@@ -231,6 +233,7 @@ export const sampleModeledAimDistribution = ({
     return {
       carryLanding,
       landing,
+      stockRollYds: total - carry,
       kind: classification.kind,
       state: buildDecisionLandingState(hole, landing, classification, pinLocalYds),
     }
