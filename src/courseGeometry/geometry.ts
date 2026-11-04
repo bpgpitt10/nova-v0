@@ -169,6 +169,54 @@ export function pointInPolygon(point: CoursePointYds, polygon: CoursePolygonYds)
 
 const ON_EDGE_YDS = 1e-7
 
+// GSPro's own penalty areas and OB (nativeHazards.ts) are keyhole polygons
+// spanning the whole hole frame, so the bounding-box reject never fires and
+// every landing walked every edge (review, 11/4: seconds per recommendation).
+// They're looked up in a 0.5-yd even-odd raster built once per polygon.
+const GSPRO_RASTER_YDS = 0.5
+const GSPRO_RASTER_MAX_CELLS = 6_000_000
+type PolygonRaster = { minX: number; minY: number; width: number; height: number; cells: Uint8Array }
+const gsproRasters = new WeakMap<CoursePolygonYds, PolygonRaster | null>()
+
+const buildPolygonRaster = (polygon: CoursePolygonYds): PolygonRaster | null => {
+  const b = polygonBounds(polygon)
+  const width = Math.max(1, Math.ceil((b.maxX - b.minX) / GSPRO_RASTER_YDS) + 1)
+  const height = Math.max(1, Math.ceil((b.maxY - b.minY) / GSPRO_RASTER_YDS) + 1)
+  if (width * height > GSPRO_RASTER_MAX_CELLS) return null
+  const cells = new Uint8Array(width * height)
+  const crossings: number[] = []
+  for (let row = 0; row < height; row += 1) {
+    const y = b.minY + row * GSPRO_RASTER_YDS
+    crossings.length = 0
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [ax, ay] = polygon[j]
+      const [bx, by] = polygon[i]
+      if ((ay > y) !== (by > y)) crossings.push(ax + ((y - ay) * (bx - ax)) / (by - ay))
+    }
+    crossings.sort((p, q) => p - q)
+    for (let k = 0; k + 1 < crossings.length; k += 2) {
+      const c0 = Math.max(0, Math.ceil((crossings[k] - b.minX) / GSPRO_RASTER_YDS))
+      const c1 = Math.min(width - 1, Math.floor((crossings[k + 1] - b.minX) / GSPRO_RASTER_YDS))
+      const offset = row * width
+      for (let c = c0; c <= c1; c += 1) cells[offset + c] = 1
+    }
+  }
+  return { minX: b.minX, minY: b.minY, width, height, cells }
+}
+
+const insideGsproPolygon = (point: CoursePointYds, polygon: CoursePolygonYds) => {
+  let raster = gsproRasters.get(polygon)
+  if (raster === undefined) {
+    raster = buildPolygonRaster(polygon)
+    gsproRasters.set(polygon, raster)
+  }
+  if (!raster) return pointInPolygon(point, polygon)
+  const col = Math.round((point[0] - raster.minX) / GSPRO_RASTER_YDS)
+  const row = Math.round((point[1] - raster.minY) / GSPRO_RASTER_YDS)
+  if (col < 0 || row < 0 || col >= raster.width || row >= raster.height) return false
+  return raster.cells[row * raster.width + col] === 1
+}
+
 export function classifyPoint(
   hole: CourseHoleGeometry,
   point: CoursePointYds,
@@ -176,7 +224,10 @@ export function classifyPoint(
   for (const kind of SURFACE_CLASSIFICATION_PRECEDENCE) {
     for (const surface of hole.surfaces) {
       if (surface.kind !== kind) continue
-      if (surface.polygons.some((polygon) => pointInPolygon(point, polygon))) {
+      const inside = surface.provenance?.source === 'gspro'
+        ? surface.polygons.some((polygon) => insideGsproPolygon(point, polygon))
+        : surface.polygons.some((polygon) => pointInPolygon(point, polygon))
+      if (inside) {
         return {
           kind,
           surfaceId: surface.id,

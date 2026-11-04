@@ -18,6 +18,7 @@ export type NextStateValueAssumption =
   | 'unknown-as-deep-rough'
   | 'water-relief-at-landing-distance'
   | 'penalty-relief-at-landing-distance'
+  | 'stroke-and-distance'
 
 export type NextStateValueResult = {
   modelId: 'broadie-2012-next-state-v1'
@@ -169,6 +170,20 @@ const conditionForState = (
 } => {
   if (state.obstruction === 'woods-or-scrub') {
     return { condition: 'recovery', assumption: 'none', note: null }
+  }
+
+  // Out of bounds: one stroke, replayed from where it was played (the state's
+  // distance is already the replay distance), from that lie.
+  if (state.outOfBounds) {
+    const from = state.replaySurface
+    const condition: NextStateValueCondition = from === 'fairway' || from === 'tee' || from === 'green'
+      ? 'fairway'
+      : from === 'bunker' ? 'sand' : from === 'deep-rough' ? 'recovery' : 'rough'
+    return {
+      condition,
+      assumption: 'stroke-and-distance',
+      note: 'Out of bounds: stroke and distance (one penalty stroke, replayed from the same spot).',
+    }
   }
 
   const surface: CourseSurfaceClassification = state.surface

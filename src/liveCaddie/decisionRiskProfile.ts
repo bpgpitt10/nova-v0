@@ -9,7 +9,7 @@ import type {
   DecisionShotGoal,
   DecisionShotQuality,
 } from './decisionEngine'
-import type { LandingTransform, ModeledAimSample } from './aimOutcomeSampling'
+import { flightBlockedAt, type LandingTransform, type ModeledAimSample } from './aimOutcomeSampling'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -182,6 +182,7 @@ export const buildDecisionRiskProfile = ({
   lateralAdjustmentYds = 0,
   pinLocalYds,
   landingTransform,
+  flightCheck,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -199,6 +200,8 @@ export const buildDecisionRiskProfile = ({
   pinLocalYds?: CoursePointYds | null
   /** Same destination-terrain transform used by the modeled core cloud. */
   landingTransform?: LandingTransform
+  /** Same flight check as the core cloud: mishits through trees end in the trees. */
+  flightCheck?: Readonly<{ descentDeg: number | null }> | null
 }): DecisionRiskProfile => {
   const historicalSamples = player?.samples ?? []
   const totalHistoricalWeight = historicalSamples.reduce(
@@ -264,13 +267,18 @@ export const buildDecisionRiskProfile = ({
       const offline = sample.offlineYds + lateralAdjustmentYds
       const carryLanding = addScaled(ball, forward, carry, right, offline)
       const baselineLanding = addScaled(ball, forward, finalDistance, right, offline)
-      const landing = landingTransform
-        ? landingTransform(carryLanding, baselineLanding)
-        : baselineLanding
-      const classification = classifyTacticalLandingPoint(hole, landing)
+      const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
+      const landing = blocked
+        ? blocked.point
+        : landingTransform
+          ? landingTransform(carryLanding, baselineLanding)
+          : baselineLanding
+      const classification = blocked
+        ? { kind: 'deep-rough' as const, surfaceId: null, confidence: 'medium' as const }
+        : classifyTacticalLandingPoint(hole, landing)
       const kind = classification.kind
       const tier = decisionRiskTierForSurface(kind, goal)
-      const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds)
+      const state = buildDecisionLandingState(hole, landing, classification, pinLocalYds, ball)
       // Normalize inside the empirical tail, then allocate only the learned tail mass.
       const weight = (Math.max(0, sample.weight) / tailWeight) * tailProbability
       const tailLanding: DecisionRiskTailLanding = {
