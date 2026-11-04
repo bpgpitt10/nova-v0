@@ -24,7 +24,7 @@ import {
 } from '../lib/sessionSources'
 import './LooperLandingPage.css'
 
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 
 type UpdateStatus =
   | 'idle'

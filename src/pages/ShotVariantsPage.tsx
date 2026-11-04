@@ -12,7 +12,7 @@ import {
   type ShotVariant,
 } from '../lib/shotVariants'
 import golfSceneDetailBackground from '../assets/Backgrounds/golfscenedetail.png'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import './ShotVariantsPage.css'
 
 const formatVariantName = (name: string) =>

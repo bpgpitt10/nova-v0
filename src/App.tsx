@@ -23,7 +23,7 @@ import {
   type SimReadStructuredStatusEvent,
 } from './adapters/simreadLive'
 import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
-import looperLogoWhite from './assets/LooperLogoWhite.png'
+import looperLogoWhite from './assets/LooperLogo.webp'
 import BagYardageBook from './pages/BagYardageBook'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'

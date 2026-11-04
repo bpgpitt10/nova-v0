@@ -8,7 +8,7 @@ import {
   type Club,
 } from '../lib/bagConfig'
 import golfSceneDetailBackground from '../assets/Backgrounds/golfscenedetail.png'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import './BagSetupPage.css'
 
 const DEFAULT_RETURN_PATH = '/looper'

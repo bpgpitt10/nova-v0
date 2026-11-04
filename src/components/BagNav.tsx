@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Club } from '../lib/bagConfig'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import '../pages/BagYardageBook.css'
 
 export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds'
