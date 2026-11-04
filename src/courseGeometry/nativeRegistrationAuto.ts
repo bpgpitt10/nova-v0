@@ -59,6 +59,10 @@ export type AutoRegistrationResult = Readonly<{
     mirrored: boolean
     /** [GSPro hole, map hole] for each paired green. */
     holes: ReadonlyArray<readonly [number, number]>
+    /** The holes that didn't line up, fitted on their own (same numbers): how
+     * well they fit each other, and how far (and which way, compass bearing)
+     * the map has them from where the first group's placement puts them. */
+    rest: Readonly<{ holes: number[]; rmsM: number; rotationDeg: number; scale: number; offsetM: number; bearingDeg: number }> | null
   }> | null
   registration: NativeRegistration | null
 }>
@@ -87,11 +91,64 @@ export const unorderedGreenFit = (layout: Pick<NativeCourseLayout, 'holes'>, map
   const map: Xy[] = entries.map(([, g]) => groundOffsetMeters(lat0, lon0, g[0], g[1]))
   const fit = fitGreens(gkd.map((g) => g.p), map)
   if (!fit) return null
+  const holes = (fit.pairs ?? []).map(([i, j]) => [gkd[i].hole, entries[j][0]] as const).sort((a, b) => a[0] - b[0])
+  // The greens that didn't line up: do they fit each other (same numbers),
+  // just somewhere else? Kiawah (11/4): 9 of 18 line up to 1.7 m; a GSPro
+  // scene can place part of a course away from the rest.
+  const sign = fit.mirrored ? -1 : 1
+  const mapOf = new Map(entries.map(([hole], k) => [hole, map[k]] as const))
+  const paired = new Set(holes.map(([g]) => g))
+  const pairsFor = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([g, m]) => {
+    const w = gkd.find((x) => x.hole === g)?.p
+    const q = mapOf.get(m)
+    return w && q ? [[[sign * w[0], w[1]] as Xy, q] as const] : []
+  })
+  const first = similarityOf(pairsFor(holes))
+  const restHoles = gkd.filter((g) => !paired.has(g.hole) && mapOf.has(g.hole)).map((g) => [g.hole, g.hole] as const)
+  const rest = restHoles.length >= 3 ? similarityOf(pairsFor(restHoles)) : null
+  let restPiece: Readonly<{ holes: number[]; rmsM: number; rotationDeg: number; scale: number; offsetM: number; bearingDeg: number }> | null = null
+  if (first && rest) {
+    // Where the first group's placement puts the rest, vs where the map has them.
+    const restPairs = pairsFor(restHoles)
+    let ex = 0, ey = 0
+    for (const [w, q] of restPairs) {
+      const at = applySim(first, w)
+      ex += q[0] - at[0]; ey += q[1] - at[1]
+    }
+    ex /= restPairs.length; ey /= restPairs.length
+    restPiece = {
+      holes: restHoles.map(([g]) => g), rmsM: rest.rmsM, rotationDeg: rest.rotationDeg, scale: rest.scale,
+      offsetM: Math.hypot(ex, ey), bearingDeg: ((Math.atan2(ex, ey) * 180) / Math.PI + 360) % 360,
+    }
+  }
   return {
     paired: fit.paired, gkdGreens: fit.gkdGreens, rmsM: fit.rmsM, rotationDeg: fit.rotationDeg,
-    scale: fit.scale, mirrored: fit.mirrored,
-    holes: (fit.pairs ?? []).map(([i, j]) => [gkd[i].hole, entries[j][0]] as const).sort((a, b) => a[0] - b[0]),
+    scale: fit.scale, mirrored: fit.mirrored, holes, rest: restPiece,
   }
+}
+
+type Sim = { c: number; s: number; tx: number; ty: number; rmsM: number; rotationDeg: number; scale: number }
+
+const applySim = (t: Sim, p: Xy): Xy => [t.c * p[0] - t.s * p[1] + t.tx, t.s * p[0] + t.c * p[1] + t.ty]
+
+/** Least-squares similarity p -> q (rotation, scale, shift). */
+const similarityOf = (pairs: ReadonlyArray<readonly [Xy, Xy]>): Sim | null => {
+  const n = pairs.length
+  if (n < 3) return null
+  let px = 0, py = 0, qx = 0, qy = 0
+  for (const [p, q] of pairs) { px += p[0]; py += p[1]; qx += q[0]; qy += q[1] }
+  px /= n; py /= n; qx /= n; qy /= n
+  let a = 0, b = 0, norm = 0
+  for (const [p, q] of pairs) {
+    const ux = p[0] - px, uy = p[1] - py, vx = q[0] - qx, vy = q[1] - qy
+    a += ux * vx + uy * vy; b += ux * vy - uy * vx; norm += ux * ux + uy * uy
+  }
+  if (norm <= 0) return null
+  const c = a / norm, s = b / norm
+  const t = { c, s, tx: qx - (c * px - s * py), ty: qy - (s * px + c * py), rmsM: 0, rotationDeg: (Math.atan2(s, c) * 180) / Math.PI, scale: Math.hypot(c, s) }
+  let sq = 0
+  for (const [p, q] of pairs) { const m = applySim(t, p); sq += (m[0] - q[0]) ** 2 + (m[1] - q[1]) ** 2 }
+  return { ...t, rmsM: Math.sqrt(sq / n) }
 }
 
 export const greenSimilarity = (

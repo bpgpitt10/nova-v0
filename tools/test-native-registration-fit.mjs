@@ -232,6 +232,20 @@ try {
     assert.equal(u.paired, 18)
     assert.ok(u.rmsM < 1, `rms ${u.rmsM}`)
     assert.deepEqual(u.holes.map(([g, m]) => [g, m]), perm.map((m, i) => [i + 1, m]))
+    assert.equal(u.rest, null)
+    // Kiawah, second look: holes 10-18 are a rigid piece placed 600 m away in
+    // GSPro's scene. Ignoring numbers finds 1-9; the rest fit each other.
+    const split = new Map()
+    const splitHoles = []
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160 + ((i * 37) % 50), cz = 500 + Math.floor(i / 6) * 300 + ((i * 53) % 70)
+      splitHoles.push({ hole: i + 1, par: 4, tees: {}, aimPoints: [], greenCenter: { x: cx + (i >= 9 ? 600 : 0), y: 0, z: cz }, pins: [] })
+      split.set(i + 1, reg.nativeWorldToLatLon(truthReg, { x: cx, z: cz }))
+    }
+    const v = auto.unorderedGreenFit({ holes: splitHoles }, split)
+    assert.ok(v.paired >= 9, `paired ${v.paired}`)
+    assert.ok(v.rest && v.rest.rmsM < 1, `rest fits itself: ${JSON.stringify(v.rest)}`)
+    assert.ok(Math.abs(v.rest.offsetM - 600) < 5, `rest offset ${v.rest.offsetM}`)
   }
 
   // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
