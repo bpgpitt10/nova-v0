@@ -930,7 +930,7 @@ function App({
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
     useState<DashboardNavTarget>('dashboard')
-  const [isLastSessionOpen, setIsLastSessionOpen] = useState(false)
+  const [, setIsLastSessionOpen] = useState(false)
   const [shots, setShots] = useState<Shot[]>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.shots ?? [] : [],
   )
@@ -1999,6 +1999,18 @@ function App({
       })
       .filter((row): row is NonNullable<typeof row> => row !== null)
   }, [analysisSessions, historicalAveragesByClub, latestSessionSummariesByClub])
+
+  // "Mon, Nov 2 · 46 swings" for the Last session heading on the Bag page.
+  const lastSessionMeta = useMemo(() => {
+    const latestSession = analysisSessions[0]
+    if (!latestSession) return null
+    const swings = latestSession.shots.filter(isShotIncludedInAnalysis).length
+    const when = new Date(latestSession.endedAt)
+    const date = Number.isNaN(when.getTime())
+      ? null
+      : when.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    return [date, `${swings} ${swings === 1 ? 'swing' : 'swings'}`].filter(Boolean).join(' · ')
+  }, [analysisSessions])
 
   const lastSessionInsights = useMemo(() => {
     if (lastSessionComparisonRows.length === 0) {
@@ -6181,24 +6193,15 @@ function App({
                 )}
 
                 {reviewView === 'dashboard' && (
-                  <section className="review-details-card" id="dashboard-review">
-                    <div className="section-kicker">Last Session Review</div>
-                    <details
-                      className="supporting-details last-session-review"
-                      onToggle={(event) =>
-                        setIsLastSessionOpen((event.currentTarget as HTMLDetailsElement).open)
-                      }
-                      open={isLastSessionOpen}
-                    >
-                      <summary>Click to Open Detailed Comparison</summary>
+                  <section className="review-details-card last-session-open" id="dashboard-review">
+                    <div className="last-session-head">
+                      <h2>Last session</h2>
+                      {lastSessionMeta ? <span>{lastSessionMeta}</span> : null}
+                    </div>
+                    <p className="last-session-note">{lastSessionInsights}</p>
 
-                      <section className="review-card last-session-insights">
-                        <div className="section-kicker">Looper's Insights</div>
-                        <p>{lastSessionInsights}</p>
-                      </section>
-
-                      <section className="review-card last-session-table-block">
-                        <div className="section-kicker">Session vs History by Club</div>
+                    {lastSessionComparisonRows.length > 0 ? (
+                      <>
                         <div className="review-table-wrap">
                           <table className="review-table last-session-table">
                             <thead>
@@ -6260,8 +6263,11 @@ function App({
                             </tbody>
                           </table>
                         </div>
-                      </section>
-                    </details>
+                        <p className="last-session-foot">
+                          The clubs you hit, scored on that session; arrows are the change from each club&apos;s usual.
+                        </p>
+                      </>
+                    ) : null}
                   </section>
                 )}
 

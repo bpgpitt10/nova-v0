@@ -684,3 +684,97 @@
   letter-spacing: 0.01em;
   color: rgba(234, 179, 8, 0.72);
 }
+
+/* ---- Last session (Bag page): open section, no click-to-open, table like Rounds ---- */
+
+.dashboard-page .bagbook-layout .last-session-open {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 22px 0 0;
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bagbook-layout .last-session-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+
+.bagbook-layout .last-session-head h2 {
+  margin: 0;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: #eab308;
+}
+
+.bagbook-layout .last-session-head span {
+  color: #9fb3a4;
+  font-size: 14px;
+}
+
+.bagbook-layout .last-session-note {
+  max-width: min(1080px, 100%);
+  margin: 0 0 6px;
+  color: #e3ebe5;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.bagbook-layout .last-session-open .review-table {
+  min-width: 900px;
+  border-collapse: collapse;
+  border: 0;
+}
+
+.bagbook-layout .last-session-open .review-table th,
+.bagbook-layout .last-session-open .review-table td {
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  background: transparent;
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+.bagbook-layout .last-session-open .review-table th {
+  height: auto;
+  padding-top: 0;
+  border-top: 0;
+  color: #9fb3a4;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.bagbook-layout .last-session-open .review-table th:first-child,
+.bagbook-layout .last-session-open .review-table td:first-child {
+  padding-left: 0;
+}
+
+.bagbook-layout .last-session-open .review-table td:first-child {
+  font-weight: 650;
+  font-size: 15px;
+}
+
+.bagbook-layout .last-session-open .review-table tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+.bagbook-layout .last-session-foot {
+  margin: 0;
+  color: #9fb3a4;
+  font-size: 12px;
+}
+
+.bagbook-layout .last-session-open .review-table td {
+  font-size: 14px;
+}
