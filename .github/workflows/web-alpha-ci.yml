@@ -115,6 +115,9 @@ jobs:
       - name: Your game (where you lose strokes) from real rounds
         run: node tools/test-your-game.mjs
 
+      - name: Courses loaded at run time join the catalog
+        run: node tools/test-runtime-courses.mjs
+
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
 

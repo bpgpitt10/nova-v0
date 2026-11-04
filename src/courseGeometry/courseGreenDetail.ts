@@ -1,4 +1,5 @@
 import type { CoursePointYds } from './types'
+import { coursePackageBaseUrl } from './courseCatalog'
 
 export type GreenDetailSector = {
   id: string
@@ -91,7 +92,7 @@ const numericTuple = <T extends number>(value: unknown, length: T): number[] | n
 const normalizedSlug = (courseSlug: string) => courseSlug.trim().toLowerCase()
 
 const greenDetailUrl = (courseSlug: string) =>
-  `/course-geometry/${encodeURIComponent(normalizedSlug(courseSlug))}/green-detail-v1.json`
+  `${coursePackageBaseUrl(normalizedSlug(courseSlug))}green-detail-v1.json`
 
 const fetchPackage = async (courseSlug: string): Promise<RawPackage | null> => {
   const slug = normalizedSlug(courseSlug)
