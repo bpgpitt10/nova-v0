@@ -1,5 +1,4 @@
 import {
-  GREYWOLF_COURSE_ID,
   courseGsproAliases,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
@@ -125,13 +124,6 @@ type RoundShotRecord = {
   activeShot?: ActiveShot
 }
 
-type HoleAnchorArtifact = {
-  anchors?: {
-    selected_tee_latlon?: unknown
-    target_green_latlon?: unknown
-  }
-}
-
 type OutputLogHoleState = {
   holeNumber: number | null
   terminalAfterLatestHoleMarker: boolean
@@ -146,11 +138,8 @@ const OUTPUT_LOG_TAIL_BYTES = 160_000
 const POLL_INTERVAL_MS = 750
 const ERROR_REPORT_THRESHOLD = 5
 const METERS_TO_YARDS = 1.0936132983377078
-const WORLD_ROTATION_DEG = 0.5319220319046369
-const GREYWOLF_LOCAL_GEOMETRY_BASE = '/course-geometry/greywolf/local-geometry'
 
 let preparedStateHandle: BrowserDirectoryHandle | null = null
-const holeForwardCache = new Map<number, Promise<readonly [east: number, north: number]>>()
 
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
@@ -391,66 +380,6 @@ const parseOutputLogHoleState = (text: string): OutputLogHoleState => {
   }
 }
 
-const latLonPair = (value: unknown): readonly [number, number] | null => {
-  if (!Array.isArray(value) || value.length < 2) return null
-  const lat = asNumber(value[0])
-  const lon = asNumber(value[1])
-  return lat == null || lon == null ? null : [lat, lon]
-}
-
-const loadHoleForwardEastNorth = (holeNumber: number) => {
-  const existing = holeForwardCache.get(holeNumber)
-  if (existing) return existing
-
-  const promise = fetch(`${GREYWOLF_LOCAL_GEOMETRY_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`)
-    .then((response) => {
-      if (!response.ok) throw new Error(`Greywolf H${holeNumber} anchor package returned ${response.status}.`)
-      return response.json() as Promise<HoleAnchorArtifact>
-    })
-    .then((raw): readonly [number, number] => {
-      const tee = latLonPair(raw.anchors?.selected_tee_latlon)
-      const green = latLonPair(raw.anchors?.target_green_latlon)
-      if (!tee || !green) throw new Error(`Greywolf H${holeNumber} anchor package did not include tee/green coordinates.`)
-      const meanLatRad = ((tee[0] + green[0]) / 2) * Math.PI / 180
-      const east = (green[1] - tee[1]) * Math.cos(meanLatRad)
-      const north = green[0] - tee[0]
-      const length = Math.hypot(east, north)
-      if (length <= 1e-12) throw new Error(`Greywolf H${holeNumber} tee/green bearing was degenerate.`)
-      return [east / length, north / length]
-    })
-    .catch((error) => {
-      holeForwardCache.delete(holeNumber)
-      throw error
-    })
-
-  holeForwardCache.set(holeNumber, promise)
-  return promise
-}
-
-const worldDeltaToEastNorthYards = (dx: number, dz: number) => {
-  const radians = WORLD_ROTATION_DEG * Math.PI / 180
-  const cos = Math.cos(radians)
-  const sin = Math.sin(radians)
-  return {
-    east: METERS_TO_YARDS * (cos * dx - sin * dz),
-    north: METERS_TO_YARDS * (sin * dx + cos * dz),
-  }
-}
-
-const worldPointToHoleLocal = async (
-  point: { x: number; z: number },
-  teeWorld: { x: number; z: number },
-  holeNumber: number,
-): Promise<CoursePointYds> => {
-  const forward = await loadHoleForwardEastNorth(holeNumber)
-  const delta = worldDeltaToEastNorthYards(point.x - teeWorld.x, point.z - teeWorld.z)
-  const rightEast = forward[1]
-  const rightNorth = -forward[0]
-  const rightYds = delta.east * rightEast + delta.north * rightNorth
-  const forwardYds = delta.east * forward[0] + delta.north * forward[1]
-  return [rightYds, forwardYds]
-}
-
 // Cache static geometry fetches, not tee hypotheses (which can change during
 // the active round after a fresh native minimap reading).
 const importedGeometryCache = new Map<string, Promise<Awaited<ReturnType<typeof loadCourseHoleGeometry>>>>()
@@ -500,12 +429,6 @@ const buildShot = async (
   if (nativeStart && nativeEnd) {
     startLocalYds = nativeStart
     endLocalYds = nativeEnd
-    positionQuality = 'verified'
-  } else if (firstStart && start && end && coordinateCourseId === GREYWOLF_COURSE_ID) {
-    ;[startLocalYds, endLocalYds] = await Promise.all([
-      worldPointToHoleLocal(start, firstStart, holeNumber),
-      worldPointToHoleLocal(end, firstStart, holeNumber),
-    ])
     positionQuality = 'verified'
   } else if (firstStart && start && end && coordinateCourseId) {
     // New generic route: only align relative world movement after resolving
@@ -714,14 +637,6 @@ const buildSnapshot = async (
     // GSPro-only course: the native context checks GSPro's key itself (a
     // GKDalt key is fine; another course is refused there).
     coordinateCourseId = selectedCourseId
-  } else if (
-    selectedCourseId === GREYWOLF_COURSE_ID
-    && courseKey?.trim().toLowerCase() === 'multi_range_gsp'
-  ) {
-    coordinateCourseId = selectedCourseId
-    warnings.push(
-      'GSPro reports the generic multi_range_gsp runtime key; using the user-selected Greywolf registration for live ball placement.',
-    )
   } else if (courseKey && observedCourseId && observedCourseId !== selectedCourseId) {
     warnings.push(
       `Selected ${selectedCourse.name}, but GSPro reports ${courseKey}. Keeping the user-selected course until confirmed.`,
@@ -744,7 +659,7 @@ const buildSnapshot = async (
     warnings.push(selectedGsproKey
       ? "Ball placed from GSPro coordinates on GSPro's own course file (no map loaded)."
       : "Ball placed from GSPro's coordinates using the course's map match.")
-  } else if (observedCourseId === selectedCourseId && selectedCourseId !== GREYWOLF_COURSE_ID) {
+  } else if (observedCourseId === selectedCourseId) {
     warnings.push(latestShot?.positionQuality === 'provisional'
       ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'
       : 'Imported-course GSPro shot recognized, but no distance-consistent map registration is available; hazard/aim recommendations must stay paused.')
