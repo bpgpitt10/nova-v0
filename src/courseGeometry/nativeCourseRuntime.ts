@@ -424,6 +424,13 @@ const registerInBrowser = async (
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
     }
   }
+  if (result.movedHoles.length) {
+    return {
+      registration: result.registration,
+      reason: `holes ${holeRanges(result.movedHoles)} placed on their own (GSPro's scene moved them)`
+        + (result.greensOnly ? '; placed from the greens' : ''),
+    }
+  }
   if (result.greensOnly) {
     const g = result.greenSimilarity
     return {

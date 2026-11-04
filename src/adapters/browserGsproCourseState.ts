@@ -16,6 +16,7 @@ import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
 import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
+import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { isNewLooperRoundForCapture } from '../liveCaddie/teeCaptureReadiness'
 import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types'
 import {
@@ -293,8 +294,9 @@ const applyNativeIfReady = async (
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
-    const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0,
-      gsproSceneMirrored: context.registration.mirrored === true }
+    const placed = registrationForHole(context.registration, snapshot.holeNumber)
+    const turned = { ...next, gsproSceneRotationDeg: placed.rotationDeg ?? 0,
+      gsproSceneMirrored: placed.mirrored === true }
     if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)

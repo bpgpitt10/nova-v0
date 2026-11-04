@@ -342,3 +342,36 @@ export const registrationFromGreens = (input: NativeRegistrationFitInput): Nativ
     holes: input.holes,
   }
 }
+
+/**
+ * A course whose GSPro scene places groups of holes apart from each other
+ * (Kiawah: the back nine 2.8 km from where it really is): fit each group on
+ * its own (heights, else greens) and join them into one registration. The
+ * first group is the registration's own placement; the rest are holeGroups.
+ * Null if any group can't be placed. Grade: the weaker of the groups.
+ */
+export const fitHoleGroups = (
+  groups: ReadonlyArray<Readonly<{ holes: readonly number[]; input: NativeRegistrationFitInput }>>,
+): NativeRegistration | null => {
+  if (groups.length < 2) return null
+  const fits = groups.map((group) => {
+    const fit = fitNativeRegistration(group.input)
+    if (fit.registration) return fit.registration
+    return registrationFromGreens(group.input)
+  })
+  if (fits.some((fit) => !fit)) return null
+  const placed = fits as NativeRegistration[]
+  const grade = placed.some((fit) => fit.grade === 'B') ? 'B' : 'A'
+  return {
+    ...placed[0],
+    grade,
+    holeGroups: placed.slice(1).map((fit, i) => ({
+      holes: [...groups[i + 1].holes],
+      reference: fit.reference,
+      ...(fit.rotationDeg != null ? { rotationDeg: fit.rotationDeg } : {}),
+      ...(fit.scale != null ? { scale: fit.scale } : {}),
+      ...(fit.mirrored ? { mirrored: true } : {}),
+      worldYToElevationOffsetM: fit.worldYToElevationOffsetM,
+    })),
+  }
+}
