@@ -23,6 +23,7 @@ import {
   dispatchLiveCaddieShotStateChanged,
   LIVE_CADDIE_START_ROUND_EVENT,
   loadActiveLiveCaddieRound,
+  markActiveRoundLiveFromHoleChange,
 } from '../liveCaddie/roundRuntime'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
 import {
@@ -110,6 +111,9 @@ const manualRoundStart = {
   active: false,
   baselineCaptured: false,
   baselineIdentity: null as string | null,
+  // GSPro's hole when the hold began (or last seen during it): a change to a
+  // later hole while holding is GSPro moving on (a conceded hole), not stale data.
+  lastHole: null as number | null,
 }
 
 const readTextFileFromHandle = async (
@@ -470,6 +474,10 @@ const buildManualStartSnapshot = async (
   }, true), true)
 }
 
+/** While Start Round holds hole 1: GSPro changed to a later hole (a conceded hole). */
+export const releasesHoldOnHoleChange = (lastHole: number | null, hole: number | null) =>
+  lastHole != null && hole != null && hole !== lastHole && hole > 1
+
 // The shot's own id (last part of "round:hole:shotId"). A read where the
 // RoundID was briefly missing ("round:2:<id>" vs "273:2:<id>") is the same
 // stale shot, not a new one, and must not end the manual Start Round hold.
@@ -567,6 +575,7 @@ export const connectToBrowserGsproCourseState = ({
     manualRoundStart.active = true
     manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
     manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    manualRoundStart.lastHole = lastCoreSnapshot?.holeNumber ?? null
     const sequence = ++snapshotSequence
 
     void buildManualStartSnapshot(selectedCourseId)
@@ -595,17 +604,24 @@ export const connectToBrowserGsproCourseState = ({
         if (!manualRoundStart.baselineCaptured) {
           manualRoundStart.baselineIdentity = physicalSnapshotIdentity(snapshot)
           manualRoundStart.baselineCaptured = true
+          manualRoundStart.lastHole = snapshot.holeNumber
           return
         }
 
         const currentIdentity = physicalSnapshotIdentity(snapshot)
         const hasNewPhysicalShot = currentIdentity != null
           && currentIdentity !== manualRoundStart.baselineIdentity
-        if (!hasNewPhysicalShot) return
+        // A stale currentRound.dat never changes holes on its own: GSPro going
+        // to hole 2+ while we hold hole 1 is the player conceding a hole.
+        const movedOn = releasesHoldOnHoleChange(manualRoundStart.lastHole, snapshot.holeNumber)
+        if (snapshot.holeNumber != null) manualRoundStart.lastHole = snapshot.holeNumber
+        if (!hasNewPhysicalShot && !movedOn) return
 
         manualRoundStart.active = false
         manualRoundStart.baselineCaptured = false
         manualRoundStart.baselineIdentity = null
+        manualRoundStart.lastHole = null
+        if (movedOn && !hasNewPhysicalShot) markActiveRoundLiveFromHoleChange()
       }
 
       const sequence = ++snapshotSequence
