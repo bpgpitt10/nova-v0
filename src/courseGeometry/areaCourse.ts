@@ -357,7 +357,8 @@ const OWN_FAIRWAY_YDS = 30
 /** The map green nearest GSPro's green centre, within this, is this hole's green. */
 const OWN_GREEN_YDS = 35
 const VIEW_MARGIN_YDS = 40
-const TERRAIN_MIN_VALID = 0.9
+/** Share of a hole's box with ground heights (a cliff-top hole's box takes in sea). */
+const TERRAIN_MIN_VALID = 0.6
 
 const resampleTerrain = (area: CourseAreaPackage, toArea: Affine, box: Box): CourseTerrainGrid | null => {
   const t = area.terrain
