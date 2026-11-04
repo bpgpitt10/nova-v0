@@ -6,6 +6,7 @@ import {
   getCourseCatalogEntry,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
+import { CoursePicker } from '../components/CoursePicker'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
 import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
@@ -257,24 +258,19 @@ export default function RoundSetupPage() {
             </div>
           ) : null}
 
-          <label className="round-setup-field">
+          <div className="round-setup-field">
             <span className="round-setup-label">Course</span>
-            <select
-              value={courseId}
-              onChange={(event) => {
-                setCourseId(event.target.value as CourseId)
+            <CoursePicker
+              courses={courseRegistry}
+              onChange={(id) => {
+                setCourseId(id as CourseId)
                 setTeeSet('')
                 setUnmappedTeeName('')
               }}
-            >
-              {courseRegistry.map((entry) => (
-                <option key={entry.id} value={entry.id} disabled={entry.packageStatus !== 'ready'}>
-                  {entry.name}{entry.packageStatus === 'ready' ? '' : ' — live validation pending'}
-                </option>
-              ))}
-            </select>
+              value={courseId}
+            />
             <a className="round-setup-hint-link" href="/courses">Don&apos;t see your course? Load a course →</a>
-          </label>
+          </div>
 
           <div className="round-setup-native">
             <NativePositionsBetaPanel courseId={courseId} courseKey={null} />

@@ -238,3 +238,68 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Course search (type to filter; replaces the course dropdown). */
+.course-picker {
+  position: relative;
+}
+
+.round-setup-field .course-picker input.has-selection::placeholder {
+  color: #ffffff;
+  opacity: 1;
+}
+
+.course-picker-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid rgba(207, 216, 205, 0.24);
+  border-radius: 10px;
+  background: #0f1d14;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.course-picker-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.course-picker-option.is-active {
+  background: rgba(234, 179, 8, 0.14);
+}
+
+.course-picker-option.is-selected .course-picker-name {
+  color: #eab308;
+}
+
+.course-picker-name {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.course-picker-location {
+  color: #9fb09f;
+  font-size: 12px;
+}
+
+.course-picker-empty {
+  padding: 10px 12px;
+  color: #b2c0b0;
+  font-size: 14px;
+}
+
+.course-picker-empty a {
+  color: #b9d9bf;
+}
