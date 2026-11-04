@@ -3,6 +3,7 @@ import { readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse }
 import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
+  CourseSearchBusyError,
   courseSlugFromName,
   findGolfCourseFor,
   listCourseLoads,
@@ -152,7 +153,16 @@ export default function LoadCoursePage() {
   const loadInstalled = async (course: LooperCompanionInstalledCourse) => {
     setBusyKey(course.courseKey)
     setMessage(`Finding ${course.courseName} on the map…`)
-    const match = await findGolfCourseFor(course.courseName, course.location)
+    let match: Awaited<ReturnType<typeof findGolfCourseFor>>
+    try {
+      match = await findGolfCourseFor(course.courseName, course.location)
+    } catch (error) {
+      setBusyKey(null)
+      setMessage(error instanceof CourseSearchBusyError
+        ? 'OpenStreetMap search is busy right now (too many searches in a row). Wait a minute and press Load again.'
+        : `Couldn't search OpenStreetMap: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
     if (!match) {
       setBusyKey(null)
       const name = course.courseName || course.courseKey
@@ -173,8 +183,10 @@ export default function LoadCoursePage() {
     try {
       setResults(await searchGolfCourses(text))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error))
-      setResults([])
+      setMessage(error instanceof CourseSearchBusyError
+        ? 'OpenStreetMap search is busy right now. Wait a minute and search again.'
+        : error instanceof Error ? error.message : String(error))
+      setResults(null)
     } finally {
       setSearching(false)
     }

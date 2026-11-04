@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 import urllib.parse
 import urllib.request
@@ -266,8 +267,35 @@ def filter_to_boundary(payload: dict[str, Any], boundary) -> dict[str, Any]:
     }
 
 
+DUPLICATE_HOLE_MATCH_M = 40.0
+
+
+def _route_ends(element: dict[str, Any]):
+    points = [(p.get("lat"), p.get("lon")) for p in element.get("geometry") or []]
+    points = [(float(a), float(b)) for a, b in points if isinstance(a, (int, float)) and isinstance(b, (int, float))]
+    return (points[0], points[-1]) if len(points) >= 2 else None
+
+
+def _metres(a, b) -> float:
+    mean_lat = math.radians((a[0] + b[0]) / 2)
+    return math.hypot((a[0] - b[0]) * 111_320.0, (a[1] - b[1]) * 111_320.0 * math.cos(mean_lat))
+
+
+def _same_route(elements: list[dict[str, Any]]) -> bool:
+    ends = [_route_ends(e) for e in elements]
+    if any(end is None for end in ends):
+        return False
+    first = ends[0]
+    return all(_metres(first[0], e[0]) <= DUPLICATE_HOLE_MATCH_M and _metres(first[1], e[1]) <= DUPLICATE_HOLE_MATCH_M
+               for e in ends[1:])
+
+
 def validate_holes(payload: dict[str, Any]) -> dict[int, tuple[str, int]]:
-    by_ref: dict[int, list[tuple[str, int]]] = {}
+    """Exactly one golf=hole route per ref 1-18. A hole mapped twice along the
+    same line (Payne's Valley: every hole drawn by two mappers) keeps the more
+    detailed / newer copy and drops the other; copies that disagree by more
+    than 40 m at the tee or green are still rejected."""
+    by_ref: dict[int, list[dict[str, Any]]] = {}
     for element in payload.get("elements", []):
         tags = element.get("tags") or {}
         if tags.get("golf") != "hole":
@@ -277,15 +305,28 @@ def validate_holes(payload: dict[str, Any]) -> dict[int, tuple[str, int]]:
             continue
         hole = int(raw_ref)
         if 1 <= hole <= 18:
-            by_ref.setdefault(hole, []).append((str(element.get("type")), int(element.get("id"))))
+            by_ref.setdefault(hole, []).append(element)
+    dropped: set[tuple[str, int]] = set()
+    for hole, elements in by_ref.items():
+        if len(elements) > 1 and _same_route(elements):
+            keep = max(elements, key=lambda e: (len(e.get("tags") or {}), len(e.get("geometry") or []), int(e.get("id"))))
+            dropped.update((str(e.get("type")), int(e.get("id"))) for e in elements if e is not keep)
+            by_ref[hole] = [keep]
+            print(f"Hole {hole}: {len(elements)} OSM routes along the same line; kept way {keep.get('id')}.", flush=True)
+    if dropped:
+        payload["elements"] = [e for e in payload.get("elements", [])
+                               if (str(e.get("type")), int(e.get("id") or 0)) not in dropped]
     missing = [hole for hole in range(1, 19) if hole not in by_ref]
-    duplicates = {hole: values for hole, values in by_ref.items() if len(values) != 1}
+    duplicates = {hole: [(str(e.get("type")), int(e.get("id"))) for e in values]
+                  for hole, values in by_ref.items() if len(values) != 1}
     if missing or duplicates:
         raise ValueError(
-            "Exact course-boundary filter did not resolve exactly one golf=hole route per ref 1-18. "
-            f"missing={missing}; duplicates={duplicates}"
+            "OpenStreetMap doesn't have exactly one route per hole 1-18 inside the course boundary"
+            + (f"; holes missing: {missing}" if missing else "")
+            + (f"; holes mapped twice in different places: {sorted(duplicates)}" if duplicates else "")
+            + f". (missing={missing}; duplicates={duplicates})"
         )
-    return {hole: values[0] for hole, values in by_ref.items()}
+    return {hole: (str(values[0].get("type")), int(values[0].get("id"))) for hole, values in by_ref.items()}
 
 
 def main() -> int:
