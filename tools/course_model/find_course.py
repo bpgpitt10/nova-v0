@@ -26,7 +26,14 @@ import urllib.request
 from pathlib import Path
 
 USER_AGENT = 'the-looper-course-model-prototype/0.1 (github.com/bpgpitt10)'
-OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
+# Public Overpass instances, tried in turn. overpass-api.de was "at capacity"
+# for hours on 11/4 (a Bellerive load timed out in find after 14 minutes).
+OVERPASS_URLS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+]
 EPT_BOUNDARIES = 'https://raw.githubusercontent.com/hobuinc/usgs-lidar/master/boundaries/resources.geojson'
 R_MERC = 6378137.0
 
@@ -38,15 +45,17 @@ def get(url: str, data: bytes | None = None, timeout: int = 240) -> bytes:
 
 
 def overpass(query: str) -> dict:
-    last = None
-    for url in OVERPASS_URLS:
-        for attempt in range(3):
+    """Two passes over every instance with a short wait each: a busy server
+    answers a small query in seconds or not at all."""
+    errors = []
+    for attempt in range(2):
+        for url in OVERPASS_URLS:
             try:
-                return json.loads(get(url, urllib.parse.urlencode({'data': query}).encode()))
+                return json.loads(get(url, urllib.parse.urlencode({'data': query}).encode(), timeout=150))
             except Exception as exc:  # noqa: BLE001
-                last = exc
-                time.sleep(8 * (attempt + 1))
-    raise RuntimeError(f'overpass failed: {last}')
+                errors.append(f'{url.split("/")[2]}: {exc}')
+                time.sleep(5 * (attempt + 1))
+    raise RuntimeError(f'overpass failed on every server: {"; ".join(errors[-4:])}')
 
 
 def ring_area_m2(ring: list[tuple[float, float]]) -> float:

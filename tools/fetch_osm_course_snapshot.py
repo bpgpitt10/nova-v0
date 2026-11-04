@@ -29,7 +29,9 @@ from shapely.validation import make_valid
 
 OVERPASS_URLS = (
     "https://overpass-api.de/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
 )
 OSM_API_BASE = "https://api.openstreetmap.org/api/0.6"
 USER_AGENT = "LooperCourseCache/1.0 (+https://github.com/bpgpitt10/nova-v0)"
