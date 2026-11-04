@@ -1,4 +1,4 @@
-// GSPro OB from the course file: valued as stroke and distance; the OB ring is
+// GSPro OB from the course file: valued as the cheaper of rehit (stroke and distance) and a two-stroke drop; the OB ring is
 // clipped to the hole, fast to classify, and never covers the tee or green.
 import assert from 'node:assert/strict'
 
@@ -31,6 +31,19 @@ try {
   assert.equal(v.assumption, 'stroke-and-distance')
   const fairway420 = evaluateDecisionLandingStateValue(buildDecisionLandingState(hole, [0, 0], { kind: 'fairway', surfaceId: 'f', confidence: 'high' }, [0, 420]))
   assert.ok(Math.abs(v.expectedStrokes - (fairway420.expectedStrokes + 1)) < 1e-9, `${v.expectedStrokes} vs ${fairway420.expectedStrokes}`)
+  // The same drive on a hole with a fairway: the two-stroke drop at 188 yd (2 + 3.12)
+  // beats rehitting from the tee (1 + 4.19), so the player drops.
+  const fwHole = { ...hole, surfaces: [...hole.surfaces, { id: 'fw', kind: 'fairway', polygons: [[[-20, 60], [20, 60], [20, 380], [-20, 380]]], provenance: prov }] }
+  const dropState = buildDecisionLandingState(fwHole, [80, 250], ob, [0, 420], [0, 0])
+  const d = evaluateDecisionLandingStateValue(dropState)
+  assert.equal(d.assumption, 'ob-drop-two-strokes')
+  assert.equal(d.penaltyStrokes, 2)
+  const fairway188 = evaluateDecisionLandingStateValue(buildDecisionLandingState(fwHole, [80, 250], { kind: 'fairway', surfaceId: 'f', confidence: 'high' }, [0, 420]))
+  assert.ok(Math.abs(d.expectedStrokes - (fairway188.expectedStrokes + 2)) < 1e-9)
+  assert.ok(d.expectedStrokes < fairway420.expectedStrokes + 1)
+  // A short miss OB (30 yd off the tee): rehitting costs less than dropping.
+  const shortState = buildDecisionLandingState(fwHole, [40, 30], ob, [0, 420], [0, 0])
+  assert.equal(evaluateDecisionLandingStateValue(shortState).assumption, 'stroke-and-distance')
   // A penalty area (not OB) at the same spot is still relief at the crossing, cheaper.
   const water = evaluateDecisionLandingStateValue(buildDecisionLandingState(hole, [80, 250], { kind: 'penalty', surfaceId: 'gkd-penalty-3', confidence: 'high' }, [0, 420], [0, 0]))
   assert.equal(water.assumption, 'penalty-relief-at-landing-distance')
@@ -77,7 +90,7 @@ try {
   const t0 = performance.now(); for (const p of pts) classifyPoint(geomHole, p); const base = performance.now() - t0
   const t1 = performance.now(); for (const p of pts) classifyPoint(bigHole, p); const withOb = performance.now() - t1
   assert.ok(withOb < base * 4 + 50, `OB classification ${withOb.toFixed(0)} ms vs ${base.toFixed(0)} ms`)
-  console.log(`PASS: OB valued as stroke and distance; OB clipped (${r.surfaces[0].polygons[0].length} vertices), safe, fast (${withOb.toFixed(0)} vs ${base.toFixed(0)} ms / 100k).`)
+  console.log(`PASS: OB valued as the cheaper of rehit and drop; OB clipped (${r.surfaces[0].polygons[0].length} vertices), safe, fast (${withOb.toFixed(0)} vs ${base.toFixed(0)} ms / 100k).`)
 } finally {
   await server?.close()
 }
