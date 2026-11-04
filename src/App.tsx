@@ -29,6 +29,8 @@ import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
 import { attackAngleValue } from './lib/attackAngle'
+import { buildLandingWindow } from './lib/landingWindow'
+import { buildLooperRead, type ReadFactorKey } from './lib/looperRead'
 import './App.css'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
@@ -2903,93 +2905,6 @@ function App({
     [selectedClubDispersionPoints],
   )
 
-  const looperRead = useMemo(() => {
-    if (!selectedClubSummary) {
-      return {
-        primary: `${getClubLabel(selectedDetailClub)} is still finding its shape.`,
-        explanation: 'The pattern is not settled yet, so this one is still a cautious play.',
-        implication: 'Take the bigger side of the target and keep the miss simple.',
-      }
-    }
-
-    const components: Array<
-      [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
-    > = [
-      [
-        'patternStability',
-        typeof selectedClubSummary.componentScores.patternStability === 'number'
-          ? selectedClubSummary.componentScores.patternStability
-          : 0,
-      ],
-      ['directionWindow', selectedClubSummary.componentScores.directionWindow],
-      ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
-      [
-        'flightQuality',
-        typeof selectedClubSummary.componentScores.flightQuality === 'number'
-          ? selectedClubSummary.componentScores.flightQuality
-          : 0,
-      ],
-    ]
-
-    const ranked = [...components].sort((left, right) => right[1] - left[1])
-    const strongest = ranked[0][0]
-    const weakest = ranked[ranked.length - 1][0]
-
-    const plainLabel = (
-      key: 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability',
-    ) => {
-      switch (key) {
-        case 'patternStability':
-          return 'pattern trend'
-        case 'directionWindow':
-          return 'direction control'
-        case 'distanceWindow':
-          return 'carry expectation'
-        case 'flightQuality':
-          return 'shot behavior'
-      }
-    }
-
-    switch (selectedClubSummary.caddieCall) {
-      case 'Attack':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is giving you a proper green light right now.`,
-          explanation: `${capitalizeFirst(plainLabel(strongest))} is holding, and ${plainLabel(weakest)} is only a touch loose.`,
-          implication: 'Trust the stock swing and go right at it.',
-        }
-      case 'Play':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
-          explanation: "Flight's holding, but carry still drifts a touch.",
-          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
-        }
-      case 'Manage':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
-          explanation: "Flight's holding, but carry still drifts a touch.",
-          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
-        }
-      case 'Careful':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is in careful territory at the minute.`,
-          explanation: `${capitalizeFirst(plainLabel(weakest))} is loose enough to bring trouble in quickly.`,
-          implication: 'Use a conservative target and keep risk out of the miss.',
-        }
-      case 'Liability':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is behaving like a troublemaker right now.`,
-          explanation: `${capitalizeFirst(plainLabel(weakest))} is leaking, and the overall pattern is not steady enough.`,
-          implication: 'Step to a safer club unless the hole leaves you no choice.',
-        }
-      case 'Insufficient Data':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is still writing its story.`,
-          explanation: 'There is not enough clean evidence yet to call this one stable or loose.',
-          implication: 'Keep the target simple while this read builds.',
-        }
-    }
-  }, [selectedClubSummary, selectedDetailClub])
-
   const selectedClubComponentBreakdown = useMemo(() => {
     const history = historicalAveragesByClub.get(selectedDetailClub)
     const scores = selectedClubSummary?.componentScores
@@ -3522,6 +3437,40 @@ function App({
     dashboardNavTarget === 'lastSession'
       ? selectedClubLatestSessionIncludedShotCount
       : selectedDetailIncludedShots.length
+
+  // The Looper's Read: three lines from this club's own numbers (src/lib/looperRead.ts).
+  const looperRead = useMemo(() => {
+    const landing = buildLandingWindow(clubDetailLandingPoints)
+    const variantId = resolveShotVariantId(selectedDetailShotVariantId)
+    const bookEntry = yardageBook?.clubs.find((entry) => entry.club === selectedDetailClub)
+    const bookRow = bookEntry
+      ? [bookEntry.row, ...bookEntry.variants].find((row) => row.variantId === variantId)
+      : undefined
+    const stock = selectedClubShotProfiles.mostLikely
+    return buildLooperRead({
+      clubLabel: getClubLabel(selectedDetailClub),
+      call: selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+      factors: selectedClubComponentBreakdown
+        .filter((row): row is typeof row & { key: ReadFactorKey } => row.key !== 'dataConfidence')
+        .map((row) => ({ key: row.key, value: row.value, delta: row.delta })),
+      stockCarry: stock?.carry,
+      carryLow: landing?.carryLow,
+      carryHigh: landing?.carryHigh,
+      missOffline: stock?.offlineMean,
+      swings: landing?.swings ?? clubDetailSwingsIncludedCount,
+      mishitRate: bookRow?.mishits?.rate,
+      severeRate: bookRow?.mishits?.severeRate,
+    })
+  }, [
+    clubDetailLandingPoints,
+    clubDetailSwingsIncludedCount,
+    selectedClubComponentBreakdown,
+    selectedClubShotProfiles,
+    selectedClubSummary,
+    selectedDetailClub,
+    selectedDetailShotVariantId,
+    yardageBook,
+  ])
 
   const selectedClubMetricModels = useMemo<ClubDetailMetricModel[]>(() => {
     // TODO(v2): Promote metric-specific interpretation rules into a dedicated

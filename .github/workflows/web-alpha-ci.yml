@@ -112,6 +112,9 @@ jobs:
       - name: Round history (Old Game rebuilds to 71, test sessions not scored)
         run: node tools/test-round-history.mjs
 
+      - name: The Looper's Read follows the club's numbers
+        run: node tools/test-looper-read.mjs
+
       - name: Course enrichment keeps islands and clearings
         run: |
           python3 -m pip install --quiet --break-system-packages numpy pytest || python3 -m pip install --quiet numpy pytest
