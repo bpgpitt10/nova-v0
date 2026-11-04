@@ -5,8 +5,7 @@
   "courseName": "Pebble Beach Golf Course",
   "greenDetailReady": true,
   "gsproAliases": [
-    "Pebble Beach Golf Course",
-    "mammoth_dunes_gsp"
+    "Pebble Beach Golf Course"
   ],
   "location": "Del Monte Forest, California",
   "packagePath": "public/course-geometry/pebble-beach/course-v1.json",
