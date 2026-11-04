@@ -32,6 +32,7 @@ import { loadHoleMap } from '../lib/roundHoleMap'
 import { BACKDROP_LABEL, BACKDROPS, isBackdrop, pickBackdrop, type Backdrop } from '../lib/roundBackdrop'
 import type { RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
+import { YourGame } from './YourGame'
 
 const FULL_ROUNDS_FOR_TRENDS = 5
 /** A shot that lost at least half a stroke is carnage; anything milder just got away. */
@@ -189,7 +190,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     () => (data.status === 'ready' ? buildRounds(data.records, toCourseInfoMap(data.courses), flags) : []),
     [data, flags],
   )
-  const roundIdParam = pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
+  const isGame = pathname === '/rounds/game'
+  const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
 
   // Backdrop choices made on this visit (saved to the account in the background).
@@ -219,7 +221,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     <div className={`rounds-page is-scene-${scene.backdrop}`}>
       <div className="rounds-shell">
         <BagTopBar
-          active="rounds"
+          active={isGame ? 'game' : 'rounds'}
           editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/rounds')}`}
           onBag={() => navigate('/dashboard')}
         />
@@ -240,7 +242,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             round={selected}
           />
         ) : null}
-        {data.status === 'ready' && roundIdParam == null ? (
+        {data.status === 'ready' && isGame ? <YourGame rounds={rounds} /> : null}
+        {data.status === 'ready' && roundIdParam == null && !isGame ? (
           <RoundsList
             cloudError={data.cloudError}
             coursesLoaded={data.coursesLoaded}

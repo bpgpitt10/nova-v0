@@ -112,6 +112,9 @@ jobs:
       - name: Round history (Old Game rebuilds to 71, test sessions not scored)
         run: node tools/test-round-history.mjs
 
+      - name: Your game (where you lose strokes) from real rounds
+        run: node tools/test-your-game.mjs
+
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
 

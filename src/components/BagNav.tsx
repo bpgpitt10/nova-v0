@@ -3,7 +3,7 @@ import type { Club } from '../lib/bagConfig'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import '../pages/BagYardageBook.css'
 
-export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds'
+export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds' | 'game'
 
 type BagTopBarProps = {
   active: BagNavTarget
@@ -53,6 +53,13 @@ export function BagTopBar({
           href="/rounds"
         >
           Rounds
+        </a>
+        <a
+          aria-current={active === 'game' ? 'page' : undefined}
+          className={active === 'game' ? 'is-active' : undefined}
+          href="/rounds/game"
+        >
+          Your game
         </a>
       </nav>
       {clubSwitcher}
