@@ -382,6 +382,7 @@ const registerInBrowser = async (
     const m = (v: number) => Number.isFinite(v) ? `${v.toFixed(2)} m` : 'n/a'
     // Numbers to diagnose the failure from a screenshot.
     const detail = ` [${courseKey}: ${result.greensChecked} greens`
+      + (result.greenCentresReplaced ? ` (${result.greenCentresReplaced} green centres taken from pins)` : '')
       + (g ? `; greens${result.mirrored ? ' (mirrored)' : ''} rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
       + (!result.mirrored && result.mirroredSimilarity ? `; mirrored rms ${result.mirroredSimilarity.rmsM.toFixed(1)} m` : '')
       + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points`
@@ -397,6 +398,8 @@ const registerInBrowser = async (
   }
   const turn = (result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : '')
     + (result.registration.mirrored ? ', mirror-image scene' : '')
+    + (result.greenCentresReplaced ? `, ${result.greenCentresReplaced} green centres from pins` : '')
+    + (result.usedHazardPoints ? ', with penalty-area outlines' : '')
   return {
     registration: result.registration,
     reason: `fit ${result.fit.medianAbsM.toFixed(2)} m, halves ${result.fit.halvesAgreeM.toFixed(1)} m${turn}`,

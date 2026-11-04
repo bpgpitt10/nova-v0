@@ -1,4 +1,4 @@
-import { nativeHole, sha256Hex, type NativeCourseLayout } from './nativeGkd'
+import { effectiveGreenCenter, nativeHole, sha256Hex, type NativeCourseLayout, type NativeXYZ } from './nativeGkd'
 import type { NativeHoleFrame, NativeRegistration } from './nativeRegistration'
 import { groundOffsetMeters, nativeWorldToLatLon } from './nativeRegistration'
 import { fitNativeRegistration, terrainSamplerFromHoles, type NativeRegistrationFitResult } from './nativeRegistrationFit'
@@ -41,6 +41,10 @@ export type AutoRegistrationResult = Readonly<{
   /** Diagnostic when the greens don't pair up by hole number: the hole offset
    * (GSPro hole = Looper hole + shift, wrapping) whose greens do line up. */
   holeShift: Readonly<{ shift: number; rmsM: number; rotationDeg: number; scale: number; label: string }> | null
+  /** Holes whose GreenCenterPoint was missing or far from the pins: the pins' centroid was used. */
+  greenCentresReplaced: number
+  /** The height fit only passed with GSPro's penalty-area outlines added as extra points. */
+  usedHazardPoints: boolean
   registration: NativeRegistration | null
 }>
 
@@ -48,6 +52,8 @@ const DEG = Math.PI / 180
 const ROTATION_MIN_DEG = 0.5
 const SCALE_MIN_DEVIATION = 0.003
 const ROTATION_TRUST_RMS_M = 25
+/** Retry the height fit with penalty-area outlines when there are fewer height points than this. */
+const HAZARD_POINTS_BELOW = 150
 
 export const greenSimilarity = (
   greens: ReadonlyArray<Readonly<{ world: Readonly<{ x: number; z: number }>; latLon: readonly [number, number] }>>,
@@ -99,7 +105,8 @@ const bestHoleShift = (layout: NativeCourseLayout, mapped: ReadonlyMap<number, r
     const pairs: Array<{ world: { x: number; z: number }; latLon: readonly [number, number] }> = []
     for (const [hole, latLon] of mapped) {
       const gkd = nativeHole(layout, pairing.map(hole))
-      if (gkd?.greenCenter) pairs.push({ world: gkd.greenCenter, latLon })
+      const centre = gkd ? effectiveGreenCenter(gkd) : null
+      if (centre) pairs.push({ world: centre.point, latLon })
     }
     for (const mirrored of [false, true]) {
       const sim = greenSimilarity(pairs, mirrored)
@@ -142,9 +149,17 @@ export const fitRegistrationFromPackage = async ({
     const green = pair(cf?.targetGreenLatLon)
     if (green) mappedGreens.set(Number(key), green)
     const gkdHole = nativeHole(layout, Number(key))
-    if (green && gkdHole?.greenCenter) greens.push({ world: gkdHole.greenCenter, latLon: green })
+    const centre = gkdHole ? effectiveGreenCenter(gkdHole) : null
+    if (green && centre) greens.push({ world: centre.point, latLon: green })
   }
-  const points = layout.holes.flatMap((h) => [...h.pins, ...(h.greenCenter ? [h.greenCenter] : [])])
+  // Heights: pins, plus green centres the designer actually set (a replaced
+  // centre is the pins' own average, so it adds nothing).
+  let greenCentresReplaced = 0
+  const points: NativeXYZ[] = layout.holes.flatMap((h) => {
+    const centre = effectiveGreenCenter(h)
+    if (centre?.replaced) greenCentresReplaced += 1
+    return [...h.pins, ...(centre && !centre.replaced ? [centre.point] : [])]
+  })
   // Some GSPro scenes are built turned or scaled (Valhalla 180°, Royal New Kent
   // -12°); the greens give that directly. Near 0° / 1 (FarmLinks) keep the
   // true-north model exactly as before.
@@ -157,7 +172,7 @@ export const fitRegistrationFromPackage = async ({
   const similarity = mirrored ? flipped : plain
   const turned = similarity != null && similarity.rmsM <= ROTATION_TRUST_RMS_M
     && (mirrored || Math.abs(similarity.rotationDeg) > ROTATION_MIN_DEG || Math.abs(similarity.scale - 1) > SCALE_MIN_DEVIATION)
-  const fit = fitNativeRegistration({
+  const fitInput = {
     ...(turned ? { rotationDeg: similarity!.rotationDeg, scale: similarity!.scale } : {}),
     ...(mirrored ? { mirrored: true } : {}),
     courseId,
@@ -168,7 +183,20 @@ export const fitRegistrationFromPackage = async ({
     greens,
     holes: frames,
     sampler: terrainSamplerFromHoles(holes),
-  })
+  }
+  let fit = fitNativeRegistration(fitInput)
+  // Few height points (pins + centres on a sparse GKD) and no fit: retry with
+  // the penalty-area outlines, which the designer draws on the ground. Only
+  // as a retry, so courses that register today are untouched.
+  let usedHazardPoints = false
+  const hazardPoints = layout.penaltyAreas.flatMap((area) => area.points)
+  if (!fit.registration && points.length < HAZARD_POINTS_BELOW && hazardPoints.length) {
+    const retry = fitNativeRegistration({ ...fitInput, points: [...points, ...hazardPoints] })
+    if (retry.registration) {
+      fit = retry
+      usedHazardPoints = true
+    }
+  }
   let within = 0
   if (fit.registration) {
     for (const g of greens) {
@@ -186,6 +214,8 @@ export const fitRegistrationFromPackage = async ({
     mirrored,
     mirroredSimilarity: flipped,
     holeShift: similarity && similarity.rmsM > ROTATION_TRUST_RMS_M ? bestHoleShift(layout, mappedGreens) : null,
+    greenCentresReplaced,
+    usedHazardPoints,
     registration: fit.registration && sameCourse ? fit.registration : null,
   }
 }
