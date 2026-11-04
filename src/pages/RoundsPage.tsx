@@ -36,6 +36,8 @@ import './RoundsPage.css'
 const FULL_ROUNDS_FOR_TRENDS = 5
 /** A shot that lost at least half a stroke is carnage; anything milder just got away. */
 const CARNAGE_SG = -0.5
+/** A hero shot gains at least half a stroke on the tour; short of that, the round's best is a keeper. */
+const HERO_SG = 0.5
 
 const navigate = (path: string) => {
   window.history.pushState({}, '', path)
@@ -377,11 +379,11 @@ function RoundsList({
                     </td>
                     <td>{formatDate(round.playedAt)}</td>
                     <td><span className="rounds-pill">{holesLabel(round)}</span></td>
-                    <td className="is-num rounds-list-vspar">
-                      {scored && round.completeHoles > 0 && round.par != null ? vsPar(round.strokes, round.par) : ''}
-                    </td>
                     <td className="is-num rounds-list-score">
                       {scored && round.completeHoles > 0 ? <strong>{round.strokes}</strong> : '–'}
+                    </td>
+                    <td className="rounds-list-vspar">
+                      {scored && round.completeHoles > 0 && round.par != null ? vsPar(round.strokes, round.par) : ''}
                     </td>
                     <td className="is-num" title={scored && round.fir.of === 0 ? 'Needs the course par' : undefined}>
                       {round.fir.of > 0 ? `${round.fir.hit}/${round.fir.of}` : '–'}
@@ -439,7 +441,11 @@ function RoundDetail({
   const worstHole = [...scoredHoles].sort((a, b) => (a.sg ?? 0) - (b.sg ?? 0))[0]
   const holeNumber = selectedHole ?? worstHole?.holeNumber ?? round.holes[0]?.holeNumber ?? null
   const hole = round.holes.find((entry) => entry.holeNumber === holeNumber) ?? null
-  const { best, worst: worstTwo } = keyShots(round, 2, 2)
+  const { best: bestTwo, worst: worstTwo } = keyShots(round, 2, 2)
+  // Hero shots are truly great ones (+0.5 or better against the tour). With
+  // none, the round's single best shot shows as a keeper; no filler beyond that.
+  const heroes = bestTwo.filter((shot) => (shot.sg ?? 0) >= HERO_SG)
+  const best = heroes.length ? heroes : bestTwo.slice(0, 1)
   // A second bad shot only earns a place if it really hurt.
   const worst = worstTwo.filter((shot, index) => index === 0 || (shot.sg ?? 0) <= CARNAGE_SG)
   const shots = scoredShots(round)
@@ -522,12 +528,24 @@ function RoundDetail({
             <div className="rounds-score-main">
               <span className="rounds-label">Score</span>
               <span className="rounds-score-pair">
-                {parKnown && round.completeHoles > 0 ? (
-                  <span aria-label={`${vsPar(round.strokes, round.par ?? 0)} against par ${round.par}`} className="rounds-score-vspar">
-                    {vsPar(round.strokes, round.par ?? 0)}
-                  </span>
-                ) : null}
-                <strong>{round.completeHoles > 0 ? round.strokes : '–'}</strong>
+                {round.status === 'test' || round.completeHoles === 0 ? (
+                  <strong>–</strong>
+                ) : round.status === 'full' || !parKnown ? (
+                  <>
+                    <strong>{round.strokes}</strong>
+                    {parKnown ? (
+                      <span aria-label={`${vsPar(round.strokes, round.par ?? 0)} against par ${round.par}`} className="rounds-score-vspar">
+                        {vsPar(round.strokes, round.par ?? 0)}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  // Partial round: strokes alone mean little; to-par through N holes.
+                  <>
+                    <strong className="is-topar">{vsPar(round.strokes, round.par ?? 0)}</strong>
+                    <span className="rounds-score-thru">thru {round.completeHoles}</span>
+                  </>
+                )}
               </span>
             </div>
             <div className="rounds-score-side">
@@ -580,12 +598,12 @@ function RoundDetail({
       {best.length + worst.length > 0 ? (
         <section className="rounds-keyshots" aria-label="Key shots">
           {[
-            { label: 'Hero shots', shots: best },
+            { label: heroes.length ? 'Hero shots' : 'Keepers', shots: best },
             // Voice guide: light ragging is fine, hype isn't. "Carnage" only for a real blow-up.
             { label: (worst[0]?.sg ?? 0) <= CARNAGE_SG ? 'Carnage' : 'Got away', shots: worst },
           ].filter((line) => line.shots.length > 0).map((line) => (
             <div className="rounds-keyline" key={line.label}>
-              <span className={`rounds-keyline-label ${line.label === 'Hero shots' ? 'is-hero' : 'is-carnage'}`}>{line.label}</span>
+              <span className={`rounds-keyline-label ${line.label === 'Hero shots' || line.label === 'Keepers' ? 'is-hero' : 'is-carnage'}`}>{line.label}</span>
               <div className="rounds-keyline-shots">
                 {line.shots.map((shot) => (
                   <button
