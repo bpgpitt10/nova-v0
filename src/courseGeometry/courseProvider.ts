@@ -1,10 +1,8 @@
 import {
-  GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
-import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
 import { buildGsproOnlyHoleGeometry, isGsproOnlyCourseId } from './gsproOnlyCourse'
 import { loadNativeCourseContext, selectNativeLayout, type NativeCourseStatus } from './nativeCourseRuntime'
 import { normalizeRouteCourseGeometry } from './normalizeRouteCourseGeometry'
@@ -94,7 +92,7 @@ const loadGsproOnlyHoleGeometry = async (courseId: CourseId, holeNumber: number)
 /**
  * Canonical runtime entry point for static course geometry.
  *
- * Greywolf remains the proven compatibility control. Every route package is
+ * Every route package is
  * normalized to the selected-tee runtime contract before any UI or decision
  * logic consumes it.
  *
@@ -110,10 +108,6 @@ export const loadCourseHoleGeometry = (
     return Promise.reject(new Error('Choose a course before loading hole geometry.'))
   }
   getCourseCatalogEntry(courseId)
-  if (courseId === GREYWOLF_COURSE_ID) {
-    return loadGreywolfHoleGeometryAdapter(holeNumber)
-      .then((geometry) => withShotOneTee(courseId, holeNumber, geometry))
-  }
   // GSPro-only: the hole comes from GSPro's course file; its tees are the
   // candidates, so the round's GSPro tee pick places the tee exactly.
   if (isGsproOnlyCourseId(courseId)) {

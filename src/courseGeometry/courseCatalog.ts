@@ -29,29 +29,14 @@ export type CourseCatalogEntry = {
 /**
  * Runtime-supported course registry. Canonical imported courses are generated
  * from runtime-ready receipts; they must never require a hand-added catalog row.
- * Greywolf is the one legacy hand-registered course. Augusta National, Arcadia
+ * Greywolf was the one legacy hand-registered course; since 11/4 it is a
+ * loaded course like any other (loaded_courses row, same id, so its round
+ * history stays with it). GREYWOLF_COURSE_ID remains for that id and for the
+ * dev fixtures built on the old hand-made holes. Augusta National, Arcadia
  * Bluffs and Oakmont were removed (2026-10-30): their packages never produced
  * usable live positions; git history keeps them.
  */
 const staticCourseRegistry = [
-  {
-    id: GREYWOLF_COURSE_ID,
-    name: 'Greywolf Golf Course',
-    location: 'Panorama, BC',
-    slug: 'greywolf',
-    gsproAliases: [
-      'Greywolf',
-      'Greywolf Golf Course',
-      'Greywolf_gsp',
-      'greywolf_gsp',
-    ],
-    status: 'validated',
-    packageStatus: 'ready',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
   ...generatedImportedCourseRegistry,
 ] as const satisfies readonly CourseCatalogEntry[]
 
