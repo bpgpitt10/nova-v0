@@ -143,6 +143,11 @@ jobs:
           python3 -m pip install --quiet --break-system-packages shapely pytest || python3 -m pip install --quiet shapely pytest
           python3 -m pytest -q tests/test_osm_duplicate_holes.py
 
+      - name: Canadian elevation (NRCan HRDEM) reads
+        run: |
+          python3 -m pip install --quiet --break-system-packages rasterio affine numpy pytest || python3 -m pip install --quiet rasterio affine numpy pytest
+          python3 -m pytest -q tests/test_nrcan_hrdem.py
+
       - name: Per-club lay-up targets
         run: node tools/test-club-layup-target.mjs
 
