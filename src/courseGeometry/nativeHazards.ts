@@ -1,7 +1,8 @@
-import type { NativeCourseLayout, NativePenaltyArea, NativeXYZ } from './nativeGkd'
+import { effectiveGreenCenter, type NativeCourseLayout, type NativePenaltyArea, type NativeXYZ } from './nativeGkd'
 import type { NativeRegistration } from './nativeRegistration'
 import { nativeWorldToHoleLocalYds } from './nativeRegistration'
 import { pointInPolygon } from './geometry'
+import { circleRing, clipToConvex } from './nativeGreenAnchor'
 import type { CourseHoleGeometry, CoursePointYds, CoursePolygonYds, CourseSurface } from './types'
 
 /**
@@ -22,6 +23,10 @@ import type { CourseHoleGeometry, CoursePointYds, CoursePolygonYds, CourseSurfac
 const OB_MARGIN_YDS = 80
 /** Penalty areas within this distance of the hole view are included. */
 const HAZARD_MARGIN_YDS = 30
+/** Simplification tolerance for GSPro rings clipped to a hole. */
+const SIMPLIFY_YDS = 0.5
+/** Smallest green cut out of an island-green penalty area with no map green. */
+const ISLAND_DISK_MIN_YDS = 12
 
 export type GkdHazardSummary = Readonly<{
   penaltyAreas: number
@@ -29,6 +34,8 @@ export type GkdHazardSummary = Readonly<{
   /** 'boundary': outside the pOOB polygon is OB. 'region': inside it is OB. null: no polygon. */
   obMode: 'boundary' | 'region' | null
   obOnHole: boolean
+  /** OB left off this hole: its tee or green would have been out of bounds. */
+  obSkipped?: boolean
 }>
 
 type Local = CoursePointYds
@@ -107,14 +114,60 @@ const toLocalRing = (
   return ring.length >= 3 ? ring : null
 }
 
+const perpendicular = (p: Local, a: Local, b: Local) => {
+  const dx = b[0] - a[0], dy = b[1] - a[1]
+  const len = Math.hypot(dx, dy)
+  return len < 1e-9 ? Math.hypot(p[0] - a[0], p[1] - a[1]) : Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]) / len
+}
+
+/** Douglas–Peucker on an open polyline. */
+const simplifyLine = (pts: readonly Local[], tolerance: number): Local[] => {
+  if (pts.length <= 2) return [...pts]
+  let index = -1, maxD = 0
+  for (let i = 1; i < pts.length - 1; i += 1) {
+    const d = perpendicular(pts[i], pts[0], pts[pts.length - 1])
+    if (d > maxD) { maxD = d; index = i }
+  }
+  if (maxD <= tolerance) return [pts[0], pts[pts.length - 1]]
+  const left = simplifyLine(pts.slice(0, index + 1), tolerance)
+  const right = simplifyLine(pts.slice(index), tolerance)
+  return [...left.slice(0, -1), ...right]
+}
+
+/** Simplified closed ring (keeps at least a triangle). */
+export const simplifyRing = (ring: readonly Local[], tolerance = SIMPLIFY_YDS): Local[] => {
+  if (ring.length <= 8) return [...ring]
+  const out = simplifyLine([...ring, ring[0]], tolerance).slice(0, -1)
+  return out.length >= 3 ? out : [...ring]
+}
+
+const ringArea = (ring: readonly Local[]) => {
+  let a = 0
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1]
+  return Math.abs(a / 2)
+}
+
+/**
+ * A course-wide ring (thousands of vertices) cut down to the hole's frame and
+ * simplified: every landing classification walks every edge of every
+ * surface, so an unclipped boundary made recommendations take tens of
+ * seconds (review, 11/4). The frame is convex, so Sutherland–Hodgman applies.
+ */
+const clipRingToFrame = (ring: readonly Local[], frame: readonly Local[]): Local[] => {
+  const clipped = clipToConvex(ring, frame)
+  return clipped.length >= 3 ? simplifyRing(clipped) : []
+}
+
 /** Is the pOOB polygon the playable boundary (outside = OB) or an OB region (inside = OB)?
  * Designers draw it around the course, so most green centres fall inside it. */
 export const outOfBoundsMode = (layout: NativeCourseLayout): 'boundary' | 'region' | null => {
   const ring = layout.outOfBounds
   if (ring.length < 3) return null
   const polygon: Local[] = ring.map((p) => [p.x, p.z] as const)
+  // Pins' centroid where the designer left a placeholder centre (#83): a few
+  // placeholders outside the boundary must not flip the whole course to OB.
   const centres = layout.holes
-    .map((h) => h.greenCenter ?? (h.pins[0] ?? null))
+    .map((h) => effectiveGreenCenter(h)?.point ?? null)
     .filter((p): p is NativeXYZ => p !== null)
   if (centres.length === 0) return 'boundary'
   const inside = centres.filter((c) => pointInPolygon([c.x, c.z], polygon)).length
@@ -156,12 +209,24 @@ export const gkdHazardSurfaces = (
     if (!enclosedPins.length && !area.islandGreen) return ring
     const greens = new Set<CoursePolygonYds>()
     for (const p of enclosedPins) greensContaining(hole, p).forEach((g) => greens.add(g))
-    return greens.size ? ringWithHoles(ring, [...greens]) : ring
+    const covered = enclosedPins.every((p) => [...greens].some((g) => pointInPolygon(p, g)))
+    if (greens.size && covered) return ringWithHoles(ring, [...greens])
+    // Pins inside the water that no map green covers (the map green sits
+    // elsewhere, or there is none): cut one disk around all of them instead,
+    // so GSPro's green is never penalty. (Overlapping holes would cancel out.)
+    if (!enclosedPins.length) return ring
+    const cx = enclosedPins.reduce((a, p) => a + p[0], 0) / enclosedPins.length
+    const cy = enclosedPins.reduce((a, p) => a + p[1], 0) / enclosedPins.length
+    const r = Math.max(ISLAND_DISK_MIN_YDS, ...enclosedPins.map((p) => Math.hypot(p[0] - cx, p[1] - cy) + 6))
+    return ringWithHoles(ring, [circleRing([cx, cy], r)])
   }
 
+  const nearFrame: Local[] = [[near.minX, near.minY], [near.maxX, near.minY], [near.maxX, near.maxY], [near.minX, near.maxY]]
   for (const area of layout.penaltyAreas) {
-    const ring = toLocalRing(registration, holeNumber, area.points)
-    if (!ring || !overlaps(bbox(ring), near)) continue
+    const full = toLocalRing(registration, holeNumber, area.points)
+    if (!full || !overlaps(bbox(full), near)) continue
+    const ring = clipRingToFrame(full, nearFrame)
+    if (ring.length < 3) continue
     const polygon = keyholeGreens(ring, area)
     if (area.innerOOB) innerOob += 1
     else penaltyCount += 1
@@ -183,30 +248,49 @@ export const gkdHazardSurfaces = (
 
   const obMode = outOfBoundsMode(layout)
   let obOnHole = false
+  let obSkipped = false
   if (obMode) {
     const ring = toLocalRing(registration, holeNumber, layout.outOfBounds)
     if (ring) {
       const far = holeExtent(hole, OB_MARGIN_YDS)
       const frame: Local[] = [[far.minX, far.minY], [far.maxX, far.minY], [far.maxX, far.maxY], [far.minX, far.maxY]]
-      const inFrame = ring.some(([x, y]) => x >= far.minX && x <= far.maxX && y >= far.minY && y <= far.maxY)
-      if (obMode === 'region' && overlaps(bbox(ring), far)) {
+      const frameArea = (far.maxX - far.minX) * (far.maxY - far.minY)
+      // The part of the boundary polygon inside the frame (clipped, simplified).
+      const inside = clipRingToFrame(ring, frame)
+      let ob: { id: string; polygon: Local[]; note: string } | null = null
+      if (obMode === 'region' && inside.length >= 3) {
+        ob = { id: 'gkd-oob-region', polygon: inside, note: 'Out of bounds inside this area, from the GSPro course file.' }
+      } else if (obMode === 'boundary') {
+        const insideArea = inside.length >= 3 ? ringArea(inside) : 0
+        // Whole frame in bounds: nothing to add. Nothing in bounds: the
+        // registration is wrong for this hole; never paint the hole OB.
+        if (insideArea > 0 && insideArea < frameArea * 0.995) {
+          ob = { id: 'gkd-oob', polygon: ringWithHoles(frame, [inside]), note: 'Out of bounds beyond the GSPro course boundary.' }
+        }
+      }
+      // Safety: a tee or the green out of bounds means the boundary/region
+      // reading (or the registration) is wrong for this hole.
+      if (ob) {
+        const gkdHole = layout.holes.find((h) => h.hole === holeNumber)
+        const greenCentre = gkdHole ? effectiveGreenCenter(gkdHole) : null
+        const greenLocal = greenCentre ? nativeWorldToHoleLocalYds(registration, holeNumber, greenCentre.point) : null
+        const checks = [hole.markers?.tee, greenLocal].filter((p): p is Local => Array.isArray(p))
+        if (checks.some((p) => pointInPolygon(p, ob!.polygon))) {
+          obSkipped = true
+          ob = null
+        }
+      }
+      if (ob) {
         obOnHole = true
         surfaces.push({
-          id: 'gkd-oob-region', kind: 'penalty', polygons: [ring],
-          provenance: { source: 'gspro', sourceFeature: 'GKD pOOB', confidence: 'high', note: 'Out of bounds inside this area, from the GSPro course file.' },
-        })
-      } else if (obMode === 'boundary' && inFrame) {
-        // Everything in the frame but outside the boundary is OB.
-        obOnHole = true
-        surfaces.push({
-          id: 'gkd-oob', kind: 'penalty', polygons: [ringWithHoles(frame, [ring])],
-          provenance: { source: 'gspro', sourceFeature: 'GKD pOOB', confidence: 'high', note: 'Out of bounds beyond the GSPro course boundary.' },
+          id: ob.id, kind: 'penalty', polygons: [ob.polygon],
+          provenance: { source: 'gspro', sourceFeature: 'GKD pOOB', confidence: 'high', note: ob.note },
         })
       }
     }
   }
 
-  return { surfaces, summary: { penaltyAreas: penaltyCount, innerOob, obMode, obOnHole } }
+  return { surfaces, summary: { penaltyAreas: penaltyCount, innerOob, obMode, obOnHole, obSkipped } }
 }
 
 /** The hole with GSPro's penalty areas and OB added ahead of the map's own water/penalty. */

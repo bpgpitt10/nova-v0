@@ -297,7 +297,7 @@ export const sampleModeledAimDistribution = ({
       landing,
       stockRollYds: total - carry,
       kind: classification.kind,
-      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds),
+      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds, ball),
     }
   })
 
