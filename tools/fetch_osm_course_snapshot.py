@@ -294,11 +294,44 @@ def _same_route(elements: list[dict[str, Any]]) -> bool:
     return all(close(first, e) or close(first, (e[1], e[0])) for e in ends[1:])
 
 
+def _centroids(payload: dict[str, Any], golf_tag: str) -> list[tuple[float, float]]:
+    out = []
+    for element in payload.get("elements", []):
+        if (element.get("tags") or {}).get("golf") != golf_tag:
+            continue
+        pts = [(p.get("lat"), p.get("lon")) for p in element.get("geometry") or []]
+        pts = [(float(a), float(b)) for a, b in pts if isinstance(a, (int, float)) and isinstance(b, (int, float))]
+        if pts:
+            out.append((sum(a for a, _ in pts) / len(pts), sum(b for _, b in pts) / len(pts)))
+    return out
+
+
+def _route_fit(element: dict[str, Any], tees, greens) -> float | None:
+    """Metres from the route's ends to the nearest mapped tee and green (in
+    either drawing direction); None without ends or greens."""
+    ends = _route_ends(element)
+    if ends is None or not greens:
+        return None
+
+    def near(point, places):
+        return min((_metres(point, place) for place in places), default=DUPLICATE_HOLE_MATCH_M)
+
+    forward = near(ends[1], greens) + (near(ends[0], tees) if tees else 0.0)
+    backward = near(ends[0], greens) + (near(ends[1], tees) if tees else 0.0)
+    return min(forward, backward)
+
+
+# A copy kept by fit must end at a mapped green and fit clearly better.
+FIT_GREEN_MAX_M = 40.0
+FIT_MARGIN_M = 25.0
+
+
 def validate_holes(payload: dict[str, Any]) -> dict[int, tuple[str, int]]:
     """Exactly one golf=hole route per ref 1-18. A hole mapped twice along the
     same line (Payne's Valley: every hole drawn by two mappers) keeps the more
-    detailed / newer copy and drops the other; copies that disagree by more
-    than 40 m at the tee or green are still rejected."""
+    detailed / newer copy and drops the other. Copies in different places keep
+    the one that runs from a mapped tee to a mapped green when it clearly fits
+    better; otherwise the course is rejected."""
     by_ref: dict[int, list[dict[str, Any]]] = {}
     for element in payload.get("elements", []):
         tags = element.get("tags") or {}
@@ -317,6 +350,26 @@ def validate_holes(payload: dict[str, Any]) -> dict[int, tuple[str, int]]:
             dropped.update((str(e.get("type")), int(e.get("id"))) for e in elements if e is not keep)
             by_ref[hole] = [keep]
             print(f"Hole {hole}: {len(elements)} OSM routes along the same line; kept way {keep.get('id')}.", flush=True)
+    # Copies in different places (Payne's Valley, 11/3: holes 1-13 drawn twice,
+    # one set not matching the other): keep the copy that actually runs from a
+    # mapped tee to a mapped green, when it clearly fits better.
+    tees, greens = _centroids(payload, "tee"), _centroids(payload, "green")
+    for hole, elements in by_ref.items():
+        if len(elements) < 2:
+            continue
+        fits = sorted(((_route_fit(e, tees, greens), e) for e in elements),
+                      key=lambda pair: float("inf") if pair[0] is None else pair[0])
+        (best_fit, best), (next_fit, _) = fits[0], fits[1]
+        summary = ", ".join(f"way {e.get('id')} {'?' if f is None else f'{f:.0f} m'}" for f, e in fits)
+        if best_fit is None or best_fit > 2 * FIT_GREEN_MAX_M:
+            print(f"Hole {hole}: {len(elements)} OSM routes, none ends at a mapped green ({summary}).", flush=True)
+            continue
+        if next_fit is not None and next_fit - best_fit < FIT_MARGIN_M:
+            print(f"Hole {hole}: {len(elements)} OSM routes fit tees/greens equally ({summary}).", flush=True)
+            continue
+        dropped.update((str(e.get("type")), int(e.get("id"))) for e in elements if e is not best)
+        by_ref[hole] = [best]
+        print(f"Hole {hole}: kept way {best.get('id')}, the copy that runs tee to green ({summary}).", flush=True)
     if dropped:
         payload["elements"] = [e for e in payload.get("elements", [])
                                if (str(e.get("type")), int(e.get("id") or 0)) not in dropped]
