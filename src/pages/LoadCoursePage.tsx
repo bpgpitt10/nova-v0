@@ -23,6 +23,7 @@ import {
   type CourseLoadRow,
   type GolfCourseSearchResult,
 } from '../courseLoading/courseLoads'
+import { crosswalkDecision, crosswalkForGsproKey } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
@@ -258,6 +259,31 @@ export default function LoadCoursePage() {
   const loadInstalled = async (course: LooperCompanionInstalledCourse) => {
     setBusyKey(course.courseKey)
     setMessage(`Finding ${course.courseName} on the map…`)
+    const name = course.courseName || course.courseKey
+    // The crosswalk first: GSPro's course key -> the map course matched near
+    // the course's own coordinates (no name search, no place lookup).
+    const decision = crosswalkDecision(await crosswalkForGsproKey(course.courseKey).catch(() => null))
+    if (decision.kind === 'load') {
+      await queue(course.courseKey, {
+        name: course.courseName || decision.name, location: decision.location || course.location,
+        lat: decision.lat, lon: decision.lon, osmType: decision.osmType, osmId: decision.osmId,
+        gsproCourseKey: course.courseKey,
+      })
+      return
+    }
+    if (decision.kind === 'pick') {
+      setBusyKey(null)
+      setLinkedGspro({ courseKey: course.courseKey, courseName: name })
+      setQuery(name)
+      setResults(decision.candidates.map((c) => ({ ...c })))
+      setMessage(`More than one course on the map could be ${name}. Pick the right one below.`)
+      return
+    }
+    if (decision.kind === 'not-on-map') {
+      setBusyKey(null)
+      setMessage(`${name} can't be loaded: ${decision.reason}. It still plays in Looper from GSPro's own course file.`)
+      return
+    }
     let match: Awaited<ReturnType<typeof findGolfCourseFor>>
     try {
       match = await findGolfCourseFor(course.courseName, course.location)
@@ -270,7 +296,6 @@ export default function LoadCoursePage() {
     }
     if (!match) {
       setBusyKey(null)
-      const name = course.courseName || course.courseKey
       setLinkedGspro({ courseKey: course.courseKey, courseName: name })
       setQuery(name)
       setMessage(`Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`)
