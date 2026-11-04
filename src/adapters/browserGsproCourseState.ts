@@ -77,6 +77,7 @@ export type BrowserGsproCourseSnapshot = Omit<
   /** Native positions: how GSPro's scene is turned against true north
    * (Valhalla 180°). GSPro's wind compass is scene-relative. */
   gsproSceneRotationDeg?: number | null
+  gsproSceneMirrored?: boolean
   /** 'manual-start': Looper's Start Round (Hole 1, Shot 1) before GSPro has
    * written any shot of this round; 'gspro': read from GSPro's files. */
   publishedFrom?: 'manual-start' | 'gspro'
@@ -287,12 +288,13 @@ const applyNativeIfReady = async (
       teeContext,
       preShotStart: snapshot.preShotStart?.holeNumber === snapshot.holeNumber ? snapshot.preShotStart : null,
       normalizedTeeSet,
-      rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId),
+      rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber),
       legacyTeeLocal,
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
     })
-    if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, pinSlot)
-    const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0 }
+    if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
+    const turned = { ...next, gsproSceneRotationDeg: context.registration.rotationDeg ?? 0,
+      gsproSceneMirrored: context.registration.mirrored === true }
     if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)

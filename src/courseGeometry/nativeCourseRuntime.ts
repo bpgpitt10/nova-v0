@@ -382,9 +382,10 @@ const registerInBrowser = async (
     const m = (v: number) => Number.isFinite(v) ? `${v.toFixed(2)} m` : 'n/a'
     // Numbers to diagnose the failure from a screenshot.
     const detail = ` [${courseKey}: ${result.greensChecked} greens`
-      + (g ? `; greens rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
+      + (g ? `; greens${result.mirrored ? ' (mirrored)' : ''} rotate ${g.rotationDeg.toFixed(2)}°, scale ${g.scale.toFixed(4)}, rms ${g.rmsM.toFixed(1)} m` : '')
+      + (!result.mirrored && result.mirroredSimilarity ? `; mirrored rms ${result.mirroredSimilarity.rmsM.toFixed(1)} m` : '')
       + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points`
-      + (result.holeShift ? `; greens line up if GSPro hole = Looper hole + ${result.holeShift.shift}`
+      + (result.holeShift ? `; greens line up if ${result.holeShift.label}`
         + ` (rms ${result.holeShift.rmsM.toFixed(1)} m, rotate ${result.holeShift.rotationDeg.toFixed(1)}°)` : '')
       + ']'
     return {
@@ -394,7 +395,8 @@ const registerInBrowser = async (
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
     }
   }
-  const turn = result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : ''
+  const turn = (result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : '')
+    + (result.registration.mirrored ? ', mirror-image scene' : '')
   return {
     registration: result.registration,
     reason: `fit ${result.fit.medianAbsM.toFixed(2)} m, halves ${result.fit.halvesAgreeM.toFixed(1)} m${turn}`,
@@ -640,15 +642,18 @@ export const nativeCourseContextForLive = async (
   courseKey: string | null,
 ): Promise<NativeCourseContext | null> => (await loadNativeCourseContext(courseId, courseKey)).context
 
-// Pin slot for the active GSPro round. Learned from GSPro's own distance to
-// pin; assumed to stay the same for the whole round (verify on the sim).
+// Pin slot for each hole of the active GSPro round, learned from GSPro's own
+// distance to pin. Per hole: on Royal New Kent the slot learned on one hole put
+// the next hole's pin at the front when GSPro had it at the back (11/3).
 const pinSlots = new Map<string, number>()
 const slotKey = (courseKey: string, roundId: number | null) => `${courseKey}|${roundId ?? 'round'}`
+const pinSlotKey = (courseKey: string, roundId: number | null, holeNumber: number) =>
+  `${slotKey(courseKey, roundId)}|h${holeNumber}`
 
-export const rememberNativePinSlot = (courseKey: string, roundId: number | null, slot: number) => {
-  pinSlots.set(slotKey(courseKey, roundId), slot)
+export const rememberNativePinSlot = (courseKey: string, roundId: number | null, holeNumber: number, slot: number) => {
+  pinSlots.set(pinSlotKey(courseKey, roundId, holeNumber), slot)
   try {
-    window.sessionStorage.setItem(`looper.native-pin-slot.${slotKey(courseKey, roundId)}`, String(slot))
+    window.sessionStorage.setItem(`looper.native-pin-slot.${pinSlotKey(courseKey, roundId, holeNumber)}`, String(slot))
   } catch {
     // memory copy is enough
   }
@@ -670,8 +675,8 @@ export const recallNativeLayout = (courseKey: string, roundId: number | null): s
   }
 }
 
-export const recallNativePinSlot = (courseKey: string, roundId: number | null): number | null => {
-  const key = slotKey(courseKey, roundId)
+export const recallNativePinSlot = (courseKey: string, roundId: number | null, holeNumber: number): number | null => {
+  const key = pinSlotKey(courseKey, roundId, holeNumber)
   const cached = pinSlots.get(key)
   if (cached != null) return cached
   try {

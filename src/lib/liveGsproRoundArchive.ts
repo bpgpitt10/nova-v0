@@ -15,6 +15,7 @@ import {
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
 import type { Club } from './bagConfig'
+import { loadSavedSessions } from './sessions'
 import {
   clearArmedLiveClub,
   inferClubForGsproShot,
@@ -25,11 +26,6 @@ import {
   LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
-import {
-  loadSavedSessions,
-  saveSessionHistory,
-} from './sessions'
-import type { SavedSession, Shot } from '../types'
 
 export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   observedAt: string
@@ -259,74 +255,6 @@ const isFreshArmedSelection = (armedAt: string, observedAt: string) => {
   return observedMs >= armedMs && observedMs - armedMs <= ARMED_CLUB_MAX_AGE_MS
 }
 
-const toPlayerModelShot = (round: ArchivedGsproRound, shot: ArchivedGsproCourseShot): Shot | null => {
-  if (!shot.actualClub || !shot.includeInAnalysis) return null
-  return {
-    id: `gspro-live:${round.roundId}:${shot.shotId}`,
-    club: shot.actualClub,
-    included: true,
-    capturedAt: shot.observedAt,
-    enrichmentStatus: 'enriched',
-    ballSpeedMph: shot.ballSpeedMph ?? undefined,
-    carryYards: shot.carryYards ?? undefined,
-    totalYards: shot.totalYards ?? undefined,
-    verticalLaunchAngleDegrees: shot.verticalLaunchAngleDegrees ?? undefined,
-    horizontalLaunchAngleDegrees: shot.horizontalLaunchAngleDegrees ?? undefined,
-    totalSpinRpm: shot.totalSpinRpm ?? undefined,
-    spinAxisDegrees: shot.spinAxisDegrees ?? undefined,
-    backSpin: shot.backSpinRpm ?? undefined,
-    sideSpin: shot.sideSpinRpm ?? undefined,
-    openGolfCoach: {
-      live_course_archive: {
-        gspro_round_id: round.roundId,
-        shot_id: shot.shotId,
-        course_key: shot.courseKey ?? round.courseKey,
-        hole_number: shot.holeNumber,
-        hole_shot: shot.holeShot,
-        club_source: shot.clubSource,
-        recommended_club: shot.recommendedClub,
-        inferred_club: shot.clubInference?.predictedClub ?? null,
-        inference_confidence: shot.clubInference?.confidence ?? null,
-        inference_model_version: shot.clubInference?.modelVersion ?? null,
-      },
-    },
-    source: 'simread',
-  }
-}
-
-const promoteAttributedRoundToPlayerHistory = (round: ArchivedGsproRound) => {
-  const promotedShots = round.shots.flatMap((shot) => {
-    const promoted = toPlayerModelShot(round, shot)
-    return promoted ? [promoted] : []
-  })
-  if (promotedShots.length === 0) return
-
-  const sessions = loadSavedSessions()
-  const sessionId = `gspro-live-round-${round.roundId}`
-  const existingIndex = sessions.findIndex((session) => session.id === sessionId)
-  const existing = existingIndex >= 0 ? sessions[existingIndex] : null
-  const byId = new Map(existing?.shots.map((shot) => [shot.id, shot]) ?? [])
-  promotedShots.forEach((shot) => byId.set(shot.id, shot))
-
-  const nextSession: SavedSession = {
-    id: sessionId,
-    startedAt: existing?.startedAt ?? round.firstObservedAt,
-    endedAt: round.lastObservedAt,
-    shots: [...byId.values()].sort((left, right) => left.capturedAt.localeCompare(right.capturedAt)),
-    metadata: {
-      app: 'nova-validation',
-      schemaVersion: 1,
-      source: 'gspro',
-      includeInAnalysis: true,
-    },
-  }
-
-  const nextSessions = existingIndex >= 0
-    ? sessions.map((session, index) => index === existingIndex ? nextSession : session)
-    : [nextSession, ...sessions]
-  saveSessionHistory(nextSessions)
-}
-
 const annotateNewShots = ({
   round,
   newShots,
@@ -511,10 +439,6 @@ export const captureAndPersistLiveGsproCourseRound = async (
     observedAt,
   })
   const finalRound = annotated.round
-
-  if (annotated.consumedArmedClub) {
-    promoteAttributedRoundToPlayerHistory(finalRound)
-  }
 
   if (result.changed || annotated.changed) {
     await syncRoundToCloud(finalRound).catch((error) => {

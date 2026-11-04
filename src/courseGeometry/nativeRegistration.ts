@@ -39,6 +39,8 @@ export type NativeRegistration = Readonly<{
    * Older files omit both (0° / 1). */
   rotationDeg?: number
   scale?: number
+  /** Scene built mirror-image (x runs west): dx is negated before the turn. */
+  mirrored?: boolean
   worldYToElevationOffsetM: number
   holes: Readonly<Record<string, NativeHoleFrame>>
 }>
@@ -93,6 +95,7 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
     reference: { latLon, worldXZ },
     ...(finite(v.rotationDeg) && Math.abs(v.rotationDeg) > 1e-9 ? { rotationDeg: v.rotationDeg } : {}),
     ...(finite(v.scale) && v.scale > 0.5 && v.scale < 2 && Math.abs(v.scale - 1) > 1e-12 ? { scale: v.scale } : {}),
+    ...(v.mirrored === true ? { mirrored: true } : {}),
     worldYToElevationOffsetM: v.worldYToElevationOffsetM,
     holes,
   }
@@ -131,20 +134,22 @@ export const nativeWorldToLatLon = (
 const sceneToGround = (registration: NativeRegistration, dx: number, dz: number): readonly [number, number] => {
   const theta = (registration.rotationDeg ?? 0) * DEG
   const k = registration.scale ?? 1
-  if (theta === 0 && k === 1) return [dx, dz]
+  const mx = registration.mirrored ? -dx : dx
+  if (theta === 0 && k === 1) return [mx, dz]
   const c = Math.cos(theta) * k
   const s = Math.sin(theta) * k
-  return [c * dx - s * dz, s * dx + c * dz]
+  return [c * mx - s * dz, s * mx + c * dz]
 }
 
 /** Inverse of sceneToGround. */
 const groundToScene = (registration: NativeRegistration, east: number, north: number): readonly [number, number] => {
   const theta = (registration.rotationDeg ?? 0) * DEG
   const k = registration.scale ?? 1
-  if (theta === 0 && k === 1) return [east, north]
+  const sign = registration.mirrored ? -1 : 1
+  if (theta === 0 && k === 1) return [sign * east, north]
   const c = Math.cos(theta) / k
   const s = Math.sin(theta) / k
-  return [c * east + s * north, -s * east + c * north]
+  return [sign * (c * east + s * north), -s * east + c * north]
 }
 
 export const latLonToHoleLocalYds = (
