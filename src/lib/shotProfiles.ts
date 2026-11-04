@@ -11,6 +11,7 @@ import { weightedAverage, weightedStandardDeviation } from './recency'
 import { weightedTrimmedMean, weightedWinsorizedStdDev } from './robustStats'
 import { normalizeShotRank, shotRankWeight } from './shotRank'
 import type { OpenGolfCoachPayload, Shot } from '../types'
+import { attackAngleValue } from './attackAngle'
 
 export type ShotProfileSnapshot = {
   key: 'best' | 'likely'
@@ -23,6 +24,8 @@ export type ShotProfileSnapshot = {
   dispersionVariability?: number
   launch?: number
   launchVariability?: number
+  attackAngle?: number
+  attackAngleVariability?: number
   hla?: number
   hlaVariability?: number
   spin?: number
@@ -31,9 +34,12 @@ export type ShotProfileSnapshot = {
   smashFactor?: number
   smashFactorVariability?: number
   ballSpeed?: number
+  ballSpeedVariability?: number
   clubSpeed?: number
   peakHeight?: number
+  peakHeightVariability?: number
   descentAngle?: number
+  descentAngleVariability?: number
   clubPath?: number
   faceToPath?: number
   faceToTarget?: number
@@ -342,6 +348,10 @@ const buildProfile = (
   const hla = shots.map(hlaValue)
   const spin = shots.map(spinValue)
   const smashFactor = shots.map(smashFactorValue)
+  const ballSpeed = shots.map(ballSpeedMphValue)
+  const peakHeight = shots.map(peakHeightValue)
+  const descentAngle = shots.map(descentValue)
+  const attackAngle = shots.map(attackAngleValue)
 
   return {
     key,
@@ -367,6 +377,8 @@ const buildProfile = (
     dispersionVariability: weightedWinsorizedStdDev(offline, weights, 0.1),
     launch: weightedAverageNumbers(launch, weights),
     launchVariability: weightedStandardDeviationNumbers(launch, weights),
+    attackAngle: weightedAverageNumbers(attackAngle, weights),
+    attackAngleVariability: weightedStandardDeviationNumbers(attackAngle, weights),
     hla: weightedAverageNumbers(hla, weights),
     hlaVariability: weightedStandardDeviationNumbers(hla, weights),
     spin: weightedAverageNumbers(spin, weights),
@@ -374,10 +386,13 @@ const buildProfile = (
     spinAxis: weightedAverageNumbers(shots.map(spinAxisValue), weights),
     smashFactor: weightedAverageNumbers(smashFactor, weights),
     smashFactorVariability: weightedStandardDeviationNumbers(smashFactor, weights),
-    ballSpeed: weightedAverageNumbers(shots.map(ballSpeedMphValue), weights),
+    ballSpeed: weightedAverageNumbers(ballSpeed, weights),
+    ballSpeedVariability: weightedStandardDeviationNumbers(ballSpeed, weights),
     clubSpeed: weightedAverageNumbers(shots.map(clubSpeedValue), weights),
-    peakHeight: weightedAverageNumbers(shots.map(peakHeightValue), weights),
-    descentAngle: weightedAverageNumbers(shots.map(descentValue), weights),
+    peakHeight: weightedAverageNumbers(peakHeight, weights),
+    peakHeightVariability: weightedStandardDeviationNumbers(peakHeight, weights),
+    descentAngle: weightedAverageNumbers(descentAngle, weights),
+    descentAngleVariability: weightedStandardDeviationNumbers(descentAngle, weights),
     clubPath: weightedAverageNumbers(shots.map(clubPathValue), weights),
     faceToPath: weightedAverageNumbers(shots.map(faceToPathValue), weights),
     faceToTarget: weightedAverageNumbers(shots.map(faceToTargetValue), weights),

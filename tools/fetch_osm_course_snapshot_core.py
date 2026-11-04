@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -182,10 +183,20 @@ def main() -> int:
     source_element, source_endpoint = fetcher.fetch_source_element(config, args.timeout)
     boundary = fetcher.boundary_shape(source_element)
 
-    raw_payload, map_endpoint, raw_element_count = fetch_core_map_features(
-        boundary.bounds,
-        args.timeout,
-    )
+    try:
+        raw_payload, map_endpoint, raw_element_count = fetch_core_map_features(
+            boundary.bounds,
+            args.timeout,
+        )
+    except urllib.error.HTTPError as error:
+        # The core /map call refuses large areas ("too many nodes", 50k limit,
+        # or bbox over 0.25 deg^2): big resorts like Payne's Valley. Say why,
+        # then use Overpass for the same bbox.
+        body = error.read().decode("utf-8", "replace")[:200].strip()
+        print(f"OSM core map refused the course bbox (HTTP {error.code}: {body}); trying Overpass.", flush=True)
+        raw_payload, endpoints, _ = fetcher.fetch_bbox_features(boundary.bounds, args.timeout)
+        map_endpoint = f"overpass:{','.join(sorted(set(endpoints.values())))}"
+        raw_element_count = len(raw_payload.get("elements", []))
     raw_feature_tag_counts = feature_tag_counts(raw_payload)
     payload = fetcher.filter_to_boundary(raw_payload, boundary)
     filtered_feature_tag_counts = feature_tag_counts(payload)

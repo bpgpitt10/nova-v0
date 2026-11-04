@@ -1,0 +1,240 @@
+/* Start a Round (Live Caddie): open layout over the links scene, like the entry page. */
+
+.round-setup-page {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: #07100a;
+  color: #f5f7f4;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.round-setup-page::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: -16vh;
+  height: 120vh;
+  z-index: 0;
+  pointer-events: none;
+  background: url('../assets/Backgrounds/looper-entry-links.webp') center / cover no-repeat;
+  filter: brightness(0.7) saturate(0.9);
+}
+
+.round-setup-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(6, 14, 9, 0.1) 0%, rgba(6, 14, 9, 0.42) 60%, rgba(4, 9, 6, 0.7) 100%),
+    linear-gradient(180deg, rgba(5, 11, 7, 0.3) 0%, rgba(4, 10, 6, 0.55) 55%, rgba(3, 8, 5, 0.82) 100%);
+}
+
+.round-setup-shell {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 6vh, 64px) 20px 48px;
+  display: grid;
+  gap: clamp(20px, 5vh, 48px);
+}
+
+.round-setup-logo {
+  justify-self: center;
+  display: block;
+}
+
+.round-setup-logo img {
+  display: block;
+  width: min(230px, 60vw);
+  height: auto;
+  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.45));
+}
+
+.round-setup-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.round-setup-kicker {
+  color: #d4b15a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.round-setup-panel h1 {
+  margin: -10px 0 0;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(34px, 6vw, 44px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.04;
+  color: #eab308;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
+}
+
+.round-setup-lead {
+  margin: -6px 0 6px;
+  color: #d3ddd1;
+  font-size: 15px;
+  line-height: 1.5;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* A round already armed or in play: one line, not a page. */
+.round-setup-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(234, 179, 8, 0.28);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.28);
+  color: #d8e2d6;
+  font-size: 14px;
+}
+
+.round-setup-active strong {
+  color: #ffffff;
+}
+
+.round-setup-active-dot {
+  width: 7px;
+  height: 7px;
+  align-self: center;
+  border-radius: 50%;
+  background: #76d39b;
+  box-shadow: 0 0 0 4px rgba(118, 211, 155, 0.1);
+}
+
+.round-setup-active a,
+.round-setup-active button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #eab308;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.round-setup-active button {
+  color: #aebbae;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.round-setup-active a:hover {
+  color: #f7cf4a;
+}
+
+.round-setup-active button:hover {
+  color: #ffffff;
+}
+
+.round-setup-field {
+  display: grid;
+  gap: 8px;
+}
+
+.round-setup-label {
+  color: #b2c0b0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Selects and the tee name keep an edge: they are controls. */
+.round-setup-field select,
+.round-setup-field input {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid rgba(207, 216, 205, 0.24);
+  border-radius: 10px;
+  background: rgba(6, 14, 9, 0.6);
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+}
+
+.round-setup-field select:focus,
+.round-setup-field input:focus {
+  outline: none;
+  border-color: rgba(234, 179, 8, 0.6);
+}
+
+.round-setup-field select option {
+  background: #102016;
+  color: #ffffff;
+}
+
+.round-setup-hint-link {
+  justify-self: start;
+  color: #b9d9bf;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.round-setup-hint-link:hover {
+  color: #eab308;
+}
+
+.round-setup-hint {
+  color: #93a393;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.round-setup-native {
+  margin: -6px 0 -4px;
+}
+
+.round-setup-native .native-positions-beta {
+  padding-left: 0;
+}
+
+.round-setup-error {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(248, 113, 113, 0.7);
+  color: #fecaca;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* The one solid gold button. */
+.round-setup-start {
+  min-height: 50px;
+  margin-top: 4px;
+  border: 1px solid rgba(234, 179, 8, 0.75);
+  border-radius: 10px;
+  background: #eab308;
+  color: #11180f;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.round-setup-start:hover:not(:disabled) {
+  background: #f0bf19;
+}
+
+.round-setup-start:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

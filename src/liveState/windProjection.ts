@@ -22,12 +22,16 @@ const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
 export const windInTrueCompass = (
   wind: WindObservation | null,
   sceneRotationDeg: number | null | undefined,
+  sceneMirrored = false,
 ): WindObservation | null => {
+  const rotation = Number.isFinite(sceneRotationDeg) ? sceneRotationDeg ?? 0 : 0
   if (!wind || wind.referenceFrame !== 'compass' || wind.directionDegrees == null
-    || !Number.isFinite(wind.directionDegrees) || !sceneRotationDeg || !Number.isFinite(sceneRotationDeg)) {
+    || !Number.isFinite(wind.directionDegrees) || (!rotation && !sceneMirrored)) {
     return wind
   }
-  return { ...wind, directionDegrees: normalizeDegrees(wind.directionDegrees - sceneRotationDeg) }
+  // Mirror-image scene: a scene bearing b points -b before the turn.
+  const scene = sceneMirrored ? -wind.directionDegrees : wind.directionDegrees
+  return { ...wind, directionDegrees: normalizeDegrees(scene - rotation) }
 }
 
 /**

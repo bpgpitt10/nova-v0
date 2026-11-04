@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Club } from '../lib/bagConfig'
 import { formatMiss, type YardageBook, type YardageBookRow } from '../lib/bagYardageBook'
+import TheReadLadderExportCard, { type ReadLadderExportRow } from '../components/TheReadLadderExportCard'
 import './BagYardageBook.css'
 
 type BagYardageBookProps = {
@@ -187,8 +188,65 @@ function DataRow({
   )
 }
 
+/** Club Ladder PDF rows: every club and variant in the yardage book with numbers. */
+export const ladderExportRows = (book: YardageBook): ReadLadderExportRow[] =>
+  book.clubs
+    .flatMap((entry) => [entry.row, ...entry.variants].map((row) => ({ entry, row })))
+    .filter(({ row }) => !row.needsData && row.stock && typeof row.stock.total === 'number')
+    .map(({ entry, row }) => {
+      const call = row.trust?.call ?? 'Insufficient Data'
+      return {
+        key: `${row.club}-${row.variantId}`,
+        club: row.club,
+        clubLabel: entry.label,
+        variantId: row.variantId,
+        variantLabel: row.variantName,
+        carry: row.stock!.carry,
+        carryRange: row.spread.carry ?? undefined,
+        total: row.stock!.total as number,
+        totalRange: row.spread.total ?? undefined,
+        offline: row.missOffline ?? 0,
+        offlineRange: row.spread.offline ?? undefined,
+        score: row.trust ? Math.round(row.trust.score) : 0,
+        callTag: call === 'Insufficient Data' ? 'Needs Data' : call,
+      }
+    })
+    .sort((a, b) => a.carry - b.carry)
+
+const pdfDateSlug = (date: Date) => date.toISOString().slice(0, 10)
+
 export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps) {
   const [showAllVariants, setShowAllVariants] = useState(false)
+  const exportRef = useRef<HTMLDivElement | null>(null)
+  const [exportGeneratedAt, setExportGeneratedAt] = useState(() => new Date())
+  const [isExporting, setIsExporting] = useState(false)
+  const exportRows = useMemo(() => ladderExportRows(book), [book])
+
+  // Same capture as The Read's ladder PDF: render the card off screen, snapshot it, save.
+  const exportLadderPdf = async () => {
+    const element = exportRef.current
+    if (!element || isExporting || exportRows.length === 0) return
+    const generatedAt = new Date()
+    setExportGeneratedAt(generatedAt)
+    setIsExporting(true)
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
+      await document.fonts.ready
+      await new Promise((resolve) => window.requestAnimationFrame(resolve))
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        scale: Math.max(2, Math.min(4, window.devicePixelRatio * 2)),
+        useCORS: true,
+      })
+      const pdf = new jsPDF({ compress: true, format: [canvas.width, canvas.height], orientation: 'portrait', unit: 'px' })
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height)
+      pdf.save(`looper-club-ladder-${pdfDateSlug(generatedAt)}.pdf`)
+    } catch (error) {
+      console.error('Failed to export the Club Ladder PDF', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
   const [expanded, setExpanded] = useState<Set<Club>>(() => new Set())
   const scale = useMemo(() => buildScale(book), [book])
   const anyVariants = book.clubs.some((entry) => entry.variants.length > 0)
@@ -290,7 +348,21 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
           Pure
         </span>
         <span>Mishits are left out of Stock and Pure. Trust is the Caddie Score.</span>
+        {exportRows.length > 0 ? (
+          <button
+            className="bagbook-ladder-pdf"
+            disabled={isExporting}
+            onClick={exportLadderPdf}
+            type="button"
+          >
+            {isExporting ? 'Saving…' : 'Club Ladder PDF'}
+          </button>
+        ) : null}
       </p>
+
+      <div aria-hidden="true" className="bagbook-export-capture" ref={exportRef}>
+        <TheReadLadderExportCard generatedAt={exportGeneratedAt} rows={exportRows} />
+      </div>
     </section>
   )
 }

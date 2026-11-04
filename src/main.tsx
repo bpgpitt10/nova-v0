@@ -12,6 +12,7 @@ import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
+import RoundsPage from './pages/RoundsPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
@@ -284,6 +285,7 @@ function RootRouter() {
     const showSessionIntelligence = pathname === '/session-intelligence'
     const showDashboardRoute = pathname === '/dashboard'
     const showTheRead = pathname === '/read'
+    const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/')
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'
@@ -309,6 +311,7 @@ function RootRouter() {
     if (showDataManagement) return <DataManagementPage />
     if (showSessionIntelligence) return <SessionIntelligencePage />
     if (showTheRead) return <TheReadPage />
+    if (showRounds) return <RoundsPage pathname={pathname} />
     if (showLooperLanding) {
       return (
         <InterruptedSessionGate>

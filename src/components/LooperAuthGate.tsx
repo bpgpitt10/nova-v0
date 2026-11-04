@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import looperLogo from '../assets/LooperLogoWhite.png'
-import authBackground from '../assets/Backgrounds/looper-auth-background.webp'
+import looperLogo from '../assets/LooperLogo.webp'
+import authBackground from '../assets/Backgrounds/looper-entry-links.webp'
 import { bootstrapLooperCloudData } from '../cloud/cloudBootstrap'
 import {
   getAllowedUserRecord,

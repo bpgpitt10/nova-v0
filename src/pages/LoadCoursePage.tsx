@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
-import { courseRegistry, resolveCourseIdFromGsproName } from '../courseGeometry/courseCatalog'
+import { courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
+import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import {
   courseSlugFromName,
   findGolfCourseFor,
@@ -16,6 +17,58 @@ import {
 import './LoadCoursePage.css'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
+
+// One GSPro check at a time: each may fit a registration (~1 s + package download).
+let checkQueue: Promise<unknown> = Promise.resolve()
+const queuedCheck = <T,>(run: () => Promise<T>): Promise<T> => {
+  const next = checkQueue.then(run, run)
+  checkQueue = next.catch(() => undefined)
+  return next
+}
+
+const matchText = (status: NativeCourseStatus | null): { text: string; tone: 'ok' | 'bad' | 'note' } | null => {
+  if (!status) return { text: 'Checking against your GSPro course…', tone: 'note' }
+  switch (status.state) {
+    case 'ready':
+      return { text: `Matches your GSPro course (grade ${status.grade})`, tone: 'ok' }
+    case 'other-course':
+      return status.grade ? { text: `Matches your GSPro course (grade ${status.grade})`, tone: 'ok' } : null
+    case 'registration-failed':
+      return { text: `Loaded, but doesn't line up with your GSPro course: ${status.reason}`, tone: 'bad' }
+    case 'layout-mismatch':
+      return { text: 'Loaded, but your GSPro version has different greens or pins.', tone: 'bad' }
+    case 'gkd-not-found':
+      return { text: `Can't read ${status.courseKey} from your GSPro library to check it.`, tone: 'note' }
+    case 'registering':
+      return { text: 'Checking against your GSPro course…', tone: 'note' }
+    case 'error':
+      return { text: `Couldn't check against GSPro: ${status.message}`, tone: 'note' }
+    default:
+      return null
+  }
+}
+
+/**
+ * A course can load "ready" and still not line up with the player's GSPro
+ * version (Kiawah, 11/2). For loaded courses that are installed here, run the
+ * same check Live Caddie runs (do GSPro's greens and heights fit the map?) and
+ * say so on this page.
+ */
+function GsproMatch({ courseId, courseKey }: Readonly<{ courseId: CourseId; courseKey: string }>) {
+  const [status, setStatus] = useState<NativeCourseStatus | null>(null)
+  useEffect(() => {
+    if (!isNativePositionsEnabled()) return
+    let alive = true
+    void queuedCheck(() => loadNativeCourseContext(courseId, courseKey))
+      .then((result) => { if (alive) setStatus(result.status) })
+      .catch((error: unknown) => { if (alive) setStatus({ state: 'error', message: error instanceof Error ? error.message : String(error) }) })
+    return () => { alive = false }
+  }, [courseId, courseKey])
+  if (!isNativePositionsEnabled()) return null
+  const shown = matchText(status)
+  if (!shown) return null
+  return <span className={shown.tone === 'ok' ? 'load-course-ready' : shown.tone === 'bad' ? 'load-course-failed' : 'load-course-progress'}>{shown.text}</span>
+}
 
 const loadedSlugs = () => new Set<string>(courseRegistry.map((entry) => entry.slug))
 
@@ -77,6 +130,8 @@ export default function LoadCoursePage() {
   }, [])
 
   const latestFor = (slug: string) => loads.find((row) => row.slug === slug) ?? null
+  const courseIdFor = (slug: string): CourseId | null =>
+    (courseRegistry.find((entry) => entry.slug === slug)?.id as CourseId | undefined) ?? null
 
   const queue = async (key: string, course: Parameters<typeof requestCourseLoad>[0]) => {
     setBusyKey(key)
@@ -174,7 +229,11 @@ export default function LoadCoursePage() {
                 <strong>{course.courseName || course.courseKey}</strong>
                 <span>{[course.location, `${course.holes} holes`].filter(Boolean).join(' · ')}</span>
               </div>
-              {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
+              <span className="load-course-actions">
+                {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
+                {slugs.has(slug) && courseIdFor(slug)
+                  ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
+              </span>
             </li>
           ))}
         </ul>

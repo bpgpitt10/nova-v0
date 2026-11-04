@@ -523,3 +523,258 @@
     border-left: 0;
   }
 }
+
+/* ---- Open layout (3 Nov): no boxes over the backdrop, sections split by thin rules,
+   matching Rounds. ---- */
+
+.bagbook-layout {
+  --bagbook-rule: rgba(207, 216, 205, 0.16);
+}
+
+.bagbook-layout .bagbook-topbar {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  padding: 4px 0 8px;
+}
+
+/* The Looper's Read: open text, Looper Man still faint at the right. */
+/* Beats App.css's dashboard glass rule (.dashboard-page:not(.club-detail-page) ...). */
+.dashboard-page .bagbook-layout .dashboard-screen .dashboard-hero-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 8px 0 20px;
+  overflow: visible;
+}
+
+.bagbook-layout .dashboard-hero-card::before {
+  content: none;
+}
+
+.bagbook-layout .looper-read-visual {
+  right: 0;
+  bottom: 0;
+  height: 120%;
+}
+
+.bagbook-layout .dashboard-hero-title {
+  font-size: 22px;
+}
+
+.bagbook-layout .dashboard-hero-chip {
+  background: rgba(10, 20, 13, 0.35);
+  border-color: var(--bagbook-rule);
+}
+
+/* Yardage table: no box, light row rules, header kept in muted caps.
+   Rows keep a little side padding for the hover tint; the negative margin keeps the
+   text lined up with the page edge. */
+.bagbook-layout .bagbook-table-wrap {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  margin-inline: -12px;
+}
+
+.bagbook-layout .bagbook-row {
+  padding-inline: 12px;
+  border-bottom-color: var(--bagbook-rule);
+}
+
+.bagbook-layout .bagbook-head {
+  border-bottom-color: var(--bagbook-rule);
+}
+
+.bagbook-layout .bagbook-row.is-variant {
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-color: rgba(207, 216, 205, 0.08);
+}
+
+.bagbook-layout .bagbook-row.is-clickable:hover {
+  background: rgba(134, 239, 172, 0.06);
+}
+
+.bagbook-layout .bagbook-footnote {
+  padding-inline: 0;
+}
+
+/* The Looper's Read title: gold display serif, same style as the course name on Rounds. */
+.dashboard-page .bagbook-layout .dashboard-hero-title {
+  margin-bottom: 14px;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: #eab308;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* Looper Man: stronger, sitting lower and further right; fades out to the left and
+   at the bottom so he doesn't run into the table. */
+.dashboard-page .bagbook-layout .looper-read-visual {
+  right: -56px;
+  bottom: -46px;
+  height: 135%;
+  opacity: 0.34;
+  filter: grayscale(20%);
+  mask-image:
+    linear-gradient(to left, #000 30%, rgba(0, 0, 0, 0.55) 55%, transparent 85%),
+    linear-gradient(to top, transparent 0%, #000 28%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to left, #000 30%, rgba(0, 0, 0, 0.55) 55%, transparent 85%),
+    linear-gradient(to top, transparent 0%, #000 28%);
+  -webkit-mask-composite: source-in;
+}
+
+@media (max-width: 640px) {
+  .dashboard-page .bagbook-layout .dashboard-hero-title {
+    font-size: 30px;
+  }
+}
+
+/* Club Ladder PDF: small button at the end of the legend line. */
+.bagbook-ladder-pdf {
+  margin: 0 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid rgba(134, 239, 172, 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bagbook-pure);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bagbook-ladder-pdf:hover:not(:disabled) {
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.bagbook-ladder-pdf:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Off-screen copy of the ladder card that the PDF is made from. */
+.bagbook-export-capture {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Sign-off at the bottom of the Bag page. */
+.bagbook-tagline {
+  margin: 28px 0 8px;
+  text-align: center;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(234, 179, 8, 0.72);
+}
+
+/* ---- Last session (Bag page): open section, no click-to-open, table like Rounds ---- */
+
+.dashboard-page .bagbook-layout .last-session-open {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 22px 0 0;
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bagbook-layout .last-session-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+
+.bagbook-layout .last-session-head h2 {
+  margin: 0;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: #eab308;
+}
+
+.bagbook-layout .last-session-head span {
+  color: #9fb3a4;
+  font-size: 14px;
+}
+
+.bagbook-layout .last-session-note {
+  max-width: min(1080px, 100%);
+  margin: 0 0 6px;
+  color: #e3ebe5;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.bagbook-layout .last-session-open .review-table {
+  min-width: 900px;
+  border-collapse: collapse;
+  border: 0;
+}
+
+.bagbook-layout .last-session-open .review-table th,
+.bagbook-layout .last-session-open .review-table td {
+  border: 0;
+  border-top: 1px solid var(--bagbook-rule);
+  background: transparent;
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+.bagbook-layout .last-session-open .review-table th {
+  height: auto;
+  padding-top: 0;
+  border-top: 0;
+  color: #9fb3a4;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.bagbook-layout .last-session-open .review-table th:first-child,
+.bagbook-layout .last-session-open .review-table td:first-child {
+  padding-left: 0;
+}
+
+.bagbook-layout .last-session-open .review-table td:first-child {
+  font-weight: 650;
+  font-size: 15px;
+}
+
+.bagbook-layout .last-session-open .review-table tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+.bagbook-layout .last-session-foot {
+  margin: 0;
+  color: #9fb3a4;
+  font-size: 12px;
+}
+
+.bagbook-layout .last-session-open .review-table td {
+  font-size: 14px;
+}

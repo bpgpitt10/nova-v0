@@ -13,7 +13,7 @@ import {
   isCompanionGsproDirectoryHandle,
   loadCompanionGsproDirectoryHandle,
 } from '../adapters/companionGsproFiles'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import { SESSION_HISTORY_UPDATED_EVENT } from '../lib/sessions'
 import { publishLiveCaddieProfilesToGsproFolder } from '../liveCaddie/profilePublisher'
 import './BrowserGsproSetupGate.css'

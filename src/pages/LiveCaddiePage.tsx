@@ -25,7 +25,7 @@ import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
@@ -928,7 +928,8 @@ export default function LiveCaddiePage() {
     localAimBearingDeg,
   )
   const projectedWind = projectWindObservation(
-    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null),
+    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null,
+      liveMatchesHole && liveSnapshot?.gsproSceneMirrored === true),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )
