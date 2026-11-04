@@ -12,6 +12,8 @@ import {
   listCourseLoads,
   refreshGsproLinks,
   refreshLoadedCourses,
+  loadSavedGsproLibrary,
+  saveGsproLibrary,
   minutesLeft,
   requestCourseLoad,
   searchGolfCourses,
@@ -212,13 +214,25 @@ export default function LoadCoursePage() {
     return () => window.clearInterval(timer)
   }, [anyActive, refresh])
 
+  // On the sim PC the companion lists the installed courses (and they're saved
+  // to the account); anywhere else, the list saved from the sim PC is shown.
+  const [savedLibraryAt, setSavedLibraryAt] = useState<string | null>(null)
   useEffect(() => {
     void readLooperCompanionCourseLibrary()
       .then((data) => {
         setLibrary(data.courses)
         if (!data.courses.length) setLibraryNote('The Looper Companion found no GSPro courses on this PC.')
+        void saveGsproLibrary(data.courses).catch(() => undefined)
       })
-      .catch(() => setLibraryNote('Start the Looper Companion on your GSPro PC to see your installed courses here.'))
+      .catch(async () => {
+        const saved = await loadSavedGsproLibrary().catch(() => null)
+        if (saved?.courses.length) {
+          setLibrary(saved.courses.map((course) => ({ ...course, alternateLayouts: [] })))
+          setSavedLibraryAt(saved.seenAt)
+          return
+        }
+        setLibraryNote('Start the Looper Companion on your GSPro PC to see your installed courses here.')
+      })
   }, [])
 
   const latestFor = (slug: string) => loads.find((row) => row.slug === slug) ?? null
@@ -328,6 +342,12 @@ export default function LoadCoursePage() {
       <section>
         <h2>Your GSPro courses</h2>
         {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
+        {savedLibraryAt ? (
+          <p className="load-course-note">
+            Your GSPro courses as of {new Date(savedLibraryAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, saved from your
+            sim PC. Loading works from here; the check that GSPro's version lines up runs on the sim PC.
+          </p>
+        ) : null}
         {library === null && !libraryNote ? <p className="load-course-note">Looking for your GSPro courses…</p> : null}
         {skipped > 0 ? (
           <p className="load-course-note">
@@ -352,7 +372,7 @@ export default function LoadCoursePage() {
               </div>
               <span className="load-course-actions">
                 {rowAction(slug, course.courseKey, () => { void loadInstalled(course) })}
-                {slugs.has(slug) && courseIdFor(slug)
+                {slugs.has(slug) && courseIdFor(slug) && !savedLibraryAt
                   ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
                 {!slugs.has(slug) && !ACTIVE.has(latestFor(slug)?.status ?? '')
                   ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}

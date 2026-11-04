@@ -357,6 +357,61 @@ export const refreshLoadedCourses = async (): Promise<number> => {
   return applyLoadedCourseRows(data ?? [])
 }
 
+export type SavedGsproCourse = Readonly<{
+  courseKey: string
+  courseName: string
+  location: string
+  designer: string
+  holes: number
+}>
+
+type GsproLibraryRow = { course_key: string; course_name: string; location: string; designer: string; holes: number; seen_at: string }
+
+/**
+ * Save the player's installed GSPro courses (read from the companion on the
+ * sim PC) to their account, so the Load page can list them on any device.
+ * Names, locations and keys only.
+ */
+export const saveGsproLibrary = async (courses: readonly SavedGsproCourse[]) => {
+  if (!courses.length) return
+  const client = await getSupabaseClient()
+  const seenAt = new Date().toISOString()
+  const rows = courses.slice(0, 2000).map((course) => ({
+    course_key: course.courseKey.slice(0, 160),
+    course_name: (course.courseName ?? '').slice(0, 160),
+    location: (course.location ?? '').slice(0, 160),
+    designer: (course.designer ?? '').slice(0, 160),
+    holes: Math.max(1, Math.min(36, Math.round(course.holes || 18))),
+    seen_at: seenAt,
+  }))
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await client.from('gspro_library').upsert(rows.slice(i, i + 500), { onConflict: 'user_id,course_key' })
+    if (error) throw new Error(error.message)
+  }
+}
+
+/** The installed GSPro courses saved from the sim PC, newest sighting first. */
+export const loadSavedGsproLibrary = async (): Promise<{ courses: SavedGsproCourse[]; seenAt: string | null }> => {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from<GsproLibraryRow[]>('gspro_library')
+    .select('course_key, course_name, location, designer, holes, seen_at')
+    .order('seen_at', { ascending: false })
+    .limit(2000)
+  if (error) throw new Error(error.message)
+  const rows = data ?? []
+  // Only the latest sighting: courses uninstalled since then drop out.
+  const latest = rows[0]?.seen_at ?? null
+  const latestMs = latest ? Date.parse(latest) : 0
+  return {
+    seenAt: latest,
+    courses: rows
+      .filter((row) => !latest || Math.abs(Date.parse(row.seen_at) - latestMs) < 60_000)
+      .map((row) => ({ courseKey: row.course_key, courseName: row.course_name, location: row.location, designer: row.designer, holes: row.holes }))
+      .sort((a, b) => (a.courseName || a.courseKey).localeCompare(b.courseName || b.courseKey)),
+  }
+}
+
 type GsproLinkRow = { gspro_course_key: string; gspro_course_name: string | null; course_slug: string }
 
 /** Load everyone's GSPro → Looper course links (Load page "Link"). */
