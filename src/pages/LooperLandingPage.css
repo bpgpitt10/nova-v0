@@ -8,20 +8,22 @@
   font-family: Inter, system-ui, sans-serif;
 }
 
+/* Links at dusk (looper-entry-links.webp): sun and flag centred under the logo,
+   calm fairway behind the two modes. */
 .looper-landing-page::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: url('../assets/Backgrounds/looper-auth-background.webp');
-  background-position: center;
+  background-image: url('../assets/Backgrounds/looper-entry-links.webp');
+  background-position: center 42%;
   background-repeat: no-repeat;
   background-size: cover;
-  filter: saturate(0.82) contrast(1.02) brightness(0.42);
-  opacity: 0.9;
+  filter: brightness(0.78) saturate(0.92);
 }
 
+/* Darken toward the edges and the bottom so the text reads; keep the sky open. */
 .looper-landing-page::after {
   content: '';
   position: fixed;
@@ -29,20 +31,20 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 34%, rgba(11, 31, 20, 0.08) 0%, rgba(4, 11, 7, 0.34) 68%, rgba(3, 8, 5, 0.58) 100%),
-    linear-gradient(180deg, rgba(4, 12, 7, 0.42) 0%, rgba(3, 9, 6, 0.66) 100%);
+    radial-gradient(ellipse at 50% 40%, rgba(6, 14, 9, 0) 0%, rgba(6, 14, 9, 0.28) 55%, rgba(4, 9, 6, 0.62) 100%),
+    linear-gradient(180deg, rgba(5, 11, 7, 0.18) 0%, rgba(5, 11, 7, 0.06) 38%, rgba(4, 10, 6, 0.5) 62%, rgba(3, 8, 5, 0.78) 100%);
 }
 
 .looper-landing-shell {
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  width: min(1120px, 100%);
+  width: min(1040px, 100%);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 44px clamp(20px, 4vw, 52px) 34px;
+  padding: clamp(36px, 8vh, 96px) clamp(20px, 4vw, 52px) 34px;
   display: grid;
-  align-items: center;
+  align-content: start;
 }
 
 .looper-landing-panel {
@@ -53,22 +55,32 @@
 
 .looper-landing-logo {
   display: block;
-  width: min(410px, 76vw);
+  width: min(400px, 76vw);
   height: auto;
-  margin: 0 auto 10px;
+  margin: 0 auto;
   object-fit: contain;
+  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.45));
+}
+
+/* ---- GSPro status: one quiet line under the logo ---- */
+
+.looper-landing-gspro-status,
+.looper-landing-gspro-line {
+  justify-self: center;
+  margin-top: clamp(4px, 1.4vh, 14px);
+  color: #b9c6b7;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 
 .looper-landing-gspro-status {
-  justify-self: center;
   min-height: 28px;
   padding: 5px 10px;
   border: 0;
   background: transparent;
-  color: #9fb09f;
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.3;
 }
 
 button.looper-landing-gspro-status {
@@ -78,114 +90,95 @@ button.looper-landing-gspro-status {
 .looper-landing-gspro-status.is-connected {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: #abc7af;
+  gap: 8px;
+  color: #c4d8c6;
 }
 
 .looper-landing-gspro-status.is-connected:hover {
-  color: #d8e5d6;
+  color: #ffffff;
+}
+
+.looper-landing-gspro-status.is-checking,
+.looper-landing-gspro-status.is-neutral {
+  color: #a9b8a8;
+}
+
+.looper-landing-gspro-line {
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 8px;
+}
+
+.looper-landing-gspro-line strong {
+  color: #f2e2b8;
+  font-weight: 650;
+}
+
+.looper-landing-gspro-line button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #eab308;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.looper-landing-gspro-line button:hover {
+  color: #f7cf4a;
 }
 
 .looper-landing-status-dot {
   width: 7px;
   height: 7px;
+  flex: 0 0 auto;
+  align-self: center;
   border-radius: 50%;
   background: #76d39b;
-  box-shadow: 0 0 0 4px rgba(118, 211, 155, 0.08);
+  box-shadow: 0 0 0 4px rgba(118, 211, 155, 0.1);
 }
 
-.looper-landing-gspro-status.is-checking,
-.looper-landing-gspro-status.is-neutral {
-  color: #8fa08f;
+.looper-landing-status-dot.is-warn {
+  background: #e0a33a;
+  box-shadow: 0 0 0 4px rgba(224, 163, 58, 0.14);
 }
 
-.looper-landing-gspro-alert {
-  width: min(780px, 100%);
-  justify-self: center;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid rgba(209, 138, 59, 0.48);
-  border-radius: 12px;
-  background: rgba(61, 42, 18, 0.64);
-  color: #ead9bd;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
-}
-
-.looper-landing-gspro-alert strong {
-  color: #ffffff;
-}
-
-.looper-landing-gspro-alert span {
-  color: #d7c4a3;
-}
-
-.looper-landing-gspro-alert button {
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid rgba(212, 177, 90, 0.62);
-  border-radius: 9px;
-  background: rgba(212, 177, 90, 0.16);
-  color: #f6e4b5;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.looper-landing-dashboard {
-  min-height: 54px;
-  width: min(980px, 100%);
-  justify-self: center;
-  border: 1px solid rgba(212, 177, 90, 0.78);
-  border-radius: 13px;
-  background: linear-gradient(180deg, rgba(180, 145, 52, 0.28) 0%, rgba(112, 91, 35, 0.24) 100%);
-  color: #ffffff;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 750;
-  box-shadow:
-    0 16px 38px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.looper-landing-dashboard:hover {
-  border-color: rgba(234, 179, 8, 0.88);
-  background: linear-gradient(180deg, rgba(202, 164, 57, 0.36) 0%, rgba(127, 101, 37, 0.3) 100%);
-}
+/* ---- The two modes: open columns split by one rule ---- */
 
 .looper-landing-mode-grid {
-  width: min(980px, 100%);
+  width: min(900px, 100%);
   justify-self: center;
+  /* Sits below the sun so it shows between the status line and the modes. */
+  margin-top: clamp(24px, 20vh, 210px);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  border-top: 1px solid rgba(234, 179, 8, 0.28);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.28);
 }
 
 .looper-landing-mode-card {
   position: relative;
-  min-height: 208px;
-  padding: 26px;
-  border: 1px solid rgba(97, 121, 100, 0.44);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(29, 47, 33, 0.72) 0%, rgba(15, 27, 19, 0.78) 100%);
+  padding: 30px 32px 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #ffffff;
-  text-align: left;
+  font: inherit;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 8px;
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  align-items: center;
+  gap: 10px;
+  transition: background-color 160ms ease;
+}
+
+.looper-landing-mode-card + .looper-landing-mode-card {
+  border-left: 1px solid rgba(234, 179, 8, 0.28);
 }
 
 button.looper-landing-mode-card {
@@ -193,31 +186,58 @@ button.looper-landing-mode-card {
 }
 
 button.looper-landing-mode-card:hover,
+button.looper-landing-mode-card:focus-visible,
 .looper-landing-mode-card--range.is-selected {
-  border-color: rgba(212, 177, 90, 0.72);
-  background:
-    linear-gradient(180deg, rgba(42, 67, 46, 0.82) 0%, rgba(18, 33, 22, 0.86) 100%);
-  transform: translateY(-1px);
+  background: rgba(234, 179, 8, 0.07);
+  outline: none;
 }
 
 .looper-landing-mode-kicker {
   color: #d4b15a;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.11em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .looper-landing-mode-card strong {
-  font-size: clamp(26px, 3vw, 34px);
-  line-height: 1;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(30px, 3.4vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.02;
+  color: #eab308;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
 }
 
-.looper-landing-mode-card > span:last-child {
-  max-width: 390px;
-  color: #b7c5b5;
-  font-size: 13px;
-  line-height: 1.45;
+.looper-landing-mode-copy {
+  max-width: 330px;
+  color: #d3ddd1;
+  font-size: 14px;
+  line-height: 1.5;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
+}
+
+.looper-landing-mode-action {
+  margin-top: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.looper-landing-mode-action span {
+  display: inline-block;
+  margin-left: 4px;
+  color: #eab308;
+  transition: transform 160ms ease;
+}
+
+button.looper-landing-mode-card:hover .looper-landing-mode-action span,
+.looper-landing-mode-card--range.is-selected .looper-landing-mode-action span {
+  transform: translateX(4px);
 }
 
 .looper-landing-mode-card.is-disabled {
@@ -225,42 +245,19 @@ button.looper-landing-mode-card:hover,
   cursor: default;
 }
 
-.looper-landing-coming-soon {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  transform: rotate(4deg);
-  padding: 7px 11px;
-  border: 1px solid rgba(212, 177, 90, 0.76);
-  border-radius: 7px;
-  background: #d4b15a;
-  color: #131a13;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
-}
+/* ---- Practice Range setup: open, under the modes ---- */
 
 .looper-landing-range-setup {
-  width: min(780px, 100%);
+  width: min(640px, 100%);
   justify-self: center;
   display: grid;
   gap: 14px;
-  padding: 18px;
-  border: 1px solid rgba(74, 100, 78, 0.56);
-  border-radius: 14px;
-  background: rgba(13, 26, 18, 0.8);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 0 4px;
 }
 
 .looper-landing-range-heading {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 14px;
 }
@@ -271,15 +268,16 @@ button.looper-landing-mode-card:hover,
 }
 
 .looper-landing-range-heading span {
-  color: #9fb09f;
+  color: #d4b15a;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .looper-landing-range-heading strong {
   font-size: 18px;
+  font-weight: 600;
 }
 
 .looper-landing-range-heading button,
@@ -316,16 +314,17 @@ button.looper-landing-mode-card:hover,
 }
 
 .looper-landing-field-label {
-  color: #9fb09f;
+  color: #b2c0b0;
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
+/* Selects keep an edge: they are controls. */
 .looper-landing-select-wrap {
-  border: 1px solid #314233;
+  border: 1px solid rgba(207, 216, 205, 0.24);
   border-radius: 10px;
-  background: rgba(8, 18, 12, 0.9);
+  background: rgba(6, 14, 9, 0.55);
   overflow: hidden;
 }
 
@@ -348,6 +347,7 @@ button.looper-landing-mode-card:hover,
   color: #ffffff;
 }
 
+/* The one solid gold button on the page. */
 .looper-landing-start {
   min-height: 48px;
   border: 1px solid rgba(234, 179, 8, 0.75);
@@ -356,7 +356,7 @@ button.looper-landing-mode-card:hover,
   color: #11180f;
   font: inherit;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -376,35 +376,33 @@ button.looper-landing-mode-card:hover,
   line-height: 1.4;
 }
 
-.looper-landing-utility-actions {
+/* ---- Quiet links at the bottom ---- */
+
+.looper-landing-links {
   justify-self: center;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding-top: 2px;
+  gap: 6px 0;
+  margin-top: 8px;
 }
 
-.looper-landing-utility-actions a {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid rgba(74, 100, 78, 0.7);
-  border-radius: 10px;
-  background: rgba(16, 31, 21, 0.74);
+.looper-landing-links a {
+  padding: 6px 14px;
   color: #d8e2d6;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 550;
   text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 
-.looper-landing-utility-actions a:hover {
-  border-color: rgba(212, 177, 90, 0.58);
-  background: rgba(26, 45, 30, 0.84);
-  color: #ffffff;
+.looper-landing-links a + a {
+  border-left: 1px solid rgba(207, 216, 205, 0.25);
+}
+
+.looper-landing-links a:hover {
+  color: #eab308;
 }
 
 .looper-landing-update-status {
@@ -504,28 +502,30 @@ button.looper-landing-mode-card:hover,
 
 @media (max-width: 760px) {
   .looper-landing-shell {
-    align-items: start;
     padding-top: 28px;
     padding-bottom: 28px;
   }
 
   .looper-landing-logo {
     width: min(320px, 82vw);
-    margin-bottom: 2px;
   }
 
-  .looper-landing-mode-grid,
-  .looper-landing-club-variant-row {
+  .looper-landing-mode-grid {
     grid-template-columns: 1fr;
+    margin-top: 28px;
+  }
+
+  .looper-landing-mode-card + .looper-landing-mode-card {
+    border-left: 0;
+    border-top: 1px solid rgba(234, 179, 8, 0.28);
   }
 
   .looper-landing-mode-card {
-    min-height: 168px;
+    padding: 24px 12px;
   }
 
-  .looper-landing-gspro-alert {
-    align-items: flex-start;
-    flex-direction: column;
+  .looper-landing-club-variant-row {
+    grid-template-columns: 1fr;
   }
 
   .looper-welcome-card {

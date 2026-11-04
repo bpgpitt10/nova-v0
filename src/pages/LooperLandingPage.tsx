@@ -277,15 +277,14 @@ export default function LooperLandingPage({
           : 'GSPro not connected'
 
     return (
-      <div className="looper-landing-gspro-alert">
-        <div>
-          <strong>{heading}</strong>
-          <span>
-            {gsproState === 'not-connected'
-              ? ' Start the Looper Companion (or connect your GSPro folder) to use Practice Range.'
-              : ' Start the Looper Companion, or reconnect the saved GSPro folder, to use Practice Range.'}
-          </span>
-        </div>
+      <div className="looper-landing-gspro-line is-warn" role="status">
+        <span className="looper-landing-status-dot is-warn" aria-hidden="true" />
+        <strong>{heading}</strong>
+        <span>
+          {gsproState === 'not-connected'
+            ? 'Start the Looper Companion (or connect your GSPro folder) to use Practice Range.'
+            : 'Start the Looper Companion, or reconnect the saved GSPro folder, to use Practice Range.'}
+        </span>
         <button onClick={() => connectGspro(false)} type="button">
           {gsproState === 'not-connected' ? 'Connect GSPro' : 'Reconnect'}
         </button>
@@ -309,7 +308,12 @@ export default function LooperLandingPage({
             >
               <span className="looper-landing-mode-kicker">GSPro</span>
               <strong>Practice Range</strong>
-              <span>Capture shots, build your club data, and review the session live.</span>
+              <span className="looper-landing-mode-copy">
+                Capture shots, build your club data, and review the session live.
+              </span>
+              <span className="looper-landing-mode-action">
+                Start practice <span aria-hidden="true">→</span>
+              </span>
             </button>
 
             <button
@@ -319,7 +323,12 @@ export default function LooperLandingPage({
             >
               <span className="looper-landing-mode-kicker">GSPro</span>
               <strong>Live Caddie</strong>
-              <span>Start a round for live club, target, and risk guidance.</span>
+              <span className="looper-landing-mode-copy">
+                Start a round for live club, target, and risk guidance.
+              </span>
+              <span className="looper-landing-mode-action">
+                Start a round <span aria-hidden="true">→</span>
+              </span>
             </button>
           </div>
 
@@ -404,14 +413,12 @@ export default function LooperLandingPage({
             </section>
           ) : null}
 
-          <a className="looper-landing-dashboard" href="/dashboard">
-            Go to Dashboard
-          </a>
-
-          <div className="looper-landing-utility-actions">
+          <nav className="looper-landing-links" aria-label="More">
+            <a href="/dashboard">Bag</a>
+            <a href="/rounds">Rounds</a>
             <a href="/bag-setup?returnTo=%2Flooper">Edit Bag</a>
             <a href="/data-management">Manage Data</a>
-          </div>
+          </nav>
 
           {updateStatusContent ? (
             <div className="looper-landing-update-status" aria-live="polite">
