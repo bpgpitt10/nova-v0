@@ -16,8 +16,12 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  /* Taller than the screen and lifted, so the green and flag sit above the modes. */
+  top: -16vh;
+  bottom: auto;
+  height: 120vh;
   background-image: url('../assets/Backgrounds/looper-entry-links.webp');
-  background-position: center 42%;
+  background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
   filter: brightness(0.78) saturate(0.92);
@@ -39,7 +43,7 @@
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  width: min(1040px, 100%);
+  width: min(1120px, 100%);
   min-height: 100vh;
   margin: 0 auto;
   padding: clamp(36px, 8vh, 96px) clamp(20px, 4vw, 52px) 34px;
@@ -151,19 +155,19 @@ button.looper-landing-gspro-status {
 /* ---- The two modes: open columns split by one rule ---- */
 
 .looper-landing-mode-grid {
-  width: min(900px, 100%);
+  width: min(1040px, 100%);
   justify-self: center;
-  /* Sits below the sun so it shows between the status line and the modes. */
+  /* Sits below the sun and the flag so both show above the modes. */
   margin-top: clamp(24px, 20vh, 210px);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid rgba(234, 179, 8, 0.28);
   border-bottom: 1px solid rgba(234, 179, 8, 0.28);
 }
 
 .looper-landing-mode-card {
   position: relative;
-  padding: 30px 32px 28px;
+  padding: 30px 26px 28px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -235,6 +239,21 @@ button.looper-landing-mode-card:focus-visible,
   transition: transform 160ms ease;
 }
 
+/* Your Game: two links instead of one action. */
+.looper-landing-mode-links {
+  display: flex;
+  gap: 22px;
+}
+
+a.looper-landing-mode-action {
+  text-decoration: none;
+}
+
+a.looper-landing-mode-action:hover {
+  color: #eab308;
+}
+
+a.looper-landing-mode-action:hover span,
 button.looper-landing-mode-card:hover .looper-landing-mode-action span,
 .looper-landing-mode-card--range.is-selected .looper-landing-mode-action span {
   transform: translateX(4px);

@@ -330,6 +330,22 @@ export default function LooperLandingPage({
                 Start a round <span aria-hidden="true">→</span>
               </span>
             </button>
+
+            <div className="looper-landing-mode-card looper-landing-mode-card--review">
+              <span className="looper-landing-mode-kicker">Review</span>
+              <strong>Your Game</strong>
+              <span className="looper-landing-mode-copy">
+                Your bag&apos;s yardages and every round, shot by shot.
+              </span>
+              <span className="looper-landing-mode-links">
+                <a className="looper-landing-mode-action" href="/dashboard">
+                  Bag <span aria-hidden="true">→</span>
+                </a>
+                <a className="looper-landing-mode-action" href="/rounds">
+                  Rounds <span aria-hidden="true">→</span>
+                </a>
+              </span>
+            </div>
           </div>
 
           {rangeOpen && gsproState === 'connected' ? (
@@ -414,8 +430,6 @@ export default function LooperLandingPage({
           ) : null}
 
           <nav className="looper-landing-links" aria-label="More">
-            <a href="/dashboard">Bag</a>
-            <a href="/rounds">Rounds</a>
             <a href="/bag-setup?returnTo=%2Flooper">Edit Bag</a>
             <a href="/data-management">Manage Data</a>
           </nav>
