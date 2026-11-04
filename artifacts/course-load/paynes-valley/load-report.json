@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "paynes-valley",
+  "request": {
+    "slug": "paynes-valley",
+    "name": "Payne's Valley Golf Course",
+    "location": "Hollister, Missouri",
+    "lat": 36.5646859,
+    "lon": -93.2010533,
+    "nameRegex": "Payne's.*Valley",
+    "osmId": 891038975,
+    "gsproAliases": [
+      "paynes_valley_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 371.4,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 89.7
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/paynes-valley-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 14.3
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 37.2
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 9.1
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 46.5
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 18.8
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 153.7
+    }
+  ],
+  "finishedAt": "2026-11-04T03:14:03Z",
+  "runId": "41765041631",
+  "osmCourse": {
+    "type": "way",
+    "id": 891038975,
+    "name": "Payne's Valley Golf Course",
+    "areaHa": 200.8
+  },
+  "lidar": {
+    "name": "MO_FEMANRCS_1_2020",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/MO_FEMANRCS_1_2020/ept.json",
+    "count": 55630370830,
+    "year": 2020
+  },
+  "crs": "EPSG:26915",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/MO_FEMANRCS_1_2020/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 1209,
+    "downloadedMB": 338.2,
+    "pointsKeptInBbox": 50321324,
+    "pointsPerSquareMetre": 5.24,
+    "firstReturnsPerSquareMetre": 3.33,
+    "classificationHistogram": {
+      "1": 24728138,
+      "2": 26576276,
+      "9": 64676,
+      "17": 7452,
+      "20": 7213
+    },
+    "chm": {
+      "width": 2844,
+      "height": 3375,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 9294380,
+      "emptyCells": 304120,
+      "cellsOver3m": 5607464,
+      "cellsOver10m": 3140814,
+      "p50": 5.599999999999966,
+      "p95": 59.329999999999984,
+      "max": 69.99999999999994
+    },
+    "seconds": 46.3
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26915",
+    "treeCount": 94163,
+    "heightM": {
+      "p10": 5.2,
+      "p50": 9.8,
+      "p90": 26.5,
+      "max": 70.0
+    },
+    "crownRadiusM": {
+      "p10": 1.9,
+      "p50": 3.5,
+      "p90": 6.1
+    },
+    "woodlandPolygons": 3167,
+    "woodlandAreaHa": 529.7,
+    "maskedCellsBuildingsAndPower": 17914,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 18.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 1684740,
+    "course-v1.json": 337482,
+    "green-detail-v1.json": 122348
+  }
+}

@@ -1,0 +1,1123 @@
+=== [paynes-valley:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Payne's.*Valley --lat 36.5646859 --lon -93.2010533 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model --osm-id 891038975
+[{"type": "way", "id": 399501608, "name": "Buffalo Ridge Springs Golf Course", "areaHa": 123.3, "nameMatch": false}, {"type": "way", "id": 891038975, "name": "Payne's Valley Golf Course", "areaHa": 200.8, "nameMatch": true}, {"type": "way", "id": 1128328726, "name": "Ozarks National Golf Course", "areaHa": 106.2, "nameMatch": false}, {"type": "relation", "id": 12263159, "name": "Top of the Rock Golf Course", "areaHa": 5.5, "nameMatch": false}]
+grew bbox with 9759 vertices from nearby golf features
+{"bboxLonLat": [-93.21220212227298, 36.552613925149274, -93.18049797772701, 36.58298017485073], "crs": "EPSG:26915", "osm": {"type": "way", "id": 891038975, "name": "Payne's Valley Golf Course", "areaHa": 200.8}} {"name": "MO_FEMANRCS_1_2020", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/MO_FEMANRCS_1_2020/ept.json", "count": 55630370830, "year": 2020}
+=== [paynes-valley:find] rc=0 seconds=89.7
+=== [paynes-valley:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/paynes-valley-v1.json --slug paynes-valley --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 8 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/paynes-valley-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/osm-snapshot.json
+Hole 1: kept way 852506830, the copy that runs tee to green (way 852506830 5 m, way 1243617516 81 m).
+Hole 2: kept way 852506831, the copy that runs tee to green (way 852506831 3 m, way 1243617518 28 m).
+Hole 3: kept way 852506832, the copy that runs tee to green (way 852506832 3 m, way 1243617520 269 m).
+Hole 4: kept way 852506833, the copy that runs tee to green (way 852506833 3 m, way 1243617522 333 m).
+Hole 5: kept way 852506834, the copy that runs tee to green (way 852506834 6 m, way 1243617524 380 m).
+Hole 6: kept way 852506835, the copy that runs tee to green (way 852506835 7 m, way 1243617526 480 m).
+Hole 7: kept way 852506836, the copy that runs tee to green (way 852506836 4 m, way 1243617528 620 m).
+Hole 8: kept way 852506837, the copy that runs tee to green (way 852506837 5 m, way 1243617530 466 m).
+Hole 9: kept way 852506838, the copy that runs tee to green (way 852506838 5 m, way 1243617532 307 m).
+Hole 10: kept way 852506839, the copy that runs tee to green (way 852506839 2 m, way 1243617534 155 m).
+Hole 11: kept way 852506840, the copy that runs tee to green (way 852506840 2 m, way 1243617536 134 m).
+Hole 12: kept way 852506841, the copy that runs tee to green (way 852506841 4 m, way 1243617538 122 m).
+Hole 13: kept way 852506842, the copy that runs tee to green (way 852506842 2 m, way 1243617540 113 m).
+{
+  "course": "Payne's Valley Golf Course",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 348,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 98,
+    "golf=cartpath": 6,
+    "golf=fairway": 35,
+    "golf=green": 34,
+    "golf=hole": 31,
+    "golf=lateral_water_hazard": 5,
+    "golf=path": 26,
+    "golf=rough": 43,
+    "golf=tee": 71,
+    "golf=water_hazard": 10,
+    "landuse=grass": 121,
+    "natural=sand": 96,
+    "natural=water": 16
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-93.21112440,36.55423500,-93.19126710,36.57391980",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 126,
+    "golf=cartpath": 23,
+    "golf=fairway": 52,
+    "golf=green": 39,
+    "golf=hole": 37,
+    "golf=lateral_water_hazard": 13,
+    "golf=path": 26,
+    "golf=rough": 51,
+    "golf=tee": 95,
+    "golf=water_hazard": 10,
+    "landuse=grass": 170,
+    "natural=sand": 124,
+    "natural=water": 24
+  },
+  "rawIncludedFeatures": 473,
+  "rawMapElements": 13037,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/891038975/full"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,153.1,84.0,5.1,forward,5.1,237.0
+2,0.0,44.9,156.8,1.5,forward,1.5,201.8
+3,0.0,90.8,74.9,3.2,forward,3.2,165.6
+4,0.0,55.3,118.5,2.0,forward,2.0,173.8
+5,0.0,77.7,94.9,4.4,forward,4.4,172.5
+6,0.0,70.9,84.6,2.3,forward,2.3,155.5
+7,0.0,63.1,133.0,3.4,forward,3.4,196.2
+8,0.0,65.5,125.3,4.5,forward,4.5,190.8
+9,0.0,45.7,73.8,4.0,forward,4.0,119.5
+10,0.0,95.1,134.5,1.4,forward,1.4,229.6
+11,0.0,69.3,67.4,1.9,forward,1.9,136.7
+12,0.0,59.4,83.6,1.7,forward,1.7,143.1
+13,0.0,62.1,62.2,0.9,forward,0.9,124.3
+14,0.0,67.5,67.5,1.9,forward,1.9,135.0
+15,0.0,53.0,72.3,1.1,forward,1.1,125.3
+16,0.0,43.5,60.1,3.2,forward,3.2,103.5
+17,0.0,60.6,51.5,5.0,forward,5.0,112.1
+18,0.0,170.9,64.1,2.2,forward,2.2,234.9
+
+TEE OWNERSHIP H1 targetGreenOsmId=827033021
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827033011,0.0,479.4,0.0,1,0.0
+827033012,26.8,447.5,2.3,1,2.3
+827033013,64.5,411.6,8.4,1,8.4
+827033014,88.1,390.1,14.5,1,14.5
+827033023,330.3,158.1,55.1,2,0.0
+827033024,315.9,184.5,78.6,2,2.5
+827033025,290.3,214.3,84.6,2,11.7
+827033026,280.9,230.4,94.4,2,14.1
+827033027,227.1,303.9,120.4,2,44.2
+827033028,218.2,325.3,129.1,2,53.8
+827033034,259.3,476.6,250.4,3,0.0
+1077548247,255.5,772.3,255.4,1,255.4
+827033035,284.3,467.0,269.0,3,2.0
+827033036,303.6,462.5,283.6,3,1.3
+827033037,333.5,457.9,306.1,3,6.5
+827033038,361.2,455.0,326.2,3,10.8
+827037064,398.9,751.2,398.9,5,0.0
+827037065,403.1,743.9,403.1,5,0.1
+
+TEE OWNERSHIP H9 targetGreenOsmId=1077530878
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827046679,0.0,426.3,0.0,9,0.0
+827046680,19.6,400.2,0.1,9,0.1
+827046681,59.7,365.2,25.0,9,25.0
+827046669,447.2,126.7,121.8,8,10.1
+1077537794,437.0,216.2,189.1,11,8.7
+827046712,211.2,488.8,210.6,12,0.0
+827046713,215.8,526.4,215.8,12,0.5
+827046714,222.2,549.4,222.2,12,3.4
+827046723,373.8,700.1,373.8,13,19.6
+827037084,425.9,421.7,376.1,7,50.2
+827037081,388.5,508.2,382.4,7,0.0
+827037082,401.6,496.6,390.2,7,14.4
+827046722,392.4,747.3,392.4,13,12.5
+827037083,417.6,476.0,395.5,7,37.1
+827046721,409.7,778.8,409.7,13,5.3
+827046720,435.4,815.3,435.4,13,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=1077544476
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827046702,0.0,420.5,0.0,11,0.0
+1077537796,18.9,392.9,1.6,11,1.6
+1077537795,49.7,361.9,4.0,11,4.0
+1077537794,82.4,330.7,8.7,11,8.7
+827056563,23.8,450.2,23.8,18,0.0
+827056564,47.3,475.0,47.3,18,0.5
+827056565,75.8,501.2,75.8,18,2.2
+827056527,163.0,311.3,91.4,14,0.0
+827056528,140.7,344.9,95.6,14,5.6
+1077544477,96.6,519.6,96.6,18,4.9
+827056529,129.6,386.8,109.6,14,16.4
+827056530,136.8,436.5,135.1,14,20.0
+1077530879,217.5,544.5,217.5,10,2.5
+827046693,228.7,514.6,228.7,10,12.2
+827046694,230.5,528.7,230.5,10,6.8
+827046692,273.7,562.1,273.7,10,6.2
+827046691,296.3,576.7,296.3,10,0.0
+827046668,318.2,575.2,318.2,8,0.0
+
+TEE OWNERSHIP H13 targetGreenOsmId=827056525
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827046720,0.0,640.3,0.0,13,0.0
+827046721,41.2,593.7,5.3,13,5.3
+827046722,83.5,551.8,12.5,13,12.5
+827046723,149.5,490.0,19.6,13,19.6
+827046714,262.3,396.7,102.9,12,3.4
+827046713,282.8,371.3,104.3,12,0.5
+827046712,322.3,332.8,112.3,12,0.0
+827046679,435.1,449.1,328.6,9,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=827056543
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827056536,0.0,446.3,0.0,15,0.0
+827056537,38.8,380.4,3.9,15,3.9
+827056546,445.2,57.8,54.0,16,4.5
+827056547,417.7,74.1,63.7,16,3.3
+827056548,376.5,115.9,94.1,16,12.3
+827056552,209.0,258.1,106.6,17,0.0
+827056555,139.8,364.1,115.0,17,19.9
+827056554,167.8,323.3,120.3,17,2.8
+827056553,194.4,288.3,121.3,17,1.9
+827056530,349.5,737.2,349.5,14,20.0
+1077544477,358.4,651.1,358.4,18,4.9
+827056565,375.2,671.0,375.2,18,2.2
+827056564,383.3,695.0,383.3,18,0.5
+827056529,393.5,784.4,393.5,14,16.4
+827056563,402.1,719.6,402.1,18,0.0
+827056528,429.7,826.3,429.7,14,5.6
+827046702,430.2,750.4,430.2,11,0.0
+1077537796,446.2,777.2,446.2,11,1.6
+
+TEE OWNERSHIP H16 targetGreenOsmId=827056550
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827056545,0.0,223.4,0.0,16,0.0
+827056547,46.0,171.6,3.3,16,3.3
+827056546,17.1,201.4,4.5,16,4.5
+827056548,93.6,123.9,12.3,16,12.3
+827056552,262.9,51.4,43.5,17,0.0
+827056553,288.8,73.9,65.0,17,1.9
+827056554,324.6,109.4,100.9,17,2.8
+827056555,367.0,151.4,143.4,17,19.9
+827056537,369.2,207.0,175.2,15,3.9
+1077548247,323.3,558.4,323.3,1,255.4
+
+TEE OWNERSHIP H17 targetGreenOsmId=827056561
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+827056552,0.0,478.0,0.0,17,0.0
+827056553,25.0,446.6,1.9,17,1.9
+827056554,58.0,413.9,2.8,17,2.8
+827056555,99.3,377.5,19.9,17,19.9
+827056564,439.1,74.4,67.5,18,0.5
+1077544477,403.3,107.3,83.3,18,4.9
+827056565,421.6,97.2,83.7,18,2.2
+827056537,128.5,426.2,120.9,15,3.9
+827056536,207.8,385.0,156.7,15,0.0
+827056548,166.6,627.7,166.6,16,12.3
+827056547,213.4,677.9,213.4,16,3.3
+827056546,242.7,708.2,242.7,16,4.5
+827056545,265.5,729.7,265.5,16,0.0
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/paynes-valley-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Payne's Valley Golf Course",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 17698026,
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "exportResolutionMeters": 1.0,
+  "height": 2246,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 1816
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-10376041.088%2C4377573.696%2C-10374225.672%2C4379819.092&bboxSR=3857&imageSR=3857&size=1816%2C2246&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W096_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N36W096_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 163072.8,
+      "knownAreaSqYd": 44733.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 26785.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 79525.7
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 10516.0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 107919.2,
+      "knownAreaSqYd": 13938.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 23372.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 83170.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 126331.3,
+      "knownAreaSqYd": 27457.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 16061.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 108676.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 178317.9,
+      "knownAreaSqYd": 51306.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 35868.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 125454.4
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 1790.2
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 90430.5,
+      "knownAreaSqYd": 33447.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 5017.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 32512.6
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 17639.2
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 154413.7,
+      "knownAreaSqYd": 50539.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 15636.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 79430.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 807.7
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 136583.8,
+      "knownAreaSqYd": 35066.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 40538.4
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 51501.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 194163.5,
+      "knownAreaSqYd": 39185.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 26408.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 148831.2
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 2433.6
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 159299.0,
+      "knownAreaSqYd": 21633.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 41520.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 110117.9
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 1233.6
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 89077.2,
+      "knownAreaSqYd": 26226.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 8095.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 42576.8
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 3026.9
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 158227.2,
+      "knownAreaSqYd": 24509.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 20017.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 132341.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 158.1
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 134441.0,
+      "knownAreaSqYd": 28114.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 40837.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 92324.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 218799.7,
+      "knownAreaSqYd": 55749.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 59580.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 157227.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 159494.4,
+      "knownAreaSqYd": 27311.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 2863.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 121367.5
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 411.1
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 173501.4,
+      "knownAreaSqYd": 32499.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 19771.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 6,
+          "areaSqYd": 98005.0
+        },
+        "landcover-bare": {
+          "polygons": 6,
+          "areaSqYd": 21105.0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 99078.5,
+      "knownAreaSqYd": 35921.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 1084.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 41595.7
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 15671.0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 168840.0,
+      "knownAreaSqYd": 77281.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 870.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 82554.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 185106.8,
+      "knownAreaSqYd": 71367.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 2305.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 11,
+          "areaSqYd": 84234.1
+        },
+        "landcover-bare": {
+          "polygons": 5,
+          "areaSqYd": 22392.3
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/paynes-valley/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/green-detail-v1.json (122,348 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 1022,
+      "validOnGreenNodes": 1022,
+      "greenCoverage": 1.0,
+      "localFitCount": 1022,
+      "trustedLocalFitCount": 1022,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.098,
+      "maxTrustedSlopePercent": 19.6
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 870,
+      "validOnGreenNodes": 870,
+      "greenCoverage": 1.0,
+      "localFitCount": 870,
+      "trustedLocalFitCount": 870,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.048,
+      "localRmsP95Ft": 0.095,
+      "maxTrustedSlopePercent": 11.7
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 722,
+      "validOnGreenNodes": 722,
+      "greenCoverage": 1.0,
+      "localFitCount": 722,
+      "trustedLocalFitCount": 722,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.05,
+      "maxTrustedSlopePercent": 5.5
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 609,
+      "validOnGreenNodes": 609,
+      "greenCoverage": 1.0,
+      "localFitCount": 609,
+      "trustedLocalFitCount": 609,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.077,
+      "maxTrustedSlopePercent": 11.9
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 967,
+      "validOnGreenNodes": 967,
+      "greenCoverage": 1.0,
+      "localFitCount": 967,
+      "trustedLocalFitCount": 967,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.066,
+      "maxTrustedSlopePercent": 9.0
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 662,
+      "validOnGreenNodes": 662,
+      "greenCoverage": 1.0,
+      "localFitCount": 662,
+      "trustedLocalFitCount": 662,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.061,
+      "maxTrustedSlopePercent": 6.6
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 987,
+      "validOnGreenNodes": 987,
+      "greenCoverage": 1.0,
+      "localFitCount": 987,
+      "trustedLocalFitCount": 987,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.106,
+      "maxTrustedSlopePercent": 17.2
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 726,
+      "validOnGreenNodes": 726,
+      "greenCoverage": 1.0,
+      "localFitCount": 726,
+      "trustedLocalFitCount": 726,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.039,
+      "localRmsP95Ft": 0.082,
+      "maxTrustedSlopePercent": 8.5
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 675,
+      "validOnGreenNodes": 675,
+      "greenCoverage": 1.0,
+      "localFitCount": 675,
+      "trustedLocalFitCount": 675,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.052,
+      "localRmsP95Ft": 0.095,
+      "maxTrustedSlopePercent": 11.4
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 600,
+      "validOnGreenNodes": 600,
+      "greenCoverage": 1.0,
+      "localFitCount": 600,
+      "trustedLocalFitCount": 600,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.063,
+      "maxTrustedSlopePercent": 9.3
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 803,
+      "validOnGreenNodes": 803,
+      "greenCoverage": 1.0,
+      "localFitCount": 803,
+      "trustedLocalFitCount": 803,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.049,
+      "maxTrustedSlopePercent": 6.2
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 664,
+      "validOnGreenNodes": 664,
+      "greenCoverage": 1.0,
+      "localFitCount": 664,
+      "trustedLocalFitCount": 664,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.074,
+      "maxTrustedSlopePercent": 13.7
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 762,
+      "validOnGreenNodes": 762,
+      "greenCoverage": 1.0,
+      "localFitCount": 762,
+      "trustedLocalFitCount": 762,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.067,
+      "maxTrustedSlopePercent": 9.9
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 729,
+      "validOnGreenNodes": 729,
+      "greenCoverage": 1.0,
+      "localFitCount": 729,
+      "trustedLocalFitCount": 729,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.069,
+      "maxTrustedSlopePercent": 11.9
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 795,
+      "validOnGreenNodes": 795,
+      "greenCoverage": 1.0,
+      "localFitCount": 795,
+      "trustedLocalFitCount": 795,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.089,
+      "maxTrustedSlopePercent": 11.5
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 716,
+      "validOnGreenNodes": 716,
+      "greenCoverage": 1.0,
+      "localFitCount": 716,
+      "trustedLocalFitCount": 716,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.097,
+      "maxTrustedSlopePercent": 15.9
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 728,
+      "validOnGreenNodes": 728,
+      "greenCoverage": 1.0,
+      "localFitCount": 728,
+      "trustedLocalFitCount": 728,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.086,
+      "maxTrustedSlopePercent": 11.1
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 696,
+      "validOnGreenNodes": 696,
+      "greenCoverage": 1.0,
+      "localFitCount": 696,
+      "trustedLocalFitCount": 696,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.033,
+      "localRmsP95Ft": 0.052,
+      "maxTrustedSlopePercent": 9.5
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/paynes-valley-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/paynes-valley/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "greenDetailSha256": "a7166a3640a8e83c842f5fddc843e8603875ef9780f1e30738630085d4d79b33",
+  "packageSha256": "102703ee476756cc7c534d4e792ad04155e73315c73ca222f6fb152325b8c5cd",
+  "snapshotSha256": "675227897cfaff9a5ec0fe4744ff74de0b5eeb8f168b8f36b6967a51fccd92b7",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/paynes-valley-v1.json
+[course-import-contract] payne-s-valley-golf-course-hollister-missouri: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 4 canonical tee set(s): Tee 1 (Back), Tee 2, Tee 3, Tee 4 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 2 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 9 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course payne-s-valley-golf-course-hollister-missouri
+[runtime-smoke] Payne's Valley Golf Course: 4 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 4 (Front), Tee 3, Tee 2, Tee 1 (Back).
+[runtime-smoke] Payne's Valley Golf Course runtime terrain validation passed for 18 hole(s).
+┌─────────┬──────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                       │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼──────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ "Payne's Valley Golf Course" │ 1    │ 5        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 1235.3         │ 1134.7            │ -100.6           │
+│ 1       │ "Payne's Valley Golf Course" │ 2    │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 1135           │ 1069.2            │ -65.8            │
+│ 2       │ "Payne's Valley Golf Course" │ 3    │ 6        │ 2             │ 5             │ 4               │ 1                      │ 10                │ 1079.6         │ 1050.1            │ -29.5            │
+│ 3       │ "Payne's Valley Golf Course" │ 4    │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 1066.5         │ 1009.7            │ -56.8            │
+│ 4       │ "Payne's Valley Golf Course" │ 5    │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 1021           │ 1001              │ -20              │
+│ 5       │ "Payne's Valley Golf Course" │ 6    │ 6        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 1024.8         │ 981               │ -43.8            │
+│ 6       │ "Payne's Valley Golf Course" │ 7    │ 6        │ 2             │ 2             │ 4               │ 1                      │ 10                │ 938.6          │ 970.7             │ 32.1             │
+│ 7       │ "Payne's Valley Golf Course" │ 8    │ 6        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 1011.9         │ 959.8             │ -52.1            │
+│ 8       │ "Payne's Valley Golf Course" │ 9    │ 5        │ 3             │ 3             │ 4               │ 1                      │ 10                │ 953.6          │ 966.5             │ 12.9             │
+│ 9       │ "Payne's Valley Golf Course" │ 10   │ 6        │ 3             │ 5             │ 4               │ 1                      │ 10                │ 1011.3         │ 938.8             │ -72.5            │
+│ 10      │ "Payne's Valley Golf Course" │ 11   │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 981.3          │ 961.5             │ -19.8            │
+│ 11      │ "Payne's Valley Golf Course" │ 12   │ 5        │ 2             │ 3             │ 4               │ 1                      │ 10                │ 954.7          │ 921.5             │ -33.2            │
+│ 12      │ "Payne's Valley Golf Course" │ 13   │ 5        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 924.6          │ 980.8             │ 56.2             │
+│ 13      │ "Payne's Valley Golf Course" │ 14   │ 5        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 1007           │ 1010.6            │ 3.6              │
+│ 14      │ "Payne's Valley Golf Course" │ 15   │ 5        │ 3             │ 2             │ 4               │ 1                      │ 10                │ 1027.9         │ 1076.3            │ 48.4             │
+│ 15      │ "Payne's Valley Golf Course" │ 16   │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 1084.8         │ 1013.3            │ -71.5            │
+│ 16      │ "Payne's Valley Golf Course" │ 17   │ 6        │ 2             │ 4             │ 4               │ 1                      │ 10                │ 1021.9         │ 986.7             │ -35.2            │
+│ 17      │ "Payne's Valley Golf Course" │ 18   │ 6        │ 3             │ 4             │ 4               │ 1                      │ 10                │ 983.1          │ 1016              │ 32.9             │
+└─────────┴──────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] payne-s-valley-golf-course-hollister-missouri passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 9 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "courseSlug": "paynes-valley",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/paynes-valley/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/paynes-valley/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/paynes-valley/validation-v1.json"
+}
+=== [paynes-valley:import] rc=0 seconds=14.3
+=== [paynes-valley:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=4009082 seconds=36.7
+{"elementsByType": {"node": 18719, "way": 929, "relation": 76}, "taggedElements": 951, "compressedBytes": 517254}
+=== [paynes-valley:osm] rc=0 seconds=37.2
+=== [paynes-valley:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/course-bbox.json --crs EPSG:26915 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:160: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=6 seconds=8.4 size=2844x3375
+{"width": 2844, "height": 3375, "pixel": 1.0, "validCells": 9598500, "elevMin": 238.64727783203125, "elevMax": 407.8251037597656}
+=== [paynes-valley:dem] rc=0 seconds=9.1
+=== [paynes-valley:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/MO_FEMANRCS_1_2020/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model
+nodes=1209 pointsInIntersectingNodes=58648938 hierarchySeconds=2.1
+tiles 25/1209 kept=163930 MB=7 seconds=3
+tiles 50/1209 kept=502075 MB=13 seconds=4
+tiles 75/1209 kept=1258104 MB=24 seconds=5
+tiles 100/1209 kept=1718175 MB=33 seconds=6
+tiles 125/1209 kept=2454981 MB=38 seconds=6
+tiles 150/1209 kept=3201339 MB=45 seconds=7
+tiles 175/1209 kept=4400288 MB=52 seconds=8
+tiles 200/1209 kept=5698445 MB=59 seconds=9
+tiles 225/1209 kept=6959893 MB=65 seconds=10
+tiles 250/1209 kept=8244823 MB=71 seconds=11
+tiles 275/1209 kept=9487257 MB=79 seconds=11
+tiles 300/1209 kept=10721911 MB=87 seconds=12
+tiles 325/1209 kept=11207787 MB=90 seconds=13
+tiles 350/1209 kept=11679314 MB=93 seconds=13
+tiles 375/1209 kept=12185945 MB=96 seconds=14
+tiles 400/1209 kept=12853722 MB=103 seconds=15
+tiles 425/1209 kept=13830500 MB=109 seconds=16
+tiles 450/1209 kept=14782124 MB=115 seconds=17
+tiles 475/1209 kept=15976870 MB=123 seconds=18
+tiles 500/1209 kept=17254241 MB=131 seconds=18
+tiles 525/1209 kept=18719809 MB=138 seconds=19
+tiles 550/1209 kept=20124094 MB=145 seconds=20
+tiles 575/1209 kept=21329186 MB=150 seconds=21
+tiles 600/1209 kept=22729528 MB=158 seconds=22
+tiles 625/1209 kept=24079575 MB=165 seconds=23
+tiles 650/1209 kept=25377280 MB=173 seconds=24
+tiles 675/1209 kept=27000117 MB=182 seconds=25
+tiles 700/1209 kept=28560912 MB=191 seconds=26
+tiles 725/1209 kept=30003879 MB=200 seconds=27
+tiles 750/1209 kept=31249829 MB=207 seconds=28
+tiles 775/1209 kept=31731649 MB=210 seconds=28
+tiles 800/1209 kept=32259213 MB=214 seconds=28
+tiles 825/1209 kept=33206829 MB=224 seconds=29
+tiles 850/1209 kept=34570713 MB=233 seconds=30
+tiles 875/1209 kept=36090633 MB=243 seconds=31
+tiles 900/1209 kept=36791268 MB=251 seconds=32
+tiles 925/1209 kept=38083217 MB=259 seconds=33
+tiles 950/1209 kept=39367941 MB=267 seconds=33
+tiles 975/1209 kept=39964642 MB=271 seconds=34
+tiles 1000/1209 kept=40403149 MB=275 seconds=34
+tiles 1025/1209 kept=41602090 MB=284 seconds=35
+tiles 1050/1209 kept=42836584 MB=292 seconds=36
+tiles 1075/1209 kept=44641181 MB=303 seconds=37
+tiles 1100/1209 kept=46279567 MB=312 seconds=38
+tiles 1125/1209 kept=47666540 MB=319 seconds=39
+tiles 1150/1209 kept=48545025 MB=324 seconds=40
+tiles 1175/1209 kept=48988392 MB=327 seconds=40
+tiles 1200/1209 kept=49933033 MB=335 seconds=41
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/MO_FEMANRCS_1_2020/ept.json", "eptSrs": "3857", "octreeNodesRead": 1209, "downloadedMB": 338.2, "pointsKeptInBbox": 50321324, "pointsPerSquareMetre": 5.24, "firstReturnsPerSquareMetre": 3.33, "classificationHistogram": {"1": 24728138, "2": 26576276, "9": 64676, "17": 7452, "20": 7213}, "chm": {"width": 2844, "height": 3375, "pixelMeters": 1.0, "cellsWithReturns": 9294380, "emptyCells": 304120, "cellsOver3m": 5607464, "cellsOver10m": 3140814, "p50": 5.599999999999966, "p95": 59.329999999999984, "max": 69.99999999999994}, "seconds": 46.3}
+=== [paynes-valley:lidar] rc=0 seconds=46.5
+=== [paynes-valley:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26915", "treeCount": 94163, "heightM": {"p10": 5.2, "p50": 9.8, "p90": 26.5, "max": 70.0}, "crownRadiusM": {"p10": 1.9, "p50": 3.5, "p90": 6.1}, "woodlandPolygons": 3167, "woodlandAreaHa": 529.7, "maskedCellsBuildingsAndPower": 17914, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 18.2}
+=== [paynes-valley:trees] rc=0 seconds=18.8
+=== [paynes-valley:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/paynes-valley/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/paynes-valley/course-v1-lidar.json
+{
+ "bytes": 1684740,
+ "originalBytes": 337482,
+ "holes": {
+  "woodsPolygons": 18,
+  "bunker": "8->9",
+  "water": "0->1",
+  "mapFeatures": {
+   "cartpath": 4,
+   "road": 1
+  },
+  "terrainCells": 41772
+ },
+ "woodsTotal": 1267
+}
+=== [paynes-valley:enrich] rc=0 seconds=153.7

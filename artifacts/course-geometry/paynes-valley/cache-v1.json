@@ -1,25 +1,38 @@
 {
-  "courseId": "paynes-valley-hollister-mo",
-  "courseName": "Payne's Valley",
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "courseName": "Payne's Valley Golf Course",
   "freshness": {
-    "ageDays": 0.59,
-    "evaluatedAt": "2026-09-18T15:03:00.472359Z",
+    "ageDays": 0,
+    "evaluatedAt": "2026-11-04T03:09:28.981999Z",
     "status": "current"
   },
   "lastBuild": {
-    "reason": "cached-source-rebuild",
-    "usedNetworkForOsm": false
+    "reason": "one-click-course-load",
+    "usedNetworkForOsm": true
   },
   "package": {
-    "builderFingerprintSha256": "1beb62800bb07d85be17b03cefe76fbb7d413b42606bdaa39167d03932ddbb05",
-    "builderVersion": "build_osm_course_package_v3",
-    "builtAt": "2026-09-18T15:03:00.472359Z",
+    "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-11-04T03:09:28.981999Z",
     "configPath": "config/course-geometry/paynes-valley-v1.json",
-    "configSha256": "2617654bca210a47141399dbbadf8cd7e30b538b18d82414d3653f08fdbb55c8",
+    "configSha256": "dfaa4ff8e7640ab843259623efe61a91310b3294a99f2c69323429313f5e9a41",
+    "greenDetail": {
+      "marginYds": 12.0,
+      "schemaVersion": "looper-course-green-detail-v1",
+      "sha256": "a7166a3640a8e83c842f5fddc843e8603875ef9780f1e30738630085d4d79b33",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "spacingYds": 1.0
+    },
     "path": "public/course-geometry/paynes-valley/course-v1.json",
     "schemaVersion": "looper-static-course-package-v1",
-    "sha256": "22c64d92e5fde1151b0d49cd738bccfb4b5eb669e9cb80ee9846e7efac6f51f2",
-    "terrainComposerVersion": "compose_course_package_v1"
+    "sha256": "102703ee476756cc7c534d4e792ad04155e73315c73ca222f6fb152325b8c5cd",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "sourceProvider": "USGS 3DEP",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
   },
   "refreshPolicy": {
     "deleteOnAge": false,
@@ -44,13 +57,12 @@
       "id": 891038975,
       "type": "way"
     },
-    "fetchedAt": "2026-09-18T00:52:05.387345Z",
+    "fetchedAt": "2026-11-04T03:09:28.981999Z",
     "fetchedAtBasis": "source-provider-fetch",
-    "lastCheckedAt": "2026-09-18T00:52:05.387345Z",
-    "provider": "openstreetmap-overpass",
+    "lastCheckedAt": "2026-11-04T03:09:28.981999Z",
+    "provider": "openstreetmap-core-map",
     "snapshotPath": "artifacts/course-geometry/paynes-valley/osm-snapshot.json",
-    "snapshotSha256": "6eddf2f6ac5da32ae92bfe19d554cfe3b2439ddfe96cf3be07291bf8e7218796",
-    "sourceBaseTimestamp": "2026-09-18T00:50:20Z"
+    "snapshotSha256": "675227897cfaff9a5ec0fe4744ff74de0b5eeb8f168b8f36b6967a51fccd92b7"
   },
   "terrain": {
     "builderFingerprintSha256": "703dcc98f99cf1a4917921fd936ab043ef0868ee6be93e2a7497e478de5ae156",

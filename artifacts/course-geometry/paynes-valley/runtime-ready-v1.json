@@ -1,0 +1,22 @@
+{
+  "completedAt": "2026-11-04T03:09:36.960866Z",
+  "configPath": "config/course-geometry/paynes-valley-v1.json",
+  "courseId": "payne-s-valley-golf-course-hollister-missouri",
+  "courseName": "Payne's Valley Golf Course",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Payne's Valley Golf Course",
+    "paynes_valley_gsp"
+  ],
+  "location": "Hollister, Missouri",
+  "packagePath": "public/course-geometry/paynes-valley/course-v1.json",
+  "packageSha256": "102703ee476756cc7c534d4e792ad04155e73315c73ca222f6fb152325b8c5cd",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "paynes-valley",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/paynes-valley/validation-v1.json"
+}
