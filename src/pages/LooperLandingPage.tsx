@@ -333,7 +333,7 @@ export default function LooperLandingPage({
 
             <div className="looper-landing-mode-card looper-landing-mode-card--review">
               <span className="looper-landing-mode-kicker">Review</span>
-              <strong>Your Game</strong>
+              <strong>Yardage Book</strong>
               <span className="looper-landing-mode-copy">
                 Your bag&apos;s yardages and every round, shot by shot.
               </span>

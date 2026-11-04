@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   GREYWOLF_COURSE_ID,
   courseRegistry,
@@ -31,6 +31,8 @@ import {
   type ActiveLiveCaddieRound,
 } from '../liveCaddie/roundRuntime'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
+import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import './RoundSetupPage.css'
 
 const candidateTeeValues = (candidate: CourseTeeCandidate) => [
   candidate.teeSet,
@@ -46,6 +48,7 @@ const canonicalTeeOption = (candidate: CourseTeeCandidate) =>
 
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
 const OTHER_TEE = '__looper-unmapped-tee__'
+const ACTIVE_ROUND_RECENT_MS = 12 * 60 * 60 * 1000
 
 export default function RoundSetupPage() {
   const initialCourse = loadLastSelectedCourseId()
@@ -197,6 +200,10 @@ export default function RoundSetupPage() {
       })
       if (!round) throw new Error('Looper could not arm the round.')
       setActiveRound(round)
+      // Straight into Live Caddie: the old "round armed" confirmation page only
+      // repeated what was just chosen. A full load (as that page's link did) so a
+      // Live Caddie kept mounted from earlier can't hold on to the previous round.
+      window.location.assign('/live-caddie')
     } catch (startError) {
       setError(startError instanceof Error ? startError.message : String(startError))
     } finally {
@@ -209,155 +216,100 @@ export default function RoundSetupPage() {
     setActiveRound(null)
   }
 
-  const shell: CSSProperties = {
-    minHeight: '100vh',
-    background: '#0b120d',
-    color: '#f5f7f4',
-    padding: '48px 24px',
-    boxSizing: 'border-box',
-  }
-  const card: CSSProperties = {
-    width: 'min(620px, 100%)',
-    margin: '0 auto',
-    background: '#111c14',
-    border: '1px solid #2b3a2f',
-    borderRadius: 16,
-    padding: 28,
-    boxShadow: '0 18px 54px rgba(0,0,0,0.28)',
-  }
-  const input: CSSProperties = {
-    width: '100%',
-    minHeight: 46,
-    marginTop: 8,
-    borderRadius: 9,
-    border: '1px solid #405046',
-    background: '#0d1710',
-    color: '#fff',
-    padding: '0 12px',
-    boxSizing: 'border-box',
-    fontSize: 15,
-  }
-  const primary: CSSProperties = {
-    minHeight: 46,
-    border: '1px solid #74d49a',
-    borderRadius: 9,
-    background: '#1d6a3d',
-    color: '#fff',
-    padding: '0 18px',
-    fontWeight: 800,
-    cursor: 'pointer',
-  }
-
-  if (activeRound) {
-    const activeCourse = getCourseCatalogEntry(activeRound.courseId)
-    return (
-      <main style={shell}>
-        <section style={card}>
-          <div style={{ color: '#8ed3a8', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' }}>
-            {activeRound.phase === 'armed' ? 'ROUND ARMED' : 'ROUND ACTIVE'}
-          </div>
-          <h1 style={{ margin: '8px 0 6px', fontSize: 30 }}>{activeCourse.name}</h1>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{activeRound.teeSet} tees</div>
-          <p style={{ color: '#aeb9b0', lineHeight: 1.55, marginTop: 18 }}>
-            Looper is using a map-based {activeRound.teeSet} tee assumption for this round; it may be provisional if OSM has no matching named tee. Set the same course and tee in GSPro. Looper will keep that tee identity authoritative and use completed-shot GSPro data as validation evidence later.
-          </p>
-          <div style={{ display: 'grid', gap: 8, margin: '22px 0', padding: 16, borderRadius: 10, background: '#0d1710', border: '1px solid #26372b' }}>
-            <div><strong>Course:</strong> {activeCourse.name}</div>
-            <div><strong>Tees:</strong> {activeRound.teeSet}</div>
-            <div><strong>Looper state:</strong> H1 · Shot 1 · tee assumed from round setup</div>
-            <div><strong>GSPro:</strong> set the same course + tee, then play normally</div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <a href="/live-caddie" style={{ ...primary, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
-              OPEN LIVE CADDIE
-            </a>
-            <button type="button" onClick={resetRound} style={{ minHeight: 46, borderRadius: 9, border: '1px solid #526057', background: 'transparent', color: '#d8dfda', padding: '0 16px', fontWeight: 700 }}>
-              CHANGE ROUND
-            </button>
-          </div>
-        </section>
-      </main>
-    )
-  }
+  // Only a round from today counts as "in progress"; an old armed round is just
+  // replaced by the next Start Round.
+  const activeIsRecent =
+    activeRound != null && Date.now() - Date.parse(activeRound.startedAt) < ACTIVE_ROUND_RECENT_MS
+  const activeCourse = activeRound && activeIsRecent ? getCourseCatalogEntry(activeRound.courseId) : null
+  const startDisabled =
+    starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'
 
   return (
-    <main style={shell}>
-      <section style={card}>
-        <div style={{ color: '#8ed3a8', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' }}>
-          LIVE CADDIE
-        </div>
-        <h1 style={{ margin: '8px 0 6px', fontSize: 30 }}>Start a Round</h1>
-        <p style={{ margin: '0 0 24px', color: '#9da99f', lineHeight: 1.5 }}>
-          Choose the exact course and tee you intend to use in GSPro. If the tee is not mapped, Looper can start with a clearly provisional estimate.
-        </p>
+    <main className="round-setup-page">
+      <div className="round-setup-shell">
+        <a aria-label="Back to The Looper" className="round-setup-logo" href="/looper">
+          <img alt="The Looper" src={looperLogoWhite} />
+        </a>
 
-        <label style={{ display: 'block', marginBottom: 18, color: '#cbd4cd', fontWeight: 700 }}>
-          Course
-          <select
-            value={courseId}
-            onChange={(event) => {
-              setCourseId(event.target.value as CourseId)
-              setTeeSet('')
-              setUnmappedTeeName('')
-            }}
-            style={input}
-          >
-            {courseRegistry.map((entry) => (
-              <option key={entry.id} value={entry.id} disabled={entry.packageStatus !== 'ready'}>
-                {entry.name}{entry.packageStatus === 'ready' ? '' : ' — live validation pending'}
-              </option>
-            ))}
-          </select>
-        </label>
+        <section className="round-setup-panel" aria-labelledby="round-setup-title">
+          <span className="round-setup-kicker">Live Caddie</span>
+          <h1 id="round-setup-title">Start a Round</h1>
+          <p className="round-setup-lead">
+            Pick the course and tee you&apos;re playing in GSPro. Looper takes it from the first tee shot.
+          </p>
 
-        <p style={{ margin: '-10px 0 16px', fontSize: 13 }}>
-          <a href="/courses" style={{ color: '#8fd19e' }}>Don't see your course? Load a course →</a>
-        </p>
-
-        <div style={{ marginBottom: 18 }}>
-          <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
-        </div>
-
-        <label style={{ display: 'block', marginBottom: 22, color: '#cbd4cd', fontWeight: 700 }}>
-          Tees
-          <select
-            value={teeSet}
-            onChange={(event) => setTeeSet(event.target.value)}
-            disabled={loadingTees}
-            style={input}
-          >
-            {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading mapped tees…' : 'No mapped tee names'}</option> : null}
-            {teeOptions.map((option) => <option key={option} value={option}>{teeOptionText[option] ?? option}</option>)}
-            <option value={OTHER_TEE}>My GSPro tee is not listed…</option>
-          </select>
-          {teeSet === OTHER_TEE ? (
-            <input type="text" value={unmappedTeeName} maxLength={60}
-              onChange={event => setUnmappedTeeName(event.target.value)}
-              placeholder="Type the actual GSPro tee color/name (e.g. Blue)"
-              aria-label="Actual tee selected in GSPro"
-              style={input} />
+          {activeRound && activeCourse ? (
+            <div className="round-setup-active" role="status">
+              <span className="round-setup-active-dot" aria-hidden="true" />
+              <span>
+                Round in progress: <strong>{activeCourse.name}</strong>, {activeRound.teeSet} tees.
+              </span>
+              <a href="/live-caddie">Resume →</a>
+              <button onClick={resetRound} type="button">End it</button>
+            </div>
           ) : null}
-        </label>
 
-        <div style={{ margin: '-10px 0 20px', color: '#7f8d82', fontSize: 12, lineHeight: 1.45 }}>
-          Use the tee name you actually selected in GSPro. An unmatched tee starts as a provisional estimate, not a confirmed tee. Physical shots can validate it later.
-        </div>
+          <label className="round-setup-field">
+            <span className="round-setup-label">Course</span>
+            <select
+              value={courseId}
+              onChange={(event) => {
+                setCourseId(event.target.value as CourseId)
+                setTeeSet('')
+                setUnmappedTeeName('')
+              }}
+            >
+              {courseRegistry.map((entry) => (
+                <option key={entry.id} value={entry.id} disabled={entry.packageStatus !== 'ready'}>
+                  {entry.name}{entry.packageStatus === 'ready' ? '' : ' — live validation pending'}
+                </option>
+              ))}
+            </select>
+            <a className="round-setup-hint-link" href="/courses">Don&apos;t see your course? Load a course →</a>
+          </label>
 
-        {error ? (
-          <div style={{ marginBottom: 18, padding: 12, borderRadius: 9, border: '1px solid rgba(248, 113, 113, 0.45)', background: 'rgba(127, 29, 29, 0.18)', color: '#fecaca' }}>
-            {error}
+          <div className="round-setup-native">
+            <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
           </div>
-        ) : null}
 
-        <button
-          type="button"
-          onClick={() => void startRound()}
-          disabled={starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'}
-          style={{ ...primary, width: '100%', opacity: starting || loadingTees || !teeSet.trim() || course.packageStatus !== 'ready' ? 0.55 : 1 }}
-        >
-          {starting ? 'STARTING…' : 'START ROUND'}
-        </button>
-      </section>
+          <label className="round-setup-field">
+            <span className="round-setup-label">Tees</span>
+            <select
+              value={teeSet}
+              onChange={(event) => setTeeSet(event.target.value)}
+              disabled={loadingTees}
+            >
+              {teeOptions.length === 0 ? <option value="">{loadingTees ? 'Loading mapped tees…' : 'No mapped tee names'}</option> : null}
+              {teeOptions.map((option) => <option key={option} value={option}>{teeOptionText[option] ?? option}</option>)}
+              <option value={OTHER_TEE}>My GSPro tee is not listed…</option>
+            </select>
+            {teeSet === OTHER_TEE ? (
+              <input
+                aria-label="Actual tee selected in GSPro"
+                maxLength={60}
+                onChange={(event) => setUnmappedTeeName(event.target.value)}
+                placeholder="Type the actual GSPro tee color/name (e.g. Blue)"
+                type="text"
+                value={unmappedTeeName}
+              />
+            ) : null}
+            <span className="round-setup-hint">
+              Use the tee name you picked in GSPro. A tee Looper hasn&apos;t mapped starts as an estimate, and your shots confirm it.
+            </span>
+          </label>
+
+          {error ? <p className="round-setup-error" role="alert">{error}</p> : null}
+
+          <button
+            className="round-setup-start"
+            disabled={startDisabled}
+            onClick={() => void startRound()}
+            type="button"
+          >
+            {starting ? 'Starting…' : 'Start Round'}
+          </button>
+        </section>
+      </div>
     </main>
   )
 }
