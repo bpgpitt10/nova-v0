@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '../cloud/supabaseClient'
 import { courseNameMatchScore } from './courseNameMatch'
+import { gsproLinks, setGsproLinks } from '../courseGeometry/gsproLinks'
 
 export { courseNameMatchScore }
 
@@ -273,4 +274,42 @@ export const findGolfCourseFor = async (
   }
   if (best && best.score >= 0.5) return best.result
   return fallback
+}
+
+type GsproLinkRow = { gspro_course_key: string; gspro_course_name: string | null; course_slug: string }
+
+/** Load everyone's GSPro → Looper course links (Load page "Link"). */
+export const refreshGsproLinks = async (): Promise<void> => {
+  const client = await getSupabaseClient()
+  const { data, error } = await client
+    .from<GsproLinkRow[]>('course_gspro_links')
+    .select('gspro_course_key, gspro_course_name, course_slug')
+    .limit(1000)
+  if (error) throw new Error(error.message)
+  setGsproLinks((data ?? []).map((row) => ({
+    gsproCourseKey: row.gspro_course_key, gsproCourseName: row.gspro_course_name, courseSlug: row.course_slug,
+  })))
+}
+
+/** "DPC Pebble is Pebble Beach": link a GSPro course to a loaded course, for everyone. */
+export const linkGsproCourse = async (link: Readonly<{ gsproCourseKey: string; gsproCourseName: string; courseSlug: string }>) => {
+  const client = await getSupabaseClient()
+  const { error } = await client.from('course_gspro_links').upsert({
+    gspro_course_key: link.gsproCourseKey.slice(0, 120),
+    gspro_course_name: link.gsproCourseName.slice(0, 120) || null,
+    course_slug: link.courseSlug,
+    linked_at: new Date().toISOString(),
+  }, { onConflict: 'gspro_course_key' })
+  if (error) throw new Error(error.message)
+  setGsproLinks([
+    ...gsproLinks().filter((l) => l.gsproCourseKey !== link.gsproCourseKey),
+    { gsproCourseKey: link.gsproCourseKey, gsproCourseName: link.gsproCourseName, courseSlug: link.courseSlug },
+  ])
+}
+
+export const unlinkGsproCourse = async (gsproCourseKey: string) => {
+  const client = await getSupabaseClient()
+  const { error } = await client.from('course_gspro_links').delete().eq('gspro_course_key', gsproCourseKey)
+  if (error) throw new Error(error.message)
+  setGsproLinks(gsproLinks().filter((l) => l.gsproCourseKey !== gsproCourseKey))
 }

@@ -1,5 +1,6 @@
 import {
   GREYWOLF_COURSE_ID,
+  courseGsproAliases,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
   type CourseId,
@@ -719,7 +720,7 @@ const buildSnapshot = async (
       `Selected ${selectedCourse.name}, but GSPro reports ${courseKey}. Keeping the user-selected course until confirmed.`,
     )
   } else if (courseKey && !observedCourseId && isNativePositionsEnabled()
-    && installedCourseCandidates([selectedCourse.name, ...selectedCourse.gsproAliases],
+    && installedCourseCandidates([selectedCourse.name, ...courseGsproAliases(selectedCourse)],
       [{ courseKey, courseName: courseKey }]).length > 0) {
     // Native positions check the GKD against this course's registration, so
     // a name match ("valhalla_v3_gsp" for Valhalla Golf Club) is enough to
