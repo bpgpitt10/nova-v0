@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "trosper",
+  "request": {
+    "slug": "trosper",
+    "name": "Trosper Golf Club",
+    "location": "Oklahoma City, Oklahoma",
+    "lat": 35.4388959,
+    "lon": -97.4711699,
+    "nameRegex": "Trosper",
+    "osmId": 245580388,
+    "gsproAliases": [
+      "Bellerive_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 132.4,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 69.3
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/trosper-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 12.8
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 26.0
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 7.4
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 9.0
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 1.9
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 4.6
+    }
+  ],
+  "finishedAt": "2026-11-04T02:26:59Z",
+  "runId": "41759755818",
+  "osmCourse": {
+    "type": "way",
+    "id": 245580388,
+    "name": "Trosper Golf Club",
+    "areaHa": 78.5
+  },
+  "lidar": {
+    "name": "OK_Panhandle_B1B_2018",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/OK_Panhandle_B1B_2018/ept.json",
+    "count": 12902759942,
+    "year": 2018
+  },
+  "crs": "EPSG:26914",
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/OK_Panhandle_B1B_2018/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 221,
+    "downloadedMB": 47.9,
+    "pointsKeptInBbox": 8514990,
+    "pointsPerSquareMetre": 4.48,
+    "firstReturnsPerSquareMetre": 3.56,
+    "classificationHistogram": {
+      "1": 3319610,
+      "2": 5194935,
+      "17": 759
+    },
+    "chm": {
+      "width": 1702,
+      "height": 1117,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 1834241,
+      "emptyCells": 66893,
+      "cellsOver3m": 1834241,
+      "cellsOver10m": 1834241,
+      "p50": 43.86999999999995,
+      "p95": 55.69,
+      "max": 69.98999999999995
+    },
+    "seconds": 8.8
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26914",
+    "treeCount": 7663,
+    "heightM": {
+      "p10": 43.2,
+      "p50": 51.7,
+      "p90": 58.6,
+      "max": 69.8
+    },
+    "crownRadiusM": {
+      "p10": 3.9,
+      "p50": 6.4,
+      "p90": 11.8
+    },
+    "woodlandPolygons": 1,
+    "woodlandAreaHa": 171.07,
+    "maskedCellsBuildingsAndPower": 127868,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 1.2
+  },
+  "publishedBytes": {
+    "course-v1-lidar.json": 322983,
+    "course-v1.json": 287980,
+    "green-detail-v1.json": 105644
+  }
+}

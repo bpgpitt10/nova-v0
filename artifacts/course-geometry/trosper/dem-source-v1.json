@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -10851226.413,
+    4223116.403,
+    -10849247.716,
+    4224295.532
+  ],
+  "courseId": "trosper-golf-club-oklahoma-city-oklahoma",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-10851226.413%2C4223116.403%2C-10849247.716%2C4224295.532&bboxSR=3857&imageSR=3857&size=1979%2C1180&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-11-04T02:26:02.988546Z",
+  "height": 1180,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 1979
+}

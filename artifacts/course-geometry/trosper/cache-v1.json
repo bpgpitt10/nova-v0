@@ -1,0 +1,67 @@
+{
+  "courseId": "trosper-golf-club-oklahoma-city-oklahoma",
+  "courseName": "Trosper Golf Club",
+  "freshness": {
+    "ageDays": 0,
+    "evaluatedAt": "2026-11-04T02:26:01.431510Z",
+    "status": "current"
+  },
+  "lastBuild": {
+    "reason": "one-click-course-load",
+    "usedNetworkForOsm": true
+  },
+  "package": {
+    "builderFingerprintSha256": "ddd9aabb0111bae4e2d22a18ffa955740cff8df5a6470fceec3f1ea2b6eb8352",
+    "builderVersion": "build_osm_course_package_v7",
+    "builtAt": "2026-11-04T02:26:01.431510Z",
+    "configPath": "config/course-geometry/trosper-v1.json",
+    "configSha256": "c76cfdfafda87840b9413eafe7f715e9a201989f3eb883f86606f4bccfd4b501",
+    "greenDetail": {
+      "marginYds": 12.0,
+      "schemaVersion": "looper-course-green-detail-v1",
+      "sha256": "b7d7fc5f122ad0cf5bbc27839cc5987c7a5f8ae905f0c82b7c3520883dc6a582",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "spacingYds": 1.0
+    },
+    "path": "public/course-geometry/trosper/course-v1.json",
+    "schemaVersion": "looper-static-course-package-v1",
+    "sha256": "114f383aafa3b5583b1b43bdb9693a7f14b44bf6f625419098f79fe2436b8480",
+    "terrain": {
+      "schemaVersion": "looper-course-terrain-v1",
+      "sourceDataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+      "sourceProvider": "USGS 3DEP",
+      "sourceResolutionMeters": 1.0
+    },
+    "terrainComposerVersion": "compose_course_package_canonical_v1"
+  },
+  "refreshPolicy": {
+    "deleteOnAge": false,
+    "implicitRefreshOnBuild": false,
+    "localRebuildTriggers": [
+      "package-schema-change",
+      "builder-fingerprint-change"
+    ],
+    "refreshEligibleAfterDays": 365,
+    "refreshTriggers": [
+      "explicit-refresh",
+      "reported-geometry-error",
+      "known-course-renovation",
+      "source-age-eligible-and-course-used"
+    ],
+    "serveCachedRegardlessOfAge": true,
+    "staleReviewAfterDays": 1095
+  },
+  "schemaVersion": "looper-course-cache-v1",
+  "source": {
+    "element": {
+      "id": 245580388,
+      "type": "way"
+    },
+    "fetchedAt": "2026-11-04T02:26:01.431510Z",
+    "fetchedAtBasis": "source-provider-fetch",
+    "lastCheckedAt": "2026-11-04T02:26:01.431510Z",
+    "provider": "openstreetmap-core-map",
+    "snapshotPath": "artifacts/course-geometry/trosper/osm-snapshot.json",
+    "snapshotSha256": "023e17c962a7eb06e0a9b179d669e7af4bb3bd5afc33f45381c48f798b05ba3e"
+  }
+}

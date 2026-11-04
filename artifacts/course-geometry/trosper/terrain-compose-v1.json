@@ -1,0 +1,28 @@
+{
+  "complete": true,
+  "courseId": "trosper-golf-club-oklahoma-city-oklahoma",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
