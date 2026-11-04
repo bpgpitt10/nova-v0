@@ -45,7 +45,10 @@ def slugify(text: str) -> str:
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
-STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich')
+STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich', 'area')
+# The importer's message when OpenStreetMap doesn't draw one numbered hole line
+# per hole 1-18 (fetch_osm_course_snapshot.validate_holes).
+HOLES_NOT_MAPPED = 'one route per hole'
 
 
 class Load:
@@ -150,10 +153,24 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     config_path = write_config(slug, request, bbox)
     load.note('config', True, time.time() - t0, path=str(config_path.relative_to(ROOT)))
 
-    if not skip_import and not load.stage('import', py, 'tools/import_course_canonical.py',
-                                          '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
-                                          '--reason', 'one-click-course-load'):
-        return load.finish(request, extra)
+    # Area mode: OpenStreetMap doesn't number this course's holes (or the
+    # player asked for it). Package the whole area; GSPro's own course file
+    # supplies the holes on the player's PC (build_area_package.py).
+    area_mode = request.get('mode') == 'area'
+    if area_mode:
+        load.note('import', True, 0, mode='area', note='area package requested')
+    elif not skip_import and not load.stage('import', py, 'tools/import_course_canonical.py',
+                                            '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
+                                            '--reason', 'one-click-course-load'):
+        failed = load.stages[-1]
+        if HOLES_NOT_MAPPED not in ' '.join(failed.get('error') or []):
+            return load.finish(request, extra)
+        load.stages[-1] = {'stage': 'import', 'ok': True, 'seconds': failed['seconds'], 'mode': 'area',
+                           'note': "OpenStreetMap doesn't number every hole once: packaging the course area instead",
+                           'importError': failed.get('error')}
+        area_mode = True
+    if area_mode:
+        extra['mode'] = 'area'
 
     bbox_path = str(model / 'course-bbox.json')
     ok = (load.stage('osm', py, str(HERE / 'fetch_sources.py'), 'osm', '--dem-source', bbox_path, '--out', str(model))
@@ -174,7 +191,14 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
         load.note('lidar', False, 0, error=['No USGS LiDAR point cloud covers this course.'])
         ok = False
     package = ROOT / 'public' / 'course-geometry' / slug / 'course-v1.json'
-    if ok and package.exists():
+    if ok and area_mode:
+        config = json.loads(config_path.read_text())
+        load.stage('area', py, str(HERE / 'build_area_package.py'), '--model-dir', str(model),
+                   '--out', str(ROOT / 'public' / 'course-geometry' / slug / 'course-area-v1.json'),
+                   '--course-id', config['courseId'], '--course-name', config['courseName'],
+                   '--location', config.get('location') or '', '--slug', slug,
+                   *[arg for alias in config.get('gsproAliases') or [] for arg in ('--alias', alias)])
+    elif ok and package.exists():
         load.stage('enrich', py, str(HERE / 'build_enriched_package.py'), '--package', str(package),
                    '--model-dir', str(model), '--out', str(package.parent / 'course-v1-lidar.json'))
     for name in ('lidar-stats.json', 'trees-summary.json'):
