@@ -33,6 +33,23 @@ def test_reversed_copy_dropped():
     assert sum(1 for e in payload["elements"] if (e.get("tags") or {}).get("ref") == "7") == 1
 
 
+def area(way_id: int, golf: str, centre):
+    lat, lon = centre
+    ring = [(lat - 0.0001, lon - 0.0001), (lat - 0.0001, lon + 0.0001), (lat + 0.0001, lon + 0.0001),
+            (lat + 0.0001, lon - 0.0001), (lat - 0.0001, lon - 0.0001)]
+    return {"type": "way", "id": way_id, "tags": {"golf": golf},
+            "geometry": [{"lat": a, "lon": b} for a, b in ring]}
+
+
+def test_copy_elsewhere_keeps_the_one_on_tee_and_green():
+    # Hole 9's real tee and green; the second copy is drawn 1 km away.
+    extra = [hole(902, 9, (36.2, -93.0), (36.2, -92.996)),
+             area(5001, "tee", (36.09, -93.0)), area(5002, "green", (36.09, -92.996))]
+    payload = course(extra)
+    holes = fetcher.validate_holes(payload)
+    assert holes[9] == ("way", 109)
+
+
 def test_copy_elsewhere_rejected():
     payload = course([hole(902, 9, (36.2, -93.0), (36.2, -92.996))])
     with pytest.raises(ValueError):
