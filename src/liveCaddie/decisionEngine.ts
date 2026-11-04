@@ -17,7 +17,7 @@ import {
 import type { SavedSession, Shot } from '../types'
 import { classifyPoint } from '../courseGeometry/geometry'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
@@ -459,8 +459,12 @@ export const evaluateDecisionCandidate = (
     )
     const offline = sample.offlineYds + live.lateralDeltaYds
     const carryLanding = addScaled(course.ball, forward, carry, right, offline)
-    const landing = addScaled(course.ball, forward, finalDistance, right, offline)
-    const surface = classifyTacticalLandingPoint(course.hole, landing).kind
+    const { landing, classification } = resolveCarryAwareLanding(
+      course.hole,
+      carryLanding,
+      addScaled(course.ball, forward, finalDistance, right, offline),
+    )
+    const surface = classification.kind
     const tier = outcomeTierForSurface(surface, course.goal)
     return {
       sample,

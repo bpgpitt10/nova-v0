@@ -1,10 +1,11 @@
-import { classifyTacticalLandingPoint, tacticalKindNear } from '../courseGeometry/tacticalClassification'
+import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
   CourseSurfaceClassification,
 } from '../courseGeometry/types'
+import { penaltyReliefPoint, resolveCarryAwareLanding } from './carryAwareLanding'
 import {
   buildDecisionLandingState,
   type DecisionLandingState,
@@ -24,8 +25,14 @@ export type AimSurfaceDistribution = {
 export type ModeledAimSample = {
   /** Airborne touchdown point. */
   carryLanding: CoursePointYds
-  /** Resting/final position after rollout (scaled by surface and slope when a roll model is applied). */
+  /**
+   * Where the ball finishes: the rest point after rollout (scaled by surface and
+   * slope when a roll model is applied), unless it touched down in, or rolled
+   * into, water / penalty / bunker (carryAwareLanding).
+   */
   landing: CoursePointYds
+  /** Rest point if no hazard stopped the rollout. */
+  unobstructedLanding?: CoursePointYds
   /** The player's stock rollout for this sample, before any surface/slope scaling. */
   stockRollYds?: number
   /** The flight ran into trees: right after launch, or on the way down. The landing is where it hit. */
@@ -35,10 +42,30 @@ export type ModeledAimSample = {
   state: DecisionLandingState
 }
 
-export type LandingTransform = (
+/** Where the ball first meets the ground, and where it comes to rest. */
+export type LandingResolution = Readonly<{ touchdown: CoursePointYds; rest: CoursePointYds }>
+
+export type LandingTransform = ((
   carryLanding: CoursePointYds,
   baselineLanding: CoursePointYds,
-) => CoursePointYds
+) => CoursePointYds) & {
+  /**
+   * Touchdown and rest together. The roll model's touchdown can be short of the
+   * carry point (a ball flying into the face of a hill), and hazard capture has
+   * to start from where the ball really comes down.
+   */
+  resolve?: (carryLanding: CoursePointYds, baselineLanding: CoursePointYds) => LandingResolution
+}
+
+export const resolveLanding = (
+  transform: LandingTransform | undefined,
+  carryLanding: CoursePointYds,
+  baselineLanding: CoursePointYds,
+): LandingResolution => {
+  if (!transform) return { touchdown: carryLanding, rest: baselineLanding }
+  if (transform.resolve) return transform.resolve(carryLanding, baselineLanding)
+  return { touchdown: carryLanding, rest: transform(carryLanding, baselineLanding) }
+}
 
 export type AimProbabilityContour = {
   probability: 0.5 | 0.8 | 0.95
@@ -110,6 +137,21 @@ const buildStandardizedSamples = (): StandardizedSample[] => {
 }
 
 const STANDARDIZED_SAMPLES = buildStandardizedSamples()
+
+/** The deterministic standard-normal pairs behind every modeled cloud (read-only). */
+export const standardizedAimSamples = (): readonly StandardizedSample[] => STANDARDIZED_SAMPLES
+
+/**
+ * One simulated shot, already in live conditions: touchdown distance, rest
+ * distance and offline (yards right of the aim line). Supplied when the core
+ * is built from the player's own shots (empiricalShotCore) instead of the
+ * bell curve around Stock.
+ */
+export type ShotDraw = {
+  carryYds: number
+  totalYds: number
+  offlineYds: number
+}
 const SORTED_RADII = STANDARDIZED_SAMPLES.map((sample) => sample.radius).sort((a, b) => a - b)
 
 const sampledQuantile = (probability: number) => {
@@ -216,6 +258,7 @@ export const sampleModeledAimDistribution = ({
   pinLocalYds,
   landingTransform,
   flightCheck,
+  shotDraws,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -234,6 +277,11 @@ export const sampleModeledAimDistribution = ({
   landingTransform?: LandingTransform
   /** Check the flight against woods right after launch and on the way down (spec piece 3). */
   flightCheck?: Readonly<{ descentDeg: number | null }> | null
+  /**
+   * The player's own shot shape (empiricalShotCore). When present these draws
+   * replace the bell curve; carry/lateral sigmas still size the map's rings.
+   */
+  shotDraws?: readonly ShotDraw[] | null
 }): {
   distribution: AimSurfaceDistribution
   meanCarryLanding: CoursePointYds
@@ -262,18 +310,30 @@ export const sampleModeledAimDistribution = ({
     typeof totalSigmaYds === 'number' && Number.isFinite(totalSigmaYds) && totalSigmaYds > 0
       ? totalSigmaYds
       : carrySigmaYds
-  const meanCarryLanding = addScaled(ball, forward, carryMeanYds, right, lateralMeanYds)
-  const baselineMeanLanding = addScaled(ball, forward, resolvedTotalMean, right, lateralMeanYds)
+  const draws: readonly ShotDraw[] = shotDraws && shotDraws.length > 0
+    ? shotDraws
+    : STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }) => {
+        const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
+        // Use the same longitudinal quantile for carry and total so the modeled
+        // rollout does not invent an independent second source of shot-length noise.
+        return {
+          carryYds: carry,
+          totalYds: Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma),
+          offlineYds: lateralMeanYds + lateralZ * lateralSigmaYds,
+        }
+      })
+  const average = (pick: (draw: ShotDraw) => number) =>
+    draws.reduce((sum, draw) => sum + pick(draw), 0) / draws.length
+  const centerCarry = shotDraws?.length ? average((draw) => draw.carryYds) : carryMeanYds
+  const centerTotal = shotDraws?.length ? average((draw) => draw.totalYds) : resolvedTotalMean
+  const centerOffline = shotDraws?.length ? average((draw) => draw.offlineYds) : lateralMeanYds
+  const meanCarryLanding = addScaled(ball, forward, centerCarry, right, centerOffline)
+  const baselineMeanLanding = addScaled(ball, forward, centerTotal, right, centerOffline)
   const meanLanding = landingTransform
     ? landingTransform(meanCarryLanding, baselineMeanLanding)
     : baselineMeanLanding
 
-  const samples = STANDARDIZED_SAMPLES.map(({ carryZ, lateralZ }): ModeledAimSample => {
-    const carry = Math.max(0, carryMeanYds + carryZ * carrySigmaYds)
-    // Use the same longitudinal quantile for carry and total so the modeled
-    // rollout does not invent an independent second source of shot-length noise.
-    const total = Math.max(carry, resolvedTotalMean + carryZ * resolvedTotalSigma)
-    const offline = lateralMeanYds + lateralZ * lateralSigmaYds
+  const samples = draws.map(({ carryYds: carry, totalYds: total, offlineYds: offline }): ModeledAimSample => {
     const carryLanding = addScaled(ball, forward, carry, right, offline)
     const baselineLanding = addScaled(ball, forward, total, right, offline)
     const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
@@ -288,16 +348,18 @@ export const sampleModeledAimDistribution = ({
         state: buildDecisionLandingState(hole, blocked.point, classification, pinLocalYds),
       }
     }
-    const landing = landingTransform
-      ? landingTransform(carryLanding, baselineLanding)
-      : baselineLanding
-    const classification = classifyTacticalLandingPoint(hole, landing)
+    const { touchdown, rest } = resolveLanding(landingTransform, carryLanding, baselineLanding)
+    const { landing, classification } = resolveCarryAwareLanding(hole, touchdown, rest)
+    const relief = classification.kind === 'water' || classification.kind === 'penalty'
+      ? penaltyReliefPoint(hole, ball, landing)
+      : null
     return {
       carryLanding,
       landing,
+      unobstructedLanding: rest,
       stockRollYds: total - carry,
       kind: classification.kind,
-      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds, ball),
+      state: buildDecisionLandingState(hole, landing, classification, pinLocalYds, ball, relief),
     }
   })
 

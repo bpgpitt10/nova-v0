@@ -185,14 +185,14 @@ const conditionForState = (
     return {
       condition: 'rough',
       assumption: 'water-relief-at-landing-distance',
-      note: 'V1 relief approximation: one penalty stroke plus rough value at the raw landing/crossing distance.',
+      note: 'V1 relief approximation: one penalty stroke plus rough value from where the ball last crossed into the hazard.',
     }
   }
   if (surface === 'penalty') {
     return {
       condition: 'recovery',
       assumption: 'penalty-relief-at-landing-distance',
-      note: 'V1 penalty approximation: one penalty stroke plus recovery value at the raw landing/crossing distance.',
+      note: 'V1 penalty approximation: one penalty stroke plus recovery value from where the ball last crossed into the hazard.',
     }
   }
   // Unmapped ground off WorldCover grass on a hole that has landcover mapped

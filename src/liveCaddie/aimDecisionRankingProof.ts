@@ -204,17 +204,17 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
   return [
     {
       id: 'open-fairway-prefers-lower-next-state-cost',
-      description: 'Inside the catastrophe guardrail, lowest expected future strokes wins.',
+      description: 'Lowest expected future strokes wins.',
       expectedWinner: 'center',
       actualWinner: openFairway,
       passed: openFairway === 'center',
     },
     {
       id: 'hazard-rejects-attack-line',
-      description: 'A lower expected-strokes line cannot buy a materially larger catastrophe tail.',
-      expectedWinner: 'balanced-left',
+      description: 'Water is priced in expected strokes, not vetoed: the lower-strokes line wins even with more water.',
+      expectedWinner: 'attack',
       actualWinner: hazardEdge,
-      passed: hazardEdge === 'balanced-left',
+      passed: hazardEdge === 'attack',
     },
     {
       id: 'driver-beats-three-wood-on-next-state-value',
@@ -224,11 +224,11 @@ export const runAimDecisionRankingProofs = (): AimDecisionRankingProofResult[] =
       passed: driverBeatsThreeWoodOnLeave === 'Driver',
     },
     {
-      id: 'catastrophe-guardrail-still-overrides-ev',
-      description: 'Catastrophe remains a hard policy guardrail rather than an additive score term.',
-      expectedWinner: '3W',
+      id: 'expected-strokes-not-catastrophe-guardrail',
+      description: 'No hard water guardrail: Driver saves 0.21 strokes after its extra water is charged.',
+      expectedWinner: 'Driver',
       actualWinner: catastropheStillWins,
-      passed: catastropheStillWins === '3W',
+      passed: catastropheStillWins === 'Driver',
     },
     {
       id: 'cold-start-model-cannot-beat-ready-model-on-lucky-ev',
