@@ -22,6 +22,7 @@ import {
   type NativeXYZ,
 } from './nativeGkd'
 import { parseNativeRegistration, type NativeRegistration } from './nativeRegistration'
+import type { AutoRegistrationResult } from './nativeRegistrationAuto'
 
 /**
  * Native positions (beta): browser runtime.
@@ -359,6 +360,14 @@ const saveCachedRegistration = async (courseId: CourseId, courseKey: string, reg
  * keep the result on this PC. Needs GSPro's CourseKey, which the live round
  * reports.
  */
+/** "ignoring hole numbers: 17 of 18 greens line up (4.1 m); GSPro 1=map 10, 2=11, …" */
+const unorderedText = (u: NonNullable<AutoRegistrationResult['unordered']>) => {
+  const renumbered = u.holes.filter(([gspro, map]) => gspro !== map)
+  return `; ignoring hole numbers: ${u.paired} of ${u.gkdGreens} greens line up (rms ${u.rmsM.toFixed(1)} m,`
+    + ` rotate ${u.rotationDeg.toFixed(1)}°, scale ${u.scale.toFixed(3)}${u.mirrored ? ', mirror-image' : ''})`
+    + (renumbered.length ? `; GSPro hole = map hole: ${renumbered.map(([a, b]) => `${a}=${b}`).join(', ')}` : '; same numbering')
+}
+
 const registerInBrowser = async (
   courseId: CourseId,
   courseKey: string,
@@ -388,12 +397,21 @@ const registerInBrowser = async (
       + `; height fit ${m(result.fit.medianAbsM)}, halves ${m(result.fit.halvesAgreeM)}, ${result.fit.points} points`
       + (result.holeShift ? `; greens line up if ${result.holeShift.label}`
         + ` (rms ${result.holeShift.rmsM.toFixed(1)} m, rotate ${result.holeShift.rotationDeg.toFixed(1)}°)` : '')
+      + (result.unordered ? unorderedText(result.unordered) : '')
       + ']'
     return {
       registration: null,
       reason: (result.fit.grade === 'C'
         ? 'GSPro course does not match the map closely enough'
         : `only ${result.greensWithin25m} of ${result.greensChecked} greens line up; is GSPro on this course?`) + detail,
+    }
+  }
+  if (result.greensOnly) {
+    const g = result.greenSimilarity
+    return {
+      registration: result.registration,
+      reason: `placed from the greens (${result.greensChecked} greens, ${g ? g.rmsM.toFixed(1) : '?'} m)`
+        + `; GSPro's ground heights don't match the map's (height fit ${Number.isFinite(result.fit.medianAbsM) ? result.fit.medianAbsM.toFixed(2) : 'n/a'} m)`,
     }
   }
   const turn = (result.registration.rotationDeg ? `, turned ${result.registration.rotationDeg.toFixed(1)}°` : '')

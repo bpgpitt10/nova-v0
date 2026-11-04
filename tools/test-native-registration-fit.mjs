@@ -194,6 +194,46 @@ try {
     assert.equal(kept.replaced, false)
   }
 
+  // Wynn (11/4): greens line up to a few metres but the map's terrain isn't
+  // GSPro's (older elevation). The height fit fails; the greens place it.
+  {
+    const other = (lat, lon) => {
+      const n = (lat - 38.25) * 111000, e = (lon + 85.48) * 87000
+      return 150 + 5 * Math.cos(e / 23 + 1) + 4 * Math.sin(n / 41) + 2 * Math.cos((e - n) / 13)
+    }
+    const input = {
+      courseId: 't', gsproCourseKey: 't_gsp', layoutFingerprint: 'a'.repeat(64), sceneFingerprint: 'b'.repeat(64),
+      points, greens, holes: { 1: { anchorLatLon: truth.latLon, headingDegreesTrue: 0 } }, sampler: other,
+    }
+    assert.equal(fit.fitNativeRegistration(input).registration, null, 'terrain that is not GSPro\'s fails the height fit')
+    const fromGreens = fit.registrationFromGreens(input)
+    assert.equal(fromGreens.grade, 'B')
+    let worst = 0
+    for (const p of points) {
+      const a = reg.nativeWorldToLatLon(truthReg, p), b = reg.nativeWorldToLatLon(fromGreens, p)
+      worst = Math.max(worst, Math.hypot((a[0] - b[0]) * 111000, (a[1] - b[1]) * 87000))
+    }
+    assert.ok(worst < 6, `greens-only placement within the greens' scatter: ${worst.toFixed(2)} m`)
+    assert.ok(reg.parseNativeRegistration(JSON.parse(JSON.stringify(fromGreens))), 'valid registration file')
+  }
+
+  // Kiawah (11/4): greens don't pair by hole number. Ignoring numbers, the fit
+  // finds which GSPro hole's green is which map hole's.
+  {
+    const auto = await load('/src/courseGeometry/nativeRegistrationAuto.ts')
+    const perm = [5, 12, 1, 18, 9, 3, 14, 7, 16, 2, 11, 6, 17, 4, 10, 15, 8, 13] // GSPro hole i+1 = map hole perm[i]
+    const holes = [], mapped = new Map()
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160 + ((i * 37) % 50), cz = 500 + Math.floor(i / 6) * 300 + ((i * 53) % 70)
+      holes.push({ hole: i + 1, par: 4, tees: {}, aimPoints: [], greenCenter: { x: cx, y: 0, z: cz }, pins: [] })
+      mapped.set(perm[i], reg.nativeWorldToLatLon(truthReg, { x: cx, z: cz }))
+    }
+    const u = auto.unorderedGreenFit({ holes }, mapped)
+    assert.equal(u.paired, 18)
+    assert.ok(u.rmsM < 1, `rms ${u.rmsM}`)
+    assert.deepEqual(u.holes.map(([g, m]) => [g, m]), perm.map((m, i) => [i + 1, m]))
+  }
+
   // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
   const wind = await load('/src/liveState/windProjection.ts')
   const w = { status: 'READY', speedMph: 10, directionDegrees: 0, convention: 'from', referenceFrame: 'compass' }
@@ -204,7 +244,7 @@ try {
   assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, 0, true).directionDegrees, 270)
   assert.equal(wind.windInTrueCompass({ ...w, referenceFrame: 'shot-relative' }, 180).directionDegrees, 0)
 
-  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm; placeholder green centres fall back to the pins.')
+  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm; placeholder green centres fall back to the pins; greens-only placement when the terrain differs; hole renumbering found ignoring numbers.')
 } finally {
   await server?.close()
 }

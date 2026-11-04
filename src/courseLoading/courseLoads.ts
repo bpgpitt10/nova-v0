@@ -200,6 +200,8 @@ const golfCoursesIn = (places: readonly NominatimPlace[]): GolfCourseSearchResul
 
 // About 6 km around a place: a resort's courses (Sand Valley: Mammoth Dunes).
 const NEARBY_DEG = 0.06
+const GOLF_WORDS = /\b(golf|country club|links|cc|gc)\b/i
+const STRONG_NAME_MATCH = 0.75
 
 export const searchGolfCourses = async (
   query: string,
@@ -207,7 +209,21 @@ export const searchGolfCourses = async (
 ): Promise<GolfCourseSearchResult[]> => {
   const q = query.trim()
   if (q.length < 3) return []
-  const direct = golfCoursesIn(await nominatimSearch(/golf/i.test(q) ? q : `${q} golf`))
+  // "bellerive golf" finds streets called Rue du Golf, not Bellerive Country
+  // Club (11/4): search a few forms of the name and keep the golf courses,
+  // closest name first. Stop as soon as one clearly matches.
+  const variants = GOLF_WORDS.test(q) ? [q] : [`${q} golf`, q, `${q} country club`, `${q} golf club`]
+  const found = new Map<string, GolfCourseSearchResult>()
+  for (const variant of variants) {
+    for (const result of golfCoursesIn(await nominatimSearch(variant))) {
+      found.set(`${result.osmType}/${result.osmId}`, result)
+    }
+    if ([...found.values()].some((result) => courseNameMatchScore(result.name, q) >= STRONG_NAME_MATCH)) break
+  }
+  const direct = [...found.values()]
+    .map((result) => ({ result, score: courseNameMatchScore(result.name, q) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ result }) => result)
   if (direct.length || !nearby) return direct
   // Nothing tagged as a golf course by that name. OpenStreetMap often files a
   // resort course under the resort, or under a slightly different name: find

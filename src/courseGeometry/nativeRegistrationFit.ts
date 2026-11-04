@@ -305,3 +305,40 @@ export const fitNativeRegistration = (input: NativeRegistrationFitInput): Native
     },
   }
 }
+
+/**
+ * Placement from the green-to-green fit alone, for a course whose greens line
+ * up to a few metres but whose terrain doesn't match GSPro's heights (Wynn,
+ * 11/4: greens 2.6 m rms, height fit 1.6 m; the map's elevation likely
+ * predates the 2019 rebuild). The greens' centroids are matched, rotation and
+ * scale come from the caller (the green fit), and the height offset is the
+ * median over the points that land on terrain. Graded B.
+ */
+export const registrationFromGreens = (input: NativeRegistrationFitInput): NativeRegistration | null => {
+  if (input.greens.length < 3) return null
+  const refLat = input.greens.reduce((s, g) => s + g.latLon[0], 0) / input.greens.length
+  const refLon = input.greens.reduce((s, g) => s + g.latLon[1], 0) / input.greens.length
+  const turn = input.rotationDeg != null || input.scale != null
+  const project = makeProjector(refLat, refLon, input.mirrored === true)
+  const p: Params = {
+    x0: input.greens.reduce((s, g) => s + g.world.x, 0) / input.greens.length,
+    z0: input.greens.reduce((s, g) => s + g.world.z, 0) / input.greens.length,
+    rotationDeg: input.rotationDeg ?? 0,
+    scale: input.scale ?? 1,
+  }
+  const res = residualsFor(project, input.sampler, input.points, p)
+  if (!Number.isFinite(res.dy) || res.valid < Math.min(10, input.points.length)) return null
+  return {
+    schemaVersion: 'looper-native-registration-v1',
+    courseId: input.courseId,
+    gsproCourseKey: input.gsproCourseKey,
+    layoutFingerprint: input.layoutFingerprint,
+    sceneFingerprint: input.sceneFingerprint,
+    grade: 'B',
+    reference: { latLon: [refLat, refLon], worldXZ: [p.x0, p.z0] },
+    ...(turn ? { rotationDeg: p.rotationDeg, scale: p.scale } : {}),
+    ...(input.mirrored ? { mirrored: true } : {}),
+    worldYToElevationOffsetM: res.dy,
+    holes: input.holes,
+  }
+}
