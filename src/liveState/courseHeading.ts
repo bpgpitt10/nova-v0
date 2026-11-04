@@ -1,4 +1,4 @@
-import { GREYWOLF_COURSE_ID, getRuntimeHoleHeadingDegreesTrue } from '../courseGeometry/courseCatalog'
+import { GREYWOLF_COURSE_ID, courseUsesGsproHoles, getRuntimeHoleHeadingDegreesTrue } from '../courseGeometry/courseCatalog'
 import { getRouteHoleHeadingDegreesTrue } from '../courseGeometry/generatedRouteHoleHeadings'
 
 type GreywolfAnchorArtifact = {
@@ -65,9 +65,9 @@ export const loadCourseHoleHeadingDegreesTrue = async (
   const packagedHeading = getRouteHoleHeadingDegreesTrue(courseId, holeNumber)
     ?? getRuntimeHoleHeadingDegreesTrue(courseId, holeNumber)
   if (packagedHeading != null) return packagedHeading
-  // GSPro-only course: the headings come from GSPro's course file, which may
+  // GSPro-only or map-area course: the headings come from GSPro's course file, which may
   // still be loading (hole 1 asked too early and got no wind, 11/4 Pinehurst 2).
-  if (courseId.startsWith('gspro:')) {
+  if (courseUsesGsproHoles(courseId)) {
     const { loadNativeCourseContext } = await import('../courseGeometry/nativeCourseRuntime')
     const { context } = await loadNativeCourseContext(courseId, null).catch(() => ({ context: null }))
     const heading = context?.registration.holes[String(Math.max(1, Math.min(18, Math.round(holeNumber))))]?.headingDegreesTrue

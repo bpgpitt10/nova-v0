@@ -162,7 +162,7 @@ const centroid = (polygon: CoursePolygonYds): CoursePointYds => {
   return polygon.length > 0 ? [x / polygon.length, y / polygon.length] : [0, 0]
 }
 
-const parseSurfaces = (
+export const parseSurfaces = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -185,7 +185,7 @@ const parseSurfaces = (
   })
 }
 
-const parseContextLayers = (
+export const parseContextLayers = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -211,7 +211,7 @@ const parseContextLayers = (
   })
 }
 
-const parseMapFeatures = (
+export const parseMapFeatures = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -293,7 +293,7 @@ export const parsePackageTerrain = async (
 ): Promise<CourseTerrainGrid | null> => {
   if (raw == null) return null
   if (
-    raw.source !== 'lidar-dem' ||
+    (raw.source !== 'lidar-dem' && raw.source !== 'global-dem') ||
     !finite(raw.sourceResolutionMeters) || raw.sourceResolutionMeters <= 0 ||
     !finite(raw.runtimeSpacingYds) || raw.runtimeSpacingYds <= 0 ||
     raw.interpolation !== 'bilinear' ||
@@ -307,7 +307,7 @@ export const parsePackageTerrain = async (
   }
   const values = await decodeDeflateUint16(raw.valuesBase64, raw.width * raw.height, courseName, holeNumber)
   return {
-    source: 'lidar-dem',
+    source: raw.source === 'global-dem' ? 'global-dem' : 'lidar-dem',
     sourceResolutionMeters: raw.sourceResolutionMeters,
     runtimeSpacingYds: raw.runtimeSpacingYds,
     interpolation: 'bilinear',
