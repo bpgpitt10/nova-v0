@@ -283,12 +283,16 @@ function RoundsList({
   const hiddenFragments = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'fragment').length
   const hiddenTests = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'test').length
   const rangeSessions = rounds.length - onCourse.length
-  const scoredRounds = onCourse.filter((round) => round.status === 'full' || round.status === 'partial')
-  const holesFinished = scoredRounds.reduce((sum, round) => sum + round.completeHoles, 0)
-  const shotsOnCourse = scoredRounds.reduce(
-    (sum, round) => sum + round.holes.filter((hole) => hole.complete).reduce((inner, hole) => inner + hole.strokes, 0),
-    0,
-  )
+  // Golf, not counts (Brian, 11/4): best round, scoring average, putts and
+  // strokes gained over full rounds.
+  const mean = (values: number[]) => (values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null)
+  const toPar = (round: RoundSummary) => (round.par != null ? round.strokes - round.par : null)
+  const bestRound = [...fullRounds].sort((a, b) =>
+    ((toPar(a) ?? a.strokes) - (toPar(b) ?? b.strokes)) || a.strokes - b.strokes)[0] ?? null
+  const scoringAverage = mean(fullRounds.map((round) => round.strokes))
+  // GSPro's auto putt makes putt counts meaningless.
+  const puttsPerRound = mean(fullRounds.filter((round) => !round.autoPutt).map((round) => round.putts))
+  const sgAverage = mean(fullRounds.flatMap((round) => (round.sg.total != null ? [round.sg.total] : [])))
 
   return (
     <main className="rounds-main">
@@ -323,11 +327,22 @@ function RoundsList({
       ) : null}
 
       <section className="rounds-tiles">
-        <div className="rounds-tile"><span>Full rounds</span><strong>{fullRounds.length}</strong></div>
-        <div className="rounds-tile"><span>Holes finished</span><strong>{holesFinished}</strong></div>
-        <div className="rounds-tile"><span>Shots on course</span><strong>{shotsOnCourse}</strong></div>
+        <div className="rounds-tile">
+          <span>Best round</span>
+          <strong className="rounds-tile-score">
+            {bestRound ? bestRound.strokes : '–'}
+            {bestRound && bestRound.par != null ? <span className="rounds-tile-vspar">{vsPar(bestRound.strokes, bestRound.par)}</span> : null}
+          </strong>
+          {bestRound ? <span className="rounds-tile-sub">{bestRound.courseName} · {formatDate(bestRound.playedAt, false)}</span> : null}
+        </div>
+        <div className="rounds-tile"><span>Scoring average</span><strong>{scoringAverage != null ? scoringAverage.toFixed(1) : '–'}</strong></div>
+        <div className="rounds-tile"><span>Putts per round</span><strong>{puttsPerRound != null ? puttsPerRound.toFixed(1) : '–'}</strong></div>
+        <div className="rounds-tile">
+          <span>SG vs tour, per round</span>
+          <strong className={tone(sgAverage)}>{sgAverage != null ? signed(sgAverage) : '–'}</strong>
+        </div>
         <div className="rounds-tile is-progress">
-          <span>Trends unlock at {FULL_ROUNDS_FOR_TRENDS} full rounds</span>
+          <span>{fullRounds.length >= FULL_ROUNDS_FOR_TRENDS ? `${fullRounds.length} full rounds` : `Trends unlock at ${FULL_ROUNDS_FOR_TRENDS} full rounds`}</span>
           <div className="rounds-progress" aria-hidden="true">
             <div style={{ width: `${Math.min(100, (fullRounds.length / FULL_ROUNDS_FOR_TRENDS) * 100)}%` }} />
           </div>
