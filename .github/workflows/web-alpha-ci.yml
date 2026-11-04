@@ -124,6 +124,9 @@ jobs:
       - name: Start a Round course search
         run: node tools/test-course-search.mjs
 
+      - name: Wind refresh and scene turn
+        run: node tools/test-wind-refresh.mjs
+
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
 

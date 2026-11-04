@@ -521,3 +521,23 @@
     max-width: calc(220% + 14px);
   }
 }
+
+/* "↻ Refresh" on the Wind row: GSPro's gusty wind swirls between shots. */
+.live-condition-refresh {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: #eab308;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.live-condition-refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
