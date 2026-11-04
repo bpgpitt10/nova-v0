@@ -1,17 +1,27 @@
 {
   "schemaVersion": "looper-course-build-config-v1",
-  "courseId": "cabot-cliffs-inverness-ns",
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
   "courseName": "Cabot Cliffs",
-  "location": "Inverness, NS",
+  "location": "Inverside, Nova Scotia",
   "slug": "cabot-cliffs",
+  "gsproAliases": [
+    "Cabot Cliffs"
+  ],
   "osmCourseElement": {
     "type": "way",
     "id": 676091202
   },
   "osmCenter": [
-    46.2526965,
-    -61.2848988
+    46.24873,
+    -61.29207
   ],
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
+  "terrain": {
+    "provider": "nrcan-hrdem"
+  },
   "selection": {
     "teeStartRadiusYards": 220,
     "contextRouteDistanceYards": 110,

@@ -1,0 +1,980 @@
+=== [cabot-cliffs:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Cabot.*Cliffs --lat 46.2526965 --lon -61.2848988 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model --osm-id 676091202
+[{"type": "way", "id": 676091202, "name": "Cabot Cliffs", "areaHa": 102.7, "nameMatch": true}, {"type": "way", "id": 854966311, "name": "Cabot Links Golf Resort", "areaHa": 61.3, "nameMatch": false}, {"type": "way", "id": 1480922644, "name": "The Nest Golf Course", "areaHa": 10.4, "nameMatch": false}]
+grew bbox with 6861 vertices from nearby golf features
+no USGS LiDAR; NRCan HRDEM hrdem-mosaic-1m: 1 tile(s) with DSM
+{"bboxLonLat": [-61.30934563253146, 46.23499442514927, -61.274795667468545, 46.26247547485073], "crs": "EPSG:26920", "osm": {"type": "way", "id": 676091202, "name": "Cabot Cliffs", "areaHa": 102.7}} null
+=== [cabot-cliffs:find] rc=0 seconds=59.5
+=== [cabot-cliffs:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/cabot-cliffs-v1.json --slug cabot-cliffs --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 9 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/cabot-cliffs-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/osm-snapshot.json
+{
+  "course": "Cabot Cliffs",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 254,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 126,
+    "golf=cartpath": 44,
+    "golf=driving_range": 1,
+    "golf=fairway": 15,
+    "golf=green": 20,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 3,
+    "golf=path": 3,
+    "golf=tee": 16,
+    "landuse=grass": 4,
+    "natural=beach": 2,
+    "natural=sand": 8,
+    "natural=water": 5,
+    "natural=wood": 3
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-61.29629990,46.24263910,-61.27626070,46.26171850",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 149,
+    "golf=cartpath": 46,
+    "golf=driving_range": 1,
+    "golf=fairway": 16,
+    "golf=green": 29,
+    "golf=hole": 28,
+    "golf=lateral_water_hazard": 4,
+    "golf=path": 4,
+    "golf=tee": 16,
+    "landuse=grass": 4,
+    "natural=beach": 2,
+    "natural=sand": 31,
+    "natural=water": 7,
+    "natural=wood": 4
+  },
+  "rawIncludedFeatures": 302,
+  "rawMapElements": 11169,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/676091202/full"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,30.0,106.2,66.0,1.3,forward,31.4,172.2
+2,164.5,45.2,71.3,5.5,reverse,170.0,116.5
+3,0.0,45.2,79.8,2.7,forward,2.7,125.0
+4,0.0,27.2,62.7,4.6,forward,4.6,89.9
+5,0.0,34.3,34.1,5.0,forward,5.0,68.4
+6,0.0,92.0,41.9,4.6,forward,4.6,133.9
+7,0.0,108.0,53.5,4.7,forward,4.7,161.5
+8,0.0,169.8,119.1,3.3,forward,3.3,288.9
+9,0.0,55.6,160.0,3.0,forward,3.0,215.6
+10,0.0,90.6,57.3,4.8,forward,4.8,147.9
+11,0.0,37.8,62.7,6.1,forward,6.1,100.5
+12,0.0,50.2,52.3,1.9,forward,1.9,102.6
+13,53.3,48.3,41.5,2.2,forward,55.5,89.8
+14,0.0,39.5,55.4,1.8,forward,1.8,94.9
+15,0.0,44.7,42.5,0.9,forward,0.9,87.2
+16,0.0,22.6,50.0,11.2,forward,11.2,72.7
+17,0.0,44.4,34.5,6.9,forward,6.9,78.9
+18,0.0,47.4,56.6,17.7,forward,17.7,104.0
+
+TEE OWNERSHIP H1 targetGreenOsmId=676035937
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214542673,30.0,620.4,30.0,11,0.0
+1214542665,420.7,161.5,33.0,9,0.0
+
+TEE OWNERSHIP H9 targetGreenOsmId=676035936
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214542665,0.0,194.0,0.0,9,0.0
+1214542667,140.7,56.8,22.9,10,0.0
+
+TEE OWNERSHIP H11 targetGreenOsmId=1214542683
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214542673,0.0,370.1,0.0,11,0.0
+1214552880,421.3,47.3,38.6,12,0.0
+
+TEE OWNERSHIP H13 targetGreenOsmId=1214552890
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214552903,424.2,52.4,48.3,14,0.0
+1214563151,53.3,441.2,53.4,18,0.0
+1214552880,211.0,178.8,73.8,12,0.0
+1225137785,309.2,221.2,135.1,15,0.0
+1214559849,326.8,702.5,326.8,17,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=1214583807
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1225137785,0.0,559.2,0.0,15,0.0
+1214552903,200.3,761.4,200.3,14,0.0
+1214552880,222.9,650.3,223.8,12,0.0
+1214563151,363.1,463.7,288.2,18,0.0
+
+TEE OWNERSHIP H16 targetGreenOsmId=1225137793
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214559847,0.0,168.2,0.0,16,0.0
+1214559849,191.2,34.6,22.7,17,0.0
+
+TEE OWNERSHIP H17 targetGreenOsmId=1214559858
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1214559849,0.0,283.9,0.0,17,0.0
+1214563151,329.2,57.1,44.4,18,0.0
+1214559847,191.0,451.1,191.0,16,0.0
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/cabot-cliffs-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Cabot Cliffs",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/dem-source-v1.json --provider nrcan-hrdem --resolution-meters 1.0
+{
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "provider": "NRCan HRDEM",
+  "collection": "hrdem-mosaic-1m",
+  "tiles": 1,
+  "width": 2242,
+  "height": 2962,
+  "coverage": 0.8735
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM",
+    "exportUrl": null,
+    "note": "Read from NRCan's High Resolution DEM (LiDAR-derived) cloud-optimized GeoTIFFs onto the course's EPSG:3857 grid (bilinear).",
+    "provider": "NRCan HRDEM",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://datacube.services.geo.ca/stac/api"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: NRCan HRDEM \u00b7 NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N45W063_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N45W063_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 188103.0,
+      "knownAreaSqYd": 92578.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 1816.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 169417.0
+        },
+        "landcover-bare": {
+          "polygons": 7,
+          "areaSqYd": 1502.9
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 116678.1,
+      "knownAreaSqYd": 21373.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 8489.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 101032.3
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 1786.0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 134609.3,
+      "knownAreaSqYd": 45752.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 4,
+          "areaSqYd": 5317.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 97232.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 96319.0,
+      "knownAreaSqYd": 33237.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 8126.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 72776.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 178783.2,
+      "knownAreaSqYd": 43544.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 3312.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 120699.9
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 5769.8
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 90052.5,
+      "knownAreaSqYd": 37759.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 346.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 48981.4
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 5731.9
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 225732.6,
+      "knownAreaSqYd": 62747.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 31292.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 150532.9
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 2501.0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 204503.5,
+      "knownAreaSqYd": 46528.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 36660.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 151889.1
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 647.8
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 92593.5,
+      "knownAreaSqYd": 47691.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 2077.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 65367.2
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 1458.8
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 191840.0,
+      "knownAreaSqYd": 112902.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 1038.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 122668.6
+        },
+        "landcover-bare": {
+          "polygons": 5,
+          "areaSqYd": 393.1
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 142665.9,
+      "knownAreaSqYd": 44539.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 10698.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 115773.3
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 10862.2
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 104029.5,
+      "knownAreaSqYd": 31886.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 11077.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 83420.4
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 216.0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 158570.0,
+      "knownAreaSqYd": 39095.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 22641.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 126970.0
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 106.4
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 90485.3,
+      "knownAreaSqYd": 16236.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 12195.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 78200.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 182847.7,
+      "knownAreaSqYd": 39419.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 45421.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 88539.7
+        },
+        "landcover-bare": {
+          "polygons": 4,
+          "areaSqYd": 1070.8
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 90105.9,
+      "knownAreaSqYd": 14247.6,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 12048.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 28129.0
+        },
+        "landcover-bare": {
+          "polygons": 7,
+          "areaSqYd": 2162.8
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 139579.2,
+      "knownAreaSqYd": 44894.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 14136.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 48005.1
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 568.4
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 189048.5,
+      "knownAreaSqYd": 99957.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 121442.9
+        },
+        "landcover-bare": {
+          "polygons": 7,
+          "areaSqYd": 1420.1
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/cabot-cliffs/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM --source-url https://datacube.services.geo.ca/stac/api --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/green-detail-v1.json (150,117 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 1348,
+      "validOnGreenNodes": 1348,
+      "greenCoverage": 1.0,
+      "localFitCount": 1348,
+      "trustedLocalFitCount": 1348,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.05,
+      "localRmsP95Ft": 0.165,
+      "maxTrustedSlopePercent": 25.7
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 1172,
+      "validOnGreenNodes": 1172,
+      "greenCoverage": 1.0,
+      "localFitCount": 1172,
+      "trustedLocalFitCount": 1172,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.051,
+      "localRmsP95Ft": 0.112,
+      "maxTrustedSlopePercent": 16.8
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 1096,
+      "validOnGreenNodes": 1096,
+      "greenCoverage": 1.0,
+      "localFitCount": 1096,
+      "trustedLocalFitCount": 1096,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.103,
+      "maxTrustedSlopePercent": 16.7
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 1303,
+      "validOnGreenNodes": 1303,
+      "greenCoverage": 1.0,
+      "localFitCount": 1303,
+      "trustedLocalFitCount": 1303,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.037,
+      "localRmsP95Ft": 0.07,
+      "maxTrustedSlopePercent": 8.2
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 962,
+      "validOnGreenNodes": 962,
+      "greenCoverage": 1.0,
+      "localFitCount": 962,
+      "trustedLocalFitCount": 962,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.052,
+      "localRmsP95Ft": 0.087,
+      "maxTrustedSlopePercent": 19.1
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 1476,
+      "validOnGreenNodes": 1476,
+      "greenCoverage": 1.0,
+      "localFitCount": 1476,
+      "trustedLocalFitCount": 1476,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.125,
+      "maxTrustedSlopePercent": 25.1
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 1016,
+      "validOnGreenNodes": 1016,
+      "greenCoverage": 1.0,
+      "localFitCount": 1016,
+      "trustedLocalFitCount": 1016,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.083,
+      "maxTrustedSlopePercent": 10.2
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 1448,
+      "validOnGreenNodes": 1448,
+      "greenCoverage": 1.0,
+      "localFitCount": 1448,
+      "trustedLocalFitCount": 1448,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.087,
+      "maxTrustedSlopePercent": 11.6
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 961,
+      "validOnGreenNodes": 961,
+      "greenCoverage": 1.0,
+      "localFitCount": 961,
+      "trustedLocalFitCount": 961,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.059,
+      "localRmsP95Ft": 0.114,
+      "maxTrustedSlopePercent": 16.3
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 1030,
+      "validOnGreenNodes": 1030,
+      "greenCoverage": 1.0,
+      "localFitCount": 1030,
+      "trustedLocalFitCount": 1030,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.102,
+      "maxTrustedSlopePercent": 11.9
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 983,
+      "validOnGreenNodes": 983,
+      "greenCoverage": 1.0,
+      "localFitCount": 983,
+      "trustedLocalFitCount": 983,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.045,
+      "localRmsP95Ft": 0.084,
+      "maxTrustedSlopePercent": 14.7
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 1049,
+      "validOnGreenNodes": 1049,
+      "greenCoverage": 1.0,
+      "localFitCount": 1049,
+      "trustedLocalFitCount": 1049,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.051,
+      "localRmsP95Ft": 0.114,
+      "maxTrustedSlopePercent": 21.3
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 916,
+      "validOnGreenNodes": 916,
+      "greenCoverage": 1.0,
+      "localFitCount": 916,
+      "trustedLocalFitCount": 916,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.051,
+      "localRmsP95Ft": 0.079,
+      "maxTrustedSlopePercent": 14.1
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 885,
+      "validOnGreenNodes": 885,
+      "greenCoverage": 1.0,
+      "localFitCount": 885,
+      "trustedLocalFitCount": 885,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.059,
+      "localRmsP95Ft": 0.151,
+      "maxTrustedSlopePercent": 13.6
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 914,
+      "validOnGreenNodes": 914,
+      "greenCoverage": 1.0,
+      "localFitCount": 914,
+      "trustedLocalFitCount": 914,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.047,
+      "localRmsP95Ft": 0.177,
+      "maxTrustedSlopePercent": 17.9
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 788,
+      "validOnGreenNodes": 788,
+      "greenCoverage": 1.0,
+      "localFitCount": 788,
+      "trustedLocalFitCount": 702,
+      "trustedLocalFitRatio": 0.8909,
+      "localRmsP50Ft": 0.085,
+      "localRmsP95Ft": 0.458,
+      "maxTrustedSlopePercent": 28.1
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 777,
+      "validOnGreenNodes": 777,
+      "greenCoverage": 1.0,
+      "localFitCount": 777,
+      "trustedLocalFitCount": 777,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.049,
+      "localRmsP95Ft": 0.131,
+      "maxTrustedSlopePercent": 18.3
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 1163,
+      "validOnGreenNodes": 1163,
+      "greenCoverage": 1.0,
+      "localFitCount": 1163,
+      "trustedLocalFitCount": 1163,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.11,
+      "maxTrustedSlopePercent": 13.8
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/cabot-cliffs-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/cabot-cliffs/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": false,
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "greenDetailSha256": "b46dd24c030aeea495df2af87d408f107bb5190876ae24aca3d2fbc043cd404c",
+  "packageSha256": "1bca1cc734dbd172023eeb708bdc2d1ede31d6245fda4f62b076056bfefadee4",
+  "snapshotSha256": "55fdfe45aa4d410304780a1656ad64180b730b66f977835b67bb6947c4d21697",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/cabot-cliffs-v1.json
+[course-import-contract] cabot-cliffs-inverside-nova-scotia: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 1 canonical tee set(s): Tee 1.
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 1 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 10 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course cabot-cliffs-inverside-nova-scotia
+[runtime-smoke] Cabot Cliffs: 1 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 1.
+[runtime-smoke] Cabot Cliffs runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course         │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Cabot Cliffs' │ 1    │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 65             │ 61.2              │ -3.8             │
+│ 1       │ 'Cabot Cliffs' │ 2    │ 5        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 46             │ 7.8               │ -38.2            │
+│ 2       │ 'Cabot Cliffs' │ 3    │ 6        │ 3             │ 2             │ 1               │ 1                      │ 10                │ 41.4           │ 34.9              │ -6.5             │
+│ 3       │ 'Cabot Cliffs' │ 4    │ 6        │ 3             │ 1             │ 1               │ 1                      │ 10                │ 57.6           │ 37.2              │ -20.4            │
+│ 4       │ 'Cabot Cliffs' │ 5    │ 6        │ 5             │ 1             │ 1               │ 1                      │ 10                │ 28.6           │ 0.6               │ -28              │
+│ 5       │ 'Cabot Cliffs' │ 6    │ 5        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 28.7           │ 21.7              │ -7               │
+│ 6       │ 'Cabot Cliffs' │ 7    │ 6        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 37.6           │ 55.5              │ 17.9             │
+│ 7       │ 'Cabot Cliffs' │ 8    │ 6        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 102.6          │ 59.7              │ -42.9            │
+│ 8       │ 'Cabot Cliffs' │ 9    │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 59.3           │ 55.1              │ -4.2             │
+│ 9       │ 'Cabot Cliffs' │ 10   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 54             │ 49.5              │ -4.5             │
+│ 10      │ 'Cabot Cliffs' │ 11   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 62.4           │ 79.9              │ 17.5             │
+│ 11      │ 'Cabot Cliffs' │ 12   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 104.4          │ 80.1              │ -24.3            │
+│ 12      │ 'Cabot Cliffs' │ 13   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 94.5           │ 112.4             │ 17.9             │
+│ 13      │ 'Cabot Cliffs' │ 14   │ 4        │ 2             │ 1             │ 1               │ 1                      │ 10                │ 148.3          │ 124.3             │ -24              │
+│ 14      │ 'Cabot Cliffs' │ 15   │ 5        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 150.9          │ 119               │ -31.9            │
+│ 15      │ 'Cabot Cliffs' │ 16   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 88.7           │ 21.2              │ -67.5            │
+│ 16      │ 'Cabot Cliffs' │ 17   │ 4        │ 4             │ 1             │ 1               │ 1                      │ 10                │ 87.9           │ 30.1              │ -57.8            │
+│ 17      │ 'Cabot Cliffs' │ 18   │ 4        │ 3             │ 1             │ 1               │ 1                      │ 10                │ 73.7           │ 49                │ -24.7            │
+└─────────┴────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] cabot-cliffs-inverside-nova-scotia passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 10 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "courseSlug": "cabot-cliffs",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/cabot-cliffs/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/cabot-cliffs/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "nrcan-hrdem",
+  "validation": "artifacts/course-geometry/cabot-cliffs/validation-v1.json"
+}
+=== [cabot-cliffs:import] rc=0 seconds=16.2
+=== [cabot-cliffs:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model
+https://overpass-api.de/api/interpreter attempt 1: HTTP Error 502: Bad Gateway
+overpass ok url=https://overpass-api.de/api/interpreter bytes=15019099 seconds=43.9
+{"elementsByType": {"node": 16598, "way": 949, "relation": 21}, "taggedElements": 1081, "compressedBytes": 2091110}
+=== [cabot-cliffs:osm] rc=0 seconds=56.5
+=== [cabot-cliffs:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/course-bbox.json --crs EPSG:26920 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model
+{"provider": "nrcan-hrdem", "collection": "hrdem-mosaic-1m", "tiles": 1, "width": 2730, "height": 3112, "validCells": 6660567, "elevMin": -1.722505587913985, "elevMax": 62.36751727529388, "seconds": 8.7}
+=== [cabot-cliffs:dem] rc=0 seconds=8.9
+=== [cabot-cliffs:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py chm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "source": "nrcan-hrdem-dsm-minus-dtm", "collection": "hrdem-mosaic-1m", "chm": {"width": 2730, "height": 3112, "pixelMeters": 1.0, "cellsWithReturns": 6660567, "emptyCells": 1835193, "cellsOver3m": 2217957, "cellsOver10m": 745045, "p50": 0.16775093599472868, "p95": 12.346071916479541, "max": 26.44795645566483}, "seconds": 9.7}
+=== [cabot-cliffs:lidar] rc=0 seconds=9.9
+=== [cabot-cliffs:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26920", "treeCount": 26891, "heightM": {"p10": 4.7, "p50": 9.6, "p90": 14.4, "max": 26.4}, "crownRadiusM": {"p10": 2.6, "p50": 4.7, "p90": 7.5}, "woodlandPolygons": 527, "woodlandAreaHa": 216.37, "maskedCellsBuildingsAndPower": 83345, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 4.1}
+=== [cabot-cliffs:trees] rc=0 seconds=5.1
+=== [cabot-cliffs:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/cabot-cliffs/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/cabot-cliffs/course-v1-lidar.json
+{
+ "bytes": 1442022,
+ "originalBytes": 388924,
+ "holes": {
+  "woodsPolygons": 16,
+  "bunker": "35->38",
+  "water": "0->0",
+  "mapFeatures": {
+   "cartpath": 12,
+   "building": 10
+  },
+  "terrainCells": 47719
+ },
+ "woodsTotal": 292
+}
+=== [cabot-cliffs:enrich] rc=0 seconds=26.0

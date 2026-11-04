@@ -5,6 +5,20 @@
 
 export const generatedImportedCourseRegistry = [
   {
+    id: 'cabot-cliffs-inverside-nova-scotia',
+    name: 'Cabot Cliffs',
+    location: 'Inverside, Nova Scotia',
+    slug: 'cabot-cliffs',
+    gsproAliases: ['Cabot Cliffs'],
+    staticPackageUrl: '/course-geometry/cabot-cliffs/course-v1.json',
+    status: 'validated',
+    packageStatus: 'ready',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'cached',
+  },
+  {
     id: 'farmlinks-pursell-farms-sylacauga-al',
     name: 'FarmLinks at Pursell Farms',
     location: 'Sylacauga, AL',

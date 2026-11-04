@@ -1,0 +1,27 @@
+{
+  "bbox3857": [
+    -6823484.326,
+    5819464.181,
+    -6821242.802,
+    5822425.904
+  ],
+  "courseId": "cabot-cliffs-inverside-nova-scotia",
+  "coverage": 0.8735,
+  "crs": "EPSG:3857",
+  "dataset": "NRCan HRDEM (hrdem-mosaic-1m) bare-earth DTM",
+  "exportResolutionMeters": 1.0,
+  "fetchedAt": "2026-11-04T05:07:26.262577Z",
+  "height": 2962,
+  "items": [
+    "11_3-mosaic-1m"
+  ],
+  "licence": "Open Government Licence - Canada (NRCan HRDEM)",
+  "note": "Read from NRCan's High Resolution DEM (LiDAR-derived) cloud-optimized GeoTIFFs onto the course's EPSG:3857 grid (bilinear).",
+  "provider": "NRCan HRDEM",
+  "providerKey": "nrcan-hrdem",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://datacube.services.geo.ca/stac/api",
+  "sourceResolutionMeters": 1.0,
+  "width": 2242
+}
