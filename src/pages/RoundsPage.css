@@ -1679,3 +1679,38 @@
   height: 1px;
   background: rgba(207, 216, 205, 0.18);
 }
+
+/* Landing stats: best round reads "71 −1" like the round page; course names
+   in the list take the round page's serif (white, not gold). */
+.rounds-tile-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rounds-tile-vspar {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--rounds-gold);
+}
+
+.rounds-page .rounds-tile span.rounds-tile-vspar {
+  font-size: 17px;
+  color: var(--rounds-gold);
+}
+
+.rounds-page .rounds-tile span.rounds-tile-sub {
+  font-size: 12px;
+  color: var(--rounds-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rounds-page .rounds-table .rounds-row-link strong {
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 600;
+  font-optical-sizing: auto;
+  letter-spacing: -0.005em;
+}
