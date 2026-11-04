@@ -59,13 +59,12 @@ export default function BrowserGsproSetupGate({
     (window.location.pathname === '/gspro-setup' ||
       new URLSearchParams(window.location.search).get('gsproSetup') === '1')
   const isSetupPage = children === undefined || setupRequested
-  const returnToRange =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('return') === 'range'
-
+  // Once GSPro is connected, setup always ends on the home screen (Brian, 11/3):
+  // it used to continue straight into the Practice Range when setup was
+  // started from the range button (?return=range).
   const finishSetup = () => {
     markOnboardingComplete()
-    window.location.assign(returnToRange ? '/?openRange=1' : '/')
+    window.location.assign('/')
   }
 
   const prepareAndEnterLooper = async () => {
@@ -342,7 +341,7 @@ export default function BrowserGsproSetupGate({
           </p>
           <div className="gspro-setup__actions">
             <button type="button" className="gspro-setup__primary" onClick={finishSetup}>
-              {returnToRange ? 'Continue to Practice Range' : 'Return to Looper'}
+              Return to Looper
             </button>
             {viaCompanion ? null : (
               <button
@@ -477,7 +476,7 @@ export default function BrowserGsproSetupGate({
               disabled={busy}
               onClick={() => void prepareAndEnterLooper()}
             >
-              {busy ? 'Starting…' : returnToRange ? 'Continue to Practice Range' : 'Continue to Looper'}
+              {busy ? 'Starting…' : 'Continue to Looper'}
             </button>
           </>
         ) : null}
