@@ -1617,3 +1617,50 @@
   padding-left: 0;
   width: 1%;
 }
+
+/* Scorecard row labels (Hole / Par / Score / SG) in a narrow first column. */
+.rounds-page .rounds-scorecard {
+  grid-template-columns: max-content repeat(18, minmax(44px, 1fr));
+}
+
+.rounds-page .rounds-cell-labels {
+  align-items: flex-start;
+  padding-left: 0;
+  padding-right: 10px;
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+.rounds-page .rounds-cell-labels > span {
+  color: var(--rounds-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rounds-page .rounds-cell-labels .rounds-label-mark {
+  width: auto;
+  justify-content: flex-start;
+}
+
+.rounds-page .rounds-cell-labels .rounds-cell-axis {
+  background: transparent;
+}
+
+/* Clubs vs range: a hairline track instead of a dark box behind each strip. */
+.rounds-page .rounds-strip {
+  background: transparent;
+  border-radius: 0;
+}
+
+.rounds-page .rounds-strip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(207, 216, 205, 0.18);
+}

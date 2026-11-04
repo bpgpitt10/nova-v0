@@ -616,6 +616,16 @@ function RoundDetail({
         </div>
         <div className="rounds-scorecard-wrap">
           <div className="rounds-scorecard">
+            {/* Row labels, scorecard style. */}
+            <div aria-hidden="true" className="rounds-cell rounds-cell-labels">
+              <span className="rounds-cell-num">Hole</span>
+              <span className="rounds-cell-par">{round.holes.some((entry) => entry.par != null) ? 'Par' : '\u00a0'}</span>
+              <span className="rounds-mark rounds-label-mark">Score</span>
+              <span className="rounds-cell-bar is-up" />
+              <span className="rounds-cell-axis" />
+              <span className="rounds-cell-bar is-down" />
+              <span className="rounds-cell-sg">SG</span>
+            </div>
             {round.holes.map((entry) => {
               const diff = entry.par != null && entry.complete ? entry.strokes - entry.par : null
               const mark = diff == null ? '' : diff <= -2 ? 'is-eagle' : diff === -1 ? 'is-birdie' : diff === 1 ? 'is-bogey' : diff >= 2 ? 'is-double' : ''
