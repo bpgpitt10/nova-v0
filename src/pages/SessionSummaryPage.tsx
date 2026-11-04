@@ -537,7 +537,7 @@ function SessionSummaryPage() {
               ))}
             </ul>
           )}
-          <a className="session-summary-button" href="/dashboard">
+          <a className="session-summary-button" href="/bag">
             Continue to Dashboard
           </a>
         </section>

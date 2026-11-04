@@ -209,7 +209,7 @@ export default function LooperLandingPage({
   const continueToDashboardFromWelcome = () => {
     markOnboardingComplete()
     setShowWelcome(false)
-    navigateWithinApp('/dashboard')
+    navigateWithinApp('/bag')
   }
 
   const updateStatusContent = (() => {
@@ -338,7 +338,7 @@ export default function LooperLandingPage({
                 Your bag&apos;s yardages, every round shot by shot, and where you lose strokes.
               </span>
               <span className="looper-landing-mode-links">
-                <a className="looper-landing-mode-action" href="/dashboard">
+                <a className="looper-landing-mode-action" href="/bag">
                   Bag <span aria-hidden="true">→</span>
                 </a>
                 <a className="looper-landing-mode-action" href="/rounds">

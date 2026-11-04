@@ -223,7 +223,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
         <BagTopBar
           active={isGame ? 'game' : 'rounds'}
           editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/rounds')}`}
-          onBag={() => navigate('/dashboard')}
+          onBag={() => navigate('/bag')}
         />
         {data.status === 'loading' ? <p className="rounds-empty">Loading your rounds…</p> : null}
         {data.status === 'error' ? <p className="rounds-empty">{data.message}</p> : null}

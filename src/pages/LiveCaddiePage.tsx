@@ -1589,7 +1589,7 @@ export default function LiveCaddiePage() {
       <div className="live-caddie-backdrop" />
       <div className="live-caddie-shell">
         <header className="live-caddie-header">
-          <a className="live-caddie-logo-link" href="/dashboard" aria-label="Looper dashboard">
+          <a className="live-caddie-logo-link" href="/bag" aria-label="Looper dashboard">
             <img src={looperLogoWhite} className="live-caddie-logo" alt="Looper" />
           </a>
 

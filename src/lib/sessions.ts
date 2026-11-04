@@ -256,7 +256,7 @@ export const clearActiveSessionDraft = () => {
   // read-only dashboard visit so it can be resumed after A -> logout -> B -> A.
   if (typeof window !== 'undefined') {
     const path = window.location.pathname.replace(/\/+$/, '') || '/'
-    if (path === '/dashboard') {
+    if (path === '/bag' || path === '/dashboard') {
       return
     }
   }

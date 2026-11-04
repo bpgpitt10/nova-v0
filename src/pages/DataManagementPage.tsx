@@ -835,7 +835,7 @@ function DataManagementPage() {
             >
               {allExpanded ? 'Collapse All' : 'Expand All'}
             </button>
-            <a className="dm-action dm-return" href="/dashboard">
+            <a className="dm-action dm-return" href="/bag">
               Return to Dashboard
             </a>
             <a className="dm-action dm-return" href="/looper">
