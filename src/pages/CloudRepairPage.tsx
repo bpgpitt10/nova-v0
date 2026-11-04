@@ -153,7 +153,7 @@ export default function CloudRepairPage() {
               </p>
             )}
             <a
-              href="/dashboard"
+              href="/bag"
               style={{
                 display: 'inline-block',
                 marginTop: 12,

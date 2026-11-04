@@ -887,7 +887,7 @@ function App({
     return param !== 'v1'
   })()
   // The bag "yardage book" table and top-bar nav are the dashboard.
-  // Fallback to the previous card layout and rail: /dashboard?bag=cards
+  // Fallback to the previous card layout and rail: /bag?bag=cards
   const useBagYardageBook =
     typeof window === 'undefined' ||
     new URLSearchParams(window.location.search).get('bag') !== 'cards'
@@ -5598,7 +5598,7 @@ function App({
                   />
                 ) : null
               }
-              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard')}`}
+              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/bag')}`}
               onBag={() => {
                 setDashboardNavTarget('bag')
                 setReviewView('dashboard')

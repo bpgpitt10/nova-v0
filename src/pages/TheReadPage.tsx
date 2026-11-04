@@ -976,7 +976,7 @@ export default function TheReadPage() {
             </div>
           </div>
           <nav className="the-read-utility-actions" aria-label="The Read navigation">
-            <a href="/dashboard">Dashboard</a>
+            <a href="/bag">Dashboard</a>
             <a href="/looper">New Session</a>
             <button
               className="the-read-utility-pdf"

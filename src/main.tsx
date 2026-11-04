@@ -55,6 +55,11 @@ type UpdateStatus =
   | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
+
+// The Bag page's address is /bag (was /dashboard; old links still work).
+if (typeof window !== 'undefined' && normalizePath(window.location.pathname) === '/dashboard') {
+  window.history.replaceState(window.history.state, '', `/bag${window.location.search}${window.location.hash}`)
+}
 const isLiveCaddiePath = (value: string) => {
   const normalized = normalizePath(value)
   return normalized === '/live-caddie' || normalized === '/caddie' || normalized === '/dev/live-caddie'
@@ -289,7 +294,7 @@ function RootRouter() {
     const showLooperLanding = pathname === '/' || pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
-    const showDashboardRoute = pathname === '/dashboard'
+    const showDashboardRoute = pathname === '/bag' || pathname === '/dashboard'
     const showTheRead = pathname === '/read'
     const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/')
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
