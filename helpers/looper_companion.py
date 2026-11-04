@@ -35,7 +35,7 @@ import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop sc
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
 
 base = lie_footer.base
-COMPANION_VERSION = "courses.9"
+COMPANION_VERSION = "courses.10"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
@@ -48,9 +48,11 @@ AIM_CLICK_MIN_INTERVAL_S = 1.5
 COMPANION_COURSE_LIBRARY_PATH = "/companion/v1/course-library"
 COMPANION_GSPRO_FILE_PATH = "/companion/v1/gspro-file"
 COMPANION_ROUND_RECORDS_PATH = "/companion/v1/round-records"
+COMPANION_ROUND_PARS_PATH = "/companion/v1/round-pars"
 COMPANION_READ_PATHS = (
     COMPANION_GSPRO_FILE_PATH,
     COMPANION_ROUND_RECORDS_PATH,
+    COMPANION_ROUND_PARS_PATH,
     COMPANION_COURSE_LIBRARY_PATH,
     COMPANION_AIM_PREVIEW_PATH,
     COMPANION_STATUS_PATH,
@@ -297,6 +299,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "courseLibrary": True,
                     "gsproFiles": True,
                     "roundRecorder": ROUND_RECORDER is not None,
+                    "roundPars": ROUND_RECORDER is not None,
                     "nativeCapture": False,
                     # Auto Aim as a background feature stays off; the only input
                     # is one minimap click per explicit Arm (aim-click).
@@ -337,6 +340,18 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                                             "version": COMPANION_VERSION, **info})
                 return
             self._send_companion_bytes(info, data)
+            return
+        if urlsplit(self.path).path == COMPANION_ROUND_PARS_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            # GSPro's own par per hole, per round (the scorecard GSPro scores with).
+            self._send_companion(200, {
+                "service": "looper-companion", "version": COMPANION_VERSION,
+                "schemaVersion": "looper-companion-round-pars-v1",
+                "status": "ok" if ROUND_RECORDER is not None else "unavailable",
+                "rounds": ROUND_RECORDER.round_pars() if ROUND_RECORDER is not None else [],
+            })
             return
         if urlsplit(self.path).path == COMPANION_ROUND_RECORDS_PATH:
             if not self._companion_authorized():
@@ -479,6 +494,7 @@ def start_round_recorder() -> "threading.Event":
         ROUND_RECORDER = file_bridge.RoundRecorder(
             file_bridge.default_store_dir(),
             file_bridge.current_round_reader(GSPRO_DATA_FOLDER),
+            file_bridge.log_tail_reader(GSPRO_DATA_FOLDER),
         )
     except Exception:
         ROUND_RECORDER = None  # never stop the companion over the recorder

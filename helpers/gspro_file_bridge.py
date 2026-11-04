@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
+import re
 import threading
 import time
 from datetime import datetime, timezone
@@ -33,6 +35,14 @@ FOLDER_CACHE_SECONDS = 15.0
 RECORDER_POLL_SECONDS = 3.0
 RECORDS_FILE = "round-records.jsonl"
 MAX_RECORDS_PER_PAGE = 2000
+# GSPro's own par per hole for each round (from the hole layout GSPro logs
+# while a round is on), kept beside the shots.
+PARS_FILE = "round-pars.jsonl"
+MAX_LOG_TAIL_BYTES = 8 * 1024 * 1024
+PARS_CHECK_SECONDS = 20.0
+# A logged pin belongs to this round when GSPro's distance to the pin after
+# each shot matches the distance from where the ball stopped to that pin.
+PIN_MATCH_METERS = 3.0
 
 
 def _utc_now() -> str:
@@ -169,6 +179,69 @@ def _fingerprint(record: dict) -> str:
     ).hexdigest()
 
 
+def latest_hole_layout(log_text: str) -> list[dict] | None:
+    """The last hole layout GSPro logged: one entry per hole, in hole order,
+    with "par", "teePos" and "pinPos" (re-logged as the active hole changes)."""
+    if not log_text:
+        return None
+    decoder = json.JSONDecoder()
+    latest = None
+    for match in re.finditer(r'\[\s*\{\s*"active"', log_text):
+        try:
+            value, _ = decoder.raw_decode(log_text[match.start():])
+        except ValueError:
+            continue
+        if isinstance(value, list) and len(value) >= 9 and all(isinstance(row, dict) for row in value):
+            latest = value
+    return latest
+
+
+def _xyz(value) -> tuple[float, float, float] | None:
+    if not isinstance(value, dict):
+        return None
+    try:
+        point = (float(value["x"]), float(value.get("y", 0.0)), float(value["z"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    return point if all(math.isfinite(v) for v in point) else None
+
+
+def layout_pars_for_round(layout: list[dict], records: list[dict]) -> dict | None:
+    """Par per hole from GSPro's logged layout, only when its pins are this
+    round's: on every hole with a shot, GSPro's distance to the pin after the
+    shot must match the distance from where the ball stopped to the logged pin
+    (which also proves the layout's hole order). None if no hole can be checked
+    or any hole disagrees."""
+    pars: dict[str, int] = {}
+    pins: dict[int, tuple[float, float, float]] = {}
+    for index, row in enumerate(layout):
+        par = row.get("par")
+        if isinstance(par, int) and not isinstance(par, bool) and 2 <= par <= 7:
+            pars[str(index + 1)] = par
+        pin = _xyz(row.get("pinPos"))
+        if pin:
+            pins[index + 1] = pin
+    if len(pars) < 9:
+        return None
+    votes: dict[int, list[bool]] = {}
+    for record in records:
+        try:
+            hole = int(float(record.get("Hole"))) + 1
+            to_pin = float(record.get("DistanceToPin"))
+        except (TypeError, ValueError):
+            continue
+        end, pin = _xyz(record.get("EndingPOS")), pins.get(hole)
+        if end is None or pin is None or not math.isfinite(to_pin):
+            continue
+        dx, dy, dz = end[0] - pin[0], end[1] - pin[1], end[2] - pin[2]
+        off = min(abs(math.sqrt(dx * dx + dy * dy + dz * dz) - to_pin), abs(math.sqrt(dx * dx + dz * dz) - to_pin))
+        votes.setdefault(hole, []).append(off <= PIN_MATCH_METERS)
+    checked = {hole: sum(v) * 2 > len(v) for hole, v in votes.items()}
+    if not checked or not all(checked.values()):
+        return None
+    return {"pars": pars, "checkedHoles": sorted(checked)}
+
+
 class RoundRecorder:
     """Keeps every round GSPro writes to currentRound.dat.
 
@@ -177,16 +250,78 @@ class RoundRecorder:
     version per (RoundID, ShotID).
     """
 
-    def __init__(self, store_dir: Path, read_current_round: Callable[[], str | None]) -> None:
+    def __init__(
+        self,
+        store_dir: Path,
+        read_current_round: Callable[[], str | None],
+        read_log_tail: Callable[[], str | None] | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._store_dir = Path(store_dir)
         self._read = read_current_round
+        self._read_log = read_log_tail
+        self._clock = clock
         self._lock = threading.Lock()
         self._seen: dict[str, str] = {}
         self._seq = 0
         self._active_round_id = None
         self._last_poll: str | None = None
         self._last_error: str | None = None
+        self._pars: dict[str, dict] = {}
+        self._last_pars_check = -1e9
         self._load()
+        self._load_pars()
+
+    @property
+    def pars_path(self) -> Path:
+        return self._store_dir / PARS_FILE
+
+    def _load_pars(self) -> None:
+        if not self.pars_path.is_file():
+            return
+        with open(self.pars_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(entry, dict) and entry.get("roundId") is not None and isinstance(entry.get("pars"), dict):
+                    self._pars[str(entry["roundId"])] = entry
+
+    def _record_pars(self, records: list[dict]) -> None:
+        """GSPro's par per hole for the round on now, checked against its pins."""
+        if self._read_log is None or self._active_round_id is None:
+            return
+        now = self._clock()
+        if now - self._last_pars_check < PARS_CHECK_SECONDS:
+            return
+        self._last_pars_check = now
+        try:
+            layout = latest_hole_layout(self._read_log() or "")
+        except Exception:
+            return
+        if not layout:
+            return
+        round_id = self._active_round_id
+        mine = [r for r in records if str(r.get("RoundID")) == str(round_id)]
+        found = layout_pars_for_round(layout, mine)
+        if not found:
+            return
+        course_key = next((str(r.get("CourseKey")) for r in mine if r.get("CourseKey")), None)
+        previous = self._pars.get(str(round_id))
+        if previous and previous.get("pars") == found["pars"] \
+                and len(previous.get("checkedHoles") or []) >= len(found["checkedHoles"]):
+            return
+        entry = {"roundId": round_id, "courseKey": course_key, "observedAt": _utc_now(), **found}
+        self._store_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.pars_path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, separators=(",", ":")) + "\n")
+        self._pars[str(round_id)] = entry
+
+    def round_pars(self) -> list[dict]:
+        """GSPro's par per hole for every round it was read for, newest first."""
+        with self._lock:
+            return sorted(self._pars.values(), key=lambda e: e.get("observedAt") or "", reverse=True)
 
     @property
     def path(self) -> Path:
@@ -243,6 +378,10 @@ class RoundRecorder:
                     handle.flush()
                     os.fsync(handle.fileno())
                 written = len(fresh)
+            try:
+                self._record_pars(records)
+            except Exception:
+                pass  # pars are a bonus; never stop recording shots
         return written
 
     def records_after(self, after: int, limit: int = 500) -> dict:
@@ -297,6 +436,19 @@ def default_store_dir() -> Path:
     base = os.environ.get("LOCALAPPDATA")
     root = Path(base) if base else Path.home() / "AppData" / "Local"
     return root / "Looper" / "Companion" / "rounds"
+
+
+def log_tail_reader(folder: DataFolder) -> Callable[[], str | None]:
+    """The end of GSPro's output_log.txt (read-only), where the hole layout is logged."""
+    def read() -> str | None:
+        info = stat_gspro_file(folder.directory(), "output_log.txt")
+        if info["status"] != "ok":
+            return None
+        size = info["size"]
+        info, data = read_gspro_file(folder.directory(), "output_log.txt", max(0, size - MAX_LOG_TAIL_BYTES), size)
+        return data.decode("utf-8", errors="replace") if info["status"] == "ok" else None
+
+    return read
 
 
 def current_round_reader(folder: DataFolder) -> Callable[[], str | None]:
