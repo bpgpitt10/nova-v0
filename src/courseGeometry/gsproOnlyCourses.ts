@@ -20,6 +20,32 @@ import { installedCourseCandidates } from './nativeCourseRuntime'
  */
 
 const CACHE_KEY = 'looper.gspro-only-courses.v1'
+const ENABLED_KEY = 'looper.gspro-file-courses.v1'
+
+/**
+ * Off by default (Brian, 11/4: "for starters I want just pristine courses that
+ * work perfect"): Start a Round lists only courses with a loaded map. Turn the
+ * GSPro-file courses on to test them with ?gsprofile=1 (remembered on this
+ * browser; ?gsprofile=0 turns them off again).
+ */
+export const gsproFileCoursesEnabled = (): boolean => {
+  if (typeof window === 'undefined') return false
+  try {
+    const param = new URLSearchParams(window.location.search).get('gsprofile')
+    if (param === '1' || param === '0') {
+      try {
+        if (param === '1') window.localStorage.setItem(ENABLED_KEY, '1')
+        else window.localStorage.removeItem(ENABLED_KEY)
+      } catch {
+        // the URL still decides for this page
+      }
+      return param === '1'
+    }
+    return window.localStorage.getItem(ENABLED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 const valid = (row: unknown): row is GsproInstalledCourse => {
   const r = row as Partial<GsproInstalledCourse> | null
@@ -30,6 +56,7 @@ const apply = (rows: readonly GsproInstalledCourse[]) => registerRuntimeCourses(
 
 /** Add every course installed in GSPro (the companion's list) as a GSPro-only entry. */
 export const refreshGsproOnlyCourses = async (): Promise<number> => {
+  if (!gsproFileCoursesEnabled()) return 0
   const library = await readLooperCompanionCourseLibrary(8000)
   const rows: GsproInstalledCourse[] = library.courses
     .filter((course) => course.courseKey && (course.holes ?? 18) > 0)
@@ -72,7 +99,7 @@ export const gsproOnlyLoadedMatch = (entry: Pick<CourseCatalogEntry, 'id' | 'nam
 try {
   const raw = typeof window !== 'undefined' ? window.localStorage.getItem(CACHE_KEY) : null
   const parsed = raw ? JSON.parse(raw) as unknown : null
-  if (Array.isArray(parsed)) apply(parsed.filter(valid))
+  if (Array.isArray(parsed) && gsproFileCoursesEnabled()) apply(parsed.filter(valid))
 } catch {
   // no cache
 }
