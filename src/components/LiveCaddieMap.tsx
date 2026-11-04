@@ -357,7 +357,7 @@ export default function LiveCaddieMap({
               surface.polygons.map((polygon, index) => (
                 <polygon
                   key={`${surface.id}-${index}`}
-                  className={`live-surface surface-${kind}`}
+                  className={`live-surface surface-${kind}${surface.id.startsWith('gkd-oob') ? ' surface-oob' : surface.provenance.source === 'gspro' ? ' surface-gspro' : ''}`}
                   points={polygon.map((point) => project(point).join(',')).join(' ')}
                 />
               )),

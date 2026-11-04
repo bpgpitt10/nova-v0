@@ -28,11 +28,33 @@ export type NativeHole = Readonly<{
   pins: readonly NativePin[]
 }>
 
+/**
+ * A GSPro penalty area: the polygon GSPro itself uses to assess the penalty
+ * (water, lateral hazards, marked dry ravines). Flags are the designer's.
+ * Bunkers, fairways, rough and the green outline are NOT in the GKD.
+ */
+export type NativePenaltyArea = Readonly<{
+  id: number
+  points: readonly NativeXYZ[]
+  freeDrop: boolean
+  /** Inside this polygon is out of bounds (internal OB such as a road). */
+  innerOOB: boolean
+  islandGreen: boolean
+  dropZone: NativeXYZ | null
+}>
+
 export type NativeCourseLayout = Readonly<{
   courseName: string | null
   /** GKDalt only: the scene (main GKD / CourseKey) this alternate layout belongs to. */
   sceneFolderName: string | null
+  /** Designer's course location text and, when present, lat/lon. */
+  location: string | null
+  courseLatLon: readonly [number, number] | null
   holes: readonly NativeHole[]
+  /** GSPro's penalty-area polygons (main GKD; alternate layouts usually omit them). */
+  penaltyAreas: readonly NativePenaltyArea[]
+  /** GSPro's out-of-bounds polygon ("pOOB"), as drawn: see nativeHazards.ts for its meaning. */
+  outOfBounds: readonly NativeXYZ[]
   /** Tees + pins + green centres: changes whenever a tee moves. */
   fingerprintText: string
   /** Pins + green centres only: shared by every layout of one GSPro scene. */
@@ -99,7 +121,10 @@ export const parseGkdLayout = (text: string): NativeCourseLayout => {
   } catch {
     throw new NativeGkdError('GKD file is not valid JSON.')
   }
-  const root = raw as { Holes?: unknown; CourseName?: unknown; SceneFolderName?: unknown }
+  const root = raw as {
+    Holes?: unknown; CourseName?: unknown; SceneFolderName?: unknown; Location?: unknown
+    CourseLat?: unknown; CourseLong?: unknown; Hazards?: unknown; pOOB?: unknown
+  }
   if (!root || typeof root !== 'object' || !Array.isArray(root.Holes)) {
     throw new NativeGkdError('GKD file has no Holes list.')
   }
@@ -137,10 +162,34 @@ export const parseGkdLayout = (text: string): NativeCourseLayout => {
     })
   }
   holes.sort((a, b) => a.hole - b.hole)
+  const ring = (value: unknown): NativeXYZ[] => {
+    const coords = value && typeof value === 'object' ? (value as { coords?: unknown }).coords : null
+    return (Array.isArray(coords) ? coords : []).map(xyz).filter((q): q is NativeXYZ => q !== null)
+  }
+  const penaltyAreas: NativePenaltyArea[] = []
+  ;(Array.isArray(root.Hazards) ? root.Hazards : []).forEach((entry, index) => {
+    const hz = entry as { freeDrop?: unknown; innerOOB?: unknown; islandGreen?: unknown; hasDZ?: unknown; DZpos?: unknown }
+    const points = ring(entry)
+    if (points.length < 3) return
+    penaltyAreas.push({
+      id: index,
+      points,
+      freeDrop: hz.freeDrop === true,
+      innerOOB: hz.innerOOB === true,
+      islandGreen: hz.islandGreen === true,
+      dropZone: hz.hasDZ === true ? xyz(hz.DZpos) : null,
+    })
+  })
+  const lat = typeof root.CourseLat === 'string' ? Number(root.CourseLat) : root.CourseLat
+  const lon = typeof root.CourseLong === 'string' ? Number(root.CourseLong) : root.CourseLong
   return {
     courseName: typeof root.CourseName === 'string' ? root.CourseName : null,
     sceneFolderName: typeof root.SceneFolderName === 'string' ? root.SceneFolderName : null,
+    location: typeof root.Location === 'string' && root.Location.trim() ? root.Location.trim() : null,
+    courseLatLon: finite(lat) && finite(lon) && (lat !== 0 || lon !== 0) ? [lat, lon] : null,
     holes,
+    penaltyAreas,
+    outOfBounds: ring(root.pOOB),
     fingerprintText: layoutFingerprintText(holes),
     sceneFingerprintText: sceneFingerprintText(holes),
   }

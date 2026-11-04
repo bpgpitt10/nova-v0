@@ -34,6 +34,7 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
+import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
@@ -75,7 +76,9 @@ import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeome
 import type {
   CourseHoleGeometry,
   CoursePointYds,
+  CourseSurface,
 } from '../courseGeometry/types'
+import { isNativePositionsEnabled, nativeCourseContextForLive } from '../courseGeometry/nativeCourseRuntime'
 import {
   buildAimContextSentence,
   buildAimDescriptor,
@@ -205,9 +208,16 @@ export default function LiveCaddiePage() {
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
-  const [hole, setHole] = useState<CourseHoleGeometry | null>(() =>
+  const [rawHole, setHole] = useState<CourseHoleGeometry | null>(() =>
     loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
   )
+  // GSPro's own penalty areas and OB (from the player's GKD) on this hole.
+  const [gkdHazards, setGkdHazards] = useState<{ key: string; surfaces: CourseSurface[]; summary: GkdHazardSummary } | null>(null)
+  const hole = useMemo<CourseHoleGeometry | null>(() =>
+    rawHole && gkdHazards && gkdHazards.key === `${rawHole.courseId}|${rawHole.holeNumber}`
+      ? withGkdHazards(rawHole, gkdHazards.surfaces)
+      : rawHole,
+  [rawHole, gkdHazards])
   const [ball, setBall] = useState<CoursePointYds>(() =>
     loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry.markers.tee : [0, 0],
   )
@@ -496,6 +506,26 @@ export default function LiveCaddiePage() {
       active = false
     }
   }, [courseId, holeNumber, captureRoundId])
+
+  // GSPro's penalty areas and OB for this hole, through the course registration.
+  // Keyed by course|hole; the GSPro key arrives with the live round, so the
+  // effect also re-runs once it's known.
+  const gkdCourseKey = liveSnapshot?.courseKey ?? null
+  useEffect(() => {
+    if (!rawHole || !isNativePositionsEnabled()) return
+    const key = `${rawHole.courseId}|${rawHole.holeNumber}`
+    let alive = true
+    void nativeCourseContextForLive(courseId, gkdCourseKey)
+      .then((context) => {
+        if (!alive || !context) return
+        const layout = layoutWithHazards(context.layouts.map((l) => l.layout))
+        if (!layout) return
+        const { surfaces, summary } = gkdHazardSurfaces(layout, context.registration, rawHole)
+        setGkdHazards({ key, surfaces, summary })
+      })
+      .catch(() => undefined)
+    return () => { alive = false }
+  }, [rawHole, courseId, gkdCourseKey])
 
   // Preserve production's detailed green terrain loading and exact-pin
   // approach targeting; do not assert exact targeting from provisional frames.
@@ -1768,6 +1798,17 @@ export default function LiveCaddiePage() {
               : 'not read (companion older than aim-click.5?)'}
             {hudPin ? ` · ${hudPin.note}` : ''}
             {pinCheck.note ? ` · ${pinCheck.note}` : ''}
+          </div>
+        ) : null}
+        {showDiagnostics ? (
+          <div className="live-caddie-alert">
+            GSPro hazards on this hole: {gkdHazards && gkdHazards.key === `${rawHole?.courseId}|${rawHole?.holeNumber}`
+              ? `${gkdHazards.summary.penaltyAreas} penalty area${gkdHazards.summary.penaltyAreas === 1 ? '' : 's'}`
+                + (gkdHazards.summary.innerOob ? `, ${gkdHazards.summary.innerOob} internal OB` : '')
+                + (gkdHazards.summary.obMode
+                  ? ` · OB ${gkdHazards.summary.obMode === 'boundary' ? 'beyond the course boundary' : 'region'}${gkdHazards.summary.obOnHole ? '' : ' (not near this hole)'}`
+                  : ' · no OB polygon in the course file')
+              : 'not loaded (needs the GSPro course file and a registration)'}
           </div>
         ) : null}
         {showDiagnostics && aimResult ? (
