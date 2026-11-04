@@ -49,6 +49,8 @@ export type YardageBookRow = {
   middleHalf: { low: number; high: number } | null
   /** Stock profile mean offline in yards; positive is right. */
   missOffline: number | null
+  /** Stock profile spread (the ± on the Club Ladder PDF, same as The Read). */
+  spread: { carry: number | null; total: number | null; offline: number | null }
   mishits: YardageBookMishits | null
   trust: { score: number; call: ReviewClubSummary['caddieCall'] } | null
 }
@@ -177,6 +179,9 @@ const buildMishits = (
   }
 }
 
+const finiteOrNull = (value: number | null | undefined) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
+
 const carryTotal = (profile: ShotProfiles['mostLikely']): YardageBookCarryTotal | null =>
   profile && typeof profile.carry === 'number'
     ? { carry: profile.carry, total: typeof profile.total === 'number' ? profile.total : null }
@@ -212,6 +217,11 @@ export const buildYardageBookRow = (
     middleHalf: buildMiddleHalf(shots, shotWeightsById),
     missOffline:
       typeof profiles.mostLikely?.offlineMean === 'number' ? profiles.mostLikely.offlineMean : null,
+    spread: {
+      carry: finiteOrNull(profiles.mostLikely?.carryVariability),
+      total: finiteOrNull(profiles.mostLikely?.totalVariability),
+      offline: finiteOrNull(profiles.mostLikely?.dispersionVariability),
+    },
     mishits: buildMishits(analysisSessions, club, resolvedVariantId),
     trust: summary ? { score: summary.caddieScore, call: summary.caddieCall } : null,
   }

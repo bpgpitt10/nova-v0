@@ -28,6 +28,9 @@ import BagYardageBook from './pages/BagYardageBook'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
+import { attackAngleValue } from './lib/attackAngle'
+import { buildLandingWindow } from './lib/landingWindow'
+import { buildLooperRead, type ReadFactorKey } from './lib/looperRead'
 import './App.css'
 import ClubDetailV2, {
   type MetricKey as ClubDetailMetricKey,
@@ -927,7 +930,7 @@ function App({
   const [openClubDriver, setOpenClubDriver] = useState<ClubDriverKey | null>(null)
   const [dashboardNavTarget, setDashboardNavTarget] =
     useState<DashboardNavTarget>('dashboard')
-  const [isLastSessionOpen, setIsLastSessionOpen] = useState(false)
+  const [, setIsLastSessionOpen] = useState(false)
   const [shots, setShots] = useState<Shot[]>(() =>
     forceSessionIntelligenceRoute ? resumedDraft?.shots ?? [] : [],
   )
@@ -1997,6 +2000,18 @@ function App({
       .filter((row): row is NonNullable<typeof row> => row !== null)
   }, [analysisSessions, historicalAveragesByClub, latestSessionSummariesByClub])
 
+  // "Mon, Nov 2 · 46 swings" for the Last session heading on the Bag page.
+  const lastSessionMeta = useMemo(() => {
+    const latestSession = analysisSessions[0]
+    if (!latestSession) return null
+    const swings = latestSession.shots.filter(isShotIncludedInAnalysis).length
+    const when = new Date(latestSession.endedAt)
+    const date = Number.isNaN(when.getTime())
+      ? null
+      : when.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    return [date, `${swings} ${swings === 1 ? 'swing' : 'swings'}`].filter(Boolean).join(' · ')
+  }, [analysisSessions])
+
   const lastSessionInsights = useMemo(() => {
     if (lastSessionComparisonRows.length === 0) {
       return 'Last session does not yet have enough included club shots to compare against history.'
@@ -2897,92 +2912,10 @@ function App({
     [selectedClubHistoricalShots],
   )
 
-  const looperRead = useMemo(() => {
-    if (!selectedClubSummary) {
-      return {
-        primary: `${getClubLabel(selectedDetailClub)} is still finding its shape.`,
-        explanation: 'The pattern is not settled yet, so this one is still a cautious play.',
-        implication: 'Take the bigger side of the target and keep the miss simple.',
-      }
-    }
-
-    const components: Array<
-      [keyof Pick<ReviewClubSummary['componentScores'], 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability'>, number]
-    > = [
-      [
-        'patternStability',
-        typeof selectedClubSummary.componentScores.patternStability === 'number'
-          ? selectedClubSummary.componentScores.patternStability
-          : 0,
-      ],
-      ['directionWindow', selectedClubSummary.componentScores.directionWindow],
-      ['distanceWindow', selectedClubSummary.componentScores.distanceWindow],
-      [
-        'flightQuality',
-        typeof selectedClubSummary.componentScores.flightQuality === 'number'
-          ? selectedClubSummary.componentScores.flightQuality
-          : 0,
-      ],
-    ]
-
-    const ranked = [...components].sort((left, right) => right[1] - left[1])
-    const strongest = ranked[0][0]
-    const weakest = ranked[ranked.length - 1][0]
-
-    const plainLabel = (
-      key: 'distanceWindow' | 'directionWindow' | 'flightQuality' | 'patternStability',
-    ) => {
-      switch (key) {
-        case 'patternStability':
-          return 'pattern trend'
-        case 'directionWindow':
-          return 'direction control'
-        case 'distanceWindow':
-          return 'carry expectation'
-        case 'flightQuality':
-          return 'shot behavior'
-      }
-    }
-
-    switch (selectedClubSummary.caddieCall) {
-      case 'Attack':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is giving you a proper green light right now.`,
-          explanation: `${capitalizeFirst(plainLabel(strongest))} is holding, and ${plainLabel(weakest)} is only a touch loose.`,
-          implication: 'Trust the stock swing and go right at it.',
-        }
-      case 'Play':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
-          explanation: "Flight's holding, but carry still drifts a touch.",
-          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
-        }
-      case 'Manage':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is playable, but it wants a bit of management.`,
-          explanation: "Flight's holding, but carry still drifts a touch.",
-          implication: 'Play to the fat side and let it earn your trust before you go flag hunting.',
-        }
-      case 'Careful':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is in careful territory at the minute.`,
-          explanation: `${capitalizeFirst(plainLabel(weakest))} is loose enough to bring trouble in quickly.`,
-          implication: 'Use a conservative target and keep risk out of the miss.',
-        }
-      case 'Liability':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is behaving like a troublemaker right now.`,
-          explanation: `${capitalizeFirst(plainLabel(weakest))} is leaking, and the overall pattern is not steady enough.`,
-          implication: 'Step to a safer club unless the hole leaves you no choice.',
-        }
-      case 'Insufficient Data':
-        return {
-          primary: `${getClubLabel(selectedDetailClub)} is still writing its story.`,
-          explanation: 'There is not enough clean evidence yet to call this one stable or loose.',
-          implication: 'Keep the target simple while this read builds.',
-        }
-    }
-  }, [selectedClubSummary, selectedDetailClub])
+  const clubDetailLandingPoints = useMemo(
+    () => selectedClubDispersionPoints.filter((point) => point.included),
+    [selectedClubDispersionPoints],
+  )
 
   const selectedClubComponentBreakdown = useMemo(() => {
     const history = historicalAveragesByClub.get(selectedDetailClub)
@@ -3517,6 +3450,40 @@ function App({
       ? selectedClubLatestSessionIncludedShotCount
       : selectedDetailIncludedShots.length
 
+  // The Looper's Read: three lines from this club's own numbers (src/lib/looperRead.ts).
+  const looperRead = useMemo(() => {
+    const landing = buildLandingWindow(clubDetailLandingPoints)
+    const variantId = resolveShotVariantId(selectedDetailShotVariantId)
+    const bookEntry = yardageBook?.clubs.find((entry) => entry.club === selectedDetailClub)
+    const bookRow = bookEntry
+      ? [bookEntry.row, ...bookEntry.variants].find((row) => row.variantId === variantId)
+      : undefined
+    const stock = selectedClubShotProfiles.mostLikely
+    return buildLooperRead({
+      clubLabel: getClubLabel(selectedDetailClub),
+      call: selectedClubSummary?.caddieCall ?? 'Insufficient Data',
+      factors: selectedClubComponentBreakdown
+        .filter((row): row is typeof row & { key: ReadFactorKey } => row.key !== 'dataConfidence')
+        .map((row) => ({ key: row.key, value: row.value, delta: row.delta })),
+      stockCarry: stock?.carry,
+      carryLow: landing?.carryLow,
+      carryHigh: landing?.carryHigh,
+      missOffline: stock?.offlineMean,
+      swings: landing?.swings ?? clubDetailSwingsIncludedCount,
+      mishitRate: bookRow?.mishits?.rate,
+      severeRate: bookRow?.mishits?.severeRate,
+    })
+  }, [
+    clubDetailLandingPoints,
+    clubDetailSwingsIncludedCount,
+    selectedClubComponentBreakdown,
+    selectedClubShotProfiles,
+    selectedClubSummary,
+    selectedDetailClub,
+    selectedDetailShotVariantId,
+    yardageBook,
+  ])
+
   const selectedClubMetricModels = useMemo<ClubDetailMetricModel[]>(() => {
     // TODO(v2): Promote metric-specific interpretation rules into a dedicated
     // diagnosis module once we finalize Club Detail language tuning.
@@ -3712,6 +3679,7 @@ function App({
     const hlaSeries = seriesFromExtractor(hlaValue)
     const spinAxisSeries = seriesFromExtractor(spinAxisValue)
     const clubPathSeries = seriesFromExtractor(clubPathValue)
+    const attackAngleSeries = seriesFromExtractor(attackAngleValue)
     const faceToPathSeries = seriesFromExtractor(faceToPathValue)
     const faceToTargetSeries = seriesFromExtractor(faceToTargetValue)
     const launchSeries = seriesFromExtractor(launchValue)
@@ -3769,6 +3737,34 @@ function App({
       negative: 'In-to-Out',
       neutral: 'Neutral Path',
     })
+    const attackAngleCurrent = sessionWeightedMetric(attackAngleValue)
+    const attackAngleRead = (() => {
+      if (typeof attackAngleCurrent !== 'number') {
+        return {
+          status: 'Building',
+          read: 'Attack angle needs swings where the launch monitor read the club.',
+          trendRead: 'Trend is still forming.',
+        }
+      }
+      const isDriver = selectedDetailClub === 'Driver'
+      const status =
+        attackAngleCurrent >= 1 ? 'Hitting Up' : attackAngleCurrent <= -1 ? 'Hitting Down' : 'Level'
+      const read = isDriver
+        ? attackAngleCurrent >= 1
+          ? 'Hitting up on the driver: more carry with less spin.'
+          : 'Level or down on the driver costs carry and adds spin; tee it higher and move the ball forward.'
+        : attackAngleCurrent <= -1
+          ? 'Hitting down, ball first: the strike irons and wedges want.'
+          : 'Level or up on this club brings in thin and heavy contact.'
+      return {
+        status,
+        read,
+        trendRead:
+          attackAngleSeries.length > 2
+            ? 'Attack angle moves with ball position and setup.'
+            : 'Trend is still forming.',
+      }
+    })()
     const facePathCurrent = sessionWeightedMetric(faceToPathValue)
     const facePathRead = directionRead('Face to path', facePathCurrent, 1.5, {
       positive: 'Open Face',
@@ -3798,6 +3794,7 @@ function App({
     const hlaDelta = sessionDeltaForMetric(hlaValue)
     const spinAxisDelta = sessionDeltaForMetric(spinAxisValue)
     const clubPathDelta = sessionDeltaForMetric(clubPathValue)
+    const attackAngleDelta = sessionDeltaForMetric(attackAngleValue)
     const faceToPathDelta = sessionDeltaForMetric(faceToPathValue)
     const faceToTargetDelta = sessionDeltaForMetric(faceToTargetValue)
     const carryDelta = sessionDeltaForMetric(carryValue, sessionWeightedCarryForMetric)
@@ -4043,6 +4040,19 @@ function App({
             : 'Trend is still forming.',
         chartType: 'trend',
         series: descentSeries,
+      },
+      {
+        key: 'attackAngle',
+        group: 'path',
+        label: 'Attack Angle',
+        valueText: valueText(attackAngleCurrent, '°', 1, true),
+        deltaText: deltaText(attackAngleDelta, '°', 1),
+        trendTone: trendToneForDelta(attackAngleDelta, 0.8),
+        status: attackAngleRead.status,
+        read: attackAngleRead.read,
+        trendRead: attackAngleRead.trendRead,
+        chartType: 'trend',
+        series: attackAngleSeries,
       },
       {
         key: 'clubPath',
@@ -4296,6 +4306,7 @@ function App({
       pushPoint('hla', label, averageFor(hlaValue))
       pushPoint('spinAxis', label, averageFor(spinAxisValue))
       pushPoint('clubPath', label, averageFor(clubPathValue))
+      pushPoint('attackAngle', label, averageFor(attackAngleValue))
       pushPoint('faceToPath', label, averageFor(faceToPathValue))
       pushPoint('faceToTarget', label, averageFor(faceToTargetValue))
       pushPoint('carry', label, averageFor(carryValue))
@@ -5571,13 +5582,7 @@ function App({
         <section className={useBagYardageBook ? 'bagbook-layout' : 'dashboard-layout'}>
           {useBagYardageBook ? (
             <BagTopBar
-              active={
-                reviewView === 'clubDetail'
-                  ? 'club'
-                  : dashboardNavTarget === 'lastSession'
-                    ? 'lastSession'
-                    : 'bag'
-              }
+              active={reviewView === 'clubDetail' ? 'club' : 'bag'}
               clubSwitcher={
                 reviewView === 'clubDetail' && yardageBook ? (
                   <ClubSwitcher
@@ -5599,9 +5604,6 @@ function App({
                 setReviewView('dashboard')
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
-              onLastSession={() =>
-                navigateDashboardSection('dashboard-review', 'lastSession', true)
-              }
             />
           ) : (
           <aside className="dashboard-rail">
@@ -5919,6 +5921,7 @@ function App({
                     )}
                     variants={selectedDetailShotVariants}
                     onVariantChange={setSelectedDetailShotVariantId}
+                    landingPoints={clubDetailLandingPoints}
                     dispersionChart={
                       selectedClubDispersionPoints.length === 0 ? (
                         <p className="support-card-copy">No shot data available for this club yet</p>
@@ -6190,24 +6193,15 @@ function App({
                 )}
 
                 {reviewView === 'dashboard' && (
-                  <section className="review-details-card" id="dashboard-review">
-                    <div className="section-kicker">Last Session Review</div>
-                    <details
-                      className="supporting-details last-session-review"
-                      onToggle={(event) =>
-                        setIsLastSessionOpen((event.currentTarget as HTMLDetailsElement).open)
-                      }
-                      open={isLastSessionOpen}
-                    >
-                      <summary>Click to Open Detailed Comparison</summary>
+                  <section className="review-details-card last-session-open" id="dashboard-review">
+                    <div className="last-session-head">
+                      <h2>Last session</h2>
+                      {lastSessionMeta ? <span>{lastSessionMeta}</span> : null}
+                    </div>
+                    <p className="last-session-note">{lastSessionInsights}</p>
 
-                      <section className="review-card last-session-insights">
-                        <div className="section-kicker">Looper's Insights</div>
-                        <p>{lastSessionInsights}</p>
-                      </section>
-
-                      <section className="review-card last-session-table-block">
-                        <div className="section-kicker">Session vs History by Club</div>
+                    {lastSessionComparisonRows.length > 0 ? (
+                      <>
                         <div className="review-table-wrap">
                           <table className="review-table last-session-table">
                             <thead>
@@ -6269,9 +6263,16 @@ function App({
                             </tbody>
                           </table>
                         </div>
-                      </section>
-                    </details>
+                        <p className="last-session-foot">
+                          The clubs you hit, scored on that session; arrows are the change from each club&apos;s usual.
+                        </p>
+                      </>
+                    ) : null}
                   </section>
+                )}
+
+                {reviewView === 'dashboard' && yardageBook && (
+                  <p className="bagbook-tagline">Every club holds a truth.</p>
                 )}
               </>
             ) : (

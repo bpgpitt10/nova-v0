@@ -338,50 +338,80 @@ const syncRoundToCloud = async (
   if (roundResult.error) throw new Error(roundResult.error.message)
 
   if (round.shots.length === 0) return
-  const shotResult = await client.from<unknown>('live_course_shots').upsert(
-    round.shots.map((shot) => ({
-      user_id: user.id,
-      gspro_round_id: round.roundId,
-      shot_id: shot.shotId,
-      course_key: shot.courseKey ?? round.courseKey,
-      hole_number: shot.holeNumber,
-      hole_shot: shot.holeShot,
-      global_shot_number: shot.globalShotNumber,
-      observed_at: shot.observedAt,
-      starting_surface_raw: shot.startingSurfaceRaw,
-      ending_surface_raw: shot.endingSurfaceRaw,
-      distance_to_pin_yards: shot.distanceToPinYds,
-      ball_speed_mph: shot.ballSpeedMph,
-      carry_yards: shot.carryYards,
-      total_yards: shot.totalYards,
-      vertical_launch_angle_degrees: shot.verticalLaunchAngleDegrees,
-      horizontal_launch_angle_degrees: shot.horizontalLaunchAngleDegrees,
-      total_spin_rpm: shot.totalSpinRpm,
-      spin_axis_degrees: shot.spinAxisDegrees,
-      back_spin_rpm: shot.backSpinRpm,
-      side_spin_rpm: shot.sideSpinRpm,
-      gspro_club_index: shot.gsproClubIndex,
-      raw_metrics: shot.rawMetrics,
-      // Columns left out of an upsert keep their stored values, so a backlog
-      // sync can never erase a club the player attributed by arming.
-      ...(preserveAttribution ? {} : {
-        actual_club: shot.actualClub,
-        recommended_club: shot.recommendedClub,
-        club_source: shot.clubSource,
-        include_in_analysis: shot.includeInAnalysis,
-        attributed_at: shot.attributedAt,
-      }),
-      inferred_club: shot.clubInference?.predictedClub ?? null,
-      inference_confidence: shot.clubInference?.confidence ?? null,
-      inference_alternatives: shot.clubInference?.alternatives ?? [],
-      inference_model_version: shot.clubInference?.modelVersion ?? null,
-      inference_evaluated_at: shot.clubInference?.evaluatedAt ?? null,
-      updated_at: new Date().toISOString(),
-    })),
-    { onConflict: 'user_id,gspro_round_id,shot_id' },
-  )
-  if (shotResult.error) throw new Error(shotResult.error.message)
+  for (const rows of shotUploadBatches(round, user.id, preserveAttribution)) {
+    const shotResult = await client.from<unknown>('live_course_shots').upsert(
+      rows,
+      { onConflict: 'user_id,gspro_round_id,shot_id' },
+    )
+    if (shotResult.error) throw new Error(shotResult.error.message)
+  }
 }
+
+/**
+ * live_course_shots rows for one round, in upload batches.
+ *
+ * Only a browser that saw the arm may write the attribution columns. Every
+ * Looper page runs the archiver, and each site (thelooper.golf, a preview) has
+ * its own storage, so a tab that never saw the arm must not overwrite the club
+ * another tab recorded (2 Nov: a preview tab erased 23 armed clubs). Columns
+ * left out of an upsert keep their stored values, and supabase-js turns a key
+ * missing from one row of a batch into NULL, so attributed and unattributed
+ * rows go in separate requests.
+ */
+export const shotUploadBatches = (
+  round: ArchivedGsproRound,
+  userId: string,
+  preserveAttribution = false,
+): Array<Array<Record<string, unknown>>> => {
+  const now = new Date().toISOString()
+  const baseRow = (shot: ArchivedGsproCourseShot): Record<string, unknown> => ({
+    user_id: userId,
+    gspro_round_id: round.roundId,
+    shot_id: shot.shotId,
+    course_key: shot.courseKey ?? round.courseKey,
+    hole_number: shot.holeNumber,
+    hole_shot: shot.holeShot,
+    global_shot_number: shot.globalShotNumber,
+    observed_at: shot.observedAt,
+    starting_surface_raw: shot.startingSurfaceRaw,
+    ending_surface_raw: shot.endingSurfaceRaw,
+    distance_to_pin_yards: shot.distanceToPinYds,
+    ball_speed_mph: shot.ballSpeedMph,
+    carry_yards: shot.carryYards,
+    total_yards: shot.totalYards,
+    vertical_launch_angle_degrees: shot.verticalLaunchAngleDegrees,
+    horizontal_launch_angle_degrees: shot.horizontalLaunchAngleDegrees,
+    total_spin_rpm: shot.totalSpinRpm,
+    spin_axis_degrees: shot.spinAxisDegrees,
+    back_spin_rpm: shot.backSpinRpm,
+    side_spin_rpm: shot.sideSpinRpm,
+    gspro_club_index: shot.gsproClubIndex,
+    raw_metrics: shot.rawMetrics,
+    inferred_club: shot.clubInference?.predictedClub ?? null,
+    inference_confidence: shot.clubInference?.confidence ?? null,
+    inference_alternatives: shot.clubInference?.alternatives ?? [],
+    inference_model_version: shot.clubInference?.modelVersion ?? null,
+    inference_evaluated_at: shot.clubInference?.evaluatedAt ?? null,
+    updated_at: now,
+  })
+  const attributed = preserveAttribution ? [] : round.shots.filter(isArmedAttribution)
+  const unattributed = round.shots.filter((shot) => !attributed.includes(shot))
+  return [
+    attributed.map((shot) => ({
+      ...baseRow(shot),
+      actual_club: shot.actualClub,
+      recommended_club: shot.recommendedClub,
+      club_source: shot.clubSource,
+      include_in_analysis: shot.includeInAnalysis,
+      attributed_at: shot.attributedAt,
+    })),
+    unattributed.map(baseRow),
+  ].filter((rows) => rows.length > 0)
+}
+
+/** The player armed this club in Live Caddie on this browser. */
+export const isArmedAttribution = (shot: Pick<ArchivedGsproCourseShot, 'actualClub' | 'clubSource'>) =>
+  shot.clubSource === 'user' && shot.actualClub != null
 
 export const captureAndPersistLiveGsproCourseRound = async (
   observedAt = new Date().toISOString(),

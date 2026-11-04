@@ -3,12 +3,13 @@ import type { Club } from '../lib/bagConfig'
 import looperLogoWhite from '../assets/LooperLogoWhite.png'
 import '../pages/BagYardageBook.css'
 
-export type BagNavTarget = 'bag' | 'lastSession' | 'club'
+export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds'
 
 type BagTopBarProps = {
   active: BagNavTarget
   onBag: () => void
-  onLastSession: () => void
+  /** Omitted outside the dashboard (Last Session is dashboard state). */
+  onLastSession?: () => void
   editBagHref: string
   /** Shown inside the bar on Club Detail, so the page itself starts with the club. */
   clubSwitcher?: ReactNode
@@ -36,14 +37,23 @@ export function BagTopBar({
         >
           Bag
         </button>
-        <button
-          aria-current={active === 'lastSession' ? 'page' : undefined}
-          className={active === 'lastSession' ? 'is-active' : undefined}
-          onClick={onLastSession}
-          type="button"
+        {onLastSession ? (
+          <button
+            aria-current={active === 'lastSession' ? 'page' : undefined}
+            className={active === 'lastSession' ? 'is-active' : undefined}
+            onClick={onLastSession}
+            type="button"
+          >
+            Last Session
+          </button>
+        ) : null}
+        <a
+          aria-current={active === 'rounds' ? 'page' : undefined}
+          className={active === 'rounds' ? 'is-active' : undefined}
+          href="/rounds"
         >
-          Last Session
-        </button>
+          Rounds
+        </a>
       </nav>
       {clubSwitcher}
       <div className="bagbook-topbar-actions">

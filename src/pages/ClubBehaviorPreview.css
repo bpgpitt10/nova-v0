@@ -264,3 +264,35 @@
     padding-top: 0.72rem;
   }
 }
+
+/* Shape mix and strike legends: a touch bigger, spread across the bar
+   (first left, middle centred, last right). */
+.club-v2-behavior-shape-legend,
+.club-v2-behavior-strike-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.club-v2-behavior-shape-legend > span:nth-child(2),
+.club-v2-behavior-strike-legend > span:nth-child(2) {
+  text-align: center;
+}
+
+.club-v2-behavior-shape-legend > span:nth-child(3),
+.club-v2-behavior-strike-legend > span:nth-child(3) {
+  text-align: right;
+}
+
+.club-v2-behavior-shape-legend > span,
+.club-v2-behavior-strike-legend > span {
+  white-space: nowrap;
+}
+
+/* "Building" (no strike data yet) stays on the left. */
+.club-v2-behavior-strike-legend > span:only-child {
+  grid-column: 1 / -1;
+  text-align: left;
+}

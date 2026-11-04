@@ -38,6 +38,11 @@ export const GSProSurfaceCodeEvidenceLibrary: readonly GsproSurfaceCodeEvidence[
     notes: 'StartingSurface on every FarmLinks tee shot (R255, R269), StartingPOS on the GKD tee.' },
 ] as const
 
+// Not yet paired, so deliberately absent from the library above:
+// 12: Brian recalls GSPro showing "Fringe" (Royal New Kent R279 H2, shot 3 ended
+// 21 yd from the pin and he chipped next). Rounds labels it fringe; confirm with
+// a HUD screenshot before Live Caddie uses it.
+
 export const gsproSurfaceCodeEvidence = (rawCode: number | null): GsproSurfaceCodeEvidence | null =>
   rawCode == null ? null : GSProSurfaceCodeEvidenceLibrary.find(row => row.rawCode === rawCode) ?? null
 
