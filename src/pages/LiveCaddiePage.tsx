@@ -1847,6 +1847,21 @@ export default function LiveCaddiePage() {
               ? ` · Green: ${greenAnchorLine({ ...gkdOverlay.greenSummary, outsideDetail: anchoredGreenOutside })}` : ''}
           </div>
         ) : null}
+        {showDiagnostics && inspectedCandidate?.modeledSamples?.length ? (() => {
+          const samples = inspectedCandidate.modeledSamples
+          const early = samples.filter((q) => q.flightTag === 'trees-early').length / samples.length
+          const late = samples.filter((q) => q.flightTag === 'trees-late').length / samples.length
+          const roll = samples.reduce((a, q) => a + Math.hypot(q.landing[0] - q.carryLanding[0], q.landing[1] - q.carryLanding[1]), 0) / samples.length
+          const stock = samples.reduce((a, q) => a + (q.stockRollYds ?? 0), 0) / samples.length
+          return (
+            <div className="live-caddie-alert">
+              Flight: {early || late
+                ? `${Math.round((early + late) * 100)}% of outcomes hit trees (${Math.round(early * 100)}% after launch, ${Math.round(late * 100)}% coming down)`
+                : 'clear of trees'}
+              {` · roll ${roll.toFixed(1)} yd of ${stock.toFixed(1)} stock (surface and slope)`}
+            </div>
+          )
+        })() : null}
         {showDiagnostics && aimResult ? (
           <div className="live-caddie-alert">Last Arm: {aimResult.message}</div>
         ) : null}

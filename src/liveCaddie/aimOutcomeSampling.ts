@@ -1,4 +1,4 @@
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { classifyTacticalLandingPoint, tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
@@ -28,6 +28,8 @@ export type ModeledAimSample = {
   landing: CoursePointYds
   /** The player's stock rollout for this sample, before any surface/slope scaling. */
   stockRollYds?: number
+  /** The flight ran into trees: right after launch, or on the way down. The landing is where it hit. */
+  flightTag?: 'trees-early' | 'trees-late'
   kind: CourseSurfaceClassification
   /** Exact geometric state retained for later SG/value evaluation. */
   state: DecisionLandingState
@@ -156,6 +158,51 @@ const summarizeSurfaceKinds = (
   return { bySurface, preferred, rough, trouble, penalty, unknown }
 }
 
+/**
+ * Trees in the flight path (spec: claude/spec-long-shot-engine.md, piece 3).
+ * Only the landing used to be classified, so a drive through the trees 25 yd
+ * ahead, or one coming down through a tree line short of the fairway, counted
+ * as landing clean.
+ * - Launch: points 12, 24 and 36 yd along the flight. The ball is below tree
+ *   height there for every club, so 2 of the 3 in woods = blocked (one woods
+ *   point alone is usually an outline brushing the line).
+ * - Descent: 8 and 16 yd before touchdown, where the ball is under 15 yd high
+ *   (d × tan(descent) < 15): woods there = it came down through the trees.
+ * Woods = what the tactical classifier calls deep rough (mapped woods/scrub);
+ * mapped surfaces (tee, fairway, rough) are never woods.
+ */
+const LAUNCH_CHECK_YDS = [12, 24, 36] as const
+const DESCENT_CHECK_YDS = [8, 16] as const
+const TREE_HEIGHT_YDS = 15
+
+export const flightBlockedAt = (
+  hole: CourseHoleGeometry,
+  ball: CoursePointYds,
+  carryLanding: CoursePointYds,
+  descentDeg: number | null,
+): { point: CoursePointYds; tag: 'trees-early' | 'trees-late' } | null => {
+  const dx = carryLanding[0] - ball[0]
+  const dy = carryLanding[1] - ball[1]
+  const carry = Math.hypot(dx, dy)
+  if (carry < 50) return null
+  const ux = dx / carry, uy = dy / carry
+  const at = (d: number): CoursePointYds => [ball[0] + ux * d, ball[1] + uy * d]
+  const woods = (p: CoursePointYds) => tacticalKindNear(hole, p) === 'deep-rough'
+  const early = LAUNCH_CHECK_YDS.filter((d) => d < carry - 10).map((d) => ({ d, hit: woods(at(d)) }))
+  if (early.filter((e) => e.hit).length >= 2) {
+    return { point: at(early.find((e) => e.hit)!.d), tag: 'trees-early' }
+  }
+  if (typeof descentDeg === 'number' && descentDeg > 0) {
+    const tan = Math.tan((descentDeg * Math.PI) / 180)
+    for (const back of [...DESCENT_CHECK_YDS].reverse()) {
+      if (back * tan >= TREE_HEIGHT_YDS || back > carry - 40) continue
+      const p = at(carry - back)
+      if (woods(p)) return { point: p, tag: 'trees-late' }
+    }
+  }
+  return null
+}
+
 export const sampleModeledAimDistribution = ({
   hole,
   ball,
@@ -168,6 +215,7 @@ export const sampleModeledAimDistribution = ({
   lateralSigmaYds,
   pinLocalYds,
   landingTransform,
+  flightCheck,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -184,6 +232,8 @@ export const sampleModeledAimDistribution = ({
   pinLocalYds?: CoursePointYds | null
   /** Optional destination-terrain transform applied after baseline rollout. */
   landingTransform?: LandingTransform
+  /** Check the flight against woods right after launch and on the way down (spec piece 3). */
+  flightCheck?: Readonly<{ descentDeg: number | null }> | null
 }): {
   distribution: AimSurfaceDistribution
   meanCarryLanding: CoursePointYds
@@ -226,6 +276,18 @@ export const sampleModeledAimDistribution = ({
     const offline = lateralMeanYds + lateralZ * lateralSigmaYds
     const carryLanding = addScaled(ball, forward, carry, right, offline)
     const baselineLanding = addScaled(ball, forward, total, right, offline)
+    const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
+    if (blocked) {
+      const classification = { kind: 'deep-rough' as const, surfaceId: null, confidence: 'medium' as const }
+      return {
+        carryLanding,
+        landing: blocked.point,
+        stockRollYds: total - carry,
+        flightTag: blocked.tag,
+        kind: classification.kind,
+        state: buildDecisionLandingState(hole, blocked.point, classification, pinLocalYds),
+      }
+    }
     const landing = landingTransform
       ? landingTransform(carryLanding, baselineLanding)
       : baselineLanding

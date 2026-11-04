@@ -562,6 +562,7 @@ export const evaluateAimLab = (
         lateralSigmaYds: profile.lateral_sigma_yds,
         pinLocalYds: exactPinLocalYds,
         landingTransform: greenLandingTransform,
+        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null },
       })
       if (!sampled) {
         return {
