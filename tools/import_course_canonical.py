@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -41,6 +42,22 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+_REASON_LINE = re.compile(r"(\b\w*(Error|Exception)\b: |\bfailed\b)")
+
+
+def readable_reason(lines: list[str], limit: int = 400) -> str:
+    """The line that says what went wrong (an exception message or a "...
+    failed: ..." line), from its start, not the tail end of a long log."""
+    clean = [line.strip() for line in lines if line and line.strip()]
+    for line in reversed(clean):
+        if _REASON_LINE.search(line) and "Traceback" not in line:
+            match = re.search(r"\b\w*(Error|Exception): (.*)", line)
+            text = match.group(2) if match else line
+            return text if len(text) <= limit else text[: limit - 1] + "…"
+    tail = " | ".join(clean[-2:])
+    return tail if len(tail) <= limit else "…" + tail[-(limit - 1):]
+
+
 def _run_reporting(command: list[str]) -> None:
     """Run a step and, if it fails, end with the step's own last lines (not a
     CalledProcessError traceback), so the course-load page shows the reason."""
@@ -50,8 +67,7 @@ def _run_reporting(command: list[str]) -> None:
     sys.stdout.flush()
     if proc.returncode != 0:
         step = Path(command[1]).name if len(command) > 1 else command[0]
-        lines = [line.strip() for line in proc.stdout.strip().splitlines() if line.strip()]
-        reason = " | ".join(lines[-3:])[-500:] or f"exit status {proc.returncode}"
+        reason = readable_reason(proc.stdout.splitlines()) or f"exit status {proc.returncode}"
         raise SystemExit(f"{step} failed: {reason}")
 
 

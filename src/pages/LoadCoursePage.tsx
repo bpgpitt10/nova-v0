@@ -35,6 +35,11 @@ const matchText = (status: NativeCourseStatus | null): { text: string; tone: 'ok
     case 'other-course':
       return status.grade ? { text: `Matches your GSPro course (grade ${status.grade})`, tone: 'ok' } : null
     case 'registration-failed':
+      // Greywolf (our first course) predates the package this check needs:
+      // not a mismatch, just not set up.
+      if (status.reason === 'no course package') {
+        return { text: "Plays in Looper; the GSPro position match isn't set up for this course yet.", tone: 'note' }
+      }
       return { text: `Loaded, but doesn't line up with your GSPro course: ${status.reason}`, tone: 'bad' }
     case 'layout-mismatch':
       return { text: 'Loaded, but your GSPro version has different greens or pins.', tone: 'bad' }
@@ -69,6 +74,15 @@ function GsproMatch({ courseId, courseKey }: Readonly<{ courseId: CourseId; cour
   const shown = matchText(status)
   if (!shown) return null
   return <span className={shown.tone === 'ok' ? 'load-course-ready' : shown.tone === 'bad' ? 'load-course-failed' : 'load-course-progress'}>{shown.text}</span>
+}
+
+/** A range, putting course or fictional course: nothing on OpenStreetMap to load. */
+const notARealCourse = (course: Readonly<{ courseName?: string | null; courseKey?: string | null; location?: string | null }>) => {
+  const name = `${course.courseName ?? ''} ${course.courseKey ?? ''}`
+  return /\bfictional\b/i.test(course.location ?? '')
+    || /\bputting (course|green)\b/i.test(name)
+    || /\b(driving|practice|multi) range\b/i.test(name)
+    || /^\s*gspro\b/i.test(course.courseName ?? '')
 }
 
 const loadedSlugs = () => new Set<string>(courseRegistry.map((entry) => entry.slug))
@@ -207,7 +221,10 @@ export default function LoadCoursePage() {
     )
   }
 
-  const installed = (library ?? []).map((course) => {
+  // Ranges, putting courses and fictional courses have no real-world map to load.
+  const loadable = (library ?? []).filter((course) => !notARealCourse(course))
+  const skipped = (library ?? []).length - loadable.length
+  const installed = loadable.map((course) => {
     const known = resolveCourseIdFromGsproName(course.courseKey) ?? resolveCourseIdFromGsproName(course.courseName)
     const slug = known ? courseRegistry.find((e) => e.id === known)?.slug ?? courseSlugFromName(course.courseName)
       : courseSlugFromName(course.courseName)
@@ -234,6 +251,11 @@ export default function LoadCoursePage() {
         <h2>Your GSPro courses</h2>
         {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
         {library === null && !libraryNote ? <p className="load-course-note">Looking for your GSPro courses…</p> : null}
+        {skipped > 0 ? (
+          <p className="load-course-note">
+            {skipped} range, putting or fictional course{skipped === 1 ? '' : 's'} hidden: there's no real-world map to load for {skipped === 1 ? 'it' : 'them'}.
+          </p>
+        ) : null}
         <ul className="load-course-list">
           {installed.map(({ course, slug }) => (
             <li key={course.courseKey}>

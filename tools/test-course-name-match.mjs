@@ -12,7 +12,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
   return server.ssrLoadModule(path)
 })
 
-const { courseNameMatchScore, findGolfCourseFor, CourseSearchBusyError } = await load('/src/courseLoading/courseLoads.ts')
+const { courseNameMatchScore, findGolfCourseFor, searchGolfCourses, CourseSearchBusyError } = await load('/src/courseLoading/courseLoads.ts')
 
 // 1. Scoring ignores punctuation and filler words.
 assert.equal(courseNameMatchScore("Payne's Valley", 'Paynes Valley'), 1)
@@ -63,6 +63,25 @@ queries.length = 0
 OSM.push(place('Pebble Beach Golf Links', 105, 'Pebble Beach'))
 match = await findGolfCourseFor('DPC Pebble', '')
 assert.equal(match?.osmId, 105, 'found without the designer tag')
+
+// 7. Search box: a course OpenStreetMap files under its resort (Mammoth Dunes
+// at Sand Valley) is found by looking for golf courses around the place.
+{
+  const sv = (name, id) => ({ ...place(name, id, 'Nekoosa'), lat: '44.17', lon: '-89.89' })
+  globalThis.fetch = async (url) => {
+    const params = new URL(url).searchParams
+    const q = params.get('q').toLowerCase()
+    let hits = []
+    if (q === 'mammoth dunes') hits = [{ name: 'Mammoth Dunes', category: 'natural', type: 'dune', lat: '44.17', lon: '-89.89', osm_type: 'node', osm_id: 7 }]
+    if (q === 'golf course' && params.get('bounded') === '1') hits = [sv('Sand Valley', 201), sv('Sand Valley Mammoth Dunes', 202), sv('The Sandbox', 203)]
+    return new Response(JSON.stringify(hits), { headers: { 'Content-Type': 'application/json' } })
+  }
+  const found = await searchGolfCourses('Mammoth Dunes')
+  assert.equal(found[0]?.osmId, 202, 'best name match first')
+  assert.equal(found.length, 3)
+  // The installed-course matcher never takes a nearby stand-in by itself.
+  assert.equal(await findGolfCourseFor('Mammoth Dunes', ''), null)
+}
 
 // 6. OpenStreetMap refusing (429) is reported as busy, not as "no match".
 globalThis.fetch = async () => new Response('Too Many Requests', { status: 429 })

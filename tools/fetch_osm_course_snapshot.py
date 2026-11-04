@@ -286,8 +286,12 @@ def _same_route(elements: list[dict[str, Any]]) -> bool:
     if any(end is None for end in ends):
         return False
     first = ends[0]
-    return all(_metres(first[0], e[0]) <= DUPLICATE_HOLE_MATCH_M and _metres(first[1], e[1]) <= DUPLICATE_HOLE_MATCH_M
-               for e in ends[1:])
+
+    def close(a, b) -> bool:
+        return _metres(a[0], b[0]) <= DUPLICATE_HOLE_MATCH_M and _metres(a[1], b[1]) <= DUPLICATE_HOLE_MATCH_M
+
+    # Either drawing direction: one mapper may have drawn green-to-tee.
+    return all(close(first, e) or close(first, (e[1], e[0])) for e in ends[1:])
 
 
 def validate_holes(payload: dict[str, Any]) -> dict[int, tuple[str, int]]:

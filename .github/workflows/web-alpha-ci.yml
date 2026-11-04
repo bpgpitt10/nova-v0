@@ -126,6 +126,14 @@ jobs:
       - name: Aim click point at expected carry
         run: node tools/test-aim-click-point.mjs
 
+      - name: GSPro distance beats a stale pin
+        run: node tools/test-pin-reconcile.mjs
+
+      - name: OSM holes mapped twice keep one copy
+        run: |
+          python3 -m pip install --quiet --break-system-packages shapely pytest || python3 -m pip install --quiet shapely pytest
+          python3 -m pytest -q tests/test_osm_duplicate_holes.py
+
       - name: Per-club lay-up targets
         run: node tools/test-club-layup-target.mjs
 
