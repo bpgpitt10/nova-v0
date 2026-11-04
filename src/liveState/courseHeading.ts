@@ -65,6 +65,14 @@ export const loadCourseHoleHeadingDegreesTrue = async (
   const packagedHeading = getRouteHoleHeadingDegreesTrue(courseId, holeNumber)
     ?? getRuntimeHoleHeadingDegreesTrue(courseId, holeNumber)
   if (packagedHeading != null) return packagedHeading
+  // GSPro-only course: the headings come from GSPro's course file, which may
+  // still be loading (hole 1 asked too early and got no wind, 11/4 Pinehurst 2).
+  if (courseId.startsWith('gspro:')) {
+    const { loadNativeCourseContext } = await import('../courseGeometry/nativeCourseRuntime')
+    const { context } = await loadNativeCourseContext(courseId, null).catch(() => ({ context: null }))
+    const heading = context?.registration.holes[String(Math.max(1, Math.min(18, Math.round(holeNumber))))]?.headingDegreesTrue
+    return typeof heading === 'number' && Number.isFinite(heading) ? heading : null
+  }
   if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfHeadingDegreesTrue(holeNumber)
   return null
 }

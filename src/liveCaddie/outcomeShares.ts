@@ -15,14 +15,26 @@ export type OutcomeRisk = Readonly<{
 
 export type OutcomeTile = Readonly<{ label: string; percent: number; text: string }>
 
-export const outcomeTiles = (risk: OutcomeRisk | null | undefined): OutcomeTile[] | null => {
+export const outcomeTiles = (
+  risk: OutcomeRisk | null | undefined,
+  /** 'in-play' on a GSPro-only course: ground off the green with no map is
+   * not trouble, it is just unmapped ("In play" = manageable + unmapped). */
+  unmapped: 'trouble' | 'in-play' = 'trouble',
+): OutcomeTile[] | null => {
   if (!risk) return null
-  const raw = [
-    ['Success', risk.success],
-    ['Manageable', risk.manageable],
-    ['Trouble', risk.seriousTrouble + risk.unknown],
-    ['Catastrophe', risk.catastrophe],
-  ] as const
+  const raw = unmapped === 'in-play'
+    ? [
+        ['Success', risk.success],
+        ['In play', risk.manageable + risk.unknown],
+        ['Trouble', risk.seriousTrouble],
+        ['Catastrophe', risk.catastrophe],
+      ] as const
+    : [
+        ['Success', risk.success],
+        ['Manageable', risk.manageable],
+        ['Trouble', risk.seriousTrouble + risk.unknown],
+        ['Catastrophe', risk.catastrophe],
+      ] as const
   const values = raw.map(([, value]) => (Number.isFinite(value) ? Math.max(0, value) : 0))
   const total = values.reduce((sum, value) => sum + value, 0)
   if (total <= 0) return null

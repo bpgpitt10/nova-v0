@@ -319,6 +319,7 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
+  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only'
 
   // The Live Caddie page stays mounted while navigating. Start Round emits
   // several bootstrap events for the same Looper round, so reset ONLY when
@@ -2036,6 +2037,7 @@ export default function LiveCaddiePage() {
                     strategyEffectiveDistanceYds={shotStrategy?.effectiveDistanceYds ?? null}
                     strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
                     strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
+                    unmappedInPlay={gsproOnlyCourse}
                   />
 
                   <button
@@ -2077,7 +2079,7 @@ export default function LiveCaddiePage() {
                     {risk ? <small>full-risk distribution</small> : null}
                   </div>
                   <div className="live-outcome-grid">
-                    {(outcomeTiles(risk) ?? OUTCOME_PLACEHOLDER).map((tile) => (
+                    {(outcomeTiles(risk, gsproOnlyCourse ? 'in-play' : 'trouble') ?? OUTCOME_PLACEHOLDER).map((tile) => (
                       <div key={tile.label} className={`outcome-${tile.label.toLowerCase()}`}><strong>{tile.text}</strong><span>{tile.label}</span></div>
                     ))}
                   </div>
