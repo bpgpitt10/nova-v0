@@ -95,20 +95,86 @@ export const rollFactorAt = (hole: CourseHoleGeometry, carryLanding: CoursePoint
 }
 
 /**
- * Wrap a landing transform (the green rollout) so the stock roll is first
- * scaled by surface and slope at the touchdown point.
+ * The club's descent, for finding where the ball really comes down (piece 4).
+ * `refElevationFt` is the ground elevation the carry model assumed at the
+ * landing (ball elevation + the modeled landing delta): the ball is at that
+ * height when it has flown its carry.
+ */
+export type DescentFlight = Readonly<{ ball: CoursePointYds; descentDeg: number; refElevationFt: number }>
+
+/** How far back from the carry point the descent is checked against the ground. */
+const DESCENT_WALK_YDS = 30
+const DESCENT_STEP_YDS = 2
+/** A touchdown on ground rising more steeply than this along the flight is "into the slope". */
+const INTO_SLOPE_GRADE = 0.15
+const INTO_SLOPE_ROLL = 0.1
+
+export type Touchdown = Readonly<{ point: CoursePointYds; shortenedYds: number; intoSlope: boolean }>
+
+/**
+ * Where the descending ball meets the terrain (spec piece 4). Walking back
+ * from the carry point toward the ball, the ball is at refElevation +
+ * d·tan(descent) feet above sea level d yards before carry; the earliest
+ * point in the flight (largest d, up to 30 yd) where the ground is at or
+ * above it is the touchdown. A ball flying into the face of a hill comes
+ * down short of its carry. Without terrain or a descent angle: the carry point.
+ */
+export const descentTouchdown = (
+  hole: CourseHoleGeometry,
+  carryLanding: CoursePointYds,
+  flight: DescentFlight | null | undefined,
+): Touchdown => {
+  const none = { point: carryLanding, shortenedYds: 0, intoSlope: false }
+  if (!flight || !(flight.descentDeg > 0) || !Number.isFinite(flight.refElevationFt)) return none
+  if (!hole.terrain && !hole.contours?.length) return none
+  const bx = flight.ball[0] - carryLanding[0]
+  const by = flight.ball[1] - carryLanding[1]
+  const length = Math.hypot(bx, by)
+  if (length < 1) return none
+  const back: CoursePointYds = [bx / length, by / length]
+  const rise = Math.tan((flight.descentDeg * Math.PI) / 180) * 3 // ft of height per yd back
+  let contact = -1
+  const maxBack = Math.min(DESCENT_WALK_YDS, length - 1)
+  for (let d = 0; d <= maxBack; d += DESCENT_STEP_YDS) {
+    const t = terrainFt(hole, carryLanding[0] + back[0] * d, carryLanding[1] + back[1] * d)
+    if (t == null) continue
+    if (t >= flight.refElevationFt + d * rise) contact = d
+  }
+  if (contact < 0) return none
+  // Refine within the last step: the ball crosses the ground between contact and contact + step.
+  let d = contact
+  for (let k = contact + 0.5; k < contact + DESCENT_STEP_YDS && k <= maxBack; k += 0.5) {
+    const t = terrainFt(hole, carryLanding[0] + back[0] * k, carryLanding[1] + back[1] * k)
+    if (t != null && t >= flight.refElevationFt + k * rise) d = k
+  }
+  const point: CoursePointYds = [carryLanding[0] + back[0] * d, carryLanding[1] + back[1] * d]
+  const forward: CoursePointYds = [-back[0], -back[1]]
+  const grade = gradeAlong(hole, point, forward)
+  return { point, shortenedYds: d, intoSlope: grade != null && grade > INTO_SLOPE_GRADE }
+}
+
+/**
+ * Wrap a landing transform (the green rollout): the ball first comes down
+ * where its descent meets the terrain (when a flight is given), then its stock
+ * roll is scaled by the surface and slope there.
  */
 export const makeRollLandingTransform = (
   hole: CourseHoleGeometry,
   inner?: LandingTransform,
+  flight?: DescentFlight | null,
 ): LandingTransform => (carryLanding, baselineLanding) => {
   const rx = baselineLanding[0] - carryLanding[0]
   const ry = baselineLanding[1] - carryLanding[1]
   const stockRoll = Math.hypot(rx, ry)
-  if (stockRoll < 1e-6) return inner ? inner(carryLanding, baselineLanding) : baselineLanding
+  const touchdown = descentTouchdown(hole, carryLanding, flight)
+  const start = touchdown.point
+  if (stockRoll < 1e-6) {
+    const rest: CoursePointYds = [start[0], start[1]]
+    return inner ? inner(start, rest) : rest
+  }
   const dir: CoursePointYds = [rx / stockRoll, ry / stockRoll]
-  const { surfaceFactor, slopeFactor } = rollFactorAt(hole, carryLanding, dir)
-  const roll = stockRoll * surfaceFactor * slopeFactor
-  const scaled: CoursePointYds = [carryLanding[0] + dir[0] * roll, carryLanding[1] + dir[1] * roll]
-  return inner ? inner(carryLanding, scaled) : scaled
+  const { surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
+  const roll = stockRoll * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
+  const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
+  return inner ? inner(start, scaled) : scaled
 }

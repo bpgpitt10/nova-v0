@@ -1,6 +1,7 @@
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import { makeRollLandingTransform } from './rollModel'
+import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
@@ -467,8 +468,9 @@ export const evaluateAimLab = (
           baselineLanding,
         }).landing
     : undefined
-  // Roll scaled by surface and slope at touchdown, then the green rollout.
-  const greenLandingTransform = makeRollLandingTransform(hole, greenRollout)
+  // Where each ball comes down (descent vs LiDAR terrain, per club), roll
+  // scaled by surface and slope there, then the green rollout.
+  const ballElevationFt = estimateCourseTerrain(hole, ball)?.elevationFt ?? null
 
   // Hard exclusion BEFORE club physics, aim exploration, cache and ranking.
   // Never let the expected-value ranker select a non-tee Driver or Mini Driver.
@@ -488,6 +490,11 @@ export const evaluateAimLab = (
         ? Math.max(profile.stock_carry_yds, profile.stock_total_yds)
         : profile.stock_carry_yds
     const rolloutYds = Math.max(0, stockTotalYds - profile.stock_carry_yds)
+    const descentDeg = profile.launch_profile?.descent_angle_deg
+    const greenLandingTransform = makeRollLandingTransform(hole, greenRollout,
+      ballElevationFt != null && typeof descentDeg === 'number' && Number.isFinite(descentDeg)
+        ? { ball, descentDeg, refElevationFt: ballElevationFt + (environment.elevationDeltaFt ?? 0) }
+        : null)
     // Until destination-surface rollout physics are validated, preserve the player's
     // observed Stock rollout and translate both carry and total by the same live carry delta.
     const modeledTotalYds = modeledCarryYds + rolloutYds
@@ -614,9 +621,15 @@ export const evaluateAimLab = (
     })
     const bestCandidate = rankedCandidates[0]?.candidate ?? null
     const bestSamples = bestCandidate?.modeledSamples ?? []
-    const expectedTotalYds = bestSamples.length
-      ? modeledCarryYds + bestSamples.reduce((sum, sample) =>
-        sum + Math.hypot(sample.landing[0] - sample.carryLanding[0], sample.landing[1] - sample.carryLanding[1]), 0) / bestSamples.length
+    // Where the ball comes to rest, measured from the ball (a ball that comes
+    // down short into a hill rolls less AND carries less).
+    const expectedTotalYds = bestSamples.length && bestCandidate
+      ? (() => {
+          const fx = bestCandidate.aimPoint[0] - ball[0], fy = bestCandidate.aimPoint[1] - ball[1]
+          const fl = Math.hypot(fx, fy) || 1
+          return bestSamples.reduce((sum, sample) =>
+            sum + ((sample.landing[0] - ball[0]) * fx + (sample.landing[1] - ball[1]) * fy) / fl, 0) / bestSamples.length
+        })()
       : null
 
     if (!bestCandidate) notes.push('No usable carry/lateral dispersion model for this club.')
