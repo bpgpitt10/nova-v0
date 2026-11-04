@@ -25,7 +25,7 @@ import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,

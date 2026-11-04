@@ -31,7 +31,7 @@ import {
   type ActiveLiveCaddieRound,
 } from '../liveCaddie/roundRuntime'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 import './RoundSetupPage.css'
 
 const candidateTeeValues = (candidate: CourseTeeCandidate) => [

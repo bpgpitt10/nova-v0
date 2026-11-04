@@ -11,7 +11,7 @@ import type { ReviewClubSummary, SavedSession, Shot } from '../types'
 import './SessionSummaryPage.css'
 import golfScene from '../assets/Backgrounds/golfscene2.png'
 import looperMan from '../assets/looperman.png'
-import looperLogoWhite from '../assets/LooperLogoWhite.png'
+import looperLogoWhite from '../assets/LooperLogo.webp'
 
 type FindingConfidence = 'high' | 'medium' | 'low'
 type FindingScope = 'session' | 'club'
