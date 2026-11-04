@@ -195,6 +195,33 @@ export const parseGkdLayout = (text: string): NativeCourseLayout => {
   }
 }
 
+/** A green centre this far from the centroid of the hole's pins is not trusted. */
+export const GREEN_CENTER_MAX_FROM_PINS_M = 40
+
+/**
+ * The hole's green centre for registration. Some designers leave
+ * GreenCenterPoint unset or at a placeholder; the pins always sit on the
+ * green, so their centroid stands in when the centre is missing or more than
+ * 40 m from them.
+ */
+export const effectiveGreenCenter = (
+  hole: NativeHole,
+): Readonly<{ point: NativeXYZ; replaced: boolean }> | null => {
+  const pins = hole.pins
+  const centroid = pins.length
+    ? {
+        x: pins.reduce((s, p) => s + p.x, 0) / pins.length,
+        y: pins.reduce((s, p) => s + p.y, 0) / pins.length,
+        z: pins.reduce((s, p) => s + p.z, 0) / pins.length,
+      }
+    : null
+  const gc = hole.greenCenter
+  if (gc && (!centroid || Math.hypot(gc.x - centroid.x, gc.z - centroid.z) <= GREEN_CENTER_MAX_FROM_PINS_M)) {
+    return { point: gc, replaced: false }
+  }
+  return centroid ? { point: centroid, replaced: true } : null
+}
+
 export const nativeHole = (layout: NativeCourseLayout, holeNumber: number): NativeHole | null =>
   layout.holes.find((h) => h.hole === holeNumber) ?? null
 

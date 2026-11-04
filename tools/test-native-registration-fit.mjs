@@ -166,6 +166,34 @@ try {
     assert.ok(worst < 0.15, `mirrored worst ${worst}`)
   }
 
+  // A designer left GreenCenterPoint unset / at a placeholder on some holes:
+  // the pins' centroid stands in, and the green similarity recovers.
+  {
+    const gkd = await load('/src/courseGeometry/nativeGkd.ts')
+    const auto = await load('/src/courseGeometry/nativeRegistrationAuto.ts')
+    const holes = []
+    const pairs = []
+    for (let i = 0; i < 18; i += 1) {
+      const cx = 900 + (i % 6) * 160, cz = 500 + Math.floor(i / 6) * 300
+      const pins = [[6, 3], [-5, 4], [3, -6], [-4, -5]].map(([dx, dz], k) => ({ x: cx + dx, y: 0, z: cz + dz, slot: k + 1, label: null }))
+      // Holes 3, 7, 11 carry a placeholder centre at the scene origin; hole 15 none at all.
+      const greenCenter = i === 14 ? null : [2, 6, 10].includes(i) ? { x: 0, y: 0, z: 0 } : { x: cx, y: 0, z: cz }
+      holes.push({ hole: i + 1, par: 4, tees: {}, aimPoints: [], greenCenter, pins })
+      const [glat, glon] = reg.nativeWorldToLatLon(truthReg, { x: cx, z: cz })
+      pairs.push({ hole: holes[i], latLon: [glat, glon] })
+    }
+    const replaced = holes.map((h) => gkd.effectiveGreenCenter(h)).filter((c) => c.replaced).length
+    assert.equal(replaced, 4, 'three placeholders and one missing centre replaced by the pins centroid')
+    const raw = pairs.filter((p) => p.hole.greenCenter).map((p) => ({ world: p.hole.greenCenter, latLon: p.latLon }))
+    const fixed = pairs.map((p) => ({ world: gkd.effectiveGreenCenter(p.hole).point, latLon: p.latLon }))
+    const before = auto.greenSimilarity(raw), after = auto.greenSimilarity(fixed)
+    assert.ok(before.rmsM > 100, `placeholders wreck the fit: ${before.rmsM}`)
+    assert.ok(after.rmsM < 1, `pins centroid restores it: ${after.rmsM}`)
+    // A real centre within 40 m of the pins is kept as is.
+    const kept = gkd.effectiveGreenCenter({ ...holes[0], greenCenter: { x: holes[0].pins[0].x + 20, y: 0, z: holes[0].pins[0].z } })
+    assert.equal(kept.replaced, false)
+  }
+
   // GSPro's wind compass is the scene's: on a 180° scene "from N" is from true south.
   const wind = await load('/src/liveState/windProjection.ts')
   const w = { status: 'READY', speedMph: 10, directionDegrees: 0, convention: 'from', referenceFrame: 'compass' }
@@ -176,7 +204,7 @@ try {
   assert.equal(wind.windInTrueCompass({ ...w, directionDegrees: 90 }, 0, true).directionDegrees, 270)
   assert.equal(wind.windInTrueCompass({ ...w, referenceFrame: 'shot-relative' }, 180).directionDegrees, 0)
 
-  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm.')
+  console.log('PASS: browser registration fit recovers a known GSPro placement within 10 cm (grade A), rejects flat terrain, grid sampling ok; turned scenes (180°, -12°, scaled) and mirror-image scenes register within 15 cm; placeholder green centres fall back to the pins.')
 } finally {
   await server?.close()
 }
