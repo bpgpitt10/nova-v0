@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "looper-course-build-config-v1",
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "courseName": "Arcadia Bluffs Golf Club",
+  "location": "Arcadia Township, Michigan",
+  "slug": "arcadia-bluffs",
+  "gsproAliases": [
+    "Arcadia Bluffs Golf Club",
+    "arcadiabluffs_v1_gsp"
+  ],
+  "osmCourseElement": {
+    "type": "way",
+    "id": 293247442
+  },
+  "osmCenter": [
+    44.45663,
+    -86.24196
+  ],
+  "landcoverContext": {
+    "enabled": true,
+    "provider": "ESA WorldCover 2021 v200"
+  },
+  "selection": {
+    "teeStartRadiusYards": 220,
+    "contextRouteDistanceYards": 110,
+    "behindTeeToleranceYards": 35,
+    "pastGreenToleranceYards": 50
+  }
+}

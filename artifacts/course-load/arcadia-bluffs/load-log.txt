@@ -1,0 +1,1099 @@
+=== [arcadia-bluffs:find] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Arcadia.*Bluffs --lat 44.4563654 --lon -86.243365 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model --osm-id 293247442
+[{"type": "way", "id": 289661527, "name": "Chestnut Hills", "areaHa": 69.0, "nameMatch": false}, {"type": "way", "id": 293247442, "name": "Arcadia Bluffs Golf Club", "areaHa": 106.1, "nameMatch": true}, {"type": "way", "id": 693998226, "name": "Arcadia Bluffs - South Course", "areaHa": 110.5, "nameMatch": true}]
+grew bbox with 10238 vertices from nearby golf features
+{"bboxLonLat": [-86.2532641880412, 44.45087792514927, -86.23065591195879, 44.46238997485073], "crs": "EPSG:26916", "osm": {"type": "way", "id": 293247442, "name": "Arcadia Bluffs Golf Club", "areaHa": 106.1}} {"name": "USGS_LPC_MI_ManisteeCo_2015_LAS_2017", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_MI_ManisteeCo_2015_LAS_2017/ept.json", "count": 11158643415, "year": 2017}
+=== [arcadia-bluffs:find] rc=0 seconds=73.9
+=== [arcadia-bluffs:import] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/arcadia-bluffs-v1.json --slug arcadia-bluffs --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 10 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/arcadia-bluffs-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json
+{
+  "course": "Arcadia Bluffs Golf Club",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 464,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 202,
+    "golf=cartpath": 35,
+    "golf=fairway": 21,
+    "golf=green": 24,
+    "golf=hole": 18,
+    "golf=rough": 92,
+    "golf=tee": 69,
+    "golf=water_hazard": 1,
+    "landuse=grass": 77,
+    "natural=sand": 168,
+    "natural=water": 1
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-86.25197640,44.45163490,-86.23194370,44.46163300",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 202,
+    "golf=cartpath": 35,
+    "golf=fairway": 21,
+    "golf=green": 24,
+    "golf=hole": 18,
+    "golf=rough": 92,
+    "golf=tee": 69,
+    "golf=water_hazard": 1,
+    "landuse=grass": 77,
+    "natural=sand": 168,
+    "natural=water": 2
+  },
+  "rawIncludedFeatures": 464,
+  "rawMapElements": 12343,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/293247442/full"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,0.0,80.4,69.3,15.4,forward,15.4,149.7
+2,0.0,60.5,106.0,0.7,forward,0.7,166.5
+3,0.0,85.6,83.3,2.8,forward,2.8,168.9
+4,0.0,57.8,158.2,2.2,forward,2.2,216.0
+5,0.0,85.6,63.1,1.5,forward,1.5,148.7
+6,0.0,65.9,98.2,3.2,forward,3.2,164.1
+7,0.0,125.9,139.6,3.1,forward,3.1,265.5
+8,0.0,133.8,56.7,1.3,forward,1.3,190.5
+9,0.0,56.5,172.9,3.0,forward,3.0,229.4
+10,0.0,84.6,63.2,2.1,forward,2.1,147.8
+11,0.0,118.2,191.6,2.8,forward,2.8,309.8
+12,0.0,50.1,127.5,3.1,forward,3.1,177.6
+13,0.0,87.3,135.7,0.4,forward,0.4,223.1
+14,0.0,73.1,93.8,3.7,forward,3.7,167.0
+15,0.0,51.5,78.1,3.1,forward,3.1,129.6
+16,0.0,81.9,63.5,0.8,forward,0.8,145.4
+17,0.0,48.5,87.3,1.0,forward,1.0,135.9
+18,0.0,92.4,57.6,5.6,forward,5.6,150.0
+
+TEE OWNERSHIP H1 targetGreenOsmId=769498530
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675049243,0.0,487.9,0.0,1,0.0
+675049244,13.8,467.3,0.1,1,0.1
+675049245,55.8,424.2,4.2,1,4.2
+769498528,126.8,391.3,54.6,1,54.6
+675075443,61.0,529.0,61.0,8,0.0
+675049246,189.3,343.3,72.7,1,72.7
+675061961,102.5,529.0,102.5,8,18.4
+675049261,397.7,243.5,131.9,3,40.6
+675061966,140.7,544.4,140.7,8,22.8
+675070739,140.8,627.5,140.8,16,0.0
+675075456,160.9,460.2,157.3,8,122.7
+675070740,161.1,651.3,161.1,16,0.6
+675070741,181.7,672.7,181.7,16,1.2
+675061967,205.3,570.0,205.3,8,32.7
+675070745,234.5,728.3,234.5,16,0.2
+675063321,244.9,684.7,244.9,10,0.0
+675063323,290.5,741.8,290.5,10,0.3
+675051302,299.4,605.7,298.6,4,19.2
+
+TEE OWNERSHIP H9 targetGreenOsmId=675062279
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675062273,0.0,199.6,0.0,9,0.0
+675062277,60.9,132.6,0.1,9,0.1
+675062274,19.3,165.0,0.9,9,0.9
+675064124,24.2,228.8,24.2,11,0.0
+675063326,103.7,114.7,46.0,10,34.7
+675063321,227.7,63.2,56.5,10,0.0
+675063324,161.7,78.8,61.0,10,5.1
+675064125,61.8,262.6,61.8,11,15.9
+675063323,180.9,77.1,68.0,10,0.3
+675064128,98.6,293.0,98.6,11,37.0
+675061967,334.2,142.1,132.4,8,32.7
+675061966,361.2,174.5,162.4,8,22.8
+675070739,334.2,190.6,183.8,16,0.0
+675070740,323.9,195.8,187.0,16,0.6
+675070741,312.2,196.9,188.0,16,1.2
+675064130,192.5,386.3,192.5,11,53.4
+675061961,386.0,203.5,192.6,8,18.4
+675070745,316.1,237.3,232.7,16,0.2
+
+TEE OWNERSHIP H11 targetGreenOsmId=675064132
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675064124,0.0,616.6,0.0,11,0.0
+675064125,37.7,584.2,15.9,11,15.9
+675062273,20.2,645.9,20.2,9,0.0
+675064128,75.2,558.8,37.0,11,37.0
+675062274,47.5,680.3,47.5,9,0.9
+675064130,167.0,476.1,53.4,11,53.4
+675062277,89.3,713.4,89.3,9,0.1
+675063326,128.1,741.3,128.1,10,34.7
+675073204,360.7,409.0,168.3,18,0.0
+675063324,187.0,799.4,187.0,10,5.1
+675063323,206.0,817.9,206.0,10,0.3
+675073205,340.3,477.7,212.9,18,18.6
+675073207,324.4,549.2,251.5,18,34.7
+675063321,254.4,873.4,254.4,10,0.0
+675071642,393.0,561.9,305.4,17,16.2
+675071643,440.4,542.0,320.3,17,25.1
+675071647,421.9,582.3,327.1,17,2.4
+675070745,333.8,888.1,333.8,16,0.2
+
+TEE OWNERSHIP H13 targetGreenOsmId=675066400
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675066397,0.0,237.2,0.0,13,0.0
+675066394,47.8,183.8,0.0,13,0.0
+675066396,18.2,214.2,0.8,13,0.8
+675066392,44.9,187.7,11.0,13,11.0
+675071643,37.2,273.4,37.2,17,25.1
+675066390,89.1,157.4,38.2,13,38.2
+675066402,159.9,95.0,46.0,14,42.8
+675066403,120.5,132.4,46.4,13,46.4
+675071647,67.1,283.5,67.1,17,2.4
+675068090,201.7,93.4,75.3,14,0.0
+675068091,177.7,124.5,87.4,14,6.4
+675071641,90.6,294.9,90.6,17,0.0
+675071642,94.3,318.7,94.3,17,16.2
+675057353,237.9,121.7,106.9,6,0.0
+675068092,155.2,187.3,119.5,14,24.4
+675073205,141.5,385.1,141.5,18,18.6
+675057354,240.9,164.7,142.1,6,0.1
+675073207,152.9,385.5,152.9,18,34.7
+
+TEE OWNERSHIP H15 targetGreenOsmId=675069206
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675069201,0.0,513.0,0.0,15,0.0
+675069203,57.2,454.0,24.0,15,24.0
+1571453345,93.1,420.2,32.1,15,32.1
+675069205,165.8,351.1,36.3,15,36.3
+675058834,68.4,470.1,54.8,7,13.2
+675058833,72.1,515.9,72.2,7,0.0
+675070741,444.0,123.5,84.2,16,1.2
+675070745,381.4,171.8,84.3,16,0.2
+675058835,144.2,400.0,86.0,7,1.7
+675056303,124.8,589.1,124.8,5,4.4
+675057355,145.9,660.5,145.9,6,40.7
+675056298,158.9,500.3,156.1,5,0.4
+675056297,179.9,484.5,172.5,5,0.0
+675057354,209.7,710.8,209.8,6,0.1
+675068092,225.3,661.3,225.3,14,24.4
+675057353,258.2,752.5,258.2,6,0.0
+675068091,260.8,724.9,260.8,14,6.4
+675068090,289.4,759.3,289.4,14,0.0
+
+TEE OWNERSHIP H16 targetGreenOsmId=675070747
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675070739,0.0,482.0,0.0,16,0.0
+675070745,107.4,371.2,0.2,16,0.2
+675070740,21.1,455.7,0.6,16,0.6
+675070741,42.2,434.3,1.2,16,1.2
+675069205,315.3,224.5,94.0,15,36.3
+675075443,95.2,575.3,95.2,8,0.0
+675061961,110.5,597.7,110.5,8,18.4
+675063321,121.6,494.9,121.6,10,0.0
+675061966,124.7,603.3,124.6,8,22.8
+675049243,143.6,606.3,143.6,1,0.0
+675063323,151.6,447.3,145.3,10,0.3
+675049244,163.2,626.4,163.2,1,0.1
+675063324,172.5,443.0,163.5,10,5.1
+675061967,168.1,620.9,168.1,8,32.7
+1571453345,401.6,264.1,195.5,15,32.1
+675049245,201.6,669.7,201.6,1,4.2
+675069203,430.7,254.1,202.5,15,24.0
+675063326,230.4,425.8,212.5,10,34.7
+
+TEE OWNERSHIP H17 targetGreenOsmId=675071649
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+675071641,0.0,176.6,0.0,17,0.0
+675071647,8.5,167.6,2.4,17,2.4
+675071642,29.2,150.5,16.2,17,16.2
+675071643,53.9,128.1,25.1,17,25.1
+675073204,182.1,55.8,48.5,18,0.0
+675073205,124.0,93.1,59.0,18,18.6
+675066397,88.4,135.2,63.9,13,0.0
+675073207,89.9,160.4,79.0,18,34.7
+675066396,94.6,159.6,84.3,13,0.8
+675066394,116.9,185.2,112.6,13,0.0
+675066392,132.0,170.6,117.7,13,11.0
+675064928,312.0,142.7,135.4,12,41.1
+675068092,144.4,293.1,144.4,14,24.4
+675066403,156.7,262.2,156.7,13,46.4
+675066390,178.4,199.0,160.3,13,38.2
+675068091,194.0,320.2,194.0,14,6.4
+675066402,200.0,296.0,200.0,14,42.8
+675068090,230.3,341.0,230.3,14,0.0
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/arcadia-bluffs-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Arcadia Bluffs Golf Club",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 14158650,
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "exportResolutionMeters": 1.0,
+  "height": 1534,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 2243
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9601514.377%2C5535678.284%2C-9599271.900%2C5537211.323&bboxSR=3857&imageSR=3857&size=2243%2C1534&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N42W087_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N42W087_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 213230.3,
+      "knownAreaSqYd": 42548.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 2507.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 206243.5
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 667.2
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 90509.1,
+      "knownAreaSqYd": 10050.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 4853.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 79637.7
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 178.2
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 166450.0,
+      "knownAreaSqYd": 35304.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 11319.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 152299.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 156247.5,
+      "knownAreaSqYd": 21820.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 24832.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 131000.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 220552.1,
+      "knownAreaSqYd": 39817.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 49299.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 152615.0
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 8405.9
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 92224.4,
+      "knownAreaSqYd": 10878.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 90785.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 160554.6,
+      "knownAreaSqYd": 27409.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 2444.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 156212.8
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 180028.8,
+      "knownAreaSqYd": 30473.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 3,
+          "areaSqYd": 27047.7
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 140597.1
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 146.7
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 93641.8,
+      "knownAreaSqYd": 4966.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 2,
+          "areaSqYd": 4952.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 85611.6
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 146.3
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 160557.1,
+      "knownAreaSqYd": 18702.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 369.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 150888.3
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 146.7
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 248037.9,
+      "knownAreaSqYd": 27779.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 49205.6
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 143057.8
+        },
+        "landcover-bare": {
+          "polygons": 3,
+          "areaSqYd": 14288.1
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 162138.8,
+      "knownAreaSqYd": 24941.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 72.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 82447.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 40151.5
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 101200.5,
+      "knownAreaSqYd": 6715.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 1049.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 93567.0
+        },
+        "landcover-bare": {
+          "polygons": 2,
+          "areaSqYd": 1362.3
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 144919.5,
+      "knownAreaSqYd": 16950.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 142983.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 170183.6,
+      "knownAreaSqYd": 29486.0,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 918.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 165960.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 173868.8,
+      "knownAreaSqYd": 31641.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 1,
+          "areaSqYd": 145.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 164805.8
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 145.0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 87980.1,
+      "knownAreaSqYd": 5599.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 86906.6
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 173220.1,
+      "knownAreaSqYd": 17210.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 168276.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/arcadia-bluffs/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/green-detail-v1.json (144,821 bytes)
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 957,
+      "validOnGreenNodes": 957,
+      "greenCoverage": 1.0,
+      "localFitCount": 957,
+      "trustedLocalFitCount": 957,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.044,
+      "localRmsP95Ft": 0.08,
+      "maxTrustedSlopePercent": 11.3
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 893,
+      "validOnGreenNodes": 893,
+      "greenCoverage": 1.0,
+      "localFitCount": 893,
+      "trustedLocalFitCount": 893,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.059,
+      "localRmsP95Ft": 0.11,
+      "maxTrustedSlopePercent": 19.2
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 927,
+      "validOnGreenNodes": 927,
+      "greenCoverage": 1.0,
+      "localFitCount": 927,
+      "trustedLocalFitCount": 927,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.111,
+      "maxTrustedSlopePercent": 13.5
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 844,
+      "validOnGreenNodes": 844,
+      "greenCoverage": 1.0,
+      "localFitCount": 844,
+      "trustedLocalFitCount": 844,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.059,
+      "localRmsP95Ft": 0.091,
+      "maxTrustedSlopePercent": 15.6
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 1031,
+      "validOnGreenNodes": 1031,
+      "greenCoverage": 1.0,
+      "localFitCount": 1031,
+      "trustedLocalFitCount": 1031,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.058,
+      "localRmsP95Ft": 0.112,
+      "maxTrustedSlopePercent": 20.7
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 1267,
+      "validOnGreenNodes": 1267,
+      "greenCoverage": 1.0,
+      "localFitCount": 1267,
+      "trustedLocalFitCount": 1267,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.06,
+      "localRmsP95Ft": 0.119,
+      "maxTrustedSlopePercent": 19.1
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 915,
+      "validOnGreenNodes": 915,
+      "greenCoverage": 1.0,
+      "localFitCount": 915,
+      "trustedLocalFitCount": 915,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.097,
+      "maxTrustedSlopePercent": 14.5
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 1028,
+      "validOnGreenNodes": 1028,
+      "greenCoverage": 1.0,
+      "localFitCount": 1028,
+      "trustedLocalFitCount": 1028,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.051,
+      "localRmsP95Ft": 0.089,
+      "maxTrustedSlopePercent": 12.4
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 940,
+      "validOnGreenNodes": 940,
+      "greenCoverage": 1.0,
+      "localFitCount": 940,
+      "trustedLocalFitCount": 940,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.067,
+      "localRmsP95Ft": 0.134,
+      "maxTrustedSlopePercent": 16.9
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 872,
+      "validOnGreenNodes": 872,
+      "greenCoverage": 1.0,
+      "localFitCount": 872,
+      "trustedLocalFitCount": 872,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.115,
+      "maxTrustedSlopePercent": 15.4
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 851,
+      "validOnGreenNodes": 851,
+      "greenCoverage": 1.0,
+      "localFitCount": 851,
+      "trustedLocalFitCount": 851,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.067,
+      "localRmsP95Ft": 0.123,
+      "maxTrustedSlopePercent": 15.6
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 865,
+      "validOnGreenNodes": 865,
+      "greenCoverage": 1.0,
+      "localFitCount": 865,
+      "trustedLocalFitCount": 865,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.044,
+      "localRmsP95Ft": 0.072,
+      "maxTrustedSlopePercent": 14.5
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 958,
+      "validOnGreenNodes": 958,
+      "greenCoverage": 1.0,
+      "localFitCount": 958,
+      "trustedLocalFitCount": 958,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.087,
+      "maxTrustedSlopePercent": 18.1
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 715,
+      "validOnGreenNodes": 715,
+      "greenCoverage": 1.0,
+      "localFitCount": 715,
+      "trustedLocalFitCount": 715,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.05,
+      "localRmsP95Ft": 0.105,
+      "maxTrustedSlopePercent": 23.3
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 834,
+      "validOnGreenNodes": 834,
+      "greenCoverage": 1.0,
+      "localFitCount": 834,
+      "trustedLocalFitCount": 834,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.057,
+      "localRmsP95Ft": 0.101,
+      "maxTrustedSlopePercent": 14.6
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 802,
+      "validOnGreenNodes": 802,
+      "greenCoverage": 1.0,
+      "localFitCount": 802,
+      "trustedLocalFitCount": 802,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.052,
+      "localRmsP95Ft": 0.094,
+      "maxTrustedSlopePercent": 12.7
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 657,
+      "validOnGreenNodes": 657,
+      "greenCoverage": 1.0,
+      "localFitCount": 657,
+      "trustedLocalFitCount": 657,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.048,
+      "localRmsP95Ft": 0.122,
+      "maxTrustedSlopePercent": 17.0
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 1120,
+      "validOnGreenNodes": 1120,
+      "greenCoverage": 1.0,
+      "localFitCount": 1120,
+      "trustedLocalFitCount": 1120,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.065,
+      "localRmsP95Ft": 0.122,
+      "maxTrustedSlopePercent": 21.3
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.15/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/arcadia-bluffs-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/arcadia-bluffs/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": true,
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "greenDetailSha256": "5c9e07cb6df1ee8067ab9c150bbd619e9aaaf807b253abde5707d59cef7ac9e7",
+  "packageSha256": "8c837c1d8f7f188c0953edcb8bf83f257efc5f921d041bf82c12cd0743179328",
+  "snapshotSha256": "97044f7ab5c23ea7e89c0ef775aefec211fb297262cc3ad02dea0b95f9af842b",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/arcadia-bluffs-v1.json
+[course-import-contract] arcadia-bluffs-golf-club-arcadia-township-michigan: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 3 canonical tee set(s): 1, Tee 2, Tee 3 (Front).
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 2 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 11 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course arcadia-bluffs-golf-club-arcadia-township-michigan
+[runtime-smoke] Arcadia Bluffs Golf Club: 3 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: Tee 3 (Front), Tee 2, 1.
+[runtime-smoke] Arcadia Bluffs Golf Club runtime terrain validation passed for 18 hole(s).
+┌─────────┬────────────────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course                     │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼────────────────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Arcadia Bluffs Golf Club' │ 1    │ 6        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 831.3          │ 849               │ 17.7             │
+│ 1       │ 'Arcadia Bluffs Golf Club' │ 2    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 873.2          │ 856.5             │ -16.7            │
+│ 2       │ 'Arcadia Bluffs Golf Club' │ 3    │ 5        │ 2             │ 3             │ 3               │ 1                      │ 10                │ 892.2          │ 839.7             │ -52.5            │
+│ 3       │ 'Arcadia Bluffs Golf Club' │ 4    │ 5        │ 2             │ 4             │ 3               │ 1                      │ 10                │ 842.7          │ 816.2             │ -26.5            │
+│ 4       │ 'Arcadia Bluffs Golf Club' │ 5    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 792.3          │ 711.4             │ -80.9            │
+│ 5       │ 'Arcadia Bluffs Golf Club' │ 6    │ 5        │ 1             │ 2             │ 3               │ 1                      │ 10                │ 730.7          │ 740.1             │ 9.4              │
+│ 6       │ 'Arcadia Bluffs Golf Club' │ 7    │ 5        │ 2             │ 3             │ 3               │ 1                      │ 10                │ 795.3          │ 796.3             │ 1                │
+│ 7       │ 'Arcadia Bluffs Golf Club' │ 8    │ 6        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 836.6          │ 832.3             │ -4.3             │
+│ 8       │ 'Arcadia Bluffs Golf Club' │ 9    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 826            │ 798.5             │ -27.5            │
+│ 9       │ 'Arcadia Bluffs Golf Club' │ 10   │ 5        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 836.5          │ 757.2             │ -79.3            │
+│ 10      │ 'Arcadia Bluffs Golf Club' │ 11   │ 5        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 810.5          │ 706.6             │ -103.9           │
+│ 11      │ 'Arcadia Bluffs Golf Club' │ 12   │ 5        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 750.9          │ 725.7             │ -25.2            │
+│ 12      │ 'Arcadia Bluffs Golf Club' │ 13   │ 4        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 752            │ 696.9             │ -55.1            │
+│ 13      │ 'Arcadia Bluffs Golf Club' │ 14   │ 5        │ 1             │ 3             │ 3               │ 1                      │ 10                │ 740.2          │ 763.4             │ 23.2             │
+│ 14      │ 'Arcadia Bluffs Golf Club' │ 15   │ 6        │ 2             │ 3             │ 3               │ 1                      │ 10                │ 789.5          │ 806.2             │ 16.7             │
+│ 15      │ 'Arcadia Bluffs Golf Club' │ 16   │ 5        │ 3             │ 4             │ 3               │ 1                      │ 10                │ 845            │ 775.8             │ -69.2            │
+│ 16      │ 'Arcadia Bluffs Golf Club' │ 17   │ 5        │ 1             │ 4             │ 3               │ 1                      │ 10                │ 757.1          │ 757.5             │ 0.4              │
+│ 17      │ 'Arcadia Bluffs Golf Club' │ 18   │ 5        │ 1             │ 3             │ 3               │ 1                      │ 10                │ 792.7          │ 793               │ 0.3              │
+└─────────┴────────────────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] arcadia-bluffs-golf-club-arcadia-township-michigan passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 11 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "courseSlug": "arcadia-bluffs",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/arcadia-bluffs/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/arcadia-bluffs/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json"
+}
+=== [arcadia-bluffs:import] rc=0 seconds=27.2
+=== [arcadia-bluffs:osm] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=11389912 seconds=27.1
+{"elementsByType": {"node": 11514, "way": 484, "relation": 21}, "taggedElements": 509, "compressedBytes": 1587106}
+=== [arcadia-bluffs:osm] rc=0 seconds=28.3
+=== [arcadia-bluffs:dem] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/course-bbox.json --crs EPSG:26916 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:163: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=2 seconds=16.0 size=1811x1297
+{"width": 1811, "height": 1297, "pixel": 1.0, "validCells": 2348867, "elevMin": 176.32069396972656, "elevMax": 276.4288635253906}
+=== [arcadia-bluffs:dem] rc=0 seconds=16.3
+=== [arcadia-bluffs:lidar] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_MI_ManisteeCo_2015_LAS_2017/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model
+nodes=399 pointsInIntersectingNodes=18143765 hierarchySeconds=2.1
+tiles 25/399 kept=281106 MB=13 seconds=3
+tiles 50/399 kept=919399 MB=24 seconds=4
+tiles 75/399 kept=1837381 MB=39 seconds=6
+tiles 100/399 kept=3124724 MB=51 seconds=7
+tiles 125/399 kept=3529385 MB=53 seconds=7
+tiles 150/399 kept=3898361 MB=56 seconds=8
+tiles 175/399 kept=5133323 MB=72 seconds=9
+tiles 200/399 kept=7358115 MB=90 seconds=11
+tiles 225/399 kept=9311138 MB=102 seconds=12
+tiles 250/399 kept=9690474 MB=105 seconds=12
+tiles 275/399 kept=10164346 MB=108 seconds=13
+tiles 300/399 kept=10756305 MB=112 seconds=14
+tiles 325/399 kept=11055090 MB=113 seconds=14
+tiles 350/399 kept=11478355 MB=116 seconds=15
+tiles 375/399 kept=11971508 MB=119 seconds=16
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/USGS_LPC_MI_ManisteeCo_2015_LAS_2017/ept.json", "eptSrs": "3857", "octreeNodesRead": 399, "downloadedMB": 122.9, "pointsKeptInBbox": 12481698, "pointsPerSquareMetre": 5.31, "firstReturnsPerSquareMetre": 4.52, "classificationHistogram": {"1": 2674823, "2": 7322255, "9": 355887, "10": 1830, "11": 2126915}, "chm": {"width": 1811, "height": 1297, "pixelMeters": 1.0, "cellsWithReturns": 2291241, "emptyCells": 57626, "cellsOver3m": 526428, "cellsOver10m": 377938, "p50": 0.06599999999997408, "p95": 20.61500000000001, "max": 32.47}, "seconds": 18.9}
+=== [arcadia-bluffs:lidar] rc=0 seconds=19.1
+=== [arcadia-bluffs:trees] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26916", "treeCount": 8443, "heightM": {"p10": 4.2, "p50": 16.2, "p90": 25.5, "max": 31.9}, "crownRadiusM": {"p10": 2.1, "p50": 3.9, "p90": 7.0}, "woodlandPolygons": 520, "woodlandAreaHa": 48.15, "maskedCellsBuildingsAndPower": 1953, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 1.2}
+=== [arcadia-bluffs:trees] rc=0 seconds=1.6
+=== [arcadia-bluffs:enrich] /opt/hostedtoolcache/Python/3.12.15/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/arcadia-bluffs/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/arcadia-bluffs/course-v1-lidar.json
+{
+ "bytes": 30213353,
+ "originalBytes": 435669,
+ "holes": {
+  "woodsPolygons": 20,
+  "bunker": "44->51",
+  "water": "1->2",
+  "mapFeatures": {
+   "road": 9,
+   "cartpath": 12,
+   "parking": 3
+  },
+  "terrainCells": 54209
+ },
+ "woodsTotal": 314
+}
+=== [arcadia-bluffs:enrich] rc=0 seconds=663.7

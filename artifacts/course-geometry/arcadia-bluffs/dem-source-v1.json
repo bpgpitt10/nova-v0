@@ -1,0 +1,23 @@
+{
+  "bbox3857": [
+    -9601514.377,
+    5535678.284,
+    -9599271.9,
+    5537211.323
+  ],
+  "courseId": "arcadia-bluffs-golf-club-arcadia-township-michigan",
+  "crs": "EPSG:3857",
+  "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+  "exportResolutionMeters": 1.0,
+  "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-9601514.377%2C5535678.284%2C-9599271.900%2C5537211.323&bboxSR=3857&imageSR=3857&size=2243%2C1534&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+  "fetchedAt": "2026-11-04T11:57:09.455023Z",
+  "height": 1534,
+  "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+  "provider": "USGS 3DEP",
+  "providerKey": "usgs-3dep",
+  "requestedResolutionMeters": 1.0,
+  "schemaVersion": "looper-course-dem-source-v1",
+  "serviceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
+  "sourceResolutionMeters": 1.0,
+  "width": 2243
+}

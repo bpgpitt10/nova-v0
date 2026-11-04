@@ -5,6 +5,20 @@
 
 export const generatedImportedCourseRegistry = [
   {
+    id: 'arcadia-bluffs-golf-club-arcadia-township-michigan',
+    name: 'Arcadia Bluffs Golf Club',
+    location: 'Arcadia Township, Michigan',
+    slug: 'arcadia-bluffs',
+    gsproAliases: ['Arcadia Bluffs Golf Club', 'arcadiabluffs_v1_gsp'],
+    staticPackageUrl: '/course-geometry/arcadia-bluffs/course-v1.json',
+    status: 'validated',
+    packageStatus: 'ready',
+    packageVersion: 'v1',
+    packageCacheStatus: 'cached',
+    osmCacheStatus: 'cached',
+    lidarCacheStatus: 'cached',
+  },
+  {
     id: 'cabot-cliffs-inverside-nova-scotia',
     name: 'Cabot Cliffs',
     location: 'Inverside, Nova Scotia',
