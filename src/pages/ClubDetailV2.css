@@ -1308,3 +1308,14 @@
   grid-area: pure;
   justify-self: end;
 }
+
+/* One continuous rule above the shot chart and the landing window panel (each card
+   drawing its own left a break at the grid gap). */
+.dashboard-page .club-detail-v2 .club-v2-heatmap-section {
+  border-top: 1px solid var(--club-v2-rule);
+}
+
+.dashboard-page .club-detail-v2 .club-v2-heatmap-card,
+.dashboard-page .club-detail-v2 .club-v2-heatmap-metrics {
+  border-top: 0;
+}
