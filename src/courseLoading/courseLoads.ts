@@ -139,13 +139,47 @@ const placeLocation = (address: Record<string, string> | undefined) => {
 }
 
 /** Golf courses by name from OpenStreetMap (Nominatim). */
+/** OpenStreetMap's search refused us (too many searches); not "no match". */
+export class CourseSearchBusyError extends Error {}
+
+// Nominatim allows about one request per second per site. Every search on this
+// page goes through one queue, spaced, and identical searches are remembered:
+// loading several courses in a row used to trip the limit, every search came
+// back empty, and real courses (Bethpage Black, Mammoth Dunes) "didn't match".
+let searchChain: Promise<unknown> = Promise.resolve()
+let lastSearchAt = 0
+const searchCache = new Map<string, NominatimPlace[]>()
+
+const nominatimSearch = (q: string): Promise<NominatimPlace[]> => {
+  const cached = searchCache.get(q)
+  if (cached) return Promise.resolve(cached)
+  const run = async () => {
+    const again = searchCache.get(q)
+    if (again) return again
+    const wait = lastSearchAt + NOMINATIM_SPACING_MS - Date.now()
+    if (wait > 0) await pause(wait)
+    lastSearchAt = Date.now()
+    const params = new URLSearchParams({ format: 'jsonv2', q, limit: '15', addressdetails: '1' })
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: 'application/json' } })
+      .catch(() => { throw new CourseSearchBusyError('OpenStreetMap search did not answer.') })
+    if (response.status === 429 || response.status === 403 || response.status === 503) {
+      lastSearchAt = Date.now() + 5000
+      throw new CourseSearchBusyError(`OpenStreetMap search is busy (${response.status}).`)
+    }
+    if (!response.ok) throw new Error(`Course search failed (${response.status}).`)
+    const places = (await response.json()) as NominatimPlace[]
+    searchCache.set(q, places)
+    return places
+  }
+  const next = searchChain.then(run, run)
+  searchChain = next.catch(() => undefined)
+  return next
+}
+
 export const searchGolfCourses = async (query: string): Promise<GolfCourseSearchResult[]> => {
   const q = query.trim()
   if (q.length < 3) return []
-  const params = new URLSearchParams({ format: 'jsonv2', q: /golf/i.test(q) ? q : `${q} golf`, limit: '15', addressdetails: '1' })
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: 'application/json' } })
-  if (!response.ok) throw new Error(`Course search failed (${response.status}).`)
-  const places = (await response.json()) as NominatimPlace[]
+  const places = await nominatimSearch(/golf/i.test(q) ? q : `${q} golf`)
   const seen = new Set<string>()
   const out: GolfCourseSearchResult[] = []
   for (const place of places) {
@@ -169,7 +203,9 @@ export const searchGolfCourses = async (query: string): Promise<GolfCourseSearch
 const nameVariants = (name: string) => {
   const plain = name.replace(/[^\p{L}\p{N}'\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
   const possessive = plain.replace(/\b([A-Za-z]{3,})s\b/g, "$1's")
-  return [...new Set([name.trim(), plain, possessive].filter(Boolean))]
+  // GSPro designers often prefix their tag ("DPC Pebble"); also try without it.
+  const untagged = plain.replace(/^[A-Z]{2,4}\s+(?=\S)/, '')
+  return [...new Set([name.trim(), plain, possessive, untagged].filter((v) => v.length >= 3))]
 }
 
 const NOMINATIM_SPACING_MS = 1100 // Nominatim usage policy: at most one request per second.
@@ -184,7 +220,6 @@ const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export const findGolfCourseFor = async (
   name: string,
   location: string,
-  { spacingMs = NOMINATIM_SPACING_MS }: { spacingMs?: number } = {},
 ) => {
   const queries: Array<{ query: string; byName: boolean }> = []
   for (const variant of nameVariants(name)) {
@@ -195,9 +230,12 @@ export const findGolfCourseFor = async (
 
   let best: { result: GolfCourseSearchResult; score: number } | null = null
   let fallback: GolfCourseSearchResult | null = null
-  for (const [index, { query, byName }] of queries.entries()) {
-    if (index > 0) await pause(spacingMs)
-    const results = await searchGolfCourses(query).catch(() => [])
+  for (const { query, byName } of queries) {
+    // A busy search is not "no match": let the page say so.
+    const results = await searchGolfCourses(query).catch((error: unknown) => {
+      if (error instanceof CourseSearchBusyError) throw error
+      return []
+    })
     for (const result of results) {
       const score = courseNameMatchScore(result.name, name)
       if (!best || score > best.score) best = { result, score }
