@@ -56,6 +56,12 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://kdjfdchzfemjpmaqpobn.supa
 USER_AGENT = 'TheLooperCourseCrosswalk/1.0 (+https://thelooper.golf)'
 NEAR_KM = 3.0
 FAR_KM = 8.0
+# SGT's coordinates are often the town's, not the course's (Valhalla: downtown
+# Louisville, 25 km away). Courses with no match nearby get a second look by
+# name out to this far: only a strong, unique name match counts there.
+NAME_SEARCH_KM = 45.0
+NAME_SEARCH_SCORE = 0.8
+NAME_BATCH = 20
 MATCH_SCORE = 0.6
 FAR_MATCH_SCORE = 0.8
 REVIEW_SCORE = 0.3
@@ -229,6 +235,59 @@ def fictional(c: dict) -> bool:
         or (abs(c['lat']) < 1e-6 and abs(c['lon']) < 1e-6)
 
 
+GENERIC_WORDS = {
+    'mountain', 'mountains', 'valley', 'creek', 'hills', 'hill', 'lake', 'lakes', 'pines', 'pine', 'national',
+    'river', 'park', 'ridge', 'springs', 'oaks', 'meadows', 'dunes', 'point', 'north', 'south', 'east', 'west',
+    'island', 'beach', 'harbor', 'harbour', 'canyon', 'ranch', 'woods', 'glen', 'stadium', 'championship',
+    'plantation', 'farms', 'farm', 'municipal', 'heights', 'estates', 'village', 'trails', 'trail', 'royal',
+}
+
+
+def name_regex(name: str) -> str | None:
+    """The course name's most telling word (not "Mountain" or "Creek"), as an Overpass regex."""
+    words_ = sorted((w for w in tokens(name) if len(w) >= 4 and not w.isdigit()), key=len, reverse=True)
+    word = next((w for w in words_ if w not in GENERIC_WORDS), words_[0] if words_ else None)
+    return re.escape(word) if word else None
+
+
+def osm_courses_by_name(batch: list[dict]) -> list[dict]:
+    """Golf courses within NAME_SEARCH_KM whose name contains each course's telling word."""
+    radius = int(NAME_SEARCH_KM * 1000)
+    parts = ''
+    for c in batch:
+        rx = name_regex(c['name'])
+        if not rx:
+            continue
+        for kind in ('way', 'relation'):
+            parts += f'{kind}["leisure"="golf_course"]["name"~"{rx}",i](around:{radius},{c["lat"]},{c["lon"]});'
+    if not parts:
+        return []
+    payload = overpass(f'[out:json][timeout:180];({parts});out tags center;')
+    return [{'type': el['type'], 'id': el['id'], 'name': (el.get('tags') or {}).get('name') or '',
+             'lat': el['center']['lat'], 'lon': el['center']['lon']}
+            for el in payload.get('elements', []) if 'lat' in (el.get('center') or {})]
+
+
+def match_by_name(c: dict, found: list[dict]) -> dict | None:
+    """A strong, unique name match within NAME_SEARCH_KM, else None."""
+    near = []
+    for el in found:
+        d = km(c['lat'], c['lon'], el['lat'], el['lon'])
+        s = name_score(c['name'], el['name'])
+        if d <= NAME_SEARCH_KM and s >= NAME_SEARCH_SCORE:
+            near.append({**el, 'km': d, 'score': s, 'tie': tie_score(c['name'], el['name'])})
+    if not near:
+        return None
+    near.sort(key=lambda x: (-x['score'], -x['tie'], x['km']))
+    best = near[0]
+    rivals = [x for x in near[1:] if x['score'] >= best['score'] - 0.05 and x['tie'] >= best['tie'] - 0.05]
+    cands = [{'type': x['type'], 'id': x['id'], 'name': x['name'], 'distanceM': round(x['km'] * 1000),
+              'score': round(x['score'], 2)} for x in near[:4]]
+    return {'status': 'review' if rivals else 'matched', 'osm_type': best['type'], 'osm_id': best['id'],
+            'osm_name': best['name'] or None, 'distance_m': round(best['km'] * 1000),
+            'name_score': round(best['score'], 2), 'candidates': cands}
+
+
 def match(c: dict, grid: dict) -> dict:
     """Status, OSM course and top candidates for one SGT course."""
     if fictional(c):
@@ -296,6 +355,38 @@ def rest(method: str, path: str, key: str, body=None, prefer: str | None = None)
     return json.loads(raw) if raw else None
 
 
+def name_search_pass(key: str | None, dry_run: bool) -> int:
+    """Second look for 'no-map' rows the builder matched automatically: by name out to 45 km."""
+    if not key:
+        raise SystemExit('the name search reads the table: SUPABASE_SECRET_KEY is needed')
+    rows = rest('GET', 'course_crosswalk?select=sgt_id,name,lat,lon&status=eq.no-map&method=eq.auto&verified=eq.false'
+                       '&lat=not.is.null&order=sgt_id', key) or []
+    print(f'name search: {len(rows)} courses with no map course near their coordinates', flush=True)
+    tally: dict[str, int] = defaultdict(int)
+    for i in range(0, len(rows), NAME_BATCH):
+        batch = rows[i:i + NAME_BATCH]
+        try:
+            found = osm_courses_by_name(batch)
+        except RuntimeError as exc:
+            print(f'batch {i // NAME_BATCH + 1}: Overpass failed, left for the next run ({exc})', flush=True)
+            continue
+        for c in batch:
+            m = match_by_name(c, found)
+            if not m:
+                tally['still no-map'] += 1
+                continue
+            tally[m['status']] += 1
+            print(f"  {c['name']}: {m['status']} {m['osm_name']!r} {m['distance_m']} m", flush=True)
+            if not dry_run:
+                rest('PATCH', f"course_crosswalk?sgt_id=eq.{c['sgt_id']}", key,
+                     {**m, 'notes': 'matched by name; SGT coordinates are the town, not the course',
+                      'updated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())},
+                     prefer='return=minimal')
+        print(f'name search batch {i // NAME_BATCH + 1}/{math.ceil(len(rows) / NAME_BATCH)}: {dict(tally)}', flush=True)
+    print(json.dumps({'nameSearch': dict(tally)}, indent=1), flush=True)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--dry-run', action='store_true')
@@ -303,10 +394,14 @@ def main() -> int:
     ap.add_argument('--page-data', type=Path, help='a saved page-data JSON (tests)')
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--refresh', action='store_true', help='re-match courses already in the table (else only new ones)')
+    ap.add_argument('--name-search', action='store_true',
+                    help="second look by name (up to 45 km) for courses with no match near SGT's coordinates")
     args = ap.parse_args()
     key = os.environ.get('SUPABASE_SECRET_KEY')
     if not args.dry_run and not key:
         raise SystemExit('SUPABASE_SECRET_KEY is not set (or use --dry-run)')
+    if args.name_search:
+        return name_search_pass(key, args.dry_run)
 
     courses = sgt_courses(json.loads(args.manifest.read_text()) if args.manifest else None,
                           json.loads(args.page_data.read_text()) if args.page_data else None)
