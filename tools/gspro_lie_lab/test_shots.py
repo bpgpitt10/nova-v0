@@ -5,7 +5,7 @@ For testing Looper on the sim without hitting balls. Type a club and press
 Enter: GSPro gets Brian's stock ball data for that club, straight down the
 current aim line (so after Auto Aim it flies at Looper's target).
 
-  python test_shots.py              connect and type shots
+  python test_shots.py              connect and type shots (or double-click it, open with Python)
   python test_shots.py --api-version 2
 
 At the prompt:
@@ -158,6 +158,7 @@ def run(args: argparse.Namespace, read_line=input) -> int:
         client.connect()
     except OpenConnectError as exc:
         print(exc)
+        pause_before_close(read_line)
         return 3
     print("Connected. GSPro should show a launch monitor as ready.\n")
     try:
@@ -199,7 +200,16 @@ def run(args: argparse.Namespace, read_line=input) -> int:
     finally:
         client.close()
         print("Disconnected. Reopen the Uneekor launcher to hit real balls.")
+        pause_before_close(read_line)
     return 0
+
+
+def pause_before_close(read_line=input) -> None:
+    """Opened by double-click, the window closes on exit: keep the last message on screen."""
+    try:
+        read_line("Press Enter to close.")
+    except (EOFError, KeyboardInterrupt):
+        pass
 
 
 def main(argv: list[str] | None = None) -> int:
