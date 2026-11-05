@@ -24,7 +24,7 @@ import { learnedSurfaceFactors } from '../adapters/gsproPenaltyLog'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
-import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
+import { connectToGsproWindObservation, requestGsproWindRefresh } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
   getCourseCatalogEntry,
@@ -46,6 +46,7 @@ import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
+import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -224,6 +225,9 @@ export default function LiveCaddiePage() {
     anchoredSurfaces: CourseSurface[] | null
     anchoredGreen: CoursePolygonYds | null
     greenSummary: GreenAnchorSummary
+    /** How GSPro's scene is turned/mirrored against true north on this hole (wind). */
+    sceneRotationDeg: number
+    sceneMirrored: boolean
   } | null>(null)
   const gkdHazards = gkdOverlay
     ? { key: gkdOverlay.key, surfaces: gkdOverlay.hazardSurfaces, summary: gkdOverlay.hazardSummary }
@@ -249,6 +253,21 @@ export default function LiveCaddiePage() {
   const [liveError, setLiveError] = useState<string | null>(null)
   const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
+  const [windRefreshing, setWindRefreshing] = useState(false)
+  // "Refresh wind": GSPro's gusty wind swirls between shots (Brian, 11/4).
+  const refreshWind = () => {
+    if (windRefreshing) return
+    setWindRefreshing(true)
+    void readLooperCompanionObservations(45000)
+      .then((obs) => {
+        const wind = obs.status === 'ready' && obs.gspro?.status === 'connected' ? obs.ocr?.wind : null
+        if (wind?.status === 'READY' && Number.isFinite(wind.speedMph) && Number.isFinite(wind.directionDegrees)) {
+          requestGsproWindRefresh(wind)
+        }
+      })
+      .catch((error: unknown) => console.warn('[Live Caddie] Wind refresh failed.', error))
+      .finally(() => setWindRefreshing(false))
+  }
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
   const [manualShotLie, setManualShotLie] = useState<ManualLieSelection | null>(null)
   const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
@@ -549,9 +568,12 @@ export default function LiveCaddiePage() {
         const hazards = layout
           ? gkdHazardSurfaces(layout, context.registration, anchoredHole)
           : { surfaces: [], summary: { penaltyAreas: 0, innerOob: 0, obMode: null, obOnHole: false } }
+        const placed = registrationForHole(context.registration, rawHole.holeNumber)
         setGkdOverlay({
           key,
           source: rawHole,
+          sceneRotationDeg: placed.rotationDeg ?? 0,
+          sceneMirrored: placed.mirrored === true,
           hazardSurfaces: hazards.surfaces,
           hazardSummary: hazards.summary,
           anchoredSurfaces: anchor.surfaces,
@@ -1031,9 +1053,17 @@ export default function LiveCaddiePage() {
     holeHeadingDegreesTrue,
     localAimBearingDeg,
   )
+  // GSPro's wind compass is the scene's: turn it by the course match for the
+  // hole on screen. Not the live snapshot's turn: a tee reached by conceding
+  // the last hole has no GSPro shot yet, so it had none and the wind came out
+  // 180 degrees wrong on Kiawah (scene turned 179 deg; 11/4 holes 6 and 7).
+  const sceneTurn = gkdOverlay && gkdOverlay.source === rawHole
+    ? { rotationDeg: gkdOverlay.sceneRotationDeg, mirrored: gkdOverlay.sceneMirrored }
+    : liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg != null
+      ? { rotationDeg: liveSnapshot.gsproSceneRotationDeg, mirrored: liveSnapshot.gsproSceneMirrored === true }
+      : null
   const projectedWind = projectWindObservation(
-    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null,
-      liveMatchesHole && liveSnapshot?.gsproSceneMirrored === true),
+    windInTrueCompass(windObservation, sceneTurn?.rotationDeg ?? null, sceneTurn?.mirrored === true),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )
@@ -1851,7 +1881,7 @@ export default function LiveCaddiePage() {
             {` · Looper uses ${windObservation?.status ?? 'no wind'}`
               + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
               + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
-              + (liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg ? `, course turned ${liveSnapshot.gsproSceneRotationDeg.toFixed(1)}°` : '')}
+              + (sceneTurn?.rotationDeg ? `, course turned ${sceneTurn.rotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
         {showDiagnostics && recTiming ? (
@@ -2047,6 +2077,8 @@ export default function LiveCaddiePage() {
                     strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
                     strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
                     unmappedInPlay={gsproOnlyCourse}
+                    onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
+                    windRefreshing={windRefreshing}
                   />
 
                   <button

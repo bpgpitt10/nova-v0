@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import './LiveCaddieMapPolish.css'
 import './LiveCaddieIA.css'
@@ -21,6 +22,9 @@ type ConditionsMathPanelProps = {
   strategyAdjustmentScale?: number
   /** GSPro-only course: unmapped ground shows as "In play", not trouble. */
   unmappedInPlay?: boolean
+  /** Read GSPro's wind again now (gusty days swirl). */
+  onRefreshWind?: () => void
+  windRefreshing?: boolean
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -81,16 +85,18 @@ function AdjustmentRow({
   lateral,
   detail,
   muted = false,
+  action = null,
 }: {
   label: string
   distance: string
   lateral: string
   detail: string
   muted?: boolean
+  action?: ReactNode
 }) {
   return (
     <div className={`live-condition-row${muted ? ' muted' : ''}`}>
-      <span className="live-condition-factor">{label}</span>
+      <span className="live-condition-factor">{label}{action}</span>
       <strong className="live-condition-distance">{distance}</strong>
       <strong className="live-condition-lateral">{lateral}</strong>
       <small>{detail}</small>
@@ -113,6 +119,8 @@ const windFromWords = (relativeFromDeg: number): string => {
 
 export default function ConditionsMathPanel({
   unmappedInPlay = false,
+  onRefreshWind,
+  windRefreshing = false,
   evaluation,
   windMph,
   windRelativeDeg,
@@ -292,6 +300,13 @@ export default function ConditionsMathPanel({
             lateral={evaluation && hasLiveWind ? lateralYards(windLateralDelta) : '—'}
             detail={windDetail}
             muted={!hasLiveWind}
+            action={onRefreshWind ? (
+              <button type="button" className={`live-condition-refresh${windRefreshing ? ' is-refreshing' : ''}`}
+                disabled={windRefreshing} onClick={onRefreshWind}
+                aria-label="Refresh wind" title="Read GSPro's wind again (it swirls on gusty days)">
+                <span aria-hidden="true">↻</span>
+              </button>
+            ) : null}
           />
           <AdjustmentRow
             label="Surface"
