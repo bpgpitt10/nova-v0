@@ -61,7 +61,6 @@ FAR_KM = 8.0
 # name out to this far: only a strong, unique name match counts there.
 NAME_SEARCH_KM = 45.0
 NAME_SEARCH_SCORE = 0.8
-NAME_BATCH = 20
 MATCH_SCORE = 0.6
 FAR_MATCH_SCORE = 0.8
 REVIEW_SCORE = 0.3
@@ -235,37 +234,29 @@ def fictional(c: dict) -> bool:
         or (abs(c['lat']) < 1e-6 and abs(c['lon']) < 1e-6)
 
 
-GENERIC_WORDS = {
-    'mountain', 'mountains', 'valley', 'creek', 'hills', 'hill', 'lake', 'lakes', 'pines', 'pine', 'national',
-    'river', 'park', 'ridge', 'springs', 'oaks', 'meadows', 'dunes', 'point', 'north', 'south', 'east', 'west',
-    'island', 'beach', 'harbor', 'harbour', 'canyon', 'ranch', 'woods', 'glen', 'stadium', 'championship',
-    'plantation', 'farms', 'farm', 'municipal', 'heights', 'estates', 'village', 'trails', 'trail', 'royal',
-}
+PHOTON_URL = 'https://photon.komoot.io/api/'
+PHOTON_PAUSE_S = 1.0  # Photon's fair use: about one request a second
 
 
-def name_regex(name: str) -> str | None:
-    """The course name's most telling word (not "Mountain" or "Creek"), as an Overpass regex."""
-    words_ = sorted((w for w in tokens(name) if len(w) >= 4 and not w.isdigit()), key=len, reverse=True)
-    word = next((w for w in words_ if w not in GENERIC_WORDS), words_[0] if words_ else None)
-    return re.escape(word) if word else None
-
-
-def osm_courses_by_name(batch: list[dict]) -> list[dict]:
-    """Golf courses within NAME_SEARCH_KM whose name contains each course's telling word."""
-    radius = int(NAME_SEARCH_KM * 1000)
-    parts = ''
-    for c in batch:
-        rx = name_regex(c['name'])
-        if not rx:
+def photon_courses(c: dict) -> list[dict]:
+    """Golf course outlines named like the course, from Photon (komoot's OpenStreetMap search),
+    biased toward SGT's coordinates. The app's Load page search uses the same service. Courses
+    mapped only as a point are left out (they can't be loaded)."""
+    params = urllib.parse.urlencode({'q': c['name'], 'lat': c['lat'], 'lon': c['lon'], 'limit': 15,
+                                     'osm_tag': 'leisure:golf_course'})
+    body = json.loads(http(f'{PHOTON_URL}?{params}', headers={'Accept': 'application/json'}, timeout=30))
+    out, seen = [], set()
+    for feature in body.get('features') or []:
+        props = feature.get('properties') or {}
+        kind = {'W': 'way', 'R': 'relation'}.get(props.get('osm_type'))
+        coords = (feature.get('geometry') or {}).get('coordinates') or []
+        if not kind or not props.get('osm_id') or not props.get('name') or len(coords) < 2:
             continue
-        for kind in ('way', 'relation'):
-            parts += f'{kind}["leisure"="golf_course"]["name"~"{rx}",i](around:{radius},{c["lat"]},{c["lon"]});'
-    if not parts:
-        return []
-    payload = overpass(f'[out:json][timeout:180];({parts});out tags center;')
-    return [{'type': el['type'], 'id': el['id'], 'name': (el.get('tags') or {}).get('name') or '',
-             'lat': el['center']['lat'], 'lon': el['center']['lon']}
-            for el in payload.get('elements', []) if 'lat' in (el.get('center') or {})]
+        if (kind, props['osm_id']) in seen:
+            continue
+        seen.add((kind, props['osm_id']))
+        out.append({'type': kind, 'id': props['osm_id'], 'name': props['name'], 'lat': coords[1], 'lon': coords[0]})
+    return out
 
 
 def match_by_name(c: dict, found: list[dict]) -> dict | None:
@@ -356,25 +347,25 @@ def rest(method: str, path: str, key: str, body=None, prefer: str | None = None)
 
 
 def name_search_pass(key: str | None, dry_run: bool) -> int:
-    """Second look for 'no-map' rows the builder matched automatically: by name out to 45 km."""
+    """Second look for 'no-map' rows the builder matched automatically: by name (Photon) out to 45 km."""
     if not key:
         raise SystemExit('the name search reads the table: SUPABASE_SECRET_KEY is needed')
     rows = rest('GET', 'course_crosswalk?select=sgt_id,name,lat,lon&status=eq.no-map&method=eq.auto&verified=eq.false'
                        '&lat=not.is.null&order=sgt_id', key) or []
     print(f'name search: {len(rows)} courses with no map course near their coordinates', flush=True)
     tally: dict[str, int] = defaultdict(int)
-    for i in range(0, len(rows), NAME_BATCH):
-        batch = rows[i:i + NAME_BATCH]
+    for i, c in enumerate(rows, 1):
         try:
-            found = osm_courses_by_name(batch)
-        except RuntimeError as exc:
-            print(f'batch {i // NAME_BATCH + 1}: Overpass failed, left for the next run ({exc})', flush=True)
+            found = photon_courses(c)
+        except Exception as exc:  # noqa: BLE001 - one failed lookup shouldn't stop the pass
+            tally['lookup failed'] += 1
+            print(f"  {c['name']}: Photon failed ({exc}); left for the next run", flush=True)
+            time.sleep(PHOTON_PAUSE_S * 3)
             continue
-        for c in batch:
-            m = match_by_name(c, found)
-            if not m:
-                tally['still no-map'] += 1
-                continue
+        m = match_by_name(c, found)
+        if not m:
+            tally['still no-map'] += 1
+        else:
             tally[m['status']] += 1
             print(f"  {c['name']}: {m['status']} {m['osm_name']!r} {m['distance_m']} m", flush=True)
             if not dry_run:
@@ -382,7 +373,9 @@ def name_search_pass(key: str | None, dry_run: bool) -> int:
                      {**m, 'notes': 'matched by name; SGT coordinates are the town, not the course',
                       'updated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())},
                      prefer='return=minimal')
-        print(f'name search batch {i // NAME_BATCH + 1}/{math.ceil(len(rows) / NAME_BATCH)}: {dict(tally)}', flush=True)
+        if i % 25 == 0:
+            print(f'name search {i}/{len(rows)}: {dict(tally)}', flush=True)
+        time.sleep(PHOTON_PAUSE_S)
     print(json.dumps({'nameSearch': dict(tally)}, indent=1), flush=True)
     return 0
 
