@@ -68,7 +68,7 @@ export const crosswalkForGsproKeys = async (courseKeys: readonly string[]): Prom
 
 export type CrosswalkDecision =
   | Readonly<{ kind: 'load'; name: string; location: string; lat: number; lon: number; osmType: 'way' | 'relation'; osmId: number }>
-  | Readonly<{ kind: 'pick'; candidates: ReadonlyArray<{ name: string; location: string; lat: number; lon: number; osmType: 'way' | 'relation'; osmId: number }> }>
+  | Readonly<{ kind: 'pick'; candidates: ReadonlyArray<{ name: string; location: string; lat: number; lon: number; osmType: 'way' | 'relation'; osmId: number; distanceM: number | null }> }>
   | Readonly<{ kind: 'not-on-map'; reason: string }>
   | Readonly<{ kind: 'unknown' }>
 
@@ -90,6 +90,7 @@ export const crosswalkDecision = (row: CrosswalkRow | null): CrosswalkDecision =
       name: c.name || `${row.name} (outline with no name, ${Math.round(c.distanceM / 100) / 10} km away)`,
       location: row.location,
       lat, lon, osmType: c.type, osmId: c.id,
+      distanceM: Number.isFinite(c.distanceM) ? c.distanceM : null,
     })),
   }
 }
