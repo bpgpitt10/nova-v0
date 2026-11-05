@@ -106,7 +106,6 @@ import {
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
-import NativeAimPreview from '../components/NativeAimPreview'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
@@ -2137,17 +2136,6 @@ export default function LiveCaddiePage() {
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
-                <NativeAimPreview
-                  courseId={courseId}
-                  courseKey={liveSnapshot?.courseKey ?? null}
-                  holeNumber={holeNumber}
-                  ball={liveMatchesHole ? ball : null}
-                  // Exact pin when known; before Shot 1 without one, the estimate
-                  // (green centre) still lets the preview run.
-                  pin={trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)}
-                  target={aimTarget}
-                  companionReady={companionStatus?.gspro.status === 'connected'}
-                />
               </article>
             </section>
 
