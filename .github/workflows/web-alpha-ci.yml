@@ -137,6 +137,8 @@ jobs:
         run: node tools/test-concede-hole-release.mjs
       - name: Wind refresh and scene turn
         run: node tools/test-wind-refresh.mjs
+      - name: Course crosswalk decisions
+        run: node tools/test-course-crosswalk.mjs
 
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
