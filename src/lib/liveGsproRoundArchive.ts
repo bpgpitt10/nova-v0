@@ -235,6 +235,14 @@ export const upsertLiveGsproRoundArchive = ({
   return { round, changed: true }
 }
 
+/** Drops rounds from this browser's archive (the player deleted them on the Rounds page). */
+export const removeRoundsFromLiveGsproArchive = (roundIds: readonly number[]) => {
+  const drop = new Set(roundIds)
+  const state = loadLiveGsproRoundArchive()
+  if (!state.rounds.some((round) => drop.has(round.roundId))) return
+  saveLiveGsproRoundArchive({ version: 1, rounds: state.rounds.filter((round) => !drop.has(round.roundId)) })
+}
+
 const replaceRoundInArchive = (round: ArchivedGsproRound) => {
   const state = loadLiveGsproRoundArchive()
   const existingIndex = state.rounds.findIndex((candidate) => candidate.roundId === round.roundId)
@@ -322,6 +330,13 @@ const syncRoundToCloud = async (
   if (!allowed) return
 
   const client = await getSupabaseClient()
+  // A round the player deleted stays deleted: the sim PC still has it and
+  // would otherwise sync it straight back.
+  const existing = await client.from<Array<{ count_state: string | null }>>('live_course_rounds')
+    .select('count_state').eq('user_id', user.id).eq('gspro_round_id', round.roundId).limit(1)
+  if (existing.error) throw new Error(existing.error.message)
+  if (existing.data?.[0]?.count_state === 'deleted') return
+
   const roundResult = await client.from<unknown>('live_course_rounds').upsert(
     {
       user_id: user.id,

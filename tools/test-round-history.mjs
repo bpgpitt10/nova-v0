@@ -212,5 +212,35 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(scored.strokes - scored.par, -2, 'The Old Game: 71 on a par 73')
 }
 
+// Whether a round counts: the player's choice, else not when it looks like a test.
+{
+  const oldGame = records.filter((r) => r.roundId === 268)
+  const auto = history.buildRound(268, oldGame)
+  assert.equal(auto.countState, null)
+  assert.equal(auto.looksLikeTest, false)
+  assert.equal(auto.counts, true, 'a full round counts by default')
+  const excluded = history.buildRound(268, oldGame, {}, { countState: 'excluded' })
+  assert.equal(excluded.status, 'full', 'not counting does not change what the round is')
+  assert.equal(excluded.counts, false)
+  assert.equal(excluded.strokes, auto.strokes, 'still scored shot by shot')
+
+  // Conceded holes: most holes unfinished looks like a test and doesn't count until counted.
+  // Holes 1-4 played, 2-4 conceded (their holing strokes gone).
+  const conceded = oldGame.filter((r) => r.holeNumber <= 4 && (r.holeNumber === 1 || (!r.isHoled && !r.isGimme)))
+  const quit = history.buildRound(268, conceded)
+  assert.equal(quit.holesPlayed, 4)
+  assert.equal(quit.completeHoles, 1, `one finished hole (${quit.completeHoles})`)
+  assert.equal(quit.looksLikeTest, true)
+  assert.equal(quit.counts, false)
+  assert.equal(history.buildRound(268, conceded, {}, { countState: 'counts' }).counts, true, 'the player can count it')
+  assert.equal(history.roundLooksLikeTest({ status: 'partial', holesPlayed: 6, completeHoles: 2 }), true)
+  assert.equal(history.roundLooksLikeTest({ status: 'partial', holesPlayed: 9, completeHoles: 9 }), false)
+  assert.equal(history.roundLooksLikeTest({ status: 'fragment', holesPlayed: 1, completeHoles: 1 }), true)
+  assert.equal(history.roundCounts({ status: 'test', holesPlayed: 4, completeHoles: 1 }, null), false)
+  assert.equal(history.roundCounts({ status: 'test', holesPlayed: 4, completeHoles: 1 }, 'counts'), true)
+  assert.equal(history.roundCounts({ status: 'range', holesPlayed: 0, completeHoles: 0 }, 'counts'), false, 'range is never a round')
+  assert.equal(history.roundCounts({ status: 'full', holesPlayed: 18, completeHoles: 18 }, 'excluded'), false)
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()
