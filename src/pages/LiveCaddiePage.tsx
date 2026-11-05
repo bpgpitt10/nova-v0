@@ -1368,12 +1368,12 @@ export default function LiveCaddiePage() {
   const companionCanAim = Boolean(companionStatus?.capabilities?.aimClick)
     && companionStatus?.gspro.status === 'connected'
   const latestAimRef = useRef({
-    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
-    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1406,6 +1406,16 @@ export default function LiveCaddiePage() {
         setAimResult(result)
         setArmedAimKey(snap.aimKey)
         setArmPhase('armed')
+      }
+      // Auto Aim lines GSPro's minimap up on the ball and the pin: a pin Looper
+      // only estimated (from GSPro's distance, on the map green) turns and
+      // shrinks the click (11/4 Kiawah 3 after conceding: 178 yd for 188).
+      if (!snap.pinExact) {
+        finish({
+          outcome: 'not-sent',
+          message: "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
+        })
+        return
       }
       if (!snap.companionCanAim) {
         finish({

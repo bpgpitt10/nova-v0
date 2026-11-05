@@ -126,6 +126,9 @@ jobs:
       - name: Oversized polygons clipped to the hole
         run: node tools/test-oversized-polygons.mjs
 
+      - name: Conceding hole 1 releases the Start Round hold
+        run: node tools/test-concede-hole-release.mjs
+
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
 

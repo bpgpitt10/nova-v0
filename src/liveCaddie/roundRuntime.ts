@@ -178,6 +178,17 @@ const markFirstPhysicalShotObserved = (detail: LiveCaddieShotStateChangedDetail)
   })
 }
 
+/**
+ * GSPro moved past the first hole before any shot (a conceded hole, 11/4
+ * Pebble 1): the round is under way, so a page reload must not pin it back
+ * to hole 1's tee.
+ */
+export const markActiveRoundLiveFromHoleChange = () => {
+  const round = loadActiveLiveCaddieRound()
+  if (!round || round.phase !== 'armed') return
+  writeActiveRound({ ...round, phase: 'live' })
+}
+
 export const dispatchLiveCaddieShotStateChanged = (
   detail: LiveCaddieShotStateChangedDetail,
 ) => {
