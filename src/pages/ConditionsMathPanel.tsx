@@ -301,9 +301,10 @@ export default function ConditionsMathPanel({
             detail={windDetail}
             muted={!hasLiveWind}
             action={onRefreshWind ? (
-              <button type="button" className="live-condition-refresh" disabled={windRefreshing}
-                onClick={onRefreshWind} title="Read GSPro's wind again (it swirls on gusty days)">
-                {windRefreshing ? 'Reading…' : '↻ Refresh'}
+              <button type="button" className={`live-condition-refresh${windRefreshing ? ' is-refreshing' : ''}`}
+                disabled={windRefreshing} onClick={onRefreshWind}
+                aria-label="Refresh wind" title="Read GSPro's wind again (it swirls on gusty days)">
+                <span aria-hidden="true">↻</span>
               </button>
             ) : null}
           />
