@@ -1,3 +1,4 @@
+import { clipOversizedPolygons, OVERSIZED_POLYGON_POINTS } from './geometry'
 import type { CourseCatalogEntry } from './courseCatalog'
 import { buildGsproOnlyHoleGeometry, gsproHeightPoints } from './gsproOnlyCourse'
 import {
@@ -541,7 +542,8 @@ export const buildAreaHoleGeometry = (input: Readonly<{
       add(surface.kind, rings)
     }
   }
-  const mapSurfaces: CourseSurface[] = [...byKind.entries()].map(([kind, polygons]) => ({
+  // A lake or sea shore can come in whole: cut oversized rings to the hole (see clipOversizedPolygons).
+  const mapSurfaces: CourseSurface[] = clipOversizedPolygons([...byKind.entries()].map(([kind, polygons]) => ({
     id: `${input.entry.id}-h${String(holeNumber).padStart(2, '0')}-area-${kind}`,
     kind,
     polygons,
@@ -551,13 +553,13 @@ export const buildAreaHoleGeometry = (input: Readonly<{
       confidence: 'high',
       note: "From the course's map area, placed on GSPro's hole.",
     },
-  }))
+  })), box, OVERSIZED_POLYGON_POINTS, 0)
   // GSPro's tee pads stay; the GSPro green disc only when the map has no green here.
   const gsproSurfaces = base.surfaces.filter((s) => s.kind === 'tee' || (s.kind === 'green' && !mapGreen))
-  const contextLayers: CourseContextLayer[] = area.contextLayers.flatMap((layer) => {
+  const contextLayers: CourseContextLayer[] = clipOversizedPolygons(area.contextLayers.flatMap((layer) => {
     const polygons = transformRings(layer.polygons, toHole, box)
     return polygons.length ? [{ ...layer, id: `${layer.id}-h${holeNumber}`, polygons }] : []
-  })
+  }), box, OVERSIZED_POLYGON_POINTS, 0)
   const mapFeatures: CourseMapFeature[] = area.mapFeatures.flatMap((feature) => {
     const polygons = feature.polygons ? transformRings(feature.polygons, toHole, box) : []
     const lines = (feature.lines ?? []).map((line) => line.map((p) => apply(toHole, p)))
