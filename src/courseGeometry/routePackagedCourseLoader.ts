@@ -1,4 +1,5 @@
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { clipOversizedPolygons } from './geometry'
 import type {
   CourseContextKind,
   CourseContextLayer,
@@ -415,12 +416,14 @@ const parseHole = async (
   const courseName = typeof payload.courseName === 'string' ? payload.courseName : getCourseCatalogEntry(courseId).name
   if (!raw) throw new Error(`${courseName} Hole ${holeNumber} was not packaged.`)
 
-  const surfaces = parseSurfaces(courseId, holeNumber, raw.surfaces)
+  const viewBounds = parseBounds(raw.viewBounds)
+  // Oversized polygons (a whole lake shore) are cut to the hole first, so the
+  // hole's bounds and every landing check stay hole-sized.
+  const surfaces = clipOversizedPolygons(parseSurfaces(courseId, holeNumber, raw.surfaces), viewBounds)
   if (!surfaces.length) throw new Error(`${courseName} Hole ${holeNumber} has no playable surface geometry.`)
   const bounds = boundsFromSurfaces(surfaces)
   if (!bounds) throw new Error(`${courseName} Hole ${holeNumber} could not derive playable bounds.`)
-  const viewBounds = parseBounds(raw.viewBounds)
-  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context).map((layer) =>
+  const contextLayers = clipOversizedPolygons(parseContextLayers(courseId, holeNumber, raw.context), viewBounds ?? bounds).map((layer) =>
     payload.enrichment && layer.kind === 'woods'
       ? {
           ...layer,
