@@ -23,6 +23,7 @@ import {
   loadRoundRecords,
   saveCourseBackdrop,
   saveRoundFlags,
+  saveRoundMarkedTest,
   toCourseInfoMap,
   unresolvedCourseKeys,
   type RangeClubNumbers,
@@ -153,6 +154,7 @@ type LoadState =
       records: RoundShotRecord[]
       source: string
       cloudError: string | null
+      markedTest: ReadonlySet<number>
       courses: Record<string, StoredCourseInfo>
       coursesLoaded: boolean
     }
@@ -186,10 +188,17 @@ function useRoundData() {
 export default function RoundsPage({ pathname }: { pathname: string }) {
   const data = useRoundData()
   const [flags, setFlags] = useState<Record<number, RoundFlags>>(() => loadRoundFlags())
-  const rounds = useMemo(
-    () => (data.status === 'ready' ? buildRounds(data.records, toCourseInfoMap(data.courses), flags) : []),
-    [data, flags],
-  )
+  // Test marks live on the account; changes made on this visit apply at once.
+  const [testMarks, setTestMarks] = useState<Record<number, boolean>>({})
+  const rounds = useMemo(() => {
+    if (data.status !== 'ready') return []
+    const ids = new Set<number>(data.records.map((record) => record.roundId))
+    const merged: Record<number, RoundFlags> = {}
+    ids.forEach((id) => {
+      merged[id] = { ...flags[id], markedTest: testMarks[id] ?? data.markedTest.has(id) }
+    })
+    return buildRounds(data.records, toCourseInfoMap(data.courses), merged)
+  }, [data, flags, testMarks])
   const isGame = pathname === '/rounds/game'
   const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
@@ -206,6 +215,14 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     setBackdropChoices((current) => ({ ...current, [courseKey]: backdrop }))
     void saveCourseBackdrop(courseKey, backdrop).catch((error) => {
       console.warn('[Rounds] could not save the backdrop choice.', error)
+    })
+  }, [])
+
+  const setMarkedTest = useCallback((roundId: number, markedTest: boolean) => {
+    setTestMarks((current) => ({ ...current, [roundId]: markedTest }))
+    void saveRoundMarkedTest(roundId, markedTest).catch((error) => {
+      console.warn('[Rounds] could not save the test mark.', error)
+      setTestMarks((current) => ({ ...current, [roundId]: !markedTest }))
     })
   }, [])
 
@@ -239,6 +256,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             onBackdrop={(backdrop) => selected.courseKey && chooseBackdrop(selected.courseKey, backdrop)}
             scene={scene}
             onAutoPutt={(value) => setAutoPutt(selected.roundId, value)}
+            onMarkedTest={(value) => setMarkedTest(selected.roundId, value)}
             round={selected}
           />
         ) : null}
@@ -444,12 +462,14 @@ function RoundDetail({
   round,
   course,
   onAutoPutt,
+  onMarkedTest,
   scene,
   onBackdrop,
 }: {
   round: RoundSummary
   course: StoredCourseInfo | null
   onAutoPutt: (value: boolean) => void
+  onMarkedTest: (value: boolean) => void
   scene: ReturnType<typeof pickBackdrop>
   onBackdrop: (backdrop: Backdrop | null) => void
 }) {
@@ -539,6 +559,16 @@ function RoundDetail({
                 type="button"
               >
                 auto putt {round.autoPutt ? 'on' : 'off'}
+              </button>
+              {' · '}
+              <button
+                aria-pressed={round.markedTest}
+                className="rounds-meta-toggle"
+                onClick={() => onMarkedTest(!round.markedTest)}
+                title="A test round (Live Caddie checks, conceded holes, keyboard shots) stays out of Full rounds, Your game and your averages."
+                type="button"
+              >
+                {round.markedTest ? 'test round: yes' : 'mark as test'}
               </button>
             </p>
           </div>

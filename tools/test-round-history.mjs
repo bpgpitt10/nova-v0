@@ -212,5 +212,15 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(scored.strokes - scored.par, -2, 'The Old Game: 71 on a par 73')
 }
 
+// A round the player marked as a test is a test round: out of Full rounds and Your game.
+{
+  const marked = history.buildRound(268, records.filter((r) => r.roundId === 268), {}, { markedTest: true })
+  assert.equal(marked.status, 'test', 'marked as a test')
+  assert.equal(marked.markedTest, true)
+  const unmarked = history.buildRound(268, records.filter((r) => r.roundId === 268), {}, { markedTest: false })
+  assert.equal(unmarked.status, 'full')
+  assert.equal(unmarked.markedTest, false)
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()

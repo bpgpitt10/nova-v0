@@ -120,6 +120,8 @@ export type RoundSummary = {
   fir: { hit: number; of: number }
   sg: { total: number | null; categories: CategoryTotals }
   autoPutt: boolean
+  /** The player marked this round as a test. */
+  markedTest: boolean
   unknownLieShots: number
   brokenHoles: number
   shotCount: number
@@ -130,7 +132,7 @@ export type CourseInfo = Readonly<{
   pars?: Readonly<Record<number, number>>
 }>
 
-export type RoundFlags = Readonly<{ autoPutt?: boolean }>
+export type RoundFlags = Readonly<{ autoPutt?: boolean; markedTest?: boolean }>
 
 export const GSPRO_PUTTER_CLUB_INDEX = 26
 const METERS_TO_YARDS = 1.0936132983377078
@@ -421,6 +423,7 @@ export const buildRound = (
 
   let status: RoundStatus
   if (isRangeRound(courseKey, roundId)) status = 'range'
+  else if (flags.markedTest === true) status = 'test'
   else if (brokenHoles > 0 && brokenHoles / Math.max(1, holes.length) >= 0.25) status = 'test'
   else if (complete.length >= 18) status = 'full'
   else if (complete.length < 2) status = 'fragment'
@@ -449,6 +452,7 @@ export const buildRound = (
     },
     sg: { total: totalShots > 0 ? total : null, categories },
     autoPutt,
+    markedTest: flags.markedTest === true,
     unknownLieShots: holes.reduce(
       (sum, hole) => sum + hole.shots.filter((shot) => shot.provisional).length,
       0,

@@ -57,19 +57,24 @@ export type RoundRecordsResult = {
   records: RoundShotRecord[]
   source: 'cloud' | 'cloud+local' | 'local'
   cloudError: string | null
+  /** Rounds the player marked as tests (account-wide, `live_course_rounds.marked_test`). */
+  markedTest: ReadonlySet<number>
 }
+
+let cloudMarkedTest: ReadonlySet<number> = new Set()
 
 const loadCloudRecords = async (): Promise<RoundShotRecord[] | null> => {
   if (!isSupabaseConfigured()) return null
   const user = await getCurrentLooperUser()
   if (!user) return null
   const client = await getSupabaseClient()
-  const rounds = await awaitQuery<Array<{ gspro_round_id: number }>>(
+  const rounds = await awaitQuery<Array<{ gspro_round_id: number; marked_test?: boolean | null }>>(
     client
-      .from<Array<{ gspro_round_id: number }>>('live_course_rounds')
-      .select('gspro_round_id')
+      .from<Array<{ gspro_round_id: number; marked_test?: boolean | null }>>('live_course_rounds')
+      .select('gspro_round_id, marked_test')
       .eq('user_id', user.id),
   )
+  cloudMarkedTest = new Set(rounds.filter((row) => row.marked_test === true).map((row) => row.gspro_round_id))
   const ids = [...new Set(rounds.map((row) => row.gspro_round_id))]
   const records: RoundShotRecord[] = []
   // One query per few rounds keeps each response well under the API row cap.
@@ -101,7 +106,7 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
   } catch (error) {
     cloudError = error instanceof Error ? error.message : 'Could not load rounds.'
   }
-  if (!cloud) return { records: local, source: 'local', cloudError }
+  if (!cloud) return { records: local, source: 'local', cloudError, markedTest: new Set() }
 
   // Rounds the cloud doesn't have yet (or has fewer shots of) come from this browser.
   const cloudCounts = new Map<number, number>()
@@ -117,7 +122,22 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
     ...cloud.filter((record) => !preferLocal.has(record.roundId)),
     ...local.filter((record) => preferLocal.has(record.roundId)),
   ]
-  return { records: merged, source: preferLocal.size > 0 ? 'cloud+local' : 'cloud', cloudError }
+  return { records: merged, source: preferLocal.size > 0 ? 'cloud+local' : 'cloud', cloudError, markedTest: cloudMarkedTest }
+}
+
+/** Marks (or unmarks) a round as a test on the account. */
+export const saveRoundMarkedTest = async (roundId: number, markedTest: boolean): Promise<void> => {
+  if (!isSupabaseConfigured()) throw new Error('Sign in to mark rounds.')
+  const user = await getCurrentLooperUser()
+  if (!user) throw new Error('Sign in to mark rounds.')
+  const client = await getSupabaseClient()
+  await awaitQuery<unknown>(
+    client
+      .from<unknown>('live_course_rounds')
+      .update({ marked_test: markedTest })
+      .eq('user_id', user.id)
+      .eq('gspro_round_id', roundId),
+  )
 }
 
 // ---- course names and pars --------------------------------------------------
