@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
 import { parseGkdLayout } from '../courseGeometry/nativeGkd'
 import { fetchCoursesAndGreens, gkdGreenPoints, matchCourseByGreens, MapServerBusyError, type GeometryMatchResult } from '../courseLoading/courseGeometryMatch'
@@ -26,7 +26,7 @@ import {
   type CourseLoadRow,
   type GolfCourseSearchResult,
 } from '../courseLoading/courseLoads'
-import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
+import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkDecision, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
@@ -183,6 +183,13 @@ export default function LoadCoursePage() {
   // When an installed GSPro course can't be matched automatically, loads picked
   // from the search results stay linked to it, so Live Caddie recognizes the round.
   const [linkedGspro, setLinkedGspro] = useState<{ courseKey: string; courseName: string } | null>(null)
+  // A GSPro course with more than one map course nearby: its choices show
+  // right under its row (they used to fill the search results at the top of
+  // the page, off screen, so the button looked dead; Brian, 11/5).
+  const [picking, setPicking] = useState<{ courseKey: string; candidates: Extract<CrosswalkDecision, { kind: 'pick' }>['candidates'] } | null>(null)
+  // Row actions that fall back to the search results bring the search into view.
+  const searchRef = useRef<HTMLElement>(null)
+  const showSearch = () => searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Re-render when GSPro links change (Link / Unlink, or the shared list
   // loads) or a loaded course arrives (published at run time).
   const [catalogVersion, setCatalogVersion] = useState(0)
@@ -313,10 +320,8 @@ export default function LoadCoursePage() {
     }
     if (decision.kind === 'pick') {
       setBusyKey(null)
-      setLinkedGspro({ courseKey: course.courseKey, courseName: name })
-      setQuery(name)
-      setResults(decision.candidates.map((c) => ({ ...c })))
-      setMessage(`More than one course on the map could be ${name}. Pick the right one below.`)
+      setMessage(null)
+      setPicking({ courseKey: course.courseKey, candidates: decision.candidates })
       return
     }
     if (decision.kind === 'not-on-map') {
@@ -375,6 +380,7 @@ export default function LoadCoursePage() {
         name: c.name, location: course.location, lat: c.centre[0], lon: c.centre[1], osmType: c.osmType, osmId: c.osmId,
       })))
       setMessage(`${geoNote}Pick the right one below.`)
+      showSearch()
       return
     }
     // 3. By name (no GSPro file, no location, or the map has no fit).
@@ -395,6 +401,7 @@ export default function LoadCoursePage() {
       setMessage(`${awayNote}${geoNote}${match
         ? `By name it looks like ${match.name}, but GSPro's version may not line up with it. Pick from the search results below only if you're sure.`
         : `Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`}`)
+      showSearch()
       void runSearch(name)
       return
     }
@@ -479,6 +486,41 @@ export default function LoadCoursePage() {
           ? <GsproMatch courseId={courseIdFor(slug)!} courseKey={course.courseKey} /> : null}
         {group === 'load' ? <LinkToLoaded course={course} onLinked={setMessage} /> : null}
       </span>
+      {picking?.courseKey === course.courseKey ? (
+        <div className="load-course-pick">
+          <p>Which of these is {course.courseName || course.courseKey}? Looper loads the one you pick and links it to your GSPro course.</p>
+          <ul>
+            {picking.candidates.map((c) => (
+              <li key={`${c.osmType}/${c.osmId}`}>
+                <span>
+                  <strong>{c.name}</strong>
+                  {c.distanceM != null ? <span>{(c.distanceM / 1609.34).toFixed(1)} mi from the course's listed location</span> : null}
+                </span>
+                <button type="button" disabled={busyKey !== null} onClick={() => {
+                  setPicking(null)
+                  void queue(course.courseKey, {
+                    name: course.courseName || c.name, location: course.location || c.location,
+                    lat: c.lat, lon: c.lon, osmType: c.osmType, osmId: c.osmId,
+                    gsproCourseKey: course.courseKey,
+                  })
+                }}>Load this one</button>
+              </li>
+            ))}
+          </ul>
+          <p className="load-course-pick-other">
+            Not listed?{' '}
+            <button type="button" className="load-course-unlink" onClick={() => {
+              const name = course.courseName || course.courseKey
+              setPicking(null)
+              setLinkedGspro({ courseKey: course.courseKey, courseName: name })
+              setQuery(name)
+              showSearch()
+            }}>Search the map by name</button>
+            {' '}·{' '}
+            <button type="button" className="load-course-unlink" onClick={() => setPicking(null)}>Cancel</button>
+          </p>
+        </div>
+      ) : null}
     </li>
   )
 
@@ -497,7 +539,7 @@ export default function LoadCoursePage() {
       {message ? <p className="load-course-message">{message}</p> : null}
       {loadsError ? <p className="load-course-message">Sign in to load courses ({loadsError}).</p> : null}
 
-      <section>
+      <section ref={searchRef}>
         <h2>Find a course</h2>
         {linkedGspro ? (
           <p className="load-course-note">
