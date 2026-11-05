@@ -1962,3 +1962,59 @@
 .rounds-page .rounds-table th.yourgame-bar-head {
   text-align: center;
 }
+
+/* Manage: tick rounds, then Counts / Doesn't count / Delete. */
+.rounds-manage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 16, 12, 0.72);
+  color: #e8efe9;
+  font-size: 14px;
+}
+
+.rounds-manage-bar span {
+  flex: 1 1 220px;
+}
+
+.rounds-manage-bar button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rounds-manage-bar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rounds-manage-bar button.is-danger {
+  border-color: rgba(239, 98, 98, 0.6);
+  color: #f3a3a3;
+}
+
+.rounds-manage-bar button.is-danger:not(:disabled):hover {
+  background: rgba(239, 98, 98, 0.14);
+}
+
+.rounds-table .rounds-tick {
+  width: 32px;
+  padding-right: 0;
+}
+
+.rounds-table .rounds-tick input {
+  width: 16px;
+  height: 16px;
+  accent-color: #eab308;
+  cursor: pointer;
+}

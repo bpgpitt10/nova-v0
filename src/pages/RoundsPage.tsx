@@ -23,7 +23,8 @@ import {
   loadRoundRecords,
   saveCourseBackdrop,
   saveRoundFlags,
-  saveRoundMarkedTest,
+  saveRoundCountState,
+  deleteRounds,
   toCourseInfoMap,
   unresolvedCourseKeys,
   type RangeClubNumbers,
@@ -31,7 +32,7 @@ import {
 } from '../lib/roundHistoryData'
 import { loadHoleMap } from '../lib/roundHoleMap'
 import { BACKDROP_LABEL, BACKDROPS, isBackdrop, pickBackdrop, type Backdrop } from '../lib/roundBackdrop'
-import type { RoundFlags, RoundShotRecord } from '../lib/roundHistory'
+import type { RoundCountChoice, RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
 import { YourGame } from './YourGame'
 
@@ -154,7 +155,8 @@ type LoadState =
       records: RoundShotRecord[]
       source: string
       cloudError: string | null
-      markedTest: ReadonlySet<number>
+      countStates: ReadonlyMap<number, RoundCountChoice>
+      cloudRoundIds: ReadonlySet<number>
       courses: Record<string, StoredCourseInfo>
       coursesLoaded: boolean
     }
@@ -188,17 +190,20 @@ function useRoundData() {
 export default function RoundsPage({ pathname }: { pathname: string }) {
   const data = useRoundData()
   const [flags, setFlags] = useState<Record<number, RoundFlags>>(() => loadRoundFlags())
-  // Test marks live on the account; changes made on this visit apply at once.
-  const [testMarks, setTestMarks] = useState<Record<number, boolean>>({})
+  // Count choices and deletes live on the account; changes made on this visit apply at once.
+  const [countChoices, setCountChoices] = useState<Record<number, RoundCountChoice | null>>({})
+  const [deletedIds, setDeletedIds] = useState<ReadonlySet<number>>(() => new Set())
+  const [manageError, setManageError] = useState<string | null>(null)
   const rounds = useMemo(() => {
     if (data.status !== 'ready') return []
-    const ids = new Set<number>(data.records.map((record) => record.roundId))
+    const records = data.records.filter((record) => !deletedIds.has(record.roundId))
+    const ids = new Set<number>(records.map((record) => record.roundId))
     const merged: Record<number, RoundFlags> = {}
     ids.forEach((id) => {
-      merged[id] = { ...flags[id], markedTest: testMarks[id] ?? data.markedTest.has(id) }
+      merged[id] = { ...flags[id], countState: id in countChoices ? countChoices[id] : data.countStates.get(id) ?? null }
     })
-    return buildRounds(data.records, toCourseInfoMap(data.courses), merged)
-  }, [data, flags, testMarks])
+    return buildRounds(records, toCourseInfoMap(data.courses), merged)
+  }, [data, flags, countChoices, deletedIds])
   const isGame = pathname === '/rounds/game'
   const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
@@ -218,13 +223,27 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     })
   }, [])
 
-  const setMarkedTest = useCallback((roundId: number, markedTest: boolean) => {
-    setTestMarks((current) => ({ ...current, [roundId]: markedTest }))
-    void saveRoundMarkedTest(roundId, markedTest).catch((error) => {
-      console.warn('[Rounds] could not save the test mark.', error)
-      setTestMarks((current) => ({ ...current, [roundId]: !markedTest }))
+  const setCountState = useCallback((roundIds: readonly number[], state: RoundCountChoice | null) => {
+    setManageError(null)
+    setCountChoices((current) => ({ ...current, ...Object.fromEntries(roundIds.map((id) => [id, state])) }))
+    void saveRoundCountState(roundIds, state).catch((error: unknown) => {
+      // Back to what the account has.
+      setCountChoices((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !roundIds.includes(Number(id)))))
+      setManageError(`Couldn't save that: ${error instanceof Error ? error.message : String(error)}`)
     })
   }, [])
+
+  const removeRounds = useCallback(async (targets: readonly RoundSummary[]) => {
+    if (data.status !== 'ready') return
+    setManageError(null)
+    try {
+      await deleteRounds(targets.map((round) => ({ roundId: round.roundId, courseKey: round.courseKey, playedAt: round.playedAt })), data.cloudRoundIds)
+      setDeletedIds((current) => new Set([...current, ...targets.map((round) => round.roundId)]))
+    } catch (error) {
+      setManageError(`Couldn't delete: ${error instanceof Error ? error.message : String(error)}`)
+      throw error
+    }
+  }, [data])
 
   const setAutoPutt = useCallback((roundId: number, autoPutt: boolean) => {
     setFlags((current) => {
@@ -256,13 +275,21 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             onBackdrop={(backdrop) => selected.courseKey && chooseBackdrop(selected.courseKey, backdrop)}
             scene={scene}
             onAutoPutt={(value) => setAutoPutt(selected.roundId, value)}
-            onMarkedTest={(value) => setMarkedTest(selected.roundId, value)}
+            onCountState={(state) => setCountState([selected.roundId], state)}
+            onDelete={async () => {
+              await removeRounds([selected])
+              navigate('/rounds')
+            }}
+            manageError={manageError}
             round={selected}
           />
         ) : null}
         {data.status === 'ready' && isGame ? <YourGame rounds={rounds} /> : null}
         {data.status === 'ready' && roundIdParam == null && !isGame ? (
           <RoundsList
+            manageError={manageError}
+            onCountState={setCountState}
+            onDelete={removeRounds}
             cloudError={data.cloudError}
             coursesLoaded={data.coursesLoaded}
             rounds={rounds}
@@ -286,23 +313,47 @@ function RoundsList({
   cloudError,
   unnamedCourses,
   coursesLoaded,
+  manageError,
+  onCountState,
+  onDelete,
 }: {
   rounds: RoundSummary[]
   cloudError: string | null
   unnamedCourses: number
   coursesLoaded: boolean
+  manageError: string | null
+  onCountState: (roundIds: readonly number[], state: RoundCountChoice | null) => void
+  onDelete: (rounds: readonly RoundSummary[]) => Promise<void>
 }) {
   const [filter, setFilter] = useState<ListFilter>('full')
+  // Manage: tick rounds, then Counts / Doesn't count / Delete.
+  const [managing, setManaging] = useState(false)
+  const [ticked, setTicked] = useState<ReadonlySet<number>>(() => new Set())
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const onCourse = rounds.filter((round) => round.status !== 'range')
-  const fullRounds = onCourse.filter((round) => round.status === 'full')
+  // Averages and the Full rounds list use only rounds that count.
+  const fullRounds = onCourse.filter((round) => round.status === 'full' && round.counts)
   const visible = onCourse.filter((round) => {
     if (filter === 'live-caddie') return isLiveCaddieRound(round) && round.status !== 'fragment'
     if (filter === 'all') return true
-    return round.status === 'full'
+    return round.status === 'full' && round.counts
   })
-  const hiddenPartials = filter === 'full' ? onCourse.filter((round) => round.status === 'partial').length : 0
-  const hiddenFragments = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'fragment').length
-  const hiddenTests = filter === 'all' ? 0 : onCourse.filter((round) => round.status === 'test').length
+  const shown = new Set(visible.map((round) => round.roundId))
+  const hiddenNotCounting = onCourse.filter((round) => !shown.has(round.roundId) && !round.counts).length
+  const hiddenPartials = onCourse.filter((round) => !shown.has(round.roundId) && round.counts && round.status === 'partial').length
+  const tickedRounds = visible.filter((round) => ticked.has(round.roundId))
+  const toggleTick = (roundId: number) => setTicked((current) => {
+    const next = new Set(current)
+    if (next.has(roundId)) next.delete(roundId)
+    else next.add(roundId)
+    return next
+  })
+  const finishManaging = () => {
+    setManaging(false)
+    setTicked(new Set())
+    setConfirmDelete(false)
+  }
   const rangeSessions = rounds.length - onCourse.length
   // Golf, not counts (Brian, 11/4): best round, scoring average, putts and
   // strokes gained over full rounds.
@@ -334,8 +385,57 @@ function RoundsList({
               {value === 'full' ? 'Full rounds' : value === 'all' ? 'All' : 'Live Caddie rounds'}
             </button>
           ))}
+          <button
+            aria-pressed={managing}
+            className={managing ? 'is-active' : undefined}
+            onClick={() => {
+              if (managing) finishManaging()
+              else {
+                setManaging(true)
+                setFilter('all')
+              }
+            }}
+            type="button"
+          >
+            {managing ? 'Done' : 'Manage'}
+          </button>
         </div>
       </header>
+
+      {managing ? (
+        <div className="rounds-manage-bar" role="toolbar" aria-label="Manage rounds">
+          {confirmDelete ? (
+            <>
+              <span>
+                Delete {tickedRounds.length} round{tickedRounds.length === 1 ? '' : 's'} from Looper? Their shots are removed for good, and your sim PC won't send them back.
+              </span>
+              <button
+                className="is-danger"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleting(true)
+                  void onDelete(tickedRounds)
+                    .then(() => finishManaging())
+                    .catch(() => undefined)
+                    .finally(() => setDeleting(false))
+                }}
+                type="button"
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+              <button disabled={deleting} onClick={() => setConfirmDelete(false)} type="button">Keep them</button>
+            </>
+          ) : (
+            <>
+              <span>{tickedRounds.length === 0 ? 'Tick the rounds to change.' : `${tickedRounds.length} selected`}</span>
+              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'counts'); setTicked(new Set()) }} type="button">Counts</button>
+              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'excluded'); setTicked(new Set()) }} type="button">Doesn’t count</button>
+              <button className="is-danger" disabled={tickedRounds.length === 0} onClick={() => setConfirmDelete(true)} type="button">Delete…</button>
+            </>
+          )}
+        </div>
+      ) : null}
+      {manageError ? <p className="rounds-note">{manageError}</p> : null}
 
       {cloudError ? (
         <p className="rounds-note">Couldn’t reach your cloud history ({cloudError}); showing rounds saved in this browser.</p>
@@ -384,6 +484,16 @@ function RoundsList({
           <table className="rounds-table">
             <thead>
               <tr>
+                {managing ? (
+                  <th className="rounds-tick" scope="col">
+                    <input
+                      aria-label="Select all rounds shown"
+                      checked={visible.length > 0 && tickedRounds.length === visible.length}
+                      onChange={(event) => setTicked(event.target.checked ? new Set(visible.map((round) => round.roundId)) : new Set())}
+                      type="checkbox"
+                    />
+                  </th>
+                ) : null}
                 <th scope="col">Course</th>
                 <th scope="col">Date</th>
                 <th scope="col">Holes</th>
@@ -399,11 +509,22 @@ function RoundsList({
                 const scored = round.status === 'full' || round.status === 'partial'
                 const best = scored ? keyShots(round, 1, 0).best[0] : undefined
                 return (
-                  <tr className={round.status === 'full' ? undefined : 'is-dim'} key={round.roundId}>
+                  <tr className={round.status === 'full' && round.counts ? undefined : 'is-dim'} key={round.roundId}>
+                    {managing ? (
+                      <td className="rounds-tick">
+                        <input
+                          aria-label={`Select ${round.courseName}, ${formatDate(round.playedAt)}`}
+                          checked={ticked.has(round.roundId)}
+                          onChange={() => toggleTick(round.roundId)}
+                          type="checkbox"
+                        />
+                      </td>
+                    ) : null}
                     <td>
                       <a className="rounds-row-link" href={`/rounds/${round.roundId}`}>
                         <strong>{round.courseName}</strong>
                         <span className="rounds-muted">
+                          {!round.counts ? (round.countState == null ? 'Looks like a test, doesn’t count · ' : 'Doesn’t count · ') : ''}
                           {round.status === 'full'
                             ? best ? `Best shot: ${keyShotHeadline(best).replace(/^Hole \d+ · /, '').toLowerCase()} on ${best.holeNumber}` : STATUS_LABEL.full
                             : round.status === 'test'
@@ -436,13 +557,12 @@ function RoundsList({
               })}
             </tbody>
           </table>
-          {hiddenPartials + hiddenFragments + hiddenTests + rangeSessions > 0 ? (
+          {hiddenPartials + hiddenNotCounting + rangeSessions > 0 ? (
             <div className="rounds-table-foot rounds-muted">
               {hiddenPartials > 0 ? <span>{hiddenPartials} partial round{hiddenPartials === 1 ? '' : 's'} hidden</span> : null}
-              {hiddenTests > 0 ? <span>{hiddenTests} test session{hiddenTests === 1 ? '' : 's'} hidden</span> : null}
-              {hiddenFragments > 0 ? <span>{hiddenFragments} short fragment{hiddenFragments === 1 ? '' : 's'} hidden</span> : null}
+              {hiddenNotCounting > 0 ? <span>{hiddenNotCounting} round{hiddenNotCounting === 1 ? '' : 's'} that don’t count hidden</span> : null}
               {rangeSessions > 0 ? <span>{rangeSessions} range session{rangeSessions === 1 ? '' : 's'} not shown</span> : null}
-              {filter !== 'all' && hiddenPartials + hiddenFragments + hiddenTests > 0 ? (
+              {filter !== 'all' && hiddenPartials + hiddenNotCounting > 0 ? (
                 <button className="rounds-link-button" onClick={() => setFilter('all')} type="button">Show everything</button>
               ) : null}
             </div>
@@ -450,7 +570,7 @@ function RoundsList({
         </div>
       )}
       <p className="rounds-muted rounds-small">
-        Partial rounds stay out of averages and trends but still open shot by shot. Test sessions (shots that don’t follow on from each other) are never scored.
+        Only rounds that count go into your averages, trends and Your game. Rounds that look like tests (conceded holes, shots that don’t follow on, a hole or two then quit) don’t count until you say so; use Manage to change any round or delete it. Partial rounds count toward Your game but not the averages.
       </p>
     </main>
   )
@@ -462,18 +582,24 @@ function RoundDetail({
   round,
   course,
   onAutoPutt,
-  onMarkedTest,
+  onCountState,
+  onDelete,
+  manageError,
   scene,
   onBackdrop,
 }: {
   round: RoundSummary
   course: StoredCourseInfo | null
   onAutoPutt: (value: boolean) => void
-  onMarkedTest: (value: boolean) => void
+  onCountState: (state: RoundCountChoice | null) => void
+  onDelete: () => Promise<void>
+  manageError: string | null
   scene: ReturnType<typeof pickBackdrop>
   onBackdrop: (backdrop: Backdrop | null) => void
 }) {
   const scoredHoles = round.holes.filter((hole) => hole.complete)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [selectedHole, setSelectedHole] = useState<number | null>(null)
   const [focus, setFocus] = useState<ShotCategory | null>(null)
   const worstHole = [...scoredHoles].sort((a, b) => (a.sg ?? 0) - (b.sg ?? 0))[0]
@@ -562,15 +688,41 @@ function RoundDetail({
               </button>
               {' · '}
               <button
-                aria-pressed={round.markedTest}
+                aria-pressed={round.counts}
                 className="rounds-meta-toggle"
-                onClick={() => onMarkedTest(!round.markedTest)}
-                title="A test round (Live Caddie checks, conceded holes, keyboard shots) stays out of Full rounds, Your game and your averages."
+                onClick={() => onCountState(round.counts ? 'excluded' : 'counts')}
+                title="Rounds that don't count stay in your history but out of your averages, trends and Your game."
                 type="button"
               >
-                {round.markedTest ? 'test round: yes' : 'mark as test'}
+                {round.counts ? 'counts' : 'doesn’t count'}
               </button>
+              {' · '}
+              <button className="rounds-meta-toggle" onClick={() => setConfirmDelete(true)} type="button">delete</button>
             </p>
+            {round.countState == null && round.looksLikeTest ? (
+              <p className="rounds-note">
+                This looks like a test (conceded holes, shots that don’t follow on, or a hole or two), so it doesn’t count.{' '}
+                <button className="rounds-link-button" onClick={() => onCountState('counts')} type="button">Count it</button>
+              </p>
+            ) : null}
+            {confirmDelete ? (
+              <div className="rounds-manage-bar">
+                <span>Delete this round from Looper? Its shots are removed for good, and your sim PC won’t send it back.</span>
+                <button
+                  className="is-danger"
+                  disabled={deleting}
+                  onClick={() => {
+                    setDeleting(true)
+                    void onDelete().catch(() => undefined).finally(() => setDeleting(false))
+                  }}
+                  type="button"
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+                <button disabled={deleting} onClick={() => setConfirmDelete(false)} type="button">Keep it</button>
+              </div>
+            ) : null}
+            {manageError ? <p className="rounds-note">{manageError}</p> : null}
           </div>
           <div className="rounds-score-inline">
             <div className="rounds-score-main">
