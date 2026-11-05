@@ -132,6 +132,8 @@ jobs:
 
       - name: Start a Round course search
         run: node tools/test-course-search.mjs
+      - name: Oversized polygons clipped to the hole
+        run: node tools/test-oversized-polygons.mjs
 
       - name: Conceding hole 1 releases the Start Round hold
         run: node tools/test-concede-hole-release.mjs
