@@ -107,6 +107,16 @@ The summary also answers **"does `currentRound.dat` hold the lie angles?"** It c
 
 Send me the folder (or just those three files) and I'll turn it into the Live Caddie lie model.
 
+## Test shots (no swing)
+
+`test_shots.py` hits GSPro shots from the keyboard, for testing Looper on the sim without hitting balls. Close the Uneekor launcher, then:
+
+```
+python test_shots.py
+```
+
+Type a club and press Enter: GSPro gets your stock ball data for it (the same Supabase medians as the lab, all 11 clubs), straight down GSPro's current aim line, so after Auto Aim it flies at Looper's target. `155` hits a 155-yard carry (the club that gets there, eased off). Add `L`/`R` (3° start line), `LL`/`RR` (6°), `draw`/`fade`/`hook`/`slice`, or `90%` for a softer swing. `raw mph launch spin [start] [axis]` sends any ball data; `bag` lists the numbers. On the green, concede the hole in GSPro. Shots land in Looper's round like real ones, so test rounds should be left out of your stats afterwards.
+
 ## Later
 
 - Wind (phase 2): same tool, set a wind in GSPro, and compare against Looper's internal wind model.
