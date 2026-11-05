@@ -522,22 +522,44 @@
   }
 }
 
-/* "↻ Refresh" on the Wind row: GSPro's gusty wind swirls between shots. */
+/* ↻ after "Wind": GSPro's gusty wind swirls between shots. Quiet until hovered. */
 .live-condition-refresh {
-  margin-left: 8px;
-  padding: 1px 7px;
-  border: 1px solid rgba(234, 179, 8, 0.45);
-  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: #eab308;
+  color: rgba(209, 217, 207, 0.45);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0;
+  line-height: 1;
+  vertical-align: 1px;
   cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.live-condition-refresh:hover,
+.live-condition-refresh:focus-visible {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+  outline: none;
 }
 
 .live-condition-refresh:disabled {
-  opacity: 0.6;
   cursor: default;
+}
+
+.live-condition-refresh.is-refreshing span {
+  display: inline-block;
+  color: #eab308;
+  animation: live-condition-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes live-condition-refresh-spin {
+  to { transform: rotate(360deg); }
 }
