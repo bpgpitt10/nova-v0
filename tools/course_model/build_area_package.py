@@ -32,7 +32,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_enriched_package import (  # noqa: E402
-    assemble_rings, build_terrain, localize_polygon, osm_features, point_in_ring, rdp, ring_area, ring_ok, to_local,
+    assemble_rings, build_terrain, clip_to_box, in_box, localize_polygon, osm_features, point_in_ring, rdp, ring_area,
+    ring_ok, to_local,
 )
 from grid_io import load_grid  # noqa: E402
 
@@ -71,6 +72,24 @@ def area_frame(bbox_lonlat):
     return lat0, lon0, (0.0, 1.0), (1.0, 0.0)
 
 
+SURFACE_RING_MAX_POINTS = 2000   # validate_package.RING_MAX_POINTS
+CONTEXT_RING_MAX_POINTS = 8000   # validate_package.CONTEXT_RING_MAX_POINTS
+
+
+def fit_ring(ring: list, box, max_points: int) -> list | None:
+    """Clip a localized ring to the area box and simplify it until it fits the
+    validator's point budget. A waterway that runs past the course (TPC
+    Sawgrass, 11/6: one 11,777-point lagoon) otherwise goes in whole."""
+    if not ring_ok(ring) or not in_box(ring, box):
+        return None
+    clipped = clip_to_box(ring, box)
+    eps = 0.5
+    while len(clipped) > max_points and eps <= 64:
+        clipped = rdp(clipped, eps)
+        eps *= 2
+    return clipped if ring_ok(clipped) and len(clipped) <= max_points else None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--model-dir', required=True, type=Path)
@@ -95,6 +114,7 @@ def main() -> int:
         'minY': round(min(c[1] for c in corners) - AREA_MARGIN_YDS, 1),
         'maxY': round(max(c[1] for c in corners) + AREA_MARGIN_YDS, 1),
     }
+    box = (view['minX'], view['minY'], view['maxX'], view['maxY'])
 
     osm = json.loads(gzip.open(md / 'osm-full.json.gz', 'rt', encoding='utf-8').read())
     surfaces: dict[str, list] = {}
@@ -109,8 +129,9 @@ def main() -> int:
         if not kind and not ctx:
             continue
         for outer, inners in shapes_of(el):
-            ring = localize_polygon(frame, outer, inners, eps=0.3 if kind else 1.0)
-            if not ring_ok(ring):
+            raw = localize_polygon(frame, outer, inners, eps=0.3 if kind else 1.0)
+            ring = fit_ring(raw, box, SURFACE_RING_MAX_POINTS if kind else CONTEXT_RING_MAX_POINTS)
+            if ring is None:
                 continue
             if kind:
                 surfaces.setdefault(kind, []).append(ring)
@@ -127,8 +148,8 @@ def main() -> int:
     for cat, shapes, is_poly in osm_features(osm):
         if cat in ('bunker', 'water') and is_poly:
             for outer, holes in shapes:
-                ring = localize_polygon(frame, outer, holes, eps=0.3)
-                if ring_ok(ring):
+                ring = fit_ring(localize_polygon(frame, outer, holes, eps=0.3), box, SURFACE_RING_MAX_POINTS)
+                if ring is not None:
                     surfaces.setdefault(cat, []).append(ring)
             continue
         if cat not in ('cartpath', 'road', 'building', 'parking'):
@@ -136,8 +157,8 @@ def main() -> int:
         for shape in shapes:
             if is_poly:
                 outer, holes = shape
-                ring = localize_polygon(frame, outer, holes, eps=0.3)
-                if ring_ok(ring):
+                ring = fit_ring(localize_polygon(frame, outer, holes, eps=0.3), box, CONTEXT_RING_MAX_POINTS)
+                if ring is not None:
                     map_features.setdefault(cat, {}).setdefault('polygons', []).append(ring)
             else:
                 pts = [[round(x, 1), round(y, 1)] for x, y in (to_local(frame, la, lo) for la, lo in shape)]
@@ -154,8 +175,8 @@ def main() -> int:
             for poly in ([g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']):
                 outer = [(lat, lon) for lon, lat in poly[0]]
                 inners = [[(lat, lon) for lon, lat in hole] for hole in poly[1:]]
-                ring = localize_polygon(frame, outer, inners, eps=1.5)
-                if ring_ok(ring):
+                ring = fit_ring(localize_polygon(frame, outer, inners, eps=1.5), box, CONTEXT_RING_MAX_POINTS)
+                if ring is not None:
                     rings.append(ring)
         if rings:
             context['woods'] = rings
