@@ -1,0 +1,11 @@
+.looper-tagline {
+  margin: 28px 0 8px;
+  text-align: center;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(234, 179, 8, 0.72);
+}

@@ -15,6 +15,7 @@ import { loadSavedSessions } from '../lib/sessions'
 import golfSceneDetailBackground from '../assets/Backgrounds/golfscenedetail.png'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './QuickBagPage.css'
+import { LooperTagline } from '../components/LooperTagline'
 
 /**
  * Your starting bag: handicap, three carries with a shape, and Looper gaps the
@@ -66,7 +67,7 @@ const draftFromSaved = (): Draft => {
     if (typeof carry === 'number') overrides[club as Club] = String(Math.round(carry))
   }
   return {
-    handicap: saved?.handicap != null ? String(saved.handicap) : '',
+    handicap: formatHandicap(saved?.handicap ?? null),
     handicapUnknown: saved ? saved.handicap == null : false,
     handed: saved?.handed ?? 'right',
     anchors: { Driver: anchor('Driver'), '7i': anchor('7i'), PW: anchor('PW') },
@@ -78,6 +79,22 @@ const parseCarry = (value: string): number | null => {
   const n = Number(value)
   return value.trim() !== '' && Number.isFinite(n) ? n : null
 }
+
+/**
+ * Handicap as typed: "14", "14.2", or a plus handicap "+2" (better than
+ * scratch), which Looper keeps as −2. Null when empty or not a number.
+ */
+export const parseHandicap = (value: string): number | null => {
+  const text = value.trim()
+  if (text === '') return null
+  const plus = text.startsWith('+')
+  const n = Number(plus ? text.slice(1) : text)
+  if (!Number.isFinite(n)) return null
+  return plus ? -Math.abs(n) : n
+}
+
+export const formatHandicap = (handicap: number | null): string =>
+  handicap == null ? '' : handicap < 0 ? `+${Math.abs(handicap)}` : String(handicap)
 
 export default function QuickBagPage() {
   const returnPath = useMemo(() => resolveReturnPath(), [])
@@ -105,7 +122,7 @@ export default function QuickBagPage() {
   }), [draft.anchors])
   const problem = quickBagInputProblem(anchors)
   const anchorsEntered = ANCHOR_CLUBS.every((club) => parseCarry(draft.anchors[club].carry) != null)
-  const handicap = draft.handicapUnknown ? null : parseCarry(draft.handicap)
+  const handicap = draft.handicapUnknown ? null : parseHandicap(draft.handicap)
 
   const overrides = useMemo(() => {
     const out: Partial<Record<Club, number>> = {}
@@ -137,12 +154,16 @@ export default function QuickBagPage() {
       setError(problem)
       return
     }
-    if (!draft.handicapUnknown && handicap != null && (handicap < 0 || handicap > 54)) {
-      setError('Handicap should be between 0 and 54, or tick "not sure".')
+    if (!draft.handicapUnknown && draft.handicap.trim() !== '' && handicap == null) {
+      setError('Handicap should be a number like 14, or a plus handicap like +2.')
+      return
+    }
+    if (!draft.handicapUnknown && handicap != null && (handicap < -10 || handicap > 54)) {
+      setError('Handicap should be between +10 and 54, or tick "not sure".')
       return
     }
     saveQuickBag({
-      handicap: handicap == null ? null : Math.min(36, Math.max(0, handicap)),
+      handicap: handicap == null ? null : Math.min(36, Math.max(-10, handicap)),
       anchors: anchors as Record<AnchorClub, QuickBagAnchor>,
       clubs,
       carryOverrides: overrides,
@@ -172,7 +193,7 @@ export default function QuickBagPage() {
             <p className="quick-bag-lead">
               Three carries and your handicap. Looper gaps the rest of your clubs, works out how wide you miss, and
               can caddie your first hole. Every range swing replaces a guess: a club is yours after {BLEND_RULES.carry.fullAt} good
-              swings.
+              range swings.
             </p>
           </div>
         </header>
@@ -185,13 +206,11 @@ export default function QuickBagPage() {
                 <span>Handicap</span>
                 <input
                   disabled={draft.handicapUnknown}
-                  inputMode="decimal"
-                  max={54}
-                  min={0}
+                  inputMode="text"
                   onChange={(e) => setDraft((d) => ({ ...d, handicap: e.target.value }))}
+                  pattern="\+?[0-9]+([.][0-9])?"
                   placeholder="e.g. 14"
-                  step={0.1}
-                  type="number"
+                  type="text"
                   value={draft.handicap}
                 />
               </label>
@@ -222,8 +241,9 @@ export default function QuickBagPage() {
               </div>
             </div>
             <p className="quick-bag-fine">
-              Handicap sets how wide the pattern is and how often a swing comes up short. A scratch player's 7-iron
-              spreads about 4% of its carry; an 18 handicap's about 7%.
+              Better than scratch? Type it with a plus, like <strong>+2</strong>. Handicap sets how wide the pattern is
+              and how often a swing comes up short: a scratch player's 7-iron spreads about 4% of its carry, an 18
+              handicap's about 7%.
             </p>
           </section>
 
@@ -373,6 +393,7 @@ export default function QuickBagPage() {
             <a className="quick-bag-skip" href={returnPath}>Back</a>
           )}
         </footer>
+        <LooperTagline />
       </section>
     </main>
   )

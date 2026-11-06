@@ -34,6 +34,7 @@ import { loadHoleMap } from '../lib/roundHoleMap'
 import { BACKDROP_LABEL, BACKDROPS, isBackdrop, pickBackdrop, type Backdrop } from '../lib/roundBackdrop'
 import type { RoundCountChoice, RoundFlags, RoundShotRecord } from '../lib/roundHistory'
 import './RoundsPage.css'
+import { LooperTagline } from '../components/LooperTagline'
 import { YourGame } from './YourGame'
 
 const FULL_ROUNDS_FOR_TRENDS = 5
@@ -315,6 +316,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             ).length}
           />
         ) : null}
+        <LooperTagline />
       </div>
     </div>
   )

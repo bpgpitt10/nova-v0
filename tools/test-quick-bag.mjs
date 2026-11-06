@@ -71,6 +71,13 @@ try {
   assert.equal(qb.modelBasisFromCarryWeight(0.6), 'learning')
   assert.equal(qb.modelBasisFromCarryWeight(1), 'measured')
 
+  // --- plus handicaps: +2 is kept as −2 and is tighter than scratch; clamped at +10
+  assert.equal(qb.normalizeHandicap(-2), -2)
+  assert.equal(qb.normalizeHandicap(-14), qb.MIN_HANDICAP)
+  const plus2 = qb.buildQuickBagPrior({ ...input, handicap: -2 })
+  assert.ok(seven(plus2).lateralSigmaYds < seven(scratch).lateralSigmaYds)
+  assert.ok(plus2.clubs[0].mishitRate >= 0.04)
+
   // --- validation
   assert.equal(qb.quickBagInputProblem(input.anchors), null)
   assert.match(qb.quickBagInputProblem({ ...input.anchors, Driver: { carryYds: 200, shape: 'fade' }, '7i': { carryYds: 190, shape: 'neutral' } }), /driver should carry/i)
