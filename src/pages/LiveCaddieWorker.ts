@@ -522,6 +522,10 @@ const buildEvaluationCacheKey = ({
 
   const stateSignature = JSON.stringify({
     onlyClubs: onlyClubs ?? null,
+    quickBag: environment.quickBag
+      ? [environment.quickBag.handicap, environment.quickBag.input.savedAt,
+          environment.quickBag.clubs.map((c) => [c.club, c.carryYds, c.lateralBiasYds])]
+      : null,
     learnedSurfaceFactors: learnedSurfaceFactors ?? null,
     playerSignature,
     geometrySignature,
