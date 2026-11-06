@@ -36,6 +36,11 @@ import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorde
 
 base = lie_footer.base
 COMPANION_VERSION = "courses.10"
+# The player-facing release number. Bump it when a build goes out to players;
+# the release workflow publishes v<COMPANION_RELEASE> to the public releases
+# repo and writes latest.json, which the web app compares with the running
+# companion's "release" to show "update available" / "needs update".
+COMPANION_RELEASE = "1.0.0"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
@@ -286,6 +291,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
             self._send_companion(200, {
                 "service": "looper-companion",
                 "version": COMPANION_VERSION,
+                "release": COMPANION_RELEASE,
                 "status": "ready",
                 "gspro": context["gspro"],
                 "dataFolder": context["dataFolder"],
