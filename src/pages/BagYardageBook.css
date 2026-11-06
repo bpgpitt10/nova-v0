@@ -381,10 +381,11 @@
   gap: 16px;
   width: min(1240px, 100%);
   margin: 0 auto;
-  /* Start below the fixed account + companion chips. The Bag page already
-     carries 16 px of its own above this layout, so take that off the band
-     to line up with Rounds and Your game (Brian, 11/6). */
-  padding: calc(var(--looper-chip-band, 54px) - 16px) 16px 48px;
+  /* Start below the fixed account + companion chips. The Bag page's
+     .app-shell already pads 24 px above this layout, so take that off the
+     band so the top bar sits exactly where Rounds' and Your game's do and
+     the tabs don't jump (Brian, 11/6). */
+  padding: calc(var(--looper-chip-band, 54px) - 24px) 16px 48px;
   box-sizing: border-box;
 }
 
