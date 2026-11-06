@@ -1,6 +1,6 @@
 import { clipOversizedPolygons, OVERSIZED_POLYGON_POINTS } from './geometry'
 import type { CourseCatalogEntry } from './courseCatalog'
-import { buildGsproOnlyHoleGeometry } from './gsproOnlyCourse'
+import { buildGsproOnlyHoleGeometry, gsproHeightPoints } from './gsproOnlyCourse'
 import {
   effectiveGreenCenter,
   sha256Hex,
@@ -56,6 +56,11 @@ import type {
  *     with the map's ground laid over it: this hole's fairway and green,
  *     bunkers, water, trees, paths, and the LiDAR terrain. A neighbouring
  *     hole's fairway counts as rough (in play, never a target).
+ *
+ * Terrain is 1 m LiDAR where published (USGS, NRCan, LINZ). Elsewhere it is
+ * Copernicus GLO-30 (30 m, coarse): the placement then comes from the greens
+ * alone, and the grid is bent to GSPro's own heights (tees, aim points, pins,
+ * hazard edges), since the sim's ground is what the ball plays on.
  *
  * The course file never leaves the PC; the cloud only built the map area.
  */
@@ -136,6 +141,11 @@ const MIN_PAIRED_SHARE = 2 / 3
 const AREA_GREENS_RMS_M = 8
 const AREA_SCALE_TOLERANCE = 0.03
 const HAZARD_POINTS_BELOW = 150
+/** Terrain this coarse (Copernicus 30 m) can't refine a placement; the greens place it. */
+const COARSE_TERRAIN_M = 5
+
+export const isCoarseTerrain = (t: CourseTerrainGrid | null | undefined) =>
+  Boolean(t && (t.source === 'global-dem' || t.sourceResolutionMeters >= COARSE_TERRAIN_M))
 
 /** GSPro hole frames (anchored in GSPro metres) for a fitted registration. */
 export const gsproHoleFrames = (registration: NativeRegistration, layout: NativeCourseLayout): Record<string, NativeHoleFrame> => {
@@ -210,9 +220,10 @@ export const fitRegistrationFromArea = async (input: Readonly<{
     holes: {},
     sampler: area.terrain ? terrainSamplerFromHoles([{ frame: area.frame, terrain: area.terrain }]) : () => null,
   }
-  let result = area.terrain ? fitNativeRegistration(fitInput) : null
+  const fine = area.terrain && !isCoarseTerrain(area.terrain)
+  let result = fine ? fitNativeRegistration(fitInput) : null
   const hazardPoints = layout.penaltyAreas.flatMap((a) => a.points)
-  if (area.terrain && !result?.registration && points.length < HAZARD_POINTS_BELOW && hazardPoints.length) {
+  if (fine && !result?.registration && points.length < HAZARD_POINTS_BELOW && hazardPoints.length) {
     const retry = fitNativeRegistration({ ...fitInput, points: [...points, ...hazardPoints] })
     if (retry.registration) result = retry
   }
@@ -222,7 +233,7 @@ export const fitRegistrationFromArea = async (input: Readonly<{
     : ''
   if (!registration) {
     registration = registrationFromGreens(fitInput)
-    how = `placed from the greens (${fit.rmsM.toFixed(1)} m)`
+    how = `placed from the greens (${fit.rmsM.toFixed(1)} m)${fine ? '' : ', coarse terrain'}`
   }
   if (!registration) {
     return { registration: null, paired: fit.paired, greensRmsM: fit.rmsM, reason: "GSPro's course could not be placed on the map" }
@@ -347,7 +358,8 @@ const OWN_FAIRWAY_YDS = 30
 /** The map green nearest GSPro's green centre, within this, is this hole's green. */
 const OWN_GREEN_YDS = 35
 const VIEW_MARGIN_YDS = 40
-const TERRAIN_MIN_VALID = 0.9
+/** Share of a hole's box with ground heights (a cliff-top hole's box takes in sea). */
+const TERRAIN_MIN_VALID = 0.6
 
 const resampleTerrain = (area: CourseAreaPackage, toArea: Affine, box: Box): CourseTerrainGrid | null => {
   const t = area.terrain
@@ -383,7 +395,7 @@ const resampleTerrain = (area: CourseAreaPackage, toArea: Affine, box: Box): Cou
     values[i] = Number.isFinite(ft[i]) ? Math.max(0, Math.min(65534, Math.round((ft[i] - offset) * 10))) : 65535
   }
   return {
-    source: 'lidar-dem',
+    source: t.source === 'global-dem' ? 'global-dem' : 'lidar-dem',
     sourceResolutionMeters: t.sourceResolutionMeters,
     runtimeSpacingYds: spacing,
     interpolation: 'bilinear',
@@ -394,7 +406,92 @@ const resampleTerrain = (area: CourseAreaPackage, toArea: Affine, box: Box): Cou
     elevationOffsetFt: offset,
     nodata: 65535,
     values,
-    note: `Course-area LiDAR terrain (${spacing} yd), turned into this hole's frame.`,
+    note: `Course-area ${t.sourceResolutionMeters} m terrain (${spacing} yd), turned into this hole's frame.`,
+  }
+}
+
+const sampleGridFt = (t: CourseTerrainGrid, x: number, y: number): number | null => {
+  const gx = (x - t.minX) / t.runtimeSpacingYds
+  const gy = (y - t.minY) / t.runtimeSpacingYds
+  if (gx < 0 || gy < 0 || gx > t.width - 1 || gy > t.height - 1) return null
+  const ix = Math.min(Math.floor(gx), t.width - 2)
+  const iy = Math.min(Math.floor(gy), t.height - 2)
+  const c = [t.values[iy * t.width + ix], t.values[iy * t.width + ix + 1],
+    t.values[(iy + 1) * t.width + ix], t.values[(iy + 1) * t.width + ix + 1]]
+  if (c.some((v) => v === t.nodata)) return null
+  const dx = gx - ix, dy = gy - iy
+  return ((c[0] * (1 - dx) + c[1] * dx) * (1 - dy) + (c[2] * (1 - dx) + c[3] * dx) * dy) / 10 + t.elevationOffsetFt
+}
+
+/** Nearest GSPro heights blended into each cell, and how much they pull (yd^2 softening). */
+const CORRECTION_NEIGHBOURS = 8
+const CORRECTION_SOFTEN_YD2 = 4
+
+/**
+ * Coarse terrain bent to GSPro's own heights: at every GSPro point (tee, aim
+ * point, pin, green centre, hazard edge) the grid takes GSPro's height; in
+ * between, the coarse model's shape plus the nearest points' corrections
+ * (inverse-distance weighted). Null when too few points fall on the grid.
+ */
+export const correctTerrainToHeights = (
+  terrain: CourseTerrainGrid,
+  points: ReadonlyArray<Readonly<{ x: number; y: number; ft: number }>>,
+): (CourseTerrainGrid & { correctionRmsFt: number }) | null => {
+  const res = points.flatMap((p) => {
+    const g = sampleGridFt(terrain, p.x, p.y)
+    return g == null ? [] : [{ x: p.x, y: p.y, r: p.ft - g }]
+  })
+  if (res.length < 3) return null
+  const rmsFt = Math.sqrt(res.reduce((s, p) => s + p.r * p.r, 0) / res.length)
+  const { width, height } = terrain
+  const k = Math.min(CORRECTION_NEIGHBOURS, res.length)
+  const bestD = new Float64Array(k)
+  const bestR = new Float64Array(k)
+  const ft = new Float64Array(width * height).fill(Number.NaN)
+  let minFt = Infinity
+  for (let row = 0; row < height; row += 1) {
+    const y = terrain.minY + row * terrain.runtimeSpacingYds
+    for (let col = 0; col < width; col += 1) {
+      const encoded = terrain.values[row * width + col]
+      if (encoded === terrain.nodata) continue
+      const x = terrain.minX + col * terrain.runtimeSpacingYds
+      let filled = 0
+      for (let i = 0; i < res.length; i += 1) {
+        const d = (res[i].x - x) ** 2 + (res[i].y - y) ** 2
+        if (filled === k && d >= bestD[k - 1]) continue
+        let j = filled < k ? filled++ : k - 1
+        while (j > 0 && bestD[j - 1] > d) {
+          bestD[j] = bestD[j - 1]
+          bestR[j] = bestR[j - 1]
+          j -= 1
+        }
+        bestD[j] = d
+        bestR[j] = res[i].r
+      }
+      let sw = 0, sr = 0
+      for (let j = 0; j < filled; j += 1) {
+        const w = 1 / (bestD[j] + CORRECTION_SOFTEN_YD2)
+        sw += w
+        sr += w * bestR[j]
+      }
+      const z = terrain.elevationOffsetFt + encoded / 10 + (sw > 0 ? sr / sw : 0)
+      ft[row * width + col] = z
+      if (z < minFt) minFt = z
+    }
+  }
+  if (!Number.isFinite(minFt)) return null
+  const offset = Math.floor(minFt * 10) / 10
+  const values = new Uint16Array(width * height)
+  for (let i = 0; i < values.length; i += 1) {
+    values[i] = Number.isFinite(ft[i]) ? Math.max(0, Math.min(65534, Math.round((ft[i] - offset) * 10))) : 65535
+  }
+  return {
+    ...terrain,
+    elevationOffsetFt: offset,
+    values,
+    correctionRmsFt: rmsFt,
+    note: `${terrain.sourceResolutionMeters} m global terrain, bent to ${res.length} GSPro heights `
+      + `(they differed by ${rmsFt.toFixed(1)} ft rms before).`,
   }
 }
 
@@ -472,7 +569,12 @@ export const buildAreaHoleGeometry = (input: Readonly<{
       : []
   })
   const surfaces = [...gsproSurfaces, ...mapSurfaces]
-  const terrain = resampleTerrain(area, invert(toHole), box) ?? base.terrain
+  const resampled = resampleTerrain(area, invert(toHole), box)
+  // Coarse (30 m) terrain takes GSPro's heights where GSPro has them.
+  const terrain = resampled && isCoarseTerrain(resampled)
+    ? correctTerrainToHeights(resampled, gsproHeightPoints(input.layouts ?? [input.layout], registration, holeNumber))
+      ?? resampled
+    : resampled ?? base.terrain
   const available = (kind: CourseSurfaceKind): GeometryAvailability =>
     surfaces.some((s) => s.kind === kind) ? 'available' : 'unavailable'
   return {

@@ -151,8 +151,47 @@ try {
   assert.equal(refused.registration, null)
   assert.ok(refused.reason.length > 10)
 
+  // 4. Outside LiDAR coverage: a coarse 30 m model with errors of its own (a
+  // surface model's trees, smoothing). The greens place the course, and the
+  // grid takes GSPro's heights, so plays-like deltas follow the sim's ground.
+  const errFt = (x, y) => 6 + 9 * Math.sin(x / 120) * Math.cos(y / 150)
+  const coarseValues = new Uint16Array(width * height)
+  for (let r = 0; r < height; r += 1) for (let c = 0; c < width; c += 1) {
+    const x = minX + c * spacing, y = minY + r * spacing
+    coarseValues[r * width + c] = Math.round((elevFt(x, y) + errFt(x, y) - 200) * 10)
+  }
+  const { enrichment: _lidar, ...noLidar } = pkgJson
+  const coarseArea = await parseAreaPackage('area-test', {
+    ...noLidar,
+    area: { ...pkgJson.area, terrain: { ...terrain, source: 'global-dem', sourceResolutionMeters: 30,
+      valuesBase64: deflateSync(Buffer.from(coarseValues.buffer)).toString('base64') } },
+  })
+  assert.equal(coarseArea.terrain?.source, 'global-dem')
+  assert.equal(coarseArea.lidar, false)
+  const coarseFit = await fitRegistrationFromArea({ courseId: 'area-test', gsproCourseKey: 'area_test_gsp', layout, area: coarseArea })
+  assert.ok(coarseFit.registration, coarseFit.reason)
+  assert.equal(coarseFit.paired, 9)
+  assert.match(coarseFit.reason, /placed from the greens .*coarse terrain/)
+  assert.ok(Math.abs((coarseFit.registration.rotationDeg ?? 0) - 30) < 0.5, `coarse turn ${coarseFit.registration.rotationDeg}`)
+  const coarseHole = buildAreaHoleGeometry({ entry, layout, registration: coarseFit.registration, holeNumber: 1, area: coarseArea })
+  const cLocal = (w) => nativeWorldToHoleLocalYds(coarseFit.registration, 1, w)
+  const cTee = terrainAt(coarseHole, cLocal(holes[0].tee))
+  const cGreen = terrainAt(coarseHole, cLocal(holes[0].green))
+  const cAim = terrainAt(coarseHole, cLocal(holes[0].aim))
+  assert.equal(cTee.source, 'global-dem')
+  const [aX, aY] = areaYds(holes[0].aim)
+  const trueDelta = elevFt(gX, gY) - elevFt(teeX, teeY)
+  const rawDelta = (elevFt(gX, gY) + errFt(gX, gY)) - (elevFt(teeX, teeY) + errFt(teeX, teeY))
+  assert.ok(Math.abs(rawDelta - trueDelta) > 2, `the coarse model alone is off by ${(rawDelta - trueDelta).toFixed(1)} ft`)
+  assert.ok(Math.abs((cGreen.elevationFt - cTee.elevationFt) - trueDelta) < 0.5,
+    `tee to green ${(cGreen.elevationFt - cTee.elevationFt).toFixed(2)} ft vs GSPro's ${trueDelta.toFixed(2)}`)
+  assert.ok(Math.abs((cAim.elevationFt - cTee.elevationFt) - (elevFt(aX, aY) - elevFt(teeX, teeY))) < 0.5, 'tee to aim point')
+  assert.match(coarseHole.terrain.note, /bent to \d+ GSPro heights/)
+
   console.log(`PASS: map-area course: ${fit.paired}/9 GSPro greens found among 21 map greens, turned ${(fit.registration.rotationDeg).toFixed(2)}°, grade ${fit.registration.grade}; `
-    + 'own fairway kept, neighbour\'s demoted, map green, bunkers, trees and LiDAR terrain on GSPro\'s hole.')
+    + 'own fairway kept, neighbour\'s demoted, map green, bunkers, trees and LiDAR terrain on GSPro\'s hole; '
+    + `coarse 30 m terrain placed by the greens and bent to GSPro's heights (tee to green ${(cGreen.elevationFt - cTee.elevationFt).toFixed(1)} ft `
+    + `vs GSPro ${trueDelta.toFixed(1)}; the raw model said ${rawDelta.toFixed(1)}).`)
 } finally {
   await server?.close()
 }
