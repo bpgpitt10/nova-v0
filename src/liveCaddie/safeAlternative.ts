@@ -180,3 +180,12 @@ export const describeSafeAlternative = (safe: SafeAlternative): string => {
     : `sand or deep rough ${oneIn(safe.seriousTrouble)} instead of ${oneIn(safe.math.seriousTrouble)}`
   return `${costText} · ${risk}`
 }
+
+/** The other half of the line, shown once the safe play is on the card: what going back buys. */
+export const describeMathPick = (safe: SafeAlternative): string => {
+  const risk = safe.mainlyCuts === 'catastrophe'
+    ? `water or penalty ${oneIn(safe.math.catastrophe)}`
+    : `sand or deep rough ${oneIn(safe.math.seriousTrouble)}`
+  const gain = safe.costStrokes < 0.05 ? 'about the same strokes' : `saves about ${safe.costStrokes < 0.18 ? 'a tenth of a stroke' : safe.costStrokes < 0.3 ? 'a quarter stroke' : `${safe.costStrokes.toFixed(1)} strokes`}`
+  return `${gain} · ${risk}`
+}
