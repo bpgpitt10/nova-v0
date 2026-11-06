@@ -132,6 +132,8 @@ jobs:
         run: node tools/test-companion-release.mjs
       - name: Companion presence memory
         run: node tools/test-companion-presence.mjs
+      - name: Auto Aim with an estimated pin
+        run: node tools/test-aim-estimated-pin.mjs
 
       - name: Conceding hole 1 releases the Start Round hold
         run: node tools/test-concede-hole-release.mjs
