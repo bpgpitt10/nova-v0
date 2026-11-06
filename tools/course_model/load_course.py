@@ -45,7 +45,10 @@ def slugify(text: str) -> str:
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
-STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich')
+STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich', 'area')
+# The importer's message when OpenStreetMap doesn't draw one numbered hole line
+# per hole 1-18 (fetch_osm_course_snapshot.validate_holes).
+HOLES_NOT_MAPPED = 'one route per hole'
 
 
 class Load:
@@ -107,7 +110,8 @@ def write_config(slug: str, request: dict, bbox: dict) -> Path:
     aliases = sorted({a for a in [name, osm['name'], *(request.get('gsproAliases') or [])] if a})
     config = {
         'schemaVersion': 'looper-course-build-config-v1',
-        'courseId': slugify(f'{name} {location}') or slug,
+        # A course replacing a built-in one keeps its id, so its round history stays with it.
+        'courseId': request.get('courseId') or slugify(f'{name} {location}') or slug,
         'courseName': name,
         'location': location,
         'slug': slug,
@@ -123,6 +127,28 @@ def write_config(slug: str, request: dict, bbox: dict) -> Path:
     path = ROOT / 'config' / 'course-geometry' / f'{slug}-v1.json'
     path.write_text(json.dumps(config, indent=2) + '\n')
     return path
+
+
+MAX_EPT_TRIES = 3
+
+
+def lidar_from_point_cloud(load: 'Load', py: str, bbox: dict, bbox_path: str, model: Path) -> bool:
+    """Canopy heights from the newest USGS survey that actually has points
+    here; the newest one listed can be empty over the course (Detroit GC,
+    Oakland County 2019). With none, trees come from the map (still ok)."""
+    urls = [bbox['ept']['url']] + [c['url'] for c in bbox['ept'].get('candidates') or []
+                                   if c.get('url') and c['url'] != bbox['ept']['url']]
+    for url in urls[:MAX_EPT_TRIES]:
+        if not load.stage('lidar', py, str(HERE / 'lidar_pipeline.py'), '--ept', url,
+                          '--dem-source', bbox_path, '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model)):
+            return False
+        stats = json.loads((model / 'lidar-stats.json').read_text())
+        if stats.get('pointsKeptInBbox', 0) > 0:
+            return True
+        load.stages[-1]['note'] = f'no points over the course in {url}; trying the next survey'
+        (model / 'chm-utm-1m.json').unlink(missing_ok=True)
+    load.note('lidar', True, 0, trees='osm', note='no USGS survey has points over this course: trees from the map')
+    return True
 
 
 def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict:
@@ -150,33 +176,77 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     config_path = write_config(slug, request, bbox)
     load.note('config', True, time.time() - t0, path=str(config_path.relative_to(ROOT)))
 
-    if not skip_import and not load.stage('import', py, 'tools/import_course_canonical.py',
-                                          '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
-                                          '--reason', 'one-click-course-load'):
-        return load.finish(request, extra)
+    # Area mode: OpenStreetMap doesn't number this course's holes (or the
+    # player asked for it). Package the whole area; GSPro's own course file
+    # supplies the holes on the player's PC (build_area_package.py).
+    area_mode = request.get('mode') == 'area'
+    # The hole importer only fetches USGS 3DEP / NRCan terrain itself. LINZ
+    # (New Zealand) and Copernicus GLO-30 (elsewhere) load as areas; the PC
+    # corrects coarse Copernicus terrain to GSPro's own heights.
+    no_importer_terrain = bbox.get('demProvider') in ('copernicus-30m', 'linz-1m')
+    if area_mode or no_importer_terrain:
+        area_mode = True
+        load.note('import', True, 0, mode='area',
+                  note='area package requested' if request.get('mode') == 'area'
+                  else f"terrain from {bbox.get('demProvider')}, which the hole importer doesn't take: "
+                  'packaging the course area')
+    elif not skip_import and not load.stage('import', py, 'tools/import_course_canonical.py',
+                                            '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
+                                            '--reason', 'one-click-course-load'):
+        failed = load.stages[-1]
+        if HOLES_NOT_MAPPED not in ' '.join(failed.get('error') or []):
+            return load.finish(request, extra)
+        load.stages[-1] = {'stage': 'import', 'ok': True, 'seconds': failed['seconds'], 'mode': 'area',
+                           'note': "OpenStreetMap doesn't number every hole once: packaging the course area instead",
+                           'importError': failed.get('error')}
+        area_mode = True
+    if area_mode:
+        extra['mode'] = 'area'
 
     bbox_path = str(model / 'course-bbox.json')
     ok = (load.stage('osm', py, str(HERE / 'fetch_sources.py'), 'osm', '--dem-source', bbox_path, '--out', str(model))
           and load.stage('dem', py, str(HERE / 'fetch_sources.py'), 'dem', '--dem-source', bbox_path,
                          '--crs', bbox['crs'], '--tmp', str(tmp), '--out', str(model)))
     if ok and bbox['ept'].get('url'):
-        ok = (load.stage('lidar', py, str(HERE / 'lidar_pipeline.py'), '--ept', bbox['ept']['url'],
-                         '--dem-source', bbox_path, '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model))
-              and load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
-                             '--osm', str(model / 'osm-full.json.gz'), '--out', str(model)))
-    elif ok and bbox.get('demProvider') == 'nrcan-hrdem':
-        # Canada: canopy heights from HRDEM DSM - DTM instead of a point cloud.
-        ok = (load.stage('lidar', py, str(HERE / 'fetch_sources.py'), 'chm', '--dem-source', bbox_path,
-                         '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model))
-              and load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
-                             '--osm', str(model / 'osm-full.json.gz'), '--out', str(model)))
+        ok = lidar_from_point_cloud(load, py, bbox, bbox_path, model)
+        if ok and (model / 'chm-utm-1m.json').exists():
+            ok = load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
+                            '--osm', str(model / 'osm-full.json.gz'), '--out', str(model))
+    elif ok and bbox.get('demProvider') in ('nrcan-hrdem', 'linz-1m'):
+        # Canada / New Zealand: canopy heights from DSM - DTM instead of a point cloud.
+        found = bbox.get('hrdem') or bbox.get('linz') or {}
+        if any(i.get('dsm') for i in found.get('items') or []):
+            ok = (load.stage('lidar', py, str(HERE / 'fetch_sources.py'), 'chm', '--dem-source', bbox_path,
+                             '--dem', str(model / 'dem-utm-1m.json'), '--out', str(model))
+                  and load.stage('trees', py, str(HERE / 'build_trees.py'), '--chm', str(model / 'chm-utm-1m.json'),
+                                 '--osm', str(model / 'osm-full.json.gz'), '--out', str(model)))
+        else:
+            load.note('lidar', True, 0, trees='osm', note='no surface model published here: trees from the map')
     elif ok:
-        load.note('lidar', False, 0, error=['No USGS LiDAR point cloud covers this course.'])
-        ok = False
+        # US bare earth without a point cloud (North Carolina), or Copernicus:
+        # terrain is in hand; trees come from the map's woods.
+        load.note('lidar', True, 0, trees='osm',
+                  note=f"no LiDAR point cloud: terrain from {bbox.get('demProvider')}, trees from the map")
     package = ROOT / 'public' / 'course-geometry' / slug / 'course-v1.json'
-    if ok and package.exists():
+    if ok and area_mode:
+        config = json.loads(config_path.read_text())
+        load.stage('area', py, str(HERE / 'build_area_package.py'), '--model-dir', str(model),
+                   '--out', str(ROOT / 'public' / 'course-geometry' / slug / 'course-area-v1.json'),
+                   '--course-id', config['courseId'], '--course-name', config['courseName'],
+                   '--location', config.get('location') or '', '--slug', slug,
+                   *[arg for alias in config.get('gsproAliases') or [] for arg in ('--alias', alias)])
+    elif ok and package.exists():
         load.stage('enrich', py, str(HERE / 'build_enriched_package.py'), '--package', str(package),
                    '--model-dir', str(model), '--out', str(package.parent / 'course-v1-lidar.json'))
+    # Acceptance: is what was built fit to publish? (validate_package.py; hard
+    # failures fail the load, soft ones ride along in the report.)
+    built = [p for p in ((ROOT / 'public' / 'course-geometry' / slug).glob('course-*.json')) if p.is_file()] \
+        if ok and (ROOT / 'public' / 'course-geometry' / slug).exists() else []
+    if ok and built:
+        report_path = report_dir / 'validate-report.json'
+        load.stage('validate', py, str(HERE / 'validate_package.py'), '--report', str(report_path), *map(str, built))
+        if report_path.exists():
+            extra['validation'] = json.loads(report_path.read_text())
     for name in ('lidar-stats.json', 'trees-summary.json'):
         if (model / name).exists():
             extra[name.replace('.json', '')] = json.loads((model / name).read_text())

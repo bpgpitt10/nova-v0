@@ -9,7 +9,7 @@
   ],
   "location": "Del Monte Forest, California",
   "packagePath": "public/course-geometry/pebble-beach/course-v1.json",
-  "packageSha256": "9ae0e8f4ce38778b137382acb2ee032730ce0d0e560c6c267e09d4fbfb677e48",
+  "packageSha256": "2984869072df88102f16461da12e5bec3c72453f3c6b3df6fa6146ef07bf0db8",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/pebble-beach/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/pebble-beach/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

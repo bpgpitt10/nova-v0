@@ -6,6 +6,8 @@ import {
   getCourseCatalogEntry,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
+import { CoursePicker } from '../components/CoursePicker'
+import { refreshGsproOnlyCourses } from '../courseGeometry/gsproOnlyCourses'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
 import { courseGeometryFingerprint } from '../courseGeometry/shotOneTeeResolver'
@@ -53,8 +55,9 @@ const ACTIVE_ROUND_RECENT_MS = 12 * 60 * 60 * 1000
 
 export default function RoundSetupPage() {
   const initialCourse = loadLastSelectedCourseId()
+  // Nothing chosen yet: Greywolf (our home course) when it is loaded, else the first course.
   const initialCourseId = initialCourse === '__no-course-selected__'
-    ? GREYWOLF_COURSE_ID
+    ? courseRegistry.find((c) => c.id === GREYWOLF_COURSE_ID)?.id ?? courseRegistry[0]?.id ?? initialCourse
     : initialCourse
   const savedTee = loadRoundTeeSelection(initialCourseId)
 
@@ -64,6 +67,8 @@ export default function RoundSetupPage() {
   useEffect(() => {
     const bump = () => setCatalogVersion((v) => v + 1)
     window.addEventListener(COURSES_UPDATED_EVENT, bump)
+    // Courses installed in GSPro since the app started (sim PC only).
+    void refreshGsproOnlyCourses().catch(() => undefined)
     return () => window.removeEventListener(COURSES_UPDATED_EVENT, bump)
   }, [])
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
@@ -80,8 +85,8 @@ export default function RoundSetupPage() {
 
   const course = useMemo(() => getCourseCatalogEntry(courseId), [courseId])
 
-  // Native positions (beta): reload the tee list when the beta turns on/off or
-  // the course files become available, so GSPro's tee names appear here.
+  // Course match: reload the tee list when the course files become available
+  // (or the match is turned off), so GSPro's tee names appear here.
   const [nativeState, setNativeState] = useState<NativeCourseStatus['state'] | null>(null)
   useEffect(() => {
     const onChange = (event: Event) => {
@@ -99,7 +104,7 @@ export default function RoundSetupPage() {
     setError(null)
     void loadCourseTeeCandidates(courseId, 1)
       .then(async (candidates) => {
-        // Native positions (beta): when the player's GKD is verified for this
+        // Course match: when the player's GKD is verified for this
         // course, offer GSPro's own tee sets (what they pick in GSPro).
         const native = await loadNativeCourseContext(courseId, null).catch(() => null)
         // Alternate layouts (GKDalt, e.g. "Farmlinks Kids") move every tee, so
@@ -257,24 +262,19 @@ export default function RoundSetupPage() {
             </div>
           ) : null}
 
-          <label className="round-setup-field">
+          <div className="round-setup-field">
             <span className="round-setup-label">Course</span>
-            <select
-              value={courseId}
-              onChange={(event) => {
-                setCourseId(event.target.value as CourseId)
+            <CoursePicker
+              courses={courseRegistry}
+              onChange={(id) => {
+                setCourseId(id as CourseId)
                 setTeeSet('')
                 setUnmappedTeeName('')
               }}
-            >
-              {courseRegistry.map((entry) => (
-                <option key={entry.id} value={entry.id} disabled={entry.packageStatus !== 'ready'}>
-                  {entry.name}{entry.packageStatus === 'ready' ? '' : ' — live validation pending'}
-                </option>
-              ))}
-            </select>
+              value={courseId}
+            />
             <a className="round-setup-hint-link" href="/courses">Don&apos;t see your course? Load a course →</a>
-          </label>
+          </div>
 
           <div className="round-setup-native">
             <NativePositionsBetaPanel courseId={courseId} courseKey={null} />

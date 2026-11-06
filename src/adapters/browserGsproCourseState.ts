@@ -1,5 +1,4 @@
 import {
-  GREYWOLF_COURSE_ID,
   resolveCourseIdFromGsproName,
   UNSELECTED_COURSE_ID,
 } from '../courseGeometry/courseCatalog'
@@ -13,7 +12,6 @@ import {
   selectNativeLayout,
 } from '../courseGeometry/nativeCourseRuntime'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
-import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
 import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
@@ -23,6 +21,7 @@ import {
   dispatchLiveCaddieShotStateChanged,
   LIVE_CADDIE_START_ROUND_EVENT,
   loadActiveLiveCaddieRound,
+  markActiveRoundLiveFromHoleChange,
 } from '../liveCaddie/roundRuntime'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
 import {
@@ -30,9 +29,6 @@ import {
   loadGsproCourseStateDirectoryHandle,
   type BrowserGsproCourseSnapshot as CoreBrowserGsproCourseSnapshot,
 } from './browserGsproCourseStateCore'
-import {
-  selectGsproCourseLayoutPin,
-} from './gsproCourseLayoutPin'
 import {
   parseGsproStartingPosition,
   type GsproStartingPositionObservation,
@@ -110,6 +106,9 @@ const manualRoundStart = {
   active: false,
   baselineCaptured: false,
   baselineIdentity: null as string | null,
+  // GSPro's hole when the hold began (or last seen during it): a change to a
+  // later hole while holding is GSPro moving on (a conceded hole), not stale data.
+  lastHole: null as number | null,
 }
 
 const readTextFileFromHandle = async (
@@ -186,44 +185,15 @@ const loadLiveTeeGeometry = (
   return pending
 }
 
-const resolveExactPinFromCourseLayout = async ({
-  selectedCourseId,
-  holeNumber,
-  teeDistanceToPinYds,
-  geometry,
-}: {
+// GSPro's output_log pin through a hand-made world transform: only the old
+// built-in Greywolf had one. Since 11/4 Greywolf is a loaded course and native
+// positions place every course's pins, so there is no exact layout pin here.
+const resolveExactPinFromCourseLayout = async (_input: {
   selectedCourseId: Exclude<ReturnType<typeof loadLastSelectedCourseId>, typeof UNSELECTED_COURSE_ID>
   holeNumber: number
   teeDistanceToPinYds: number | null
   geometry?: CourseHoleGeometry | null
-}): Promise<ExactPinObservation | null> => {
-  if (selectedCourseId !== GREYWOLF_COURSE_ID) return null
-  const rows = await loadGsproCourseLayout(selectedCourseId)
-  const match = selectGsproCourseLayoutPin(rows, holeNumber, teeDistanceToPinYds)
-  if (!match) return null
-
-  const pinLocalYds = await gsproWorldPointToGreywolfLocal(
-    match.row.pinPos,
-    match.row.teePos,
-    holeNumber,
-  )
-
-  // When no live tee distance is available (for example immediately after the
-  // manual Start Round quarantine), reject obviously mismatched cached layouts.
-  // A real pin can be far from green center, so keep this guard intentionally wide.
-  if (teeDistanceToPinYds == null && geometry?.markers.pin) {
-    const centerGapYds = Math.hypot(
-      pinLocalYds[0] - geometry.markers.pin[0],
-      pinLocalYds[1] - geometry.markers.pin[1],
-    )
-    if (centerGapYds > 65) return null
-  }
-
-  return {
-    pinLocalYds,
-    distanceValidationErrorYds: match.distanceErrorYds,
-  }
-}
+}): Promise<ExactPinObservation | null> => null
 
 const unavailableShotOneSnapshot = (
   snapshot: BrowserGsproCourseSnapshot,
@@ -470,6 +440,10 @@ const buildManualStartSnapshot = async (
   }, true), true)
 }
 
+/** While Start Round holds hole 1: GSPro changed to a later hole (a conceded hole). */
+export const releasesHoldOnHoleChange = (lastHole: number | null, hole: number | null) =>
+  lastHole != null && hole != null && hole !== lastHole && hole > 1
+
 // The shot's own id (last part of "round:hole:shotId"). A read where the
 // RoundID was briefly missing ("round:2:<id>" vs "273:2:<id>") is the same
 // stale shot, not a new one, and must not end the manual Start Round hold.
@@ -567,6 +541,7 @@ export const connectToBrowserGsproCourseState = ({
     manualRoundStart.active = true
     manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
     manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    manualRoundStart.lastHole = lastCoreSnapshot?.holeNumber ?? null
     const sequence = ++snapshotSequence
 
     void buildManualStartSnapshot(selectedCourseId)
@@ -595,17 +570,24 @@ export const connectToBrowserGsproCourseState = ({
         if (!manualRoundStart.baselineCaptured) {
           manualRoundStart.baselineIdentity = physicalSnapshotIdentity(snapshot)
           manualRoundStart.baselineCaptured = true
+          manualRoundStart.lastHole = snapshot.holeNumber
           return
         }
 
         const currentIdentity = physicalSnapshotIdentity(snapshot)
         const hasNewPhysicalShot = currentIdentity != null
           && currentIdentity !== manualRoundStart.baselineIdentity
-        if (!hasNewPhysicalShot) return
+        // A stale currentRound.dat never changes holes on its own: GSPro going
+        // to hole 2+ while we hold hole 1 is the player conceding a hole.
+        const movedOn = releasesHoldOnHoleChange(manualRoundStart.lastHole, snapshot.holeNumber)
+        if (snapshot.holeNumber != null) manualRoundStart.lastHole = snapshot.holeNumber
+        if (!hasNewPhysicalShot && !movedOn) return
 
         manualRoundStart.active = false
         manualRoundStart.baselineCaptured = false
         manualRoundStart.baselineIdentity = null
+        manualRoundStart.lastHole = null
+        if (movedOn && !hasNewPhysicalShot) markActiveRoundLiveFromHoleChange()
       }
 
       const sequence = ++snapshotSequence

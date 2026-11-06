@@ -14,12 +14,13 @@ import { NativeGkdError, parseGkdLayout } from '../courseGeometry/nativeGkd'
 import { getActiveBagClubIds } from './bagConfig'
 import { buildYardageBook } from './bagYardageBook'
 import { getActiveLocalUserId } from './localUserScope'
-import { loadLiveGsproRoundArchive } from './liveGsproRoundArchive'
+import { loadLiveGsproRoundArchive, removeRoundsFromLiveGsproArchive } from './liveGsproRoundArchive'
 import {
   recordFromArchivedShot,
   recordFromCloudRow,
   type CourseInfo,
   type LiveCourseShotRow,
+  type RoundCountChoice,
   type RoundFlags,
   type RoundShotRecord,
 } from './roundHistory'
@@ -50,27 +51,37 @@ const SHOT_COLUMNS = [
   'starting_surface_raw', 'ending_surface_raw', 'distance_to_pin_yards',
   'carry_yards', 'total_yards', 'spin_axis_degrees', 'gspro_club_index',
   'raw_metrics', 'actual_club', 'club_source', 'inferred_club',
-  'inference_confidence', 'recommended_club',
+  'inference_confidence', 'recommended_club', 'paper_cost_strokes', 'model_basis',
 ].join(',')
 
 export type RoundRecordsResult = {
   records: RoundShotRecord[]
   source: 'cloud' | 'cloud+local' | 'local'
   cloudError: string | null
+  /** The player's count choices (account-wide, `live_course_rounds.count_state`); deleted rounds are left out of `records`. */
+  countStates: ReadonlyMap<number, RoundCountChoice>
+  /** Rounds that have a row in the cloud (a delete can update it; others need a tombstone row). */
+  cloudRoundIds: ReadonlySet<number>
 }
+
+type RoundCountState = RoundCountChoice | 'deleted'
+type CloudRoundRow = { gspro_round_id: number; count_state?: RoundCountState | null }
+
+let cloudRoundRows: CloudRoundRow[] = []
 
 const loadCloudRecords = async (): Promise<RoundShotRecord[] | null> => {
   if (!isSupabaseConfigured()) return null
   const user = await getCurrentLooperUser()
   if (!user) return null
   const client = await getSupabaseClient()
-  const rounds = await awaitQuery<Array<{ gspro_round_id: number }>>(
+  const rounds = await awaitQuery<CloudRoundRow[]>(
     client
-      .from<Array<{ gspro_round_id: number }>>('live_course_rounds')
-      .select('gspro_round_id')
+      .from<CloudRoundRow[]>('live_course_rounds')
+      .select('gspro_round_id, count_state')
       .eq('user_id', user.id),
   )
-  const ids = [...new Set(rounds.map((row) => row.gspro_round_id))]
+  cloudRoundRows = rounds
+  const ids = [...new Set(rounds.filter((row) => row.count_state !== 'deleted').map((row) => row.gspro_round_id))]
   const records: RoundShotRecord[] = []
   // One query per few rounds keeps each response well under the API row cap.
   for (let start = 0; start < ids.length; start += ROUNDS_PER_QUERY) {
@@ -93,7 +104,7 @@ const loadLocalRecords = (): RoundShotRecord[] =>
   )
 
 export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
-  const local = loadLocalRecords()
+  let local = loadLocalRecords()
   let cloud: RoundShotRecord[] | null = null
   let cloudError: string | null = null
   try {
@@ -101,7 +112,15 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
   } catch (error) {
     cloudError = error instanceof Error ? error.message : 'Could not load rounds.'
   }
-  if (!cloud) return { records: local, source: 'local', cloudError }
+  if (!cloud) return { records: local, source: 'local', cloudError, countStates: new Map(), cloudRoundIds: new Set() }
+  const deleted = new Set(cloudRoundRows.filter((row) => row.count_state === 'deleted').map((row) => row.gspro_round_id))
+  const countStates = new Map<number, RoundCountChoice>()
+  cloudRoundRows.forEach((row) => {
+    if (row.count_state === 'counts' || row.count_state === 'excluded') countStates.set(row.gspro_round_id, row.count_state)
+  })
+  const cloudRoundIds = new Set(cloudRoundRows.map((row) => row.gspro_round_id))
+  // A deleted round may still be in this browser's archive: leave it out.
+  local = local.filter((record) => !deleted.has(record.roundId))
 
   // Rounds the cloud doesn't have yet (or has fewer shots of) come from this browser.
   const cloudCounts = new Map<number, number>()
@@ -117,7 +136,66 @@ export const loadRoundRecords = async (): Promise<RoundRecordsResult> => {
     ...cloud.filter((record) => !preferLocal.has(record.roundId)),
     ...local.filter((record) => preferLocal.has(record.roundId)),
   ]
-  return { records: merged, source: preferLocal.size > 0 ? 'cloud+local' : 'cloud', cloudError }
+  return { records: merged, source: preferLocal.size > 0 ? 'cloud+local' : 'cloud', cloudError, countStates, cloudRoundIds }
+}
+
+const signedInClient = async () => {
+  if (!isSupabaseConfigured()) throw new Error('Sign in to manage rounds.')
+  const user = await getCurrentLooperUser()
+  if (!user) throw new Error('Sign in to manage rounds.')
+  return { user, client: await getSupabaseClient() }
+}
+
+/** Sets whether rounds count (null: back to Looper's call). Account-wide. */
+export const saveRoundCountState = async (roundIds: readonly number[], state: RoundCountChoice | null): Promise<void> => {
+  if (roundIds.length === 0) return
+  const { user, client } = await signedInClient()
+  await awaitQuery<unknown>(
+    client
+      .from<unknown>('live_course_rounds')
+      .update({ count_state: state })
+      .eq('user_id', user.id)
+      .in('gspro_round_id', [...roundIds]),
+  )
+}
+
+/**
+ * Deletes rounds from Looper: the round rows become tombstones (count_state
+ * 'deleted') so the sim PC's copy isn't synced back, their shots are removed,
+ * and this browser's copy goes too. Rounds only this browser had get a
+ * tombstone row of their own.
+ */
+export const deleteRounds = async (
+  rounds: ReadonlyArray<{ roundId: number; courseKey: string | null; playedAt: string | null }>,
+  cloudRoundIds: ReadonlySet<number>,
+): Promise<void> => {
+  if (rounds.length === 0) return
+  const { user, client } = await signedInClient()
+  const inCloud = rounds.filter((round) => cloudRoundIds.has(round.roundId)).map((round) => round.roundId)
+  const localOnly = rounds.filter((round) => !cloudRoundIds.has(round.roundId))
+  if (inCloud.length > 0) {
+    await awaitQuery<unknown>(
+      client.from<unknown>('live_course_rounds').update({ count_state: 'deleted' })
+        .eq('user_id', user.id).in('gspro_round_id', inCloud),
+    )
+  }
+  if (localOnly.length > 0) {
+    const now = new Date().toISOString()
+    const result = await client.from<unknown>('live_course_rounds').upsert(
+      localOnly.map((round) => ({
+        user_id: user.id, gspro_round_id: round.roundId, course_key: round.courseKey,
+        first_observed_at: round.playedAt ?? now, last_observed_at: round.playedAt ?? now,
+        shot_count: 0, count_state: 'deleted',
+      })),
+      { onConflict: 'user_id,gspro_round_id' },
+    )
+    if (result.error) throw new Error(result.error.message)
+  }
+  await awaitQuery<unknown>(
+    client.from<unknown>('live_course_shots').delete()
+      .eq('user_id', user.id).in('gspro_round_id', rounds.map((round) => round.roundId)),
+  )
+  removeRoundsFromLiveGsproArchive(rounds.map((round) => round.roundId))
 }
 
 // ---- course names and pars --------------------------------------------------

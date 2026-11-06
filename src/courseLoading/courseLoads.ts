@@ -1,7 +1,12 @@
 import { getSupabaseClient } from '../cloud/supabaseClient'
 import { courseNameMatchScore } from './courseNameMatch'
 import { gsproLinks, setGsproLinks } from '../courseGeometry/gsproLinks'
-import { applyLoadedCourseRows, type LoadedCourseRow } from '../courseGeometry/runtimeCourses'
+import {
+  applyLoadedCourseAreaRows,
+  applyLoadedCourseRows,
+  type LoadedCourseAreaRow,
+  type LoadedCourseRow,
+} from '../courseGeometry/runtimeCourses'
 
 export { courseNameMatchScore }
 
@@ -355,7 +360,13 @@ export const refreshLoadedCourses = async (): Promise<number> => {
     .select('slug, course_id, name, location, gspro_aliases, package_url, lidar, hole_headings')
     .limit(2000)
   if (error) throw new Error(error.message)
-  return applyLoadedCourseRows(data ?? [])
+  const added = applyLoadedCourseRows(data ?? [])
+  // Courses loaded as a whole map area (holes from GSPro's course file on the PC).
+  const areas = await client
+    .from<LoadedCourseAreaRow[]>('loaded_course_areas')
+    .select('slug, course_id, name, location, gspro_aliases, package_url, lidar')
+    .limit(2000)
+  return added + (areas.error ? 0 : applyLoadedCourseAreaRows(areas.data ?? []))
 }
 
 export type SavedGsproCourse = Readonly<{

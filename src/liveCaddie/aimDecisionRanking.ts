@@ -10,6 +10,12 @@ export type AimDecisionPolicy = {
   /**
    * Candidates within this absolute catastrophe-probability margin of the
    * safest authoritative choice may compete on expected future strokes.
+   *
+   * Default: no guardrail (Infinity). Water and penalty landings are already
+   * charged their penalty stroke and relief lie in expected future strokes; a
+   * hard cutoff on top of that rejected the lowest-strokes club whenever it
+   * carried ~2 points more water than the safest one (e.g. Driver over a 5i on a
+   * 186-yd par 3, giving up 1.2 strokes). A finite value restores the old cutoff.
    */
   catastropheToleranceAboveBest: number
   /** @deprecated Next-state value replaces target-fit carry gating. Retained for API compatibility. */
@@ -37,7 +43,7 @@ export type AimDecisionPolicy = {
 }
 
 export const DEFAULT_AIM_DECISION_POLICY: AimDecisionPolicy = {
-  catastropheToleranceAboveBest: 0.02,
+  catastropheToleranceAboveBest: Number.POSITIVE_INFINITY,
   carryGapToleranceAboveBestYds: 12,
   minimumAuthoritativeSupportShots: 5,
   minimumComparisonSupportShots: confidenceConfig.insufficientData.minIncludedShots,
@@ -86,9 +92,10 @@ const compareAimValue = <T extends RiskRankableAim>(
 /**
  * Rank lateral aims for a single club.
  *
- * Catastrophe remains a policy guardrail, not an additive score. Inside the
- * safe set, the authoritative objective is now expected future strokes from
- * the exact distribution of next-shot states. Success/severity and the legacy
+ * The authoritative objective is expected future strokes from the exact
+ * distribution of next-shot states (water/penalty charged their stroke and
+ * drop). An optional catastrophe guardrail applies only when the policy sets a
+ * finite tolerance; the default has none. Success/severity and the legacy
  * V0 utility remain diagnostics only.
  */
 export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
@@ -147,10 +154,12 @@ export const rankRiskAwareAimCandidates = <T extends RiskRankableAim>(
     rank: index + 1,
     withinCatastropheGuardrail: row.risk.catastrophe <= guardrail + 1e-9,
     decisionReason: index === 0
-      ? `Within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; lowest expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}) in the safe set.`
+      ? Number.isFinite(policy.catastropheToleranceAboveBest)
+        ? `Within ${(policy.catastropheToleranceAboveBest * 100).toFixed(0)} pts of the safest catastrophe rate; lowest expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}) in the safe set.`
+        : `Lowest expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`
       : row.risk.catastrophe > guardrail + 1e-9
         ? 'Rejected by the catastrophe guardrail before next-state value comparison.'
-        : `Safe-set alternative with higher expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`,
+        : `Alternative with higher expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}).`,
   }))
 
   const unavailableRows: RankedAimChoice<T>[] = unavailable.map((row, index) => ({
@@ -188,6 +197,12 @@ export type RankedClubAimChoice<T extends RiskRankableAim, C extends ClubAimChoi
   decisionStrength: ClubDecisionStrength
   /** Positive means this row's EV is worse than the raw lowest-EV safe option. */
   evDeltaToRawBest: number | null
+  /** Raw expected strokes to hole out from the best aim's outcome distribution (null when unavailable). */
+  expectedFutureStrokes: number | null
+  /** The same with the model-confidence penalty the ranking actually compares. */
+  confidenceAdjustedStrokes: number | null
+  /** Probability of a catastrophe (penalty, OB, lost) at the best aim. */
+  catastropheProbability: number | null
 }
 
 const policyMinimumComparisonSupport = (policy: AimDecisionPolicy) =>
@@ -306,7 +321,7 @@ const confidenceAwareSafeOrder = <
  * distribution leaves the player next.
  *
  * 1) Keep only truly cold-start clubs (<4 shots by default) behind comparison-ready clubs.
- * 2) Apply the catastrophe guardrail.
+ * 2) Apply the catastrophe guardrail (only if the policy sets a finite tolerance; default none).
  * 3) Inside the safe set, calculate exact raw EV for every club.
  * 4) Add the graduated model-confidence uncertainty penalty and rank on the
  *    resulting confidence-adjusted strokes. The raw EV is never overwritten.
@@ -359,6 +374,9 @@ export const rankRiskAwareClubChoices = <
         modelConfidence: row.modelConfidence,
         decisionStrength: 'provisional',
         evDeltaToRawBest: null,
+        expectedFutureStrokes: row.stateValue?.expectedFutureStrokes ?? null,
+        confidenceAdjustedStrokes: null,
+        catastropheProbability: row.risk?.catastrophe ?? null,
       }))
   }
 
@@ -481,7 +499,7 @@ export const rankRiskAwareClubChoices = <
       decisionStrength = 'toss-up'
     } else {
       decisionReason =
-        `Safe-set alternative with confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
+        `Alternative with confidence-adjusted strokes ${adjustedStrokes.toFixed(3)} from expected future strokes (${row.stateValue.expectedFutureStrokes.toFixed(3)}); model confidence ${(row.modelConfidence * 100).toFixed(0)}%.`
     }
 
     return {
@@ -493,6 +511,9 @@ export const rankRiskAwareClubChoices = <
       modelConfidence: row.modelConfidence,
       decisionStrength,
       evDeltaToRawBest,
+      expectedFutureStrokes: row.stateValue.expectedFutureStrokes,
+      confidenceAdjustedStrokes: adjustedStrokes,
+      catastropheProbability: row.risk.catastrophe,
     }
   })
 
@@ -508,6 +529,9 @@ export const rankRiskAwareClubChoices = <
     modelConfidence: row.modelConfidence,
     decisionStrength: 'provisional',
     evDeltaToRawBest: null,
+    expectedFutureStrokes: row.stateValue?.expectedFutureStrokes ?? null,
+    confidenceAdjustedStrokes: null,
+    catastropheProbability: row.risk?.catastrophe ?? null,
   }))
 
   return [...usableRows, ...unavailableRows]

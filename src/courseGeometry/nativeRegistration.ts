@@ -21,6 +21,13 @@ export type NativeHoleFrame = Readonly<{
   anchorLatLon: readonly [number, number]
   headingDegreesTrue: number
   origin?: string | null
+  /**
+   * GSPro-only courses (gsproOnlyCourse.ts): the anchor in GSPro world metres.
+   * The hole frame is then GSPro's own ground with no lat/lon step, so GSPro
+   * distances come through exactly (the lat/lon carrier would skew them by
+   * the ellipsoid/sphere mismatch, up to 0.2%).
+   */
+  anchorWorldXZ?: readonly [number, number]
 }>
 
 /** A group of holes the designer placed apart from the rest of the scene
@@ -91,10 +98,12 @@ export const parseNativeRegistration = (value: unknown): NativeRegistration | nu
     const f = frameValue as Record<string, unknown> | null
     const anchor = pair(f?.anchorLatLon)
     if (!f || !anchor || !finite(f.headingDegreesTrue)) return null
+    const anchorWorld = pair(f.anchorWorldXZ)
     holes[key] = {
       anchorLatLon: anchor,
       headingDegreesTrue: f.headingDegreesTrue,
       origin: typeof f.origin === 'string' ? f.origin : null,
+      ...(anchorWorld ? { anchorWorldXZ: anchorWorld } : {}),
     }
   }
   const holeGroups: NativeRegistrationGroup[] = []
@@ -217,6 +226,31 @@ export const latLonToHoleLocalYds = (
   ]
 }
 
+const GSPRO_M_TO_YD = 1.0936132983377078
+
+/**
+ * A hole frame in GSPro metres keeps GSPro's own distances exact: it takes the
+ * scene's turn (and mirror) but never the fitted scale, which mostly soaks up
+ * map projection error (and a designer's scale is GSPro's yardage anyway).
+ * The map is bent to GSPro, not GSPro to the map.
+ */
+const unscaled = (registration: NativeRegistration): NativeRegistration => {
+  if (registration.scale == null) return registration
+  const { scale: _scale, ...rest } = registration
+  return rest
+}
+
+/** (east, north) metres -> the frame's (right, forward) yards. */
+const groundToFrameYds = (headingDegreesTrue: number, east: number, north: number): CoursePointYds => {
+  const h = headingDegreesTrue * DEG
+  const forward = [Math.sin(h), Math.cos(h)] as const
+  const right = [forward[1], -forward[0]] as const
+  return [
+    (east * right[0] + north * right[1]) * GSPRO_M_TO_YD,
+    (east * forward[0] + north * forward[1]) * GSPRO_M_TO_YD,
+  ]
+}
+
 export const nativeWorldToHoleLocalYds = (
   registration: NativeRegistration,
   holeNumber: number,
@@ -225,6 +259,12 @@ export const nativeWorldToHoleLocalYds = (
   if (!world || !finite(world.x) || !finite(world.z)) return null
   const frame = registration.holes[String(holeNumber)]
   if (!frame) return null
+  if (frame.anchorWorldXZ) {
+    const [east, north] = sceneToGround(unscaled(registrationForHole(registration, holeNumber)),
+      world.x - frame.anchorWorldXZ[0], world.z - frame.anchorWorldXZ[1])
+    const direct = groundToFrameYds(frame.headingDegreesTrue, east, north)
+    return direct.every(finite) ? direct : null
+  }
   const [lat, lon] = nativeWorldToLatLon(registrationForHole(registration, holeNumber), world)
   const local = latLonToHoleLocalYds(frame, lat, lon)
   return local.every(finite) ? local : null
@@ -270,6 +310,17 @@ export const nativeHoleLocalYdsToWorld = (
   if (!local || !finite(local[0]) || !finite(local[1])) return null
   const frame = registration.holes[String(holeNumber)]
   if (!frame) return null
+  if (frame.anchorWorldXZ) {
+    const h = frame.headingDegreesTrue * DEG
+    const forward = [Math.sin(h), Math.cos(h)] as const
+    const right = [forward[1], -forward[0]] as const
+    const r = local[0] / GSPRO_M_TO_YD
+    const f = local[1] / GSPRO_M_TO_YD
+    const [dx, dz] = groundToScene(unscaled(registrationForHole(registration, holeNumber)),
+      r * right[0] + f * forward[0], r * right[1] + f * forward[1])
+    const direct = { x: frame.anchorWorldXZ[0] + dx, z: frame.anchorWorldXZ[1] + dz }
+    return finite(direct.x) && finite(direct.z) ? direct : null
+  }
   const [lat, lon] = holeLocalYdsToLatLon(frame, local)
   const world = nativeLatLonToWorld(registrationForHole(registration, holeNumber), lat, lon)
   return finite(world.x) && finite(world.z) ? world : null

@@ -9,7 +9,7 @@
   ],
   "location": "Louisville, KY",
   "packagePath": "public/course-geometry/valhalla/course-v1.json",
-  "packageSha256": "6e4f8e949b22b3004f9dfd2fd11231ef7ad7283481653dda819928d56bf1f5cb",
+  "packageSha256": "e1a85393364a22db457c9bd3422bdcbf6e5e643d0ae13b8c4f9fe4d020e52c70",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/valhalla/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/valhalla/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

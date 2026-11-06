@@ -10,6 +10,9 @@ import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
+import QuickBagPage from './pages/QuickBagPage.tsx'
+import { QUICK_BAG_UPDATED_EVENT, needsQuickBagStep } from './lib/quickBagStore'
+import { loadSavedSessions } from './lib/sessions'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import RoundsPage from './pages/RoundsPage.tsx'
@@ -37,6 +40,7 @@ import { clearActiveSessionDraft, loadActiveSessionDraft } from './lib/sessions.
 import { startLiveGsproCourseRoundArchiver } from './lib/liveGsproRoundArchive.ts'
 import { startLiveCaddieShotLineage } from './liveCaddie/shotLineageStore.ts'
 import { refreshGsproLinks, refreshLoadedCourses } from './courseLoading/courseLoads.ts'
+import { refreshGsproOnlyCourses } from './courseGeometry/gsproOnlyCourses.ts'
 import { startLiveCaddieRoundTeeValidator } from './liveCaddie/roundTeeValidator.ts'
 import {
   loadActiveLiveCaddieRound,
@@ -55,6 +59,11 @@ type UpdateStatus =
   | 'error'
 
 const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
+
+// The Bag page's address is /bag (was /dashboard; old links still work).
+if (typeof window !== 'undefined' && normalizePath(window.location.pathname) === '/dashboard') {
+  window.history.replaceState(window.history.state, '', `/bag${window.location.search}${window.location.hash}`)
+}
 const isLiveCaddiePath = (value: string) => {
   const normalized = normalizePath(value)
   return normalized === '/live-caddie' || normalized === '/caddie' || normalized === '/dev/live-caddie'
@@ -138,6 +147,9 @@ function LiveGsproRoundArchiveBridge() {
     void refreshGsproLinks().catch(() => undefined)
     // Courses loaded since this build (published at run time, not in the code).
     void refreshLoadedCourses().catch(() => undefined)
+    // Every course installed in GSPro on this PC plays from its course file
+    // (no map needed); only answers on the sim PC, where the companion runs.
+    void refreshGsproOnlyCourses().catch(() => undefined)
     return () => {
       stopTeeValidator()
       stopLineage()
@@ -164,6 +176,7 @@ function LiveCaddieRoundBootstrap({ active }: { active: boolean }) {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
+  const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions()))
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
@@ -252,12 +265,19 @@ function RootRouter() {
     }
     window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
     window.addEventListener('storage', onBagConfigUpdated)
+    const onQuickBagUpdated = () => setNeedsQuickBag(needsQuickBagStep(loadSavedSessions()))
+    window.addEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
+    window.addEventListener('looper-session-history-updated', onQuickBagUpdated)
+    window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onQuickBagUpdated)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
       document.removeEventListener('click', onDocumentClick)
       window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
       window.removeEventListener('storage', onBagConfigUpdated)
+      window.removeEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
+      window.removeEventListener('looper-session-history-updated', onQuickBagUpdated)
+      window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onQuickBagUpdated)
     }
   }, [])
 
@@ -285,11 +305,12 @@ function RootRouter() {
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
     const showBagSetup = pathname === '/bag-setup'
+    const showQuickBag = pathname === '/quick-bag'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/' || pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
     const showSessionIntelligence = pathname === '/session-intelligence'
-    const showDashboardRoute = pathname === '/dashboard'
+    const showDashboardRoute = pathname === '/bag' || pathname === '/dashboard'
     const showTheRead = pathname === '/read'
     const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/')
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
@@ -312,6 +333,9 @@ function RootRouter() {
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
     if (showBagSetup || !hasBagConfig) return <BagSetupPage />
+    // New players: a starting bag right after the clubs, so Live Caddie has
+    // numbers before the first range session. Skippable; always at /quick-bag.
+    if (showQuickBag || needsQuickBag) return <QuickBagPage />
     if (showShotVariants) return <ShotVariantsPage />
     if (showSessionSummary) return <SessionSummaryPage />
     if (showDataManagement) return <DataManagementPage />
@@ -334,6 +358,7 @@ function RootRouter() {
   }, [
     checkForUpdates,
     hasBagConfig,
+    needsQuickBag,
     installAvailableUpdate,
     pathname,
     showAimLab,

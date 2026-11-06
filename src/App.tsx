@@ -25,6 +25,7 @@ import {
 import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
 import looperLogoWhite from './assets/LooperLogo.webp'
 import BagYardageBook from './pages/BagYardageBook'
+import { useQuickBagPrior } from './lib/useQuickBag'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
@@ -887,7 +888,7 @@ function App({
     return param !== 'v1'
   })()
   // The bag "yardage book" table and top-bar nav are the dashboard.
-  // Fallback to the previous card layout and rail: /dashboard?bag=cards
+  // Fallback to the previous card layout and rail: /bag?bag=cards
   const useBagYardageBook =
     typeof window === 'undefined' ||
     new URLSearchParams(window.location.search).get('bag') !== 'cards'
@@ -1745,6 +1746,7 @@ function App({
     [dashboardSummaries],
   )
 
+  const quickBagPrior = useQuickBagPrior()
   const yardageBook = useMemo(
     () =>
       useBagYardageBook && sessionState === 'review'
@@ -5598,7 +5600,7 @@ function App({
                   />
                 ) : null
               }
-              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/dashboard')}`}
+              editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/bag')}`}
               onBag={() => {
                 setDashboardNavTarget('bag')
                 setReviewView('dashboard')
@@ -5723,7 +5725,7 @@ function App({
                 )}
 
                 {reviewView === 'dashboard' && yardageBook && (
-                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} />
+                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} startingBag={quickBagPrior} />
                 )}
 
                 {reviewView === 'dashboard' && !yardageBook && (

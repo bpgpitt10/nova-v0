@@ -95,9 +95,9 @@ const isGreenFinish = (shot: RoundShot) => shot.holed || shot.endLie === 'green'
 const fromRough = (shot: RoundShot) => shot.startLie === 'rough' || shot.startLie === 'deep-rough'
 
 
-/** Rounds whose shots can be trusted: full and partial, on complete holes. */
+/** Rounds that count (the player's choice, else not when they look like tests), on complete holes. */
 const scored = (rounds: readonly RoundSummary[]) =>
-  rounds.filter((round) => (round.status === 'full' || round.status === 'partial') && round.completeHoles > 0)
+  rounds.filter((round) => round.counts && round.completeHoles > 0)
 
 const shotsOf = (round: RoundSummary) => scoredShots(round).filter((shot) => shot.sg != null && shot.category != null)
 

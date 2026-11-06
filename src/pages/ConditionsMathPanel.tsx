@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import './LiveCaddieMapPolish.css'
 import './LiveCaddieIA.css'
@@ -19,6 +20,16 @@ type ConditionsMathPanelProps = {
   strategyEffectiveDistanceYds?: number | null
   strategyEffectiveLateralYds?: number | null
   strategyAdjustmentScale?: number
+  /** GSPro-only course: unmapped ground shows as "In play", not trouble. */
+  unmappedInPlay?: boolean
+  /** Read GSPro's wind again now (gusty days swirl). */
+  onRefreshWind?: () => void
+  windRefreshing?: boolean
+  /**
+   * The engine's numbers for the pick and the alternatives, serialized, so the
+   * Arm bridge (liveClubAttribution) can record them with the decision.
+   */
+  decisionOptions?: string | null
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -79,16 +90,18 @@ function AdjustmentRow({
   lateral,
   detail,
   muted = false,
+  action = null,
 }: {
   label: string
   distance: string
   lateral: string
   detail: string
   muted?: boolean
+  action?: ReactNode
 }) {
   return (
     <div className={`live-condition-row${muted ? ' muted' : ''}`}>
-      <span className="live-condition-factor">{label}</span>
+      <span className="live-condition-factor">{label}{action}</span>
       <strong className="live-condition-distance">{distance}</strong>
       <strong className="live-condition-lateral">{lateral}</strong>
       <small>{detail}</small>
@@ -96,7 +109,23 @@ function AdjustmentRow({
   )
 }
 
+/** Where the wind comes from, relative to the shot line, in golfer words:
+ * 0° = straight in your face, 90° = from your right, 180° = from behind. */
+const windFromWords = (relativeFromDeg: number): string => {
+  const d = ((relativeFromDeg % 360) + 360) % 360
+  const side = d < 180 ? 'right' : 'left'
+  const off = d < 180 ? d : 360 - d // 0 = ahead, 90 = side, 180 = behind
+  if (off < 22.5) return 'straight ahead (into you)'
+  if (off > 157.5) return 'behind (helping)'
+  if (off < 67.5) return `ahead and ${side} (into you, off the ${side})`
+  if (off <= 112.5) return `the ${side}`
+  return `behind and ${side} (helping, off the ${side})`
+}
+
 export default function ConditionsMathPanel({
+  unmappedInPlay = false,
+  onRefreshWind,
+  windRefreshing = false,
   evaluation,
   windMph,
   windRelativeDeg,
@@ -108,6 +137,7 @@ export default function ConditionsMathPanel({
   strategyEffectiveDistanceYds = null,
   strategyEffectiveLateralYds = null,
   strategyAdjustmentScale = 1,
+  decisionOptions = null,
 }: ConditionsMathPanelProps) {
   const rawCarryDelta = evaluation
     ? evaluation.modeledCarryYds - evaluation.stockCarryYds
@@ -155,7 +185,7 @@ export default function ConditionsMathPanel({
   const risk = evaluation?.bestCandidate?.riskProfile ?? null
 
   const windDetail = hasLiveWind
-    ? `${windMph.toFixed(1)} mph @ ${windRelativeDeg.toFixed(0)}° relative`
+    ? `${windMph.toFixed(1)} mph from ${windFromWords(windRelativeDeg)} (${windRelativeDeg.toFixed(0)}°)`
     : 'No live wind input · model assumes calm'
   const elevationDetail = finite(modeledLandingElevationDeltaFt)
     ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing${hasLiveWind ? ' · includes air interaction' : ''}`
@@ -183,6 +213,7 @@ export default function ConditionsMathPanel({
         data-stock-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
         data-planned-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
         data-modeled-carry-yds={!strategyMode && evaluation ? String(evaluation.modeledCarryYds) : undefined}
+        data-decision-options={!strategyMode && decisionOptions ? decisionOptions : undefined}
       >
         <div className="live-expected-shot-heading">
           <span>{strategyMode ? 'SHOT REQUIREMENT' : 'EXPECTED SHOT'}</span>
@@ -225,7 +256,7 @@ export default function ConditionsMathPanel({
         {!strategyMode ? (
           <>
             <div className="live-hero-outcomes">
-              {(outcomeTiles(risk) ?? OUTCOME_PLACEHOLDER).map((tile) => (
+              {(outcomeTiles(risk, unmappedInPlay ? 'in-play' : 'trouble') ?? OUTCOME_PLACEHOLDER).map((tile) => (
                 <div key={tile.label} className={`outcome-${tile.label.toLowerCase()}`}><strong>{tile.text}</strong><span>{tile.label}</span></div>
               ))}
             </div>
@@ -276,6 +307,13 @@ export default function ConditionsMathPanel({
             lateral={evaluation && hasLiveWind ? lateralYards(windLateralDelta) : '—'}
             detail={windDetail}
             muted={!hasLiveWind}
+            action={onRefreshWind ? (
+              <button type="button" className={`live-condition-refresh${windRefreshing ? ' is-refreshing' : ''}`}
+                disabled={windRefreshing} onClick={onRefreshWind}
+                aria-label="Refresh wind" title="Read GSPro's wind again (it swirls on gusty days)">
+                <span aria-hidden="true">↻</span>
+              </button>
+            ) : null}
           />
           <AdjustmentRow
             label="Surface"

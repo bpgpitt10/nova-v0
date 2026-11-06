@@ -73,8 +73,20 @@ jobs:
       - name: Green read (uphill-putt side, player-frame directions) and consistent partial-shot safe miss
         run: node tools/test-live-green-read.mjs
 
+      - name: Carry-aware hazards (touchdown or roll-in counts as water / bunker)
+        run: node tools/test-carry-aware-landing.mjs
+
+      - name: Shot shape from your own shots (flushed and thin at their real frequency)
+        run: node tools/test-empirical-shot-shape.mjs
+
       - name: Native course positions (beta)
         run: node tools/test-native-course-positions.mjs
+
+      - name: GSPro-only courses (holes from the course file, no map)
+        run: node tools/test-gspro-only-course.mjs
+
+      - name: Map-area courses (GSPro's holes on an unnumbered map area)
+        run: node tools/test-area-course.mjs
 
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
@@ -118,6 +130,32 @@ jobs:
       - name: Courses loaded at run time join the catalog
         run: node tools/test-runtime-courses.mjs
 
+      - name: Start a Round course search
+        run: node tools/test-course-search.mjs
+      - name: Oversized polygons clipped to the hole
+        run: node tools/test-oversized-polygons.mjs
+      - name: Companion release check
+        run: node tools/test-companion-release.mjs
+      - name: Companion presence memory
+        run: node tools/test-companion-presence.mjs
+      - name: Auto Aim with an estimated pin
+        run: node tools/test-aim-estimated-pin.mjs
+      - name: Caddie vs you decision options
+        run: node tools/test-decision-options.mjs
+      - name: Quick Bag prior, gapping and blending
+        run: node tools/test-quick-bag.mjs
+      - name: Safe play rule
+        run: node tools/test-safe-pick.mjs
+
+      - name: Conceding hole 1 releases the Start Round hold
+        run: node tools/test-concede-hole-release.mjs
+
+      - name: Wind refresh and scene turn
+        run: node tools/test-wind-refresh.mjs
+
+      - name: Course crosswalk decisions
+        run: node tools/test-course-crosswalk.mjs
+
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs
 
@@ -154,6 +192,10 @@ jobs:
         run: |
           python3 -m pip install --quiet --break-system-packages shapely pytest || python3 -m pip install --quiet shapely pytest
           python3 -m pytest -q tests/test_osm_duplicate_holes.py
+      - name: Package validator on a whole-area package
+        run: |
+          python3 -m pip install --quiet --break-system-packages pytest || python3 -m pip install --quiet pytest
+          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py
 
       - name: Canadian elevation (NRCan HRDEM) reads
         run: |
