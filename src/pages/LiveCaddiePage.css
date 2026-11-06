@@ -454,6 +454,66 @@
   cursor: not-allowed;
 }
 
+/* The safe play: a quiet second option under the arm button. */
+.live-safe-pick {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "label what" "label why";
+  column-gap: 12px;
+  row-gap: 2px;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #d1d9cf;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.live-safe-pick:hover,
+.live-safe-pick:focus-visible {
+  border-color: rgba(234, 179, 8, 0.5);
+  outline: none;
+}
+
+.live-safe-pick.is-chosen {
+  border-color: rgba(134, 209, 154, 0.6);
+  background: rgba(134, 209, 154, 0.08);
+}
+
+.live-safe-pick-label {
+  grid-area: label;
+  align-self: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9da99f;
+}
+
+.live-safe-pick.is-chosen .live-safe-pick-label {
+  color: #a6e3b5;
+}
+
+.live-safe-pick-what {
+  grid-area: what;
+  font-size: 14px;
+}
+
+.live-safe-pick-what strong {
+  color: #fff;
+}
+
+.live-safe-pick-why {
+  grid-area: why;
+  font-size: 12px;
+  color: #9da99f;
+}
+
 .live-outcomes-card,
 .live-compare-card {
   border-radius: 14px;

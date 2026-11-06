@@ -27,7 +27,7 @@ export type ArmedLiveShotIntent = {
   modeledCarryYds: number | null
   /** Player-facing aim instruction frozen at arm time. Negative = left, positive = right. */
   aimOffsetYds: number | null
-  source: 'live-caddie-recommendation' | 'manual-club-selection'
+  source: 'live-caddie-recommendation' | 'live-caddie-safe-pick' | 'manual-club-selection'
   /** The engine's numbers for its pick and the alternatives at arm time (caddie vs you). */
   options?: DecisionOption[] | null
 }
@@ -70,6 +70,7 @@ const parseIntent = (value: unknown): ArmedLiveShotIntent | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const candidate = value as Partial<ArmedLiveShotIntent>
   const source = candidate.source === 'live-caddie-recommendation'
+    || candidate.source === 'live-caddie-safe-pick'
     || candidate.source === 'manual-club-selection'
     ? candidate.source
     : null
@@ -419,7 +420,10 @@ const installLiveCaddieClubClickBridge = () => {
       const displayedClubText = document.querySelector('.live-club-hero')?.textContent?.trim()
       const displayedClub = isClub(displayedClubText) ? displayedClubText : recommendedClub
       if (displayedClub) {
-        armFromCurrentUi(displayedClub, recommendedClub, 'live-caddie-recommendation')
+        // The safe play (a second option under the arm button) was chosen: tag the arm so
+        // Rounds can compare safe picks with math picks.
+        const safeChosen = document.querySelector('.live-safe-pick.is-chosen') != null
+        armFromCurrentUi(displayedClub, recommendedClub, safeChosen ? 'live-caddie-safe-pick' : 'live-caddie-recommendation')
       }
     }
   })
