@@ -40,34 +40,40 @@ try {
   assert.equal(fromSlots.source, 'pin-slots')
   assert.ok(Math.abs(fromSlots.acrossYds - 6) < 1e-9, `slot spread ${fromSlots.acrossYds}`)
 
-  // Par-4 tee: a 250 yd click against a 400 yd pin with 15 yd of pin uncertainty.
+  // Par-4 tee: a 250 yd click against a 400 yd pin with 15 yd of pin uncertainty
+  // (no GKD slots, green 30 yd wide) turns the frame 2° and moves the click 9.5 yd.
   const teeError = aimClickErrorYds({ ball, pin, target: [0, 250], uncertainty: fromGreen })
   assert.ok(Math.abs(teeError - (250 / 400) * Math.hypot(15, 2)) < 1e-9)
   assert.ok(teeError < 10 && teeError > 9, `par-4 tee error about 9.5 yd: ${teeError}`)
 
-  // Driver dispersion 22 yd: tolerance 11 yd, so the tee shot is aimed...
-  assert.equal(aimErrorToleranceYds(22), 11)
-  const tee = estimatedPinAim({ hole, ball, pin, target: [0, 250], lateralSigmaYds: 22 })
-  assert.equal(tee.allowed, true, 'driver off the tee aims with an estimated pin')
-  // ...and with GKD slots even a tighter driver would be.
-  const teeSlots = estimatedPinAim({ hole, ball, pin, target: [0, 250], pinSlotsLocal: [[-6, 398], [0, 400], [4, 404]], lateralSigmaYds: 8 })
-  assert.equal(teeSlots.allowed, true, 'pin slots bound the error well under one aim step')
+  // Tolerance is one aim step, whatever the club: 9.5 yd is three steps, so aim by hand.
+  assert.equal(aimErrorToleranceYds(22), 3)
+  const tee = estimatedPinAim({ hole, ball, pin, target: [0, 250] })
+  assert.equal(tee.allowed, false, 'a pin anywhere on a 30 yd green is too loose even off the tee')
+  // GKD slots within 4 yd of the estimate: 2.6 yd at the click, inside one step.
+  const teeSlots = estimatedPinAim({ hole, ball, pin, target: [0, 250], pinSlotsLocal: [[-4, 398], [0, 400], [3, 404]] })
+  assert.ok(teeSlots.errorYds < 3, `slot-bounded error ${teeSlots.errorYds}`)
+  assert.equal(teeSlots.allowed, true, 'pin slots bound the error under one aim step')
+  // Same slots on a par 3: every yard of pin error is a yard of click error, so 4.5 yd fails.
+  const par3Slots = estimatedPinAim({ hole, ball: [0, 220], pin, target: pin, pinSlotsLocal: [[-4, 398], [0, 400], [3, 404]] })
+  assert.equal(par3Slots.allowed, false, 'the same slots at the pin itself are more than a step')
 
-  // Par 3: the target is the pin, so every yard of pin error is a yard of click error.
-  const par3 = estimatedPinAim({ hole, ball: [0, 220], pin, target: pin, lateralSigmaYds: 9 })
+  // Par 3 with only the green: the full 15 yd.
+  const par3 = estimatedPinAim({ hole, ball: [0, 220], pin, target: pin })
   assert.ok(Math.abs(par3.errorYds - Math.hypot(15, 2)) < 1e-9)
   assert.equal(par3.allowed, false, 'a 7-iron at an unconfirmed pin is aimed by hand')
   // Kiawah 3 shape, 11/4: pin estimated 10 yd off on a 188 yd shot moved the click 10 yd.
   const kiawah = aimClickErrorYds({ ball: [0, 212], pin, target: pin, uncertainty: { acrossYds: 10, alongYds: 2, source: 'default' } })
   assert.ok(kiawah > 10 && kiawah < 10.5, `par-3 click error equals the pin error: ${kiawah}`)
 
-  // Lay-up on a par 5 from 520: a 230 yd click against a 520 yd pin, wedge-tight tolerance floor still passes.
-  const par5 = estimatedPinAim({ hole: { surfaces: [] }, ball: [0, -120], pin, target: [0, 110], lateralSigmaYds: null })
+  // Lay-up on a par 5 from 520 with nothing but the default 15 yd spread: 6.7 yd, aim by hand.
+  const par5 = estimatedPinAim({ hole: { surfaces: [] }, ball: [0, -120], pin, target: [0, 110] })
   assert.equal(par5.uncertainty.source, 'default')
-  assert.equal(par5.toleranceYds, 4, 'no dispersion known: the 4 yd floor')
-  assert.ok(par5.errorYds > 6 && par5.allowed === false, 'without a club model a 15 yd default pin spread is too much at 230 yd')
-  const par5Driver = estimatedPinAim({ hole: { surfaces: [] }, ball: [0, -120], pin, target: [0, 110], lateralSigmaYds: 20 })
-  assert.equal(par5Driver.allowed, true, 'a driver (σ 20) forgives a 6.7 yd aim error')
+  assert.equal(par5.toleranceYds, 3)
+  assert.ok(par5.errorYds > 6 && par5.allowed === false, 'a 15 yd default pin spread is too much at 230 yd')
+  // Two GKD slots 3 yd apart across the line on that par 5: 1.5 yd at the click, aimed.
+  const par5Slots = estimatedPinAim({ hole: { surfaces: [] }, ball: [0, -120], pin, target: [0, 110], pinSlotsLocal: [[-3, 400], [0, 400]] })
+  assert.equal(par5Slots.allowed, true)
 
   // Degenerate: ball on the pin, no ruler at all.
   assert.equal(aimClickErrorYds({ ball: pin, pin, target: [0, 410], uncertainty: fromGreen }), Number.POSITIVE_INFINITY)
