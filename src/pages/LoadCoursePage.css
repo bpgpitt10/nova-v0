@@ -187,3 +187,75 @@
   color: #8fd19e;
   font-size: 13px;
 }
+
+.load-course-group h3 {
+  margin: 18px 0 8px;
+  color: #cfd8cd;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.load-course-group h3 span {
+  margin-left: 6px;
+  color: #9da99f;
+  font-weight: 500;
+}
+
+/* Choices for a GSPro course with more than one map course nearby, under its row. */
+.load-course-list li > .load-course-pick {
+  flex-basis: 100%;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.load-course-pick p {
+  margin: 0;
+  color: #c9d3cb;
+  font-size: 14px;
+}
+
+.load-course-pick ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.load-course-list .load-course-pick li {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.load-course-pick li > span {
+  display: grid;
+  gap: 2px;
+}
+
+.load-course-pick li > span strong {
+  color: #e8efe9;
+}
+
+.load-course-pick li > span span {
+  color: #9da99f;
+  font-size: 13px;
+}
+
+.load-course-pick .load-course-pick-other {
+  color: #9da99f;
+  font-size: 13px;
+}
+
+/* Link-style buttons inside the course list (Unlink, Search the map by name, Cancel). */
+.load-course-list button.load-course-unlink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+  text-decoration: underline;
+}
