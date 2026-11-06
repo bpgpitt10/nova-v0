@@ -180,7 +180,7 @@ jobs:
       - name: Package validator on a whole-area package
         run: |
           python3 -m pip install --quiet --break-system-packages pytest || python3 -m pip install --quiet pytest
-          python3 -m pytest -q tests/test_validate_package_area.py
+          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py
 
       - name: Canadian elevation (NRCan HRDEM) reads
         run: |
