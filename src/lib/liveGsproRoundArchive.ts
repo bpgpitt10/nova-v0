@@ -14,6 +14,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import { paperCostStrokes } from '../liveCaddie/decisionOptions'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
 import {
@@ -27,6 +28,9 @@ import {
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
 
+const finiteOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
+
 export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   observedAt: string
   actualClub: Club | null
@@ -35,6 +39,11 @@ export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   includeInAnalysis: boolean
   attributedAt: string | null
   clubInference: ClubInferenceResult | null
+  /** Caddie vs you: the engine's expected strokes at arm time (null before 11/6 or when unknown). */
+  armedExpectedStrokes?: number | null
+  recommendedExpectedStrokes?: number | null
+  /** armed − recommended: positive means the engine expected its pick to do better. */
+  paperCostStrokes?: number | null
 }
 
 export type ArchivedGsproRound = {
@@ -111,6 +120,9 @@ const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCour
   clubSource: shot.clubSource === 'user' ? 'user' : null,
   includeInAnalysis: shot.includeInAnalysis === true,
   attributedAt: typeof shot.attributedAt === 'string' ? shot.attributedAt : null,
+  armedExpectedStrokes: finiteOrNull(shot.armedExpectedStrokes),
+  recommendedExpectedStrokes: finiteOrNull(shot.recommendedExpectedStrokes),
+  paperCostStrokes: finiteOrNull(shot.paperCostStrokes),
   clubInference: shot.clubInference && typeof shot.clubInference === 'object'
     ? shot.clubInference
     : null,
@@ -168,6 +180,9 @@ const archivedFromIncoming = (
   clubSource: prior?.clubSource ?? null,
   includeInAnalysis: prior?.includeInAnalysis ?? false,
   attributedAt: prior?.attributedAt ?? null,
+  armedExpectedStrokes: prior?.armedExpectedStrokes ?? null,
+  recommendedExpectedStrokes: prior?.recommendedExpectedStrokes ?? null,
+  paperCostStrokes: prior?.paperCostStrokes ?? null,
   clubInference: prior?.clubInference ?? null,
 })
 
@@ -306,6 +321,13 @@ const annotateNewShots = ({
         clubSource: 'user' as const,
         includeInAnalysis: true,
         attributedAt: observedAt,
+        armedExpectedStrokes: usableArmed.intent?.options
+          ?.find((option) => option.club === usableArmed.club)?.expectedStrokes ?? null,
+        recommendedExpectedStrokes: usableArmed.intent?.options
+          ?.find((option) => option.club === usableArmed.recommendedClub)?.expectedStrokes ?? null,
+        paperCostStrokes: paperCostStrokes(
+          usableArmed.intent?.options, usableArmed.club, usableArmed.recommendedClub,
+        ),
       } : {}),
     }
     if (JSON.stringify(next) !== JSON.stringify(archived)) changed = true
@@ -419,6 +441,9 @@ export const shotUploadBatches = (
       club_source: shot.clubSource,
       include_in_analysis: shot.includeInAnalysis,
       attributed_at: shot.attributedAt,
+      armed_expected_strokes: shot.armedExpectedStrokes ?? null,
+      recommended_expected_strokes: shot.recommendedExpectedStrokes ?? null,
+      paper_cost_strokes: shot.paperCostStrokes ?? null,
     })),
     unattributed.map(baseRow),
   ].filter((rows) => rows.length > 0)
