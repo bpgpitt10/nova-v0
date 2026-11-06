@@ -28,6 +28,7 @@ import {
 } from '../courseLoading/courseLoads'
 import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkDecision, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
+import { LooperTagline } from '../components/LooperTagline'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
 
@@ -628,6 +629,7 @@ export default function LoadCoursePage() {
         Courses come from OpenStreetMap (© OpenStreetMap contributors, ODbL), with elevation and trees from USGS, NRCan,
         LINZ or Copernicus. GSPro course list: Simulator Golf Tour.
       </p>
+      <LooperTagline />
     </main>
   )
 }

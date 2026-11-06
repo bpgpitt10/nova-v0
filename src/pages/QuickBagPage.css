@@ -43,7 +43,7 @@
 
 .quick-bag-lead {
   margin: 10px 0 0;
-  max-width: 62ch;
+  max-width: 84ch;
   font-size: 15px;
   line-height: 1.5;
   color: #b7c6ba;
@@ -111,7 +111,8 @@
   font-weight: 500;
 }
 
-.quick-bag-field input[type='number'] {
+.quick-bag-field input[type='number'],
+.quick-bag-field input[type='text'] {
   width: 100%;
   max-width: 160px;
   box-sizing: border-box;
@@ -208,7 +209,7 @@
 .quick-bag-anchor-controls {
   display: flex;
   align-items: flex-end;
-  gap: 18px;
+  gap: 32px;
   flex-wrap: wrap;
 }
 

@@ -275,8 +275,14 @@ const scaledLaunch = (club: Club, carryYds: number): QuickBagClubPrior['launch']
   }
 }
 
+/** Plus handicaps (better than scratch) are negative here: +2 is −2, and tighter than scratch. */
+export const MIN_HANDICAP = -10
+export const MAX_HANDICAP = 36
+
 export const normalizeHandicap = (handicap: number | null | undefined): number =>
-  handicap == null || !Number.isFinite(handicap) ? DEFAULT_HANDICAP : clamp(Math.round(handicap * 10) / 10, 0, 36)
+  handicap == null || !Number.isFinite(handicap)
+    ? DEFAULT_HANDICAP
+    : clamp(Math.round(handicap * 10) / 10, MIN_HANDICAP, MAX_HANDICAP)
 
 export const buildQuickBagPrior = (input: QuickBagInput): QuickBagPrior => {
   const handicap = normalizeHandicap(input.handicap)
