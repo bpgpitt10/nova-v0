@@ -18,7 +18,7 @@ export type TerrainPlane = {
   gradientRightFtPerFt: number
   gradientForwardFtPerFt: number
   sampleStepYds: number
-  source: 'lidar-dem' | 'lidar-contour-proxy' | 'gspro-heights'
+  source: 'lidar-dem' | 'lidar-contour-proxy' | 'global-dem' | 'gspro-heights'
 }
 
 export type WindDirectionConvention = 'from' | 'toward'

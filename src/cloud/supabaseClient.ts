@@ -33,6 +33,7 @@ type SupabaseQueryBuilder<T> = PromiseLike<SupabaseQueryResult<T>> & {
     values: Record<string, unknown> | Array<Record<string, unknown>>,
     options?: Record<string, unknown>,
   ): Promise<SupabaseQueryResult<unknown>>
+  update(values: Record<string, unknown>): SupabaseQueryBuilder<T>
   delete(): SupabaseQueryBuilder<T>
 }
 

@@ -120,6 +120,12 @@ export type RoundSummary = {
   fir: { hit: number; of: number }
   sg: { total: number | null; categories: CategoryTotals }
   autoPutt: boolean
+  /** The player's choice on the Rounds page; null when Looper decides. */
+  countState: RoundCountChoice | null
+  /** Conceded or re-hit holes, shots that don't follow on, or a hole or two then quit. */
+  looksLikeTest: boolean
+  /** Whether the round goes into stats: the player's choice, else not when it looks like a test. */
+  counts: boolean
   unknownLieShots: number
   brokenHoles: number
   shotCount: number
@@ -130,7 +136,24 @@ export type CourseInfo = Readonly<{
   pars?: Readonly<Record<number, number>>
 }>
 
-export type RoundFlags = Readonly<{ autoPutt?: boolean }>
+/** The player's choice for a round. 'deleted' rounds never reach these functions. */
+export type RoundCountChoice = 'counts' | 'excluded'
+
+export type RoundFlags = Readonly<{ autoPutt?: boolean; countState?: RoundCountChoice | null }>
+
+/**
+ * A round that looks like testing rather than golf: shots that don't follow on
+ * (status 'test'), a hole or two then quit ('fragment'), or most holes left
+ * unfinished (conceded). These don't count until the player says they do.
+ */
+export const roundLooksLikeTest = (round: Pick<RoundSummary, 'status' | 'holesPlayed' | 'completeHoles'>) =>
+  round.status === 'test' || round.status === 'fragment'
+  || (round.holesPlayed >= 2 && round.completeHoles / round.holesPlayed < 0.5)
+
+export const roundCounts = (
+  round: Pick<RoundSummary, 'status' | 'holesPlayed' | 'completeHoles'>,
+  choice: RoundCountChoice | null | undefined,
+) => round.status !== 'range' && (choice === 'counts' || (choice == null && !roundLooksLikeTest(round)))
 
 export const GSPRO_PUTTER_CLUB_INDEX = 26
 const METERS_TO_YARDS = 1.0936132983377078
@@ -427,7 +450,7 @@ export const buildRound = (
   else status = 'partial'
 
   const parKnown = complete.length > 0 && complete.every((hole) => hole.par != null)
-  return {
+  const summary: RoundSummary = {
     roundId,
     courseKey,
     courseName: course.name?.trim() || prettifyCourseKey(courseKey),
@@ -449,6 +472,9 @@ export const buildRound = (
     },
     sg: { total: totalShots > 0 ? total : null, categories },
     autoPutt,
+    countState: flags.countState ?? null,
+    looksLikeTest: false,
+    counts: false,
     unknownLieShots: holes.reduce(
       (sum, hole) => sum + hole.shots.filter((shot) => shot.provisional).length,
       0,
@@ -456,6 +482,9 @@ export const buildRound = (
     brokenHoles,
     shotCount: records.length,
   }
+  summary.looksLikeTest = roundLooksLikeTest(summary)
+  summary.counts = roundCounts(summary, summary.countState)
+  return summary
 }
 
 export const buildRounds = (

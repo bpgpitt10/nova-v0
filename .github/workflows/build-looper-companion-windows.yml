@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - web-alpha-mishits
       - web-course-importer-surface-semantics-v2
       - auto-aim-windows-companion-v1
       - unified-imported-course-positioning-v1
@@ -19,6 +20,7 @@ on:
       - "helpers/gspro_native_aim.py"
       - "tests/test_gspro_companion_aim_preview.py"
       - "helpers/looper_companion.py"
+      - "helpers/companion-releases-README.md"
       - "helpers/gspro_course_library.py"
       - "tests/test_gspro_companion_course_layouts.py"
       - "helpers/gspro_native_discovery.py"
@@ -386,3 +388,53 @@ jobs:
             --title "Looper Windows Companion (latest)" `
             --notes "Rolling Windows companion build for the hosted Looper web app. Install once; it runs in the background and starts with Windows." `
             --prerelease
+
+      # Players get the companion from a public, releases-only repo
+      # (COMPANION_RELEASES_REPO). Runs on the production branch when the
+      # release number in helpers/looper_companion.py has no release yet.
+      # latest.json there is what the web app reads for "update available".
+      # Needs the COMPANION_RELEASES_TOKEN secret: a fine-grained PAT with
+      # Contents: read and write on that repo only.
+      - name: Publish to the public releases repo
+        if: github.ref == 'refs/heads/web-alpha-mishits'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.COMPANION_RELEASES_TOKEN }}
+          COMPANION_RELEASES_REPO: bpgpitt10/looper-companion-releases
+          MIN_RELEASE: "1.0.0"
+        run: |
+          if (-not $env:GH_TOKEN) { Write-Host "COMPANION_RELEASES_TOKEN not set; skipping the public publish."; exit 0 }
+          $release = (Select-String -Path helpers/looper_companion.py -Pattern 'COMPANION_RELEASE = "([^"]+)"').Matches[0].Groups[1].Value
+          $tag = "v$release"
+          gh release view $tag --repo $env:COMPANION_RELEASES_REPO *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "$tag is already published; bump COMPANION_RELEASE to ship a new build."; exit 0 }
+          $notes = (git log -1 --pretty=%s)
+          gh release create $tag looper-windows-companion.zip `
+            --repo $env:COMPANION_RELEASES_REPO `
+            --title "Looper Companion $release" `
+            --notes "$notes`n`nInstall: unzip, run install_looper_companion.cmd. It runs in the background and starts with Windows. Built from nova-v0 $env:GITHUB_SHA."
+          if ($LASTEXITCODE -ne 0) { throw "public release failed" }
+          $sha = (Get-FileHash looper-windows-companion.zip -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item looper-windows-companion.zip).Length
+          $latest = @{
+            release = $release
+            minRelease = $env:MIN_RELEASE
+            url = "https://github.com/$env:COMPANION_RELEASES_REPO/releases/download/$tag/looper-windows-companion.zip"
+            sha256 = $sha
+            sizeBytes = $size
+            publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            notes = $notes
+            source = "nova-v0@$env:GITHUB_SHA"
+          } | ConvertTo-Json
+          function Put-File($path, $content, $message) {
+            $existing = gh api "repos/$env:COMPANION_RELEASES_REPO/contents/$path" --jq .sha 2>$null
+            $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
+            $args = @("-X", "PUT", "repos/$env:COMPANION_RELEASES_REPO/contents/$path", "-f", "message=$message", "-f", "content=$b64")
+            if ($existing) { $args += @("-f", "sha=$existing") }
+            gh api @args > $null
+            if ($LASTEXITCODE -ne 0) { throw "could not write $path" }
+          }
+          Put-File "latest.json" $latest "Looper Companion $release"
+          $readme = Get-Content helpers/companion-releases-README.md -Raw
+          Put-File "README.md" $readme "README for Looper Companion $release"
+          Write-Host "published $tag to $env:COMPANION_RELEASES_REPO"

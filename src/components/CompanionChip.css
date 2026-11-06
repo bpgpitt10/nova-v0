@@ -1,0 +1,77 @@
+/* Companion state chip, left of the account chip on every page. */
+.companion-chip {
+  position: relative;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.companion-chip__summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(151, 164, 170, 0.3);
+  border-radius: 9px;
+  background: rgba(11, 17, 21, 0.82);
+  color: #c6cfd2;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  list-style: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.companion-chip__summary::-webkit-details-marker {
+  display: none;
+}
+
+.companion-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8a968c;
+  flex: none;
+}
+
+.companion-chip.is-ok .companion-chip__dot { background: #6fcf97; box-shadow: 0 0 0 3px rgba(111, 207, 151, 0.18); }
+.companion-chip.is-warn .companion-chip__dot { background: #eab308; box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.18); }
+.companion-chip.is-bad .companion-chip__dot { background: #ef6262; box-shadow: 0 0 0 3px rgba(239, 98, 98, 0.18); }
+.companion-chip.is-bad .companion-chip__summary { border-color: rgba(239, 98, 98, 0.45); color: #f3c0c0; }
+.companion-chip.is-warn .companion-chip__summary { border-color: rgba(234, 179, 8, 0.45); color: #eed27a; }
+
+.companion-chip__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid rgba(151, 164, 170, 0.3);
+  border-radius: 10px;
+  background: rgba(11, 17, 21, 0.96);
+  color: #d1d9cf;
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.companion-chip__menu p { margin: 0 0 8px; }
+.companion-chip__menu p:last-child { margin-bottom: 0; }
+.companion-chip__fine { font-size: 12px; color: #9da99f; }
+
+.companion-links a,
+.companion-links button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #eab308;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* The account control row holds both chips. */
+.looper-account-control {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}

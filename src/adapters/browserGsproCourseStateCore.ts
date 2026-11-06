@@ -658,7 +658,7 @@ const buildSnapshot = async (
   if (latestShot?.positionSource === 'native-gkd') {
     warnings.push(selectedGsproKey
       ? "Ball placed from GSPro coordinates on GSPro's own course file (no map loaded)."
-      : 'Native positions (beta): ball placed from GSPro coordinates using the LiDAR-verified course registration.')
+      : "Ball placed from GSPro's coordinates using the course's map match.")
   } else if (observedCourseId === selectedCourseId) {
     warnings.push(latestShot?.positionQuality === 'provisional'
       ? 'Imported-course ball uses provisional GSPro shot movement validated against GSPro remaining distance; OSM tee/pin alignment and exact hazard carries remain uncertain.'

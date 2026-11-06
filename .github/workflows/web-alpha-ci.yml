@@ -79,6 +79,9 @@ jobs:
       - name: GSPro-only courses (holes from the course file, no map)
         run: node tools/test-gspro-only-course.mjs
 
+      - name: Map-area courses (GSPro's holes on an unnumbered map area)
+        run: node tools/test-area-course.mjs
+
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 
@@ -123,6 +126,21 @@ jobs:
 
       - name: Start a Round course search
         run: node tools/test-course-search.mjs
+      - name: Oversized polygons clipped to the hole
+        run: node tools/test-oversized-polygons.mjs
+      - name: Companion release check
+        run: node tools/test-companion-release.mjs
+      - name: Companion presence memory
+        run: node tools/test-companion-presence.mjs
+
+      - name: Conceding hole 1 releases the Start Round hold
+        run: node tools/test-concede-hole-release.mjs
+
+      - name: Wind refresh and scene turn
+        run: node tools/test-wind-refresh.mjs
+
+      - name: Course crosswalk decisions
+        run: node tools/test-course-crosswalk.mjs
 
       - name: The Looper's Read follows the club's numbers
         run: node tools/test-looper-read.mjs

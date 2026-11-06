@@ -24,6 +24,8 @@ export type CourseCatalogEntry = {
   source?: 'gspro-only'
   /** GSPro's course altitude (feet), when known. */
   altitudeFt?: number | null
+  /** Loaded as one map area (course-area-v1.json): holes come from GSPro's course file. */
+  packageKind?: 'area'
 }
 
 /**
@@ -110,6 +112,16 @@ export const registerRuntimeCourses = (
     }
   }
   return added
+}
+
+/**
+ * Courses whose holes come from GSPro's course file on this PC: GSPro-only
+ * entries and courses loaded as a map area. They always use native positions.
+ */
+export const courseUsesGsproHoles = (courseId: string | null | undefined): boolean => {
+  if (!courseId) return false
+  const entry = courseRegistry.find((candidate) => candidate.id === courseId)
+  return entry?.source === 'gspro-only' || entry?.packageKind === 'area'
 }
 
 /** Hole headings worked out on this device (GSPro-only courses, from the course file). */

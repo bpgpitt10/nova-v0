@@ -24,9 +24,10 @@ import { learnedSurfaceFactors } from '../adapters/gsproPenaltyLog'
 import { prepareReadOnlyNativeAimIntent } from '../adapters/looperCompanionAim'
 import { prepareReadOnlyNativeAimPreview } from '../adapters/looperCompanionAimPreview'
 import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
-import { connectToGsproWindObservation } from '../adapters/gsproWindObservation'
+import { connectToGsproWindObservation, requestGsproWindRefresh } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
+  courseUsesGsproHoles,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
   UNSELECTED_COURSE_ID,
@@ -34,7 +35,6 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
-import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
 import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenAnchorSummary } from '../courseGeometry/nativeGreenAnchor'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
@@ -45,6 +45,7 @@ import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
+import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -104,7 +105,6 @@ import {
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
-import NativeAimPreview from '../components/NativeAimPreview'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
@@ -221,6 +221,9 @@ export default function LiveCaddiePage() {
     anchoredSurfaces: CourseSurface[] | null
     anchoredGreen: CoursePolygonYds | null
     greenSummary: GreenAnchorSummary
+    /** How GSPro's scene is turned/mirrored against true north on this hole (wind). */
+    sceneRotationDeg: number
+    sceneMirrored: boolean
   } | null>(null)
   const gkdHazards = gkdOverlay
     ? { key: gkdOverlay.key, surfaces: gkdOverlay.hazardSurfaces, summary: gkdOverlay.hazardSummary }
@@ -242,6 +245,21 @@ export default function LiveCaddiePage() {
   const [liveError, setLiveError] = useState<string | null>(null)
   const [connectionVersion, setConnectionVersion] = useState(0)
   const [windObservation, setWindObservation] = useState<WindObservation | null>(null)
+  const [windRefreshing, setWindRefreshing] = useState(false)
+  // "Refresh wind": GSPro's gusty wind swirls between shots (Brian, 11/4).
+  const refreshWind = () => {
+    if (windRefreshing) return
+    setWindRefreshing(true)
+    void readLooperCompanionObservations(45000)
+      .then((obs) => {
+        const wind = obs.status === 'ready' && obs.gspro?.status === 'connected' ? obs.ocr?.wind : null
+        if (wind?.status === 'READY' && Number.isFinite(wind.speedMph) && Number.isFinite(wind.directionDegrees)) {
+          requestGsproWindRefresh(wind)
+        }
+      })
+      .catch((error: unknown) => console.warn('[Live Caddie] Wind refresh failed.', error))
+      .finally(() => setWindRefreshing(false))
+  }
   const [lieObservation, setLieObservation] = useState<GsproLieObservation | null>(null)
   const [manualShotLie, setManualShotLie] = useState<ManualLieSelection | null>(null)
   const [visualCaptureStatus, setVisualCaptureStatus] = useState<BrowserGsproVisualCaptureStatus>('idle')
@@ -311,7 +329,9 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
-  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only'
+  // Holes from GSPro's course file (GSPro-only or a map area): ground the map
+  // doesn't cover is unmapped, not trouble.
+  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only' || selectedCourse?.packageKind === 'area'
 
   // The Live Caddie page stays mounted while navigating. Start Round emits
   // several bootstrap events for the same Looper round, so reset ONLY when
@@ -511,7 +531,7 @@ export default function LiveCaddiePage() {
   // effect also re-runs once it's known.
   const gkdCourseKey = liveSnapshot?.courseKey ?? null
   useEffect(() => {
-    if (!rawHole || !(isNativePositionsEnabled() || isGsproOnlyCourseId(courseId))) {
+    if (!rawHole || !(isNativePositionsEnabled() || courseUsesGsproHoles(courseId))) {
       setGkdOverlay(null)
       return
     }
@@ -532,9 +552,12 @@ export default function LiveCaddiePage() {
         const hazards = layout
           ? gkdHazardSurfaces(layout, context.registration, anchoredHole)
           : { surfaces: [], summary: { penaltyAreas: 0, innerOob: 0, obMode: null, obOnHole: false } }
+        const placed = registrationForHole(context.registration, rawHole.holeNumber)
         setGkdOverlay({
           key,
           source: rawHole,
+          sceneRotationDeg: placed.rotationDeg ?? 0,
+          sceneMirrored: placed.mirrored === true,
           hazardSurfaces: hazards.surfaces,
           hazardSummary: hazards.summary,
           anchoredSurfaces: anchor.surfaces,
@@ -551,8 +574,10 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     let active = true
     setGreenDetail(null)
-    // GSPro-only courses have no packaged green slopes.
-    if (!selectedCourse || selectedCourse.source === 'gspro-only') return () => { active = false }
+    // GSPro-only and map-area courses have no packaged green slopes.
+    if (!selectedCourse || selectedCourse.source === 'gspro-only' || selectedCourse.packageKind === 'area') {
+      return () => { active = false }
+    }
     void loadCourseGreenDetail(selectedCourse.slug, holeNumber)
       .then(detail => { if (active) setGreenDetail(detail) })
       .catch(error => {
@@ -997,7 +1022,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? "GSPro course-file heights (coarse)"
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? "30 m global terrain fitted to GSPro's heights (coarse)"
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
   const airAltitudeFt = ballTerrain?.elevationFt ?? null
   const airAltitudeSource = ballTerrain
@@ -1005,7 +1032,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? `GSPro course altitude${selectedCourse?.altitudeFt != null ? '' : ' unknown (sea level)'}`
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? `${selectedCourse?.name ?? 'Course'} 30 m global terrain`
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
   const surfaceOverride = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
@@ -1014,9 +1043,17 @@ export default function LiveCaddiePage() {
     holeHeadingDegreesTrue,
     localAimBearingDeg,
   )
+  // GSPro's wind compass is the scene's: turn it by the course match for the
+  // hole on screen. Not the live snapshot's turn: a tee reached by conceding
+  // the last hole has no GSPro shot yet, so it had none and the wind came out
+  // 180 degrees wrong on Kiawah (scene turned 179 deg; 11/4 holes 6 and 7).
+  const sceneTurn = gkdOverlay && gkdOverlay.source === rawHole
+    ? { rotationDeg: gkdOverlay.sceneRotationDeg, mirrored: gkdOverlay.sceneMirrored }
+    : liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg != null
+      ? { rotationDeg: liveSnapshot.gsproSceneRotationDeg, mirrored: liveSnapshot.gsproSceneMirrored === true }
+      : null
   const projectedWind = projectWindObservation(
-    windInTrueCompass(windObservation, liveMatchesHole ? liveSnapshot?.gsproSceneRotationDeg : null,
-      liveMatchesHole && liveSnapshot?.gsproSceneMirrored === true),
+    windInTrueCompass(windObservation, sceneTurn?.rotationDeg ?? null, sceneTurn?.mirrored === true),
     localAimBearingDeg,
     currentShotCompassBearingDeg,
   )
@@ -1351,12 +1388,12 @@ export default function LiveCaddiePage() {
   const companionCanAim = Boolean(companionStatus?.capabilities?.aimClick)
     && companionStatus?.gspro.status === 'connected'
   const latestAimRef = useRef({
-    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
-    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, target: aimTarget,
+    club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1389,6 +1426,16 @@ export default function LiveCaddiePage() {
         setAimResult(result)
         setArmedAimKey(snap.aimKey)
         setArmPhase('armed')
+      }
+      // Auto Aim lines GSPro's minimap up on the ball and the pin: a pin Looper
+      // only estimated (from GSPro's distance, on the map green) turns and
+      // shrinks the click (11/4 Kiawah 3 after conceding: 178 yd for 188).
+      if (!snap.pinExact) {
+        finish({
+          outcome: 'not-sent',
+          message: "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
+        })
+        return
       }
       if (!snap.companionCanAim) {
         finish({
@@ -1824,7 +1871,7 @@ export default function LiveCaddiePage() {
             {` · Looper uses ${windObservation?.status ?? 'no wind'}`
               + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
               + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
-              + (liveMatchesHole && liveSnapshot?.gsproSceneRotationDeg ? `, course turned ${liveSnapshot.gsproSceneRotationDeg.toFixed(1)}°` : '')}
+              + (sceneTurn?.rotationDeg ? `, course turned ${sceneTurn.rotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
         {showDiagnostics && recTiming ? (
@@ -2020,6 +2067,8 @@ export default function LiveCaddiePage() {
                     strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
                     strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
                     unmappedInPlay={gsproOnlyCourse}
+                    onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
+                    windRefreshing={windRefreshing}
                   />
 
                   <button
@@ -2119,17 +2168,6 @@ export default function LiveCaddiePage() {
                   {!isShotStrategy ? <span><i className="core" />Core dispersion</span> : null}
                   {!isShotStrategy && showPracticeShots ? <span><i className="practice" />Your observed shots</span> : null}
                 </div>
-                <NativeAimPreview
-                  courseId={courseId}
-                  courseKey={liveSnapshot?.courseKey ?? null}
-                  holeNumber={holeNumber}
-                  ball={liveMatchesHole ? ball : null}
-                  // Exact pin when known; before Shot 1 without one, the estimate
-                  // (green centre) still lets the preview run.
-                  pin={trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)}
-                  target={aimTarget}
-                  companionReady={companionStatus?.gspro.status === 'connected'}
-                />
               </article>
             </section>
 

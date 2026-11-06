@@ -10,7 +10,7 @@
   ],
   "location": "Arcadia Township, Michigan",
   "packagePath": "public/course-geometry/arcadia-bluffs/course-v1.json",
-  "packageSha256": "8c837c1d8f7f188c0953edcb8bf83f257efc5f921d041bf82c12cd0743179328",
+  "packageSha256": "45fa7a616b64d18913e457ce43477a30b2f5cc87a817c9f665479bc8330a9ffe",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -18,5 +18,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/arcadia-bluffs/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

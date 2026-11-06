@@ -85,8 +85,8 @@ export default function RoundSetupPage() {
 
   const course = useMemo(() => getCourseCatalogEntry(courseId), [courseId])
 
-  // Native positions (beta): reload the tee list when the beta turns on/off or
-  // the course files become available, so GSPro's tee names appear here.
+  // Course match: reload the tee list when the course files become available
+  // (or the match is turned off), so GSPro's tee names appear here.
   const [nativeState, setNativeState] = useState<NativeCourseStatus['state'] | null>(null)
   useEffect(() => {
     const onChange = (event: Event) => {
@@ -104,7 +104,7 @@ export default function RoundSetupPage() {
     setError(null)
     void loadCourseTeeCandidates(courseId, 1)
       .then(async (candidates) => {
-        // Native positions (beta): when the player's GKD is verified for this
+        // Course match: when the player's GKD is verified for this
         // course, offer GSPro's own tee sets (what they pick in GSPro).
         const native = await loadNativeCourseContext(courseId, null).catch(() => null)
         // Alternate layouts (GKDalt, e.g. "Farmlinks Kids") move every tee, so
