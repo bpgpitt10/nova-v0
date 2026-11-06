@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
+import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary, type LooperCompanionInstalledCourse } from '../adapters/looperCompanion'
+import { parseGkdLayout } from '../courseGeometry/nativeGkd'
+import { fetchCoursesAndGreens, gkdGreenPoints, matchCourseByGreens, MapServerBusyError, type GeometryMatchResult } from '../courseLoading/courseGeometryMatch'
 import { COURSES_UPDATED_EVENT, courseRegistry, resolveCourseIdFromGsproName, type CourseId } from '../courseGeometry/courseCatalog'
 import { GSPRO_LINKS_UPDATED_EVENT, gsproLinks } from '../courseGeometry/gsproLinks'
 import { isNativePositionsEnabled, loadNativeCourseContext, type NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
@@ -8,6 +10,7 @@ import {
   courseNameMatchScore,
   courseSlugFromName,
   findGolfCourseFor,
+  geocodePlace,
   linkGsproCourse,
   listCourseLoads,
   refreshGsproLinks,
@@ -259,19 +262,44 @@ export default function LoadCoursePage() {
   const courseIdFor = (slug: string): CourseId | null =>
     (courseRegistry.find((entry) => entry.slug === slug)?.id as CourseId | undefined) ?? null
 
-  const queue = async (key: string, course: Parameters<typeof requestCourseLoad>[0]) => {
+  const queue = async (key: string, course: Parameters<typeof requestCourseLoad>[0], note = '') => {
     setBusyKey(key)
     setMessage(null)
     try {
       const { dispatched } = await requestCourseLoad(course)
-      setMessage(dispatched
+      setMessage(note + (dispatched
         ? `Loading ${course.name}. Usually ready in about ${typicalLoadMinutes()} minutes; you can leave this page.`
-        : `${course.name} is queued. It will start when the loader next runs.`)
+        : `${course.name} is queued. It will start when the loader next runs.`))
       await refresh()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error))
     } finally {
       setBusyKey(null)
+    }
+  }
+
+  // GSPro file -> location -> nearby courses -> green fit. Null when any
+  // step isn't available (companion too old, no location, Overpass down):
+  // the name search then runs as before.
+  const matchInstalledByGeometry = async (course: LooperCompanionInstalledCourse): Promise<GeometryMatchResult | 'busy' | 'no-course-file' | null> => {
+    // GSPro's course file is on the sim PC: on another device (the saved
+    // library) there is nothing to match by.
+    if (savedLibraryAt) return 'no-course-file'
+    try {
+      const files = await readLooperCompanionCourseLayouts(course.courseKey)
+      const main = files.layouts.find((f) => f.kind === 'main') ?? files.layouts[0]
+      if (!main) return null
+      const layout = parseGkdLayout(main.text)
+      const greens = gkdGreenPoints(layout)
+      if (greens.length < 6) return null
+      const centre = layout.courseLatLon
+        ?? await geocodePlace(course.location || layout.location || '').catch(() => null)
+      if (!centre) return null
+      setMessage(`Checking GSPro's green layout against the courses near ${course.location || 'its location'}…`)
+      const { candidates, greens: mapGreens } = await fetchCoursesAndGreens(centre)
+      return matchCourseByGreens(greens, candidates, mapGreens)
+    } catch (error) {
+      return error instanceof MapServerBusyError ? 'busy' : null
     }
   }
 
@@ -301,6 +329,61 @@ export default function LoadCoursePage() {
       setMessage(`${name} can't be loaded: ${decision.reason}. It still plays in Looper from GSPro's own course file.`)
       return
     }
+    // 2. By geometry: GSPro's own greens against the golf courses near its
+    //    location (spec: claude/spec-geometry-course-matching.md). Names fail
+    //    ("DPC Pebble", resort-named courses); the green layout doesn't.
+    const found0 = await matchInstalledByGeometry(course)
+    if (found0 === 'busy') {
+      // A name search can't find resort courses either (Mammoth Dunes): say why and stop.
+      setBusyKey(null)
+      setMessage(`The OpenStreetMap server Looper checks GSPro's green layout against is busy right now, so ${course.courseName || course.courseKey} couldn't be matched. Try Load again in a few minutes.`)
+      return
+    }
+    const geo = found0 === 'no-course-file' ? null : found0
+    const awayNote = found0 === 'no-course-file'
+      ? 'Matching by green layout needs your sim PC (it reads GSPro\'s course file there); on this device only the name is searched. '
+      : ''
+    if (geo?.status === 'matched' && geo.best) {
+      const fit = geo.best.fit
+      const found = `Found ${course.courseName || course.courseKey} on the map by its green layout: ${geo.best.name} `
+        + `(${fit.paired} of ${fit.gkdGreens} greens line up, ${fit.rmsM.toFixed(0)} m). `
+      // Already loaded (e.g. DPC Pebble -> Pebble Beach): link, don't reload.
+      const loaded = loads.find((row) => row.status === 'ready' && row.osm_id === geo.best!.osmId && row.slug && slugs.has(row.slug))
+      if (loaded?.slug) {
+        try {
+          await linkGsproCourse({ gsproCourseKey: course.courseKey, gsproCourseName: course.courseName, courseSlug: loaded.slug })
+          setMessage(`${found}It's already loaded, so your GSPro course is now linked to it.`)
+        } catch (error) {
+          setMessage(`${found}It's already loaded, but the link couldn't be saved: ${error instanceof Error ? error.message : String(error)}`)
+        }
+        setBusyKey(null)
+        return
+      }
+      await queue(course.courseKey, {
+        name: geo.best.name, location: course.location,
+        lat: geo.best.centre[0], lon: geo.best.centre[1],
+        osmType: geo.best.osmType, osmId: geo.best.osmId, gsproCourseKey: course.courseKey,
+      }, found)
+      return
+    }
+    const geoNote = geo?.status === 'no-fit'
+      ? `GSPro's green layout doesn't match any mapped course near ${course.location || 'its location'}`
+        + (geo.best ? ` (closest: ${geo.best.name}, ${geo.best.fit.paired} of ${geo.best.fit.gkdGreens} greens within 25 m)` : '')
+        + '. It may be a fictional or re-imagined course, or not on OpenStreetMap yet. '
+      : geo?.status === 'ambiguous' && geo.best && geo.runnerUp
+        ? `GSPro's greens fit both ${geo.best.name} and ${geo.runnerUp.name}. `
+        : ''
+    if (geo?.status === 'ambiguous') {
+      setBusyKey(null)
+      setLinkedGspro({ courseKey: course.courseKey, courseName: name })
+      setResults([geo.best!, geo.runnerUp!].map((c) => ({
+        name: c.name, location: course.location, lat: c.centre[0], lon: c.centre[1], osmType: c.osmType, osmId: c.osmId,
+      })))
+      setMessage(`${geoNote}Pick the right one below.`)
+      showSearch()
+      return
+    }
+    // 3. By name (no GSPro file, no location, or the map has no fit).
     let match: Awaited<ReturnType<typeof findGolfCourseFor>>
     try {
       match = await findGolfCourseFor(course.courseName, course.location)
@@ -311,11 +394,13 @@ export default function LoadCoursePage() {
         : `Couldn't search OpenStreetMap: ${error instanceof Error ? error.message : String(error)}`)
       return
     }
-    if (!match) {
+    if (!match || geo?.status === 'no-fit') {
       setBusyKey(null)
       setLinkedGspro({ courseKey: course.courseKey, courseName: name })
       setQuery(name)
-      setMessage(`Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`)
+      setMessage(`${awayNote}${geoNote}${match
+        ? `By name it looks like ${match.name}, but GSPro's version may not line up with it. Pick from the search results below only if you're sure.`
+        : `Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`}`)
       showSearch()
       void runSearch(name)
       return

@@ -222,7 +222,17 @@ export const matchCourseByGreens = (
 
 // ---------------------------------------------------------------- Overpass
 
-const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
+// Tried in turn, each with a time limit: on 11/4 overpass-api.de was
+// overloaded for hours and a request without a limit hung the Load page.
+const OVERPASS_URLS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+]
+const OVERPASS_TIMEOUT_MS = 45_000
+
+/** No Overpass server answered in time: not "no match". */
+export class MapServerBusyError extends Error {}
 
 type OverpassElement = {
   type: string
@@ -246,16 +256,22 @@ export const fetchCoursesAndGreens = async (
   let payload: { elements?: OverpassElement[] } | null = null
   let lastError: unknown = null
   for (const url of OVERPASS_URLS) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS)
     try {
-      const response = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }) })
+      const response = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: controller.signal })
       if (!response.ok) throw new Error(`Overpass ${response.status}`)
       payload = await response.json()
       break
     } catch (error) {
       lastError = error
+    } finally {
+      clearTimeout(timer)
     }
   }
-  if (!payload) throw lastError instanceof Error ? lastError : new Error('Overpass did not answer')
+  if (!payload) {
+    throw new MapServerBusyError(`No OpenStreetMap server answered (${lastError instanceof Error ? lastError.message : 'timeout'}).`)
+  }
   const candidates: OsmCourseCandidate[] = []
   const greens: MapGreen[] = []
   for (const el of payload.elements ?? []) {
