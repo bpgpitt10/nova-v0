@@ -1396,15 +1396,14 @@ export default function LiveCaddiePage() {
   // Before the first shot the pin is often only estimated. Auto Aim lines the
   // minimap up on ball and pin, so the pin's uncertainty moves the click in
   // proportion to target distance over pin distance: a lot on a par 3 (Kiawah
-  // 3, 11/4: 178 yd for 188), a few yards off a par-4 tee. Click when the
-  // possible error is small against the club's own dispersion; otherwise ask
-  // for a hand aim. The pin is exact from the first shot on either way.
+  // 3, 11/4: 178 yd for 188), a few yards off a par-4 tee. Click only when the
+  // worst case stays within one aim step (3 yd); otherwise ask for a hand aim.
+  // The pin is exact from the first shot on either way.
   const estimatedPinCheck: EstimatedPinAim | null = !trustedLivePin && hole && aimPin && aimTarget
     ? estimatedPinAim({
         hole, ball, pin: aimPin, target: aimTarget,
         pinSlotsLocal: hudPin && hudPin.key === hudPinKey ? hudPin.candidatesLocal : null,
         distanceKnown: (hudShotOneYds ?? effectiveDistanceToPinYds) != null,
-        lateralSigmaYds: viewedEvaluation?.lateralSigmaYds ?? null,
       })
     : null
   const currentAimKey = displayedClub && aimTarget
@@ -1455,8 +1454,8 @@ export default function LiveCaddiePage() {
         setArmPhase('armed')
       }
       // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
-      // only estimated turns and shrinks the click; refuse only when that could
-      // move this click more than the club's own dispersion forgives.
+      // only estimated turns and shrinks the click; refuse when that could
+      // move this click by more than one aim step.
       const estimated = snap.pinExact ? null : snap.estimatedPin
       if (!snap.pinExact && !estimated?.allowed) {
         const spread = estimated && Number.isFinite(estimated.errorYds) ? Math.ceil(estimated.errorYds) : null

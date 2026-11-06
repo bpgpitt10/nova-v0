@@ -8,10 +8,10 @@ import type { CourseHoleGeometry, CoursePointYds } from '../courseGeometry/types
  * ruler, and the error at the click grows with how far the target is along
  * that ruler: on a 150-yd par 3 a pin 10 yd off puts the click 10 yd off
  * (Kiawah 3, 11/4: 178 for 188); off a 400-yd par-4 tee the same pin error
- * turns the frame 1.4° and moves a 250-yd click about 6 yd, less than one aim
- * step plus a driver's dispersion. So the question before the first shot is
- * not "is the pin exact?" but "can the pin's uncertainty move this click
- * enough to matter?" (Brian, 11/6.)
+ * turns the frame 1.4° and moves a 250-yd click about 6 yd; three GKD pin
+ * slots within 4 yd of each other move it about 2.5 yd, under one aim step.
+ * So the question before the first shot is not "is the pin exact?" but "can
+ * the pin's uncertainty move this click by more than an aim step?" (Brian, 11/6.)
  */
 
 export type PinUncertainty = Readonly<{
@@ -91,12 +91,15 @@ export const aimClickErrorYds = ({ ball, pin, target, uncertainty }: Readonly<{
   return Math.hypot(ratio * uncertainty.acrossYds, ratio * uncertainty.alongYds)
 }
 
-export const AIM_ERROR_FLOOR_YDS = 4
-export const AIM_ERROR_SIGMA_FRACTION = 0.5
+/**
+ * Looper picks aims on a 3 yd grid (AIM_OFFSETS_YDS). An estimated pin may
+ * move the click by at most one of those steps, worst case, whatever the club:
+ * the golfer's dispersion is theirs, the click has to land where Looper meant
+ * (Brian, 11/6: an aim that could be 11 yd off on a drive is not an aim).
+ */
+export const AIM_ERROR_TOLERANCE_YDS = 3
 
-/** Auto Aim may click with an estimated pin when its possible error is small against the club's dispersion. */
-export const aimErrorToleranceYds = (lateralSigmaYds: number | null | undefined): number =>
-  Math.max(AIM_ERROR_FLOOR_YDS, (Number.isFinite(lateralSigmaYds ?? NaN) ? (lateralSigmaYds as number) : 0) * AIM_ERROR_SIGMA_FRACTION)
+export const aimErrorToleranceYds = (_lateralSigmaYds?: number | null): number => AIM_ERROR_TOLERANCE_YDS
 
 export type EstimatedPinAim = Readonly<{
   errorYds: number
@@ -105,17 +108,16 @@ export type EstimatedPinAim = Readonly<{
   uncertainty: PinUncertainty
 }>
 
-export const estimatedPinAim = ({ hole, ball, pin, target, pinSlotsLocal, distanceKnown = true, lateralSigmaYds }: Readonly<{
+export const estimatedPinAim = ({ hole, ball, pin, target, pinSlotsLocal, distanceKnown = true }: Readonly<{
   hole: Pick<CourseHoleGeometry, 'surfaces'> | null
   ball: CoursePointYds
   pin: CoursePointYds
   target: CoursePointYds
   pinSlotsLocal?: readonly CoursePointYds[] | null
   distanceKnown?: boolean
-  lateralSigmaYds: number | null | undefined
 }>): EstimatedPinAim => {
   const uncertainty = estimatedPinUncertainty({ hole, ball, pin, pinSlotsLocal, distanceKnown })
   const errorYds = aimClickErrorYds({ ball, pin, target, uncertainty })
-  const toleranceYds = aimErrorToleranceYds(lateralSigmaYds)
+  const toleranceYds = aimErrorToleranceYds()
   return { errorYds, toleranceYds, allowed: errorYds <= toleranceYds, uncertainty }
 }
