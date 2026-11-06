@@ -76,6 +76,30 @@ def finite(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
 
 
+EARTH_R_M = 6371008.8
+M_TO_YD = 1.0936133
+
+
+def area_green_local_yds(green: dict, anchor_lat_lon) -> tuple[float, float] | None:
+    """An area package's greens are listed by latLon (build_area_package.py);
+    the area frame is heading 0 (x east, y north) about anchorLatLon. Older or
+    hand-made packages may carry a local centre instead."""
+    c = green.get('center') or green.get('centroid')
+    if isinstance(c, list) and len(c) >= 2 and finite(c[0]) and finite(c[1]):
+        return float(c[0]), float(c[1])
+    if isinstance(c, dict) and finite(c.get('x')) and finite(c.get('y')):
+        return float(c['x']), float(c['y'])
+    ll = green.get('latLon')
+    if (isinstance(ll, list) and len(ll) >= 2 and finite(ll[0]) and finite(ll[1])
+            and isinstance(anchor_lat_lon, list) and len(anchor_lat_lon) >= 2
+            and finite(anchor_lat_lon[0]) and finite(anchor_lat_lon[1])):
+        lat0, lon0 = anchor_lat_lon
+        north = EARTH_R_M * math.radians(ll[0] - lat0)
+        east = EARTH_R_M * math.radians(ll[1] - lon0) * math.cos(math.radians(lat0))
+        return east * M_TO_YD, north * M_TO_YD
+    return None
+
+
 def ring_points(ring) -> list:
     return ring if isinstance(ring, list) and ring and isinstance(ring[0], list) else []
 
@@ -210,11 +234,18 @@ def validate_area_package(rep: Report, pkg: dict) -> None:
         check_rings(rep, f"area context {layer.get('kind')}", layer.get('polygons'), None, counts, CONTEXT_RING_MAX_POINTS)
     if isinstance(box, dict) and all(finite(box.get(k)) for k in ('minX', 'maxX', 'minY', 'maxY')):
         pad = 656.0  # 600 m
+        anchor = ((area.get('coordinateFrame') or {}).get('anchorLatLon'))
+        unplaced = 0
         for i, g in enumerate(greens):
-            c = g.get('center') or g.get('centroid') or g
-            x, y = (c[0], c[1]) if isinstance(c, list) else (c.get('x'), c.get('y'))
-            if not (finite(x) and finite(y)) or x < box['minX'] - pad or x > box['maxX'] + pad or y < box['minY'] - pad or y > box['maxY'] + pad:
+            xy = area_green_local_yds(g, anchor)
+            if xy is None:
+                unplaced += 1
+                continue
+            x, y = xy
+            if x < box['minX'] - pad or x > box['maxX'] + pad or y < box['minY'] - pad or y > box['maxY'] + pad:
                 rep.fail(f'green {i + 1} outside the area box')
+        if unplaced:
+            rep.warn(f'{unplaced} area greens carry no position to check against the box')
     share = terrain_valid_share(area.get('terrain') or pkg.get('terrain'))
     if share is None:
         rep.fail('no terrain grid')
