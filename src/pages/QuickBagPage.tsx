@@ -82,15 +82,17 @@ const parseCarry = (value: string): number | null => {
 
 /**
  * Handicap as typed: "14", "14.2", or a plus handicap "+2" (better than
- * scratch), which Looper keeps as −2. Null when empty or not a number.
+ * scratch), which Looper keeps as −2. A typed "-3" is an ordinary 3 handicap
+ * (Brian, 11/6: people write their handicap with a minus too; only a plus
+ * means better than scratch). Null when empty or not a number.
  */
 export const parseHandicap = (value: string): number | null => {
   const text = value.trim()
   if (text === '') return null
   const plus = text.startsWith('+')
-  const n = Number(plus ? text.slice(1) : text)
+  const n = Number(text.replace(/^[+-]/, ''))
   if (!Number.isFinite(n)) return null
-  return plus ? -Math.abs(n) : n
+  return plus ? -Math.abs(n) : Math.abs(n)
 }
 
 export const formatHandicap = (handicap: number | null): string =>
