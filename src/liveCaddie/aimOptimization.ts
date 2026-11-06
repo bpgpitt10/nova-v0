@@ -6,6 +6,7 @@ import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
   CourseHoleGeometry,
   CoursePointYds,
+  CourseSurfaceClassification,
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import { buildAirAltitudeAdjustment } from './airAltitudeAdjustment'
@@ -17,9 +18,12 @@ import {
 import type { QuickBagPrior } from '../lib/quickBag'
 import { applyQuickBagToPlayers, applyQuickBagToProfileSet, type StartingBagMark } from './quickBagProfiles'
 import {
+  flightBlockedAt,
   MODELED_AIM_SAMPLE_COUNT,
+  resolveLanding,
   sampleModeledAimDistribution,
   type AimProbabilityContour,
+  type LandingTransform,
   type AimSurfaceDistribution,
   type ModeledAimSample,
 } from './aimOutcomeSampling'
@@ -36,6 +40,8 @@ import {
   evaluateEmpiricalAimDistribution,
   type EmpiricalAimSurfaceDistribution,
 } from './empiricalAimOutcomes'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
+import { buildEmpiricalShotCore, EMPIRICAL_CORE_MIN_SHOTS } from './empiricalShotCore'
 import { redirectCourseGreenRollout } from './greenTargeting'
 import { buildLiveCaddieProfileSet } from './profileProvider'
 import { modelShotContext } from './shotContextModel'
@@ -118,6 +124,14 @@ export type AimLabEnvironment = {
 
 export type { AimSurfaceDistribution } from './aimOutcomeSampling'
 
+export type AimPureFinish = {
+  carryYds: number
+  totalYds: number
+  landing: CoursePointYds
+  kind: CourseSurfaceClassification
+  distanceToPinYds: number | null
+}
+
 export type AimCandidateEvaluation = {
   aimOffsetYds: number
   aimPoint: CoursePointYds
@@ -137,6 +151,12 @@ export type AimCandidateEvaluation = {
   /** Weighted historical Stock shots, including the observed mishit tail, replayed at this aim. */
   empiricalAllShots: EmpiricalAimSurfaceDistribution | null
   empiricalShotCount: number
+  /**
+   * Explanation only: where the yardage-book Pure carry/total finishes on this
+   * line in live conditions. Not used for ranking (the core already contains
+   * the player's flushed shots at their real frequency).
+   */
+  pureFinish?: AimPureFinish | null
   /** Legacy V0 utility retained for diagnostics and final deterministic tie-breaking. */
   score: number | null
   scoreParts: {
@@ -188,6 +208,14 @@ export type ClubAimEvaluation = {
   supportingSessions: number
   modeledSampleCount: number
   empiricalShotCount: number
+  /**
+   * Where the core shot shape came from: the player's own good shots
+   * (empiricalShotCore) or, under EMPIRICAL_CORE_MIN_SHOTS, the bell curve.
+   */
+  shotShape?: { source: 'your-shots' | 'bell-curve'; shotCount: number }
+  /** Yardage-book Pure carry/total (shotProfiles bestAvailable), for explanation. */
+  pureCarryYds?: number | null
+  pureTotalYds?: number | null
   candidates: AimCandidateEvaluation[]
   bestCandidate: AimCandidateEvaluation | null
   decisionRank: number | null
@@ -211,6 +239,43 @@ export type ClubDecisionValue = {
   modelConfidence: number
   evDeltaToRawBest: number | null
   decisionStrength: string
+}
+
+const finiteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+/** Where one shot of the given carry/total finishes on this aim line (same hazard and green rules as the cloud). */
+const pureFinishOnLine = ({
+  hole, ball, aimPoint, carryYds, totalYds, offlineYds, pin, landingTransform, descentDeg,
+}: {
+  hole: CourseHoleGeometry
+  ball: CoursePointYds
+  aimPoint: CoursePointYds
+  carryYds: number
+  totalYds: number
+  offlineYds: number
+  pin: CoursePointYds | null
+  landingTransform?: LandingTransform
+  descentDeg?: number | null
+}): AimPureFinish => {
+  const forward = unit(vector(ball, aimPoint))
+  const right = rightOf(forward)
+  const carry = Math.max(0, carryYds)
+  const total = Math.max(carry, totalYds)
+  const carryLanding = addScaled(ball, forward, carry, right, offlineYds)
+  const baseline = addScaled(ball, forward, total, right, offlineYds)
+  const blocked = flightBlockedAt(hole, ball, carryLanding, descentDeg ?? null)
+  const { touchdown, rest } = resolveLanding(landingTransform, carryLanding, baseline)
+  const { landing, classification } = blocked
+    ? { landing: blocked.point, classification: { kind: 'deep-rough' as const } }
+    : resolveCarryAwareLanding(hole, touchdown, rest)
+  return {
+    carryYds: carry,
+    totalYds: total,
+    landing,
+    kind: classification.kind,
+    distanceToPinYds: pin ? Math.hypot(landing[0] - pin[0], landing[1] - pin[1]) : null,
+  }
 }
 
 const vector = (from: CoursePointYds, to: CoursePointYds): CoursePointYds => [
@@ -531,7 +596,27 @@ export const evaluateAimLab = (
     const empiricalShots = buildWeightedEmpiricalStockShots(sessions, profile.club, nowMs)
     const empiricalCarryAdjustmentYds = modeledCarryYds - profile.stock_carry_yds
     const empiricalLateralAdjustmentYds = modeledLateralBiasYds - baseLateralBiasYds
+    // The player's own good shots (mishits stay in the decision tail) as the core shape.
+    const goodShots = (decisionPlayer?.samples ?? [])
+      .filter((sample) => sample.planningEligible)
+      .map((sample) => ({
+        carryYds: sample.carryYds,
+        totalYds: sample.totalYds ?? null,
+        offlineYds: sample.offlineYds,
+        weight: sample.weight,
+      }))
+    const shotCore = buildEmpiricalShotCore({
+      shots: goodShots,
+      carryAdjustmentYds: empiricalCarryAdjustmentYds,
+      lateralAdjustmentYds: empiricalLateralAdjustmentYds,
+      stockRolloutYds: rolloutYds,
+    })
+    const pureCarryYds = finiteNumber(profile.pure_carry_yds) ? profile.pure_carry_yds : null
+    const pureTotalYds = finiteNumber(profile.pure_total_yds) ? profile.pure_total_yds : null
     const notes: string[] = []
+    notes.push(shotCore
+      ? `Shot shape from your ${shotCore.shotCount} good ${profile.club} shots (flushed and thin shots at their real frequency).`
+      : `Shot shape is a bell curve around Stock (fewer than ${EMPIRICAL_CORE_MIN_SHOTS} good ${profile.club} shots).`)
     if (Math.abs(carryGapYds) > 35) {
       notes.push('Modeled carry is more than 35 yd from the selected landing target.')
     }
@@ -589,7 +674,19 @@ export const evaluateAimLab = (
         pinLocalYds: exactPinLocalYds,
         landingTransform: greenLandingTransform,
         flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null },
+        shotDraws: shotCore?.draws ?? null,
       })
+      const pureFinish = pureCarryYds != null
+        ? pureFinishOnLine({
+            hole, ball, aimPoint,
+            carryYds: pureCarryYds + empiricalCarryAdjustmentYds,
+            totalYds: (pureTotalYds ?? pureCarryYds + rolloutYds) + empiricalCarryAdjustmentYds,
+            offlineYds: modeledLateralBiasYds,
+            pin: exactPinLocalYds,
+            landingTransform: greenLandingTransform,
+            descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null,
+          })
+        : null
       if (!sampled) {
         return {
           aimOffsetYds,
@@ -601,6 +698,7 @@ export const evaluateAimLab = (
           riskProfile: null,
           empiricalAllShots,
           empiricalShotCount: empiricalShots.length,
+          pureFinish,
           score: null,
           scoreParts: null,
           decisionRank: null,
@@ -633,6 +731,7 @@ export const evaluateAimLab = (
         riskProfile,
         empiricalAllShots,
         empiricalShotCount: empiricalShots.length,
+        pureFinish,
         score: scored.score,
         scoreParts: scored.scoreParts,
         decisionRank: null,
@@ -701,6 +800,11 @@ export const evaluateAimLab = (
       startingBag: profileSet.starting_bag[profile.club] ?? null,
       modeledSampleCount: MODELED_AIM_SAMPLE_COUNT,
       empiricalShotCount: empiricalShots.length,
+      shotShape: shotCore
+        ? { source: 'your-shots', shotCount: shotCore.shotCount }
+        : { source: 'bell-curve', shotCount: goodShots.length },
+      pureCarryYds,
+      pureTotalYds,
       candidates,
       bestCandidate,
       decisionRank: null,

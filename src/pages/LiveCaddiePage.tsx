@@ -42,6 +42,7 @@ import {
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
+import { pureFinishRead } from '../liveCaddie/pureFinishRead'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
@@ -1580,6 +1581,9 @@ export default function LiveCaddiePage() {
     ? aimDescriptor.contextFacts.find((fact) => AIM_WIDTH_FACT.test(fact)) ?? null
     : null
   const otherAimFacts = aimDescriptor?.contextFacts.filter((fact) => !AIM_WIDTH_FACT.test(fact)) ?? []
+  const flushedRead = !isShotStrategy
+    ? pureFinishRead({ club: displayedClub, pureFinish: inspectedCandidate?.pureFinish })
+    : null
   const aimContext = !aimDescriptor
     ? null
     : aimWidthFact && otherAimFacts.length === 0
@@ -2105,6 +2109,9 @@ export default function LiveCaddiePage() {
                   <p className="live-decision-reason">
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
+                    ) : null}
+                    {flushedRead ? (
+                      <span className="live-green-read"><strong>Flushed:</strong> {flushedRead}</span>
                     ) : null}
                     {viewedEvaluation?.startingBag ? (
                       <span className="live-starting-bag">

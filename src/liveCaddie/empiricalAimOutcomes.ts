@@ -1,4 +1,4 @@
-import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
+import { resolveCarryAwareLanding } from './carryAwareLanding'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
@@ -136,8 +136,12 @@ export const evaluateEmpiricalAimDistribution = (
     const total = Math.max(carry, observedTotal + carryAdjustmentYds)
     const offline = shot.offlineYards + lateralAdjustmentYds
     const carryLanding = addScaled(ball, forward, carry, right, offline)
-    const landing = addScaled(ball, forward, total, right, offline)
-    const kind = classifyTacticalLandingPoint(hole, landing).kind
+    const { landing, classification } = resolveCarryAwareLanding(
+      hole,
+      carryLanding,
+      addScaled(ball, forward, total, right, offline),
+    )
+    const kind = classification.kind
     weights[kind] = (weights[kind] ?? 0) + weight
     rawSamples.push({ carryLanding, landing, kind, rawWeight: weight })
     totalWeight += weight
