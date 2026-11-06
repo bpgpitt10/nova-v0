@@ -508,9 +508,46 @@ button.looper-landing-mode-card:hover .looper-landing-mode-action span,
 }
 
 .looper-welcome-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #eab308;
   background: #eab308;
   color: #11180f;
+  text-decoration: none;
+}
+
+/* Download / copy-link affordances inside status lines. */
+.looper-landing-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #eab308;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.looper-landing-update {
+  margin-left: 6px;
+  color: #eab308;
+  text-decoration: underline;
+}
+
+.looper-landing-needs-update {
+  margin: 10px auto 0;
+  max-width: 560px;
+  padding: 10px 14px;
+  border: 1px solid rgba(239, 98, 98, 0.5);
+  border-radius: 10px;
+  background: rgba(239, 98, 98, 0.1);
+  color: #f3c0c0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.looper-landing-needs-update a {
+  color: #fff;
 }
 
 .looper-welcome-secondary {
