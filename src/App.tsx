@@ -5391,7 +5391,7 @@ function App({
   }
 
   const appMain = (
-    <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}`}>
+    <main className={`app-shell ${sessionState === 'review' ? 'dashboard-shell' : ''}${sessionState === 'review' && useBagYardageBook ? ' is-bagbook' : ''}`}>
       {sessionState !== 'review' && <h1>Nova Stock Range Validation</h1>}
       {/* Validation/debug UI removed; OpenGolfCoach enrichment + persistence remain active. */}
 
