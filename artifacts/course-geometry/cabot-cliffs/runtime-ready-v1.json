@@ -9,7 +9,7 @@
   ],
   "location": "Inverside, Nova Scotia",
   "packagePath": "public/course-geometry/cabot-cliffs/course-v1.json",
-  "packageSha256": "1bca1cc734dbd172023eeb708bdc2d1ede31d6245fda4f62b076056bfefadee4",
+  "packageSha256": "180214b960911346210b01cf9a7f8d50af3c2f1e2c3ad619361bbcbee30069ce",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "nrcan-hrdem",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/cabot-cliffs/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/cabot-cliffs/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }
