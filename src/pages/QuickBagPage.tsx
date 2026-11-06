@@ -104,6 +104,7 @@ export default function QuickBagPage() {
     PW: { carryYds: parseCarry(draft.anchors.PW.carry) ?? undefined, shape: draft.anchors.PW.shape },
   }), [draft.anchors])
   const problem = quickBagInputProblem(anchors)
+  const anchorsEntered = ANCHOR_CLUBS.every((club) => parseCarry(draft.anchors[club].carry) != null)
   const handicap = draft.handicapUnknown ? null : parseCarry(draft.handicap)
 
   const overrides = useMemo(() => {
@@ -253,19 +254,22 @@ export default function QuickBagPage() {
                         <em>yd</em>
                       </span>
                     </label>
-                    <div className="quick-bag-segmented" role="radiogroup" aria-label={`${club} shape`}>
-                      {(['draw', 'neutral', 'fade'] as const).map((shape) => (
-                        <button
-                          aria-checked={draft.anchors[club].shape === shape}
-                          className={draft.anchors[club].shape === shape ? 'is-on' : ''}
-                          key={shape}
-                          onClick={() => setAnchor(club, { shape })}
-                          role="radio"
-                          type="button"
-                        >
-                          {labels[shape]}
-                        </button>
-                      ))}
+                    <div className="quick-bag-field">
+                      <span>Shape</span>
+                      <div className="quick-bag-segmented" role="radiogroup" aria-label={`${club} shape`}>
+                        {(['draw', 'neutral', 'fade'] as const).map((shape) => (
+                          <button
+                            aria-checked={draft.anchors[club].shape === shape}
+                            className={draft.anchors[club].shape === shape ? 'is-on' : ''}
+                            key={shape}
+                            onClick={() => setAnchor(club, { shape })}
+                            role="radio"
+                            type="button"
+                          >
+                            {labels[shape]}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -284,9 +288,11 @@ export default function QuickBagPage() {
             <span className="quick-bag-preview-sub">
               {clubs.length} clubs from your bag setup · <a href="/bag-setup?returnTo=/quick-bag">change clubs</a>
             </span>
-            <button className="quick-bag-adjust" onClick={() => setShowAdjust((v) => !v)} type="button">
-              {showAdjust ? 'Done adjusting' : 'Adjust any club'}
-            </button>
+            {preview ? (
+              <button className="quick-bag-adjust" onClick={() => setShowAdjust((v) => !v)} type="button">
+                {showAdjust ? 'Done adjusting' : 'Adjust any club'}
+              </button>
+            ) : null}
           </div>
           {preview ? (
             <div className="quick-bag-table" role="table">
@@ -338,9 +344,13 @@ export default function QuickBagPage() {
               })}
             </div>
           ) : (
-            <p className="quick-bag-waiting">{problem ?? 'Enter the three carries to see your bag.'}</p>
+            <p className="quick-bag-waiting">
+              {anchorsEntered
+                ? problem
+                : 'Type your three carries above and your whole bag appears here, gapped, with a carry you can change on any club.'}
+            </p>
           )}
-          {showAdjust && measured.size > 0 ? (
+          {showAdjust && preview && measured.size > 0 ? (
             <p className="quick-bag-fine">
               Clubs marked “range” have {BLEND_RULES.carry.fullAt}+ good swings: their numbers come from your swings
               and typing here wouldn't change them. Starting numbers only fill in until the range takes over.
