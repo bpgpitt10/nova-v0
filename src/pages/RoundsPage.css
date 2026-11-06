@@ -28,7 +28,8 @@
   gap: 16px;
   width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 16px 16px 48px;
+  /* Start below the fixed account + companion chips. */
+  padding: var(--looper-chip-band, 54px) 16px 48px;
   box-sizing: border-box;
 }
 
