@@ -9,7 +9,7 @@
     "greenDetail": true,
     "greenDetailSha256": "f96eb17a25c2ad7e41329d4ae7988a3cce14cd3ac483749252d0a4ed5516f490",
     "landcoverContext": true,
-    "packageSha256": "680d3bfb755efbe490ea72df5c146c73a3d5aa8aa6bf7554fd4c055c822cf1bc",
+    "packageSha256": "e50fc34a070934e416d0bcfd898f3cd0148d922392270e96b9437523fe51af56",
     "reason": "prove-course-wide-tee-contract-v4",
     "runtimeContract": "round-setup-to-live-caddie-v1",
     "runtimeReady": true,
