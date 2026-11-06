@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { COMPANION_DOWNLOAD_URL, COMPANION_RELEASES_PAGE, formatReleaseSize } from '../lib/companionRelease'
-import { useCompanionPresence, type CompanionPresence } from '../lib/companionPresence'
+import type { CompanionPresence } from '../lib/companionPresence'
+import { useCompanionPresence } from '../lib/useCompanionPresence'
 import './CompanionChip.css'
 
 /**

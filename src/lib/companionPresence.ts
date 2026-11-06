@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react'
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
 import {
   companionUpdateState,
-  fetchLatestCompanionRelease,
   isWindowsBrowser,
   type CompanionLatest,
   type CompanionUpdateState,
@@ -55,10 +53,6 @@ export type CompanionPresence = Readonly<{
   checkedAt: number | null
 }>
 
-const INITIAL: CompanionPresence = {
-  status: 'checking', release: null, gspro: null, latest: null, update: 'unknown', seen: null, checkedAt: null,
-}
-
 export const POLL_MS = 15_000
 
 /** One look at the companion, no React. */
@@ -76,30 +70,4 @@ export const checkCompanionPresence = async (latest: CompanionLatest | null): Pr
     const status = seen ? 'not-running' : isWindowsBrowser() ? 'not-installed' : 'elsewhere'
     return { status, release: seen?.release ?? null, gspro: null, latest, update: 'unknown', seen, checkedAt: Date.now() }
   }
-}
-
-/** Polls the companion every 15 s (and on focus); shared by the chip and the pages. */
-export const useCompanionPresence = (): CompanionPresence => {
-  const [presence, setPresence] = useState<CompanionPresence>(INITIAL)
-  useEffect(() => {
-    let cancelled = false
-    let latest: CompanionLatest | null = null
-    const look = async () => {
-      const next = await checkCompanionPresence(latest)
-      if (!cancelled) setPresence(next)
-    }
-    void fetchLatestCompanionRelease().then((value) => {
-      latest = value
-      return look()
-    })
-    const timer = window.setInterval(() => void look(), POLL_MS)
-    const onFocus = () => void look()
-    window.addEventListener('focus', onFocus)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [])
-  return presence
 }
