@@ -308,6 +308,31 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
 
 type ListFilter = 'full' | 'all' | 'live-caddie'
 
+/** Whether a round is in the stats; in Manage, tap to switch it. */
+function CountChip({ round, managing, onToggle }: { round: RoundSummary; managing: boolean; onToggle: () => void }) {
+  const label = round.counts ? 'Counts' : 'Doesn’t count'
+  const why = !round.counts && round.countState == null ? 'looks like a test' : null
+  const className = `rounds-count-chip ${round.counts ? 'is-counts' : 'is-excluded'}`
+  return (
+    <span className="rounds-count-cell">
+      {managing ? (
+        <button
+          aria-label={`${round.courseName}: ${label}. Switch to ${round.counts ? 'doesn’t count' : 'counts'}`}
+          className={className}
+          onClick={onToggle}
+          title={round.counts ? 'Tap so it doesn’t count' : 'Tap so it counts'}
+          type="button"
+        >
+          {label}
+        </button>
+      ) : (
+        <span className={className}>{label}</span>
+      )}
+      {why ? <span className="rounds-muted rounds-count-why">{why}</span> : null}
+    </span>
+  )
+}
+
 function RoundsList({
   rounds,
   cloudError,
@@ -427,10 +452,14 @@ function RoundsList({
             </>
           ) : (
             <>
-              <span>{tickedRounds.length === 0 ? 'Tick the rounds to change.' : `${tickedRounds.length} selected`}</span>
-              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'counts'); setTicked(new Set()) }} type="button">Counts</button>
-              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'excluded'); setTicked(new Set()) }} type="button">Doesn’t count</button>
-              <button className="is-danger" disabled={tickedRounds.length === 0} onClick={() => setConfirmDelete(true)} type="button">Delete…</button>
+              <span>
+                {tickedRounds.length === 0
+                  ? 'Tap a round’s In stats to switch it, or tick several to change them together.'
+                  : `${tickedRounds.length} selected:`}
+              </span>
+              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'counts'); setTicked(new Set()) }} type="button">Count them</button>
+              <button disabled={tickedRounds.length === 0} onClick={() => { onCountState(tickedRounds.map((round) => round.roundId), 'excluded'); setTicked(new Set()) }} type="button">Don’t count them</button>
+              <button className="is-danger" disabled={tickedRounds.length === 0} onClick={() => setConfirmDelete(true)} type="button">Delete them…</button>
             </>
           )}
         </div>
@@ -502,6 +531,7 @@ function RoundsList({
                 <th className="is-num" scope="col">Greens</th>
                 <th className="is-num" scope="col">Putts</th>
                 <th className="is-num" scope="col">SG vs Tour</th>
+                <th className="rounds-count-col" scope="col">In stats</th>
               </tr>
             </thead>
             <tbody>
@@ -524,7 +554,6 @@ function RoundsList({
                       <a className="rounds-row-link" href={`/rounds/${round.roundId}`}>
                         <strong>{round.courseName}</strong>
                         <span className="rounds-muted">
-                          {!round.counts ? (round.countState == null ? 'Looks like a test, doesn’t count · ' : 'Doesn’t count · ') : ''}
                           {round.status === 'full'
                             ? best ? `Best shot: ${keyShotHeadline(best).replace(/^Hole \d+ · /, '').toLowerCase()} on ${best.holeNumber}` : STATUS_LABEL.full
                             : round.status === 'test'
@@ -551,6 +580,13 @@ function RoundsList({
                     <td className="is-num">{scored && round.completeHoles > 0 ? round.putts : '–'}</td>
                     <td className={`is-num ${tone(round.sg.total)}`}>
                       {round.status === 'full' && round.sg.total != null ? signed(round.sg.total) : scored ? 'Partial' : '–'}
+                    </td>
+                    <td className="rounds-count-col">
+                      <CountChip
+                        managing={managing}
+                        onToggle={() => onCountState([round.roundId], round.counts ? 'excluded' : 'counts')}
+                        round={round}
+                      />
                     </td>
                   </tr>
                 )

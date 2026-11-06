@@ -2018,3 +2018,53 @@
   accent-color: #eab308;
   cursor: pointer;
 }
+
+/* "In stats" column: Counts / Doesn't count; a button in Manage. */
+.rounds-table .rounds-count-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rounds-count-cell {
+  display: inline-grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.rounds-count-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.rounds-count-chip.is-counts {
+  border-color: rgba(134, 209, 154, 0.45);
+  background: rgba(134, 209, 154, 0.1);
+  color: #a6e3b5;
+}
+
+.rounds-count-chip.is-excluded {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #b3bdb5;
+}
+
+button.rounds-count-chip {
+  cursor: pointer;
+}
+
+button.rounds-count-chip:hover,
+button.rounds-count-chip:focus-visible {
+  outline: 2px solid rgba(234, 179, 8, 0.6);
+  outline-offset: 1px;
+}
+
+.rounds-count-why {
+  font-size: 11px;
+}
