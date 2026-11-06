@@ -119,17 +119,29 @@ def hole_headings(slug: str) -> list | None:
     return headings if any(h is not None for h in headings) else None
 
 
+def require_valid(path: Path) -> tuple[str, int]:
+    """The package acceptance gate, at the last possible moment: a package with a
+    hard failure is never uploaded. Returns (sha256, bytes) for the course row."""
+    import validate_package  # noqa: PLC0415 - HERE is on sys.path
+    report = validate_package.validate_file(path)
+    if not report.ok:
+        raise RuntimeError(f"{path.name} failed validation: {'; '.join(report.hard[:3])}")
+    return report.facts['sha256'], report.facts['bytes']
+
+
 def publish_to_storage(request: dict, slug: str, key: str) -> None:
     """Upload the package files and write the course's loaded_courses row."""
     receipt = json.loads((ROOT / 'artifacts' / 'course-geometry' / slug / 'runtime-ready-v1.json').read_text())
     if receipt.get('runtimeReady') is not True:
         raise RuntimeError('the runtime-ready receipt is not ready')
     folder = ROOT / 'public' / 'course-geometry' / slug
+    if not (folder / 'course-v1.json').exists():
+        raise RuntimeError('course-v1.json was not built')
+    package_sha, package_bytes = require_valid(folder / 'course-v1.json')
+    lidar_sha = require_valid(folder / 'course-v1-lidar.json')[0] if (folder / 'course-v1-lidar.json').exists() else None
     for name in PACKAGE_FILES:
         if (folder / name).exists():
             storage_upload(f'{slug}/{name}', (folder / name).read_bytes(), key)
-    if not (folder / 'course-v1.json').exists():
-        raise RuntimeError('course-v1.json was not built')
     aliases = [str(a).strip() for a in receipt.get('gsproAliases') or [] if str(a).strip()]
     row = {
         'slug': slug,
@@ -144,6 +156,9 @@ def publish_to_storage(request: dict, slug: str, key: str) -> None:
         'osm_id': request.get('osm_id'),
         'request_id': request.get('id'),
         'published_at': now(),
+        'package_sha256': package_sha,
+        'package_bytes': package_bytes,
+        'lidar_sha256': lidar_sha,
     }
     req = urllib.request.Request(
         f'{SUPABASE_URL}/rest/v1/loaded_courses?on_conflict=slug', method='POST', data=json.dumps(row).encode(),

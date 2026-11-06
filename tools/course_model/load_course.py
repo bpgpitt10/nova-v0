@@ -177,6 +177,15 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     if ok and package.exists():
         load.stage('enrich', py, str(HERE / 'build_enriched_package.py'), '--package', str(package),
                    '--model-dir', str(model), '--out', str(package.parent / 'course-v1-lidar.json'))
+    # Acceptance: is what was built fit to publish? (validate_package.py; hard
+    # failures fail the load, soft ones ride along in the report.)
+    built = [p for p in ((ROOT / 'public' / 'course-geometry' / slug).glob('course-*.json')) if p.is_file()] \
+        if ok and (ROOT / 'public' / 'course-geometry' / slug).exists() else []
+    if ok and built:
+        report_path = report_dir / 'validate-report.json'
+        load.stage('validate', py, str(HERE / 'validate_package.py'), '--report', str(report_path), *map(str, built))
+        if report_path.exists():
+            extra['validation'] = json.loads(report_path.read_text())
     for name in ('lidar-stats.json', 'trees-summary.json'):
         if (model / name).exists():
             extra[name.replace('.json', '')] = json.loads((model / name).read_text())
