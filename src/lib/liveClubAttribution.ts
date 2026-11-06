@@ -11,6 +11,7 @@ import {
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
 import { buildShotProfilesForIdentity } from './shotProfiles'
+import { parseDecisionOptions, type DecisionOption } from '../liveCaddie/decisionOptions'
 
 export const LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT = 'looper-live-caddie-armed-club-updated'
 export const CLUB_INFERENCE_MODEL_VERSION = 'player-gaussian-v1'
@@ -27,6 +28,8 @@ export type ArmedLiveShotIntent = {
   /** Player-facing aim instruction frozen at arm time. Negative = left, positive = right. */
   aimOffsetYds: number | null
   source: 'live-caddie-recommendation' | 'live-caddie-safe-pick' | 'manual-club-selection'
+  /** The engine's numbers for its pick and the alternatives at arm time (caddie vs you). */
+  options?: DecisionOption[] | null
 }
 
 export type ArmedLiveClub = {
@@ -79,6 +82,7 @@ const parseIntent = (value: unknown): ArmedLiveShotIntent | null => {
     modeledCarryYds: nullableFiniteNumber(candidate.modeledCarryYds),
     aimOffsetYds: nullableFiniteNumber(candidate.aimOffsetYds),
     source,
+    options: parseDecisionOptions(candidate.options),
   }
 }
 
@@ -344,12 +348,14 @@ const shotIntentFromUi = (
   const plannedCarryYds = datasetNumber(block, 'plannedCarryYds')
   const modeledCarryYds = datasetNumber(block, 'modeledCarryYds')
   const aimOffsetYds = aimOffsetFromUi()
+  const options = parseDecisionOptions(block.dataset.decisionOptions)
   if (
     !variant
     && stockCarryYds == null
     && plannedCarryYds == null
     && modeledCarryYds == null
     && aimOffsetYds == null
+    && !options
   ) return null
   return {
     variant,
@@ -358,6 +364,7 @@ const shotIntentFromUi = (
     modeledCarryYds,
     aimOffsetYds,
     source,
+    options,
   }
 }
 

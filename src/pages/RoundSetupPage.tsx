@@ -55,8 +55,9 @@ const ACTIVE_ROUND_RECENT_MS = 12 * 60 * 60 * 1000
 
 export default function RoundSetupPage() {
   const initialCourse = loadLastSelectedCourseId()
+  // Nothing chosen yet: Greywolf (our home course) when it is loaded, else the first course.
   const initialCourseId = initialCourse === '__no-course-selected__'
-    ? GREYWOLF_COURSE_ID
+    ? courseRegistry.find((c) => c.id === GREYWOLF_COURSE_ID)?.id ?? courseRegistry[0]?.id ?? initialCourse
     : initialCourse
   const savedTee = loadRoundTeeSelection(initialCourseId)
 

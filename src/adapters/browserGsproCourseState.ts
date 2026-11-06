@@ -1,5 +1,4 @@
 import {
-  GREYWOLF_COURSE_ID,
   resolveCourseIdFromGsproName,
   UNSELECTED_COURSE_ID,
 } from '../courseGeometry/courseCatalog'
@@ -13,7 +12,6 @@ import {
   selectNativeLayout,
 } from '../courseGeometry/nativeCourseRuntime'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
-import { gsproWorldPointToGreywolfLocal } from '../courseGeometry/greywolfWorldCoordinates'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
 import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
@@ -31,9 +29,6 @@ import {
   loadGsproCourseStateDirectoryHandle,
   type BrowserGsproCourseSnapshot as CoreBrowserGsproCourseSnapshot,
 } from './browserGsproCourseStateCore'
-import {
-  selectGsproCourseLayoutPin,
-} from './gsproCourseLayoutPin'
 import {
   parseGsproStartingPosition,
   type GsproStartingPositionObservation,
@@ -190,44 +185,15 @@ const loadLiveTeeGeometry = (
   return pending
 }
 
-const resolveExactPinFromCourseLayout = async ({
-  selectedCourseId,
-  holeNumber,
-  teeDistanceToPinYds,
-  geometry,
-}: {
+// GSPro's output_log pin through a hand-made world transform: only the old
+// built-in Greywolf had one. Since 11/4 Greywolf is a loaded course and native
+// positions place every course's pins, so there is no exact layout pin here.
+const resolveExactPinFromCourseLayout = async (_input: {
   selectedCourseId: Exclude<ReturnType<typeof loadLastSelectedCourseId>, typeof UNSELECTED_COURSE_ID>
   holeNumber: number
   teeDistanceToPinYds: number | null
   geometry?: CourseHoleGeometry | null
-}): Promise<ExactPinObservation | null> => {
-  if (selectedCourseId !== GREYWOLF_COURSE_ID) return null
-  const rows = await loadGsproCourseLayout(selectedCourseId)
-  const match = selectGsproCourseLayoutPin(rows, holeNumber, teeDistanceToPinYds)
-  if (!match) return null
-
-  const pinLocalYds = await gsproWorldPointToGreywolfLocal(
-    match.row.pinPos,
-    match.row.teePos,
-    holeNumber,
-  )
-
-  // When no live tee distance is available (for example immediately after the
-  // manual Start Round quarantine), reject obviously mismatched cached layouts.
-  // A real pin can be far from green center, so keep this guard intentionally wide.
-  if (teeDistanceToPinYds == null && geometry?.markers.pin) {
-    const centerGapYds = Math.hypot(
-      pinLocalYds[0] - geometry.markers.pin[0],
-      pinLocalYds[1] - geometry.markers.pin[1],
-    )
-    if (centerGapYds > 65) return null
-  }
-
-  return {
-    pinLocalYds,
-    distanceValidationErrorYds: match.distanceErrorYds,
-  }
-}
+}): Promise<ExactPinObservation | null> => null
 
 const unavailableShotOneSnapshot = (
   snapshot: BrowserGsproCourseSnapshot,

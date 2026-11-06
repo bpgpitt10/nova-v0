@@ -33,6 +33,7 @@ OVERPASS_URLS = [
     'https://overpass.private.coffee/api/interpreter',
 ]
 DEM_EXPORT = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
+DEM_ATTEMPTS = 6
 TARGET_CRS = 'EPSG:26916'  # NAD83 / UTM zone 16N (FarmLinks)
 R_MERC = 6378137.0
 
@@ -130,8 +131,10 @@ def cmd_dem(args: argparse.Namespace) -> int:
     maxx, maxy = math.ceil(max(xs)), math.ceil(max(ys))
     width, height = int(maxx - minx), int(maxy - miny)
     source = json.loads(Path(args.dem_source).read_text())
-    if source.get('demProvider') == 'nrcan-hrdem':
+    if source.get('demProvider') in TILED_1M:
         return _dem_from_hrdem(args, source, crs, minx, maxy, width, height)
+    if source.get('demProvider') == 'copernicus-30m':
+        return _dem_from_copernicus(args, (w, s, e, n), crs, minx, maxy, width, height)
     # The 3DEP ImageServer returns HTTP 500 for large exports (Muirfield's
     # 3.3 x 3.6 km box), so fetch <= TILE_M tiles and mosaic them.
     tmp = Path(args.tmp)
@@ -152,15 +155,18 @@ def cmd_dem(args: argparse.Namespace) -> int:
             url = DEM_EXPORT + '?' + urllib.parse.urlencode(params)
             urls.append(url)
             tif = tmp / f'dem-{tx}-{ty}.tif'
-            for attempt in range(4):
+            # The 3DEP service has bad quarter-hours (DPC Sodgrass, 11/6: four
+            # 504s in a row). Wait it out: 15 s, 30 s, 1, 2, 4 min before giving up.
+            for attempt in range(DEM_ATTEMPTS):
                 try:
                     tif.write_bytes(http_get(url, timeout=600))
                     break
                 except Exception as exc:  # noqa: BLE001
-                    if attempt == 3:
+                    if attempt == DEM_ATTEMPTS - 1:
                         raise
-                    print(f'dem tile {tx},{ty} attempt {attempt + 1}: {exc}')
-                    time.sleep(10 * (attempt + 1))
+                    pause = min(240, 15 * 2 ** attempt)
+                    print(f'dem tile {tx},{ty} attempt {attempt + 1}/{DEM_ATTEMPTS}: {exc}; retrying in {pause} s')
+                    time.sleep(pause)
             with rasterio.open(tif) as ds:
                 tile = ds.read(1).astype('float64')
                 if ds.nodata is not None:
@@ -197,41 +203,119 @@ def cmd_dem(args: argparse.Namespace) -> int:
     return 0
 
 
-def _hrdem_grid(source: dict, kind: str, crs: str, minx: float, maxy: float, width: int, height: int):
-    """NRCan HRDEM `kind` ('dtm' or 'dsm') on the course's UTM 1 m grid."""
-    from affine import Affine
-    import nrcan_hrdem  # noqa: E402  (same folder)
+# 1 m LiDAR published as tiled COGs (DTM + DSM): NRCan HRDEM (Canada), LINZ (New Zealand).
+TILED_1M = {
+    'nrcan-hrdem': ('hrdem', 'NRCan HRDEM', 'Open Government Licence - Canada'),
+    'linz-1m': ('linz', 'LINZ 1 m LiDAR', 'CC BY 4.0, Toitū Te Whenua Land Information New Zealand'),
+}
 
-    hrefs = [i[kind] for i in (source.get('hrdem') or {}).get('items') or [] if i.get(kind)]
+
+def _tiled(source: dict) -> tuple[dict, str, str]:
+    key, name, licence = TILED_1M[source.get('demProvider') or 'nrcan-hrdem']
+    return source.get(key) or {}, name, licence
+
+
+def _hrdem_grid(source: dict, kind: str, crs: str, minx: float, maxy: float, width: int, height: int):
+    """Tiled 1 m LiDAR `kind` ('dtm' or 'dsm') on the course's UTM 1 m grid."""
+    from affine import Affine
+    import nrcan_hrdem  # noqa: E402  (same folder; generic COG -> grid reader)
+
+    found, _, _ = _tiled(source)
+    hrefs = [i[kind] for i in found.get('items') or [] if i.get(kind)]
     transform = Affine(1.0, 0.0, float(minx), 0.0, -1.0, float(maxy))
     return nrcan_hrdem.read_to_grid(hrefs, crs, transform, width, height), transform, hrefs
 
 
 def _dem_from_hrdem(args, source: dict, crs: str, minx: float, maxy: float, width: int, height: int) -> int:
-    """Canada: the bare-earth 1 m DEM from NRCan HRDEM's DTM (find stage chose it)."""
+    """Canada / New Zealand: the bare-earth 1 m DEM from the tiled LiDAR DTM (find stage chose it)."""
     import numpy as np
     from grid_io import save_grid
 
     t0 = time.time()
+    found, name, licence = _tiled(source)
     arr, transform, hrefs = _hrdem_grid(source, 'dtm', crs, minx, maxy, width, height)
     bad = ~np.isfinite(arr) | (arr < -1000) | (arr > 9000)
     if bad.mean() > 0.5:
-        raise SystemExit(f'NRCan HRDEM covers only {1 - bad.mean():.0%} of the course box')
-    collection = (source.get('hrdem') or {}).get('collection')
+        raise SystemExit(f'{name} covers only {1 - bad.mean():.0%} of the course box')
+    collection = found.get('collection')
     header = save_grid(
         Path(args.out) / 'dem-utm-1m', arr, crs=crs,
         origin_x=transform.c, origin_y=transform.f, pixel_size=1.0,
         scale=0.01, nodata_mask=bad,
         provenance={
-            'dataset': f'NRCan HRDEM ({collection}) bare-earth DTM',
-            'sources': hrefs, 'requestedPixelMeters': 1.0,
-            'license': 'Open Government Licence - Canada',
+            'dataset': f'{name} ({collection}) bare-earth DTM',
+            'sources': hrefs, 'requestedPixelMeters': 1.0, 'sourceResolutionMeters': 1.0,
+            'license': licence,
             'fetchedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             'rasterioTransform': list(transform)[:6],
         },
     )
     valid = arr[~bad]
-    print(json.dumps({'provider': 'nrcan-hrdem', 'collection': collection, 'tiles': len(hrefs),
+    print(json.dumps({'provider': source.get('demProvider'), 'collection': collection, 'tiles': len(hrefs),
+                      'width': header['width'], 'height': header['height'], 'validCells': header['validCells'],
+                      'elevMin': float(valid.min()) if valid.size else None,
+                      'elevMax': float(valid.max()) if valid.size else None,
+                      'seconds': round(time.time() - t0, 1)}))
+    return 0
+
+
+COPERNICUS_TILE = ('https://copernicus-dem-30m.s3.amazonaws.com/'
+                   'Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM/'
+                   'Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM.tif')
+
+
+def copernicus_tiles(bbox_lonlat) -> list[str]:
+    """Copernicus GLO-30 1x1 degree COG tiles covering the box (AWS open data)."""
+    w, s, e, n = bbox_lonlat
+    urls = []
+    for lat in range(math.floor(s), math.floor(n) + 1):
+        for lon in range(math.floor(w), math.floor(e) + 1):
+            urls.append(COPERNICUS_TILE.format(ns='N' if lat >= 0 else 'S', lat=abs(lat),
+                                               ew='E' if lon >= 0 else 'W', lon=abs(lon)))
+    return urls
+
+
+def _dem_from_copernicus(args, bbox_lonlat, crs: str, minx: float, maxy: float, width: int, height: int) -> int:
+    """Outside USGS / NRCan coverage: Copernicus GLO-30 (30 m, a surface
+    model: trees and buildings included) resampled onto the course's UTM 1 m
+    grid. Coarse, but plays-like elevation anywhere."""
+    import numpy as np
+    from affine import Affine
+    from grid_io import save_grid
+    import nrcan_hrdem  # noqa: E402  (same folder; generic COG -> grid reader)
+
+    t0 = time.time()
+    transform = Affine(1.0, 0.0, float(minx), 0.0, -1.0, float(maxy))
+    hrefs = []
+    for url in copernicus_tiles(bbox_lonlat):
+        try:
+            import rasterio
+            with rasterio.open(url):
+                hrefs.append(url)
+        except Exception as exc:  # noqa: BLE001  (ocean tiles don't exist)
+            print(f'copernicus tile unavailable: {url} ({exc})')
+    if not hrefs:
+        raise SystemExit('No Copernicus GLO-30 tile covers this course')
+    arr = nrcan_hrdem.read_to_grid(hrefs, crs, transform, width, height)
+    bad = ~np.isfinite(arr) | (arr < -1000) | (arr > 9000)
+    if bad.mean() > 0.5:
+        raise SystemExit(f'Copernicus GLO-30 covers only {1 - bad.mean():.0%} of the course box')
+    header = save_grid(
+        Path(args.out) / 'dem-utm-1m', arr, crs=crs,
+        origin_x=transform.c, origin_y=transform.f, pixel_size=1.0,
+        scale=0.01, nodata_mask=bad,
+        provenance={
+            'dataset': 'Copernicus DEM GLO-30 (30 m surface model), resampled to 1 m',
+            'sources': hrefs, 'requestedPixelMeters': 1.0, 'sourceResolutionMeters': 30,
+            'license': 'Copernicus DEM licence (free use with attribution: produced using Copernicus WorldDEM-30, '
+                       '(c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018, provided under '
+                       'COPERNICUS by the European Union and ESA)',
+            'fetchedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'rasterioTransform': list(transform)[:6],
+        },
+    )
+    valid = arr[~bad]
+    print(json.dumps({'provider': 'copernicus-30m', 'tiles': len(hrefs),
                       'width': header['width'], 'height': header['height'], 'validCells': header['validCells'],
                       'elevMin': float(valid.min()) if valid.size else None,
                       'elevMax': float(valid.max()) if valid.size else None,
@@ -249,22 +333,23 @@ def cmd_chm(args: argparse.Namespace) -> int:
     dem_h, dem = load_grid(Path(args.dem))
     height, width = dem.shape
     t0 = time.time()
+    found, name, licence = _tiled(source)
     dsm, _, hrefs = _hrdem_grid(source, 'dsm', dem_h['crs'], dem_h['originX'], dem_h['originY'], width, height)
     if not hrefs:
-        raise SystemExit('NRCan HRDEM has no DSM over this course, so no tree heights (needs the surface model)')
+        raise SystemExit(f'{name} has no DSM over this course, so no tree heights (needs the surface model)')
     chm = np.clip(dsm - dem, 0, None)
     chm[chm > 70] = np.nan  # birds, wires, artefacts
     empty = ~np.isfinite(chm)
     out = Path(args.out)
     save_grid(out / 'chm-utm-1m', chm, crs=dem_h['crs'], origin_x=dem_h['originX'],
               origin_y=dem_h['originY'], pixel_size=dem_h['pixelSize'], scale=0.1, nodata_mask=empty,
-              provenance={'source': hrefs, 'method': 'NRCan HRDEM DSM minus DTM (both LiDAR-derived), clipped at 0',
-                          'license': 'Open Government Licence - Canada', 'alignedTo': 'dem-utm-1m'})
+              provenance={'source': hrefs, 'method': f'{name} DSM minus DTM (both LiDAR-derived), clipped at 0',
+                          'license': licence, 'alignedTo': 'dem-utm-1m'})
     valid = chm[~empty]
     report = {
         'schemaVersion': 'looper-course-model-lidar-stats-v1',
-        'source': 'nrcan-hrdem-dsm-minus-dtm',
-        'collection': (source.get('hrdem') or {}).get('collection'),
+        'source': f"{source.get('demProvider') or 'nrcan-hrdem'}-dsm-minus-dtm",
+        'collection': found.get('collection'),
         'chm': {
             'width': width, 'height': height, 'pixelMeters': dem_h['pixelSize'],
             'cellsWithReturns': int((~empty).sum()), 'emptyCells': int(empty.sum()),

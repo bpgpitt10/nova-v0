@@ -1303,3 +1303,11 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
   color: #ffffff !important;
 }
+
+.live-starting-bag {
+  display: block;
+  margin-bottom: 6px;
+  color: #eab308;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}

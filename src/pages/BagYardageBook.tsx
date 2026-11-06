@@ -1,12 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Club } from '../lib/bagConfig'
 import { formatMiss, type YardageBook, type YardageBookRow } from '../lib/bagYardageBook'
+import { BLEND_RULES, type QuickBagClubPrior, type QuickBagPrior } from '../lib/quickBag'
 import TheReadLadderExportCard, { type ReadLadderExportRow } from '../components/TheReadLadderExportCard'
 import './BagYardageBook.css'
 
 type BagYardageBookProps = {
   book: YardageBook
   onOpenClub: (club: Club, variantId: string) => void
+  /** The Quick Bag: starting numbers shown for clubs that don't have 4 good swings yet. */
+  startingBag?: QuickBagPrior | null
 }
 
 type CarryScale = { min: number; max: number; ticks: number[] }
@@ -90,12 +93,15 @@ function DataRow({
   isVariant,
   variantToggle,
   onOpen,
+  starting,
 }: {
   row: YardageBookRow
   label: string
   scale: CarryScale
   isVariant: boolean
   variantToggle?: { open: boolean; count: number; onToggle: () => void }
+  /** Quick Bag prior for this club, when the row has no measured numbers yet. */
+  starting?: QuickBagClubPrior | null
   onOpen: () => void
 }) {
   const call = row.trust?.call ?? 'Insufficient Data'
@@ -142,7 +148,21 @@ function DataRow({
 
       {row.needsData ? (
         <div className="bagbook-cell bagbook-needs-data" role="cell">
-          Not in the yardage book until it has 4 good swings. Hit a few on the range to add it.
+          {starting ? (
+            <>
+              <span className="bagbook-starting">
+                <strong>{starting.carryYds}</strong> / {starting.totalYds} · ±{Math.round(starting.lateralSigmaYds)} yd
+                {starting.lateralBiasYds !== 0 ? ` · ${formatMiss(starting.lateralBiasYds)}` : ''}
+              </span>
+              {' '}
+              Starting bag, from your handicap and carries.{' '}
+              {row.swings > 0
+                ? `Learning: ${row.swings} of ${BLEND_RULES.carry.fullAt} swings toward your own number.`
+                : `Hit ${BLEND_RULES.carry.fullAt} good swings and the range takes over.`}
+            </>
+          ) : (
+            'Not in the yardage book until it has 4 good swings. Hit a few on the range to add it.'
+          )}
         </div>
       ) : (
         <>
@@ -215,7 +235,7 @@ export const ladderExportRows = (book: YardageBook): ReadLadderExportRow[] =>
 
 const pdfDateSlug = (date: Date) => date.toISOString().slice(0, 10)
 
-export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps) {
+export default function BagYardageBook({ book, onOpenClub, startingBag = null }: BagYardageBookProps) {
   const [showAllVariants, setShowAllVariants] = useState(false)
   const exportRef = useRef<HTMLDivElement | null>(null)
   const [exportGeneratedAt, setExportGeneratedAt] = useState(() => new Date())
@@ -303,6 +323,7 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
                   onOpen={() => onOpenClub(entry.club, entry.row.variantId)}
                   row={entry.row}
                   scale={scale}
+                  starting={startingBag?.clubs.find((club) => club.club === entry.club) ?? null}
                   variantToggle={
                     entry.variants.length > 0
                       ? {
@@ -334,6 +355,11 @@ export default function BagYardageBook({ book, onOpenClub }: BagYardageBookProps
       <p className="bagbook-footnote">
         <span>
           <strong>150</strong> / 157 = carry / total
+        </span>
+        <span>
+          <a className="bagbook-starting-link" href="/quick-bag">
+            {startingBag ? 'Edit your starting bag' : 'Set up a starting bag (no range needed)'}
+          </a>
         </span>
         <span>
           <i className="bagbook-legend-band" aria-hidden="true" />

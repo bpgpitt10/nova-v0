@@ -12,7 +12,7 @@
   ],
   "location": "Sylacauga, AL",
   "packagePath": "public/course-geometry/farmlinks/course-v1.json",
-  "packageSha256": "680d3bfb755efbe490ea72df5c146c73a3d5aa8aa6bf7554fd4c055c822cf1bc",
+  "packageSha256": "e50fc34a070934e416d0bcfd898f3cd0148d922392270e96b9437523fe51af56",
   "reason": "prove-course-wide-tee-contract-v4",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -20,5 +20,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/farmlinks/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/farmlinks/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

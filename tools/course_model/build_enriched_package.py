@@ -223,6 +223,30 @@ def osm_features(osm: dict):
             yield 'parking', as_polys, True
 
 
+WOODS_TAGS = (('natural', 'wood'), ('landuse', 'forest'))
+
+
+def osm_woods(osm: dict) -> list:
+    """[(outer, [inners])] (lat, lon) for the map's natural=wood / landuse=forest."""
+    rings = []
+    for el in osm.get('elements', []):
+        tags = el.get('tags') or {}
+        if not any(tags.get(k) == v for k, v in WOODS_TAGS):
+            continue
+        if el.get('type') == 'way' and el.get('geometry'):
+            ring = [(p['lat'], p['lon']) for p in el['geometry']]
+            if len(ring) >= 4:
+                rings.append((ring, []))
+        elif el.get('type') == 'relation':
+            members = [m for m in el.get('members', []) if m.get('geometry')]
+            outers = assemble_rings([[(p['lat'], p['lon']) for p in m['geometry']]
+                                     for m in members if m.get('role') == 'outer'])
+            inners = assemble_rings([[(p['lat'], p['lon']) for p in m['geometry']]
+                                     for m in members if m.get('role') == 'inner'])
+            rings.extend((o, [i for i in inners if point_in_ring(i[0], o)]) for o in outers)
+    return rings
+
+
 def ring_area(ring: list) -> float:
     return sum(ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1] for i in range(len(ring))) / 2
 
@@ -259,7 +283,22 @@ def localize_polygon(frame, outer, inners, eps: float) -> list:
     return keyhole(ring, holes) if holes else ring
 
 
-def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: float) -> dict:
+COARSE_DEM_METERS = 5.0
+
+
+def dem_source(dem_h: dict) -> tuple[str, float, str]:
+    """(package terrain source, source resolution m, dataset) for a DEM grid.
+
+    1 m LiDAR bare earth (USGS 3DEP, NRCan HRDEM) is 'lidar-dem'; a coarse
+    global model (Copernicus GLO-30) is 'global-dem', which the PC treats as
+    coarse and corrects to GSPro's own heights."""
+    prov = dem_h.get('provenance') or {}
+    res = float(prov.get('sourceResolutionMeters') or 1.0)
+    dataset = str(prov.get('dataset') or 'USGS 3DEP DEM')
+    return ('global-dem' if res >= COARSE_DEM_METERS else 'lidar-dem'), res, dataset
+
+
+def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: float, min_coverage: float = 0.95) -> dict:
     from scipy.ndimage import map_coordinates
     min_x = math.floor(view['minX'] / spacing) * spacing
     min_y = math.floor(view['minY'] / spacing) * spacing
@@ -277,19 +316,20 @@ def build_terrain(frame, view: dict, dem_h: dict, dem: np.ndarray, spacing: floa
     z = map_coordinates(np.nan_to_num(dem, nan=-1e4), [rows, cols], order=1, mode='constant', cval=-1e4)
     z = np.where(z < -1e3, np.nan, z).reshape(xx.shape) * FT
     valid = np.isfinite(z)
-    if valid.mean() < 0.95:
-        raise RuntimeError(f'DEM coverage {valid.mean():.1%} < 95%')
+    if valid.mean() < min_coverage:
+        raise RuntimeError(f'DEM coverage {valid.mean():.1%} < {min_coverage:.0%}')
     offset = math.floor(float(np.nanmin(z)) * 10) / 10
     q = np.rint((z - offset) * 10)
     enc = np.full(z.shape, NODATA, dtype='<u2')
     good = valid & (q >= 0) & (q < NODATA)
     enc[good] = q[good].astype('<u2')
+    source, res, dataset = dem_source(dem_h)
     return {
         'compression': 'deflate', 'elevationOffsetFt': round(offset, 1), 'height': int(len(ys)),
         'interpolation': 'bilinear', 'minX': round(float(min_x), 3), 'minY': round(float(min_y), 3),
-        'nodata': NODATA, 'runtimeSpacingYds': spacing, 'source': 'lidar-dem', 'sourceResolutionMeters': 1.0,
+        'nodata': NODATA, 'runtimeSpacingYds': spacing, 'source': source, 'sourceResolutionMeters': res,
         'valuesBase64': base64.b64encode(zlib.compress(enc.tobytes(), 9)).decode('ascii'), 'width': int(len(xs)),
-        'note': f'{spacing:g}-yd whole-hole terrain from the 1 m USGS 3DEP DEM (course model).',
+        'note': f'{spacing:g}-yd whole-hole terrain from the {res:g} m {dataset} (course model).',
     }
 
 
@@ -305,17 +345,22 @@ def main() -> int:
     md = args.model_dir
     dem_json = md / 'dem-utm-1m.json' if (md / 'dem-utm-1m.json').exists() else md / 'dem-utm16n-1m.json'
     dem_h, dem = load_grid(dem_json)
-    utm_zone_from_crs(dem_h['crs'])  # any northern UTM zone (NAD83 or WGS84)
+    utm_zone_from_crs(dem_h['crs'])  # any UTM zone (NAD83 or WGS84, north or south)
     osm = json.loads(gzip.open(md / 'osm-full.json.gz', 'rt', encoding='utf-8').read())
     feats = list(osm_features(osm))
-    woods = json.loads((md / 'woods.geojson').read_text())['features']
     woods_rings = []
-    for f in woods:
-        g = f['geometry']
-        polys = [g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']
-        for poly in polys:
-            woods_rings.append(([(lat, lon) for lon, lat in poly[0]],
-                                [[(lat, lon) for lon, lat in hole] for hole in poly[1:]]))
+    # LiDAR tree canopy when the course model has a point cloud (or NRCan
+    # DSM); otherwise the map's own woods (USGS bare earth only: Pinehurst).
+    lidar_trees = (md / 'woods.geojson').exists()
+    if lidar_trees:
+        for f in json.loads((md / 'woods.geojson').read_text())['features']:
+            g = f['geometry']
+            polys = [g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']
+            for poly in polys:
+                woods_rings.append(([(lat, lon) for lon, lat in poly[0]],
+                                    [[(lat, lon) for lon, lat in hole] for hole in poly[1:]]))
+    else:
+        woods_rings = osm_woods(osm)
 
     out = json.loads(json.dumps(pkg))
     report = {}
@@ -332,9 +377,13 @@ def main() -> int:
         surfaces = dict(hole.get('surfaces') or {})
         before = {k: len(surfaces.get(k, [])) for k in ('bunker', 'water')}
         for kind in ('bunker', 'water'):
-            polys = [r for cat, shapes, is_poly in feats if cat == kind and is_poly
+            # Clipped to the hole's box like the woods: a lake shore the size of
+            # Lake Michigan (Arcadia Bluffs, 79,625 points) otherwise goes into
+            # every hole whole and the package is 30 MB (11/5).
+            polys = [c for cat, shapes, is_poly in feats if cat == kind and is_poly
                      for r in (localize_polygon(frame, outer, holes, eps=0.3) for outer, holes in shapes)
-                     if ring_ok(r) and in_box(r, box)]
+                     if ring_ok(r) and in_box(r, box)
+                     for c in [clip_to_box(r, box)] if ring_ok(c)]
             if polys:
                 surfaces[kind] = polys
         hole['surfaces'] = surfaces
@@ -360,15 +409,19 @@ def main() -> int:
                        'mapFeatures': {k: sum(len(g.get(t, [])) for t in ('lines', 'polygons')) for k, g in mf.items()},
                        'terrainCells': hole['terrain']['width'] * hole['terrain']['height']}
 
+    _, _, dataset = dem_source(dem_h)
     out['landcoverProvenance'] = {
-        'provider': 'USGS 3DEP LiDAR (AL_17Co_2_2020) canopy height model via Looper course model',
-        'resolutionMeters': 1,
+        'provider': 'LiDAR canopy height model via Looper course model' if lidar_trees
+        else 'OpenStreetMap woods (no LiDAR point cloud for this course)',
+        'resolutionMeters': 1 if lidar_trees else None,
         'role': "tactical 'woods' context (obstruction) where no golf surface is mapped; replaces ESA WorldCover woods",
     }
     out['enrichment'] = {
         'schemaVersion': 'looper-course-enrichment-v1',
         'source': 'course-model-prototype-v1 (tools/course_model/build_enriched_package.py)',
         'terrainSpacingYds': args.terrain_spacing_yds,
+        'trees': 'lidar' if lidar_trees else 'osm',
+        'terrainDataset': dataset,
         'license': 'OSM data (c) OpenStreetMap contributors, ODbL; LiDAR/DEM public domain (USGS)',
     }
     text = json.dumps(out, separators=(',', ':')) + '\n'

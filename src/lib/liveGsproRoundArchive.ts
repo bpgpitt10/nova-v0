@@ -14,6 +14,8 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import { decisionBasis, paperCostStrokes } from '../liveCaddie/decisionOptions'
+import type { ModelBasis } from './quickBag'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
 import {
@@ -27,6 +29,9 @@ import {
   persistWorkingCacheValueForActiveUser,
 } from './localUserScope'
 
+const finiteOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
+
 export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   observedAt: string
   actualClub: Club | null
@@ -35,6 +40,13 @@ export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   includeInAnalysis: boolean
   attributedAt: string | null
   clubInference: ClubInferenceResult | null
+  /** Caddie vs you: the engine's expected strokes at arm time (null before 11/6 or when unknown). */
+  armedExpectedStrokes?: number | null
+  recommendedExpectedStrokes?: number | null
+  /** armed − recommended: positive means the engine expected its pick to do better. */
+  paperCostStrokes?: number | null
+  /** What the recommendation's club numbers rested on (Quick Bag prior, blend, range data). */
+  modelBasis?: ModelBasis | null
 }
 
 export type ArchivedGsproRound = {
@@ -111,6 +123,11 @@ const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCour
   clubSource: shot.clubSource === 'user' ? 'user' : null,
   includeInAnalysis: shot.includeInAnalysis === true,
   attributedAt: typeof shot.attributedAt === 'string' ? shot.attributedAt : null,
+  armedExpectedStrokes: finiteOrNull(shot.armedExpectedStrokes),
+  recommendedExpectedStrokes: finiteOrNull(shot.recommendedExpectedStrokes),
+  paperCostStrokes: finiteOrNull(shot.paperCostStrokes),
+  modelBasis: shot.modelBasis === 'starting-bag' || shot.modelBasis === 'learning' || shot.modelBasis === 'measured'
+    ? shot.modelBasis : null,
   clubInference: shot.clubInference && typeof shot.clubInference === 'object'
     ? shot.clubInference
     : null,
@@ -168,6 +185,10 @@ const archivedFromIncoming = (
   clubSource: prior?.clubSource ?? null,
   includeInAnalysis: prior?.includeInAnalysis ?? false,
   attributedAt: prior?.attributedAt ?? null,
+  armedExpectedStrokes: prior?.armedExpectedStrokes ?? null,
+  recommendedExpectedStrokes: prior?.recommendedExpectedStrokes ?? null,
+  paperCostStrokes: prior?.paperCostStrokes ?? null,
+  modelBasis: prior?.modelBasis ?? null,
   clubInference: prior?.clubInference ?? null,
 })
 
@@ -306,6 +327,14 @@ const annotateNewShots = ({
         clubSource: 'user' as const,
         includeInAnalysis: true,
         attributedAt: observedAt,
+        armedExpectedStrokes: usableArmed.intent?.options
+          ?.find((option) => option.club === usableArmed.club)?.expectedStrokes ?? null,
+        recommendedExpectedStrokes: usableArmed.intent?.options
+          ?.find((option) => option.club === usableArmed.recommendedClub)?.expectedStrokes ?? null,
+        paperCostStrokes: paperCostStrokes(
+          usableArmed.intent?.options, usableArmed.club, usableArmed.recommendedClub,
+        ),
+        modelBasis: decisionBasis(usableArmed.intent?.options),
       } : {}),
     }
     if (JSON.stringify(next) !== JSON.stringify(archived)) changed = true
@@ -419,6 +448,10 @@ export const shotUploadBatches = (
       club_source: shot.clubSource,
       include_in_analysis: shot.includeInAnalysis,
       attributed_at: shot.attributedAt,
+      armed_expected_strokes: shot.armedExpectedStrokes ?? null,
+      recommended_expected_strokes: shot.recommendedExpectedStrokes ?? null,
+      paper_cost_strokes: shot.paperCostStrokes ?? null,
+      model_basis: shot.modelBasis ?? null,
     })),
     unattributed.map(baseRow),
   ].filter((rows) => rows.length > 0)

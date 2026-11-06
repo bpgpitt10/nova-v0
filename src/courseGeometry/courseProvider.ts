@@ -1,11 +1,10 @@
 import {
-  GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
+  courseUsesGsproHoles,
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
-import { loadGreywolfHoleGeometryAdapter } from './greywolfCourseAdapter'
-import { buildGsproOnlyHoleGeometry, isGsproOnlyCourseId } from './gsproOnlyCourse'
+import { buildGsproOnlyHoleGeometry } from './gsproOnlyCourse'
 import { loadNativeCourseContext, selectNativeLayout, type NativeCourseStatus } from './nativeCourseRuntime'
 import { normalizeRouteCourseGeometry } from './normalizeRouteCourseGeometry'
 import { loadRoundTeeSelection } from './roundTeeSelection'
@@ -59,8 +58,9 @@ const gsproOnlyUnavailable = (name: string, status: NativeCourseStatus): string 
 const gsproOnlyCache = new Map<string, Promise<CourseHoleGeometry>>()
 
 /**
- * A GSPro-only course's hole, from the course file on this PC (the layout the
- * round's tee pick names, e.g. "White (Farmlinks Kids)", else the main one).
+ * A GSPro-only or map-area course's hole, from the course file on this PC (the
+ * layout the round's tee pick names, e.g. "White (Farmlinks Kids)", else the
+ * main one). A map-area course lays the map's ground over GSPro's hole.
  */
 const loadGsproOnlyHoleGeometry = async (courseId: CourseId, holeNumber: number): Promise<CourseHoleGeometry> => {
   const entry = getCourseCatalogEntry(courseId)
@@ -76,7 +76,7 @@ const loadGsproOnlyHoleGeometry = async (courseId: CourseId, holeNumber: number)
   const key = `${courseId}|${holeNumber}|${chosen.layoutName}`
   let pending = gsproOnlyCache.get(key)
   if (!pending) {
-    pending = Promise.resolve().then(() => buildGsproOnlyHoleGeometry({
+    const input = {
       entry,
       layout: chosen.layout,
       layouts: context.layouts.map((option) => option.layout),
@@ -84,7 +84,11 @@ const loadGsproOnlyHoleGeometry = async (courseId: CourseId, holeNumber: number)
       holeNumber,
       altLayoutName: context.layouts.find((option) => option.name === chosen.layoutName)?.kind === 'alt'
         ? chosen.layoutName : null,
-    }))
+    }
+    pending = entry.packageKind === 'area'
+      ? import('./areaCourse').then(async ({ buildAreaHoleGeometry, loadCourseAreaPackage }) =>
+        buildAreaHoleGeometry({ ...input, area: await loadCourseAreaPackage(entry) }))
+      : Promise.resolve().then(() => buildGsproOnlyHoleGeometry(input))
     gsproOnlyCache.set(key, pending)
     pending.catch(() => gsproOnlyCache.delete(key))
   }
@@ -94,7 +98,7 @@ const loadGsproOnlyHoleGeometry = async (courseId: CourseId, holeNumber: number)
 /**
  * Canonical runtime entry point for static course geometry.
  *
- * Greywolf remains the proven compatibility control. Every route package is
+ * Every route package is
  * normalized to the selected-tee runtime contract before any UI or decision
  * logic consumes it.
  *
@@ -110,13 +114,9 @@ export const loadCourseHoleGeometry = (
     return Promise.reject(new Error('Choose a course before loading hole geometry.'))
   }
   getCourseCatalogEntry(courseId)
-  if (courseId === GREYWOLF_COURSE_ID) {
-    return loadGreywolfHoleGeometryAdapter(holeNumber)
-      .then((geometry) => withShotOneTee(courseId, holeNumber, geometry))
-  }
   // GSPro-only: the hole comes from GSPro's course file; its tees are the
   // candidates, so the round's GSPro tee pick places the tee exactly.
-  if (isGsproOnlyCourseId(courseId)) {
+  if (courseUsesGsproHoles(courseId)) {
     return loadGsproOnlyHoleGeometry(courseId, holeNumber)
       .then((geometry) => withShotOneTee(courseId, holeNumber, geometry))
   }

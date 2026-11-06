@@ -10,7 +10,7 @@
   ],
   "location": "Hollister, Missouri",
   "packagePath": "public/course-geometry/paynes-valley/course-v1.json",
-  "packageSha256": "102703ee476756cc7c534d4e792ad04155e73315c73ca222f6fb152325b8c5cd",
+  "packageSha256": "f78bedde6a672690d599bdd34d6f833f440764e8090d29a9c09d22da86ae8147",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -18,5 +18,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/paynes-valley/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/paynes-valley/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

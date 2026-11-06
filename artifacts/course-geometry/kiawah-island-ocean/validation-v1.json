@@ -9,7 +9,7 @@
     "greenDetail": true,
     "greenDetailSha256": "698256043a347510fc50bcd6b786e8022508ca1f04cc52ccd9cfff1e0676a3aa",
     "landcoverContext": true,
-    "packageSha256": "aac98460a2585ba10797e64bc45ec2b93be38957a9ce78a25c0ade1ee5988eb7",
+    "packageSha256": "d6fdd8772ef4f2dfaa0916b294dfa050daaeeec1b8560e1b9cea158b0f5ce0b5",
     "reason": "one-click-course-load",
     "runtimeContract": "round-setup-to-live-caddie-v1",
     "runtimeReady": true,

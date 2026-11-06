@@ -25,6 +25,7 @@ import {
 import { GSPRO_SESSION_BASELINE_PARAM } from './adapters/browserGsproLive'
 import looperLogoWhite from './assets/LooperLogo.webp'
 import BagYardageBook from './pages/BagYardageBook'
+import { useQuickBagPrior } from './lib/useQuickBag'
 import { BagTopBar, ClubSwitcher } from './components/BagNav'
 import { buildYardageBook, findMishitPressurePoint } from './lib/bagYardageBook'
 import looperman from './assets/looperman.png'
@@ -1745,6 +1746,7 @@ function App({
     [dashboardSummaries],
   )
 
+  const quickBagPrior = useQuickBagPrior()
   const yardageBook = useMemo(
     () =>
       useBagYardageBook && sessionState === 'review'
@@ -5723,7 +5725,7 @@ function App({
                 )}
 
                 {reviewView === 'dashboard' && yardageBook && (
-                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} />
+                  <BagYardageBook book={yardageBook} onOpenClub={openYardageBookClub} startingBag={quickBagPrior} />
                 )}
 
                 {reviewView === 'dashboard' && !yardageBook && (

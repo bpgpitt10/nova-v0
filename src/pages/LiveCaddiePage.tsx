@@ -27,15 +27,14 @@ import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation, requestGsproWindRefresh } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
+  courseUsesGsproHoles,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
-  GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
-import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
 import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenAnchorSummary } from '../courseGeometry/nativeGreenAnchor'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
@@ -48,6 +47,7 @@ import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistanc
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
+import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -73,7 +73,6 @@ import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
 } from '../courseGeometry/courseSelection'
-import { greywolfHole01Geometry } from '../courseGeometry/greywolfHole01'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
@@ -107,6 +106,10 @@ import {
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
+import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
+import { useQuickBagPrior } from '../lib/useQuickBag'
+import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
+import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
@@ -212,9 +215,7 @@ export default function LiveCaddiePage() {
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
-  const [rawHole, setHole] = useState<CourseHoleGeometry | null>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
-  )
+  const [rawHole, setHole] = useState<CourseHoleGeometry | null>(null)
   // GSPro's own penalty areas and OB, and the green anchored to GSPro's green
   // (both from the player's GKD through the registration), on this hole.
   const [gkdOverlay, setGkdOverlay] = useState<{
@@ -238,16 +239,14 @@ export default function LiveCaddiePage() {
     const base = gkdOverlay.anchoredSurfaces ? { ...rawHole, surfaces: gkdOverlay.anchoredSurfaces } : rawHole
     return withGkdHazards(base, gkdOverlay.hazardSurfaces)
   }, [rawHole, gkdOverlay])
-  const [ball, setBall] = useState<CoursePointYds>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry.markers.tee : [0, 0],
-  )
-  const [target, setTarget] = useState<CoursePointYds>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? defaultTarget(greywolfHole01Geometry) : [0, 220],
-  )
+  const [ball, setBall] = useState<CoursePointYds>([0, 0])
+  const [target, setTarget] = useState<CoursePointYds>([0, 220])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
   const [evaluationPending, setEvaluationPending] = useState(false)
   const [evaluations, setEvaluations] = useState<ClubAimEvaluation[]>([])
+  // The player's Quick Bag (handicap + three carries), laid under the range data.
+  const quickBagPrior = useQuickBagPrior()
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
@@ -338,7 +337,9 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
-  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only'
+  // Holes from GSPro's course file (GSPro-only or a map area): ground the map
+  // doesn't cover is unmapped, not trouble.
+  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only' || selectedCourse?.packageKind === 'area'
 
   // The Live Caddie page stays mounted while navigating. Start Round emits
   // several bootstrap events for the same Looper round, so reset ONLY when
@@ -515,16 +516,7 @@ export default function LiveCaddiePage() {
       return () => { active = false }
     }
 
-    const immediateHole = courseId === GREYWOLF_COURSE_ID && holeNumber === 1
-      ? greywolfHole01Geometry
-      : null
-    if (immediateHole) {
-      setHole(immediateHole)
-      setBall(immediateHole.markers.tee)
-      setTarget(defaultTarget(immediateHole))
-    } else {
-      setHole(null)
-    }
+    setHole(null)
 
     void loadCourseHoleGeometry(courseId, holeNumber)
       .then((loaded) => {
@@ -535,8 +527,7 @@ export default function LiveCaddiePage() {
       })
       .catch((error) => {
         if (!active) return
-        if (!immediateHole) setLoadError(error instanceof Error ? error.message : String(error))
-        else console.warn('[Live Caddie] supplemental Greywolf geometry did not finish loading.', error)
+        setLoadError(error instanceof Error ? error.message : String(error))
       })
     return () => {
       active = false
@@ -548,7 +539,7 @@ export default function LiveCaddiePage() {
   // effect also re-runs once it's known.
   const gkdCourseKey = liveSnapshot?.courseKey ?? null
   useEffect(() => {
-    if (!rawHole || !(isNativePositionsEnabled() || isGsproOnlyCourseId(courseId))) {
+    if (!rawHole || !(isNativePositionsEnabled() || courseUsesGsproHoles(courseId))) {
       setGkdOverlay(null)
       return
     }
@@ -591,8 +582,10 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     let active = true
     setGreenDetail(null)
-    // GSPro-only courses have no packaged green slopes.
-    if (!selectedCourse || selectedCourse.source === 'gspro-only') return () => { active = false }
+    // GSPro-only and map-area courses have no packaged green slopes.
+    if (!selectedCourse || selectedCourse.source === 'gspro-only' || selectedCourse.packageKind === 'area') {
+      return () => { active = false }
+    }
     void loadCourseGreenDetail(selectedCourse.slug, holeNumber)
       .then(detail => { if (active) setGreenDetail(detail) })
       .catch(error => {
@@ -860,6 +853,7 @@ export default function LiveCaddiePage() {
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
   const [hudPin, setHudPin] = useState<{
     key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
+    candidatesLocal: readonly CoursePointYds[]
   } | null>(null)
   useEffect(() => {
     if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
@@ -874,6 +868,7 @@ export default function LiveCaddiePage() {
           pinLocal: found?.pinLocal ?? null,
           note: found?.note ?? 'native course not ready',
           aimPointsLocal: found?.aimPointsLocal ?? [],
+          candidatesLocal: found?.candidatesLocal ?? [],
         })
       }
     })
@@ -1037,7 +1032,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? "GSPro course-file heights (coarse)"
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? "30 m global terrain fitted to GSPro's heights (coarse)"
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
   const airAltitudeFt = ballTerrain?.elevationFt ?? null
   const airAltitudeSource = ballTerrain
@@ -1045,7 +1042,9 @@ export default function LiveCaddiePage() {
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
         ? `GSPro course altitude${selectedCourse?.altitudeFt != null ? '' : ' unknown (sea level)'}`
-        : `${selectedCourse?.name ?? 'Course'} terrain proxy`
+        : ballTerrain.source === 'global-dem'
+          ? `${selectedCourse?.name ?? 'Course'} 30 m global terrain`
+          : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No absolute terrain elevation'
   const surfaceOverride = confirmedCurrentLie ?? liveLieSurface
     ?? (liveMatchesHole ? liveSnapshot?.surface ?? null : null)
@@ -1200,7 +1199,11 @@ export default function LiveCaddiePage() {
     // Each club's evaluation is independent, so the bag is split across a few
     // workers (one per spare core, up to 4) and ranked once here. Same result
     // as one worker, a fraction of the wait (5.9 s single-threaded on the sim).
-    const clubIds = Array.from(new Set(sessions.flatMap((session) => session.shots.map((shot) => shot.club))))
+    const clubIds = Array.from(new Set([
+      ...sessions.flatMap((session) => session.shots.map((shot) => shot.club)),
+      // Quick Bag clubs have numbers without range shots; they need a worker too.
+      ...startingBagClubs(quickBagPrior),
+    ]))
     const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2
     const parallelism = Math.max(1, Math.min(4, cores - 1, clubIds.length))
     const groups: (string[] | undefined)[] = parallelism > 1
@@ -1243,6 +1246,7 @@ export default function LiveCaddiePage() {
       ball,
       target,
       environment: {
+        quickBag: quickBagPrior,
         windMph,
         windRelativeDeg,
         elevationDeltaFt,
@@ -1300,7 +1304,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    trustedLivePin, greenDetail, layupPin,
+    trustedLivePin, greenDetail, layupPin, quickBagPrior,
   ])
 
   const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation
@@ -1318,6 +1322,12 @@ export default function LiveCaddiePage() {
     : null
   const isShotStrategy = Boolean(shotStrategy)
   const recommendation = isShotStrategy ? null : evaluations[0] ?? null
+  // Caddie vs you: what the engine saw for its pick and the alternatives, kept
+  // with the Arm so Rounds can price a club change in strokes, not just name it.
+  const decisionOptionsJson = useMemo(
+    () => (isShotStrategy ? null : serializeDecisionOptions(evaluations, previewClub)),
+    [evaluations, previewClub, isShotStrategy],
+  )
   // A user-selected club is metadata in Partial Shot Strategy, never a
   // modeled partial-flight recommendation; tee-only clubs remain prohibited.
   const eligibleArmedClub = armedClub && clubEligibleForShot(armedClub, shotOrigin)
@@ -1399,6 +1409,19 @@ export default function LiveCaddiePage() {
     ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
     : null
   const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : aimClick
+  // Before the first shot the pin is often only estimated. Auto Aim lines the
+  // minimap up on ball and pin, so the pin's uncertainty moves the click in
+  // proportion to target distance over pin distance: a lot on a par 3 (Kiawah
+  // 3, 11/4: 178 yd for 188), a few yards off a par-4 tee. Click only when the
+  // worst case stays within one aim step (3 yd); otherwise ask for a hand aim.
+  // The pin is exact from the first shot on either way.
+  const estimatedPinCheck: EstimatedPinAim | null = !trustedLivePin && hole && aimPin && aimTarget
+    ? estimatedPinAim({
+        hole, ball, pin: aimPin, target: aimTarget,
+        pinSlotsLocal: hudPin && hudPin.key === hudPinKey ? hudPin.candidatesLocal : null,
+        distanceKnown: (hudShotOneYds ?? effectiveDistanceToPinYds) != null,
+      })
+    : null
   const currentAimKey = displayedClub && aimTarget
     ? `${shotConditionsKey ?? 'shot'}|${displayedClub}|${aimTarget[0].toFixed(0)},${aimTarget[1].toFixed(0)}`
     : null
@@ -1406,11 +1429,13 @@ export default function LiveCaddiePage() {
     && companionStatus?.gspro.status === 'connected'
   const latestAimRef = useRef({
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
+    estimatedPin: estimatedPinCheck,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
+    estimatedPin: estimatedPinCheck,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1444,13 +1469,17 @@ export default function LiveCaddiePage() {
         setArmedAimKey(snap.aimKey)
         setArmPhase('armed')
       }
-      // Auto Aim lines GSPro's minimap up on the ball and the pin: a pin Looper
-      // only estimated (from GSPro's distance, on the map green) turns and
-      // shrinks the click (11/4 Kiawah 3 after conceding: 178 yd for 188).
-      if (!snap.pinExact) {
+      // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
+      // only estimated turns and shrinks the click; refuse when that could
+      // move this click by more than one aim step.
+      const estimated = snap.pinExact ? null : snap.estimatedPin
+      if (!snap.pinExact && !estimated?.allowed) {
+        const spread = estimated && Number.isFinite(estimated.errorYds) ? Math.ceil(estimated.errorYds) : null
         finish({
           outcome: 'not-sent',
-          message: "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
+          message: spread != null
+            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.`
+            : "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
         })
         return
       }
@@ -1467,7 +1496,11 @@ export default function LiveCaddiePage() {
         courseId: snap.courseId, courseKey: snap.courseKey, holeNumber: snap.holeNumber,
         ball: snap.ball, pin: snap.pin, target: snap.target,
         shotKey: snap.shotKey ?? `${snap.courseId}|${snap.holeNumber}`,
-      }).then(finish)
+      }).then((result) => finish(
+        estimated && result.outcome !== 'not-sent'
+          ? { ...result, message: `${result.message} Pin estimated until your first shot; this aim is good to about ${Math.max(1, Math.ceil(estimated.errorYds))} yd.` }
+          : result,
+      ))
     }, ARM_FILL_MS)
   }
 
@@ -2073,6 +2106,14 @@ export default function LiveCaddiePage() {
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}
+                    {viewedEvaluation?.startingBag ? (
+                      <span className="live-starting-bag">
+                        {viewedEvaluation.startingBag.shots === 0
+                          ? `Starting-bag numbers for ${viewedEvaluation.club} (no range swings yet).`
+                          : `${viewedEvaluation.club} still learning: ${viewedEvaluation.startingBag.shots} of ${BLEND_RULES.carry.fullAt} range swings.`}
+                        {' '}
+                      </span>
+                    ) : null}
                     {aimContext
                       ?? inspectedCandidate?.decisionReason
                       ?? viewedEvaluation?.decisionReason
@@ -2099,6 +2140,7 @@ export default function LiveCaddiePage() {
                     unmappedInPlay={gsproOnlyCourse}
                     onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
                     windRefreshing={windRefreshing}
+                    decisionOptions={decisionOptionsJson}
                   />
 
                   <button
