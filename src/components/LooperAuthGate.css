@@ -240,6 +240,12 @@
   border: 0;
 }
 
+:root {
+  /* Height the fixed account + companion chips take at the top right; pages
+     with a top bar start below it (Rounds, Your game, Bag: Brian 11/6). */
+  --looper-chip-band: 54px;
+}
+
 .looper-account-control {
   position: fixed;
   top: 12px;
