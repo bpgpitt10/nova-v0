@@ -43,6 +43,19 @@ export function CompanionDownloadLinks({ compact = false }: { compact?: boolean 
   )
 }
 
+/**
+ * The companion isn't code-signed yet, so Windows SmartScreen warns on the first
+ * run. One line so nobody bounces off it. Drop this once releases are signed.
+ */
+export function CompanionFirstRunNote({ className = 'companion-chip__fine' }: { className?: string }) {
+  return (
+    <p className={className}>
+      Windows will warn the first time (“Windows protected your PC”): click <strong>More info</strong>, then{' '}
+      <strong>Run anyway</strong>. It's our unsigned installer, not a virus.
+    </p>
+  )
+}
+
 export function CompanionChip() {
   const p = useCompanionPresence()
   const { text, tone } = label(p)
@@ -61,6 +74,7 @@ export function CompanionChip() {
           <>
             <p>You're on {p.release}; {p.latest.release} is out{size ? ` (${size})` : ''}. Download it and run the installer again; it replaces this one.</p>
             <CompanionDownloadLinks />
+            <CompanionFirstRunNote />
             <p className="companion-chip__fine"><a href={COMPANION_RELEASES_PAGE} rel="noreferrer" target="_blank">What changed</a></p>
           </>
         ) : null}
@@ -68,6 +82,7 @@ export function CompanionChip() {
           <>
             <p>This companion ({p.release}) is too old for this version of Looper. Get {p.latest.release}, run the installer, and Looper reconnects on its own.</p>
             <CompanionDownloadLinks />
+            <CompanionFirstRunNote />
           </>
         ) : null}
         {p.status === 'not-running' ? (
@@ -80,12 +95,14 @@ export function CompanionChip() {
           <>
             <p>Looper reads your GSPro shots through a small app on this PC. Download it, run the installer, and this page connects on its own{size ? ` (${size})` : ''}.</p>
             <CompanionDownloadLinks />
+            <CompanionFirstRunNote />
           </>
         ) : null}
         {p.status === 'elsewhere' ? (
           <>
             <p>The companion runs on your GSPro PC (Windows). Open this link there, or copy it to send to that PC.</p>
             <CompanionDownloadLinks />
+            <CompanionFirstRunNote />
           </>
         ) : null}
         {p.status === 'checking' ? <p>Looking for the companion…</p> : null}

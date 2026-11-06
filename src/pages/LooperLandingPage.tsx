@@ -6,7 +6,7 @@ import {
 } from '../adapters/browserGsproAccess'
 import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
-import { CompanionDownloadLinks } from '../components/CompanionChip'
+import { CompanionDownloadLinks, CompanionFirstRunNote } from '../components/CompanionChip'
 import { companionSeenBefore } from '../lib/companionPresence'
 import {
   COMPANION_DOWNLOAD_URL,
@@ -514,6 +514,7 @@ export default function LooperLandingPage({
             <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={markOnboardingComplete}>
               {downloadLabel}
             </a>
+            <CompanionFirstRunNote className="looper-welcome-note" />
             {!onWindows ? (
               <p className="looper-welcome-note">
                 You're not on Windows: this link downloads the Windows installer. Open it on your GSPro PC, or <CompanionDownloadLinks compact /> to send it there.
