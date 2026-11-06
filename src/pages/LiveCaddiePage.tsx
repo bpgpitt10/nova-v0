@@ -48,6 +48,7 @@ import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistanc
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
+import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
@@ -847,6 +848,7 @@ export default function LiveCaddiePage() {
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
   const [hudPin, setHudPin] = useState<{
     key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
+    candidatesLocal: readonly CoursePointYds[]
   } | null>(null)
   useEffect(() => {
     if (!hudPinKey || hudPin?.key === hudPinKey || !liveSnapshot?.ballLocalYds || hudShotOneYds == null) return
@@ -861,6 +863,7 @@ export default function LiveCaddiePage() {
           pinLocal: found?.pinLocal ?? null,
           note: found?.note ?? 'native course not ready',
           aimPointsLocal: found?.aimPointsLocal ?? [],
+          candidatesLocal: found?.candidatesLocal ?? [],
         })
       }
     })
@@ -1390,6 +1393,20 @@ export default function LiveCaddiePage() {
     ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
     : null
   const aimTarget = isShotStrategy ? shotStrategy?.target ?? null : aimClick
+  // Before the first shot the pin is often only estimated. Auto Aim lines the
+  // minimap up on ball and pin, so the pin's uncertainty moves the click in
+  // proportion to target distance over pin distance: a lot on a par 3 (Kiawah
+  // 3, 11/4: 178 yd for 188), a few yards off a par-4 tee. Click when the
+  // possible error is small against the club's own dispersion; otherwise ask
+  // for a hand aim. The pin is exact from the first shot on either way.
+  const estimatedPinCheck: EstimatedPinAim | null = !trustedLivePin && hole && aimPin && aimTarget
+    ? estimatedPinAim({
+        hole, ball, pin: aimPin, target: aimTarget,
+        pinSlotsLocal: hudPin && hudPin.key === hudPinKey ? hudPin.candidatesLocal : null,
+        distanceKnown: (hudShotOneYds ?? effectiveDistanceToPinYds) != null,
+        lateralSigmaYds: viewedEvaluation?.lateralSigmaYds ?? null,
+      })
+    : null
   const currentAimKey = displayedClub && aimTarget
     ? `${shotConditionsKey ?? 'shot'}|${displayedClub}|${aimTarget[0].toFixed(0)},${aimTarget[1].toFixed(0)}`
     : null
@@ -1397,11 +1414,13 @@ export default function LiveCaddiePage() {
     && companionStatus?.gspro.status === 'connected'
   const latestAimRef = useRef({
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
+    estimatedPin: estimatedPinCheck,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
+    estimatedPin: estimatedPinCheck,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1435,13 +1454,17 @@ export default function LiveCaddiePage() {
         setArmedAimKey(snap.aimKey)
         setArmPhase('armed')
       }
-      // Auto Aim lines GSPro's minimap up on the ball and the pin: a pin Looper
-      // only estimated (from GSPro's distance, on the map green) turns and
-      // shrinks the click (11/4 Kiawah 3 after conceding: 178 yd for 188).
-      if (!snap.pinExact) {
+      // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
+      // only estimated turns and shrinks the click; refuse only when that could
+      // move this click more than the club's own dispersion forgives.
+      const estimated = snap.pinExact ? null : snap.estimatedPin
+      if (!snap.pinExact && !estimated?.allowed) {
+        const spread = estimated && Number.isFinite(estimated.errorYds) ? Math.ceil(estimated.errorYds) : null
         finish({
           outcome: 'not-sent',
-          message: "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
+          message: spread != null
+            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.`
+            : "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
         })
         return
       }
@@ -1458,7 +1481,11 @@ export default function LiveCaddiePage() {
         courseId: snap.courseId, courseKey: snap.courseKey, holeNumber: snap.holeNumber,
         ball: snap.ball, pin: snap.pin, target: snap.target,
         shotKey: snap.shotKey ?? `${snap.courseId}|${snap.holeNumber}`,
-      }).then(finish)
+      }).then((result) => finish(
+        estimated && result.outcome !== 'not-sent'
+          ? { ...result, message: `${result.message} Pin estimated until your first shot; this aim is good to about ${Math.max(1, Math.ceil(estimated.errorYds))} yd.` }
+          : result,
+      ))
     }, ARM_FILL_MS)
   }
 
