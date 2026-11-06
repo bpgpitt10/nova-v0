@@ -194,7 +194,21 @@ export type ClubAimEvaluation = {
   targetFit: boolean | null
   withinCatastropheGuardrail: boolean | null
   decisionReason: string | null
+  /**
+   * What the ranking saw for this club, kept so Arm can record the engine's
+   * numbers for the pick and the alternatives (caddie vs you).
+   */
+  decisionValue?: ClubDecisionValue | null
   notes: string[]
+}
+
+export type ClubDecisionValue = {
+  expectedFutureStrokes: number | null
+  confidenceAdjustedStrokes: number | null
+  catastropheProbability: number | null
+  modelConfidence: number
+  evDeltaToRawBest: number | null
+  decisionStrength: string
 }
 
 const vector = (from: CoursePointYds, to: CoursePointYds): CoursePointYds => [
@@ -701,6 +715,14 @@ export const evaluateAimLab = (
     ranked.evaluation.targetFit = ranked.targetFit
     ranked.evaluation.withinCatastropheGuardrail = ranked.withinCatastropheGuardrail
     ranked.evaluation.decisionReason = ranked.decisionReason
+    ranked.evaluation.decisionValue = {
+      expectedFutureStrokes: ranked.expectedFutureStrokes,
+      confidenceAdjustedStrokes: ranked.confidenceAdjustedStrokes,
+      catastropheProbability: ranked.catastropheProbability,
+      modelConfidence: ranked.modelConfidence,
+      evDeltaToRawBest: ranked.evDeltaToRawBest,
+      decisionStrength: ranked.decisionStrength,
+    }
   })
 
   return rankedClubs.map((ranked) => ranked.evaluation)
