@@ -110,7 +110,8 @@ def write_config(slug: str, request: dict, bbox: dict) -> Path:
     aliases = sorted({a for a in [name, osm['name'], *(request.get('gsproAliases') or [])] if a})
     config = {
         'schemaVersion': 'looper-course-build-config-v1',
-        'courseId': slugify(f'{name} {location}') or slug,
+        # A course replacing a built-in one keeps its id, so its round history stays with it.
+        'courseId': request.get('courseId') or slugify(f'{name} {location}') or slug,
         'courseName': name,
         'location': location,
         'slug': slug,

@@ -30,7 +30,6 @@ import {
   courseUsesGsproHoles,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
-  GREYWOLF_COURSE_ID,
   UNSELECTED_COURSE_ID,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
@@ -73,7 +72,6 @@ import {
   loadLastSelectedCourseId,
   saveLastSelectedCourseId,
 } from '../courseGeometry/courseSelection'
-import { greywolfHole01Geometry } from '../courseGeometry/greywolfHole01'
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type {
@@ -211,9 +209,7 @@ export default function LiveCaddiePage() {
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
   const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
-  const [rawHole, setHole] = useState<CourseHoleGeometry | null>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry : null,
-  )
+  const [rawHole, setHole] = useState<CourseHoleGeometry | null>(null)
   // GSPro's own penalty areas and OB, and the green anchored to GSPro's green
   // (both from the player's GKD through the registration), on this hole.
   const [gkdOverlay, setGkdOverlay] = useState<{
@@ -237,12 +233,8 @@ export default function LiveCaddiePage() {
     const base = gkdOverlay.anchoredSurfaces ? { ...rawHole, surfaces: gkdOverlay.anchoredSurfaces } : rawHole
     return withGkdHazards(base, gkdOverlay.hazardSurfaces)
   }, [rawHole, gkdOverlay])
-  const [ball, setBall] = useState<CoursePointYds>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? greywolfHole01Geometry.markers.tee : [0, 0],
-  )
-  const [target, setTarget] = useState<CoursePointYds>(() =>
-    loadLastSelectedCourseId() === GREYWOLF_COURSE_ID ? defaultTarget(greywolfHole01Geometry) : [0, 220],
-  )
+  const [ball, setBall] = useState<CoursePointYds>([0, 0])
+  const [target, setTarget] = useState<CoursePointYds>([0, 220])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
   const [evaluationPending, setEvaluationPending] = useState(false)
@@ -516,16 +508,7 @@ export default function LiveCaddiePage() {
       return () => { active = false }
     }
 
-    const immediateHole = courseId === GREYWOLF_COURSE_ID && holeNumber === 1
-      ? greywolfHole01Geometry
-      : null
-    if (immediateHole) {
-      setHole(immediateHole)
-      setBall(immediateHole.markers.tee)
-      setTarget(defaultTarget(immediateHole))
-    } else {
-      setHole(null)
-    }
+    setHole(null)
 
     void loadCourseHoleGeometry(courseId, holeNumber)
       .then((loaded) => {
@@ -536,8 +519,7 @@ export default function LiveCaddiePage() {
       })
       .catch((error) => {
         if (!active) return
-        if (!immediateHole) setLoadError(error instanceof Error ? error.message : String(error))
-        else console.warn('[Live Caddie] supplemental Greywolf geometry did not finish loading.', error)
+        setLoadError(error instanceof Error ? error.message : String(error))
       })
     return () => {
       active = false
