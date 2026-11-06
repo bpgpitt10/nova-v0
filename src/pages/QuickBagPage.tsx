@@ -210,7 +210,7 @@ export default function QuickBagPage() {
                   disabled={draft.handicapUnknown}
                   inputMode="text"
                   onChange={(e) => setDraft((d) => ({ ...d, handicap: e.target.value }))}
-                  pattern="\+?[0-9]+([.][0-9])?"
+                  pattern="[+-]?[0-9]+([.][0-9])?"
                   placeholder="e.g. 14"
                   type="text"
                   value={draft.handicap}
