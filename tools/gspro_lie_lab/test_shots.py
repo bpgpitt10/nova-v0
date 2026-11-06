@@ -19,13 +19,15 @@ At the prompt:
 
 On the green, concede the hole in GSPro rather than putting.
 
-How shots get to GSPro: the same way the Uneekor's do. Brian's sim runs
-Uneekor launcher -> GSPconnect (127.0.0.1:59002) -> GSPro, so each shot is the
-EYE MINI LITE packet GSPconnect already accepts (from the September calibration
-harness, tools/uneekor_gspconnect_smoke.py on gspro-lie-calibration-harness-v1).
-Leave the Uneekor launcher and GSPro as they are. GSPconnect sends no reply on
-this path, so watch GSPro for the ball. `--via openconnect` uses GSPro Open
-Connect on port 921 instead (only when GSPro is set to an Open API monitor).
+How shots get to GSPro: this tool *becomes* the launch monitor. GSPconnect
+accepts one launch-monitor client, so CLOSE THE UNEEKOR LAUNCHER FIRST (it
+holds that connection), leave GSPro open on a hole ready for a shot, then run
+this. It connects to GSPconnect on 59002 (the Uneekor profile's port), or 921
+when GSPro is set to an Open API monitor, asks GSPro who is up, sends each shot
+with the documented Open Connect v2 packet, keeps the line alive with
+heartbeats and waits for GSPro's "ball at rest" before the next prompt. (Same
+recipe as the standalone send_shot.py, 11/6.) `--via passthrough` is the old
+fire-and-forget injector for when the Uneekor launcher must stay running.
 
 Shots fired here land in Looper's round like real ones; tell Claude which
 rounds were tests so they're left out of your stats.
@@ -268,47 +270,70 @@ class UneekorPath:
 # -- Open Connect path: GSPro's documented API on 921 ---------------------------
 
 class OpenConnectPath:
-    def __init__(self, host: str, port: int, api_version: str, timeout: float) -> None:
-        from open_connect import OpenConnectClient  # only needed on this path
+    """One live connection for the whole session: this tool is the launch monitor."""
 
-        self.client = OpenConnectClient(host, port, api_version=api_version)
-        self.host, self.port, self.timeout = host, port, timeout
+    def __init__(self, host: str, ports: list[int], api_version: str, timeout: float) -> None:
+        self.host, self.ports, self.api_version, self.timeout = host, ports, api_version, timeout
+        self.client: Any = None
+        self.port = ports[0]
 
     def describe(self) -> str:
-        return f"GSPro Open Connect at {self.host}:{self.port}"
+        return f"GSPconnect at {self.host}:{self.port}"
 
     def start(self) -> None:
-        from open_connect import OpenConnectError
+        from open_connect import OpenConnectClient, OpenConnectError
 
-        try:
-            self.client.connect()
-        except OpenConnectError as exc:
-            raise ConnectionError(str(exc)) from exc
+        errors = []
+        for port in self.ports:
+            client = OpenConnectClient(self.host, port, api_version=self.api_version)
+            try:
+                client.connect()
+            except OpenConnectError as exc:
+                errors.append(f"{self.host}:{port} ({exc})")
+                continue
+            self.client, self.port = client, port
+            print(f"Connected to GSPconnect on {self.host}:{port}.")
+            player = client.request_player_info()
+            if player:
+                print(f"GSPro says: {player.get('Club') or 'club ?'}, {player.get('DistanceToTarget')} yd to target.")
+            else:
+                print("GSPro didn't answer the who's-up request; it may still take shots. "
+                      "Check GSPro is on a hole and the Uneekor launcher is closed.")
+            return
+        raise ConnectionError(
+            "Couldn't reach GSPconnect at " + " or ".join(errors) + ".\n"
+            "Is GSPro open with the Uneekor (or Open API) monitor selected, and the Uneekor launcher closed?")
 
     def fire(self, shot: dict[str, Any]) -> str:
         from open_connect import Launch
 
         launch = Launch(ballSpeedMph=shot["speed"], vlaDeg=shot["vla"], hlaDeg=shot["hla"],
                         spinRpm=shot["spin"], spinAxisDeg=shot["axis"])
-        result = self.client.fire(launch, wait_for_stop_s=self.timeout, is_done=lambda: True)
+        result = self.client.fire(launch, wait_for_stop_s=self.timeout)
         errors = [r for r in result["replies"] if isinstance(r.get("Code"), int) and r["Code"] >= 500]
         if errors:
             return f"refused: {errors[0].get('Message') or errors[0]}"
+        player = next((r["Player"] for r in result["replies"] if r.get("Code") == 201 and isinstance(r.get("Player"), dict)), None)
+        where = f"; next: {player.get('Club') or '?'} from {player.get('DistanceToTarget')} yd" if player else ""
+        if result["stopSource"] == "202":
+            return f"GSPro took it, ball at rest after {result['stoppedAfterS']:.1f} s{where}"
         if result["gotReceived"]:
-            return "GSPro took it"
+            return f"GSPro took it (no ball-at-rest reply within {self.timeout:.0f} s){where}"
         codes = [r.get("Code") for r in result["replies"]]
         return f"no confirmation from GSPro (replies: {codes or 'none'})"
 
     def close(self) -> None:
-        self.client.close()
+        if self.client is not None:
+            self.client.close()
 
 
 def run(args: argparse.Namespace, read_line=input) -> int:
     print(__doc__.split("At the prompt:")[1].split("How shots get to GSPro")[0].rstrip())
-    if args.via == "openconnect":
-        path: Any = OpenConnectPath(args.host, args.port or OPEN_CONNECT_PORT, args.api_version, args.timeout)
+    if args.via == "passthrough":
+        path: Any = UneekorPath(args.host, args.port or UNEEKOR_PORT)
     else:
-        path = UneekorPath(args.host, args.port or UNEEKOR_PORT)
+        ports = [args.port] if args.port else ([OPEN_CONNECT_PORT, UNEEKOR_PORT] if args.via == "openconnect" else [UNEEKOR_PORT, OPEN_CONNECT_PORT])
+        path = OpenConnectPath(args.host, ports, args.api_version, args.timeout)
     print(f"\nShots go to {path.describe()}. Watch GSPro for the ball.\n")
     try:
         path.start()
@@ -360,12 +385,13 @@ def pause_before_close(read_line=input) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--via", choices=("uneekor", "openconnect"), default="uneekor",
-                   help="uneekor: GSPconnect's Uneekor port 59002 (default); openconnect: GSPro Open Connect 921")
+    p.add_argument("--via", choices=("uneekor", "openconnect", "passthrough"), default="uneekor",
+                   help="uneekor: be the launch monitor on 59002, then 921 (default; close the Uneekor launcher first); "
+                        "openconnect: 921 first; passthrough: fire-and-forget beside a running launcher")
     p.add_argument("--host", default=UNEEKOR_HOST)
-    p.add_argument("--port", type=int, default=0, help="Override the port (default 59002, or 921 with --via openconnect)")
-    p.add_argument("--api-version", default="1", help="Open Connect only: API version (1 or 2)")
-    p.add_argument("--timeout", type=float, default=6.0, help="Open Connect only: seconds to wait for GSPro")
+    p.add_argument("--port", type=int, default=0, help="Use only this port")
+    p.add_argument("--api-version", default="2", help="Open Connect API version (default 2)")
+    p.add_argument("--timeout", type=float, default=30.0, help="Seconds to wait for GSPro's ball-at-rest after each shot")
     return run(p.parse_args(argv))
 
 

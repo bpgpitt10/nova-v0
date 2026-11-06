@@ -75,6 +75,15 @@ def shot_message(shot_number: int, launch: Launch, api_version: str = "1") -> di
     return message
 
 
+def player_info_message(shot_number: int, api_version: str = "1") -> dict[str, Any]:
+    """Ask GSPro to say who is up: it answers 201 with the club and distance to target."""
+    message = heartbeat_message(shot_number, api_version)
+    message["ShotDataOptions"]["IsHeartBeat"] = False
+    message["ShotDataOptions"]["LaunchMonitorBallDetected"] = False
+    message["ShotDataOptions"]["SendPlayerInformationToDevice"] = True
+    return message
+
+
 def heartbeat_message(shot_number: int, api_version: str = "1") -> dict[str, Any]:
     message = _header(shot_number, api_version)
     message["ShotDataOptions"] = {
@@ -232,6 +241,20 @@ class OpenConnectClient:
                 self._send(heartbeat_message(self._shot_number, self.api_version))
             except OSError:
                 break
+
+    def request_player_info(self, wait_s: float = 1.0) -> dict[str, Any] | None:
+        """Ask GSPro who is up; returns the Player block of its 201 reply, if it sends one."""
+        self.drain()
+        self._send(player_info_message(self._shot_number, self.api_version))
+        deadline = time.monotonic() + wait_s
+        while time.monotonic() < deadline:
+            try:
+                _, reply = self.replies.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            if reply.get("Code") == 201 and isinstance(reply.get("Player"), dict):
+                return reply["Player"]
+        return None
 
     def drain(self) -> list[dict[str, Any]]:
         out = []
