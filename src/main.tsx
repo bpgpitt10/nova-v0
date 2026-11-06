@@ -10,6 +10,9 @@ import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
+import QuickBagPage from './pages/QuickBagPage.tsx'
+import { QUICK_BAG_UPDATED_EVENT, needsQuickBagStep } from './lib/quickBagStore'
+import { loadSavedSessions } from './lib/sessions'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import RoundsPage from './pages/RoundsPage.tsx'
@@ -173,6 +176,7 @@ function LiveCaddieRoundBootstrap({ active }: { active: boolean }) {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
+  const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions().length > 0))
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
@@ -261,12 +265,17 @@ function RootRouter() {
     }
     window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
     window.addEventListener('storage', onBagConfigUpdated)
+    const onQuickBagUpdated = () => setNeedsQuickBag(needsQuickBagStep(loadSavedSessions().length > 0))
+    window.addEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
+    window.addEventListener('looper-session-history-updated', onQuickBagUpdated)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
       document.removeEventListener('click', onDocumentClick)
       window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
       window.removeEventListener('storage', onBagConfigUpdated)
+      window.removeEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
+      window.removeEventListener('looper-session-history-updated', onQuickBagUpdated)
     }
   }, [])
 
@@ -294,6 +303,7 @@ function RootRouter() {
   const view = useMemo(() => {
     const showSignOut = pathname === '/signout'
     const showBagSetup = pathname === '/bag-setup'
+    const showQuickBag = pathname === '/quick-bag'
     const showShotVariants = pathname === '/edit-bag/variants'
     const showLooperLanding = pathname === '/' || pathname === '/looper'
     const showSessionSummary = pathname === '/session-summary' || pathname === '/sessionsummary'
@@ -321,6 +331,9 @@ function RootRouter() {
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
     if (showBagSetup || !hasBagConfig) return <BagSetupPage />
+    // New players: a starting bag right after the clubs, so Live Caddie has
+    // numbers before the first range session. Skippable; always at /quick-bag.
+    if (showQuickBag || needsQuickBag) return <QuickBagPage />
     if (showShotVariants) return <ShotVariantsPage />
     if (showSessionSummary) return <SessionSummaryPage />
     if (showDataManagement) return <DataManagementPage />
@@ -343,6 +356,7 @@ function RootRouter() {
   }, [
     checkForUpdates,
     hasBagConfig,
+    needsQuickBag,
     installAvailableUpdate,
     pathname,
     showAimLab,

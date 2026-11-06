@@ -49,6 +49,8 @@ export type RoundShotRecord = {
   recommendedClub: string | null
   /** armed − recommended expected strokes at arm time; null when Looper didn't price it. */
   paperCostStrokes?: number | null
+  /** 'starting-bag' | 'learning' | 'measured': what the recommendation rested on. */
+  modelBasis?: string | null
 }
 
 export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
@@ -63,6 +65,7 @@ export type RoundShot = {
   clubConfidence: number | null
   recommendedClub: string | null
   paperCostStrokes: number | null
+  modelBasis: string | null
   isPutt: boolean
   /** A conceded putt (gimme): counts as a stroke, not as a made putt. */
   conceded: boolean
@@ -363,6 +366,7 @@ const buildHole = (
       clubConfidence: record.clubConfidence,
       recommendedClub: record.recommendedClub,
       paperCostStrokes: record.paperCostStrokes ?? null,
+      modelBasis: record.modelBasis ?? null,
       isPutt,
       conceded: record.isGimme,
       holed: record.isHoled,
@@ -617,6 +621,7 @@ export type LiveCourseShotRow = {
   inference_confidence: number | null
   recommended_club: string | null
   paper_cost_strokes?: number | null
+  model_basis?: string | null
 }
 
 export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
@@ -644,6 +649,7 @@ export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
     clubConfidence: armed ? 1 : num(row.inference_confidence),
     recommendedClub: row.recommended_club,
     paperCostStrokes: num(row.paper_cost_strokes),
+    modelBasis: row.model_basis ?? null,
   }
 }
 
@@ -668,6 +674,7 @@ export type ArchivedShotLike = {
   clubSource?: 'user' | null
   recommendedClub?: string | null
   paperCostStrokes?: number | null
+  modelBasis?: string | null
   clubInference?: { predictedClub?: string | null; confidence?: number | null } | null
 }
 
@@ -696,5 +703,6 @@ export const recordFromArchivedShot = (shot: ArchivedShotLike): RoundShotRecord 
     clubConfidence: armed ? 1 : shot.clubInference?.confidence ?? null,
     recommendedClub: shot.recommendedClub ?? null,
     paperCostStrokes: shot.paperCostStrokes ?? null,
+    modelBasis: shot.modelBasis ?? null,
   }
 }

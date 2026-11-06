@@ -136,6 +136,8 @@ jobs:
         run: node tools/test-aim-estimated-pin.mjs
       - name: Caddie vs you decision options
         run: node tools/test-decision-options.mjs
+      - name: Quick Bag prior, gapping and blending
+        run: node tools/test-quick-bag.mjs
 
       - name: Conceding hole 1 releases the Start Round hold
         run: node tools/test-concede-hole-release.mjs

@@ -100,6 +100,33 @@ export const loadQuickBagPrior = (): QuickBagPrior | null => {
 
 export const hasQuickBag = (): boolean => loadQuickBagInput() != null
 
+const SKIP_KEY = 'looper-quick-bag-skipped-v1'
+
+/** The player chose the range over a starting bag; don't ask again on this browser. */
+export const skipQuickBag = () => {
+  try {
+    window.localStorage.setItem(SKIP_KEY, new Date().toISOString())
+  } catch {
+    // storage unavailable: the step shows again next time, which is fine
+  }
+  window.dispatchEvent(new Event(QUICK_BAG_UPDATED_EVENT))
+}
+
+export const quickBagSkipped = (): boolean => {
+  try {
+    return window.localStorage.getItem(SKIP_KEY) != null
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A new player (bag chosen, no starting bag, no range data, hasn't skipped)
+ * gets the starting-bag step before the app.
+ */
+export const needsQuickBagStep = (hasRangeData: boolean): boolean =>
+  !hasRangeData && !hasQuickBag() && !quickBagSkipped()
+
 const writeLocal = (input: QuickBagInput | null) => {
   const serialized = input ? JSON.stringify(input) : null
   if (serialized) window.localStorage.setItem(QUICK_BAG_STORAGE_KEY, serialized)

@@ -140,7 +140,6 @@ const NOMINAL_FRACTION: Record<Club, number> = {
 
 /** Standard launch at the nominal carry (driver = 250 yd bag), per club. */
 type LaunchRow = Readonly<{ carry: number; ballSpeed: number; vla: number; spin: number; peak: number; descent: number }>
-const NOMINAL_DRIVER_CARRY = 250
 const LAUNCH_TABLE: Record<Club, LaunchRow> = {
   Driver: { carry: 250, ballSpeed: 155, vla: 11.5, spin: 2800, peak: 32, descent: 38 },
   'Mini Driver': { carry: 238, ballSpeed: 150, vla: 11.5, spin: 3100, peak: 31, descent: 39 },

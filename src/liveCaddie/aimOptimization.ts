@@ -199,6 +199,8 @@ export type ClubAimEvaluation = {
    * numbers for the pick and the alternatives (caddie vs you).
    */
   decisionValue?: ClubDecisionValue | null
+  /** Set while the club's numbers still lean on the Quick Bag prior. */
+  startingBag?: StartingBagMark | null
   notes: string[]
 }
 
