@@ -332,9 +332,13 @@ def main() -> int:
         surfaces = dict(hole.get('surfaces') or {})
         before = {k: len(surfaces.get(k, [])) for k in ('bunker', 'water')}
         for kind in ('bunker', 'water'):
-            polys = [r for cat, shapes, is_poly in feats if cat == kind and is_poly
+            # Clipped to the hole's box like the woods: a lake shore the size of
+            # Lake Michigan (Arcadia Bluffs, 79,625 points) otherwise goes into
+            # every hole whole and the package is 30 MB (11/5).
+            polys = [c for cat, shapes, is_poly in feats if cat == kind and is_poly
                      for r in (localize_polygon(frame, outer, holes, eps=0.3) for outer, holes in shapes)
-                     if ring_ok(r) and in_box(r, box)]
+                     if ring_ok(r) and in_box(r, box)
+                     for c in [clip_to_box(r, box)] if ring_ok(c)]
             if polys:
                 surfaces[kind] = polys
         hole['surfaces'] = surfaces
