@@ -588,3 +588,9 @@ button.looper-landing-mode-card:hover .looper-landing-mode-action span,
     padding: 24px 20px;
   }
 }
+
+.looper-welcome-note {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: #9da99f;
+}
