@@ -6,6 +6,8 @@ import {
 } from '../adapters/browserGsproAccess'
 import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
+import { CompanionDownloadLinks } from '../components/CompanionChip'
+import { companionSeenBefore } from '../lib/companionPresence'
 import {
   COMPANION_DOWNLOAD_URL,
   COMPANION_RELEASES_PAGE,
@@ -110,8 +112,9 @@ export default function LooperLandingPage({
   // Companion distribution: the newest published build and how the running one compares.
   const [companionLatest, setCompanionLatest] = useState<CompanionLatest | null>(null)
   const [companionRelease, setCompanionRelease] = useState<string | null>(null)
-  const [linkCopied, setLinkCopied] = useState(false)
   const onWindows = useMemo(() => isWindowsBrowser(), [])
+  // A companion has answered in this browser before: silence means "not running", not "not installed".
+  const seenBefore = useMemo(() => companionSeenBefore() != null, [gsproState])
   useEffect(() => {
     void fetchLatestCompanionRelease().then(setCompanionLatest)
   }, [])
@@ -185,15 +188,6 @@ export default function LooperLandingPage({
     return () => window.removeEventListener('focus', refreshOnFocus)
   }, [refreshGsproStatus])
 
-  const copyCompanionLink = async () => {
-    try {
-      await navigator.clipboard.writeText(COMPANION_DOWNLOAD_URL)
-      setLinkCopied(true)
-      window.setTimeout(() => setLinkCopied(false), 2500)
-    } catch {
-      window.prompt('Copy this link and open it on your GSPro PC:', COMPANION_DOWNLOAD_URL)
-    }
-  }
   const updateState: CompanionUpdateState = gsproViaCompanion ? companionUpdateState(companionRelease, companionLatest) : 'unknown'
   const downloadLabel = companionLatest
     ? `Download the companion (Windows${formatReleaseSize(companionLatest.sizeBytes) ? `, ${formatReleaseSize(companionLatest.sizeBytes)}` : ''})`
@@ -310,9 +304,7 @@ export default function LooperLandingPage({
       return (
         <div className="looper-landing-gspro-status is-neutral">
           The Looper Companion runs on your GSPro PC: start it there and this page connects.{' '}
-          <button className="looper-landing-link" onClick={() => void copyCompanionLink()} type="button">
-            {linkCopied ? 'Link copied' : 'Copy the download link'}
-          </button>
+          <CompanionDownloadLinks compact />
         </div>
       )
     }
@@ -329,14 +321,12 @@ export default function LooperLandingPage({
         <span className="looper-landing-status-dot is-warn" aria-hidden="true" />
         <strong>{heading}</strong>
         <span>
-          {gsproState === 'not-connected'
-            ? 'Not running? Start the Looper Companion on this PC. '
-            : 'Start the Looper Companion, or reconnect the saved GSPro folder. '}
-          {onWindows ? (
-            <>Don’t have it? <a className="looper-landing-link" href={COMPANION_DOWNLOAD_URL}>Download</a>.</>
-          ) : (
-            <>It runs on your GSPro PC. <button className="looper-landing-link" onClick={() => void copyCompanionLink()} type="button">{linkCopied ? 'Link copied' : 'Copy the download link'}</button></>
-          )}
+          {seenBefore
+            ? 'The companion is installed on this PC but isn’t running. Start it from the Start menu or the tray; this page reconnects on its own. '
+            : onWindows
+              ? 'Looper needs the companion, a small app on this PC that reads your GSPro shots. '
+              : 'The companion runs on your GSPro PC. '}
+          {seenBefore ? <>Reinstall: <CompanionDownloadLinks compact /></> : <CompanionDownloadLinks compact={!onWindows} />}
         </span>
         <button onClick={() => connectGspro(false)} type="button">
           {gsproState === 'not-connected' ? 'Connect GSPro' : 'Reconnect'}
@@ -521,15 +511,14 @@ export default function LooperLandingPage({
                 ? 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, run the installer, and this page connects on its own.'
                 : 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on your GSPro PC. Copy the link and open it there; once the companion is running, Looper connects on its own.'}
             </p>
-            {onWindows ? (
-              <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={markOnboardingComplete}>
-                {downloadLabel}
-              </a>
-            ) : (
-              <button className="looper-welcome-primary" onClick={() => void copyCompanionLink()} type="button">
-                {linkCopied ? 'Link copied' : 'Copy the companion download link'}
-              </button>
-            )}
+            <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={markOnboardingComplete}>
+              {downloadLabel}
+            </a>
+            {!onWindows ? (
+              <p className="looper-welcome-note">
+                You're not on Windows: this link downloads the Windows installer. Open it on your GSPro PC, or <CompanionDownloadLinks compact /> to send it there.
+              </p>
+            ) : null}
             <button className="looper-welcome-secondary" onClick={() => connectGspro(true)} type="button">
               Connect the GSPro folder instead
             </button>
