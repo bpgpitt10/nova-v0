@@ -86,11 +86,28 @@
   font-weight: 600;
 }
 
-.quick-bag-field {
+.quick-bag-page .quick-bag-field,
+.quick-bag-page label.quick-bag-field {
   display: grid;
   gap: 6px;
+  margin: 0;
+  max-width: none;
   font-size: 13px;
+  font-weight: 500;
   color: #9fb09f;
+}
+
+.quick-bag-page .quick-bag-field > span:first-child {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9fb09f;
+  line-height: 1.2;
+}
+
+.quick-bag-page label.quick-bag-check {
+  margin: 0;
+  max-width: none;
+  font-weight: 500;
 }
 
 .quick-bag-field input[type='number'] {
