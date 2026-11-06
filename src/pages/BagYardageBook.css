@@ -375,17 +375,26 @@
 
 /* ---- Top bar + club switcher (replaces the dashboard rail; ?bag=cards restores it) ---- */
 
+/* In yardage-book mode the Bag page's outer shell adds nothing: no width cap,
+   no padding. .bagbook-layout then matches .rounds-shell exactly. */
+.app-shell.is-bagbook,
+.dashboard-page > .app-shell.dashboard-shell.is-bagbook {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
 .bagbook-layout {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: min(1240px, 100%);
   margin: 0 auto;
-  /* Start below the fixed account + companion chips. The Bag page's
-     .app-shell already pads 24 px above this layout, so take that off the
-     band so the top bar sits exactly where Rounds' and Your game's do and
-     the tabs don't jump (Brian, 11/6). */
-  padding: calc(var(--looper-chip-band, 54px) - 24px) 16px 48px;
+  /* Same geometry as .rounds-shell (RoundsPage.css) so the top bar sits in
+     exactly the same place on Bag, Rounds and Your game and the tabs don't
+     jump (Brian, 11/6). The outer .app-shell is zeroed below for this mode. */
+  padding: var(--looper-chip-band, 54px) 16px 48px;
   box-sizing: border-box;
 }
 
