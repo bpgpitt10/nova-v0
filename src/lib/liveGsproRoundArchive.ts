@@ -14,7 +14,8 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
-import { paperCostStrokes } from '../liveCaddie/decisionOptions'
+import { decisionBasis, paperCostStrokes } from '../liveCaddie/decisionOptions'
+import type { ModelBasis } from './quickBag'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
 import {
@@ -44,6 +45,8 @@ export type ArchivedGsproCourseShot = BrowserGsproCourseArchiveShot & {
   recommendedExpectedStrokes?: number | null
   /** armed − recommended: positive means the engine expected its pick to do better. */
   paperCostStrokes?: number | null
+  /** What the recommendation's club numbers rested on (Quick Bag prior, blend, range data). */
+  modelBasis?: ModelBasis | null
 }
 
 export type ArchivedGsproRound = {
@@ -123,6 +126,8 @@ const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCour
   armedExpectedStrokes: finiteOrNull(shot.armedExpectedStrokes),
   recommendedExpectedStrokes: finiteOrNull(shot.recommendedExpectedStrokes),
   paperCostStrokes: finiteOrNull(shot.paperCostStrokes),
+  modelBasis: shot.modelBasis === 'starting-bag' || shot.modelBasis === 'learning' || shot.modelBasis === 'measured'
+    ? shot.modelBasis : null,
   clubInference: shot.clubInference && typeof shot.clubInference === 'object'
     ? shot.clubInference
     : null,
@@ -183,6 +188,7 @@ const archivedFromIncoming = (
   armedExpectedStrokes: prior?.armedExpectedStrokes ?? null,
   recommendedExpectedStrokes: prior?.recommendedExpectedStrokes ?? null,
   paperCostStrokes: prior?.paperCostStrokes ?? null,
+  modelBasis: prior?.modelBasis ?? null,
   clubInference: prior?.clubInference ?? null,
 })
 
@@ -328,6 +334,7 @@ const annotateNewShots = ({
         paperCostStrokes: paperCostStrokes(
           usableArmed.intent?.options, usableArmed.club, usableArmed.recommendedClub,
         ),
+        modelBasis: decisionBasis(usableArmed.intent?.options),
       } : {}),
     }
     if (JSON.stringify(next) !== JSON.stringify(archived)) changed = true
@@ -444,6 +451,7 @@ export const shotUploadBatches = (
       armed_expected_strokes: shot.armedExpectedStrokes ?? null,
       recommended_expected_strokes: shot.recommendedExpectedStrokes ?? null,
       paper_cost_strokes: shot.paperCostStrokes ?? null,
+      model_basis: shot.modelBasis ?? null,
     })),
     unattributed.map(baseRow),
   ].filter((rows) => rows.length > 0)

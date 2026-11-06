@@ -106,6 +106,9 @@ import {
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
+import { useQuickBagPrior } from '../lib/useQuickBag'
+import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
+import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
@@ -241,6 +244,8 @@ export default function LiveCaddiePage() {
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
   const [evaluationPending, setEvaluationPending] = useState(false)
   const [evaluations, setEvaluations] = useState<ClubAimEvaluation[]>([])
+  // The player's Quick Bag (handicap + three carries), laid under the range data.
+  const quickBagPrior = useQuickBagPrior()
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
@@ -1193,7 +1198,11 @@ export default function LiveCaddiePage() {
     // Each club's evaluation is independent, so the bag is split across a few
     // workers (one per spare core, up to 4) and ranked once here. Same result
     // as one worker, a fraction of the wait (5.9 s single-threaded on the sim).
-    const clubIds = Array.from(new Set(sessions.flatMap((session) => session.shots.map((shot) => shot.club))))
+    const clubIds = Array.from(new Set([
+      ...sessions.flatMap((session) => session.shots.map((shot) => shot.club)),
+      // Quick Bag clubs have numbers without range shots; they need a worker too.
+      ...startingBagClubs(quickBagPrior),
+    ]))
     const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2
     const parallelism = Math.max(1, Math.min(4, cores - 1, clubIds.length))
     const groups: (string[] | undefined)[] = parallelism > 1
@@ -1236,6 +1245,7 @@ export default function LiveCaddiePage() {
       ball,
       target,
       environment: {
+        quickBag: quickBagPrior,
         windMph,
         windRelativeDeg,
         elevationDeltaFt,
@@ -1293,7 +1303,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    trustedLivePin, greenDetail, layupPin,
+    trustedLivePin, greenDetail, layupPin, quickBagPrior,
   ])
 
   const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation
@@ -2075,6 +2085,14 @@ export default function LiveCaddiePage() {
                   <p className="live-decision-reason">
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
+                    ) : null}
+                    {viewedEvaluation?.startingBag ? (
+                      <span className="live-starting-bag">
+                        {viewedEvaluation.startingBag.shots === 0
+                          ? `Starting-bag numbers for ${viewedEvaluation.club} (no range swings yet).`
+                          : `${viewedEvaluation.club} still learning: ${viewedEvaluation.startingBag.shots} of ${BLEND_RULES.carry.fullAt} range swings.`}
+                        {' '}
+                      </span>
                     ) : null}
                     {aimContext
                       ?? inspectedCandidate?.decisionReason

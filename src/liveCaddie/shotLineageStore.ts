@@ -4,7 +4,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
-import { paperCostStrokes } from './decisionOptions'
+import { decisionBasis, paperCostStrokes } from './decisionOptions'
 import {
   loadArmedLiveClub,
   LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT,
@@ -350,6 +350,7 @@ const handleArmedClubChanged = () => {
       recommendedCatastrophe: recommendedOption?.catastrophe ?? null,
       recommendedConfidence: recommendedOption?.confidence ?? null,
       decisionStrength: recommendedOption?.strength ?? null,
+      modelBasis: decisionBasis(options),
       options,
       modeledSurface,
       capturedAtArm: true,
@@ -436,6 +437,7 @@ const handleArmedClubChanged = () => {
         recommendedExpectedStrokes: recommendedOption?.expectedStrokes ?? null,
         /** Positive: the engine expected its own pick to do better by this much. */
         paperCostStrokes: paperCost,
+        modelBasis: decisionBasis(options),
         yardageAdjustmentYds: carryAdjustmentFromStockYds,
         shotMode: variant,
         aimOffsetYds,

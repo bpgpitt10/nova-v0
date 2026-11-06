@@ -1,4 +1,5 @@
 import type { ClubAimEvaluation } from './aimOptimization'
+import { modelBasisFromCarryWeight, type ModelBasis } from '../lib/quickBag'
 
 /**
  * Caddie vs you: the engine's numbers at the moment a club is armed.
@@ -24,6 +25,8 @@ export type DecisionOption = Readonly<{
   strength: string | null
   aimOffsetYds: number | null
   carryYds: number | null
+  /** What this club's numbers rested on: the Quick Bag prior, a blend, or range data. */
+  basis: ModelBasis
 }>
 
 export const DECISION_OPTIONS_MAX = 4
@@ -41,6 +44,7 @@ export const decisionOptionFromEvaluation = (evaluation: ClubAimEvaluation): Dec
   strength: evaluation.decisionValue?.decisionStrength ?? null,
   aimOffsetYds: round(evaluation.bestCandidate?.aimOffsetYds, 1),
   carryYds: round(evaluation.modeledCarryYds, 1),
+  basis: modelBasisFromCarryWeight(evaluation.startingBag?.carryWeight),
 })
 
 /** The ranked top few plus the club the player is looking at, in rank order. */
@@ -93,6 +97,7 @@ export const parseDecisionOptions = (raw: unknown): DecisionOption[] | null => {
       strength: typeof o.strength === 'string' ? o.strength : null,
       aimOffsetYds: finiteOrNull(o.aimOffsetYds),
       carryYds: finiteOrNull(o.carryYds),
+      basis: o.basis === 'starting-bag' || o.basis === 'learning' ? o.basis : 'measured',
     }]
   })
   return options.length ? options : null
@@ -113,4 +118,16 @@ export const paperCostStrokes = (
   const recommended = options.find((o) => o.club === recommendedClub)?.expectedStrokes
   if (armed == null || recommended == null) return null
   return Number((armed - recommended).toFixed(3))
+}
+
+/**
+ * The basis of a decision as a whole: the weakest footing among the clubs it
+ * compared (a pick made against a starting-bag alternative is a starting-bag
+ * decision). Null without options.
+ */
+export const decisionBasis = (options: readonly DecisionOption[] | null | undefined): ModelBasis | null => {
+  if (!options || options.length === 0) return null
+  if (options.some((o) => o.basis === 'starting-bag')) return 'starting-bag'
+  if (options.some((o) => o.basis === 'learning')) return 'learning'
+  return 'measured'
 }

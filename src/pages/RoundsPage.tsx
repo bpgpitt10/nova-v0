@@ -83,13 +83,20 @@ const distance = (yards: number, lie: ShotLie | 'holed') =>
   lie === 'green' ? `${Math.round(yards * 3)} ft` : `${Math.round(yards)} yd`
 
 /** "same club" when the player took the pick; otherwise the engine's price of the change. */
-const paperCostText = (shot: { club: string | null; recommendedClub: string | null; paperCostStrokes: number | null }) => {
-  if (shot.club && shot.recommendedClub && shot.club === shot.recommendedClub) return 'took the pick'
+const paperCostText = (shot: { club: string | null; recommendedClub: string | null; paperCostStrokes: number | null; modelBasis: string | null }) => {
+  // A pick made on the Quick Bag prior is shown, but labelled: those numbers
+  // were Looper's starting guess, not the player's measured game.
+  const tag = shot.modelBasis === 'starting-bag' ? ' (starting bag)' : shot.modelBasis === 'learning' ? ' (still learning)' : ''
+  if (shot.club && shot.recommendedClub && shot.club === shot.recommendedClub) return `took the pick${tag}`
   if (shot.paperCostStrokes == null) return null
   const cost = shot.paperCostStrokes
-  if (Math.abs(cost) < 0.005) return 'a wash on paper'
-  return cost > 0 ? `${cost.toFixed(2)} worse on paper` : `${Math.abs(cost).toFixed(2)} better on paper`
+  if (Math.abs(cost) < 0.005) return `a wash on paper${tag}`
+  return (cost > 0 ? `${cost.toFixed(2)} worse on paper` : `${Math.abs(cost).toFixed(2)} better on paper`) + tag
 }
+
+/** Long-term caddie-vs-you only counts decisions made on measured numbers. */
+const pricedOnMeasuredModel = (shot: { paperCostStrokes: number | null; modelBasis: string | null }) =>
+  shot.paperCostStrokes != null && (shot.modelBasis == null || shot.modelBasis === 'measured')
 
 const clubName = (club: string | null) => {
   if (!club) return '—'
@@ -988,9 +995,11 @@ function RoundDetail({
                     <p className="rounds-muted">
                       On paper: what Looper's model expected the club change to cost or save before the swing, in strokes.
                       {(() => {
-                        const priced = liveCaddieShots.filter((shot) => shot.paperCostStrokes != null)
+                        const priced = liveCaddieShots.filter(pricedOnMeasuredModel)
                         const total = priced.reduce((sum, shot) => sum + (shot.paperCostStrokes ?? 0), 0)
-                        return priced.length > 1 ? ` Over ${priced.length} shots: ${total > 0 ? '+' : ''}${total.toFixed(2)}.` : ''
+                        const unpriced = liveCaddieShots.filter((shot) => shot.paperCostStrokes != null && !pricedOnMeasuredModel(shot)).length
+                        return (priced.length > 1 ? ` Over ${priced.length} shots: ${total > 0 ? '+' : ''}${total.toFixed(2)}.` : '')
+                          + (unpriced > 0 ? ` ${unpriced} starting-bag ${unpriced === 1 ? 'decision is' : 'decisions are'} shown but not counted.` : '')
                       })()}
                     </p>
                   ) : (
