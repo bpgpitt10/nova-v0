@@ -1962,3 +1962,109 @@
 .rounds-page .rounds-table th.yourgame-bar-head {
   text-align: center;
 }
+
+/* Manage: tick rounds, then Counts / Doesn't count / Delete. */
+.rounds-manage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 16, 12, 0.72);
+  color: #e8efe9;
+  font-size: 14px;
+}
+
+.rounds-manage-bar span {
+  flex: 1 1 220px;
+}
+
+.rounds-manage-bar button {
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rounds-manage-bar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rounds-manage-bar button.is-danger {
+  border-color: rgba(239, 98, 98, 0.6);
+  color: #f3a3a3;
+}
+
+.rounds-manage-bar button.is-danger:not(:disabled):hover {
+  background: rgba(239, 98, 98, 0.14);
+}
+
+.rounds-table .rounds-tick {
+  width: 32px;
+  padding-right: 0;
+}
+
+.rounds-table .rounds-tick input {
+  width: 16px;
+  height: 16px;
+  accent-color: #eab308;
+  cursor: pointer;
+}
+
+/* "In stats" column: Counts / Doesn't count; a button in Manage. */
+.rounds-table .rounds-count-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rounds-count-cell {
+  display: inline-grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.rounds-count-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.rounds-count-chip.is-counts {
+  border-color: rgba(134, 209, 154, 0.45);
+  background: rgba(134, 209, 154, 0.1);
+  color: #a6e3b5;
+}
+
+.rounds-count-chip.is-excluded {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #b3bdb5;
+}
+
+button.rounds-count-chip {
+  cursor: pointer;
+}
+
+button.rounds-count-chip:hover,
+button.rounds-count-chip:focus-visible {
+  outline: 2px solid rgba(234, 179, 8, 0.6);
+  outline-offset: 1px;
+}
+
+.rounds-count-why {
+  font-size: 11px;
+}
