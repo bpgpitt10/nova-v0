@@ -287,7 +287,11 @@ const resolveLandingElevation = (
     source:
       ballTerrain.source === 'lidar-dem' && landingTerrain.source === 'lidar-dem'
         ? 'modeled carry landing · direct LiDAR DEM'
-        : 'modeled carry landing · terrain proxy',
+        : ballTerrain.source === 'gspro-heights'
+          ? "modeled carry landing · GSPro course-file heights (coarse)"
+          : ballTerrain.source === 'global-dem'
+            ? "modeled carry landing · 30 m terrain fitted to GSPro's heights (coarse)"
+            : 'modeled carry landing · terrain proxy',
     fromTerrain: true,
   }
 }
@@ -518,6 +522,10 @@ const buildEvaluationCacheKey = ({
 
   const stateSignature = JSON.stringify({
     onlyClubs: onlyClubs ?? null,
+    quickBag: environment.quickBag
+      ? [environment.quickBag.handicap, environment.quickBag.input.savedAt,
+          environment.quickBag.clubs.map((c) => [c.club, c.carryYds, c.lateralBiasYds])]
+      : null,
     learnedSurfaceFactors: learnedSurfaceFactors ?? null,
     playerSignature,
     geometrySignature,

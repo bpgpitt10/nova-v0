@@ -7,6 +7,14 @@ import type {
 import { LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT } from '../liveCaddie/roundRuntime'
 
 export const GSPRO_WIND_OCR_BROWSER_EVENT = 'looper:gspro-wind-ocr'
+/** "Refresh wind" in Live Caddie: a fresh READY read replaces this shot's frozen wind. */
+export const GSPRO_WIND_REFRESH_EVENT = 'looper:gspro-wind-refresh'
+
+export const requestGsproWindRefresh = (payload: GsproWindOcrPayload) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent<GsproWindOcrPayload>(GSPRO_WIND_REFRESH_EVENT, { detail: payload }))
+  }
+}
 
 export type GsproWindOcrPayload = {
   status?: LiveStateStatus
@@ -199,9 +207,21 @@ export const connectToGsproWindObservation = ({
     onObservation(latest)
   }
 
+  // A gusty day swirls: the golfer asked for a fresh read. Only a READY read
+  // replaces the frozen value (a failed read keeps the wind Looper had).
+  const refreshListener = (event: Event) => {
+    if (disconnected) return
+    const next = normalizeGsproWindOcrPayload((event as CustomEvent<GsproWindOcrPayload>).detail)
+    if (next.status !== 'READY') return
+    latest = next
+    onObservation(latest)
+  }
+
   if (typeof window !== 'undefined') {
     window.addEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
     window.addEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
+    // A gusty day swirls: the golfer asks for a fresh read (same as a new shot).
+    window.addEventListener(GSPRO_WIND_REFRESH_EVENT, refreshListener)
   }
 
   const staleTimer = typeof window !== 'undefined' && Number.isFinite(staleAfterMs)
@@ -223,6 +243,7 @@ export const connectToGsproWindObservation = ({
       if (typeof window !== 'undefined') {
         window.removeEventListener(GSPRO_WIND_OCR_BROWSER_EVENT, browserListener)
         window.removeEventListener(LIVE_CADDIE_SHOT_STATE_CHANGED_EVENT, shotStateListener)
+        window.removeEventListener(GSPRO_WIND_REFRESH_EVENT, refreshListener)
         if (staleTimer != null) window.clearInterval(staleTimer)
       }
     },

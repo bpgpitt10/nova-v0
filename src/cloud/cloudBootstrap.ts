@@ -1,4 +1,5 @@
 import { loadBagConfig, saveBagConfig } from '../lib/bagConfig'
+import { hydrateQuickBagForUser, loadQuickBagInput, syncQuickBagToCloud } from '../lib/quickBagStore'
 import {
   activateLocalUserScope,
   clearPreservedLegacyBackups,
@@ -109,6 +110,19 @@ export const bootstrapLooperCloudData = async (
   if (!localBag && cloudBag?.length) {
     saveBagConfig(cloudBag)
     loadedCloudBag = true
+  }
+
+  // Quick Bag: the account's copy wins when newer; a local copy the account
+  // doesn't have yet (saved while offline) goes up.
+  try {
+    const localQuickBag = loadQuickBagInput()
+    const cloudQuickBag = await hydrateQuickBagForUser(userId)
+    if (localQuickBag && !cloudQuickBag) {
+      const result = await syncQuickBagToCloud(localQuickBag)
+      if (result.status === 'failed') warnings.push(`Quick bag: ${result.error}`)
+    }
+  } catch (error) {
+    warnings.push(`Quick bag: ${error instanceof Error ? error.message : String(error)}`)
   }
 
   let loadedCloudShotVariants = false

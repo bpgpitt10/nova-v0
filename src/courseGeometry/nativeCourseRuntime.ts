@@ -1,5 +1,17 @@
 import { readLooperCompanionCourseLayouts, readLooperCompanionCourseLibrary } from '../adapters/looperCompanion'
-import { courseGsproAliases, getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import {
+  courseGsproAliases,
+  courseUsesGsproHoles,
+  getCourseCatalogEntry,
+  setRuntimeHoleHeadings,
+  type CourseId,
+} from './courseCatalog'
+import {
+  gsproOnlyCourseKey,
+  gsproOnlyHoleHeadings,
+  gsproOnlyRegistration,
+  isGsproOnlyCourseId,
+} from './gsproOnlyCourse'
 import { courseNameMatchScore } from '../courseLoading/courseNameMatch'
 import {
   findNativeSceneFolder,
@@ -25,9 +37,11 @@ import { parseNativeRegistration, type NativeRegistration } from './nativeRegist
 import type { AutoRegistrationResult } from './nativeRegistrationAuto'
 
 /**
- * Native positions (beta): browser runtime.
+ * Native positions: browser runtime (the "Course match" line on Start a Round).
  *
- * - Off unless the golfer turns it on (Live Caddie toggle, or ?native=1).
+ * - Always on (11/4: the main positioning path, no longer a beta toggle).
+ *   ?native=0 turns it off for troubleshooting and is remembered; ?native=1
+ *   turns it back on.
  * - Reads the course's GKD from the GSPro course folder the golfer grants
  *   (read-only, stays on this machine), and only activates when its layout
  *   fingerprint matches the published registration for that course.
@@ -36,7 +50,9 @@ import type { AutoRegistrationResult } from './nativeRegistrationAuto'
  */
 
 export const NATIVE_POSITIONS_CHANGED_EVENT = 'looper:native-positions-changed'
+// Holds '0' only when turned off with ?native=0 (the old beta stored '1' for on).
 const STORAGE_KEY = 'looper.native-positions-beta.v1'
+const OFF = '0'
 const DB_NAME = 'looper-native-course'
 const DB_STORE = 'handles'
 const DB_KEY = 'gspro-courses-folder'
@@ -76,6 +92,8 @@ export type NativeCourseStatus =
       fittedHere?: boolean
       /** Fit numbers when fitted on this load ("fit 0.07 m, halves 2.1 m"). */
       fitDetail?: string
+      /** Placed from GSPro's course file alone (no map loaded): gsproOnlyCourse.ts. */
+      gsproOnly?: boolean
     }>
 
 export type NativeLayoutOption = Readonly<{ name: string; kind: 'main' | 'alt'; layout: NativeCourseLayout }>
@@ -140,21 +158,21 @@ export const isNativePositionsSupported = () =>
 export const isNativePositionsEnabled = (): boolean => {
   if (typeof window === 'undefined') return false
   try {
-    // ?native=1 / ?native=0 also remembers the choice, so it survives the
-    // app's own navigation (Round Setup -> Live Caddie drops the query).
+    // On unless turned off with ?native=0. The URL choice is remembered, so it
+    // survives the app's own navigation (Round Setup -> Live Caddie drops the query).
     const param = new URLSearchParams(window.location.search).get('native')
     if (param === '1' || param === '0') {
       try {
-        if (param === '1') window.localStorage.setItem(STORAGE_KEY, '1')
+        if (param === '0') window.localStorage.setItem(STORAGE_KEY, OFF)
         else window.localStorage.removeItem(STORAGE_KEY)
       } catch {
         // storage blocked: the URL still decides for this page
       }
       return param === '1'
     }
-    return window.localStorage.getItem(STORAGE_KEY) === '1'
+    return window.localStorage.getItem(STORAGE_KEY) !== OFF
   } catch {
-    return false
+    return true
   }
 }
 
@@ -164,8 +182,8 @@ export const invalidateNativeCourseContext = () => {
 
 export const setNativePositionsEnabled = (enabled: boolean) => {
   try {
-    if (enabled) window.localStorage.setItem(STORAGE_KEY, '1')
-    else window.localStorage.removeItem(STORAGE_KEY)
+    if (enabled) window.localStorage.removeItem(STORAGE_KEY)
+    else window.localStorage.setItem(STORAGE_KEY, OFF)
   } catch {
     // Storage blocked: the toggle still applies for this page via the URL param.
   }
@@ -221,7 +239,10 @@ export const regrantGsproCoursesFolder = async () => {
 }
 
 const registrationUrl = (courseId: CourseId) => {
-  const packageUrl = getCourseCatalogEntry(courseId).staticPackageUrl
+  const entry = getCourseCatalogEntry(courseId)
+  // A map-area course is placed on this PC from GSPro's course file only.
+  if (entry.packageKind === 'area') return null
+  const packageUrl = entry.staticPackageUrl
   return packageUrl ? packageUrl.replace(/course-v1\.json$/, 'native-registration-v1.json') : null
 }
 
@@ -392,7 +413,17 @@ const registerInBrowser = async (
   sceneLayouts: readonly NativeSceneLayout[],
 ): Promise<{ registration: NativeRegistration | null; reason: string }> => {
   const main = sceneLayouts.find((l) => l.file.kind === 'main') ?? sceneLayouts[0]
-  const packageUrl = getCourseCatalogEntry(courseId).staticPackageUrl
+  const entry = getCourseCatalogEntry(courseId)
+  if (main && entry.packageKind === 'area') {
+    // Loaded as a map area: GSPro's greens find their match among the map's
+    // (no hole numbers), then the LiDAR terrain refines the placement.
+    const { fitRegistrationFromArea, loadCourseAreaPackage } = await import('./areaCourse')
+    const area = await loadCourseAreaPackage(entry).catch(() => null)
+    if (!area) return { registration: null, reason: "the course's map area could not be loaded" }
+    const result = await fitRegistrationFromArea({ courseId, gsproCourseKey: courseKey, layout: main.layout, area })
+    return { registration: result.registration, reason: result.reason }
+  }
+  const packageUrl = entry.staticPackageUrl
   if (!main || !packageUrl) return { registration: null, reason: 'no course package' }
   const fetchJson = async (url: string) => {
     const response = await fetch(url, { cache: 'no-cache' }).catch(() => null)
@@ -499,7 +530,56 @@ const installedCourseKeysFor = async (courseId: CourseId): Promise<string[]> => 
   return installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], library?.courses ?? [])
 }
 
+/**
+ * A GSPro-only course (no map loaded): the registration comes from GSPro's
+ * course file itself, with no fit and no published file. Every layout of the
+ * scene is usable.
+ */
+const loadGsproOnlyContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
+  const entry = getCourseCatalogEntry(courseId)
+  const key = gsproOnlyCourseKey(courseId)!
+  const lookup = await findSceneLayouts(key)
+  if (!lookup.ok) return { context: null, status: lookup.status }
+  const layouts: NativeLayoutOption[] = lookup.sceneLayouts
+    .map((scene) => ({ name: nativeLayoutName(scene), kind: scene.file.kind, layout: scene.layout }))
+    .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'main' ? -1 : 1))
+  const main = layouts[0]
+  const registration = gsproOnlyRegistration({
+    courseId,
+    courseKey: key,
+    layout: main.layout,
+    layoutFingerprint: await sha256Hex(main.layout.fingerprintText),
+    sceneFingerprint: await sha256Hex(main.layout.sceneFingerprintText),
+    altitudeFt: entry.altitudeFt ?? null,
+  })
+  setRuntimeHoleHeadings(courseId, gsproOnlyHoleHeadings(registration))
+  // GSPro's CourseKey may name one of the scene's GKDalt layouts.
+  const named = courseKey && !sameName(courseKey, key)
+    ? layouts.find((l) => l.kind === 'alt' && sameName(l.name, courseKey)) ?? null
+    : null
+  if (courseKey && !sameName(courseKey, key) && !named) {
+    return { context: null, status: { state: 'other-course', courseKey, expectedKey: key } }
+  }
+  const active = named ?? main
+  return {
+    context: {
+      courseId,
+      courseKey: key,
+      layout: active.layout,
+      layoutName: active.name,
+      layoutConfirmed: Boolean(named) || layouts.length === 1,
+      layouts,
+      registration,
+    },
+    status: {
+      state: 'ready', courseKey: key, grade: registration.grade, courseName: entry.name,
+      layoutNames: layouts.map((l) => l.name), via: lookup.via, gsproOnly: true,
+    },
+  }
+}
+
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
+  if (isGsproOnlyCourseId(courseId)) return loadGsproOnlyContext(courseId, courseKey)
   const entry = getCourseCatalogEntry(courseId)
   const url = registrationUrl(courseId)
   const response = url ? await fetch(url, { cache: 'no-cache' }).catch(() => null) : null
@@ -655,7 +735,8 @@ export const selectNativeLayout = (
 
 /** Status-reporting load; cached per course and GSPro course key. */
 export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: string | null): Promise<LoadResult> => {
-  if (!isNativePositionsEnabled()) {
+  // GSPro-only and map-area courses have no other positioning: always native.
+  if (!isNativePositionsEnabled() && !courseUsesGsproHoles(courseId)) {
     if (lastStatus.state !== 'off') announce({ state: 'off' })
     return Promise.resolve({ context: null, status: { state: 'off' } })
   }
@@ -682,7 +763,7 @@ export const loadNativeCourseContext = (courseId: CourseId | null, courseKey: st
   })
 }
 
-/** Live-path helper: the context when native positions are on and verified, else null. */
+/** Live-path helper: the context when native positions are verified (and not turned off), else null. */
 export const nativeCourseContextForLive = async (
   courseId: CourseId | null,
   courseKey: string | null,

@@ -1,62 +1,7 @@
-import { GREYWOLF_COURSE_ID, getRuntimeHoleHeadingDegreesTrue } from '../courseGeometry/courseCatalog'
+import { courseUsesGsproHoles, getRuntimeHoleHeadingDegreesTrue } from '../courseGeometry/courseCatalog'
 import { getRouteHoleHeadingDegreesTrue } from '../courseGeometry/generatedRouteHoleHeadings'
 
-type GreywolfAnchorArtifact = {
-  anchors?: {
-    selected_tee_latlon?: unknown
-    target_green_latlon?: unknown
-  }
-}
-
-const finite = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value)
-
-const latLonPair = (value: unknown): readonly [number, number] | null => {
-  if (!Array.isArray(value) || value.length < 2) return null
-  const lat = value[0]
-  const lon = value[1]
-  return finite(lat) && finite(lon) ? [lat, lon] : null
-}
-
 const normalizeDegrees = (value: number) => ((value % 360) + 360) % 360
-
-const trueBearingDegrees = (
-  from: readonly [number, number],
-  to: readonly [number, number],
-) => {
-  const lat1 = from[0] * Math.PI / 180
-  const lat2 = to[0] * Math.PI / 180
-  const deltaLon = (to[1] - from[1]) * Math.PI / 180
-  const east = Math.sin(deltaLon) * Math.cos(lat2)
-  const north = Math.cos(lat1) * Math.sin(lat2)
-    - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon)
-  if (Math.hypot(east, north) <= Number.EPSILON) return null
-  return normalizeDegrees(Math.atan2(east, north) * 180 / Math.PI)
-}
-
-const greywolfHeadingCache = new Map<number, Promise<number | null>>()
-
-const loadGreywolfHeadingDegreesTrue = (holeNumber: number) => {
-  const normalizedHole = Math.max(1, Math.min(18, Math.round(holeNumber)))
-  const cached = greywolfHeadingCache.get(normalizedHole)
-  if (cached) return cached
-
-  const promise = fetch(
-    `/course-geometry/greywolf/local-geometry/greywolf-hole-${String(normalizedHole).padStart(2, '0')}.json`,
-    { cache: 'no-cache' },
-  )
-    .then(async (response) => {
-      if (!response.ok) return null
-      const payload = await response.json() as GreywolfAnchorArtifact
-      const tee = latLonPair(payload.anchors?.selected_tee_latlon)
-      const green = latLonPair(payload.anchors?.target_green_latlon)
-      return tee && green ? trueBearingDegrees(tee, green) : null
-    })
-    .catch(() => null)
-
-  greywolfHeadingCache.set(normalizedHole, promise)
-  return promise
-}
 
 export const loadCourseHoleHeadingDegreesTrue = async (
   courseId: string,
@@ -65,7 +10,14 @@ export const loadCourseHoleHeadingDegreesTrue = async (
   const packagedHeading = getRouteHoleHeadingDegreesTrue(courseId, holeNumber)
     ?? getRuntimeHoleHeadingDegreesTrue(courseId, holeNumber)
   if (packagedHeading != null) return packagedHeading
-  if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfHeadingDegreesTrue(holeNumber)
+  // GSPro-only or map-area course: the headings come from GSPro's course file, which may
+  // still be loading (hole 1 asked too early and got no wind, 11/4 Pinehurst 2).
+  if (courseUsesGsproHoles(courseId)) {
+    const { loadNativeCourseContext } = await import('../courseGeometry/nativeCourseRuntime')
+    const { context } = await loadNativeCourseContext(courseId, null).catch(() => ({ context: null }))
+    const heading = context?.registration.holes[String(Math.max(1, Math.min(18, Math.round(holeNumber))))]?.headingDegreesTrue
+    return typeof heading === 'number' && Number.isFinite(heading) ? heading : null
+  }
   return null
 }
 

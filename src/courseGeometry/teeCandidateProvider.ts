@@ -1,9 +1,7 @@
 import {
-  GREYWOLF_COURSE_ID,
   getCourseCatalogEntry,
   type CourseId,
 } from './courseCatalog'
-import { inferGreywolfTeeAliases } from './greywolfTeeAssumptions'
 import type {
   CoursePointYds,
   CoursePolygonYds,
@@ -11,7 +9,6 @@ import type {
 } from './types'
 
 const MAX_RUNTIME_TEE_REBASE_YDS = 140
-const GREYWOLF_RAW_BASE = '/course-geometry/greywolf/local-geometry'
 
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
@@ -187,86 +184,10 @@ const loadGenericCandidates = async (courseId: CourseId, holeNumber: number) => 
   }))
 }
 
-type GreywolfRawPoint = { right_yards?: unknown; forward_yards?: unknown }
-
-const greywolfPoint = (value: unknown): CoursePointYds | null => {
-  const raw = record(value) as GreywolfRawPoint
-  return finite(raw.right_yards) && finite(raw.forward_yards)
-    ? [raw.right_yards, raw.forward_yards]
-    : null
-}
-
-const loadGreywolfCandidates = async (holeNumber: number) => {
-  const response = await fetch(
-    `${GREYWOLF_RAW_BASE}/greywolf-hole-${String(holeNumber).padStart(2, '0')}.json`,
-    { cache: 'no-cache' },
-  )
-  if (!response.ok) throw new Error(`Greywolf Hole ${holeNumber} tee metadata returned ${response.status}.`)
-  const payload = record(await response.json())
-  const features = record(payload.features)
-  const tees = Array.isArray(features.tee) ? features.tee : []
-  const anchors = record(payload.anchors)
-  const selectedAnchorDistanceYds = finite(anchors.tee_to_green_centroid_yards)
-    ? anchors.tee_to_green_centroid_yards
-    : null
-  const anchorCandidates = Array.isArray(anchors.tee_candidates) ? anchors.tee_candidates : []
-  const distanceByTeeId = new Map<string, number>()
-  for (const value of anchorCandidates) {
-    const raw = record(value)
-    const teeId = typeof raw.tee_id === 'string' || typeof raw.tee_id === 'number'
-      ? String(raw.tee_id)
-      : null
-    const distance = finite(raw.green_distance_yards) ? raw.green_distance_yards : null
-    if (teeId && distance != null) distanceByTeeId.set(teeId, distance)
-  }
-
-  return tees.flatMap((value): CourseTeeCandidate[] => {
-    const raw = record(value)
-    const centerRaw = record(raw.centroid)
-    const center = finite(centerRaw.right_yards) && finite(centerRaw.forward_yards)
-      ? [centerRaw.right_yards, centerRaw.forward_yards] as CoursePointYds
-      : null
-    if (!center) return []
-    const polygonRaw = Array.isArray(raw.polygon) ? raw.polygon : []
-    const polygon = polygonRaw.flatMap((point): CoursePointYds[] => {
-      const parsed = greywolfPoint(point)
-      return parsed ? [parsed] : []
-    })
-    const osmId = typeof raw.osm_id === 'string' || typeof raw.osm_id === 'number'
-      ? raw.osm_id
-      : undefined
-    const candidateDistanceYds = osmId == null ? null : distanceByTeeId.get(String(osmId)) ?? null
-    const inferredAliases = inferGreywolfTeeAliases({
-      holeNumber,
-      selectedAnchorDistanceYds,
-      candidateDistanceYds,
-    })
-    const explicitTeeSet = text(raw.tee)
-    const teeAliases = [...new Set([
-      ...(explicitTeeSet ? [explicitTeeSet] : []),
-      ...inferredAliases,
-    ])]
-
-    return [{
-      ...(osmId != null ? { osmId } : {}),
-      ...(text(raw.osm_type) ? { osmType: text(raw.osm_type) } : {}),
-      ...(teeAliases[0] ? { teeSet: teeAliases[0] } : {}),
-      ...(teeAliases.length ? { teeAliases } : {}),
-      ...(text(raw.name) ? { name: text(raw.name) } : {}),
-      ...(text(raw.ref) ? { ref: text(raw.ref) } : {}),
-      ...(text(raw.colour) || text(raw.color) ? { color: text(raw.colour) ?? text(raw.color) } : {}),
-      coursePoint: center,
-      ...(candidateDistanceYds != null ? { teeToGreenCentroidYards: candidateDistanceYds } : {}),
-      ...(polygon.length >= 3 ? { polygons: [polygon] } : {}),
-      selectedAnchor: Math.hypot(center[0], center[1]) < 0.5,
-    }]
-  })
-}
 
 export const loadCourseTeeCandidates = async (
   courseId: CourseId,
   holeNumber: number,
 ): Promise<readonly CourseTeeCandidate[]> => {
-  if (courseId === GREYWOLF_COURSE_ID) return loadGreywolfCandidates(holeNumber)
   return loadGenericCandidates(courseId, holeNumber)
 }

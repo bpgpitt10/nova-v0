@@ -29,6 +29,12 @@ export const pinFromHudDistance = async ({
   note: string
   /** The hole's designer aim points (tee -> AimPoint1 -> AimPoint2 route), hole-local yards. */
   aimPointsLocal: readonly CoursePointYds[]
+  /**
+   * Where today's pin could be when `pinLocal` is null: the GKD slots whose
+   * distance fits the HUD (several, when the match was ambiguous), or every
+   * slot when none fits. Bounds the error of an estimated pin for Auto Aim.
+   */
+  candidatesLocal: readonly CoursePointYds[]
 }> | null> => {
   if (!Number.isFinite(distanceYds) || distanceYds <= 0) return null
   const context = await nativeCourseContextForLive(courseId, courseKey).catch(() => null)
@@ -54,18 +60,23 @@ export const pinFromHudDistance = async ({
     })
     .sort((a, b) => a.errorM - b.errorM)
   const [best, next] = ranked
+  const toLocal = (pin: { x: number; z: number }) => nativeWorldToHoleLocalYds(context.registration, holeNumber, pin)
+  const fitting = ranked.filter((r) => r.errorM <= HUD_PIN_MAX_ERROR_M)
+  const candidatesLocal = (fitting.length ? fitting : ranked)
+    .map((r) => toLocal(r.pin))
+    .filter((p): p is CoursePointYds => p !== null)
   const note = best
     ? `nearest pin slot ${best.pin.slot} ${best.errorM.toFixed(1)} m off`
       + (next ? `, next ${next.errorM.toFixed(1)} m` : '')
     : 'no GKD pins for this hole'
   if (!best || best.errorM > HUD_PIN_MAX_ERROR_M
     || (next && next.errorM - best.errorM < HUD_PIN_MIN_MARGIN_M)) {
-    return { slot: null, pinLocal: null, note, aimPointsLocal }
+    return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
   }
-  const pinLocal = nativeWorldToHoleLocalYds(context.registration, holeNumber, best.pin)
-  if (!pinLocal) return { slot: null, pinLocal: null, note, aimPointsLocal }
+  const pinLocal = toLocal(best.pin)
+  if (!pinLocal) return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
   rememberNativePinSlot(context.courseKey, roundId, holeNumber, best.pin.slot)
-  return { slot: best.pin.slot, pinLocal, note, aimPointsLocal }
+  return { slot: best.pin.slot, pinLocal, note, aimPointsLocal, candidatesLocal: [pinLocal] }
 }
 
 const HUD_PIN_MAX_ERROR_M = 6

@@ -158,7 +158,11 @@ export function pointInPolygon(point: CoursePointYds, polygon: CoursePolygonYds)
     const dx = bx - ax
     const dy = by - ay
     const cross = dx * (py - ay) - dy * (px - ax)
-    if (Math.abs(cross) <= ON_EDGE_YDS * Math.hypot(dx, dy) + ON_EDGE_YDS * ON_EDGE_YDS
+    // |dx| + |dy| >= the edge length, so the cheap test rejects first; Math.hypot
+    // per edge was most of the time on a large polygon (Arcadia, 11/4).
+    const absCross = Math.abs(cross)
+    if (absCross <= ON_EDGE_YDS * (Math.abs(dx) + Math.abs(dy)) + ON_EDGE_YDS * ON_EDGE_YDS
+      && absCross <= ON_EDGE_YDS * Math.hypot(dx, dy) + ON_EDGE_YDS * ON_EDGE_YDS
       && pointOnSegment(point, a, b)) return true
 
     if ((ay > py) !== (by > py) && px < (dx * (py - ay)) / dy + ax) inside = !inside
@@ -569,4 +573,102 @@ export function validateCourseGeometry(hole: CourseHoleGeometry): CourseGeometry
     surfaceCount: hole.surfaces.length,
     polygonCount,
   }
+}
+
+/**
+ * Polygons with more points than this are cut down to the hole before use.
+ * The LiDAR packages keep OSM hazards unclipped, so a lake shore can arrive
+ * whole: Arcadia Bluffs carried Lake Michigan (79,625 points) on every hole,
+ * and its bounding box covered the hole, so every sampled landing walked every
+ * edge and a tee shot calculated for minutes (11/4).
+ */
+export const OVERSIZED_POLYGON_POINTS = 2000
+/** How far past the hole's frame an oversized polygon is kept. */
+export const OVERSIZED_CLIP_MARGIN_YDS = 200
+
+type ClipRect = { minX: number; maxX: number; minY: number; maxY: number }
+
+/**
+ * Sutherland–Hodgman clip of any polygon to an axis-aligned rectangle. A
+ * concave polygon can come back with zero-width bridges along the rectangle's
+ * edge; even-odd point-in-polygon tests are unaffected inside the rectangle.
+ */
+export function clipPolygonToRect(polygon: CoursePolygonYds, rect: ClipRect): CoursePolygonYds {
+  type Edge = { inside: (p: CoursePointYds) => boolean; cut: (a: CoursePointYds, b: CoursePointYds) => CoursePointYds }
+  const atX = (x: number) => (a: CoursePointYds, b: CoursePointYds): CoursePointYds =>
+    [x, a[1] + ((x - a[0]) * (b[1] - a[1])) / (b[0] - a[0])]
+  const atY = (y: number) => (a: CoursePointYds, b: CoursePointYds): CoursePointYds =>
+    [a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]), y]
+  const edges: Edge[] = [
+    { inside: (p) => p[0] >= rect.minX, cut: atX(rect.minX) },
+    { inside: (p) => p[0] <= rect.maxX, cut: atX(rect.maxX) },
+    { inside: (p) => p[1] >= rect.minY, cut: atY(rect.minY) },
+    { inside: (p) => p[1] <= rect.maxY, cut: atY(rect.maxY) },
+  ]
+  let output: CoursePointYds[] = [...polygon]
+  for (const edge of edges) {
+    if (output.length === 0) break
+    const input = output
+    output = []
+    for (let i = 0; i < input.length; i += 1) {
+      const current = input[i]
+      const previous = input[(i + input.length - 1) % input.length]
+      const currentIn = edge.inside(current)
+      const previousIn = edge.inside(previous)
+      if (currentIn) {
+        if (!previousIn) output.push(edge.cut(previous, current))
+        output.push(current)
+      } else if (previousIn) {
+        output.push(edge.cut(previous, current))
+      }
+    }
+  }
+  return output
+}
+
+/**
+ * Cuts oversized polygons (see OVERSIZED_POLYGON_POINTS) to the hole's frame
+ * plus a margin. The frame is the package's view bounds when it has them,
+ * else the extent of the hole's ordinary-sized polygons. Returns the input
+ * unchanged when nothing is oversized or no frame can be found.
+ */
+export function clipOversizedPolygons<T extends { polygons: readonly CoursePolygonYds[] }>(
+  layers: readonly T[],
+  frame: ClipRect | null,
+  maxPoints = OVERSIZED_POLYGON_POINTS,
+  marginYds = OVERSIZED_CLIP_MARGIN_YDS,
+): T[] {
+  if (!layers.some((layer) => layer.polygons.some((polygon) => polygon.length > maxPoints))) return [...layers]
+  let rect: ClipRect | null = frame ? { ...frame } : null
+  if (!rect) {
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const layer of layers) {
+      for (const polygon of layer.polygons) {
+        if (polygon.length > maxPoints) continue
+        for (const [x, y] of polygon) {
+          if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+          minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+        }
+      }
+    }
+    if (Number.isFinite(minX)) rect = { minX, maxX, minY, maxY }
+  }
+  if (!rect) return [...layers]
+  const clip: ClipRect = {
+    minX: rect.minX - marginYds, maxX: rect.maxX + marginYds,
+    minY: rect.minY - marginYds, maxY: rect.maxY + marginYds,
+  }
+  return layers
+    .map((layer) => {
+      if (!layer.polygons.some((polygon) => polygon.length > maxPoints)) return layer
+      const polygons = layer.polygons
+        .map((polygon) => (polygon.length > maxPoints ? clipPolygonToRect(polygon, clip) : polygon))
+        .filter((polygon) => polygon.length >= 3)
+      return { ...layer, polygons }
+    })
+    .filter((layer) => layer.polygons.length > 0)
 }

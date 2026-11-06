@@ -197,6 +197,12 @@ export type RankedClubAimChoice<T extends RiskRankableAim, C extends ClubAimChoi
   decisionStrength: ClubDecisionStrength
   /** Positive means this row's EV is worse than the raw lowest-EV safe option. */
   evDeltaToRawBest: number | null
+  /** Raw expected strokes to hole out from the best aim's outcome distribution (null when unavailable). */
+  expectedFutureStrokes: number | null
+  /** The same with the model-confidence penalty the ranking actually compares. */
+  confidenceAdjustedStrokes: number | null
+  /** Probability of a catastrophe (penalty, OB, lost) at the best aim. */
+  catastropheProbability: number | null
 }
 
 const policyMinimumComparisonSupport = (policy: AimDecisionPolicy) =>
@@ -368,6 +374,9 @@ export const rankRiskAwareClubChoices = <
         modelConfidence: row.modelConfidence,
         decisionStrength: 'provisional',
         evDeltaToRawBest: null,
+        expectedFutureStrokes: row.stateValue?.expectedFutureStrokes ?? null,
+        confidenceAdjustedStrokes: null,
+        catastropheProbability: row.risk?.catastrophe ?? null,
       }))
   }
 
@@ -502,6 +511,9 @@ export const rankRiskAwareClubChoices = <
       modelConfidence: row.modelConfidence,
       decisionStrength,
       evDeltaToRawBest,
+      expectedFutureStrokes: row.stateValue.expectedFutureStrokes,
+      confidenceAdjustedStrokes: adjustedStrokes,
+      catastropheProbability: row.risk.catastrophe,
     }
   })
 
@@ -517,6 +529,9 @@ export const rankRiskAwareClubChoices = <
     modelConfidence: row.modelConfidence,
     decisionStrength: 'provisional',
     evDeltaToRawBest: null,
+    expectedFutureStrokes: row.stateValue?.expectedFutureStrokes ?? null,
+    confidenceAdjustedStrokes: null,
+    catastropheProbability: row.risk?.catastrophe ?? null,
   }))
 
   return [...usableRows, ...unavailableRows]

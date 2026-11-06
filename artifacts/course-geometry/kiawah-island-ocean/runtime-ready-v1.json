@@ -10,7 +10,7 @@
   ],
   "location": "Kiawah Island, South Carolina",
   "packagePath": "public/course-geometry/kiawah-island-ocean/course-v1.json",
-  "packageSha256": "aac98460a2585ba10797e64bc45ec2b93be38957a9ce78a25c0ade1ee5988eb7",
+  "packageSha256": "d6fdd8772ef4f2dfaa0916b294dfa050daaeeec1b8560e1b9cea158b0f5ce0b5",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -18,5 +18,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/kiawah-island-ocean/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/kiawah-island-ocean/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

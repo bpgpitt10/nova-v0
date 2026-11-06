@@ -38,7 +38,7 @@ export const aimInGspro = async ({
 }>): Promise<AimInGsproResult> => {
   if (!courseId) return { outcome: 'not-sent', message: 'Aim by hand: no course selected.' }
   const context = await nativeCourseContextForLive(courseId, courseKey).catch(() => null)
-  if (!context) return { outcome: 'not-sent', message: 'Aim by hand: Native positions are off or not ready for this course.' }
+  if (!context) return { outcome: 'not-sent', message: "Aim by hand: Looper hasn't matched this course to GSPro yet (see Course match)." }
   const toWorld = (local: CoursePointYds | null) => nativeHoleLocalYdsToWorld(context.registration, holeNumber, local)
   const points = { ball: toWorld(ball), pin: toWorld(pin), target: toWorld(target) }
   if (!points.ball || !points.pin || !points.target) {

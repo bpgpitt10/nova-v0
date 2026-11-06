@@ -15,6 +15,8 @@ import {
   rankRiskAwareAimCandidates,
   rankRiskAwareClubChoices,
 } from './aimDecisionRanking'
+import type { QuickBagPrior } from '../lib/quickBag'
+import { applyQuickBagToPlayers, applyQuickBagToProfileSet, type StartingBagMark } from './quickBagProfiles'
 import {
   flightBlockedAt,
   MODELED_AIM_SAMPLE_COUNT,
@@ -75,6 +77,12 @@ export const AIM_SCORE_ASSUMPTIONS = {
 } as const
 
 export type AimLabEnvironment = {
+  /**
+   * The player's Quick Bag (handicap + three carries), laid under the range
+   * data so every club in the bag has numbers from the first hole. Clubs fade
+   * to their own range data by shot count (lib/quickBag BLEND_RULES).
+   */
+  quickBag?: QuickBagPrior | null
   windMph?: number
   windRelativeDeg?: number
   elevationDeltaFt?: number | null
@@ -214,7 +222,23 @@ export type ClubAimEvaluation = {
   targetFit: boolean | null
   withinCatastropheGuardrail: boolean | null
   decisionReason: string | null
+  /**
+   * What the ranking saw for this club, kept so Arm can record the engine's
+   * numbers for the pick and the alternatives (caddie vs you).
+   */
+  decisionValue?: ClubDecisionValue | null
+  /** Set while the club's numbers still lean on the Quick Bag prior. */
+  startingBag?: StartingBagMark | null
   notes: string[]
+}
+
+export type ClubDecisionValue = {
+  expectedFutureStrokes: number | null
+  confidenceAdjustedStrokes: number | null
+  catastropheProbability: number | null
+  modelConfidence: number
+  evDeltaToRawBest: number | null
+  decisionStrength: string
 }
 
 const finiteNumber = (value: unknown): value is number =>
@@ -494,7 +518,7 @@ export const shortestSupportedModeledCarryYds = (
   environment: AimLabEnvironment,
   nowMs: number,
 ): number => {
-  const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
+  const profileSet = applyQuickBagToProfileSet(buildLiveCaddieProfileSet(sessions, nowMs), environment.quickBag)
   const ballSurface = environment.surfaceOverride?.trim() || classifyPoint(hole, ball).kind
   const shotOrigin = resolveShotOriginEligibility(environment.shotOrigin, ballSurface)
   let shortest = Number.POSITIVE_INFINITY
@@ -518,8 +542,10 @@ export const evaluateAimLab = (
 ): ClubAimEvaluation[] => {
   const environment = typeof environmentOrNowMs === 'number' ? {} : environmentOrNowMs
   const nowMs = typeof environmentOrNowMs === 'number' ? environmentOrNowMs : explicitNowMs
-  const profileSet = buildLiveCaddieProfileSet(sessions, nowMs)
-  const decisionPlayers = buildDecisionPlayerModels(sessions, nowMs)
+  const profileSet = applyQuickBagToProfileSet(buildLiveCaddieProfileSet(sessions, nowMs), environment.quickBag)
+  const decisionPlayers = applyQuickBagToPlayers(
+    buildDecisionPlayerModels(sessions, nowMs), profileSet, environment.quickBag, nowMs,
+  )
   const geometrySurface = classifyPoint(hole, ball).kind
   const ballSurface = environment.surfaceOverride?.trim() || geometrySurface
   const shotOrigin = resolveShotOriginEligibility(environment.shotOrigin, ballSurface)
@@ -771,6 +797,7 @@ export const evaluateAimLab = (
       aimSearchHalfWidthYds: Math.max(...aimOffsetsYds.map((offset) => Math.abs(offset))),
       supportShots: support?.included_stock_shots ?? 0,
       supportingSessions: support?.sessions ?? 0,
+      startingBag: profileSet.starting_bag[profile.club] ?? null,
       modeledSampleCount: MODELED_AIM_SAMPLE_COUNT,
       empiricalShotCount: empiricalShots.length,
       shotShape: shotCore
@@ -794,6 +821,14 @@ export const evaluateAimLab = (
     ranked.evaluation.targetFit = ranked.targetFit
     ranked.evaluation.withinCatastropheGuardrail = ranked.withinCatastropheGuardrail
     ranked.evaluation.decisionReason = ranked.decisionReason
+    ranked.evaluation.decisionValue = {
+      expectedFutureStrokes: ranked.expectedFutureStrokes,
+      confidenceAdjustedStrokes: ranked.confidenceAdjustedStrokes,
+      catastropheProbability: ranked.catastropheProbability,
+      modelConfidence: ranked.modelConfidence,
+      evDeltaToRawBest: ranked.evDeltaToRawBest,
+      decisionStrength: ranked.decisionStrength,
+    }
   })
 
   return rankedClubs.map((ranked) => ranked.evaluation)

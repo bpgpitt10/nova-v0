@@ -47,6 +47,10 @@ export type RoundShotRecord = {
   clubSource: 'armed' | 'inferred' | null
   clubConfidence: number | null
   recommendedClub: string | null
+  /** armed − recommended expected strokes at arm time; null when Looper didn't price it. */
+  paperCostStrokes?: number | null
+  /** 'starting-bag' | 'learning' | 'measured': what the recommendation rested on. */
+  modelBasis?: string | null
 }
 
 export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
@@ -60,6 +64,8 @@ export type RoundShot = {
   clubSource: 'armed' | 'inferred' | 'gspro-putter' | null
   clubConfidence: number | null
   recommendedClub: string | null
+  paperCostStrokes: number | null
+  modelBasis: string | null
   isPutt: boolean
   /** A conceded putt (gimme): counts as a stroke, not as a made putt. */
   conceded: boolean
@@ -120,6 +126,12 @@ export type RoundSummary = {
   fir: { hit: number; of: number }
   sg: { total: number | null; categories: CategoryTotals }
   autoPutt: boolean
+  /** The player's choice on the Rounds page; null when Looper decides. */
+  countState: RoundCountChoice | null
+  /** Conceded or re-hit holes, shots that don't follow on, or a hole or two then quit. */
+  looksLikeTest: boolean
+  /** Whether the round goes into stats: the player's choice, else not when it looks like a test. */
+  counts: boolean
   unknownLieShots: number
   brokenHoles: number
   shotCount: number
@@ -130,7 +142,24 @@ export type CourseInfo = Readonly<{
   pars?: Readonly<Record<number, number>>
 }>
 
-export type RoundFlags = Readonly<{ autoPutt?: boolean }>
+/** The player's choice for a round. 'deleted' rounds never reach these functions. */
+export type RoundCountChoice = 'counts' | 'excluded'
+
+export type RoundFlags = Readonly<{ autoPutt?: boolean; countState?: RoundCountChoice | null }>
+
+/**
+ * A round that looks like testing rather than golf: shots that don't follow on
+ * (status 'test'), a hole or two then quit ('fragment'), or most holes left
+ * unfinished (conceded). These don't count until the player says they do.
+ */
+export const roundLooksLikeTest = (round: Pick<RoundSummary, 'status' | 'holesPlayed' | 'completeHoles'>) =>
+  round.status === 'test' || round.status === 'fragment'
+  || (round.holesPlayed >= 2 && round.completeHoles / round.holesPlayed < 0.5)
+
+export const roundCounts = (
+  round: Pick<RoundSummary, 'status' | 'holesPlayed' | 'completeHoles'>,
+  choice: RoundCountChoice | null | undefined,
+) => round.status !== 'range' && (choice === 'counts' || (choice == null && !roundLooksLikeTest(round)))
 
 export const GSPRO_PUTTER_CLUB_INDEX = 26
 const METERS_TO_YARDS = 1.0936132983377078
@@ -336,6 +365,8 @@ const buildHole = (
         : record.clubSource,
       clubConfidence: record.clubConfidence,
       recommendedClub: record.recommendedClub,
+      paperCostStrokes: record.paperCostStrokes ?? null,
+      modelBasis: record.modelBasis ?? null,
       isPutt,
       conceded: record.isGimme,
       holed: record.isHoled,
@@ -427,7 +458,7 @@ export const buildRound = (
   else status = 'partial'
 
   const parKnown = complete.length > 0 && complete.every((hole) => hole.par != null)
-  return {
+  const summary: RoundSummary = {
     roundId,
     courseKey,
     courseName: course.name?.trim() || prettifyCourseKey(courseKey),
@@ -449,6 +480,9 @@ export const buildRound = (
     },
     sg: { total: totalShots > 0 ? total : null, categories },
     autoPutt,
+    countState: flags.countState ?? null,
+    looksLikeTest: false,
+    counts: false,
     unknownLieShots: holes.reduce(
       (sum, hole) => sum + hole.shots.filter((shot) => shot.provisional).length,
       0,
@@ -456,6 +490,9 @@ export const buildRound = (
     brokenHoles,
     shotCount: records.length,
   }
+  summary.looksLikeTest = roundLooksLikeTest(summary)
+  summary.counts = roundCounts(summary, summary.countState)
+  return summary
 }
 
 export const buildRounds = (
@@ -583,6 +620,8 @@ export type LiveCourseShotRow = {
   inferred_club: string | null
   inference_confidence: number | null
   recommended_club: string | null
+  paper_cost_strokes?: number | null
+  model_basis?: string | null
 }
 
 export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
@@ -609,6 +648,8 @@ export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
     clubSource: armed ? 'armed' : row.inferred_club ? 'inferred' : null,
     clubConfidence: armed ? 1 : num(row.inference_confidence),
     recommendedClub: row.recommended_club,
+    paperCostStrokes: num(row.paper_cost_strokes),
+    modelBasis: row.model_basis ?? null,
   }
 }
 
@@ -632,6 +673,8 @@ export type ArchivedShotLike = {
   actualClub?: string | null
   clubSource?: 'user' | null
   recommendedClub?: string | null
+  paperCostStrokes?: number | null
+  modelBasis?: string | null
   clubInference?: { predictedClub?: string | null; confidence?: number | null } | null
 }
 
@@ -659,5 +702,7 @@ export const recordFromArchivedShot = (shot: ArchivedShotLike): RoundShotRecord 
     clubSource: armed ? 'armed' : inferred ? 'inferred' : null,
     clubConfidence: armed ? 1 : shot.clubInference?.confidence ?? null,
     recommendedClub: shot.recommendedClub ?? null,
+    paperCostStrokes: shot.paperCostStrokes ?? null,
+    modelBasis: shot.modelBasis ?? null,
   }
 }

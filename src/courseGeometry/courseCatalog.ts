@@ -20,34 +20,25 @@ export type CourseCatalogEntry = {
   packageCacheStatus: CourseCacheStatus
   osmCacheStatus: CourseCacheStatus
   lidarCacheStatus: CourseCacheStatus
+  /** Built from the player's GSPro course file alone (no map loaded): gsproOnlyCourse.ts. */
+  source?: 'gspro-only'
+  /** GSPro's course altitude (feet), when known. */
+  altitudeFt?: number | null
+  /** Loaded as one map area (course-area-v1.json): holes come from GSPro's course file. */
+  packageKind?: 'area'
 }
 
 /**
  * Runtime-supported course registry. Canonical imported courses are generated
  * from runtime-ready receipts; they must never require a hand-added catalog row.
- * Greywolf is the one legacy hand-registered course. Augusta National, Arcadia
+ * Greywolf was the one legacy hand-registered course; since 11/4 it is a
+ * loaded course like any other (loaded_courses row, same id, so its round
+ * history stays with it). GREYWOLF_COURSE_ID remains for that id and for the
+ * dev fixtures built on the old hand-made holes. Augusta National, Arcadia
  * Bluffs and Oakmont were removed (2026-10-30): their packages never produced
  * usable live positions; git history keeps them.
  */
 const staticCourseRegistry = [
-  {
-    id: GREYWOLF_COURSE_ID,
-    name: 'Greywolf Golf Course',
-    location: 'Panorama, BC',
-    slug: 'greywolf',
-    gsproAliases: [
-      'Greywolf',
-      'Greywolf Golf Course',
-      'Greywolf_gsp',
-      'greywolf_gsp',
-    ],
-    status: 'validated',
-    packageStatus: 'ready',
-    packageVersion: 'v1',
-    packageCacheStatus: 'cached',
-    osmCacheStatus: 'cached',
-    lidarCacheStatus: 'cached',
-  },
   ...generatedImportedCourseRegistry,
 ] as const satisfies readonly CourseCatalogEntry[]
 
@@ -123,6 +114,21 @@ export const registerRuntimeCourses = (
   return added
 }
 
+/**
+ * Courses whose holes come from GSPro's course file on this PC: GSPro-only
+ * entries and courses loaded as a map area. They always use native positions.
+ */
+export const courseUsesGsproHoles = (courseId: string | null | undefined): boolean => {
+  if (!courseId) return false
+  const entry = courseRegistry.find((candidate) => candidate.id === courseId)
+  return entry?.source === 'gspro-only' || entry?.packageKind === 'area'
+}
+
+/** Hole headings worked out on this device (GSPro-only courses, from the course file). */
+export const setRuntimeHoleHeadings = (courseId: string, headings: readonly (number | null)[]) => {
+  if (headings.some((h) => typeof h === 'number')) runtimeHoleHeadings.set(courseId, headings)
+}
+
 /** True heading of a runtime-loaded course's hole (tee to green), if published. */
 export const getRuntimeHoleHeadingDegreesTrue = (courseId: string, holeNumber: number): number | null => {
   const heading = runtimeHoleHeadings.get(courseId)?.[Math.max(1, Math.min(18, Math.round(holeNumber))) - 1]
@@ -161,11 +167,16 @@ const normalizeCourseName = (value: string) =>
  * build config; canonical imports carry those aliases into the generated
  * registry automatically.
  */
-export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCourseId | null => {
+export const resolveCourseIdFromGsproName = (
+  gsproName: string,
+  options: Readonly<{ includeGsproOnly?: boolean }> = {},
+): RegisteredCourseId | null => {
   const normalized = normalizeCourseName(gsproName)
   if (!normalized) return null
 
+  // A loaded map beats the GSPro-only entry for the same course.
   for (const entry of courseRegistry) {
+    if (entry.source === 'gspro-only') continue
     if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) {
       return entry.id
     }
@@ -176,6 +187,12 @@ export const resolveCourseIdFromGsproName = (gsproName: string): RegisteredCours
       && normalizeCourseName(link.gsproCourseName ?? '') !== normalized) continue
     const entry = courseRegistry.find((candidate) => candidate.slug === link.courseSlug)
     if (entry) return entry.id
+  }
+  if (options.includeGsproOnly !== false) {
+    for (const entry of courseRegistry) {
+      if (entry.source !== 'gspro-only') continue
+      if (entry.gsproAliases.some((alias) => normalizeCourseName(alias) === normalized)) return entry.id
+    }
   }
   return null
 }

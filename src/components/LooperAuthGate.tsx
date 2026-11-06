@@ -1,3 +1,4 @@
+import { CompanionChip } from './CompanionChip'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import authBackground from '../assets/Backgrounds/looper-entry-links.webp'
@@ -376,6 +377,7 @@ export default function LooperAuthGate({ children }: Props) {
       <>
         {user ? (
           <div className="looper-account-control">
+            <CompanionChip />
             <details className="looper-account-control__details">
               <summary className="looper-account-control__summary">
                 <span className="looper-account-control__email">{user.email ?? 'Account'}</span>

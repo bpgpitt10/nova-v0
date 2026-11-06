@@ -9,7 +9,7 @@
   ],
   "location": "Providence Forge, VA",
   "packagePath": "public/course-geometry/royal-new-kent/course-v1.json",
-  "packageSha256": "eda50a3882049886e3e869d7b90e942f0f0649dcedf60f6b7578209221a7f623",
+  "packageSha256": "cc2a0e1679969eedacd529114c87137b7757105e67b471a217e6e5bef6b9499e",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/royal-new-kent/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/royal-new-kent/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

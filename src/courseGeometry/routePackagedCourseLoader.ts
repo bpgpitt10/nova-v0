@@ -1,4 +1,5 @@
 import { getCourseCatalogEntry, type CourseId } from './courseCatalog'
+import { clipOversizedPolygons } from './geometry'
 import type {
   CourseContextKind,
   CourseContextLayer,
@@ -162,7 +163,7 @@ const centroid = (polygon: CoursePolygonYds): CoursePointYds => {
   return polygon.length > 0 ? [x / polygon.length, y / polygon.length] : [0, 0]
 }
 
-const parseSurfaces = (
+export const parseSurfaces = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -185,7 +186,7 @@ const parseSurfaces = (
   })
 }
 
-const parseContextLayers = (
+export const parseContextLayers = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -211,7 +212,7 @@ const parseContextLayers = (
   })
 }
 
-const parseMapFeatures = (
+export const parseMapFeatures = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -293,7 +294,7 @@ export const parsePackageTerrain = async (
 ): Promise<CourseTerrainGrid | null> => {
   if (raw == null) return null
   if (
-    raw.source !== 'lidar-dem' ||
+    (raw.source !== 'lidar-dem' && raw.source !== 'global-dem') ||
     !finite(raw.sourceResolutionMeters) || raw.sourceResolutionMeters <= 0 ||
     !finite(raw.runtimeSpacingYds) || raw.runtimeSpacingYds <= 0 ||
     raw.interpolation !== 'bilinear' ||
@@ -307,7 +308,7 @@ export const parsePackageTerrain = async (
   }
   const values = await decodeDeflateUint16(raw.valuesBase64, raw.width * raw.height, courseName, holeNumber)
   return {
-    source: 'lidar-dem',
+    source: raw.source === 'global-dem' ? 'global-dem' : 'lidar-dem',
     sourceResolutionMeters: raw.sourceResolutionMeters,
     runtimeSpacingYds: raw.runtimeSpacingYds,
     interpolation: 'bilinear',
@@ -415,12 +416,14 @@ const parseHole = async (
   const courseName = typeof payload.courseName === 'string' ? payload.courseName : getCourseCatalogEntry(courseId).name
   if (!raw) throw new Error(`${courseName} Hole ${holeNumber} was not packaged.`)
 
-  const surfaces = parseSurfaces(courseId, holeNumber, raw.surfaces)
+  const viewBounds = parseBounds(raw.viewBounds)
+  // Oversized polygons (a whole lake shore) are cut to the hole first, so the
+  // hole's bounds and every landing check stay hole-sized.
+  const surfaces = clipOversizedPolygons(parseSurfaces(courseId, holeNumber, raw.surfaces), viewBounds)
   if (!surfaces.length) throw new Error(`${courseName} Hole ${holeNumber} has no playable surface geometry.`)
   const bounds = boundsFromSurfaces(surfaces)
   if (!bounds) throw new Error(`${courseName} Hole ${holeNumber} could not derive playable bounds.`)
-  const viewBounds = parseBounds(raw.viewBounds)
-  const contextLayers = parseContextLayers(courseId, holeNumber, raw.context).map((layer) =>
+  const contextLayers = clipOversizedPolygons(parseContextLayers(courseId, holeNumber, raw.context), viewBounds ?? bounds).map((layer) =>
     payload.enrichment && layer.kind === 'woods'
       ? {
           ...layer,

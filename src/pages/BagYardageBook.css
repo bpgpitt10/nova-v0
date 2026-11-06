@@ -778,3 +778,21 @@
 .bagbook-layout .last-session-open .review-table td {
   font-size: 14px;
 }
+
+.bagbook-starting {
+  color: var(--bagbook-ink-2);
+  margin-right: 6px;
+}
+
+.bagbook-starting strong {
+  font-size: 15px;
+}
+
+.bagbook-starting-link {
+  color: #eab308;
+  text-decoration: none;
+}
+
+.bagbook-starting-link:hover {
+  text-decoration: underline;
+}
