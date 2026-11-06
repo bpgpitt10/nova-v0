@@ -33,6 +33,7 @@ OVERPASS_URLS = [
     'https://overpass.private.coffee/api/interpreter',
 ]
 DEM_EXPORT = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
+DEM_ATTEMPTS = 6
 TARGET_CRS = 'EPSG:26916'  # NAD83 / UTM zone 16N (FarmLinks)
 R_MERC = 6378137.0
 
@@ -154,15 +155,18 @@ def cmd_dem(args: argparse.Namespace) -> int:
             url = DEM_EXPORT + '?' + urllib.parse.urlencode(params)
             urls.append(url)
             tif = tmp / f'dem-{tx}-{ty}.tif'
-            for attempt in range(4):
+            # The 3DEP service has bad quarter-hours (DPC Sodgrass, 11/6: four
+            # 504s in a row). Wait it out: 15 s, 30 s, 1, 2, 4 min before giving up.
+            for attempt in range(DEM_ATTEMPTS):
                 try:
                     tif.write_bytes(http_get(url, timeout=600))
                     break
                 except Exception as exc:  # noqa: BLE001
-                    if attempt == 3:
+                    if attempt == DEM_ATTEMPTS - 1:
                         raise
-                    print(f'dem tile {tx},{ty} attempt {attempt + 1}: {exc}')
-                    time.sleep(10 * (attempt + 1))
+                    pause = min(240, 15 * 2 ** attempt)
+                    print(f'dem tile {tx},{ty} attempt {attempt + 1}/{DEM_ATTEMPTS}: {exc}; retrying in {pause} s')
+                    time.sleep(pause)
             with rasterio.open(tif) as ds:
                 tile = ds.read(1).astype('float64')
                 if ds.nodata is not None:
