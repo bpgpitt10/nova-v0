@@ -96,12 +96,14 @@
 .quick-bag-field input[type='number'] {
   width: 100%;
   max-width: 160px;
+  box-sizing: border-box;
+  min-height: 42px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid #314233;
   border-radius: 8px;
   color: #ffffff;
   font-size: 18px;
-  padding: 8px 10px;
+  padding: 6px 10px;
 }
 
 .quick-bag-field input:disabled { opacity: 0.45; }
@@ -124,10 +126,16 @@
 
 .quick-bag-segmented {
   display: inline-flex;
+  width: fit-content;
+  justify-self: start;
   border: 1px solid #314233;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.quick-bag-segmented button {
+  min-height: 42px;
 }
 
 .quick-bag-segmented button {
@@ -181,10 +189,12 @@
 
 .quick-bag-anchor-controls {
   display: flex;
-  align-items: end;
-  gap: 14px;
+  align-items: flex-end;
+  gap: 18px;
   flex-wrap: wrap;
 }
+
+.quick-bag-anchor-controls .quick-bag-field { align-content: end; }
 
 .quick-bag-carry-input {
   display: inline-flex;
