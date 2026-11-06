@@ -6,8 +6,12 @@ import {
 } from '../cloud/supabaseClient'
 import { getActiveBagClubIds, type Club } from './bagConfig'
 import { QUICK_BAG_STORAGE_KEY, persistWorkingCacheValueForActiveUser } from './localUserScope'
+import { isShotIncludedInAnalysis } from './historicalModel'
+import { STOCK_SHOT_VARIANT_ID, resolveShotVariantId } from './shotVariants'
+import type { SavedSession } from '../types'
 import {
   ANCHOR_CLUBS,
+  BLEND_RULES,
   buildQuickBagPrior,
   type AnchorClub,
   type QuickBagInput,
@@ -120,12 +124,38 @@ export const quickBagSkipped = (): boolean => {
   }
 }
 
+/** Included Stock range swings per club, from the saved sessions. */
+export const rangeSwingsByClub = (sessions: readonly SavedSession[]): Map<string, number> => {
+  const counts = new Map<string, number>()
+  for (const session of sessions) {
+    if (session.metadata?.includeInAnalysis === false) continue
+    for (const shot of session.shots) {
+      if (!isShotIncludedInAnalysis(shot)) continue
+      if (resolveShotVariantId(shot.shotVariantId) !== STOCK_SHOT_VARIANT_ID) continue
+      counts.set(String(shot.club), (counts.get(String(shot.club)) ?? 0) + 1)
+    }
+  }
+  return counts
+}
+
+/** Clubs in the bag whose carry is the range's (BLEND_RULES.carry.fullAt swings or more). */
+export const measuredClubs = (sessions: readonly SavedSession[], clubs: readonly Club[]): Club[] => {
+  const counts = rangeSwingsByClub(sessions)
+  return clubs.filter((club) => (counts.get(club) ?? 0) >= BLEND_RULES.carry.fullAt)
+}
+
 /**
- * A new player (bag chosen, no starting bag, no range data, hasn't skipped)
- * gets the starting-bag step before the app.
+ * A player whose bag isn't ready (fewer than half its clubs measured on the
+ * range), with no starting bag and who hasn't skipped, gets the starting-bag
+ * step before the app. Someone with two sessions on three clubs can't play a
+ * round any more than someone with none (Dave and Nathan, 11/6).
  */
-export const needsQuickBagStep = (hasRangeData: boolean): boolean =>
-  !hasRangeData && !hasQuickBag() && !quickBagSkipped()
+export const needsQuickBagStep = (sessions: readonly SavedSession[]): boolean => {
+  if (hasQuickBag() || quickBagSkipped()) return false
+  const clubs = getActiveBagClubIds()
+  if (clubs.length === 0) return false
+  return measuredClubs(sessions, clubs).length < clubs.length / 2
+}
 
 const writeLocal = (input: QuickBagInput | null) => {
   const serialized = input ? JSON.stringify(input) : null

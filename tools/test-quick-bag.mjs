@@ -144,6 +144,27 @@ try {
   assert.equal(untouched.clubs.length, 1)
   assert.deepEqual(untouched.starting_bag, {})
 
+  // --- who gets the step: a bag with fewer than half its clubs measured on the range
+  const store = new Map()
+  globalThis.window = {
+    localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) },
+    dispatchEvent() {}, addEventListener() {}, removeEventListener() {},
+  }
+  globalThis.localStorage = globalThis.window.localStorage
+  const { needsQuickBagStep, measuredClubs, rangeSwingsByClub, skipQuickBag } = await load('/src/lib/quickBagStore.ts')
+  const { saveBagConfig } = await load('/src/lib/bagConfig.ts')
+  saveBagConfig(clubs)
+  const session = (club, n) => ({ id: `s-${club}`, shots: Array.from({ length: n }, (_, i) => ({ id: `${club}${i}`, club, included: true, carryYards: 150, offlineYards: 0 })), metadata: {} })
+  assert.equal(needsQuickBagStep([]), true, 'no range data: the step')
+  // Dave: 16 swings on two clubs; Nathan: 10 over three. Neither bag is ready.
+  assert.equal(needsQuickBagStep([session('7i', 10), session('PW', 6)]), true)
+  assert.deepEqual(measuredClubs([session('7i', 10), session('PW', 6)], clubs), ['7i', 'PW'])
+  assert.equal(rangeSwingsByClub([session('7i', 10)]).get('7i'), 10)
+  // Brian: most of the bag measured → no step.
+  assert.equal(needsQuickBagStep(clubs.slice(0, 7).map((c) => session(c, 8))), false)
+  skipQuickBag()
+  assert.equal(needsQuickBagStep([]), false, 'skipped: not asked again')
+
   console.log('quick bag: ok')
 } finally {
   if (server) await server.close()

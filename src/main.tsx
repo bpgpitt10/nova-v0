@@ -176,7 +176,7 @@ function LiveCaddieRoundBootstrap({ active }: { active: boolean }) {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
-  const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions().length > 0))
+  const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions()))
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
@@ -265,9 +265,10 @@ function RootRouter() {
     }
     window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onBagConfigUpdated)
     window.addEventListener('storage', onBagConfigUpdated)
-    const onQuickBagUpdated = () => setNeedsQuickBag(needsQuickBagStep(loadSavedSessions().length > 0))
+    const onQuickBagUpdated = () => setNeedsQuickBag(needsQuickBagStep(loadSavedSessions()))
     window.addEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
     window.addEventListener('looper-session-history-updated', onQuickBagUpdated)
+    window.addEventListener(BAG_CONFIG_UPDATED_EVENT, onQuickBagUpdated)
 
     return () => {
       window.removeEventListener('popstate', onPopState)
@@ -276,6 +277,7 @@ function RootRouter() {
       window.removeEventListener('storage', onBagConfigUpdated)
       window.removeEventListener(QUICK_BAG_UPDATED_EVENT, onQuickBagUpdated)
       window.removeEventListener('looper-session-history-updated', onQuickBagUpdated)
+      window.removeEventListener(BAG_CONFIG_UPDATED_EVENT, onQuickBagUpdated)
     }
   }, [])
 

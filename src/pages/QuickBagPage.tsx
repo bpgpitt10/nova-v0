@@ -10,7 +10,8 @@ import {
   type QuickBagAnchor,
   type ShotShape,
 } from '../lib/quickBag'
-import { loadQuickBagInput, saveQuickBag, skipQuickBag } from '../lib/quickBagStore'
+import { loadQuickBagInput, measuredClubs, rangeSwingsByClub, saveQuickBag, skipQuickBag } from '../lib/quickBagStore'
+import { loadSavedSessions } from '../lib/sessions'
 import golfSceneDetailBackground from '../assets/Backgrounds/golfscenedetail.png'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './QuickBagPage.css'
@@ -85,6 +86,11 @@ export default function QuickBagPage() {
   const [showAdjust, setShowAdjust] = useState(() => Object.keys(draftFromSaved().overrides).length > 0)
   const [error, setError] = useState<string | null>(null)
   const isEdit = useMemo(() => loadQuickBagInput() != null, [])
+  // Clubs the range has already settled: their numbers are the player's own
+  // and a typed carry wouldn't change them (the prior has no weight left).
+  const sessions = useMemo(() => loadSavedSessions(), [])
+  const swings = useMemo(() => rangeSwingsByClub(sessions), [sessions])
+  const measured = useMemo(() => new Set(measuredClubs(sessions, clubs)), [sessions, clubs])
 
   useEffect(() => {
     const refresh = () => setClubs(getActiveBagClubIds())
@@ -295,11 +301,18 @@ export default function QuickBagPage() {
               {preview.clubs.map((row) => {
                 const isAnchor = (ANCHOR_CLUBS as readonly string[]).includes(row.club)
                 const overridden = draft.overrides[row.club] != null && draft.overrides[row.club] !== ''
+                const isMeasured = measured.has(row.club)
+                const swingCount = swings.get(row.club) ?? 0
                 return (
-                  <div className={`quick-bag-trow${isAnchor ? ' is-anchor' : ''}${overridden ? ' is-typed' : ''}`} key={row.club} role="row">
-                    <span role="cell"><strong>{getClubLabel(row.club)}</strong>{isAnchor ? <em> yours</em> : overridden ? <em> typed</em> : null}</span>
+                  <div className={`quick-bag-trow${isAnchor ? ' is-anchor' : ''}${overridden ? ' is-typed' : ''}${isMeasured ? ' is-measured' : ''}`} key={row.club} role="row">
                     <span role="cell">
-                      {showAdjust && !isAnchor ? (
+                      <strong>{getClubLabel(row.club)}</strong>
+                      {isMeasured ? <em> range, {swingCount} swings</em>
+                        : swingCount > 0 ? <em> learning {swingCount}/{BLEND_RULES.carry.fullAt}</em>
+                          : isAnchor ? <em> yours</em> : overridden ? <em> typed</em> : null}
+                    </span>
+                    <span role="cell">
+                      {showAdjust && !isAnchor && !isMeasured ? (
                         <span className="quick-bag-carry-input is-small">
                           <input
                             inputMode="numeric"
@@ -327,6 +340,12 @@ export default function QuickBagPage() {
           ) : (
             <p className="quick-bag-waiting">{problem ?? 'Enter the three carries to see your bag.'}</p>
           )}
+          {showAdjust && measured.size > 0 ? (
+            <p className="quick-bag-fine">
+              Clubs marked “range” have {BLEND_RULES.carry.fullAt}+ good swings: their numbers come from your swings
+              and typing here wouldn't change them. Starting numbers only fill in until the range takes over.
+            </p>
+          ) : null}
           {showAdjust && Object.keys(draft.overrides).length > 0 ? (
             <button className="quick-bag-reset" onClick={() => setDraft((d) => ({ ...d, overrides: {} }))} type="button">
               Clear typed carries
