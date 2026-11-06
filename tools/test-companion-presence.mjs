@@ -16,7 +16,7 @@ try {
     localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) },
     addEventListener() {}, removeEventListener() {}, setInterval: () => 0, clearInterval() {},
   }
-  globalThis.navigator = { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+  Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, configurable: true })
   const { companionSeenBefore, markCompanionSeen } = await load('/src/lib/companionPresence.ts')
   assert.equal(companionSeenBefore(), null, 'nothing remembered at first')
   markCompanionSeen('1.0.0')
