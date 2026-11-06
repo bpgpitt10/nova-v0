@@ -41,10 +41,10 @@ const ANCHOR_HELP: Record<AnchorClub, string> = {
   PW: 'A full pitching wedge.',
 }
 
-const SHAPE_LABELS = (club: AnchorClub): Record<ShotShape, string> => ({
+const SHAPE_LABELS = (_club: AnchorClub): Record<ShotShape, string> => ({
   draw: 'Draw',
   neutral: 'Straight',
-  fade: club === 'Driver' ? 'Fade / slice' : 'Fade',
+  fade: 'Fade',
 })
 
 type Draft = {
@@ -166,6 +166,7 @@ export default function QuickBagPage() {
       <section className="quick-bag-shell" aria-label="Your starting bag">
         <header className="quick-bag-header">
           <div>
+            <img alt="The Looper" className="quick-bag-logo" src={looperLogoWhite} />
             <p className="quick-bag-eyebrow">{isEdit ? 'Starting bag' : 'One more thing'}</p>
             <h1>Your starting bag</h1>
             <p className="quick-bag-lead">
@@ -174,7 +175,6 @@ export default function QuickBagPage() {
               swings.
             </p>
           </div>
-          <img alt="The Looper" className="quick-bag-logo" src={looperLogoWhite} />
         </header>
 
         <div className="quick-bag-grid">
@@ -275,10 +275,6 @@ export default function QuickBagPage() {
                 </div>
               )
             })}
-            <p className="quick-bag-fine">
-              Shape per club matters: plenty of people slice a driver and hit their irons straight. Woods and hybrids
-              follow the driver's shape, mid irons the 7-iron's, short irons and wedges the wedge's.
-            </p>
           </section>
         </div>
 

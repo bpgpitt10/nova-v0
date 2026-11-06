@@ -50,8 +50,9 @@
 }
 
 .quick-bag-logo {
-  width: 170px;
-  max-width: 28%;
+  display: block;
+  width: 132px;
+  margin: 0 0 14px;
   opacity: 0.9;
   pointer-events: none;
   user-select: none;
@@ -65,7 +66,7 @@
 
 @media (max-width: 760px) {
   .quick-bag-grid { grid-template-columns: 1fr; }
-  .quick-bag-logo { display: none; }
+  .quick-bag-logo { width: 110px; }
   .quick-bag-header h1 { font-size: 30px; }
 }
 
