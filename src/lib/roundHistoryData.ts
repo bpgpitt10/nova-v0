@@ -51,7 +51,7 @@ const SHOT_COLUMNS = [
   'starting_surface_raw', 'ending_surface_raw', 'distance_to_pin_yards',
   'carry_yards', 'total_yards', 'spin_axis_degrees', 'gspro_club_index',
   'raw_metrics', 'actual_club', 'club_source', 'inferred_club',
-  'inference_confidence', 'recommended_club',
+  'inference_confidence', 'recommended_club', 'paper_cost_strokes',
 ].join(',')
 
 export type RoundRecordsResult = {

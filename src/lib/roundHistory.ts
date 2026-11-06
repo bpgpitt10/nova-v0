@@ -47,6 +47,8 @@ export type RoundShotRecord = {
   clubSource: 'armed' | 'inferred' | null
   clubConfidence: number | null
   recommendedClub: string | null
+  /** armed − recommended expected strokes at arm time; null when Looper didn't price it. */
+  paperCostStrokes?: number | null
 }
 
 export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
@@ -60,6 +62,7 @@ export type RoundShot = {
   clubSource: 'armed' | 'inferred' | 'gspro-putter' | null
   clubConfidence: number | null
   recommendedClub: string | null
+  paperCostStrokes: number | null
   isPutt: boolean
   /** A conceded putt (gimme): counts as a stroke, not as a made putt. */
   conceded: boolean
@@ -359,6 +362,7 @@ const buildHole = (
         : record.clubSource,
       clubConfidence: record.clubConfidence,
       recommendedClub: record.recommendedClub,
+      paperCostStrokes: record.paperCostStrokes ?? null,
       isPutt,
       conceded: record.isGimme,
       holed: record.isHoled,
@@ -612,6 +616,7 @@ export type LiveCourseShotRow = {
   inferred_club: string | null
   inference_confidence: number | null
   recommended_club: string | null
+  paper_cost_strokes?: number | null
 }
 
 export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
@@ -638,6 +643,7 @@ export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
     clubSource: armed ? 'armed' : row.inferred_club ? 'inferred' : null,
     clubConfidence: armed ? 1 : num(row.inference_confidence),
     recommendedClub: row.recommended_club,
+    paperCostStrokes: num(row.paper_cost_strokes),
   }
 }
 
@@ -661,6 +667,7 @@ export type ArchivedShotLike = {
   actualClub?: string | null
   clubSource?: 'user' | null
   recommendedClub?: string | null
+  paperCostStrokes?: number | null
   clubInference?: { predictedClub?: string | null; confidence?: number | null } | null
 }
 
@@ -688,5 +695,6 @@ export const recordFromArchivedShot = (shot: ArchivedShotLike): RoundShotRecord 
     clubSource: armed ? 'armed' : inferred ? 'inferred' : null,
     clubConfidence: armed ? 1 : shot.clubInference?.confidence ?? null,
     recommendedClub: shot.recommendedClub ?? null,
+    paperCostStrokes: shot.paperCostStrokes ?? null,
   }
 }

@@ -25,6 +25,11 @@ type ConditionsMathPanelProps = {
   /** Read GSPro's wind again now (gusty days swirl). */
   onRefreshWind?: () => void
   windRefreshing?: boolean
+  /**
+   * The engine's numbers for the pick and the alternatives, serialized, so the
+   * Arm bridge (liveClubAttribution) can record them with the decision.
+   */
+  decisionOptions?: string | null
 }
 
 type LandingElevationAwareEvaluation = ClubAimEvaluation & {
@@ -132,6 +137,7 @@ export default function ConditionsMathPanel({
   strategyEffectiveDistanceYds = null,
   strategyEffectiveLateralYds = null,
   strategyAdjustmentScale = 1,
+  decisionOptions = null,
 }: ConditionsMathPanelProps) {
   const rawCarryDelta = evaluation
     ? evaluation.modeledCarryYds - evaluation.stockCarryYds
@@ -207,6 +213,7 @@ export default function ConditionsMathPanel({
         data-stock-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
         data-planned-carry-yds={!strategyMode && evaluation ? String(evaluation.stockCarryYds) : undefined}
         data-modeled-carry-yds={!strategyMode && evaluation ? String(evaluation.modeledCarryYds) : undefined}
+        data-decision-options={!strategyMode && decisionOptions ? decisionOptions : undefined}
       >
         <div className="live-expected-shot-heading">
           <span>{strategyMode ? 'SHOT REQUIREMENT' : 'EXPECTED SHOT'}</span>

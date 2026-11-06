@@ -4,6 +4,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import { paperCostStrokes } from './decisionOptions'
 import {
   loadArmedLiveClub,
   LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT,
@@ -318,6 +319,7 @@ const decisionFingerprint = (payload: Record<string, unknown>) => JSON.stringify
   stateId: payload.stateId,
   recommendedClub: payload.recommendedClub,
   recommendedStockCarryYds: payload.recommendedStockCarryYds,
+  recommendedExpectedStrokes: payload.recommendedExpectedStrokes ?? null,
   modeledSurface: payload.modeledSurface,
 })
 
@@ -336,10 +338,19 @@ const handleArmedClubChanged = () => {
     const modeledSurface = readUiSurface()
     if (modeledSurface === 'green') return
     const recommendedStockCarryYds = profileStockCarry(armed.recommendedClub)
+    // Caddie vs you: the engine's expected strokes for its pick and the
+    // alternatives, so a club change can be priced later, not just named.
+    const options = armed.intent?.options ?? null
+    const recommendedOption = options?.find((option) => option.club === armed.recommendedClub) ?? null
     const decisionPayload: Record<string, unknown> = {
       stateId: currentState.id,
       recommendedClub: armed.recommendedClub,
       recommendedStockCarryYds,
+      recommendedExpectedStrokes: recommendedOption?.expectedStrokes ?? null,
+      recommendedCatastrophe: recommendedOption?.catastrophe ?? null,
+      recommendedConfidence: recommendedOption?.confidence ?? null,
+      decisionStrength: recommendedOption?.strength ?? null,
+      options,
       modeledSurface,
       capturedAtArm: true,
     }
@@ -394,6 +405,8 @@ const handleArmedClubChanged = () => {
     const carryAdjustmentFromStockYds = finite(stockCarryYds) && finite(plannedCarryYds)
       ? plannedCarryYds - stockCarryYds
       : null
+    const armedOption = options?.find((option) => option.club === armed.club) ?? null
+    const paperCost = paperCostStrokes(options, armed.club, armed.recommendedClub)
     appendRecord(store, {
       lineageRoundId,
       recordType: 'shot_spec',
@@ -418,6 +431,11 @@ const handleArmedClubChanged = () => {
         requestedCarryYds: plannedCarryYds,
         modeledCarryYds,
         carryAdjustmentFromStockYds,
+        armedExpectedStrokes: armedOption?.expectedStrokes ?? null,
+        armedCatastrophe: armedOption?.catastrophe ?? null,
+        recommendedExpectedStrokes: recommendedOption?.expectedStrokes ?? null,
+        /** Positive: the engine expected its own pick to do better by this much. */
+        paperCostStrokes: paperCost,
         yardageAdjustmentYds: carryAdjustmentFromStockYds,
         shotMode: variant,
         aimOffsetYds,

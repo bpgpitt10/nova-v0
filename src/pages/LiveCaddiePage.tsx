@@ -105,6 +105,7 @@ import {
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
+import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
@@ -1310,6 +1311,12 @@ export default function LiveCaddiePage() {
     : null
   const isShotStrategy = Boolean(shotStrategy)
   const recommendation = isShotStrategy ? null : evaluations[0] ?? null
+  // Caddie vs you: what the engine saw for its pick and the alternatives, kept
+  // with the Arm so Rounds can price a club change in strokes, not just name it.
+  const decisionOptionsJson = useMemo(
+    () => (isShotStrategy ? null : serializeDecisionOptions(evaluations, previewClub)),
+    [evaluations, previewClub, isShotStrategy],
+  )
   // A user-selected club is metadata in Partial Shot Strategy, never a
   // modeled partial-flight recommendation; tee-only clubs remain prohibited.
   const eligibleArmedClub = armedClub && clubEligibleForShot(armedClub, shotOrigin)
@@ -2095,6 +2102,7 @@ export default function LiveCaddiePage() {
                     unmappedInPlay={gsproOnlyCourse}
                     onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
                     windRefreshing={windRefreshing}
+                    decisionOptions={decisionOptionsJson}
                   />
 
                   <button
