@@ -138,6 +138,8 @@ jobs:
         run: node tools/test-safe-pick.mjs
       - name: Companion release check
         run: node tools/test-companion-release.mjs
+      - name: Companion presence memory
+        run: node tools/test-companion-presence.mjs
 
       - name: Conceding hole 1 releases the Start Round hold
         run: node tools/test-concede-hole-release.mjs
