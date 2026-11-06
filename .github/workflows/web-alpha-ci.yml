@@ -79,6 +79,9 @@ jobs:
       - name: GSPro-only courses (holes from the course file, no map)
         run: node tools/test-gspro-only-course.mjs
 
+      - name: Map-area courses (GSPro's holes on an unnumbered map area)
+        run: node tools/test-area-course.mjs
+
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 

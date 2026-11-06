@@ -11,7 +11,7 @@ import {
   regrantGsproCoursesFolder,
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
-import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
+import { courseUsesGsproHoles } from '../courseGeometry/courseCatalog'
 import './NativePositionsBetaPanel.css'
 
 type Props = {
@@ -88,7 +88,7 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   }, [courseId])
 
   // A GSPro-only course has no other positioning: always on.
-  const gsproOnly = isGsproOnlyCourseId(courseId)
+  const gsproOnly = courseUsesGsproHoles(courseId)
   const on = enabled || gsproOnly
   useEffect(() => {
     if (!on) return

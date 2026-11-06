@@ -168,9 +168,43 @@ def publish_to_storage(request: dict, slug: str, key: str) -> None:
         resp.read()
 
 
+def publish_area_to_storage(request: dict, slug: str, key: str) -> None:
+    """Upload the course-area package and write its loaded_course_areas row."""
+    path = ROOT / 'public' / 'course-geometry' / slug / 'course-area-v1.json'
+    if not path.exists():
+        raise RuntimeError('course-area-v1.json was not built')
+    pkg = json.loads(path.read_text())
+    storage_upload(f'{slug}/course-area-v1.json', path.read_bytes(), key)
+    aliases = [str(a).strip() for a in pkg.get('gsproAliases') or [] if str(a).strip()]
+    if request.get('gspro_course_key'):
+        aliases.append(request['gspro_course_key'])
+    row = {
+        'slug': slug,
+        'course_id': pkg['courseId'],
+        'name': pkg.get('courseName') or request['course_name'],
+        'location': pkg.get('location') or request.get('location') or '',
+        'gspro_aliases': list(dict.fromkeys(aliases)),
+        'package_url': public_url(f'{slug}/course-area-v1.json'),
+        'lidar': bool(pkg.get('enrichment')),
+        'greens': len((pkg.get('area') or {}).get('greens') or []),
+        'osm_type': request.get('osm_type'),
+        'osm_id': request.get('osm_id'),
+        'request_id': request.get('id'),
+        'published_at': now(),
+    }
+    req = urllib.request.Request(
+        f'{SUPABASE_URL}/rest/v1/loaded_course_areas?on_conflict=slug', method='POST', data=json.dumps(row).encode(),
+        headers={'apikey': key, 'Content-Type': 'application/json',
+                 'Prefer': 'resolution=merge-duplicates,return=minimal'})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        resp.read()
+
+
 def loaded_row_exists(slug: str, key: str) -> bool:
     try:
-        return bool(rest('GET', f'loaded_courses?slug=eq.{urllib.parse.quote(slug)}&select=slug', key=key))
+        q = urllib.parse.quote(slug)
+        return bool(rest('GET', f'loaded_courses?slug=eq.{q}&select=slug', key=key)) \
+            or bool(rest('GET', f'loaded_course_areas?slug=eq.{q}&select=slug', key=key))
     except Exception:
         return False
 
@@ -232,7 +266,7 @@ def work(request: dict, key: str) -> None:
     }
     report = load_course.load_one(
         job, on_stage=lambda name, index, count: patch(stage=name, stage_index=index, stage_count=count))
-    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'lidar', 'publishedBytes')}
+    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'lidar', 'publishedBytes', 'mode')}
     if not report['ready']:
         failed = next((s for s in report['stages'] if not s['ok']), {})
         tail = readable_reason(failed.get('error') or [])
@@ -240,6 +274,12 @@ def work(request: dict, key: str) -> None:
               error=f"{failed.get('stage', 'load')} failed: {tail or 'see run log'}")
         return
     patch(status='publishing', stage='publish', report=summary)
+    if report.get('mode') == 'area':
+        # A whole-area package: storage only (the site's code has no place for it).
+        publish_area_to_storage(request, slug, key)
+        patch(status='ready', stage=None, finished_at=now())
+        print(f'published {slug} (course area) to storage', flush=True)
+        return
     if PUBLISH_MODE != 'git':
         try:
             publish_to_storage(request, slug, key)

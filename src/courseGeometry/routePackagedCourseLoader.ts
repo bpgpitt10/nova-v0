@@ -163,7 +163,7 @@ const centroid = (polygon: CoursePolygonYds): CoursePointYds => {
   return polygon.length > 0 ? [x / polygon.length, y / polygon.length] : [0, 0]
 }
 
-const parseSurfaces = (
+export const parseSurfaces = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -186,7 +186,7 @@ const parseSurfaces = (
   })
 }
 
-const parseContextLayers = (
+export const parseContextLayers = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,
@@ -212,7 +212,7 @@ const parseContextLayers = (
   })
 }
 
-const parseMapFeatures = (
+export const parseMapFeatures = (
   courseId: CourseId,
   holeNumber: number,
   value: unknown,

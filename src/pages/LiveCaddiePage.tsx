@@ -27,6 +27,7 @@ import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation, requestGsproWindRefresh } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
+  courseUsesGsproHoles,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
   GREYWOLF_COURSE_ID,
@@ -35,7 +36,6 @@ import {
 } from '../courseGeometry/courseCatalog'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { gkdHazardSurfaces, layoutWithHazards, withGkdHazards, type GkdHazardSummary } from '../courseGeometry/nativeHazards'
-import { isGsproOnlyCourseId } from '../courseGeometry/gsproOnlyCourse'
 import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenAnchorSummary } from '../courseGeometry/nativeGreenAnchor'
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
@@ -337,7 +337,9 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
-  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only'
+  // Holes from GSPro's course file (GSPro-only or a map area): ground the map
+  // doesn't cover is unmapped, not trouble.
+  const gsproOnlyCourse = selectedCourse?.source === 'gspro-only' || selectedCourse?.packageKind === 'area'
 
   // The Live Caddie page stays mounted while navigating. Start Round emits
   // several bootstrap events for the same Looper round, so reset ONLY when
@@ -547,7 +549,7 @@ export default function LiveCaddiePage() {
   // effect also re-runs once it's known.
   const gkdCourseKey = liveSnapshot?.courseKey ?? null
   useEffect(() => {
-    if (!rawHole || !(isNativePositionsEnabled() || isGsproOnlyCourseId(courseId))) {
+    if (!rawHole || !(isNativePositionsEnabled() || courseUsesGsproHoles(courseId))) {
       setGkdOverlay(null)
       return
     }
@@ -590,8 +592,10 @@ export default function LiveCaddiePage() {
   useEffect(() => {
     let active = true
     setGreenDetail(null)
-    // GSPro-only courses have no packaged green slopes.
-    if (!selectedCourse || selectedCourse.source === 'gspro-only') return () => { active = false }
+    // GSPro-only and map-area courses have no packaged green slopes.
+    if (!selectedCourse || selectedCourse.source === 'gspro-only' || selectedCourse.packageKind === 'area') {
+      return () => { active = false }
+    }
     void loadCourseGreenDetail(selectedCourse.slug, holeNumber)
       .then(detail => { if (active) setGreenDetail(detail) })
       .catch(error => {
