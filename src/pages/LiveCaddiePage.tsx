@@ -87,7 +87,7 @@ import {
   buildAimContextSentence,
   buildAimDescriptor,
 } from '../liveCaddie/aimDescriptor'
-import { describeSafeAlternative, pickSafeAlternative } from '../liveCaddie/safeAlternative'
+import { describeMathPick, describeSafeAlternative, pickSafeAlternative } from '../liveCaddie/safeAlternative'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import {
   loadCourseHoleHeadingDegreesTrue,
@@ -1505,6 +1505,13 @@ export default function LiveCaddiePage() {
         aimOffsetYds: safePick.candidate.aimOffsetYds, pin: pinEstimate,
       }).text
     : null
+  const mathEvaluation = safePick ? evaluations.find((evaluation) => evaluation.club === safePick.math.club) ?? null : null
+  const mathAimText = safePick && hole && mathEvaluation
+    ? buildAimDescriptor({
+        hole, ball, target: mathEvaluation.planningTarget, aimPoint: safePick.math.candidate.aimPoint,
+        aimOffsetYds: safePick.math.candidate.aimOffsetYds, pin: pinEstimate,
+      }).text
+    : null
   // A short-game tactical point must NEVER be formatted as a native full-shot
   // aim command. Native aim remains read-only and has no shot-strategy intent.
   const nativeAimIntent = prepareReadOnlyNativeAimIntent({
@@ -2123,16 +2130,19 @@ export default function LiveCaddiePage() {
                     <p className="live-arm-note">{aimResult.message}</p>
                   ) : null}
                   {safePick && !armedHere ? (
+                    // One line, two states. Before the tap it offers the safe play; after
+                    // the tap the card shows the safe play, so the line offers the way back.
                     <button
                       type="button"
                       className={`live-safe-pick${safePickChosen ? ' is-chosen' : ''}`}
                       aria-pressed={safePickChosen}
-                      title={safePick.differsBy === 'club'
-                        ? `${safePick.club} instead of ${safePick.math.club}. Tap to switch the card to it, then arm as usual.`
-                        : `Same club, a different line. Tap to switch the card to it, then arm as usual.`}
+                      title={safePickChosen
+                        ? 'Back to Looper\u2019s pick (lowest expected strokes).'
+                        : safePick.differsBy === 'club'
+                          ? `${safePick.club} instead of ${safePick.math.club}. Tap to switch the card to it, then arm as usual.`
+                          : 'Same club, a different line. Tap to switch the card to it, then arm as usual.'}
                       onClick={() => {
                         if (safePickChosen) {
-                          // Back to the math pick.
                           setPreviewClub(null)
                           setInspectedAimOffset(null)
                           return
@@ -2141,11 +2151,23 @@ export default function LiveCaddiePage() {
                         setInspectedAimOffset(safePick.candidate.aimOffsetYds)
                       }}
                     >
-                      <span className="live-safe-pick-label">{safePickChosen ? 'Safe play (showing)' : 'Safe play'}</span>
-                      <span className="live-safe-pick-what">
-                        <strong>{safePick.club}</strong>{safeAimText ? ` · ${safeAimText.replace(/^Aim\s+/i, 'aim ')}` : ''}
-                      </span>
-                      <span className="live-safe-pick-why">{describeSafeAlternative(safePick)}</span>
+                      {safePickChosen ? (
+                        <>
+                          <span className="live-safe-pick-label">Showing the safe play</span>
+                          <span className="live-safe-pick-what">
+                            Back to <strong>{safePick.math.club}</strong>{mathAimText ? ` · ${mathAimText.replace(/^Aim\s+/i, 'aim ')}` : ''}
+                          </span>
+                          <span className="live-safe-pick-why">Looper’s pick: lowest expected strokes · {describeMathPick(safePick)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="live-safe-pick-label">Safe play</span>
+                          <span className="live-safe-pick-what">
+                            <strong>{safePick.club}</strong>{safeAimText ? ` · ${safeAimText.replace(/^Aim\s+/i, 'aim ')}` : ''}
+                          </span>
+                          <span className="live-safe-pick-why">{describeSafeAlternative(safePick)}</span>
+                        </>
+                      )}
                     </button>
                   ) : null}
                 </article>
