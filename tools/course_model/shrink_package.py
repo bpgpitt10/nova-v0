@@ -31,9 +31,12 @@ def shrink(pkg: dict) -> tuple[dict, dict]:
                 before += sum(len(p) for p in polys)
                 kept = []
                 for ring in polys:
+                    if len(ring) <= 64:
+                        kept.append(ring)  # small rings stay exactly as built (a tee can be under 20 sq yd)
+                        continue
                     if not in_box(ring, box):
                         continue
-                    c = clip_to_box(ring, box) if len(ring) > 64 else ring
+                    c = clip_to_box(ring, box)
                     if ring_ok(c):
                         kept.append(c)
                 after += sum(len(p) for p in kept)

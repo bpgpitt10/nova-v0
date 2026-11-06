@@ -9,7 +9,7 @@
   ],
   "location": "Las Vegas, Nevada",
   "packagePath": "public/course-geometry/wynn/course-v1.json",
-  "packageSha256": "a3101c3038dbab7e1fcc38779697078136f19566f3072a5be1cff9c01a88d7f6",
+  "packageSha256": "6d099a6cb372cd86968678d48c44398d55334abbc294143fc1d0fe83aaad6a68",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/wynn/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/wynn/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }

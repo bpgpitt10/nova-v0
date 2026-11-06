@@ -9,7 +9,7 @@
   ],
   "location": "Dublin, OH",
   "packagePath": "public/course-geometry/muirfield-village/course-v1.json",
-  "packageSha256": "3dc65cbbe5e2c8cc6b993c9d74032180fe22d0d3f8055241417b073faa5c62b3",
+  "packageSha256": "d7296dd826d5ffc52d60118d7fad25bd4e886b41a0545e9e56313a6f12edb9be",
   "reason": "one-click-course-load",
   "runtimeReady": true,
   "schemaVersion": "looper-course-runtime-ready-v1",
@@ -17,5 +17,7 @@
   "staticReady": true,
   "terrainProvider": "usgs-3dep",
   "terrainReady": true,
-  "validationPath": "artifacts/course-geometry/muirfield-village/validation-v1.json"
+  "validationPath": "artifacts/course-geometry/muirfield-village/validation-v1.json",
+  "repackagedAt": "2026-11-06T03:00:00Z",
+  "repackagedReason": "hazards clipped to the hole (validate_package gate, PR #128)"
 }
