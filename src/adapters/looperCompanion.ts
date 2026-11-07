@@ -398,6 +398,9 @@ export type LooperCompanionLiveObservations = {
       status: 'READY' | 'UNKNOWN' | 'UNAVAILABLE'
       shotNumber: number | null
       distanceToPinYds: number | null
+      /** Pin height against the ball from the ▲/▼ beside the distance: + uphill, − downhill (companion 1.0.1+). */
+      elevationFt?: number | null
+      elevationArrow?: 'up' | 'down' | null
       rawText?: string | null
       note?: string | null
     }

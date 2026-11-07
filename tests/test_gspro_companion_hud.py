@@ -30,6 +30,25 @@ class HudTests(unittest.TestCase):
         self.assertIsNone(hud.parse_hud_line("Shot YDS"))
         self.assertIsNone(hud.parse_hud_line("Shot 1 9999 YDS"))
 
+    def test_parse_elevation(self):
+        self.assertEqual(hud.parse_hud_elevation("Shot 1 492.6 YDS Y4FT11"), round(4 + 11 / 12, 2))
+        self.assertEqual(hud.parse_hud_elevation("Shot3 283.0 YDS.  2FT9"), 2.75)
+        self.assertEqual(hud.parse_hud_elevation("Shot 2 150.0 YDS V12FT"), 12.0)
+        self.assertEqual(hud.parse_hud_elevation("Shot 2 150.0 YDS 0FT 0"), 0.0)
+        self.assertIsNone(hud.parse_hud_elevation("Shot 1 492.6 YDS"))
+        self.assertIsNone(hud.parse_hud_elevation("Shot 1 492.6 YDS 4FT 15"))
+
+    def test_arrow_direction_from_shape(self):
+        for name in ("gspro_hud_shot1_4926.png", "gspro_hud_shot3_2830.png"):
+            band = cv2.imread(str(FIXTURES / name))
+            self.assertEqual(hud.arrow_direction(band), "down", name)
+            # Flip it upside down: the same arrow pointing up, whatever its colour.
+            self.assertEqual(hud.arrow_direction(band[::-1].copy()), "up", name)
+            red = band.copy()
+            red[..., [1, 2]] = red[..., [2, 1]]
+            self.assertEqual(hud.arrow_direction(red[::-1].copy()), "up", name + " red")
+        self.assertIsNone(hud.arrow_direction(np.full((40, 200, 3), 30, np.uint8)))
+
     def test_two_reads_must_agree(self):
         reads = iter(["Shot 1 492.6 YDS", "Shot 1 432.6 YDS", "Shot 1 492.6 YDS"])
         with mock.patch.object(hud.wind, "_ocr_png_with_tesseract",
@@ -50,8 +69,9 @@ class HudTests(unittest.TestCase):
         langs = subprocess.run([str(bundle[0]), "--list-langs"], capture_output=True, text=True)
         if "eng" not in (langs.stdout + langs.stderr):
             self.skipTest("tesseract has no English data here")
-        for name, size, expected in (("gspro_hud_shot1_4926.png", (2000, 1142), (1, 492.6)),
-                                     ("gspro_hud_shot3_2830.png", (3776, 2138), (3, 283.0))):
+        for name, size, expected, elevation in (
+                ("gspro_hud_shot1_4926.png", (2000, 1142), (1, 492.6), -round(4 + 11 / 12, 2)),
+                ("gspro_hud_shot3_2830.png", (3776, 2138), (3, 283.0), -2.75)):
             band = cv2.imread(str(FIXTURES / name))
             # Same window size the band came from (fixture is the top-left 20% x 10%).
             width = round(band.shape[1] / 0.20)
@@ -59,6 +79,7 @@ class HudTests(unittest.TestCase):
             result = hud.read_hud_from_capture(report_from_band(name, width, height))
             self.assertEqual((result["status"], result["shotNumber"], result["distanceToPinYds"]),
                              ("READY", *expected), (name, result.get("rawText")))
+            self.assertEqual(result["elevationFt"], elevation, (name, result.get("rawText")))
 
 
 if __name__ == "__main__":
