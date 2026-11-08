@@ -12,7 +12,8 @@ import {
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
 import { courseUsesGsproHoles } from '../courseGeometry/courseCatalog'
-import { courseStatusView } from '../lib/supportCodes'
+import { courseStatusView, type CourseLoadability } from '../lib/supportCodes'
+import { crosswalkDecision, crosswalkForGsproKey } from '../courseLoading/courseCrosswalk'
 import './NativePositionsBetaPanel.css'
 
 type Props = {
@@ -66,7 +67,20 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
     }
   }
 
-  const view = courseStatusView(on ? status : { state: 'off' })
+  // A course Looper hasn't loaded: can it be? Only fictional / unmapped
+  // courses get the basic-course fallback; everything else is told to load.
+  const gsproKey = status.state === 'ready' && status.gsproOnly ? status.courseKey : null
+  const [loadability, setLoadability] = useState<CourseLoadability>('loadable')
+  useEffect(() => {
+    setLoadability('loadable')
+    if (!gsproKey) return
+    let alive = true
+    void crosswalkForGsproKey(gsproKey)
+      .then((row) => { if (alive) setLoadability(crosswalkDecision(row).kind === 'not-on-map' ? 'not-loadable' : 'loadable') })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [gsproKey])
+  const view = courseStatusView(on ? status : { state: 'off' }, loadability)
   const needsFolder = canPickFolder && on && (status.state === 'no-folder' || status.state === 'gkd-not-found')
   const needsPermission = canPickFolder && on && status.state === 'needs-permission'
 
@@ -76,7 +90,9 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
       <span className={`native-positions-dot native-positions-${view.tone}`} aria-hidden="true" />
       <span className={`native-positions-status native-positions-${view.tone}`}>{view.text}</span>
       {view.action === 'load-full-course' ? (
-        <a className="native-positions-link" href="/courses">Load the full course</a>
+        <a className="native-positions-link" href={gsproKey ? `/courses?gspro=${encodeURIComponent(gsproKey)}` : '/courses'}>
+          Load this course
+        </a>
       ) : null}
       <span className="native-positions-code" title="Support code">{view.code}</span>
       {needsFolder ? (

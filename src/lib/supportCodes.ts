@@ -11,7 +11,8 @@ import type { NativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
  *   C2m  full course map, positions estimated: GSPro's greens/pins differ (layout mismatch)
  *   C2f  full course map, positions estimated: the GSPro-to-map fit failed
  *   C2e  full course map, positions estimated: course match errored
- *   C3   basic course: GSPro's course file only (greens, pins, water, OB; no map loaded)
+ *   C3L  basic course that CAN be loaded: prompt to load it (course file only until then)
+ *   C3   basic course that can't be loaded (fictional / not mapped): the fallback
  *   C4   no course map at all: screen-only caddie
  *   C5   working: matching / checking
  *   C6   companion needed (no registration and no course files)
@@ -39,16 +40,33 @@ export type CourseStatusView = Readonly<{
   action?: 'load-full-course' | 'choose-folder' | 'allow-folder'
 }>
 
-export const courseStatusView = (status: NativeCourseStatus): CourseStatusView => {
+/**
+ * Whether a course Looper hasn't loaded can be: 'not-loadable' only when it's
+ * known to be fictional or not mapped. Unknown counts as loadable, so a new
+ * player is always pointed at loading first (Brian, 11/8: the basic course is
+ * a fallback, not a way to play).
+ */
+export type CourseLoadability = 'loadable' | 'not-loadable'
+
+export const courseStatusView = (
+  status: NativeCourseStatus,
+  loadability: CourseLoadability = 'loadable',
+): CourseStatusView => {
   switch (status.state) {
     case 'ready':
       if (status.gsproOnly) {
-        return {
-          code: 'C3',
-          tone: 'basic',
-          text: 'Basic course: greens, pins, water and OB only. No fairways, bunkers or trees yet, so tee shots and lay-ups are less precise.',
-          action: 'load-full-course',
-        }
+        return loadability === 'not-loadable'
+          ? {
+              code: 'C3',
+              tone: 'basic',
+              text: "Basic course: this one can't be loaded (fictional or not mapped yet), so Looper plays it with greens, pins, water and OB only. No fairways, bunkers or trees.",
+            }
+          : {
+              code: 'C3L',
+              tone: 'action',
+              text: 'This course isn\'t loaded yet. Load it for fairways, bunkers and trees; until then Looper only knows its greens, pins, water and OB.',
+              action: 'load-full-course',
+            }
       }
       return { code: `C1${status.grade || ''}`, tone: 'full', text: 'Full course: fairways, bunkers, trees, water and greens.' }
     case 'other-course':

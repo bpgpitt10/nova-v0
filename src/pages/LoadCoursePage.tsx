@@ -172,6 +172,15 @@ const statusText = (row: CourseLoadRow) => {
  * thelooper.golf for everyone. Typical wait ~10 minutes.
  */
 export default function LoadCoursePage() {
+  // ?gspro=<course key>: opened from "Load this course" on Start a Round /
+  // Live Caddie. Scroll to that GSPro course and mark it.
+  const [focusKey] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('gspro')?.trim() || null
+    } catch {
+      return null
+    }
+  })
   const [loads, setLoads] = useState<CourseLoadRow[]>([])
   const [loadsError, setLoadsError] = useState<string | null>(null)
   const [library, setLibrary] = useState<LooperCompanionInstalledCourse[] | null>(null)
@@ -462,8 +471,18 @@ export default function LoadCoursePage() {
     { key: 'off-map', title: 'Not on the map' },
   ] as const
 
+  const focusPresent = Boolean(focusKey && installed.some((row) => row.course.courseKey === focusKey))
+  useEffect(() => {
+    if (!focusPresent || !focusKey) return
+    document.getElementById(`gspro-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusPresent, focusKey])
+
   const installedRow = ({ course, slug, link, decision, group }: (typeof installed)[number]) => (
-    <li key={course.courseKey}>
+    <li
+      className={focusKey && course.courseKey === focusKey ? 'load-course-focus' : undefined}
+      id={`gspro-${course.courseKey}`}
+      key={course.courseKey}
+    >
       <div>
         <strong>{course.courseName || course.courseKey}</strong>
         <span>{course.location}</span>

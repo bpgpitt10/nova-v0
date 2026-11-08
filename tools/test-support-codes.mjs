@@ -30,17 +30,25 @@ try {
     { state: 'needs-permission' },
     { state: 'off' },
   ]
-  const expected = ['C1B', 'C3', 'C1A', 'C7', 'C2m', 'C2f', 'C2e', 'C5', 'C5', 'C6', 'C6', 'C8', 'C9', 'C0']
+  const expected = ['C1B', 'C3L', 'C1A', 'C7', 'C2m', 'C2f', 'C2e', 'C5', 'C5', 'C6', 'C6', 'C8', 'C9', 'C0']
   states.forEach((status, i) => {
     const view = courseStatusView(status)
     assert.equal(view.code, expected[i], status.state)
     assert.ok(!FORBIDDEN.test(view.text), `${status.state}: "${view.text}"`)
     assert.ok(view.text.length > 5)
   })
-  // Honest tiers: basic is not "ready" and says what's missing; full says what's there.
-  assert.match(courseStatusView(states[1]).text, /^Basic course/)
-  assert.match(courseStatusView(states[1]).text, /No fairways, bunkers or trees/)
-  assert.equal(courseStatusView(states[1]).action, 'load-full-course')
+  // A course that can be loaded is told to load (Brian, 11/8): the basic course is the
+  // fallback only for courses that can't be (fictional / not mapped).
+  const loadable = courseStatusView(states[1])
+  assert.equal(loadable.code, 'C3L')
+  assert.equal(loadable.tone, 'action')
+  assert.match(loadable.text, /isn't loaded yet\. Load it/)
+  assert.equal(loadable.action, 'load-full-course')
+  const fallback = courseStatusView(states[1], 'not-loadable')
+  assert.equal(fallback.code, 'C3')
+  assert.match(fallback.text, /^Basic course: this one can't be loaded/)
+  assert.equal(fallback.action, undefined, 'no load button for a course that cannot be loaded')
+  assert.ok(!FORBIDDEN.test(fallback.text))
   assert.match(courseStatusView(states[0]).text, /^Full course/)
   assert.match(courseStatusView(states[4]).text, /estimated/)
   assert.equal(SCREEN_ONLY_STATUS.code, 'C4')
