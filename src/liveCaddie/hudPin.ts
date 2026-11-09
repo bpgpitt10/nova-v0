@@ -76,8 +76,11 @@ export const pinFromHudDistance = async ({
 
 const HUD_PIN_MAX_ERROR_M = 6
 const HUD_PIN_MIN_MARGIN_M = 3
-// GSPro shows feet and inches; the GKD tee marker sits a little off the teed ball.
-const HUD_PIN_MAX_HEIGHT_ERROR_FT = 1.0
+// GSPro shows feet and inches, but the GKD tee marker's height stands in for
+// the teed ball's, and a tee box can slope. A tight window could throw out the
+// real pin and leave a wrong one looking exact, so this is deliberately loose:
+// it separates positions on different tiers, not inches.
+const HUD_PIN_MAX_HEIGHT_ERROR_FT = 2.5
 const METERS_TO_FEET = 3.28084
 
 /** The GKD tee marker nearest the ball's tee spot: its height stands in for the ball's. */

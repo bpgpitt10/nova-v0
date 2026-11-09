@@ -2,9 +2,11 @@ import {
   gkdTeeForTeeSet,
   NATIVE_METERS_TO_YARDS,
   nativeHole,
+  nativePinForDay,
   nativeStraightDistanceM,
   resolveNativePinSlot,
   resolveNativeTee,
+  type GsproPinDay,
   type NativeXYZ,
 } from '../courseGeometry/nativeGkd'
 import type { NativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
@@ -42,6 +44,9 @@ export type NativeSnapshotInputs = Readonly<{
   /** This hole's tee and pin from GSPro's round layout (output_log). Trusted
    * only when its pin is one of this hole's GKD pins. */
   roundLayout?: Readonly<{ tee: NativeXYZ; pin: NativeXYZ }> | null
+  /** The pin day the player picked in GSPro's round setup: names the pin on
+   * every hole before any shot. GSPro's own shot evidence still wins. */
+  pinDay?: GsproPinDay | null
 }>
 
 // GKD pin slots on one green sit metres apart; allow for cup vs flag base.
@@ -70,6 +75,7 @@ export const applyNativeCourseSnapshot = ({
   rememberedPinSlot,
   legacyTeeLocal = null,
   roundLayout = null,
+  pinDay = null,
 }: NativeSnapshotInputs): NativeSnapshotResult => {
   const hole = nativeHole(context.layout, holeNumber)
   if (!hole) return { snapshot: base, pinSlot: rememberedPinSlot }
@@ -95,17 +101,29 @@ export const applyNativeCourseSnapshot = ({
     ? hole.pins.filter((p) => Math.hypot(p.x - roundLayout.pin.x, p.z - roundLayout.pin.z) <= LAYOUT_PIN_MATCH_M)
     : []
   const layoutPin = layoutPins.length === 1 ? layoutPins[0] : null
+  const dayPin = nativePinForDay(hole, pinDay)
+  let pinNote: string | null = null
   if (observed) {
     pinSlot = observed.pin.slot
     pinErrorYds = yards(observed.errorM)
   } else if (layoutPin) {
     pinSlot = layoutPin.slot
     pinErrorYds = yards(Math.hypot(layoutPin.x - roundLayout!.pin.x, layoutPin.z - roundLayout!.pin.z))
+  } else if (dayPin) {
+    // The player's own pin day beats a slot remembered from a distance match.
+    pinSlot = dayPin.slot
+    pinErrorYds = null
+  }
+  if (dayPin && pinSlot != null && pinSlot !== dayPin.slot) {
+    const inPlay = hole.pins.find((p) => p.slot === pinSlot)
+    pinNote = `GSPro's shots put this pin at the ${inPlay?.label ?? `slot ${pinSlot}`} position, not ${pinDay}: `
+      + 'check the pin day picked in GSPro.'
   }
   const pin = pinSlot != null ? hole.pins.find((p) => p.slot === pinSlot) ?? null : null
   const pinLocal = pin ? toLocal(pin) : null
   const withPin: BrowserGsproCourseSnapshot = pinLocal
-    ? { ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: pinErrorYds }
+    ? { ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: pinErrorYds,
+        warnings: pinNote ? [...new Set([...base.warnings, pinNote])] : base.warnings }
     : base
 
   if (!teeContext) {

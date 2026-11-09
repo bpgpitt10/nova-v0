@@ -21,9 +21,9 @@ try {
   const hole = {
     hole: 2, par: 4, aimPoints: [], greenCenter: null,
     tees: { Black: { name: 'Black', x: 0, y: 10, z: 0, distanceM: 0 } },
-    // Three slots ~431 yd from the tee, 21 yd apart across the green, at different heights;
+    // Three slots ~431 yd from the tee, 21 yd apart across the green, on different tiers (1.2+ m);
     // one more 25 yd deeper.
-    pins: [pinAt(1, 431, -10, 9.2), pinAt(2, 431.5, 0, 8.8), pinAt(3, 430.5, 11, 9.9), pinAt(4, 456, 0, 8.8)],
+    pins: [pinAt(1, 431, -10, 10.0), pinAt(2, 431.5, 0, 8.8), pinAt(3, 430.5, 11, 10.3), pinAt(4, 456, 0, 8.8)],
   }
   const tee = { x: 0, z: 0 }
   // Distance alone: three slots fit within 6 m, none 3 m clear of the next.

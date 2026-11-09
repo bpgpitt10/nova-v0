@@ -22,7 +22,7 @@ import {
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
-import { nativeTeeSetOptions } from '../courseGeometry/nativeGkd'
+import { GSPRO_PIN_DAYS, nativeTeeSetOptions, normalizePinDay, type GsproPinDay } from '../courseGeometry/nativeGkd'
 import {
   loadRoundTeeSelection,
   saveRoundTeeSelection,
@@ -50,6 +50,7 @@ const canonicalTeeOption = (candidate: CourseTeeCandidate) =>
   candidate.teeSet?.trim() || null
 
 const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
+const PIN_DAY_KEY = 'looper.round-setup.pin-day'
 const OTHER_TEE = '__looper-unmapped-tee__'
 const ACTIVE_ROUND_RECENT_MS = 12 * 60 * 60 * 1000
 
@@ -72,6 +73,15 @@ export default function RoundSetupPage() {
     return () => window.removeEventListener(COURSES_UPDATED_EVENT, bump)
   }, [])
   const [teeSet, setTeeSet] = useState(savedTee?.teeSet ?? '')
+  // The pin day picked in GSPro's round setup. Remembered across rounds: most
+  // players leave GSPro on one day.
+  const [pinDay, setPinDay] = useState<GsproPinDay | ''>(() => {
+    try {
+      return normalizePinDay(window.localStorage.getItem(PIN_DAY_KEY)) ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
   // Display text per option (GSPro tee names are marked as such).
@@ -205,9 +215,15 @@ export default function RoundSetupPage() {
       // The selected tee label is supplied by the golfer, not silently
       // inferred from whichever OSM tee happens to be nearest. The route
       // marker is a provisional playing assumption, NEVER a verified tee.
+      try {
+        if (pinDay) window.localStorage.setItem(PIN_DAY_KEY, pinDay)
+      } catch {
+        // remembering is a convenience only
+      }
       const round = startLiveCaddieRound({
         courseId,
         teeSet: selection.teeSet,
+        pinDay: pinDay || null,
         assumedTeeLocalYds: provisional?.status === 'provisional'
           ? provisional.point : geometry.markers.tee,
       })
@@ -303,6 +319,20 @@ export default function RoundSetupPage() {
             ) : null}
             <span className="round-setup-hint">
               Use the tee name you picked in GSPro. A tee Looper hasn&apos;t mapped starts as an estimate, and your shots confirm it.
+            </span>
+          </label>
+
+          <label className="round-setup-field">
+            <span className="round-setup-label">Pins</span>
+            <select
+              value={pinDay}
+              onChange={(event) => setPinDay(normalizePinDay(event.target.value) ?? '')}
+            >
+              <option value="">Not sure (Looper works it out from your shots)</option>
+              {GSPRO_PIN_DAYS.map((day) => <option key={day} value={day}>{day}</option>)}
+            </select>
+            <span className="round-setup-hint">
+              The pin day you picked in GSPro. With it, Looper knows every pin before your first shot.
             </span>
           </label>
 

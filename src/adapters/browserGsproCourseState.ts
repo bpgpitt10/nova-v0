@@ -262,6 +262,7 @@ const applyNativeIfReady = async (
       rememberedPinSlot: recallNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber),
       legacyTeeLocal,
       roundLayout: layoutRow ? { tee: layoutRow.teePos, pin: layoutRow.pinPos } : null,
+      pinDay: round?.courseId === selectedCourseId ? round.pinDay ?? null : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
     const placed = registrationForHole(context.registration, snapshot.holeNumber)
