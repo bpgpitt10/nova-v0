@@ -64,8 +64,8 @@ export const pinFromHudDistance = async ({
       + (next ? `, next ${next.errorM.toFixed(1)} m` : '')
     : 'no GKD pins for this hole')
     + (elevationFt != null && teeY != null ? `; height ${elevationFt.toFixed(1)} ft kept ${ranked.length} of ${hole.pins.length}` : '')
-  if (!best || best.errorM > HUD_PIN_MAX_ERROR_M
-    || (next && next.errorM - best.errorM < HUD_PIN_MIN_MARGIN_M)) {
+    + (best && next ? `; next slot ${Math.hypot(next.pin.x - best.pin.x, next.pin.z - best.pin.z).toFixed(1)} m away` : '')
+  if (!best || best.errorM > HUD_PIN_MAX_ERROR_M || !clearOfOtherSpots(ranked)) {
     return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
   }
   const pinLocal = toLocal(best.pin)
@@ -129,3 +129,21 @@ export const rankHudPinSlots = (
   if (byHeight.length > 0 && byHeight.length < byDistance.length) ranked = byHeight
   return { ranked, teeY }
 }
+
+/**
+ * The best slot is the pin unless another slot fits about as well *and sits
+ * somewhere else*. GKDs repeat one pin position across day slots (Valhalla 1,
+ * 11/8: "slot 1 0.0 m off, next 0.4 m", four slots, one spot), and two slots
+ * on the same spot are not a choice at all.
+ */
+export const clearOfOtherSpots = (
+  ranked: readonly Readonly<{ pin: { x: number; z: number }; errorM: number }>[],
+): boolean => {
+  const [best] = ranked
+  if (!best) return false
+  return ranked.slice(1).every((r) => r.errorM - best.errorM >= HUD_PIN_MIN_MARGIN_M
+    || Math.hypot(r.pin.x - best.pin.x, r.pin.z - best.pin.z) <= HUD_PIN_SAME_SPOT_M)
+}
+
+const HUD_PIN_SAME_SPOT_M = 1.5
+
