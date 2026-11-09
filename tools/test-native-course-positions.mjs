@@ -208,6 +208,15 @@ try {
   assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 1, teeSet: 'white', pinDay: 'Thursday', layoutFingerprint: 'other' }), null,
     'another course-file version: not used')
   assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 2, teeSet: 'white', pinDay: 'Thursday', layoutFingerprint: 'fp' }), null)
+  // Cross-check with the file readable: a day-picked pin that disagrees with
+  // what a round confirmed gets a note; GSPro's own record never does.
+  assert.ok(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: false, pinDay: 'Thursday' })
+    .includes('Check the pin day picked in GSPro'))
+  assert.equal(cp.confirmedPinNote({ position: rows[0], pinSlot: 1, pinFromGsproRecord: false, pinDay: 'Thursday' }), null)
+  assert.equal(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: true, pinDay: 'Thursday' }), null)
+  assert.ok(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: false, pinDay: null })
+    .includes('Pick the pin day in Start Round'))
+  assert.equal(cp.confirmedPinNote({ position: null, pinSlot: 2, pinFromGsproRecord: false, pinDay: 'Thursday' }), null)
   // Placed without the course file, through the published registration.
   const placed = snap.applyConfirmedPosition({ base, registration: synthReg, holeNumber: 1, teeContext: true, position: rows[1] })
   assert.equal(placed.ballSource, 'native-gkd')

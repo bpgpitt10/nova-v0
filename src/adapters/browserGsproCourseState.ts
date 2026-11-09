@@ -35,7 +35,7 @@ import {
   parseGsproStartingPosition,
   type GsproStartingPositionObservation,
 } from './gsproStartingPosition'
-import { findConfirmedPosition, loadConfirmedPositions, recordConfirmedPosition } from '../lib/confirmedPositions'
+import { confirmedPinNote, findConfirmedPosition, loadConfirmedPositions, recordConfirmedPosition } from '../lib/confirmedPositions'
 import { applyConfirmedPosition, applyNativeCourseSnapshot } from './nativeCourseSnapshot'
 import { nativeHole } from '../courseGeometry/nativeGkd'
 import {
@@ -300,6 +300,19 @@ const applyNativeIfReady = async (
       pinDay: round?.courseId === selectedCourseId ? round.pinDay ?? null : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
+    // Against what another round confirmed for this hole, tee and day: a pin
+    // that didn't come from GSPro's own record and disagrees gets a note.
+    let crossCheckNote: string | null = null
+    if (pinSlot != null && next.pinDistanceValidationErrorYds == null && round?.courseId === selectedCourseId) {
+      const rows = await loadConfirmedPositions(selectedCourseId).catch(() => [])
+      crossCheckNote = confirmedPinNote({
+        position: findConfirmedPosition(rows, {
+          holeNumber: snapshot.holeNumber, teeSet: round.normalizedTeeSet ?? '', pinDay: round.pinDay ?? null,
+          layoutFingerprint: context.registration.layoutFingerprint,
+        }),
+        pinSlot, pinFromGsproRecord: false, pinDay: round.pinDay ?? null,
+      })
+    }
     // Both confirmed by GSPro's own record: share them for players without the file.
     if (confirmed && round?.courseId === selectedCourseId && context.registration.layoutFingerprint) {
       void recordConfirmedPosition({
@@ -312,7 +325,8 @@ const applyNativeIfReady = async (
     }
     const placed = registrationForHole(context.registration, snapshot.holeNumber)
     const turned = { ...next, gsproSceneRotationDeg: placed.rotationDeg ?? 0,
-      gsproSceneMirrored: placed.mirrored === true }
+      gsproSceneMirrored: placed.mirrored === true,
+      warnings: crossCheckNote ? [...new Set([...next.warnings, crossCheckNote])] : next.warnings }
     if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)

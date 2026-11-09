@@ -137,3 +137,24 @@ export const findConfirmedPosition = (
   if (pinDay) return onHole.find((r) => r.pinDay.toLowerCase() === pinDay.toLowerCase()) ?? null
   return onHole.length === 1 ? onHole[0] : null
 }
+
+/**
+ * Cross-check when the course file *is* readable: the pin Looper chose
+ * against the one a round confirmed for this hole, tee and day. A pin from
+ * GSPro's own record needs no check (and will overwrite the row). A pin from
+ * the day pick or a remembered slot that disagrees means a wrong day picked
+ * in GSPro or in Looper, or a changed course file: say so, change nothing.
+ */
+export const confirmedPinNote = ({ position, pinSlot, pinFromGsproRecord, pinDay }: Readonly<{
+  position: ConfirmedPosition | null
+  pinSlot: number | null
+  pinFromGsproRecord: boolean
+  pinDay: string | null
+}>): string | null => {
+  if (!position || pinSlot == null || pinFromGsproRecord || position.pinSlot === pinSlot) return null
+  const confirmedAs = position.pinLabel ?? `slot ${position.pinSlot}`
+  return pinDay
+    ? `A round that picked ${position.pinDay || 'this day'} confirmed the ${confirmedAs} pin on this hole; Looper has a different pin for ${pinDay}. Check the pin day picked in GSPro.`
+    : `A round confirmed the ${confirmedAs} pin on this hole; Looper's pin differs. Pick the pin day in Start Round to settle it.`
+}
+
