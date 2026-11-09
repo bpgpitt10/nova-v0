@@ -465,9 +465,168 @@ def _save_wind_diagnostic(report: dict) -> str | None:
         return None
 
 
+# GSPro 4.0 (Nov 2026) wind box: "[GS PRO badge] [white tile + blue arrow] 8 MPH".
+# No compass letters any more: the direction is only the arrow's angle.
+# Brian's 4K Valhalla screenshot (8 Nov): tile 0.486-0.510 of the width,
+# box rows 0-0.04 of the height, arrow pointing right and slightly up.
+V4_BAND = (0.0, 0.045)
+V4_SEARCH = (0.40, 0.62)
+V4_TILE_WIDTH = (0.012, 0.04)
+V4_MIN_ARROW_AREA = 0.25  # of the tile's height squared x 0.25 (a 4K arrow is ~900 px)
+# What the arrow's angle means (screen angle, clockwise from straight up).
+# Set from Brian's sim check: whether the arrow turns with the aim line.
+V4_ARROW_FRAME = "shot-relative"
+V4_ARROW_CONVENTION = "toward"
+
+
+def _frame_bgr(report: dict) -> np.ndarray | None:
+    if report.get("status") != "captured" or not report.get("quality", {}).get("nonblank", False):
+        return None
+    try:
+        width, height = int(report["windowWidth"]), int(report["windowHeight"])
+        raw = report.get("_private_bgra")
+        if width < 640 or height < 360 or not isinstance(raw, bytes) or len(raw) != width * height * 4:
+            return None
+        return np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)[:, :, :3]
+    except (ValueError, TypeError, KeyError):
+        return None
+
+
+def find_v4_wind_box(frame: np.ndarray) -> dict | None:
+    """The GSPro 4.0 wind box: white arrow tile and the speed text to its right, or None."""
+    height, width = frame.shape[:2]
+    band = frame[:max(2, int(height * V4_BAND[1]))].astype(np.float32)
+    lum = 0.0722 * band[:, :, 0] + 0.7152 * band[:, :, 1] + 0.2126 * band[:, :, 2]
+    white = (lum > 225).mean(axis=0)
+    dark = (lum < 70).mean(axis=0)
+    lo, hi = int(width * V4_SEARCH[0]), int(width * V4_SEARCH[1])
+    best = None
+    x = lo
+    while x < hi:
+        if dark[x] < 0.2:
+            # A light run (the arrow breaks up the white, so "not dark" is the test).
+            start = x
+            while x < hi and dark[x] < 0.2:
+                x += 1
+            run = x - start
+            # A tile is mostly white and has the dark box on both sides of it.
+            if (V4_TILE_WIDTH[0] * width <= run <= V4_TILE_WIDTH[1] * width
+                    and start > 2 and x < width - 2 and dark[start - 2] >= 0.4 and dark[x + 1] >= 0.4
+                    and white[start:x].mean() >= 0.5):
+                best = (start, x)
+                break
+        x += 1
+    if best is None:
+        return None
+    left, right = best
+    rows = (lum[:, left:right] < 70).mean(axis=1)
+    tile_rows = np.nonzero(rows < 0.2)[0]
+    if len(tile_rows) < 8:
+        return None
+    top, bottom = int(tile_rows[0]), int(tile_rows[-1]) + 1
+    end = right + 1
+    while end < width - 1 and dark[end] >= 0.25:
+        end += 1
+    return {"tile": (left, top, right, bottom), "speed": (right + 2, top, end, bottom)}
+
+
+def v4_arrow_degrees(frame: np.ndarray, tile: tuple[int, int, int, int]) -> float | None:
+    """Screen angle the blue arrow points to, clockwise from straight up.
+
+    The arrow is a navigation arrow: a triangle with a notch in its tail. The
+    tip is the hull point farthest from the notch, and the direction runs from
+    the notch to the tip (the centroid sits off-axis toward the tail)."""
+    left, top, right, bottom = tile
+    roi = frame[top:bottom, left:right].astype(np.int32)
+    b, r = roi[:, :, 0], roi[:, :, 2]
+    mask = ((b > 150) & (r < 130) & (b - r > 70)).astype(np.uint8) * 255
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours:
+        return None
+    contour = max(contours, key=cv2.contourArea)
+    side = bottom - top
+    if cv2.contourArea(contour) < V4_MIN_ARROW_AREA * 0.25 * side * side or len(contour) < 5:
+        return None
+    hull = cv2.convexHull(contour, returnPoints=False)
+    defects = cv2.convexityDefects(contour, hull)
+    points = contour[hull.reshape(-1)][:, 0, :].astype(np.float64)
+    if defects is not None and len(defects):
+        defects = defects.reshape(-1, 4)
+        notch = contour[defects[defects[:, 3].argmax(), 2]][0].astype(np.float64)
+    else:
+        moments = cv2.moments(contour)
+        notch = np.array([moments["m10"] / moments["m00"], moments["m01"] / moments["m00"]])
+    tip = points[((points - notch) ** 2).sum(axis=1).argmax()]
+    dx, dy = tip[0] - notch[0], tip[1] - notch[1]
+    if dx * dx + dy * dy < 4:
+        return None
+    return float(np.degrees(np.arctan2(dx, -dy)) % 360.0)
+
+
+def _v4_speed_crop(frame: np.ndarray, bounds: tuple[int, int, int, int], target_height: int) -> np.ndarray | None:
+    left, top, right, bottom = bounds
+    roi = frame[top:bottom, left:right]
+    if roi.size == 0 or right - left < 4:
+        return None
+    scale = max(1.0, target_height / max(1, bottom - top))
+    enlarged = cv2.resize(roi, (max(1, round((right - left) * scale)), max(1, round((bottom - top) * scale))),
+                          interpolation=cv2.INTER_CUBIC)
+    b, g, red = cv2.split(enlarged)
+    luminance = 0.0722 * b.astype(np.float32) + 0.7152 * g.astype(np.float32) + 0.2126 * red.astype(np.float32)
+    binary = np.where(luminance >= WIND_BINARY_THRESHOLD, 0, 255).astype(np.uint8)
+    binary = _drop_edge_specks(binary)
+    return cv2.copyMakeBorder(binary, OCR_PAD_PX, OCR_PAD_PX, OCR_PAD_PX, OCR_PAD_PX,
+                              cv2.BORDER_CONSTANT, value=255)
+
+
+def read_v4_wind(report: dict) -> dict | None:
+    """GSPro 4.0 wind box, or None when the capture doesn't show one (older GSPro)."""
+    frame = _frame_bgr(report)
+    if frame is None:
+        return None
+    box = find_v4_wind_box(frame)
+    if box is None:
+        return None
+    degrees = v4_arrow_degrees(frame, box["tile"])
+    reads: list[tuple[object, str]] = []
+    for height in SPEED_TARGET_HEIGHTS:
+        crop = _v4_speed_crop(frame, box["speed"], height)
+        if crop is None:
+            continue
+        ok, encoded = cv2.imencode(".png", crop)
+        result = _ocr_png_with_tesseract(encoded.tobytes(), psm=7, whitelist="0123456789.,MPH ") if ok else {}
+        if result.get("status") == "ok":
+            text = result.get("rawText") or ""
+            reads.append((_normalize_wind_speed(text), text))
+        if _agreed(reads)[0] is not None:
+            break
+    speed, _ = _agreed(reads)
+    calm = speed == 0
+    missing = ([] if speed is not None else ["speed"]) + ([] if degrees is not None or calm else ["arrow"])
+    return {
+        "status": "READY" if not missing else "UNKNOWN",
+        "speedMph": speed,
+        "directionDegrees": round(degrees, 1) if degrees is not None else (0 if calm else None),
+        "convention": V4_ARROW_CONVENTION, "referenceFrame": V4_ARROW_FRAME,
+        "observedAt": utc_now_iso(), "confidence": None,
+        "rawText": "SPEED: " + (" / ".join(t or "-" for _, t in reads) or "-")
+                   + f" | ARROW: {'-' if degrees is None else f'{degrees:.1f} deg'}",
+        "note": ("GSPro 4.0 wind box: speed text and arrow angle."
+                 if not missing else "GSPro 4.0 wind box read incompletely; missing " + ", ".join(missing) + "."),
+        "ocrSource": "gspro-native-tesseract", "ocrEngine": "tesseract-cli",
+        "captureFreshness": "single_capture_unverified",
+        "hudLayout": "gspro-4",
+        "arrowScreenDegrees": round(degrees, 1) if degrees is not None else None,
+        "capture": {"method": report.get("method"), "tile": list(box["tile"]), "speed": list(box["speed"])},
+    }
+
+
 def read_wind_from_capture(report: dict) -> dict:
     """Read speed and direction from GSPro's wind box: each crop is read at a
     few sizes and a value is used only when two reads agree."""
+    v4 = read_v4_wind(report)
+    if v4 is not None:
+        return v4
     regions = extract_wind_hud_regions(report)
     if regions is None:
         return _unavailable("GSPro window capture unavailable or wind HUD regions invalid.")

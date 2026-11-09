@@ -1937,7 +1937,11 @@ export default function LiveCaddiePage() {
             Wind OCR {nativeObservations.ocr.wind.status}: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
             {` · Looper uses ${windObservation?.status ?? 'no wind'}`
               + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
-              + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
+              + (windObservation?.directionDegrees != null
+                ? windObservation.referenceFrame === 'shot-relative'
+                  ? ` toward ${Math.round(windObservation.directionDegrees)}° from your aim line (GSPro 4 arrow)`
+                  : ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)`
+                : '')
               + (sceneTurn?.rotationDeg ? `, course turned ${sceneTurn.rotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
