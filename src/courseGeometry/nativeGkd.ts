@@ -8,8 +8,9 @@
  * - currentRound DistanceToPin is the straight 2D line to the active pin;
  * - the tee-box HUD distance is the aim route (tee -> AimPoint1 -> AimPoint2)
  *   to the active pin;
- * - pin entries carry weekday labels but GSPro does not pick them by weekday,
- *   so they are treated as slots.
+ * - pin entries carry day labels (Thursday..Sunday). GSPro does not pick them
+ *   by the calendar: the player picks the pin day in round setup (Brian, 11/9),
+ *   so the chosen day names the pin on every hole before any shot.
  *
  * The GKD is third-party content. It is read locally and never uploaded; only
  * its layout fingerprint is compared with the published registration.
@@ -314,3 +315,20 @@ export const nativeTeeSetOptions = (layout: NativeCourseLayout): readonly Native
     .map(([name, entry]) => ({ name, totalYards: Math.round(entry.metres * NATIVE_METERS_TO_YARDS), holes: entry.holes }))
     .sort((a, b) => b.totalYards - a.totalYards)
 }
+
+/** GSPro's pin days, as the player picks them in round setup. */
+export const GSPRO_PIN_DAYS = ['Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+export type GsproPinDay = (typeof GSPRO_PIN_DAYS)[number]
+
+export const normalizePinDay = (value: string | null | undefined): GsproPinDay | null => {
+  const text = (value ?? '').trim().toLowerCase()
+  return GSPRO_PIN_DAYS.find((day) => day.toLowerCase() === text || day.slice(0, 3).toLowerCase() === text) ?? null
+}
+
+/** The hole's pin for the chosen day; null when the file has none or several for it. */
+export const nativePinForDay = (hole: NativeHole, day: GsproPinDay | null): NativePin | null => {
+  if (!day) return null
+  const matches = hole.pins.filter((pin) => normalizePinDay(pin.label) === day)
+  return matches.length === 1 ? matches[0] : null
+}
+

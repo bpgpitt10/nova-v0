@@ -146,6 +146,8 @@ jobs:
         run: node tools/test-quick-bag.mjs
       - name: Screen-only caddie (no map)
         run: node tools/test-screen-only.mjs
+      - name: Player-facing course status and support codes
+        run: node tools/test-support-codes.mjs
       - name: Safe play rule
         run: node tools/test-safe-pick.mjs
 
@@ -174,6 +176,12 @@ jobs:
 
       - name: GSPro distance beats a stale pin
         run: node tools/test-pin-reconcile.mjs
+
+      - name: GSPro 4 pin height picks the pin slot
+        run: node tools/test-hud-pin-height.mjs
+
+      - name: Estimated-pin aim error priced by the engine
+        run: node tools/test-aim-error-cost.mjs
 
       - name: GSPro course links (Load page)
         run: node tools/test-gspro-links.mjs

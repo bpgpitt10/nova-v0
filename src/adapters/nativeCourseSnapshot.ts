@@ -2,9 +2,11 @@ import {
   gkdTeeForTeeSet,
   NATIVE_METERS_TO_YARDS,
   nativeHole,
+  nativePinForDay,
   nativeStraightDistanceM,
   resolveNativePinSlot,
   resolveNativeTee,
+  type GsproPinDay,
   type NativeXYZ,
 } from '../courseGeometry/nativeGkd'
 import type { NativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
@@ -42,6 +44,9 @@ export type NativeSnapshotInputs = Readonly<{
   /** This hole's tee and pin from GSPro's round layout (output_log). Trusted
    * only when its pin is one of this hole's GKD pins. */
   roundLayout?: Readonly<{ tee: NativeXYZ; pin: NativeXYZ }> | null
+  /** The pin day the player picked in GSPro's round setup: names the pin on
+   * every hole before any shot. GSPro's own shot evidence still wins. */
+  pinDay?: GsproPinDay | null
 }>
 
 // GKD pin slots on one green sit metres apart; allow for cup vs flag base.
@@ -70,14 +75,14 @@ export const applyNativeCourseSnapshot = ({
   rememberedPinSlot,
   legacyTeeLocal = null,
   roundLayout = null,
+  pinDay = null,
 }: NativeSnapshotInputs): NativeSnapshotResult => {
   const hole = nativeHole(context.layout, holeNumber)
   if (!hole) return { snapshot: base, pinSlot: rememberedPinSlot }
   const toLocal = (world: Readonly<{ x: number; z: number }>) =>
     nativeWorldToHoleLocalYds(context.registration, holeNumber, world)
 
-  // Pin slot from GSPro's own straight distance, wherever we can observe one.
-  let pinSlot = rememberedPinSlot
+  let pinSlot: number | null = null
   let pinErrorYds: number | null = null
   const preShotPin = teeContext && preShotStart?.world && preShotStart.distanceToPinYds != null
     ? resolveNativePinSlot(hole, preShotStart.world, preShotStart.distanceToPinYds / NATIVE_METERS_TO_YARDS)
@@ -89,23 +94,38 @@ export const applyNativeCourseSnapshot = ({
       : null
     : null
   const observed = preShotPin?.status === 'matched' ? preShotPin : latestPin?.status === 'matched' ? latestPin : null
-  // GSPro's round layout names the day's pin outright; before Shot 1 it is the
-  // only exact source (without it the tee distance falls back to green centre).
+  // Pin, in order (Brian, 11/9: few layers, each one explainable):
+  //   1. GSPro's own shot evidence (pre-shot start or latest shot + DistanceToPin);
+  //   2. the pin day the player picked in GSPro's round setup;
+  //   3. only without a day: a slot remembered earlier in the round.
+  // GSPro's round layout (output_log) is no longer a pin source: exact when
+  // present, almost never present, one more path to go wrong. It still vouches
+  // for its tee below.
+  const dayPin = nativePinForDay(hole, pinDay)
   const layoutPins = roundLayout
     ? hole.pins.filter((p) => Math.hypot(p.x - roundLayout.pin.x, p.z - roundLayout.pin.z) <= LAYOUT_PIN_MATCH_M)
     : []
   const layoutPin = layoutPins.length === 1 ? layoutPins[0] : null
+  let pinNote: string | null = null
   if (observed) {
     pinSlot = observed.pin.slot
     pinErrorYds = yards(observed.errorM)
-  } else if (layoutPin) {
-    pinSlot = layoutPin.slot
-    pinErrorYds = yards(Math.hypot(layoutPin.x - roundLayout!.pin.x, layoutPin.z - roundLayout!.pin.z))
+  } else if (dayPin) {
+    pinSlot = dayPin.slot
+    pinErrorYds = null
+  } else {
+    pinSlot = rememberedPinSlot
+  }
+  if (dayPin && pinSlot != null && pinSlot !== dayPin.slot) {
+    const inPlay = hole.pins.find((p) => p.slot === pinSlot)
+    pinNote = `GSPro's shots put this pin at the ${inPlay?.label ?? `slot ${pinSlot}`} position, not ${pinDay}: `
+      + 'check the pin day picked in GSPro.'
   }
   const pin = pinSlot != null ? hole.pins.find((p) => p.slot === pinSlot) ?? null : null
   const pinLocal = pin ? toLocal(pin) : null
   const withPin: BrowserGsproCourseSnapshot = pinLocal
-    ? { ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: pinErrorYds }
+    ? { ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: pinErrorYds,
+        warnings: pinNote ? [...new Set([...base.warnings, pinNote])] : base.warnings }
     : base
 
   if (!teeContext) {

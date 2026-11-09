@@ -48,6 +48,7 @@ import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistanc
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
+import { priceAimError } from '../liveCaddie/aimErrorCost'
 import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -113,6 +114,8 @@ import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
 import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
+import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/supportCodes'
+import { getNativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
 import './LiveCaddiePage.css'
@@ -169,6 +172,7 @@ const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
 
 // Last GSPro player-box Shot 1 distance per course|hole|round.
 const lastHudShotOneYds = new Map<string, number>()
+const lastHudElevationFt = new Map<string, number>()
 
 const estimatePinFromGsproDistance = (
   hole: CourseHoleGeometry,
@@ -206,6 +210,7 @@ const chooseLiveLandingTarget = (
 }
 
 const LIVE_DIAGNOSTICS_KEY = 'looper.live-diagnostics.v1'
+const LIVE_DEV_DIAGNOSTICS_KEY = 'looper.live-dev-diagnostics.v1'
 // Lies GSPro's file code identifies reliably; anything else asks the golfer.
 const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'green'])
 
@@ -297,6 +302,19 @@ export default function LiveCaddiePage() {
       return false
     }
   })
+  // Details shows a support line players can read to us; the full technical
+  // readout (OCR text, hazard counts, fit notes) is ours only: ?diag=1.
+  const [devDiagnosticsFlag] = useState(() => {
+    try {
+      const flag = new URLSearchParams(window.location.search).get('diag')
+      if (flag === '1') window.localStorage.setItem(LIVE_DEV_DIAGNOSTICS_KEY, '1')
+      if (flag === '0') window.localStorage.removeItem(LIVE_DEV_DIAGNOSTICS_KEY)
+      return window.localStorage.getItem(LIVE_DEV_DIAGNOSTICS_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const devDiagnostics = showDiagnostics && devDiagnosticsFlag
   const toggleDiagnostics = () => setShowDiagnostics((value) => {
     try {
       if (value) window.localStorage.removeItem(LIVE_DIAGNOSTICS_KEY)
@@ -850,9 +868,14 @@ export default function LiveCaddiePage() {
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}` : null
   if (hudTeeKey && freshHudShotOneYds != null) lastHudShotOneYds.set(hudTeeKey, freshHudShotOneYds)
   const hudShotOneYds = freshHudShotOneYds ?? (hudTeeKey ? lastHudShotOneYds.get(hudTeeKey) ?? null : null)
+  // GSPro 4 also shows the pin's height (▼ 10ft 11): it tells apart pin slots at the same distance.
+  const freshHudElevationFt = freshHudShotOneYds != null && Number.isFinite(hudReading?.elevationFt)
+    ? hudReading!.elevationFt! : null
+  if (hudTeeKey && freshHudElevationFt != null) lastHudElevationFt.set(hudTeeKey, freshHudElevationFt)
+  const hudElevationFt = freshHudElevationFt ?? (hudTeeKey ? lastHudElevationFt.get(hudTeeKey) ?? null : null)
   const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
     && liveSnapshot.ballLocalYds && hudShotOneYds != null
-    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}|${hudElevationFt ?? '-'}` : null
   const [hudPin, setHudPin] = useState<{
     key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
     candidatesLocal: readonly CoursePointYds[]
@@ -863,6 +886,7 @@ export default function LiveCaddiePage() {
     void pinFromHudDistance({
       courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
       roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
+      elevationFt: hudElevationFt,
     }).then((found) => {
       if (alive) {
         setHudPin({
@@ -881,12 +905,18 @@ export default function LiveCaddiePage() {
   // pin that disagrees with it (RNK 3: 15 yd deep) is replaced.
   const snapshotExactPin = liveMatchesHole && liveSnapshot && liveSnapshot.pinSource !== 'unavailable'
     ? liveSnapshot.pinLocalYds ?? null : null
+  // With a pin day picked in Start Round the pin comes from the course file
+  // and the distance/height guess never names it (Brian, 11/9: few layers).
+  // The lookup still runs for the hole's aim route, which the distance check
+  // needs on doglegs.
+  const pinDayPicked = Boolean(loadActiveLiveCaddieRound()?.pinDay)
+  const hudGuess = hudPin && hudPin.key === hudPinKey && !pinDayPicked ? hudPin : null
   const pinCheck = reconcilePinWithHud({
     snapshotPin: snapshotExactPin,
     // Only against an exact ball: a provisional tee can be yards off itself.
     ball: liveSnapshot?.ballSource === 'native-gkd' ? liveSnapshot.ballLocalYds ?? null : null,
     hudYds: hudShotOneYds,
-    hudPin: hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null,
+    hudPin: hudGuess?.pinLocal ?? null,
     aimPoints: hudPin && hudPin.key === hudPinKey ? hudPin.aimPointsLocal : [],
     hudLookupDone: Boolean(hudPin && hudPin.key === hudPinKey),
   })
@@ -1420,7 +1450,7 @@ export default function LiveCaddiePage() {
   const estimatedPinCheck: EstimatedPinAim | null = !trustedLivePin && hole && aimPin && aimTarget
     ? estimatedPinAim({
         hole, ball, pin: aimPin, target: aimTarget,
-        pinSlotsLocal: hudPin && hudPin.key === hudPinKey ? hudPin.candidatesLocal : null,
+        pinSlotsLocal: hudGuess?.candidatesLocal ?? null,
         distanceKnown: (hudShotOneYds ?? effectiveDistanceToPinYds) != null,
       })
     : null
@@ -1432,12 +1462,14 @@ export default function LiveCaddiePage() {
   const latestAimRef = useRef({
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
+    aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
+    aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1475,12 +1507,21 @@ export default function LiveCaddiePage() {
       // only estimated turns and shrinks the click; refuse when that could
       // move this click by more than one aim step.
       const estimated = snap.pinExact ? null : snap.estimatedPin
-      if (!snap.pinExact && !estimated?.allowed) {
+      // Over one aim step, the engine says whether the error matters for this
+      // shot: a drive to a wide fairway shrugs off 5 yd, an approach over water
+      // doesn't (Brian, 11/9: an uncertain pin must not cost a tee shot).
+      const priced = estimated && !estimated.allowed && snap.aimCandidates && snap.chosenAimOffsetYds != null
+        ? priceAimError({ candidates: snap.aimCandidates, chosenOffsetYds: snap.chosenAimOffsetYds, errorYds: estimated.errorYds })
+        : null
+      const aimErrorAffordable = estimated != null && (estimated.allowed || priced?.affordable === true)
+      if (!snap.pinExact && !aimErrorAffordable) {
         const spread = estimated && Number.isFinite(estimated.errorYds) ? Math.ceil(estimated.errorYds) : null
+        const cost = priced?.reason === 'too-costly' && Number.isFinite(priced.strokes)
+          ? ` That would cost about ${priced.strokes.toFixed(2)} strokes on this shot.` : ''
         finish({
           outcome: 'not-sent',
           message: spread != null
-            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.`
+            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.${cost}`
             : "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
         })
         return
@@ -1688,6 +1729,22 @@ export default function LiveCaddiePage() {
     ['Penalty', risk.bySurface.penalty ?? 0],
   ].filter(([, value]) => typeof value === 'number' && value > 0.002) as Array<[string, number]> : []
 
+  // Details: one line a player can read or send us. Tokens are ours to decode
+  // (lib/supportCodes.ts): course code, GSPro feed, ball source, pin, screen
+  // reads (hud-lie-wind), engine, starting bag, companion build, hole.
+  const supportCode = supportLine({
+    '': courseId === UNSELECTED_COURSE_ID ? 'C-' : courseStatusView(getNativeCourseStatus()).code,
+    G: livePrepared ? String(liveStatus).slice(0, 3) : 'off',
+    B: liveSnapshot?.ballSource ? String(liveSnapshot.ballSource).replace(/^native-/, '').slice(0, 6) : '-',
+    P: trustedLivePin ? 'x' : estimatedPinCheck ? (estimatedPinCheck.allowed ? 'e+' : 'e-') : '-',
+    O: [nativeObservations?.ocr?.hud?.status, nativeObservations?.ocr?.lie?.status, nativeObservations?.ocr?.wind?.status]
+      .map(ocrLetter).join(''),
+    E: evaluationError ? 'err' : String(evaluations.length),
+    Q: quickBagPrior ? 'qb' : null,
+    v: companionStatus?.version ?? null,
+    H: holeNumber,
+  })
+
   return (
     <main className="live-caddie-page">
       <div className="live-caddie-backdrop" />
@@ -1712,7 +1769,7 @@ export default function LiveCaddiePage() {
             </div>
             {companionStatus?.gspro.status === 'connected' ? (
               <div className="live-connection-state state-connected"
-                title={`Native Looper Companion ${companionStatus.version}; folder: ${companionStatus.dataFolder.status}. ${nativeAimIntent ? 'Read-only Looper-local recommendation prepared; GSPro coordinate frame not verified.' : 'Waiting for validated live shot and recommendation.'} Auto Aim remains disabled.`}
+                title={`Looper Companion ${companionStatus.version}`}
                 data-aim-intent={nativeAimIntent ? 'read-only-unverified' : 'blocked'}>
                 <i />
                 <span>Companion connected</span>
@@ -1753,12 +1810,12 @@ export default function LiveCaddiePage() {
                   : 'Connect GSPro Visuals'}
           </button>
           <div className="live-caddie-secondary-context">
-            {showDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
+            {devDiagnostics && nativeVisualMessage ? <span>{nativeVisualMessage}</span> : null}
             <span>{shotContext}</span>
             {hudShotOneYds != null
               ? <span>{Math.round(hudShotOneYds)} yd to pin</span>
               : pinEstimate ? <span>{Math.round(pointDistance(ball, pinEstimate))} yd to pin</span> : null}
-            {showDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
+            {devDiagnostics && greenGuidance ? <span>Green LiDAR · {greenGuidance.reason}</span> : null}
             {!isGreenSurface && elevationDeltaFt != null ? <span>{signed(elevationDeltaFt, 0)} ft to target</span> : null}
             {airAltitudeFt != null && Math.abs(airAltitudeFt) >= 500
               ? <span>{Math.round(airAltitudeFt).toLocaleString()} ft ASL</span>
@@ -1775,16 +1832,23 @@ export default function LiveCaddiePage() {
             ) : null}
           </div>
         </section>
-        {showDiagnostics ? (
+        {courseId !== UNSELECTED_COURSE_ID ? (
           <NativePositionsBetaPanel
-            courseId={courseId === UNSELECTED_COURSE_ID ? null : courseId}
+            courseId={courseId}
             courseKey={liveSnapshot?.courseKey ?? null}
           />
+        ) : null}
+        {showDiagnostics ? (
+          <div className="live-support-line" data-support-line>
+            <span>Support code</span>
+            <code>{supportCode}</code>
+            <button type="button" onClick={() => { void navigator.clipboard?.writeText(supportCode).catch(() => {}) }}>Copy</button>
+          </div>
         ) : null}
 
         {/* Developer readout for the native aim pipeline; the floating
             "Show where Looper would click" preview is the player-facing one. */}
-        {nativeVisualActive && showDiagnostics ? (
+        {nativeVisualActive && devDiagnostics ? (
           <section className="live-native-aim-diagnostic" data-native-input-authorized="false">
             <div className="live-native-aim-diagnostic-heading">
               <span className="live-kicker">READ-ONLY NATIVE AIM CHECK</span>
@@ -1892,7 +1956,7 @@ export default function LiveCaddiePage() {
             </span>
           </div>
         ) : null}
-        {showDiagnostics && spatialPositionProvisional ? (
+        {devDiagnostics && spatialPositionProvisional ? (
           <div className="live-caddie-alert" data-spatial-position="provisional">
             Imported-course ball placement uses the actual GSPro shot movement and a
             provisional OSM tee anchor/true-north heading. The position and displayed
@@ -1902,21 +1966,26 @@ export default function LiveCaddiePage() {
           </div>
         ) : null}
         {spatialPositionUnavailable ? (
-          <div className="live-caddie-alert bad" data-spatial-position="unavailable">
-            GSPro reported Shot {nextShotNumber} and the remaining pin distance, but its ball position
-            cannot yet be registered to this imported course map. The previous tee marker is NOT the
-            current ball. Club, hazard, elevation and aim recommendations are paused until a
-            validated position is available.
+          <div className="live-caddie-alert bad" data-spatial-position="unavailable" data-error-code="E1">
+            {ERROR_TEXT.E1} <span className="live-error-code">E1</span>
           </div>
         ) : null}
-        {liveError ? <div className="live-caddie-alert bad">GSPro: {liveError}</div> : null}
-        {visualCaptureError ? (
-          <div className="live-caddie-alert bad">GSPro visuals: {visualCaptureError}</div>
+        {liveError ? (
+          <div className="live-caddie-alert bad" data-error-code="E2">
+            {ERROR_TEXT.E2} <span className="live-error-code">E2</span>
+            {devDiagnostics ? <small> {liveError}</small> : null}
+          </div>
         ) : null}
-        {showDiagnostics && visualCaptureStatus === 'stopped' && !visualCaptureError ? (
+        {visualCaptureError ? (
+          <div className="live-caddie-alert bad" data-error-code="E3">
+            {ERROR_TEXT.E3} <span className="live-error-code">E3</span>
+            {devDiagnostics ? <small> {visualCaptureError}</small> : null}
+          </div>
+        ) : null}
+        {devDiagnostics && visualCaptureStatus === 'stopped' && !visualCaptureError ? (
           <div className="live-caddie-alert">GSPro visual capture stopped. Reconnect visuals for live wind and lie.</div>
         ) : null}
-        {showDiagnostics && liveSnapshot?.teePlacement === 'provisional'
+        {devDiagnostics && liveSnapshot?.teePlacement === 'provisional'
           && liveSnapshot.holeNumber === holeNumber
           && liveSnapshot.nextShotNumber === 1 ? (
           <div className="live-caddie-alert" data-tee-quality="provisional">
@@ -1931,18 +2000,32 @@ export default function LiveCaddiePage() {
             and native aim are not verified. Do not save this as a confirmed tee.
           </div>
         ) : null}
-        {loadError ? <div className="live-caddie-alert bad">Course geometry: {loadError}</div> : null}
-        {evaluationError ? <div className="live-caddie-alert bad">Decision engine: {evaluationError}</div> : null}
-        {showDiagnostics && nativeObservations?.ocr?.wind?.status ? (
+        {loadError ? (
+          <div className="live-caddie-alert bad" data-error-code="E4">
+            {ERROR_TEXT.E4} <span className="live-error-code">E4</span>
+            {devDiagnostics ? <small> {loadError}</small> : null}
+          </div>
+        ) : null}
+        {evaluationError ? (
+          <div className="live-caddie-alert bad" data-error-code="E5">
+            {ERROR_TEXT.E5} <span className="live-error-code">E5</span>
+            {devDiagnostics ? <small> {evaluationError}</small> : null}
+          </div>
+        ) : null}
+        {devDiagnostics && nativeObservations?.ocr?.wind?.status ? (
           <div className="live-caddie-alert">
             Wind OCR {nativeObservations.ocr.wind.status}: {nativeObservations.ocr.wind.rawText ?? 'nothing'}{nativeObservations.ocr.wind.note ? ` · ${nativeObservations.ocr.wind.note}` : ''}
             {` · Looper uses ${windObservation?.status ?? 'no wind'}`
               + (windObservation?.speedMph != null ? ` ${windObservation.speedMph} mph` : '')
-              + (windObservation?.directionDegrees != null ? ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)` : '')
+              + (windObservation?.directionDegrees != null
+                ? windObservation.referenceFrame === 'shot-relative'
+                  ? ` toward ${Math.round(windObservation.directionDegrees)}° from your aim line (GSPro 4 arrow)`
+                  : ` from ${Math.round(windObservation.directionDegrees)}° (GSPro compass)`
+                : '')
               + (sceneTurn?.rotationDeg ? `, course turned ${sceneTurn.rotationDeg.toFixed(1)}°` : '')}
           </div>
         ) : null}
-        {showDiagnostics && recTiming ? (
+        {devDiagnostics && recTiming ? (
           <div className="live-caddie-alert">
             Timing this shot: {recTiming.conditionsMs != null ? `wind & lie ${(recTiming.conditionsMs / 1000).toFixed(1)} s · ` : ''}
             recommendation {(recTiming.recMs / 1000).toFixed(1)} s ({recTiming.workers} worker{recTiming.workers === 1 ? '' : 's'}) · total {(recTiming.totalMs / 1000).toFixed(1)} s
@@ -1953,7 +2036,7 @@ export default function LiveCaddiePage() {
               + `, lie ${((nativeObservations.timingMs.lieOcr ?? 0) / 1000).toFixed(1)})` : ''}
           </div>
         ) : null}
-        {showDiagnostics ? (
+        {devDiagnostics ? (
           <div className="live-caddie-alert">
             GSPro player box: {nativeObservations?.ocr?.hud
               ? `${nativeObservations.ocr.hud.status}${nativeObservations.ocr.hud.shotNumber != null ? ` · Shot ${nativeObservations.ocr.hud.shotNumber}` : ''}${nativeObservations.ocr.hud.distanceToPinYds != null ? ` · ${nativeObservations.ocr.hud.distanceToPinYds} yd` : ''} · read "${nativeObservations.ocr.hud.rawText ?? ''}"`
@@ -1962,7 +2045,7 @@ export default function LiveCaddiePage() {
             {pinCheck.note ? ` · ${pinCheck.note}` : ''}
           </div>
         ) : null}
-        {showDiagnostics ? (
+        {devDiagnostics ? (
           <div className="live-caddie-alert">
             GSPro hazards on this hole: {gkdHazards && gkdOverlay?.source === rawHole
               ? `${gkdHazards.summary.penaltyAreas} penalty area${gkdHazards.summary.penaltyAreas === 1 ? '' : 's'}`
@@ -1976,7 +2059,7 @@ export default function LiveCaddiePage() {
               ? ` · Green: ${greenAnchorLine({ ...gkdOverlay.greenSummary, outsideDetail: anchoredGreenOutside })}` : ''}
           </div>
         ) : null}
-        {showDiagnostics && inspectedCandidate?.modeledSamples?.length ? (() => {
+        {devDiagnostics && inspectedCandidate?.modeledSamples?.length ? (() => {
           const samples = inspectedCandidate.modeledSamples
           const early = samples.filter((q) => q.flightTag === 'trees-early').length / samples.length
           const late = samples.filter((q) => q.flightTag === 'trees-late').length / samples.length
@@ -1993,10 +2076,10 @@ export default function LiveCaddiePage() {
             </div>
           )
         })() : null}
-        {showDiagnostics && aimResult ? (
+        {devDiagnostics && aimResult ? (
           <div className="live-caddie-alert">Last Arm: {aimResult.message}</div>
         ) : null}
-        {showDiagnostics && liveSnapshot?.warnings
+        {devDiagnostics && liveSnapshot?.warnings
           .filter(warning => !(measuredPreShotTee
             && warning.startsWith('Provisional Hole ')
             && (warning.includes('existing-map-tee-anchor') || warning.includes('osm-route-start'))))

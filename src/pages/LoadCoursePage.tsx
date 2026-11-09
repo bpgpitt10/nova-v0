@@ -41,27 +41,27 @@ const queuedCheck = <T,>(run: () => Promise<T>): Promise<T> => {
 }
 
 const matchText = (status: NativeCourseStatus | null): { text: string; tone: 'ok' | 'bad' | 'note' } | null => {
-  if (!status) return { text: 'Checking against GSPro…', tone: 'note' }
+  if (!status) return { text: 'Checking…', tone: 'note' }
   switch (status.state) {
     case 'ready':
-      return { text: `Matches your GSPro course · grade ${status.grade}`, tone: 'ok' }
+      return { text: 'Lines up with your GSPro course', tone: 'ok' }
     case 'other-course':
-      return status.grade ? { text: `Matches your GSPro course · grade ${status.grade}`, tone: 'ok' } : null
+      return status.grade ? { text: 'Lines up with your GSPro course', tone: 'ok' } : null
     case 'registration-failed':
       // Greywolf (our first course) predates the package this check needs:
       // not a mismatch, just not set up.
       if (status.reason === 'no course package') {
-        return { text: "Plays in Looper; the GSPro position match isn't set up for this course yet.", tone: 'note' }
+        return { text: 'Plays in Looper; ball positions are estimated on this course.', tone: 'note' }
       }
       return { text: "Doesn't line up with your GSPro course", tone: 'bad' }
     case 'layout-mismatch':
-      return { text: 'Your GSPro version has different greens or pins', tone: 'bad' }
+      return { text: 'Your GSPro version differs; ball positions are estimated', tone: 'bad' }
     case 'gkd-not-found':
-      return { text: "Couldn't read it from your GSPro library", tone: 'note' }
+      return { text: 'Not in your GSPro library', tone: 'note' }
     case 'registering':
-      return { text: 'Checking against GSPro…', tone: 'note' }
+      return { text: 'Checking…', tone: 'note' }
     case 'error':
-      return { text: "Couldn't check against GSPro", tone: 'note' }
+      return { text: "Couldn't check this one", tone: 'note' }
     default:
       return null
   }
@@ -172,6 +172,15 @@ const statusText = (row: CourseLoadRow) => {
  * thelooper.golf for everyone. Typical wait ~10 minutes.
  */
 export default function LoadCoursePage() {
+  // ?gspro=<course key>: opened from "Load this course" on Start a Round /
+  // Live Caddie. Scroll to that GSPro course and mark it.
+  const [focusKey] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('gspro')?.trim() || null
+    } catch {
+      return null
+    }
+  })
   const [loads, setLoads] = useState<CourseLoadRow[]>([])
   const [loadsError, setLoadsError] = useState<string | null>(null)
   const [library, setLibrary] = useState<LooperCompanionInstalledCourse[] | null>(null)
@@ -296,7 +305,7 @@ export default function LoadCoursePage() {
       const centre = layout.courseLatLon
         ?? await geocodePlace(course.location || layout.location || '').catch(() => null)
       if (!centre) return null
-      setMessage(`Checking GSPro's green layout against the courses near ${course.location || 'its location'}…`)
+      setMessage(`Looking for ${course.courseName || 'the course'} near ${course.location || 'its location'}…`)
       const { candidates, greens: mapGreens } = await fetchCoursesAndGreens(centre)
       return matchCourseByGreens(greens, candidates, mapGreens)
     } catch (error) {
@@ -327,7 +336,7 @@ export default function LoadCoursePage() {
     }
     if (decision.kind === 'not-on-map') {
       setBusyKey(null)
-      setMessage(`${name} can't be loaded: ${decision.reason}. It still plays in Looper from GSPro's own course file.`)
+      setMessage(`${name} can't be loaded: ${decision.reason}. It still plays in Looper as a basic course.`)
       return
     }
     // 2. By geometry: GSPro's own greens against the golf courses near its
@@ -337,17 +346,17 @@ export default function LoadCoursePage() {
     if (found0 === 'busy') {
       // A name search can't find resort courses either (Mammoth Dunes): say why and stop.
       setBusyKey(null)
-      setMessage(`The OpenStreetMap server Looper checks GSPro's green layout against is busy right now, so ${course.courseName || course.courseKey} couldn't be matched. Try Load again in a few minutes.`)
+      setMessage(`The course service is busy right now, so ${course.courseName || course.courseKey} couldn't be found. Try Load again in a few minutes.`)
       return
     }
     const geo = found0 === 'no-course-file' ? null : found0
     const awayNote = found0 === 'no-course-file'
-      ? 'Matching by green layout needs your sim PC (it reads GSPro\'s course file there); on this device only the name is searched. '
+      ? 'Finding courses automatically works best from your sim PC; here only the name is searched. '
       : ''
     if (geo?.status === 'matched' && geo.best) {
       const fit = geo.best.fit
-      const found = `Found ${course.courseName || course.courseKey} on the map by its green layout: ${geo.best.name} `
-        + `(${fit.paired} of ${fit.gkdGreens} greens line up, ${fit.rmsM.toFixed(0)} m). `
+      const found = `Found ${course.courseName || course.courseKey}: ${geo.best.name}. `
+      void fit
       // Already loaded (e.g. DPC Pebble -> Pebble Beach): link, don't reload.
       const loaded = loads.find((row) => row.status === 'ready' && row.osm_id === geo.best!.osmId && row.slug && slugs.has(row.slug))
       if (loaded?.slug) {
@@ -368,11 +377,10 @@ export default function LoadCoursePage() {
       return
     }
     const geoNote = geo?.status === 'no-fit'
-      ? `GSPro's green layout doesn't match any mapped course near ${course.location || 'its location'}`
-        + (geo.best ? ` (closest: ${geo.best.name}, ${geo.best.fit.paired} of ${geo.best.fit.gkdGreens} greens within 25 m)` : '')
-        + '. It may be a fictional or re-imagined course, or not on OpenStreetMap yet. '
+      ? `No real course near ${course.location || 'its location'} matches your GSPro version. `
+        + 'It may be a fictional or re-imagined course, or not mapped yet. '
       : geo?.status === 'ambiguous' && geo.best && geo.runnerUp
-        ? `GSPro's greens fit both ${geo.best.name} and ${geo.runnerUp.name}. `
+        ? `It could be ${geo.best.name} or ${geo.runnerUp.name}. `
         : ''
     if (geo?.status === 'ambiguous') {
       setBusyKey(null)
@@ -391,8 +399,8 @@ export default function LoadCoursePage() {
     } catch (error) {
       setBusyKey(null)
       setMessage(error instanceof CourseSearchBusyError
-        ? 'OpenStreetMap search is busy right now (too many searches in a row). Wait a minute and press Load again.'
-        : `Couldn't search OpenStreetMap: ${error instanceof Error ? error.message : String(error)}`)
+        ? 'Course search is busy right now. Wait a minute and press Load again.'
+        : 'Course search failed. Try again in a minute.')
       return
     }
     if (!match || geo?.status === 'no-fit') {
@@ -401,7 +409,7 @@ export default function LoadCoursePage() {
       setQuery(name)
       setMessage(`${awayNote}${geoNote}${match
         ? `By name it looks like ${match.name}, but GSPro's version may not line up with it. Pick from the search results below only if you're sure.`
-        : `Couldn't match ${name} on OpenStreetMap automatically. Pick it from the search results below, or search a different name.`}`)
+        : `Couldn't find ${name} automatically. Pick it from the search results below, or search a different name.`}`)
       showSearch()
       void runSearch(name)
       return
@@ -418,7 +426,7 @@ export default function LoadCoursePage() {
       setResults(await searchGolfCourses(text))
     } catch (error) {
       setMessage(error instanceof CourseSearchBusyError
-        ? 'OpenStreetMap search is busy right now. Wait a minute and search again.'
+        ? 'Course search is busy right now. Wait a minute and search again.'
         : error instanceof Error ? error.message : String(error))
       setResults(null)
     } finally {
@@ -463,8 +471,18 @@ export default function LoadCoursePage() {
     { key: 'off-map', title: 'Not on the map' },
   ] as const
 
+  const focusPresent = Boolean(focusKey && installed.some((row) => row.course.courseKey === focusKey))
+  useEffect(() => {
+    if (!focusPresent || !focusKey) return
+    document.getElementById(`gspro-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusPresent, focusKey])
+
   const installedRow = ({ course, slug, link, decision, group }: (typeof installed)[number]) => (
-    <li key={course.courseKey}>
+    <li
+      className={focusKey && course.courseKey === focusKey ? 'load-course-focus' : undefined}
+      id={`gspro-${course.courseKey}`}
+      key={course.courseKey}
+    >
       <div>
         <strong>{course.courseName || course.courseKey}</strong>
         <span>{course.location}</span>
@@ -480,7 +498,7 @@ export default function LoadCoursePage() {
       </div>
       <span className="load-course-actions">
         {group === 'off-map' && decision.kind === 'not-on-map' ? (
-          <span className="load-course-note">{/fictional/.test(decision.reason) ? 'Fictional course' : 'Not on OpenStreetMap yet'}</span>
+          <span className="load-course-note">{/fictional/.test(decision.reason) ? 'Fictional course' : 'Not mapped yet'}</span>
         ) : rowAction(slug, course.courseKey, () => { void loadInstalled(course) },
           decision.kind === 'pick' ? 'Choose the map course' : 'Load')}
         {group === 'ready' && courseIdFor(slug) && !savedLibraryAt
@@ -559,7 +577,7 @@ export default function LoadCoursePage() {
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Course name, e.g. Erin Hills" />
           <button type="submit" disabled={searching || query.trim().length < 3}>{searching ? 'Searching…' : 'Search'}</button>
         </form>
-        {results && results.length === 0 ? <p className="load-course-note">No golf course on OpenStreetMap by that name.</p> : null}
+        {results && results.length === 0 ? <p className="load-course-note">No course by that name.</p> : null}
         <ul className="load-course-list">
           {(results ?? []).map((result) => {
             const slug = courseSlugFromName(result.name)

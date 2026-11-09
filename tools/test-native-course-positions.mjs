@@ -130,6 +130,28 @@ try {
   assert.ok(Math.abs(noPreShot.snapshot.ballLocalYds[1]) < 0.01, 'falls back to the round tee set (Black at origin)')
   assert.equal(noPreShot.pinSlot, 2, 'keeps the slot learned earlier in the round')
 
+  // The pin day picked in GSPro's round setup names the pin before any shot
+  // (Brian, 11/9), and beats a slot remembered from a distance match.
+  assert.equal(gkd.normalizePinDay(' friday '), 'Friday')
+  assert.equal(gkd.normalizePinDay('Mon'), null)
+  assert.equal(gkd.nativePinForDay(hole, 'Friday').slot, 2)
+  assert.equal(gkd.nativePinForDay(hole, 'Sunday'), null)
+  const byDay = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'black',
+    rememberedPinSlot: 1, pinDay: 'Friday',
+  })
+  assert.equal(byDay.pinSlot, 2, "the player's pin day names the pin")
+  assert.equal(byDay.snapshot.pinSource, 'native-gkd')
+  assert.equal(byDay.snapshot.pinDistanceValidationErrorYds, null, 'exact, nothing measured')
+  assert.ok(Math.abs(byDay.snapshot.distanceToPinYds - Math.hypot(36, 150) * Y) < 1e-6)
+  // GSPro's own shot evidence still wins, and the disagreement is said.
+  const dayVsShot = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart, normalizedTeeSet: 'black',
+    rememberedPinSlot: null, pinDay: 'Friday',
+  })
+  assert.equal(dayVsShot.pinSlot, 1, 'GSPro says Thursday')
+  assert.ok(dayVsShot.snapshot.warnings.some((w) => w.includes('Thursday position, not Friday')), dayVsShot.snapshot.warnings)
+
   const later = snap.applyNativeCourseSnapshot({
     base: { ...base, nextShotNumber: 2, latestShot: { holeNumber: 1, endWorld: pos(30, 100), distanceToPinYds: 35 * Y } },
     context, holeNumber: 1, teeContext: false, preShotStart: null, normalizedTeeSet: null, rememberedPinSlot: null,
@@ -137,31 +159,31 @@ try {
   assert.equal(later.pinSlot, 1, 'slot from the latest shot end and GSPro distance')
   assert.equal(later.snapshot.ballSource, 'unavailable', 'after shot 1 the core owns ball placement')
 
-  // Before Shot 1 GSPro's round layout (output_log) names the day's pin and the
-  // tee, so the distance is exact rather than tee -> green centre. With two
-  // layouts unconfirmed, by-name tee lookup is off; the layout tee still places it.
+  // GSPro's round layout (output_log) is no longer a pin source (11/9: fewer
+  // layers). Its tee still places the ball when its pin is one of this hole's
+  // GKD pins (that match vouches for the layout belonging to this hole).
   const fromLayout = snap.applyNativeCourseSnapshot({
     base, context: { ...context, layoutConfirmed: false }, holeNumber: 1, teeContext: true, preShotStart: null,
     normalizedTeeSet: 'white', rememberedPinSlot: null,
     roundLayout: { tee: pos(0, 20, 9), pin: pos(36.2, 150.1, 8) },
   })
-  assert.equal(fromLayout.pinSlot, 2, 'layout pin -> Friday slot')
-  assert.equal(fromLayout.snapshot.pinSource, 'native-gkd')
-  assert.equal(fromLayout.snapshot.teePlacement, 'mapped')
-  assert.ok(Math.abs(fromLayout.snapshot.distanceToPinYds - Math.hypot(36, 130) * Y) < 1e-6,
-    `exact tee -> pin, got ${fromLayout.snapshot.distanceToPinYds}`)
+  assert.equal(fromLayout.pinSlot, null, 'the layout pin names no pin')
+  assert.equal(fromLayout.snapshot.pinSource, 'unavailable')
+  assert.equal(fromLayout.snapshot.teePlacement, 'mapped', 'the layout tee still places the ball')
   const strayLayout = snap.applyNativeCourseSnapshot({
     base, context: { ...context, layoutConfirmed: false }, holeNumber: 1, teeContext: true, preShotStart: null,
     normalizedTeeSet: 'white', rememberedPinSlot: null,
     roundLayout: { tee: pos(0, 20, 9), pin: pos(60, 170, 8) },
   })
-  assert.equal(strayLayout.pinSlot, null, 'a layout pin that is not a GKD pin is ignored (other course or hole)')
-  assert.equal(strayLayout.snapshot.ballSource, 'unavailable', 'and its tee is not trusted either')
-  const observedWins = snap.applyNativeCourseSnapshot({
-    base, context, holeNumber: 1, teeContext: true, preShotStart, normalizedTeeSet: 'black', rememberedPinSlot: null,
-    roundLayout: { tee: pos(0, 20, 9), pin: pos(36, 150, 8) },
+  assert.equal(strayLayout.snapshot.ballSource, 'unavailable', 'a layout whose pin is not a GKD pin is not trusted for its tee either')
+  // With a pin day, a slot remembered from an earlier guess is ignored.
+  const dayOverRemembered = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'black',
+    rememberedPinSlot: 1, pinDay: 'Friday',
   })
-  assert.equal(observedWins.pinSlot, 1, "GSPro's own DistanceToPin beats the layout")
+  assert.equal(dayOverRemembered.pinSlot, 2)
+  assert.equal(dayOverRemembered.snapshot.warnings.some((w) => w.includes('check the pin day')), false,
+    'a remembered guess is not GSPro evidence, so no disagreement note')
 
   // Legacy OSM tee pick ("Tee 2") maps to the GKD tee at that map spot.
   const whiteLocal = reg.nativeWorldToHoleLocalYds(synthReg, 1, { x: 0, z: 20 })
