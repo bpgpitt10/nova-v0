@@ -185,6 +185,48 @@ try {
   assert.equal(dayOverRemembered.snapshot.warnings.some((w) => w.includes('check the pin day')), false,
     'a remembered guess is not GSPro evidence, so no disagreement note')
 
+  // Confirmed positions (11/9): GSPro's own record for both tee and pin is
+  // shared; an inferred tee or pin is not.
+  assert.ok(tee.confirmed, 'StartingPOS on a GKD tee + DistanceToPin naming a pin -> confirmed')
+  assert.equal(tee.confirmed.pinSlot, 1)
+  assert.equal(tee.confirmed.pinLabel, 'Thursday')
+  assert.deepEqual(tee.confirmed.teeWorld, pos(0, 20, 9))
+  assert.equal(byDay.confirmed, null, 'a day-picked pin with no shot evidence is not confirmed')
+  assert.equal(noPreShot.confirmed, null)
+  const cp = await load('/src/lib/confirmedPositions.ts')
+  const rows = [
+    { courseId: 'synthetic', courseKey: 'synthetic_gsp', holeNumber: 1, teeSet: 'white', pinDay: 'Thursday', layoutFingerprint: 'fp',
+      teeName: 'White', teeWorld: pos(0.3, 20.2, 9), pinSlot: 1, pinLabel: 'Thursday', pinWorld: pos(30, 135, 8) },
+    { courseId: 'synthetic', courseKey: 'synthetic_gsp', holeNumber: 1, teeSet: 'white', pinDay: 'Friday', layoutFingerprint: 'fp',
+      teeName: 'White', teeWorld: pos(0.3, 20.2, 9), pinSlot: 2, pinLabel: 'Friday', pinWorld: pos(36, 150, 8) },
+  ]
+  assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 1, teeSet: 'White', pinDay: 'friday', layoutFingerprint: 'fp' }).pinSlot, 2)
+  assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 1, teeSet: 'white', pinDay: null, layoutFingerprint: 'fp' }), null,
+    'two days confirmed and no day picked: no guess')
+  assert.equal(cp.findConfirmedPosition(rows.slice(0, 1), { holeNumber: 1, teeSet: 'white', pinDay: null, layoutFingerprint: 'fp' }).pinSlot, 1,
+    'one day confirmed: it is the one')
+  assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 1, teeSet: 'white', pinDay: 'Thursday', layoutFingerprint: 'other' }), null,
+    'another course-file version: not used')
+  assert.equal(cp.findConfirmedPosition(rows, { holeNumber: 2, teeSet: 'white', pinDay: 'Thursday', layoutFingerprint: 'fp' }), null)
+  // Cross-check with the file readable: a day-picked pin that disagrees with
+  // what a round confirmed gets a note; GSPro's own record never does.
+  assert.ok(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: false, pinDay: 'Thursday' })
+    .includes('Check the pin day picked in GSPro'))
+  assert.equal(cp.confirmedPinNote({ position: rows[0], pinSlot: 1, pinFromGsproRecord: false, pinDay: 'Thursday' }), null)
+  assert.equal(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: true, pinDay: 'Thursday' }), null)
+  assert.ok(cp.confirmedPinNote({ position: rows[0], pinSlot: 2, pinFromGsproRecord: false, pinDay: null })
+    .includes('Pick the pin day in Start Round'))
+  assert.equal(cp.confirmedPinNote({ position: null, pinSlot: 2, pinFromGsproRecord: false, pinDay: 'Thursday' }), null)
+  // Placed without the course file, through the published registration.
+  const placed = snap.applyConfirmedPosition({ base, registration: synthReg, holeNumber: 1, teeContext: true, position: rows[1] })
+  assert.equal(placed.ballSource, 'native-gkd')
+  assert.equal(placed.pinSource, 'native-gkd')
+  assert.ok(Math.abs(placed.distanceToPinYds - Math.hypot(35.7, 129.8) * Y) < 1e-6, placed.distanceToPinYds)
+  assert.ok(placed.warnings.some((w) => w.includes('a round that confirmed them')))
+  const pinOnly = snap.applyConfirmedPosition({ base: { ...base, nextShotNumber: 3 }, registration: synthReg, holeNumber: 1, teeContext: false, position: rows[1] })
+  assert.equal(pinOnly.ballSource, 'unavailable', 'after shot 1 only the pin is placed')
+  assert.equal(pinOnly.pinSource, 'native-gkd')
+
   // Legacy OSM tee pick ("Tee 2") maps to the GKD tee at that map spot.
   const whiteLocal = reg.nativeWorldToHoleLocalYds(synthReg, 1, { x: 0, z: 20 })
   const legacy = snap.applyNativeCourseSnapshot({

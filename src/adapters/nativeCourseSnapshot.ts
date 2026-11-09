@@ -10,7 +10,7 @@ import {
   type NativeXYZ,
 } from '../courseGeometry/nativeGkd'
 import type { NativeCourseContext } from '../courseGeometry/nativeCourseRuntime'
-import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
+import { nativeWorldToHoleLocalYds, type NativeRegistration } from '../courseGeometry/nativeRegistration'
 import type { CoursePointYds } from '../courseGeometry/types'
 import type { BrowserGsproCourseSnapshot } from './browserGsproCourseState'
 import type { GsproStartingPositionObservation } from './gsproStartingPosition'
@@ -59,6 +59,9 @@ const LEGACY_TEE_NOTE = /^Provisional Hole \d+ tee \(/
 export type NativeSnapshotResult = Readonly<{
   snapshot: BrowserGsproCourseSnapshot
   pinSlot: number | null
+  /** Tee and pin both confirmed by GSPro's own shot evidence on this hole:
+   * worth sharing (confirmedPositions). Null when either was inferred. */
+  confirmed?: Readonly<{ teeName: string | null; teeWorld: NativeXYZ; pinSlot: number; pinLabel: string | null; pinWorld: NativeXYZ }> | null
 }>
 
 const NATIVE_NOTE = "Tee, ball and pin placed from GSPro's coordinates using the course's map match."
@@ -143,8 +146,13 @@ export const applyNativeCourseSnapshot = ({
     }
     return best?.tee ?? null
   }
-  const preShotOnTee = preShotStart?.world && resolveNativeTee(hole, preShotStart.world).status !== 'no-match'
-    ? preShotStart.world : null
+  const preShotTee = preShotStart?.world ? resolveNativeTee(hole, preShotStart.world) : null
+  const preShotOnTee = preShotTee && preShotTee.status !== 'no-match' ? preShotStart!.world : null
+  // Both from GSPro's own record: StartingPOS on a GKD tee, DistanceToPin naming a GKD pin.
+  const confirmed = preShotOnTee && preShotTee && preShotTee.status !== 'no-match' && observed && pin
+    ? { teeName: preShotTee.status === 'matched' ? preShotTee.tee.name : null, teeWorld: preShotOnTee,
+        pinSlot: pin.slot, pinLabel: pin.label, pinWorld: { x: pin.x, y: pin.y, z: pin.z } }
+    : null
   // By-name lookup only once the layout is known: an alternate layout's
   // "White" can be 70 m from the main layout's "White".
   const layoutTee = layoutPin && roundLayout && resolveNativeTee(hole, roundLayout.tee).status !== 'no-match'
@@ -163,6 +171,7 @@ export const applyNativeCourseSnapshot = ({
 
   return {
     pinSlot,
+    confirmed,
     snapshot: {
       ...withPin,
       holeNumber,
@@ -180,3 +189,37 @@ export const applyNativeCourseSnapshot = ({
     },
   }
 }
+
+/**
+ * Without the course file: a position another round confirmed for this hole,
+ * tee and day, placed with the published registration. Tee before shot 1 only;
+ * the pin whenever the hole matches.
+ */
+export const applyConfirmedPosition = ({ base, registration, holeNumber, teeContext, position }: Readonly<{
+  base: BrowserGsproCourseSnapshot
+  registration: NativeRegistration
+  holeNumber: number
+  teeContext: boolean
+  position: Readonly<{ teeWorld: NativeXYZ; pinWorld: NativeXYZ }>
+}>): BrowserGsproCourseSnapshot => {
+  const pinLocal = nativeWorldToHoleLocalYds(registration, holeNumber, position.pinWorld)
+  const teeLocal = teeContext ? nativeWorldToHoleLocalYds(registration, holeNumber, position.teeWorld) : null
+  if (!pinLocal) return base
+  const note = 'Tee and pin from a round that confirmed them on this course (GSPro\'s course file not read here).'
+  const withPin: BrowserGsproCourseSnapshot = {
+    ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: null,
+    warnings: [...new Set([...base.warnings, note])],
+  }
+  if (!teeLocal) return withPin
+  return {
+    ...withPin,
+    holeNumber,
+    ballLocalYds: teeLocal,
+    ballSource: 'native-gkd',
+    teePlacement: 'mapped',
+    teeUncertaintyYds: 1,
+    distanceToPinYds: yards(nativeStraightDistanceM(position.teeWorld, position.pinWorld)),
+    nextShotNumber: 1,
+  }
+}
+

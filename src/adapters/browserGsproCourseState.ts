@@ -5,6 +5,7 @@ import {
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import {
   nativeCourseContextForLive,
+  publishedRegistrationFor,
   recallNativeLayout,
   recallNativePinSlot,
   rememberNativeLayout,
@@ -12,6 +13,7 @@ import {
   selectNativeLayout,
 } from '../courseGeometry/nativeCourseRuntime'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
+import type { CourseId } from '../courseGeometry/courseCatalog'
 import { resolveLiveSupportedTee } from '../courseGeometry/liveSupportedTee'
 import { matchingTeeCandidates } from '../courseGeometry/shotOneTeeResolver'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
@@ -33,7 +35,8 @@ import {
   parseGsproStartingPosition,
   type GsproStartingPositionObservation,
 } from './gsproStartingPosition'
-import { applyNativeCourseSnapshot } from './nativeCourseSnapshot'
+import { confirmedPinNote, findConfirmedPosition, loadConfirmedPositions, recordConfirmedPosition } from '../lib/confirmedPositions'
+import { applyConfirmedPosition, applyNativeCourseSnapshot } from './nativeCourseSnapshot'
 import { nativeHole } from '../courseGeometry/nativeGkd'
 import {
   createOutputLogLayoutReader,
@@ -220,6 +223,38 @@ const unavailableShotOneSnapshot = (
  * course registration, overlay GKD tee/ball/pin on the snapshot the existing
  * pipeline built. Any failure returns that snapshot unchanged.
  */
+/**
+ * The course file isn't readable here (no companion, course not installed,
+ * folder not shared): place the tee and pin another round confirmed for this
+ * hole, tee set and pin day, using the published registration.
+ */
+const applyConfirmedFallback = async (
+  snapshot: BrowserGsproCourseSnapshot,
+  courseId: CourseId,
+  courseKey: string | null,
+  teeContext: boolean,
+  round: ReturnType<typeof loadActiveLiveCaddieRound>,
+): Promise<BrowserGsproCourseSnapshot> => {
+  if (snapshot.holeNumber == null || round?.courseId !== courseId) return snapshot
+  // After shot 1 the core owns the ball; only the pin is worth placing, and
+  // only while no better pin is known.
+  if (!teeContext && snapshot.pinSource !== 'unavailable') return snapshot
+  try {
+    const rows = await loadConfirmedPositions(courseId)
+    if (rows.length === 0) return snapshot
+    const registration = await publishedRegistrationFor(courseId, courseKey)
+    if (!registration) return snapshot
+    const position = findConfirmedPosition(rows, {
+      holeNumber: snapshot.holeNumber, teeSet: round.normalizedTeeSet ?? '', pinDay: round.pinDay ?? null,
+      layoutFingerprint: registration.layoutFingerprint,
+    })
+    if (!position) return snapshot
+    return applyConfirmedPosition({ base: snapshot, registration, holeNumber: snapshot.holeNumber, teeContext, position })
+  } catch {
+    return snapshot
+  }
+}
+
 const applyNativeIfReady = async (
   snapshot: BrowserGsproCourseSnapshot,
   teeContext: boolean,
@@ -229,8 +264,8 @@ const applyNativeIfReady = async (
     if (selectedCourseId === UNSELECTED_COURSE_ID || snapshot.holeNumber == null) return snapshot
     const courseKey = snapshot.preShotStart?.courseKey ?? snapshot.courseKey
     const loaded = await nativeCourseContextForLive(selectedCourseId, courseKey)
-    if (!loaded) return snapshot
     const round = loadActiveLiveCaddieRound()
+    if (!loaded) return applyConfirmedFallback(snapshot, selectedCourseId, courseKey, teeContext, round)
     // Courses with alternate layouts (GKDalt): settle which one is in play.
     const selection = selectNativeLayout(loaded, {
       holeNumber: snapshot.holeNumber,
@@ -252,7 +287,7 @@ const applyNativeIfReady = async (
       const named = geometry ? matchingTeeCandidates(geometry, normalizedTeeSet) : []
       legacyTeeLocal = named.length === 1 ? named[0].coursePoint : null
     }
-    const { snapshot: next, pinSlot } = applyNativeCourseSnapshot({
+    const { snapshot: next, pinSlot, confirmed } = applyNativeCourseSnapshot({
       base: snapshot,
       context,
       holeNumber: snapshot.holeNumber,
@@ -265,9 +300,33 @@ const applyNativeIfReady = async (
       pinDay: round?.courseId === selectedCourseId ? round.pinDay ?? null : null,
     })
     if (pinSlot != null) rememberNativePinSlot(context.courseKey, snapshot.roundId, snapshot.holeNumber, pinSlot)
+    // Against what another round confirmed for this hole, tee and day: a pin
+    // that didn't come from GSPro's own record and disagrees gets a note.
+    let crossCheckNote: string | null = null
+    if (pinSlot != null && next.pinDistanceValidationErrorYds == null && round?.courseId === selectedCourseId) {
+      const rows = await loadConfirmedPositions(selectedCourseId).catch(() => [])
+      crossCheckNote = confirmedPinNote({
+        position: findConfirmedPosition(rows, {
+          holeNumber: snapshot.holeNumber, teeSet: round.normalizedTeeSet ?? '', pinDay: round.pinDay ?? null,
+          layoutFingerprint: context.registration.layoutFingerprint,
+        }),
+        pinSlot, pinFromGsproRecord: false, pinDay: round.pinDay ?? null,
+      })
+    }
+    // Both confirmed by GSPro's own record: share them for players without the file.
+    if (confirmed && round?.courseId === selectedCourseId && context.registration.layoutFingerprint) {
+      void recordConfirmedPosition({
+        courseId: selectedCourseId, courseKey: context.courseKey, holeNumber: snapshot.holeNumber,
+        teeSet: round.normalizedTeeSet ?? '', pinDay: round.pinDay ?? '',
+        layoutFingerprint: context.registration.layoutFingerprint,
+        teeName: confirmed.teeName, teeWorld: confirmed.teeWorld,
+        pinSlot: confirmed.pinSlot, pinLabel: confirmed.pinLabel, pinWorld: confirmed.pinWorld,
+      })
+    }
     const placed = registrationForHole(context.registration, snapshot.holeNumber)
     const turned = { ...next, gsproSceneRotationDeg: placed.rotationDeg ?? 0,
-      gsproSceneMirrored: placed.mirrored === true }
+      gsproSceneMirrored: placed.mirrored === true,
+      warnings: crossCheckNote ? [...new Set([...next.warnings, crossCheckNote])] : next.warnings }
     if (!teeContext) return turned
     // Shown under Details: whether GSPro's round layout gave Shot 1 its pin.
     const gkdHole = nativeHole(context.layout, snapshot.holeNumber)
