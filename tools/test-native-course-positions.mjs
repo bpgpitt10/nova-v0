@@ -130,6 +130,28 @@ try {
   assert.ok(Math.abs(noPreShot.snapshot.ballLocalYds[1]) < 0.01, 'falls back to the round tee set (Black at origin)')
   assert.equal(noPreShot.pinSlot, 2, 'keeps the slot learned earlier in the round')
 
+  // The pin day picked in GSPro's round setup names the pin before any shot
+  // (Brian, 11/9), and beats a slot remembered from a distance match.
+  assert.equal(gkd.normalizePinDay(' friday '), 'Friday')
+  assert.equal(gkd.normalizePinDay('Mon'), null)
+  assert.equal(gkd.nativePinForDay(hole, 'Friday').slot, 2)
+  assert.equal(gkd.nativePinForDay(hole, 'Sunday'), null)
+  const byDay = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart: null, normalizedTeeSet: 'black',
+    rememberedPinSlot: 1, pinDay: 'Friday',
+  })
+  assert.equal(byDay.pinSlot, 2, "the player's pin day names the pin")
+  assert.equal(byDay.snapshot.pinSource, 'native-gkd')
+  assert.equal(byDay.snapshot.pinDistanceValidationErrorYds, null, 'exact, nothing measured')
+  assert.ok(Math.abs(byDay.snapshot.distanceToPinYds - Math.hypot(36, 150) * Y) < 1e-6)
+  // GSPro's own shot evidence still wins, and the disagreement is said.
+  const dayVsShot = snap.applyNativeCourseSnapshot({
+    base, context, holeNumber: 1, teeContext: true, preShotStart, normalizedTeeSet: 'black',
+    rememberedPinSlot: null, pinDay: 'Friday',
+  })
+  assert.equal(dayVsShot.pinSlot, 1, 'GSPro says Thursday')
+  assert.ok(dayVsShot.snapshot.warnings.some((w) => w.includes('Thursday position, not Friday')), dayVsShot.snapshot.warnings)
+
   const later = snap.applyNativeCourseSnapshot({
     base: { ...base, nextShotNumber: 2, latestShot: { holeNumber: 1, endWorld: pos(30, 100), distanceToPinYds: 35 * Y } },
     context, holeNumber: 1, teeContext: false, preShotStart: null, normalizedTeeSet: null, rememberedPinSlot: null,
