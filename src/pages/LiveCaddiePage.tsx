@@ -904,12 +904,18 @@ export default function LiveCaddiePage() {
   // pin that disagrees with it (RNK 3: 15 yd deep) is replaced.
   const snapshotExactPin = liveMatchesHole && liveSnapshot && liveSnapshot.pinSource !== 'unavailable'
     ? liveSnapshot.pinLocalYds ?? null : null
+  // With a pin day picked in Start Round the pin comes from the course file
+  // and the distance/height guess never names it (Brian, 11/9: few layers).
+  // The lookup still runs for the hole's aim route, which the distance check
+  // needs on doglegs.
+  const pinDayPicked = Boolean(loadActiveLiveCaddieRound()?.pinDay)
+  const hudGuess = hudPin && hudPin.key === hudPinKey && !pinDayPicked ? hudPin : null
   const pinCheck = reconcilePinWithHud({
     snapshotPin: snapshotExactPin,
     // Only against an exact ball: a provisional tee can be yards off itself.
     ball: liveSnapshot?.ballSource === 'native-gkd' ? liveSnapshot.ballLocalYds ?? null : null,
     hudYds: hudShotOneYds,
-    hudPin: hudPin && hudPin.key === hudPinKey ? hudPin.pinLocal : null,
+    hudPin: hudGuess?.pinLocal ?? null,
     aimPoints: hudPin && hudPin.key === hudPinKey ? hudPin.aimPointsLocal : [],
     hudLookupDone: Boolean(hudPin && hudPin.key === hudPinKey),
   })
@@ -1443,7 +1449,7 @@ export default function LiveCaddiePage() {
   const estimatedPinCheck: EstimatedPinAim | null = !trustedLivePin && hole && aimPin && aimTarget
     ? estimatedPinAim({
         hole, ball, pin: aimPin, target: aimTarget,
-        pinSlotsLocal: hudPin && hudPin.key === hudPinKey ? hudPin.candidatesLocal : null,
+        pinSlotsLocal: hudGuess?.candidatesLocal ?? null,
         distanceKnown: (hudShotOneYds ?? effectiveDistanceToPinYds) != null,
       })
     : null
