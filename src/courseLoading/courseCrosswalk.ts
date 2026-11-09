@@ -76,7 +76,7 @@ export type CrosswalkDecision =
 export const crosswalkDecision = (row: CrosswalkRow | null): CrosswalkDecision => {
   if (!row) return { kind: 'unknown' }
   if (row.status === 'fictional') return { kind: 'not-on-map', reason: 'a fictional course (no real place to map)' }
-  if (row.status === 'no-map') return { kind: 'not-on-map', reason: 'no golf course is mapped on OpenStreetMap at its location yet' }
+  if (row.status === 'no-map') return { kind: 'not-on-map', reason: "the real course isn't mapped yet" }
   if (row.lat == null || row.lon == null) return { kind: 'unknown' }
   const { lat, lon } = row
   if (row.status === 'matched' && row.osm_type && row.osm_id) {

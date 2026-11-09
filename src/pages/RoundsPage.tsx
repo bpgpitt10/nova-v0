@@ -1027,8 +1027,7 @@ function RoundDetail({
               value={scene.reason === 'override' ? scene.backdrop : 'auto'}
             >
               <option value="auto">
-                Automatic ({BACKDROP_LABEL[pickBackdrop({ keywords: course?.keywords, altitudeFt: course?.altitudeFt }).backdrop].toLowerCase()}
-                {course?.keywords?.length ? ', from the course designer' : ''})
+                Automatic ({BACKDROP_LABEL[pickBackdrop({ keywords: course?.keywords, altitudeFt: course?.altitudeFt }).backdrop].toLowerCase()})
               </option>
               {BACKDROPS.map((backdrop) => (
                 <option key={backdrop} value={backdrop}>{BACKDROP_LABEL[backdrop]}</option>
@@ -1036,9 +1035,8 @@ function RoundDetail({
             </select>
           </label>
         ) : null}
-        <strong>What this page knows and doesn’t</strong>
         <span>
-          Strokes gained uses the PGA Tour baseline (Broadie tables, tour putting). {round.unknownLieShots > 0 ? `${round.unknownLieShots} shot${round.unknownLieShots === 1 ? '' : 's'} (*) started or finished on a GSPro surface we haven’t identified yet; they’re valued as rough. ` : ''}Fringe is valued like the fairway. Penalty strokes are not verified yet.
+          Strokes gained is measured against the PGA Tour.{round.unknownLieShots > 0 ? ` Shots marked * are valued as from the rough.` : ''}
         </span>
       </section>
     </main>
@@ -1085,10 +1083,10 @@ function ShotMap({ hole, courseKey, courseName }: { hole: RoundHole; courseKey: 
         : <PlainShotMap hole={hole} />}
       <p className="rounds-muted rounds-small">
         {state.status === 'real'
-          ? 'Your shots on the course Looper loaded, placed with the same alignment Live Caddie uses. Dashed lines are putts.'
+          ? 'Dashed lines are putts.'
           : state.status === 'loading'
-            ? 'Looking for this hole’s map…'
-            : 'Drawn from GSPro’s own shot positions. Courses Looper has loaded show the real hole once your sim PC has opened Rounds. Dashed lines are putts.'}
+            ? 'Loading the hole…'
+            : 'Dashed lines are putts. Load this course to see the real hole.'}
       </p>
     </>
   )
@@ -1275,7 +1273,7 @@ function ClubsVsRange({ round }: { round: RoundSummary }) {
       </div>
       {anyGuessed ? (
         <p className="rounds-muted rounds-small">
-          Clubs not armed in Live Caddie are Looper’s guess from the ball data. A gap of 12+ yards on a low-confidence guess most likely means the wrong club, not a longer swing. Carry is not adjusted for elevation yet.
+          Clubs you didn’t arm in Live Caddie are Looper’s best guess from the ball flight; a gap of 12+ yards on a guess usually means the wrong club. Carries aren’t adjusted for elevation.
         </p>
       ) : null}
     </section>

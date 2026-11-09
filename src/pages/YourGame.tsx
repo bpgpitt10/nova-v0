@@ -236,11 +236,11 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section yourgame-coming">
               <div className="rounds-section-head">
                 <h2>Off the tee by hole shape</h2>
-                <span className="yourgame-tag">Needs hole shapes</span>
+                <span className="yourgame-tag">Coming</span>
               </div>
               <p className="rounds-muted">
-                Fairways, misses and strokes gained on dogleg lefts, straight holes and dogleg rights. Hole shape comes from
-                GSPro’s course files (the companion reads them on the sim PC); your launch data adds your stock shape.
+                Fairways, misses and strokes gained on dogleg lefts, straight holes and dogleg rights, set against your
+                stock shot shape.
               </p>
             </section>
           </div>

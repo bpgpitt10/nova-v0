@@ -12,6 +12,8 @@ import {
   type NativeCourseStatus,
 } from '../courseGeometry/nativeCourseRuntime'
 import { courseUsesGsproHoles } from '../courseGeometry/courseCatalog'
+import { courseStatusView, type CourseLoadability } from '../lib/supportCodes'
+import { crosswalkDecision, crosswalkForGsproKey } from '../courseLoading/courseCrosswalk'
 import './NativePositionsBetaPanel.css'
 
 type Props = {
@@ -19,61 +21,9 @@ type Props = {
   courseKey: string | null
 }
 
-/** One plain line per state; the technical detail goes in `detail` (hover). */
-const describe = (status: NativeCourseStatus): { text: string; tone: 'ok' | 'warn'; detail?: string } => {
-  switch (status.state) {
-    case 'ready':
-      if (status.gsproOnly) {
-        return {
-          text: "Playing from GSPro's course file: no map yet, so no fairways, bunkers or trees.",
-          tone: 'ok',
-          detail: "Tees, pins, the green, GSPro's water and OB and GSPro's heights come from the course file."
-            + (status.layoutNames.length > 1 ? ` Layouts: ${status.layoutNames.join(', ')}.` : ''),
-        }
-      }
-      return {
-        text: `Matched to your GSPro course · grade ${status.grade}`,
-        tone: 'ok',
-        detail: [
-          status.via === 'companion' ? 'Course files via the Looper Companion.' : 'Course files from your GSPro folder.',
-          status.fittedHere ? `Matched on this PC${status.fitDetail ? `: ${status.fitDetail}` : ''}.` : '',
-          status.layoutNames.length > 1 ? `Layouts: ${status.layoutNames.join(', ')}.` : '',
-        ].filter(Boolean).join(' '),
-      }
-    case 'no-registration':
-      return { text: 'Start the Looper Companion on your GSPro PC to match this course.', tone: 'warn' }
-    case 'other-course':
-      return status.grade
-        ? { text: `Matched to your GSPro course · grade ${status.grade}`, tone: 'ok',
-            detail: `GSPro's last round was on ${status.courseKey}; positions switch on when you start this course in GSPro.` }
-        : { text: `GSPro is on ${status.courseKey}. Positions are estimated until you start this course in GSPro.`, tone: 'warn' }
-    case 'no-folder':
-      return { text: 'Start the Looper Companion on your GSPro PC to match this course.', tone: 'warn',
-        detail: 'Or choose your GSPro folder (e.g. C:\\GSProV1). Read-only; files stay on this PC.' }
-    case 'needs-permission':
-      return { text: 'Allow read access to your GSPro course folder again.', tone: 'warn' }
-    case 'gkd-not-found':
-      return { text: "This course isn't in your GSPro course library.", tone: 'warn', detail: `${status.courseKey}.GKD not found.` }
-    case 'layout-mismatch':
-      return { text: 'Your GSPro version of this course has different greens or pins. Positions are estimated.', tone: 'warn' }
-    case 'registering':
-      return { text: 'Matching to your GSPro course…', tone: 'warn' }
-    case 'registration-failed':
-      return { text: "Couldn't match this course to your GSPro version. Positions are estimated.", tone: 'warn', detail: status.reason }
-    case 'error':
-      return { text: 'Course match unavailable. Positions are estimated.', tone: 'warn', detail: status.message }
-    case 'no-course':
-      return { text: 'Checking…', tone: 'warn' }
-    case 'off':
-    default:
-      return { text: 'Off (?native=0). Positions are estimated.', tone: 'warn', detail: '?native=1 turns it back on.' }
-  }
-}
-
-/** "Course match": whether GSPro's course files are matched to the map, so
- * positions come straight from GSPro's coordinates. Always on (no toggle);
- * when it can't match, Live Caddie falls back to estimated positions and this
- * line says why. ?native=0 turns it off for troubleshooting. */
+/** "Course": how much of this course Looper can see, in golf terms, with a
+ * short code for support (lib/supportCodes.ts). How the course is matched is
+ * never shown. ?native=0 turns it off for troubleshooting. */
 export default function NativePositionsBetaPanel({ courseId, courseKey }: Props) {
   const [enabled] = useState(isNativePositionsEnabled)
   const [status, setStatus] = useState<NativeCourseStatus>(getNativeCourseStatus)
@@ -117,22 +67,42 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
     }
   }
 
-  const { text, tone, detail } = describe(on ? status : { state: 'off' })
+  // A course Looper hasn't loaded: can it be? Only fictional / unmapped
+  // courses get the basic-course fallback; everything else is told to load.
+  const gsproKey = status.state === 'ready' && status.gsproOnly ? status.courseKey : null
+  const [loadability, setLoadability] = useState<CourseLoadability>('loadable')
+  useEffect(() => {
+    setLoadability('loadable')
+    if (!gsproKey) return
+    let alive = true
+    void crosswalkForGsproKey(gsproKey)
+      .then((row) => { if (alive) setLoadability(crosswalkDecision(row).kind === 'not-on-map' ? 'not-loadable' : 'loadable') })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [gsproKey])
+  const view = courseStatusView(on ? status : { state: 'off' }, loadability)
   const needsFolder = canPickFolder && on && (status.state === 'no-folder' || status.state === 'gkd-not-found')
   const needsPermission = canPickFolder && on && status.state === 'needs-permission'
 
   return (
-    <section className="native-positions-beta" aria-label="Course match">
-      <span className="native-positions-toggle">Course match</span>
-      <span className={`native-positions-status native-positions-${tone}`} title={detail}>{text}</span>
+    <section className="native-positions-beta" aria-label="Course" data-course-code={view.code}>
+      <span className="native-positions-toggle">Course</span>
+      <span className={`native-positions-dot native-positions-${view.tone}`} aria-hidden="true" />
+      <span className={`native-positions-status native-positions-${view.tone}`}>{view.text}</span>
+      {view.action === 'load-full-course' ? (
+        <a className="native-positions-link" href={gsproKey ? `/courses?gspro=${encodeURIComponent(gsproKey)}` : '/courses'}>
+          Load this course
+        </a>
+      ) : null}
+      <span className="native-positions-code" title="Support code">{view.code}</span>
       {needsFolder ? (
         <button type="button" disabled={busy} onClick={() => void run(chooseGsproCoursesFolder)}>
-          Choose GSPro course folder
+          Connect your GSPro folder
         </button>
       ) : null}
       {needsPermission ? (
         <button type="button" disabled={busy} onClick={() => void run(regrantGsproCoursesFolder)}>
-          Allow folder access
+          Allow access
         </button>
       ) : null}
     </section>

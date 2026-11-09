@@ -259,3 +259,11 @@
   font-weight: 400;
   text-decoration: underline;
 }
+
+/* Opened from "Load this course": the course the player came for. */
+.load-course-list li.load-course-focus {
+  outline: 1px solid rgba(234, 179, 8, 0.7);
+  outline-offset: 4px;
+  border-radius: 8px;
+  background: rgba(234, 179, 8, 0.06);
+}
