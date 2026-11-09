@@ -578,6 +578,19 @@ const loadGsproOnlyContext = async (courseId: CourseId, courseKey: string | null
   }
 }
 
+/**
+ * The course's published registration (GSPro world -> map), without the course
+ * file: for placing positions another round confirmed (confirmedPositions).
+ * Published file first, then the copy cached from an earlier read here.
+ */
+export const publishedRegistrationFor = async (courseId: CourseId, courseKey: string | null): Promise<NativeRegistration | null> => {
+  const url = registrationUrl(courseId)
+  const response = url ? await fetch(url, { cache: 'force-cache' }).catch(() => null) : null
+  const published = response?.ok ? parseNativeRegistration(await response.json().catch(() => null)) : null
+  if (published) return published
+  return courseKey ? loadCachedRegistration(courseId, courseKey) : null
+}
+
 const loadContext = async (courseId: CourseId, courseKey: string | null): Promise<LoadResult> => {
   if (isGsproOnlyCourseId(courseId)) return loadGsproOnlyContext(courseId, courseKey)
   const entry = getCourseCatalogEntry(courseId)
