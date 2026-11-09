@@ -74,8 +74,30 @@ class CourseLibraryTests(unittest.TestCase):
         library.clear_caches()
         closed = library.list_installed_courses(env=env)  # GSPro not running
         self.assertEqual(closed["status"], "ready")
-        self.assertEqual(closed["searchedRoots"][0], "last-gspro")
+        self.assertEqual(closed["searchedRoots"][0], "last-courses")
         self.assertEqual(library.course_layouts("synthetic_gsp", env=env)["status"], "ready")
+
+    def test_finds_courses_when_gspro_runs_from_another_folder(self):
+        """GSPro 4.0 (8 Nov 2026): GSPro.exe no longer sat under a folder with Courses
+        beside it, and the companion searched nothing. Courses one level down from
+        any folder above GSPro.exe are found, and remembered."""
+        install = Path(self.tmp.name) / "Games"
+        new_exe = install / "GSPro4" / "Bin" / "GSPro.exe"
+        new_exe.parent.mkdir(parents=True)
+        new_exe.write_bytes(b"")
+        (Path(self.tmp.name) / "GSProV1").rename(install / "GSProV1")
+        env = {"LOOPER_COMPANION_SETTINGS_DIR": str(Path(self.tmp.name) / "settings")}
+        listing = library.list_installed_courses(image_path=str(new_exe), env=env)
+        self.assertEqual(listing["status"], "ready")
+        self.assertEqual(listing["searchedRoots"], ["beside-gspro"])
+        self.assertEqual(library.course_layouts("synthetic_gsp", image_path=str(new_exe), env=env)["status"], "ready")
+        library.clear_caches()
+        settings = json.loads((Path(env["LOOPER_COMPANION_SETTINGS_DIR"]) / "gspro-location.json").read_text())
+        self.assertEqual(Path(settings["coursesDir"]), install / "GSProV1" / "Courses")
+        self.assertEqual(Path(settings["imagePath"]), new_exe)
+        closed = library.list_installed_courses(env=env)
+        self.assertEqual(closed["status"], "ready")
+        self.assertEqual(closed["searchedRoots"][0], "last-courses")
 
     def test_finds_courses_folder_beside_gspro(self):
         roots = library.library_roots(image_path=str(self.exe), env={})

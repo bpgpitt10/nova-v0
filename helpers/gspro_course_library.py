@@ -13,11 +13,15 @@ What a GSPro course folder looks like (FarmLinks, from the player's PC):
 
 Library roots, first found wins per course:
   1. LOOPER_GSPRO_COURSES_DIR (explicit override; ';'-separated)
-  2. a "Courses" folder beside or above the running GSPro executable
-  3. the same, for where GSPro was last seen running (so Round Setup works
-     with GSPro closed; remembered in the companion's own settings file,
+  2. a "Courses" folder beside or above the running GSPro executable, or one
+     level down from any of those folders (GSPro 4.0 can run from a different
+     folder than the courses, 8 Nov 2026: the old lookup found nothing)
+  3. the courses folder that last held courses, and the same search for where
+     GSPro was last seen running (so Round Setup works with GSPro closed;
+     remembered in the companion's own settings file,
      %LOCALAPPDATA%\\Looper\\Companion\\gspro-location.json, the only write)
-  4. <SystemDrive>\\GSProV1\\Courses (the default install)
+  4. the usual install folders on every drive: GSProV1\\Courses,
+     GSProV1\\Core\\GSP\\Courses, GSPro\\Courses, GSProCourses
 """
 from __future__ import annotations
 
@@ -57,20 +61,20 @@ def _location_file(environ) -> Path | None:
     return Path(base) / "Looper" / "Companion" / "gspro-location.json" if base else None
 
 
-def remembered_image_path(environ) -> str | None:
+def _remembered(environ) -> dict:
     target = _location_file(environ)
     if target is None:
-        return None
+        return {}
     try:
         data = json.loads(target.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return None
-    value = data.get("imagePath") if isinstance(data, dict) else None
-    return value if isinstance(value, str) and value.lower().endswith(".exe") else None
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
-def remember_image_path(image_path: str, environ) -> None:
-    if remembered_image_path(environ) == image_path:
+def _remember(environ, **values: str) -> None:
+    data = _remembered(environ)
+    if all(data.get(k) == v for k, v in values.items()):
         return
     target = _location_file(environ)
     if target is None:
@@ -78,10 +82,57 @@ def remember_image_path(image_path: str, environ) -> None:
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         tmp = target.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"imagePath": image_path}), encoding="utf-8")
+        tmp.write_text(json.dumps({**data, **values}), encoding="utf-8")
         os.replace(tmp, target)
     except OSError:
         pass  # remembering is a convenience only
+
+
+def remembered_image_path(environ) -> str | None:
+    value = _remembered(environ).get("imagePath")
+    return value if isinstance(value, str) and value.lower().endswith(".exe") else None
+
+
+def remember_image_path(image_path: str, environ) -> None:
+    _remember(environ, imagePath=image_path)
+
+
+def remembered_courses_dir(environ) -> str | None:
+    value = _remembered(environ).get("coursesDir")
+    return value if isinstance(value, str) and value else None
+
+
+def remember_courses_dir(folder: Path, env: dict | None = None) -> None:
+    _remember(os.environ if env is None else env, coursesDir=str(folder))
+
+
+# Folder names GSPro installs have used for the course library.
+INSTALL_ROOTS = (("GSProV1", "Courses"), ("GSProV1", "Core", "GSP", "Courses"), ("GSPro", "Courses"),
+                 ("GSProCourses",), ("GSPro Courses",))
+MAX_SIBLINGS = 60
+
+
+def _drives(environ) -> list[str]:
+    system = (environ.get("SystemDrive") or "C:").rstrip("\\")
+    drives = [system]
+    if os.name == "nt":
+        for letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            drive = f"{letter}:"
+            if drive.upper() != system.upper() and os.path.isdir(drive + "\\"):
+                drives.append(drive)
+    return drives
+
+
+def _near(label: str, exe: str) -> list[tuple[str, Path]]:
+    """Courses folders beside or above GSPro.exe, and one level down from each of those folders."""
+    here = Path(exe).parent
+    ancestors = [here, *list(here.parents)[:4]]
+    out = [(label, a / "Courses") for a in ancestors]
+    for ancestor in ancestors:
+        _, dirs = _entries(ancestor)
+        for child in sorted(dirs, key=lambda d: d.name.lower())[:MAX_SIBLINGS]:
+            out.append((label, child / "Courses"))
+    return out
 
 
 def library_roots(
@@ -96,14 +147,16 @@ def library_roots(
             roots.append(("override", Path(part.strip())))
     if image_path:
         remember_image_path(image_path, environ)
-    for label, exe in (("beside-gspro", image_path), ("last-gspro", remembered_image_path(environ))):
-        if not exe:
-            continue
-        here = Path(exe).parent
-        for ancestor in [here, *list(here.parents)[:4]]:
-            roots.append((label, ancestor / "Courses"))
-    drive = environ.get("SystemDrive") or "C:"
-    roots.append(("default-install", Path(f"{drive}\\") / "GSProV1" / "Courses"))
+        roots.extend(_near("beside-gspro", image_path))
+    last_dir = remembered_courses_dir(environ)
+    if last_dir:
+        roots.append(("last-courses", Path(last_dir)))
+    last_exe = remembered_image_path(environ)
+    if last_exe:
+        roots.extend(_near("last-gspro", last_exe))
+    for drive in _drives(environ):
+        for parts in INSTALL_ROOTS:
+            roots.append(("default-install", Path(f"{drive}\\", *parts)))
     out, seen = [], set()
     for label, path in roots:
         key = os.path.normcase(os.path.abspath(str(path)))
@@ -319,6 +372,7 @@ def list_installed_courses(*, image_path: str | None = None, env: dict | None = 
             if depth < MAX_DEPTH:
                 queue.extend((d, depth + 1) for d in sorted(dirs, key=lambda d: d.name.lower()))
         if courses:
+            remember_courses_dir(root, env)  # found again even if GSPro moves or is closed
             break  # first library root that has courses wins
     for scene, alt in alternates:
         if scene in courses and alt not in courses[scene]["alternateLayouts"]:
