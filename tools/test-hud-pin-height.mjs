@@ -10,7 +10,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
   return server.ssrLoadModule(path)
 })
 try {
-  const { rankHudPinSlots } = await load('/src/liveCaddie/hudPin.ts')
+  const { rankHudPinSlots, clearOfOtherSpots } = await load('/src/liveCaddie/hudPin.ts')
   const yd = 0.9144
   const pinAt = (slot, distanceYds, acrossYds, heightM) => {
     // Straight down +z from the tee at the origin, `across` to the side, same distance from the tee.
@@ -39,6 +39,12 @@ try {
   // No height (older GSPro): unchanged.
   ;({ ranked } = rankHudPinSlots(hole, tee, 456))
   assert.equal(ranked[0].pin.slot, 4)
+  // Valhalla 1 (11/8): four day slots, one spot: not ambiguous.
+  const same = { ...hole, pins: [pinAt(1, 368, 2, 7), pinAt(2, 368.3, 2.4, 7), pinAt(3, 368, 2, 7), pinAt(4, 368.1, 2.2, 7)] }
+  assert.equal(clearOfOtherSpots(rankHudPinSlots(same, tee, 368).ranked), true)
+  // Two slots at the same distance across the green: ambiguous.
+  const across = { ...hole, pins: [pinAt(1, 368, -8, 7), pinAt(2, 368.5, 8, 7)] }
+  assert.equal(clearOfOtherSpots(rankHudPinSlots(across, tee, 368).ranked), false)
   console.log('hud pin height ok')
 } finally {
   if (server) await server.close()
