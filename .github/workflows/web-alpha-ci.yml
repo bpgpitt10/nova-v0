@@ -178,6 +178,9 @@ jobs:
       - name: GSPro 4 pin height picks the pin slot
         run: node tools/test-hud-pin-height.mjs
 
+      - name: Estimated-pin aim error priced by the engine
+        run: node tools/test-aim-error-cost.mjs
+
       - name: GSPro course links (Load page)
         run: node tools/test-gspro-links.mjs
 

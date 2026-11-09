@@ -48,6 +48,7 @@ import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistanc
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
 import { pinFromHudDistance } from '../liveCaddie/hudPin'
+import { priceAimError } from '../liveCaddie/aimErrorCost'
 import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -1454,12 +1455,14 @@ export default function LiveCaddiePage() {
   const latestAimRef = useRef({
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
+    aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
+    aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
@@ -1497,12 +1500,21 @@ export default function LiveCaddiePage() {
       // only estimated turns and shrinks the click; refuse when that could
       // move this click by more than one aim step.
       const estimated = snap.pinExact ? null : snap.estimatedPin
-      if (!snap.pinExact && !estimated?.allowed) {
+      // Over one aim step, the engine says whether the error matters for this
+      // shot: a drive to a wide fairway shrugs off 5 yd, an approach over water
+      // doesn't (Brian, 11/9: an uncertain pin must not cost a tee shot).
+      const priced = estimated && !estimated.allowed && snap.aimCandidates && snap.chosenAimOffsetYds != null
+        ? priceAimError({ candidates: snap.aimCandidates, chosenOffsetYds: snap.chosenAimOffsetYds, errorYds: estimated.errorYds })
+        : null
+      const aimErrorAffordable = estimated != null && (estimated.allowed || priced?.affordable === true)
+      if (!snap.pinExact && !aimErrorAffordable) {
         const spread = estimated && Number.isFinite(estimated.errorYds) ? Math.ceil(estimated.errorYds) : null
+        const cost = priced?.reason === 'too-costly' && Number.isFinite(priced.strokes)
+          ? ` That would cost about ${priced.strokes.toFixed(2)} strokes on this shot.` : ''
         finish({
           outcome: 'not-sent',
           message: spread != null
-            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.`
+            ? `Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot), and an estimated pin could put this aim ${spread} yd off.${cost}`
             : "Aim by hand: GSPro hasn't reported this hole's pin yet (it does after your first shot).",
         })
         return

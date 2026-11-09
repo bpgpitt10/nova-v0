@@ -93,9 +93,11 @@ export const aimClickErrorYds = ({ ball, pin, target, uncertainty }: Readonly<{
 
 /**
  * Looper picks aims on a 3 yd grid (AIM_OFFSETS_YDS). An estimated pin may
- * move the click by at most one of those steps, worst case, whatever the club:
- * the golfer's dispersion is theirs, the click has to land where Looper meant
+ * move the click by one of those steps, worst case, with no questions asked
  * (Brian, 11/6: an aim that could be 11 yd off on a drive is not an aim).
+ * Over that, the engine prices the error for the shot in hand
+ * (`aimErrorCost.ts`): a drive to a wide fairway shrugs off 5 yd, an approach
+ * over water doesn't (Brian, 11/9).
  */
 export const AIM_ERROR_TOLERANCE_YDS = 3
 
