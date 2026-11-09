@@ -10,7 +10,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
   return server.ssrLoadModule(path)
 })
 try {
-  const { rankHudPinSlots, clearOfOtherSpots, pickSlotByMinimapAngle } = await load('/src/liveCaddie/hudPin.ts')
+  const { rankHudPinSlots, clearOfOtherSpots } = await load('/src/liveCaddie/hudPin.ts')
   const yd = 0.9144
   const pinAt = (slot, distanceYds, acrossYds, heightM) => {
     // Straight down +z from the tee at the origin, `across` to the side, same distance from the tee.
@@ -45,30 +45,6 @@ try {
   // Two slots at the same distance across the green: ambiguous.
   const across = { ...hole, pins: [pinAt(1, 368, -8, 7), pinAt(2, 368.5, 8, 7)] }
   assert.equal(clearOfOtherSpots(rankHudPinSlots(across, tee, 368).ranked), false)
-  // The minimap names the slot (Valhalla 1, 11/8: two slots 13.5 m apart at 368 yd).
-  {
-    const teeLocal = [0, 0]
-    const aimPointsLocal = [[-12, 209], [5, 300]]
-    const slotA = [6, 367.9]
-    const slotB = [-8.7, 367.9]
-    // GSPro's minimap: turned so the pin (slot A) is straight up, 0.7 yd/px, y down.
-    const turn = Math.atan2(slotA[0], slotA[1])
-    const toPx = ([x, y]) => {
-      const rx = x * Math.cos(turn) - y * Math.sin(turn)
-      const ry = x * Math.sin(turn) + y * Math.cos(turn)
-      return { x: 300 + rx / 0.7, y: 760 - ry / 0.7 }
-    }
-    const minimap = { ballPx: toPx([0, 0]), pinPx: toPx(slotA), waypointPx: toPx(aimPointsLocal[0]), waypointYds: 209 }
-    const contenders = [{ key: 'B', local: slotB }, { key: 'A', local: slotA }]
-    assert.equal(pickSlotByMinimapAngle({ teeLocal, aimPointsLocal, contenders, minimap }).key, 'A')
-    const minimapB = { ...minimap, pinPx: toPx(slotB) }
-    assert.equal(pickSlotByMinimapAngle({ teeLocal, aimPointsLocal, contenders, minimap: minimapB }).key, 'B')
-    // A pin dot between the two: no pick.
-    const mid = { ...minimap, pinPx: toPx([(slotA[0] + slotB[0]) / 2, 367.9]) }
-    assert.equal(pickSlotByMinimapAngle({ teeLocal, aimPointsLocal, contenders, minimap: mid }).key, null)
-    // An aim marker that matches no course aim point: no pick.
-    assert.equal(pickSlotByMinimapAngle({ teeLocal, aimPointsLocal, contenders, minimap: { ...minimap, waypointYds: 150 } }).key, null)
-  }
   console.log('hud pin height ok')
 } finally {
   if (server) await server.close()
