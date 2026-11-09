@@ -100,6 +100,35 @@ class HudTests(unittest.TestCase):
                          ("READY", 1, 465.9), result.get("rawText"))
         self.assertAlmostEqual(result["elevationFt"], -0.5, places=1)
 
+    def _framed(self, name, size, offset):
+        band = cv2.imread(str(FIXTURES / name))
+        width, height = size
+        frame = np.zeros((height, width, 3), np.uint8)
+        oy, ox = offset
+        frame[oy:oy + band.shape[0], ox:ox + band.shape[1]] = band
+        return {"status": "captured", "quality": {"nonblank": True},
+                "windowWidth": width, "windowHeight": height,
+                "_private_bgra": cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA).tobytes()}
+
+    def test_gspro4_box_anywhere_near_the_corner_in_a_4k_window(self):
+        # Companion 1.0.4 on Brian's 3840x2160 window (8 Nov) still read UNKNOWN:
+        # the line's own text rows cut its measured height. It is now the name band's.
+        if hud.wind._tesseract_bundle() is None:
+            self.skipTest("tesseract not installed")
+        for name, expected in (("gspro4_player_box_368yd.png", 368.2), ("gspro4_player_box_466yd_trees.png", 465.9)):
+            for offset in ((0, 0), (7, 37), (14, 74)):
+                result = hud.read_hud_from_capture(self._framed(name, (3840, 2160), offset))
+                self.assertEqual((result["status"], result["shotNumber"], result["distanceToPinYds"]),
+                                 ("READY", 1, expected), (name, offset, result.get("rawText")))
+
+    def test_fixed_crop_fallback_reads_a_gspro4_box(self):
+        if hud.wind._tesseract_bundle() is None:
+            self.skipTest("tesseract not installed")
+        with mock.patch.object(hud, "read_v4_hud", return_value=None):
+            result = hud.read_hud_from_capture(self._framed("gspro4_player_box_368yd.png", (3840, 2160), (7, 37)))
+        self.assertEqual((result["status"], result["shotNumber"], result["distanceToPinYds"], result["hudReader"]),
+                         ("READY", 1, 368.2, "fixed-line"), result.get("rawText"))
+
     def test_older_player_box_is_not_read_as_gspro4(self):
         band = cv2.imread(str(FIXTURES / "gspro_hud_shot1_4926.png"))
         frame = np.full((1142, 2000, 3), 120, np.uint8)
