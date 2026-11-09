@@ -398,6 +398,9 @@ export type LooperCompanionLiveObservations = {
       status: 'READY' | 'UNKNOWN' | 'UNAVAILABLE'
       shotNumber: number | null
       distanceToPinYds: number | null
+      /** GSPro 4: the pin's height over the ball, feet (+ above, − below). */
+      elevationFt?: number | null
+      hudLayout?: string | null
       rawText?: string | null
       note?: string | null
     }

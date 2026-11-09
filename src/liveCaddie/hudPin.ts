@@ -3,7 +3,7 @@ import {
   nativeCourseContextForLive,
   rememberNativePinSlot,
 } from '../courseGeometry/nativeCourseRuntime'
-import { NATIVE_METERS_TO_YARDS, nativeHole, nativeRouteDistanceM } from '../courseGeometry/nativeGkd'
+import { NATIVE_METERS_TO_YARDS, nativeHole, nativeRouteDistanceM, type NativeHole } from '../courseGeometry/nativeGkd'
 import { nativeHoleLocalYdsToWorld, nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import type { CoursePointYds } from '../courseGeometry/types'
 
@@ -15,7 +15,7 @@ import type { CoursePointYds } from '../courseGeometry/types'
  * shot, so the course-state pipeline uses it too.
  */
 export const pinFromHudDistance = async ({
-  courseId, courseKey, holeNumber, roundId, teeLocal, distanceYds,
+  courseId, courseKey, holeNumber, roundId, teeLocal, distanceYds, elevationFt = null,
 }: Readonly<{
   courseId: CourseId
   courseKey: string | null
@@ -23,6 +23,13 @@ export const pinFromHudDistance = async ({
   roundId: number | null
   teeLocal: CoursePointYds
   distanceYds: number
+  /**
+   * GSPro 4's player box also shows the pin's height above (+) or below (−)
+   * the ball ("▼ 10ft 11"). Pin slots the same distance from the tee sit
+   * across the green, and distance alone can't tell them apart (Valhalla 2,
+   * 11/8: Aim by hand, "could put this aim 11 yd off"); their heights usually can.
+   */
+  elevationFt?: number | null
 }>): Promise<Readonly<{
   slot: number | null
   pinLocal: CoursePointYds | null
@@ -45,30 +52,18 @@ export const pinFromHudDistance = async ({
   const aimPointsLocal = hole.aimPoints
     .map((p) => nativeWorldToHoleLocalYds(context.registration, holeNumber, p))
     .filter((p): p is CoursePointYds => p !== null)
-  // The GKD tee is the tee-marker point, not where the ball is teed (FarmLinks:
-  // a couple of metres apart), so an exact 0.5 m match failed. Take the pin
-  // whose distance is clearly closest: within 6 m, and 3 m better than the next.
-  const wantedM = distanceYds / NATIVE_METERS_TO_YARDS
-  // On doglegs GSPro's tee distance follows the hole's aim route (tee ->
-  // AimPoint1 -> AimPoint2 -> pin), not the straight line: RNK 4 read 371 yd
-  // and no pin was within 29 m in a straight line. Take the better of the two.
-  const ranked = hole.pins
-    .map((pin) => {
-      const straightM = Math.hypot(pin.x - tee.x, pin.z - tee.z)
-      const routeM = hole.aimPoints.length ? nativeRouteDistanceM({ ...tee, y: 0 }, hole.aimPoints, pin) : straightM
-      return { pin, errorM: Math.min(Math.abs(straightM - wantedM), Math.abs(routeM - wantedM)) }
-    })
-    .sort((a, b) => a.errorM - b.errorM)
+  const { ranked, teeY } = rankHudPinSlots(hole, tee, distanceYds, elevationFt)
   const [best, next] = ranked
   const toLocal = (pin: { x: number; z: number }) => nativeWorldToHoleLocalYds(context.registration, holeNumber, pin)
   const fitting = ranked.filter((r) => r.errorM <= HUD_PIN_MAX_ERROR_M)
   const candidatesLocal = (fitting.length ? fitting : ranked)
     .map((r) => toLocal(r.pin))
     .filter((p): p is CoursePointYds => p !== null)
-  const note = best
+  const note = (best
     ? `nearest pin slot ${best.pin.slot} ${best.errorM.toFixed(1)} m off`
       + (next ? `, next ${next.errorM.toFixed(1)} m` : '')
-    : 'no GKD pins for this hole'
+    : 'no GKD pins for this hole')
+    + (elevationFt != null && teeY != null ? `; height ${elevationFt.toFixed(1)} ft kept ${ranked.length} of ${hole.pins.length}` : '')
   if (!best || best.errorM > HUD_PIN_MAX_ERROR_M
     || (next && next.errorM - best.errorM < HUD_PIN_MIN_MARGIN_M)) {
     return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
@@ -81,3 +76,56 @@ export const pinFromHudDistance = async ({
 
 const HUD_PIN_MAX_ERROR_M = 6
 const HUD_PIN_MIN_MARGIN_M = 3
+// GSPro shows feet and inches; the GKD tee marker sits a little off the teed ball.
+const HUD_PIN_MAX_HEIGHT_ERROR_FT = 1.0
+const METERS_TO_FEET = 3.28084
+
+/** The GKD tee marker nearest the ball's tee spot: its height stands in for the ball's. */
+const nearestTeeHeightM = (
+  hole: { tees: Readonly<Record<string, { x: number; y: number; z: number }>> },
+  tee: { x: number; z: number },
+): number | null => {
+  let best: { y: number; d: number } | null = null
+  for (const t of Object.values(hole.tees)) {
+    const d = Math.hypot(t.x - tee.x, t.z - tee.z)
+    if (!best || d < best.d) best = { y: t.y, d }
+  }
+  return best && best.d <= 25 ? best.y : null
+}
+
+/**
+ * GKD pin slots ranked by how well they fit GSPro's player box: distance from
+ * the tee first; with GSPro 4's pin height, slots whose height doesn't fit are
+ * dropped (unless that would drop them all).
+ */
+export const rankHudPinSlots = (
+  hole: NativeHole,
+  tee: Readonly<{ x: number; z: number }>,
+  distanceYds: number,
+  elevationFt: number | null = null,
+) => {
+  // The GKD tee is the tee-marker point, not where the ball is teed (FarmLinks:
+  // a couple of metres apart), so an exact 0.5 m match failed. Take the pin
+  // whose distance is clearly closest: within 6 m, and 3 m better than the next.
+  const wantedM = distanceYds / NATIVE_METERS_TO_YARDS
+  // On doglegs GSPro's tee distance follows the hole's aim route (tee ->
+  // AimPoint1 -> AimPoint2 -> pin), not the straight line: RNK 4 read 371 yd
+  // and no pin was within 29 m in a straight line. Take the better of the two.
+  let ranked = hole.pins
+    .map((pin) => {
+      const straightM = Math.hypot(pin.x - tee.x, pin.z - tee.z)
+      const routeM = hole.aimPoints.length ? nativeRouteDistanceM({ ...tee, y: 0 }, hole.aimPoints, pin) : straightM
+      return { pin, errorM: Math.min(Math.abs(straightM - wantedM), Math.abs(routeM - wantedM)) }
+    })
+    .sort((a, b) => a.errorM - b.errorM)
+  // Height: the pin's height over the tee's, against GSPro's reading.
+  const teeY = nearestTeeHeightM(hole, tee)
+  const heightFits = (pin: { y: number }) => elevationFt == null || teeY == null
+    || Math.abs((pin.y - teeY) * METERS_TO_FEET - elevationFt) <= HUD_PIN_MAX_HEIGHT_ERROR_FT
+  // Only among slots the distance already fits: a misread height must not
+  // promote a slot from elsewhere on the green.
+  const byDistance = ranked.filter((r) => r.errorM <= HUD_PIN_MAX_ERROR_M)
+  const byHeight = byDistance.filter((r) => heightFits(r.pin))
+  if (byHeight.length > 0 && byHeight.length < byDistance.length) ranked = byHeight
+  return { ranked, teeY }
+}
