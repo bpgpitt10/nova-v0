@@ -170,6 +170,7 @@ const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
 
 // Last GSPro player-box Shot 1 distance per course|hole|round.
 const lastHudShotOneYds = new Map<string, number>()
+const lastHudElevationFt = new Map<string, number>()
 
 const estimatePinFromGsproDistance = (
   hole: CourseHoleGeometry,
@@ -865,9 +866,14 @@ export default function LiveCaddiePage() {
     ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}` : null
   if (hudTeeKey && freshHudShotOneYds != null) lastHudShotOneYds.set(hudTeeKey, freshHudShotOneYds)
   const hudShotOneYds = freshHudShotOneYds ?? (hudTeeKey ? lastHudShotOneYds.get(hudTeeKey) ?? null : null)
+  // GSPro 4 also shows the pin's height (▼ 10ft 11): it tells apart pin slots at the same distance.
+  const freshHudElevationFt = freshHudShotOneYds != null && Number.isFinite(hudReading?.elevationFt)
+    ? hudReading!.elevationFt! : null
+  if (hudTeeKey && freshHudElevationFt != null) lastHudElevationFt.set(hudTeeKey, freshHudElevationFt)
+  const hudElevationFt = freshHudElevationFt ?? (hudTeeKey ? lastHudElevationFt.get(hudTeeKey) ?? null : null)
   const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
     && liveSnapshot.ballLocalYds && hudShotOneYds != null
-    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}` : null
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}|${hudElevationFt ?? '-'}` : null
   const [hudPin, setHudPin] = useState<{
     key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
     candidatesLocal: readonly CoursePointYds[]
@@ -878,6 +884,7 @@ export default function LiveCaddiePage() {
     void pinFromHudDistance({
       courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
       roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
+      elevationFt: hudElevationFt,
     }).then((found) => {
       if (alive) {
         setHudPin({
