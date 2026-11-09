@@ -63,7 +63,8 @@ def parse_hud_line(text: str):
 # is feet and inches with a green ▼ (pin below) or ▲ (pin above).
 # Brian's 4K Valhalla screenshot (8 Nov): line rows 0.050-0.083, box from x 0.005.
 V4_REGION = (0.12, 0.25)  # top-left search area (height, width fractions)
-V4_DIST = re.compile(r"(\d{1,3}(?:\.\d)?)\s*Y", re.I)
+# GSPro 4 always shows a tenth ("465.9"); the "yd" can fall outside the crop.
+V4_DIST = re.compile(r"(\d{1,3}\.\d)")
 V4_ELEV = re.compile(r"(\d{1,3})\s*FT\s*(\d{1,2})?", re.I)
 
 
@@ -87,26 +88,50 @@ def find_v4_player_line(frame: np.ndarray) -> dict | None:
     height, width = frame.shape[:2]
     region = frame[:int(height * V4_REGION[0]), :int(width * V4_REGION[1])].astype(np.float32)
     lum = 0.0722 * region[:, :, 0] + 0.7152 * region[:, :, 1] + 0.2126 * region[:, :, 2]
-    x0, x1 = int(width * 0.01), int(width * 0.15)
-    dark_rows = np.nonzero((lum[:, x0:x1] < 60).mean(axis=1) > 0.6)[0]
-    if len(dark_rows) < 6:
-        return None
-    # The longest run of dark rows is the line.
-    runs, start = [], dark_rows[0]
-    for a, b in zip(dark_rows, dark_rows[1:]):
-        if b != a + 1:
-            runs.append((start, a))
-            start = b
-    runs.append((start, dark_rows[-1]))
-    top, bottom = max(runs, key=lambda r: r[1] - r[0])
-    bottom += 1
-    if bottom - top < 0.015 * height:
+    x0, x1 = int(width * 0.03), int(width * 0.10)
+    # The name band above the line is red (any player colour with one strong
+    # channel works the same way); the line is the dark run right under it.
+    # Trees and window chrome are dark too, so the red band anchors it.
+    cols = region[:, x0:x1]
+    b, g, r = cols[:, :, 0], cols[:, :, 1], cols[:, :, 2]
+    colored = ((np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)) > 90).mean(axis=1) > 0.6
+    dark = (lum[:, x0:x1] < 60).mean(axis=1) > 0.6
+    top = bottom = None
+    name_rows = None
+    y = 0
+    rows = region.shape[0]
+    while y < rows:
+        if colored[y]:
+            start = y
+            while y < rows and colored[y]:
+                y += 1
+            if y - start >= 0.012 * height:
+                d = y
+                while d < rows and not dark[d] and d - y < 0.006 * height:
+                    d += 1  # a thin anti-aliased edge between the bands
+                if d < rows and dark[d]:
+                    # The line is as tall as the name band (73 vs 75 px at 4K);
+                    # dark trees right under the box must not extend it.
+                    top = d
+                    limit = top + round(0.98 * (y - start))
+                    while d < rows and d < limit and dark[d]:
+                        d += 1
+                    bottom = d
+                    name_rows = (start, y)
+                    break
+        y += 1
+    if top is None or bottom - top < 0.015 * height:
         return None
     band = lum[top:bottom]
-    dark_cols = np.nonzero((band < 60).mean(axis=0) > 0.5)[0]
-    if len(dark_cols) == 0:
+    # The box's left edge is where the name band's colour starts (dark trees
+    # or a window edge left of the box would pass a darkness test).
+    name = region[name_rows[0]:name_rows[1]]
+    nb, ng, nr = name[:, :, 0], name[:, :, 1], name[:, :, 2]
+    name_cols = np.nonzero(((np.maximum(np.maximum(nr, ng), nb) - np.minimum(np.minimum(nr, ng), nb)) > 90)
+                           .mean(axis=0) > 0.6)[0]
+    if len(name_cols) == 0:
         return None
-    left = int(dark_cols[0])
+    left = int(name_cols[0])
     # The highlighted cell is white; its digit breaks up the white, so the
     # cell runs to the last white column within about a cell's width.
     white = (band > 200).mean(axis=0)
@@ -170,6 +195,11 @@ def read_v4_hud(report: dict) -> dict | None:
     distance_roi = rows[:, left:left + int(span * 0.27)]
     elevation_roi = rows[:, left + int(span * 0.27):left + int(span * 0.56)]
     cell_roi = frame[top + pad:bottom - pad, cell_left + 2:cell_right - 2]
+    # The green/red triangle next to the height merges with a leading "0"
+    # ("▼0ft 6" read as "ft6"): paint it out before reading the digits.
+    elevation_text = elevation_roi.copy()
+    eb, eg, er = (elevation_text[:, :, i].astype(np.int32) for i in range(3))
+    elevation_text[(np.maximum(np.maximum(eb, eg), er) - np.minimum(np.minimum(eb, eg), er)) > 60] = (20, 20, 20)
     votes: dict[str, dict] = {"distance": {}, "shot": {}, "elevation": {}}
     texts: list[str] = []
 
@@ -188,7 +218,7 @@ def read_v4_hud(report: dict) -> dict | None:
         digits = re.sub(r"\D", "", c.get("rawText") or "") if c.get("status") == "ok" else ""
         shot = int(digits) if digits and 1 <= int(digits) <= 20 else None
         vote("shot", shot)
-        e = _ocr_crop(elevation_roi, height, dark_text=False, psm=7, whitelist="0123456789ft ")
+        e = _ocr_crop(elevation_text, height, dark_text=False, psm=7, whitelist="0123456789ft ")
         em = V4_ELEV.search(e.get("rawText") or "") if e.get("status") == "ok" else None
         feet = round(int(em.group(1)) + (int(em.group(2)) / 12 if em.group(2) else 0), 2) if em else None
         vote("elevation", feet)

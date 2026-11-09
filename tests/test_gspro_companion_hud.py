@@ -83,6 +83,23 @@ class HudTests(unittest.TestCase):
                              ("READY", 1, 368.2, "gspro-4"), (width, result.get("rawText")))
             self.assertAlmostEqual(result["elevationFt"], -(10 + 11 / 12), places=1)
 
+    def test_real_gspro4_player_box_with_trees_below(self):
+        # Valhalla 2 (8 Nov): dark trees under and left of the box made the line
+        # look taller and start at the window edge; "0ft 6" lost its 0 to the triangle.
+        bundle = hud.wind._tesseract_bundle()
+        if bundle is None:
+            self.skipTest("tesseract not installed")
+        band = cv2.imread(str(FIXTURES / "gspro4_player_box_466yd_trees.png"))
+        frame = np.full((2150, 3820, 3), 120, np.uint8)
+        frame[0:band.shape[0], 0:band.shape[1]] = band
+        report = {"status": "captured", "quality": {"nonblank": True},
+                  "windowWidth": 3820, "windowHeight": 2150,
+                  "_private_bgra": cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA).tobytes()}
+        result = hud.read_hud_from_capture(report)
+        self.assertEqual((result["status"], result["shotNumber"], result["distanceToPinYds"]),
+                         ("READY", 1, 465.9), result.get("rawText"))
+        self.assertAlmostEqual(result["elevationFt"], -0.5, places=1)
+
     def test_older_player_box_is_not_read_as_gspro4(self):
         band = cv2.imread(str(FIXTURES / "gspro_hud_shot1_4926.png"))
         frame = np.full((1142, 2000, 3), 120, np.uint8)
