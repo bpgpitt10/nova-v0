@@ -65,7 +65,8 @@ def parse_hud_line(text: str):
 V4_REGION = (0.12, 0.25)  # top-left search area (height, width fractions)
 # GSPro 4 always shows a tenth ("465.9"); the "yd" can fall outside the crop.
 V4_DIST = re.compile(r"(\d{1,3}\.\d)")
-V4_ELEV = re.compile(r"(\d{1,3})\s*FT\s*(\d{1,2})?", re.I)
+# Always feet and inches ("0ft 6"): a read that lost the inches doesn't count.
+V4_ELEV = re.compile(r"(\d{1,3})\s*FT\s*(\d{1,2})\b", re.I)
 
 
 def _frame(report: dict):
@@ -110,19 +111,12 @@ def find_v4_player_line(frame: np.ndarray) -> dict | None:
                 while d < rows and not dark[d] and d - y < 0.006 * height:
                     d += 1  # a thin anti-aliased edge between the bands
                 if d < rows and dark[d]:
-                    # The line is as tall as the name band (73 vs 75 px at 4K);
-                    # dark trees right under the box must not extend it.
                     top = d
-                    limit = top + round(0.98 * (y - start))
-                    while d < rows and d < limit and dark[d]:
-                        d += 1
-                    bottom = d
                     name_rows = (start, y)
                     break
         y += 1
-    if top is None or bottom - top < 0.015 * height:
+    if top is None:
         return None
-    band = lum[top:bottom]
     # The box's left edge is where the name band's colour starts (dark trees
     # or a window edge left of the box would pass a darkness test).
     name = region[name_rows[0]:name_rows[1]]
@@ -132,17 +126,31 @@ def find_v4_player_line(frame: np.ndarray) -> dict | None:
     if len(name_cols) == 0:
         return None
     left = int(name_cols[0])
-    # The highlighted cell is white; its digit breaks up the white, so the
-    # cell runs to the last white column within about a cell's width.
-    white = (band > 200).mean(axis=0)
-    cells = np.nonzero(white > 0.8)[0]
+    # The highlighted shot cell is white from the line's top to its bottom, so
+    # it gives the line's height too. Neither darkness (the line's own text
+    # rows are light, trees under the box are dark) nor the name band (its
+    # text can split it) measured that reliably (Valhalla, 8 Nov).
+    # The cell sits a few pixels inside the line: probe below its top margin.
+    probe_top = top + max(2, int(0.004 * height))
+    probe = lum[probe_top:min(lum.shape[0], probe_top + max(3, int(0.01 * height)))]
+    white = (probe > 200).mean(axis=0)
+    cells = np.nonzero(white > 0.9)[0]
     cells = cells[cells > left + 0.08 * width]
     if len(cells) == 0:
         return None
     cell_left = int(cells[0])
-    near = cells[cells <= cell_left + 1.3 * (bottom - top)]
+    near = cells[cells <= cell_left + 0.05 * height]
     cell_right = int(near[-1])
-    if not (0.4 * (bottom - top) <= cell_right - cell_left + 1 <= 1.2 * (bottom - top)):
+    margin = lum[:, cell_left + 1:cell_left + 4]
+    cell_top = top
+    while cell_top < probe_top and (margin[cell_top] > 200).mean() <= 0.6:
+        cell_top += 1
+    bottom = probe_top
+    while bottom < lum.shape[0] and (margin[bottom] > 200).mean() > 0.6:
+        bottom += 1
+    bottom += cell_top - top  # the same margin under the cell as above it
+    line = bottom - top
+    if line < 0.015 * height or not (0.4 * line <= cell_right - cell_left + 1 <= 1.2 * line):
         return None
     return {"top": int(top), "bottom": int(bottom), "left": left,
             "cell": (cell_left, int(cell_right) + 1)}
@@ -220,9 +228,17 @@ def read_v4_hud(report: dict) -> dict | None:
         vote("shot", shot)
         e = _ocr_crop(elevation_text, height, dark_text=False, psm=7, whitelist="0123456789ft ")
         em = V4_ELEV.search(e.get("rawText") or "") if e.get("status") == "ok" else None
-        feet = round(int(em.group(1)) + (int(em.group(2)) / 12 if em.group(2) else 0), 2) if em else None
+        feet = round(int(em.group(1)) + int(em.group(2)) / 12, 2) if em else None
         vote("elevation", feet)
         texts.append(f"{(d.get('rawText') or '').strip()} | {(e.get('rawText') or '').strip()} | shot {digits or '-'}")
+    if not any(n >= 2 for n in votes["elevation"].values()):
+        # The small "0ft 6" reads unevenly: a few more sizes before giving up on it.
+        for height in (50, 70, 90, 100):
+            e = _ocr_crop(elevation_text, height, dark_text=False, psm=7, whitelist="0123456789ft ")
+            em = V4_ELEV.search(e.get("rawText") or "") if e.get("status") == "ok" else None
+            vote("elevation", round(int(em.group(1)) + int(em.group(2)) / 12, 2) if em else None)
+            if any(n >= 2 for n in votes["elevation"].values()):
+                break
     agreed = {k: next((v for v, n in sorted(vs.items(), key=lambda kv: -kv[1]) if n >= 2), None)
               for k, vs in votes.items()}
     sign = _elevation_sign(elevation_roi)
@@ -275,6 +291,111 @@ def read_hud_from_capture(report: dict) -> dict:
                     "note": "GSPro player box: shot number and distance to pin."}
     if v4 is not None:
         return v4
+    fallback = _v4_from_fixed_line(report, texts)
+    if fallback is not None:
+        if fallback.get("status") != "READY":
+            saved = _save_hud_diagnostic(report)
+            if saved:
+                fallback["note"] += f" Player box saved as {saved} in the companion's diagnostics folder."
+        return fallback
     return {"status": "UNKNOWN", "shotNumber": None, "distanceToPinYds": None,
             "observedAt": utc_now_iso(), "rawText": " / ".join(texts) or None,
             "note": "GSPro player box not read consistently."}
+
+
+# GSPro 4 always shows feet and inches ("0ft 6", "10ft 11"); requiring both
+# keeps "6 T" (the "Tee" after a lost "0ft") from reading as 6 ft.
+V4_TEXT_ELEV = re.compile(r"(\d{1,3})\s*F?T\s*(\d{1,2})\b", re.I)
+
+
+def _v4_from_fixed_line(report: dict, texts: list[str]) -> dict | None:
+    """GSPro 4 box read through the old fixed crop, when the box finder missed it.
+
+    On Brian's sim (8 Nov, companion 1.0.4) the live capture's box wasn't found
+    while the fixed crop still read "368.20  10Ft 11 T": the distance and height
+    come from that text, the shot from the white cell to its right."""
+    if not texts or any("SHOT" in t.upper() for t in texts):
+        return None
+    frame = _frame(report)
+    if frame is None:
+        return None
+    height, width = frame.shape[:2]
+    _, y1, _, y2 = HUD_LINE
+    top, bottom = int(height * y1), int(height * y2)
+    rows = frame[top:bottom].astype(np.float32)
+    lum = 0.0722 * rows[:, :, 0] + 0.7152 * rows[:, :, 1] + 0.2126 * rows[:, :, 2]
+    lo, hi = int(width * 0.10), int(width * 0.25)
+    white = (lum[:, lo:hi] > 200).mean(axis=0)
+    cells = np.nonzero(white > 0.8)[0]
+    shot = None
+    if len(cells):
+        cell_left = lo + int(cells[0])
+        near = cells[cells <= cells[0] + 1.6 * (bottom - top)]
+        cell_right = lo + int(near[-1]) + 1
+        if cell_right - cell_left >= 0.4 * (bottom - top):
+            votes: dict[int, int] = {}
+            pad = max(1, (bottom - top) // 6)
+            cell = frame[top + pad:bottom - pad, cell_left + 2:max(cell_left + 3, cell_right - 2)]
+            for h in HUD_TARGET_HEIGHTS:
+                r = _ocr_crop(cell, h, dark_text=True, psm=8, whitelist="0123456789")
+                digits = re.sub(r"\D", "", r.get("rawText") or "") if r.get("status") == "ok" else ""
+                if digits and 1 <= int(digits) <= 20:
+                    votes[int(digits)] = votes.get(int(digits), 0) + 1
+            agreed = [v for v, n in votes.items() if n >= 2]
+            shot = agreed[0] if agreed else None
+    distance_votes: dict[float, int] = {}
+    elevation_votes: dict[float, int] = {}
+    for text in texts:
+        match = V4_DIST.search(text.replace(",", "."))
+        if match and 0 < float(match.group(1)) <= 800:
+            value = float(match.group(1))
+            distance_votes[value] = distance_votes.get(value, 0) + 1
+            em = V4_TEXT_ELEV.search(text[match.end():])
+            if em:
+                feet = round(int(em.group(1)) + int(em.group(2)) / 12, 2)
+                elevation_votes[feet] = elevation_votes.get(feet, 0) + 1
+    distance = next((v for v, n in distance_votes.items() if n >= 2), None)
+    feet = next((v for v, n in elevation_votes.items() if n >= 2), None)
+    x1, _, x2, _ = HUD_LINE
+    sign = _elevation_sign(frame[top:bottom, int(width * x1):int(width * x2)])
+    ready = distance is not None and shot is not None
+    return {"status": "READY" if ready else "UNKNOWN",
+            "shotNumber": shot, "distanceToPinYds": distance,
+            "elevationFt": feet * sign if feet is not None and sign is not None else None,
+            "hudLayout": "gspro-4", "hudReader": "fixed-line",
+            "observedAt": utc_now_iso(), "rawText": " / ".join(texts) + f" | shot {shot if shot else '-'}",
+            "note": "GSPro 4 player box via the fixed crop." if ready
+                    else "GSPro 4 player box via the fixed crop: not read consistently."}
+
+
+_last_hud_diagnostic_at = 0.0
+
+
+def _save_hud_diagnostic(report: dict) -> str | None:
+    """Keep GSPro's player box (top-left of the window only: HUD pixels, no
+    paths) when it can't be read, at most one a minute, newest few kept."""
+    global _last_hud_diagnostic_at
+    import time
+    folder = wind._diagnostics_dir()
+    now = time.monotonic()
+    if folder is None or now - _last_hud_diagnostic_at < 60:
+        return None
+    frame = _frame(report)
+    if frame is None:
+        return None
+    try:
+        height, width = frame.shape[:2]
+        box = frame[0:int(height * 0.12), 0:int(width * 0.25)]
+        folder.mkdir(parents=True, exist_ok=True)
+        name = time.strftime("hud-%Y%m%d-%H%M%S.png")
+        ok, encoded = cv2.imencode(".png", box)
+        if not ok:
+            return None
+        (folder / name).write_bytes(encoded.tobytes())
+        _last_hud_diagnostic_at = now
+        for old in sorted(folder.glob("hud-*.png"))[:-6]:
+            old.unlink(missing_ok=True)
+        return name
+    except (OSError, ValueError, cv2.error):
+        return None
+
