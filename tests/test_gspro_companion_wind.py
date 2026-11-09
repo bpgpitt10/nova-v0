@@ -146,6 +146,36 @@ class NativeWindTests(unittest.TestCase):
         self.assertEqual((result["status"], result["speedMph"], result["directionDegrees"]),
                          ("READY", 6.0, 135), result.get("rawText"))
 
+    def test_gspro4_wind_box_reads_speed_and_arrow_angle(self):
+        # GSPro 4.0 (Brian's Valhalla 4K screenshot, 8 Nov 2026): "[GS PRO] [arrow tile] 8 MPH",
+        # no compass letters. The arrow turns with the aim line, so its screen
+        # angle is the wind relative to the shot: right and a little up.
+        report = self._real_band_report("gspro4_wind_8mph_arrow_companion_capture.png", 1500, (3766, 2146))
+        result = wind.read_wind_from_capture(report)
+        self.assertEqual((result["status"], result["speedMph"], result["hudLayout"]),
+                         ("READY", 8.0, "gspro-4"), result.get("rawText"))
+        self.assertEqual((result["referenceFrame"], result["convention"]), ("shot-relative", "toward"))
+        self.assertAlmostEqual(result["directionDegrees"], 77.5, delta=4)
+
+    def test_gspro4_arrow_angle_follows_the_arrow(self):
+        band = cv2.imread(str(Path(__file__).resolve().parent / "fixtures" / "gspro4_wind_8mph_arrow_companion_capture.png"))
+        frame = np.full((2146, 3766, 3), 150, np.uint8)
+        frame[0:band.shape[0], 1500:1500 + band.shape[1]] = band
+        box = wind.find_v4_wind_box(frame)
+        self.assertIsNotNone(box)
+        left, top, right, bottom = box["tile"]
+        tile = frame[top:bottom, left:right].copy()
+        self.assertAlmostEqual(wind.v4_arrow_degrees(frame, box["tile"]), 77.5, delta=4)
+        frame[top:bottom, left:right] = tile[:, ::-1]  # mirrored: right-and-up becomes left-and-up
+        self.assertAlmostEqual(wind.v4_arrow_degrees(frame, box["tile"]), 282.5, delta=4)
+        frame[top:bottom, left:right] = tile[::-1, :]  # flipped: right-and-down
+        self.assertAlmostEqual(wind.v4_arrow_degrees(frame, box["tile"]), 102.5, delta=4)
+
+    def test_older_gspro_wind_box_is_not_read_as_gspro4(self):
+        report = self._real_band_report("gspro_wind_6mph_se_companion_capture.png", 1344, (3840, 2160))
+        frame = wind._frame_bgr(report)
+        self.assertIsNone(wind.find_v4_wind_box(frame))
+
     def test_observed_io_mph_and_missing_direction_fails_closed(self):
         # User's 2026-10-12 physical sim trace: OCR returned "IO MPH",
         # no direction. Correct speed alone must NEVER activate wind.
