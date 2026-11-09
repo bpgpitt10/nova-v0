@@ -47,7 +47,7 @@ import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeom
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
 import { aimInGspro, type AimInGsproResult } from '../liveCaddie/gsproAimClick'
 import { registrationForHole } from '../courseGeometry/nativeRegistration'
-import { pinFromHudDistance, type MinimapAnchors } from '../liveCaddie/hudPin'
+import { pinFromHudDistance } from '../liveCaddie/hudPin'
 import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
@@ -171,7 +171,6 @@ const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
 // Last GSPro player-box Shot 1 distance per course|hole|round.
 const lastHudShotOneYds = new Map<string, number>()
 const lastHudElevationFt = new Map<string, number>()
-const lastHudMinimap = new Map<string, MinimapAnchors>()
 
 const estimatePinFromGsproDistance = (
   hole: CourseHoleGeometry,
@@ -872,22 +871,9 @@ export default function LiveCaddiePage() {
     ? hudReading!.elevationFt! : null
   if (hudTeeKey && freshHudElevationFt != null) lastHudElevationFt.set(hudTeeKey, freshHudElevationFt)
   const hudElevationFt = freshHudElevationFt ?? (hudTeeKey ? lastHudElevationFt.get(hudTeeKey) ?? null : null)
-  // GSPro's minimap anchors (ball, pin dot, gray aim marker): they name the
-  // pin slot when distance and height leave two (Valhalla 1, 11/8).
-  const freshMinimap = nativeObservations?.minimap
-  const minimapWaypoint = freshMinimap?.waypointRuler?.candidates?.[0]
-  const freshHudMinimap: MinimapAnchors | null = hudReading && freshMinimap?.status === 'markers_found'
-    && freshMinimap.ballPixel && freshMinimap.pinPixel && minimapWaypoint
-    && Number.isFinite(minimapWaypoint.yards) && minimapWaypoint.yards > 20
-    ? { ballPx: freshMinimap.ballPixel, pinPx: freshMinimap.pinPixel,
-        waypointPx: minimapWaypoint.pixel, waypointYds: minimapWaypoint.yards }
-    : null
-  // Sticky per tee like the distance: a poll without the minimap must not undo the pick.
-  if (hudTeeKey && freshHudMinimap) lastHudMinimap.set(hudTeeKey, freshHudMinimap)
-  const hudMinimap = freshHudMinimap ?? (hudTeeKey ? lastHudMinimap.get(hudTeeKey) ?? null : null)
   const hudPinKey = liveMatchesHole && liveSnapshot?.ballSource === 'native-gkd'
     && liveSnapshot.ballLocalYds && hudShotOneYds != null
-    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}|${hudElevationFt ?? '-'}|${hudMinimap ? 'm' : '-'}` : null
+    ? `${courseId}|${holeNumber}|${liveSnapshot.roundId ?? 'round'}|${hudShotOneYds}|${hudElevationFt ?? '-'}` : null
   const [hudPin, setHudPin] = useState<{
     key: string; pinLocal: CoursePointYds | null; note: string; aimPointsLocal: readonly CoursePointYds[]
     candidatesLocal: readonly CoursePointYds[]
@@ -899,7 +885,6 @@ export default function LiveCaddiePage() {
       courseId, courseKey: liveSnapshot.courseKey ?? null, holeNumber,
       roundId: liveSnapshot.roundId ?? null, teeLocal: liveSnapshot.ballLocalYds, distanceYds: hudShotOneYds,
       elevationFt: hudElevationFt,
-      minimap: hudMinimap,
     }).then((found) => {
       if (alive) {
         setHudPin({

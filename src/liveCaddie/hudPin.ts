@@ -15,7 +15,7 @@ import type { CoursePointYds } from '../courseGeometry/types'
  * shot, so the course-state pipeline uses it too.
  */
 export const pinFromHudDistance = async ({
-  courseId, courseKey, holeNumber, roundId, teeLocal, distanceYds, elevationFt = null, minimap = null,
+  courseId, courseKey, holeNumber, roundId, teeLocal, distanceYds, elevationFt = null,
 }: Readonly<{
   courseId: CourseId
   courseKey: string | null
@@ -30,13 +30,6 @@ export const pinFromHudDistance = async ({
    * 11/8: Aim by hand, "could put this aim 11 yd off"); their heights usually can.
    */
   elevationFt?: number | null
-  /**
-   * GSPro's minimap as the companion read it: ball, pin dot, and GSPro's gray
-   * aim marker with its yardage. When slots at the same distance and height
-   * remain (Valhalla 1, 11/8: two slots 13.5 m apart), the angle between the
-   * aim marker and the pin dot, seen from the ball, names the slot.
-   */
-  minimap?: MinimapAnchors | null
 }>): Promise<Readonly<{
   slot: number | null
   pinLocal: CoursePointYds | null
@@ -72,29 +65,13 @@ export const pinFromHudDistance = async ({
     : 'no GKD pins for this hole')
     + (elevationFt != null && teeY != null ? `; height ${elevationFt.toFixed(1)} ft kept ${ranked.length} of ${hole.pins.length}` : '')
     + (best && next ? `; next slot ${Math.hypot(next.pin.x - best.pin.x, next.pin.z - best.pin.z).toFixed(1)} m away` : '')
-  if (!best || best.errorM > HUD_PIN_MAX_ERROR_M) {
+  if (!best || best.errorM > HUD_PIN_MAX_ERROR_M || !clearOfOtherSpots(ranked)) {
     return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
   }
-  let chosen = best
-  let pickNote = ''
-  if (!clearOfOtherSpots(ranked)) {
-    const contenders = ranked
-      .filter((r) => r.errorM - best.errorM < HUD_PIN_MIN_MARGIN_M)
-      .map((r) => ({ r, local: toLocal(r.pin) }))
-      .filter((c): c is { r: typeof best; local: CoursePointYds } => c.local !== null)
-    const pick = minimap
-      ? pickSlotByMinimapAngle({ teeLocal, aimPointsLocal, contenders: contenders.map((c) => ({ key: c.r, local: c.local })), minimap })
-      : null
-    pickNote = minimap ? `; minimap: ${pick?.note ?? 'no reading'}` : '; minimap not read yet'
-    if (!pick?.key) {
-      return { slot: null, pinLocal: null, note: note + pickNote, aimPointsLocal, candidatesLocal }
-    }
-    chosen = pick.key
-  }
-  const pinLocal = toLocal(chosen.pin)
-  if (!pinLocal) return { slot: null, pinLocal: null, note: note + pickNote, aimPointsLocal, candidatesLocal }
-  rememberNativePinSlot(context.courseKey, roundId, holeNumber, chosen.pin.slot)
-  return { slot: chosen.pin.slot, pinLocal, note: note + pickNote, aimPointsLocal, candidatesLocal: [pinLocal] }
+  const pinLocal = toLocal(best.pin)
+  if (!pinLocal) return { slot: null, pinLocal: null, note, aimPointsLocal, candidatesLocal }
+  rememberNativePinSlot(context.courseKey, roundId, holeNumber, best.pin.slot)
+  return { slot: best.pin.slot, pinLocal, note, aimPointsLocal, candidatesLocal: [pinLocal] }
 }
 
 const HUD_PIN_MAX_ERROR_M = 6
@@ -169,57 +146,4 @@ export const clearOfOtherSpots = (
 }
 
 const HUD_PIN_SAME_SPOT_M = 1.5
-
-export type MinimapAnchors = Readonly<{
-  ballPx: Readonly<{ x: number; y: number }>
-  pinPx: Readonly<{ x: number; y: number }>
-  waypointPx: Readonly<{ x: number; y: number }>
-  waypointYds: number
-}>
-
-const signedAngleDeg = (a: readonly [number, number], b: readonly [number, number]) =>
-  Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]) * 180 / Math.PI
-
-// The aim marker's yardage must match a course-file aim point this closely.
-const WAYPOINT_MATCH_YDS = 8
-// Two slots 13.5 m apart at 368 yd are ~2.3° apart; the minimap reads ~0.2°.
-const ANGLE_MATCH_DEG = 1.0
-const ANGLE_MARGIN_DEG = 0.75
-
-/**
- * Which of several pin slots is GSPro's, from the minimap. Seen from the ball,
- * the angle from GSPro's gray aim marker to its pin dot is the same in the
- * minimap's pixels and on the map (the minimap is only turned and scaled, not
- * mirrored), so the slot whose angle matches is the pin. The aim marker is
- * the course file's aim point at the yardage GSPro prints on it.
- */
-export const pickSlotByMinimapAngle = <K>({ teeLocal, aimPointsLocal, contenders, minimap }: Readonly<{
-  teeLocal: CoursePointYds
-  aimPointsLocal: readonly CoursePointYds[]
-  contenders: readonly Readonly<{ key: K; local: CoursePointYds }>[]
-  minimap: MinimapAnchors
-}>): Readonly<{ key: K | null; note: string }> => {
-  const aim = aimPointsLocal
-    .map((p) => ({ p, d: Math.hypot(p[0] - teeLocal[0], p[1] - teeLocal[1]) }))
-    .sort((a, b) => Math.abs(a.d - minimap.waypointYds) - Math.abs(b.d - minimap.waypointYds))[0]
-  if (!aim || Math.abs(aim.d - minimap.waypointYds) > WAYPOINT_MATCH_YDS) {
-    return { key: null, note: `aim marker ${minimap.waypointYds} yd matches no course aim point` }
-  }
-  // Pixels: y grows downward. Flip it so both frames turn the same way.
-  const px = (p: Readonly<{ x: number; y: number }>): [number, number] => [p.x - minimap.ballPx.x, -(p.y - minimap.ballPx.y)]
-  const observed = signedAngleDeg(px(minimap.waypointPx), px(minimap.pinPx))
-  const toAim: [number, number] = [aim.p[0] - teeLocal[0], aim.p[1] - teeLocal[1]]
-  const scored = contenders
-    .map((c) => ({ c, off: Math.abs(signedAngleDeg(toAim, [c.local[0] - teeLocal[0], c.local[1] - teeLocal[1]]) - observed) }))
-    .sort((a, b) => a.off - b.off)
-  const [first] = scored
-  const rival = scored.find((s) => s !== first
-    && Math.hypot(s.c.local[0] - first.c.local[0], s.c.local[1] - first.c.local[1]) > 1.6)
-  const note = `aim marker ${minimap.waypointYds} yd = aim point ${aim.d.toFixed(0)} yd; angle ${observed.toFixed(1)}°, `
-    + scored.map((s) => `${s.off.toFixed(1)}°`).join(' / ') + ' off'
-  if (!first || first.off > ANGLE_MATCH_DEG || (rival && rival.off - first.off < ANGLE_MARGIN_DEG)) {
-    return { key: null, note: note + ' (no clear match)' }
-  }
-  return { key: first.c.key, note: note + ' (picked)' }
-}
 
