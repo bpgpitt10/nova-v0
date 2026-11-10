@@ -65,6 +65,37 @@ COURSES = [
     ('Colonial Country Club', 'Fort Worth, TX', 'tour', 'Colonial Country Club', 32.712, -97.385),
 ]
 
+# Second pass (10 Nov evening): misses, the wrong Carnoustie pick, the other
+# Chevron venue report, 2028 majors, and the next destination / tour courses.
+COURSES_2 = [
+    ('Oakmont Country Club', 'Oakmont, PA', 'famous', 'Oakmont Country Club', 40.5264, -79.8262),
+    ('Adare Manor', 'Adare, Ireland', '2027 Ryder Cup', 'Adare Manor', 52.5639, -8.7867),
+    ('Lahinch Old Course', 'Lahinch, Ireland', 'famous', 'Lahinch', 52.9347, -9.3460),
+    ('Mammoth Dunes', 'Nekoosa, WI', 'library', 'Sand Valley', 44.1430, -89.8650),
+    ('Carnoustie Championship', 'Carnoustie, Scotland', 'famous', 'Carnoustie Championship', 56.4990, -2.7230),
+    ('The Club at Carlton Woods', 'The Woodlands, TX', '2027 Chevron (alt report)', 'Carlton Woods', 30.1830, -95.5570),
+    ('Winged Foot West', 'Mamaroneck, NY', '2028 US Open', 'Winged Foot', 40.9580, -73.7590),
+    ('Olympic Club Lake', 'San Francisco, CA', '2028 PGA Championship', 'Olympic Club Lake', 37.7090, -122.4960),
+    ('Royal Lytham & St Annes', 'Lytham St Annes, England', '2028 Open', 'Royal Lytham', 53.7470, -3.0060),
+    ('Bandon Trails', 'Bandon, OR', 'destination', 'Bandon Trails', 43.1850, -124.3850),
+    ('Old Macdonald', 'Bandon, OR', 'destination', 'Old Macdonald', 43.1700, -124.3900),
+    ('Pumpkin Ridge Witch Hollow', 'North Plains, OR', 'destination', 'Pumpkin Ridge Witch Hollow', 45.6340, -123.0310),
+    ('Congaree Golf Club', 'Ridgeland, SC', 'destination', 'Congaree Golf Club', 32.4540, -81.0390),
+    ('Ohoopee Match Club', 'Cobbtown, GA', 'destination', 'Ohoopee Match Club', 32.2830, -82.1240),
+    ('Kingsley Club', 'Kingsley, MI', 'destination', 'Kingsley Club', 44.5600, -85.5600),
+    ('Medalist Golf Club', 'Hobe Sound, FL', 'destination', 'Medalist Golf Club', 27.0760, -80.1530),
+    ('Palmetto Golf Club', 'Aiken, SC', 'destination', 'Palmetto Golf Club', 33.5410, -81.7380),
+    ('Diamond Creek Golf Club', 'Banner Elk, NC', 'destination', 'Diamond Creek', 36.1470, -81.8520),
+    ('Pelican Golf Club', 'Belleair, FL', 'tour', 'Pelican Golf Club', 27.9310, -82.8040),
+    ('Tiburon Gold Course', 'Naples, FL', 'tour', 'Tiburon Golf Club', 26.2700, -81.7720),
+    ('TPC Twin Cities', 'Blaine, MN', 'tour', 'TPC Twin Cities', 45.1820, -93.2300),
+    ('Sedgefield Country Club', 'Greensboro, NC', 'tour', 'Sedgefield Country Club', 36.0280, -79.8510),
+    ('TPC River Highlands', 'Cromwell, CT', 'tour', 'TPC River Highlands', 41.6200, -72.6600),
+    ('Grand Cypress Links', 'Orlando, FL', 'library', 'Grand Cypress', 28.3780, -81.5130),
+]
+if os.environ.get('PASS') == '2':
+    COURSES = COURSES_2
+
 PHOTON = 'https://photon.komoot.io/api/?'
 
 
@@ -141,6 +172,9 @@ def main() -> int:
         if best:
             cmd += ['--osm-id', str(best['id'])]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+        if proc.returncode != 0:  # Overpass is flaky; one retry
+            time.sleep(20)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
         row['findLog'] = (proc.stdout + proc.stderr).strip().splitlines()[-6:]
         bbox_file = work / 'course-bbox.json'
         if proc.returncode == 0 and bbox_file.exists():
@@ -157,7 +191,7 @@ def main() -> int:
         else:
             row['osm'] = None
         report.append(row)
-        print('PREFLIGHT ' + json.dumps({k: row.get(k) for k in ('name', 'group', 'osm', 'demProvider', 'lidarPointCloud', 'hrdem', 'mapped')}), flush=True)
+        print('PREFLIGHT ' + json.dumps({k: row.get(k) for k in ('name', 'group', 'osm', 'demProvider', 'lidarPointCloud', 'hrdem', 'mapped', 'photon') + (() if row.get('osm') else ('findLog',))}), flush=True)
         time.sleep(2)
     (out_dir / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     return 0

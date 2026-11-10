@@ -16,8 +16,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install numpy
-      - name: Bulk course preflight (shard ${{ matrix.shard }} of 4)
+      - name: Bulk course preflight pass 2 (shard ${{ matrix.shard }} of 4)
         env:
           SHARD: ${{ matrix.shard }}
           SHARDS: '4'
+          PASS: '2'
         run: python tools/course_model/bulk_preflight.py bulk-preflight
