@@ -1835,6 +1835,7 @@ export default function LiveCaddiePage() {
           <NativePositionsBetaPanel
             courseId={courseId}
             courseKey={liveSnapshot?.courseKey ?? null}
+            quietWhenFull={!showDiagnostics}
           />
         ) : null}
         {showDiagnostics ? (

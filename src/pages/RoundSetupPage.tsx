@@ -264,7 +264,7 @@ export default function RoundSetupPage() {
           <span className="round-setup-kicker">Live Caddie</span>
           <h1 id="round-setup-title">Start a Round</h1>
           <p className="round-setup-lead">
-            Pick the course and tee you&apos;re playing in GSPro. Looper takes it from the first tee shot.
+            Pick the course, tees and pins you&apos;re playing in GSPro.
           </p>
 
           {activeRound && activeCourse ? (
@@ -296,6 +296,7 @@ export default function RoundSetupPage() {
             <NativePositionsBetaPanel courseId={courseId} courseKey={null} />
           </div>
 
+          <div className="round-setup-row">
           <label className="round-setup-field">
             <span className="round-setup-label">Tees</span>
             <select
@@ -317,9 +318,6 @@ export default function RoundSetupPage() {
                 value={unmappedTeeName}
               />
             ) : null}
-            <span className="round-setup-hint">
-              Use the tee name you picked in GSPro. A tee Looper hasn&apos;t mapped starts as an estimate, and your shots confirm it.
-            </span>
           </label>
 
           <label className="round-setup-field">
@@ -328,13 +326,11 @@ export default function RoundSetupPage() {
               value={pinDay}
               onChange={(event) => setPinDay(normalizePinDay(event.target.value) ?? '')}
             >
-              <option value="">Not sure (Looper works it out from your shots)</option>
+              <option value="">Not sure</option>
               {GSPRO_PIN_DAYS.map((day) => <option key={day} value={day}>{day}</option>)}
             </select>
-            <span className="round-setup-hint">
-              The pin day you picked in GSPro. With it, Looper knows every pin before your first shot.
-            </span>
           </label>
+          </div>
 
           {error ? <p className="round-setup-error" role="alert">{error}</p> : null}
 

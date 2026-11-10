@@ -19,12 +19,16 @@ import './NativePositionsBetaPanel.css'
 type Props = {
   courseId: CourseId | null
   courseKey: string | null
+  /** Live Caddie: say nothing while all is well (the top bar already shows
+   * GSPro and the companion); anything that needs the player still shows.
+   * Details shows it always (Brian, 11/9). */
+  quietWhenFull?: boolean
 }
 
 /** "Course": how much of this course Looper can see, in golf terms, with a
  * short code for support (lib/supportCodes.ts). How the course is matched is
  * never shown. ?native=0 turns it off for troubleshooting. */
-export default function NativePositionsBetaPanel({ courseId, courseKey }: Props) {
+export default function NativePositionsBetaPanel({ courseId, courseKey, quietWhenFull = false }: Props) {
   const [enabled] = useState(isNativePositionsEnabled)
   const [status, setStatus] = useState<NativeCourseStatus>(getNativeCourseStatus)
   const [busy, setBusy] = useState(false)
@@ -83,6 +87,8 @@ export default function NativePositionsBetaPanel({ courseId, courseKey }: Props)
   const view = courseStatusView(on ? status : { state: 'off' }, loadability)
   const needsFolder = canPickFolder && on && (status.state === 'no-folder' || status.state === 'gkd-not-found')
   const needsPermission = canPickFolder && on && status.state === 'needs-permission'
+
+  if (quietWhenFull && view.tone === 'full' && !needsFolder && !needsPermission) return null
 
   return (
     <section className="native-positions-beta" aria-label="Course" data-course-code={view.code}>

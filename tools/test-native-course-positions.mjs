@@ -158,6 +158,22 @@ try {
   })
   assert.equal(later.pinSlot, 1, 'slot from the latest shot end and GSPro distance')
   assert.equal(later.snapshot.ballSource, 'unavailable', 'after shot 1 the core owns ball placement')
+  assert.equal(later.confirmed, null, 'no shot-1 start on record: tee not confirmed')
+  // Shot 1's own record confirms both: it started on a GKD tee, and its
+  // DistanceToPin named the pin (Valhalla, 11/9: GSPro rarely writes a
+  // pre-shot start, so nothing was being saved).
+  const afterShotOne = snap.applyNativeCourseSnapshot({
+    base: { ...base, nextShotNumber: 2, latestShot: { holeNumber: 1, holeShot: 1, startWorld: pos(0, 20, 9), endWorld: pos(30, 100), distanceToPinYds: 35 * Y } },
+    context, holeNumber: 1, teeContext: false, preShotStart: null, normalizedTeeSet: 'white', rememberedPinSlot: null,
+  })
+  assert.ok(afterShotOne.confirmed, 'shot 1 on a GKD tee + DistanceToPin -> confirmed')
+  assert.equal(afterShotOne.confirmed.pinSlot, 1)
+  assert.deepEqual(afterShotOne.confirmed.teeWorld, pos(0, 20, 9))
+  const shotTwo = snap.applyNativeCourseSnapshot({
+    base: { ...base, nextShotNumber: 3, latestShot: { holeNumber: 1, holeShot: 2, startWorld: pos(30, 100), endWorld: pos(30, 100), distanceToPinYds: 35 * Y } },
+    context, holeNumber: 1, teeContext: false, preShotStart: null, normalizedTeeSet: 'white', rememberedPinSlot: null,
+  })
+  assert.equal(shotTwo.confirmed, null, 'shot 2 started off the tee: no tee to confirm')
 
   // GSPro's round layout (output_log) is no longer a pin source (11/9: fewer
   // layers). Its tee still places the ball when its pin is one of this hole's
