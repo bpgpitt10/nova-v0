@@ -1,0 +1,23 @@
+name: diag osm search (temporary)
+on:
+  push:
+    branches: [diag-osm-search-tmp]
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy
+      - name: Bulk course preflight (shard ${{ matrix.shard }} of 4)
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: '4'
+        run: python tools/course_model/bulk_preflight.py bulk-preflight
