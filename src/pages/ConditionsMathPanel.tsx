@@ -22,6 +22,8 @@ type ConditionsMathPanelProps = {
   strategyAdjustmentScale?: number
   /** GSPro-only course: unmapped ground shows as "In play", not trouble. */
   unmappedInPlay?: boolean
+  /** Distance from the expected finish to the pin (yd); null when unknown. */
+  leavesYds?: number | null
   /** Read GSPro's wind again now (gusty days swirl). */
   onRefreshWind?: () => void
   windRefreshing?: boolean
@@ -59,9 +61,16 @@ const lateralSummary = (value: number | null | undefined) => {
   return `${Math.abs(value).toFixed(1)} yd ${value > 0 ? 'right' : 'left'}`
 }
 
-const baselineLateral = (value: number | null | undefined) => {
-  if (!finite(value) || Math.abs(value) < 0.05) return 'Center'
-  return `${Math.abs(value).toFixed(1)} yd ${value > 0 ? 'right' : 'left'}`
+/**
+ * What the expected shot leaves to the pin. Replaced "Expected finish", the
+ * shot's average miss off the aim line ("0.4 yd right" on a drive): true,
+ * but nothing a golfer plays off (Brian, 11/9). Inside 30 yd, feet.
+ */
+const leavesText = (yds: number | null | undefined) => {
+  if (!finite(yds)) return '—'
+  if (yds < 1) return 'In the hole'
+  if (yds < 30) return `${Math.round(yds * 3)} ft`
+  return `${Math.round(yds)} yd`
 }
 
 const pct = (value: number | null | undefined) => {
@@ -124,6 +133,7 @@ const windFromWords = (relativeFromDeg: number): string => {
 
 export default function ConditionsMathPanel({
   unmappedInPlay = false,
+  leavesYds = null,
   onRefreshWind,
   windRefreshing = false,
   evaluation,
@@ -246,8 +256,8 @@ export default function ConditionsMathPanel({
                 <strong>{evaluation ? `${Math.round(evaluation.expectedTotalYds ?? evaluation.modeledTotalYds)} yd` : '—'}</strong>
               </div>
               <div>
-                <span>Expected finish</span>
-                <strong>{evaluation ? baselineLateral(evaluation.modeledLateralBiasYds) : '—'}</strong>
+                <span>Leaves</span>
+                <strong>{leavesText(leavesYds)}</strong>
               </div>
             </>
           )}
