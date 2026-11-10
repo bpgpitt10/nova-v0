@@ -1835,6 +1835,7 @@ export default function LiveCaddiePage() {
           <NativePositionsBetaPanel
             courseId={courseId}
             courseKey={liveSnapshot?.courseKey ?? null}
+            quietWhenFull={!showDiagnostics}
           />
         ) : null}
         {showDiagnostics ? (
@@ -2228,6 +2229,9 @@ export default function LiveCaddiePage() {
                     strategyEffectiveLateralYds={shotStrategy?.effectiveLateralChangeYds ?? null}
                     strategyAdjustmentScale={shotStrategy?.adjustmentScale ?? 1}
                     unmappedInPlay={gsproOnlyCourse}
+                    leavesYds={inspectedCandidate && aimPin
+                      ? Math.hypot(inspectedCandidate.meanLanding[0] - aimPin[0], inspectedCandidate.meanLanding[1] - aimPin[1])
+                      : null}
                     onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
                     windRefreshing={windRefreshing}
                     decisionOptions={decisionOptionsJson}

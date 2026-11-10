@@ -131,8 +131,22 @@ export const applyNativeCourseSnapshot = ({
         warnings: pinNote ? [...new Set([...base.warnings, pinNote])] : base.warnings }
     : base
 
+  // Tee and pin both from GSPro's own record, worth sharing (confirmedPositions):
+  // the tee is where shot 1 started (or the pre-shot StartingPOS) on a GKD tee,
+  // and the pin is the slot GSPro's DistanceToPin named. Shot 1's record is the
+  // usual source: GSPro rarely writes a pre-shot start (Valhalla, 11/9: nothing
+  // was being saved while the round played fine).
+  const shotOneStart = latest?.holeNumber === holeNumber && latest.holeShot === 1 && latest.startWorld
+    ? latest.startWorld : null
+  const confirmTeeWorld = shotOneStart ?? preShotStart?.world ?? null
+  const confirmTee = confirmTeeWorld ? resolveNativeTee(hole, confirmTeeWorld) : null
+  const confirmed = observed && pin && confirmTee && confirmTee.status !== 'no-match' && confirmTeeWorld
+    ? { teeName: confirmTee.status === 'matched' ? confirmTee.tee.name : null, teeWorld: confirmTeeWorld,
+        pinSlot: pin.slot, pinLabel: pin.label, pinWorld: { x: pin.x, y: pin.y, z: pin.z } }
+    : null
+
   if (!teeContext) {
-    return { snapshot: withPin, pinSlot }
+    return { snapshot: withPin, pinSlot, confirmed }
   }
 
   const nearestGkdTeeTo = (local: CoursePointYds | null): NativeXYZ | null => {
@@ -148,11 +162,6 @@ export const applyNativeCourseSnapshot = ({
   }
   const preShotTee = preShotStart?.world ? resolveNativeTee(hole, preShotStart.world) : null
   const preShotOnTee = preShotTee && preShotTee.status !== 'no-match' ? preShotStart!.world : null
-  // Both from GSPro's own record: StartingPOS on a GKD tee, DistanceToPin naming a GKD pin.
-  const confirmed = preShotOnTee && preShotTee && preShotTee.status !== 'no-match' && observed && pin
-    ? { teeName: preShotTee.status === 'matched' ? preShotTee.tee.name : null, teeWorld: preShotOnTee,
-        pinSlot: pin.slot, pinLabel: pin.label, pinWorld: { x: pin.x, y: pin.y, z: pin.z } }
-    : null
   // By-name lookup only once the layout is known: an alternate layout's
   // "White" can be 70 m from the main layout's "White".
   const layoutTee = layoutPin && roundLayout && resolveNativeTee(hole, roundLayout.tee).status !== 'no-match'

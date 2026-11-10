@@ -143,9 +143,26 @@
   color: #ffffff;
 }
 
-.round-setup-field {
+.round-setup-field,
+.round-setup-panel label.round-setup-field {
   display: grid;
   gap: 8px;
+  /* App.css gives every label a 16px margin and bold text. */
+  margin: 0;
+  max-width: none;
+  font-weight: inherit;
+  align-content: start;
+}
+
+/* Tees and pins side by side: two picks from the same GSPro screen. */
+.round-setup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .round-setup-row { grid-template-columns: 1fr; }
 }
 
 .round-setup-label {
