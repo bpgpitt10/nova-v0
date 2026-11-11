@@ -556,6 +556,48 @@ button.looper-landing-mode-card:hover .looper-landing-mode-action span,
   color: #ffffff;
 }
 
+/* ---- Big screens: the modes sit near the bottom of the view (Brian, 11/10) ----
+   The panel becomes a column and a spacer above the modes takes the slack, so on a
+   tall screen the modes and the links under them settle toward the bottom, with
+   the dusk scene open above. When the content is taller than the screen (Practice
+   Range open) the spacer keeps the old gap and the page scrolls as before. */
+
+.looper-landing-spacer {
+  display: none;
+}
+
+@media (min-width: 761px) {
+  .looper-landing-shell {
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
+    padding-bottom: clamp(34px, 7vh, 84px);
+  }
+
+  .looper-landing-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .looper-landing-spacer {
+    display: block;
+    flex: 1 0 auto;
+    min-height: clamp(6px, calc(20vh - 18px), 192px);
+  }
+
+  .looper-landing-panel > .looper-landing-gspro-status,
+  .looper-landing-panel > .looper-landing-gspro-line,
+  .looper-landing-panel > .looper-landing-mode-grid,
+  .looper-landing-panel > .looper-landing-range-setup,
+  .looper-landing-panel > .looper-landing-links,
+  .looper-landing-panel > .looper-landing-update-status {
+    align-self: center;
+  }
+
+  .looper-landing-mode-grid {
+    margin-top: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .looper-landing-shell {
     padding-top: 28px;

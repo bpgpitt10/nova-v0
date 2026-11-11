@@ -350,6 +350,9 @@ export default function LooperLandingPage({
             </p>
           ) : null}
 
+          {/* Big screens: takes the slack so the modes sit near the bottom of the view. */}
+          <div className="looper-landing-spacer" aria-hidden="true" />
+
           <div className="looper-landing-mode-grid" aria-label="GSPro modes">
             <button
               className={`looper-landing-mode-card looper-landing-mode-card--range ${rangeOpen ? 'is-selected' : ''}`}
