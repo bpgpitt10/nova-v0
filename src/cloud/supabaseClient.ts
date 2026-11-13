@@ -85,6 +85,7 @@ type SupabaseClientLike = {
     ): Promise<{ error: SupabaseError | null }>
     updateUser(attributes: {
       password?: string
+      data?: Record<string, unknown>
     }): Promise<{
       data: { user: LooperAuthUser | null }
       error: SupabaseError | null
@@ -364,4 +365,45 @@ export const subscribeToLooperAuth = async (
     callback(event, session?.user ?? null)
   })
   return () => data.subscription.unsubscribe()
+}
+
+// ---- Has this account ever had GSPro connected (companion or folder)? ----
+// Kept on the account, not in the browser, so the "install the companion" prompt
+// follows a new player from the phone they verified on to their GSPro PC, and
+// stops everywhere once any of their devices has connected.
+const GSPRO_CONNECTED_METADATA_KEY = 'looper_gspro_connected_at'
+let gsproAccountMemo: { email: string | null; connected: boolean } | null = null
+
+/** null when there is no signed-in account to ask (or the check failed). */
+export const readGsproConnectedOnAccount = async (): Promise<{ email: string | null; connected: boolean } | null> => {
+  if (!isSupabaseConfigured()) return null
+  if (gsproAccountMemo) return gsproAccountMemo
+  try {
+    const client = await getSupabaseClient()
+    const result = await client.auth.getUser()
+    const user = result.data.user
+    if (result.error || !user) return null
+    gsproAccountMemo = {
+      email: user.email ?? null,
+      connected: Boolean(user.user_metadata?.[GSPRO_CONNECTED_METADATA_KEY]),
+    }
+    return gsproAccountMemo
+  } catch {
+    return null
+  }
+}
+
+/** Record, once, that this account has connected GSPro. Never throws. */
+export const markGsproConnectedOnAccount = async () => {
+  try {
+    const account = await readGsproConnectedOnAccount()
+    if (!account || account.connected) return
+    const client = await getSupabaseClient()
+    const result = await client.auth.updateUser({
+      data: { [GSPRO_CONNECTED_METADATA_KEY]: new Date().toISOString() },
+    })
+    if (!result.error) gsproAccountMemo = { ...account, connected: true }
+  } catch {
+    // the prompt simply shows again next visit
+  }
 }

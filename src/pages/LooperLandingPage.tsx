@@ -6,6 +6,7 @@ import {
 } from '../adapters/browserGsproAccess'
 import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
+import { markGsproConnectedOnAccount, readGsproConnectedOnAccount } from '../cloud/supabaseClient'
 import { CompanionDownloadLinks, CompanionFirstRunNote } from '../components/CompanionChip'
 import { companionSeenBefore } from '../lib/companionPresence'
 import {
@@ -93,6 +94,34 @@ const markOnboardingComplete = () => {
   }
 }
 
+// "Not now" on the install prompt lasts for this browser session only: it comes
+// back next visit until the account has connected GSPro somewhere.
+const WELCOME_DISMISSED_SESSION_KEY = 'looper-welcome-dismissed-v1'
+
+const welcomeDismissedThisSession = () => {
+  try {
+    return window.sessionStorage.getItem(WELCOME_DISMISSED_SESSION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+const dismissWelcomeForSession = () => {
+  markOnboardingComplete()
+  try {
+    window.sessionStorage.setItem(WELCOME_DISMISSED_SESSION_KEY, '1')
+  } catch {
+    // session persistence is a convenience only
+  }
+}
+
+/** Show the install prompt? Asked of the account; the old per-browser flag is only the offline fallback. */
+const shouldPromptForCompanion = async () => {
+  if (welcomeDismissedThisSession()) return false
+  const account = await readGsproConnectedOnAccount()
+  return account ? !account.connected : !readOnboardingComplete()
+}
+
 export default function LooperLandingPage({
   installAvailableUpdate,
   onRetryUpdateCheck,
@@ -109,6 +138,8 @@ export default function LooperLandingPage({
     () => new URLSearchParams(window.location.search).get('openRange') === '1',
   )
   const [showWelcome, setShowWelcome] = useState(false)
+  const [accountEmail, setAccountEmail] = useState<string | null>(null)
+  const [welcomeLinkCopied, setWelcomeLinkCopied] = useState(false)
   // Companion distribution: the newest published build and how the running one compares.
   const [companionLatest, setCompanionLatest] = useState<CompanionLatest | null>(null)
   const [companionRelease, setCompanionRelease] = useState<string | null>(null)
@@ -139,8 +170,10 @@ export default function LooperLandingPage({
 
   const refreshGsproStatus = useCallback(async () => {
     if (!(await isGsproAccessAvailable())) {
+      // A phone, Firefox or Safari: Looper can't reach GSPro from here, but a new
+      // player still needs to be told to install the companion on their GSPro PC.
       setGsproState('unsupported')
-      setShowWelcome(false)
+      setShowWelcome(await shouldPromptForCompanion())
       return
     }
 
@@ -158,11 +191,12 @@ export default function LooperLandingPage({
       }
       if (!handle) {
         setGsproState('not-connected')
-        setShowWelcome(!readOnboardingComplete())
+        setShowWelcome(await shouldPromptForCompanion())
         return
       }
 
       markOnboardingComplete()
+      void markGsproConnectedOnAccount()
       setShowWelcome(false)
 
       const permission = await queryGsproDirectoryPermission(handle, 'readwrite')
@@ -178,6 +212,10 @@ export default function LooperLandingPage({
       setGsproState('error')
       setShowWelcome(false)
     }
+  }, [])
+
+  useEffect(() => {
+    void readGsproConnectedOnAccount().then((account) => setAccountEmail(account?.email ?? null))
   }, [])
 
   useEffect(() => {
@@ -241,10 +279,26 @@ export default function LooperLandingPage({
   }
 
   const continueToDashboardFromWelcome = () => {
-    markOnboardingComplete()
+    dismissWelcomeForSession()
     setShowWelcome(false)
     navigateWithinApp('/bag')
   }
+
+  const copyWelcomeLink = async () => {
+    try {
+      await navigator.clipboard.writeText(COMPANION_DOWNLOAD_URL)
+      setWelcomeLinkCopied(true)
+      window.setTimeout(() => setWelcomeLinkCopied(false), 2500)
+    } catch {
+      window.prompt('Copy this link:', COMPANION_DOWNLOAD_URL)
+    }
+  }
+
+  const emailWelcomeLinkHref = `mailto:${accountEmail ? encodeURIComponent(accountEmail) : ''}?subject=${encodeURIComponent(
+    'The Looper Companion download',
+  )}&body=${encodeURIComponent(
+    `Open this on your GSPro PC to download the Looper Companion installer:\n\n${COMPANION_DOWNLOAD_URL}\n\nThen sign in at https://thelooper.golf on that PC.`,
+  )}`
 
   const updateStatusContent = (() => {
     switch (updateStatus) {
@@ -514,18 +568,31 @@ export default function LooperLandingPage({
                 ? 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, run the installer, and this page connects on its own.'
                 : 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on your GSPro PC. Copy the link and open it there; once the companion is running, Looper connects on its own.'}
             </p>
-            <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={markOnboardingComplete}>
-              {downloadLabel}
-            </a>
-            <CompanionFirstRunNote className="looper-welcome-note" />
-            {!onWindows ? (
-              <p className="looper-welcome-note">
-                You're not on Windows: this link downloads the Windows installer. Open it on your GSPro PC, or <CompanionDownloadLinks compact /> to send it there.
-              </p>
+            {onWindows ? (
+              <>
+                <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={dismissWelcomeForSession}>
+                  {downloadLabel}
+                </a>
+                <CompanionFirstRunNote className="looper-welcome-note" />
+              </>
+            ) : (
+              <>
+                <button className="looper-welcome-primary" onClick={() => void copyWelcomeLink()} type="button">
+                  {welcomeLinkCopied ? 'Link copied' : 'Copy the download link'}
+                </button>
+                <a className="looper-welcome-secondary" href={emailWelcomeLinkHref}>
+                  Email me the link
+                </a>
+                <p className="looper-welcome-note">
+                  You're not on your GSPro PC: the companion is a Windows app. Open the link there, run the installer, then sign in to Looper on that PC.
+                </p>
+              </>
+            )}
+            {gsproState !== 'unsupported' ? (
+              <button className="looper-welcome-secondary" onClick={() => { dismissWelcomeForSession(); connectGspro(true) }} type="button">
+                Connect the GSPro folder instead
+              </button>
             ) : null}
-            <button className="looper-welcome-secondary" onClick={() => connectGspro(true)} type="button">
-              Connect the GSPro folder instead
-            </button>
             <button
               className="looper-welcome-secondary"
               onClick={continueToDashboardFromWelcome}
