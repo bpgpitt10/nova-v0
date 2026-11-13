@@ -138,7 +138,6 @@ export default function LooperLandingPage({
     () => new URLSearchParams(window.location.search).get('openRange') === '1',
   )
   const [showWelcome, setShowWelcome] = useState(false)
-  const [accountEmail, setAccountEmail] = useState<string | null>(null)
   const [welcomeLinkCopied, setWelcomeLinkCopied] = useState(false)
   // Companion distribution: the newest published build and how the running one compares.
   const [companionLatest, setCompanionLatest] = useState<CompanionLatest | null>(null)
@@ -212,10 +211,6 @@ export default function LooperLandingPage({
       setGsproState('error')
       setShowWelcome(false)
     }
-  }, [])
-
-  useEffect(() => {
-    void readGsproConnectedOnAccount().then((account) => setAccountEmail(account?.email ?? null))
   }, [])
 
   useEffect(() => {
@@ -293,12 +288,6 @@ export default function LooperLandingPage({
       window.prompt('Copy this link:', COMPANION_DOWNLOAD_URL)
     }
   }
-
-  const emailWelcomeLinkHref = `mailto:${accountEmail ? encodeURIComponent(accountEmail).replace(/%40/g, '@') : ''}?subject=${encodeURIComponent(
-    'The Looper Companion download',
-  )}&body=${encodeURIComponent(
-    `Open this on your GSPro PC to download the Looper Companion installer:\n\n${COMPANION_DOWNLOAD_URL}\n\nThen sign in at https://thelooper.golf on that PC.`,
-  )}`
 
   const updateStatusContent = (() => {
     switch (updateStatus) {
@@ -562,14 +551,12 @@ export default function LooperLandingPage({
           >
             <img alt="The Looper" className="looper-welcome-logo" src={looperLogoWhite} />
             <span className="looper-welcome-kicker">Welcome to The Looper</span>
-            <h1 id="looper-welcome-title">Install the companion. Then just play.</h1>
-            <p>
-              {onWindows
-                ? 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, follow the steps below, and this page connects on its own.'
-                : 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on your GSPro PC. Copy the link and open it there; once the companion is running, Looper connects on its own.'}
-            </p>
             {onWindows ? (
               <>
+                <h1 id="looper-welcome-title">Install the companion. Then just play.</h1>
+                <p>
+                  Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, follow the steps below, and this page connects on its own.
+                </p>
                 <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={dismissWelcomeForSession}>
                   {downloadLabel}
                 </a>
@@ -577,22 +564,18 @@ export default function LooperLandingPage({
               </>
             ) : (
               <>
-                <button className="looper-welcome-primary" onClick={() => void copyWelcomeLink()} type="button">
-                  {welcomeLinkCopied ? 'Link copied' : 'Copy the download link'}
-                </button>
-                <a className="looper-welcome-secondary" href={emailWelcomeLinkHref}>
-                  Email me the link
-                </a>
+                <h1 id="looper-welcome-title">Open Looper on your GSPro PC.</h1>
+                <p>
+                  Looper works next to GSPro on your Windows sim PC, and this isn't it. On that PC, go to <strong>thelooper.golf</strong> and sign in with this account. You'll get a one-click install for the Looper Companion, the small app that reads your shots.
+                </p>
                 <p className="looper-welcome-note">
-                  You're not on your GSPro PC: the companion is a Windows app. Open the link there, run the installer, then sign in to Looper on that PC.
+                  Nothing to install on this device. Want the installer link for later?{' '}
+                  <button className="looper-landing-link" onClick={() => void copyWelcomeLink()} type="button">
+                    {welcomeLinkCopied ? 'Link copied' : 'Copy it'}
+                  </button>
                 </p>
               </>
             )}
-            {gsproState !== 'unsupported' ? (
-              <button className="looper-welcome-secondary" onClick={() => { dismissWelcomeForSession(); connectGspro(true) }} type="button">
-                Connect the GSPro folder instead
-              </button>
-            ) : null}
             <button
               className="looper-welcome-secondary"
               onClick={continueToDashboardFromWelcome}
