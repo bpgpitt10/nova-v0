@@ -144,6 +144,8 @@ jobs:
         run: node tools/test-decision-options.mjs
       - name: Quick Bag prior, gapping and blending
         run: node tools/test-quick-bag.mjs
+      - name: Screen-only caddie (no map)
+        run: node tools/test-screen-only.mjs
       - name: Player-facing course status and support codes
         run: node tools/test-support-codes.mjs
       - name: Safe play rule

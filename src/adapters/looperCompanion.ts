@@ -398,8 +398,9 @@ export type LooperCompanionLiveObservations = {
       status: 'READY' | 'UNKNOWN' | 'UNAVAILABLE'
       shotNumber: number | null
       distanceToPinYds: number | null
-      /** GSPro 4: the pin's height over the ball, feet (+ above, − below). */
+      /** Pin height against the ball from the ▲/▼ beside the distance: + above, − below (GSPro 4 box, companion 1.0.3+; older box, 1.0.6+). */
       elevationFt?: number | null
+      elevationArrow?: 'up' | 'down' | null
       hudLayout?: string | null
       rawText?: string | null
       note?: string | null

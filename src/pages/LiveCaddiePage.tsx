@@ -108,6 +108,7 @@ import {
 } from '../lib/sessions'
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
+import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
@@ -2090,11 +2091,13 @@ export default function LiveCaddiePage() {
             <span className="live-kicker">READY WHEN YOU ARE</span>
             <h1>Select the course Looper should play.</h1>
             <p>The playing surface will use the same course geometry, player model and decision engine as Aim Lab.</p>
+            <ScreenOnlyCaddie companionConnected={companionStatus?.gspro.status === 'connected'} />
           </section>
         ) : !hole ? (
           <section className="live-empty-state">
-            <span className="live-kicker">LOADING COURSE</span>
+            <span className="live-kicker">{loadError ? 'NO MAP FOR THIS HOLE' : 'LOADING COURSE'}</span>
             <h1>{selectedCourse?.name} · Hole {holeNumber}</h1>
+            {loadError ? <ScreenOnlyCaddie companionConnected={companionStatus?.gspro.status === 'connected'} /> : null}
           </section>
         ) : isGreenSurface ? (
           <section className="live-empty-state">
