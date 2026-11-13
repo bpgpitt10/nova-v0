@@ -407,7 +407,7 @@ export const markGsproConnectedOnAccount = async () => {
     const result = await client.auth.updateUser({
       data: { [GSPRO_CONNECTED_METADATA_KEY]: new Date().toISOString() },
     })
-    if (!result.error) gsproAccountMemo = { ...account, connected: true }
+    if (!result.error && gsproAccountMemo) gsproAccountMemo = { ...gsproAccountMemo, connected: true }
   } catch {
     // the prompt simply shows again next visit
   }
