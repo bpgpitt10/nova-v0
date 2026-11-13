@@ -362,6 +362,10 @@ export const subscribeToLooperAuth = async (
 ) => {
   const client = await getSupabaseClient()
   const { data } = client.auth.onAuthStateChange((event, session) => {
+    // A different account (or none) in this tab: forget the previous account's answer.
+    if (gsproAccountMemo && gsproAccountMemo.id !== (session?.user.id ?? null)) {
+      gsproAccountMemo = null
+    }
     callback(event, session?.user ?? null)
   })
   return () => data.subscription.unsubscribe()
@@ -372,7 +376,7 @@ export const subscribeToLooperAuth = async (
 // follows a new player from the phone they verified on to their GSPro PC, and
 // stops everywhere once any of their devices has connected.
 const GSPRO_CONNECTED_METADATA_KEY = 'looper_gspro_connected_at'
-let gsproAccountMemo: { email: string | null; connected: boolean } | null = null
+let gsproAccountMemo: { id: string; email: string | null; connected: boolean } | null = null
 
 /** null when there is no signed-in account to ask (or the check failed). */
 export const readGsproConnectedOnAccount = async (): Promise<{ email: string | null; connected: boolean } | null> => {
@@ -384,6 +388,7 @@ export const readGsproConnectedOnAccount = async (): Promise<{ email: string | n
     const user = result.data.user
     if (result.error || !user) return null
     gsproAccountMemo = {
+      id: user.id,
       email: user.email ?? null,
       connected: Boolean(user.user_metadata?.[GSPRO_CONNECTED_METADATA_KEY]),
     }
