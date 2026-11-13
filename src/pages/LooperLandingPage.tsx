@@ -294,7 +294,7 @@ export default function LooperLandingPage({
     }
   }
 
-  const emailWelcomeLinkHref = `mailto:${accountEmail ? encodeURIComponent(accountEmail) : ''}?subject=${encodeURIComponent(
+  const emailWelcomeLinkHref = `mailto:${accountEmail ? encodeURIComponent(accountEmail).replace(/%40/g, '@') : ''}?subject=${encodeURIComponent(
     'The Looper Companion download',
   )}&body=${encodeURIComponent(
     `Open this on your GSPro PC to download the Looper Companion installer:\n\n${COMPANION_DOWNLOAD_URL}\n\nThen sign in at https://thelooper.golf on that PC.`,
