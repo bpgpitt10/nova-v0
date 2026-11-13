@@ -56,6 +56,21 @@ export function CompanionFirstRunNote({ className = 'companion-chip__fine' }: { 
   )
 }
 
+/**
+ * The download is a ZIP, not a one-click installer: say exactly what to do with
+ * it. Running the installer from inside the ZIP without extracting fails.
+ */
+export function CompanionInstallSteps({ className = 'companion-chip__steps' }: { className?: string }) {
+  return (
+    <ol className={className}>
+      <li>Open the downloaded <strong>looper-windows-companion.zip</strong> and choose <strong>Extract all</strong>.</li>
+      <li>In the extracted folder, double-click <strong>install_looper_companion</strong>.</li>
+      <li>If Windows says “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. It's our unsigned installer, not a virus.</li>
+      <li>Come back to this page. If the browser asks whether thelooper.golf can connect to devices on your local network, choose <strong>Allow</strong>.</li>
+    </ol>
+  )
+}
+
 export function CompanionChip() {
   const p = useCompanionPresence()
   const { text, tone } = label(p)
@@ -93,9 +108,9 @@ export function CompanionChip() {
         ) : null}
         {p.status === 'not-installed' ? (
           <>
-            <p>Looper reads your GSPro shots through a small app on this PC. Download it, run the installer, and this page connects on its own{size ? ` (${size})` : ''}.</p>
+            <p>Looper reads your GSPro shots through a small app on this PC. Download it, install it, and this page connects on its own{size ? ` (${size})` : ''}.</p>
             <CompanionDownloadLinks />
-            <CompanionFirstRunNote />
+            <CompanionInstallSteps />
           </>
         ) : null}
         {p.status === 'elsewhere' ? (

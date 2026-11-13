@@ -644,3 +644,12 @@ a.looper-welcome-secondary {
   justify-content: center;
   text-decoration: none;
 }
+
+/* Install steps under the download button: the download is a ZIP. */
+.looper-welcome-steps {
+  margin: -2px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #b4bfb3;
+}

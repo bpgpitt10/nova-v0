@@ -7,7 +7,7 @@ import {
 import { isCompanionGsproDirectoryHandle } from '../adapters/companionGsproFiles'
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
 import { markGsproConnectedOnAccount, readGsproConnectedOnAccount } from '../cloud/supabaseClient'
-import { CompanionDownloadLinks, CompanionFirstRunNote } from '../components/CompanionChip'
+import { CompanionDownloadLinks, CompanionInstallSteps } from '../components/CompanionChip'
 import { companionSeenBefore } from '../lib/companionPresence'
 import {
   COMPANION_DOWNLOAD_URL,
@@ -565,7 +565,7 @@ export default function LooperLandingPage({
             <h1 id="looper-welcome-title">Install the companion. Then just play.</h1>
             <p>
               {onWindows
-                ? 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, run the installer, and this page connects on its own.'
+                ? 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on this PC next to GSPro. Download it, follow the steps below, and this page connects on its own.'
                 : 'Looper reads your GSPro shots through the Looper Companion, a small app that runs on your GSPro PC. Copy the link and open it there; once the companion is running, Looper connects on its own.'}
             </p>
             {onWindows ? (
@@ -573,7 +573,7 @@ export default function LooperLandingPage({
                 <a className="looper-welcome-primary" href={COMPANION_DOWNLOAD_URL} onClick={dismissWelcomeForSession}>
                   {downloadLabel}
                 </a>
-                <CompanionFirstRunNote className="looper-welcome-note" />
+                <CompanionInstallSteps className="looper-welcome-steps" />
               </>
             ) : (
               <>
