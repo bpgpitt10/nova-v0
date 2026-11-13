@@ -291,7 +291,9 @@ jobs:
           $installDir = Join-Path $env:LOCALAPPDATA "Looper\Companion"
           $shortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Looper Companion.lnk"
           foreach ($pass in "fresh install", "upgrade over a running copy") {
-            $p = Start-Process -FilePath ".\LooperCompanionSetup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru -Wait
+            # Not -Wait: that also waits for the companion the installer starts, which never exits.
+            $p = Start-Process -FilePath ".\LooperCompanionSetup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru
+            if (!$p.WaitForExit(180000)) { throw "$pass`: installer did not finish in 3 minutes" }
             if ($p.ExitCode -ne 0) { throw "$pass`: installer exit code $($p.ExitCode)" }
             if (!(Test-Path (Join-Path $installDir "LooperCompanion.exe"))) { throw "$pass`: exe not installed" }
             if (!(Test-Path (Join-Path $installDir "ocr\tesseract.exe"))) { throw "$pass`: OCR engine not installed" }
@@ -309,7 +311,10 @@ jobs:
           # Uninstall leaves nothing running and removes the start-with-Windows entry.
           $un = Get-ChildItem $installDir -Filter "unins*.exe" | Select-Object -First 1
           if (!$un) { throw "uninstaller missing" }
-          Start-Process -FilePath $un.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+          $u = Start-Process -FilePath $un.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru
+          $u.WaitForExit(120000) | Out-Null
+          # The uninstaller re-launches itself from a temp copy; give that copy time to finish.
+          for ($i = 0; $i -lt 30 -and (Test-Path $un.FullName); $i++) { Start-Sleep -Seconds 1 }
           Start-Sleep -Seconds 2
           if (Get-Process -Name LooperCompanion -ErrorAction SilentlyContinue) { throw "uninstall left the companion running" }
           $runAfter = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue).LooperCompanion
