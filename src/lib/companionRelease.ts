@@ -11,7 +11,7 @@
 export const COMPANION_RELEASES_REPO = 'bpgpitt10/looper-companion-releases'
 export const COMPANION_RELEASES_PAGE = `https://github.com/${COMPANION_RELEASES_REPO}/releases/latest`
 export const COMPANION_DOWNLOAD_URL =
-  `https://github.com/${COMPANION_RELEASES_REPO}/releases/latest/download/looper-windows-companion.zip`
+  `https://github.com/${COMPANION_RELEASES_REPO}/releases/latest/download/LooperCompanionSetup.exe`
 export const COMPANION_LATEST_URL =
   `https://raw.githubusercontent.com/${COMPANION_RELEASES_REPO}/main/latest.json`
 
