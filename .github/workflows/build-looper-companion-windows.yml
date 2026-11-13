@@ -63,6 +63,7 @@ on:
       - "helpers/install_looper_companion.ps1"
       - "helpers/install_looper_companion.cmd"
       - "helpers/uninstall_looper_companion.ps1"
+      - "helpers/looper_companion_setup.iss"
       - ".github/workflows/build-looper-companion-windows.yml"
 
 permissions:
@@ -256,6 +257,73 @@ jobs:
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
           Compress-Archive -Path package/* -DestinationPath looper-windows-companion.zip -Force
 
+      # Players get ONE file to double-click: no unzip, no .cmd. The ZIP above
+      # stays as a fallback and for older links.
+      - name: Build the one-file installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup could not be installed." }
+          }
+          if (!(Test-Path $iscc)) { throw "ISCC.exe not found." }
+          $release = (Select-String -Path helpers/looper_companion.py -Pattern 'COMPANION_RELEASE = "([^"]+)"').Matches[0].Groups[1].Value
+          Copy-Item helpers/looper_companion_setup.iss looper_companion_setup.iss
+          & $iscc "/DAppVersion=$release" looper_companion_setup.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup build failed." }
+          if (!(Test-Path LooperCompanionSetup.exe)) { throw "LooperCompanionSetup.exe was not produced." }
+          Write-Host ("installer: {0:N0} bytes" -f (Get-Item LooperCompanionSetup.exe).Length)
+
+      - name: Test the one-file installer end to end
+        shell: pwsh
+        run: |
+          function Wait-Health {
+            for ($i = 0; $i -lt 40; $i++) {
+              Start-Sleep -Milliseconds 500
+              try {
+                $h = Invoke-RestMethod -Uri "http://127.0.0.1:8787/health" -TimeoutSec 2
+                if ($h.status -eq "ok") { return $true }
+              } catch {}
+            }
+            return $false
+          }
+          $installDir = Join-Path $env:LOCALAPPDATA "Looper\Companion"
+          $shortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Looper Companion.lnk"
+          foreach ($pass in "fresh install", "upgrade over a running copy") {
+            $p = Start-Process -FilePath ".\LooperCompanionSetup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru -Wait
+            if ($p.ExitCode -ne 0) { throw "$pass`: installer exit code $($p.ExitCode)" }
+            if (!(Test-Path (Join-Path $installDir "LooperCompanion.exe"))) { throw "$pass`: exe not installed" }
+            if (!(Test-Path (Join-Path $installDir "ocr\tesseract.exe"))) { throw "$pass`: OCR engine not installed" }
+            if (!(Test-Path (Join-Path $installDir "ocr\tessdata\eng.traineddata"))) { throw "$pass`: OCR data not installed" }
+            if (!(Test-Path $shortcut)) { throw "$pass`: Start menu shortcut missing" }
+            $run = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run").LooperCompanion
+            if ($run -notlike "*LooperCompanion.exe*") { throw "$pass`: start-with-Windows entry missing" }
+            if (!(Wait-Health)) { throw "$pass`: the installed companion never answered on /health" }
+            $running = Get-Process -Name LooperCompanion -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$installDir*" }
+            if (!$running) { throw "$pass`: the running companion is not the installed copy" }
+            Write-Host "$pass`: ok"
+          }
+          $status = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers @{ Origin = "https://thelooper.golf" } -TimeoutSec 5
+          Write-Host "installed companion release: $($status.release)"
+          # Uninstall leaves nothing running and removes the start-with-Windows entry.
+          $un = Get-ChildItem $installDir -Filter "unins*.exe" | Select-Object -First 1
+          if (!$un) { throw "uninstaller missing" }
+          Start-Process -FilePath $un.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+          Start-Sleep -Seconds 2
+          if (Get-Process -Name LooperCompanion -ErrorAction SilentlyContinue) { throw "uninstall left the companion running" }
+          $runAfter = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue).LooperCompanion
+          if ($runAfter) { throw "uninstall left the start-with-Windows entry" }
+          if (Test-Path $shortcut) { throw "uninstall left the Start menu shortcut" }
+          Write-Host "uninstall: ok"
+
+      - name: Keep the installer as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LooperCompanionSetup
+          path: LooperCompanionSetup.exe
+          retention-days: 14
+
       - name: Publish isolated Stage C preflight prerelease
         continue-on-error: true
         if: github.ref == 'refs/heads/auto-aim-windows-companion-v1'
@@ -409,17 +477,17 @@ jobs:
           gh release view $tag --repo $env:COMPANION_RELEASES_REPO *> $null
           if ($LASTEXITCODE -eq 0) { Write-Host "$tag is already published; bump COMPANION_RELEASE to ship a new build."; exit 0 }
           $notes = (git log -1 --pretty=%s)
-          gh release create $tag looper-windows-companion.zip `
+          gh release create $tag LooperCompanionSetup.exe looper-windows-companion.zip `
             --repo $env:COMPANION_RELEASES_REPO `
             --title "Looper Companion $release" `
-            --notes "$notes`n`nInstall: unzip, run install_looper_companion.cmd. It runs in the background and starts with Windows. Built from nova-v0 $env:GITHUB_SHA."
+            --notes "$notes`n`nInstall: download LooperCompanionSetup.exe and run it. It runs in the background and starts with Windows. (The zip is the old manual installer.) Built from nova-v0 $env:GITHUB_SHA."
           if ($LASTEXITCODE -ne 0) { throw "public release failed" }
-          $sha = (Get-FileHash looper-windows-companion.zip -Algorithm SHA256).Hash.ToLower()
-          $size = (Get-Item looper-windows-companion.zip).Length
+          $sha = (Get-FileHash LooperCompanionSetup.exe -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item LooperCompanionSetup.exe).Length
           $latest = @{
             release = $release
             minRelease = $env:MIN_RELEASE
-            url = "https://github.com/$env:COMPANION_RELEASES_REPO/releases/download/$tag/looper-windows-companion.zip"
+            url = "https://github.com/$env:COMPANION_RELEASES_REPO/releases/download/$tag/LooperCompanionSetup.exe"
             sha256 = $sha
             sizeBytes = $size
             publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
