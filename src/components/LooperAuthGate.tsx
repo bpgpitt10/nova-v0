@@ -279,7 +279,7 @@ export default function LooperAuthGate({ children }: Props) {
         const result = await signUpLooperWithPassword(normalized, password)
         if (result.requiresEmailConfirmation) {
           setSuccessMessage(
-            'Check your email to verify your account, then sign in with your password.',
+            'Check your email and click the link to verify your account. The link signs you in; open it on your GSPro PC if you can.',
           )
           setPassword('')
           setConfirmPassword('')

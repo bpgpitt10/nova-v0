@@ -636,3 +636,11 @@ button.looper-landing-mode-card:hover .looper-landing-mode-action span,
   font-size: 13px;
   color: #9da99f;
 }
+
+/* The install prompt's link-styled buttons (Email me the link). */
+a.looper-welcome-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
