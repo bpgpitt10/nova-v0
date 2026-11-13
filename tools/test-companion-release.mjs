@@ -22,7 +22,7 @@ try {
   assert.equal(companionUpdateState('1.0.0', latest), 'needs-update')
   assert.equal(companionUpdateState('courses.10', latest), 'needs-update')
   assert.equal(companionUpdateState('1.1.0', null), 'unknown')
-  assert.match(COMPANION_DOWNLOAD_URL, /releases\/latest\/download\/looper-windows-companion\.zip$/)
+  assert.match(COMPANION_DOWNLOAD_URL, /releases\/latest\/download\/LooperCompanionSetup\.exe$/)
   assert.match(COMPANION_LATEST_URL, /raw\.githubusercontent\.com\/.*\/latest\.json$/)
   console.log('PASS: companion release ordering and update states.')
 } finally {

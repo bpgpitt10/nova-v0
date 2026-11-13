@@ -56,15 +56,11 @@ export function CompanionFirstRunNote({ className = 'companion-chip__fine' }: { 
   )
 }
 
-/**
- * The download is a ZIP, not a one-click installer: say exactly what to do with
- * it. Running the installer from inside the ZIP without extracting fails.
- */
+/** What to do with the downloaded installer, including the two warnings an unsigned app gets. */
 export function CompanionInstallSteps({ className = 'companion-chip__steps' }: { className?: string }) {
   return (
     <ol className={className}>
-      <li>Open the downloaded <strong>looper-windows-companion.zip</strong> and choose <strong>Extract all</strong>.</li>
-      <li>In the extracted folder, double-click <strong>install_looper_companion</strong>.</li>
+      <li>Run the downloaded <strong>LooperCompanionSetup.exe</strong>. If the browser says it “isn't commonly downloaded”, choose <strong>Keep</strong>.</li>
       <li>If Windows says “Windows protected your PC”, click <strong>More info</strong>, then <strong>Run anyway</strong>. It's our unsigned installer, not a virus.</li>
       <li>Come back to this page. If the browser asks whether thelooper.golf can connect to devices on your local network, choose <strong>Allow</strong>.</li>
     </ol>
