@@ -118,6 +118,7 @@ import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/sup
 import { getNativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
+import LiveFollowDetails from './LiveFollowDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
 import { aimClickPoint } from '../liveCaddie/aimClickPoint'
@@ -1846,6 +1847,7 @@ export default function LiveCaddiePage() {
             <button type="button" onClick={() => { void navigator.clipboard?.writeText(supportCode).catch(() => {}) }}>Copy</button>
           </div>
         ) : null}
+        {showDiagnostics ? <LiveFollowDetails /> : null}
 
         {/* Developer readout for the native aim pipeline; the floating
             "Show where Looper would click" preview is the player-facing one. */}
