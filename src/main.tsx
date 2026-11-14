@@ -150,7 +150,15 @@ function LiveGsproRoundArchiveBridge() {
     // Every course installed in GSPro on this PC plays from its course file
     // (no map needed); only answers on the sim PC, where the companion runs.
     void refreshGsproOnlyCourses().catch(() => undefined)
+    // Once a day: what GSPro's round file looks like on this PC, so a stuck
+    // Live Caddie can be explained without asking the player for files.
+    const fileSummaryTimer = window.setTimeout(() => {
+      void import('./lib/gsproFollowDiagnostics')
+        .then((module) => module.reportGsproFileSummaryDaily())
+        .catch(() => undefined)
+    }, 20_000)
     return () => {
+      window.clearTimeout(fileSummaryTimer)
       stopTeeValidator()
       stopLineage()
       stopArchive()

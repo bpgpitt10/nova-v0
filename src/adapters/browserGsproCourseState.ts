@@ -26,6 +26,7 @@ import {
   markActiveRoundLiveFromHoleChange,
 } from '../liveCaddie/roundRuntime'
 import { loadGsproDirectoryHandle } from './browserGsproAccess'
+import { noteLiveFollow, reportLiveFollowDiagnostic } from '../lib/gsproFollowDiagnostics'
 import {
   connectToBrowserGsproCourseState as connectCoreCourseState,
   loadGsproCourseStateDirectoryHandle,
@@ -113,6 +114,44 @@ const manualRoundStart = {
   // later hole while holding is GSPro moving on (a conceded hole), not stale data.
   lastHole: null as number | null,
 }
+
+// The hold's baseline belongs to the Looper round, not to one page load. A
+// refresh while the round is still waiting for its first shot used to take
+// whatever GSPro showed at that moment as the new baseline, so a tee shot
+// already hit was swallowed and the caddie sat on the tee (11/14).
+const HOLD_BASELINE_KEY = 'looper.live-caddie.hold-baseline.v1'
+
+const loadHoldBaseline = (looperRoundId: string): { identity: string | null } | null => {
+  try {
+    const raw = window.localStorage.getItem(HOLD_BASELINE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { roundId?: unknown; identity?: unknown }
+    if (parsed.roundId !== looperRoundId) return null
+    return { identity: typeof parsed.identity === 'string' ? parsed.identity : null }
+  } catch {
+    return null
+  }
+}
+
+const saveHoldBaseline = (looperRoundId: string | null, identity: string | null) => {
+  if (!looperRoundId) return
+  try {
+    window.localStorage.setItem(HOLD_BASELINE_KEY, JSON.stringify({ roundId: looperRoundId, identity }))
+  } catch {
+    // storage is a convenience; the hold still works for this page load
+  }
+}
+
+const clearHoldBaseline = () => {
+  try {
+    window.localStorage.removeItem(HOLD_BASELINE_KEY)
+  } catch {
+    // nothing to clear
+  }
+}
+
+// GSPro file changes during a hold that did not release it: report at these counts.
+const STUCK_REPORT_AT = new Set([2, 4, 8, 16])
 
 const readTextFileFromHandle = async (
   handle: ReadableDirectoryHandle | null,
@@ -549,6 +588,8 @@ export const connectToBrowserGsproCourseState = ({
   let lastPublishedShotStateKey: string | null = null
   let lastPublishedSnapshotSignature: string | null = null
   let lastManuallyArmedLooperRoundId: string | null = null
+  let unreleasedReads = 0
+  let coreReads = 0
 
   const publishSnapshot = (
     snapshot: BrowserGsproCourseSnapshot,
@@ -559,6 +600,7 @@ export const connectToBrowserGsproCourseState = ({
       lastPublishedSnapshotSignature = signature
       onSnapshot({ ...snapshot, publishedFrom: source })
     }
+    noteLiveFollow({ published: source })
 
     const key = source === 'manual-start'
       ? 'manual-start:1:1'
@@ -599,9 +641,24 @@ export const connectToBrowserGsproCourseState = ({
     lastPublishedSnapshotSignature = null
 
     manualRoundStart.active = true
-    manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
-    manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+    const storedBaseline = loadHoldBaseline(armedRound.id)
+    if (storedBaseline) {
+      // Same Looper round as before this page load: keep its baseline, so a
+      // shot hit in the meantime still counts as new.
+      manualRoundStart.baselineCaptured = true
+      manualRoundStart.baselineIdentity = storedBaseline.identity
+    } else {
+      manualRoundStart.baselineCaptured = lastCoreSnapshot !== null
+      manualRoundStart.baselineIdentity = physicalSnapshotIdentity(lastCoreSnapshot)
+      if (manualRoundStart.baselineCaptured) saveHoldBaseline(armedRound.id, manualRoundStart.baselineIdentity)
+    }
     manualRoundStart.lastHole = lastCoreSnapshot?.holeNumber ?? null
+    unreleasedReads = 0
+    noteLiveFollow({
+      hold: manualRoundStart.baselineCaptured ? 'holding' : 'waiting-baseline',
+      baselineId: manualRoundStart.baselineIdentity,
+      unreleasedReads: 0,
+    })
     const sequence = ++snapshotSequence
 
     void buildManualStartSnapshot(selectedCourseId)
@@ -625,12 +682,26 @@ export const connectToBrowserGsproCourseState = ({
     onError,
     onSnapshot: (snapshot) => {
       lastCoreSnapshot = snapshot
+      coreReads += 1
+      noteLiveFollow({
+        reads: coreReads,
+        gspro: {
+          roundId: snapshot.roundId,
+          courseKey: snapshot.courseKey,
+          hole: snapshot.holeNumber,
+          nextShot: snapshot.nextShotNumber,
+          shotId: physicalSnapshotIdentity(snapshot),
+          warnings: snapshot.warnings.length,
+        },
+      })
 
       if (manualRoundStart.active) {
         if (!manualRoundStart.baselineCaptured) {
           manualRoundStart.baselineIdentity = physicalSnapshotIdentity(snapshot)
           manualRoundStart.baselineCaptured = true
           manualRoundStart.lastHole = snapshot.holeNumber
+          saveHoldBaseline(lastManuallyArmedLooperRoundId, manualRoundStart.baselineIdentity)
+          noteLiveFollow({ hold: 'holding', baselineId: manualRoundStart.baselineIdentity })
           return
         }
 
@@ -641,12 +712,28 @@ export const connectToBrowserGsproCourseState = ({
         // to hole 2+ while we hold hole 1 is the player conceding a hole.
         const movedOn = releasesHoldOnHoleChange(manualRoundStart.lastHole, snapshot.holeNumber)
         if (snapshot.holeNumber != null) manualRoundStart.lastHole = snapshot.holeNumber
-        if (!hasNewPhysicalShot && !movedOn) return
+        if (!hasNewPhysicalShot && !movedOn) {
+          // GSPro's files changed but nothing here counts as a new shot. A few
+          // of these are normal (GSPro writes its pre-shot record); a run of
+          // them after the player has hit is the caddie stuck on the tee.
+          unreleasedReads += 1
+          noteLiveFollow({ unreleasedReads })
+          if (STUCK_REPORT_AT.has(unreleasedReads)) {
+            void reportLiveFollowDiagnostic(
+              'hold-not-released',
+              `hold:${lastManuallyArmedLooperRoundId ?? 'round'}:${unreleasedReads}`,
+            )
+          }
+          return
+        }
 
         manualRoundStart.active = false
         manualRoundStart.baselineCaptured = false
         manualRoundStart.baselineIdentity = null
         manualRoundStart.lastHole = null
+        clearHoldBaseline()
+        unreleasedReads = 0
+        noteLiveFollow({ hold: 'off', baselineId: null, unreleasedReads: 0 })
         if (movedOn && !hasNewPhysicalShot) markActiveRoundLiveFromHoleChange()
       }
 
