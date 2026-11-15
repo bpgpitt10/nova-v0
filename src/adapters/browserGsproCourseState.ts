@@ -150,6 +150,9 @@ const clearHoldBaseline = () => {
   }
 }
 
+// Longest one shot's placement may take before GSPro's state is shown as read.
+const ENRICH_TIMEOUT_MS = 8000
+
 // GSPro file changes during a hold that did not release it: report at these counts.
 const STUCK_REPORT_AT = new Set([2, 4, 8, 16])
 
@@ -590,6 +593,9 @@ export const connectToBrowserGsproCourseState = ({
   let lastManuallyArmedLooperRoundId: string | null = null
   let unreleasedReads = 0
   let coreReads = 0
+  let enrichBusy = false
+  let pendingCore: CoreBrowserGsproCourseSnapshot | null = null
+  let overtaken = 0
 
   const publishSnapshot = (
     snapshot: BrowserGsproCourseSnapshot,
@@ -641,6 +647,7 @@ export const connectToBrowserGsproCourseState = ({
     lastPublishedSnapshotSignature = null
 
     manualRoundStart.active = true
+    pendingCore = null
     const storedBaseline = loadHoldBaseline(armedRound.id)
     if (storedBaseline) {
       // Same Looper round as before this page load: keep its baseline, so a
@@ -675,6 +682,56 @@ export const connectToBrowserGsproCourseState = ({
 
   if (typeof window !== 'undefined') {
     window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
+  }
+
+  const publishCoreFallback = (snapshot: CoreBrowserGsproCourseSnapshot, why: string) => {
+    publishSnapshot({
+      ...snapshot,
+      preShotStart: null,
+      pinLocalYds: null,
+      pinSource: 'unavailable',
+      pinDistanceValidationErrorYds: null,
+      warnings: dedupeWarnings([...snapshot.warnings, why]),
+    }, 'gspro')
+  }
+
+  const runEnrich = (snapshot: CoreBrowserGsproCourseSnapshot) => {
+    enrichBusy = true
+    // A manual Start Round bumps snapshotSequence: results from before it are stale.
+    const generation = snapshotSequence
+    let settled = false
+    const finish = () => {
+      if (settled) return false
+      settled = true
+      window.clearTimeout(timeout)
+      enrichBusy = false
+      const next = pendingCore
+      pendingCore = null
+      if (next && !disconnected && !manualRoundStart.active) runEnrich(next)
+      return true
+    }
+    const usable = () => !disconnected && generation === snapshotSequence && !manualRoundStart.active
+    // Never let one slow or hung read stop the round from being followed.
+    const timeout = window.setTimeout(() => {
+      const publish = usable()
+      if (!finish()) return
+      console.warn('[Browser GSPro course state] Shot placement took too long; using GSPro state as read.')
+      if (publish) publishCoreFallback(snapshot, 'Placing this shot took too long; showing GSPro state without tee or pin placement.')
+    }, ENRICH_TIMEOUT_MS)
+    void enrichSnapshotWithStartingPosition(snapshot)
+      .then((enriched) => {
+        const publish = usable()
+        if (!finish()) return
+        if (publish) publishSnapshot(enriched, 'gspro')
+      })
+      .catch((error) => {
+        const publish = usable()
+        if (!finish()) return
+        console.warn('[Browser GSPro course state] Supported-tee reconciliation failed; using core snapshot.', error)
+        if (publish) {
+          publishCoreFallback(snapshot, 'GSPro Shot 1 tee reconciliation failed; supported-tee placement was not applied.')
+        }
+      })
   }
 
   const coreConnection = connectCoreCourseState({
@@ -737,27 +794,17 @@ export const connectToBrowserGsproCourseState = ({
         if (movedOn && !hasNewPhysicalShot) markActiveRoundLiveFromHoleChange()
       }
 
-      const sequence = ++snapshotSequence
-      void enrichSnapshotWithStartingPosition(snapshot)
-        .then((enriched) => {
-          if (disconnected || sequence !== snapshotSequence) return
-          publishSnapshot(enriched, 'gspro')
-        })
-        .catch((error) => {
-          if (disconnected || sequence !== snapshotSequence) return
-          console.warn('[Browser GSPro course state] Supported-tee reconciliation failed; using core snapshot.', error)
-          publishSnapshot({
-            ...snapshot,
-            preShotStart: null,
-            pinLocalYds: null,
-            pinSource: 'unavailable',
-            pinDistanceValidationErrorYds: null,
-            warnings: dedupeWarnings([
-              ...snapshot.warnings,
-              'GSPro Shot 1 tee reconciliation failed; supported-tee placement was not applied.',
-            ]),
-          }, 'gspro')
-        })
+      // One enrichment at a time, newest waiting. This used to start one per
+      // GSPro read and drop any result a newer read had overtaken; on a PC
+      // where GSPro's log changes every poll and the reads take longer than a
+      // poll, every result was dropped and the caddie never left the tee.
+      if (enrichBusy) {
+        pendingCore = snapshot
+        overtaken += 1
+        noteLiveFollow({ overtaken })
+        return
+      }
+      runEnrich(snapshot)
     },
   })
 

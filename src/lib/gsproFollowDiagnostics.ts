@@ -29,12 +29,14 @@ export type LiveFollowState = {
   } | null
   /** What Live Caddie was last given: Looper's own Hole 1 tee, or GSPro's state. */
   published: 'manual-start' | 'gspro' | null
+  /** GSPro reads that arrived while an earlier one was still being placed. */
+  overtaken: number
   reads: number
   updatedAt: string | null
 }
 
 const state: LiveFollowState = {
-  hold: 'off', baselineId: null, unreleasedReads: 0, gspro: null, published: null, reads: 0, updatedAt: null,
+  hold: 'off', baselineId: null, unreleasedReads: 0, gspro: null, published: null, overtaken: 0, reads: 0, updatedAt: null,
 }
 let lastFile: GsproRoundFileSummary | null = null
 let lastLog: GsproOutputLogHoleSummary | null = null
@@ -73,7 +75,7 @@ export const liveFollowLine = () => {
   const gspro = state.gspro
     ? `gspro r${state.gspro.roundId ?? '?'}/h${state.gspro.hole ?? '?'}/s${state.gspro.nextShot ?? '?'}/${shortId(state.gspro.shotId)}`
     : 'gspro none'
-  return `${hold} | ${gspro} | out ${state.published ?? '-'} | reads ${state.reads} | ${roundFileSummaryLine(lastFile, lastLog)}`
+  return `${hold} | ${gspro} | out ${state.published ?? '-'} | reads ${state.reads} q${state.overtaken} | ${roundFileSummaryLine(lastFile, lastLog)}`
 }
 
 const reported = new Set<string>()
