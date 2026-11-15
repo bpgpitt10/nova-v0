@@ -64,6 +64,7 @@ on:
       - "helpers/install_looper_companion.cmd"
       - "helpers/uninstall_looper_companion.ps1"
       - "helpers/looper_companion_setup.iss"
+      - "helpers/looper_voice.py"
       - ".github/workflows/build-looper-companion-windows.yml"
 
 permissions:
@@ -86,6 +87,62 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach numpy opencv-python-headless
+          # EXPERIMENTAL voice commands: offline speech recognition + microphone.
+          python -m pip install vosk sounddevice
+
+      - name: Fetch the offline speech model (experimental voice commands)
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "vosk-model.zip"
+          Invoke-WebRequest -Uri "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip" -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          Write-Host "speech model sha256: $hash ($((Get-Item $zip).Length) bytes)"
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "vosk-model")
+          $inner = Get-ChildItem (Join-Path $env:RUNNER_TEMP "vosk-model") -Directory | Select-Object -First 1
+          if (!$inner -or !(Test-Path (Join-Path $inner.FullName "am"))) { throw "Speech model layout not as expected." }
+          Copy-Item $inner.FullName -Destination voice-model -Recurse -Force
+
+      - name: Speak test commands into WAV files
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+          New-Item -ItemType Directory -Path voice-wav -Force | Out-Null
+          $lines = [ordered]@{
+            "caddie-3w"   = "Caddie, arm three wood."
+            "looper-3w"   = "Looper, arm three wood."
+            "caddie-7i"   = "Caddie, seven iron."
+            "looper-it"   = "Looper, arm it."
+            "caddie-clear" = "Caddie, clear."
+            "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
+          }
+          foreach ($name in $lines.Keys) {
+            $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+            $synth.SetOutputToWaveFile((Join-Path "voice-wav" "$name.wav"), $format)
+            $synth.Speak($lines[$name])
+            $synth.Dispose()
+          }
+          Get-ChildItem voice-wav | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Voice selftest from source
+        shell: pwsh
+        run: |
+          $env:LOOPER_VOICE_MODEL = (Resolve-Path voice-model).Path
+          $failed = $false
+          foreach ($wav in Get-ChildItem voice-wav -Filter *.wav) {
+            $json = python helpers/looper_voice.py --voice-selftest $wav.FullName
+            Write-Host "$($wav.BaseName): $json"
+          }
+          # The synthetic voice is not a person, so only the plainest cases must pass:
+          # "caddie" as a wake word works, and chatter never becomes a command.
+          $caddie = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/caddie-3w.wav).Path) | ConvertFrom-Json
+          if ($caddie.status -ne "ok" -or $caddie.commands.Count -lt 1 -or $caddie.commands[0].club -ne "3W") {
+            throw "Voice selftest: 'Caddie, arm three wood' was not recognised: $($caddie | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $chatter = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter.wav).Path) | ConvertFrom-Json
+          if ($chatter.commands.Count -ne 0) {
+            throw "Voice selftest: chatter produced a command: $($chatter | ConvertTo-Json -Compress -Depth 5)"
+          }
 
       - name: Reuse physically validated portable Tesseract bundle
         shell: pwsh
@@ -129,6 +186,9 @@ jobs:
           python -m PyInstaller --noconfirm --clean --onefile --noconsole `
             --name LooperCompanion `
             --paths helpers `
+            --collect-all vosk `
+            --collect-all sounddevice `
+            --collect-all _sounddevice_data `
             helpers/looper_companion.py
 
       - name: Smoke test companion executable
@@ -252,6 +312,19 @@ jobs:
           New-Item -ItemType Directory -Path package -Force | Out-Null
           Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
           Copy-Item -Path portable-ocr -Destination package/ocr -Recurse -Force
+          # EXPERIMENTAL voice commands: the speech model sits next to the exe.
+          New-Item -ItemType Directory -Path package/voice -Force | Out-Null
+          Copy-Item -Path voice-model -Destination package/voice/model -Recurse -Force
+          # The packaged exe must recognise speech too (bundled engine + model).
+          $out = Join-Path $env:RUNNER_TEMP "voice-selftest.json"
+          $run = Start-Process -FilePath "package/LooperCompanion.exe" -ArgumentList "--voice-selftest", (Resolve-Path voice-wav/caddie-3w.wav).Path, $out -PassThru
+          if (!$run.WaitForExit(120000)) { $run.Kill(); throw "Packaged voice selftest did not finish." }
+          if (!(Test-Path $out)) { throw "Packaged voice selftest wrote no result." }
+          $packaged = Get-Content $out -Raw | ConvertFrom-Json
+          Write-Host "packaged voice selftest: $(Get-Content $out -Raw)"
+          if ($packaged.status -ne "ok" -or $packaged.commands.Count -lt 1 -or $packaged.commands[0].club -ne "3W") {
+            throw "Packaged voice selftest failed."
+          }
           Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
           Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1

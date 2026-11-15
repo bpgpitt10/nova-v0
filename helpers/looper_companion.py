@@ -33,6 +33,7 @@ import gspro_live_observations as observations  # read-only diagnostic; no deskt
 import gspro_native_lie_ocr as native_lie
 import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
+import looper_voice as voice  # EXPERIMENTAL: local voice commands; reports only, no input
 
 base = lie_footer.base
 COMPANION_VERSION = "courses.10"
@@ -65,6 +66,10 @@ COMPANION_READ_PATHS = (
     COMPANION_OBSERVATIONS_PATH,
     COMPANION_COURSE_LAYOUTS_PATH,
 )
+
+# EXPERIMENTAL voice commands: what the microphone heard after a wake word.
+COMPANION_VOICE_PATH = "/companion/v1/voice"
+COMPANION_READ_PATHS = (*COMPANION_READ_PATHS, COMPANION_VOICE_PATH)
 
 EXACT_ALLOWED_ORIGINS = frozenset({
     "https://thelooper.golf",
@@ -311,8 +316,21 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     # is one minimap click per explicit Arm (aim-click).
                     "autoAim": False,
                     "aimClick": True,
+                    "voice": voice.available(),
                 },
             })
+            return
+        if urlsplit(self.path).path == COMPANION_VOICE_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            query = parse_qs(urlsplit(self.path).query)
+            payload = voice.LISTENER.poll(
+                _query_int(query, "since"),
+                listen=(query.get("listen") or ["1"])[0] != "0",
+            )
+            payload["version"] = COMPANION_VERSION
+            self._send_companion(200, payload)
             return
         if urlsplit(self.path).path == COMPANION_CAPTURE_PATH:
             if not self._companion_authorized():
@@ -511,6 +529,10 @@ def start_round_recorder() -> "threading.Event":
 
 
 if __name__ == "__main__":
+    import sys
+
+    if voice.run_selftest_cli(sys.argv):
+        sys.exit(0)
     start_round_recorder()
     # Force loopback even if OPEN_GOLF_COACH_HOST is overridden.
     server = base.ThreadingHTTPServer(("127.0.0.1", base.PORT), LooperCompanionHandler)
