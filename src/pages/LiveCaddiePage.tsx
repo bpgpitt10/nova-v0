@@ -118,6 +118,14 @@ import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/sup
 import { getNativeCourseStatus } from '../courseGeometry/nativeCourseRuntime'
 import LiveCaddieMap from '../components/LiveCaddieMap'
 import LiveDecisionDetails from './LiveDecisionDetails'
+import {
+  loadVoiceEnabled,
+  saveVoiceEnabled,
+  startVoiceCommands,
+  voiceReasonText,
+  type VoiceCommand,
+  type VoiceStatus,
+} from '../liveCaddie/voiceCommands'
 import LiveFollowDetails from './LiveFollowDetails'
 import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
@@ -1562,6 +1570,68 @@ export default function LiveCaddiePage() {
     }
   }
 
+  // EXPERIMENTAL voice commands: "Looper, arm three wood". The companion hears
+  // the command; arming goes through pickClub/pressArm, exactly like the buttons.
+  const voiceSupported = companionStatus?.capabilities.voice === true
+  const [voiceEnabled, setVoiceEnabled] = useState(() => loadVoiceEnabled())
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: 'off' })
+  const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  const [voiceArmRequest, setVoiceArmRequest] = useState<{ club: string | null; id: number } | null>(null)
+  const voiceCommandRef = useRef<(command: VoiceCommand) => void>(() => {})
+  voiceCommandRef.current = (command) => {
+    if (isShotStrategy) { setVoiceNote('Voice arming works in club mode.'); return }
+    if (command.action === 'clear') {
+      setArmedClub(null)
+      resetArm()
+      setVoiceArmRequest(null)
+      setVoiceNote('Heard: clear')
+      return
+    }
+    if (command.action === 'arm' && command.club) {
+      if (!(bagClubs as string[]).includes(command.club)) {
+        setVoiceNote(`Heard: ${command.club}, which isn't in your bag`)
+        return
+      }
+      pickClub(command.club)
+      setVoiceArmRequest({ club: command.club, id: command.seq })
+      setVoiceNote(`Heard: arm ${command.club}`)
+      return
+    }
+    setVoiceArmRequest({ club: null, id: command.seq })
+    setVoiceNote('Heard: arm it')
+  }
+  const pressArmRef = useRef(pressArm)
+  pressArmRef.current = pressArm
+  useEffect(() => {
+    if (!voiceArmRequest) return
+    // Wait until the screen shows the club that was asked for, and never press
+    // while an arm is already filling or aiming (a second press would cancel it).
+    if (voiceArmRequest.club && displayedClub !== voiceArmRequest.club) return
+    if (armPhase === 'filling' || armPhase === 'aiming') return
+    setVoiceArmRequest(null)
+    if (!displayedClub) { setVoiceNote('Nothing to arm yet.'); return }
+    pressArmRef.current()
+  }, [voiceArmRequest, displayedClub, armPhase])
+  useEffect(() => {
+    if (!voiceSupported || !voiceEnabled) return
+    return startVoiceCommands((command) => voiceCommandRef.current(command), setVoiceStatus)
+  }, [voiceSupported, voiceEnabled])
+  useEffect(() => {
+    if (!voiceNote) return
+    const timer = window.setTimeout(() => setVoiceNote(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [voiceNote])
+  const toggleVoice = () => {
+    setVoiceEnabled((current) => {
+      saveVoiceEnabled(!current)
+      return !current
+    })
+  }
+  const voiceLabel = !voiceEnabled ? 'Voice off'
+    : voiceStatus.state === 'listening' ? 'Listening'
+      : voiceStatus.state === 'unavailable' ? 'Voice unavailable'
+        : 'Voice starting'
+
   const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED IN GSPRO'
     : aimResult?.outcome === 'clicked-unverified' ? 'AIM SENT TO GSPRO'
       : aimResult?.outcome === 'clicked-mismatch' ? 'CHECK AIM IN GSPRO'
@@ -1775,6 +1845,15 @@ export default function LiveCaddiePage() {
                 <i />
                 <span>Companion connected</span>
               </div>
+            ) : null}
+            {voiceSupported ? (
+              <button type="button" className="live-diagnostics-toggle" onClick={toggleVoice}
+                aria-pressed={voiceEnabled} data-voice-state={voiceEnabled ? voiceStatus.state : 'off'}
+                title={voiceEnabled && voiceStatus.state === 'unavailable'
+                  ? voiceReasonText(voiceStatus.reason)
+                  : 'Say "Looper" or "Caddie", then "arm three wood", "arm it" or "clear"'}>
+                {voiceNote ?? voiceLabel}
+              </button>
             ) : null}
             {/* Diagnostics remain available at /dev/aim-lab, without a primary Live Caddie header link. */}
             <button type="button" className="live-diagnostics-toggle" onClick={toggleDiagnostics}
