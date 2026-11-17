@@ -401,7 +401,7 @@ jobs:
           if ($status.capabilities.voice -ne $true) { throw "installed companion does not report voice support" }
           $voiceHeaders = @{ Origin = "https://thelooper.golf" }
           $quiet = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=0" -Headers $voiceHeaders -TimeoutSec 5
-          if ($quiet.schemaVersion -ne "voice-commands-v1") { throw "voice endpoint missing" }
+          if ($quiet.schemaVersion -ne "voice-commands-v2") { throw "voice endpoint missing" }
           $null = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1" -Headers $voiceHeaders -TimeoutSec 5
           Start-Sleep -Seconds 4
           $listen = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1&since=0" -Headers $voiceHeaders -TimeoutSec 5

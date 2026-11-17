@@ -98,9 +98,13 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
     parser below decides what counts; "[unk]" soaks up everything else.
 
     ``clubs``: only these club ids are listenable (the player's bag)."""
-    phrases: list[str] = list(WAKE_WORDS) + list(CLEAR_WORDS) + list(_OTHER_WORDS)
+    # One spelling per sound. Two spellings of the same sound ("caddie" and
+    # "caddy", "flyover" and "fly over") split the recogniser's confidence in
+    # half; the parser still accepts every spelling.
+    phrases: list[str] = [word for word in WAKE_WORDS if word != "caddie"]
+    phrases += list(CLEAR_WORDS) + list(_OTHER_WORDS)
     phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
-    phrases += list(GSPRO_VIEWS)
+    phrases += [phrase for phrase in GSPRO_VIEWS if phrase not in ("fly over", "score card")]
     phrases += list(_NUMBER_VALUES)
     seen: set[str] = set()
     unique = [phrase for phrase in phrases if not (phrase in seen or seen.add(phrase))]

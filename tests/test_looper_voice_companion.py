@@ -95,6 +95,10 @@ class ParseCommandTest(unittest.TestCase):
         self.assertIn("flyover", bag)
         self.assertEqual(bag[-1], "[unk]")
         self.assertEqual(len(bag), len(set(bag)))
+        # One spelling per sound, or the recogniser's confidence is split.
+        self.assertIn("caddy", full)
+        self.assertNotIn("caddie", full)
+        self.assertNotIn("fly over", full)
 
     def test_confidence_is_the_weakest_real_word(self):
         result = {"text": "looper arm three wood", "result": [

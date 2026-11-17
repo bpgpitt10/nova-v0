@@ -30,7 +30,7 @@ export type VoiceCommand = {
 }
 
 /** Below this the command is treated as misheard. Tuned from real rounds. */
-export const VOICE_MIN_CONFIDENCE = 0.5
+export const VOICE_MIN_CONFIDENCE = 0.4
 
 export type VoiceHeard = {
   text: string
