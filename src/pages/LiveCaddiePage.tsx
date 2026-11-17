@@ -123,6 +123,7 @@ import {
   saveVoiceEnabled,
   startVoiceCommands,
   voiceReasonText,
+  VOICE_MIN_CONFIDENCE,
   type VoiceCommand,
   type VoiceStatus,
 } from '../liveCaddie/voiceCommands'
@@ -1579,46 +1580,128 @@ export default function LiveCaddiePage() {
   // A command that didn't land (misheard, not in the bag, nothing to arm): the
   // Voice button flashes red briefly, then goes back to listening.
   const [voiceMiss, setVoiceMiss] = useState(false)
-  const voiceMissed = (text: string) => { setVoiceMiss(true); setVoiceNote(text) }
+  const voiceMissLogRef = useRef(0)
+  const voiceMissed = (text: string, heard?: { text: string; conf: number | null }) => {
+    setVoiceMiss(true)
+    setVoiceNote(text)
+    // Keep a short record of misses on the account (words and confidence only,
+    // never audio) so the phrase list and the cut-off can be tuned.
+    if (voiceMissLogRef.current >= 30) return
+    voiceMissLogRef.current += 1
+    void import('../cloud/cloudPersistence')
+      .then((cloud) => cloud.writeDiagnosticEventToCloud({
+        component: 'voice',
+        modelVersion: 'voice-v2',
+        result: 'miss',
+        reason: text.slice(0, 200),
+        metadata: { heard: heard?.text ?? null, conf: heard?.conf ?? null },
+      }))
+      .catch(() => undefined)
+  }
   const voiceDid = (text: string) => { setVoiceMiss(false); setVoiceNote(text) }
-  const [voiceArmRequest, setVoiceArmRequest] = useState<{ club: string | null; id: number } | null>(null)
+  const [voiceArmRequest, setVoiceArmRequest] = useState<{
+    club: string | null
+    /** Wait until this aim is the one on screen (undefined: whatever is shown). */
+    aimOffsetYds?: number | null
+    id: number
+  } | null>(null)
   const voiceDetailsOpenRef = useRef(showDiagnostics)
   voiceDetailsOpenRef.current = showDiagnostics
   const voiceCommandRef = useRef<(command: VoiceCommand) => void>(() => {})
   voiceCommandRef.current = (command) => {
-    if (isShotStrategy) { voiceMissed('Voice arming works in club mode.'); return }
+    const heard = { text: command.heard, conf: command.conf }
+    if (command.conf != null && command.conf < VOICE_MIN_CONFIDENCE) {
+      voiceMissed("Didn't catch that", heard)
+      return
+    }
+    if (command.action === 'details') { toggleDiagnostics(); voiceDid('Details'); return }
+    if (command.action === 'wind') {
+      if (companionStatus?.gspro.status !== 'connected') { voiceMissed('GSPro is not connected', heard); return }
+      refreshWind()
+      voiceDid('Refreshing wind')
+      return
+    }
+    if (command.action === 'gspro') {
+      voiceMissed(`Heard "${command.key ?? 'a GSPro view'}". GSPro views aren't wired up yet.`, heard)
+      return
+    }
     if (command.action === 'clear') {
       setArmedClub(null)
       resetArm()
       setVoiceArmRequest(null)
-      voiceDid('Heard: clear')
+      voiceDid('Cleared')
       return
     }
+    if (isShotStrategy) { voiceMissed('Voice arming works in club mode.', heard); return }
     if (command.action === 'arm' && command.club) {
       if (!(bagClubs as string[]).includes(command.club)) {
-        voiceMissed(`Heard: ${command.club}, which isn't in your bag`)
+        voiceMissed(`${command.club} isn't in your bag`, heard)
         return
       }
       pickClub(command.club)
       setVoiceArmRequest({ club: command.club, id: command.seq })
-      voiceDid(`Heard: arm ${command.club}`)
+      voiceDid(`Arm ${command.club}`)
+      return
+    }
+    if (command.action === 'club-step') {
+      const clubs = bagClubs as string[]
+      const at = displayedClub ? clubs.indexOf(displayedClub) : -1
+      // The bag runs longest to shortest: "club up" is more club.
+      const next = at < 0 ? null : clubs[at + (command.direction === 'up' ? -1 : 1)] ?? null
+      if (!next) { voiceMissed(at < 0 ? 'No club to step from yet' : `No club ${command.direction} from ${displayedClub}`, heard); return }
+      pickClub(next)
+      setVoiceArmRequest({ club: next, id: command.seq })
+      voiceDid(`Arm ${next}`)
+      return
+    }
+    if (command.action === 'aim' || command.action === 'aim-reset') {
+      // Looper scores a fixed set of aims per club. A spoken move goes to the
+      // nearest one, so the numbers on screen are for the aim GSPro gets.
+      const offsets = (viewedEvaluation?.candidates ?? []).map((candidate) => candidate.aimOffsetYds)
+      const current = inspectedCandidate?.aimOffsetYds
+      if (!offsets.length || current == null) { voiceMissed('No aim to move yet', heard); return }
+      if (command.action === 'aim-reset') {
+        const best = viewedBestCandidate?.aimOffsetYds ?? current
+        setInspectedAimOffset(null)
+        setVoiceArmRequest({ club: null, aimOffsetYds: best, id: command.seq })
+        voiceDid(`Aim: ${aimLabel(best)} (Looper's line)`)
+        return
+      }
+      const wanted = current + (command.direction === 'left' ? -1 : 1) * (command.yards ?? 3)
+      const nearest = offsets.reduce((best, offset) =>
+        Math.abs(offset - wanted) < Math.abs(best - wanted) ? offset : best, offsets[0])
+      if (nearest === current) {
+        const atEdge = wanted < Math.min(...offsets) || wanted > Math.max(...offsets)
+        voiceMissed(atEdge
+          ? `Already as far ${command.direction} as Looper scored`
+          : 'Aims move in steps: say a bigger number', heard)
+        return
+      }
+      setInspectedAimOffset(nearest)
+      setVoiceArmRequest({ club: null, aimOffsetYds: nearest, id: command.seq })
+      voiceDid(`Aim: ${aimLabel(nearest)}`)
       return
     }
     setVoiceArmRequest({ club: null, id: command.seq })
-    voiceDid('Heard: arm it')
+    voiceDid('Arm it')
   }
   const pressArmRef = useRef(pressArm)
   pressArmRef.current = pressArm
+  const voiceShownAimOffset = inspectedCandidate?.aimOffsetYds ?? null
   useEffect(() => {
     if (!voiceArmRequest) return
-    // Wait until the screen shows the club that was asked for, and never press
-    // while an arm is already filling or aiming (a second press would cancel it).
+    // Wait until the screen shows the club and aim that were asked for, and
+    // never press while an arm is already filling or aiming (a second press
+    // would cancel it).
     if (voiceArmRequest.club && displayedClub !== voiceArmRequest.club) return
+    if (voiceArmRequest.aimOffsetYds != null && voiceShownAimOffset !== voiceArmRequest.aimOffsetYds) return
     if (armPhase === 'filling' || armPhase === 'aiming') return
     setVoiceArmRequest(null)
     if (!displayedClub) { setVoiceMiss(true); setVoiceNote('Nothing to arm yet.'); return }
     pressArmRef.current()
-  }, [voiceArmRequest, displayedClub, armPhase])
+  }, [voiceArmRequest, displayedClub, voiceShownAimOffset, armPhase])
+  const voiceBagRef = useRef<string[]>([])
+  voiceBagRef.current = bagClubs as string[]
   useEffect(() => {
     if (!voiceSupported || !voiceEnabled) return
     // The companion is polled twice a second; only re-render when something a
@@ -1636,7 +1719,7 @@ export default function LiveCaddiePage() {
       }
       return previous
     })
-    return startVoiceCommands((command) => voiceCommandRef.current(command), onStatus)
+    return startVoiceCommands((command) => voiceCommandRef.current(command), onStatus, () => voiceBagRef.current)
   }, [voiceSupported, voiceEnabled])
   // A wake word with nothing usable after it: say so, or silence looks like deafness.
   const voiceHeard = voiceStatus.state === 'listening' ? voiceStatus.lastHeard : null
@@ -1647,8 +1730,8 @@ export default function LiveCaddiePage() {
   }, [voiceEnabled])
   useEffect(() => {
     if (!voiceHeard || voiceHeard.command || voiceHeard.at < voiceStartedAtRef.current) return
-    setVoiceMiss(true)
-    setVoiceNote("Didn't catch that")
+    if (voiceHeard.waiting) { voiceDid('Go ahead…'); return }
+    voiceMissed("Didn't catch that", { text: voiceHeard.text, conf: voiceHeard.conf })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceHeardAt])
   useEffect(() => {
@@ -1887,7 +1970,7 @@ export default function LiveCaddiePage() {
                 data-voice-miss={voiceEnabled && voiceMiss ? 'true' : undefined}
                 title={voiceEnabled && voiceStatus.state === 'unavailable'
                   ? voiceReasonText(voiceStatus.reason)
-                  : 'Say "Looper" or "Caddie", then "arm three wood", "arm it" or "clear"'}>
+                  : 'Say "Looper" or "Caddie", then: "three wood", "arm it", "clear", "aim left five", "reset aim", "club up", "refresh wind"'}>
                 {voiceNote ?? voiceLabel}
               </button>
             ) : null}
@@ -1968,7 +2051,7 @@ export default function LiveCaddiePage() {
             <span>Voice</span>
             <code>
               {voiceStatus.state === 'listening'
-                ? `listening | mic ${voiceStatus.device ?? '?'} | level ${Math.round(voiceStatus.level * 100)}% | last heard ${voiceStatus.lastHeard ? `"${voiceStatus.lastHeard.text}"${voiceStatus.lastHeard.command ? '' : ' (no command)'}` : 'nothing yet'}`
+                ? `listening | mic ${voiceStatus.device ?? '?'} | level ${Math.round(voiceStatus.level * 100)}% | last heard ${voiceStatus.lastHeard ? `"${voiceStatus.lastHeard.text}"${voiceStatus.lastHeard.conf != null ? ` conf ${Math.round(voiceStatus.lastHeard.conf * 100)}%` : ''}${voiceStatus.lastHeard.command ? '' : ' (no command)'}` : 'nothing yet'}`
                 : voiceStatus.state === 'unavailable' ? `unavailable | ${voiceStatus.reason}` : voiceStatus.state}
             </code>
           </div>

@@ -8,15 +8,38 @@ const POLL_MS = 500
 const TIMEOUT_MS = 2500
 const VOICE_ENABLED_KEY = 'looper.live-caddie.voice.v1'
 
+const VOICE_ACTIONS = [
+  'arm', 'arm-shown', 'clear', 'aim', 'aim-reset', 'club-step', 'wind', 'details', 'gspro',
+] as const
+
 export type VoiceCommand = {
   seq: number
   at: number
   heard: string
-  action: 'arm' | 'arm-shown' | 'clear'
+  /** The recogniser's confidence in its weakest word, 0..1, when it gave one. */
+  conf: number | null
+  action: typeof VOICE_ACTIONS[number]
+  /** arm */
   club: string | null
+  /** aim: 'left' | 'right'; club-step: 'up' | 'down' */
+  direction?: string
+  /** aim */
+  yards?: number
+  /** gspro: which GSPro view was asked for */
+  key?: string
 }
 
-export type VoiceHeard = { text: string; at: number; command: boolean }
+/** Below this the command is treated as misheard. Tuned from real rounds. */
+export const VOICE_MIN_CONFIDENCE = 0.5
+
+export type VoiceHeard = {
+  text: string
+  at: number
+  command: boolean
+  /** The wake word was said on its own; a command may follow. */
+  waiting: boolean
+  conf: number | null
+}
 
 export type VoiceStatus =
   | { state: 'off' }
@@ -65,15 +88,17 @@ const isCommand = (value: unknown): value is VoiceCommand => {
   if (!value || typeof value !== 'object') return false
   const event = value as Record<string, unknown>
   return typeof event.seq === 'number'
-    && (event.action === 'arm' || event.action === 'arm-shown' || event.action === 'clear')
-    && (event.club === null || typeof event.club === 'string')
+    && (VOICE_ACTIONS as readonly unknown[]).includes(event.action)
+    && (event.club == null || typeof event.club === 'string')
 }
 
-const readVoice = async (since: number | null): Promise<VoicePayload> => {
+const readVoice = async (since: number | null, clubs: string[]): Promise<VoicePayload> => {
   const controller = new AbortController()
   const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const url = since == null ? `${VOICE_URL}?listen=1` : `${VOICE_URL}?listen=1&since=${since}`
+    // The bag goes along so only clubs the player carries can be heard.
+    const bag = `&clubs=${encodeURIComponent(clubs.join(','))}`
+    const url = since == null ? `${VOICE_URL}?listen=1${bag}` : `${VOICE_URL}?listen=1&since=${since}${bag}`
     const response = await fetch(new Request(url, {
       method: 'GET',
       mode: 'cors',
@@ -96,6 +121,7 @@ const readVoice = async (since: number | null): Promise<VoicePayload> => {
 export const startVoiceCommands = (
   onCommand: (command: VoiceCommand) => void,
   onStatus: (status: VoiceStatus) => void,
+  getClubs: () => string[] = () => [],
 ) => {
   let stopped = false
   let busy = false
@@ -107,7 +133,7 @@ export const startVoiceCommands = (
     if (stopped || busy) return
     busy = true
     try {
-      const payload = await readVoice(since)
+      const payload = await readVoice(since, getClubs())
       if (stopped) return
       failures = 0
       if (payload.service !== 'looper-companion') throw new Error('not the companion')
@@ -118,7 +144,7 @@ export const startVoiceCommands = (
         for (const event of payload.events) {
           if (!isCommand(event) || event.seq <= since) continue
           since = event.seq
-          onCommand(event)
+          onCommand({ ...event, club: event.club ?? null, conf: typeof event.conf === 'number' ? event.conf : null })
         }
       }
       if (payload.status === 'listening') {
@@ -128,7 +154,13 @@ export const startVoiceCommands = (
           device: typeof payload.device === 'string' ? payload.device : null,
           level: typeof payload.level === 'number' ? payload.level : 0,
           lastHeard: heard && typeof heard.text === 'string' && typeof heard.at === 'number'
-            ? { text: heard.text, at: heard.at, command: heard.command === true }
+            ? {
+              text: heard.text,
+              at: heard.at,
+              command: heard.command === true,
+              waiting: heard.waiting === true,
+              conf: typeof heard.conf === 'number' ? heard.conf : null,
+            }
             : null,
         })
       }
