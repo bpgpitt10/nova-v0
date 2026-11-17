@@ -15,6 +15,10 @@ type ShotData = {
   tdpoint?: Vec3
   isHoled?: unknown
   isGimme?: unknown
+  isPutt?: unknown
+  TargetDirection?: unknown
+  bounceForce?: Vec3
+  path?: unknown
 }
 
 type GhostData = {
@@ -25,6 +29,8 @@ type GhostData = {
   lmfTS?: unknown
   lmfBS?: unknown
   lmfSA?: unknown
+  az?: unknown
+  ballDirection?: unknown
   atShotData?: ShotData
 }
 
@@ -77,10 +83,34 @@ export type BrowserGsproCourseArchiveShot = {
   rawMetrics: Record<string, unknown>
 }
 
+/**
+ * Everything GSPro wrote about one putt, kept whole for putting analysis:
+ * the roll path and every plain field on the record. Too big for the browser's
+ * round archive, so it goes to its own cloud table (see livePuttDetails.ts).
+ */
+export type BrowserGsproPuttDetail = {
+  roundId: number
+  shotId: string
+  courseKey: string | null
+  holeNumber: number
+  holeShot: number | null
+  globalShotNumber: number | null
+  detail: {
+    schema: 'gspro-putt-detail-v1'
+    /** [seconds, x, y, z] in GSPro world metres, as GSPro recorded the roll. */
+    path: number[][]
+    record: Record<string, unknown>
+    shotData: Record<string, unknown>
+    ghost: Record<string, unknown>
+    ghostShotData: Record<string, unknown>
+  }
+}
+
 export type BrowserGsproCourseArchiveRound = {
   roundId: number
   courseKey: string | null
   shots: BrowserGsproCourseArchiveShot[]
+  puttDetails: BrowserGsproPuttDetail[]
 }
 
 const CURRENT_ROUND_FILE = 'currentRound.dat'
@@ -165,6 +195,71 @@ const carryDistanceYards = (record: RoundShotRecord) => {
   return Number.isFinite(meters) ? meters * METERS_TO_YARDS : null
 }
 
+/** GSPro surface code for the green. */
+const GREEN_SURFACE_RAW = 5
+const MAX_PUTT_PATH_POINTS = 400
+
+const isPuttRecord = (record: RoundShotRecord) =>
+  asBoolean(record.activeShot?.sd?.isPutt)
+  || asBoolean(record.GhostData?.atShotData?.isPutt)
+  || asNumber(record.StartingSurface) === GREEN_SURFACE_RAW
+
+/** Plain fields of a GSPro object: numbers, text, true/false and x/y/z points. Lists and nested objects are left out. */
+const plainFields = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Record<string, unknown> = {}
+  for (const [key, field] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof field === 'number') { if (Number.isFinite(field)) out[key] = field }
+    else if (typeof field === 'boolean') out[key] = field
+    else if (typeof field === 'string') { if (field.length <= 200) out[key] = field }
+    else { const point = vec3(field); if (point) out[key] = point }
+  }
+  return out
+}
+
+const round4 = (value: number) => Math.round(value * 10000) / 10000
+
+const puttPath = (record: RoundShotRecord): number[][] => {
+  const raw = record.activeShot?.sd?.path ?? record.GhostData?.atShotData?.path
+  if (!Array.isArray(raw)) return []
+  return raw.slice(0, MAX_PUTT_PATH_POINTS).flatMap((point): number[][] => {
+    if (!point || typeof point !== 'object') return []
+    const time = asNumber((point as { time?: unknown }).time)
+    const pos = vec3((point as { pos?: unknown }).pos)
+    return time == null || !pos ? [] : [[round4(time), round4(pos.x), round4(pos.y), round4(pos.z)]]
+  })
+}
+
+const buildPuttDetail = (record: RoundShotRecord): BrowserGsproPuttDetail | null => {
+  if (!isPuttRecord(record)) return null
+  const roundId = asNumber(record.RoundID)
+  const holeIndex = asNumber(record.Hole)
+  const shotId = asString(record.ShotID)
+  if (roundId == null || holeIndex == null || !shotId) return null
+  return {
+    roundId,
+    shotId,
+    courseKey: asString(record.CourseKey),
+    holeNumber: Math.round(holeIndex) + 1,
+    holeShot: asNumber(record.HoleShot),
+    globalShotNumber: asNumber(record.GlobalShotNumber),
+    detail: {
+      schema: 'gspro-putt-detail-v1',
+      path: puttPath(record),
+      record: plainFields(record),
+      shotData: plainFields(record.activeShot?.sd),
+      ghost: plainFields(record.GhostData),
+      ghostShotData: plainFields(record.GhostData?.atShotData),
+    },
+  }
+}
+
+const buildPuttDetails = (records: readonly RoundShotRecord[]) =>
+  records.flatMap((record): BrowserGsproPuttDetail[] => {
+    const detail = buildPuttDetail(record)
+    return detail ? [detail] : []
+  })
+
 const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveShot | null => {
   const roundId = asNumber(record.RoundID)
   const holeIndex = asNumber(record.Hole)
@@ -192,6 +287,19 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
   const lmfTS = asNumber(ghost?.lmfTS)
   const lmfBS = asNumber(ghost?.lmfBS)
   const lmfSA = asNumber(ghost?.lmfSA)
+  // Putts: where GSPro was aimed and where the ball actually started, small
+  // enough to keep with the shot. The roll path is in the putt detail.
+  const sd = record.activeShot?.sd ?? ghost?.atShotData
+  const putt = isPuttRecord(record)
+    ? {
+        isPutt: true,
+        targetDirectionDeg: asNumber(sd?.TargetDirection),
+        ballDirectionDeg: asNumber(ghost?.ballDirection),
+        startOffsetDeg: asNumber(ghost?.az) ?? lmfAZ,
+        puttVector: vec3(sd?.bounceForce),
+        pathPoints: puttPath(record).length,
+      }
+    : null
 
   return {
     key: `${roundId}:${holeNumber}:${shotId}`,
@@ -232,6 +340,7 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
       startingPositionMeters,
       endingPositionMeters,
       touchdownPositionMeters,
+      ...(putt ? { putt } : {}),
     },
   }
 }
@@ -285,6 +394,7 @@ export const readBrowserGsproCourseRoundArchive = async (): Promise<BrowserGspro
     roundId,
     courseKey: asString(activeRoundRecords[activeRoundRecords.length - 1]?.CourseKey),
     shots,
+    puttDetails: buildPuttDetails(activeRoundRecords),
   }
 }
 
@@ -327,6 +437,7 @@ export const archiveRoundsFromRecords = (
       roundId,
       courseKey: asString(roundRecords[roundRecords.length - 1]?.CourseKey),
       shots,
+      puttDetails: buildPuttDetails(roundRecords),
     }]
   })
 }
