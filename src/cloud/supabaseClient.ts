@@ -2,6 +2,8 @@ export type LooperAuthUser = {
   id: string
   email?: string | null
   user_metadata?: Record<string, unknown>
+  /** Sign-up only: empty when this email already has a verified account. */
+  identities?: unknown[] | null
 }
 
 export type AllowedUserRecord = {
@@ -66,6 +68,11 @@ type SupabaseClientLike = {
       data: { session: SupabaseAuthSession | null }
       error: SupabaseError | null
     }>
+    resend(options: {
+      type: 'signup'
+      email: string
+      options?: { emailRedirectTo?: string }
+    }): Promise<{ error: SupabaseError | null }>
     signInWithOAuth(options: {
       provider: 'google'
       options?: { redirectTo?: string }
@@ -324,9 +331,28 @@ export const signUpLooperWithPassword = async (email: string, password: string) 
   if (result.error) {
     throw new Error(result.error.message)
   }
+  // For an email that already has a verified account, Supabase answers as if a
+  // new one was created (so strangers can't probe for accounts) but sends no
+  // email. The giveaway is an empty identities list. Without this the page
+  // said "check your email" and nothing ever arrived.
+  const identities = result.data.user?.identities
   return {
     user: result.data.user,
     requiresEmailConfirmation: !result.data.session,
+    alreadyRegistered: !result.data.session && Array.isArray(identities) && identities.length === 0,
+  }
+}
+
+/** Send the verification email again (Supabase allows one about every minute). */
+export const resendLooperSignupEmail = async (email: string) => {
+  const client = await getSupabaseClient()
+  const result = await client.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: looperRootUrl() },
+  })
+  if (result.error) {
+    throw new Error(result.error.message)
   }
 }
 

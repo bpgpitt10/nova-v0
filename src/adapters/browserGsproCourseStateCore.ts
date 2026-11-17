@@ -5,6 +5,7 @@ import {
   type CourseId,
 } from '../courseGeometry/courseCatalog'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
+import { advanceLogHoleBoundary, logHoleMarkerIsFresh, type LogHoleBoundary } from './gsproLogHoleFreshness'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { loadLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import { projectGsproWorldPointToHole, provisionalWorldPositionMatchesPinDistance } from '../courseGeometry/gsproWorldCourseProjection'
@@ -127,6 +128,8 @@ type RoundShotRecord = {
 type OutputLogHoleState = {
   holeNumber: number | null
   terminalAfterLatestHoleMarker: boolean
+  /** Where the latest hole marker starts in the log tail that was read. */
+  markerIndex: number | null
 }
 
 const STATE_HANDLE_DB = 'looper-browser-gspro-course-state'
@@ -377,7 +380,22 @@ const parseOutputLogHoleState = (text: string): OutputLogHoleState => {
     holeNumber,
     terminalAfterLatestHoleMarker:
       holeNumber != null && latestTerminalIndex > latestHoleMarkerIndex,
+    markerIndex: latestValidHole ? latestHoleMarkerIndex : null,
   }
+}
+
+const NO_LOG_HOLE: OutputLogHoleState = {
+  holeNumber: null,
+  terminalAfterLatestHoleMarker: false,
+  markerIndex: null,
+}
+
+/** The identity of the newest shot in currentRound.dat (round + shot id). */
+const latestRecordIdentity = (roundText: string): string | null => {
+  const records = parseRoundRecords(roundText)
+  const newest = records[records.length - 1]
+  if (!newest) return null
+  return `${asNumber(newest.RoundID) ?? 'round'}:${typeof newest.ShotID === 'string' ? newest.ShotID : 'shot'}`
 }
 
 // Cache static geometry fetches, not tee hypotheses (which can change during
@@ -549,6 +567,8 @@ const buildSnapshot = async (
   roundText: string,
   logTail: string,
   selectedCourseId: CourseId,
+  /** false: the log's hole marker predates the latest shot, so ignore it. */
+  logHoleIsFresh = true,
 ): Promise<BrowserGsproCourseSnapshot> => {
   const warnings: string[] = []
   const lastPenalty = learnFromPenaltyLog(logTail)
@@ -570,7 +590,8 @@ const buildSnapshot = async (
     ? null
     : preShotDistanceMeters * METERS_TO_YARDS
   const records = parseRoundRecords(roundText)
-  const logState = parseOutputLogHoleState(logTail)
+  // A hole marker left in the log by an earlier round says nothing about this one.
+  const logState = logHoleIsFresh === false ? NO_LOG_HOLE : parseOutputLogHoleState(logTail)
 
   if (records.length === 0) {
     const waitingHole = preShotHole ?? logState.holeNumber
@@ -800,6 +821,7 @@ export const connectToBrowserGsproCourseState = ({
   let lastRoundSignature = ''
   let lastLogSignature = ''
   let lastGoodLogTail = ''
+  let logHoleBoundary: LogHoleBoundary | null = null
 
   onStatusChange?.('connecting')
 
@@ -821,7 +843,14 @@ export const connectToBrowserGsproCourseState = ({
       : Promise.resolve(lastGoodLogTail)
 
     const [roundText, logTail] = await Promise.all([roundTextPromise, logTailPromise])
-    const snapshot = await buildSnapshot(roundText, logTail, loadLastSelectedCourseId())
+    const logSize = logFile?.size ?? 0
+    logHoleBoundary = advanceLogHoleBoundary(logHoleBoundary, latestRecordIdentity(roundText), logSize)
+    const logHoleIsFresh = logHoleMarkerIsFresh(
+      logHoleBoundary,
+      Math.max(0, logSize - OUTPUT_LOG_TAIL_BYTES),
+      parseOutputLogHoleState(logTail).markerIndex,
+    )
+    const snapshot = await buildSnapshot(roundText, logTail, loadLastSelectedCourseId(), logHoleIsFresh)
     if (disconnected) return
 
     lastRoundSignature = roundSignature
