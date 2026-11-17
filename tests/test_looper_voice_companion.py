@@ -71,6 +71,33 @@ class ListenerBookkeepingTest(unittest.TestCase):
         later = listener._payload("listening", None, first_poll["latest"])
         self.assertEqual([event["action"] for event in later["events"]], ["clear"])
 
+    def test_wake_word_without_a_command_is_remembered_for_feedback(self):
+        listener = voice.VoiceListener()
+        self.assertIsNone(listener.handle_text("looper [unk]"))
+        heard = listener._payload("listening", None, 0)["lastHeard"]
+        self.assertEqual(heard["text"], "looper [unk]")
+        self.assertFalse(heard["command"])
+        listener.handle_text("looper arm it")
+        self.assertTrue(listener._payload("listening", None, 0)["lastHeard"]["command"])
+        # Chatter with no wake word is not remembered at all.
+        listener.handle_text("[unk] [unk]")
+        self.assertEqual(listener._payload("listening", None, 0)["lastHeard"]["text"], "looper arm it")
+
+    def test_level_and_resampling(self):
+        import array
+        import math
+
+        silence = array.array("h", [0] * 4000).tobytes()
+        self.assertEqual(voice._level(silence), 0.0)
+        loud = array.array("h", [int(20000 * math.sin(i / 5)) for i in range(4000)]).tobytes()
+        self.assertGreater(voice._level(loud), 0.3)
+        # 48 kHz -> 16 kHz keeps a third of the samples, across block edges too.
+        block = array.array("h", [1000] * 12000).tobytes()
+        out_a, state = voice._to_16k(block, 48000, None)
+        out_b, state = voice._to_16k(block, 48000, state)
+        self.assertAlmostEqual((len(out_a) + len(out_b)) / 2, 8000, delta=4)
+        self.assertEqual(voice._to_16k(block, 16000, None)[0], block)
+
     def test_no_model_means_unavailable_and_no_microphone(self):
         # In this test environment there is no speech model, so a poll must
         # not start a listening thread.

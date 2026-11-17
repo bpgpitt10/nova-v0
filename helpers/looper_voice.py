@@ -151,12 +151,78 @@ def available() -> bool:
     return _engine_error() is None
 
 
+_MODEL = None
+_MODEL_LOCK = threading.Lock()
+
+
 def _new_recognizer():
+    """A fresh recogniser on the shared model (loading the model takes a second)."""
+    global _MODEL
     import vosk
 
     vosk.SetLogLevel(-1)
-    model = vosk.Model(str(model_dir()))
-    return vosk.KaldiRecognizer(model, SAMPLE_RATE, json.dumps(grammar()))
+    with _MODEL_LOCK:
+        if _MODEL is None:
+            _MODEL = vosk.Model(str(model_dir()))
+    return vosk.KaldiRecognizer(_MODEL, SAMPLE_RATE, json.dumps(grammar()))
+
+
+def _level(data: bytes) -> float:
+    """Loudness of one block of 16-bit audio, 0..1. Shown so a dead mic is obvious."""
+    count = len(data) // 2
+    if count == 0:
+        return 0.0
+    import array
+
+    samples = array.array("h")
+    samples.frombytes(data[: count * 2])
+    total = 0
+    for sample in samples[::8]:  # every 8th sample is plenty for a meter
+        total += sample * sample
+    used = max(1, len(samples[::8]))
+    return min(1.0, (total / used) ** 0.5 / 32768.0)
+
+
+def _open_microphone(sounddevice):
+    """The default microphone at 16 kHz, or at its own rate when it refuses 16 kHz.
+
+    Returns (stream, rate, device_name).
+    """
+    try:
+        name = str(sounddevice.query_devices(kind="input").get("name") or "microphone")
+    except Exception:
+        name = "microphone"
+    try:
+        stream = sounddevice.RawInputStream(
+            samplerate=SAMPLE_RATE, blocksize=BLOCK_FRAMES, dtype="int16", channels=1)
+        return stream, SAMPLE_RATE, name
+    except Exception:
+        rate = int(sounddevice.query_devices(kind="input")["default_samplerate"])
+        stream = sounddevice.RawInputStream(
+            samplerate=rate, blocksize=max(1, rate // 4), dtype="int16", channels=1)
+        return stream, rate, name
+
+
+def _to_16k(data: bytes, rate: int, state):
+    """Resample one block to 16 kHz (linear). Returns (data, state)."""
+    if rate == SAMPLE_RATE:
+        return data, state
+    import array
+
+    samples = array.array("h")
+    samples.frombytes(data[: (len(data) // 2) * 2])
+    if not samples:
+        return b"", state
+    step = rate / SAMPLE_RATE
+    position = max(0.0, state or 0.0)
+    out = array.array("h")
+    last = len(samples) - 1
+    while position < last:
+        index = int(position)
+        fraction = position - index
+        out.append(int(samples[index] * (1 - fraction) + samples[index + 1] * fraction))
+        position += step
+    return out.tobytes(), position - len(samples)
 
 
 class VoiceListener:
@@ -171,6 +237,11 @@ class VoiceListener:
         self._status = "off"
         self._reason: str | None = None
         self._last: tuple[str, float] | None = None
+        self._device: str | None = None
+        self._mic_level = 0.0
+        # The last thing heard with a wake word in it, command or not, so the
+        # player can see why nothing happened ("heard Looper, then nothing").
+        self._last_heard: dict | None = None
 
     def poll(self, since: int | None, listen: bool = True) -> dict:
         error = _engine_error()
@@ -196,6 +267,9 @@ class VoiceListener:
             "reason": reason,
             "latest": self._seq,
             "wakeWords": list(WAKE_WORDS),
+            "device": self._device,
+            "level": round(self._mic_level, 3),
+            "lastHeard": self._last_heard,
             # A first poll (no "since") only learns where the list ends, so a
             # page that opens mid-round never replays old commands.
             "events": events if since is not None else [],
@@ -203,6 +277,13 @@ class VoiceListener:
 
     def handle_text(self, text: str | None) -> dict | None:
         command = parse_command(text)
+        if text and any(word in WAKE_WORDS for word in text.lower().split()):
+            with self._lock:
+                self._last_heard = {
+                    "text": text,
+                    "at": int(time.time() * 1000),
+                    "command": command is not None,
+                }
         if not command:
             return None
         key = f"{command['action']}:{command['club']}"
@@ -226,17 +307,20 @@ class VoiceListener:
             import sounddevice
 
             recognizer = _new_recognizer()
-            with sounddevice.RawInputStream(
-                samplerate=SAMPLE_RATE, blocksize=BLOCK_FRAMES, dtype="int16", channels=1,
-            ) as stream:
+            stream, rate, name = _open_microphone(sounddevice)
+            block = BLOCK_FRAMES if rate == SAMPLE_RATE else max(1, rate // 4)
+            resample_state = None
+            with stream:
                 with self._lock:
-                    self._status, self._reason = "listening", None
+                    self._status, self._reason, self._device = "listening", None, name
                 while time.monotonic() < self._wanted_until:
-                    data, _overflowed = stream.read(BLOCK_FRAMES)
-                    if recognizer.AcceptWaveform(bytes(data)):
+                    raw, _overflowed = stream.read(block)
+                    data, resample_state = _to_16k(bytes(raw), rate, resample_state)
+                    self._mic_level = _level(data)
+                    if data and recognizer.AcceptWaveform(data):
                         self.handle_text(json.loads(recognizer.Result()).get("text"))
             with self._lock:
-                self._status, self._reason = "off", None
+                self._status, self._reason, self._mic_level = "off", None, 0.0
         except Exception as error:  # no microphone, device busy, driver error
             name = type(error).__name__
             with self._lock:

@@ -16,10 +16,13 @@ export type VoiceCommand = {
   club: string | null
 }
 
+export type VoiceHeard = { text: string; at: number; command: boolean }
+
 export type VoiceStatus =
   | { state: 'off' }
   | { state: 'starting' }
-  | { state: 'listening' }
+  /** `level` is the microphone's loudness right now, 0..1. */
+  | { state: 'listening'; device: string | null; level: number; lastHeard: VoiceHeard | null }
   | { state: 'unavailable'; reason: string }
 
 type VoicePayload = {
@@ -28,6 +31,9 @@ type VoicePayload = {
   reason?: unknown
   latest?: unknown
   events?: unknown
+  device?: unknown
+  level?: unknown
+  lastHeard?: unknown
 }
 
 export const loadVoiceEnabled = () => {
@@ -115,7 +121,17 @@ export const startVoiceCommands = (
           onCommand(event)
         }
       }
-      if (payload.status === 'listening') onStatus({ state: 'listening' })
+      if (payload.status === 'listening') {
+        const heard = payload.lastHeard as Partial<VoiceHeard> | null | undefined
+        onStatus({
+          state: 'listening',
+          device: typeof payload.device === 'string' ? payload.device : null,
+          level: typeof payload.level === 'number' ? payload.level : 0,
+          lastHeard: heard && typeof heard.text === 'string' && typeof heard.at === 'number'
+            ? { text: heard.text, at: heard.at, command: heard.command === true }
+            : null,
+        })
+      }
       else if (payload.status === 'unavailable') {
         onStatus({ state: 'unavailable', reason: typeof payload.reason === 'string' ? payload.reason : 'unknown' })
       } else onStatus({ state: 'starting' })

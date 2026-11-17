@@ -1577,6 +1577,8 @@ export default function LiveCaddiePage() {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: 'off' })
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
   const [voiceArmRequest, setVoiceArmRequest] = useState<{ club: string | null; id: number } | null>(null)
+  const voiceDetailsOpenRef = useRef(showDiagnostics)
+  voiceDetailsOpenRef.current = showDiagnostics
   const voiceCommandRef = useRef<(command: VoiceCommand) => void>(() => {})
   voiceCommandRef.current = (command) => {
     if (isShotStrategy) { setVoiceNote('Voice arming works in club mode.'); return }
@@ -1614,8 +1616,35 @@ export default function LiveCaddiePage() {
   }, [voiceArmRequest, displayedClub, armPhase])
   useEffect(() => {
     if (!voiceSupported || !voiceEnabled) return
-    return startVoiceCommands((command) => voiceCommandRef.current(command), setVoiceStatus)
+    // The companion is polled twice a second; only re-render when something a
+    // player can see changed (the mic level only matters while Details is open).
+    const onStatus = (next: VoiceStatus) => setVoiceStatus((previous) => {
+      if (previous.state !== next.state) return next
+      if (previous.state === 'unavailable' && next.state === 'unavailable') {
+        return previous.reason === next.reason ? previous : next
+      }
+      if (previous.state === 'listening' && next.state === 'listening') {
+        const sameLevel = !voiceDetailsOpenRef.current
+          || Math.round(previous.level * 20) === Math.round(next.level * 20)
+        return previous.device === next.device && sameLevel
+          && (previous.lastHeard?.at ?? null) === (next.lastHeard?.at ?? null) ? previous : next
+      }
+      return previous
+    })
+    return startVoiceCommands((command) => voiceCommandRef.current(command), onStatus)
   }, [voiceSupported, voiceEnabled])
+  // A wake word with nothing usable after it: say so, or silence looks like deafness.
+  const voiceHeard = voiceStatus.state === 'listening' ? voiceStatus.lastHeard : null
+  const voiceHeardAt = voiceHeard?.at ?? null
+  const voiceStartedAtRef = useRef(Date.now())
+  useEffect(() => {
+    if (voiceEnabled) voiceStartedAtRef.current = Date.now()
+  }, [voiceEnabled])
+  useEffect(() => {
+    if (!voiceHeard || voiceHeard.command || voiceHeard.at < voiceStartedAtRef.current) return
+    setVoiceNote('Heard the wake word, but no command')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceHeardAt])
   useEffect(() => {
     if (!voiceNote) return
     const timer = window.setTimeout(() => setVoiceNote(null), 6000)
@@ -1927,6 +1956,16 @@ export default function LiveCaddiePage() {
           </div>
         ) : null}
         {showDiagnostics ? <LiveFollowDetails /> : null}
+        {showDiagnostics && voiceSupported && voiceEnabled ? (
+          <div className="live-support-line" data-voice-line>
+            <span>Voice</span>
+            <code>
+              {voiceStatus.state === 'listening'
+                ? `listening | mic ${voiceStatus.device ?? '?'} | level ${Math.round(voiceStatus.level * 100)}% | last heard ${voiceStatus.lastHeard ? `"${voiceStatus.lastHeard.text}"${voiceStatus.lastHeard.command ? '' : ' (no command)'}` : 'nothing yet'}`
+                : voiceStatus.state === 'unavailable' ? `unavailable | ${voiceStatus.reason}` : voiceStatus.state}
+            </code>
+          </div>
+        ) : null}
 
         {/* Developer readout for the native aim pipeline; the floating
             "Show where Looper would click" preview is the player-facing one. */}
