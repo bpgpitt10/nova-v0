@@ -57,6 +57,41 @@ class ParseCommandTest(unittest.TestCase):
         self.assertEqual(voice.parse_command("looper refresh wind"), {"action": "wind"})
         self.assertEqual(voice.parse_command("looper details"), {"action": "details"})
 
+    def test_natural_wordings(self):
+        same = {
+            "wind": ["wind", "update wind", "fix the wind", "give me new wind", "new wind", "check the wind"],
+            "arm-shown": ["arm that", "lock it in", "send it"],
+            "arm-recommended": ["your call", "your pick", "the play", "arm your pick"],
+            "clear": ["never mind", "stop", "cancel"],
+            "aim-reset": ["reset aim", "center it", "aim center"],
+            "confirm": ["yes", "do it", "confirm"],
+            "details": ["show details", "hide details"],
+        }
+        for action, wordings in same.items():
+            for wording in wordings:
+                self.assertEqual(voice.parse_command("looper " + wording), {"action": action}, wording)
+        left5 = {"action": "aim", "direction": "left", "yards": 5}
+        for wording in ("left five", "five left", "five yards left", "move it left five", "aim five left"):
+            self.assertEqual(voice.parse_command("looper " + wording), left5, wording)
+        self.assertEqual(voice.parse_command("looper a little right"),
+                         {"action": "aim", "direction": "right", "yards": voice.DEFAULT_AIM_YARDS})
+        for wording in ("up a club", "more club", "one more club", "give me more club"):
+            self.assertEqual(voice.parse_command("caddie " + wording),
+                             {"action": "club-step", "direction": "up"}, wording)
+        self.assertEqual(voice.parse_command("caddie less club"), {"action": "club-step", "direction": "down"})
+        for wording in ("give me the three wood", "switch two three wood", "i want the three wood"):
+            self.assertEqual(voice.parse_command("looper " + wording), {"action": "arm", "club": "3W"}, wording)
+        self.assertEqual(voice.parse_command("looper two iron"), {"action": "arm", "club": "2i"})
+        for wording, key in (("show the overview", "flyover"), ("card", "scorecard"), ("grid", "greengrid"),
+                             ("flag", "pin"), ("shot camera", "shotcam"), ("putting mode", "putt")):
+            self.assertEqual(voice.parse_command("looper " + wording), {"action": "gspro", "key": key}, wording)
+
+    def test_natural_wordings_do_not_loosen_the_rules(self):
+        for wording in ("five wood left", "wind left", "left right", "wind wind", "three wood wind",
+                        "club", "give me the", "more", "left five three wood"):
+            self.assertIsNone(voice.parse_command("looper " + wording), wording)
+        self.assertIsNone(voice.parse_command("update wind"))  # still needs the wake word
+
     def test_gspro_views_are_their_own_commands_not_clubs(self):
         # "Looper, flyover" used to be heard as five wood.
         self.assertEqual(voice.parse_command("looper flyover"), {"action": "gspro", "key": "flyover"})

@@ -1655,6 +1655,14 @@ export default function LiveCaddiePage() {
       return
     }
     if (isShotStrategy) { voiceMissed('Voice arming works in club mode.', heard); return }
+    if (command.action === 'arm-recommended') {
+      const pick = recommendation?.club ?? null
+      if (!pick) { voiceMissed('No recommendation to arm yet.', heard); return }
+      pickClub(pick)
+      setVoiceArmRequest({ club: pick, id: command.seq })
+      voiceDid(`Arm ${pick} (Looper's pick)`)
+      return
+    }
     if (command.action === 'arm' && command.club) {
       if (!(bagClubs as string[]).includes(command.club)) {
         voiceMissed(`${command.club} isn't in your bag`, heard)

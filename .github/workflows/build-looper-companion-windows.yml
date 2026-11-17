@@ -121,6 +121,13 @@ jobs:
             "caddie-clubup" = "Caddie, club up."
             "looper-wind" = "Looper, refresh wind."
             "looper-sand" = "Looper, sand wedge."
+            "looper-updatewind" = "Looper, update wind."
+            "looper-newwind" = "Looper, give me new wind."
+            "caddie-fiveleft" = "Caddie, five left."
+            "looper-givemethree" = "Looper, give me the three wood."
+            "looper-yourcall" = "Looper, your call."
+            "caddie-moreclub" = "Caddie, more club."
+            "chatter2"    = "Can you give me the wind on that one? I think I need more club, it went left."
             "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
           }
           foreach ($name in $lines.Keys) {
@@ -154,6 +161,14 @@ jobs:
           $aim = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-aim.wav).Path) | ConvertFrom-Json
           if ($aim.commands.Count -lt 1 -or $aim.commands[0].action -ne "aim" -or $aim.commands[0].direction -ne "left" -or $aim.commands[0].yards -ne 5) {
             throw "Voice selftest: 'Looper, aim left five yards' was not recognised: $($aim | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $wind = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-updatewind.wav).Path) | ConvertFrom-Json
+          if ($wind.commands.Count -lt 1 -or $wind.commands[0].action -ne "wind") {
+            throw "Voice selftest: 'Looper, update wind' was not recognised: $($wind | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $chatter2 = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter2.wav).Path) | ConvertFrom-Json
+          if ($chatter2.commands.Count -ne 0) {
+            throw "Voice selftest: command-like chatter produced a command: $($chatter2 | ConvertTo-Json -Compress -Depth 5)"
           }
           $chatter = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter.wav).Path) | ConvertFrom-Json
           if ($chatter.commands.Count -ne 0) {

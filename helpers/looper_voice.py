@@ -72,28 +72,71 @@ def _club_phrases() -> dict[str, str]:
 
 
 CLUB_PHRASES = _club_phrases()
-CLEAR_WORDS = ("clear", "disarm", "cancel")
+
+# ---- How people actually say it -------------------------------------------
+# Several wordings per command. The recogniser matches sounds, not meaning, so
+# every wording here is a deliberate addition: each extra word is one more
+# thing chatter can be mistaken for. Add what players really say (the miss
+# log on their account shows it), not every synonym.
+
+# Said around a command and ignored: "give me the three wood", "show flyover".
+# No "to" or "for": they sound like "two" and "four".
+FILLER_WORDS = frozenset((
+    "the", "a", "my", "me", "please", "give", "get", "show", "open", "use",
+    "hit", "with", "switch", "change", "grab", "take", "pull", "want", "i",
+    "need", "now", "go", "can", "you", "we",
+))
+
+CLEAR_PHRASES = frozenset(("clear", "disarm", "cancel", "never mind", "stop", "clear it"))
+CONFIRM_PHRASES = frozenset(("confirm", "yes", "do it", "yes do it"))
+# Arm whatever club the screen is showing.
+ARM_SHOWN_PHRASES = frozenset((
+    "arm", "arm it", "arm that", "arm that one", "that one", "lock it", "lock it in", "send it",
+))
+# Arm Looper's own pick, even if another club is being looked at.
+ARM_RECOMMENDED_PHRASES = frozenset((
+    "your call", "your pick", "your club", "arm your pick", "arm your call",
+    "recommended", "arm recommended", "play", "arm play",
+))
+DETAILS_PHRASES = frozenset(("details", "hide details"))
+AIM_RESET_PHRASES = frozenset((
+    "reset aim", "aim reset", "aim center", "center", "center it", "center aim",
+    "your line", "aim your line", "back center",
+))
+# Any of these with "wind" (or "wind" alone) re-reads the wind.
+WIND_VERBS = frozenset(("refresh", "update", "new", "fix", "check", "reset", "read", "reread"))
+AIM_VERBS = frozenset(("aim", "move", "it"))
+AIM_QUALIFIERS = frozenset(("yards", "yard", "more", "little", "bit", "over"))
+CLUB_STEP_UP = frozenset(("up", "more", "longer"))
+CLUB_STEP_DOWN = frozenset(("down", "less", "shorter"))
 
 # GSPro's own views. Recognised so they are never mistaken for a club
 # ("flyover" used to come out as "five wood"); the page decides what to do.
 GSPRO_VIEWS = {
     "flyover": "flyover",
     "fly over": "flyover",
+    "overview": "flyover",
+    "hole overview": "flyover",
     "scorecard": "scorecard",
     "score card": "scorecard",
+    "card": "scorecard",
+    "score": "scorecard",
     "mulligan": "mulligan",
     "heat map": "heatmap",
     "green grid": "greengrid",
+    "grid": "greengrid",
     "shot cam": "shotcam",
+    "shot camera": "shotcam",
     "pin": "pin",
+    "flag": "pin",
+    "pin indicator": "pin",
     "putt mode": "putt",
+    "putting mode": "putt",
     "hide": "hideui",
+    "hide screen": "hideui",
 }
-
-_OTHER_WORDS = (
-    "arm", "it", "aim", "left", "right", "yards", "yard", "reset", "center",
-    "club", "up", "down", "refresh", "wind", "details", "confirm",
-)
+# Two spellings of one sound halve the recogniser's confidence: listen for one.
+_NOT_LISTENED = frozenset(("caddie", "fly over", "score card"))
 
 
 def grammar(clubs: frozenset[str] | None = None) -> list[str]:
@@ -101,16 +144,19 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
     parser below decides what counts; "[unk]" soaks up everything else.
 
     ``clubs``: only these club ids are listenable (the player's bag)."""
-    # One spelling per sound. Two spellings of the same sound ("caddie" and
-    # "caddy", "flyover" and "fly over") split the recogniser's confidence in
-    # half; the parser still accepts every spelling.
-    phrases: list[str] = [word for word in WAKE_WORDS if word != "caddie"]
-    phrases += list(CLEAR_WORDS) + list(_OTHER_WORDS)
+    phrases: list[str] = list(WAKE_WORDS)
     phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
-    phrases += [phrase for phrase in GSPRO_VIEWS if phrase not in ("fly over", "score card")]
+    phrases += list(GSPRO_VIEWS)
+    for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES,
+                  DETAILS_PHRASES, AIM_RESET_PHRASES):
+        phrases += sorted(table)
+    words: set[str] = set(FILLER_WORDS) | WIND_VERBS | AIM_VERBS | AIM_QUALIFIERS
+    words |= CLUB_STEP_UP | CLUB_STEP_DOWN | {"wind", "club", "left", "right", "one"}
+    phrases += sorted(words)
     phrases += list(_NUMBER_VALUES)
     seen: set[str] = set()
-    unique = [phrase for phrase in phrases if not (phrase in seen or seen.add(phrase))]
+    unique = [phrase for phrase in phrases
+              if phrase not in _NOT_LISTENED and not (phrase in seen or seen.add(phrase))]
     return unique + ["[unk]"]
 
 
@@ -135,47 +181,70 @@ def _match_phrase(words: list[str], table: dict[str, str]) -> tuple[str | None, 
     return None, words
 
 
+def _parse_aim(words: list[str]) -> dict | None:
+    """"aim left five", "five yards left", "move it a little right", "left"."""
+    rest = list(words)
+    while rest and rest[0] in AIM_VERBS:
+        rest = rest[1:]
+    directions = [word for word in rest if word in ("left", "right")]
+    if len(directions) != 1:
+        return None
+    rest = [word for word in rest if word not in ("left", "right") and word not in AIM_QUALIFIERS]
+    yards, leftover = _parse_number(rest)
+    if leftover:
+        return None
+    yards = DEFAULT_AIM_YARDS if yards is None else yards
+    if not 1 <= yards <= MAX_AIM_YARDS:
+        return None
+    return {"action": "aim", "direction": directions[0], "yards": yards}
+
+
 def _parse_words(rest: list[str]) -> dict | None:
-    """The words after the wake word -> a command. Every word must be used."""
-    if not rest:
-        return None
-    if len(rest) == 1 and rest[0] in CLEAR_WORDS:
-        return {"action": "clear"}
-    if rest[0] == "aim" or rest == ["reset", "aim"]:
-        tail = rest[1:] if rest[0] == "aim" else ["reset"]
-        if tail in (["reset"], ["center"]):
-            return {"action": "aim-reset"}
-        if not tail or tail[0] not in ("left", "right"):
-            return None
-        yards, tail2 = _parse_number(tail[1:])
-        if tail2 and tail2[0] in ("yards", "yard"):
-            tail2 = tail2[1:]
-        if tail2:
-            return None
-        yards = DEFAULT_AIM_YARDS if yards is None else yards
-        if not 1 <= yards <= MAX_AIM_YARDS:
-            return None
-        return {"action": "aim", "direction": tail[0], "yards": yards}
-    if rest[0] == "club":
-        if rest[1:] in (["up"], ["down"]):
-            return {"action": "club-step", "direction": rest[1]}
-        return None
-    if rest in (["refresh", "wind"], ["wind"]):
-        return {"action": "wind"}
-    if rest == ["details"]:
-        return {"action": "details"}
-    if rest == ["confirm"]:
+    """The words after the wake word -> a command. Every word must belong to it
+    (filler words aside), so half-heard sentences do nothing."""
+    spoken_all = " ".join(rest)
+    # Whole phrases first: some contain words that are filler elsewhere ("do it").
+    if spoken_all in CONFIRM_PHRASES:
         return {"action": "confirm"}
-    view, after_view = _match_phrase(rest, GSPRO_VIEWS)
+    words = [word for word in rest if word not in FILLER_WORDS]
+    if not words:
+        return None
+    spoken = " ".join(words)
+    if spoken in CLEAR_PHRASES:
+        return {"action": "clear"}
+    if spoken in CONFIRM_PHRASES:
+        return {"action": "confirm"}
+    if spoken in ARM_SHOWN_PHRASES:
+        return {"action": "arm-shown"}
+    if spoken in ARM_RECOMMENDED_PHRASES:
+        return {"action": "arm-recommended"}
+    if spoken in DETAILS_PHRASES:
+        return {"action": "details"}
+    if spoken in AIM_RESET_PHRASES:
+        return {"action": "aim-reset"}
+    if words.count("wind") == 1 and all(word == "wind" or word in WIND_VERBS for word in words):
+        return {"action": "wind"}
+    if "club" in words:
+        others = [word for word in words if word not in ("club", "one")]
+        if len(others) == 1 and others[0] in CLUB_STEP_UP:
+            return {"action": "club-step", "direction": "up"}
+        if len(others) == 1 and others[0] in CLUB_STEP_DOWN:
+            return {"action": "club-step", "direction": "down"}
+        return None
+    view, after_view = _match_phrase(words, GSPRO_VIEWS)
     if view and not after_view:
         return {"action": "gspro", "key": view}
-    if rest[0] == "arm":
-        rest = rest[1:]
-        if not rest or rest == ["it"]:
-            return {"action": "arm-shown"}
-    club, after_club = _match_phrase(rest, CLUB_PHRASES)
+    club_words = words[1:] if words[0] == "arm" else words
+    club, after_club = _match_phrase(club_words, CLUB_PHRASES)
     if club and not after_club:
         return {"action": "arm", "club": club}
+    # "switch to seven iron" is heard as "two seven iron".
+    if len(club_words) > 1 and club_words[0] in ("two", "four"):
+        club, after_club = _match_phrase(club_words[1:], CLUB_PHRASES)
+        if club and not after_club:
+            return {"action": "arm", "club": club}
+    if "left" in words or "right" in words:
+        return _parse_aim(words)
     return None
 
 
