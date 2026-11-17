@@ -1576,31 +1576,36 @@ export default function LiveCaddiePage() {
   const [voiceEnabled, setVoiceEnabled] = useState(() => loadVoiceEnabled())
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: 'off' })
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  // A command that didn't land (misheard, not in the bag, nothing to arm): the
+  // Voice button flashes red briefly, then goes back to listening.
+  const [voiceMiss, setVoiceMiss] = useState(false)
+  const voiceMissed = (text: string) => { setVoiceMiss(true); setVoiceNote(text) }
+  const voiceDid = (text: string) => { setVoiceMiss(false); setVoiceNote(text) }
   const [voiceArmRequest, setVoiceArmRequest] = useState<{ club: string | null; id: number } | null>(null)
   const voiceDetailsOpenRef = useRef(showDiagnostics)
   voiceDetailsOpenRef.current = showDiagnostics
   const voiceCommandRef = useRef<(command: VoiceCommand) => void>(() => {})
   voiceCommandRef.current = (command) => {
-    if (isShotStrategy) { setVoiceNote('Voice arming works in club mode.'); return }
+    if (isShotStrategy) { voiceMissed('Voice arming works in club mode.'); return }
     if (command.action === 'clear') {
       setArmedClub(null)
       resetArm()
       setVoiceArmRequest(null)
-      setVoiceNote('Heard: clear')
+      voiceDid('Heard: clear')
       return
     }
     if (command.action === 'arm' && command.club) {
       if (!(bagClubs as string[]).includes(command.club)) {
-        setVoiceNote(`Heard: ${command.club}, which isn't in your bag`)
+        voiceMissed(`Heard: ${command.club}, which isn't in your bag`)
         return
       }
       pickClub(command.club)
       setVoiceArmRequest({ club: command.club, id: command.seq })
-      setVoiceNote(`Heard: arm ${command.club}`)
+      voiceDid(`Heard: arm ${command.club}`)
       return
     }
     setVoiceArmRequest({ club: null, id: command.seq })
-    setVoiceNote('Heard: arm it')
+    voiceDid('Heard: arm it')
   }
   const pressArmRef = useRef(pressArm)
   pressArmRef.current = pressArm
@@ -1611,7 +1616,7 @@ export default function LiveCaddiePage() {
     if (voiceArmRequest.club && displayedClub !== voiceArmRequest.club) return
     if (armPhase === 'filling' || armPhase === 'aiming') return
     setVoiceArmRequest(null)
-    if (!displayedClub) { setVoiceNote('Nothing to arm yet.'); return }
+    if (!displayedClub) { setVoiceMiss(true); setVoiceNote('Nothing to arm yet.'); return }
     pressArmRef.current()
   }, [voiceArmRequest, displayedClub, armPhase])
   useEffect(() => {
@@ -1642,14 +1647,15 @@ export default function LiveCaddiePage() {
   }, [voiceEnabled])
   useEffect(() => {
     if (!voiceHeard || voiceHeard.command || voiceHeard.at < voiceStartedAtRef.current) return
-    setVoiceNote('Heard the wake word, but no command')
+    setVoiceMiss(true)
+    setVoiceNote("Didn't catch that")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceHeardAt])
   useEffect(() => {
     if (!voiceNote) return
-    const timer = window.setTimeout(() => setVoiceNote(null), 6000)
+    const timer = window.setTimeout(() => { setVoiceNote(null); setVoiceMiss(false) }, voiceMiss ? 2500 : 5000)
     return () => window.clearTimeout(timer)
-  }, [voiceNote])
+  }, [voiceNote, voiceMiss])
   const toggleVoice = () => {
     setVoiceEnabled((current) => {
       saveVoiceEnabled(!current)
@@ -1878,6 +1884,7 @@ export default function LiveCaddiePage() {
             {voiceSupported ? (
               <button type="button" className="live-diagnostics-toggle" onClick={toggleVoice}
                 aria-pressed={voiceEnabled} data-voice-state={voiceEnabled ? voiceStatus.state : 'off'}
+                data-voice-miss={voiceEnabled && voiceMiss ? 'true' : undefined}
                 title={voiceEnabled && voiceStatus.state === 'unavailable'
                   ? voiceReasonText(voiceStatus.reason)
                   : 'Say "Looper" or "Caddie", then "arm three wood", "arm it" or "clear"'}>
