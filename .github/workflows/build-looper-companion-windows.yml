@@ -529,6 +529,27 @@ jobs:
             --notes "Serves GSPro's currentRound.dat, output_log.txt and GSPro.db to the Looper web app (read-only, allowlisted, no paths), so no GSPro folder picker is needed. Keeps every round's raw records under %LOCALAPPDATA%\Looper\Companion\rounds. No mouse or keyboard input." `
             --prerelease
 
+      # EXPERIMENTAL voice: a public download for the sim PC (build artifacts
+      # need a GitHub sign-in). A prerelease in this repo, one tag per commit;
+      # it is not the players' download and no one is told to update to it.
+      - name: Publish the experimental voice installer
+        if: github.ref == 'refs/heads/experimental-voice-arm'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "experimental-voice-$($env:GITHUB_SHA.Substring(0, 8))"
+          gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "$tag already published"; exit 0 }
+          gh release create $tag LooperCompanionSetup.exe `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "EXPERIMENTAL: Looper Companion with voice arming ($tag)" `
+            --notes "Test build for Brian's sim. Not a player release. Voice arming is experimental and unmerged." `
+            --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "experimental release failed" }
+          Write-Host "download: https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/LooperCompanionSetup.exe"
+
       - name: Publish rolling companion prerelease
         if: github.ref == 'refs/heads/web-course-importer-surface-semantics-v2'
         shell: pwsh
