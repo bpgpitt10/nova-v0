@@ -89,6 +89,7 @@ import {
   buildAimDescriptor,
 } from '../liveCaddie/aimDescriptor'
 import { describeMathPick, describeSafeAlternative, pickSafeAlternative } from '../liveCaddie/safeAlternative'
+import { pickAimLineOptions } from '../liveCaddie/aimLineOptions'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import {
   loadCourseHoleHeadingDegreesTrue,
@@ -1393,6 +1394,11 @@ export default function LiveCaddiePage() {
       ?? null
     : null
   const risk = isShotStrategy ? null : inspectedCandidate?.riskProfile ?? null
+  // Aim line pills on the map: same club, three lines to choose between.
+  const aimLineOptions = useMemo(
+    () => (isShotStrategy || !viewedEvaluation ? [] : pickAimLineOptions(viewedEvaluation.candidates, viewedBestCandidate)),
+    [isShotStrategy, viewedEvaluation, viewedBestCandidate],
+  )
   // The safe play: shown under the arm button only when the math pick carries
   // real risk and a safer club or line costs little (display only; the
   // headline is unchanged). Tapping it switches the card to that pick.
@@ -2607,6 +2613,29 @@ export default function LiveCaddiePage() {
                   showPracticeShots={showPracticeShots}
                   provisionalTeeRadiusYds={provisionalPositionRadiusYds ?? provisionalTeeRadiusYds}
                   greenRead={shownGreenRead}
+                  overlay={aimLineOptions.length > 1 ? (
+                    <div className="live-aim-lines" role="group" aria-label="Aim lines for this club">
+                      <span className="live-aim-lines-title">AIM LINE</span>
+                      {aimLineOptions.map((option) => {
+                        const shown = inspectedCandidate?.aimOffsetYds === option.aimOffsetYds
+                        const name = option.key === 'best' ? 'Best' : option.key === 'second' ? '2nd best' : 'Safest'
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            className={shown ? 'active' : ''}
+                            aria-pressed={shown}
+                            title={`Water/OB ${Math.round(option.catastrophe * 100)}% · serious trouble ${Math.round(option.seriousTrouble * 100)}%`}
+                            onClick={() => setInspectedAimOffset(option.key === 'best' ? null : option.aimOffsetYds)}
+                          >
+                            <b>{name}{option.alsoSafest && option.key !== 'safest' ? ' · safest' : ''}</b>
+                            <span>{aimLabel(option.aimOffsetYds)}</span>
+                            <small>{option.key === 'best' ? 'Looper\u2019s line' : `+${option.costStrokes.toFixed(2)} strokes`}</small>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : null}
                 />
 
                 <div className="live-map-legend">

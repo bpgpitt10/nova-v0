@@ -8,6 +8,7 @@ import SessionIntelligencePage from './pages/SessionIntelligencePage.tsx'
 import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
 import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
+import FaqPage, { LooperFooter } from './pages/FaqPage'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import QuickBagPage from './pages/QuickBagPage.tsx'
@@ -302,6 +303,7 @@ function RootRouter() {
   const showDecisionReplay = pathname === '/dev/decision-replay'
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
+  const showFaq = pathname === '/faq' || pathname === '/help'
   const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
 
   useEffect(() => {
@@ -337,6 +339,7 @@ function RootRouter() {
     if (showDecisionReplay) return <DecisionReplayDevPage />
     if (showDecisionAudit) return <DecisionAuditDevPage />
     if (showOcrTest) return <OcrTestPage />
+    if (showFaq) return <FaqPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
     if (showCloudRepair) return <CloudRepairPage />
@@ -376,6 +379,7 @@ function RootRouter() {
     showCourseRenderDev,
     showDecisionAudit,
     showDecisionReplay,
+    showFaq,
     showGsproReplay,
     showLiveCaddie,
     showOcrTest,
@@ -399,9 +403,10 @@ function RootRouter() {
   return (
     <LooperAuthGate>
       <LiveGsproRoundArchiveBridge />
-      {showDevPage && !showLiveCaddie
+      {(showDevPage || showFaq) && !showLiveCaddie
         ? view
         : <BrowserGsproSetupGate>{normalContent}</BrowserGsproSetupGate>}
+      {showDevPage ? null : <LooperFooter />}
     </LooperAuthGate>
   )
 }
