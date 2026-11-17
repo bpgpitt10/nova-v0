@@ -1348,3 +1348,40 @@
   font-size: 10.5px;
   opacity: 0.7;
 }
+
+/* Aim line pills: Best / 2nd best / Safest for the shown club, left edge of the map. */
+.live-aim-lines {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 6px;
+  width: 112px;
+}
+.live-aim-lines-title {
+  color: #9fb09f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.live-aim-lines button {
+  display: grid;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid rgba(49, 66, 51, 0.78);
+  border-radius: 14px;
+  background: rgba(11, 19, 13, 0.82);
+  color: #9fb09f;
+  text-align: left;
+  cursor: pointer;
+}
+.live-aim-lines button b { font-size: 11px; color: #dceadd; }
+.live-aim-lines button span { font-size: 11px; font-variant-numeric: tabular-nums; }
+.live-aim-lines button small { font-size: 9px; opacity: 0.8; }
+.live-aim-lines button.active {
+  border-color: rgba(234, 179, 8, 0.6);
+  background: rgba(40, 34, 10, 0.88);
+}
+.live-aim-lines button.active b,
+.live-aim-lines button.active span { color: #f4d15d; }

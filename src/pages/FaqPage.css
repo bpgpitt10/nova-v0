@@ -1,0 +1,89 @@
+.faq-page {
+  min-height: 100vh;
+  background: #0d1510;
+  color: #dceadd;
+}
+.faq-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px clamp(16px, 3vw, 32px) 48px;
+}
+.faq-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.faq-header img { height: 44px; display: block; }
+.faq-header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.faq-header p { margin: 4px 0 0; color: #9fb09f; font-size: 13px; }
+.faq-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 6px;
+}
+.faq-jump a {
+  padding: 5px 12px;
+  border: 1px solid rgba(49, 66, 51, 0.78);
+  border-radius: 999px;
+  color: #cfd8cd;
+  font-size: 12px;
+  text-decoration: none;
+}
+.faq-jump a:hover { border-color: rgba(234, 179, 8, 0.52); color: #f4d15d; }
+.faq-section { margin-top: 26px; }
+.faq-section h2 {
+  margin: 0 0 8px;
+  color: #76d39b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.faq-note { margin: 0 0 10px; color: #9fb09f; font-size: 13px; }
+.faq-section details {
+  border: 1px solid rgba(49, 66, 51, 0.78);
+  border-radius: 10px;
+  background: rgba(23, 36, 25, 0.5);
+  margin-bottom: 8px;
+}
+.faq-section summary {
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.faq-answer {
+  padding: 0 14px 14px;
+  color: #cfd8cd;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.faq-answer p { margin: 0 0 8px; }
+.faq-answer ol { margin: 0 0 8px; padding-left: 20px; }
+.faq-answer li { margin-bottom: 4px; }
+.faq-answer table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-size: 13px; }
+.faq-answer th {
+  text-align: left;
+  color: #9fb09f;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(49, 66, 51, 0.9);
+}
+.faq-answer td { padding: 7px 8px; border-bottom: 1px solid rgba(49, 66, 51, 0.5); vertical-align: top; }
+.faq-answer td:first-child { white-space: nowrap; color: #f4d15d; font-weight: 600; }
+.faq-link { color: #76d39b; font-size: 13px; }
+
+.looper-footer {
+  position: relative;
+  z-index: 1;
+  padding: 14px 16px 18px;
+  text-align: center;
+  font-size: 12px;
+}
+.looper-footer a { color: #9fb09f; text-decoration: none; }
+.looper-footer a:hover { color: #f4d15d; text-decoration: underline; }
