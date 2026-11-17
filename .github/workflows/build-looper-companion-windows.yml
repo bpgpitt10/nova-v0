@@ -381,6 +381,18 @@ jobs:
           }
           $status = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers @{ Origin = "https://thelooper.golf" } -TimeoutSec 5
           Write-Host "installed companion release: $($status.release)"
+          # EXPERIMENTAL voice: the installed copy has the speech model, and asking
+          # it to listen on a machine with no microphone fails politely.
+          if ($status.capabilities.voice -ne $true) { throw "installed companion does not report voice support" }
+          $voiceHeaders = @{ Origin = "https://thelooper.golf" }
+          $quiet = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=0" -Headers $voiceHeaders -TimeoutSec 5
+          if ($quiet.schemaVersion -ne "voice-commands-v1") { throw "voice endpoint missing" }
+          $null = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1" -Headers $voiceHeaders -TimeoutSec 5
+          Start-Sleep -Seconds 4
+          $listen = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1&since=0" -Headers $voiceHeaders -TimeoutSec 5
+          Write-Host "voice on this runner: $($listen.status) $($listen.reason) device=$($listen.device)"
+          if (@("listening", "starting", "unavailable") -notcontains $listen.status) { throw "unexpected voice status $($listen.status)" }
+          if (!(Wait-Health)) { throw "companion stopped answering after a voice request" }
           # Uninstall leaves nothing running and removes the start-with-Windows entry.
           $un = Get-ChildItem $installDir -Filter "unins*.exe" | Select-Object -First 1
           if (!$un) { throw "uninstaller missing" }

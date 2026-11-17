@@ -34,6 +34,7 @@ SAMPLE_RATE = 16000
 BLOCK_FRAMES = 4000  # 0.25 s
 KEEPALIVE_S = 6.0  # the page polls about twice a second
 DUPLICATE_WINDOW_S = 1.5
+RETRY_AFTER_FAILURE_S = 5.0  # no microphone: try again now and then, not on every poll
 MAX_EVENTS = 50
 
 # "caddy" is the same word to a listener; the recogniser may spell it either way.
@@ -238,6 +239,7 @@ class VoiceListener:
         self._reason: str | None = None
         self._last: tuple[str, float] | None = None
         self._device: str | None = None
+        self._failed_at = float("-inf")
         self._mic_level = 0.0
         # The last thing heard with a wake word in it, command or not, so the
         # player can see why nothing happened ("heard Looper, then nothing").
@@ -250,7 +252,8 @@ class VoiceListener:
         if listen:
             with self._lock:
                 self._wanted_until = time.monotonic() + KEEPALIVE_S
-                if self._thread is None or not self._thread.is_alive():
+                idle = self._thread is None or not self._thread.is_alive()
+                if idle and time.monotonic() - self._failed_at >= RETRY_AFTER_FAILURE_S:
                     self._status, self._reason = "starting", None
                     self._thread = threading.Thread(
                         target=self._run, name="looper-voice", daemon=True)
@@ -324,6 +327,8 @@ class VoiceListener:
         except Exception as error:  # no microphone, device busy, driver error
             name = type(error).__name__
             with self._lock:
+                self._failed_at = time.monotonic()
+                self._mic_level = 0.0
                 self._status = "unavailable"
                 self._reason = "no-microphone" if "PortAudio" in name else f"error:{name}"
 
