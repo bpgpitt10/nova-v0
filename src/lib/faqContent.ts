@@ -120,6 +120,63 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
     ],
   },
   {
+    id: 'voice',
+    title: 'Voice commands',
+    note: 'Experimental. Turn on Voice at the top of Live Caddie, then say a wake word followed by a command. You can also say the wake word, pause, and give the command within five seconds.',
+    items: [
+      {
+        q: 'What are the wake words?',
+        a: ['Every command starts with one of these. They all do the same thing.'],
+        table: { head: ['Say', 'Also works'], rows: [['Looper', 'Caddie']] },
+      },
+      {
+        q: 'What can I say?',
+        a: ['The first column is the plain way to say it. The second shows other wordings that do the same thing. Small words like “give me the” or “please” are ignored.'],
+        table: {
+          head: ['Say', 'Also works'],
+          rows: [
+            ['Looper, three wood', 'arm three wood · give me the three wood · switch to three wood. Any club in your bag; also pitching wedge, sand wedge, lob wedge, gap wedge.'],
+            ['Looper, arm it', 'arm that · lock it in · send it. Arms the club and line on screen.'],
+            ['Looper, your call', 'your pick · the play. Arms Looper\u2019s recommended club.'],
+            ['Looper, clear', 'cancel · disarm · never mind · stop'],
+            ['Looper, aim left five', 'five left · left five yards · move it left five. Moves from the current line, to the nearest line Looper has numbers for.'],
+            ['Looper, a little right', 'right · aim right. Moves 3 yards.'],
+            ['Looper, reset aim', 'center it · aim center. Back to Looper\u2019s line.'],
+            ['Looper, club up', 'more club · one more club · up a club'],
+            ['Looper, club down', 'less club · down a club'],
+            ['Looper, refresh wind', 'update wind · new wind · fix the wind · check the wind'],
+            ['Looper, details', 'show details · hide details'],
+          ],
+        },
+      },
+      {
+        q: 'Which GSPro screens can I open by voice?',
+        a: ['GSPro has to be the window in front. These press GSPro\u2019s own hotkeys.'],
+        table: {
+          head: ['Say', 'Also works'],
+          rows: [
+            ['Looper, flyover', 'overview · hole overview'],
+            ['Looper, scorecard', 'card · score'],
+            ['Looper, green grid', 'grid'],
+            ['Looper, heat map', ''],
+            ['Looper, shot cam', 'shot camera'],
+            ['Looper, pin', 'flag · pin indicator'],
+            ['Looper, putt mode', 'putting mode'],
+            ['Looper, hide', 'hide screen'],
+            ['Looper, mulligan', 'Then say “Looper, confirm” (or yes · do it).'],
+          ],
+        },
+      },
+      {
+        q: 'It did not hear me, or heard the wrong thing.',
+        a: [
+          'The Voice button flashes red when it heard a wake word but could not make out a command. Open Details to see what it heard.',
+          'It only listens for clubs that are in your bag, so a club you do not carry will never be picked.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'courses',
     title: 'Courses',
     items: [
