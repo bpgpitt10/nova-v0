@@ -9,7 +9,7 @@ const TIMEOUT_MS = 2500
 const VOICE_ENABLED_KEY = 'looper.live-caddie.voice.v1'
 
 const VOICE_ACTIONS = [
-  'arm', 'arm-shown', 'clear', 'aim', 'aim-reset', 'club-step', 'wind', 'details', 'gspro',
+  'arm', 'arm-shown', 'clear', 'aim', 'aim-reset', 'club-step', 'wind', 'details', 'gspro', 'confirm',
 ] as const
 
 export type VoiceCommand = {
@@ -181,5 +181,62 @@ export const startVoiceCommands = (
     stopped = true
     window.clearInterval(timer)
     onStatus({ state: 'off' })
+  }
+}
+
+const GSPRO_KEY_URL = 'http://127.0.0.1:8787/companion/v1/gspro-key'
+
+/** What each GSPro shortcut is called on screen. */
+export const GSPRO_VIEW_LABELS: Record<string, string> = {
+  flyover: 'Flyover',
+  scorecard: 'Scorecard',
+  heatmap: 'Heat map',
+  greengrid: 'Green grid',
+  shotcam: 'Shot cam',
+  pin: 'Pin indicator',
+  putt: 'Putt mode',
+  hideui: 'Hide UI',
+  mulligan: 'Mulligan',
+}
+
+/** Shortcuts that change the round: asked for twice ("Looper, confirm"). */
+export const GSPRO_KEYS_NEEDING_CONFIRM = new Set(['mulligan'])
+
+export const gsproKeyReasonText = (reason: string | undefined) => {
+  if (reason === 'gspro-not-connected') return 'GSPro is not open'
+  if (reason === 'gspro-minimized') return 'GSPro is minimized'
+  if (reason === 'gspro-not-in-front') return "Couldn't bring GSPro to the front"
+  if (reason === 'too-soon') return 'Too fast: say it again'
+  if (reason === 'unknown-key') return 'This companion build does not know that view'
+  return 'The companion could not press that key'
+}
+
+/**
+ * Ask the companion to press one named GSPro shortcut. The companion only
+ * accepts names from its own fixed list and presses nothing unless GSPro is
+ * the window in front.
+ */
+export const pressGsproKey = async (key: string): Promise<{ status: 'sent' | 'blocked'; reason?: string }> => {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 4000)
+  try {
+    const response = await fetch(new Request(GSPRO_KEY_URL, {
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', 'X-Looper-Intent': 'gspro-key' },
+      body: JSON.stringify({ key }),
+      targetAddressSpace: 'loopback',
+    } as RequestInit & { targetAddressSpace: 'loopback' }))
+    if (!response.ok) return { status: 'blocked', reason: `http-${response.status}` }
+    const data = await response.json() as { status?: unknown; reason?: unknown }
+    return data.status === 'sent'
+      ? { status: 'sent' }
+      : { status: 'blocked', reason: typeof data.reason === 'string' ? data.reason : undefined }
+  } catch {
+    return { status: 'blocked', reason: 'companion' }
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 }

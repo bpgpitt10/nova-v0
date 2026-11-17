@@ -123,7 +123,11 @@ import {
   saveVoiceEnabled,
   startVoiceCommands,
   voiceReasonText,
+  GSPRO_KEYS_NEEDING_CONFIRM,
+  GSPRO_VIEW_LABELS,
   VOICE_MIN_CONFIDENCE,
+  gsproKeyReasonText,
+  pressGsproKey,
   type VoiceCommand,
   type VoiceStatus,
 } from '../liveCaddie/voiceCommands'
@@ -1607,6 +1611,7 @@ export default function LiveCaddiePage() {
   } | null>(null)
   const voiceDetailsOpenRef = useRef(showDiagnostics)
   voiceDetailsOpenRef.current = showDiagnostics
+  const voicePendingKeyRef = useRef<{ key: string; until: number } | null>(null)
   const voiceCommandRef = useRef<(command: VoiceCommand) => void>(() => {})
   voiceCommandRef.current = (command) => {
     const heard = { text: command.heard, conf: command.conf }
@@ -1621,8 +1626,25 @@ export default function LiveCaddiePage() {
       voiceDid('Refreshing wind')
       return
     }
-    if (command.action === 'gspro') {
-      voiceMissed(`Heard "${command.key ?? 'a GSPro view'}". GSPro views aren't wired up yet.`, heard)
+    if (command.action === 'gspro' || command.action === 'confirm') {
+      let key = command.key ?? null
+      if (command.action === 'confirm') {
+        const pending = voicePendingKeyRef.current
+        voicePendingKeyRef.current = null
+        if (!pending || Date.now() > pending.until) { voiceMissed('Nothing to confirm', heard); return }
+        key = pending.key
+      } else if (key && GSPRO_KEYS_NEEDING_CONFIRM.has(key)) {
+        // A mulligan changes the round: it takes a second, deliberate command.
+        voicePendingKeyRef.current = { key, until: Date.now() + 8000 }
+        voiceDid(`${GSPRO_VIEW_LABELS[key] ?? key}? Say "Looper, confirm"`)
+        return
+      }
+      if (!key) { voiceMissed("Didn't catch that", heard); return }
+      const label = GSPRO_VIEW_LABELS[key] ?? key
+      void pressGsproKey(key).then((result) => {
+        if (result.status === 'sent') voiceDid(label)
+        else voiceMissed(`${label}: ${gsproKeyReasonText(result.reason)}`, heard)
+      })
       return
     }
     if (command.action === 'clear') {
@@ -1970,7 +1992,7 @@ export default function LiveCaddiePage() {
                 data-voice-miss={voiceEnabled && voiceMiss ? 'true' : undefined}
                 title={voiceEnabled && voiceStatus.state === 'unavailable'
                   ? voiceReasonText(voiceStatus.reason)
-                  : 'Say "Looper" or "Caddie", then: "three wood", "arm it", "clear", "aim left five", "reset aim", "club up", "refresh wind"'}>
+                  : 'Say "Looper" or "Caddie", then: "three wood", "arm it", "clear", "aim left five", "reset aim", "club up", "refresh wind", "flyover", "scorecard", "green grid"'}>
                 {voiceNote ?? voiceLabel}
               </button>
             ) : null}

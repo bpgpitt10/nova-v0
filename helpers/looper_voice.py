@@ -85,11 +85,14 @@ GSPRO_VIEWS = {
     "heat map": "heatmap",
     "green grid": "greengrid",
     "shot cam": "shotcam",
+    "pin": "pin",
+    "putt mode": "putt",
+    "hide": "hideui",
 }
 
 _OTHER_WORDS = (
     "arm", "it", "aim", "left", "right", "yards", "yard", "reset", "center",
-    "club", "up", "down", "refresh", "wind", "details",
+    "club", "up", "down", "refresh", "wind", "details", "confirm",
 )
 
 
@@ -161,6 +164,8 @@ def _parse_words(rest: list[str]) -> dict | None:
         return {"action": "wind"}
     if rest == ["details"]:
         return {"action": "details"}
+    if rest == ["confirm"]:
+        return {"action": "confirm"}
     view, after_view = _match_phrase(rest, GSPRO_VIEWS)
     if view and not after_view:
         return {"action": "gspro", "key": view}

@@ -65,6 +65,7 @@ on:
       - "helpers/uninstall_looper_companion.ps1"
       - "helpers/looper_companion_setup.iss"
       - "helpers/looper_voice.py"
+      - "helpers/gspro_hotkeys.py"
       - ".github/workflows/build-looper-companion-windows.yml"
 
 permissions:
@@ -408,6 +409,18 @@ jobs:
           Write-Host "voice on this runner: $($listen.status) $($listen.reason) device=$($listen.device)"
           if (@("listening", "starting", "unavailable") -notcontains $listen.status) { throw "unexpected voice status $($listen.status)" }
           if (!(Wait-Health)) { throw "companion stopped answering after a voice request" }
+          # EXPERIMENTAL GSPro shortcuts: refused without the intent header, refused
+          # for unknown keys, and with no GSPro window nothing is pressed.
+          $keyUrl = "http://127.0.0.1:8787/companion/v1/gspro-key"
+          $noIntent = $null
+          try { Invoke-WebRequest -Uri $keyUrl -Method Post -Headers $voiceHeaders -ContentType "application/json" -Body '{"key":"flyover"}' -TimeoutSec 5 | Out-Null } catch { $noIntent = $_.Exception.Response.StatusCode.value__ }
+          if ($noIntent -ne 403) { throw "gspro-key without the intent header must be refused (got $noIntent)" }
+          $keyHeaders = @{ Origin = "https://thelooper.golf"; "X-Looper-Intent" = "gspro-key" }
+          $unknown = Invoke-RestMethod -Uri $keyUrl -Method Post -Headers $keyHeaders -ContentType "application/json" -Body '{"key":"enter"}' -TimeoutSec 5
+          if ($unknown.status -ne "blocked" -or $unknown.reason -ne "unknown-key") { throw "unknown key was not refused: $($unknown | ConvertTo-Json -Compress)" }
+          $noGspro = Invoke-RestMethod -Uri $keyUrl -Method Post -Headers $keyHeaders -ContentType "application/json" -Body '{"key":"flyover"}' -TimeoutSec 5
+          if ($noGspro.status -ne "blocked" -or $noGspro.reason -ne "gspro-not-connected") { throw "flyover without GSPro must be blocked: $($noGspro | ConvertTo-Json -Compress)" }
+          Write-Host "gspro-key safety checks: ok ($($status.capabilities.gsproKeys -join ', '))"
           # Uninstall leaves nothing running and removes the start-with-Windows entry.
           $un = Get-ChildItem $installDir -Filter "unins*.exe" | Select-Object -First 1
           if (!$un) { throw "uninstaller missing" }
