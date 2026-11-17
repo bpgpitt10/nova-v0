@@ -9,6 +9,7 @@ import {
   isSupabaseConfigured,
   sendLooperPasswordReset,
   signInLooperWithGoogle,
+  resendLooperSignupEmail,
   signInLooperWithPassword,
   signOutLooper,
   signUpLooperWithPassword,
@@ -65,6 +66,12 @@ export default function LooperAuthGate({ children }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  // Waiting for this address to click its verification link. Shown as its own
+  // screen with a resend button: three of eight new players never verified,
+  // and one tried to sign in and only got "Email not confirmed".
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
+  const [resendWaitUntil, setResendWaitUntil] = useState(0)
+  const [, setResendTick] = useState(0)
   const bootstrapRef = useRef<{ userId: string; promise: Promise<void> } | null>(null)
   const passwordResetFlowRef = useRef(isPasswordResetReturn())
   const authorizedUserIdRef = useRef<string | null>(null)
@@ -242,6 +249,50 @@ export default function LooperAuthGate({ children }: Props) {
     setSuccessMessage(null)
   }
 
+  // Supabase's own wording, in plain words.
+  const friendlyAuthError = (raw: unknown) => {
+    const text = raw instanceof Error ? raw.message : String(raw)
+    const wait = /after (\d+) seconds?/i.exec(text)
+    if (wait) return `Please wait ${wait[1]} seconds, then try again.`
+    if (/invalid login credentials/i.test(text)) return "That email and password don't match."
+    if (/already registered/i.test(text)) return 'You already have an account with that email. Sign in instead.'
+    if (/rate limit/i.test(text)) return 'Too many emails were requested just now. Please try again in a few minutes.'
+    return text
+  }
+
+  const resendWaitSeconds = Math.max(0, Math.ceil((resendWaitUntil - Date.now()) / 1000))
+  useEffect(() => {
+    if (!verifyEmail || resendWaitUntil <= Date.now()) return
+    const timer = window.setInterval(() => setResendTick((tick) => tick + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [verifyEmail, resendWaitUntil])
+
+  const handleResendVerification = async () => {
+    if (!verifyEmail || busy || resendWaitSeconds > 0) return
+    setBusy(true)
+    clearFormFeedback()
+    try {
+      await resendLooperSignupEmail(verifyEmail)
+      setSuccessMessage('Sent again. It can take a minute to arrive.')
+      setResendWaitUntil(Date.now() + 60_000)
+    } catch (resendError) {
+      const text = resendError instanceof Error ? resendError.message : String(resendError)
+      const wait = /after (\d+) seconds?/i.exec(text)
+      if (wait) setResendWaitUntil(Date.now() + Number(wait[1]) * 1000)
+      setError(friendlyAuthError(resendError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const leaveVerifyScreen = (nextMode: AuthMode) => {
+    setVerifyEmail(null)
+    setMode(nextMode)
+    setPassword('')
+    setConfirmPassword('')
+    clearFormFeedback()
+  }
+
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode)
     setPassword('')
@@ -277,12 +328,16 @@ export default function LooperAuthGate({ children }: Props) {
     try {
       if (mode === 'sign-up') {
         const result = await signUpLooperWithPassword(normalized, password)
-        if (result.requiresEmailConfirmation) {
-          setSuccessMessage(
-            'Check your email and click the link to verify your account. The link signs you in; open it on your GSPro PC if you can.',
-          )
+        if (result.alreadyRegistered) {
+          setMode('sign-in')
           setPassword('')
           setConfirmPassword('')
+          setError('You already have an account with that email. Sign in, or use “Forgot password?” to set a new password.')
+        } else if (result.requiresEmailConfirmation) {
+          setPassword('')
+          setConfirmPassword('')
+          setVerifyEmail(normalized)
+          setResendWaitUntil(Date.now() + 60_000)
         } else {
           setSuccessMessage('Account created. Signing you in…')
         }
@@ -290,7 +345,23 @@ export default function LooperAuthGate({ children }: Props) {
         await signInLooperWithPassword(normalized, password)
       }
     } catch (signInError) {
-      setError(signInError instanceof Error ? signInError.message : String(signInError))
+      const text = signInError instanceof Error ? signInError.message : String(signInError)
+      if (/email not confirmed/i.test(text)) {
+        // The account exists but its link was never clicked: offer the link again.
+        setPassword('')
+        setVerifyEmail(normalized)
+      } else {
+        const wait = mode === 'sign-up' ? /after (\d+) seconds?/i.exec(text) : null
+        if (wait) {
+          // "Create account" pressed twice: the first email is already on its way.
+          setPassword('')
+          setConfirmPassword('')
+          setVerifyEmail(normalized)
+          setResendWaitUntil(Date.now() + Number(wait[1]) * 1000)
+        } else {
+          setError(friendlyAuthError(signInError))
+        }
+      }
     } finally {
       setBusy(false)
     }
@@ -505,6 +576,41 @@ export default function LooperAuthGate({ children }: Props) {
 
   const isForgotPassword = mode === 'forgot-password'
   const isSignUp = mode === 'sign-up'
+
+  if (verifyEmail) {
+    return (
+      <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
+        <section className="looper-auth__card">
+          <AuthBrand />
+          <h1>Check your email</h1>
+          <p className="looper-auth__lead">
+            We sent a link to <strong>{verifyEmail}</strong>. Click it to finish: it verifies your account and signs you in. Open it on your GSPro PC if you can.
+          </p>
+          <p className="looper-auth__fineprint">
+            It can take a minute. If it isn’t in your inbox, look in Spam or Junk for an email about confirming your Looper sign-up.
+          </p>
+          <button
+            type="button"
+            className="looper-auth__primary looper-auth__full"
+            disabled={busy || resendWaitSeconds > 0}
+            onClick={() => void handleResendVerification()}
+          >
+            {busy ? 'Sending…' : resendWaitSeconds > 0 ? `Send it again in ${resendWaitSeconds}s` : 'Send the email again'}
+          </button>
+          {successMessage ? <div className="looper-auth__success">{successMessage}</div> : null}
+          {error ? <div className="looper-auth__error">{error}</div> : null}
+          <div className="looper-auth__actions">
+            <button type="button" className="looper-auth__text-button" disabled={busy} onClick={() => leaveVerifyScreen('sign-in')}>
+              I clicked the link: sign in
+            </button>
+            <button type="button" className="looper-auth__text-button" disabled={busy} onClick={() => leaveVerifyScreen('sign-up')}>
+              Use a different email
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="looper-auth" style={AUTH_BACKGROUND_STYLE}>
