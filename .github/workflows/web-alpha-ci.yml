@@ -136,6 +136,8 @@ jobs:
         run: node tools/test-oversized-polygons.mjs
       - name: Companion release check
         run: node tools/test-companion-release.mjs
+      - name: A stale hole marker in GSPro's log is ignored
+        run: node tools/test-gspro-log-hole-freshness.mjs
       - name: Companion presence memory
         run: node tools/test-companion-presence.mjs
       - name: Auto Aim with an estimated pin
