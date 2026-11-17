@@ -29,7 +29,7 @@ import wave
 from collections import deque
 from pathlib import Path
 
-SCHEMA_VERSION = "voice-commands-v1"
+SCHEMA_VERSION = "voice-commands-v2"
 SAMPLE_RATE = 16000
 BLOCK_FRAMES = 4000  # 0.25 s
 KEEPALIVE_S = 6.0  # the page polls about twice a second
@@ -39,11 +39,19 @@ MAX_EVENTS = 50
 
 # "caddy" is the same word to a listener; the recogniser may spell it either way.
 WAKE_WORDS = ("looper", "caddie", "caddy")
+# After a wake word on its own, a command may follow without repeating it.
+WAKE_WINDOW_S = 5.0
 
 _NUMBERS = {
     1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
-    6: "six", 7: "seven", 8: "eight", 9: "nine",
+    6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+    11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
+    16: "sixteen", 17: "seventeen", 18: "eighteen", 19: "nineteen",
+    20: "twenty", 30: "thirty",
 }
+_NUMBER_VALUES = {word: value for value, word in _NUMBERS.items()}
+DEFAULT_AIM_YARDS = 3  # "aim left" with no number: one aim step
+MAX_AIM_YARDS = 30
 
 
 def _club_phrases() -> dict[str, str]:
@@ -53,68 +61,146 @@ def _club_phrases() -> dict[str, str]:
         clubs[f"{_NUMBERS[number]} wood"] = f"{number}W"
     for number in (2, 3, 4, 5, 6, 7):
         clubs[f"{_NUMBERS[number]} hybrid"] = f"{number}H"
+        clubs[f"{_NUMBERS[number]} rescue"] = f"{number}H"
     for number in range(1, 10):
         clubs[f"{_NUMBERS[number]} iron"] = f"{number}i"
-    clubs.update({
-        "pitching wedge": "PW",
-        "approach wedge": "AW",
-        "gap wedge": "GW",
-        "sand wedge": "SW",
-        "lob wedge": "LW",
-    })
+    for spoken, club in (("pitching", "PW"), ("approach", "AW"), ("gap", "GW"),
+                         ("sand", "SW"), ("lob", "LW")):
+        clubs[f"{spoken} wedge"] = club
+        clubs[spoken] = club
     return clubs
 
 
 CLUB_PHRASES = _club_phrases()
 CLEAR_WORDS = ("clear", "disarm", "cancel")
 
+# GSPro's own views. Recognised so they are never mistaken for a club
+# ("flyover" used to come out as "five wood"); the page decides what to do.
+GSPRO_VIEWS = {
+    "flyover": "flyover",
+    "fly over": "flyover",
+    "scorecard": "scorecard",
+    "score card": "scorecard",
+    "mulligan": "mulligan",
+    "heat map": "heatmap",
+    "green grid": "greengrid",
+    "shot cam": "shotcam",
+}
 
-def command_phrases() -> list[str]:
-    """Every command, without a wake word."""
-    phrases = ["arm", "arm it"]
-    phrases += list(CLEAR_WORDS)
-    for spoken in CLUB_PHRASES:
-        phrases.append(spoken)
-        phrases.append(f"arm {spoken}")
-    return phrases
-
-
-def grammar() -> list[str]:
-    """What the recogniser is allowed to hear. "[unk]" soaks up everything else."""
-    phrases = []
-    for wake in WAKE_WORDS:
-        phrases.append(wake)
-        phrases.extend(f"{wake} {command}" for command in command_phrases())
-    phrases.append("[unk]")
-    return phrases
+_OTHER_WORDS = (
+    "arm", "it", "aim", "left", "right", "yards", "yard", "reset", "center",
+    "club", "up", "down", "refresh", "wind", "details",
+)
 
 
-def parse_command(text: str | None) -> dict | None:
-    """Recognised text -> a command, or None. Pure, so it is unit-tested."""
-    if not text:
+def grammar(clubs: frozenset[str] | None = None) -> list[str]:
+    """What the recogniser may hear. It strings these together freely, so the
+    parser below decides what counts; "[unk]" soaks up everything else.
+
+    ``clubs``: only these club ids are listenable (the player's bag)."""
+    phrases: list[str] = list(WAKE_WORDS) + list(CLEAR_WORDS) + list(_OTHER_WORDS)
+    phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
+    phrases += list(GSPRO_VIEWS)
+    phrases += list(_NUMBER_VALUES)
+    seen: set[str] = set()
+    unique = [phrase for phrase in phrases if not (phrase in seen or seen.add(phrase))]
+    return unique + ["[unk]"]
+
+
+def _parse_number(words: list[str]) -> tuple[int | None, list[str]]:
+    """Leading number words -> (value, remaining words). "twenty five" = 25."""
+    if not words or words[0] not in _NUMBER_VALUES:
+        return None, words
+    value = _NUMBER_VALUES[words[0]]
+    rest = words[1:]
+    if value in (20, 30) and rest and rest[0] in _NUMBER_VALUES and _NUMBER_VALUES[rest[0]] < 10:
+        value += _NUMBER_VALUES[rest[0]]
+        rest = rest[1:]
+    return value, rest
+
+
+def _match_phrase(words: list[str], table: dict[str, str]) -> tuple[str | None, list[str]]:
+    """Longest phrase from ``table`` at the start of ``words``."""
+    spoken = " ".join(words)
+    for phrase in sorted(table, key=len, reverse=True):
+        if spoken == phrase or spoken.startswith(phrase + " "):
+            return table[phrase], words[len(phrase.split()):]
+    return None, words
+
+
+def _parse_words(rest: list[str]) -> dict | None:
+    """The words after the wake word -> a command. Every word must be used."""
+    if not rest:
         return None
-    words = [word for word in text.lower().replace(",", " ").split() if word != "[unk]"]
+    if len(rest) == 1 and rest[0] in CLEAR_WORDS:
+        return {"action": "clear"}
+    if rest[0] == "aim" or rest == ["reset", "aim"]:
+        tail = rest[1:] if rest[0] == "aim" else ["reset"]
+        if tail in (["reset"], ["center"]):
+            return {"action": "aim-reset"}
+        if not tail or tail[0] not in ("left", "right"):
+            return None
+        yards, tail2 = _parse_number(tail[1:])
+        if tail2 and tail2[0] in ("yards", "yard"):
+            tail2 = tail2[1:]
+        if tail2:
+            return None
+        yards = DEFAULT_AIM_YARDS if yards is None else yards
+        if not 1 <= yards <= MAX_AIM_YARDS:
+            return None
+        return {"action": "aim", "direction": tail[0], "yards": yards}
+    if rest[0] == "club":
+        if rest[1:] in (["up"], ["down"]):
+            return {"action": "club-step", "direction": rest[1]}
+        return None
+    if rest in (["refresh", "wind"], ["wind"]):
+        return {"action": "wind"}
+    if rest == ["details"]:
+        return {"action": "details"}
+    view, after_view = _match_phrase(rest, GSPRO_VIEWS)
+    if view and not after_view:
+        return {"action": "gspro", "key": view}
+    if rest[0] == "arm":
+        rest = rest[1:]
+        if not rest or rest == ["it"]:
+            return {"action": "arm-shown"}
+    club, after_club = _match_phrase(rest, CLUB_PHRASES)
+    if club and not after_club:
+        return {"action": "arm", "club": club}
+    return None
+
+
+def _clean_words(text: str | None) -> list[str]:
+    if not text:
+        return []
+    return [word for word in text.lower().replace(",", " ").split() if word != "[unk]"]
+
+
+def has_wake_word(text: str | None) -> bool:
+    return any(word in WAKE_WORDS for word in _clean_words(text))
+
+
+def parse_command(text: str | None, wake_open: bool = False) -> dict | None:
+    """Recognised text -> a command, or None. Pure, so it is unit-tested.
+
+    A command needs a wake word in the same breath, unless ``wake_open``: the
+    wake word was said on its own a moment ago."""
+    words = _clean_words(text)
     wake_at = next((i for i, word in enumerate(words) if word in WAKE_WORDS), None)
     if wake_at is None:
-        return None  # no wake word in this breath: not for us
+        return _parse_words(words) if wake_open else None
     rest = words[wake_at + 1:]
     # A second wake word starts over ("caddie ... caddie arm it").
     while any(word in WAKE_WORDS for word in rest):
         rest = rest[next(i for i, word in enumerate(rest) if word in WAKE_WORDS) + 1:]
-    if not rest:
-        return None
-    if rest[0] in CLEAR_WORDS:
-        return {"action": "clear", "club": None}
-    if rest[0] == "arm":
-        rest = rest[1:]
-        if not rest or rest == ["it"]:
-            return {"action": "arm-shown", "club": None}
-    # Longest club name first: "mini driver" before "driver".
-    spoken = " ".join(rest)
-    for phrase in sorted(CLUB_PHRASES, key=len, reverse=True):
-        if spoken == phrase or spoken.startswith(phrase + " "):
-            return {"action": "arm", "club": CLUB_PHRASES[phrase]}
-    return None
+    return _parse_words(rest)
+
+
+def confidence(result: dict) -> float | None:
+    """Lowest per-word confidence in a recogniser result (noise words aside)."""
+    words = [entry for entry in result.get("result") or [] if entry.get("word") != "[unk]"]
+    scores = [float(entry["conf"]) for entry in words if isinstance(entry.get("conf"), (int, float))]
+    return round(min(scores), 3) if scores else None
 
 
 def model_dir() -> Path:
@@ -156,7 +242,7 @@ _MODEL = None
 _MODEL_LOCK = threading.Lock()
 
 
-def _new_recognizer():
+def _new_recognizer(clubs: frozenset[str] | None = None):
     """A fresh recogniser on the shared model (loading the model takes a second)."""
     global _MODEL
     import vosk
@@ -165,7 +251,9 @@ def _new_recognizer():
     with _MODEL_LOCK:
         if _MODEL is None:
             _MODEL = vosk.Model(str(model_dir()))
-    return vosk.KaldiRecognizer(_MODEL, SAMPLE_RATE, json.dumps(grammar()))
+    recognizer = vosk.KaldiRecognizer(_MODEL, SAMPLE_RATE, json.dumps(grammar(clubs)))
+    recognizer.SetWords(True)  # per-word confidence
+    return recognizer
 
 
 def _level(data: bytes) -> float:
@@ -244,8 +332,12 @@ class VoiceListener:
         # The last thing heard with a wake word in it, command or not, so the
         # player can see why nothing happened ("heard Looper, then nothing").
         self._last_heard: dict | None = None
+        self._clubs: frozenset[str] | None = None  # the player's bag, when the page sent it
+        self._wake_until = 0.0
 
-    def poll(self, since: int | None, listen: bool = True) -> dict:
+    def poll(self, since: int | None, listen: bool = True, clubs: frozenset[str] | None = None) -> dict:
+        if clubs is not None:
+            self._clubs = clubs or None
         error = _engine_error()
         if error:
             return self._payload("unavailable", error, since)
@@ -278,19 +370,29 @@ class VoiceListener:
             "events": events if since is not None else [],
         }
 
-    def handle_text(self, text: str | None) -> dict | None:
-        command = parse_command(text)
-        if text and any(word in WAKE_WORDS for word in text.lower().split()):
+    def handle_text(self, text: str | None, conf: float | None = None) -> dict | None:
+        now = time.monotonic()
+        wake_open = now < self._wake_until
+        woke = has_wake_word(text)
+        command = parse_command(text, wake_open=wake_open)
+        # "Looper" on its own: a command may follow in the next few seconds.
+        waiting = False
+        if woke and command is None:
+            words = _clean_words(text)
+            waiting = bool(words) and words[-1] in WAKE_WORDS
+        if woke or (wake_open and command is not None):
             with self._lock:
+                self._wake_until = now + WAKE_WINDOW_S if waiting else 0.0
                 self._last_heard = {
                     "text": text,
                     "at": int(time.time() * 1000),
                     "command": command is not None,
+                    "waiting": waiting,
+                    "conf": conf,
                 }
         if not command:
             return None
-        key = f"{command['action']}:{command['club']}"
-        now = time.monotonic()
+        key = json.dumps(command, sort_keys=True)
         with self._lock:
             if self._last and self._last[0] == key and now - self._last[1] < DUPLICATE_WINDOW_S:
                 return None
@@ -300,6 +402,8 @@ class VoiceListener:
                 "seq": self._seq,
                 "at": int(time.time() * 1000),
                 "heard": text,
+                "conf": conf,
+                "club": None,
                 **command,
             }
             self._events.append(event)
@@ -309,7 +413,8 @@ class VoiceListener:
         try:
             import sounddevice
 
-            recognizer = _new_recognizer()
+            listening_for = self._clubs
+            recognizer = _new_recognizer(listening_for)
             stream, rate, name = _open_microphone(sounddevice)
             block = BLOCK_FRAMES if rate == SAMPLE_RATE else max(1, rate // 4)
             resample_state = None
@@ -321,7 +426,12 @@ class VoiceListener:
                     data, resample_state = _to_16k(bytes(raw), rate, resample_state)
                     self._mic_level = _level(data)
                     if data and recognizer.AcceptWaveform(data):
-                        self.handle_text(json.loads(recognizer.Result()).get("text"))
+                        result = json.loads(recognizer.Result())
+                        self.handle_text(result.get("text"), confidence(result))
+                    if self._clubs != listening_for:
+                        # The bag changed: only its clubs stay listenable.
+                        listening_for = self._clubs
+                        recognizer = _new_recognizer(listening_for)
             with self._lock:
                 self._status, self._reason, self._mic_level = "off", None, 0.0
         except Exception as error:  # no microphone, device busy, driver error
@@ -342,7 +452,7 @@ def selftest(wav_path: str) -> dict:
     if error:
         return {"status": "unavailable", "reason": error, "heard": [], "commands": []}
     recognizer = _new_recognizer()
-    heard: list[str] = []
+    results: list[dict] = []
     with wave.open(wav_path, "rb") as audio:
         if audio.getframerate() != SAMPLE_RATE or audio.getnchannels() != 1 or audio.getsampwidth() != 2:
             return {"status": "unavailable", "reason": "wav-format", "heard": [], "commands": []}
@@ -351,10 +461,15 @@ def selftest(wav_path: str) -> dict:
             if not data:
                 break
             if recognizer.AcceptWaveform(data):
-                heard.append(json.loads(recognizer.Result()).get("text", ""))
-    heard.append(json.loads(recognizer.FinalResult()).get("text", ""))
-    heard = [text for text in heard if text]
-    commands = [command for command in (parse_command(text) for text in heard) if command]
+                results.append(json.loads(recognizer.Result()))
+    results.append(json.loads(recognizer.FinalResult()))
+    results = [result for result in results if result.get("text")]
+    heard = [result["text"] for result in results]
+    commands = []
+    for result in results:
+        command = parse_command(result["text"])
+        if command:
+            commands.append({"club": None, **command, "conf": confidence(result)})
     return {"status": "ok", "reason": None, "heard": heard, "commands": commands}
 
 

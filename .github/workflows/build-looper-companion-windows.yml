@@ -114,6 +114,12 @@ jobs:
             "caddie-7i"   = "Caddie, seven iron."
             "looper-it"   = "Looper, arm it."
             "caddie-clear" = "Caddie, clear."
+            "looper-flyover" = "Looper, flyover."
+            "looper-aim"  = "Looper, aim left five yards."
+            "caddie-aim"  = "Caddie, aim right twelve."
+            "caddie-clubup" = "Caddie, club up."
+            "looper-wind" = "Looper, refresh wind."
+            "looper-sand" = "Looper, sand wedge."
             "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
           }
           foreach ($name in $lines.Keys) {
@@ -138,6 +144,15 @@ jobs:
           $caddie = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/caddie-3w.wav).Path) | ConvertFrom-Json
           if ($caddie.status -ne "ok" -or $caddie.commands.Count -lt 1 -or $caddie.commands[0].club -ne "3W") {
             throw "Voice selftest: 'Caddie, arm three wood' was not recognised: $($caddie | ConvertTo-Json -Compress -Depth 5)"
+          }
+          # "flyover" was once heard as "five wood": it must be its own command now.
+          $flyover = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-flyover.wav).Path) | ConvertFrom-Json
+          if ($flyover.commands.Count -lt 1 -or $flyover.commands[0].action -ne "gspro" -or $flyover.commands[0].key -ne "flyover") {
+            throw "Voice selftest: 'Looper, flyover' was not recognised as flyover: $($flyover | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $aim = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-aim.wav).Path) | ConvertFrom-Json
+          if ($aim.commands.Count -lt 1 -or $aim.commands[0].action -ne "aim" -or $aim.commands[0].direction -ne "left" -or $aim.commands[0].yards -ne 5) {
+            throw "Voice selftest: 'Looper, aim left five yards' was not recognised: $($aim | ConvertTo-Json -Compress -Depth 5)"
           }
           $chatter = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter.wav).Path) | ConvertFrom-Json
           if ($chatter.commands.Count -ne 0) {

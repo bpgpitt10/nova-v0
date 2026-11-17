@@ -325,9 +325,12 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
                 return
             query = parse_qs(urlsplit(self.path).query)
+            clubs_raw = (query.get("clubs") or [None])[0]
             payload = voice.LISTENER.poll(
                 _query_int(query, "since"),
                 listen=(query.get("listen") or ["1"])[0] != "0",
+                clubs=None if clubs_raw is None else frozenset(
+                    club for club in clubs_raw.split(",") if club and len(club) <= 12),
             )
             payload["version"] = COMPANION_VERSION
             self._send_companion(200, payload)
