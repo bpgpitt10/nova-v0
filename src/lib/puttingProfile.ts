@@ -23,6 +23,8 @@ import { scoredShots, tourExpectedStrokes, type RoundSummary, type WorldPoint } 
  * (Design: claude/putting-review-design.md.)
  */
 
+/** A start within this of the aim counts as on it (about 2 in at 20 ft): the shaded band on the Line strip. */
+export const LINE_ON_AIM_DEG = 0.5
 /** Sim gimme circles are 5–6 ft, so nothing shorter is analysed. */
 export const MIN_PUTT_FT = 5
 /** Anything faster off the face is not a putt (full swings from the green show up at 60+ mph). */
@@ -238,8 +240,8 @@ export const summarizePace = (putts: readonly ProfilePutt[]): SkillSummary => {
 export const summarizeLine = (putts: readonly ProfilePutt[]): SkillSummary => {
   const known = putts.filter((putt) => putt.startDirectionDeg != null)
   const size = median(known.map((putt) => Math.abs(putt.startDirectionDeg as number)))
-  const left = known.filter((putt) => (putt.startDirectionDeg as number) < -0.25).length
-  const right = known.filter((putt) => (putt.startDirectionDeg as number) > 0.25).length
+  const left = known.filter((putt) => (putt.startDirectionDeg as number) < -LINE_ON_AIM_DEG).length
+  const right = known.filter((putt) => (putt.startDirectionDeg as number) > LINE_ON_AIM_DEG).length
   const { lean, split } = leanOf('left', left, 'right', right)
   const sizeFt = median(known.map((putt) => Math.abs(Math.tan(((putt.startDirectionDeg as number) * Math.PI) / 180)) * putt.lengthFt))
   return { putts: known.length, size, sizeFt, lean, split, kind: kindOf(known.length, size, lean, 1) }
