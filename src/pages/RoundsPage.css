@@ -2065,3 +2065,9 @@ button.rounds-count-chip:focus-visible {
 .rounds-count-why {
   font-size: 11px;
 }
+
+/* Score header: the SG figure sits on the same baseline as the score and its
+   to-par tag (it used to hang a few pixels lower, lined up on box bottoms). */
+.rounds-score-inline {
+  align-items: last baseline;
+}
