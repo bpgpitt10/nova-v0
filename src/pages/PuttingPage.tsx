@@ -16,7 +16,9 @@ import {
   type PuttSlope,
   type SkillSummary,
   LINE_ON_AIM_DEG,
+  profilePutts,
 } from '../lib/puttingProfile'
+import { describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
 import './PuttingPage.css'
 
 const MINUS = '−'
@@ -127,7 +129,6 @@ function SkillStrip({ values, zone, color, low, high, centre, label, steps, form
   )
 }
 
-type RoundWindow = 'last' | 'five' | 'all'
 
 const GOOD_ENOUGH_MEANS: Record<PuttSkill, string> = {
   read: 'Your aim was on a line that goes in.',
@@ -213,8 +214,16 @@ function TrendChart({ points }: { points: ReadonlyArray<{ rolling: number; cours
   )
 }
 
-export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
-  const [roundWindow, setRoundWindow] = useState<RoundWindow>('all')
+/** Rounds with real putting, so "Last 5" is the last five rounds this page can say something about. */
+const hasPutts = (round: RoundSummary) => profilePutts(round).length > 0
+
+export function PuttingPage({ rounds, roundWindow, onRoundWindow }: {
+  rounds: readonly RoundSummary[]
+  /** Chosen in the top ribbon, shared with Your game. */
+  roundWindow: RoundWindow
+  onRoundWindow: (next: RoundWindow) => void
+}) {
+  const now = useMemo(() => new Date(), [])
   const [slope, setSlope] = useState<PuttSlope | 'all'>('all')
   const [length, setLength] = useState<string>('all')
   // Tapping Read, Line or Pace shows only the misses that skill caused.
@@ -226,9 +235,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
     if (roundWindow === 'all') return everything
-    const recent = [...everything.trend].reverse().slice(0, roundWindow === 'last' ? 1 : 5).map((point) => point.roundId)
-    return buildPuttingProfile(rounds.filter((round) => recent.includes(round.roundId)))
-  }, [everything, roundWindow, rounds])
+    return buildPuttingProfile(roundsInWindow(rounds, roundWindow, now, hasPutts))
+  }, [everything, roundWindow, rounds, now])
+  const thinWindow = roundWindow === 'recent' && profile.rounds < EARLY_READ_ROUNDS && everything.rounds > profile.rounds
 
   const shown = profile.putts.filter((putt) =>
     (slope === 'all' || putt.slope === slope) && (length === 'all' || putt.lengthBucket === length))
@@ -294,6 +303,23 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     )
   }
 
+  if (profile.putts.length === 0) {
+    // Real putting exists, just not in the rounds picked in the ribbon.
+    return (
+      <main className="rounds-main putting">
+        <header className="putting-header">
+          <a className="putting-back" href="/game">Your game</a>
+          <span className="rounds-eyebrow">Putting</span>
+          <h1 className="rounds-display-title">No real putts in these rounds</h1>
+          <p className="rounds-muted">
+            Nothing to show from {describeRoundWindow(roundWindow, profile.rounds)}. Your real putting is in older
+            rounds. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button>
+          </p>
+        </header>
+      </main>
+    )
+  }
+
   return (
     <main className="rounds-main putting">
       <header className="putting-header">
@@ -311,17 +337,13 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </div>
             </details>
           </div>
-          <div aria-label="Rounds included" className="putting-pills" role="group">
-            {([['all', `All rounds (${everything.rounds})`], ['five', 'Last 5 rounds'], ['last', 'Last round']] as const).map(([id, label]) => (
-              <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
         <p className="rounds-muted">
-          {profile.putts.length} real putts across {profile.rounds} {profile.rounds === 1 ? 'round' : 'rounds'}, against
+          {profile.putts.length} real putts across {describeRoundWindow(roundWindow, profile.rounds)}, against
           the tour benchmark. Gimmes and auto putts are not counted.
+          {thinWindow ? (
+            <> An early read: {everything.rounds} rounds in all. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button></>
+          ) : null}
         </p>
       </header>
 

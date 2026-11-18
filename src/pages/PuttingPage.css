@@ -48,21 +48,6 @@
 .putting-info p:last-child { margin-bottom: 0; }
 .putting-info p b { color: var(--rounds-text); }
 
-.putting-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.putting-pills button {
-  min-height: 38px;
-  padding: 0 16px;
-  border: 1px solid var(--rounds-line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--rounds-secondary);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.putting-pills button.active { border-color: var(--rounds-text); background: var(--rounds-text); color: var(--rounds-bg); }
-
 /* −1.0 = Read −0.5 + Pace −0.3 + Line −0.2. No boxes: columns and rules. */
 .putting-equation {
   display: grid;

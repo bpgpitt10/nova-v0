@@ -128,6 +128,8 @@ jobs:
         run: node tools/test-your-game.mjs
       - name: Putting profile (real putts, pace and line)
         run: node tools/test-putting-profile.mjs
+      - name: Round window (last 6 months, last 5, last 15, all)
+        run: node tools/test-round-window.mjs
 
       - name: Courses loaded at run time join the catalog
         run: node tools/test-runtime-courses.mjs
