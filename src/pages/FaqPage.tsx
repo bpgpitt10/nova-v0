@@ -1,4 +1,4 @@
-import { FAQ_SECTIONS } from '../lib/faqContent'
+import { FAQ_SECTIONS, GETTING_STARTED } from '../lib/faqContent'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './FaqPage.css'
 
@@ -13,6 +13,22 @@ export default function FaqPage() {
             <p>How The Looper works, and what to do when something does not.</p>
           </div>
         </header>
+        <section aria-labelledby="faq-start-title" className="faq-start" id="start-here">
+          <h2 id="faq-start-title">How to get going</h2>
+          <p className="faq-start-lead">You have signed in. Here is the path from there, in the order that works best.</p>
+          <ol>
+            {GETTING_STARTED.map((step, index) => (
+              <li key={step.title}>
+                <span aria-hidden="true" className="faq-start-number">{index + 1}</span>
+                <div>
+                  <h3>{step.title} <span className="faq-start-when">{step.when}</span></h3>
+                  {step.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                  {step.link ? <a className="faq-link" href={step.link.href}>{step.link.label} →</a> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
         <nav className="faq-jump" aria-label="FAQ topics">
           {FAQ_SECTIONS.map((section) => <a key={section.id} href={`#${section.id}`}>{section.title}</a>)}
         </nav>

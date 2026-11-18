@@ -13,10 +13,70 @@ export type FaqItem = Readonly<{
 
 export type FaqSection = Readonly<{ id: string; title: string; note?: string; items: readonly FaqItem[] }>
 
+export type StartStep = Readonly<{
+  title: string
+  /** When in the player's first weeks this step belongs. */
+  when: string
+  body: readonly string[]
+  link?: Readonly<{ href: string; label: string }>
+}>
+
+/**
+ * The path a new player follows, shown open at the top of the FAQ (Brian,
+ * 18 Nov: "this is how you get going"). Assumes they have signed in.
+ */
+export const GETTING_STARTED: readonly StartStep[] = [
+  {
+    title: 'Check you are connected',
+    when: 'First',
+    body: [
+      'On the PC that runs GSPro, open thelooper.golf in Chrome or Edge. Two things should be true: the Companion chip at the top right is green, and the home page says GSPro connected.',
+      'If the chip says Get the companion, click it and run the installer. It takes a minute and you only do it once.',
+    ],
+    link: { href: '/looper', label: 'Home page' },
+  },
+  {
+    title: 'Try Live Caddie with your starting bag',
+    when: 'Today',
+    body: [
+      'You do not need any practice data first. Your starting bag (three carries and your handicap) is enough for Looper to caddie a round.',
+      'Pick a course that is already loaded, match the tees and pins to GSPro, and play a few holes. Looper follows each shot and tells you the club and the line. This is the quickest way to get a feel for it.',
+    ],
+    link: { href: '/round-setup', label: 'Start a Round' },
+  },
+  {
+    title: 'Build your real numbers on the range',
+    when: 'This week',
+    body: [
+      'Open the Practice Range in GSPro and choose Practice Range on the Looper home page. Every swing is captured: carry, total, spin, and how the ball moves.',
+      'This is the foundation of The Looper. Each club replaces its starting guess with your own numbers after about five good swings, and the caddie gets sharper with every session.',
+    ],
+    link: { href: '/bag', label: 'Your bag' },
+  },
+  {
+    title: 'Look back at your rounds',
+    when: 'After each round',
+    body: [
+      'Every round you play in GSPro is recorded while the Companion is running, whether Live Caddie was on or not.',
+      'The Rounds page shows the score, strokes gained by part of the game, a map of each hole, and your best and worst shots.',
+    ],
+    link: { href: '/rounds', label: 'Rounds' },
+  },
+  {
+    title: 'Find where you lose strokes',
+    when: 'After a few rounds',
+    body: [
+      'Your game adds your rounds together and ranks what costs you the most: tee shots, each approach distance, the rough, the sand and putting.',
+      'The Putting page goes further and splits your putting into read, start line and pace. Play with auto putt off so your own putts count.',
+    ],
+    link: { href: '/game', label: 'Your game' },
+  },
+]
+
 export const FAQ_SECTIONS: readonly FaqSection[] = [
   {
     id: 'start',
-    title: 'Getting started',
+    title: 'The basics',
     items: [
       {
         q: 'What is The Looper?',
