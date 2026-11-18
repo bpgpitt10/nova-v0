@@ -2102,3 +2102,11 @@ button.rounds-count-chip:focus-visible {
 .bagbook-topbar .round-window-pills { margin-left: auto; gap: 6px; }
 .bagbook-topbar .round-window-pills button { min-height: 34px; padding: 0 13px; }
 .bagbook-topbar .round-window-pills + .bagbook-topbar-actions { margin-left: 0; }
+
+/* Your game: the four categories per round, above the leaks. */
+.yourgame-catstrip { padding: 8px 0 0; }
+.yourgame-catcell { padding-left: 0; text-decoration: none; }
+.yourgame-catcell.is-static { cursor: default; }
+.yourgame-catcell.is-static:hover { background: transparent; }
+.yourgame-leak-link { color: inherit; text-decoration: none; }
+.yourgame-leak-link:hover { text-decoration: underline; text-underline-offset: 3px; }

@@ -1,13 +1,15 @@
-import { scoredShots, type RoundShot, type RoundSummary } from './roundHistory'
-import { profilePutts, summarizeLine, summarizePace, summarizeRead } from './puttingProfile'
+import { scoredShots, type RoundShot, type RoundSummary, type ShotCategory } from './roundHistory'
+import { buildPuttingProfile, profilePutts, PUTT_SKILLS, summarizeLine, summarizePace, summarizeRead, type PuttSkill, type SkillSummary } from './puttingProfile'
 
 /**
  * "Your game": where you lose strokes, across every scored round.
  *
- * Every non-tee, non-putt shot is compared with your typical shot (your own
- * average strokes gained per shot against the tour), then weighted by how
- * often that shot comes up in 18 holes: strokes per round. A small leak you
- * face five times a round outranks a big one you face once a month.
+ * One scale everywhere: strokes gained against the tour, per round (Brian,
+ * 18 Nov). Four category totals on top, then every part of the game competes
+ * for the leak slots: tee shots, each approach and short-game distance, rough,
+ * sand, and putting's Read, Line and Pace. Each is its per-shot result times
+ * how often it comes up in 18 holes, so a small leak you face five times a
+ * round outranks a big one you face once a month.
  * (Design: claude/analysis-roadmap.md, "Where you lose strokes"; mockup
  * "Looper Rounds mockup", Leaks artboard, 2 Nov.)
  */
@@ -27,8 +29,10 @@ export type Segment = Readonly<{
   shots: number
   /** Strokes gained per shot vs the tour. */
   sgPerShot: number
-  /** Strokes per round vs your typical shot (negative = a leak). */
+  /** Strokes per round vs the tour (negative = a leak). */
   perRound: number
+  /** Where to read more, when the segment has its own page. */
+  href?: string
   /** One line in plain words. */
   detail: string
   early: boolean
@@ -71,10 +75,15 @@ export type VsNormalRow = Readonly<{
   roundTotal: number | null
 }>
 
+/** One of the four strokes-gained categories, per round vs the tour (null with no shots). */
+export type CategoryRow = Readonly<{ id: ShotCategory; label: string; perRound: number | null; shots: number; href?: string }>
+
 export type YourGame = Readonly<{
   rounds: number
   holes: number
   courses: string[]
+  /** Off the tee, Approach, Around the green, Putting. Putting is real putts only, as on the Putting page. */
+  categories: CategoryRow[]
   /** Your average non-tee, non-putt shot vs the tour. */
   typical: number | null
   leaks: Segment[]
@@ -99,6 +108,22 @@ const isGreenFinish = (shot: RoundShot) => shot.holed || shot.endLie === 'green'
 
 const fromRough = (shot: RoundShot) => shot.startLie === 'rough' || shot.startLie === 'deep-rough'
 
+
+const PUTT_SKILL_LABEL: Record<PuttSkill, string> = { read: 'Putting: read', line: 'Putting: start line', pace: 'Putting: pace' }
+
+const feetAndInches = (feet: number) => {
+  const inches = Math.round(feet * 12)
+  return inches < 36 ? `${inches} in.` : `${Math.floor(inches / 12)} ft ${inches % 12} in.`
+}
+
+/** One line on a putting skill: how big the typical miss is and which way it leans. */
+const puttSkillDetail = (skill: PuttSkill, summary: SkillSummary) => {
+  const lean = summary.lean ? `; ${summary.lean.side} ${summary.lean.count} of ${summary.putts}` : ''
+  if (summary.size == null) return 'Not enough putts yet for a typical miss.'
+  if (skill === 'line') return `Starts ${summary.size.toFixed(1)}° off your aim on a typical putt${lean}.`
+  if (skill === 'pace') return `Finishes ${feetAndInches(summary.sizeFt ?? 0)} from the ideal spot on a typical miss${lean}.`
+  return `Your aim alone leaves a typical miss ${feetAndInches(summary.sizeFt ?? 0)} wide of the hole${lean}.`
+}
 
 /** Rounds that count (the player's choice, else not when they look like tests), on complete holes. */
 const scored = (rounds: readonly RoundSummary[]) =>
@@ -125,7 +150,7 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     const sgPerShot = mean(shots.map((shot) => shot.sg as number)) as number
     return {
       id, label, shots: shots.length, sgPerShot,
-      perRound: (sgPerShot - typical) * shots.length * perRoundFactor,
+      perRound: sgPerShot * shots.length * perRoundFactor,
       detail: detail(shots),
       early: shots.length < FIRM_SHOTS,
     }
@@ -170,7 +195,45 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     return `${greens} of ${s.length} reached the green.`
   })
 
-  const segments = [...rungSegments, roughSegment, sandSegment].filter((s): s is Segment => s != null)
+  // Tee shots.
+  const allShots = rounds.flatMap(shotsOf)
+  const teeShots = allShots.filter((shot) => shot.category === 'off-the-tee')
+  const teeSegment = segment('tee', 'Tee shots', teeShots, (s) => {
+    const fairways = s.filter((shot) => shot.endLie === 'fairway').length
+    return `${fairways} of ${s.length} finished in the fairway.`
+  })
+
+  // Putting: real putts only, split into Read, Line and Pace (the same numbers as the Putting page).
+  const puttingProfile = buildPuttingProfile(rounds)
+  const puttsPerRound = puttingProfile.holes > 0 ? (puttingProfile.putts.length / puttingProfile.holes) * 18 : 0
+  const puttSegments = PUTT_SKILLS.map((skill): Segment | null => {
+    const strokes = puttingProfile.skillStrokes?.[skill]
+    if (strokes == null || puttingProfile.attributedPutts < MIN_SEGMENT_SHOTS || puttsPerRound <= 0) return null
+    return {
+      id: `putt-${skill}`,
+      label: PUTT_SKILL_LABEL[skill],
+      shots: puttingProfile.putts.length,
+      sgPerShot: strokes / puttsPerRound,
+      perRound: strokes,
+      detail: puttSkillDetail(skill, puttingProfile[skill]),
+      early: puttingProfile.putts.length < FIRM_SHOTS,
+      href: '/game/putting',
+    }
+  })
+
+  const categoryPerRound = (category: ShotCategory) => {
+    const shots = allShots.filter((shot) => shot.category === category)
+    return { shots: shots.length, perRound: shots.length ? shots.reduce((sum, shot) => sum + (shot.sg as number), 0) * perRoundFactor : null }
+  }
+  const categories: CategoryRow[] = [
+    { id: 'off-the-tee', label: 'Off the tee', ...categoryPerRound('off-the-tee') },
+    { id: 'approach', label: 'Approach', ...categoryPerRound('approach') },
+    { id: 'around-green', label: 'Around the green', ...categoryPerRound('around-green') },
+    // Real putts only: gimmes would count as holed against the tour and flatter the number.
+    { id: 'putting', label: 'Putting', perRound: puttingProfile.sgPer18, shots: puttingProfile.putts.length, href: '/game/putting' },
+  ]
+
+  const segments = [teeSegment, ...rungSegments, roughSegment, sandSegment, ...puttSegments].filter((s): s is Segment => s != null)
   const leaks = segments.filter((s) => s.perRound <= -LEAK_THRESHOLD).sort((a, b) => a.perRound - b.perRound).slice(0, 3)
   const strengths = segments.filter((s) => s.perRound >= LEAK_THRESHOLD).sort((a, b) => b.perRound - a.perRound).slice(0, 3)
 
@@ -245,6 +308,7 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     rounds: rounds.length,
     holes,
     courses: [...new Set(rounds.map((round) => round.courseName))],
+    categories,
     typical,
     leaks,
     strengths,
