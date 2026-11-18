@@ -118,7 +118,8 @@
 .putting-trend-dot { fill: var(--rounds-accent); stroke: var(--rounds-bg); stroke-width: 2; }
 
 /* The filters sit beside the chart, two to a row, so the right-hand column is used. */
-.putting-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); align-items: end; gap: 8px 10px; }
+/* An even grid, never one box left over: two across for four filters (three across once there are six). */
+.putting-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 8px 10px; }
 .putting-filters .putting-reset { justify-self: start; }
 .putting-filters label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
 .putting-filters label span { color: var(--rounds-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
