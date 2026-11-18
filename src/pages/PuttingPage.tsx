@@ -3,15 +3,18 @@ import type { RoundSummary } from '../lib/roundHistory'
 import {
   buildPuttingProfile,
   IDEAL_PAST_FT,
+  leaveSummary,
   MIN_PUTT_FT,
   MIN_PUTTS_FOR_LABEL,
   PUTT_LENGTH_BUCKETS,
+  PUTT_SKILLS,
   READ_PUTTS_NEEDED,
   summarizeLine,
   summarizePace,
+  summarizeRead,
   type ProfilePutt,
+  type PuttSkill,
   type PuttSlope,
-  type SkillKind,
   type SkillSummary,
 } from '../lib/puttingProfile'
 import './PuttingPage.css'
@@ -33,46 +36,41 @@ const feet = (value: number) => {
   return rest ? `${ft} ft ${rest} in.` : `${ft} ft`
 }
 
-const KIND_LABEL: Record<SkillKind, string> = {
-  collecting: 'Collecting',
-  strength: 'Strength',
-  habit: 'Good, with a habit',
-  'habit-scatter': 'Habit plus scatter',
-  scattered: 'Scattered',
-}
-
 const SLOPE_LABEL: Record<PuttSlope, string> = { up: 'Uphill', flat: 'Flat', down: 'Downhill' }
+const SKILL_LABEL: Record<PuttSkill, string> = { read: 'Read', pace: 'Pace', line: 'Line' }
+const SKILL_COLOR: Record<PuttSkill, string> = {
+  read: 'var(--putting-read)', pace: 'var(--putting-pace)', line: 'var(--putting-line)',
+}
 
-const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+const leanShort = (skill: SkillSummary) => {
+  if (skill.lean) return `${skill.lean.side} ${skill.lean.count} of ${skill.lean.of}`
+  if (skill.split && skill.split.aCount + skill.split.bCount >= 4) return 'no lean'
+  return 'too few to say'
+}
 
-const leanText = (skill: SkillSummary) => {
-  if (skill.lean) return `${capital(skill.lean.side)} ${skill.lean.count} times in ${skill.lean.of}`
-  if (skill.split && skill.split.aCount + skill.split.bCount >= 4) {
-    return `None: ${skill.split.a} ${skill.split.aCount}, ${skill.split.b} ${skill.split.bCount}`
+const sizeText = (id: PuttSkill, skill: SkillSummary) =>
+  skill.size == null ? 'Not enough yet'
+    : id === 'read' ? `${feet(skill.size)} off at the hole`
+      : id === 'pace' ? `${Math.round(skill.size * 100)}% of the length off`
+        : `${skill.size.toFixed(1)}° off your aim`
+
+const adviceFor = (id: PuttSkill, skill: SkillSummary) => {
+  if (skill.kind === 'collecting') return `Needs ${MIN_PUTTS_FOR_LABEL} putts to call; ${skill.putts} so far.`
+  if (id === 'read') {
+    if (skill.lean) return `Your aim leaves putts ${skill.lean.side} of the hole.`
+    return skill.kind === 'scattered' ? 'Your reads miss both ways.' : 'Your reads are close.'
   }
-  return 'Too few to say'
-}
-
-const paceSize = (skill: SkillSummary) => (skill.size != null ? `${Math.round(skill.size * 100)}% of the putt’s length` : 'Not enough yet')
-const lineSize = (skill: SkillSummary) => (skill.size != null ? `${skill.size.toFixed(1)}° off your aim` : 'Not enough yet')
-
-const paceAdvice = (skill: SkillSummary) => {
-  if (skill.kind === 'collecting') return `Needs ${MIN_PUTTS_FOR_LABEL} missed putts to say; ${skill.putts} so far.`
-  if (skill.lean?.side === 'short') return 'Get it to the hole first. A putt that stops short never had a chance.'
-  if (skill.lean?.side === 'long') return 'You run it well past. Less pace leaves a shorter one coming back.'
-  if (skill.kind === 'scattered') return 'Short as often as long. This is feel, not one fix: practise rolling to a distance.'
-  return 'Your distance control holds up.'
-}
-const lineAdvice = (skill: SkillSummary) => {
-  if (skill.kind === 'collecting') return `Needs ${MIN_PUTTS_FOR_LABEL} putts with a start direction; ${skill.putts} so far.`
-  if (skill.lean) return `You start it ${skill.lean.side} of where you aim. Check your set-up before changing your read.`
-  if (skill.kind === 'scattered') return 'The start direction wanders both ways. A gate drill tightens this.'
-  return 'Your stroke starts the ball where you point it.'
+  if (id === 'pace') {
+    if (skill.lean?.side === 'short') return 'Get it to the hole first.'
+    if (skill.lean?.side === 'long') return 'You run it past. Take some pace off.'
+    return skill.kind === 'scattered' ? 'Short as often as long: this is feel.' : 'Your distance control holds up.'
+  }
+  if (skill.lean) return `You start it ${skill.lean.side} of your aim. Check your set-up.`
+  return skill.kind === 'scattered' ? 'Your start line wanders both ways.' : 'You start it where you point it.'
 }
 
 type RoundWindow = 'last' | 'five' | 'all'
 
-const PACE_COLOR = { short: 'var(--putting-pace)', long: 'var(--putting-long)', good: 'var(--putting-sideways)' } as const
 
 /** Three rings that cover the furthest miss shown. */
 const ringStepFt = (misses: readonly ProfilePutt[]) => {
@@ -80,7 +78,7 @@ const ringStepFt = (misses: readonly ProfilePutt[]) => {
   return [0.5, 1, 2, 3, 5, 10].find((step) => step * 3 >= furthest) ?? 15
 }
 
-function CupChart({ misses }: { misses: readonly ProfilePutt[] }) {
+function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: number }) {
   const step = ringStepFt(misses)
   const scale = 70 / step
   return (
@@ -99,7 +97,8 @@ function CupChart({ misses }: { misses: readonly ProfilePutt[] }) {
           <text x="16" y="274">LEFT</text>
           <text textAnchor="end" x="544" y="274">RIGHT</text>
         </g>
-        <circle className="putting-cup-hole" cx="280" cy="280" r="14" />
+        <circle className="putting-cup-hole" cx="280" cy="280" r="24" />
+        <text className="putting-cup-holed" textAnchor="middle" x="280" y="287">{holed}</text>
         {misses.map((putt) => (
           <circle
             key={`${putt.roundId}-${putt.holeNumber}-${putt.number}`}
@@ -107,7 +106,7 @@ function CupChart({ misses }: { misses: readonly ProfilePutt[] }) {
             cx={280 + Math.max(-258, Math.min(258, (putt.lateralFt ?? 0) * scale))}
             cy={280 - Math.max(-258, Math.min(258, (putt.alongFt ?? 0) * scale))}
             r="8"
-            style={{ fill: PACE_COLOR[putt.pace === 'short' ? 'short' : putt.pace === 'long' ? 'long' : 'good'] }}
+            style={{ fill: putt.cause ? SKILL_COLOR[putt.cause] : 'var(--putting-unsplit)' }}
           >
             <title>{`${putt.courseName} hole ${putt.holeNumber}: ${Math.round(putt.lengthFt)} ft putt`}</title>
           </circle>
@@ -153,21 +152,33 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const shown = profile.putts.filter((putt) =>
     (slope === 'all' || putt.slope === slope) && (length === 'all' || putt.lengthBucket === length))
   const misses = shown.filter((putt) => !putt.holed && putt.alongFt != null && putt.lateralFt != null)
-  const shownPace = summarizePace(shown)
-  const shownLine = summarizeLine(shown)
   const holed = shown.filter((putt) => putt.holed).length
-  const short = misses.filter((putt) => putt.pace === 'short').length
-  const long = misses.filter((putt) => putt.pace === 'long').length
-  const sideways = misses.length - short - long
+  const missed = shown.length - holed
+  const byCause = PUTT_SKILLS.map((id) => ({ id, count: misses.filter((putt) => putt.cause === id).length }))
+  const unsplit = misses.filter((putt) => putt.cause == null).length
+  const topCause = [...byCause].sort((a, b) => b.count - a.count)[0]
+  const leaves = leaveSummary(shown)
+  const shownSkills: Record<PuttSkill, SkillSummary> = {
+    read: summarizeRead(shown), pace: summarizePace(shown), line: summarizeLine(shown),
+  }
+  const skills: Record<PuttSkill, SkillSummary> = { read: profile.read, pace: profile.pace, line: profile.line }
+  // Shown to one decimal: the last term takes up the rounding so the three add up to the total exactly.
+  const round1 = (value: number) => Math.round(value * 10) / 10
+  const shownStrokes: Record<PuttSkill, number> | null = profile.skillStrokes && profile.sgPer18 != null
+    ? (() => {
+        const read = round1(profile.skillStrokes.read)
+        const pace = round1(profile.skillStrokes.pace)
+        return { read, pace, line: round1(round1(profile.sgPer18) - read - pace) }
+      })()
+    : null
   const lastRound = everything.trend[everything.trend.length - 1] ?? null
   const lastPutts = lastRound ? everything.putts.filter((putt) => putt.roundId === lastRound.roundId) : []
   const hasSlope = profile.putts.some((putt) => putt.slope != null)
 
   const cupHeadline = misses.length === 0 ? 'No missed putts match.'
-    : misses.length < 4 ? `Only ${misses.length} here. Not enough to call a pattern yet.`
-      : short >= long && short >= sideways ? `Short is the most common miss here: ${short} of ${misses.length}.`
-        : long >= sideways ? `Too firm is the most common miss here: ${long} of ${misses.length}.`
-          : `Pace was fine on most of these: ${sideways} of ${misses.length} missed to the side.`
+    : misses.length < 4 ? `Only ${misses.length} misses here. Not enough to call a pattern yet.`
+      : topCause.count === 0 ? 'These misses could not be split by cause.'
+        : `${SKILL_LABEL[topCause.id]} is the main cause here: ${topCause.count} of ${misses.length} misses.`
 
   if (everything.putts.length === 0) {
     return (
@@ -189,58 +200,50 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     <main className="rounds-main putting">
       <header className="putting-header">
         <a className="putting-back" href="/rounds/game">Your game</a>
-        <span className="rounds-eyebrow">Putting</span>
-        <h1 className="rounds-display-title">
-          {profile.sgPer18 == null ? 'Your putting'
-            : profile.sgPer18 <= -0.05 ? `Putting costs you ${Math.abs(profile.sgPer18).toFixed(1)} strokes a round`
-              : profile.sgPer18 >= 0.05 ? `Putting gains you ${profile.sgPer18.toFixed(1)} strokes a round`
-                : 'Your putting is level with the benchmark'}
-        </h1>
+        <div className="putting-title-row">
+          <h1 className="rounds-display-title">Putting</h1>
+          <div aria-label="Rounds included" className="putting-pills" role="group">
+            {([['all', `All rounds (${everything.rounds})`], ['five', 'Last 5 rounds'], ['last', 'Last round']] as const).map(([id, label]) => (
+              <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="rounds-muted">
           {profile.putts.length} real putts across {profile.rounds} {profile.rounds === 1 ? 'round' : 'rounds'}, against
           the tour benchmark. Gimmes and auto putts are not counted.
         </p>
-        <div aria-label="Rounds included" className="putting-pills" role="group">
-          {([['last', 'Last round'], ['five', 'Last 5 rounds'], ['all', `All ${everything.rounds} rounds`]] as const).map(([id, label]) => (
-            <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
-              {label}
-            </button>
-          ))}
-        </div>
       </header>
 
-      <section className="rounds-section">
-        <div className="rounds-section-head"><h2>Three skills</h2><span className="rounds-muted">Size is your typical miss. Lean is which way it goes.</span></div>
-        <div className="putting-skills">
-          <article className="putting-skill" data-skill="read">
-            <header><b>Read</b><span>Collecting</span></header>
-            <p className="putting-skill-question">Did you play the right amount of break?</p>
-            <div className="rounds-progress" aria-hidden="true"><div style={{ width: `${Math.min(100, (profile.readPutts / READ_PUTTS_NEEDED) * 100)}%` }} /></div>
-            <p className="rounds-muted">
-              {profile.readPutts} of {READ_PUTTS_NEEDED} putts. Read needs where you aimed and how the putt rolled,
-              which Looper records from now on. Break size and the strokes each skill costs arrive with it.
-            </p>
-          </article>
-          <article className="putting-skill" data-skill="pace">
-            <header><b>Pace</b><span>{KIND_LABEL[profile.pace.kind]}</span></header>
-            <p className="putting-skill-question">Did you hit it the right distance?</p>
-            <dl>
-              <div><dt>Typical miss</dt><dd>{paceSize(profile.pace)}</dd></div>
-              <div><dt>Lean</dt><dd>{leanText(profile.pace)}</dd></div>
-            </dl>
-            <p className="putting-skill-advice">{paceAdvice(profile.pace)}</p>
-          </article>
-          <article className="putting-skill" data-skill="line">
-            <header><b>Line</b><span>{KIND_LABEL[profile.line.kind]}</span></header>
-            <p className="putting-skill-question">Did it start where you aimed?</p>
-            <dl>
-              <div><dt>Typical miss</dt><dd>{lineSize(profile.line)}</dd></div>
-              <div><dt>Lean</dt><dd>{leanText(profile.line)}</dd></div>
-            </dl>
-            <p className="putting-skill-advice">{lineAdvice(profile.line)}</p>
-          </article>
+      <section className="putting-equation" aria-label="Strokes gained putting, and how it splits by skill">
+        <div className="putting-total">
+          <strong className={tone(profile.sgPer18)}>{profile.sgPer18 != null ? signed(profile.sgPer18, 1) : '–'}</strong>
+          <span>strokes a round, putting</span>
         </div>
+        {PUTT_SKILLS.map((id, index) => (
+          <div key={id} className="putting-term" data-skill={id}>
+            <i aria-hidden="true">{index === 0 ? '=' : '+'}</i>
+            <div>
+              <b>{SKILL_LABEL[id]}</b>
+              <strong>
+                {shownStrokes ? signed(shownStrokes[id], 1)
+                  : profile.skillShare ? `${Math.round(profile.skillShare[id] * 100)}%`
+                    : '–'}
+              </strong>
+              <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
+              <em>{adviceFor(id, skills[id])}</em>
+            </div>
+          </div>
+        ))}
       </section>
+      <p className="putting-note putting-note-wide">
+        {profile.skillStrokes ? 'The three add up to the total. ' : profile.skillShare ? 'You are not losing strokes putting, so the split shows each skill’s share of what your misses cost. ' : ''}
+        The split is an early estimate from {profile.attributedPutts} missed {profile.attributedPutts === 1 ? 'putt' : 'putts'}: each
+        miss is replayed with the read, the pace or the start line put right, and each is credited with what that would have saved.
+        Read is worked out from where the ball finished; it sharpens once {READ_PUTTS_NEEDED} putts carry your aim and roll
+        ({profile.readPutts} so far), and break size arrives with it.
+      </p>
 
       <section className="rounds-section">
         <div className="rounds-section-head"><h2>Trend</h2><span className="rounds-muted">Strokes gained putting per round, three rounds at a time.</span></div>
@@ -275,26 +278,39 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             <select disabled value="all"><option value="all">Arrives with Read</option></select>
           </label>
           {(slope !== 'all' || length !== 'all') ? (
-            <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all') }} type="button">Show all</button>
+            <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all') }} type="button">Clear filters</button>
           ) : null}
         </div>
         <div className="putting-hero">
-          <CupChart misses={misses} />
+          <CupChart holed={holed} misses={misses} />
           <div className="putting-hero-side">
+            <div className="putting-makemiss">
+              <div><strong className="is-gain">{holed}</strong><span>holed</span></div>
+              <div><strong>{missed}</strong><span>missed</span></div>
+            </div>
+            <div aria-hidden="true" className="putting-makemiss-bar">
+              <div style={{ width: `${shown.length ? (holed / shown.length) * 100 : 0}%` }} />
+            </div>
             <h3>{cupHeadline}</h3>
-            <p className="rounds-muted">{shown.length} putts · {holed} holed · {misses.length} misses drawn</p>
             <ul className="putting-legend">
-              <li><i style={{ background: PACE_COLOR.short }} />Short of the hole<b>{short}</b></li>
-              <li><i style={{ background: PACE_COLOR.long }} />More than 3 ft past<b>{long}</b></li>
-              <li><i style={{ background: PACE_COLOR.good }} />Good pace, missed to the side<b>{sideways}</b></li>
+              {byCause.map(({ id, count }) => (
+                <li key={id}>
+                  <i style={{ background: SKILL_COLOR[id] }} />
+                  <span><b>{SKILL_LABEL[id]}</b> {sizeText(id, shownSkills[id]).toLowerCase()} · {leanShort(shownSkills[id])}</span>
+                  <b>{count}</b>
+                </li>
+              ))}
+              {unsplit ? <li><i style={{ background: 'var(--putting-unsplit)' }} /><span>No start direction recorded</span><b>{unsplit}</b></li> : null}
             </ul>
-            <dl className="putting-hero-stats">
-              <div><dt>Pace</dt><dd>{paceSize(shownPace)}. Lean: {leanText(shownPace).toLowerCase()}.</dd></div>
-              <div><dt>Line</dt><dd>{lineSize(shownLine)}. Lean: {leanText(shownLine).toLowerCase()}.</dd></div>
-            </dl>
+            {leaves.firsts ? (
+              <p className="putting-leaves">
+                First putts left inside 3 ft: <b>{leaves.inside3} of {leaves.firsts}</b>. Inside the 5 ft gimme
+                circle: <b>{leaves.inside5} of {leaves.firsts}</b>.
+              </p>
+            ) : null}
             <p className="putting-note">
-              Each dot is one missed putt, drawn where it stopped. The rings widen for longer putts. Dots will be
-              turned to low side and high side, and coloured by cause, once Read has enough putts.
+              The number in the hole is putts holed. Each dot is a miss, drawn where it stopped and coloured by its
+              main cause. The rings widen for longer putts.
             </p>
           </div>
         </div>
@@ -312,7 +328,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                 <tr><th scope="row">Putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts || '–'}</td>)}</tr>
                 <tr><th scope="row">Made</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts ? `${row.made} of ${row.putts}` : '–'}</td>)}</tr>
                 <tr><th scope="row">Pace</th>{profile.slopes.map((row) => (
-                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${Math.round(row.pace.size * 100)}% off · ${leanText(row.pace).toLowerCase()}` : 'Not enough yet'}</td>
+                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${Math.round(row.pace.size * 100)}% off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
                 ))}</tr>
                 <tr><th scope="row">Line</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.line.size != null && row.line.putts >= 4 ? `${row.line.size.toFixed(1)}° off` : 'Not enough yet'}</td>
@@ -367,6 +383,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                   <th scope="col">Slope</th>
                   <th scope="col">Start line</th>
                   <th scope="col">Finished</th>
+                  <th scope="col">Main cause</th>
                   <th className="is-num" scope="col">SG</th>
                 </tr>
               </thead>
@@ -382,6 +399,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <td>{putt.holed ? 'Holed'
                       : putt.alongFt == null || putt.lateralFt == null ? `${feet(putt.leaveFt)} left`
                         : `${feet(putt.alongFt)} ${putt.alongFt < 0 ? 'short' : 'past'}, ${feet(putt.lateralFt)} ${putt.lateralFt < 0 ? 'left' : 'right'}`}</td>
+                    <td style={putt.cause ? { color: SKILL_COLOR[putt.cause] } : undefined}>{putt.holed ? 'Holed' : putt.cause ? SKILL_LABEL[putt.cause] : '–'}</td>
                     <td className={`is-num ${tone(putt.sg)}`}>{putt.sg != null ? signed(putt.sg) : '–'}</td>
                   </tr>
                 ))}

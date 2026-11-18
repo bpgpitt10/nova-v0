@@ -191,10 +191,11 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section">
               <div className="rounds-section-head">
                 <h2>Putting by length</h2>
-                <a className="yourgame-putting-link" href="/rounds/putting">See your putting: pace, line and where your misses finish →</a>
+                <a className="yourgame-putting-link" href="/rounds/putting">Putting deep dive →</a>
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
+                  Read, Pace and Line show your typical miss at each length.
                 </span>
               </div>
               <div className="yourgame-scroll">
@@ -204,7 +205,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <th scope="col">Length</th>
                     <th className="is-num" scope="col">Made</th>
                     <th className="is-num" scope="col">SG / putt</th>
-                    <th scope="col">Note</th>
+                    <th className="is-num" scope="col">Read</th>
+                    <th className="is-num" scope="col">Pace</th>
+                    <th className="is-num" scope="col">Line</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -213,7 +216,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                       <td><strong>{bucket.label}</strong></td>
                       <td className="is-num">{bucket.putts ? `${bucket.made} of ${bucket.putts}` : '–'}</td>
                       <td className={`is-num ${tone(bucket.sgPerPutt)}`}>{bucket.sgPerPutt != null ? signed(bucket.sgPerPutt) : '–'}</td>
-                      <td className="rounds-muted">{bucket.note}</td>
+                      <td className="is-num">{bucket.readFt != null ? `${Math.round(bucket.readFt * 12)} in.` : '–'}</td>
+                      <td className="is-num">{bucket.pacePct != null ? `${Math.round(bucket.pacePct * 100)}%` : '–'}</td>
+                      <td className="is-num">{bucket.lineDeg != null ? `${bucket.lineDeg.toFixed(1)}°` : '–'}</td>
                     </tr>
                   ))}
                 </tbody>
