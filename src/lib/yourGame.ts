@@ -1,4 +1,5 @@
 import { scoredShots, type RoundShot, type RoundSummary } from './roundHistory'
+import { profilePutts, summarizeLine, summarizePace, summarizeRead } from './puttingProfile'
 
 /**
  * "Your game": where you lose strokes, across every scored round.
@@ -55,6 +56,10 @@ export type PuttBucket = Readonly<{
   made: number
   sgPerPutt: number | null
   note: string
+  /** Typical miss per skill at this length (null under three putts): read in feet at the hole, pace as a share of the length, line in degrees. */
+  readFt: number | null
+  pacePct: number | null
+  lineDeg: number | null
 }>
 
 export type VsNormalRow = Readonly<{
@@ -178,7 +183,10 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
     ['25–35 ft', 25, 35], ['35–50 ft', 35, 50], ['50 ft +', 50, null],
   ]
   const gimmes = rounds.filter((round) => !round.autoPutt).flatMap(shotsOf).filter((shot) => shot.isPutt && shot.conceded).length
+  const skillPutts = rounds.flatMap(profilePutts)
+  const typicalMiss = (summary: { putts: number; size: number | null }) => (summary.putts >= 3 ? summary.size : null)
   const putting: PuttBucket[] = PUTT_BUCKETS.map(([label, from, to]) => {
+    const forSkills = skillPutts.filter((putt) => putt.lengthFt >= from && (to == null || putt.lengthFt < to))
     const inBucket = putts.filter((shot) => {
       const ft = (shot.startYds ?? 0) * 3
       return ft >= from && (to == null || ft < to)
@@ -196,6 +204,9 @@ export const buildYourGame = (allRounds: readonly RoundSummary[]): YourGame => {
       label, putts: inBucket.length, made,
       sgPerPutt: mean(inBucket.map((shot) => shot.sg as number)),
       note,
+      readFt: typicalMiss(summarizeRead(forSkills)),
+      pacePct: typicalMiss(summarizePace(forSkills)),
+      lineDeg: typicalMiss(summarizeLine(forSkills)),
     }
   })
 

@@ -81,6 +81,38 @@ try {
     assert.equal(pushes.kind, 'habit')
   }
 
+  // 5b. Splitting one miss between read, pace and line. The three always add up to what the miss cost.
+  {
+    const { attributeMiss } = profileLib
+    const near = (a, b) => Math.abs(a - b) < 1e-9
+    const total = (c) => c.read + c.pace + c.line
+    const benchmark = (ft) => history.tourExpectedStrokes('green', ft / 3)
+    // Dead on line, two feet short: all pace.
+    const short = attributeMiss(20, 0, -2, 0).costs
+    assert.ok(near(short.read, 0) && near(short.line, 0), 'a putt on line and short is not a read or line miss')
+    assert.ok(near(short.pace, benchmark(2)))
+    // A foot right at perfect pace, and the start direction explains all of it: all line.
+    const pushedDeg = (Math.atan(1 / 20) * 180) / Math.PI
+    const pushed = attributeMiss(20, 1, 1, pushedDeg)
+    assert.ok(near(pushed.readLateralFt, 0))
+    assert.ok(near(pushed.costs.read, 0) && near(pushed.costs.pace, 0) && near(pushed.costs.line, benchmark(Math.hypot(1, 1))))
+    // Same finish, started dead on the aim: all read.
+    const misread = attributeMiss(20, 1, 1, 0).costs
+    assert.ok(near(misread.line, 0) && near(misread.pace, 0) && misread.read > 1)
+    // A mixed miss: shares are all positive and add up to the cost.
+    const mixed = attributeMiss(30, 1.5, -3, 1).costs
+    assert.ok(mixed.read > 0 && mixed.pace > 0 && mixed.line > 0)
+    assert.ok(near(total(mixed), benchmark(Math.hypot(1.5, 3))))
+    // A pull that rescued a bad read: fixing the line alone makes it worse, so line can come out negative, and it still adds up.
+    const cancelling = attributeMiss(20, 0.5, 1, -2).costs
+    assert.ok(near(total(cancelling), benchmark(Math.hypot(0.5, 1))))
+    // In a round: the miss gets a cause, and with putting losing strokes the three strokes add up to the total.
+    const built = buildPuttingProfile([round([putt(3, { end: { x: 0.05, y: 0, z: 9 }, startDirectionDeg: 0.2 })])])
+    assert.equal(built.putts[0].cause, 'pace')
+    assert.ok(built.skillShare && near(built.skillShare.read + built.skillShare.pace + built.skillShare.line, 1))
+    assert.ok(built.skillStrokes && near(built.skillStrokes.read + built.skillStrokes.pace + built.skillStrokes.line, built.sgPer18))
+  }
+
   // 6. The Old Game (round 268): real putts only, every one of them 5 ft or longer.
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/round-history/rounds-268-269.json', import.meta.url), 'utf8'))
   const index = Object.fromEntries(fixture.columns.map((name, i) => [name, i]))
@@ -105,6 +137,8 @@ try {
   assert.ok(profile.gimmes >= 10, `gimmes left out: ${profile.gimmes}`)
   assert.ok(profile.sgPer18 != null && Math.abs(profile.sgPer18) < 15)
   assert.equal(profile.readPutts, 0, 'old rounds carry no aim')
+  assert.equal(profile.attributedPutts, 0, 'this fixture has no start directions, so nothing is split')
+  assert.equal(profile.skillShare, null)
   // Misses are measured against where the gimme went in.
   const measured = profile.putts.filter((p) => !p.holed && p.alongFt != null)
   assert.ok(measured.length >= 8, `misses with a finish: ${measured.length}`)

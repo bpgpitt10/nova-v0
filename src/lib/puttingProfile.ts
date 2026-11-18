@@ -1,12 +1,18 @@
-import { scoredShots, type RoundSummary, type WorldPoint } from './roundHistory'
+import { scoredShots, tourExpectedStrokes, type RoundSummary, type WorldPoint } from './roundHistory'
 
 /**
  * The putting profile: every real putt split into the skills behind it.
  *
- *   Read  where the aim was placed (needs the aim and roll path: captured from
- *         PR #179 on, so it fills in as new putts arrive)
+ *   Read  where the aim was placed. Estimated for now as the sideways miss left
+ *         once the start-line error is taken out; exact once putts carry the
+ *         aim and roll path (captured from PR #179 on)
  *   Line  did the ball start where it was aimed (launch monitor start direction)
  *   Pace  did it travel the right distance (where it stopped against the cup)
+ *
+ * Strokes by skill: each miss is replayed with one, two or all three errors
+ * removed, and each skill is credited with what its fix saves (shared effects
+ * split evenly). A first-order estimate: a putt hit at a different pace would
+ * also have broken differently, which this ignores.
  *
  * No plain averages: opposite misses cancel. Each skill gets a size (typical
  * miss, ignoring direction) and a lean (which way, only when lopsided).
@@ -32,6 +38,14 @@ export const MIN_PUTTS_FOR_LABEL = 12
 /** Putts with aim and roll path before Read is shown. */
 export const READ_PUTTS_NEEDED = 60
 const M_TO_FT = 3.280839895
+/** Half the hole: a putt this close to the centre line, with the pace to get there, goes in. */
+const CUP_RADIUS_FT = 2.125 / 12
+/** Arriving with more than this much roll left, the ball does not drop. */
+const MAX_HOLING_PAST_FT = 4
+
+export type PuttSkill = 'read' | 'pace' | 'line'
+export const PUTT_SKILLS: readonly PuttSkill[] = ['read', 'pace', 'line']
+export type SkillCosts = Readonly<Record<PuttSkill, number>>
 
 export const PUTT_LENGTH_BUCKETS: ReadonlyArray<readonly [string, string, number, number | null]> = [
   ['5-10', '5–10 ft', 5, 10], ['10-15', '10–15 ft', 10, 15], ['15-25', '15–25 ft', 15, 25],
@@ -65,6 +79,12 @@ export type ProfilePutt = Readonly<{
   ballSpeedMph: number | null
   /** The aim was captured, so this putt can be graded for Read once that ships. */
   hasAim: boolean
+  /** Sideways miss at the hole that came from the aim (not the start line), feet; right is positive. */
+  readLateralFt: number | null
+  /** Strokes each skill cost on this putt (null when it can't be split: holed, or no start direction). */
+  costs: SkillCosts | null
+  /** The skill that cost the most on this putt. */
+  cause: PuttSkill | null
   /** First putt on the hole. */
   first: boolean
   /** Putts taken on the hole, gimmes included. */
@@ -112,8 +132,15 @@ export type PuttingProfile = Readonly<{
   putts: readonly ProfilePutt[]
   /** Strokes gained putting per 18 holes against the tour benchmark (negative = lost). */
   sgPer18: number | null
+  read: SkillSummary
   pace: SkillSummary
   line: SkillSummary
+  /** How the cost of the misses splits between the skills (sums to 1); null with nothing to split. */
+  skillShare: SkillCosts | null
+  /** sgPer18 split by skillShare, when putting is losing strokes. */
+  skillStrokes: SkillCosts | null
+  /** Misses the split is built on. */
+  attributedPutts: number
   /** Putts that carry an aim, toward READ_PUTTS_NEEDED. */
   readPutts: number
   lengths: readonly LengthRow[]
@@ -195,6 +222,60 @@ export const summarizeLine = (putts: readonly ProfilePutt[]): SkillSummary => {
   return { putts: known.length, size, lean, split, kind: kindOf(known.length, size, lean, 1) }
 }
 
+/** Read: misses with a start direction. Size is how far the aim alone sent the ball from the hole, feet. */
+export const summarizeRead = (putts: readonly ProfilePutt[]): SkillSummary => {
+  const known = putts.filter((putt) => !putt.holed && putt.readLateralFt != null)
+  const size = median(known.map((putt) => Math.abs(putt.readLateralFt as number)))
+  const left = known.filter((putt) => (putt.readLateralFt as number) < -CUP_RADIUS_FT).length
+  const right = known.filter((putt) => (putt.readLateralFt as number) > CUP_RADIUS_FT).length
+  const { lean, split } = leanOf('left', left, 'right', right)
+  return { putts: known.length, size, lean, split, kind: kindOf(known.length, size, lean, 0.5) }
+}
+
+/** Strokes still to play from a finish against the cup: 0 when it drops. */
+const strokesFrom = (lateralFt: number, alongFt: number) =>
+  Math.abs(lateralFt) <= CUP_RADIUS_FT && alongFt >= 0 && alongFt <= MAX_HOLING_PAST_FT
+    ? 0
+    : tourExpectedStrokes('green', Math.hypot(lateralFt, alongFt) / 3)
+
+/**
+ * What each skill cost on one missed putt. The sideways miss is the start-line
+ * error carried to the hole plus whatever the aim was off by; the pace error is
+ * the distance from an ideal finish. Each skill gets its average saving over
+ * every order of fixing the three.
+ */
+export const attributeMiss = (lengthFt: number, lateralFt: number, alongFt: number, startDirectionDeg: number) => {
+  const lineLateral = lengthFt * Math.tan((startDirectionDeg * Math.PI) / 180)
+  const readLateral = lateralFt - lineLateral
+  const cost = (fix: Readonly<Record<PuttSkill, boolean>>) =>
+    strokesFrom(lateralFt - (fix.line ? lineLateral : 0) - (fix.read ? readLateral : 0), fix.pace ? IDEAL_PAST_FT : alongFt)
+  const fixing = (...skills: PuttSkill[]): Record<PuttSkill, boolean> =>
+    ({ read: skills.includes('read'), pace: skills.includes('pace'), line: skills.includes('line') })
+  const costs: Record<PuttSkill, number> = { read: 0, pace: 0, line: 0 }
+  for (const skill of PUTT_SKILLS) {
+    const others = PUTT_SKILLS.filter((other) => other !== skill)
+    const a = others[0]
+    const b = others[1]
+    // Saving from fixing `skill` when 0, 1 or 2 of the others are already fixed (weights 1/3, 1/6, 1/6, 1/3).
+    const saving = (...already: PuttSkill[]) => cost(fixing(...already)) - cost(fixing(...already, skill))
+    costs[skill] = saving() / 3 + saving(a) / 6 + saving(b) / 6 + saving(a, b) / 3
+  }
+  return { costs, readLateralFt: readLateral }
+}
+
+const causeOf = (costs: SkillCosts | null): PuttSkill | null =>
+  costs ? [...PUTT_SKILLS].sort((x, y) => costs[y] - costs[x])[0] : null
+
+/** First putts left inside tap-in range (3 ft: good anywhere) and inside the sim's gimme circle (5 ft). */
+export const leaveSummary = (putts: readonly ProfilePutt[]) => {
+  const firsts = putts.filter((putt) => putt.first)
+  return {
+    firsts: firsts.length,
+    inside3: firsts.filter((putt) => putt.leaveFt <= 3).length,
+    inside5: firsts.filter((putt) => putt.leaveFt <= 5).length,
+  }
+}
+
 const threePuttsIn = (putts: readonly ProfilePutt[]) => putts.filter((putt) => putt.first && putt.holePutts >= 3).length
 
 /** Real putts from one round: 5 ft and out, no gimmes, believable speed. Auto-putt rounds give none. */
@@ -219,6 +300,9 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
       const cupSurfaceY = shot.cup ? shot.cup.y + CUP_DEPTH_M : null
       const riseIn = cupSurfaceY != null && shot.start && trusted ? (cupSurfaceY - shot.start.y) * M_TO_FT * 12 : null
       const grade = riseIn != null ? riseIn / 12 / lengthFt : null
+      const split = !shot.holed && alongFt != null && lateralFt != null && shot.startDirectionDeg != null
+        ? attributeMiss(lengthFt, lateralFt, alongFt, shot.startDirectionDeg)
+        : null
       return [{
         roundId: round.roundId,
         courseName: round.courseName,
@@ -238,6 +322,9 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
         startDirectionDeg: shot.startDirectionDeg,
         ballSpeedMph: shot.ballSpeedMph,
         hasAim: shot.aimDirectionDeg != null,
+        readLateralFt: split?.readLateralFt ?? null,
+        costs: split?.costs ?? null,
+        cause: causeOf(split?.costs ?? null),
         first: shot.number === firstNumber,
         holePutts: holePutts.length,
       }]
@@ -290,15 +377,31 @@ export const buildPuttingProfile = (allRounds: readonly RoundSummary[]): Putting
     return { ...point, rolling: window.reduce((sum, p) => sum + p.sgPer18, 0) / window.length }
   })
 
+  // How the cost of the misses splits. A skill whose fixes would not have helped overall counts as zero.
+  const attributed = putts.filter((putt) => putt.costs != null)
+  const totals = PUTT_SKILLS.map((skill) => Math.max(0, attributed.reduce((sum, putt) => sum + (putt.costs as SkillCosts)[skill], 0)))
+  const totalCost = totals.reduce((sum, value) => sum + value, 0)
+  const sgPer18 = holes > 0 && putts.length > 0 ? (sgTotal / holes) * 18 : null
+  const skillShare: SkillCosts | null = totalCost > 0
+    ? { read: totals[0] / totalCost, pace: totals[1] / totalCost, line: totals[2] / totalCost }
+    : null
+  const skillStrokes: SkillCosts | null = skillShare && sgPer18 != null && sgPer18 < 0
+    ? { read: sgPer18 * skillShare.read, pace: sgPer18 * skillShare.pace, line: sgPer18 * skillShare.line }
+    : null
+
   const gimmes = rounds.flatMap(scoredShots).filter((shot) => shot.isPutt && shot.conceded).length
 
   return {
     rounds: byRound.length,
     holes,
     putts,
-    sgPer18: holes > 0 && putts.length > 0 ? (sgTotal / holes) * 18 : null,
+    sgPer18,
+    read: summarizeRead(putts),
     pace: summarizePace(putts),
     line: summarizeLine(putts),
+    skillShare,
+    skillStrokes,
+    attributedPutts: attributed.length,
     readPutts: putts.filter((putt) => putt.hasAim).length,
     lengths,
     slopes,
