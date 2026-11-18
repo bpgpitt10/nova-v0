@@ -18,6 +18,11 @@ type LiveDecisionDetailsProps = {
   ball: CoursePointYds
   target: CoursePointYds
   onInspectAim: (aimOffsetYds: number) => void
+  /** Tapping a club in the comparison looks at that club, like tapping it in the club strip. */
+  onPickClub: (club: string) => void
+  /** The armed club and, when it is the club on screen, the armed aim line. */
+  armedClub: string | null
+  armedAimOffsetYds: number | null
 }
 
 const pct = (value: number | null | undefined) => {
@@ -153,6 +158,9 @@ export default function LiveDecisionDetails({
   ball,
   target,
   onInspectAim,
+  onPickClub,
+  armedClub,
+  armedAimOffsetYds,
 }: LiveDecisionDetailsProps) {
   const rankedClubs = useMemo(
     () => [...evaluations]
@@ -240,13 +248,27 @@ export default function LiveDecisionDetails({
                   const adjusted = adjustedStrokesFor(evaluation, candidate)
                   const isRecommended = evaluation === recommendation
                   const screened = evaluation.withinCatastropheGuardrail === false
+                  const isViewedClub = evaluation === viewedEvaluation
+                  const isArmedClub = armedClub != null && evaluation.club === armedClub
                   return (
                     <tr
                       key={evaluation.club}
-                      className={`${isRecommended ? 'recommended ' : ''}${screened ? 'screened' : ''}`}
+                      className={`${isViewedClub ? 'viewed ' : ''}${isArmedClub ? 'armed ' : ''}${isRecommended ? 'recommended ' : ''}${screened ? 'screened' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Look at ${evaluation.club}`}
+                      aria-pressed={isViewedClub}
+                      onClick={() => onPickClub(evaluation.club)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onPickClub(evaluation.club)
+                        }
+                      }}
                     >
                       <td>
                         <strong>{evaluation.club}</strong>
+                        {isArmedClub ? <small className="armed-tag">ARMED</small> : null}
                         {isRecommended ? <small>REC</small> : screened ? <small>SCREENED</small> : null}
                       </td>
                       <td className="numeric strong">{formatYards(evaluation.modeledTotalYds)}</td>
@@ -319,6 +341,7 @@ export default function LiveDecisionDetails({
                     const isBest = candidate === viewedEvaluation.bestCandidate
                     const isViewed = candidate === inspectedCandidate || (!inspectedCandidate && isBest)
                     const screened = candidate.withinCatastropheGuardrail === false
+                    const isArmedLine = armedAimOffsetYds != null && candidate.aimOffsetYds === armedAimOffsetYds
                     const fairwayOrGreen = surfaceProbability(candidate, ['fairway', 'green', 'tee'])
                     const rough = surfaceProbability(candidate, ['rough'])
                     const bunker = surfaceProbability(candidate, ['bunker'])
@@ -328,7 +351,7 @@ export default function LiveDecisionDetails({
                     return (
                       <tr
                         key={candidate.aimOffsetYds}
-                        className={`${isViewed ? 'viewed ' : ''}${isBest ? 'recommended ' : ''}${screened ? 'screened' : ''}`}
+                        className={`${isViewed ? 'viewed ' : ''}${isArmedLine ? 'armed ' : ''}${isBest ? 'recommended ' : ''}${screened ? 'screened' : ''}`}
                         role="button"
                         tabIndex={0}
                         aria-label={`Preview ${aimLabel(candidate.aimOffsetYds)} aim line`}
@@ -342,6 +365,7 @@ export default function LiveDecisionDetails({
                       >
                         <td>
                           <strong>{aimLabel(candidate.aimOffsetYds)}</strong>
+                          {isArmedLine ? <small className="armed-tag">ARMED</small> : null}
                           {isBest ? <small>BEST LINE</small> : screened ? <small>SCREENED</small> : null}
                         </td>
                         <td className="numeric">{signedYards(viewedEvaluation.elevationCarryDeltaYds)}</td>
