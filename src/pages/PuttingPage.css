@@ -116,7 +116,9 @@
 .putting-trend-line { fill: none; stroke: var(--rounds-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .putting-trend-dot { fill: var(--rounds-accent); stroke: var(--rounds-bg); stroke-width: 2; }
 
-.putting-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+/* The filters sit beside the chart, two to a row, so the right-hand column is used. */
+.putting-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px; }
+.putting-filters .putting-reset { justify-self: start; }
 .putting-filters label { display: flex; flex-direction: column; gap: 5px; }
 .putting-filters label span { color: var(--rounds-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .putting-filters select,
@@ -131,7 +133,7 @@
   font: inherit;
   font-size: 14px;
 }
-.putting-filters select { min-width: 170px; }
+.putting-filters select { width: 100%; min-width: 0; }
 .putting-filters select:disabled { color: var(--rounds-muted); }
 .putting-reset { background: transparent; color: var(--rounds-accent); border-color: transparent; padding: 0 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
@@ -142,12 +144,12 @@
 .putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
 .putting-cup-scale text { fill: var(--rounds-muted); font-size: 13px; }
 .putting-cup-sides text { fill: var(--rounds-secondary); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
-/* A pale disc so the hole reads at a glance against the dark page. */
-.putting-cup-hole { fill: rgba(240, 246, 240, 0.94); stroke: #ffffff; stroke-width: 2; }
-.putting-cup-holed { fill: #14532d; font-size: 22px; font-weight: 800; }
+/* A faint disc: enough to find the hole, not a spotlight. */
+.putting-cup-hole { fill: rgba(255, 255, 255, 0.1); stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.5; }
+.putting-cup-holed { fill: #86efac; font-size: 22px; font-weight: 700; }
 .putting-cup-dot { stroke: rgba(11, 20, 14, 0.7); }
 
-.putting-hero-side { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.putting-hero-side { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .putting-hero-side h3 { margin: 4px 0 0; font-size: 20px; line-height: 1.3; font-weight: 600; }
 .putting-hero-side p { margin: 0; }
 .putting-makemiss { display: flex; gap: 28px; }
@@ -168,9 +170,9 @@
 .putting-leaves { color: var(--rounds-secondary); font-size: 14px; line-height: 1.5; }
 .putting-leaves b { color: var(--rounds-text); }
 
-/* Table headers in the gold used across the Rounds pages, so rows and columns are easy to find. */
-.putting .rounds-table thead th { color: var(--rounds-gold); }
-.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-gold); font-weight: 700; }
+/* Tables stay in the page's own whites. Gold is for section titles only; Read, Pace and Line keep their colours. */
+.putting .rounds-section-head h2 { color: var(--rounds-gold); }
+.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-secondary); font-weight: 600; }
 .putting .rounds-table th[data-skill='read'] { color: var(--putting-read); }
 .putting .rounds-table th[data-skill='pace'] { color: var(--putting-pace); }
 .putting .rounds-table th[data-skill='line'] { color: var(--putting-line); }
@@ -196,7 +198,7 @@
 .putting-pct { margin-left: 4px; color: rgba(134, 239, 172, 0.6); font-size: 0.82em; font-variant-numeric: tabular-nums; }
 
 /* One small picture per skill, under its number in the equation. */
-.putting-mini { display: block; width: 100%; max-width: 340px; height: auto; margin: 6px 0 2px; }
+.putting-mini { display: block; width: 100%; max-width: 340px; height: auto; margin: 4px 0 2px; }
 .putting-mini-axis { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; }
 .putting-mini-aim { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; stroke-dasharray: 3 5; }
 .putting-mini-zone { fill: rgba(134, 239, 172, 0.2); }
