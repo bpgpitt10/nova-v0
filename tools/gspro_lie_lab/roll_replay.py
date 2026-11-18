@@ -380,11 +380,23 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
     return row
 
 
-def wait_for_new_record(round_file: Path, previous_id: Any, timeout_s: float, sleep=time.sleep) -> dict[str, Any] | None:
+def record_fingerprint(record: dict[str, Any] | None) -> str | None:
+    """What makes one recorded shot different from the last.
+
+    Not just the ShotID: in practice modes GSPro can rewrite the same record for
+    every shot (18 Nov: only the first putt of a set was seen as new).
+    """
+    if not record:
+        return None
+    return json.dumps([record.get("ShotID"), record.get("GlobalShotNumber"), record.get("StartingPOS"),
+                       record.get("EndingPOS"), record.get("BallSpeed"), record.get("TotalDistance")], sort_keys=True, default=str)
+
+
+def wait_for_new_record(round_file: Path, previous: str | None, timeout_s: float, sleep=time.sleep) -> dict[str, Any] | None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         latest = newest_round_record(round_file)
-        if latest and latest.get("ShotID") != previous_id:
+        if latest and record_fingerprint(latest) != previous:
             return latest
         sleep(0.25)
     return None
@@ -496,12 +508,9 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
                     break
             except EOFError:
                 break
-        if test in ("green", "putt"):
-            before_record = newest_round_record(round_file)
-            before_id: Any = before_record.get("ShotID") if before_record else None
-        else:
-            before_row = latest_row_safely(db_path)
-            before_id = before_row[0] if before_row else None
+        before_record = record_fingerprint(newest_round_record(round_file)) if test in ("green", "putt") else None
+        before_row = latest_row_safely(db_path)
+        before_id = before_row[0] if before_row else None
         shot = {"speed": stock["speed"], "vla": stock["vla"], "hla": stock.get("hla", 0.0), "spin": stock["spin"], "axis": 0.0}
         sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
         try:
@@ -514,9 +523,15 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
             print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
             sleep(NO_STOP_SIGNAL_WAIT_S)
         if test == "putt":
-            measured = measure_putt(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
+            measured = measure_putt(wait_for_new_record(round_file, before_record, record_wait, sleep=sleep))
+            if measured.get("putt_roll_ft") is None:
+                # Practice greens list putts in GSPro's shot table instead (total distance, in yards).
+                found = wait_for_new_row(db_path, before_id, 2.0, sleep=sleep)
+                total = _num(found[1].get("TotalDistance")) if found else None
+                if found and total is not None:
+                    measured = {"row_id": found[0], "putt_roll_ft": round(total * 3.0, 2), "gspro_speed_mph": _num(found[1].get("BallSpeed"))}
         elif test == "green":
-            measured = measure_landing(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
+            measured = measure_landing(wait_for_new_record(round_file, before_record, record_wait, sleep=sleep))
         else:
             found = wait_for_new_row(db_path, before_id, record_wait, sleep=sleep)
             measured = {"row_id": found[0], **measure(found[1])} if found else {}
@@ -533,7 +548,8 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
                 print(f"  {index:>3}/{len(shots)}  {club:<7} not recorded by GSPro   [{status}]")
             else:
                 holed = "  (HOLED: roll cut short, not usable)" if row.get("holed") else ""
-                print(f"  {index:>3}/{len(shots)}  {club:<7} rolled {row['putt_roll_ft']:5.1f} ft, {row['putt_height_change_in']:+.1f} in. height change{holed}")
+                height = f", {row['putt_height_change_in']:+.1f} in. height change" if row.get("putt_height_change_in") is not None else ""
+                print(f"  {index:>3}/{len(shots)}  {club:<7} rolled {row['putt_roll_ft']:5.1f} ft{height}{holed}")
         elif row.get("roll_yd") is None:
             print(f"  {index:>3}/{len(shots)}  {club:<6} not recorded by GSPro   [{status}]")
         elif test == "green":
