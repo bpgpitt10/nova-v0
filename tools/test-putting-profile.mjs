@@ -109,6 +109,22 @@ try {
     // A pull that rescued a bad read: fixing the line alone makes it worse, so line can come out negative, and it still adds up.
     const cancelling = attributeMiss(20, 0.5, 1, -2).costs
     assert.ok(near(total(cancelling), benchmark(Math.hypot(0.5, 1))))
+    // With the roll path: read and line are judged where the ball passed the hole, not where it stopped.
+    // Passed 6 in right, then broke on to finish 18 in right and 3 ft past; started on the aim.
+    const drifted = attributeMiss(20, 1.5, 3, 0, 0.5)
+    assert.ok(near(drifted.readLateralFt, 0.5), 'read is the miss at the hole')
+    assert.ok(near(total(drifted.costs), benchmark(Math.hypot(1.5, 3))), 'still adds up to what the miss cost')
+    assert.ok(drifted.costs.read > 0 && drifted.costs.pace > 0)
+    // Passed over the middle of the hole but ran 6 ft by: read and line are clean.
+    const overTheTop = attributeMiss(20, 1.5, 6, 0, 0)
+    assert.ok(near(overTheTop.readLateralFt, 0) && near(overTheTop.costs.read, 0) && near(overTheTop.costs.line, 0))
+    assert.ok(near(overTheTop.costs.pace, benchmark(Math.hypot(1.5, 6))), 'through the hole too fast is all pace')
+    // No pass point: unchanged from before.
+    assert.deepEqual(attributeMiss(30, 1.5, -3, 1, null), attributeMiss(30, 1.5, -3, 1))
+    {
+      const passed = buildPuttingProfile([round([putt(3, { end: { x: 0.5, y: 0, z: 11 }, passHole: { x: 0.1, y: 0, z: 10 }, startDirectionDeg: 0, endYds: 0.6 })])])
+      assert.ok(near(passed.putts[0].readLateralFt, 0.1 * 3.280839895), 'the profile uses the pass point when the shot has one')
+    }
     // In a round: the miss gets a cause, and with putting losing strokes the three strokes add up to the total.
     const built = buildPuttingProfile([round([putt(3, { end: { x: 0.05, y: 0, z: 9 }, startDirectionDeg: 0.2 })])])
     assert.equal(built.putts[0].cause, 'pace')

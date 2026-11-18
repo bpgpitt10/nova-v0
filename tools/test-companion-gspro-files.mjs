@@ -129,7 +129,11 @@ assert.equal(byRound.get(8).shots.length, 1, 'same ShotID in another round is ke
   assert.equal(detail.detail.record.DistanceToPin, 6.1)
   const putt = round.shots.find((s) => s.shotId === 'putt').rawMetrics.putt
   assert.deepEqual(putt, { isPutt: true, targetDirectionDeg: 150.7, ballDirectionDeg: 150.7, startOffsetDeg: -1.25,
-    puttVector: { x: 2.8, y: 0, z: -4.9 }, pathPoints: 2 })
+    puttVector: { x: 2.8, y: 0, z: -4.9 }, pathPoints: 2, passHole: null })
+  // Where the ball passed the hole: start (0,0), cup 10 m north, path curling right and running past.
+  const pass = archive.puttPassPoint([[0, 0, 0, 0], [1, 0.1, 0, 8], [2, 0.3, 0, 12], [3, 0.6, 0, 13]], { x: 0, z: 0 }, { x: 0, z: 10 })
+  assert.deepEqual(pass, { x: 0.2, y: 0, z: 10 }, 'interpolated level with the cup')
+  assert.equal(archive.puttPassPoint([[0, 0, 0, 0], [1, 0.1, 0, 8]], { x: 0, z: 0 }, { x: 0, z: 10 }), null, 'a putt left short never passes the hole')
   assert.equal(round.shots.find((s) => s.shotId === 'drive').rawMetrics.putt, undefined)
 }
 

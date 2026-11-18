@@ -240,23 +240,35 @@ export const summarizeRead = (putts: readonly ProfilePutt[]): SkillSummary => {
   return { putts: known.length, size, sizeFt: size, lean, split, kind: kindOf(known.length, size, lean, 0.5) }
 }
 
-/** Strokes still to play from a finish against the cup: 0 when it drops. */
-const strokesFrom = (lateralFt: number, alongFt: number) =>
-  Math.abs(lateralFt) <= CUP_RADIUS_FT && alongFt >= 0 && alongFt <= MAX_HOLING_PAST_FT
-    ? 0
-    : tourExpectedStrokes('green', Math.hypot(lateralFt, alongFt) / 3)
-
 /**
  * What each skill cost on one missed putt. The sideways miss is the start-line
  * error carried to the hole plus whatever the aim was off by; the pace error is
  * the distance from an ideal finish. Each skill gets its average saving over
  * every order of fixing the three.
  */
-export const attributeMiss = (lengthFt: number, lateralFt: number, alongFt: number, startDirectionDeg: number) => {
+export const attributeMiss = (
+  lengthFt: number,
+  lateralFt: number,
+  alongFt: number,
+  startDirectionDeg: number,
+  /** Sideways miss as the ball passed the hole, when the roll path gives it. Read and line are judged there. */
+  passLateralFt: number | null = null,
+) => {
   const lineLateral = lengthFt * Math.tan((startDirectionDeg * Math.PI) / 180)
-  const readLateral = lateralFt - lineLateral
-  const cost = (fix: Readonly<Record<PuttSkill, boolean>>) =>
-    strokesFrom(lateralFt - (fix.line ? lineLateral : 0) - (fix.read ? readLateral : 0), fix.pace ? IDEAL_PAST_FT : alongFt)
+  // Without a roll path (or on a putt that never reached the hole) the stopping point is all there is.
+  const atHole = passLateralFt ?? lateralFt
+  const readLateral = atHole - lineLateral
+  // What the ball broke after the hole. At an ideal pace it runs a shorter way past, so it breaks less.
+  const drift = lateralFt - atHole
+  const cost = (fix: Readonly<Record<PuttSkill, boolean>>) => {
+    // Nothing fixed: the putt as it was. It missed, whatever the geometry says.
+    if (!fix.read && !fix.line && !fix.pace) return tourExpectedStrokes('green', Math.hypot(lateralFt, alongFt) / 3)
+    const hole = atHole - (fix.line ? lineLateral : 0) - (fix.read ? readLateral : 0)
+    const along = fix.pace ? IDEAL_PAST_FT : alongFt
+    if (Math.abs(hole) <= CUP_RADIUS_FT && along >= 0 && along <= MAX_HOLING_PAST_FT) return 0
+    const kept = fix.pace && alongFt > IDEAL_PAST_FT ? IDEAL_PAST_FT / alongFt : 1
+    return tourExpectedStrokes('green', Math.hypot(hole + drift * kept, along) / 3)
+  }
   const fixing = (...skills: PuttSkill[]): Record<PuttSkill, boolean> =>
     ({ read: skills.includes('read'), pace: skills.includes('pace'), line: skills.includes('line') })
   const costs: Record<PuttSkill, number> = { read: 0, pace: 0, line: 0 }
@@ -308,8 +320,10 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
       const cupSurfaceY = shot.cup ? shot.cup.y + CUP_DEPTH_M : null
       const riseIn = cupSurfaceY != null && shot.start && trusted ? (cupSurfaceY - shot.start.y) * M_TO_FT * 12 : null
       const grade = riseIn != null ? riseIn / 12 / lengthFt : null
+      // With the roll path: the sideways miss where the ball passed the hole (it keeps breaking after).
+      const pass = trusted && !shot.holed && shot.start && shot.passHole && cup ? finishAgainstCup(shot.start, shot.passHole, cup) : null
       const split = !shot.holed && alongFt != null && lateralFt != null && shot.startDirectionDeg != null
-        ? attributeMiss(lengthFt, lateralFt, alongFt, shot.startDirectionDeg)
+        ? attributeMiss(lengthFt, lateralFt, alongFt, shot.startDirectionDeg, pass?.lateralFt ?? null)
         : null
       return [{
         roundId: round.roundId,
