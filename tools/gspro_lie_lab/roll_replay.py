@@ -7,11 +7,22 @@ Looper already knows that for every club in the bag. This fires each club's
 stock shot into the Practice Range, with no swing, and records carry, total and
 roll as GSPro plays them now.
 
-  python roll_replay.py
-  python roll_replay.py --type firm --fairway firm
-  python roll_replay.py --clubs Driver,7i,PW --repeats 5
+Double-click it (open with Python), or run `python roll_replay.py`. It asks
+what you want to test and what GSPro is set to, then hits the shots. Nothing to
+remember: press Enter to take the suggested answer. Two tests:
+
+  Fairway roll       whole bag on the Practice Range
+  Landing on a green irons and wedges in On Course practice (carry, then how far
+                     the ball released or spun back, and how flat the green was)
+
+Everything from one sitting goes into one file, looper_lab_<time>.csv.
 
 Put this file in the same folder as test_shots.py and open_connect.py.
+
+The rest of this note is for running one fairway setting from the command line:
+
+  python roll_replay.py --type firm --fairway firm
+  python roll_replay.py --type medium --fairway medium --clubs Driver,7i,PW --repeats 5
 
 Before you run it:
   1. CLOSE THE UNEEKOR LAUNCHER (this tool takes its place).
@@ -265,7 +276,316 @@ def run(args: argparse.Namespace, read_line=input, db_path: Path | None = None, 
     return 0
 
 
+# -- The guided session: double-click and answer questions -----------------------
+
+M_TO_YD = 1.0936132983
+M_TO_IN = 39.37007874
+GREEN_SURFACE = 5
+#: Clubs offered from a spot: stock carry from this far short of the pin to this far past it.
+GREEN_WINDOW_YD = (-14.0, 8.0)
+LAB_FIELDS = [
+    "test", "course_type", "fairway_firmness", "green_firmness", "stimp", "pin_distance_yd", "club", "n", "status",
+    "carry_yd", "total_yd", "roll_yd", "sideways_yd", "roll_height_change_in", "finish_surface", "holed",
+    "offline_yd", "peak_height", "descent_deg",
+    "sent_speed_mph", "sent_vla_deg", "sent_spin_rpm", "gspro_speed_mph", "gspro_vla_deg", "gspro_spin_rpm",
+    "stored_carry_yd", "stored_roll_yd", "row_id", "sent_at",
+]
+
+
+def gspro_round_file() -> Path:
+    return gspro_db().parent / "currentRound.dat"
+
+
+def _xyz(value: Any) -> tuple[float, float, float] | None:
+    try:
+        return float(value["x"]), float(value["y"]), float(value["z"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def newest_round_record(round_file: Path) -> dict[str, Any] | None:
+    """The latest shot in GSPro's currentRound.dat (On Course practice and rounds), or None."""
+    try:
+        parsed = json.loads(round_file.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    candidates: list[Any] = parsed if isinstance(parsed, list) else [
+        item for value in (parsed.values() if isinstance(parsed, dict) else []) if isinstance(value, list) for item in value]
+    shots = [c for c in candidates if isinstance(c, dict) and c.get("ShotID") and isinstance(c.get("GlobalShotNumber"), (int, float))]
+    return max(shots, key=lambda c: c["GlobalShotNumber"]) if shots else None
+
+
+def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
+    """Carry, and what the ball did after it landed, from GSPro's record of one on-course shot.
+
+    Roll is measured along the line of the shot: negative means it spun back.
+    """
+    if not record:
+        return {}
+    start, end = _xyz(record.get("StartingPOS")), _xyz(record.get("EndingPOS"))
+    shot_data = ((record.get("GhostData") or {}).get("atShotData")) or ((record.get("activeShot") or {}).get("sd")) or {}
+    landed = _xyz(shot_data.get("tdpoint"))
+    row: dict[str, Any] = {
+        "row_id": record.get("ShotID"),
+        "finish_surface": record.get("EndingSurface"),
+        "holed": bool(shot_data.get("isHoled")),
+        "gspro_speed_mph": _num((record.get("GhostData") or {}).get("lmfSP"), record.get("BallSpeed")),
+    }
+    if start and landed and end:
+        dx, dz = landed[0] - start[0], landed[2] - start[2]
+        carry_m = (dx * dx + dz * dz) ** 0.5
+        if carry_m > 0.5:
+            ux, uz = dx / carry_m, dz / carry_m
+            rx, rz = end[0] - landed[0], end[2] - landed[2]
+            along, across = rx * ux + rz * uz, rx * uz - rz * ux
+            row.update({
+                "carry_yd": round(carry_m * M_TO_YD, 2),
+                "roll_yd": round(along * M_TO_YD, 2),
+                "total_yd": round((carry_m + along) * M_TO_YD, 2),
+                "sideways_yd": round(across * M_TO_YD, 2),
+                "roll_height_change_in": round((end[1] - landed[1]) * M_TO_IN, 1),
+            })
+    return row
+
+
+def wait_for_new_record(round_file: Path, previous_id: Any, timeout_s: float, sleep=time.sleep) -> dict[str, Any] | None:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        latest = newest_round_record(round_file)
+        if latest and latest.get("ShotID") != previous_id:
+            return latest
+        sleep(0.25)
+    return None
+
+
+def clubs_for_distance(distance_yd: float, bag: dict[str, dict[str, float]]) -> list[str]:
+    """Clubs whose stock carry lands near the pin from here, shortest first."""
+    low, high = distance_yd + GREEN_WINDOW_YD[0], distance_yd + GREEN_WINDOW_YD[1]
+    fits = [club for club, stock in bag.items() if "carry" in stock and low <= stock["carry"] <= high]
+    return sorted(fits, key=lambda club: bag[club]["carry"])
+
+
+def choose(read_line, question: str, options: list[tuple[str, str]], default: str) -> str:
+    """Ask a numbered question; Enter takes the default. Returns the chosen value."""
+    print(question)
+    for number, (value, text) in enumerate(options, start=1):
+        print(f"  {number}  {text}{'   (Enter)' if value == default else ''}")
+    while True:
+        answer = read_line("> ").strip().lower()
+        if answer == "":
+            return default
+        if answer.isdigit() and 1 <= int(answer) <= len(options):
+            return options[int(answer) - 1][0]
+        match = [value for value, text in options if answer in (value.lower(), text.lower())]
+        if match:
+            return match[0]
+        print(f"  Type a number from 1 to {len(options)}, or press Enter.")
+
+
+def ask_number(read_line, question: str, default: float, low: float, high: float) -> float:
+    while True:
+        answer = read_line(f"{question} [{default:g}] ").strip()
+        if answer == "":
+            return default
+        try:
+            value = float(answer)
+        except ValueError:
+            value = low - 1
+        if low <= value <= high:
+            return value
+        print(f"  A number from {low:g} to {high:g}, or press Enter for {default:g}.")
+
+
+SETTING_OPTIONS = [("soft", "Soft"), ("medium", "Medium"), ("firm", "Firm")]
+TYPE_OPTIONS = [("soft", "Soft (Bentgrass)"), ("medium", "Medium (Bermuda)"), ("firm", "Firm (Links)")]
+
+
+def spread_note(rows: list[dict[str, Any]]) -> str | None:
+    """Whether repeat shots of the same club came out the same (so one shot a club is enough)."""
+    widest = 0.0
+    repeats = False
+    for club in {row["club"] for row in rows}:
+        rolls = [row["roll_yd"] for row in rows if row["club"] == club and row.get("roll_yd") is not None]
+        if len(rolls) >= 2:
+            repeats = True
+            widest = max(widest, max(rolls) - min(rolls))
+    if not repeats:
+        return None
+    if widest <= 0.5:
+        return f"Repeat shots matched to within {widest:.1f} yd: one shot a club is enough."
+    return f"Repeat shots differed by up to {widest:.1f} yd: keep hitting at least two a club."
+
+
+def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: dict[str, Any], bag: dict[str, dict[str, float]],
+                clubs: list[str], repeats: int, gap: float, db_path: Path, round_file: Path, record_wait: float,
+                confirm_each: bool, sleep=time.sleep) -> list[dict[str, Any]]:
+    """Fire the shots for one setting and write a row for each. Returns the rows."""
+    shots = plan(clubs, repeats)
+    rows: list[dict[str, Any]] = []
+    for index, club in enumerate(shots, start=1):
+        stock = bag[club]
+        if confirm_each:
+            try:
+                if read_line(f"  {club}, shot {index} of {len(shots)}. Ball back on the spot? Enter to hit, q to stop this set. ").strip().lower() in ("q", "quit"):
+                    break
+            except EOFError:
+                break
+        if test == "green":
+            before_record = newest_round_record(round_file)
+            before_id: Any = before_record.get("ShotID") if before_record else None
+        else:
+            before_row = latest_row_safely(db_path)
+            before_id = before_row[0] if before_row else None
+        shot = {"speed": stock["speed"], "vla": stock["vla"], "hla": 0.0, "spin": stock["spin"], "axis": 0.0}
+        sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+        try:
+            status = path.fire(shot)  # blocks until GSPro's ball-at-rest: one shot at a time
+        except (ConnectionError, OSError) as exc:
+            print(f"  could not send: {exc}")
+            break
+        if test == "green":
+            measured = measure_landing(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
+        else:
+            found = wait_for_new_row(db_path, before_id, record_wait, sleep=sleep)
+            measured = {"row_id": found[0], **measure(found[1])} if found else {}
+        stored_roll = round(stock["total"] - stock["carry"], 1) if "total" in stock and "carry" in stock else None
+        row = {"test": test, **labels, "club": club, "n": index, "status": status,
+               "sent_speed_mph": stock["speed"], "sent_vla_deg": stock["vla"], "sent_spin_rpm": stock["spin"],
+               "stored_carry_yd": stock.get("carry"), "stored_roll_yd": stored_roll, "sent_at": sent_at, **measured}
+        writer.writerow(row)
+        flush()
+        rows.append(row)
+        if row.get("roll_yd") is None:
+            print(f"  {index:>3}/{len(shots)}  {club:<6} not recorded by GSPro   [{status}]")
+        elif test == "green":
+            on_green = "on the green" if row.get("finish_surface") == GREEN_SURFACE else f"finished off the green (surface {row.get('finish_surface')})"
+            did = "spun back" if row["roll_yd"] < 0 else "released"
+            print(f"  {index:>3}/{len(shots)}  {club:<6} carried {row['carry_yd']:6.1f}, {did} {abs(row['roll_yd']):4.1f} yd, "
+                  f"{row['roll_height_change_in']:+.0f} in. height change, {on_green}")
+        else:
+            print(f"  {index:>3}/{len(shots)}  {club:<6} carry {row['carry_yd']:6.1f}  total {row['total_yd']:6.1f}  roll {row['roll_yd']:5.1f} yd")
+        sleep(gap)
+    return rows
+
+
+def guided(read_line=input, db_path: Path | None = None, round_file: Path | None = None, path: Any = None,
+           sleep=time.sleep, bag: dict[str, dict[str, float]] | None = None, out_dir: Path | None = None) -> int:
+    """Double-click mode: asks what to test and what GSPro is set to, then hits the shots."""
+    bag = bag or BAG
+    db_path = db_path or gspro_db()
+    round_file = round_file or gspro_round_file()
+    out = (out_dir or HERE) / f"looper_lab_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+    print("Looper lab: measure how GSPro lands and rolls your shots, with no swings.\n")
+    print("Before you start: CLOSE THE UNEEKOR LAUNCHER, have GSPro open, and do not have a")
+    print("Looper practice session running (these shots are not swings and must stay out of your bag).\n")
+    print("Press Enter at any question to take the answer marked (Enter) or shown in [brackets].\n")
+
+    if path is None:
+        path = OpenConnectPath(UNEEKOR_HOST, [UNEEKOR_PORT, OPEN_CONNECT_PORT], "2", 60.0)
+    try:
+        path.start()
+    except ConnectionError as exc:
+        print(exc)
+        pause_before_close(read_line)
+        return 3
+
+    answers = {"type": "medium", "fairway": "medium", "green": "medium", "stimp": 10.0, "repeats": 2.0, "gap": 3.0, "test": "fairway"}
+    total = 0
+    try:
+        with out.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=LAB_FIELDS, extrasaction="ignore")
+            writer.writeheader()
+            while True:
+                test = choose(read_line, "What do you want to test?", [
+                    ("fairway", "Fairway roll: whole bag on the Practice Range"),
+                    ("green", "Landing on a green: irons and wedges in On Course practice"),
+                    ("quit", "Finished"),
+                ], answers["test"])  # Enter repeats the last test, so nine settings are nine quick passes
+                if test == "quit":
+                    break
+                answers["test"] = test
+                answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
+                labels: dict[str, Any] = {"course_type": answers["type"]}
+                confirm_each = False
+                if test == "fairway":
+                    answers["fairway"] = choose(read_line, "\nFairway Firmness set in GSPro right now?", SETTING_OPTIONS, answers["fairway"])
+                    labels["fairway_firmness"] = answers["fairway"]
+                    print("\nGSPro should be on the Practice Range (Driving Range), hitting to the fairway.")
+                    clubs = list(bag)
+                    typed = read_line("Which clubs? Enter for the whole bag, or list them (Driver,7i,PW): ").strip()
+                else:
+                    answers["green"] = choose(read_line, "\nGreen Firmness set in GSPro right now?", SETTING_OPTIONS, answers["green"])
+                    answers["stimp"] = ask_number(read_line, "Stimp set in GSPro right now?", answers["stimp"], 5, 16)
+                    labels.update({"green_firmness": answers["green"], "stimp": answers["stimp"]})
+                    print("\nGSPro should be in On Course practice with the ball dropped in the fairway, aimed at the pin.")
+                    print("Pick a green that looks flat; the results show how much each shot's roll climbed or dropped.")
+                    distance = ask_number(read_line, "How far is the ball from the pin, in yards (GSPro shows it)?", 120, 20, 260)
+                    labels["pin_distance_yd"] = distance
+                    clubs = clubs_for_distance(distance, bag)
+                    if clubs:
+                        print(f"From {distance:g} yd these land near the pin: {', '.join(clubs)}.")
+                        typed = read_line("Which clubs? Enter for those, or list your own: ").strip()
+                    else:
+                        nearest = min(bag, key=lambda club: abs(bag[club].get("carry", 0) - distance))
+                        print(f"No stock shot carries about {distance:g} yd. The nearest is {nearest} at {bag[nearest]['carry']:.0f} yd: "
+                              f"drop the ball about {bag[nearest]['carry']:.0f} yd out for it.")
+                        typed = read_line("Which clubs? List them, or Enter to go back: ").strip()
+                        if not typed:
+                            print()
+                            continue
+                    confirm_each = choose(read_line, "\nAfter each shot, does GSPro put the ball back on your spot by itself?", [
+                        ("yes", "Yes, it resets"), ("no", "No, I put it back (I'll press Enter before each shot)"),
+                    ], "no") == "no"
+                if typed:
+                    try:
+                        clubs = pick_clubs(typed, bag)
+                    except ValueError as exc:
+                        print(f"  {exc}\n")
+                        continue
+                answers["repeats"] = ask_number(read_line, "Shots per club?", answers["repeats"], 1, 10)
+                answers["gap"] = ask_number(read_line, "Seconds to wait after the ball stops?", answers["gap"], 0, 60)
+                shots = int(answers["repeats"]) * len(clubs)
+                try:
+                    if read_line(f"\n{shots} shots: {int(answers['repeats'])} each of {', '.join(clubs)}. Enter to start, q to cancel. ").strip().lower() in ("q", "quit"):
+                        print()
+                        continue
+                except EOFError:
+                    break
+                rows = fire_series(path, read_line, writer, handle.flush, test=test, labels=labels, bag=bag, clubs=clubs,
+                                   repeats=int(answers["repeats"]), gap=answers["gap"], db_path=db_path, round_file=round_file,
+                                   record_wait=8.0, confirm_each=confirm_each, sleep=sleep)
+                total += len(rows)
+                print()
+                if test == "fairway":
+                    for line in summarize(rows, bag):
+                        print(line)
+                note = spread_note(rows)
+                if note:
+                    print(f"  {note}")
+                if rows and all(row.get("roll_yd") is None for row in rows):
+                    where = "the Practice Range (Driving Range)" if test == "fairway" else "On Course practice"
+                    print(f"  GSPro did not record any of these. They only count in {where}. Tell Claude which screen you were on.")
+                print(f"\nSaved so far: {total} shots in {out.name}.")
+                print("Change the setting in GSPro for the next set, or choose Finished.\n")
+    except (KeyboardInterrupt, EOFError):
+        print()
+    finally:
+        path.close()
+    if total:
+        print(f"\n{total} shots saved in {out}\nSend that file to Claude.")
+    else:
+        try:
+            out.unlink()
+        except OSError:
+            pass
+    pause_before_close(read_line)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        return guided()  # double-clicked, or run with nothing after the name: ask questions
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--type", default="medium", help="Course Type set in GSPro: soft, medium or firm")
     p.add_argument("--fairway", default="medium", help="Fairway Firmness set in GSPro: soft, medium or firm")
