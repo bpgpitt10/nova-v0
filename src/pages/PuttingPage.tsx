@@ -533,7 +533,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
 
       {listed.length ? (
         <section className="rounds-section">
-          <div className="rounds-section-head">
+          <div className="rounds-section-head putting-list-head">
             <h2>Every putt</h2>
             <button aria-expanded={listOpen} className="putting-more" onClick={() => setListOpen((open) => !open)} type="button">
               {listOpen ? 'Hide' : `Show ${listed.length} ${listed.length === 1 ? 'putt' : 'putts'}`}
