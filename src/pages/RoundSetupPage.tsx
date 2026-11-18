@@ -384,8 +384,7 @@ export default function RoundSetupPage() {
               </select>
             </label>
           </div>
-          {/* Where exactly in GSPro (Brian to confirm the menu name) goes here. */}
-          <p className="round-setup-unsure">Not sure? Check your settings in GSPro.</p>
+          <p className="round-setup-unsure">Not sure? In GSPro, open Menu, then Settings, then Course Setup.</p>
 
           {error ? <p className="round-setup-error" role="alert">{error}</p> : null}
 
