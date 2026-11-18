@@ -1903,10 +1903,6 @@
   min-width: 420px;
 }
 
-.rounds-page .rounds-table.yourgame-putts td:last-child {
-  white-space: normal;
-  font-size: 13px;
-}
 
 .rounds-page .rounds-table.yourgame-vs th,
 .rounds-page .rounds-table.yourgame-vs td,
@@ -2068,4 +2064,10 @@ button.rounds-count-chip:focus-visible {
 
 .rounds-count-why {
   font-size: 11px;
+}
+
+/* Score header: the SG figure sits on the same baseline as the score and its
+   to-par tag (it used to hang a few pixels lower, lined up on box bottoms). */
+.rounds-score-inline {
+  align-items: last baseline;
 }

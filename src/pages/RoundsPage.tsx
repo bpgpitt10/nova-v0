@@ -36,6 +36,7 @@ import type { RoundCountChoice, RoundFlags, RoundShotRecord } from '../lib/round
 import './RoundsPage.css'
 import { LooperTagline } from '../components/LooperTagline'
 import { YourGame } from './YourGame'
+import { PuttingPage } from './PuttingPage'
 
 const FULL_ROUNDS_FOR_TRENDS = 5
 /** A shot that lost at least half a stroke is carnage; anything milder just got away. */
@@ -221,7 +222,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     })
     return buildRounds(records, toCourseInfoMap(data.courses), merged)
   }, [data, flags, countChoices, deletedIds])
-  const isGame = pathname === '/rounds/game'
+  const isPutting = pathname === '/rounds/putting'
+  const isGame = pathname === '/rounds/game' || isPutting
   const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
 
@@ -301,7 +303,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             round={selected}
           />
         ) : null}
-        {data.status === 'ready' && isGame ? <YourGame rounds={rounds} /> : null}
+        {data.status === 'ready' && isPutting ? <PuttingPage rounds={rounds} /> : null}
+        {data.status === 'ready' && isGame && !isPutting ? <YourGame rounds={rounds} /> : null}
         {data.status === 'ready' && roundIdParam == null && !isGame ? (
           <RoundsList
             manageError={manageError}

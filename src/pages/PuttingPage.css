@@ -1,0 +1,258 @@
+/* Putting profile (/rounds/putting): the strokes equation, the cup chart, and the cuts beneath it. */
+.putting {
+  --putting-read: #f4d15d;
+  /* Not orange: orange is the site's colour for strokes lost, and the total uses it. */
+  --putting-pace: #2ec4e6;
+  --putting-line: #4f93f7;
+  --putting-unsplit: #e6efe6;
+}
+.putting-header { display: flex; flex-direction: column; gap: 6px; }
+.putting-header p { margin: 0; }
+.putting-back { color: var(--rounds-muted); font-size: 13px; text-decoration: none; }
+.putting-back::before { content: '← '; }
+.putting-back:hover { color: var(--rounds-accent); }
+.putting-title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.putting-title-row h1 { margin: 0; }
+.putting-title { position: relative; display: flex; align-items: center; gap: 10px; }
+.putting-info summary {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--rounds-muted);
+  border-radius: 50%;
+  color: var(--rounds-muted);
+  font-size: 13px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  list-style: none;
+}
+.putting-info summary::-webkit-details-marker { display: none; }
+.putting-info summary:hover,
+.putting-info[open] summary { border-color: var(--rounds-accent); color: var(--rounds-accent); }
+.putting-info > div {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(560px, 88vw);
+  padding: 14px 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 12px;
+  background: var(--rounds-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.putting-info p { margin: 0 0 8px; color: var(--rounds-secondary); font-size: 13px; line-height: 1.55; }
+.putting-info p:last-child { margin-bottom: 0; }
+.putting-info p b { color: var(--rounds-text); }
+
+.putting-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.putting-pills button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.putting-pills button.active { border-color: var(--rounds-text); background: var(--rounds-text); color: var(--rounds-bg); }
+
+/* −1.0 = Read −0.5 + Pace −0.3 + Line −0.2. No boxes: columns and rules. */
+.putting-equation {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.9fr) repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--rounds-line);
+  border-bottom: 1px solid var(--rounds-line);
+}
+.putting-total { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-right: 20px; }
+.putting-total strong { font-size: 72px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.putting-total strong.is-even { color: var(--rounds-text); }
+.putting-total span { color: var(--rounds-muted); font-size: 13px; }
+.putting-term { display: flex; padding: 0 22px; border-left: 1px solid var(--rounds-line); }
+.putting-term > i { flex: none; align-self: center; color: var(--rounds-muted); font-size: 30px; font-style: normal; font-weight: 300; }
+.putting-term > button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin: -8px -10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.putting-term > button:hover { background: rgba(255, 255, 255, 0.05); }
+.putting-term.active > button { background: rgba(244, 209, 93, 0.14); box-shadow: inset 0 -3px 0 currentColor; }
+.putting-term b { font-size: 20px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.putting-term[data-skill='read'] b { color: var(--putting-read); }
+.putting-term[data-skill='pace'] b { color: var(--putting-pace); }
+.putting-term[data-skill='line'] b { color: var(--putting-line); }
+.putting-term strong { font-size: 44px; line-height: 1.05; font-weight: 650; font-variant-numeric: tabular-nums; }
+.putting-term span { color: var(--rounds-secondary); font-size: 13px; line-height: 1.4; }
+.putting-term em { color: var(--rounds-muted); font-size: 13px; font-style: normal; line-height: 1.4; }
+@media (max-width: 860px) {
+  .putting-equation { grid-template-columns: 1fr; gap: 16px; }
+  .putting-term { padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--rounds-line); }
+  .putting-total strong { font-size: 56px; }
+}
+
+.putting-note { max-width: 760px; margin: 0; color: var(--rounds-muted); font-size: 12px; line-height: 1.6; }
+
+.putting-card { padding: 4px 0; }
+.putting-trend { display: block; width: 100%; height: auto; }
+.putting-trend-zero { stroke: var(--rounds-line); stroke-width: 1.5; }
+.putting-trend-label { fill: var(--rounds-muted); font-size: 13px; }
+.putting-trend-line { fill: none; stroke: var(--rounds-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.putting-trend-dot { fill: var(--rounds-accent); stroke: var(--rounds-bg); stroke-width: 2; }
+
+/* The filters sit beside the chart, two to a row, so the right-hand column is used. */
+/* An even grid, never one box left over: two across for four filters (three across once there are six). */
+.putting-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 8px 10px; }
+.putting-filters .putting-reset { justify-self: start; }
+.putting-filters label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.putting-filters label span { color: var(--rounds-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.putting-filters select,
+.putting-reset {
+  box-sizing: border-box;
+  height: 34px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 8px;
+  background: var(--rounds-card);
+  color: var(--rounds-text);
+  font: inherit;
+  font-size: 13px;
+}
+.putting-filters select { width: 100%; min-width: 0; }
+.putting-filters select:disabled { color: var(--rounds-muted); }
+.putting-reset { background: transparent; color: var(--rounds-accent); border-color: transparent; padding: 0 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.putting-hero { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 36px; }
+.putting-cup { flex: 1.6 1 400px; max-width: 640px; min-width: 0; }
+/* No fill, like the other charts: rings and dots sit straight on the page. */
+.putting-cup svg { display: block; width: 100%; height: auto; }
+.putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
+.putting-cup-scale text { fill: var(--rounds-muted); font-size: 13px; }
+.putting-cup-sides text { fill: var(--rounds-secondary); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
+/* A faint disc: enough to find the hole, not a spotlight. */
+.putting-cup-hole { fill: rgba(255, 255, 255, 0.1); stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.5; }
+.putting-cup-holed { fill: #86efac; font-size: 22px; font-weight: 700; }
+.putting-cup-dot { stroke: rgba(11, 20, 14, 0.7); }
+
+.putting-hero-side { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.putting-hero-side h3 { margin: 4px 0 0; font-size: 20px; line-height: 1.3; font-weight: 600; }
+.putting-hero-side p { margin: 0; }
+.putting-makemiss { display: flex; gap: 28px; }
+.putting-makemiss div { display: flex; align-items: baseline; gap: 8px; }
+.putting-makemiss strong { font-size: 48px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; }
+.putting-makemiss span { color: var(--rounds-muted); font-size: 14px; }
+.putting-makemiss { flex-wrap: wrap; }
+.putting-gimme { color: #9ad7b3; }
+.putting-makemiss-bar { display: flex; height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
+.putting-makemiss-bar .holed { background: var(--rounds-gain); }
+.putting-makemiss-bar .gimme { background: rgba(134, 239, 172, 0.42); }
+.putting-legend { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.putting-legend li { display: flex; align-items: baseline; gap: 10px; font-size: 14px; line-height: 1.4; }
+.putting-legend i { flex: none; align-self: center; width: 14px; height: 14px; border-radius: 50%; }
+.putting-legend li > span { color: var(--rounds-secondary); }
+.putting-legend li > span b { color: var(--rounds-text); margin-right: 4px; }
+.putting-legend li > b { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
+.putting-leaves { color: var(--rounds-secondary); font-size: 14px; line-height: 1.5; }
+.putting-leaves b { color: var(--rounds-text); }
+
+/* Tables stay in the page's own whites. Gold is for section titles only; Read, Pace and Line keep their colours. */
+.putting .rounds-section-head h2 { color: var(--rounds-gold); }
+.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-secondary); font-weight: 600; }
+.putting .rounds-table th[data-skill='read'] { color: var(--putting-read); }
+.putting .rounds-table th[data-skill='pace'] { color: var(--putting-pace); }
+.putting .rounds-table th[data-skill='line'] { color: var(--putting-line); }
+/* The equation already closes with a rule: the chart section below must not draw a second one. */
+.putting .putting-hero-section { border-top: 0; padding-top: 0; }
+.yourgame-putting-link { color: var(--rounds-accent); font-size: 14px; font-weight: 600; text-decoration: none; }
+.yourgame-putting-link:hover { text-decoration: underline; }
+
+.putting-legend li.dim { opacity: 0.45; }
+.putting-more {
+  align-self: flex-start;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.putting-pct { margin-left: 4px; color: rgba(134, 239, 172, 0.6); font-size: 0.82em; font-variant-numeric: tabular-nums; }
+
+/* One small picture per skill, under its number in the equation. */
+.putting-mini { display: block; width: 100%; max-width: 340px; height: auto; margin: 4px 0 2px; }
+.putting-mini-axis { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; }
+.putting-mini-aim { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.putting-mini-zone { fill: rgba(134, 239, 172, 0.2); }
+.putting-mini-tick { stroke-width: 3; stroke-linecap: round; opacity: 0.85; }
+.putting-mini-hole { fill: rgba(240, 246, 240, 0.94); }
+.putting-mini-label { fill: var(--rounds-muted); font-size: 11px; }
+.putting-mini-scale { fill: var(--rounds-muted); font-size: 10px; opacity: 0.8; }
+
+/* Pace stands beside its number: text on the left, the tall strip on the right, top to bottom of the column. */
+.putting-term[data-skill='pace'] > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 120px);
+  grid-auto-rows: min-content;
+  column-gap: 14px;
+  align-content: start;
+}
+.putting-term[data-skill='pace'] > button > * { grid-column: 1; }
+.putting-term[data-skill='pace'] > button > .putting-mini-vertical {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-height: 170px;
+  margin: 0;
+}
+
+/* Links that are clickable without looking like links. */
+.rounds-page .putting .rounds-table a.putting-quiet-link,
+.putting .rounds-table a.putting-quiet-link { color: inherit; text-decoration: none; }
+.putting .rounds-table a.putting-quiet-link:hover { color: var(--rounds-accent); }
+
+.putting-good { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--rounds-line); }
+.putting-good h4 { margin: 0; font-size: 15px; font-weight: 600; }
+.putting-good p { margin: 0 0 2px; font-size: 13px; }
+.putting-good-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px; align-items: center; gap: 2px 12px; font-size: 14px; }
+.putting-good-row small { grid-column: 2 / -1; color: var(--rounds-muted); font-size: 12px; }
+.putting-good-row b { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+.putting-good-row[data-skill='read'] b { color: var(--putting-read); }
+.putting-good-row[data-skill='pace'] b { color: var(--putting-pace); }
+.putting-good-row[data-skill='line'] b { color: var(--putting-line); }
+.putting-good-row > div { height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
+.putting-good-row > div i { display: block; height: 100%; border-radius: 5px; }
+.putting-good-row span { text-align: right; color: var(--rounds-secondary); font-variant-numeric: tabular-nums; }
+
+/* Pace's caption sits a little lower, level with the captions under the other two strips. */
+.putting-term[data-skill='pace'] > button > span { margin-top: 18px; }
+
+/* Every putt: the show/hide button sits beside the title, not across the page. */
+.putting .putting-list-head {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+}

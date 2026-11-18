@@ -104,6 +104,35 @@ assert.deepEqual(byRound.get(7).shots.map((s) => s.shotId), ['1', '2'])
 assert.equal(byRound.get(7).shots[1].isHoled, true, 'later record version wins')
 assert.equal(byRound.get(8).shots.length, 1, 'same ShotID in another round is kept')
 
+// 6b. Putts are kept whole: aim, start direction and the roll path.
+{
+  const [round] = archive.archiveRoundsFromRecords([
+    shot(11, 'drive', 1),
+    shot(11, 'putt', 2, {
+      StartingSurface: 5, DistanceToPin: 6.1,
+      GhostData: { az: -1.25, lmfAZ: -1.25, ballDirection: 150.7, lmfSP: 6.2 },
+      activeShot: { sd: {
+        isPutt: true, isHoled: false, TargetDirection: 150.7, bounceForce: { x: 2.8, y: 0, z: -4.9 },
+        tdpoint: { x: 5, y: 1, z: 9 },
+        path: [{ time: 0, pos: { x: 1, y: 2, z: 3 } }, { time: 0.11337, pos: { x: 1.31234567, y: 2, z: 2.5 } }, { bad: true }],
+      } },
+    }),
+  ])
+  assert.equal(round.puttDetails.length, 1, 'only the putt gets a detail record')
+  const [detail] = round.puttDetails
+  assert.equal(detail.shotId, 'putt')
+  assert.deepEqual(detail.detail.path, [[0, 1, 2, 3], [0.1134, 1.3123, 2, 2.5]])
+  assert.equal(detail.detail.shotData.TargetDirection, 150.7)
+  assert.equal(detail.detail.shotData.path, undefined, 'lists stay out of the plain fields')
+  assert.deepEqual(detail.detail.shotData.bounceForce, { x: 2.8, y: 0, z: -4.9 })
+  assert.equal(detail.detail.ghost.az, -1.25)
+  assert.equal(detail.detail.record.DistanceToPin, 6.1)
+  const putt = round.shots.find((s) => s.shotId === 'putt').rawMetrics.putt
+  assert.deepEqual(putt, { isPutt: true, targetDirectionDeg: 150.7, ballDirectionDeg: 150.7, startOffsetDeg: -1.25,
+    puttVector: { x: 2.8, y: 0, z: -4.9 }, pathPoints: 2 })
+  assert.equal(round.shots.find((s) => s.shotId === 'drive').rawMetrics.putt, undefined)
+}
+
 // 7. Without the companion, the loader falls back (no saved folder here -> null).
 companion.__setCompanionFetchForTests(async () => { throw new TypeError('fetch failed') })
 assert.equal(await access.loadGsproDirectoryHandle(), null)

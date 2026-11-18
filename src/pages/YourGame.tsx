@@ -12,6 +12,13 @@ const signed = (value: number, digits = 2) => {
   if (rounded === 0) return (0).toFixed(digits)
   return `${rounded > 0 ? '+' : MINUS}${Math.abs(rounded).toFixed(digits)}`
 }
+/** A miss at the hole: inches up to 3 ft, then feet and inches. */
+const inchesAtHole = (feet: number | null) => {
+  if (feet == null) return '–'
+  const inches = Math.round(feet * 12)
+  return inches < 36 ? `${inches} in.` : `${Math.floor(inches / 12)} ft ${inches % 12} in.`
+}
+
 const tone = (value: number | null) =>
   value == null ? 'is-even' : value >= 0.05 ? 'is-gain' : value <= -0.05 ? 'is-loss' : 'is-even'
 
@@ -191,9 +198,11 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section">
               <div className="rounds-section-head">
                 <h2>Putting by length</h2>
+                <a className="yourgame-putting-link" href="/rounds/putting">Putting deep dive →</a>
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
+                  Read, Line and Pace show how far each typically puts you from the hole at that length.
                 </span>
               </div>
               <div className="yourgame-scroll">
@@ -203,7 +212,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <th scope="col">Length</th>
                     <th className="is-num" scope="col">Made</th>
                     <th className="is-num" scope="col">SG / putt</th>
-                    <th scope="col">Note</th>
+                    <th className="is-num" scope="col">Read</th>
+                    <th className="is-num" scope="col">Line</th>
+                    <th className="is-num" scope="col">Pace</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,7 +223,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                       <td><strong>{bucket.label}</strong></td>
                       <td className="is-num">{bucket.putts ? `${bucket.made} of ${bucket.putts}` : '–'}</td>
                       <td className={`is-num ${tone(bucket.sgPerPutt)}`}>{bucket.sgPerPutt != null ? signed(bucket.sgPerPutt) : '–'}</td>
-                      <td className="rounds-muted">{bucket.note}</td>
+                      <td className="is-num">{inchesAtHole(bucket.readFt)}</td>
+                      <td className="is-num">{inchesAtHole(bucket.lineFt)}</td>
+                      <td className="is-num">{inchesAtHole(bucket.paceFt)}</td>
                     </tr>
                   ))}
                 </tbody>

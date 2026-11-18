@@ -16,6 +16,7 @@ import {
 } from '../cloud/supabaseClient'
 import { decisionBasis, paperCostStrokes } from '../liveCaddie/decisionOptions'
 import type { ModelBasis } from './quickBag'
+import { syncPuttDetailsToCloud } from './livePuttDetails'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
 import {
@@ -480,6 +481,9 @@ export const captureAndPersistLiveGsproCourseRound = async (
     observedAt,
   })
   if (!result.round) return null
+  void syncPuttDetailsToCloud(currentRound.puttDetails).catch((error) => {
+    console.warn('[GSPro course archive] putt details not saved yet; will retry.', error)
+  })
 
   const annotated = annotateNewShots({
     round: result.round,
@@ -605,6 +609,9 @@ export const ingestCompanionRoundBacklog = async (nowMs = Date.now()) => {
         observedAtByKey,
       })
       if (!result.round) continue
+      await syncPuttDetailsToCloud(incoming.puttDetails).catch((error) => {
+        console.warn('[GSPro course archive] backlog putt details not saved.', error)
+      })
       const annotated = annotateNewShots({
         round: result.round,
         newShots: incoming.shots.filter((shot) => !known.has(shot.key)),
