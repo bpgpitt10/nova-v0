@@ -36,6 +36,11 @@ const feet = (value: number) => {
   return rest ? `${ft} ft ${rest} in.` : `${ft} ft`
 }
 
+/** "1 of 8" with the percentage beside it, quieter. */
+const Made = ({ made, putts }: { made: number; putts: number }) => (putts
+  ? <>{made} of {putts} <small className="putting-pct">{Math.round((made / putts) * 100)}%</small></>
+  : <>–</>)
+
 const SLOPE_LABEL: Record<PuttSlope, string> = { up: 'Uphill', flat: 'Flat', down: 'Downhill' }
 const SKILL_LABEL: Record<PuttSkill, string> = { read: 'Read', pace: 'Pace', line: 'Line' }
 const SKILL_COLOR: Record<PuttSkill, string> = {
@@ -81,7 +86,7 @@ const ringStepFt = (misses: readonly ProfilePutt[]) => {
   return [0.5, 1, 2, 3, 5, 10].find((step) => step * 3 >= furthest) ?? 15
 }
 
-function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: number }) {
+function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: number | null }) {
   const step = ringStepFt(misses)
   const scale = 70 / step
   // Dots shrink and go translucent as they multiply, so 20 read as marks and 300 read as a cloud.
@@ -107,7 +112,7 @@ function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: nu
           <text textAnchor="end" x="544" y="274">RIGHT</text>
         </g>
         <circle className="putting-cup-hole" cx="280" cy="280" r="24" />
-        <text className="putting-cup-holed" textAnchor="middle" x="280" y="287">{holed}</text>
+        {holed != null ? <text className="putting-cup-holed" textAnchor="middle" x="280" y="287">{holed}</text> : null}
         {misses.map((putt) => (
           <circle
             key={`${putt.roundId}-${putt.holeNumber}-${putt.number}`}
@@ -306,8 +311,10 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           ) : null}
         </div>
         <div className="putting-hero">
-          <CupChart holed={holed} misses={misses} />
+          <CupChart holed={cause === 'all' ? holed : null} misses={misses} />
           <div className="putting-hero-side">
+            {cause === 'all' ? (
+              <>
             <div className="putting-makemiss">
               <div><strong className="is-gain">{holed}</strong><span>holed</span></div>
               <div><strong className="putting-gimme">{leftGimme}</strong><span>left a gimme</span></div>
@@ -317,6 +324,8 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               <div className="holed" style={{ width: share(holed) }} />
               <div className="gimme" style={{ width: share(leftGimme) }} />
             </div>
+              </>
+            ) : null}
             <h3>{cupHeadline}</h3>
             <ul className="putting-legend">
               {byCause.map(({ id, count }) => (
@@ -355,7 +364,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </thead>
               <tbody>
                 <tr><th scope="row">Putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts || '–'}</td>)}</tr>
-                <tr><th scope="row">Made</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts ? `${row.made} of ${row.putts}` : '–'}</td>)}</tr>
+                <tr><th scope="row">Made</th>{profile.slopes.map((row) => <td key={row.slope}><Made made={row.made} putts={row.putts} /></td>)}</tr>
                 <tr><th scope="row">Pace</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${Math.round(row.pace.size * 100)}% off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
                 ))}</tr>
@@ -386,7 +395,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               {profile.lengths.map((row) => (
                 <tr key={row.id}>
                   <td><strong>{row.label}</strong></td>
-                  <td className="is-num">{row.putts ? `${row.made} of ${row.putts}` : '–'}</td>
+                  <td className="is-num"><Made made={row.made} putts={row.putts} /></td>
                   <td className={`is-num ${tone(row.sgPerPutt)}`}>{row.sgPerPutt != null ? signed(row.sgPerPutt) : '–'}</td>
                   <td className="is-num">{row.avgLeaveFt != null ? feet(row.avgLeaveFt) : '–'}</td>
                   <td className="is-num">{row.putts ? row.threePutts : '–'}</td>
