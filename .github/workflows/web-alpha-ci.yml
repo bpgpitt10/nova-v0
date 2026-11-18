@@ -154,6 +154,8 @@ jobs:
         run: node tools/test-support-codes.mjs
       - name: Safe play rule
         run: node tools/test-safe-pick.mjs
+      - name: Aim line pills (best, 2nd best, safest)
+        run: node tools/test-aim-line-options.mjs
 
       - name: Conceding hole 1 releases the Start Round hold
         run: node tools/test-concede-hole-release.mjs

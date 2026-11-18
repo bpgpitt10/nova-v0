@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { AimCandidateEvaluation } from '../liveCaddie/aimOptimization'
 import { greenYardage, hazardYardages } from '../liveCaddie/mapYardages'
 import { greenHeightImage, type GreenReadAnalysis } from '../liveCaddie/greenRead'
@@ -136,6 +136,7 @@ export default function LiveCaddieMap({
   showPracticeShots,
   provisionalTeeRadiusYds,
   greenRead = null,
+  overlay = null,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -149,6 +150,8 @@ export default function LiveCaddieMap({
   provisionalTeeRadiusYds: number | null
   /** Green read overlay (steepness colours, tiers/spines, tilt arrow); null hides it. */
   greenRead?: GreenReadAnalysis | null
+  /** Controls drawn over the map (the aim line pills). */
+  overlay?: ReactNode
 }) {
   const viewSize = 100
   const pad = 4
@@ -457,6 +460,7 @@ export default function LiveCaddieMap({
           <b>B {yardages.green.backYds}</b>
         </div>
       ) : null}
+      {overlay}
     </div>
   )
 }
