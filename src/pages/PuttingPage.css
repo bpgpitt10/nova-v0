@@ -2,7 +2,7 @@
 .putting {
   --putting-read: #f4d15d;
   /* Not orange: orange is the site's colour for strokes lost, and the total uses it. */
-  --putting-pace: #f08bbd;
+  --putting-pace: #b9a3ff;
   --putting-line: #7cc0ff;
   --putting-unsplit: #e6efe6;
 }
