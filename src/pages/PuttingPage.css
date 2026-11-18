@@ -194,3 +194,13 @@
   cursor: pointer;
 }
 .putting-pct { margin-left: 4px; color: rgba(134, 239, 172, 0.6); font-size: 0.82em; font-variant-numeric: tabular-nums; }
+
+/* One small picture per skill, under its number in the equation. */
+.putting-mini { display: block; width: 100%; max-width: 340px; height: auto; margin: 6px 0 2px; }
+.putting-mini-axis { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; }
+.putting-mini-aim { stroke: rgba(207, 216, 205, 0.4); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.putting-mini-zone { fill: rgba(134, 239, 172, 0.2); }
+.putting-mini-tick { stroke-width: 3; stroke-linecap: round; opacity: 0.85; }
+.putting-mini-hole { fill: rgba(240, 246, 240, 0.94); }
+.putting-mini-label { fill: var(--rounds-muted); font-size: 11px; }
+.putting-mini-scale { fill: var(--rounds-muted); font-size: 10px; opacity: 0.8; }
