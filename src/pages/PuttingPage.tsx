@@ -250,13 +250,13 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     read: summarizeRead(shown), pace: summarizePace(shown), line: summarizeLine(shown),
   }
   const skills: Record<PuttSkill, SkillSummary> = { read: profile.read, pace: profile.pace, line: profile.line }
-  // Shown to one decimal: the last term takes up the rounding so the three add up to the total exactly.
+  // Shown to one decimal: the last skill takes up the rounding so the three always add up to the total exactly.
   const round1 = (value: number) => Math.round(value * 10) / 10
   const shownStrokes: Record<PuttSkill, number> | null = profile.skillStrokes && profile.sgPer18 != null
     ? (() => {
         const read = round1(profile.skillStrokes.read)
-        const pace = round1(profile.skillStrokes.pace)
-        return { read, pace, line: round1(round1(profile.sgPer18) - read - pace) }
+        const line = round1(profile.skillStrokes.line)
+        return { read, line, pace: round1(round1(profile.sgPer18) - read - line) }
       })()
     : null
   // The list follows the filters above, newest round first.
