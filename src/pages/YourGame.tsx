@@ -198,7 +198,7 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section">
               <div className="rounds-section-head">
                 <h2>Putting by length</h2>
-                <a className="yourgame-putting-link" href="/rounds/putting">Putting deep dive →</a>
+                <a className="yourgame-putting-link" href="/game/putting">Putting deep dive →</a>
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.

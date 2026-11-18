@@ -129,7 +129,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
           'Putts of 5 ft and longer that you stroked yourself. Gimmes are left out, and so are rounds played with auto putt on.',
           'Sim gimme circles are usually 5 or 6 ft, so there is nothing to study inside that.',
         ],
-        link: { href: '/rounds/putting', label: 'Putting' },
+        link: { href: '/game/putting', label: 'Putting' },
       },
       {
         q: 'What are Read, Pace and Line?',
