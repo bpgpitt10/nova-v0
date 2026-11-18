@@ -296,7 +296,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     <div className={`rounds-page is-scene-${scene.backdrop}`}>
       <div className="rounds-shell">
         <BagTopBar
-          active={isGame ? 'game' : 'rounds'}
+          active={isPutting ? 'putting' : isGame ? 'game' : 'rounds'}
+          showGamePages={isGame}
           clubSwitcher={isGame && data.status === 'ready' ? <RoundWindowPills onChange={chooseRoundWindow} value={roundWindow} /> : undefined}
           editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/rounds')}`}
           onBag={() => navigate('/bag')}
