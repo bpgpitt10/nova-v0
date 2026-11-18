@@ -1,0 +1,108 @@
+/* Putting profile (/rounds/putting): three skills, the cup chart, and the cuts beneath it. */
+.putting {
+  --putting-read: #f4d15d;
+  --putting-pace: #fb923c;
+  --putting-long: #ef6461;
+  --putting-line: #6fb6ff;
+  --putting-sideways: #cfd8cd;
+}
+.putting-header { display: flex; flex-direction: column; gap: 8px; }
+.putting-header p { max-width: 720px; margin: 0; }
+.putting-back { color: var(--rounds-muted); font-size: 13px; text-decoration: none; }
+.putting-back::before { content: '← '; }
+.putting-back:hover { color: var(--rounds-accent); }
+
+.putting-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.putting-pills button,
+.putting-reset {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: var(--rounds-card);
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.putting-pills button.active { border-color: var(--rounds-text); background: var(--rounds-text); color: var(--rounds-bg); }
+
+.putting-skills { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.putting-skill {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 14px;
+  background: var(--rounds-card);
+}
+.putting-skill header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.putting-skill header b { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+.putting-skill[data-skill='read'] header b { color: var(--putting-read); }
+.putting-skill[data-skill='pace'] header b { color: var(--putting-pace); }
+.putting-skill[data-skill='line'] header b { color: var(--putting-line); }
+.putting-skill header span {
+  padding: 3px 10px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  color: var(--rounds-secondary);
+  font-size: 12px;
+}
+.putting-skill p { margin: 0; font-size: 13px; line-height: 1.5; }
+.putting-skill-question { color: var(--rounds-text); font-size: 15px !important; }
+.putting-skill dl,
+.putting-hero-stats { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.putting-skill dl div,
+.putting-hero-stats div { display: flex; gap: 8px; font-size: 14px; line-height: 1.45; }
+.putting-skill dt,
+.putting-hero-stats dt { flex: none; width: 96px; color: var(--rounds-muted); }
+.putting-hero-stats dt { width: 48px; }
+.putting-skill dd,
+.putting-hero-stats dd { margin: 0; color: var(--rounds-text); }
+.putting-skill-advice { padding-top: 10px; border-top: 1px solid var(--rounds-line); color: var(--rounds-secondary); }
+
+.putting-card { padding: 16px 18px; border: 1px solid var(--rounds-line); border-radius: 14px; background: var(--rounds-card); }
+.putting-trend { display: block; width: 100%; height: auto; }
+.putting-trend-zero { stroke: var(--rounds-line); stroke-width: 1.5; }
+.putting-trend-label { fill: var(--rounds-muted); font-size: 13px; }
+.putting-trend-line { fill: none; stroke: var(--rounds-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.putting-trend-dot { fill: var(--rounds-accent); stroke: var(--rounds-bg); stroke-width: 2; }
+
+.putting-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.putting-filters label { display: flex; flex-direction: column; gap: 5px; }
+.putting-filters label span { color: var(--rounds-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.putting-filters select {
+  min-width: 170px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 10px;
+  background: var(--rounds-card);
+  color: var(--rounds-text);
+  font: inherit;
+  font-size: 14px;
+}
+.putting-filters select:disabled { color: var(--rounds-muted); }
+.putting-reset { border-radius: 10px; background: transparent; }
+
+.putting-hero { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 32px; }
+.putting-cup { flex: 2 1 420px; max-width: 680px; min-width: 0; }
+.putting-cup svg { display: block; width: 100%; height: auto; border-radius: 20px; background: #12301c; }
+.putting-cup-rings { fill: none; stroke: #2f5a3b; stroke-width: 1.5; }
+.putting-cup-scale text { fill: #b9d6c0; font-size: 12px; }
+.putting-cup-sides text { fill: #e6efe6; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
+.putting-cup-hole { fill: #060a07; stroke: #e6efe6; stroke-width: 2; }
+.putting-cup-dot { stroke: #0d1510; stroke-width: 2; }
+.putting-hero-side { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.putting-hero-side h3 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; }
+.putting-hero-side p { margin: 0; }
+.putting-legend { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.putting-legend li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.putting-legend i { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+.putting-legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.putting-note { max-width: 760px; margin: 0; color: var(--rounds-muted); font-size: 12px; line-height: 1.6; }
+.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-secondary); font-weight: 600; }
+
+.yourgame-putting-link { color: var(--rounds-accent); font-size: 13px; }

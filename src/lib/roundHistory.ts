@@ -51,6 +51,14 @@ export type RoundShotRecord = {
   paperCostStrokes?: number | null
   /** 'starting-bag' | 'learning' | 'measured': what the recommendation rested on. */
   modelBasis?: string | null
+  /** Launch monitor ball speed, mph. */
+  ballSpeedMph?: number | null
+  /** Start direction against the aim line, degrees; negative is left. */
+  startDirectionDeg?: number | null
+  /** Putts: where GSPro was aimed (compass degrees), when captured. */
+  aimDirectionDeg?: number | null
+  /** Putts: the cup, GSPro world metres. */
+  cup?: WorldPoint | null
 }
 
 export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
@@ -86,6 +94,10 @@ export type RoundShot = {
   provisional: boolean
   start: WorldPoint | null
   end: WorldPoint | null
+  ballSpeedMph: number | null
+  startDirectionDeg: number | null
+  aimDirectionDeg: number | null
+  cup: WorldPoint | null
 }
 
 export type RoundHole = {
@@ -383,6 +395,10 @@ const buildHole = (
       provisional,
       start: record.start,
       end: record.end,
+      ballSpeedMph: record.ballSpeedMph ?? null,
+      startDirectionDeg: record.startDirectionDeg ?? null,
+      aimDirectionDeg: record.aimDirectionDeg ?? null,
+      cup: record.cup ?? null,
     })
   })
 
@@ -600,6 +616,17 @@ const point = (value: unknown): WorldPoint | null => {
 }
 const bool = (value: unknown) => value === true || value === 'true'
 
+/** Launch and putt fields kept in a shot's raw metrics (same shape in the cloud and the local archive). */
+const launchFromRaw = (raw: Record<string, unknown> | null | undefined) => {
+  const putt = raw?.putt && typeof raw.putt === 'object' ? raw.putt as Record<string, unknown> : null
+  return {
+    ballSpeedMph: num(raw?.lmfSP) ?? num(raw?.ballSpeedRaw),
+    startDirectionDeg: num(putt?.startOffsetDeg) ?? num(raw?.lmfAZ),
+    aimDirectionDeg: num(putt?.targetDirectionDeg),
+    cup: point(raw?.touchdownPositionMeters),
+  }
+}
+
 /** A `live_course_shots` row from Supabase. */
 export type LiveCourseShotRow = {
   gspro_round_id: number
@@ -650,6 +677,7 @@ export const recordFromCloudRow = (row: LiveCourseShotRow): RoundShotRecord => {
     recommendedClub: row.recommended_club,
     paperCostStrokes: num(row.paper_cost_strokes),
     modelBasis: row.model_basis ?? null,
+    ...launchFromRaw(raw),
   }
 }
 
@@ -704,5 +732,6 @@ export const recordFromArchivedShot = (shot: ArchivedShotLike): RoundShotRecord 
     recommendedClub: shot.recommendedClub ?? null,
     paperCostStrokes: shot.paperCostStrokes ?? null,
     modelBasis: shot.modelBasis ?? null,
+    ...launchFromRaw(shot.rawMetrics),
   }
 }
