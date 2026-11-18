@@ -1,5 +1,6 @@
 import type { GsproPinDay } from '../courseGeometry/nativeGkd'
 import type { CourseId } from '../courseGeometry/courseCatalog'
+import type { RoundConditions } from './roundConditions'
 import { loadLastSelectedCourseId } from '../courseGeometry/courseSelection'
 import { loadRoundTeeSelection } from '../courseGeometry/roundTeeSelection'
 
@@ -17,6 +18,8 @@ export type ActiveLiveCaddieRound = Readonly<{
   normalizedTeeSet: string
   /** The pin day picked in GSPro's round setup (Thursday..Sunday); null when not told. */
   pinDay?: GsproPinDay | null
+  /** GSPro's course conditions as picked at Start a Round; null fields when not told. */
+  conditions?: RoundConditions | null
   startedAt: string
   phase: 'armed' | 'live'
   startHoleNumber: 1
@@ -111,6 +114,7 @@ export const startLiveCaddieRound = (input?: {
   courseId?: CourseId
   teeSet?: string
   pinDay?: GsproPinDay | null
+  conditions?: RoundConditions | null
   assumedTeeLocalYds?: readonly [number, number] | null
 }) => {
   if (typeof window === 'undefined') return null
@@ -131,6 +135,7 @@ export const startLiveCaddieRound = (input?: {
       teeSet,
       normalizedTeeSet: normalizeTeeSet(teeSet),
       pinDay: input.pinDay ?? null,
+      conditions: input.conditions ?? null,
       startedAt,
       phase: 'armed',
       startHoleNumber: 1,
