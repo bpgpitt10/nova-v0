@@ -15,6 +15,7 @@ import {
   type PuttSkill,
   type PuttSlope,
   type SkillSummary,
+  LINE_ON_AIM_DEG,
 } from '../lib/puttingProfile'
 import './PuttingPage.css'
 
@@ -47,7 +48,8 @@ const SKILL_COLOR: Record<PuttSkill, string> = {
 }
 
 const leanShort = (skill: SkillSummary) => {
-  if (skill.lean) return `${skill.lean.side} ${skill.lean.count} of ${skill.lean.of}`
+  // Out of every putt on the strip, so the count matches the bars you can see.
+  if (skill.lean) return `${skill.lean.side} ${skill.lean.count} of ${skill.putts}`
   if (skill.split && skill.split.aCount + skill.split.bCount >= 4) return 'no lean'
   return 'too few to say'
 }
@@ -372,7 +374,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                   low="left"
                   steps={DEGREE_STEPS}
                   values={profile.putts.flatMap((putt) => (putt.startDirectionDeg != null ? [putt.startDirectionDeg] : []))}
-                  zone={[-0.5, 0.5]}
+                  zone={[-LINE_ON_AIM_DEG, LINE_ON_AIM_DEG]}
                 />
               )}
               <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
@@ -562,7 +564,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <td className="is-num">{Math.round(putt.lengthFt)} ft</td>
                     <td>{putt.slope && putt.riseIn != null ? `${SLOPE_LABEL[putt.slope]}${putt.slope === 'flat' ? '' : `, ${feet(putt.riseIn / 12)}`}` : '–'}</td>
                     <td>{putt.startDirectionDeg == null ? '–'
-                      : Math.abs(putt.startDirectionDeg) < 0.25 ? 'On line'
+                      : Math.abs(putt.startDirectionDeg) <= LINE_ON_AIM_DEG ? 'On line'
                         : `${Math.abs(putt.startDirectionDeg).toFixed(1)}° ${putt.startDirectionDeg < 0 ? 'left' : 'right'}`}</td>
                     <td>{putt.holed ? 'Holed'
                       : putt.alongFt == null || putt.lateralFt == null ? `${feet(putt.leaveFt)} left`
