@@ -2,8 +2,8 @@
 .putting {
   --putting-read: #f4d15d;
   /* Not orange: orange is the site's colour for strokes lost, and the total uses it. */
-  --putting-pace: #3fd0c9;
-  --putting-line: #7cc0ff;
+  --putting-pace: #2ec4e6;
+  --putting-line: #6f9dff;
   --putting-unsplit: #e6efe6;
 }
 .putting-header { display: flex; flex-direction: column; gap: 6px; }
