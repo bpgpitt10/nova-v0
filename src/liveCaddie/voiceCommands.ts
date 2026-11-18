@@ -9,7 +9,7 @@ const TIMEOUT_MS = 2500
 const VOICE_ENABLED_KEY = 'looper.live-caddie.voice.v1'
 
 const VOICE_ACTIONS = [
-  'arm', 'arm-shown', 'arm-recommended', 'clear', 'aim', 'aim-reset', 'club-step', 'wind', 'details', 'gspro', 'confirm',
+  'arm', 'arm-shown', 'arm-recommended', 'clear', 'aim', 'aim-reset', 'aim-line', 'club-step', 'wind', 'details', 'gspro', 'confirm',
 ] as const
 
 export type VoiceCommand = {
@@ -27,6 +27,9 @@ export type VoiceCommand = {
   yards?: number
   /** gspro: which GSPro view was asked for */
   key?: string
+  /** aim-line: 'best' | 'second' | 'safest', and whether to arm it or only show it */
+  line?: string
+  arm?: boolean
 }
 
 /** Below this the command is treated as misheard. Tuned from real rounds. */

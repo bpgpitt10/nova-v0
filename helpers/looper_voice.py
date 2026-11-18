@@ -99,6 +99,13 @@ ARM_RECOMMENDED_PHRASES = frozenset((
     "recommended", "arm recommended", "play", "arm play",
 ))
 DETAILS_PHRASES = frozenset(("details", "hide details"))
+# The three aim lines on the map, for the club on screen. Said alone it shows
+# the line; with "arm" in front it arms it.
+AIM_LINE_PHRASES = {
+    "best": "best", "best line": "best", "best aim": "best",
+    "second best": "second", "second best line": "second", "second line": "second", "second": "second",
+    "safest": "safest", "safest line": "safest", "safe line": "safest", "safe": "safest", "safe one": "safest",
+}
 AIM_RESET_PHRASES = frozenset((
     "reset aim", "aim reset", "aim center", "center", "center it", "center aim",
     "your line", "aim your line", "back center",
@@ -150,6 +157,7 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
     for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES,
                   DETAILS_PHRASES, AIM_RESET_PHRASES):
         phrases += sorted(table)
+    phrases += list(AIM_LINE_PHRASES)
     words: set[str] = set(FILLER_WORDS) | WIND_VERBS | AIM_VERBS | AIM_QUALIFIERS
     words |= CLUB_STEP_UP | CLUB_STEP_DOWN | {"wind", "club", "left", "right", "one"}
     phrases += sorted(words)
@@ -235,6 +243,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     if view and not after_view:
         return {"action": "gspro", "key": view}
     club_words = words[1:] if words[0] == "arm" else words
+    if " ".join(club_words) in AIM_LINE_PHRASES:
+        return {"action": "aim-line", "line": AIM_LINE_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     club, after_club = _match_phrase(club_words, CLUB_PHRASES)
     if club and not after_club:
         return {"action": "arm", "club": club}

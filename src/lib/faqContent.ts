@@ -139,6 +139,8 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
             ['Looper, arm it', 'arm that · lock it in · send it. Arms the club and line on screen.'],
             ['Looper, your call', 'your pick · the play. Arms Looper\u2019s recommended club.'],
             ['Looper, clear', 'cancel · disarm · never mind · stop'],
+            ['Looper, arm second best', 'arm best · arm safest · arm the safe line. Arms that aim line for the club on screen.'],
+            ['Looper, second best', 'best · safest · safe line. Shows that line without arming it.'],
             ['Looper, aim left five', 'five left · left five yards · move it left five. Moves from the current line, to the nearest line Looper has numbers for.'],
             ['Looper, a little right', 'right · aim right. Moves 3 yards.'],
             ['Looper, reset aim', 'center it · aim center. Back to Looper\u2019s line.'],

@@ -86,6 +86,20 @@ class ParseCommandTest(unittest.TestCase):
                              ("flag", "pin"), ("shot camera", "shotcam"), ("putting mode", "putt")):
             self.assertEqual(voice.parse_command("looper " + wording), {"action": "gspro", "key": key}, wording)
 
+    def test_aim_lines_show_or_arm(self):
+        for wording, line in (("second best", "second"), ("the safest line", "safest"), ("best line", "best"),
+                              ("show me the safe line", "safest")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "aim-line", "line": line, "arm": False}, wording)
+        for wording, line in (("arm second best", "second"), ("arm the safest", "safest"), ("arm best", "best"),
+                              ("arm the safe one", "safest")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "aim-line", "line": line, "arm": True}, wording)
+        # Still clubs and plain arming, not lines.
+        self.assertEqual(voice.parse_command("looper arm three wood"), {"action": "arm", "club": "3W"})
+        self.assertEqual(voice.parse_command("looper arm it"), {"action": "arm-shown"})
+        self.assertIsNone(voice.parse_command("looper safest three wood"))
+
     def test_natural_wordings_do_not_loosen_the_rules(self):
         for wording in ("five wood left", "wind left", "left right", "wind wind", "three wood wind",
                         "club", "give me the", "more", "left five three wood"):

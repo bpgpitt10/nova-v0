@@ -1701,6 +1701,19 @@ export default function LiveCaddiePage() {
       voiceDid(`Arm ${next}`)
       return
     }
+    if (command.action === 'aim-line') {
+      // The three lines on the map, for the club on screen.
+      if (!displayedClub || !aimLineOptions.length) { voiceMissed('No aim lines for this shot yet', heard); return }
+      const name = command.line === 'second' ? '2nd best' : command.line === 'safest' ? 'Safest' : 'Best'
+      const option = command.line === 'safest'
+        ? aimLineOptions.find((candidate) => candidate.key === 'safest') ?? aimLineOptions.find((candidate) => candidate.alsoSafest)
+        : aimLineOptions.find((candidate) => candidate.key === (command.line === 'second' ? 'second' : 'best'))
+      if (!option) { voiceMissed(`${displayedClub} has no ${name.toLowerCase()} line here`, heard); return }
+      setInspectedAimOffset(option.key === 'best' ? null : option.aimOffsetYds)
+      if (command.arm) setVoiceArmRequest({ club: null, aimOffsetYds: option.aimOffsetYds, id: command.seq })
+      voiceDid(`${command.arm ? 'Arm' : 'Show'} ${displayedClub} ${name}: ${aimLabel(option.aimOffsetYds)}`)
+      return
+    }
     if (command.action === 'aim' || command.action === 'aim-reset') {
       // Looper scores a fixed set of aims per club. A spoken move goes to the
       // nearest one, so the numbers on screen are for the aim GSPro gets.

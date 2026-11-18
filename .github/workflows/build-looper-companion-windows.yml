@@ -126,6 +126,8 @@ jobs:
             "caddie-fiveleft" = "Caddie, five left."
             "looper-givemethree" = "Looper, give me the three wood."
             "looper-yourcall" = "Looper, your call."
+            "looper-armsecond" = "Looper, arm second best."
+            "looper-safest" = "Caddie, safest line."
             "caddie-moreclub" = "Caddie, more club."
             "chatter2"    = "Can you give me the wind on that one? I think I need more club, it went left."
             "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
@@ -165,6 +167,10 @@ jobs:
           $wind = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-updatewind.wav).Path) | ConvertFrom-Json
           if ($wind.commands.Count -lt 1 -or $wind.commands[0].action -ne "wind") {
             throw "Voice selftest: 'Looper, update wind' was not recognised: $($wind | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $second = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-armsecond.wav).Path) | ConvertFrom-Json
+          if ($second.commands.Count -lt 1 -or $second.commands[0].action -ne "aim-line" -or $second.commands[0].line -ne "second" -or -not $second.commands[0].arm) {
+            throw "Voice selftest: 'Looper, arm second best' was not recognised: $($second | ConvertTo-Json -Compress -Depth 5)"
           }
           $chatter2 = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter2.wav).Path) | ConvertFrom-Json
           if ($chatter2.commands.Count -ne 0) {
