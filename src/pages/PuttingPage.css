@@ -1,7 +1,8 @@
 /* Putting profile (/rounds/putting): the strokes equation, the cup chart, and the cuts beneath it. */
 .putting {
   --putting-read: #f4d15d;
-  --putting-pace: #fb923c;
+  /* Not orange: orange is the site's colour for strokes lost, and the total uses it. */
+  --putting-pace: #f08bbd;
   --putting-line: #7cc0ff;
   --putting-unsplit: #e6efe6;
 }
@@ -75,7 +76,7 @@
 .putting-total strong { font-size: 72px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .putting-total strong.is-even { color: var(--rounds-text); }
 .putting-total span { color: var(--rounds-muted); font-size: 13px; }
-.putting-term { display: flex; gap: 16px; padding: 0 18px; border-left: 1px solid var(--rounds-line); }
+.putting-term { display: flex; padding: 0 22px; border-left: 1px solid var(--rounds-line); }
 .putting-term > i { flex: none; align-self: center; color: var(--rounds-muted); font-size: 30px; font-style: normal; font-weight: 300; }
 .putting-term > button {
   display: flex;
@@ -117,28 +118,29 @@
 .putting-trend-dot { fill: var(--rounds-accent); stroke: var(--rounds-bg); stroke-width: 2; }
 
 /* The filters sit beside the chart, two to a row, so the right-hand column is used. */
-.putting-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px; }
+.putting-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); align-items: end; gap: 8px 10px; }
 .putting-filters .putting-reset { justify-self: start; }
-.putting-filters label { display: flex; flex-direction: column; gap: 5px; }
-.putting-filters label span { color: var(--rounds-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.putting-filters label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.putting-filters label span { color: var(--rounds-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .putting-filters select,
 .putting-reset {
   box-sizing: border-box;
-  height: 40px;
-  padding: 0 12px;
+  height: 34px;
+  margin: 0;
+  padding: 0 10px;
   border: 1px solid var(--rounds-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--rounds-card);
   color: var(--rounds-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
 }
 .putting-filters select { width: 100%; min-width: 0; }
 .putting-filters select:disabled { color: var(--rounds-muted); }
 .putting-reset { background: transparent; color: var(--rounds-accent); border-color: transparent; padding: 0 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
 .putting-hero { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 36px; }
-.putting-cup { flex: 1.3 1 380px; max-width: 560px; min-width: 0; }
+.putting-cup { flex: 1.6 1 400px; max-width: 640px; min-width: 0; }
 /* No fill, like the other charts: rings and dots sit straight on the page. */
 .putting-cup svg { display: block; width: 100%; height: auto; }
 .putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
@@ -234,7 +236,8 @@
 .putting-good { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--rounds-line); }
 .putting-good h4 { margin: 0; font-size: 15px; font-weight: 600; }
 .putting-good p { margin: 0 0 2px; font-size: 13px; }
-.putting-good-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px; align-items: center; gap: 12px; font-size: 14px; }
+.putting-good-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px; align-items: center; gap: 2px 12px; font-size: 14px; }
+.putting-good-row small { grid-column: 2 / -1; color: var(--rounds-muted); font-size: 12px; }
 .putting-good-row b { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
 .putting-good-row[data-skill='read'] b { color: var(--putting-read); }
 .putting-good-row[data-skill='pace'] b { color: var(--putting-pace); }
@@ -242,3 +245,6 @@
 .putting-good-row > div { height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
 .putting-good-row > div i { display: block; height: 100%; border-radius: 5px; }
 .putting-good-row span { text-align: right; color: var(--rounds-secondary); font-variant-numeric: tabular-nums; }
+
+/* Pace's caption sits a little lower, level with the captions under the other two strips. */
+.putting-term[data-skill='pace'] > button > span { margin-top: 18px; }
