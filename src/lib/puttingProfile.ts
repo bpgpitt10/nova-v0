@@ -85,6 +85,8 @@ export type ProfilePutt = Readonly<{
   costs: SkillCosts | null
   /** The skill that cost the most on this putt. */
   cause: PuttSkill | null
+  /** A miss that left a gimme: the next putt on the hole was conceded. */
+  leftGimme: boolean
   /** First putt on the hole. */
   first: boolean
   /** Putts taken on the hole, gimmes included. */
@@ -285,7 +287,7 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
     const holePutts = hole.shots.filter((shot) => shot.isPutt)
     const firstNumber = holePutts[0]?.number ?? null
     const holedEnd = hole.shots.find((shot) => shot.holed)?.end ?? null
-    return holePutts.flatMap((shot): ProfilePutt[] => {
+    return holePutts.flatMap((shot, puttIndex): ProfilePutt[] => {
       if (shot.conceded || shot.startYds == null) return []
       if (shot.ballSpeedMph != null && shot.ballSpeedMph > MAX_PUTT_SPEED_MPH) return []
       // GSPro's own cup point when the shot carries one; otherwise where the holed putt came to rest.
@@ -325,6 +327,7 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
         readLateralFt: split?.readLateralFt ?? null,
         costs: split?.costs ?? null,
         cause: causeOf(split?.costs ?? null),
+        leftGimme: !shot.holed && holePutts[puttIndex + 1]?.conceded === true,
         first: shot.number === firstNumber,
         holePutts: holePutts.length,
       }]

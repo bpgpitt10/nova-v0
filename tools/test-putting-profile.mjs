@@ -45,6 +45,8 @@ try {
     ]))
     assert.deepEqual(kept.map((p) => p.number), [3])
     assert.equal(kept[0].holePutts, 4, 'gimmes still count as putts taken on the hole')
+    assert.equal(kept[0].leftGimme, true, 'the miss was followed by a conceded putt')
+    assert.equal(profilePutts(round([putt(3, {}), putt(4, {})]))[0].leftGimme, false, 'followed by a real putt')
     assert.deepEqual(profilePutts(round([putt(3, {})], { autoPutt: true })), [], 'auto-putt rounds give nothing')
   }
   // 3. Uphill and downhill from the cup height; holed putts sit at the cup.

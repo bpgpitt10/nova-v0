@@ -12,6 +12,40 @@
 .putting-back:hover { color: var(--rounds-accent); }
 .putting-title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .putting-title-row h1 { margin: 0; }
+.putting-title { position: relative; display: flex; align-items: center; gap: 10px; }
+.putting-info summary {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--rounds-muted);
+  border-radius: 50%;
+  color: var(--rounds-muted);
+  font-size: 13px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  list-style: none;
+}
+.putting-info summary::-webkit-details-marker { display: none; }
+.putting-info summary:hover,
+.putting-info[open] summary { border-color: var(--rounds-accent); color: var(--rounds-accent); }
+.putting-info > div {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(560px, 88vw);
+  padding: 14px 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 12px;
+  background: var(--rounds-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.putting-info p { margin: 0 0 8px; color: var(--rounds-secondary); font-size: 13px; line-height: 1.55; }
+.putting-info p:last-child { margin-bottom: 0; }
+.putting-info p b { color: var(--rounds-text); }
 
 .putting-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .putting-pills button {
@@ -74,7 +108,6 @@
 }
 
 .putting-note { max-width: 760px; margin: 0; color: var(--rounds-muted); font-size: 12px; line-height: 1.6; }
-.putting-note-wide { max-width: none; margin-top: -12px; }
 
 .putting-card { padding: 4px 0; }
 .putting-trend { display: block; width: 100%; height: auto; }
@@ -104,11 +137,11 @@
 
 .putting-hero { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 36px; }
 .putting-cup { flex: 2 1 420px; max-width: 680px; min-width: 0; }
-/* A lit putting green, not a dark panel: misses have to stand out against it. */
-.putting-cup svg { display: block; width: 100%; height: auto; border-radius: 20px; background: #3f9160; }
-.putting-cup-rings { fill: none; stroke: rgba(255, 255, 255, 0.34); stroke-width: 1.5; }
-.putting-cup-scale text { fill: rgba(255, 255, 255, 0.85); font-size: 13px; }
-.putting-cup-sides text { fill: #ffffff; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; }
+/* No fill, like the other charts: rings and dots sit straight on the page. */
+.putting-cup svg { display: block; width: 100%; height: auto; }
+.putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
+.putting-cup-scale text { fill: var(--rounds-muted); font-size: 13px; }
+.putting-cup-sides text { fill: var(--rounds-secondary); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
 .putting-cup-hole { fill: #0b140e; stroke: #ffffff; stroke-width: 3; }
 .putting-cup-holed { fill: #86efac; font-size: 22px; font-weight: 700; }
 .putting-cup-dot { stroke: rgba(11, 20, 14, 0.7); }
@@ -120,8 +153,11 @@
 .putting-makemiss div { display: flex; align-items: baseline; gap: 8px; }
 .putting-makemiss strong { font-size: 48px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; }
 .putting-makemiss span { color: var(--rounds-muted); font-size: 14px; }
-.putting-makemiss-bar { height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
-.putting-makemiss-bar div { height: 100%; background: var(--rounds-gain); }
+.putting-makemiss { flex-wrap: wrap; }
+.putting-gimme { color: #9ad7b3; }
+.putting-makemiss-bar { display: flex; height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
+.putting-makemiss-bar .holed { background: var(--rounds-gain); }
+.putting-makemiss-bar .gimme { background: rgba(134, 239, 172, 0.42); }
 .putting-legend { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .putting-legend li { display: flex; align-items: baseline; gap: 10px; font-size: 14px; line-height: 1.4; }
 .putting-legend i { flex: none; align-self: center; width: 14px; height: 14px; border-radius: 50%; }
@@ -136,3 +172,16 @@
 .yourgame-putting-link:hover { text-decoration: underline; }
 
 .putting-legend li.dim { opacity: 0.45; }
+.putting-more {
+  align-self: flex-start;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
