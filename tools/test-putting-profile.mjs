@@ -72,6 +72,7 @@ try {
     assert.equal(pace.lean, null)
     assert.equal(pace.kind, 'scattered', 'four short and four long is not good pace')
     assert.ok(pace.size > 0.2)
+    assert.ok(Math.abs(pace.sizeFt - 5) < 1e-9, 'typical pace miss in feet: 5 ft from the ideal finish either way')
     const line = summarizeLine(scattered)
     assert.equal(line.lean, null)
     assert.equal(line.kind, 'scattered')

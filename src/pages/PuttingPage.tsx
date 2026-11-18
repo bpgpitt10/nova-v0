@@ -56,7 +56,7 @@ const leanShort = (skill: SkillSummary) => {
 const sizeText = (id: PuttSkill, skill: SkillSummary) =>
   skill.size == null ? 'Not enough yet'
     : id === 'read' ? `${feet(skill.size)} off at the hole`
-      : id === 'pace' ? `${Math.round(skill.size * 100)}% of the length off`
+      : id === 'pace' ? `${feet(skill.sizeFt ?? 0)} from the ideal finish`
         : `${skill.size.toFixed(1)}° off your aim`
 
 const adviceFor = (id: PuttSkill, skill: SkillSummary) => {
@@ -366,7 +366,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                 <tr><th scope="row">Putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts || '–'}</td>)}</tr>
                 <tr><th scope="row">Made</th>{profile.slopes.map((row) => <td key={row.slope}><Made made={row.made} putts={row.putts} /></td>)}</tr>
                 <tr><th scope="row">Pace</th>{profile.slopes.map((row) => (
-                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${Math.round(row.pace.size * 100)}% off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
+                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${feet(row.pace.sizeFt ?? 0)} off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
                 ))}</tr>
                 <tr><th scope="row">Line</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.line.size != null && row.line.putts >= 4 ? `${row.line.size.toFixed(1)}° off` : 'Not enough yet'}</td>
