@@ -12,6 +12,13 @@ const signed = (value: number, digits = 2) => {
   if (rounded === 0) return (0).toFixed(digits)
   return `${rounded > 0 ? '+' : MINUS}${Math.abs(rounded).toFixed(digits)}`
 }
+/** A miss at the hole: inches up to 3 ft, then feet and inches. */
+const inchesAtHole = (feet: number | null) => {
+  if (feet == null) return '–'
+  const inches = Math.round(feet * 12)
+  return inches < 36 ? `${inches} in.` : `${Math.floor(inches / 12)} ft ${inches % 12} in.`
+}
+
 const tone = (value: number | null) =>
   value == null ? 'is-even' : value >= 0.05 ? 'is-gain' : value <= -0.05 ? 'is-loss' : 'is-even'
 
@@ -195,7 +202,7 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
-                  Read, Pace and Line show your typical miss at each length.
+                  Read, Pace and Line show how far each typically puts you from the hole at that length.
                 </span>
               </div>
               <div className="yourgame-scroll">
@@ -216,9 +223,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                       <td><strong>{bucket.label}</strong></td>
                       <td className="is-num">{bucket.putts ? `${bucket.made} of ${bucket.putts}` : '–'}</td>
                       <td className={`is-num ${tone(bucket.sgPerPutt)}`}>{bucket.sgPerPutt != null ? signed(bucket.sgPerPutt) : '–'}</td>
-                      <td className="is-num">{bucket.readFt != null ? `${Math.round(bucket.readFt * 12)} in.` : '–'}</td>
-                      <td className="is-num">{bucket.pacePct != null ? `${Math.round(bucket.pacePct * 100)}%` : '–'}</td>
-                      <td className="is-num">{bucket.lineDeg != null ? `${bucket.lineDeg.toFixed(1)}°` : '–'}</td>
+                      <td className="is-num">{inchesAtHole(bucket.readFt)}</td>
+                      <td className="is-num">{inchesAtHole(bucket.paceFt)}</td>
+                      <td className="is-num">{inchesAtHole(bucket.lineFt)}</td>
                     </tr>
                   ))}
                 </tbody>

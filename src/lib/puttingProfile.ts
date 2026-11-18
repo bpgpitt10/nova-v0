@@ -99,6 +99,8 @@ export type SkillSummary = Readonly<{
   putts: number
   /** Typical miss, ignoring direction: pace as a share of the putt's length, line in degrees. */
   size: number | null
+  /** The same typical miss as a distance at the hole, feet (pace: from the ideal finish; line: start error carried to the hole). */
+  sizeFt: number | null
   /** Which way it leans, or null for no lean. */
   lean: Readonly<{ side: string; count: number; of: number }> | null
   /** How the two sides split, for "no lean" wording. */
@@ -211,7 +213,8 @@ export const summarizePace = (putts: readonly ProfilePutt[]): SkillSummary => {
   const short = misses.filter((putt) => putt.pace === 'short').length
   const long = misses.filter((putt) => putt.pace === 'long').length
   const { lean, split } = leanOf('short', short, 'long', long)
-  return { putts: misses.length, size, lean, split, kind: kindOf(misses.length, size, lean, 0.08) }
+  const sizeFt = median(misses.map((putt) => Math.abs((putt.alongFt as number) - IDEAL_PAST_FT)))
+  return { putts: misses.length, size, sizeFt, lean, split, kind: kindOf(misses.length, size, lean, 0.08) }
 }
 
 /** Line: every putt with a start direction, holed or not. */
@@ -221,7 +224,8 @@ export const summarizeLine = (putts: readonly ProfilePutt[]): SkillSummary => {
   const left = known.filter((putt) => (putt.startDirectionDeg as number) < -0.25).length
   const right = known.filter((putt) => (putt.startDirectionDeg as number) > 0.25).length
   const { lean, split } = leanOf('left', left, 'right', right)
-  return { putts: known.length, size, lean, split, kind: kindOf(known.length, size, lean, 1) }
+  const sizeFt = median(known.map((putt) => Math.abs(Math.tan(((putt.startDirectionDeg as number) * Math.PI) / 180)) * putt.lengthFt))
+  return { putts: known.length, size, sizeFt, lean, split, kind: kindOf(known.length, size, lean, 1) }
 }
 
 /** Read: misses with a start direction. Size is how far the aim alone sent the ball from the hole, feet. */
@@ -231,7 +235,7 @@ export const summarizeRead = (putts: readonly ProfilePutt[]): SkillSummary => {
   const left = known.filter((putt) => (putt.readLateralFt as number) < -CUP_RADIUS_FT).length
   const right = known.filter((putt) => (putt.readLateralFt as number) > CUP_RADIUS_FT).length
   const { lean, split } = leanOf('left', left, 'right', right)
-  return { putts: known.length, size, lean, split, kind: kindOf(known.length, size, lean, 0.5) }
+  return { putts: known.length, size, sizeFt: size, lean, split, kind: kindOf(known.length, size, lean, 0.5) }
 }
 
 /** Strokes still to play from a finish against the cup: 0 when it drops. */
