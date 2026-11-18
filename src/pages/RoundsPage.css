@@ -2098,7 +2098,7 @@ button.rounds-count-chip:focus-visible {
   text-underline-offset: 3px;
   cursor: pointer;
 }
-.yourgame-side { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
-@media (max-width: 760px) {
-  .yourgame-side { align-items: flex-start; width: 100%; }
-}
+/* In the top ribbon: right of the tabs, a touch smaller, beside Edit Bag. */
+.bagbook-topbar .round-window-pills { margin-left: auto; gap: 6px; }
+.bagbook-topbar .round-window-pills button { min-height: 34px; padding: 0 13px; }
+.bagbook-topbar .round-window-pills + .bagbook-topbar-actions { margin-left: 0; }

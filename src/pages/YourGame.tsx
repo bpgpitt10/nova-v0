@@ -1,8 +1,7 @@
 import { buildYourGame, FIRM_SHOTS, GIMME_CIRCLE_FT, SHOTS_PER_DOT, type LadderRung, type Segment } from '../lib/yourGame'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { RoundSummary } from '../lib/roundHistory'
-import { defaultRoundWindow, describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
-import { RoundWindowPills } from '../components/RoundWindowPills'
+import { describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
 
 /** Full rounds (90 holes) before most calls here are firm. */
 const FIRM_HOLES = 90
@@ -77,10 +76,14 @@ const rungRow = (rung: LadderRung, typical: number | null) => (
   </tr>
 )
 
-export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
+export function YourGame({ rounds, roundWindow, onRoundWindow }: {
+  rounds: readonly RoundSummary[]
+  /** Chosen in the top ribbon, shared with Putting. */
+  roundWindow: RoundWindow
+  onRoundWindow: (next: RoundWindow) => void
+}) {
   // Old golf fades out: the page opens on the last six months, with the rest a tap away.
   const now = useMemo(() => new Date(), [])
-  const [roundWindow, setRoundWindow] = useState<RoundWindow>(() => defaultRoundWindow(rounds, now))
   const inWindow = useMemo(() => roundsInWindow(rounds, roundWindow, now), [rounds, roundWindow, now])
   const allCount = useMemo(() => roundsInWindow(rounds, 'all', now).length, [rounds, now])
   const thinWindow = roundWindow === 'recent' && inWindow.length < EARLY_READ_ROUNDS && allCount > inWindow.length
@@ -98,8 +101,6 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             strokes per round, so a small leak you face five times a round outranks a big one you face once a month.
           </p>
         </div>
-        <div className="yourgame-side">
-        <RoundWindowPills onChange={setRoundWindow} value={roundWindow} />
         <div className="yourgame-data">
           <span className="rounds-label">Data behind this page</span>
           <strong>{game.holes} holes</strong>
@@ -110,10 +111,9 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
           <span className="rounds-muted">
             From {describeRoundWindow(roundWindow, inWindow.length)}.
             {thinWindow ? (
-              <> An early read: {allCount} rounds in all. <button className="round-window-all" onClick={() => setRoundWindow('all')} type="button">See all</button></>
+              <> An early read: {allCount} rounds in all. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button></>
             ) : null}
           </span>
-        </div>
         </div>
       </header>
 
