@@ -240,12 +240,6 @@ export const summarizeRead = (putts: readonly ProfilePutt[]): SkillSummary => {
   return { putts: known.length, size, sizeFt: size, lean, split, kind: kindOf(known.length, size, lean, 0.5) }
 }
 
-/** Strokes still to play from a finish against the cup: 0 when it drops. */
-const strokesFrom = (lateralFt: number, alongFt: number) =>
-  Math.abs(lateralFt) <= CUP_RADIUS_FT && alongFt >= 0 && alongFt <= MAX_HOLING_PAST_FT
-    ? 0
-    : tourExpectedStrokes('green', Math.hypot(lateralFt, alongFt) / 3)
-
 /**
  * What each skill cost on one missed putt. The sideways miss is the start-line
  * error carried to the hole plus whatever the aim was off by; the pace error is
