@@ -25,8 +25,8 @@ export const FIRMNESS_OPTIONS: readonly (readonly [Firmness, string])[] = [
   ['medium', 'Medium'],
   ['firm', 'Firm'],
 ]
-/** GSPro's change log adds 6 and 7 at the low end and defaults to 10; the top of its list isn't documented. */
-export const STIMP_OPTIONS: readonly number[] = [6, 7, 8, 9, 10, 11, 12, 13, 14]
+/** The stimp choices on GSPro's Match screen (Brian, 18 Nov). */
+export const STIMP_OPTIONS: readonly number[] = [8, 9, 10, 11, 12, 13]
 
 export const NO_ROUND_CONDITIONS: RoundConditions = { courseType: null, greenFirmness: null, fairwayFirmness: null, stimp: null }
 
