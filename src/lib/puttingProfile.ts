@@ -123,6 +123,7 @@ export type SlopeRow = Readonly<{
   slope: PuttSlope
   putts: number
   made: number
+  read: SkillSummary
   pace: SkillSummary
   line: SkillSummary
   threePutts: number
@@ -365,6 +366,7 @@ export const buildPuttingProfile = (allRounds: readonly RoundSummary[]): Putting
       slope,
       putts: onSlope.length,
       made: onSlope.filter((putt) => putt.holed).length,
+      read: summarizeRead(onSlope),
       pace: summarizePace(onSlope),
       line: summarizeLine(onSlope),
       threePutts: threePuttsIn(onSlope),

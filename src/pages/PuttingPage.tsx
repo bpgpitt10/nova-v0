@@ -274,8 +274,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           </div>
         ))}
       </section>
-      <section className="rounds-section">
-        <div className="rounds-section-head"><h2>Where your misses finish</h2></div>
+      <section className="rounds-section putting-hero-section">
         <div className="putting-filters">
           <label>
             <span>Slope</span>
@@ -365,11 +364,14 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               <tbody>
                 <tr><th scope="row">Putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts || '–'}</td>)}</tr>
                 <tr><th scope="row">Made</th>{profile.slopes.map((row) => <td key={row.slope}><Made made={row.made} putts={row.putts} /></td>)}</tr>
-                <tr><th scope="row">Pace</th>{profile.slopes.map((row) => (
+                <tr><th data-skill="read" scope="row">Read</th>{profile.slopes.map((row) => (
+                  <td key={row.slope}>{row.read.sizeFt != null && row.read.putts >= 4 ? `${feet(row.read.sizeFt)} off · ${leanShort(row.read)}` : 'Not enough yet'}</td>
+                ))}</tr>
+                <tr><th data-skill="pace" scope="row">Pace</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${feet(row.pace.sizeFt ?? 0)} off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
                 ))}</tr>
-                <tr><th scope="row">Line</th>{profile.slopes.map((row) => (
-                  <td key={row.slope}>{row.line.size != null && row.line.putts >= 4 ? `${row.line.size.toFixed(1)}° off` : 'Not enough yet'}</td>
+                <tr><th data-skill="line" scope="row">Line</th>{profile.slopes.map((row) => (
+                  <td key={row.slope}>{row.line.size != null && row.line.putts >= 4 ? `${row.line.size.toFixed(1)}° off · ${leanShort(row.line)}` : 'Not enough yet'}</td>
                 ))}</tr>
                 <tr><th scope="row">Three-putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts ? row.threePutts : '–'}</td>)}</tr>
               </tbody>

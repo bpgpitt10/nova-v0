@@ -142,8 +142,9 @@
 .putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
 .putting-cup-scale text { fill: var(--rounds-muted); font-size: 13px; }
 .putting-cup-sides text { fill: var(--rounds-secondary); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
-.putting-cup-hole { fill: #0b140e; stroke: #ffffff; stroke-width: 3; }
-.putting-cup-holed { fill: #86efac; font-size: 22px; font-weight: 700; }
+/* A pale disc so the hole reads at a glance against the dark page. */
+.putting-cup-hole { fill: rgba(240, 246, 240, 0.94); stroke: #ffffff; stroke-width: 2; }
+.putting-cup-holed { fill: #14532d; font-size: 22px; font-weight: 800; }
 .putting-cup-dot { stroke: rgba(11, 20, 14, 0.7); }
 
 .putting-hero-side { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -167,7 +168,14 @@
 .putting-leaves { color: var(--rounds-secondary); font-size: 14px; line-height: 1.5; }
 .putting-leaves b { color: var(--rounds-text); }
 
-.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-secondary); font-weight: 600; }
+/* Table headers in the gold used across the Rounds pages, so rows and columns are easy to find. */
+.putting .rounds-table thead th { color: var(--rounds-gold); }
+.putting .rounds-table th[scope='row'] { text-align: left; color: var(--rounds-gold); font-weight: 700; }
+.putting .rounds-table th[data-skill='read'] { color: var(--putting-read); }
+.putting .rounds-table th[data-skill='pace'] { color: var(--putting-pace); }
+.putting .rounds-table th[data-skill='line'] { color: var(--putting-line); }
+/* The equation already closes with a rule: the chart section below must not draw a second one. */
+.putting .putting-hero-section { border-top: 0; padding-top: 0; }
 .yourgame-putting-link { color: var(--rounds-accent); font-size: 14px; font-weight: 600; text-decoration: none; }
 .yourgame-putting-link:hover { text-decoration: underline; }
 
