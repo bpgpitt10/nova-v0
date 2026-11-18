@@ -352,9 +352,7 @@ export default function RoundSetupPage() {
 
           <div className="round-setup-conditions">
             <span className="round-setup-label">Conditions</span>
-            <span className="round-setup-conditions-hint">
-              Match these to GSPro. Already in the round? They are in GSPro&apos;s settings.
-            </span>
+            <span className="round-setup-conditions-hint">Match these to GSPro.</span>
           </div>
           <div className="round-setup-row is-four">
             <label className="round-setup-field">
@@ -386,6 +384,8 @@ export default function RoundSetupPage() {
               </select>
             </label>
           </div>
+          {/* Where exactly in GSPro (Brian to confirm the menu name) goes here. */}
+          <p className="round-setup-unsure">Not sure? Check your settings in GSPro.</p>
 
           {error ? <p className="round-setup-error" role="alert">{error}</p> : null}
 
