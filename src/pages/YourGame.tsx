@@ -1,5 +1,8 @@
 import { buildYourGame, FIRM_SHOTS, GIMME_CIRCLE_FT, SHOTS_PER_DOT, type LadderRung, type Segment } from '../lib/yourGame'
+import { useMemo, useState } from 'react'
 import type { RoundSummary } from '../lib/roundHistory'
+import { defaultRoundWindow, describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
+import { RoundWindowPills } from '../components/RoundWindowPills'
 
 /** Full rounds (90 holes) before most calls here are firm. */
 const FIRM_HOLES = 90
@@ -75,7 +78,13 @@ const rungRow = (rung: LadderRung, typical: number | null) => (
 )
 
 export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
-  const game = buildYourGame(rounds)
+  // Old golf fades out: the page opens on the last six months, with the rest a tap away.
+  const now = useMemo(() => new Date(), [])
+  const [roundWindow, setRoundWindow] = useState<RoundWindow>(() => defaultRoundWindow(rounds, now))
+  const inWindow = useMemo(() => roundsInWindow(rounds, roundWindow, now), [rounds, roundWindow, now])
+  const allCount = useMemo(() => roundsInWindow(rounds, 'all', now).length, [rounds, now])
+  const thinWindow = roundWindow === 'recent' && inWindow.length < EARLY_READ_ROUNDS && allCount > inWindow.length
+  const game = useMemo(() => buildYourGame(inWindow), [inWindow])
   const progress = Math.min(100, (game.holes / FIRM_HOLES) * 100)
 
   return (
@@ -89,6 +98,8 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             strokes per round, so a small leak you face five times a round outranks a big one you face once a month.
           </p>
         </div>
+        <div className="yourgame-side">
+        <RoundWindowPills onChange={setRoundWindow} value={roundWindow} />
         <div className="yourgame-data">
           <span className="rounds-label">Data behind this page</span>
           <strong>{game.holes} holes</strong>
@@ -96,6 +107,13 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
           <span className="rounds-muted">
             {game.courses.length ? `${game.courses.join(', ')}. ` : ''}Test sessions left out. Firm calls start around 5 rounds.
           </span>
+          <span className="rounds-muted">
+            From {describeRoundWindow(roundWindow, inWindow.length)}.
+            {thinWindow ? (
+              <> An early read: {allCount} rounds in all. <button className="round-window-all" onClick={() => setRoundWindow('all')} type="button">See all</button></>
+            ) : null}
+          </span>
+        </div>
         </div>
       </header>
 

@@ -16,7 +16,10 @@ import {
   type PuttSlope,
   type SkillSummary,
   LINE_ON_AIM_DEG,
+  profilePutts,
 } from '../lib/puttingProfile'
+import { defaultRoundWindow, describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
+import { RoundWindowPills } from '../components/RoundWindowPills'
 import './PuttingPage.css'
 
 const MINUS = '−'
@@ -127,7 +130,6 @@ function SkillStrip({ values, zone, color, low, high, centre, label, steps, form
   )
 }
 
-type RoundWindow = 'last' | 'five' | 'all'
 
 const GOOD_ENOUGH_MEANS: Record<PuttSkill, string> = {
   read: 'Your aim was on a line that goes in.',
@@ -213,8 +215,12 @@ function TrendChart({ points }: { points: ReadonlyArray<{ rolling: number; cours
   )
 }
 
+/** Rounds with real putting, so "Last 5" is the last five rounds this page can say something about. */
+const hasPutts = (round: RoundSummary) => profilePutts(round).length > 0
+
 export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
-  const [roundWindow, setRoundWindow] = useState<RoundWindow>('all')
+  const now = useMemo(() => new Date(), [])
+  const [roundWindow, setRoundWindow] = useState<RoundWindow>(() => defaultRoundWindow(rounds, now, hasPutts))
   const [slope, setSlope] = useState<PuttSlope | 'all'>('all')
   const [length, setLength] = useState<string>('all')
   // Tapping Read, Line or Pace shows only the misses that skill caused.
@@ -226,9 +232,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
     if (roundWindow === 'all') return everything
-    const recent = [...everything.trend].reverse().slice(0, roundWindow === 'last' ? 1 : 5).map((point) => point.roundId)
-    return buildPuttingProfile(rounds.filter((round) => recent.includes(round.roundId)))
-  }, [everything, roundWindow, rounds])
+    return buildPuttingProfile(roundsInWindow(rounds, roundWindow, now, hasPutts))
+  }, [everything, roundWindow, rounds, now])
+  const thinWindow = roundWindow === 'recent' && profile.rounds < EARLY_READ_ROUNDS && everything.rounds > profile.rounds
 
   const shown = profile.putts.filter((putt) =>
     (slope === 'all' || putt.slope === slope) && (length === 'all' || putt.lengthBucket === length))
@@ -311,17 +317,14 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </div>
             </details>
           </div>
-          <div aria-label="Rounds included" className="putting-pills" role="group">
-            {([['all', `All rounds (${everything.rounds})`], ['five', 'Last 5 rounds'], ['last', 'Last round']] as const).map(([id, label]) => (
-              <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
-                {label}
-              </button>
-            ))}
-          </div>
+          <RoundWindowPills onChange={setRoundWindow} value={roundWindow} />
         </div>
         <p className="rounds-muted">
-          {profile.putts.length} real putts across {profile.rounds} {profile.rounds === 1 ? 'round' : 'rounds'}, against
+          {profile.putts.length} real putts across {describeRoundWindow(roundWindow, profile.rounds)}, against
           the tour benchmark. Gimmes and auto putts are not counted.
+          {thinWindow ? (
+            <> An early read: {everything.rounds} rounds in all. <button className="round-window-all" onClick={() => setRoundWindow('all')} type="button">See all</button></>
+          ) : null}
         </p>
       </header>
 
