@@ -81,6 +81,12 @@ const ringStepFt = (misses: readonly ProfilePutt[]) => {
 function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: number }) {
   const step = ringStepFt(misses)
   const scale = 70 / step
+  // Dots shrink and go translucent as they multiply, so 20 read as marks and 300 read as a cloud.
+  const count = misses.length
+  const dot = count <= 20 ? { r: 6.5, stroke: 1.5, opacity: 0.95 }
+    : count <= 60 ? { r: 5, stroke: 1.25, opacity: 0.85 }
+      : count <= 150 ? { r: 4, stroke: 1, opacity: 0.72 }
+        : { r: 3, stroke: 0.75, opacity: 0.6 }
   return (
     <div className="putting-cup">
       <svg aria-label={`${misses.length} missed putts drawn where they finished around the cup`} role="img" viewBox="0 0 560 560">
@@ -105,8 +111,8 @@ function CupChart({ misses, holed }: { misses: readonly ProfilePutt[]; holed: nu
             className="putting-cup-dot"
             cx={280 + Math.max(-258, Math.min(258, (putt.lateralFt ?? 0) * scale))}
             cy={280 - Math.max(-258, Math.min(258, (putt.alongFt ?? 0) * scale))}
-            r="8"
-            style={{ fill: putt.cause ? SKILL_COLOR[putt.cause] : 'var(--putting-unsplit)' }}
+            r={dot.r}
+            style={{ fill: putt.cause ? SKILL_COLOR[putt.cause] : 'var(--putting-unsplit)', fillOpacity: dot.opacity, strokeWidth: dot.stroke }}
           >
             <title>{`${putt.courseName} hole ${putt.holeNumber}: ${Math.round(putt.lengthFt)} ft putt`}</title>
           </circle>
