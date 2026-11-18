@@ -141,6 +141,8 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const [roundWindow, setRoundWindow] = useState<RoundWindow>('all')
   const [slope, setSlope] = useState<PuttSlope | 'all'>('all')
   const [length, setLength] = useState<string>('all')
+  // Tapping Read, Pace or Line shows only the misses that skill caused.
+  const [cause, setCause] = useState<PuttSkill | 'all'>('all')
 
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
@@ -151,11 +153,12 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
 
   const shown = profile.putts.filter((putt) =>
     (slope === 'all' || putt.slope === slope) && (length === 'all' || putt.lengthBucket === length))
-  const misses = shown.filter((putt) => !putt.holed && putt.alongFt != null && putt.lateralFt != null)
+  const allMisses = shown.filter((putt) => !putt.holed && putt.alongFt != null && putt.lateralFt != null)
+  const misses = cause === 'all' ? allMisses : allMisses.filter((putt) => putt.cause === cause)
   const holed = shown.filter((putt) => putt.holed).length
   const missed = shown.length - holed
-  const byCause = PUTT_SKILLS.map((id) => ({ id, count: misses.filter((putt) => putt.cause === id).length }))
-  const unsplit = misses.filter((putt) => putt.cause == null).length
+  const byCause = PUTT_SKILLS.map((id) => ({ id, count: allMisses.filter((putt) => putt.cause === id).length }))
+  const unsplit = allMisses.filter((putt) => putt.cause == null).length
   const topCause = [...byCause].sort((a, b) => b.count - a.count)[0]
   const leaves = leaveSummary(shown)
   const shownSkills: Record<PuttSkill, SkillSummary> = {
@@ -175,10 +178,14 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const lastPutts = lastRound ? everything.putts.filter((putt) => putt.roundId === lastRound.roundId) : []
   const hasSlope = profile.putts.some((putt) => putt.slope != null)
 
-  const cupHeadline = misses.length === 0 ? 'No missed putts match.'
-    : misses.length < 4 ? `Only ${misses.length} misses here. Not enough to call a pattern yet.`
-      : topCause.count === 0 ? 'These misses could not be split by cause.'
-        : `${SKILL_LABEL[topCause.id]} is the main cause here: ${topCause.count} of ${misses.length} misses.`
+  const cupHeadline = cause !== 'all'
+    ? (misses.length === 0 ? `No misses here had ${SKILL_LABEL[cause].toLowerCase()} as the main cause.`
+      : `${misses.length} of ${allMisses.length} misses here were mainly ${SKILL_LABEL[cause].toLowerCase()}.`)
+    : allMisses.length === 0 ? 'No missed putts match.'
+      : allMisses.length < 4 ? `Only ${allMisses.length} misses here. Not enough to call a pattern yet.`
+        : topCause.count === 0 ? 'These misses could not be split by cause.'
+          : `${SKILL_LABEL[topCause.id]} is the main cause here: ${topCause.count} of ${allMisses.length} misses.`
+  const toggleCause = (id: PuttSkill) => setCause((current) => (current === id ? 'all' : id))
 
   if (everything.putts.length === 0) {
     return (
@@ -222,9 +229,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           <span>strokes a round, putting</span>
         </div>
         {PUTT_SKILLS.map((id, index) => (
-          <div key={id} className="putting-term" data-skill={id}>
+          <div key={id} className={`putting-term${cause === id ? ' active' : ''}`} data-skill={id}>
             <i aria-hidden="true">{index === 0 ? '=' : '+'}</i>
-            <div>
+            <button aria-pressed={cause === id} onClick={() => toggleCause(id)} title={`Show only the misses ${SKILL_LABEL[id].toLowerCase()} caused`} type="button">
               <b>{SKILL_LABEL[id]}</b>
               <strong>
                 {shownStrokes ? signed(shownStrokes[id], 1)
@@ -233,7 +240,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </strong>
               <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
               <em>{adviceFor(id, skills[id])}</em>
-            </div>
+            </button>
           </div>
         ))}
       </section>
@@ -244,13 +251,6 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
         Read is worked out from where the ball finished; it sharpens once {READ_PUTTS_NEEDED} putts carry your aim and roll
         ({profile.readPutts} so far), and break size arrives with it.
       </p>
-
-      <section className="rounds-section">
-        <div className="rounds-section-head"><h2>Trend</h2><span className="rounds-muted">Strokes gained putting per round, three rounds at a time.</span></div>
-        {everything.trend.length >= 3
-          ? <div className="putting-card"><TrendChart points={everything.trend} /></div>
-          : <p className="rounds-muted">A trend needs three rounds of real putting; there {everything.trend.length === 1 ? 'is 1' : `are ${everything.trend.length}`} so far.</p>}
-      </section>
 
       <section className="rounds-section">
         <div className="rounds-section-head"><h2>Where your misses finish</h2></div>
@@ -277,8 +277,15 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             <span>Break</span>
             <select disabled value="all"><option value="all">Arrives with Read</option></select>
           </label>
-          {(slope !== 'all' || length !== 'all') ? (
-            <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all') }} type="button">Clear filters</button>
+          <label>
+            <span>Main cause</span>
+            <select onChange={(event) => setCause(event.target.value as PuttSkill | 'all')} value={cause}>
+              <option value="all">All causes</option>
+              {byCause.map(({ id, count }) => <option key={id} value={id}>{SKILL_LABEL[id]} ({count})</option>)}
+            </select>
+          </label>
+          {(slope !== 'all' || length !== 'all' || cause !== 'all') ? (
+            <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all'); setCause('all') }} type="button">Clear filters</button>
           ) : null}
         </div>
         <div className="putting-hero">
@@ -294,7 +301,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             <h3>{cupHeadline}</h3>
             <ul className="putting-legend">
               {byCause.map(({ id, count }) => (
-                <li key={id}>
+                <li key={id} className={cause !== 'all' && cause !== id ? 'dim' : ''}>
                   <i style={{ background: SKILL_COLOR[id] }} />
                   <span><b>{SKILL_LABEL[id]}</b> {sizeText(id, shownSkills[id]).toLowerCase()} · {leanShort(shownSkills[id])}</span>
                   <b>{count}</b>
@@ -314,6 +321,13 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="rounds-section">
+        <div className="rounds-section-head"><h2>Trend</h2><span className="rounds-muted">Strokes gained putting per round, three rounds at a time.</span></div>
+        {everything.trend.length >= 3
+          ? <div className="putting-card"><TrendChart points={everything.trend} /></div>
+          : <p className="rounds-muted">A trend needs three rounds of real putting; there {everything.trend.length === 1 ? 'is 1' : `are ${everything.trend.length}`} so far.</p>}
       </section>
 
       <section className="rounds-section">
