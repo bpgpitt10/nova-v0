@@ -49,7 +49,7 @@ export default function FaqPage() {
 export function LooperFooter() {
   return (
     <footer className="looper-footer">
-      <a href="/faq">FAQ and help</a>
+      <a href="/faq">FAQ and Help</a>
     </footer>
   )
 }
