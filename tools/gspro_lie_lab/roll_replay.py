@@ -281,6 +281,8 @@ def run(args: argparse.Namespace, read_line=input, db_path: Path | None = None, 
 M_TO_YD = 1.0936132983
 M_TO_IN = 39.37007874
 GREEN_SURFACE = 5
+#: When GSPro sends no ball-at-rest, wait this long for the shot to fly and roll out.
+NO_STOP_SIGNAL_WAIT_S = 15.0
 #: Clubs offered from a spot: stock carry from this far short of the pin to this far past it.
 GREEN_WINDOW_YD = (-14.0, 8.0)
 LAB_FIELDS = [
@@ -443,6 +445,10 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
         except (ConnectionError, OSError) as exc:
             print(f"  could not send: {exc}")
             break
+        if "at rest" not in status:
+            # GSPro did not say the ball had stopped: give it time to fly and roll out before anything else.
+            print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
+            sleep(NO_STOP_SIGNAL_WAIT_S)
         if test == "green":
             measured = measure_landing(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
         else:
@@ -543,7 +549,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                         print(f"  {exc}\n")
                         continue
                 answers["repeats"] = ask_number(read_line, "Shots per club?", answers["repeats"], 1, 10)
-                answers["gap"] = ask_number(read_line, "Seconds to wait after the ball stops?", answers["gap"], 0, 60)
+                answers["gap"] = ask_number(read_line, "Extra seconds to wait once the ball has stopped (the flight itself is already waited for)?", answers["gap"], 0, 60)
                 shots = int(answers["repeats"]) * len(clubs)
                 try:
                     if read_line(f"\n{shots} shots: {int(answers['repeats'])} each of {', '.join(clubs)}. Enter to start, q to cancel. ").strip().lower() in ("q", "quit"):
