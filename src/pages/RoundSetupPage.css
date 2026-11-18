@@ -332,3 +332,7 @@
 .course-picker-empty a {
   color: #b9d9bf;
 }
+
+/* GSPro course conditions: a quiet heading over two more rows of picks. */
+.round-setup-conditions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 4px; }
+.round-setup-conditions-hint { color: #8fa08d; font-size: 12px; }

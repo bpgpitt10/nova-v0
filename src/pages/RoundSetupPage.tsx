@@ -33,6 +33,15 @@ import {
   startLiveCaddieRound,
   type ActiveLiveCaddieRound,
 } from '../liveCaddie/roundRuntime'
+import {
+  COURSE_TYPE_OPTIONS,
+  FIRMNESS_OPTIONS,
+  STIMP_OPTIONS,
+  loadRememberedRoundConditions,
+  normalizeRoundConditions,
+  rememberRoundConditions,
+  type RoundConditions,
+} from '../liveCaddie/roundConditions'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './RoundSetupPage.css'
@@ -82,6 +91,10 @@ export default function RoundSetupPage() {
       return ''
     }
   })
+  // GSPro's course conditions (Match screen). Remembered like the pin day.
+  const [conditions, setConditions] = useState<RoundConditions>(() => loadRememberedRoundConditions())
+  const setCondition = (field: keyof RoundConditions, value: string) =>
+    setConditions((current) => normalizeRoundConditions({ ...current, [field]: value === '' ? null : value }))
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
   // Display text per option (GSPro tee names are marked as such).
@@ -220,10 +233,12 @@ export default function RoundSetupPage() {
       } catch {
         // remembering is a convenience only
       }
+      rememberRoundConditions(conditions)
       const round = startLiveCaddieRound({
         courseId,
         teeSet: selection.teeSet,
         pinDay: pinDay || null,
+        conditions,
         assumedTeeLocalYds: provisional?.status === 'provisional'
           ? provisional.point : geometry.markers.tee,
       })
@@ -330,6 +345,43 @@ export default function RoundSetupPage() {
               {GSPRO_PIN_DAYS.map((day) => <option key={day} value={day}>{day}</option>)}
             </select>
           </label>
+          </div>
+
+          <div className="round-setup-conditions">
+            <span className="round-setup-label">Conditions</span>
+            <span className="round-setup-conditions-hint">From GSPro&apos;s Match screen. Saved with the round.</span>
+          </div>
+          <div className="round-setup-row">
+            <label className="round-setup-field">
+              <span className="round-setup-label">Course type</span>
+              <select onChange={(event) => setCondition('courseType', event.target.value)} value={conditions.courseType ?? ''}>
+                <option value="">Not sure</option>
+                {COURSE_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="round-setup-field">
+              <span className="round-setup-label">Stimp</span>
+              <select onChange={(event) => setCondition('stimp', event.target.value)} value={conditions.stimp ?? ''}>
+                <option value="">Not sure</option>
+                {STIMP_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="round-setup-row">
+            <label className="round-setup-field">
+              <span className="round-setup-label">Green firmness</span>
+              <select onChange={(event) => setCondition('greenFirmness', event.target.value)} value={conditions.greenFirmness ?? ''}>
+                <option value="">Not sure</option>
+                {FIRMNESS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="round-setup-field">
+              <span className="round-setup-label">Fairway firmness</span>
+              <select onChange={(event) => setCondition('fairwayFirmness', event.target.value)} value={conditions.fairwayFirmness ?? ''}>
+                <option value="">Not sure</option>
+                {FIRMNESS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
           </div>
 
           {error ? <p className="round-setup-error" role="alert">{error}</p> : null}

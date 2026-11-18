@@ -17,6 +17,7 @@ import {
 import { decisionBasis, paperCostStrokes } from '../liveCaddie/decisionOptions'
 import type { ModelBasis } from './quickBag'
 import { syncPuttDetailsToCloud } from './livePuttDetails'
+import { syncRoundSettingsToCloud } from './roundSettings'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
 import {
@@ -497,6 +498,10 @@ export const captureAndPersistLiveGsproCourseRound = async (
       console.warn('[GSPro course archive] cloud sync failed; local archive retained.', error)
     })
   }
+  // After the round row exists: the conditions picked at Start a Round, from the browser that started it.
+  await syncRoundSettingsToCloud(finalRound.roundId, finalRound.firstObservedAt).catch((error) => {
+    console.warn('[GSPro course archive] round settings not saved yet; will retry.', error)
+  })
 
   return finalRound
 }
