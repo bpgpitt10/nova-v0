@@ -468,7 +468,7 @@ export function PuttingPage({ rounds, roundWindow, onRoundWindow }: {
             </ul>
             {cause === 'all' && judgedTotal >= 4 ? (
               <div className="putting-good">
-                <h4>Was each part good enough?</h4>
+                <h4>Good enough to go in?</h4>
                 <p className="rounds-muted">
                   A putt needs all three to drop. Taken one at a time, this is how often each was good enough to go in
                   if the other two had been perfect.
