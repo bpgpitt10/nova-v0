@@ -127,6 +127,12 @@ function SkillStrip({ values, zone, color, low, high, centre, label, steps, form
 
 type RoundWindow = 'last' | 'five' | 'all'
 
+const GOOD_ENOUGH_MEANS: Record<PuttSkill, string> = {
+  read: 'Your aim was on a line that goes in.',
+  line: 'The ball started close enough to your aim.',
+  pace: 'It reached the hole without racing past.',
+}
+
 /** Half the hole, feet: the zone a read has to land in. */
 const CUP_HALF_FT = 2.125 / 12
 
@@ -320,9 +326,8 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           <strong className={tone(profile.sgPer18)}>{profile.sgPer18 != null ? signed(profile.sgPer18, 1) : '–'}</strong>
           <span>strokes a round, putting</span>
         </div>
-        {PUTT_SKILLS.map((id, index) => (
+        {PUTT_SKILLS.map((id) => (
           <div key={id} className={`putting-term${cause === id ? ' active' : ''}`} data-skill={id}>
-            <i aria-hidden="true">{index === 0 ? '=' : '+'}</i>
             <button aria-pressed={cause === id} onClick={() => toggleCause(id)} title={`Show only the misses ${SKILL_LABEL[id].toLowerCase()} caused`} type="button">
               <b>{SKILL_LABEL[id]}</b>
               <strong>
@@ -437,13 +442,17 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             </ul>
             {cause === 'all' && judgedTotal >= 4 ? (
               <div className="putting-good">
-                <h4>Good enough to hole it</h4>
-                <p className="rounds-muted">How often each part, on its own, would have let the putt drop.</p>
+                <h4>Was each part good enough?</h4>
+                <p className="rounds-muted">
+                  A putt needs all three to drop. Taken one at a time, this is how often each was good enough to go in
+                  if the other two had been perfect.
+                </p>
                 {PUTT_SKILLS.map((id) => (
                   <div key={id} className="putting-good-row" data-skill={id}>
                     <b>{SKILL_LABEL[id]}</b>
                     <div aria-hidden="true"><i style={{ width: `${(goodEnough[id] / judgedTotal) * 100}%`, background: SKILL_COLOR[id] }} /></div>
                     <span>{goodEnough[id]} of {judgedTotal}</span>
+                    <small>{GOOD_ENOUGH_MEANS[id]}</small>
                   </div>
                 ))}
               </div>
