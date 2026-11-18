@@ -222,8 +222,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     })
     return buildRounds(records, toCourseInfoMap(data.courses), merged)
   }, [data, flags, countChoices, deletedIds])
-  const isPutting = pathname === '/rounds/putting'
-  const isGame = pathname === '/rounds/game' || isPutting
+  const isPutting = pathname === '/game/putting' || pathname === '/rounds/putting'
+  const isGame = pathname === '/game' || pathname.startsWith('/game/') || pathname === '/rounds/game' || isPutting
   const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
 

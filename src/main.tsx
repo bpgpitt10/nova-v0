@@ -65,6 +65,13 @@ const normalizePath = (value: string) => value.replace(/\/+$/, '') || '/'
 if (typeof window !== 'undefined' && normalizePath(window.location.pathname) === '/dashboard') {
   window.history.replaceState(window.history.state, '', `/bag${window.location.search}${window.location.hash}`)
 }
+// Your game is its own tab, so it has its own address: /game and /game/putting
+// (they were /rounds/game and /rounds/putting; old links still work).
+if (typeof window !== 'undefined') {
+  const moved: Record<string, string> = { '/rounds/game': '/game', '/rounds/putting': '/game/putting' }
+  const next = moved[normalizePath(window.location.pathname)]
+  if (next) window.history.replaceState(window.history.state, '', `${next}${window.location.search}${window.location.hash}`)
+}
 const isLiveCaddiePath = (value: string) => {
   const normalized = normalizePath(value)
   return normalized === '/live-caddie' || normalized === '/caddie' || normalized === '/dev/live-caddie'
@@ -322,7 +329,7 @@ function RootRouter() {
     const showSessionIntelligence = pathname === '/session-intelligence'
     const showDashboardRoute = pathname === '/bag' || pathname === '/dashboard'
     const showTheRead = pathname === '/read'
-    const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/')
+    const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/') || pathname === '/game' || pathname.startsWith('/game/')
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
     const showAdminUsers = pathname === '/admin/users'
     const showCloudRepair = pathname === '/cloud-repair'

@@ -282,7 +282,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     return (
       <main className="rounds-main putting">
         <header className="putting-header">
-          <a className="putting-back" href="/rounds/game">Your game</a>
+          <a className="putting-back" href="/game">Your game</a>
           <span className="rounds-eyebrow">Putting</span>
           <h1 className="rounds-display-title">No real putts yet</h1>
           <p className="rounds-muted">
@@ -297,7 +297,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   return (
     <main className="rounds-main putting">
       <header className="putting-header">
-        <a className="putting-back" href="/rounds/game">Your game</a>
+        <a className="putting-back" href="/game">Your game</a>
         <div className="putting-title-row">
           <div className="putting-title">
             <h1 className="rounds-display-title">Putting</h1>

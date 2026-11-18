@@ -57,7 +57,7 @@ export function BagTopBar({
         <a
           aria-current={active === 'game' ? 'page' : undefined}
           className={active === 'game' ? 'is-active' : undefined}
-          href="/rounds/game"
+          href="/game"
         >
           Your game
         </a>
