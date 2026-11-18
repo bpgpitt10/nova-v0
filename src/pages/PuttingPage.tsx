@@ -58,68 +58,68 @@ const sizeText = (id: PuttSkill, skill: SkillSummary) =>
       : id === 'pace' ? `${feet(skill.sizeFt ?? 0)} from the ideal finish`
         : `${skill.size.toFixed(1)}° off your aim`
 
-/** Feet either side that a strip covers: the smallest round number that holds every putt. */
-const stripRange = (values: readonly number[]) => {
+/** The smallest round number from `steps` that holds every value. */
+const stripRange = (values: readonly number[], steps: readonly number[]) => {
   const furthest = values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
-  return [1, 2, 3, 6, 9, 15, 30].find((range) => range >= furthest) ?? 30
+  return steps.find((range) => range >= furthest) ?? steps[steps.length - 1]
 }
+const FEET_STEPS = [1, 2, 3, 6, 9, 15, 30] as const
+const DEGREE_STEPS = [3, 6, 10] as const
 
 /**
- * One skill along one axis: the hole in the middle, a shaded zone that counts
- * as good, and a tick for every putt. A tight bunch off to one side is a habit;
- * ticks spread both ways is scatter.
+ * One skill along one axis of the cup chart: a centre mark, a shaded zone that
+ * counts as good, and a tick for every putt. Pace runs up and down like the
+ * chart (past at the top); Read and Line run left to right, because both move
+ * the ball sideways. A tight bunch off to one side is a habit; ticks spread
+ * both ways is scatter.
  */
-function SkillStrip({ values, zone, color, left, right, label }: {
+function SkillStrip({ values, zone, color, low, high, centre, label, steps, format, vertical = false }: {
   values: readonly number[]
   zone: readonly [number, number]
   color: string
-  left: string
-  right: string
+  /** Name of the negative end (left, or the bottom when vertical) and the positive end. */
+  low: string
+  high: string
+  centre: string
   label: string
+  steps: readonly number[]
+  format: (value: number) => string
+  vertical?: boolean
 }) {
-  const range = stripRange(values)
-  const x = (value: number) => 150 + Math.max(-1, Math.min(1, value / range)) * 132
+  const range = stripRange(values, steps)
+  const at = (value: number) => Math.max(-1, Math.min(1, value / range))
+  if (vertical) {
+    const y = (value: number) => 75 - at(value) * 58
+    return (
+      <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 150">
+        <rect className="putting-mini-zone" height={Math.max(4, y(zone[0]) - y(zone[1]))} rx="3" width="44" x="128" y={y(zone[1])} />
+        <line className="putting-mini-axis" x1="150" x2="150" y1="17" y2="133" />
+        {values.map((value, index) => (
+          <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1="132" x2="168" y1={y(value)} y2={y(value)} />
+        ))}
+        <circle className="putting-mini-hole" cx="150" cy="75" r="4.5" />
+        <text className="putting-mini-label" x="182" y="21">{high}</text>
+        <text className="putting-mini-label" x="182" y="79">{centre}</text>
+        <text className="putting-mini-label" x="182" y="137">{low}</text>
+        <text className="putting-mini-scale" textAnchor="end" x="118" y="21">{format(range)}</text>
+        <text className="putting-mini-scale" textAnchor="end" x="118" y="137">{format(range)}</text>
+      </svg>
+    )
+  }
+  const x = (value: number) => 150 + at(value) * 132
   return (
-    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 92">
-      <rect className="putting-mini-zone" height="36" rx="3" width={Math.max(4, x(zone[1]) - x(zone[0]))} x={x(zone[0])} y="22" />
+    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 -29 300 150">
+      <rect className="putting-mini-zone" height="44" rx="3" width={Math.max(4, x(zone[1]) - x(zone[0]))} x={x(zone[0])} y="18" />
       <line className="putting-mini-axis" x1="18" x2="282" y1="40" y2="40" />
       {values.map((value, index) => (
-        <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1={x(value)} x2={x(value)} y1="25" y2="55" />
+        <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1={x(value)} x2={x(value)} y1="22" y2="58" />
       ))}
       <circle className="putting-mini-hole" cx="150" cy="40" r="4.5" />
-      <text className="putting-mini-label" x="18" y="78">{left}</text>
-      <text className="putting-mini-label" textAnchor="middle" x="150" y="78">hole</text>
-      <text className="putting-mini-label" textAnchor="end" x="282" y="78">{right}</text>
-      <text className="putting-mini-scale" x="18" y="14">{feet(range)}</text>
-      <text className="putting-mini-scale" textAnchor="end" x="282" y="14">{feet(range)}</text>
-    </svg>
-  )
-}
-
-/** Start direction as a dial: straight up is your aim, a tick per putt. */
-function LineDial({ degrees, color, label }: { degrees: readonly number[]; color: string; label: string }) {
-  const furthest = degrees.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
-  const range = furthest <= 3 ? 3 : furthest <= 6 ? 6 : 10
-  // The dial opens the real few degrees out to a fan wide enough to read.
-  const point = (deg: number, radius: number): [number, number] => {
-    const angle = (Math.max(-1, Math.min(1, deg / range)) * 52 * Math.PI) / 180
-    return [150 + radius * Math.sin(angle), 98 - radius * Math.cos(angle)]
-  }
-  const [leftX, leftY] = point(-range, 80)
-  const [rightX, rightY] = point(range, 80)
-  return (
-    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 110">
-      <path className="putting-mini-axis" d={`M${leftX} ${leftY} A80 80 0 0 1 ${rightX} ${rightY}`} fill="none" />
-      <line className="putting-mini-aim" x1="150" x2="150" y1="98" y2="14" />
-      {degrees.map((value, index) => {
-        const [x1, y1] = point(value, 56)
-        const [x2, y2] = point(value, 80)
-        return <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1={x1} x2={x2} y1={y1} y2={y2} />
-      })}
-      <circle className="putting-mini-hole" cx="150" cy="98" r="4.5" />
-      <text className="putting-mini-label" textAnchor="end" x={leftX - 8} y={leftY + 4}>{range}° left</text>
-      <text className="putting-mini-label" x={rightX + 8} y={rightY + 4}>{range}° right</text>
-      <text className="putting-mini-scale" textAnchor="middle" x="150" y="9">aim</text>
+      <text className="putting-mini-label" x="18" y="80">{low}</text>
+      <text className="putting-mini-label" textAnchor="middle" x="150" y="80">{centre}</text>
+      <text className="putting-mini-label" textAnchor="end" x="282" y="80">{high}</text>
+      <text className="putting-mini-scale" x="18" y="10">{format(range)}</text>
+      <text className="putting-mini-scale" textAnchor="end" x="282" y="10">{format(range)}</text>
     </svg>
   )
 }
@@ -323,27 +323,40 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </strong>
               {id === 'read' ? (
                 <SkillStrip
+                  centre="hole"
                   color={SKILL_COLOR.read}
+                  format={feet}
+                  high="right"
                   label="Where your aim alone would have left each putt, left or right of the hole"
-                  left="left"
-                  right="right"
+                  low="left"
+                  steps={FEET_STEPS}
                   values={profile.putts.flatMap((putt) => (!putt.holed && putt.readLateralFt != null ? [putt.readLateralFt] : []))}
                   zone={[-CUP_HALF_FT, CUP_HALF_FT]}
                 />
               ) : id === 'pace' ? (
                 <SkillStrip
+                  centre="hole"
                   color={SKILL_COLOR.pace}
+                  format={feet}
+                  high="past"
                   label="Where each missed putt stopped, short of the hole or past it"
-                  left="short"
-                  right="past"
+                  low="short"
+                  steps={FEET_STEPS}
                   values={profile.putts.flatMap((putt) => (!putt.holed && putt.alongFt != null ? [putt.alongFt] : []))}
+                  vertical
                   zone={[0, 2]}
                 />
               ) : (
-                <LineDial
+                <SkillStrip
+                  centre="aim"
                   color={SKILL_COLOR.line}
-                  degrees={profile.putts.flatMap((putt) => (putt.startDirectionDeg != null ? [putt.startDirectionDeg] : []))}
-                  label="Start direction of each putt against your aim"
+                  format={(value) => `${value}°`}
+                  high="right"
+                  label="Start direction of each putt, left or right of your aim"
+                  low="left"
+                  steps={DEGREE_STEPS}
+                  values={profile.putts.flatMap((putt) => (putt.startDirectionDeg != null ? [putt.startDirectionDeg] : []))}
+                  zone={[-0.5, 0.5]}
                 />
               )}
               <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
@@ -352,43 +365,43 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
         ))}
       </section>
       <section className="rounds-section putting-hero-section">
-        <div className="putting-filters">
-          <label>
-            <span>Slope</span>
-            <select disabled={!hasSlope} onChange={(event) => setSlope(event.target.value as PuttSlope | 'all')} value={slope}>
-              <option value="all">All slopes</option>
-              {(['up', 'flat', 'down'] as const).map((id) => (
-                <option key={id} value={id}>{SLOPE_LABEL[id]} ({profile.putts.filter((putt) => putt.slope === id).length})</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Length</span>
-            <select onChange={(event) => setLength(event.target.value)} value={length}>
-              <option value="all">All lengths</option>
-              {PUTT_LENGTH_BUCKETS.map(([id, label]) => (
-                <option key={id} value={id}>{label} ({profile.putts.filter((putt) => putt.lengthBucket === id).length})</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Break</span>
-            <select disabled value="all"><option value="all">Arrives with Read</option></select>
-          </label>
-          <label>
-            <span>Main cause</span>
-            <select onChange={(event) => setCause(event.target.value as PuttSkill | 'all')} value={cause}>
-              <option value="all">All causes</option>
-              {byCause.map(({ id, count }) => <option key={id} value={id}>{SKILL_LABEL[id]} ({count})</option>)}
-            </select>
-          </label>
-          {(slope !== 'all' || length !== 'all' || cause !== 'all') ? (
-            <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all'); setCause('all') }} type="button">Clear filters</button>
-          ) : null}
-        </div>
         <div className="putting-hero">
           <CupChart holed={cause === 'all' ? holed : null} misses={misses} />
           <div className="putting-hero-side">
+            <div className="putting-filters">
+              <label>
+                <span>Slope</span>
+                <select disabled={!hasSlope} onChange={(event) => setSlope(event.target.value as PuttSlope | 'all')} value={slope}>
+                  <option value="all">All slopes</option>
+                  {(['up', 'flat', 'down'] as const).map((id) => (
+                    <option key={id} value={id}>{SLOPE_LABEL[id]} ({profile.putts.filter((putt) => putt.slope === id).length})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Length</span>
+                <select onChange={(event) => setLength(event.target.value)} value={length}>
+                  <option value="all">All lengths</option>
+                  {PUTT_LENGTH_BUCKETS.map(([id, label]) => (
+                    <option key={id} value={id}>{label} ({profile.putts.filter((putt) => putt.lengthBucket === id).length})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Break</span>
+                <select disabled value="all"><option value="all">Arrives with Read</option></select>
+              </label>
+              <label>
+                <span>Main cause</span>
+                <select onChange={(event) => setCause(event.target.value as PuttSkill | 'all')} value={cause}>
+                  <option value="all">All causes</option>
+                  {byCause.map(({ id, count }) => <option key={id} value={id}>{SKILL_LABEL[id]} ({count})</option>)}
+                </select>
+              </label>
+              {(slope !== 'all' || length !== 'all' || cause !== 'all') ? (
+                <button className="putting-reset" onClick={() => { setSlope('all'); setLength('all'); setCause('all') }} type="button">Clear filters</button>
+              ) : null}
+            </div>
             {cause === 'all' ? (
               <>
             <div className="putting-makemiss">
