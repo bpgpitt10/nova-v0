@@ -71,6 +71,9 @@ const adviceFor = (id: PuttSkill, skill: SkillSummary) => {
 
 type RoundWindow = 'last' | 'five' | 'all'
 
+/** Rows in the putt list before "Show more". */
+const PUTTS_PER_PAGE = 20
+
 
 /** Three rings that cover the furthest miss shown. */
 const ringStepFt = (misses: readonly ProfilePutt[]) => {
@@ -149,6 +152,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const [length, setLength] = useState<string>('all')
   // Tapping Read, Pace or Line shows only the misses that skill caused.
   const [cause, setCause] = useState<PuttSkill | 'all'>('all')
+  const [listLimit, setListLimit] = useState(PUTTS_PER_PAGE)
 
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
@@ -162,7 +166,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const allMisses = shown.filter((putt) => !putt.holed && putt.alongFt != null && putt.lateralFt != null)
   const misses = cause === 'all' ? allMisses : allMisses.filter((putt) => putt.cause === cause)
   const holed = shown.filter((putt) => putt.holed).length
-  const missed = shown.length - holed
+  const leftGimme = shown.filter((putt) => putt.leftGimme).length
+  const missed = shown.length - holed - leftGimme
+  const share = (count: number) => `${shown.length ? (count / shown.length) * 100 : 0}%`
   const byCause = PUTT_SKILLS.map((id) => ({ id, count: allMisses.filter((putt) => putt.cause === id).length }))
   const unsplit = allMisses.filter((putt) => putt.cause == null).length
   const topCause = [...byCause].sort((a, b) => b.count - a.count)[0]
@@ -180,8 +186,10 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
         return { read, pace, line: round1(round1(profile.sgPer18) - read - pace) }
       })()
     : null
-  const lastRound = everything.trend[everything.trend.length - 1] ?? null
-  const lastPutts = lastRound ? everything.putts.filter((putt) => putt.roundId === lastRound.roundId) : []
+  // The list follows the filters above, newest round first.
+  const listed = [...shown]
+    .filter((putt) => cause === 'all' || putt.cause === cause)
+    .sort((a, b) => (b.playedAt ?? '').localeCompare(a.playedAt ?? '') || a.holeNumber - b.holeNumber || a.number - b.number)
   const hasSlope = profile.putts.some((putt) => putt.slope != null)
 
   const cupHeadline = cause !== 'all'
@@ -214,7 +222,18 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
       <header className="putting-header">
         <a className="putting-back" href="/rounds/game">Your game</a>
         <div className="putting-title-row">
-          <h1 className="rounds-display-title">Putting</h1>
+          <div className="putting-title">
+            <h1 className="rounds-display-title">Putting</h1>
+            <details className="putting-info">
+              <summary aria-label="How this page works"><span aria-hidden="true">i</span></summary>
+              <div>
+                <p><b>What counts.</b> Putts of {MIN_PUTT_FT} ft and longer that you stroked yourself. Gimmes and auto-putt rounds are left out.</p>
+                <p><b>Read</b> is where you placed your aim. <b>Line</b> is whether the ball started there. <b>Pace</b> is distance: right pace would finish about {IDEAL_PAST_FT} ft past the hole.</p>
+                <p><b>The split.</b> Each miss is replayed with the read, the pace or the start line put right, and each skill is credited with what that would have saved. The three add up to your strokes gained putting against the tour benchmark.</p>
+                <p><b>Early days.</b> Read is worked out from where the ball finished until {READ_PUTTS_NEEDED} putts carry your aim and roll ({everything.readPutts} so far). Break size arrives with it.</p>
+              </div>
+            </details>
+          </div>
           <div aria-label="Rounds included" className="putting-pills" role="group">
             {([['all', `All rounds (${everything.rounds})`], ['five', 'Last 5 rounds'], ['last', 'Last round']] as const).map(([id, label]) => (
               <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
@@ -250,14 +269,6 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           </div>
         ))}
       </section>
-      <p className="putting-note putting-note-wide">
-        {profile.skillStrokes ? 'The three add up to the total. ' : profile.skillShare ? 'You are not losing strokes putting, so the split shows each skill’s share of what your misses cost. ' : ''}
-        The split is an early estimate from {profile.attributedPutts} missed {profile.attributedPutts === 1 ? 'putt' : 'putts'}: each
-        miss is replayed with the read, the pace or the start line put right, and each is credited with what that would have saved.
-        Read is worked out from where the ball finished; it sharpens once {READ_PUTTS_NEEDED} putts carry your aim and roll
-        ({profile.readPutts} so far), and break size arrives with it.
-      </p>
-
       <section className="rounds-section">
         <div className="rounds-section-head"><h2>Where your misses finish</h2></div>
         <div className="putting-filters">
@@ -299,10 +310,12 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
           <div className="putting-hero-side">
             <div className="putting-makemiss">
               <div><strong className="is-gain">{holed}</strong><span>holed</span></div>
+              <div><strong className="putting-gimme">{leftGimme}</strong><span>left a gimme</span></div>
               <div><strong>{missed}</strong><span>missed</span></div>
             </div>
             <div aria-hidden="true" className="putting-makemiss-bar">
-              <div style={{ width: `${shown.length ? (holed / shown.length) * 100 : 0}%` }} />
+              <div className="holed" style={{ width: share(holed) }} />
+              <div className="gimme" style={{ width: share(leftGimme) }} />
             </div>
             <h3>{cupHeadline}</h3>
             <ul className="putting-legend">
@@ -321,10 +334,6 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                 circle: <b>{leaves.inside5} of {leaves.firsts}</b>.
               </p>
             ) : null}
-            <p className="putting-note">
-              The number in the hole is putts holed. Each dot is a miss, drawn where it stopped and coloured by its
-              main cause. The rings widen for longer putts.
-            </p>
           </div>
         </div>
       </section>
@@ -388,16 +397,17 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
         </div>
       </section>
 
-      {lastRound ? (
+      {listed.length ? (
         <section className="rounds-section">
           <div className="rounds-section-head">
             <h2>Every putt</h2>
-            <span className="rounds-muted">Last round with real putting: <a href={`/rounds/${lastRound.roundId}`}>{lastRound.courseName}</a></span>
+            <span className="rounds-muted">{listed.length} {listed.length === 1 ? 'putt matches' : 'putts match'} the filters above, newest first.</span>
           </div>
           <div className="yourgame-scroll">
             <table className="rounds-table">
               <thead>
                 <tr>
+                  <th scope="col">Round</th>
                   <th scope="col">Hole</th>
                   <th className="is-num" scope="col">Length</th>
                   <th scope="col">Slope</th>
@@ -408,8 +418,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                 </tr>
               </thead>
               <tbody>
-                {lastPutts.map((putt) => (
-                  <tr key={`${putt.holeNumber}-${putt.number}`}>
+                {listed.slice(0, listLimit).map((putt) => (
+                  <tr key={`${putt.roundId}-${putt.holeNumber}-${putt.number}`}>
+                    <td><a href={`/rounds/${putt.roundId}`}>{putt.courseName}</a></td>
                     <td><strong>{putt.holeNumber}</strong></td>
                     <td className="is-num">{Math.round(putt.lengthFt)} ft</td>
                     <td>{putt.slope && putt.riseIn != null ? `${SLOPE_LABEL[putt.slope]}${putt.slope === 'flat' ? '' : `, ${feet(putt.riseIn / 12)}`}` : '–'}</td>
@@ -426,15 +437,14 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </tbody>
             </table>
           </div>
+          {listed.length > listLimit ? (
+            <button className="putting-more" onClick={() => setListLimit((limit) => limit + PUTTS_PER_PAGE)} type="button">
+              Show {Math.min(PUTTS_PER_PAGE, listed.length - listLimit)} more ({listed.length - listLimit} left)
+            </button>
+          ) : null}
         </section>
       ) : null}
 
-      <p className="putting-note">
-        <b>What counts.</b> Only putts of {MIN_PUTT_FT} ft and longer that you stroked yourself: {everything.gimmes} gimmes
-        {everything.autoPuttRounds ? ` and ${everything.autoPuttRounds} auto-putt ${everything.autoPuttRounds === 1 ? 'round' : 'rounds'}` : ''} are
-        left out. Read is where you placed your aim. Line is whether the ball started there. Right pace means a putt
-        that would finish about {IDEAL_PAST_FT} ft past the hole.
-      </p>
     </main>
   )
 }
