@@ -249,3 +249,10 @@
 
 /* Pace's caption sits a little lower, level with the captions under the other two strips. */
 .putting-term[data-skill='pace'] > button > span { margin-top: 18px; }
+
+/* Every putt: the show/hide button sits beside the title, not across the page. */
+.putting .putting-list-head {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+}
